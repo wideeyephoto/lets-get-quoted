@@ -55,6 +55,20 @@ describe('Pure Troubleshooter Matcher', () => {
     expect(res.intent?.articleId).toBe('art-schedule-sync-troubleshooting');
   });
 
+  it('matches "webhook delivery failed" to webhook-api', () => {
+    const res = matchTroubleshooter("webhook delivery failed");
+    expect(res.matched).toBe(true);
+    expect(res.intent?.id).toBe('webhook-api');
+    expect(res.intent?.articleId).toBe('art-webhook-api-troubleshooting');
+  });
+
+  it('matches "how to restore deleted quote" to trash-recovery', () => {
+    const res = matchTroubleshooter("how to restore deleted quote");
+    expect(res.matched).toBe(true);
+    expect(res.intent?.id).toBe('trash-recovery');
+    expect(res.intent?.articleId).toBe('art-trash-recovery-troubleshooting');
+  });
+
   it('unrelated query returns matched=false and provides 3 suggested articles', () => {
     const res = matchTroubleshooter("how to bake sourdough bread", COMMON_FIX_ARTICLES);
     expect(res.matched).toBe(false);
@@ -84,8 +98,8 @@ describe('Help Center Data & Section Grounding', () => {
     expect(helpComponentSource).not.toContain('id="contractor-templates"');
   });
 
-  it('contains all 6 common fix articles', () => {
-    expect(COMMON_FIX_ARTICLES.length).toBe(6);
+  it('contains all 8 common fix articles', () => {
+    expect(COMMON_FIX_ARTICLES.length).toBe(8);
     const ids = COMMON_FIX_ARTICLES.map(a => a.id);
     expect(ids).toContain('art-quote-send-troubleshooting');
     expect(ids).toContain('art-sms-delivery-troubleshooting');
@@ -93,6 +107,8 @@ describe('Help Center Data & Section Grounding', () => {
     expect(ids).toContain('art-domain-offline-troubleshooting');
     expect(ids).toContain('art-team-access-troubleshooting');
     expect(ids).toContain('art-schedule-sync-troubleshooting');
+    expect(ids).toContain('art-webhook-api-troubleshooting');
+    expect(ids).toContain('art-trash-recovery-troubleshooting');
   });
 
   it('submits support tickets using submitContactMessage server action with full form state', () => {

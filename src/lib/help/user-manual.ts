@@ -306,6 +306,48 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     related: ['manage-office-access-and-security', 'manage-plan-usage-and-credits', 'navigate-the-dashboard'],
   },
+  {
+    slug: 'ai-contractor-copilot-and-companions',
+    chapterId: 'start',
+    order: 6,
+    title: 'Use the AI Contractor Copilot and customize your companion',
+    summary: 'Leverage the in-app AI assistant with screen context, voice commands, and personalized companion personas like Sparky.',
+    outcome: 'You will work faster across estimating, dispatching, and customer replies with an AI copilot that understands your active screen.',
+    audiences: ['Owner', 'Office staff', 'Crew'],
+    readMinutes: 5,
+    routes: [{ label: 'Dashboard', href: '/dashboard' }],
+    prerequisites: ['Active workspace account'],
+    keywords: ['ai copilot', 'sparky', 'companion', 'mascot', 'ai assistant', 'screen awareness', 'voice commands', 'sidekick'],
+    sections: [
+      {
+        title: 'Activate the AI Assistant on any screen',
+        steps: [
+          'Click the Sparky mascot avatar in the bottom navigation or click the AI Copilot button in any record view.',
+          'The copilot automatically captures your active screen context (such as the open quote draft, customer message thread, or crew calendar).',
+          'Ask questions or request actions in plain English without re-typing customer names, job locations, or line item numbers.',
+        ],
+      },
+      {
+        title: 'Issue fast voice and text workflow commands',
+        bullets: [
+          'Estimate Generation: "Draft a 3-tier Good/Better/Best proposal with standard plumbing markups."',
+          'Schedule Queries: "Find all unassigned jobs in Maplewood for tomorrow afternoon."',
+          'Client Summaries: "Summarize this customer’s past payment history and open warranty items."',
+        ],
+      },
+      {
+        title: 'Customize companion personas and style',
+        paragraphs: [
+          'Open the Companion Picker to select your preferred assistant persona (such as Sparky the Electrician, Chief Estimator, or Dispatch Pro) to tailor response tone and detail level to your workflow.',
+        ],
+      },
+    ],
+    troubleshooting: [
+      { problem: 'AI assistant does not see updated page details.', fix: 'Ensure page changes have saved before opening the assistant modal, or close and reopen the companion window to refresh screen state.' },
+      { problem: 'Companion avatar is hidden.', fix: 'Check your user display preferences in Settings to ensure the mascot companion is enabled.' },
+    ],
+    related: ['navigate-the-dashboard', 'configure-text-to-job-and-field-intake', 'understand-dashboard-priorities'],
+  },
 
   // ==========================================
   // CHAPTER 2: SALES & QUOTING
@@ -677,6 +719,52 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       { problem: 'A recurring visit needs to be skipped or paused.', fix: 'Open the recurring series in the client file and select "Skip Next Visit" or "Pause Series".' },
     ],
     related: ['manage-the-job-workspace', 'schedule-work-from-the-queue', 'run-rebooking-and-customer-follow-up'],
+  },
+  {
+    slug: 'insurance-claims-and-restoration-packets',
+    chapterId: 'operations',
+    order: 6,
+    title: 'Manage insurance claims, adjuster evidence, and restoration packets',
+    summary: 'Document storm damage and emergency losses with timestamped photo evidence, generate adjuster packets, and bill supplemental scopes.',
+    outcome: 'You will accelerate insurance claim approvals and secure full reimbursement for homeowner storm, fire, or water damage restoration.',
+    audiences: ['Owner', 'Office staff', 'Estimators'],
+    readMinutes: 6,
+    routes: [
+      { label: 'Claims', href: '/dashboard/claims' },
+      { label: 'Jobs', href: '/dashboard/jobs' },
+    ],
+    prerequisites: ['Job record created for restoration or insurance-funded project'],
+    keywords: ['insurance claims', 'restoration', 'adjuster packet', 'storm damage', 'supplements', 'photo evidence', 'scope of work'],
+    sections: [
+      {
+        title: 'Structure insurance claims and damage scopes',
+        steps: [
+          'Navigate to Claims in the job file and input the insurance carrier, policy claim number, policyholder deductible, and assigned adjuster details.',
+          'Document the date of loss and cause of damage (wind/hail storm, pipe freeze/burst, electrical fire, water backup).',
+          'Map code-required restoration items alongside standard repair scopes.',
+        ],
+      },
+      {
+        title: 'Compile timestamped photo evidence and moisture logs',
+        bullets: [
+          'Geotagged Damage Photos: Upload high-resolution photos of damaged shingles, siding, drywall, and structural framing with automated date/time stamps.',
+          'Drone & Aerial Intel: Integrate aerial roof pitch and square measurements directly into the damage report.',
+          'Moisture & Meter Logs: Record drying chamber readings and equipment logs for water mitigation compliance.',
+        ],
+      },
+      {
+        title: 'Export branded PDF adjuster packets & supplemental invoices',
+        paragraphs: [
+          'Generate professional adjuster packets formatted with itemized line items, photographic evidence sheets, and local municipal building code citations. When unexpected sub-surface rot or damage is discovered, issue supplemental change orders for adjuster approval.',
+        ],
+      },
+    ],
+    customerView: 'Homeowners and insurance adjusters receive a complete, transparent claim documentation package with side-by-side photographic proof.',
+    troubleshooting: [
+      { problem: 'Adjuster disputes a supplemental change order.', fix: 'Export the timestamped change order log with before-and-after photo attachments from the Claims tab.' },
+      { problem: 'Deductible payment needs separate tracking.', fix: 'Record the homeowner deductible collection separately from carrier progress payments in the job billing ledger.' },
+    ],
+    related: ['document-work-and-change-orders', 'manage-the-job-workspace', 'configure-smart-intake'],
   },
 
   // ==========================================
@@ -1081,6 +1169,51 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     related: ['run-the-field-workflow', 'manage-crew-and-field-access', 'document-work-and-change-orders'],
   },
+  {
+    slug: 'material-inventory-and-distributor-pricing',
+    chapterId: 'crew',
+    order: 6,
+    title: 'Manage truck inventory and live distributor material pricing',
+    summary: 'Track stock on service trucks, connect wholesale distributor pricing (Ferguson, ABC Supply, Graybar), and automate material purchase orders.',
+    outcome: 'You will stop running out of critical parts in the field and quote accurate supply costs with live distributor price sheets.',
+    audiences: ['Owner', 'Office staff', 'Crew'],
+    readMinutes: 6,
+    routes: [
+      { label: 'Inventory', href: '/dashboard/inventory' },
+      { label: 'Price Book', href: '/dashboard/price-book' },
+    ],
+    prerequisites: ['Inventory access enabled'],
+    keywords: ['inventory', 'materials', 'distributor pricing', 'supply house', 'purchase orders', 'truck stock', 'edi 850', 'stock levels'],
+    sections: [
+      {
+        title: 'Track warehouse and truck inventory',
+        steps: [
+          'Navigate to Inventory and configure items stocked on primary service vehicles (e.g. fittings, wire rolls, breakers, refrigerant).',
+          'Set baseline minimum quantity reorder thresholds for each vehicle.',
+          'Technicians deduct items from truck stock when completing jobs or logging field materials.',
+        ],
+      },
+      {
+        title: 'Connect distributor catalog pricing',
+        bullets: [
+          'Live Wholesale Price Feeds: Link distributor supplier accounts (Ferguson, ABC Supply, Graybar, Johnstone) to pull live contractor tier discounts.',
+          'Direct EDI 850 Transmission: Transmit electronic purchase orders directly to local supply house branches.',
+          'Price Book Sync: Automatically update your material line items when distributor wholesale costs increase.',
+        ],
+      },
+      {
+        title: 'Automate job material pick-lists and purchase orders',
+        paragraphs: [
+          'Approved quote line items instantly generate a job pick-list. Office managers can export a supplier purchase order with one click, saving technicians time at the supply counter.',
+        ],
+      },
+    ],
+    troubleshooting: [
+      { problem: 'Distributor catalog pricing shows outdated rates.', fix: 'Click "Refresh Price Catalog" in Inventory settings to sync the latest branch pricing feed.' },
+      { problem: 'Truck stock counts do not match physical inventory.', fix: 'Perform a quick vehicle audit from the Field App and submit a count adjustment.' },
+    ],
+    related: ['manage-your-price-book', 'manage-job-expenses-and-receipt-ocr', 'run-the-field-workflow'],
+  },
 
   // ==========================================
   // CHAPTER 6: INVOICES, PAYMENTS, AND CASH
@@ -1312,6 +1445,51 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       { problem: 'Customer claims a refund did not post.', fix: 'Card refunds take 5-10 business days depending on the customer’s issuing bank.' },
     ],
     related: ['connect-stripe-and-get-paid', 'create-and-send-an-invoice', 'find-help-and-contact-support'],
+  },
+  {
+    slug: 'manage-job-expenses-and-receipt-ocr',
+    chapterId: 'money',
+    order: 7,
+    title: 'Track job expenses, receipts, and supply costs with AI OCR',
+    summary: 'Capture material receipts from your phone camera, extract line items with AI OCR, and assign expenses directly to jobs for real-time margin tracking.',
+    outcome: 'You will eliminate lost paper receipts and know exact job profitability before sending final invoices.',
+    audiences: ['Owner', 'Office staff', 'Crew'],
+    readMinutes: 6,
+    routes: [
+      { label: 'Expenses', href: '/dashboard/expenses' },
+      { label: 'Jobs', href: '/dashboard/jobs' },
+    ],
+    prerequisites: ['Dashboard or field app access'],
+    keywords: ['expenses', 'receipts', 'ocr', 'material costs', 'job costing', 'supply receipts', 'camera capture', 'actual margin'],
+    sections: [
+      {
+        title: 'Snap and upload supply receipts instantly',
+        steps: [
+          'Open Expenses in the dashboard or Field App and click "Add Expense / Scan Receipt".',
+          'Take a photo of paper register slips from Home Depot, Lowe’s, Ferguson, or local supply houses.',
+          'Upload PDF invoices or e-receipts directly from your mobile device or desktop.',
+        ],
+      },
+      {
+        title: 'AI OCR line-item parsing and job mapping',
+        bullets: [
+          'Automatic Field Extraction: AI OCR extracts merchant name, date, subtotal, tax, and individual material line items.',
+          'Job Assignment: Select the active Job ID to assign expenses directly to that project’s cost ledger.',
+          'Category Classification: Classify items as Materials, Equipment Rental, Disposal/Dump, or Subcontractor Expense.',
+        ],
+      },
+      {
+        title: 'Compare estimated vs. actual job margins',
+        paragraphs: [
+          'Every logged expense instantly updates the job’s real-time financial scorecard, comparing actual spent materials and labor burden against quoted prices so you catch cost overruns before final invoicing.',
+        ],
+      },
+    ],
+    troubleshooting: [
+      { problem: 'Receipt OCR failed on a crumpled or faded receipt.', fix: 'Ensure good lighting against a dark background, or manually edit the extracted amount and vendor fields before saving.' },
+      { problem: 'Expense was assigned to the wrong customer job.', fix: 'Open the expense record in Expenses, click Edit, and select the correct Job ID from the dropdown.' },
+    ],
+    related: ['manage-the-job-workspace', 'run-the-field-workflow', 'read-reports-and-profitability'],
   },
 
   // ==========================================
@@ -1811,6 +1989,95 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     related: ['document-work-and-change-orders', 'run-the-field-workflow', 'manage-the-job-workspace'],
   },
+  {
+    slug: 'voice-call-recordings-and-missed-call-sms',
+    chapterId: 'intake',
+    order: 7,
+    title: 'Review voice call recordings, transcripts, and missed-call SMS',
+    summary: 'Listen to customer call recordings, review AI transcriptions in Voice Calls, and configure instant speed-to-lead missed-call texts.',
+    outcome: 'You will never lose a job lead from a missed phone call while on site or after hours.',
+    audiences: ['Owner', 'Office staff'],
+    readMinutes: 6,
+    routes: [
+      { label: 'Voice Calls', href: '/dashboard/voice-calls' },
+      { label: 'Messages', href: '/dashboard/messages' },
+    ],
+    prerequisites: ['Voice phone line configured'],
+    keywords: ['voice calls', 'call recordings', 'transcription', 'missed calls', 'speed to lead', 'sms follow-up', 'audio player'],
+    sections: [
+      {
+        title: 'Review inbound calls and audio recordings',
+        steps: [
+          'Open Voice Calls in the dashboard to see all inbound customer calls, call durations, and caller IDs.',
+          'Click any call row to play the audio recording directly in your browser.',
+          'Read the AI-generated caller transcript and concise job scope summary.',
+        ],
+      },
+      {
+        title: 'Speed-to-lead automated text cards',
+        bullets: [
+          'Automated SMS Trigger: When a customer call goes unanswered or disconnects, the system automatically sends a friendly follow-up text within 60 seconds.',
+          'Direct Estimate Link: The SMS includes your online booking or instant quote link so the homeowner can submit their project request without waiting.',
+          'Thread Synchronization: Homeowner text replies instantly appear in your two-way Messages inbox.',
+        ],
+      },
+      {
+        title: 'Convert calls to active leads and jobs',
+        paragraphs: [
+          'With one click from the Voice Call detail card, promote any recorded call into an active lead or schedule an on-site consultation visit with the caller’s address pre-filled.',
+        ],
+      },
+    ],
+    customerView: 'Callers receive a prompt, professional SMS text offering instant online booking whenever their call cannot be answered immediately.',
+    troubleshooting: [
+      { problem: 'A recorded call audio player does not load.', fix: 'Ensure browser audio permissions are enabled and audio files have completed cloud processing.' },
+      { problem: 'Missed-call SMS did not fire.', fix: 'Check your available SMS credits in Plan & Usage and verify automated missed-call texts are enabled.' },
+    ],
+    related: ['configure-ai-receptionist', 'manage-the-lead-inbox', 'work-the-customer-text-inbox'],
+  },
+  {
+    slug: 'custom-forms-and-inspection-checklists',
+    chapterId: 'intake',
+    order: 8,
+    title: 'Build custom intake forms and field inspection checklists',
+    summary: 'Create dynamic conditional forms for customer website intake and safety/pre-trip inspection checklists for crew trucks.',
+    outcome: 'You will capture exact project specifications upfront and enforce consistent jobsite quality control.',
+    audiences: ['Owner', 'Office staff'],
+    readMinutes: 6,
+    routes: [{ label: 'Forms', href: '/dashboard/forms' }],
+    prerequisites: ['Forms access'],
+    keywords: ['forms', 'custom forms', 'inspection checklist', 'conditional logic', 'intake questionnaire', 'quality control', 'pre-trip'],
+    sections: [
+      {
+        title: 'Design conditional customer intake questionnaires',
+        steps: [
+          'Open Forms and click "Create New Form".',
+          'Add question types: text fields, photo uploads, multiple-choice dropdowns, and date pickers.',
+          'Configure conditional branching rules (e.g. "If project type is Roof Replacement, show roof slope and shingle type questions").',
+        ],
+      },
+      {
+        title: 'Deploy field safety and vehicle inspection checklists',
+        bullets: [
+          'Pre-Trip Vehicle Checks: Require technicians to check fluid levels, tire pressure, and ladder rack securement before morning roll-out.',
+          'Jobsite Safety & Hazard Audits: Log electrical panel safety verifications or water shutoff valve locations before starting demo.',
+          'Punch List Sign-Off: Technicians verify completed line items and attach inspection photos directly from the Field App.',
+        ],
+      },
+      {
+        title: 'Embed forms on your website or share direct links',
+        paragraphs: [
+          'Embed your custom questionnaires on any contractor website page or text direct form links to homeowners before on-site estimate visits.',
+        ],
+      },
+    ],
+    customerView: 'Homeowners experience a clean, mobile-optimized questionnaire that makes describing their home repair project effortless.',
+    troubleshooting: [
+      { problem: 'Conditional question rule does not trigger.', fix: 'Verify that the parent field option value in the Form Editor matches the trigger condition exactly.' },
+      { problem: 'Field inspection checklist is not showing on active jobs.', fix: 'Ensure the checklist template is linked to the active job trade category in workflow settings.' },
+    ],
+    related: ['configure-smart-intake', 'run-the-field-workflow', 'build-and-publish-your-website'],
+  },
 
   // ==========================================
   // CHAPTER 9: ACCOUNT, DATA, AND SUPPORT
@@ -2030,12 +2297,98 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       { problem: 'Accidentally deleted account.', fix: 'Account deletion is immediate and unrecoverable. Deleted data cannot be restored. If you wish to use Let’s Get Quoted again, you must create a new account.' },
       { problem: 'Plan was cancelled but you want to resume.', fix: 'Go to Settings → Plan & Usage and click "Resume Plan" to restore full workspace capabilities instantly.' },
     ],
-    related: ['manage-plan-usage-and-credits', 'export-data-and-connect-apps', 'manage-office-access-and-security'],
+    related: ['manage-plan-usage-and-credits', 'export-data-and-connect-apps', 'manage-office-access-and-security', 'restore-deleted-records-and-audit-logs'],
+  },
+  {
+    slug: 'developer-api-and-webhooks',
+    chapterId: 'account',
+    order: 8,
+    title: 'Connect custom tools with the Developer API and Webhooks',
+    summary: 'Generate scoped REST API tokens, subscribe to real-time webhook event feeds, and import OpenAPI 3.1 definitions.',
+    outcome: 'You will safely automate external CRMs, Zapier, Make, and internal servers with verified HMAC webhooks and scoped API keys.',
+    audiences: ['Owner'],
+    readMinutes: 7,
+    routes: [{ label: 'Developer API & Webhooks', href: '/dashboard/settings#developer-api' }],
+    prerequisites: ['Owner role access', 'HTTPS endpoint for webhook subscriptions'],
+    keywords: ['developer api', 'webhooks', 'api tokens', 'openapi', 'rest api', 'zapier', 'make', 'hmac signature', 'dead letter queue', 'secret key'],
+    sections: [
+      {
+        title: 'Create and manage scoped API tokens',
+        steps: [
+          'Go to Settings → Developer API & Webhooks.',
+          'Click "Generate New Token", enter a descriptive label (e.g. "Zapier Lead Sync"), and select required role scopes (leads:read, leads:write, webhooks:manage, events:read).',
+          'Copy your secret token (format: lgq_live_...) immediately upon generation. For security, secret tokens are hashed and never shown again.',
+          'Pass tokens in external HTTP requests using standard authorization headers: Authorization: Bearer lgq_live_...',
+        ],
+      },
+      {
+        title: 'Set up real-time Webhook subscriptions',
+        bullets: [
+          'Event Feeds: Subscribe to live events including lead.created, quote.signed, invoice.paid, and job.completed.',
+          'HTTPS & SSRF Protection: Webhook destinations must use secure HTTPS URLs; localhost and private intranet IP addresses are rejected by edge guards.',
+          'HMAC SHA-256 Verification: Every outgoing webhook delivery includes an x-lgq-signature header calculated using your unique endpoint signing secret and a timestamp to prevent replay attacks.',
+        ],
+      },
+      {
+        title: 'Explore OpenAPI 3.1 schema and dead-letter retry',
+        paragraphs: [
+          'Access the interactive OpenAPI 3.1 JSON definition at /api/v1/openapi.json to import into Postman, Insomnia, or custom SDK generators. If your endpoint is temporarily down, the system retries with exponential backoff and provides a manual 1-click retry button in the Webhook Deliveries audit table.',
+        ],
+      },
+    ],
+    troubleshooting: [
+      { problem: 'Webhook deliveries fail with 5xx status or timeout.', fix: 'Ensure your server responds with a 2xx HTTP status within 10 seconds. Check endpoint SSL certificates and click "Retry Delivery" in the deliveries table.' },
+      { problem: 'API returns 401 Unauthorized.', fix: 'Verify the token has not been revoked and that the Authorization: Bearer header is formatted correctly without extra quotes.' },
+    ],
+    related: ['export-data-and-connect-apps', 'manage-office-access-and-security', 'find-help-and-contact-support'],
+  },
+  {
+    slug: 'restore-deleted-records-and-audit-logs',
+    chapterId: 'account',
+    order: 9,
+    title: 'Restore deleted records from Trash and review audit logs',
+    summary: 'Recover accidentally deleted leads, quotes, clients, and jobs from Trash within the retention grace period and inspect tamper-evident audit history.',
+    outcome: 'You will protect your business from accidental data loss and maintain a complete compliance record of who changed or deleted what.',
+    audiences: ['Owner', 'Office staff'],
+    readMinutes: 6,
+    routes: [
+      { label: 'Trash & Recovery', href: '/dashboard/trash' },
+      { label: 'Activity & Audit Log', href: '/dashboard/activity' },
+    ],
+    prerequisites: ['Dashboard access (Owner or Office staff role)'],
+    keywords: ['trash', 'restore', 'soft delete', 'audit log', 'data recovery', 'grace period', 'activity feed', 'compliance'],
+    sections: [
+      {
+        title: 'Soft deletion lifecycle and 30-day Trash grace period',
+        paragraphs: [
+          'When you delete a lead, quote draft, customer profile, or job, the item is soft-deleted and staged in /dashboard/trash for 30 days. Soft deletion prevents accidental loss from team misclicks while immediately removing items from active queues.',
+        ],
+      },
+      {
+        title: 'Restore records with intact historical relationships',
+        steps: [
+          'Open Trash from the sidebar or Settings.',
+          'Filter by record type: Leads, Quotes, Jobs, or Clients.',
+          'Click "Restore Record" on the desired item. The record instantly reappears in its original pipeline stage with all associated photo attachments, timecards, and message histories preserved.',
+        ],
+      },
+      {
+        title: 'Inspect tamper-evident Activity and Audit Logs',
+        paragraphs: [
+          'Open the Activity workspace to review chronological audit logs. Every creation, update, stage transition, payment collection, and deletion event records the initiating user email, timestamp, IP context, and change details for forensic compliance.',
+        ],
+      },
+    ],
+    troubleshooting: [
+      { problem: 'A deleted record is not visible in Trash.', fix: 'Items past the 30-day retention grace period are permanently purged according to security compliance retention schedules.' },
+      { problem: 'Non-owner user cannot access Trash restore buttons.', fix: 'Restoring sensitive client or financial records requires elevated Office or Owner clearance.' },
+    ],
+    related: ['manage-the-lead-inbox', 'manage-client-records', 'cancel-your-plan-or-delete-your-account'],
   },
   {
     slug: 'find-help-and-contact-support',
     chapterId: 'account',
-    order: 7,
+    order: 10,
     title: 'Find help, search documentation, and contact support',
     summary: 'Search user guides, diagnose common issues with troubleshooting tools, and open support tickets.',
     outcome: 'You will resolve technical questions quickly with fast self-service guides and responsive support.',

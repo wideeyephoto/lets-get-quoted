@@ -92,8 +92,8 @@ describe('dashboard user manual', () => {
     expect(dashboardHelp).toContain('href="/help/manual/first-30-minutes"');
   });
 
-  it('includes all 5 new articles and adheres to verified technical truths', () => {
-    expect(MANUAL_ARTICLES).toHaveLength(51);
+  it('includes all new articles and adheres to verified technical truths', () => {
+    expect(MANUAL_ARTICLES).toHaveLength(59);
 
     const newSlugs = [
       'turn-on-the-customer-portal',
@@ -101,6 +101,14 @@ describe('dashboard user manual', () => {
       'install-the-field-app-and-work-without-signal',
       'manage-your-marketing-list-and-opt-outs',
       'cancel-your-plan-or-delete-your-account',
+      'ai-contractor-copilot-and-companions',
+      'insurance-claims-and-restoration-packets',
+      'material-inventory-and-distributor-pricing',
+      'manage-job-expenses-and-receipt-ocr',
+      'voice-call-recordings-and-missed-call-sms',
+      'custom-forms-and-inspection-checklists',
+      'developer-api-and-webhooks',
+      'restore-deleted-records-and-audit-logs',
     ];
     for (const slug of newSlugs) {
       expect(getManualArticle(slug), `Article ${slug} should exist`).toBeDefined();

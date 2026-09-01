@@ -47,6 +47,62 @@ export const CHANGELOG_CATEGORIES: ChangelogCategory[] = [
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
   {
+    id: 'release-2026-09-developer-api-copilot-restoration',
+    version: 'v2.7.0',
+    title: 'Public Developer API & Webhooks, Multi-Mascot AI Copilot, Insurance Claim Packets & 30-Day Trash Recovery',
+    date: '2026-09-01',
+    category: 'AI & Receptionist',
+    badge: 'Major Release',
+    summary:
+      'Full programmatic automation with our Public REST API and HMAC Webhooks, context-aware AI Copilot mascots (Sparky, Pip, Bolt), insurance restoration claim packets, mobile AI receipt OCR, and 30-day soft deletion trash recovery.',
+    highlights: [
+      {
+        badge: 'New',
+        title: '⚡ Public Developer API & Real-Time HMAC Webhooks',
+        description:
+          'Automate your business with scoped API tokens (lgq_live_...), OpenAPI 3.1 schema at /api/v1/openapi.json, real-time webhooks with HMAC SHA-256 signatures, and a dead-letter delivery retry queue in Settings > Developer API.',
+      },
+      {
+        badge: 'New',
+        title: '🤖 Multi-Mascot AI Contractor Copilot & Screen Awareness',
+        description:
+          'Work side-by-side with trade mascot companions (Sparky the Electrician, Pip the Plumber, Bolt, etc.) capable of reading active screen context to draft quotes, explain line items, and run voice lookups.',
+      },
+      {
+        badge: 'New',
+        title: '📋 Insurance Claims & Adjuster Restoration Evidence Packets',
+        description:
+          'Track claim numbers, deductibles, and adjuster details directly on job records. Export formatted PDF evidence sheets with timestamped photo logs, moisture readings, and supplemental change orders.',
+      },
+      {
+        badge: 'New',
+        title: '🧾 Mobile AI Receipt OCR & Live Job Costing',
+        description:
+          'Snap supply house receipts in the field to automatically extract supplier names, itemized lines, and tax via AI OCR, comparing actual costs against quoted prices for live gross margin tracking.',
+      },
+      {
+        badge: 'New',
+        title: '🗑️ 30-Day Trash Workspace & Tamper-Evident Activity Logs',
+        description:
+          'Soft-deleted leads, quotes, clients, and jobs are safely preserved in /dashboard/trash for 30 days and restorable in 1-click with complete notes, quotes, and timeline intact.',
+      },
+      {
+        badge: 'New',
+        title: '📞 24/7 Voice Call Recordings & Speed-to-Lead Missed-Call SMS',
+        description:
+          'Listen to customer audio calls, review instant AI transcripts, convert calls into leads in 1-click, and send automated personalized SMS follow-ups within 60 seconds of any missed call.',
+      },
+    ],
+    primaryAction: {
+      label: 'Explore User Manual',
+      href: '/help/manual',
+    },
+    secondaryAction: {
+      label: 'View Developer Settings',
+      href: '/dashboard/settings',
+    },
+  },
+  {
     id: 'release-2026-08-street-cluster-satellite-halo',
     version: 'v2.6.0',
     title: 'Active Street Cluster Group Pricing, Satellite Property Sizing & 1-Mile Halo Ads',

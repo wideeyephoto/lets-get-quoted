@@ -173,6 +173,50 @@ export const TROUBLESHOOTER_INTENTS: TroubleshooterIntent[] = [
     articleSlug: 'dispatched-job-missing-calendar',
     explanation: 'Check booking confirmation status, crew truck assignment filters, and calendar sync.',
     estimatedTime: '2 mins'
+  },
+  {
+    id: 'webhook-api',
+    title: 'Webhook or API delivery failure',
+    aliases: [
+      'webhook',
+      'webhooks',
+      'api',
+      'api key',
+      'api token',
+      'openapi',
+      'endpoint',
+      'signature',
+      'x lgq signature',
+      'hmac',
+      'delivery failed',
+      'zapier',
+      'make'
+    ],
+    articleId: 'art-webhook-api-troubleshooting',
+    articleSlug: 'webhook-api-delivery-and-signature-troubleshooting',
+    explanation: 'Troubleshoot failed webhook deliveries, endpoint timeouts, HTTPS requirements, and HMAC signatures.',
+    estimatedTime: '3 mins'
+  },
+  {
+    id: 'trash-recovery',
+    title: 'Deleted record or quote recovery',
+    aliases: [
+      'trash',
+      'deleted',
+      'restore',
+      'recover',
+      'accidental delete',
+      'recovery',
+      'undo delete',
+      'deleted lead',
+      'deleted quote',
+      'deleted job',
+      'deleted client'
+    ],
+    articleId: 'art-trash-recovery-troubleshooting',
+    articleSlug: 'recovering-deleted-records-from-trash',
+    explanation: 'Recover soft-deleted leads, quotes, clients, and jobs from the 30-day Trash workspace.',
+    estimatedTime: '2 mins'
   }
 ];
 

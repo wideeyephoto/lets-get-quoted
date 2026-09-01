@@ -4,9 +4,9 @@ import path from 'path';
 import { getAllArticles } from '@/components/help-center/help-center-data';
 
 describe('Help Center Article & Global Heading Typography', () => {
-  it('has exactly 17 public help center articles with non-empty titles', () => {
+  it('has exactly 23 public help center articles with non-empty titles', () => {
     const articles = getAllArticles();
-    expect(articles.length).toBe(17);
+    expect(articles.length).toBe(23);
     for (const article of articles) {
       expect(article.slug).toBeTruthy();
       expect(article.title.trim().length).toBeGreaterThan(10);

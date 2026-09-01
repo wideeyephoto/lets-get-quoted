@@ -236,6 +236,59 @@ export const COMMON_FIX_ARTICLES: Article[] = [
         <li><strong>Timezone Alignment:</strong> Check that your company operating timezone in <em>Settings &gt; Profile</em> matches your local service territory.</li>
       </ul>
     `
+  },
+  {
+    id: 'art-webhook-api-troubleshooting',
+    slug: 'webhook-api-delivery-and-signature-troubleshooting',
+    title: 'Troubleshooting Failed Webhook Deliveries & API Signature Verification',
+    category: 'Developer & APIs',
+    readTime: '3 min read',
+    audience: 'Developers & Technical Admins',
+    lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'Global API',
+    author: 'LGQ Platform API Engineering',
+    sources: [
+      { title: 'LGQ Developer API & OpenAPI 3.1 Documentation', url: 'https://letsgetquoted.com/api/v1/openapi.json' },
+      { title: 'HMAC SHA-256 Webhook Verification Standards', url: 'https://tools.ietf.org/id/draft-ietf-httpbis-message-signatures-19.html' }
+    ],
+    content: `
+      <h3>Diagnosing Failed Webhook Deliveries</h3>
+      <p>If your webhook endpoint is not receiving real-time event feeds or deliveries show a failed status in <em>Settings &gt; Developer API</em>:</p>
+      <ol>
+        <li><strong>HTTPS Requirement:</strong> Webhook endpoints must use valid SSL/TLS HTTPS URLs. Localhost and private intranet IP ranges are blocked by edge SSRF guards.</li>
+        <li><strong>10-Second Response Timeout:</strong> Your receiving server must return an HTTP <code>2xx</code> status code within 10 seconds. Long-running tasks should be queued asynchronously on your backend.</li>
+        <li><strong>Consecutive Failure Circuit Breaker:</strong> Subscriptions with repeated 5xx errors or timeouts are paused automatically to protect server resources. After fixing the endpoint, click <em>Retry Delivery</em> in the dashboard.</li>
+      </ol>
+      <h4>HMAC Signature Verification:</h4>
+      <p>Validate the <code>x-lgq-signature</code> header using your webhook secret to confirm the payload originated from Let’s Get Quoted and was not tampered with in transit.</p>
+    `
+  },
+  {
+    id: 'art-trash-recovery-troubleshooting',
+    slug: 'recovering-deleted-records-from-trash',
+    title: 'How to Restore Deleted Quotes, Leads, Clients, and Jobs from Trash',
+    category: 'Account & Data Safety',
+    readTime: '2 min read',
+    audience: 'Owners & Office Staff',
+    lastUpdated: 'August 2026',
+    lastReviewed: 'August 2026',
+    applicableRegion: 'All Workspaces',
+    author: 'LGQ Data Integrity & Security Team',
+    sources: [
+      { title: 'LGQ Data Retention & Soft Deletion Lifecycle', url: 'https://letsgetquoted.com/security' }
+    ],
+    content: `
+      <h3>30-Day Soft Deletion Grace Period</h3>
+      <p>When a team member accidentally deletes a lead, draft quote, client profile, or job, the record is safely moved to the <strong>Trash</strong> workspace rather than being permanently destroyed.</p>
+      <ol>
+        <li>Navigate to <em>Dashboard &gt; Trash</em> in the sidebar.</li>
+        <li>Filter by record type (Leads, Quotes, Jobs, or Clients) or search by customer name.</li>
+        <li>Click <strong>Restore Record</strong> to instantly return the item to its original pipeline stage with all historical photos, notes, and timecards intact.</li>
+      </ol>
+      <h4>Permanent Deletion Schedule:</h4>
+      <p>Records remain recoverable in Trash for <strong>30 days</strong>. After 30 days, soft-deleted records are permanently purged according to compliance retention rules.</p>
+    `
   }
 ];
 
@@ -393,7 +446,8 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
             <strong>Automatic SSL Provisioning:</strong> Once DNS records propagate and are verified, our cloud edge automatically provisions and renews a free 256-bit Let's Encrypt SSL certificate.
           </div>
         `
-      }
+      },
+      COMMON_FIX_ARTICLES[7]
     ]
   },
   {
@@ -547,6 +601,35 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
             <li><strong>Automated Review Gate:</strong> If a customer reports an issue, the system alerts the office dispatcher immediately before negative feedback is posted publicly.</li>
           </ul>
         `
+      },
+      {
+        id: 'art-ai-voice-receptionist-guide',
+        slug: '24-7-ai-phone-receptionist-and-voice-setup',
+        title: 'Setting Up 24/7 AI Phone Answering and Sub-60-Second Missed-Call Texts',
+        category: 'SMS & Messaging',
+        readTime: '4 min read',
+        audience: 'Owners & Dispatchers',
+        lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US & Canada',
+        author: 'LGQ Voice Intelligence Team',
+        sources: [
+          { title: 'LGQ AI Voice Receptionist Architecture', url: 'https://letsgetquoted.com/features/ai-intake' }
+        ],
+        content: `
+          <h3>Capturing Inbound Phone Leads 24/7</h3>
+          <p>Never lose a high-value emergency job while you are on a ladder or driving between job sites. The AI Voice receptionist greets callers, gathers project requirements, and books consultations around the clock.</p>
+
+          <h3>Speed-to-Lead Missed-Call Follow-Ups</h3>
+          <p>When a homeowner calls your business line and hangs up before speaking with someone, Let’s Get Quoted automatically triggers a personalized text within <strong>60 seconds</strong> containing your instant quote link.</p>
+
+          <h3>Key Voice Receptionist Capabilities:</h3>
+          <ul>
+            <li><strong>Live Audio Recordings &amp; Transcripts:</strong> Review audio recordings and structured caller summaries directly from <em>Dashboard &gt; Voice Calls</em>.</li>
+            <li><strong>1-Click Lead Conversion:</strong> Convert any call transcript into an active lead with pre-filled scope notes in one click.</li>
+            <li><strong>Emergency Escalation:</strong> Route true emergency repair calls directly to the owner’s mobile number based on custom keyword triggers.</li>
+          </ul>
+        `
       }
     ]
   },
@@ -641,6 +724,36 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
             <strong>Legal Disclaimer:</strong> This guide is for educational and operational information only and does not constitute formal legal or financial advice. Surcharging laws evolve frequently across jurisdictions. Consult with qualified legal counsel or your CPA regarding local commercial compliance.
           </div>
         `
+      },
+      {
+        id: 'art-receipt-ocr-expense-tracking',
+        slug: 'mobile-receipt-capture-and-expense-tracking',
+        title: 'Snapping Material Receipts with AI OCR for Real-Time Job Costing',
+        category: 'Payments & Accounting',
+        readTime: '3 min read',
+        audience: 'Owners, Estimators & Crew',
+        lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'Standard Job Costing',
+        author: 'LGQ Job Costing & Operations Team',
+        sources: [
+          { title: 'Construction Financial Management Association Job Costing Guidelines', url: 'https://cfma.org' }
+        ],
+        content: `
+          <h3>Tracking True Job Costs from the Field</h3>
+          <p>Profitable contracting depends on knowing your real material spend before sending the final invoice. Mobile receipt scanning removes lost paper slips and automates expense tracking.</p>
+
+          <h3>How AI Receipt OCR Works:</h3>
+          <ol>
+            <li><strong>Snap the Register Receipt:</strong> In the mobile Field App, tap <em>Add Expense &gt; Scan Receipt</em> and snap a photo of the supply house slip.</li>
+            <li><strong>Automatic Field Extraction:</strong> AI OCR automatically extracts the supplier name, purchase date, itemized materials, and sales tax.</li>
+            <li><strong>Job &amp; Category Mapping:</strong> Select the active Job ID and cost category (Materials, Equipment Rental, Permits, Dump Fees).</li>
+          </ol>
+
+          <div class="calloutSuccess">
+            <strong>Live Gross Margin Tracking:</strong> Logged expenses instantly update your job scorecard, comparing actual direct costs against quoted prices to protect your profit margin.
+          </div>
+        `
       }
     ]
   },
@@ -722,6 +835,75 @@ export const KNOWLEDGE_BASE: KnowledgeCategory[] = [
           </ul>
           <div class="calloutInfo">
             <strong>Google Guidance:</strong> For official criteria on improving local ranking, review <a href="https://support.google.com/business/answer/7091" target="_blank" rel="noopener noreferrer">Google's How to Improve Your Local Ranking on Google</a>.
+          </div>
+        `
+      }
+    ]
+  },
+  {
+    id: 'cat-developer-integrations',
+    topic: 'developer',
+    title: 'Developer API, Webhooks & Integrations',
+    desc: 'Public API tokens, OpenAPI 3.1 schema, webhook HMAC signatures, and QuickBooks sync.',
+    icon: 'Terminal',
+    articles: [
+      COMMON_FIX_ARTICLES[6],
+      {
+        id: 'art-api-tokens-webhooks-guide',
+        slug: 'developer-api-tokens-and-webhooks-guide',
+        title: 'How to Generate Scoped API Tokens and Configure Webhook Feeds',
+        category: 'Developer & APIs',
+        readTime: '4 min read',
+        audience: 'Technical Leads & Developers',
+        lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'Global API',
+        author: 'LGQ Platform API Engineering',
+        sources: [
+          { title: 'LGQ OpenAPI 3.1 Specification', url: 'https://letsgetquoted.com/api/v1/openapi.json' }
+        ],
+        content: `
+          <h3>Automating Your Business with the Developer API</h3>
+          <p>Let’s Get Quoted provides a Public API and real-time webhook engine allowing you to connect custom CRMs, accounting systems, Zapier, Make, and internal servers.</p>
+
+          <h3>Generating Your Secret API Token</h3>
+          <ol>
+            <li>Navigate to <strong>Settings &gt; Developer API &amp; Webhooks</strong>.</li>
+            <li>Click <strong>Generate New Token</strong>, choose a label, and assign role scopes (e.g. <code>leads:read</code>, <code>leads:write</code>, <code>webhooks:manage</code>).</li>
+            <li>Copy your <code>lgq_live_...</code> secret key immediately. For security, full keys are never shown again after creation.</li>
+          </ol>
+
+          <h3>Subscribing to Real-Time Webhooks</h3>
+          <p>Register an HTTPS endpoint to receive instant JSON notifications for events like <code>lead.created</code>, <code>quote.signed</code>, and <code>invoice.paid</code>. Validate the <code>x-lgq-signature</code> HMAC SHA-256 header on your server to verify payload authenticity.</p>
+        `
+      },
+      {
+        id: 'art-quickbooks-sync-guide',
+        slug: 'quickbooks-online-two-way-sync-guide',
+        title: 'Connecting QuickBooks Online: Automatic Invoices, Payments, and Chart of Accounts',
+        category: 'Integrations & Accounting',
+        readTime: '4 min read',
+        audience: 'Owners & Bookkeepers',
+        lastUpdated: 'August 2026',
+        lastReviewed: 'August 2026',
+        applicableRegion: 'US Accounting Standards',
+        author: 'LGQ Financial Operations Team',
+        sources: [
+          { title: 'Intuit Developer QuickBooks Online Sync Standards', url: 'https://developer.intuit.com' }
+        ],
+        content: `
+          <h3>Automating Bookkeeping with QuickBooks Online</h3>
+          <p>Eliminate double-entry bookkeeping by syncing invoices, customer records, and settled payments directly to your QuickBooks Online company file.</p>
+
+          <h3>Setting Up the 2-Way Sync:</h3>
+          <ol>
+            <li>Navigate to <strong>Settings &gt; Integrations &amp; Export</strong> and click <strong>Connect to QuickBooks</strong>.</li>
+            <li>Sign in with your Intuit credentials and authorize Let’s Get Quoted.</li>
+            <li>Map your chart of accounts: assign default Income Accounts for service revenue and Expense Accounts for Stripe processing fees.</li>
+          </ol>
+
+          <div class="calloutSuccess">
+            <strong>Automatic Reconciliation:</strong> When an invoice is paid online via Stripe, Let’s Get Quoted creates the corresponding customer payment in QuickBooks and net-records processing fees for 1-click bank reconciliation.
           </div>
         `
       }
@@ -868,6 +1050,20 @@ export const FAQS: FAQItem[] = [
     question: 'Is there a contract or can I cancel anytime?',
     answer:
       'All plans are month-to-month with no long-term lock-in. You can upgrade, downgrade, or cancel your subscription at any time directly in Settings > Billing.'
+  },
+  {
+    id: 'faq-7',
+    category: 'developer',
+    question: 'Can I connect my CRM, Zapier, or custom software with the API?',
+    answer:
+      'Yes. Let’s Get Quoted provides a Public API and real-time webhook engine with an OpenAPI 3.1 schema. You can generate scoped API tokens in Settings > Developer API and subscribe to real-time events for leads, signed quotes, and paid invoices.'
+  },
+  {
+    id: 'faq-8',
+    category: 'safety',
+    question: 'What happens if I accidentally delete a quote, job, or client?',
+    answer:
+      'Deleted items are safely stored in your Trash workspace for 30 days. You can browse to Dashboard > Trash to search and restore any record with complete historical photos, notes, and activity timeline intact.'
   }
 ];
 

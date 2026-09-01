@@ -516,6 +516,86 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
       'Outstanding Stripe payments have settled and transferred to your bank account.',
     ],
   },
+  'ai-contractor-copilot-and-companions': {
+    useWhen: 'You want faster answers on job records, need to draft customer proposals from field notes, or want to customize your AI assistant mascot persona.',
+    bestPractice: 'Open the assistant with the relevant job or quote open on your screen so the AI has instant access to real project data.',
+    watchFor: 'The AI assistant assists with drafting and data lookups; always review generated estimates and customer messages before clicking send.',
+    completionChecks: [
+      'The AI assistant opens reliably and recognizes active screen context.',
+      'You can issue quick voice or text commands to look up project records.',
+      'Your chosen mascot companion persona and tone match your preferred work style.',
+    ],
+  },
+  'insurance-claims-and-restoration-packets': {
+    useWhen: 'You are handling storm, fire, or water damage restoration funded by homeowner property insurance claims and adjusters.',
+    bestPractice: 'Record detailed before-and-after photo logs and date-stamped moisture meter readings before commencing any demolition work.',
+    watchFor: 'Performing extra work without signed insurance supplement authorizations can lead to unpaid insurance carrier disputes.',
+    completionChecks: [
+      'The claim number, policy provider, deductible, and adjuster contacts are saved.',
+      'Timestamped damage photos and moisture readings are attached to the claim.',
+      'A standardized adjuster evidence packet or supplemental quote has been generated.',
+    ],
+  },
+  'material-inventory-and-distributor-pricing': {
+    useWhen: 'You are tracking service truck stock, updating material cost catalogs, or connecting direct wholesale supply house pricing.',
+    bestPractice: 'Set automatic minimum reorder alerts on high-turnover consumables to avoid delaying active jobs due to stock-outs.',
+    watchFor: 'Wholesale distributor commodity prices fluctuate frequently; refresh price feeds regularly before sending large bids.',
+    completionChecks: [
+      'Truck and warehouse stock items have established baseline minimum thresholds.',
+      'Distributor wholesale price feeds or standardized catalog multipliers are configured.',
+      'Pick-lists and purchase orders generate cleanly from approved quote scopes.',
+    ],
+  },
+  'manage-job-expenses-and-receipt-ocr': {
+    useWhen: 'You or your crew purchase supplies, equipment rentals, or dump permits that need to be tracked directly against a job budget.',
+    bestPractice: 'Snap receipts immediately at the supply house counter rather than letting paper slips accumulate in vehicle cup holders.',
+    watchFor: 'Failing to allocate sales tax or tool rental charges directly to jobs will quietly erode your calculated gross margin.',
+    completionChecks: [
+      'Receipt images upload cleanly and OCR extracts line items and sales tax.',
+      'Expenses are assigned to the correct job and cost category.',
+      'Real-time job gross margin accurately reflects total logged direct expenses.',
+    ],
+  },
+  'voice-call-recordings-and-missed-call-sms': {
+    useWhen: 'You are in the field, on a ladder, or after hours and need incoming customer phone calls answered, qualified, and logged 24/7.',
+    bestPractice: 'Set up instant Speed-to-Lead SMS alerts so missed callers receive an immediate personalized text while their intent is highest.',
+    watchFor: 'Check call transcripts periodically to refine your automated greeting and ensure emergency routing numbers remain accurate.',
+    completionChecks: [
+      'Inbound calls connect to the AI receptionist and record audio transcripts.',
+      'Missed calls automatically create qualified leads in your dashboard inbox.',
+      'Instant SMS follow-up texts deliver with the correct booking and quote link.',
+    ],
+  },
+  'custom-forms-and-inspection-checklists': {
+    useWhen: 'You need structured intake questions on your website or required safety and pre-trip checklists for field crew technicians.',
+    bestPractice: 'Keep initial customer intake forms short (under 5 questions) to maximize conversion rates, saving technical questions for consultations.',
+    watchFor: 'Overly complex inspection forms can cause crew fatigue; mark non-essential fields as optional to maintain field compliance.',
+    completionChecks: [
+      'Conditional questions display accurately based on customer response selections.',
+      'Technician field inspection checklists appear on assigned job records.',
+      'Completed form responses and inspection photos save to the client file.',
+    ],
+  },
+  'developer-api-and-webhooks': {
+    useWhen: 'You are connecting external business applications, CRMs, Zapier, Make, or custom scripts to your Let’s Get Quoted workspace.',
+    bestPractice: 'Use minimum scoped tokens (e.g. read-only) for data exports and always verify webhook HMAC SHA-256 signatures on your server.',
+    watchFor: 'Exposing secret API tokens or webhook signing secrets in client-side code will compromise workspace data security.',
+    completionChecks: [
+      'API tokens are generated with least-privilege role scopes and copied securely.',
+      'Webhook HTTPS endpoints respond with 2xx status and verify HMAC signatures.',
+      'Failed webhook deliveries can be inspected and retried from the dashboard.',
+    ],
+  },
+  'restore-deleted-records-and-audit-logs': {
+    useWhen: 'A lead, estimate, client, or job was accidentally deleted, or you need to inspect who made changes to a workspace record.',
+    bestPractice: 'Check the Trash within the 30-day grace period to restore records with complete historical notes, quotes, and timeline intact.',
+    watchFor: 'Hard account deletion permanently purges all records immediately without a grace period; soft delete applies only to individual items.',
+    completionChecks: [
+      'Deleted records appear in the Trash hub with their deletion timestamp and user.',
+      'Restoring a record seamlessly reconnects quotes, jobs, and client histories.',
+      'The Activity Audit Log provides a tamper-evident record of all workspace edits.',
+    ],
+  },
 };
 
 export function getManualFieldNotes(slug: string): ManualFieldNotes | undefined {
