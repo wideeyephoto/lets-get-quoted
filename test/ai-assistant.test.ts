@@ -213,3 +213,57 @@ describe('executeAssistantTool Routing & Handlers', () => {
     ).rejects.toThrow('Unknown tool: non_existent_tool');
   });
 });
+
+describe('AI Assistant File & Multimodal Uploads', () => {
+  const mockAccountId = 'acc-12345678-1234';
+  const mockUserId = 'usr-12345678-1234';
+
+  it('handles file attachments in fallback mode when API key is missing', async () => {
+    const origKey = process.env.GEMINI_API_KEY;
+    const origGoogleKey = process.env.GOOGLE_API_KEY;
+    delete process.env.GEMINI_API_KEY;
+    delete process.env.GOOGLE_API_KEY;
+
+    try {
+      const { runAssistantConversation } = await import('@/lib/ai-assistant/engine');
+
+      const mockCtx = {
+        userId: mockUserId,
+        accountId: mockAccountId,
+        role: 'owner' as const,
+        businessName: 'Apex Plumbing',
+        companionId: 'sparky',
+      };
+
+      const mockToolCtx: ToolExecutionContext = {
+        supabase: {} as any,
+        accountId: mockAccountId,
+        userId: mockUserId,
+        role: 'owner',
+      };
+
+      const result = await runAssistantConversation(
+        [
+          {
+            role: 'user',
+            content: 'Can you analyze this receipt?',
+            file: {
+              name: 'homedepot_receipt.png',
+              data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
+              mimeType: 'image/png',
+            },
+          },
+        ],
+        mockCtx,
+        mockToolCtx,
+      );
+
+      expect(result.message).toBeDefined();
+      expect(result.message.content).toContain('Sparky');
+      expect(result.message.content).toContain('GEMINI_API_KEY');
+    } finally {
+      if (origKey) process.env.GEMINI_API_KEY = origKey;
+      if (origGoogleKey) process.env.GOOGLE_API_KEY = origGoogleKey;
+    }
+  });
+});

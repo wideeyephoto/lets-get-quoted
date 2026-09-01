@@ -33,3 +33,27 @@ export async function commitServicesImport(text: string, sources: FieldSources, 
   revalidatePath('/dashboard/services');
   return result;
 }
+
+export async function ocrPriceBookAction(dataUrl: string): Promise<{ ok: true; csv: string; count: number } | { ok: false; error: string }> {
+  await requireOwnerContext();
+  if (!dataUrl || !dataUrl.startsWith('data:image/')) {
+    return { ok: false, error: 'Please select a valid image file (JPG, PNG, WebP).' };
+  }
+
+  const { readPriceBookOcr } = await import('@/lib/price-book-ocr');
+  const result = await readPriceBookOcr({ dataUrl });
+
+  if (!result || result.items.length === 0) {
+    return {
+      ok: false,
+      error: "We couldn't detect any service items or prices in that photo. Please try a clearer, high-contrast photo or a CSV file.",
+    };
+  }
+
+  return {
+    ok: true,
+    csv: result.rawCsv,
+    count: result.items.length,
+  };
+}
+

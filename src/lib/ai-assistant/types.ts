@@ -38,10 +38,21 @@ export interface AssistantMessageImage {
   previewUrl?: string;
 }
 
+export interface AssistantMessageFile {
+  name: string;
+  data: string; // Base64 data (without or with data: prefix)
+  mimeType: string;
+  sizeBytes?: number;
+  previewUrl?: string;
+  textContent?: string;
+  category?: 'image' | 'pdf' | 'spreadsheet' | 'document' | 'text';
+}
+
 export interface AssistantMessage {
   id: string;
   role: MessageRole;
   content: string;
+  file?: AssistantMessageFile;
   image?: AssistantMessageImage;
   imageUrl?: string;
   toolCalls?: AssistantToolCall[];
@@ -74,6 +85,7 @@ export interface AssistantRequestBody {
   messages: Array<{
     role: 'user' | 'assistant';
     content: string;
+    file?: AssistantMessageFile;
     image?: AssistantMessageImage;
     imageUrl?: string;
   }>;
@@ -81,6 +93,8 @@ export interface AssistantRequestBody {
   activeRecord?: ActiveRecordContext;
   companionId?: string;
   companionTrade?: string;
+  file?: AssistantMessageFile;
+  image?: AssistantMessageImage;
 }
 
 export interface AssistantResponseBody {

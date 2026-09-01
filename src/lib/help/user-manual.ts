@@ -336,6 +336,15 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
         ],
       },
       {
+        title: 'Attach job photos, PDF scopes, receipts, and rate sheets',
+        bullets: [
+          'Photo & Damage Inspection: Click the paperclip attachment button, paste from clipboard, or drag & drop job site photos to let your companion inspect equipment rating plates, damage, or punch list items.',
+          'Receipt & Supply Invoicing: Upload store receipts or supplier invoice scans (JPEG, PNG, WebP) to automatically log job expenses and recalculate job profit margins.',
+          'PDF & Scope Documents: Upload insurance adjuster packets, subcontractor bids, or PDF scopes of work for instant item extraction, cost estimation, and quote drafting.',
+          'Rate Sheets & Spreadsheets: Attach Excel (.xlsx) or CSV price books to calculate custom quotes or update service pricing directly.',
+        ],
+      },
+      {
         title: 'Customize companion personas and style',
         paragraphs: [
           'Open the Companion Picker to select your preferred assistant persona (such as Sparky the Electrician, Chief Estimator, or Dispatch Pro) to tailor response tone and detail level to your workflow.',
@@ -2205,7 +2214,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     readMinutes: 6,
     routes: [{ label: 'Price Book', href: '/dashboard/price-book' }],
     prerequisites: ['Price book access'],
-    keywords: ['price book', 'flat rate', 'materials', 'labor rates', 'service catalog', 'tiers'],
+    keywords: ['price book', 'flat rate', 'materials', 'labor rates', 'service catalog', 'tiers', 'ocr', 'import'],
     sections: [
       {
         title: 'Build standardized trade line items',
@@ -2217,6 +2226,15 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
         ],
       },
       {
+        title: 'Import spreadsheets or snap photos with AI OCR',
+        steps: [
+          'Go to Price Book → "Import CSV, Excel, or Photo / OCR".',
+          'Upload a spreadsheet (.csv or .xlsx), paste rows directly, or snap a photo of a printed rate sheet / laminated service menu.',
+          'AI OCR scans the photo and extracts service names, prices, units, and descriptions automatically.',
+          'Preview the matched columns and click "Import services" to populate your catalog in one click.',
+        ],
+      },
+      {
         title: 'Archive obsolete items safely',
         paragraphs: [
           'Archive outdated price book items rather than deleting them. Archiving preserves historical quoting records on past jobs while removing items from new quote builders.',
@@ -2225,8 +2243,9 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     troubleshooting: [
       { problem: 'Price change did not update on an existing quote.', fix: 'Existing sent quotes preserve their agreed pricing. New quotes will automatically pull the updated price book rate.' },
+      { problem: 'Rate sheet photo OCR missed some items.', fix: 'Ensure good lighting, avoid glare on laminated sheets, or upload a clear high-resolution image.' },
     ],
-    related: ['build-and-send-a-quote', 'read-reports-and-profitability', 'import-existing-business-data'],
+    related: ['build-and-send-a-quote', 'read-reports-and-profitability', 'import-existing-business-data', 'manage-job-expenses-and-receipt-ocr'],
   },
   {
     slug: 'export-data-and-connect-apps',

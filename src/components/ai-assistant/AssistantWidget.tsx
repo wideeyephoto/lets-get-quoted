@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAssistant } from './AssistantProvider';
-import type { AssistantMessage, AssistantMessageImage } from '@/lib/ai-assistant/types';
+import type { AssistantMessage, AssistantMessageImage, AssistantMessageFile } from '@/lib/ai-assistant/types';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import CompanionPickerModal from './CompanionPickerModal';
 import styles from './assistant.module.css';
@@ -105,9 +105,10 @@ export default function AssistantWidget() {
     },
   ]);
   const [input, setInput] = useState('');
-  const [attachedImage, setAttachedImage] = useState<AssistantMessageImage | null>(null);
+  const [attachedFile, setAttachedFile] = useState<AssistantMessageFile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
 
   // Update initial welcome message if companion changes and chat is untouched
   useEffect(() => {
@@ -141,26 +142,76 @@ export default function AssistantWidget() {
     }
   }, [isOpen, messages, scrollToBottom]);
 
+  const processUploadedFile = async (file: File) => {
+    let category: 'image' | 'pdf' | 'spreadsheet' | 'document' | 'text' = 'document';
+    const name = file.name.toLowerCase();
+
+    if (file.type.startsWith('image/') || /\.(png|jpe?g|webp|heic|gif|bmp|svg)$/i.test(name)) {
+      category = 'image';
+    } else if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
+      category = 'pdf';
+    } else if (/\.(csv|tsv)$/i.test(name) || file.type === 'text/csv') {
+      category = 'spreadsheet';
+    } else if (/\.(xlsx|xls)$/i.test(name)) {
+      category = 'spreadsheet';
+    } else if (file.type.startsWith('text/') || /\.(txt|json|md|log|vcf)$/i.test(name)) {
+      category = 'text';
+    }
+
+    let textContent: string | undefined = undefined;
+    if (category === 'text' || category === 'spreadsheet') {
+      try {
+        if (/\.(xlsx|xls)$/i.test(name)) {
+          const { readImportFile } = await import('@/lib/read-import-file');
+          textContent = await readImportFile(file);
+        } else {
+          textContent = await file.text();
+        }
+      } catch (e) {
+        console.warn('Could not extract text from file:', e);
+      }
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const data = reader.result as string;
+      const previewUrl = category === 'image' ? URL.createObjectURL(file) : undefined;
+      setAttachedFile({
+        name: file.name,
+        data,
+        mimeType: file.type || (category === 'pdf' ? 'application/pdf' : 'application/octet-stream'),
+        sizeBytes: file.size,
+        previewUrl,
+        textContent,
+        category,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
   // Handle outside messages or prompts passed via openAssistant(prompt)
   const handleSendMessage = useCallback(
-    async (textToSend?: string, imageToAttach?: AssistantMessageImage | null) => {
+    async (textToSend?: string, fileToAttach?: AssistantMessageFile | null) => {
       const promptText = (textToSend !== undefined ? textToSend : input).trim();
-      const imgPayload = imageToAttach !== undefined ? imageToAttach : attachedImage;
+      const filePayload = fileToAttach !== undefined ? fileToAttach : attachedFile;
 
-      if (!promptText && !imgPayload) return;
+      if (!promptText && !filePayload) return;
 
       const userMessageId = `user-${Date.now()}`;
+      const isImg = filePayload?.category === 'image' || filePayload?.mimeType.startsWith('image/');
       const userMsg: AssistantMessage = {
         id: userMessageId,
         role: 'user',
         content: promptText,
-        imageUrl: imgPayload?.previewUrl || imgPayload?.data,
+        file: filePayload || undefined,
+        image: filePayload && isImg ? { data: filePayload.data, mimeType: filePayload.mimeType, previewUrl: filePayload.previewUrl } : undefined,
+        imageUrl: isImg ? (filePayload?.previewUrl || filePayload?.data) : undefined,
         createdAt: new Date().toISOString(),
       };
 
       setMessages((prev) => [...prev, userMsg]);
       setInput('');
-      setAttachedImage(null);
+      setAttachedFile(null);
       setIsLoading(true);
 
       try {
@@ -179,10 +230,19 @@ export default function AssistantWidget() {
                   title: activeContext.label,
                 }
               : undefined,
-            image: imgPayload
+            file: filePayload
               ? {
-                  data: imgPayload.data,
-                  mimeType: imgPayload.mimeType,
+                  name: filePayload.name,
+                  data: filePayload.data,
+                  mimeType: filePayload.mimeType,
+                  textContent: filePayload.textContent,
+                  previewUrl: filePayload.previewUrl,
+                }
+              : undefined,
+            image: filePayload && isImg
+              ? {
+                  data: filePayload.data,
+                  mimeType: filePayload.mimeType,
                 }
               : undefined,
           }),
@@ -217,7 +277,7 @@ export default function AssistantWidget() {
         setIsLoading(false);
       }
     },
-    [input, attachedImage, messages, pathname, activeContext, companionId, companionTrade]
+    [input, attachedFile, messages, pathname, activeContext, companionId, companionTrade]
   );
 
   useEffect(() => {
@@ -229,7 +289,7 @@ export default function AssistantWidget() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    handleSendMessage(input, attachedImage);
+    handleSendMessage(input, attachedFile);
   };
 
   const handleClearHistory = () => {
@@ -246,21 +306,7 @@ export default function AssistantWidget() {
   const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload a valid image file (JPEG, PNG, WebP).');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      setAttachedImage({
-        data: reader.result as string,
-        mimeType: file.type,
-        previewUrl: URL.createObjectURL(file),
-      });
-    };
-    reader.readAsDataURL(file);
+    void processUploadedFile(file);
     e.target.value = '';
   };
 
@@ -269,18 +315,11 @@ export default function AssistantWidget() {
     if (!items) return;
 
     for (let i = 0; i < items.length; i++) {
-      if (items[i].type.startsWith('image/')) {
-        const file = items[i].getAsFile();
+      const item = items[i];
+      if (item.kind === 'file') {
+        const file = item.getAsFile();
         if (file) {
-          const reader = new FileReader();
-          reader.onload = () => {
-            setAttachedImage({
-              data: reader.result as string,
-              mimeType: file.type,
-              previewUrl: URL.createObjectURL(file),
-            });
-          };
-          reader.readAsDataURL(file);
+          void processUploadedFile(file);
           e.preventDefault();
           break;
         }
@@ -325,7 +364,36 @@ export default function AssistantWidget() {
       {isOpen ? (
         <>
           <div className={styles.overlay} onClick={closeAssistant} aria-hidden="true" />
-          <div className={styles.panel} role="dialog" aria-label={`${companion.name} Copilot`}>
+          <div
+            className={styles.panel}
+            role="dialog"
+            aria-label={`${companion.name} Copilot`}
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragLeave={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+            }}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragging(false);
+              const file = e.dataTransfer.files?.[0];
+              if (file) void processUploadedFile(file);
+            }}
+          >
+            {/* Drag & Drop Visual Overlay */}
+            {isDragging ? (
+              <div className={styles.dragOverOverlay}>
+                <div className={styles.dragOverContent}>
+                  <span className={styles.dragOverIcon}>📥</span>
+                  <span className={styles.dragOverText}>Drop photo, receipt, PDF, or document here</span>
+                  <span className={styles.dragOverSubtext}>{companion.name} will analyze and extract data</span>
+                </div>
+              </div>
+            ) : null}
+
             {/* Top Accent Rim */}
             <div className={styles.topAccentRim} />
 
@@ -465,8 +533,30 @@ export default function AssistantWidget() {
                   )}
 
                   <div className={styles.messageContentCol}>
-                    {/* Render User Uploaded Photo */}
-                    {(msg.imageUrl || msg.image?.previewUrl || msg.image?.data) ? (
+                    {/* Render User Uploaded File or Photo */}
+                    {msg.file && msg.file.category === 'image' ? (
+                      <div className={styles.messageImageWrapper}>
+                        <img
+                          src={msg.file.previewUrl || msg.file.data}
+                          alt={msg.file.name || 'Uploaded photo'}
+                          className={styles.messageImage}
+                        />
+                      </div>
+                    ) : msg.file ? (
+                      <div className={styles.messageFileBadge}>
+                        <span className={styles.messageFileIcon}>
+                          {msg.file.category === 'pdf' ? '📄' : msg.file.category === 'spreadsheet' ? '📊' : '📝'}
+                        </span>
+                        <div className={styles.messageFileDetails}>
+                          <span className={styles.messageFileName}>{msg.file.name}</span>
+                          {msg.file.sizeBytes ? (
+                            <span className={styles.messageFileSize}>
+                              ({(msg.file.sizeBytes / 1024).toFixed(1)} KB)
+                            </span>
+                          ) : null}
+                        </div>
+                      </div>
+                    ) : (msg.imageUrl || msg.image?.previewUrl || msg.image?.data) ? (
                       <div className={styles.messageImageWrapper}>
                         <img
                           src={msg.imageUrl || msg.image?.previewUrl || msg.image?.data}
@@ -568,29 +658,55 @@ export default function AssistantWidget() {
 
             {/* Footer Omni-Input Capsule Area */}
             <div className={styles.footerContainer} onPaste={handlePaste}>
-              {attachedImage ? (
-                <div className={styles.attachedImageChip}>
-                  <div className={styles.attachedThumbnailWrap}>
-                    <img
-                      src={attachedImage.previewUrl || attachedImage.data}
-                      alt="Attached upload"
-                      className={styles.attachedThumbnail}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setAttachedImage(null)}
-                      className={styles.removeImageBtn}
-                      title="Remove image"
-                      aria-label="Remove image"
-                    >
-                      <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2.5">
-                        <path d="M18 6 6 18M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
+              {attachedFile ? (
+                <div className={styles.attachedFileChip}>
+                  {attachedFile.category === 'image' ? (
+                    <div className={styles.attachedThumbnailWrap}>
+                      <img
+                        src={attachedFile.previewUrl || attachedFile.data}
+                        alt={attachedFile.name}
+                        className={styles.attachedThumbnail}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFile(null)}
+                        className={styles.removeFileBtn}
+                        title="Remove image"
+                        aria-label="Remove image"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <div className={styles.attachedDocIconWrap}>
+                      <span className={styles.attachedDocIcon}>
+                        {attachedFile.category === 'pdf' ? '📄' : attachedFile.category === 'spreadsheet' ? '📊' : '📝'}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => setAttachedFile(null)}
+                        className={styles.removeFileBtn}
+                        title="Remove file"
+                        aria-label="Remove file"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  )}
                   <div className={styles.attachedMeta}>
-                    <span className={styles.attachedBadge}>📷 Image Attached</span>
-                    <span className={styles.attachedHint}>{companion.name} can read receipts, plates &amp; damage</span>
+                    <span className={styles.attachedBadge}>
+                      {attachedFile.category === 'image'
+                        ? '📷 Photo Attached'
+                        : attachedFile.category === 'pdf'
+                        ? '📄 PDF Document Attached'
+                        : '📊 Spreadsheet / File Attached'}
+                    </span>
+                    <span className={styles.attachedFileName}>
+                      {attachedFile.name} {attachedFile.sizeBytes ? `(${(attachedFile.sizeBytes / 1024).toFixed(0)} KB)` : ''}
+                    </span>
+                    <span className={styles.attachedHint}>
+                      {companion.name} can read receipts, PDF scopes, price sheets &amp; site damage
+                    </span>
                   </div>
                 </div>
               ) : null}
@@ -600,20 +716,18 @@ export default function AssistantWidget() {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   className={styles.attachBtn}
-                  title="Attach job photo or supply receipt"
-                  aria-label="Upload image"
+                  title="Attach job photo, receipt, PDF, or spreadsheet"
+                  aria-label="Attach file or photo"
                   disabled={isLoading}
                 >
-                  <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2">
-                    <rect x="3" y="3" width="18" height="18" rx="4" ry="4" />
-                    <circle cx="8.5" cy="8.5" r="1.5" />
-                    <polyline points="21 15 16 10 5 21" />
+                  <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48" />
                   </svg>
                 </button>
                 <input
                   type="file"
                   ref={fileInputRef}
-                  accept="image/*"
+                  accept="image/*,.pdf,.csv,.xlsx,.xls,.txt,.vcf,application/pdf,text/csv,text/plain"
                   onChange={handleFileInputChange}
                   style={{ display: 'none' }}
                 />
@@ -622,14 +736,14 @@ export default function AssistantWidget() {
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={attachedImage ? 'Add a note or instruction...' : `Ask anything or tell ${companion.name} what to add to a job...`}
+                  placeholder={attachedFile ? 'Add a note or instruction for this file...' : `Ask anything or tell ${companion.name} what to add to a job...`}
                   className={styles.inputField}
                   disabled={isLoading}
                 />
                 <button
                   type="submit"
-                  className={`${styles.sendButton} ${input.trim() || attachedImage ? styles.sendButtonActive : ''}`}
-                  disabled={(!input.trim() && !attachedImage) || isLoading}
+                  className={`${styles.sendButton} ${input.trim() || attachedFile ? styles.sendButtonActive : ''}`}
+                  disabled={(!input.trim() && !attachedFile) || isLoading}
                   aria-label={`Send message to ${companion.name}`}
                 >
                   <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">

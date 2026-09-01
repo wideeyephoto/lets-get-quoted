@@ -718,7 +718,8 @@
   -webkit-backdrop-filter: blur(12px);
 }
 
-.attachedImageChip {
+.attachedImageChip,
+.attachedFileChip {
   display: flex;
   align-items: center;
   gap: 10px;
@@ -730,12 +731,22 @@
   animation: fadeIn 0.15s ease-out;
 }
 
-.attachedThumbnailWrap {
+.attachedThumbnailWrap,
+.attachedDocIconWrap {
   position: relative;
   width: 42px;
   height: 42px;
   flex-shrink: 0;
   border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(30, 41, 59, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.attachedDocIcon {
+  font-size: 20px;
 }
 
 .attachedThumbnail {
@@ -746,7 +757,8 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
-.removeImageBtn {
+.removeImageBtn,
+.removeFileBtn {
   position: absolute;
   top: -5px;
   right: -5px;
@@ -760,10 +772,14 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
   transition: transform 0.15s ease;
 }
 
-.removeImageBtn:hover {
+.removeImageBtn:hover,
+.removeFileBtn:hover {
   transform: scale(1.15);
 }
 
@@ -780,8 +796,106 @@
   color: #a5b4fc;
 }
 
+.attachedFileName {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 280px;
+}
+
 .attachedHint {
   font-size: 10.5px;
+  color: #94a3b8;
+}
+
+/* Document & File Message Badges */
+.messageFileBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 10px;
+  margin-bottom: 6px;
+  max-width: 320px;
+}
+
+.messageFileIcon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.messageFileDetails {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+}
+
+.messageFileName {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f8fafc;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.messageFileSize {
+  font-size: 11px;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+/* Drag and drop overlay */
+.dragOverOverlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 2px dashed #818cf8;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  pointer-events: none;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.dragOverContent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  color: #c7d2fe;
+  text-align: center;
+  padding: 20px;
+}
+
+.dragOverIcon {
+  font-size: 36px;
+  animation: bounce 1s infinite alternate ease-in-out;
+}
+
+@keyframes bounce {
+  from { transform: translateY(0); }
+  to { transform: translateY(-8px); }
+}
+
+.dragOverText {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.dragOverSubtext {
+  font-size: 11.5px;
   color: #94a3b8;
 }
 

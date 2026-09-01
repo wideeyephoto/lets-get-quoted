@@ -162,7 +162,9 @@ Your Capabilities & Tools:
 13. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, expenses, settings, cash flow, sites, automations, sms).
 
 Guidelines:
-- You have multimodal vision capabilities. When the contractor attaches an image (receipts, supplier invoices, equipment nameplates, site damage, punch list items, or sketches), inspect the visual details, extract line items, prices, supplier names, equipment specs or dimensions, and execute or recommend suitable tools (e.g. log_job_expense when viewing a receipt).
+- You have full multimodal vision and document processing capabilities.
+- When the contractor attaches an image (receipts, supplier invoices, equipment rating plates, site damage, punch list items, sketches) or a document/file (PDF scopes of work, adjuster reports, estimates, spreadsheets, rate sheets), thoroughly inspect both visual and textual contents.
+- Extract line items, prices, supplier names, equipment specifications, dimensions, tasks, or customer details, and execute or recommend suitable tools (e.g. "log_job_expense" for receipts/invoices, "add_quote_line_item" for quote items, "add_job_task" for punch lists, or "create_quote_or_job" for new scopes).
 - Be concise, professional, friendly, and action-oriented. Contractors want quick execution and direct feedback.
 - When creating or modifying quotes or logging expenses, confirm the updated figures (e.g. logged amount, new total costs, updated profit margin %).
 - Always execute appropriate tools to retrieve or mutate live workspace database records.`;
@@ -172,6 +174,7 @@ export async function runAssistantConversation(
   messages: Array<{
     role: 'user' | 'assistant';
     content: string;
+    file?: { name: string; data: string; mimeType: string; textContent?: string; previewUrl?: string };
     image?: { data: string; mimeType: string; previewUrl?: string };
     imageUrl?: string;
   }>,
@@ -201,7 +204,7 @@ export async function runAssistantConversation(
       message: {
         id: `msg-${Date.now()}`,
         role: 'assistant',
-        content: `I'm ${companion.name}, your contractor AI sidekick! To enable live natural-language and photo actions (like analyzing receipts, creating quotes, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
+        content: `I'm ${companion.name}, your contractor AI sidekick! To enable live natural-language and file/photo actions (like analyzing receipts, PDF scopes, creating quotes, and looking up clients), please configure \`GEMINI_API_KEY\` in your \`.env.local\` file.`,
         createdAt: new Date().toISOString(),
       },
       actionCards: [
@@ -219,7 +222,7 @@ export async function runAssistantConversation(
   const ai = new GoogleGenAI({ apiKey });
   const systemInstruction = buildSystemInstruction(enrichedCtx);
 
-  // Format messages into Google GenAI contents format (including multimodal image parts)
+  // Format messages into Google GenAI contents format (including multimodal files, PDFs, and images)
   const formattedContents: Content[] = [];
 
   for (const msg of messages) {
@@ -227,6 +230,30 @@ export async function runAssistantConversation(
 
     if (msg.content && msg.content.trim()) {
       parts.push({ text: msg.content.trim() });
+    }
+
+    if (msg.file) {
+      if (msg.file.textContent) {
+        parts.push({ text: `[Attached Document: ${msg.file.name}]\n${msg.file.textContent}` });
+      }
+
+      let base64Clean = msg.file.data;
+      let mimeType = msg.file.mimeType || 'application/octet-stream';
+      if (base64Clean.includes(';base64,')) {
+        const split = base64Clean.split(';base64,');
+        mimeType = split[0].replace('data:', '');
+        base64Clean = split[1];
+      }
+
+      // If mimeType is supported for direct binary / multimodal parsing (images, PDFs, text)
+      if (mimeType.startsWith('image/') || mimeType === 'application/pdf' || mimeType.startsWith('text/')) {
+        parts.push({
+          inlineData: {
+            mimeType,
+            data: base64Clean,
+          },
+        });
+      }
     }
 
     if (msg.image) {

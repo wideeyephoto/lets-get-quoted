@@ -18,6 +18,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'Messages array is required' }, { status: 400 });
     }
 
+    const lastMsg = messages[messages.length - 1];
+    if (lastMsg && lastMsg.role === 'user') {
+      if (!lastMsg.file && body?.file) lastMsg.file = body.file;
+      if (!lastMsg.image && body?.image) lastMsg.image = body.image;
+    }
+
     const businessName = await loadBusinessName(supabase, accountId);
 
     const ctx: AssistantContext = {

@@ -16,11 +16,13 @@ export type SmartImportProps = {
   analyze: (text: string) => Promise<SmartImportPreview>;
   runPreview: (text: string, sources: FieldSources, hasHeader: boolean) => Promise<{ sampleRows: MappedRow[]; totalRows: number }>;
   commit: (text: string, sources: FieldSources, hasHeader: boolean) => Promise<CommitResult>;
+  onOcrFile?: (dataUrl: string) => Promise<{ ok: true; csv: string; count: number } | { ok: false; error: string }>;
+  ocrLabel?: string;
   doneHref: string;
   doneLabel: string;
 };
 
-export default function SmartImport({ fields, noun, analyze, runPreview, commit, doneHref, doneLabel }: SmartImportProps) {
+export default function SmartImport({ fields, noun, analyze, runPreview, commit, onOcrFile, ocrLabel, doneHref, doneLabel }: SmartImportProps) {
   const [phase, setPhase] = useState<'upload' | 'preview' | 'done'>('upload');
   const [pasted, setPasted] = useState('');
   const [fileText, setFileText] = useState('');
@@ -33,7 +35,60 @@ export default function SmartImport({ fields, noun, analyze, runPreview, commit,
   const [result, setResult] = useState<{ imported: number; duplicates: number; skipped: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+
+  async function handleOcrImage(file: File) {
+    if (!onOcrFile) return;
+    setError(null);
+    setFileName(file.name);
+    setBusy(true);
+    setOcrLoading(true);
+
+    try {
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(new Error('Failed to read image file'));
+        reader.readAsDataURL(file);
+      });
+
+      const ocrRes = await onOcrFile(dataUrl);
+      if (!ocrRes.ok) {
+        setError(ocrRes.error || "We couldn't read that image with AI OCR.");
+        setFileText('');
+        setFileName('');
+        if (fileInputRef.current) fileInputRef.current.value = '';
+        if (cameraInputRef.current) cameraInputRef.current.value = '';
+        return;
+      }
+
+      const csv = ocrRes.csv;
+      setFileText(csv);
+      setFileName(`📷 OCR: ${file.name} (${ocrRes.count} ${ocrRes.count === 1 ? noun.one : noun.many} extracted)`);
+
+      // Run analyze immediately on OCR result
+      const analyzeRes = await analyze(csv);
+      if (!analyzeRes.ok) {
+        setError(analyzeRes.error === 'empty' ? 'No items found in OCR scan.' : `We couldn't structure any ${noun.many} from that photo.`);
+        return;
+      }
+      setRawText(csv);
+      setPreview(analyzeRes);
+      setSources(analyzeRes.sources);
+      setRows(analyzeRes.sampleRows);
+      setTotal(analyzeRes.totalRows);
+      setPhase('preview');
+    } catch {
+      setError('Something went wrong processing that photo. Please try a CSV or high-contrast image.');
+      setFileText('');
+      setFileName('');
+    } finally {
+      setBusy(false);
+      setOcrLoading(false);
+    }
+  }
 
   async function onFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -42,13 +97,20 @@ export default function SmartImport({ fields, noun, analyze, runPreview, commit,
       setFileName('');
       return;
     }
+
+    const isImage = file.type.startsWith('image/') || /\.(png|jpe?g|webp|bmp|gif|heic)$/i.test(file.name);
+    if (isImage && onOcrFile) {
+      await handleOcrImage(file);
+      return;
+    }
+
     setError(null);
     setFileName(file.name);
     setBusy(true);
     try {
       setFileText(await readImportFile(file));
     } catch {
-      setError("We couldn't read that file. Try a CSV, Excel (.xlsx), or vCard (.vcf).");
+      setError("We couldn't read that file. Try a CSV, Excel (.xlsx), vCard (.vcf), or photo.");
       setFileText('');
       setFileName('');
       if (fileInputRef.current) fileInputRef.current.value = '';
@@ -240,11 +302,76 @@ export default function SmartImport({ fields, noun, analyze, runPreview, commit,
       </div>
 
       <div className="form-grid">
+        {onOcrFile ? (
+          <div className="field full" style={{ padding: '1rem', border: '1px dashed var(--accent, #6366f1)', borderRadius: '8px', background: 'rgba(99, 102, 241, 0.05)', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+              <div>
+                <strong style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-bright, #fff)' }}>
+                  <span>📷</span> {ocrLabel || 'Photo / Document AI OCR Scanner'}
+                </strong>
+                <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: 'var(--muted, rgba(255,255,255,0.7))' }}>
+                  Snap a photo or upload an image of your paper rate sheet, laminated menu, or catalog. AI OCR extracts items, prices, units, and descriptions automatically.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => cameraInputRef.current?.click()}
+                  disabled={busy}
+                  style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <span>📸</span> Take Photo
+                </button>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={busy}
+                  style={{ fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}
+                >
+                  <span>🖼️</span> Upload Photo
+                </button>
+              </div>
+            </div>
+            <input
+              id="si-camera"
+              ref={cameraInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              onChange={onFile}
+              style={{ display: 'none' }}
+            />
+          </div>
+        ) : null}
+
+        {ocrLoading ? (
+          <div className="field full" style={{ padding: '0.85rem', borderRadius: '6px', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.3)', textAlign: 'center' }}>
+            <p style={{ margin: 0, fontWeight: 500, color: 'var(--accent-glow, #a5b4fc)' }}>
+              ⚡ Scanning photo & transcribing line items with AI OCR… Please hold on.
+            </p>
+          </div>
+        ) : null}
+
         <div className="field full">
-          <label htmlFor="si-file">Upload a file <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>— CSV, Excel (.xlsx), or vCard (.vcf)</span></label>
-          <input id="si-file" ref={fileInputRef} type="file" accept=".csv,.tsv,.txt,.xlsx,.xls,.vcf,text/csv,text/plain,text/vcard" onChange={onFile} />
+          <label htmlFor="si-file">
+            Upload a spreadsheet or photo{' '}
+            <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>
+              — CSV, Excel (.xlsx), vCard (.vcf){onOcrFile ? ', or Photo / Scan (JPG, PNG, WebP)' : ''}
+            </span>
+          </label>
+          <input
+            id="si-file"
+            ref={fileInputRef}
+            type="file"
+            accept={onOcrFile ? '.csv,.tsv,.txt,.xlsx,.xls,.vcf,.png,.jpg,.jpeg,.webp,text/csv,text/plain,text/vcard,image/png,image/jpeg,image/webp' : '.csv,.tsv,.txt,.xlsx,.xls,.vcf,text/csv,text/plain,text/vcard'}
+            onChange={onFile}
+            disabled={busy}
+          />
           {fileName ? <p className="workspace-card-copy" style={{ margin: '0.4rem 0 0' }}>Selected: {fileName}</p> : null}
         </div>
+
         <div className="field full">
           <label htmlFor="si-paste">…or paste rows</label>
           <textarea
@@ -254,11 +381,14 @@ export default function SmartImport({ fields, noun, analyze, runPreview, commit,
             onChange={(e) => setPasted(e.target.value)}
             placeholder={'Any columns, any order — we figure out the rest.'}
             style={{ fontFamily: 'ui-monospace, monospace', fontSize: '0.85rem' }}
+            disabled={busy}
           />
         </div>
+
         {error ? <div className="field full"><p className="payment-banner muted">{error}</p></div> : null}
+
         <div className="field full">
-          <AiSparkleButton onClick={analyzeNow} loading={busy} loadingLabel="Analyzing with AI...">
+          <AiSparkleButton onClick={analyzeNow} loading={busy} loadingLabel={ocrLoading ? 'Scanning with AI OCR...' : 'Analyzing with AI...'}>
             Analyze & preview
           </AiSparkleButton>
         </div>

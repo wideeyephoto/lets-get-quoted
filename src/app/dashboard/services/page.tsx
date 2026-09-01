@@ -56,10 +56,13 @@ export default async function ServicesPage({
             Save the services you sell once, and drop them into quotes and recurring plans with a tap — no more
             retyping prices. You can always tweak the amount per job.
           </p>
-          <div className="workspace-inline-row" style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-            <Link href="/dashboard/services/import" className="btn secondary">
-              📥 Import CSV / Excel file
+          <div className="workspace-inline-row" style={{ display: 'flex', gap: '0.75rem', marginTop: '0.75rem', flexWrap: 'wrap', alignItems: 'center' }}>
+            <Link href="/dashboard/services/import" className="btn secondary" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span>📥</span> Import CSV, Excel, or Photo / OCR
             </Link>
+            <span style={{ fontSize: '0.82rem', color: 'var(--muted, #94a3b8)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <span style={{ color: '#a855f7' }}>📷</span> AI OCR scans printed rate sheets &amp; catalogs
+            </span>
           </div>
         </div>
         {stats ? <PriceBookStats stats={stats} /> : null}
