@@ -9402,3 +9402,108 @@
     animation: none !important;
   }
 }
+
+/* ---- 11. Presentation mock styling (non-interactive spans inside role="img") ---- */
+.root :global(.preview-cta-btn) {
+  display: inline-block;
+  background: var(--orange, #ff6a24);
+  color: white;
+  border: 0;
+  padding: 10px 12px;
+  border-radius: 4px;
+  font-size: 8px;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: default;
+}
+
+.root :global(.choice-row > span) {
+  display: block;
+  text-align: center;
+  border: 1px solid #d5ccc0;
+  background: white;
+  border-radius: 6px;
+  padding: 8px;
+  font-size: 8px;
+  color: #1a202c;
+  cursor: default;
+}
+
+.root :global(.offer-btn) {
+  display: inline-block;
+  border: 0;
+  background: var(--orange, #ff6a24);
+  color: white;
+  border-radius: 6px;
+  padding: 10px;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: default;
+}
+
+.root :global(.send-btn) {
+  display: inline-block;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: var(--orange, #ff6a24);
+  color: white;
+  font-size: 8px;
+  font-weight: 850;
+  cursor: default;
+}
+
+.root :global(.portal-actions > span) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 35px;
+  border: 1px solid #d2cabf;
+  border-radius: 7px;
+  background: #fffdf9;
+  color: #243944;
+  font-size: 8px;
+  font-weight: 800;
+  cursor: default;
+  text-align: center;
+}
+
+.root :global(.portal-actions > span:first-child) {
+  border-color: var(--orange, #ff6a24);
+  background: var(--orange, #ff6a24);
+  color: #090d16;
+  font-weight: 800;
+}
+
+/* ---- 12. Proof & metric strip multi-theme contrast fixes ---- */
+:root[data-theme='light'] .root :global(.index-proof b),
+:root[data-theme='sunlight'] .root :global(.index-proof b),
+:root[data-theme='light'] .root :global(.detail-proof b),
+:root[data-theme='sunlight'] .root :global(.detail-proof b) {
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .root :global(.index-proof small),
+:root[data-theme='sunlight'] .root :global(.index-proof small),
+:root[data-theme='light'] .root :global(.detail-proof small),
+:root[data-theme='sunlight'] .root :global(.detail-proof small) {
+  color: #475569 !important;
+}
+
+:root[data-theme='dim'] .root :global(.index-proof b),
+:root[data-theme='dim'] .root :global(.detail-proof b) {
+  color: #f3f4f6 !important;
+}
+
+:root[data-theme='dim'] .root :global(.index-proof small),
+:root[data-theme='dim'] .root :global(.detail-proof small) {
+  color: #9ca3af !important;
+}
+
+:root[data-theme='dark'] .root :global(.detail-proof b) {
+  color: #f3f4f6 !important;
+}
+
+:root[data-theme='dark'] .root :global(.detail-proof small) {
+  color: #94a3b8 !important;
+}

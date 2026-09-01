@@ -52,6 +52,10 @@ describe('escapeQboString', () => {
   it('leaves an ordinary name alone', () => {
     expect(escapeQboString('Dana Whitfield')).toBe('Dana Whitfield');
   });
+
+  it('sanitizes control characters to prevent malformed query syntax', () => {
+    expect(escapeQboString("Dana\nWhitfield\tO'Connor\0")).toBe("Dana Whitfield O\\'Connor ");
+  });
 });
 
 describe('money', () => {
@@ -59,6 +63,7 @@ describe('money', () => {
     expect(money(0.1 + 0.2)).toBe(0.3);
     expect(money(19.999)).toBe(20);
     expect(money(Number.NaN)).toBe(0);
+    expect(money(Number.POSITIVE_INFINITY)).toBe(0);
   });
 });
 
@@ -95,8 +100,10 @@ describe('invoiceHoldReason', () => {
     expect(invoiceHoldReason(invoice(), { ...CLIENT, name: '   ' }, false)).toMatch(/customer/i);
   });
 
-  it('refuses a zero invoice', () => {
+  it('refuses a zero, NaN or negative invoice', () => {
     expect(invoiceHoldReason(invoice({ total: 0 }), CLIENT, false)).toMatch(/zero/i);
+    expect(invoiceHoldReason(invoice({ total: Number.NaN }), CLIENT, false)).toMatch(/zero/i);
+    expect(invoiceHoldReason(invoice({ total: -50 }), CLIENT, false)).toMatch(/zero/i);
   });
 
   it('allows an invoice with a total but no itemisation', () => {
@@ -230,8 +237,10 @@ describe('paymentHoldReason', () => {
     }
   });
 
-  it('holds a zero payment', () => {
+  it('holds a zero, NaN or negative payment', () => {
     expect(paymentHoldReason(payment({ amount: 0 }), 'qbo-1')).toMatch(/zero/i);
+    expect(paymentHoldReason(payment({ amount: Number.NaN }), 'qbo-1')).toMatch(/zero/i);
+    expect(paymentHoldReason(payment({ amount: -100 }), 'qbo-1')).toMatch(/zero/i);
   });
 });
 
@@ -256,12 +265,24 @@ describe('buildPaymentPayload', () => {
 });
 
 describe('buildCustomerPayload', () => {
-  it('sends only the fields we actually hold', () => {
+  it('sends only the fields we actually hold, with whitespace trimmed', () => {
     expect(buildCustomerPayload(CLIENT)).toEqual({
       DisplayName: 'Dana Whitfield',
       PrimaryEmailAddr: { Address: 'dana@example.com' },
       PrimaryPhone: { FreeFormNumber: '(248) 555-0112' },
       BillAddr: { Line1: '1418 S Main St, Royal Oak, MI 48067' },
+    });
+    expect(buildCustomerPayload({
+      ...CLIENT,
+      name: '  Dana Whitfield  ',
+      email: '  dana@example.com  ',
+      phone: '  (248) 555-0112  ',
+      address: '  1418 S Main St  ',
+    })).toEqual({
+      DisplayName: 'Dana Whitfield',
+      PrimaryEmailAddr: { Address: 'dana@example.com' },
+      PrimaryPhone: { FreeFormNumber: '(248) 555-0112' },
+      BillAddr: { Line1: '1418 S Main St' },
     });
     expect(buildCustomerPayload({ ...CLIENT, email: null, phone: null, address: null }))
       .toEqual({ DisplayName: 'Dana Whitfield' });

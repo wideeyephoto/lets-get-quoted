@@ -273,6 +273,55 @@ describe('dark Stripe Billing subscription event projector', () => {
     });
   });
 
+  it('preserves a known historical Terms version and verifies Checkout against that acceptance', async () => {
+    const historicalTermsVersion = '2026-08-16';
+    const provider = resolver({
+      subscription: subscription({
+        metadata: metadata({ lgq_terms_version: historicalTermsVersion }),
+      }),
+      checkout: checkout({
+        metadata: metadata({ lgq_terms_version: historicalTermsVersion }),
+      }),
+    });
+
+    const context = await provider.value.loadProviderContext(claim());
+    expect(context.termsVersion).toBe(historicalTermsVersion);
+
+    const projection = await provider.value.buildProjection(
+      context,
+      binding({ termsVersion: historicalTermsVersion }),
+    );
+    expect(projection.terms_version).toBe(historicalTermsVersion);
+  });
+
+  it('rejects an unknown historical Terms version before binding', async () => {
+    const provider = resolver({
+      subscription: subscription({
+        metadata: metadata({ lgq_terms_version: '2025-01-01-unknown' }),
+      }),
+    });
+
+    await expect(provider.value.loadProviderContext(claim())).rejects.toMatchObject({
+      code: 'provider_object_contract_mismatch',
+      retryable: false,
+    });
+  });
+
+  it('rejects a known historical Terms version that does not match the immutable operation', async () => {
+    const historicalTermsVersion = '2026-08-16';
+    const provider = resolver({
+      subscription: subscription({
+        metadata: metadata({ lgq_terms_version: historicalTermsVersion }),
+      }),
+    });
+    const context = await provider.value.loadProviderContext(claim());
+
+    await expect(provider.value.buildProjection(context, binding())).rejects.toMatchObject({
+      code: 'provider_object_contract_mismatch',
+      retryable: false,
+    });
+  });
+
   it('recovers an indeterminate Checkout only from one exact Session match', async () => {
     const exact = resolver();
     const context = await exact.value.loadProviderContext(claim());

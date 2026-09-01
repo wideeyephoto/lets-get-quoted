@@ -137,6 +137,10 @@ export async function createAdBudgetCheckoutSession(params: {
   businessName: string;
   trade: string;
   city: string;
+  radiusMiles?: number;
+  scheduleDays?: string;
+  startHour?: number;
+  endHour?: number;
   customFocus?: string;
   smsAlertsEnabled?: boolean;
   smsAlertPhone?: string;
@@ -158,6 +162,10 @@ export async function createAdBudgetCheckoutSession(params: {
     businessName,
     trade,
     city,
+    radiusMiles = 25,
+    scheduleDays,
+    startHour = 7,
+    endHour = 19,
     customFocus,
     smsAlertsEnabled = true,
     smsAlertPhone,
@@ -376,6 +384,10 @@ export async function createAdBudgetCheckoutSession(params: {
       business_name: businessName || '',
       trade,
       city,
+      radius_miles: String(radiusMiles),
+      schedule_days: scheduleDays || 'MONDAY,TUESDAY,WEDNESDAY,THURSDAY,FRIDAY,SATURDAY',
+      start_hour: String(startHour),
+      end_hour: String(endHour),
       custom_focus: customFocus || '',
       sms_alerts_enabled: smsAlertsEnabled ? 'true' : 'false',
       sms_alert_phone: smsAlertPhone || '',
@@ -900,7 +912,7 @@ export async function handleAdBudgetWebhookEvent(
     }
 
     const origin = siteRow ? siteOrigin(siteRow) : null;
-    const landingPageUrl = origin ? `${origin}/estimate` : `${APP_ORIGIN}/estimate`;
+    const landingPageUrl = origin || APP_ORIGIN;
 
     // Parse advertised services
     const services = session.metadata?.services
@@ -938,6 +950,13 @@ export async function handleAdBudgetWebhookEvent(
     const trade = session.metadata?.trade || 'Contractor';
     const biddingProfile = getTradeBiddingProfile(trade);
 
+    const scheduleDays = session.metadata?.schedule_days
+      ? session.metadata.schedule_days.split(',').map((d) => d.trim()).filter(Boolean)
+      : undefined;
+    const startHour = session.metadata?.start_hour ? Number(session.metadata.start_hour) : undefined;
+    const endHour = session.metadata?.end_hour ? Number(session.metadata.end_hour) : undefined;
+    const customFocus = session.metadata?.custom_focus || undefined;
+
     // Synchronously await and verify campaign provisioning in Google Ads
     const provisioningResult = await provisionManagedSearchCampaign({
       accountId,
@@ -948,6 +967,10 @@ export async function handleAdBudgetWebhookEvent(
       services,
       monthlyBudgetDollars,
       landingPageUrl,
+      scheduleDays,
+      startHour,
+      endHour,
+      customFocus,
     });
 
     const isProvisioned = provisioningResult.success;

@@ -107,7 +107,7 @@ export async function qboCreate(
   requestId?: string,
 ): Promise<Record<string, unknown>> {
   const params = new URLSearchParams({ minorversion: String(MINOR_VERSION) });
-  if (requestId) params.set('requestid', requestId.slice(0, 50));
+  if (requestId) params.set('requestid', String(requestId).replace(/[^a-zA-Z0-9_-]/g, '').slice(0, 50));
   const response = await fetch(`${base(connection)}/${entity.toLowerCase()}?${params.toString()}`, {
     method: 'POST',
     headers: headers(connection),

@@ -321,15 +321,44 @@
   font-weight: 850;
   letter-spacing: -0.03em;
   line-height: 1.1;
-  color: #fff;
+  color: var(--text, #fff);
   margin-bottom: 6px;
 }
 
 .featuresTheme :global(.index-proof small) {
   font-size: 13px;
-  color: var(--muted);
+  color: var(--muted, #94a3b8);
   font-weight: 550;
   line-height: 1.4;
+}
+
+:global(:root[data-theme='light']) .featuresTheme :global(.index-proof > span),
+:global(:root[data-theme='sunlight']) .featuresTheme :global(.index-proof > span) {
+  background: #ffffff !important;
+  border-color: #d1d5db !important;
+}
+
+:global(:root[data-theme='light']) .featuresTheme :global(.index-proof b),
+:global(:root[data-theme='sunlight']) .featuresTheme :global(.index-proof b) {
+  color: #090d16 !important;
+}
+
+:global(:root[data-theme='light']) .featuresTheme :global(.index-proof small),
+:global(:root[data-theme='sunlight']) .featuresTheme :global(.index-proof small) {
+  color: #475569 !important;
+}
+
+:global(:root[data-theme='dim']) .featuresTheme :global(.index-proof > span) {
+  background: #23201c !important;
+  border-color: #38332c !important;
+}
+
+:global(:root[data-theme='dim']) .featuresTheme :global(.index-proof b) {
+  color: #f3f4f6 !important;
+}
+
+:global(:root[data-theme='dim']) .featuresTheme :global(.index-proof small) {
+  color: #9ca3af !important;
 }
 
 /* Product Tour Container */

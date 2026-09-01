@@ -121,12 +121,15 @@ export async function isEmailSuppressed(supabase: SupabaseClient, accountId: str
  *   bounced     → only when the provider says Permanent. Transient is a full or
  *                 briefly unreachable mailbox. Undetermined means the far end
  *                 did not say, and treating a maybe as a no is the costly guess.
+ *   suppressed  → always. The provider already refused the address because it
+ *                 is on its account-level suppression list, so mirror it here.
  */
 export function suppressionReasonFor(input: {
   status: string;
   bounceType?: string | null;
-}): 'complaint' | 'hard_bounce' | null {
+}): 'complaint' | 'hard_bounce' | 'provider_suppressed' | null {
   if (input.status === 'complained') return 'complaint';
+  if (input.status === 'suppressed') return 'provider_suppressed';
   if (input.status !== 'bounced') return null;
   return (input.bounceType ?? '').trim().toLowerCase() === 'permanent' ? 'hard_bounce' : null;
 }

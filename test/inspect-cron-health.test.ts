@@ -195,5 +195,20 @@ describe('classifyJobStatus', () => {
         expect(result.reason).toBe('overdue');
       });
     });
+
+    describe('flag-gated dark jobs (billing-subscription-projection)', () => {
+      it('classifies unrun flag-gated dark job as disabled rather than silent/failing', () => {
+        const result = classifyJobStatus({
+          job: 'billing-subscription-projection',
+          schedule: '0 18 * * *',
+          windowMinutes: 90,
+          seenRow: null,
+          everRow: null,
+          now,
+        });
+        expect(result.status).toBe('disabled');
+        expect(result.reason).toBe('flag_gated');
+      });
+    });
   });
 });

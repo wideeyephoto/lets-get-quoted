@@ -17,7 +17,6 @@ import { type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audi
 import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
 
 import { sendCampaignEmail, renderCampaignEmailHtml } from '@/lib/email';
-import { resolveMarketingMailingAddress } from '@/lib/email-suppression';
 import type { CampaignFinding } from '@/lib/campaign-guard';
 import { readCampaign } from '@/lib/campaign-guard-ai';
 import { buildCalendarView, type CalendarView } from '@/lib/marketing-calendar-data';

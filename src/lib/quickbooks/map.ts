@@ -62,7 +62,10 @@ export type SyncPayment = {
  * or escaping the quote would then be escaped itself.
  */
 export function escapeQboString(value: string): string {
-  return String(value ?? '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  return String(value ?? '')
+    .replace(/[\x00-\x1f\x7f]/g, ' ')
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
 }
 
 /** QuickBooks wants a plain calendar day, and never a day that doesn't exist. */
@@ -75,7 +78,9 @@ export function qboDate(iso: string | null | undefined, fallback: string): strin
 
 /** Money as QuickBooks stores it: dollars, two places, never a float artefact. */
 export function money(value: number): number {
-  return Math.round((Number(value) || 0) * 100) / 100;
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return 0;
+  return Math.round(parsed * 100) / 100;
 }
 
 /**
@@ -98,7 +103,7 @@ export function invoiceHoldReason(
   if (!client || !client.name.trim()) {
     return 'No customer name on this invoice — QuickBooks files everything under a customer.';
   }
-  if (!(invoice.total > 0)) {
+  if (!Number.isFinite(invoice.total) || !(invoice.total > 0)) {
     return 'This invoice totals zero.';
   }
   // An invoice with a total but no itemisation is not a broken invoice — it is
@@ -133,7 +138,7 @@ export function invoiceIsSendable(invoice: SyncInvoice): boolean {
 
 export function paymentHoldReason(payment: SyncPayment, invoiceQboId: string | null): string | null {
   if (payment.status !== 'paid') return null;
-  if (!(payment.amount > 0)) return 'This payment is for zero.';
+  if (!Number.isFinite(payment.amount) || !(payment.amount > 0)) return 'This payment is for zero.';
   if (!payment.invoiceId || !invoiceQboId) {
     // An unapplied credit sitting on a customer is a thing a bookkeeper has to
     // clear by hand. Better it stays here, where it is still attached to a job.
@@ -149,9 +154,9 @@ export function paymentHoldReason(payment: SyncPayment, invoiceQboId: string | n
 
 export function buildCustomerPayload(client: SyncClient): Record<string, unknown> {
   const payload: Record<string, unknown> = { DisplayName: client.name.trim().slice(0, 100) };
-  if (client.email) payload.PrimaryEmailAddr = { Address: client.email };
-  if (client.phone) payload.PrimaryPhone = { FreeFormNumber: client.phone };
-  if (client.address) payload.BillAddr = { Line1: client.address.slice(0, 500) };
+  if (client.email?.trim()) payload.PrimaryEmailAddr = { Address: client.email.trim().slice(0, 100) };
+  if (client.phone?.trim()) payload.PrimaryPhone = { FreeFormNumber: client.phone.trim().slice(0, 30) };
+  if (client.address?.trim()) payload.BillAddr = { Line1: client.address.trim().slice(0, 500) };
   return payload;
 }
 

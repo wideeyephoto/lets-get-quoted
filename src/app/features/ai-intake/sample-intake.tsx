@@ -59,9 +59,9 @@ export default function SampleIntake({ children }: { children: ReactNode }) {
           rather than moving anywhere — without this a screen reader is told
           nothing happened. */}
       <div className={styles.sampleBody} aria-live="polite">
-        <h3 className={styles.srOnly} id={headingId}>
+        <h2 className={styles.srOnly} id={headingId}>
           {STEPS[step]}
-        </h3>
+        </h2>
 
         {step === 0 ? (
           <div className={styles.sampleTyped}>

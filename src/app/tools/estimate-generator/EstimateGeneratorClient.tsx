@@ -908,7 +908,7 @@ export default function EstimateGeneratorClient() {
               <th style={{ width: '10%', textAlign: 'center' }}>Qty</th>
               <th style={{ width: '15%', textAlign: 'right' }}>Unit Price ($)</th>
               <th style={{ width: '10%', textAlign: 'right' }}>Total</th>
-              <th style={{ width: '5%', textAlign: 'center' }} className={styles.screenOnly} aria-label="Actions"></th>
+              <th style={{ width: '5%', textAlign: 'center' }} className={styles.screenOnly}><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>

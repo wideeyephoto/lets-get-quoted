@@ -29892,6 +29892,97 @@ a.ropsrow-fact:hover {
   color: #4b5563;
 }
 
+/* Statement-doc pinned paper & ink styling for all 4 themes */
+.statement-doc,
+:root[data-theme='dark'] .statement-doc,
+:root[data-theme='dim'] .statement-doc,
+:root[data-theme='light'] .statement-doc,
+:root[data-theme='sunlight'] .statement-doc {
+  background: #ffffff !important;
+  color: #111827 !important;
+}
+
+:root[data-theme='dark'] .statement-doc .statement-biz,
+:root[data-theme='dark'] .statement-doc .statement-client,
+:root[data-theme='dark'] .statement-doc .statement-total-box strong,
+:root[data-theme='dark'] .statement-doc .statement-section-title,
+:root[data-theme='dark'] .statement-doc .statement-table td,
+:root[data-theme='dark'] .statement-doc .statement-table tfoot td,
+:root[data-theme='dim'] .statement-doc .statement-biz,
+:root[data-theme='dim'] .statement-doc .statement-client,
+:root[data-theme='dim'] .statement-doc .statement-total-box strong,
+:root[data-theme='dim'] .statement-doc .statement-section-title,
+:root[data-theme='dim'] .statement-doc .statement-table td,
+:root[data-theme='dim'] .statement-doc .statement-table tfoot td,
+:root[data-theme='light'] .statement-doc .statement-biz,
+:root[data-theme='light'] .statement-doc .statement-client,
+:root[data-theme='light'] .statement-doc .statement-total-box strong,
+:root[data-theme='light'] .statement-doc .statement-section-title,
+:root[data-theme='light'] .statement-doc .statement-table td,
+:root[data-theme='light'] .statement-doc .statement-table tfoot td,
+:root[data-theme='sunlight'] .statement-doc .statement-biz,
+:root[data-theme='sunlight'] .statement-doc .statement-client,
+:root[data-theme='sunlight'] .statement-doc .statement-total-box strong,
+:root[data-theme='sunlight'] .statement-doc .statement-section-title,
+:root[data-theme='sunlight'] .statement-doc .statement-table td,
+:root[data-theme='sunlight'] .statement-doc .statement-table tfoot td {
+  color: #111827 !important;
+}
+
+:root[data-theme='dark'] .statement-doc .statement-date,
+:root[data-theme='dark'] .statement-doc .statement-sub,
+:root[data-theme='dark'] .statement-doc .statement-label,
+:root[data-theme='dark'] .statement-doc .statement-total-box span,
+:root[data-theme='dark'] .statement-doc .statement-table th,
+:root[data-theme='dark'] .statement-doc .statement-foot,
+:root[data-theme='dim'] .statement-doc .statement-date,
+:root[data-theme='dim'] .statement-doc .statement-sub,
+:root[data-theme='dim'] .statement-doc .statement-label,
+:root[data-theme='dim'] .statement-doc .statement-total-box span,
+:root[data-theme='dim'] .statement-doc .statement-table th,
+:root[data-theme='dim'] .statement-doc .statement-foot,
+:root[data-theme='light'] .statement-doc .statement-date,
+:root[data-theme='light'] .statement-doc .statement-sub,
+:root[data-theme='light'] .statement-doc .statement-label,
+:root[data-theme='light'] .statement-doc .statement-total-box span,
+:root[data-theme='light'] .statement-doc .statement-table th,
+:root[data-theme='light'] .statement-doc .statement-foot,
+:root[data-theme='sunlight'] .statement-doc .statement-date,
+:root[data-theme='sunlight'] .statement-doc .statement-sub,
+:root[data-theme='sunlight'] .statement-doc .statement-label,
+:root[data-theme='sunlight'] .statement-doc .statement-total-box span,
+:root[data-theme='sunlight'] .statement-doc .statement-table th,
+:root[data-theme='sunlight'] .statement-doc .statement-foot {
+  color: #475569 !important;
+}
+
+:root[data-theme='dark'] .statement-doc .statement-title > span:first-child,
+:root[data-theme='dim'] .statement-doc .statement-title > span:first-child,
+:root[data-theme='light'] .statement-doc .statement-title > span:first-child,
+:root[data-theme='sunlight'] .statement-doc .statement-title > span:first-child {
+  color: #9a3412 !important;
+}
+
+:root[data-theme='dark'] .statement-doc .statement-total-box strong.pos,
+:root[data-theme='dim'] .statement-doc .statement-total-box strong.pos,
+:root[data-theme='light'] .statement-doc .statement-total-box strong.pos,
+:root[data-theme='sunlight'] .statement-doc .statement-total-box strong.pos {
+  color: #15803d !important;
+}
+
+:root[data-theme='dark'] .statement-doc .statement-total-box strong.due,
+:root[data-theme='dim'] .statement-doc .statement-total-box strong.due,
+:root[data-theme='light'] .statement-doc .statement-total-box strong.due,
+:root[data-theme='sunlight'] .statement-doc .statement-total-box strong.due {
+  color: #b91c1c !important;
+}
+
+:root[data-theme='dark'] .statement-doc .statement-total-box strong.credit,
+:root[data-theme='dim'] .statement-doc .statement-total-box strong.credit,
+:root[data-theme='light'] .statement-doc .statement-total-box strong.credit,
+:root[data-theme='sunlight'] .statement-doc .statement-total-box strong.credit {
+  color: #9a3412 !important;
+}
 
 .quote-scope {
   margin: 1.1rem 0;

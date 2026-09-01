@@ -101,6 +101,8 @@ export async function fetchProxyImage(initialUrl: URL): Promise<{
   buffer?: ArrayBuffer;
 }> {
   let currentUrl = initialUrl;
+  // Bounded operation-wide deadline across all redirect hops combined.
+  const overallSignal = AbortSignal.timeout(8000);
 
   for (let hop = 0; hop <= MAX_PROXY_REDIRECTS; hop++) {
     if (!isAllowedProxyUrl(currentUrl)) {
@@ -120,7 +122,7 @@ export async function fetchProxyImage(initialUrl: URL): Promise<{
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
           'Accept': 'image/jpeg,image/png,image/webp,image/*;q=0.8',
         },
-        signal: AbortSignal.timeout(8000),
+        signal: overallSignal,
       });
     } catch (fetchErr) {
       const msg = fetchErr instanceof Error ? fetchErr.message : 'Network error';
@@ -161,7 +163,14 @@ export async function fetchProxyImage(initialUrl: URL): Promise<{
       }
     }
 
-    const arrayBuffer = await res.arrayBuffer();
+    let arrayBuffer: ArrayBuffer;
+    try {
+      arrayBuffer = await res.arrayBuffer();
+    } catch (bodyErr) {
+      const msg = bodyErr instanceof Error ? bodyErr.message : 'Body read error';
+      return { ok: false, status: 504, error: `Image body download failed: ${msg}` };
+    }
+
     if (arrayBuffer.byteLength > MAX_PROXY_IMAGE_BYTES) {
       return { ok: false, status: 413, error: 'Image exceeds maximum allowed size' };
     }

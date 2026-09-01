@@ -761,7 +761,7 @@ export default function HighTechShowcase() {
                           </button>
                         </div>
                         <div className={styles.quickPromptPills}>
-                          <span style={{ fontSize: '0.66rem', color: '#64748b' }}>Try:</span>
+                          <span style={{ fontSize: '0.66rem', color: '#94a3b8' }}>Try:</span>
                           <button
                             type="button"
                             className={styles.quickPromptPill}

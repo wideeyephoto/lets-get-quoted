@@ -15,6 +15,12 @@ describe('a complaint always stops the sending', () => {
   });
 });
 
+describe('a provider-suppressed send stays suppressed locally', () => {
+  it('mirrors Resend account-level suppression into the tagged workspace', () => {
+    expect(suppressionReasonFor({ status: 'suppressed' })).toBe('provider_suppressed');
+  });
+});
+
 describe('a bounce stops it only when the provider says permanent', () => {
   it('suppresses a permanent bounce', () => {
     expect(suppressionReasonFor({ status: 'bounced', bounceType: 'Permanent' })).toBe('hard_bounce');
@@ -45,7 +51,7 @@ describe('a bounce stops it only when the provider says permanent', () => {
 
 describe('every other lifecycle event is left alone', () => {
   it('never suppresses on a successful send', () => {
-    for (const status of ['sent', 'delivered', 'delayed', 'unknown', '']) {
+    for (const status of ['sent', 'delivered', 'delayed', 'failed', 'unknown', '']) {
       expect(suppressionReasonFor({ status }), `${status} should not suppress`).toBeNull();
     }
   });

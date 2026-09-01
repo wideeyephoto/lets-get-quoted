@@ -242,7 +242,7 @@
 
 .smsBubbleHomeowner {
   align-self: flex-end;
-  background: #0066cc;
+  background: #0274b3;
   color: #ffffff;
   border-radius: 16px 16px 4px 16px;
   padding: 10px 12px;
@@ -407,10 +407,15 @@
   border-radius: 8px;
   color: #081722 !important;
   font-size: 12px;
-  font-weight: 800;
+  font-weight: 800 !important;
   padding: 8px 10px;
   cursor: pointer;
   transition: background 0.15s;
+}
+
+:global(:root[data-theme]) .simBtn,
+:global(:root) .simBtn {
+  color: #081722 !important;
 }
 
 .simBtn:hover {
@@ -418,12 +423,11 @@
   color: #040d14 !important;
 }
 
-
 .resetBtn {
   background: #1f2937;
   border: 1px solid #374151;
   border-radius: 8px;
-  color: #9ca3af;
+  color: #cbd5e1;
   font-size: 11px;
   font-weight: 700;
   padding: 8px 10px;

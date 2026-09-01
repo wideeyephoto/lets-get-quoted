@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
-import { resolveRecipientTimeZone, isWithinTcpaQuietHours } from '@/lib/phone-timezone';
+import { resolveRecipientTimeZone, isWithinTcpaQuietHours, getTcpaCompliantSendTime } from '@/lib/phone-timezone';
 import {
   adWalletRefillText,
   appointmentReminderText,
@@ -1860,10 +1860,7 @@ export async function sendIntakeConfirmationSms(params: {
       address: params.address,
       accountTimeZone: params.accountTimeZone,
     });
-    if (isWithinTcpaQuietHours(new Date(), recipientTz)) {
-      console.log(`Intake confirmation SMS held during TCPA quiet hours for recipient (${recipientTz})`);
-      return false;
-    }
+    const quietHoursCheck = getTcpaCompliantSendTime(new Date(), recipientTz);
 
     const body = intakeConfirmationText({
       businessName: params.businessName,
@@ -1879,6 +1876,7 @@ export async function sendIntakeConfirmationSms(params: {
       messageKind: 'intake-confirmation',
       category: 'customer_message',
       idempotencyKey: params.idempotencyKey,
+      availableAt: quietHoursCheck.isDelayed ? quietHoursCheck.sendAt : null,
     });
     return true;
   } catch (error) {

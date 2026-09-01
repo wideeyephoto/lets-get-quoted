@@ -48,7 +48,11 @@ const perRequest: typeof cache = typeof cache === 'function' ? cache : (fn) => f
  * A database read is never a cacheable fetch. This applies to all of them.
  */
 export const noStoreFetch: typeof fetch = (input, init) => (
-  fetch(input, { ...init, cache: 'no-store' })
+  fetch(input, {
+    ...init,
+    cache: 'no-store',
+    signal: init?.signal ?? AbortSignal.timeout(15000),
+  })
 );
 
 export function createAdminClient() {

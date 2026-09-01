@@ -152,7 +152,7 @@ export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
     subject: 'Ready to scale {{business_name}}? Compare Solo vs Growth',
     preheader: 'Unlock unlimited estimates, multi-crew access, and custom domains.',
     heading: 'Supercharge your business with premium contractor tools',
-    body: `Hi {{first_name}},\n\nAs {{business_name}} takes on more jobs and expands operations, having software that scales with your crew makes all the difference.\n\n[STAT: Scale | Team Tools | Unlock unlimited estimates, multi-crew access, and custom domains.]\n\n## Everything Included in Growth & Solo Plans:\n\n• Unlimited Monthly Estimates & Invoices with reduced platform processing fees (down to 0.25%).\n• Up to 10 Crew Seats with individual permissions and GPS arrival tracking.\n• 1,500 Monthly SMS Credits & automated customer review generation.\n• QuickBooks Online 2-Way Accounting Sync for automated bookkeeping.\n• Custom Domain Setup for your website (e.g. yourbusiness.com).\n\nTip: Upgrade your workspace at any time in your Billing tab to unlock high-volume operational tools.`,
+    body: `Hi {{first_name}},\n\nAs {{business_name}} takes on more jobs and expands operations, having software that scales with your crew makes all the difference.\n\n[STAT: Scale | Team Tools | Unlock unlimited estimates, multi-crew access, and custom domains.]\n\n## Everything Included in Growth & Solo Plans:\n\n• Unlimited Monthly Estimates & Invoices with reduced platform processing fees (down to 0.25%).\n• Up to 10 Crew Seats with individual permissions and GPS arrival tracking.\n• 1,500 Monthly SMS Credits & automated customer review generation.\n• QuickBooks Online Accounting Sync for automated bookkeeping.\n• Custom Domain Setup for your website (e.g. yourbusiness.com).\n\nTip: Upgrade your workspace at any time in your Billing tab to unlock high-volume operational tools.`,
     ctaLabel: 'View plan options & pricing',
     ctaPath: '/dashboard/settings?tab=plan',
     theme: 'studio',
@@ -383,7 +383,10 @@ export async function sendContractorWelcomeEmail(input: {
  * Sweep active accounts and dispatch the appropriate onboarding lifecycle step.
  * Designed to be run daily via the cron job `/api/cron/contractor-lifecycle`.
  */
-export async function runContractorLifecycleSweep(adminClient?: SupabaseClient): Promise<{
+export async function runContractorLifecycleSweep(
+  adminClient?: SupabaseClient,
+  options?: { dryRun?: boolean },
+): Promise<{
   checked: number;
   sent: number;
   skipped: number;
@@ -391,6 +394,7 @@ export async function runContractorLifecycleSweep(adminClient?: SupabaseClient):
   details: Array<{ accountId: string; stepId: string; status: 'sent' | 'skipped' | 'error'; note?: string }>;
 }> {
   const admin = adminClient ?? createAdminClient();
+  const isDryRun = options?.dryRun ?? false;
   const result = {
     checked: 0,
     sent: 0,
@@ -400,7 +404,7 @@ export async function runContractorLifecycleSweep(adminClient?: SupabaseClient):
   };
 
   const resend = getResendClient();
-  if (!resend) {
+  if (!resend && !isDryRun) {
     console.warn('[contractor-lifecycle-sweep] No Resend API key; sweep skipped.');
     return result;
   }
@@ -517,13 +521,18 @@ export async function runContractorLifecycleSweep(adminClient?: SupabaseClient):
       stepToSend = CONTRACTOR_LIFECYCLE_STEPS.find((s) => s.id === 'nudge_zero_quotes') || null;
     } else {
       // Sequence drip evaluation by age
-      for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
-        if (step.id === 'nudge_incomplete_stripe' || step.id === 'nudge_zero_quotes') continue;
-        if (alreadySent.has(step.id)) continue;
+      // Guarantee that accounts always receive welcome_day0 first before advancing
+      if (!alreadySent.has('welcome_day0')) {
+        stepToSend = CONTRACTOR_LIFECYCLE_STEPS.find((s) => s.id === 'welcome_day0') || null;
+      } else {
+        for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
+          if (step.id === 'welcome_day0' || step.id === 'nudge_incomplete_stripe' || step.id === 'nudge_zero_quotes') continue;
+          if (alreadySent.has(step.id)) continue;
 
-        if (accountAgeDays >= step.minAgeDays && (step.maxAgeDays === undefined || accountAgeDays <= step.maxAgeDays)) {
-          stepToSend = step;
-          break;
+          if (accountAgeDays >= step.minAgeDays && (step.maxAgeDays === undefined || accountAgeDays <= step.maxAgeDays)) {
+            stepToSend = step;
+            break;
+          }
         }
       }
     }
@@ -545,6 +554,22 @@ export async function runContractorLifecycleSweep(adminClient?: SupabaseClient):
       const subject = interpolateTokens(stepToSend.subject, recipient);
       const oneClickUrl = buildUnsubscribeOneClickUrl(account.id, recipient.email);
       const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
+
+      if (isDryRun) {
+        result.sent++;
+        result.details.push({
+          accountId: account.id,
+          stepId: stepToSend.id,
+          status: 'sent',
+          note: `[DRY-RUN] Subject: "${subject}" to ${recipient.email}`,
+        });
+        continue;
+      }
+
+      if (!resend) {
+        result.skipped++;
+        continue;
+      }
 
       const sendRes = await resend.emails.send({
         from: fromAddress,

@@ -214,4 +214,33 @@ describe('AI Speed-to-Lead SMS Engine', () => {
       })
     );
   });
+
+  it('rejects a quiet-hours dispatch when the delayed enqueue fails', async () => {
+    const { sendSpeedToLeadSms, sendContractorAdLeadSms } = await import('@/lib/sms');
+    vi.mocked(sendSpeedToLeadSms).mockRejectedValueOnce(new Error('delayed enqueue failed'));
+    vi.mocked(sendContractorAdLeadSms).mockClear();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T06:00:00.000Z'));
+
+    try {
+      await expect(dispatchSpeedToLeadSms({
+        admin: {} as any,
+        accountId: '10000000-0000-4000-8000-000000000001',
+        recipientPhone: '+14155550199',
+        businessName: 'Apex Roofing',
+        leadName: 'Alex Smith',
+        city: 'San Francisco, CA',
+        contractorAlertPhone: '+15125550199',
+      })).rejects.toThrow('delayed enqueue failed');
+
+      expect(sendSpeedToLeadSms).toHaveBeenCalledWith(
+        expect.objectContaining({
+          availableAt: expect.any(Date),
+        })
+      );
+      expect(sendContractorAdLeadSms).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

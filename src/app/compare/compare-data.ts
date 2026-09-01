@@ -154,7 +154,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
         highlights: [
           'Multi-option good/better/best quote tiers with itemized e-signatures',
           'Apple Pay, Google Pay, credit cards, and ACH bank transfers supported',
-          'Automatic 2-way sync with QuickBooks Online for invoices and payments',
+          'Automatic sync to QuickBooks Online for invoices and payments',
         ],
       },
     ],
@@ -377,7 +377,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       },
       {
         q: 'Does Let’s Get Quoted sync with QuickBooks Online?',
-        a: 'Yes. QuickBooks Online 2-way sync is available on Let’s Get Quoted so your customers, invoices, line items, and payment transactions stay reconciled without duplicate data entry.',
+        a: 'Yes. QuickBooks Online sync is available on Let’s Get Quoted so your customers, invoices, line items, and payment transactions stay reconciled without duplicate data entry.',
       },
       {
         q: 'Is there a contract or cancellation fee?',
@@ -456,7 +456,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
           'Send clean multi-option quotes with e-signatures that settle directly into your bank via Stripe Connect with complete fee transparency.',
         image: 'client-esignature',
         alt: 'E-signature client portal',
-        highlights: ['Good/Better/Best tiers', 'Apple Pay & Google Pay', 'QuickBooks Online 2-way sync'],
+        highlights: ['Good/Better/Best tiers', 'Apple Pay & Google Pay', 'QuickBooks Online sync'],
       },
       {
         title: 'Route-Aware Quick Stops',

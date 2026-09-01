@@ -285,7 +285,7 @@ function SiteBuilderVisual() {
           <div className="fake-field"><small>Company</small><strong>Brightline Electric</strong></div>
           <div className="fake-field"><small>Trade</small><strong>Electrician</strong></div>
           <div className="fake-field"><small>Service area</small><strong>Royal Oak, MI</strong></div>
-          <button className="generate-button" tabIndex={-1}><span>✦</span> Generate full site with AI</button>
+          <span role="presentation" aria-hidden="true" className="generate-button"><span>✦</span> Generate full site with AI</span>
           <div className="generation-status"><span /><span /><span /></div>
         </aside>
         <div className="site-preview">
@@ -300,7 +300,7 @@ function SiteBuilderVisual() {
                 to stop asserting them by default. */}
             <p>ELECTRICIAN · ROYAL OAK, MI</p>
             <p className="preview-headline">Power your home.<br />Protect what matters.</p>
-            <button tabIndex={-1}>Get an instant estimate →</button>
+            <span role="presentation" aria-hidden="true" className="preview-cta-btn">Get an instant estimate →</span>
           </div>
           {/* Three things the generated site genuinely ships with, in place
               of a "4.9★ Local rating" and "12 yrs Experience" belonging to a
@@ -328,14 +328,14 @@ function IntakeVisual() {
           <p className="intake-headline">What do you need done?</p>
           <div className="message-bubble">My basement drain is backing up and water is spreading.</div>
           <p className="ai-question"><span>✦</span> Is wastewater actively entering the room?</p>
-          <div className="choice-row"><button tabIndex={-1}>Yes</button><button tabIndex={-1}>No</button></div>
+          <div className="choice-row"><span role="presentation" aria-hidden="true">Yes</span><span role="presentation" aria-hidden="true">No</span></div>
           <div className="step-meter"><span /></div>
         </div>
         <div className="lead-card">
           <div className="lead-card-head"><span className="avatar">AM</span><div><small>NEW WEBSITE REQUEST</small><strong>Emergency drain backup</strong></div><b>HOT</b></div>
           <div className="ai-summary"><span>✦ AI SUMMARY</span><p>Active indoor backup. In service area, wants help today, photos included.</p></div>
           <div className="lead-grid"><span><small>ESTIMATE</small><b>$450–$780</b></span><span><small>SERVICE AREA</small><b>In your area</b></span><span><small>URGENCY</small><b>Today</b></span><span><small>CONTACT</small><b>Text first</b></span></div>
-          <button className="alert-button" tabIndex={-1}>Call this lead first →</button>
+          <span role="presentation" aria-hidden="true" className="alert-button">Call this lead first →</span>
         </div>
       </div>
     </div>
@@ -365,7 +365,7 @@ function QuickStopVisual() {
           <QuickStopsMark width={116} />
           <div className="quick-title"><div><p className="quick-headline">Leaking shutoff valve</p><p>Royal Oak · same-day request</p></div></div>
           <div className="quick-metrics"><span><small>ADDED DRIVE</small><b>6 min</b></span><span><small>OPEN WINDOW</small><b>2:15–4:15</b></span></div>
-          <div className="offer-row"><div><small>YOUR QUICK STOP FEE</small><strong>$149</strong></div><button tabIndex={-1}>Send offer</button></div>
+          <div className="offer-row"><div><small>YOUR QUICK STOP FEE</small><strong>$149</strong></div><span role="presentation" aria-hidden="true" className="offer-btn">Send offer</span></div>
           <p className="paid-note"><i>✓</i> Nothing books until the customer pays.</p>
         </div>
       </div>
@@ -923,7 +923,7 @@ export default function FlagshipHome() {
               <div className="msg incoming" style={cssVars({ '--beat': 1 })}><p>Approved—Tuesday morning works for us.</p><span>10:21 AM</span></div>
               <div className="msg outgoing" style={cssVars({ '--beat': 2 })}><small>BRIGHTLINE</small><p>You’re scheduled for Tuesday, 9–11 AM. We’ll text when the crew is on the way.</p><span>10:22 AM · Delivered</span></div>
             </div>
-            <div className="message-footer"><span>Reply by text…</span><button type="button" tabIndex={-1}>Send</button></div>
+            <div className="message-footer"><span>Reply by text…</span><span role="presentation" aria-hidden="true" className="send-btn">Send</span></div>
           </div>
 
           <div className="portal-window">
@@ -934,7 +934,7 @@ export default function FlagshipHome() {
               <span className="next" style={cssVars({ '--beat': 2.4 })}><i>2</i><div><b>Installation visit</b><small>Tuesday · 9–11 AM</small></div></span>
               <span><i>3</i><div><b>Final payment</b><small>Due after work is complete</small></div></span>
             </div>
-            <div className="portal-actions"><button type="button" tabIndex={-1}>View approved quote</button><button type="button" tabIndex={-1}>Message contractor</button></div>
+            <div className="portal-actions"><span role="presentation" aria-hidden="true">View approved quote</span><span role="presentation" aria-hidden="true">Message contractor</span></div>
             <p className="portal-note"><span>✓</span> This portal is unique to this job.</p>
           </div>
         </div>

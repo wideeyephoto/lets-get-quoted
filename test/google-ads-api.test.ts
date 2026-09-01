@@ -25,7 +25,10 @@ describe('Google Ads API Module', () => {
       monthlyBudgetDollars: 600,
       services: ['Roof Replacement', 'Leak Repair', 'Storm Inspection'],
       phone: '512-555-0199',
-      landingPageUrl: 'https://apexroofing.com/estimate',
+      landingPageUrl: 'https://apexroofing.com',
+      scheduleDays: ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'],
+      startHour: 8,
+      endHour: 18,
     });
 
     expect(result.success).toBe(true);
@@ -36,30 +39,42 @@ describe('Google Ads API Module', () => {
     expect(result.descriptionsCount).toBeGreaterThanOrEqual(2);
     expect(result.keywordsCount).toBeGreaterThan(0);
     expect(result.negativeKeywordsCount).toBeGreaterThan(10);
+    expect(result.scheduleDaysCount).toBe(5);
+    expect(result.geoRadiusMiles).toBe(25);
   });
 
-  it('validates offline conversion upload requirements', async () => {
+  it('validates offline conversion upload requirements with gclid, gbraid, wbraid', async () => {
     const emptyResult = await uploadOfflineConversion({
       gclid: '',
       conversionActionName: 'Lead Submitted',
     });
     expect(emptyResult.success).toBe(false);
-    expect(emptyResult.message).toContain('Missing or empty gclid');
+    expect(emptyResult.message).toContain('Missing or empty click identifier');
 
-    const validResult = await uploadOfflineConversion({
+    const gclidResult = await uploadOfflineConversion({
       gclid: 'CjwKCAjw123456_fake_gclid',
       conversionActionName: 'Job Won',
       conversionValueDollars: 8500,
       orderId: 'job_789',
     });
-    expect(validResult.success).toBe(true);
-    expect(validResult.gclid).toBe('CjwKCAjw123456_fake_gclid');
-    expect(validResult.conversionValueDollars).toBe(8500);
+    expect(gclidResult.success).toBe(true);
+    expect(gclidResult.gclid).toBe('CjwKCAjw123456_fake_gclid');
+    expect(gclidResult.conversionValueDollars).toBe(8500);
+
+    const gbraidResult = await uploadOfflineConversion({
+      gbraid: 'gbraid_ios_app_click_12345',
+      conversionActionName: 'Job Won',
+      conversionValueDollars: 4500,
+      orderId: 'job_456',
+    });
+    expect(gbraidResult.success).toBe(true);
+    expect(gbraidResult.gbraid).toBe('gbraid_ios_app_click_12345');
+    expect(gbraidResult.conversionValueDollars).toBe(4500);
   });
 
-  it('uses Google Ads API v19 and constructs login-customer-id header', () => {
-    expect(GOOGLE_ADS_API_VERSION).toBe('v19');
-    expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v19');
+  it('uses Google Ads API v20 and constructs login-customer-id header', () => {
+    expect(GOOGLE_ADS_API_VERSION).toBe('v20');
+    expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v20');
 
     const headers = buildGoogleAdsHeaders(
       {

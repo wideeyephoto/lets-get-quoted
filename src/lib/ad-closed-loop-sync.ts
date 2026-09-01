@@ -30,7 +30,12 @@ export type OfflineConversionInput = {
   conversionTimestamp?: string | Date;
   customerEmail?: string | null;
   customerPhone?: string | null;
+  customerFirstName?: string | null;
+  customerLastName?: string | null;
+  customerPostalCode?: string | null;
   gclid?: string | null;
+  gbraid?: string | null;
+  wbraid?: string | null;
   fbclid?: string | null;
   clientIpAddress?: string | null;
   clientUserAgent?: string | null;
@@ -61,11 +66,14 @@ export type MetaCapiEventPayload = {
 
 export type GoogleAdsConversionPayload = {
   conversionAction: string;
-  gclid: string;
+  gclid?: string;
+  gbraid?: string;
+  wbraid?: string;
   conversionDateTime: string; // Format: "yyyy-mm-dd hh:mm:ss+|-hh:mm"
   conversionValue: number;
   currencyCode: string;
   orderId: string;
+  userIdentifiers?: Array<Record<string, unknown>>;
 };
 
 /**
@@ -125,10 +133,44 @@ export function buildGoogleAdsOfflineConversion(
   input: OfflineConversionInput,
   conversionActionResourceName = 'customers/123/conversionActions/456'
 ): GoogleAdsConversionPayload | null {
-  const { transactionId, amountDollars, currency = 'USD', conversionTimestamp = new Date(), gclid } = input;
+  const {
+    transactionId,
+    amountDollars,
+    currency = 'USD',
+    conversionTimestamp = new Date(),
+    gclid,
+    gbraid,
+    wbraid,
+    customerEmail,
+    customerPhone,
+    customerFirstName,
+    customerLastName,
+    customerPostalCode,
+  } = input;
 
-  if (!gclid || !gclid.trim()) {
-    return null; // Google Ads offline upload strictly requires a gclid
+  const hasClickId = Boolean((gclid && gclid.trim()) || (gbraid && gbraid.trim()) || (wbraid && wbraid.trim()));
+
+  const userIdentifiers: Array<Record<string, unknown>> = [];
+  const hashedEmail = sha256Hash(customerEmail);
+  const hashedPhone = normalizePhoneForHashing(customerPhone);
+  const hashedFirst = sha256Hash(customerFirstName);
+  const hashedLast = sha256Hash(customerLastName);
+
+  if (hashedEmail) userIdentifiers.push({ hashedEmail });
+  if (hashedPhone) userIdentifiers.push({ hashedPhoneNumber: hashedPhone });
+  if (hashedFirst || hashedLast || customerPostalCode) {
+    userIdentifiers.push({
+      addressInfo: {
+        ...(hashedFirst ? { hashedFirstName: hashedFirst } : {}),
+        ...(hashedLast ? { hashedLastName: hashedLast } : {}),
+        ...(customerPostalCode ? { postalCode: customerPostalCode.trim() } : {}),
+        countryCode: 'US',
+      },
+    });
+  }
+
+  if (!hasClickId && userIdentifiers.length === 0) {
+    return null; // Google Ads offline upload requires click ID or user identification
   }
 
   const dateObj = typeof conversionTimestamp === 'string' ? new Date(conversionTimestamp) : conversionTimestamp;
@@ -137,14 +179,20 @@ export function buildGoogleAdsOfflineConversion(
   const iso = dateObj.toISOString();
   const formattedDateTime = iso.replace('T', ' ').replace(/\.\d+Z$/, '+00:00');
 
-  return {
+  const payload: GoogleAdsConversionPayload = {
     conversionAction: conversionActionResourceName,
-    gclid: gclid.trim(),
     conversionDateTime: formattedDateTime,
     conversionValue: Math.max(0, Math.round(amountDollars * 100) / 100),
     currencyCode: currency.toUpperCase(),
     orderId: transactionId.trim(),
   };
+
+  if (gclid && gclid.trim()) payload.gclid = gclid.trim();
+  if (gbraid && gbraid.trim()) payload.gbraid = gbraid.trim();
+  if (wbraid && wbraid.trim()) payload.wbraid = wbraid.trim();
+  if (userIdentifiers.length > 0) payload.userIdentifiers = userIdentifiers;
+
+  return payload;
 }
 
 export type ClosedLoopRoasMetrics = {

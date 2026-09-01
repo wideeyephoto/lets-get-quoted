@@ -1688,7 +1688,7 @@ $$;
 -- so a crew member can't insert a cost/feed/task carrying a foreign account_id
 -- (cross-tenant write / margin injection) while pointing job_id at their own job.
 create or replace function public.job_account_id(j uuid)
-returns uuid language plpgsql stable security definer set search_path = public as $$
+returns uuid language plpgsql stable security definer set search_path = public, pg_temp as $$
 declare
   v_account_id uuid;
 begin
@@ -1725,7 +1725,7 @@ grant execute on function public.job_account_id(uuid) to authenticated, service_
 -- else — there is no PostgREST route to set_config(), so a crew session cannot
 -- raise it on its own behalf.
 create or replace function crew_jobs_update_guard()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 begin
   if coalesce(current_setting('app.crew_job_write', true), '') = 'on' then
     return new;
@@ -1758,7 +1758,7 @@ create trigger crew_jobs_update_guard before update on jobs
 -- that happened, and a second press must not move it.
 create or replace function crew_set_job_status(j uuid, new_status text)
 returns table (id uuid, status text, started_at timestamptz)
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public, pg_temp as $$
 declare current_status text;
 begin
   if new_status not in ('in_progress', 'complete') then
@@ -1953,7 +1953,7 @@ create policy cost_crew_insert on costs for insert with check ( crew_on_job(job_
 -- arithmetic rather than a number of its own — a cent of tolerance because the
 -- app rounds in JavaScript and this rounds in Postgres.
 create or replace function crew_costs_guard()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 declare pinned numeric;
 begin
   if not is_crew(new.account_id) then return new; end if;
@@ -2007,7 +2007,7 @@ create policy time_entry_crew_update on time_entries for update using ( crew_own
 -- clocking out — so that is what the database permits, and the rate is pinned
 -- to the owner's number on the way in.
 create or replace function crew_time_entries_guard()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public, pg_temp as $$
 declare pinned numeric;
 begin
   -- Owners and the service-role client pass through untouched: closing somebody
@@ -2457,7 +2457,7 @@ create table if not exists email_events (
   kind          text not null default 'unknown',
   recipient     text not null,
   provider_id   text not null,
-  status        text not null check (status in ('sent','delivered','delayed','bounced','complained')),
+  status        text not null check (status in ('sent','delivered','delayed','bounced','complained','failed','suppressed')),
   error_reason  text,
   occurred_at   timestamptz not null default now(),
   created_at    timestamptz not null default now(),
@@ -25737,7 +25737,7 @@ create or replace function public.atomic_ad_wallet_credit(
 ) returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_site_id uuid;
@@ -25864,7 +25864,7 @@ create or replace function public.atomic_ad_wallet_spend(
 ) returns jsonb
 language plpgsql
 security definer
-set search_path = public
+set search_path = public, pg_temp
 as $$
 declare
   v_site_id uuid;
@@ -26010,4 +26010,156 @@ grant execute on function public.atomic_ad_wallet_credit(uuid, text, integer, in
 revoke all on function public.atomic_ad_wallet_spend(uuid, integer, text, integer, integer, integer, text) from public, anon, authenticated;
 grant execute on function public.atomic_ad_wallet_spend(uuid, integer, text, integer, integer, integer, text) to service_role;
 
+-- ============================================================================
+-- Covering Indexes for Foreign Keys (Supabase Security Advisor Remediation)
+-- ============================================================================
+-- ============================================================================
 
+create index if not exists idx_memberships_account_id on public.memberships (account_id);
+create index if not exists idx_crew_user_id on public.crew (user_id);
+create index if not exists idx_sites_account_id on public.sites (account_id);
+create index if not exists idx_job_tasks_job_id on public.job_tasks (job_id);
+create index if not exists idx_crew_assignments_job_id on public.crew_assignments (job_id);
+create index if not exists idx_crew_assignments_account_id on public.crew_assignments (account_id);
+create index if not exists idx_time_entries_job_id on public.time_entries (job_id);
+create index if not exists idx_route_stops_saved_place_id on public.route_stops (saved_place_id);
+create index if not exists idx_costs_account_id on public.costs (account_id);
+create index if not exists idx_costs_crew_id on public.costs (crew_id);
+create index if not exists idx_client_job_access_account_id on public.client_job_access (account_id);
+create index if not exists idx_invoices_account_id on public.invoices (account_id);
+create index if not exists idx_invoice_items_invoice_id on public.invoice_items (invoice_id);
+create index if not exists idx_payments_account_id on public.payments (account_id);
+create index if not exists idx_payments_invoice_id on public.payments (invoice_id);
+create index if not exists idx_sms_events_payment_id on public.sms_events (payment_id);
+create index if not exists idx_sms_consent_account_id on public.sms_consent (account_id);
+create index if not exists idx_messaging_registrations_account_id on public.messaging_registrations (account_id);
+create index if not exists idx_job_schedule_requests_account_id on public.job_schedule_requests (account_id);
+create index if not exists idx_finance_plans_account_id on public.finance_plans (account_id);
+create index if not exists idx_finance_plans_job_id on public.finance_plans (job_id);
+create index if not exists idx_leads_converted_job on public.leads (converted_job);
+create index if not exists idx_estimate_offers_crew_id on public.estimate_offers (crew_id);
+create index if not exists idx_estimate_offers_route_stop_id on public.estimate_offers (route_stop_id);
+create index if not exists idx_recurring_plans_client_id on public.recurring_plans (client_id);
+create index if not exists idx_recurring_plans_last_job_id on public.recurring_plans (last_job_id);
+create index if not exists idx_payment_plans_account_id on public.payment_plans (account_id);
+create index if not exists idx_payment_plans_deposit_payment_id on public.payment_plans (deposit_payment_id);
+create index if not exists idx_review_invites_account_id on public.review_invites (account_id);
+create index if not exists idx_review_invites_job_id on public.review_invites (job_id);
+create index if not exists idx_push_subscriptions_crew_id on public.push_subscriptions (crew_id);
+create index if not exists idx_extra_stop_requests_client_id on public.extra_stop_requests (client_id);
+create index if not exists idx_extra_stop_requests_payment_id on public.extra_stop_requests (payment_id);
+create index if not exists idx_extra_stop_events_account_id on public.extra_stop_events (account_id);
+create index if not exists idx_login_events_user_id on public.login_events (user_id);
+create index if not exists idx_crew_pay_entries_crew_id on public.crew_pay_entries (crew_id);
+create index if not exists idx_crew_pay_entry_lines_account_id on public.crew_pay_entry_lines (account_id);
+create index if not exists idx_crew_pay_entry_lines_job_id on public.crew_pay_entry_lines (job_id);
+create index if not exists idx_crew_pay_events_period_id on public.crew_pay_events (period_id);
+create index if not exists idx_crew_pay_events_entry_id on public.crew_pay_events (entry_id);
+create index if not exists idx_day_plan_prefs_crew_id on public.day_plan_prefs (crew_id);
+create index if not exists idx_job_milestones_job_id on public.job_milestones (job_id);
+create index if not exists idx_milestone_photos_account_id on public.milestone_photos (account_id);
+create index if not exists idx_milestone_photos_job_id on public.milestone_photos (job_id);
+create index if not exists idx_reschedule_offers_crew_id on public.reschedule_offers (crew_id);
+create index if not exists idx_subcontractor_requests_claimed_crew_id on public.subcontractor_requests (claimed_crew_id);
+create index if not exists idx_subcontractor_offers_crew_id on public.subcontractor_offers (crew_id);
+create index if not exists idx_subcontractor_reviews_job_id on public.subcontractor_reviews (job_id);
+create index if not exists idx_subcontractor_reviews_crew_id on public.subcontractor_reviews (crew_id);
+create index if not exists idx_subcontractor_reviews_request_id on public.subcontractor_reviews (request_id);
+create index if not exists idx_workspace_entitlements_account_id on public.workspace_entitlements (account_id);
+create index if not exists idx_billing_events_billing_subscription_id on public.billing_events (billing_subscription_id);
+create index if not exists idx_billing_payment_operations_account_id on public.billing_payment_operations (account_id);
+create index if not exists idx_billing_direct_payment_settlement_tasks_account_id on public.billing_direct_payment_settlement_tasks (account_id);
+create index if not exists idx_billing_direct_payment_settlement_tasks_job_id on public.billing_direct_payment_settlement_tasks (job_id);
+create index if not exists idx_billing_direct_payment_settlement_tasks_invoice_id on public.billing_direct_payment_settlement_tasks (invoice_id);
+create index if not exists idx_billing_direct_payment_settlement_tasks_sms_event_id on public.billing_direct_payment_settlement_tasks (sms_event_id);
+create index if not exists idx_workspace_purchased_capacity_billing_event_id on public.workspace_purchased_capacity (billing_event_id);
+create index if not exists idx_workspace_overage_settings_account_id on public.workspace_overage_settings (account_id);
+create index if not exists idx_workspace_overage_settings_authorization_id on public.workspace_overage_settings (authorization_id);
+create index if not exists idx_voice_call_admissions_reservation_id on public.voice_call_admissions (reservation_id);
+create index if not exists idx_voice_settings_account_id on public.voice_settings (account_id);
+create index if not exists idx_voice_settings_recording_disclosure_accepted_by on public.voice_settings (recording_disclosure_accepted_by);
+create index if not exists idx_voice_calls_voice_event_id on public.voice_calls (voice_event_id);
+create index if not exists idx_messaging_number_provisioning_operations_account_id on public.messaging_number_provisioning_operations (account_id);
+create index if not exists idx_sms_inbound_action_tasks_account_id on public.sms_inbound_action_tasks (account_id);
+create index if not exists idx_sms_inbound_action_tasks_customer_reply_event_id on public.sms_inbound_action_tasks (customer_reply_event_id);
+create index if not exists idx_sms_inbound_action_tasks_owner_alert_event_id on public.sms_inbound_action_tasks (owner_alert_event_id);
+create index if not exists idx_payment_sms_producer_tasks_account_id on public.payment_sms_producer_tasks (account_id);
+create index if not exists idx_payment_sms_producer_tasks_sms_event_id on public.payment_sms_producer_tasks (sms_event_id);
+create index if not exists idx_sms_missed_call_receipts_lead_id on public.sms_missed_call_receipts (lead_id);
+create index if not exists idx_sms_missed_call_receipts_sms_event_id on public.sms_missed_call_receipts (sms_event_id);
+create index if not exists idx_workspace_overage_event_settlements_account_id on public.workspace_overage_event_settlements (account_id);
+create index if not exists idx_messaging_registry_callbacks_account_id on public.messaging_registry_callbacks (account_id);
+create index if not exists idx_voice_call_workflows_call_id on public.voice_call_workflows (call_id);
+create index if not exists idx_voice_call_workflows_assigned_user_id on public.voice_call_workflows (assigned_user_id);
+create index if not exists idx_voice_call_workflows_reviewed_by on public.voice_call_workflows (reviewed_by);
+create index if not exists idx_voice_call_notes_author_user_id on public.voice_call_notes (author_user_id);
+create index if not exists idx_sms_events_crew_id on public.sms_events (crew_id);
+create index if not exists idx_payments_recurring_plan_id on public.payments (recurring_plan_id);
+create index if not exists idx_subcontractor_requests_claimed_offer_id on public.subcontractor_requests (claimed_offer_id);
+
+-- Resend webhook outcome projection: current terminal outcomes plus an atomic
+-- guard against at-least-once/out-of-order webhook delivery.
+alter table public.email_events
+  drop constraint if exists email_events_status_check;
+
+alter table public.email_events
+  add constraint email_events_status_check
+  check (status in (
+    'sent',
+    'delayed',
+    'delivered',
+    'bounced',
+    'complained',
+    'failed',
+    'suppressed'
+  ));
+
+create or replace function public.prevent_email_event_status_regression()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, pg_temp
+as $$
+declare
+  v_old_rank integer;
+  v_new_rank integer;
+begin
+  v_old_rank := case old.status
+    when 'sent' then 10
+    when 'delayed' then 20
+    when 'delivered' then 30
+    when 'bounced' then 40
+    when 'failed' then 40
+    when 'suppressed' then 40
+    when 'complained' then 50
+    else 0
+  end;
+  v_new_rank := case new.status
+    when 'sent' then 10
+    when 'delayed' then 20
+    when 'delivered' then 30
+    when 'bounced' then 40
+    when 'failed' then 40
+    when 'suppressed' then 40
+    when 'complained' then 50
+    else 0
+  end;
+
+  if new.occurred_at < old.occurred_at
+     or v_new_rank < v_old_rank
+     or (v_new_rank = v_old_rank and new.status is distinct from old.status) then
+    return old;
+  end if;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists email_events_prevent_status_regression on public.email_events;
+create trigger email_events_prevent_status_regression
+before update of status, occurred_at on public.email_events
+for each row execute function public.prevent_email_event_status_regression();
+
+revoke all on function public.prevent_email_event_status_regression()
+  from public, anon, authenticated;
+grant execute on function public.prevent_email_event_status_regression()
+  to service_role;

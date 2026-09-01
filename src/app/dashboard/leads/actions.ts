@@ -11,7 +11,7 @@ import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteIte
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadQuoteDraft, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
-import { uploadOfflineConversion } from '@/lib/google-ads-api';
+import { syncLeadWonConversion } from '@/lib/google-ads-conversion-outbox';
 import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -135,20 +135,30 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
   await updateLeadStatus(supabase, accountId, leadId, status);
 
   const jobId = lead?.converted_job as string | null | undefined;
-  if (status === 'won') {
-    const triage = lead ? getLeadTriage(lead) : null;
+  if (status === 'won' && lead) {
+    const triage = getLeadTriage(lead);
     const attr = triage?.attribution;
-    const hasGclid = attr?.clickId && attr.clickIdType === 'gclid';
+    const isGoogleClick = attr?.clickId && (attr.clickIdType === 'gclid' || attr.clickIdType === 'gbraid' || attr.clickIdType === 'wbraid');
 
-    if (hasGclid) {
+    if (isGoogleClick || lead.email || lead.phone) {
       const wonValue = triage?.estimate?.max || 0;
-      uploadOfflineConversion({
-        gclid: attr.clickId,
-        conversionActionName: 'Job Won',
-        conversionValueDollars: wonValue,
+      const nameParts = (lead.name || '').trim().split(/\s+/);
+      const firstName = nameParts[0] || undefined;
+      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+
+      syncLeadWonConversion({
+        accountId,
+        leadId,
+        wonValueDollars: wonValue,
         currencyCode: 'USD',
-        orderId: leadId,
-      }).catch((err) => console.warn('Offline conversion upload on mark won skipped:', err));
+        gclid: attr?.clickIdType === 'gclid' ? attr.clickId : undefined,
+        gbraid: attr?.clickIdType === 'gbraid' ? attr.clickId : undefined,
+        wbraid: attr?.clickIdType === 'wbraid' ? attr.clickId : undefined,
+        email: lead.email,
+        phone: lead.phone,
+        firstName,
+        lastName,
+      }).catch((err) => console.warn('Offline conversion sync on mark won logged warning:', err));
     }
   }
 

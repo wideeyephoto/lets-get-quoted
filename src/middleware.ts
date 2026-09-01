@@ -49,6 +49,8 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
+    requestHeaders.set('x-nonce', nonce);
+    requestHeaders.set('content-security-policy', csp);
     requestHeaders.set(cspHeader, csp);
     return applyCsp(NextResponse.rewrite(publicSiteUrl, { request: { headers: requestHeaders } }));
   }
@@ -61,6 +63,8 @@ export async function middleware(request: NextRequest) {
     const requestHeaders = new Headers(request.headers);
     requestHeaders.delete('x-lgq-standalone-site');
     requestHeaders.set('x-lgq-standalone-site', '1');
+    requestHeaders.set('x-nonce', nonce);
+    requestHeaders.set('content-security-policy', csp);
     requestHeaders.set(cspHeader, csp);
     return applyCsp(NextResponse.rewrite(customSiteUrl, { request: { headers: requestHeaders } }));
   }
@@ -100,6 +104,8 @@ export async function middleware(request: NextRequest) {
     requestHeaders.set('x-lgq-bare-preview', '1');
   }
   requestHeaders.set('x-pathname', request.nextUrl.pathname);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('content-security-policy', csp);
   requestHeaders.set(cspHeader, csp);
 
   let response = applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));

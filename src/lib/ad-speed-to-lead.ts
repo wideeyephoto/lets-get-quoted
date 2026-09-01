@@ -366,18 +366,14 @@ export async function dispatchSpeedToLeadSms(params: {
   };
 
   if (quietHoursCheck.isDelayed) {
-    try {
-      await sendSpeedToLeadSms({
-        accountId,
-        phone: recipientPhone,
-        businessName,
-        body: message,
-        idempotencyKey,
-        availableAt: quietHoursCheck.sendAt,
-      });
-    } catch (err) {
-      console.warn('Quiet-hours speed-to-lead delayed enqueue warning:', err instanceof Error ? err.message : err);
-    }
+    await sendSpeedToLeadSms({
+      accountId,
+      phone: recipientPhone,
+      businessName,
+      body: message,
+      idempotencyKey,
+      availableAt: quietHoursCheck.sendAt,
+    });
 
     // Optionally alert the contractor
     if (contractorAlertPhone) {

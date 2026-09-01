@@ -126,9 +126,16 @@
 }
 
 @media (max-width: 860px) {
-  /* Scoped like the base rule — a media query adds no specificity, so a bare
-     .shot here would lose to it and the card would never stack. */
   :global(.section-block) .shot {
     grid-template-columns: minmax(0, 1fr);
   }
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotStep,
+:global(:root[data-theme='sunlight']) :global(.section-block) .shotStep {
+  color: #c2410c !important;
+}
+
+:global(:root[data-theme='dim']) :global(.section-block) .shotStep {
+  color: #ff9563 !important;
 }

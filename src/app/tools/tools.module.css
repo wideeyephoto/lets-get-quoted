@@ -856,7 +856,7 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #1e293b;
+  color: #0f172a !important;
   border-bottom: 1px solid #cbd5e1;
 }
 
@@ -3523,4 +3523,70 @@
   margin-top: auto;
   padding-top: 10px;
   border-top: 1px dashed rgba(174, 199, 211, 0.15);
+}
+
+/* Sunlight mode contrast overrides for tools hub & generator */
+:global(:root[data-theme='sunlight']) .page {
+  background: #f8fafc;
+  color: #090d16;
+}
+
+:global(:root[data-theme='sunlight']) .headline,
+:global(:root[data-theme='sunlight']) .seoTitle,
+:global(:root[data-theme='sunlight']) .stepTitle,
+:global(:root[data-theme='sunlight']) .eduTitle,
+:global(:root[data-theme='sunlight']) .eduCardHeading,
+:global(:root[data-theme='sunlight']) .toolTitle,
+:global(:root[data-theme='sunlight']) .guideTitle,
+:global(:root[data-theme='sunlight']) .faqQuestion {
+  color: #090d16 !important;
+}
+
+:global(:root[data-theme='sunlight']) .subhead,
+:global(:root[data-theme='sunlight']) .seoLead,
+:global(:root[data-theme='sunlight']) .stepText,
+:global(:root[data-theme='sunlight']) .eduSubtitle,
+:global(:root[data-theme='sunlight']) .eduCardText,
+:global(:root[data-theme='sunlight']) .toolDesc,
+:global(:root[data-theme='sunlight']) .guideText,
+:global(:root[data-theme='sunlight']) .faqAnswer {
+  color: #334155 !important;
+}
+
+:global(:root[data-theme='sunlight']) .kicker,
+:global(:root[data-theme='sunlight']) .headline em,
+:global(:root[data-theme='sunlight']) .seoKicker {
+  color: #9a3412 !important;
+}
+
+:global(:root[data-theme='sunlight']) .stepCard,
+:global(:root[data-theme='sunlight']) .eduCard,
+:global(:root[data-theme='sunlight']) .toolCard,
+:global(:root[data-theme='sunlight']) .guideCard,
+:global(:root[data-theme='sunlight']) .faqCard {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='sunlight']) .stepNumber {
+  background: #ea580c !important;
+  color: #ffffff !important;
+}
+
+:global(:root[data-theme='sunlight']) .eduCardSolution {
+  color: #047857 !important;
+  border-top-color: #e2e8f0 !important;
+}
+
+:global(:root[data-theme='sunlight']) .estimateTable th {
+  background: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+:global(:root) table.estimateTable th,
+:global(:root[data-theme='dark']) table.estimateTable th,
+:global(:root[data-theme='dim']) table.estimateTable th,
+:global(:root[data-theme='light']) table.estimateTable th,
+:global(:root[data-theme='sunlight']) table.estimateTable th {
+  color: #0f172a !important;
 }

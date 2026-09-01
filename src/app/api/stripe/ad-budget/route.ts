@@ -80,6 +80,10 @@ export async function POST(request: Request) {
     const businessName = (account?.business_name as string | null) || 'Contractor';
 
     const customFocus = typeof body.customFocus === 'string' && body.customFocus.trim() ? body.customFocus.trim() : undefined;
+    const radiusMiles = Number(body.radiusMiles) || undefined;
+    const scheduleDays = typeof body.scheduleDays === 'string' && body.scheduleDays.trim() ? body.scheduleDays.trim() : undefined;
+    const startHour = typeof body.startHour === 'number' ? body.startHour : undefined;
+    const endHour = typeof body.endHour === 'number' ? body.endHour : undefined;
     const smsAlertsEnabled = body.smsAlertsEnabled !== undefined ? Boolean(body.smsAlertsEnabled) : true;
     const smsAlertPhone = typeof body.smsAlertPhone === 'string' && body.smsAlertPhone.trim() ? body.smsAlertPhone.trim() : undefined;
 
@@ -99,6 +103,10 @@ export async function POST(request: Request) {
       businessName,
       trade,
       city,
+      radiusMiles,
+      scheduleDays,
+      startHour,
+      endHour,
       customFocus,
       smsAlertsEnabled,
       smsAlertPhone,

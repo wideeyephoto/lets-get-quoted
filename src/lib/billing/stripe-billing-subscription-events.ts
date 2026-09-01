@@ -33,7 +33,7 @@ import type {
   StripeSubscriptionProviderContext,
 } from '@/lib/billing/subscription-event-projector';
 import { getStripeClient } from '@/lib/stripe';
-import { TERMS_VERSION } from '@/lib/terms';
+import { VALID_TERMS_VERSIONS } from '@/lib/terms';
 
 /**
  * Platform-only Stripe object retrieval and fail-closed normalization for the
@@ -164,7 +164,11 @@ function optionalEpochIso(value: unknown): string | null | undefined {
   return epochIso(value) ?? undefined;
 }
 
-type ParsedSubscriptionMetadata = BasePlanSubscriptionMetadata & Readonly<{
+type ProviderSubscriptionMetadata = Omit<BasePlanSubscriptionMetadata, 'lgq_terms_version'> & Readonly<{
+  lgq_terms_version: string;
+}>;
+
+type ParsedSubscriptionMetadata = ProviderSubscriptionMetadata & Readonly<{
   workspaceId: string;
   operationId: string;
 }>;
@@ -191,6 +195,10 @@ function exactMetadata(value: unknown): ParsedSubscriptionMetadata | null {
     metadata.lgq_recurring_consent_acceptance_id,
     UUID_PATTERN,
   )?.toLowerCase();
+  const termsVersion = stringValue(
+    metadata.lgq_terms_version,
+    /^[A-Za-z0-9][A-Za-z0-9._:-]{0,99}$/,
+  );
   if (
     !workspaceId
     || !operationId
@@ -198,7 +206,8 @@ function exactMetadata(value: unknown): ParsedSubscriptionMetadata | null {
     || (billingInterval !== 'monthly' && billingInterval !== 'annual')
     || metadata.lgq_billing_purpose !== BASE_PLAN_SUBSCRIPTION_PURPOSE
     || metadata.lgq_catalog_version !== PRICING_CATALOG_VERSION
-    || metadata.lgq_terms_version !== TERMS_VERSION
+    || !termsVersion
+    || !VALID_TERMS_VERSIONS.has(termsVersion)
     || recurringConsentVersion !== BASE_PLAN_RECURRING_CONSENT_VERSION
     || recurringConsentTextSha256 !== BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256
     || !recurringConsentAcceptanceId
@@ -212,7 +221,7 @@ function exactMetadata(value: unknown): ParsedSubscriptionMetadata | null {
     lgq_billing_interval: billingInterval,
     lgq_catalog_version: PRICING_CATALOG_VERSION,
     lgq_operation_id: operationId,
-    lgq_terms_version: TERMS_VERSION,
+    lgq_terms_version: termsVersion,
     lgq_recurring_consent_version: BASE_PLAN_RECURRING_CONSENT_VERSION,
     lgq_recurring_consent_text_sha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
     lgq_recurring_consent_acceptance_id: recurringConsentAcceptanceId,
@@ -378,7 +387,7 @@ function normalizeSubscription(
 
 function expectedMetadata(
   context: StripeSubscriptionProviderContext,
-): BasePlanSubscriptionMetadata {
+): ProviderSubscriptionMetadata {
   return {
     lgq_billing_purpose: BASE_PLAN_SUBSCRIPTION_PURPOSE,
     lgq_workspace_id: context.workspaceId,
@@ -386,14 +395,14 @@ function expectedMetadata(
     lgq_billing_interval: context.billingInterval,
     lgq_catalog_version: PRICING_CATALOG_VERSION,
     lgq_operation_id: context.operationId,
-    lgq_terms_version: TERMS_VERSION,
+    lgq_terms_version: context.termsVersion,
     lgq_recurring_consent_version: BASE_PLAN_RECURRING_CONSENT_VERSION,
     lgq_recurring_consent_text_sha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
     lgq_recurring_consent_acceptance_id: context.recurringConsentAcceptanceId,
   };
 }
 
-function metadataMatches(value: unknown, expected: BasePlanSubscriptionMetadata): boolean {
+function metadataMatches(value: unknown, expected: ProviderSubscriptionMetadata): boolean {
   const metadata = record(value);
   if (!metadata) return false;
   const actualEntries = Object.entries(metadata).sort(([a], [b]) => a.localeCompare(b));

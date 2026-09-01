@@ -36,7 +36,8 @@
     ".next-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    "src"
+    "src",
+    ".next-audit-public-current/types/**/*.ts"
   ],
   "exclude": [
     "node_modules"

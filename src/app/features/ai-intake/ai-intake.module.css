@@ -523,3 +523,30 @@
 @media (prefers-reduced-motion: reduce) {
   .faq summary i::after { transition: none; }
 }
+
+/* Multi-theme contrast overrides */
+:global(:root[data-theme='light']) .rungBody,
+:global(:root[data-theme='light']) .ladderNote,
+:global(:root[data-theme='light']) .rung[data-tone='quiet'] .rungChannel,
+:global(:root[data-theme='light']) .faq details > p {
+  color: #475569 !important;
+}
+
+:global(:root[data-theme='sunlight']) .rungBody,
+:global(:root[data-theme='sunlight']) .ladderNote,
+:global(:root[data-theme='sunlight']) .rung[data-tone='quiet'] .rungChannel,
+:global(:root[data-theme='sunlight']) .faq details > p {
+  color: #334155 !important;
+}
+
+:global(:root[data-theme='dim']) .rungBody,
+:global(:root[data-theme='dim']) .ladderNote,
+:global(:root[data-theme='dim']) .rung[data-tone='quiet'] .rungChannel,
+:global(:root[data-theme='dim']) .faq details > p {
+  color: #9ca3af !important;
+}
+
+:global(:root[data-theme='light']) :global(.eyebrow),
+:global(:root[data-theme='sunlight']) :global(.eyebrow) {
+  color: #9a3412 !important;
+}

@@ -166,7 +166,7 @@
   display: block;
   font-size: 11px;
   font-weight: 750;
-  color: #8ea5b3;
+  color: #cbd5e1;
   text-transform: uppercase;
   margin-bottom: 6px;
   letter-spacing: 0.5px;
@@ -286,7 +286,7 @@
 .smsBody {
   font-size: 13px;
   line-height: 1.45;
-  color: #d1e2eb;
+  color: #f1f5f9;
   margin: 0;
 }
 
@@ -329,7 +329,7 @@
 
 .tryLink {
   background: #50e3bd;
-  color: #07131d;
+  color: #07131d !important;
   padding: 12px 24px;
   border-radius: 8px;
   font-weight: 850;

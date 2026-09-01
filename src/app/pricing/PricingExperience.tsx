@@ -69,7 +69,7 @@ const walkthroughSteps = [
   },
   {
     badge: '04 · AUTOMATED BOOKS',
-    title: 'Two-Way QuickBooks Online Sync',
+    title: 'Direct QuickBooks Online Sync',
     summary: 'Clients, invoices, payments, and sales tax automatically sync to QuickBooks in real time without manual reconciliation.',
     metric: 'Zero double-entry bookkeeping',
   },

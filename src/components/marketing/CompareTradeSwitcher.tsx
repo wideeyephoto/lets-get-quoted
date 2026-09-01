@@ -84,7 +84,7 @@ const TRADES: readonly TradeScenario[] = [
     features: [
       'Multi-option Good/Better/Best system replacement quotes',
       'Automated recurring spring/fall maintenance agreement billing',
-      'Automatic 2-way sync with QuickBooks Online for parts & invoices',
+      'Automatic sync to QuickBooks Online for invoices and payments',
     ],
     quoteExample: {
       title: 'Complete 3-Ton Heat Pump System Replacement',

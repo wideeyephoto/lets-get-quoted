@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import styles from './website-media-studio-showcase.module.css';
 
 type VideoLayoutKey = 'hero' | 'split' | 'story' | 'reel' | 'testimonial' | 'process';
@@ -58,45 +58,45 @@ const VIDEO_LAYOUTS: VideoLayoutDef[] = [
       'Displays project location (city/neighborhood), turnaround timeline, and specific trade scope.',
       'Proves real craftsmanship and builds instant buyer confidence in high-ticket work.',
     ],
-    guardrail: 'Keeps project metadata and video assets preserved even if you toggle between layouts.',
+    guardrail: 'Accepts start-to-finish video edits up to 50 MB, with optional before/after still pair.',
   },
   {
     key: 'reel',
     icon: '📱',
-    name: 'Reel Gallery',
-    sub: 'Vertical phone clips',
-    title: 'Vertical Video Reel Showcase',
-    desc: 'A horizontal gallery of tall, 9:16 phone-shot video clips showcasing daily project highlights.',
+    name: 'Vertical Reel',
+    sub: 'Mobile-first 9:16 portrait',
+    title: 'Vertical Reel (9:16 Social Style)',
+    desc: 'Engaging vertical video format optimized for smartphone capture from job sites and quick crew updates.',
     bullets: [
-      'Built specifically for clips shot vertically on iPhone or Android in the field.',
-      'Up to 6 browsable reel tiles with individual captions, timestamps, and thumbnail previews.',
-      'Touch-friendly mobile carousel allows homeowners to swipe through real project stories.',
+      'Native 9:16 portrait aspect ratio matching TikTok, Instagram Reels, and YouTube Shorts.',
+      'Includes animated sound equalizer icon to indicate active audio playback.',
+      'Floating primary CTA button stays locked to the bottom of the video frame.',
     ],
-    guardrail: 'Automatic codec check alerts if clips need web-standard formatting before going live.',
+    guardrail: 'Auto-crops 9:16 vertical clips on desktop viewports while maintaining sharp focus.',
   },
   {
     key: 'testimonial',
     icon: '💬',
-    name: 'Testimonial',
-    sub: 'Customer on camera',
-    title: 'On-Camera Video Testimonial',
-    desc: 'Satisfied homeowners on camera with their pull quote and verified client attribution alongside.',
+    name: 'Video Review',
+    sub: 'Authentic homeowner proof',
+    title: 'Homeowner Video Testimonial Card',
+    desc: 'Direct customer recommendation clip with verified homeowner rating, project badge, and review excerpt.',
     bullets: [
-      'The highest-converting trust asset: let your real customers speak directly to new visitors.',
-      'Displays customer quote text, homeowner name, and neighborhood/town label.',
-      'Carries structured review metadata for search engine indexing.',
+      'Places a genuine customer endorsement directly in your page hierarchy.',
+      'Integrated 5-star rating, customer location, and verified reviewer badge.',
+      'Significantly outperforms text-only reviews in closing undecided website visitors.',
     ],
-    guardrail: 'Supports up to 6 customer video reviews with individual quotes and author labels.',
+    guardrail: 'Includes verified customer trust badges and optional project location tags.',
   },
   {
     key: 'process',
-    icon: '🔢',
-    name: 'Step Process',
-    sub: 'How work gets done',
-    title: 'Process & Timeline Explainer',
-    desc: 'A craftsmanship or walk-through video paired with numbered milestones explaining what happens next.',
+    icon: '🛠️',
+    name: 'Process Clip',
+    sub: 'Step-by-step walkthrough',
+    title: '3-Step Workmanship Process',
+    desc: 'Educational walkthrough demonstrating your preparation, installation standards, and cleanup protocol.',
     bullets: [
-      'Numbered 1-2-3-4 step milestones (e.g. Free Estimate → Quote Approval → Job Kickoff → Final Walkthrough).',
+      'Demonstrates your trade standards: site protection, precise installation, and spotless cleanup.',
       'Reduces homeowner anxiety by clarifying arrival windows and project expectations.',
       'Positioned to guide visitors directly into requesting their instant estimate.',
     ],
@@ -109,11 +109,31 @@ export default function WebsiteMediaStudioShowcase() {
   const [sliderPos, setSliderPos] = useState<number>(50);
   const [isSplitPlaying, setIsSplitPlaying] = useState<boolean>(false);
   const [isStoryPlaying, setIsStoryPlaying] = useState<boolean>(false);
+  const [isNear, setIsNear] = useState<boolean>(false);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const sliderFrameRef = useRef<HTMLDivElement>(null);
   const isDraggingRef = useRef<boolean>(false);
   const splitVideoRef = useRef<HTMLVideoElement>(null);
   const storyVideoRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current || typeof IntersectionObserver === 'undefined') {
+      setIsNear(true);
+      return;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setIsNear(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '300px' }
+    );
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
 
   const currentLayout = VIDEO_LAYOUTS.find((l) => l.key === activeLayout) || VIDEO_LAYOUTS[0];
 
@@ -198,7 +218,7 @@ export default function WebsiteMediaStudioShowcase() {
   }
 
   return (
-    <div className={styles.showcaseContainer}>
+    <div className={styles.showcaseContainer} ref={containerRef}>
       {/* -------------------------------------------------------------
           1. VIDEO STUDIO: 6 DEDICATED LAYOUTS INTERACTIVE SHOWCASE
           ------------------------------------------------------------- */}
@@ -258,12 +278,13 @@ export default function WebsiteMediaStudioShowcase() {
               {activeLayout === 'hero' && (
                 <div className={styles.heroLoopPreview}>
                   <video
-                    autoPlay
+                    autoPlay={isNear}
                     loop
                     muted
                     playsInline
+                    preload="none"
                     className={styles.heroBgVideo}
-                    src="/media/website-builder/studio/zero-turn-mower-loop.mp4"
+                    src={isNear ? "/media/website-builder/studio/zero-turn-mower-loop.mp4" : undefined}
                     poster="/media/website-builder/studio/zero-turn-mower-poster.jpg"
                   />
                   <div className={styles.heroLoopScrim} />

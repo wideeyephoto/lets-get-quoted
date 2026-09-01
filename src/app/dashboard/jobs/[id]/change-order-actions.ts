@@ -55,7 +55,9 @@ export async function draftChangeOrderAction(
   const photos: string[] = [];
   for (const link of photoLinks) {
     try {
-      const response = await fetch(link.url);
+      const response = await fetch(link.url, {
+        signal: AbortSignal.timeout(8000),
+      });
       if (!response.ok) continue;
       const buffer = Buffer.from(await response.arrayBuffer());
       // 6MB of photo is already more than the model needs; anything bigger is a

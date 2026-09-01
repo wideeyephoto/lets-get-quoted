@@ -1412,7 +1412,7 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       {
         id: 'quickbooks-export-sync',
         name: 'QuickBooks Online Export & Sync',
-        desc: 'Import-ready CSVs and two-way sync for sales, customer profiles, invoices, and expense transactions.',
+        desc: 'Import-ready CSVs and direct push sync for sales, customer profiles, invoices, and payment records.',
         tags: ['QuickBooks', 'Accounting'],
         subBullets: [
           'One-click export of sales, customer records, paid invoices, and categorized expenses in QuickBooks-ready CSV formats.',

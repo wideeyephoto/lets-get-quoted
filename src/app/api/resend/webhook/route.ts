@@ -54,6 +54,14 @@ type ResendWebhookEvent = {
     // Transient means it was busy or full, Undetermined means the far end did
     // not say. Only Permanent is a reason to stop.
     bounce?: { message?: string; type?: string; subType?: string } | null;
+    // Resend's pre-delivery failure event is operational, not automatically a
+    // recipient opt-out: quota, API-key, and domain-verification failures all
+    // use this same shape, so its reason is recorded but never suppressed.
+    failed?: { reason?: string } | null;
+    // Resend emits this after it refuses a send because the recipient is
+    // already on its account-level suppression list. Mirror it into our
+    // account-scoped suppression list when the send carried an account tag.
+    suppressed?: { message?: string; type?: string } | null;
     [key: string]: unknown;
   };
 };
@@ -64,7 +72,20 @@ const STATUS_BY_EVENT: Record<string, string> = {
   'email.delivery_delayed': 'delayed',
   'email.bounced': 'bounced',
   'email.complained': 'complained',
+  'email.failed': 'failed',
+  'email.suppressed': 'suppressed',
 };
+
+function errorReasonFor(event: ResendWebhookEvent, status: string): string | null {
+  const reason = status === 'bounced'
+    ? event.data.bounce?.message
+    : status === 'failed'
+      ? event.data.failed?.reason
+      : status === 'suppressed'
+        ? event.data.suppressed?.message ?? event.data.suppressed?.type
+        : null;
+  return typeof reason === 'string' && reason.trim() ? reason.trim() : null;
+}
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -132,9 +153,10 @@ export async function POST(request: Request) {
     const { kind, accountId } = resendTags(event.data.tags);
     const recipient = resendRecipient(event.data.to);
 
-    // Upsert keyed by provider_id: a send's status only moves forward over its
-    // lifecycle (sent -> delivered, or sent -> bounced), so the latest event
-    // is always the one worth keeping, never a history of every step.
+    // Upsert keyed by provider_id. Resend is at-least-once and explicitly does
+    // not guarantee delivery order, so the database trigger installed with
+    // this projector rejects an older/lower lifecycle state atomically. Doing
+    // that in SQL also closes the race between two concurrent webhook calls.
     const { error } = await admin.from('email_events').upsert(
       {
         account_id: accountId,
@@ -142,7 +164,7 @@ export async function POST(request: Request) {
         recipient: recipient ?? 'unknown',
         provider_id: providerId,
         status,
-        error_reason: status === 'bounced' ? event.data.bounce?.message ?? null : null,
+        error_reason: errorReasonFor(event, status),
         occurred_at: event.created_at ?? new Date().toISOString(),
       },
       { onConflict: 'provider_id' },
@@ -174,7 +196,7 @@ export async function POST(request: Request) {
 /**
  * Stop sending to an address that told us to stop.
  *
- * Two signals, and only two:
+ * Three signals, and only three:
  *
  *   complained  — always. A spam complaint is an explicit "never again", and
  *                 continuing costs the sending domain's reputation for every
@@ -185,10 +207,14 @@ export async function POST(request: Request) {
  *                 and invoices over a bad afternoon. Undetermined is treated as
  *                 transient: the far end did not say, and guessing wrong in
  *                 that direction is the expensive one.
+ *   suppressed  — always. Resend already refused this address because it is on
+ *                 the provider account's suppression list; mirroring that
+ *                 decision prevents another application send attempt.
  *
- * Best-effort by design, and deliberately AFTER the email_events write rather
- * than beside it. Suppression failing must not fail the webhook and cost us the
- * delivery record; Resend retries, and a retry re-runs this.
+ * Deliberately AFTER the idempotent email_events write. If an account-scoped
+ * suppression write fails, throw so the route returns 500 and Resend retries;
+ * acknowledging it would permanently lose the safety action. The event upsert
+ * is replay-safe, so repeating it is harmless.
  */
 async function maybeSuppress(
   admin: ReturnType<typeof createAdminClient>,
@@ -215,10 +241,10 @@ async function maybeSuppress(
     return;
   }
 
-  try {
-    const ok = await suppressEmail(admin, input.accountId, input.recipient, reason);
-    if (!ok) console.error(`suppressEmail returned false for ${maskedRecipient} on account ${input.accountId}`);
-  } catch (err) {
-    console.error('suppressEmail threw from the Resend webhook:', err);
+  const ok = await suppressEmail(admin, input.accountId, input.recipient, reason);
+  if (!ok) {
+    throw new Error(
+      `Account-scoped email suppression persistence failed for ${maskedRecipient} on account ${input.accountId}`,
+    );
   }
 }

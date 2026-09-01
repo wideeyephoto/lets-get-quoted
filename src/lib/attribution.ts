@@ -23,10 +23,10 @@ export type LeadAttribution = {
   term?: string;
   /** Ad creative or placement identifier, e.g. 'video_ad_v2', 'hero_cta' */
   content?: string;
-  /** Click identifier from advertising networks (gclid, fbclid, ttclid, msclkid) */
+  /** Click identifier from advertising networks (gclid, gbraid, wbraid, fbclid, ttclid, msclkid) */
   clickId?: string;
   /** Type of click identifier */
-  clickIdType?: 'fbclid' | 'gclid' | 'ttclid' | 'msclkid' | 'other';
+  clickIdType?: 'fbclid' | 'gclid' | 'gbraid' | 'wbraid' | 'ttclid' | 'msclkid' | 'other';
   /** Original HTTP referrer or external domain */
   referrer?: string;
   /** Initial landing page path + search query */
@@ -76,6 +76,8 @@ export function parseAttribution(urlString: string, referrerString?: string): Le
 
     const fbclid = sanitizeString(params.get('fbclid'), 150);
     const gclid = sanitizeString(params.get('gclid'), 150);
+    const gbraid = sanitizeString(params.get('gbraid'), 150);
+    const wbraid = sanitizeString(params.get('wbraid'), 150);
     const ttclid = sanitizeString(params.get('ttclid'), 150);
     const msclkid = sanitizeString(params.get('msclkid'), 150);
 
@@ -85,6 +87,12 @@ export function parseAttribution(urlString: string, referrerString?: string): Le
     if (gclid) {
       clickId = gclid;
       clickIdType = 'gclid';
+    } else if (gbraid) {
+      clickId = gbraid;
+      clickIdType = 'gbraid';
+    } else if (wbraid) {
+      clickId = wbraid;
+      clickIdType = 'wbraid';
     } else if (fbclid) {
       clickId = fbclid;
       clickIdType = 'fbclid';
@@ -101,7 +109,7 @@ export function parseAttribution(urlString: string, referrerString?: string): Le
 
     // If source wasn't explicitly in UTMs, inspect click IDs or referrer
     if (!source) {
-      if (clickIdType === 'gclid') {
+      if (clickIdType === 'gclid' || clickIdType === 'gbraid' || clickIdType === 'wbraid') {
         source = 'google';
         medium = medium || 'cpc';
       } else if (clickIdType === 'fbclid') {
@@ -207,7 +215,7 @@ export function sanitizeAttribution(raw: unknown): LeadAttribution | null {
   const term = sanitizeString(obj.term, 100);
   const content = sanitizeString(obj.content, 100);
   const clickId = sanitizeString(obj.clickId, 150);
-  const clickIdType = (['fbclid', 'gclid', 'ttclid', 'msclkid', 'other'] as const).includes(obj.clickIdType as 'fbclid' | 'gclid' | 'ttclid' | 'msclkid' | 'other')
+  const clickIdType = (['fbclid', 'gclid', 'gbraid', 'wbraid', 'ttclid', 'msclkid', 'other'] as const).includes(obj.clickIdType as 'fbclid' | 'gclid' | 'gbraid' | 'wbraid' | 'ttclid' | 'msclkid' | 'other')
     ? (obj.clickIdType as LeadAttribution['clickIdType'])
     : undefined;
   const referrer = sanitizeString(obj.referrer, 300);
@@ -255,7 +263,7 @@ export function formatLeadAttribution(attr: LeadAttribution | null | undefined):
 
   let channel: AttributionSummary['channel'] = 'direct';
   if (src.includes('facebook') || attr.clickIdType === 'fbclid') channel = 'facebook';
-  else if (src.includes('google') || attr.clickIdType === 'gclid') channel = 'google';
+  else if (src.includes('google') || attr.clickIdType === 'gclid' || attr.clickIdType === 'gbraid' || attr.clickIdType === 'wbraid') channel = 'google';
   else if (src.includes('tiktok') || attr.clickIdType === 'ttclid') channel = 'tiktok';
   else if (src.includes('instagram')) channel = 'instagram';
   else if (src.includes('nextdoor')) channel = 'nextdoor';

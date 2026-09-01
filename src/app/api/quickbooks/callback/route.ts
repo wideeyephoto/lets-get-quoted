@@ -24,6 +24,7 @@ async function fetchCompanyName(realmId: string, accessToken: string): Promise<s
     const response = await fetch(`${quickBooksApiHost()}/v3/company/${realmId}/companyinfo/${realmId}?minorversion=70`, {
       headers: { Authorization: `Bearer ${accessToken}`, Accept: 'application/json' },
       cache: 'no-store',
+      signal: AbortSignal.timeout(8000),
     });
     if (!response.ok) return null;
     const payload = (await response.json()) as { CompanyInfo?: { CompanyName?: string } };

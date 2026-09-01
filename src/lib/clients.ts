@@ -77,19 +77,41 @@ export async function findOrCreateClientId(
 export async function listClientsWithStats(
   supabase: SupabaseClient,
   accountId: string,
-  options?: { todayKey?: string } & TestRecordOptions,
+  options?: { todayKey?: string; fetchAll?: boolean } & TestRecordOptions,
 ): Promise<ClientWithStats[]> {
-  const [{ data: clients }, { data: jobs }] = await Promise.all([
-    applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options),
-    applyTestRecordFilter(
+  let clients: Client[];
+  let jobs: { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[];
+
+  if (options?.fetchAll) {
+    const { fetchAllPages } = await import('@/lib/pagination');
+    const clientsQuery = applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options);
+    const jobsQuery = applyTestRecordFilter(
       supabase
         .from('jobs')
         .select('client_id, quoted_amount, created_at, scheduled_for')
         .eq('account_id', accountId)
         .not('client_id', 'is', null),
       options,
-    ),
-  ]);
+    );
+    [clients, jobs] = await Promise.all([
+      fetchAllPages<Client>((from, to) => clientsQuery.range(from, to)),
+      fetchAllPages<{ client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }>((from, to) => jobsQuery.range(from, to)),
+    ]);
+  } else {
+    const [clientsRes, jobsRes] = await Promise.all([
+      applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options),
+      applyTestRecordFilter(
+        supabase
+          .from('jobs')
+          .select('client_id, quoted_amount, created_at, scheduled_for')
+          .eq('account_id', accountId)
+          .not('client_id', 'is', null),
+        options,
+      ),
+    ]);
+    clients = (clientsRes.data ?? []) as Client[];
+    jobs = (jobsRes.data ?? []) as { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[];
+  }
 
   // The caller passes today so the split between "booked" and "been" is made
   // in the owner's zone rather than the server's — on UTC Vercel an Eastern

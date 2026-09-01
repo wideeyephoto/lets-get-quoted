@@ -360,7 +360,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
       'bookkeeping',
     ],
     answer:
-      'Yes! We feature official 2-way synchronization with QuickBooks Online for invoices and customer records, plus Stripe Connect for instant bank payouts, Apple Pay, Google Pay, and ACH transfers.',
+      'Yes! We feature official direct synchronization pushing invoices, payments, and customer records to QuickBooks Online, plus Stripe Connect for instant bank payouts, Apple Pay, Google Pay, and ACH transfers.',
     ctaText: 'View Back Office Features',
     ctaHref: '/features/back-office',
   },

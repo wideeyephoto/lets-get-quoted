@@ -87,3 +87,63 @@ describe('sendContractorWelcomeEmail resiliency', () => {
     expect(result.error).toBe('no_mailable_email');
   });
 });
+
+describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
+  it('executes dry-run without requiring RESEND_API_KEY', async () => {
+    vi.stubEnv('RESEND_API_KEY', '');
+
+    const mockAccounts = [
+      {
+        id: 'acc-test-1',
+        business_name: 'Test Builder',
+        plan: 'solo',
+        connect_onboarded: false,
+        created_at: new Date(Date.now() - 25 * 86400000).toISOString(), // 25 days old
+        reply_to_email: 'builder@acmebuilders.com',
+        test_marker: null,
+      },
+    ];
+
+    const createQuery = (table: string) => {
+      const q: any = {
+        then: (resolve: any) => {
+          if (table === 'accounts') return resolve({ data: mockAccounts, error: null });
+          return resolve({ data: [], error: null });
+        },
+        select: () => q,
+        gte: () => q,
+        is: () => q,
+        order: () => q,
+        limit: () => q,
+        in: () => q,
+        eq: () => q,
+      };
+      return q;
+    };
+
+    const mockAdmin = {
+      rpc: async () => ({
+        data: [{ account_id: 'acc-test-1', email: 'builder@acmebuilders.com' }],
+        error: null,
+      }),
+      from: (table: string) => createQuery(table),
+    };
+
+    const res = await runContractorLifecycleSweep(mockAdmin as any, { dryRun: true });
+    expect(res.checked).toBe(1);
+    expect(res.sent).toBe(1);
+    expect(res.details[0].status).toBe('sent');
+    // Because account has never received welcome_day0, it must receive welcome_day0 first
+    expect(res.details[0].stepId).toBe('welcome_day0');
+    expect(res.details[0].note).toContain('[DRY-RUN]');
+  });
+
+  it('validates all 10 CTA paths map to existing App Router dashboard paths', () => {
+    const VALID_BASE_PATHS = ['/dashboard', '/dashboard/jobs', '/dashboard/crew', '/dashboard/reviews', '/dashboard/settings'];
+
+    for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
+      const basePath = step.ctaPath.split('?')[0];
+      expect(VALID_BASE_PATHS).toContain(basePath);
+    }
+  });
+});

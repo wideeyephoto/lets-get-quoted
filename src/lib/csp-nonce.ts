@@ -15,7 +15,9 @@ export async function cspNonce(): Promise<string | undefined> {
   if (typeof window !== 'undefined') return undefined;
   try {
     const headerList = await headers();
-    const header = headerList.get(cspHeaderName());
+    const xNonce = headerList.get('x-nonce');
+    if (xNonce) return xNonce;
+    const header = headerList.get(cspHeaderName()) || headerList.get('content-security-policy') || headerList.get('content-security-policy-report-only');
     return header?.match(/'nonce-([^']+)'/)?.[1];
   } catch {
     return undefined;

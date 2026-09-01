@@ -75,7 +75,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--muted-2);
+  color: var(--muted);
   margin-bottom: 0.35rem;
 }
 
@@ -120,7 +120,7 @@
 .stageDone .stageMark { color: var(--gold-ink); }
 .stageNow { color: var(--text); font-weight: 700; }
 .stageNow .stageMark { color: var(--accent); }
-.stageNext { color: var(--muted-2); }
+.stageNext { color: var(--muted); }
 
 .stageWhen {
   margin-left: auto;
@@ -129,7 +129,7 @@
   font-size: 0.7rem;
   font-weight: 400;
   white-space: nowrap;
-  color: var(--muted-2);
+  color: var(--muted);
 }
 
 /* Two texts, one thread. Deliberately not a chat UI — it is an excerpt of the
@@ -164,7 +164,7 @@
   font-size: 0.6rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--muted-2);
+  color: var(--muted);
   margin-bottom: 0.12rem;
 }
 
@@ -409,7 +409,7 @@
 .showcaseNote {
   font-size: 0.85rem;
   line-height: 1.55;
-  color: var(--muted-2);
+  color: var(--muted);
 }
 
 /* ---- the payment plan schedule ------------------------------------------- */
@@ -419,7 +419,7 @@
   flex-direction: column;
   font-size: 0.82rem;
   line-height: 1.45;
-  color: var(--muted-2);
+  color: var(--muted);
 }
 
 .planHead {
@@ -437,7 +437,7 @@
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  opacity: 0.75;
+  color: var(--muted);
 }
 
 .planHeadValue {
@@ -504,7 +504,7 @@
   font-size: 0.75rem;
   font-weight: 400;
   line-height: 1.4;
-  color: var(--muted-2);
+  color: var(--muted);
 }
 
 .planAmount {
@@ -612,8 +612,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: var(--muted-2);
-  opacity: 0.85;
+  color: var(--muted);
   min-width: 0;
 }
 
@@ -630,7 +629,7 @@
   font-size: 0.75rem;
   font-weight: 400;
   line-height: 1.4;
-  color: var(--muted-2);
+  color: var(--muted);
 }
 
 /* Direction is carried by the sign in the markup, not by colour alone. */
@@ -638,7 +637,7 @@
   font-variant-numeric: tabular-nums;
   font-weight: 700;
   white-space: nowrap;
-  color: var(--muted);
+  color: var(--text);
 }
 .cashAmount[data-direction='in'] { color: var(--gold-ink); }
 
@@ -662,7 +661,7 @@
 
 .cashVerdictLabel {
   font-size: 0.78rem;
-  color: var(--muted-2);
+  color: var(--muted);
   min-width: 0;
 }
 
@@ -694,4 +693,51 @@
      9–11 AM" on the same row as it. */
   .stageWhen { margin-left: 0; padding-left: 0; }
   .stage { flex-wrap: wrap; }
+}
+
+/* Theme-specific contrast overrides */
+:global(:root[data-theme='light']) .capIntro :global(.eyebrow),
+:global(:root[data-theme='sunlight']) .capIntro :global(.eyebrow),
+:global(:root[data-theme='light']) .showcaseCopy :global(.eyebrow),
+:global(:root[data-theme='sunlight']) .showcaseCopy :global(.eyebrow) {
+  color: #9a3412 !important;
+}
+
+:global(:root[data-theme='dim']) .capIntro :global(.eyebrow),
+:global(:root[data-theme='dim']) .showcaseCopy :global(.eyebrow) {
+  color: #ff9563 !important;
+}
+
+:global(:root[data-theme='light']) .planHeadLabel,
+:global(:root[data-theme='light']) .planSub,
+:global(:root[data-theme='light']) .cashKind,
+:global(:root[data-theme='light']) .cashDetail,
+:global(:root[data-theme='light']) .cashVerdictLabel,
+:global(:root[data-theme='light']) .cashDate,
+:global(:root[data-theme='light']) .bandLabel,
+:global(:root[data-theme='light']) .showcaseNote,
+:global(:root[data-theme='light']) .planWhen,
+:global(:root[data-theme='light']) .stageWhen,
+:global(:root[data-theme='light']) .stageNext,
+:global(:root[data-theme='light']) .msgWho,
+:global(:root[data-theme='light']) .stageDone > span,
+:global(:root[data-theme='light']) .stageNext > span {
+  color: #94a3b8 !important;
+}
+
+:global(:root[data-theme='dim']) .planHeadLabel,
+:global(:root[data-theme='dim']) .planSub,
+:global(:root[data-theme='dim']) .cashKind,
+:global(:root[data-theme='dim']) .cashDetail,
+:global(:root[data-theme='dim']) .cashVerdictLabel,
+:global(:root[data-theme='dim']) .cashDate,
+:global(:root[data-theme='dim']) .bandLabel,
+:global(:root[data-theme='dim']) .showcaseNote,
+:global(:root[data-theme='dim']) .planWhen,
+:global(:root[data-theme='dim']) .stageWhen,
+:global(:root[data-theme='dim']) .stageNext,
+:global(:root[data-theme='dim']) .msgWho,
+:global(:root[data-theme='dim']) .stageDone > span,
+:global(:root[data-theme='dim']) .stageNext > span {
+  color: #9ca3af !important;
 }

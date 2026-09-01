@@ -40,6 +40,7 @@ async function passesTurnstile(token: string, remoteip: string | undefined): Pro
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
+      signal: AbortSignal.timeout(6000),
     });
     if (!r.ok) throw new Error(`siteverify ${r.status}`);
     const result = (await r.json()) as { success?: boolean };

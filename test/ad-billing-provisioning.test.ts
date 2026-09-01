@@ -108,7 +108,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     const adCampaign = (updatedContent as any)?.adCampaign;
     expect(adCampaign).toBeDefined();
     expect(adCampaign.status).toBe('active');
-    expect(adCampaign.landingPageUrl).toBe('https://lonestarroofing.com/estimate');
+    expect(adCampaign.landingPageUrl).toBe('https://lonestarroofing.com');
     expect(adCampaign.googleCampaignId).toBeTruthy();
     expect(adCampaign.provisioningStatus).toBe('simulated');
   });

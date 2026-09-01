@@ -100,6 +100,10 @@ export function graceMinutesFor(periodMinutes) {
   return Math.min(periodMinutes, 60);
 }
 
+export const KNOWN_DARK_JOBS = new Set([
+  'billing-subscription-projection', // Feature gated by LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED
+]);
+
 /**
  * Evaluates the status of a single declared cron job.
  */
@@ -121,6 +125,14 @@ export function classifyJobStatus({
     return {
       status: 'ok',
       detail: `${seenRow.runs} run(s), 0 failure(s), last ${new Date(seenRow.last_run).toISOString()}`,
+    };
+  }
+
+  if (KNOWN_DARK_JOBS.has(job) && (!everRow || !everRow.last_run)) {
+    return {
+      status: 'disabled',
+      reason: 'flag_gated',
+      detail: `${schedule} -- intentionally disabled by feature flag`,
     };
   }
 
@@ -248,6 +260,7 @@ export async function runCronInspection({
     const failing = [];
     const idle = [];
     const ok = [];
+    const disabled = [];
 
     for (const { job, schedule } of declared.slice().sort((a, b) => a.job.localeCompare(b.job))) {
       const seenRow = seen.get(job);
@@ -269,6 +282,7 @@ export async function runCronInspection({
       else if (verdict.status === 'stale') stale.push({ job, schedule, ...verdict });
       else if (verdict.status === 'silent') silent.push({ job, schedule, ...verdict });
       else if (verdict.status === 'failing') failing.push({ job, schedule, ...verdict });
+      else if (verdict.status === 'disabled') disabled.push({ job, schedule, ...verdict });
     }
 
     const undeclared = rows.filter((row) => !declared.some((d) => d.job === row.job));
@@ -277,10 +291,13 @@ export async function runCronInspection({
       for (const row of undeclared) console.log(`  ${row.job} (${row.runs} runs)`);
     }
 
-    console.log(`\nSummary: ${ok.length} OK, ${idle.length} idle (not due), ${stale.length} stale, ${silent.length} silent, ${failing.length} failing.`);
+    console.log(`\nSummary: ${ok.length} OK, ${idle.length} idle (not due), ${disabled.length} disabled/flag-gated, ${stale.length} stale, ${silent.length} silent, ${failing.length} failing.`);
 
     if (idle.length) {
       console.log(`${idle.length} not due in this window: ${idle.map((i) => i.job).join(', ')}.`);
+    }
+    if (disabled.length) {
+      console.log(`${disabled.length} disabled / flag-gated: ${disabled.map((d) => d.job).join(', ')}.`);
     }
     if (stale.length) {
       console.log(`${stale.length} STALE (overdue for execution): ${stale.map((s) => s.job).join(', ')}.`);
@@ -294,7 +311,7 @@ export async function runCronInspection({
       process.exitCode = 1;
     }
 
-    return { silent, stale, failing, idle, ok, undeclared };
+    return { silent, stale, failing, idle, ok, disabled, undeclared };
   } finally {
     await client.end();
   }

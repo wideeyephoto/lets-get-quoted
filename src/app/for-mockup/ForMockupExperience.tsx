@@ -242,7 +242,7 @@ const FAQS = [
   },
   {
     q: 'Does Let\'s Get Quoted sync with QuickBooks Online?',
-    a: 'Yes. Two-way real-time QuickBooks Online synchronization connects your customers, itemized invoices, sales tax, and payment records without any manual double entry.',
+    a: 'Yes. Direct real-time QuickBooks Online synchronization connects your customers, itemized invoices, sales tax, and payment records without any manual double entry.',
   },
 ];
 
