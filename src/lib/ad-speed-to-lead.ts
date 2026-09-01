@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendSpeedToLeadSms, sendContractorAdLeadSms } from '@/lib/sms';
 import { withOptOut } from '@/lib/sms-templates';
 import {

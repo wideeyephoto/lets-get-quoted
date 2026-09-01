@@ -1755,7 +1755,7 @@ export async function sendContractorAdLeadSms(params: {
     phone: params.phone,
     body: params.body,
     messageKind: 'contractor-ad-lead-alert',
-    category: 'system_alert',
+    category: 'owner_alert',
     idempotencyKey: params.idempotencyKey,
   });
 }

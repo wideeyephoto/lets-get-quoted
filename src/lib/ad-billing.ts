@@ -1309,12 +1309,11 @@ export async function executeWalletRefillCharge(params: {
     let recoveryUrl: string | null = null;
     if (customerId) {
       try {
-        const portal = await createAdBudgetBillingPortalSession({
-          admin,
+        const portalUrl = await createAdBudgetBillingPortalSession({
           accountId,
           returnUrl: '/dashboard/marketing/ads',
         });
-        recoveryUrl = portal.url;
+        recoveryUrl = portalUrl;
       } catch {
         // ignore portal generation error in recovery flow
       }
