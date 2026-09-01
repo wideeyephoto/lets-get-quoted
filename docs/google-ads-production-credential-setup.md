@@ -45,6 +45,30 @@ Purpose: provision the five server-side Google Ads credentials required by the p
 - The deployed application does not expose a dedicated read-only endpoint for the exact five-variable predicate. Verification therefore paired the exact predicate in `src/lib/google-ads-api.ts` with the five Production-only secret entries and the Ready redeployment.
 - Separate compatibility finding: the primary Google Ads client in `src/lib/google-ads-api.ts` is pinned to API `v20`. That endpoint returned HTTP 404 during verification, while `v25` succeeded. The credentials are valid, but primary campaign operations should be upgraded to a supported API version before relying on them.
 
+## Separate public acquisition tracking
+
+The five `GOOGLE_ADS_*` values above authorize server-side campaign management. They do not configure Let's Get Quoted's own public acquisition tag or sign-up attribution.
+
+Production acquisition tracking uses these paired public identifiers:
+
+- `NEXT_PUBLIC_GOOGLE_TAG_ID`
+- `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID`
+
+They are public identifiers, not credentials. Both are configured as Vercel Production `Config` values; Preview and Development remain unset so non-production traffic cannot pollute the Production conversion action. Because Next.js embeds `NEXT_PUBLIC_*` values at build time, any addition, change, or removal requires a new Production deployment.
+
+Verification completed 2026-09-01 against READY Production release `97761d26`:
+
+- [x] Both identifiers exist with Production-only scope and share the same Google Ads base tag ID.
+- [x] The public homepage and pricing page render the tag; `gtag.js` returned HTTP 200 in a real browser.
+- [x] Login/token-sensitive routes render no Google tag or data layer.
+- [x] Page arrival emits zero sign-up conversion commands.
+- [x] One labeled synthetic sign-up conversion added exactly one command and received HTTP 204 from Google's collection endpoint.
+- [x] Google's current collection endpoint is explicitly allowed by `connect-src`; the verified marketing-page run produced no Google CSP violation.
+- [x] First-run action tests prove validation failures, zero-row/database failures, unavailable prior state, and returning Terms acceptance are not conversion-eligible.
+- [x] A persisted initial onboarding returns a stable opaque transaction ID, and the client sends it through the once-per-page conversion helper before best-effort site seeding.
+
+Consent currently defaults `ad_storage`, `ad_user_data`, `ad_personalization`, and `analytics_storage` to `denied`; no consent-update path is implemented. The verified event therefore uses Google's privacy-limited Consent Mode behavior and must not be described as full cookie-based attribution.
+
 ## Security notes
 
 - Secrets and customer IDs are handled only in authenticated provider surfaces and encrypted Vercel configuration.

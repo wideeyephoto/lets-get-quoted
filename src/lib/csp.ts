@@ -135,6 +135,8 @@ const ANALYTICS_ENDPOINTS = [
   // Google Ads conversion and remarketing endpoints
   'https://www.googleadservices.com',
   'https://*.googleadservices.com',
+  // Current Google Ads / Consent Mode collection endpoint (measured in Production).
+  'https://pagead2.googlesyndication.com',
   'https://googleads.g.doubleclick.net',
   'https://*.doubleclick.net',
   'https://www.google.com',
