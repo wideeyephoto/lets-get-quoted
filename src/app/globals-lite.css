@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 20f47d7a1c2c3600
+   source-sha256: 50bce810284e1e67
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -13717,11 +13717,6 @@ a.metric-card-link:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   margin-top: 0.6rem;
-}
-
-/* Account "Danger zone" — delete account */
-.danger-zone {
-  border-color: var(--cedge-red-8);
 }
 
 .job-meta {
