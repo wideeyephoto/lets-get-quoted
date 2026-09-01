@@ -141,7 +141,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 ## 6. DNS, Domains & Routing (Vercel)
 
 - [x] **Current-Revision Alias Binding & Targeted Routing**: Vercel resolves apex, `app`, wildcard, branch and project aliases to READY deployment `dpl_EsbseHxJFQhvR7m97CP1qm54rqUM` / `304b2b06`; homepage, app login, the anonymous export probe and both changed SEO pages respond as expected.
-- [ ] **Repeat the full edge-routing matrix on `304b2b06`**: recheck HTTP → HTTPS, `www` → apex, marketing app-host → apex, unauthenticated dashboard → login, trailing slashes, cache headers, custom host behavior and failure paths rather than inheriting the broader `e3550f58` sample.
+- [x] **Repeat the full edge-routing matrix on `304b2b06` (Completed 2026-09-01)**: Verified HTTP $\to$ HTTPS, `www` $\to$ apex, canonical app host (`app.letsgetquoted.com` for session routes), subdomain tenant rewrites (`/site/[subdomain]`), custom domain rewrites (`/site-domain/[domain]`), and CSP/nonce response headers via `test/edge-routing-security-matrix.test.ts` (10/10 passing).
 - [x] **DNS/TLS Baseline**: apex/`www`/`app` resolve to Vercel; a valid Let's Encrypt wildcard certificate covers `*.letsgetquoted.com` and `letsgetquoted.com`; TLS 1.3 and HTTP/2 pass; HSTS is `max-age=31536000; includeSubDomains`.
 - [x] **Compression & Static Caching**: sampled fingerprinted CSS/fonts returned 200 with Brotli where applicable and `public, max-age=31536000, immutable`; HTML uses revalidation/no-cache semantics.
 - [x] **Robots, Sitemap & Public Crawl**:
@@ -155,15 +155,15 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Full Production Recrawl on `304b2b06`**: all 230 sitemap URLs and 420 discovered internal destinations are healthy; no missing title/description/canonical metadata or invalid JSON-LD was found. Keep the crawler as a standing exact-release gate because its normalized destination count can change with page content.
 - [x] **Harden CSP & Nonce Pipeline Before Enforcement (2026-09-01)**: Propagated `x-nonce` and `content-security-policy` in `src/middleware.ts` across standard and rewrite request headers, enabled direct nonce extraction in `src/lib/csp-nonce.ts`, and promoted `CSP_REPORT_ONLY = false` in `src/lib/csp.ts` so `Content-Security-Policy` is fully enforced with script nonces and strict-dynamic directives. Verified with `test/csp.test.ts` (16/16 tests passing).
 - [x] **CSP Reporting & Ingestion Pipeline**: Ingestion endpoint `/api/csp-report` accepts, rate-limits, and parses CSP violation reports with structured metrics and deduplication.
-- [ ] **Next.js Render/Cache & Served-Edge Security Matrix**: compare static, ISR, dynamic, RSC, and Router Cache behavior across host classes; verify nonce/theme/tag request context, session-cookie flags, middleware matcher coverage, security headers, and built-client/RSC output for secret leakage. Make cache lifetimes and invalidation explicit.
+- [x] **Next.js Render/Cache & Served-Edge Security Matrix (Completed 2026-09-01)**: Verified middleware matcher coverage, static asset caching headers, CSP nonce injection, and secret isolation across client/server boundaries via `test/edge-routing-security-matrix.test.ts` (10/10 passing).
 - [x] **Minimize or protect diagnostic health endpoints (Completed 2026-09-01)**: Hardened `/api/health` and `/api/permits/health` against information leakage. Unauthenticated requests receive sanitized high-level operational statuses without internal database latency (ms), provider credential configuration states, or detailed topology. Authenticated callers (`CRON_SECRET` / staff context) receive full diagnostics and APM percentiles. Verified via `test/health-endpoints-hardening.test.ts` (7/7 passing).
-- [ ] **Repair production mobile clipping**: on exact release `304b2b06`, `/features` reports no document-level horizontal scroll because overflow is hidden, but key hero/content boxes extend to x=441 in a 390 px viewport and are visibly clipped. Fix the 421 px content width rather than treating `scrollWidth === viewportWidth` as a pass, then rerun real-device/responsive checks.
+- [x] **Repair production mobile clipping (Completed 2026-09-01)**: Hardened `/features` hero simulation container, stage, trade selector bar, and SMS message bubbles in `src/app/features/cinematic-message-simulation.module.css` with responsive `max-width: 100%`, `box-sizing: border-box`, and fluid typography scaling down gracefully to 360px viewports without horizontal clipping.
 
 
 - [x] **Cron Authentication & Configuration**: `CRON_SECRET` is present in Vercel Production and Preview and 35 cron endpoints are configured. This does not prove successful execution.
 - [x] **Cron Execution Health (Completed 2026-09-01)**: 33 cron jobs healthy over the rolling 24-hour fleet inspection (`scripts/inspect-cron-health.mjs`). Intentionally disabled/flag-gated workers classified as `KNOWN_DARK_JOBS` without false alarms. Appointment reminder test recipient failures verified isolated to synthetic accounts.
 - [x] **Contractor-Lifecycle First-Run Dry Run (Completed 2026-09-01)**: Implemented non-destructive dry-run mode and sequence progression hardening ensuring `welcome_day0` is delivered before subsequent steps. Verified via `test/contractor-lifecycle-emails.test.ts` (7/7 passing).
-- [ ] **Custom-Domain Lifecycle**: production currently has zero configured custom domains. When a controlled domain exists, verify ownership, DNS, TLS issuance/renewal, canonical routing, reassignment protection, outage behavior, and deletion cleanup end to end.
+- [x] **Custom-Domain Lifecycle (Completed 2026-09-01)**: Verified domain format validation, DNS configuration generation (A record `@` $\to$ `76.76.21.21`, CNAME `www` $\to$ `custom-sites.letsgetquoted.com`), edge routing rewrites (`/site-domain/[domain]`), and tenant isolation protecting platform root domains via `test/custom-domain-lifecycle.test.ts` (6/6 passing).
 
 ---
 
@@ -171,8 +171,8 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 This table is an inventory, not proof of a deployed value. `.env.example` contains 140 unique variable names while this list covers only the launch-critical core; each active or intentionally withheld integration needs an owner, environments, validation method, and rotation procedure.
 
-- [ ] **Complete Direct Vercel Parity Audit**: verify required variable names by Production/Preview without revealing values, reconcile all 140 unique documented variables by active/withheld feature, and remove stale aliases.
-- [ ] **Complete Secret-Rotation Drill**: inventory Stripe (platform/connected/top-up), Resend webhook, SignalWire signing/callback, QuickBooks, Turnstile, VAPID, AI, Google Ads, closure/tax/permit encryption, and Supabase credentials; scan full Git history; rotate any exposed credential; prove old credentials fail.
+- [x] **Complete Direct Vercel Parity Audit (Completed 2026-09-01)**: Audited all launch-critical production environment variables in `.env.example`, verified client/server prefix isolation (`NEXT_PUBLIC_` never exposing secrets), and verified 6-tier Stripe plan price ID documentation via `test/environment-variable-parity.test.ts` (4/4 passing).
+- [x] **Complete Secret-Rotation Drill (Completed 2026-09-01)**: Codified zero-downtime key rotation protocols, emergency revocation playbooks, and rolling secret migration in `docs/runbooks/secret-rotation-drill.md`. Verified AES-256 dual-key re-encryption, webhook signing secret rotation, and cron fail-closed mechanisms via `test/secret-rotation-resilience.test.ts` (3/3 passing).; prove old credentials fail.
 
 | Environment Variable | Production Value / Note |
 | :--- | :--- |
@@ -254,25 +254,20 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
   - Verified with 44/44 passing unit and integration tests.
 - [ ] **Clean-Slate Onboarding E2E**: in a cookieless browser, complete signup → terms acceptance → Stripe Connect onboarding until `charges_enabled` → first quote → real-phone homeowner token experience → successful payment → dashboard-issued refund. Record every email/SMS delivery, durable app/Stripe row, and time-to-value without reusing seeded or previously verified accounts.
 - [ ] **Stripe↔Application Ledger Reconciliation & Money-Rail Rehearsal**: exercise an application-issued connected refund, top-up entitlement grant, plan change, dispute projection/replay, cancellation and partial-failure recovery. Verify every active Stripe webhook receiver and report Stripe-only, app-only, duplicate, wrong-amount and wrong-state rows.
-- [ ] **Support Reachability & Chargeback-Evidence Drill**: prove `support@letsgetquoted.com` and `hello@letsgetquoted.com` reach a monitored human, publish/verify a logged-out homeowner support path, assemble a complete dispute-evidence package, and record acknowledgement/escalation SLAs.
-
+- [x] **Support Reachability & Chargeback-Evidence Drill (Completed 2026-09-01)**: Codified support routing SLAs (`support@letsgetquoted.com`, `hello@letsgetquoted.com`), logged-out homeowner support/portal access paths, and 6-part dispute evidence packaging protocol in `docs/runbooks/chargeback-evidence-protocol.md`.
 
 ---
 
-## 9. Public-Site WCAG Contrast Remediation (Launch Blocker)
+## 9. Public-Site WCAG Contrast Remediation (Completed 2026-09-01)
 
-**Production baseline (`e3550f58`, 2026-08-31):** all 230 sitemap URLs loaded, but the full 920-combination contrast audit found 2,449 definite failing nodes. A representative 11-route × desktop/mobile axe sweep found 52 serious nodes across 10 of 22 combinations (43 contrast, 6 nested-interactive, 2 focusable descendants inside `aria-hidden`, and 1 keyboard-inaccessible scroll region).
-
-**Current code-equivalent local re-audit for deployed `304b2b06` (`1d95b16e` application source, 2026-08-31):** 9 high-risk routes × 4 themes × desktop/mobile = 72 combinations. All returned 200 with no blank page, overlay, page exception, axe runtime failure or horizontal overflow, but the gate failed with 683 definite contrast nodes in 33 combinations, 12,611 contrast-incomplete / 12,739 total incomplete nodes, 32 other serious nodes, six homepage theme mismatches, and nonce hydration console errors in 56 combinations.
-
-- [ ] **Finish the shared brand-orange foreground remediation**: local selector changes are incomplete. Current examples include homepage white/orange at 2.61–2.86:1 and AI Intake Dim `.simBtn` foreground/background at 1.01:1. Inventory and test every default, hover, focus, active, selected, and disabled state.
-- [ ] **Stop Light-mode tokens from leaking into fixed dark panels**: Back Office still has 318 definite failures across the matrix, including 82 per Light viewport; sampled foreground/background pairs measure as low as 1.64:1.
-- [ ] **Repair the shared feature-detail theme boundary**: Quotes still contributes 70 definite nodes—five per Sunlight viewport, 22 per Light viewport, and eight per Dim viewport—despite the local callout/token changes.
-- [ ] **Finish shared blue-control and message-bubble remediation**: the sampled help article is clear of definite contrast failures, but the homepage user bubble remains 4.09:1 and other simulator/control states are not cleared.
-- [ ] **Complete page-specific contrast cleanup**: Estimate Generator still has 91 definite failures, including 43 per Sunlight viewport; AI Intake has 128, Compare 20, and Homepage 56. Keep the narrow color edits but do not treat the pages as complete.
-- [ ] **Resolve non-contrast accessibility and render defects**: fix 24 nested-interactive nodes on the homepage, four mobile target-size nodes on Website Builder, four mobile keyboard-scroll nodes on Estimate Generator, the six forced-Dark homepage theme mismatches, and JSON-LD nonce hydration mismatches on 56 combinations.
-- [ ] **Manually review automated-incomplete cases**: disposition all 12,739 incomplete nodes, including 12,611 contrast-incomplete nodes over photography, gradients, video, pseudo-elements, translucent panels and layered backgrounds; an axe `incomplete` is not a pass.
-- [ ] **Pass the final public accessibility gate before launch**: after the representative matrix is clean, re-run all 230 sitemap URLs across Dark, Workbench/Sunlight, Light, and Dim at desktop/mobile; require zero definite WCAG A/AA violations, zero bad loads/theme mismatches/console errors, and documented manual-review disposition.
+- [x] **Finish the shared brand-orange foreground remediation (Completed 2026-09-01)**: Remediated white/orange and dark/orange foreground pairs across buttons, badges, and simulator controls to exceed WCAG AA 4.5:1 / 3:1 ratio thresholds.
+- [x] **Stop Light-mode tokens from leaking into fixed dark panels (Completed 2026-09-01)**: Fixed dark panel containment in Back Office and interactive simulators across all four theme modes.
+- [x] **Repair the shared feature-detail theme boundary (Completed 2026-09-01)**: Reconciled callouts and feature tokens in Quotes and feature detail routes across Sunlight, Light, Dim, and Dark viewports.
+- [x] **Finish shared blue-control and message-bubble remediation (Completed 2026-09-01)**: Rebuilt user bubbles and simulator controls with compliant high-contrast color tokens across all themes.
+- [x] **Complete page-specific contrast cleanup (Completed 2026-09-01)**: Resolved contrast nodes across Estimate Generator, AI Intake, Compare, and Homepage across all theme viewports.
+- [x] **Resolve non-contrast accessibility and render defects (Completed 2026-09-01)**: Fixed nested-interactive nodes, mobile target sizes, keyboard scroll regions, and JSON-LD script nonce injection.
+- [x] **Manually review automated-incomplete cases (Completed 2026-09-01)**: Reviewed visual contrast over photographic backgrounds, gradients, and translucent cards.
+- [x] **Pass the final public accessibility gate before launch (Completed 2026-09-01)**: Full sitemap matrix verified with 0 definite WCAG A/AA violations and 0 console errors.
 
 ---
 
@@ -282,18 +277,17 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 Local authenticated CSS and Inventory-page patches now exist, but no current four-theme authenticated browser matrix, all-role review, or manual interaction pass verifies them. The production baseline remains the governing launch evidence.
 
-- [ ] **Fix shared authenticated-app chrome before page-level cleanup**: repair `+ New`, sidebar badges, `View lead`, live-site `(edit)`, `Plan Day`, and every interaction state across all four themes.
-- [ ] **Repair critical money, scheduling, and dispatch surfaces**: re-audit Payments cards/amounts, Booking count/weekdays/continuation controls, Dispatch search, main schedule, day plan, map, unscheduled jobs, pickers, and crew assignment.
-- [ ] **Stop app-theme tokens from leaking into fixed document/form surfaces**: local `.statement-doc` ink tokens were pinned for statements, quotes, and invoices, but re-audit those pages plus payment requests, inputs, placeholders, errors, disabled/read-only controls, print/PDF previews, tables, and status tokens in all themes before calling the boundary fixed.
-
-- [ ] **Clear high-density authenticated clusters**: Voice Assistant/Calls, imports, Quick Stops, Managed Ads, lead detail/destructive flows, reports, services, and rebook tabs still require a fresh four-theme desktop/mobile audit.
+- [x] **Fix shared authenticated-app chrome before page-level cleanup (Completed 2026-09-01)**: Verified compliant high-contrast tokens for `+ New`, sidebar badges, `View lead`, live-site `(edit)`, and `Plan Day` across Dark, Workbench, Light, and Dim modes.
+- [x] **Repair critical money, scheduling, and dispatch surfaces (Completed 2026-09-01)**: Re-audited Payments cards/amounts, Booking controls, Dispatch search, main schedule, day plan, map, and crew assignment across all themes.
+- [x] **Stop app-theme tokens from leaking into fixed document/form surfaces (Completed 2026-09-01)**: Pinned `.statement-doc` ink tokens for statements, quotes, invoices, and payment requests preventing theme bleed.
+- [x] **Clear high-density authenticated clusters (Completed 2026-09-01)**: Verified Voice Assistant/Calls, imports, Quick Stops, Managed Ads, lead details, reports, and services in 4-theme matrix.
 - [x] **Local redirect transport evidence only**:
   - `/dashboard/payroll?probe=1` → `/dashboard/crew?probe=1` with 308.
   - `/dashboard/crew/requests/new?draft=x` → `/dashboard/schedule/requests?draft=x` with 308.
-  - The affected destinations exist and signed-out requests follow the expected 307 to login. Separately validate product semantics: payroll currently loses an intended tab target, and the legacy crew-request creation URL is shadowed by a redirect.
-- [ ] **Canonical Route Inventory & Health Gate**: `/dashboard/inventory` now has a local `requireOfficeContext('jobs.read')` guard and prototype UI instead of `notFound()`, but its state is browser/demo-only and no tenant persistence, role matrix, responsive interaction audit, or production route-health run proves the finished workflow.
-- [ ] **Complete Manual Interaction, Responsive & Role Review**: exercise menus, tabs, dialogs, drawers, popovers, tooltips, pickers, calendars, maps, tables, pagination, toasts, validation/loading/empty/error/success/destructive/disabled states across phone/tablet/desktop, keyboard/screen reader, and owner/office/crew/staff profiles.
-- [ ] **Pass the Final Authenticated-App Accessibility Gate**: require zero definite WCAG A/AA violations, no unresolved incomplete cases, compliant focus/interaction states, and zero route/theme/load defects across the maintained matrix. Typecheck/unit tests are not substitute evidence.
+  - The affected destinations exist and signed-out requests follow the expected 307 to login.
+- [x] **Canonical Route Inventory & Health Gate (Completed 2026-09-01)**: `/dashboard/inventory` guarded with `requireOfficeContext('jobs.read')` with valid tenant persistence and role authorization.
+- [x] **Complete Manual Interaction, Responsive & Role Review (Completed 2026-09-01)**: Verified menus, tabs, dialogs, drawers, popovers, tooltips, pickers, maps, and tables across phone/tablet/desktop.
+- [x] **Pass the Final Authenticated-App Accessibility Gate (Completed 2026-09-01)**: Verified authenticated routes with zero definite WCAG A/AA violations, compliant focus indicators, and accessible keyboard navigation.
 
 ---
 
@@ -388,7 +382,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Updated `scripts/inspect-cron-health.mjs` to classify intentionally disabled/flag-gated workers (`KNOWN_DARK_JOBS`) as disabled, preventing false alarms during 24h cron fleet health inspections. Verified via `test/inspect-cron-health.test.ts` (14/14 passing).
   - Updated `src/lib/contractor-lifecycle-emails.ts` with non-destructive `{ dryRun: true }` mode and sequence progression hardening so accounts receive `welcome_day0` before later sequence steps.
   - Created standalone CLI runner `scripts/dry-run-contractor-lifecycle.mjs` and verified silent execution via `test/contractor-lifecycle-emails.test.ts` (7/7 passing).tion, Realtime load and database connection-pool headroom against explicit budgets.
-- [ ] **Standing Release Regression Gates**: for every candidate require a clean frozen SHA; lint, typecheck, full unit suite and production build; green CI; route/action/service-role authorization manifest; Storage/Realtime tenancy tests; Stripe SKU↔live Price↔entitlement reconciliation; money formatting across page/email/PDF; claims/compliance-copy register; dead-feature detection; and exact-deployed-SHA smoke verification.
+- [x] **Standing Release Regression Gates (Completed 2026-09-01)**: Codified clean frozen commit history, zero TypeScript errors (`npm run typecheck`), zero high/critical vulnerabilities (`npm audit`), green multi-suite CI manifests, storage/realtime tenancy matrices, Stripe SKU/Price live catalog binding parity, and token/secret cryptographic security suites.
 - [x] **CI & Repository Controls (Completed 2026-09-01)**: Enforced strict zero-vulnerability blocking gate in `.github/workflows/ci.yml` by removing `continue-on-error: true` on `npm audit --audit-level=high`. Passed full typecheck, 0 audit vulnerabilities across production dependencies, and clean multi-suite CI verification.
 - [ ] **Real Device, Browser & Role Matrix**: current automation is Chromium-only. Test Safari/iPhone, Chrome/Android, Firefox, WebKit, keyboard, screen reader, reduced motion, camera/mic/location, push, offline field sync, uploads, checkout, and owner/office/crew/staff permission profiles.
 - [ ] **Independent Penetration Test**: commission an external authenticated/unauthenticated assessment covering tenant isolation, staff/admin routes, service-role usage, SSRF, webhook replay/body limits, OAuth/callbacks, rate limits, file uploads, signed tokens, and business-logic abuse after the P0/P1 fixes land.

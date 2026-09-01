@@ -840,3 +840,52 @@
     min-height: 36px;
   }
 }
+
+@media (max-width: 480px) {
+  .sim {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+  }
+
+  .sim .tradeBar {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    padding: 4px 6px;
+    gap: 3px;
+  }
+
+  .sim .tradeTab {
+    padding: 4px 6px;
+    font-size: 10px;
+  }
+
+  .sim .stage {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    perspective: none !important;
+  }
+
+  .sim .jobCard {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 12px 14px;
+    box-sizing: border-box !important;
+  }
+
+  .sim .smsToast {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  .sim .smsBubble {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    word-break: break-word;
+  }
+}
