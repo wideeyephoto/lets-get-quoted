@@ -56,6 +56,92 @@ export type PortalJob = {
   quotedAmount: number;
 };
 
+export type PortalQuoteItem = {
+  id: string;
+  label: string;
+  amount: number;
+  kind: 'base' | 'addon' | 'subscription';
+  selected: boolean;
+  recommended: boolean;
+  frequency?: 'weekly' | 'biweekly' | 'monthly';
+  termCycles?: number;
+  prepayDiscountPercent?: number;
+};
+
+export type PortalQuote = {
+  id: string;
+  jobId: string;
+  ref: string;
+  scope: string | null;
+  status: string;
+  statusLabel: string;
+  quotedAmount: number;
+  depositGate: string | null;
+  depositPercent: number | null;
+  depositAmount: number | null;
+  items: PortalQuoteItem[];
+  hasAddons: boolean;
+  hasSubscriptions: boolean;
+  approved: boolean;
+  address: string | null;
+  scheduledFor: string | null;
+  createdAt: string;
+};
+
+export type PortalDocumentKind =
+  | 'invoice'
+  | 'receipt'
+  | 'warranty'
+  | 'photo'
+  | 'proof'
+  | 'contract'
+  | 'change_order'
+  | 'submission';
+
+export type PortalDocument = {
+  id: string;
+  title: string;
+  kind: PortalDocumentKind;
+  kindLabel: string;
+  jobId: string | null;
+  jobRef: string | null;
+  jobScope: string | null;
+  url: string | null;
+  previewUrl?: string | null;
+  badge?: string | null;
+  createdAt: string;
+};
+
+export type PortalMessage = {
+  id: string;
+  direction: 'inbound' | 'outbound';
+  sender: string;
+  body: string;
+  channel: 'sms' | 'portal_note' | 'update';
+  mediaUrls?: string[];
+  createdAt: string;
+};
+
+export type PortalPlan = {
+  id: string;
+  title: string;
+  scope: string | null;
+  kind: 'recurring_service' | 'payment_plan';
+  status: 'active' | 'paused' | 'completed' | 'canceled';
+  statusLabel: string;
+  amount: number;
+  frequency: string;
+  frequencyLabel: string;
+  nextRunDate: string | null;
+  autoCharge: boolean;
+  cardBrand: string | null;
+  cardLast4: string | null;
+  paymentMethodSummary: string | null;
+  remainingCycles: number | null;
+  totalCycles: number | null;
+  createdAt: string;
+};
+
 /**
  * What a homeowner sees about their own history.
  *
@@ -70,12 +156,20 @@ export type PortalView = {
   jobs: PortalJob[];
   totalJobs: number;
   firstJobAt: string | null;
+  activeQuotesCount: number;
+  activePlansCount: number;
+  documentsCount: number;
+  messagesCount: number;
 };
 
 export function summarisePortal(input: {
   businessName: string;
   clientName: string;
   jobs: PortalJob[];
+  quotes?: PortalQuote[];
+  plans?: PortalPlan[];
+  documents?: PortalDocument[];
+  messages?: PortalMessage[];
 }): PortalView {
   // Oldest job first for "customer since", newest first for the list — people
   // look for the most recent thing and remember by the oldest.
@@ -83,12 +177,22 @@ export function summarisePortal(input: {
     .map((job) => job.completedAt ?? job.scheduledFor)
     .filter((value): value is string => Boolean(value))
     .sort();
+
+  const activeQuotesCount = (input.quotes ?? []).filter((q) => !q.approved && q.status === 'new_lead').length;
+  const activePlansCount = (input.plans ?? []).filter((p) => p.status === 'active').length;
+  const documentsCount = (input.documents ?? []).length;
+  const messagesCount = (input.messages ?? []).length;
+
   return {
     businessName: input.businessName,
     clientName: input.clientName,
     jobs: input.jobs,
     totalJobs: input.jobs.length,
     firstJobAt: dated[0] ?? null,
+    activeQuotesCount,
+    activePlansCount,
+    documentsCount,
+    messagesCount,
   };
 }
 

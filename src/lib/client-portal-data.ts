@@ -451,7 +451,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
           .select('id, kind, title, body, author, visibility, created_at')
           .eq('account_id', accountId)
           .in('job_id', jobIds)
-          .in('visibility', ['client_visible', 'client_financial'])
+          .in('visibility', ['client', 'client_financial'])
           .order('created_at', { ascending: false })
           .limit(30)
       : Promise.resolve({ data: [] }),
@@ -685,7 +685,7 @@ export async function submitPortalMessage(
         kind: 'note',
         title: `Portal note from ${clientName}`,
         body,
-        visibility: 'client_visible',
+        visibility: 'client',
         author: 'Client',
       });
     } catch (err) {
