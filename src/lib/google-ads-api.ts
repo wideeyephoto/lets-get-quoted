@@ -114,7 +114,7 @@ export async function provisionManagedSearchCampaign(
     scheduleDays,
     startHour = 7,
     endHour = 19,
-    customFocus: _customFocus,
+    customFocus,
     competitorExclusions = [],
   } = params;
 
@@ -129,6 +129,7 @@ export async function provisionManagedSearchCampaign(
     services,
     phone,
     landingPageUrl,
+    customFocus,
   });
 
   const { allKeywords, negativeKeywords } = generateTradeKeywords(
