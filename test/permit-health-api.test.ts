@@ -1,9 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { GET } from '../src/app/api/permits/health/route';
 
 describe('Permit System Health & Diagnostics API - GET /api/permits/health', () => {
-  it('returns healthy status with all subsystems, code catalogs, and providers reporting ready', async () => {
+  beforeEach(() => {
+    process.env.CRON_SECRET = 'test_cron_secret_123';
+  });
+
+  it('returns sanitized status for public unauthenticated requests', async () => {
     const res = await GET(new NextRequest('http://localhost:3010/api/permits/health'));
     expect(res.status).toBe(200);
 
@@ -11,6 +15,25 @@ describe('Permit System Health & Diagnostics API - GET /api/permits/health', () 
     expect(data.status).toBe('healthy');
     expect(data.version).toBe('1.0.0');
     expect(data.timestamp).toBeDefined();
+    // Public callers should not receive internal component details
+    expect(data.components).toBeUndefined();
+  });
+
+  it('returns full subsystem diagnostics for authenticated diagnostic callers', async () => {
+    const res = await GET(
+      new NextRequest('http://localhost:3010/api/permits/health', {
+        headers: {
+          authorization: 'Bearer test_cron_secret_123',
+        },
+      })
+    );
+    expect(res.status).toBe(200);
+
+    const data = await res.json();
+    expect(data.status).toBe('healthy');
+    expect(data.version).toBe('1.0.0');
+    expect(data.timestamp).toBeDefined();
+    expect(data.components).toBeDefined();
 
     // Check location context
     expect(data.components.locationContext.status).toBe('healthy');
