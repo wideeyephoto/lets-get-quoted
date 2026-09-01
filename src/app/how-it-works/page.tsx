@@ -159,19 +159,27 @@ function Check({ children }: { children: ReactNode }) {
 export default function HowItWorksPage() {
   return (
     <div className={styles.page}>
-      <div className={flagshipStyles.root}>
-        <a className="skip-link" href="#main-content">
-          Skip to content
-        </a>
-        <SiteHeader />
-      </div>
-      <LaunchBanner offsetHeader />
-      <SectionNav sections={NAV_SECTIONS} />
+      <div className={styles.siteShell}>
+        {/* Ambient atmospheric backdrop glows matching /features & flagship home */}
+        <div className={`${styles.ambient} ${styles.ambientOne}`} aria-hidden="true" />
+        <div className={`${styles.ambient} ${styles.ambientTwo}`} aria-hidden="true" />
+        <div className={`${styles.ambient} ${styles.ambientThree}`} aria-hidden="true" />
+        <div className={`${styles.ambient} ${styles.ambientFour}`} aria-hidden="true" />
+        <div className={`${styles.ambient} ${styles.ambientFive}`} aria-hidden="true" />
 
-      <main id="main-content">
-      <section className={styles.hero} aria-labelledby="how-title">
-        <div className={styles.heroGlowOne} aria-hidden="true" />
-        <div className={styles.heroGlowTwo} aria-hidden="true" />
+        <div className={flagshipStyles.root}>
+          <a className="skip-link" href="#main-content">
+            Skip to content
+          </a>
+          <SiteHeader />
+        </div>
+        <LaunchBanner offsetHeader />
+        <SectionNav sections={NAV_SECTIONS} />
+
+        <main id="main-content">
+        <section className={styles.hero} aria-labelledby="how-title">
+          <div className={styles.heroGlowOne} aria-hidden="true" />
+          <div className={styles.heroGlowTwo} aria-hidden="true" />
         <div className={styles.shell}>
           <div className={styles.heroLayout}>
             <div className={styles.heroCopy}>
@@ -563,6 +571,7 @@ export default function HowItWorksPage() {
 
       <div className={flagshipStyles.root}>
         <SiteFooter />
+      </div>
       </div>
     </div>
   );

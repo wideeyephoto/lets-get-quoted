@@ -10,6 +10,7 @@
   font-family: var(--font-body, system-ui, -apple-system, sans-serif);
   position: relative;
   isolation: isolate;
+  filter: drop-shadow(0 20px 45px rgba(0, 0, 0, 0.35));
 }
 
 /* Top Conduit Bar: Acoustic Waveform & Stream Status */

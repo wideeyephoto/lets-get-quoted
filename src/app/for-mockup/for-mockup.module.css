@@ -330,6 +330,7 @@
   position: relative;
   width: 100%;
   padding: 18px 0;
+  filter: drop-shadow(0 20px 45px rgba(0, 0, 0, 0.35));
 }
 
 .floatingStatBadge {

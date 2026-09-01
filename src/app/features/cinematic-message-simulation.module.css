@@ -13,6 +13,7 @@
   border: none !important;
   box-shadow: none !important;
   padding: 0 !important;
+  filter: drop-shadow(0 20px 45px rgba(0, 0, 0, 0.35));
 }
 
 /* ---- Trade Selector Bar ------------------------------------------------ */

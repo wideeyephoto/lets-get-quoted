@@ -31,6 +31,13 @@ export type StageData = {
   actionText: string;
 };
 
+export type FloatingPill = {
+  icon: string;
+  title: string;
+  subtitle: string;
+  tone: 'hot' | 'approved' | 'scheduled' | 'work' | 'paid';
+};
+
 export type TradePreset = {
   id: TradeId;
   label: string;
@@ -39,6 +46,8 @@ export type TradePreset = {
   customerName: string;
   location: string;
   tradeKicker: string;
+  floatingPillTop: FloatingPill;
+  floatingPillBottom: FloatingPill;
   stages: StageData[];
 };
 
@@ -51,6 +60,18 @@ export const TRADE_PRESETS: Record<TradeId, TradePreset> = {
     customerName: 'Taylor Vance',
     location: 'Royal Oak, MI',
     tradeKicker: 'ELECTRICAL SERVICES',
+    floatingPillTop: {
+      icon: '⚡',
+      title: '94% Service Fit',
+      subtitle: 'Royal Oak service area match',
+      tone: 'hot',
+    },
+    floatingPillBottom: {
+      icon: '💳',
+      title: '$2,500 Deposit Paid',
+      subtitle: 'Cleared via Stripe instant payout',
+      tone: 'paid',
+    },
     stages: [
       {
         number: '01',
@@ -187,6 +208,18 @@ export const TRADE_PRESETS: Record<TradeId, TradePreset> = {
     customerName: 'Marcus Chen',
     location: 'Birmingham, MI',
     tradeKicker: 'PLUMBING & WATER SYSTEMS',
+    floatingPillTop: {
+      icon: '🚰',
+      title: 'Urgent Leak Detected',
+      subtitle: '3.8 miles away · High priority',
+      tone: 'hot',
+    },
+    floatingPillBottom: {
+      icon: '⭐',
+      title: '5-Star Google Review',
+      subtitle: 'Customer review captured live',
+      tone: 'paid',
+    },
     stages: [
       {
         number: '01',
@@ -323,6 +356,18 @@ export const TRADE_PRESETS: Record<TradeId, TradePreset> = {
     customerName: 'Sarah Jenkins',
     location: 'Troy, MI',
     tradeKicker: 'HEATING & COOLING',
+    floatingPillTop: {
+      icon: '❄️',
+      title: 'Emergency Replacement',
+      subtitle: 'Troy · No cooling in home',
+      tone: 'hot',
+    },
+    floatingPillBottom: {
+      icon: '🔄',
+      title: '$19/mo VIP Club Active',
+      subtitle: 'Automated recurring maintenance',
+      tone: 'approved',
+    },
     stages: [
       {
         number: '01',
@@ -459,6 +504,18 @@ export const TRADE_PRESETS: Record<TradeId, TradePreset> = {
     customerName: 'Robert Vance',
     location: 'Rochester Hills, MI',
     tradeKicker: 'ROOFING & EXTERIORS',
+    floatingPillTop: {
+      icon: '🔨',
+      title: 'Storm Damage Identified',
+      subtitle: '32-square architectural tear-off',
+      tone: 'hot',
+    },
+    floatingPillBottom: {
+      icon: '🛡️',
+      title: '50-Year GAF Warranty',
+      subtitle: 'Golden Pledge Certificate issued',
+      tone: 'paid',
+    },
     stages: [
       {
         number: '01',
@@ -595,6 +652,18 @@ export const TRADE_PRESETS: Record<TradeId, TradePreset> = {
     customerName: 'Elena Rostova',
     location: 'Bloomfield Hills, MI',
     tradeKicker: 'RESIDENTIAL REMODELING',
+    floatingPillTop: {
+      icon: '🏡',
+      title: 'Luxury Renovation Scope',
+      subtitle: 'Curbless shower + quartz double vanity',
+      tone: 'hot',
+    },
+    floatingPillBottom: {
+      icon: '📊',
+      title: '39.4% Realized Margin',
+      subtitle: '$9,800 profit · 5★ Houzz review',
+      tone: 'paid',
+    },
     stages: [
       {
         number: '01',
@@ -795,155 +864,191 @@ export default function HeroJobSimulator() {
         isHoveredRef.current = false;
       }}
     >
-      {/* Trade Selector Switcher */}
-      <div className={styles.tradeSelectorBar} role="tablist" aria-label="Select contractor trade sample">
-        {TRADES.map((trade) => {
-          const isActive = activeTrade === trade.id;
-          return (
-            <button
-              key={trade.id}
-              type="button"
-              role="tab"
-              aria-selected={isActive}
-              className={`${styles.tradeTab} ${isActive ? styles.tradeTabActive : ''}`}
-              onClick={() => {
-                setActiveTrade(trade.id);
-                setActiveStageIndex(0);
-              }}
-            >
-              <span aria-hidden="true">{trade.icon}</span>
-              <span>{trade.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Dynamic Multi-Spectrum Ambient Glow Halos */}
+      <span className={styles.ambientGlow} aria-hidden="true" />
+      <span className={styles.ambientGlowSecondary} aria-hidden="true" />
 
-      {/* Card Header Top */}
-      <div className={styles.heroJobTop}>
-        <div className={styles.metaWrap}>
-          <span className={styles.sampleTag}>{preset.sampleId}</span>
-          <span aria-hidden="true">·</span>
-          <span>{preset.customerName} ({preset.location})</span>
-        </div>
-        <div className={styles.controlsWrap}>
-          <span className={styles.stageBadge} data-tone={currentStage.statusTone}>
-            <span aria-hidden="true">●</span> {currentStage.statusBadge}
-          </span>
-          <button
-            type="button"
-            className={styles.playToggle}
-            onClick={togglePlay}
-            title={isPlaying ? 'Pause interactive preview' : 'Play interactive preview'}
-            aria-label={isPlaying ? 'Pause stage cycle' : 'Play stage cycle'}
-          >
-            {isPlaying ? '⏸' : '▶'}
-          </button>
+      {/* Concentric Orbit Radar Ring Backing */}
+      <span className={styles.orbitRings} aria-hidden="true" />
+
+      {/* Floating 3D Micro-Badges */}
+      <div
+        className={`${styles.floatingPill} ${styles.floatingPillTop}`}
+        data-tone={preset.floatingPillTop.tone}
+        aria-hidden="true"
+      >
+        <span className={styles.floatingPillIcon}>{preset.floatingPillTop.icon}</span>
+        <div className={styles.floatingPillContent}>
+          <strong>{preset.floatingPillTop.title}</strong>
+          <small>{preset.floatingPillTop.subtitle}</small>
         </div>
       </div>
 
-      {/* Main Title & Financial Snapshot */}
-      <div className={styles.heroJobTitle}>
-        <div>
-          <div className={styles.tradeEyebrow}>
-            <strong>{preset.tradeKicker}</strong>
-            <span aria-hidden="true">/</span>
-            <span>STAGE {currentStage.number} OF 05</span>
-          </div>
-          <h2>{currentStage.title}</h2>
-        </div>
-        <div className={styles.amountBox}>
-          <span className={styles.amountMain}>{currentStage.amountMain}</span>
-          <span className={styles.amountSub}>{currentStage.amountSub}</span>
+      <div
+        className={`${styles.floatingPill} ${styles.floatingPillBottom}`}
+        data-tone={preset.floatingPillBottom.tone}
+        aria-hidden="true"
+      >
+        <span className={styles.floatingPillIcon}>{preset.floatingPillBottom.icon}</span>
+        <div className={styles.floatingPillContent}>
+          <strong>{preset.floatingPillBottom.title}</strong>
+          <small>{preset.floatingPillBottom.subtitle}</small>
         </div>
       </div>
 
-      {/* 3-Card Facts Grid */}
-      <dl className={styles.heroJobFacts}>
-        {currentStage.facts.map((fact) => (
-          <div key={fact.label}>
-            <dt>{fact.label}</dt>
-            <dd>
-              <span className={factCheckClass} aria-hidden="true">✓</span>
-              {fact.value}
-            </dd>
-          </div>
-        ))}
-      </dl>
-
-      {/* Real-time AI Copilot / Automation Pulse Bar */}
-      <div className={styles.copilotBar}>
-        <span className={styles.copilotBadge}>⚡ AI COPILOT</span>
-        <span className={styles.copilotText}>{currentStage.copilotText}</span>
-      </div>
-
-      {/* Customer SMS / Portal Live Snapshot */}
-      <div className={styles.smsCard}>
-        <div className={styles.smsHeader}>
-          <span>{currentStage.smsPreview.label}</span>
-          <span>✓ Delivered to {currentStage.smsPreview.to}</span>
-        </div>
-        <p className={styles.smsBubble}>
-          {currentStage.smsPreview.highlight && currentStage.smsPreview.body.includes(currentStage.smsPreview.highlight) ? (
-            <>
-              {currentStage.smsPreview.body.split(currentStage.smsPreview.highlight)[0]}
-              <strong className={styles.smsHighlight}>{currentStage.smsPreview.highlight}</strong>
-              {currentStage.smsPreview.body.split(currentStage.smsPreview.highlight)[1]}
-            </>
-          ) : (
-            currentStage.smsPreview.body
-          )}
-        </p>
-      </div>
-
-      {/* Interactive 5-Step Stepper Tabs */}
-      <div className={styles.journeyWrap}>
-        <div className={styles.progressBarTrack} aria-hidden="true">
-          <div
-            className={styles.progressBarFill}
-            style={{ width: `${(activeStageIndex / 4) * 100}%` }}
-          />
-        </div>
-        <ol className={styles.journeyList} role="tablist" aria-label="Five connected job stages">
-          {preset.stages.map((st, idx) => {
-            const isCompleted = idx < activeStageIndex;
-            const isActive = idx === activeStageIndex;
-            const state = isActive ? 'active' : isCompleted ? 'completed' : 'upcoming';
-
+      <div className={styles.simulatorCardInner}>
+        {/* Trade Selector Switcher */}
+        <div className={styles.tradeSelectorBar} role="tablist" aria-label="Select contractor trade sample">
+          {TRADES.map((trade) => {
+            const isActive = activeTrade === trade.id;
             return (
-              <li key={st.label}>
-                <button
-                  type="button"
-                  role="tab"
-                  id={`journey-tab-${st.navKey}`}
-                  aria-selected={isActive}
-                  className={styles.journeyBtn}
-                  data-state={state}
-                  onClick={() => selectStage(idx)}
-                  onKeyDown={(e) => handleStageKeyDown(e, idx)}
-                >
-                  <span className={styles.journeyNode}>
-                    {isCompleted ? '✓' : idx + 1}
-                  </span>
-                  <span className={styles.journeyLabel}>{st.label}</span>
-                </button>
-              </li>
+              <button
+                key={trade.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`${styles.tradeTab} ${isActive ? styles.tradeTabActive : ''}`}
+                onClick={() => {
+                  setActiveTrade(trade.id);
+                  setActiveStageIndex(0);
+                }}
+              >
+                <span className={styles.tradeTabIcon} aria-hidden="true">{trade.icon}</span>
+                <span className={styles.tradeTabLabel}>{trade.label}</span>
+                {isActive && <span className={styles.tradeActiveGlow} aria-hidden="true" />}
+              </button>
             );
           })}
-        </ol>
-      </div>
-
-      {/* Status Footer */}
-      <div className={styles.statusFooter}>
-        <div className={styles.statusIndicator}>
-          <span className={styles.statusDot} aria-hidden="true" />
-          <span>{currentStage.footerStatus}</span>
         </div>
-        <a className={styles.nextStepAction} href={currentStage.actionHref}>
-          {currentStage.actionText}
-        </a>
+
+        {/* Card Header Top */}
+        <div className={styles.heroJobTop}>
+          <div className={styles.metaWrap}>
+            <span className={styles.sampleTag}>{preset.sampleId}</span>
+            <span className={styles.metaDot} aria-hidden="true">·</span>
+            <span className={styles.customerMeta}>{preset.customerName} ({preset.location})</span>
+          </div>
+          <div className={styles.controlsWrap}>
+            <span className={styles.stageBadge} data-tone={currentStage.statusTone}>
+              <span className={styles.stageBadgeDot} aria-hidden="true" />
+              {currentStage.statusBadge}
+            </span>
+            <button
+              type="button"
+              className={styles.playToggle}
+              onClick={togglePlay}
+              title={isPlaying ? 'Pause interactive preview' : 'Play interactive preview'}
+              aria-label={isPlaying ? 'Pause stage cycle' : 'Play stage cycle'}
+            >
+              {isPlaying ? '⏸' : '▶'}
+            </button>
+          </div>
+        </div>
+
+        {/* Main Title & Financial Snapshot */}
+        <div className={styles.heroJobTitle}>
+          <div className={styles.titleLeft}>
+            <div className={styles.tradeEyebrow}>
+              <strong>{preset.tradeKicker}</strong>
+              <span aria-hidden="true">/</span>
+              <span>STAGE {currentStage.number} OF 05</span>
+            </div>
+            <h2>{currentStage.title}</h2>
+          </div>
+          <div className={styles.amountBox}>
+            <span className={styles.amountMain}>{currentStage.amountMain}</span>
+            <span className={styles.amountSub}>{currentStage.amountSub}</span>
+          </div>
+        </div>
+
+        {/* 3-Card Facts Grid */}
+        <dl className={styles.heroJobFacts}>
+          {currentStage.facts.map((fact) => (
+            <div key={fact.label} className={styles.factCard}>
+              <dt>{fact.label}</dt>
+              <dd>
+                <span className={styles.factCheck} aria-hidden="true">✓</span>
+                {fact.value}
+              </dd>
+            </div>
+          ))}
+        </dl>
+
+        {/* Real-time AI Copilot / Automation Pulse Bar */}
+        <div className={styles.copilotBar}>
+          <div className={styles.copilotLeft}>
+            <span className={styles.copilotBadge}>⚡ AI COPILOT</span>
+          </div>
+          <span className={styles.copilotText}>{currentStage.copilotText}</span>
+        </div>
+
+        {/* Customer SMS / Portal Live Snapshot */}
+        <div className={styles.smsCard}>
+          <div className={styles.smsHeader}>
+            <span className={styles.smsBadge}>{currentStage.smsPreview.label}</span>
+            <span className={styles.smsDelivered}>✓ Delivered to {currentStage.smsPreview.to}</span>
+          </div>
+          <p className={styles.smsBubble}>
+            {currentStage.smsPreview.highlight && currentStage.smsPreview.body.includes(currentStage.smsPreview.highlight) ? (
+              <>
+                {currentStage.smsPreview.body.split(currentStage.smsPreview.highlight)[0]}
+                <strong className={styles.smsHighlight}>{currentStage.smsPreview.highlight}</strong>
+                {currentStage.smsPreview.body.split(currentStage.smsPreview.highlight)[1]}
+              </>
+            ) : (
+              currentStage.smsPreview.body
+            )}
+          </p>
+        </div>
+
+        {/* Interactive 5-Step Stepper Tabs */}
+        <div className={styles.journeyWrap}>
+          <div className={styles.progressBarTrack} aria-hidden="true">
+            <div
+              className={styles.progressBarFill}
+              style={{ width: `${(activeStageIndex / 4) * 100}%` }}
+            />
+          </div>
+          <ol className={styles.journeyList} role="tablist" aria-label="Five connected job stages">
+            {preset.stages.map((st, idx) => {
+              const isCompleted = idx < activeStageIndex;
+              const isActive = idx === activeStageIndex;
+              const state = isActive ? 'active' : isCompleted ? 'completed' : 'upcoming';
+
+              return (
+                <li key={st.label}>
+                  <button
+                    type="button"
+                    role="tab"
+                    id={`journey-tab-${st.navKey}`}
+                    aria-selected={isActive}
+                    className={styles.journeyBtn}
+                    data-state={state}
+                    onClick={() => selectStage(idx)}
+                    onKeyDown={(e) => handleStageKeyDown(e, idx)}
+                  >
+                    <span className={styles.journeyNode}>
+                      {isCompleted ? '✓' : idx + 1}
+                    </span>
+                    <span className={styles.journeyLabel}>{st.label}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+
+        {/* Status Footer */}
+        <div className={styles.statusFooter}>
+          <div className={styles.statusIndicator}>
+            <span className={styles.statusDot} aria-hidden="true" />
+            <span>{currentStage.footerStatus}</span>
+          </div>
+          <a className={styles.nextStepAction} href={currentStage.actionHref}>
+            {currentStage.actionText}
+          </a>
+        </div>
       </div>
     </aside>
   );
 }
-
-const factCheckClass = styles.factCheck;

@@ -219,6 +219,15 @@ const TWEAKS = `
   animation: dashboardFloat 8s ease-in-out infinite;
 }
 
+/* ---- hero visuals mild drop shadow ---------------------------------------- */
+.root :global(.hero-product),
+.root :global(.dashboard-card),
+.root :global(.detail-hero > figure),
+.root :global(.detail-hero > div:not(.detail-hero-copy)),
+.root :global(.visual-stage) {
+  filter: drop-shadow(0 20px 45px rgba(0, 0, 0, 0.35));
+}
+
 /* The two interruptions, over the panel on a desktop. Positioned against the
    stage rather than the pipeline, because the pipeline is the tilted element
    and children of it would inherit the rotation and read as skewed labels. */

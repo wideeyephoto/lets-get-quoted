@@ -12143,6 +12143,7 @@ a.metric-card-link:hover {
   justify-content: center;
   gap: 0.9rem;
   padding: 0.5rem 0;
+  filter: drop-shadow(0 20px 45px rgba(0, 0, 0, 0.35));
 }
 
 .insight-ring-wrap {
