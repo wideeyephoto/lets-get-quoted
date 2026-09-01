@@ -1,4 +1,4 @@
-export const AD_PLATFORM_FEE_RATE = 0.10; // 10% Platform Management Fee
+export const AD_PLATFORM_FEE_RATE = 0.05; // 5% Platform Management Fee
 
 export type MetaAdCopy = {
   primaryText: string;
@@ -54,15 +54,15 @@ export const SMART_BUNDLES: SmartBundle[] = [
   {
     id: 'launch',
     name: 'Launch Plan',
-    weeklyAmountDollars: 176,
+    weeklyAmountDollars: 168,
     weeklyAdSpendDollars: 160,
-    weeklyFeeDollars: 16,
-    monthlyAverageDollars: 763,
+    weeklyFeeDollars: 8,
+    monthlyAverageDollars: 728,
     monthlyAdSpendDollars: 693,
-    monthlyFeeDollars: 69,
-    totalMonthlyDollars: 763,
+    monthlyFeeDollars: 35,
+    totalMonthlyDollars: 728,
     adSpendDollars: 693,
-    platformFeeDollars: 69,
+    platformFeeDollars: 35,
     searchSpendDollars: 693,
     retargetingSpendDollars: 0,
     metaSpendDollars: 0,
@@ -81,15 +81,15 @@ export const SMART_BUNDLES: SmartBundle[] = [
     id: 'growth',
     name: 'Growth Engine',
     badge: '⭐ Most Popular',
-    weeklyAmountDollars: 330,
+    weeklyAmountDollars: 315,
     weeklyAdSpendDollars: 300,
-    weeklyFeeDollars: 30,
-    monthlyAverageDollars: 1430,
+    weeklyFeeDollars: 15,
+    monthlyAverageDollars: 1365,
     monthlyAdSpendDollars: 1300,
-    monthlyFeeDollars: 130,
-    totalMonthlyDollars: 1430,
+    monthlyFeeDollars: 65,
+    totalMonthlyDollars: 1365,
     adSpendDollars: 1300,
-    platformFeeDollars: 130,
+    platformFeeDollars: 65,
     searchSpendDollars: 1100,
     retargetingSpendDollars: 200,
     metaSpendDollars: 0,
@@ -110,15 +110,15 @@ export const SMART_BUNDLES: SmartBundle[] = [
     id: 'scale',
     name: 'Scale & Dominate',
     badge: '🚀 Max Volume',
-    weeklyAmountDollars: 616,
+    weeklyAmountDollars: 588,
     weeklyAdSpendDollars: 560,
-    weeklyFeeDollars: 56,
-    monthlyAverageDollars: 2669,
+    weeklyFeeDollars: 28,
+    monthlyAverageDollars: 2548,
     monthlyAdSpendDollars: 2427,
-    monthlyFeeDollars: 243,
-    totalMonthlyDollars: 2669,
+    monthlyFeeDollars: 121,
+    totalMonthlyDollars: 2548,
     adSpendDollars: 2427,
-    platformFeeDollars: 243,
+    platformFeeDollars: 121,
     searchSpendDollars: 1800,
     retargetingSpendDollars: 200,
     metaSpendDollars: 427,
@@ -224,7 +224,7 @@ export function generateRetargetingAdCopy(params: {
 }
 
 /**
- * Calculates total multi-channel budget with 10% platform management fee.
+ * Calculates total multi-channel budget with 5% platform management fee.
  */
 export function calculateMultiChannelBudget(params: {
   searchSpendDollars: number;

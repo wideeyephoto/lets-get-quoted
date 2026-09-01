@@ -127,11 +127,11 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     const result = await createAdBudgetCheckoutSession({
       accountId: 'acc_test_weekly',
       fundingModel: 'weekly_drip',
-      weeklyAmountDollars: 176,
+      weeklyAmountDollars: 168,
       weeklyAdSpendDollars: 160,
-      weeklyFeeDollars: 16,
+      weeklyFeeDollars: 8,
       monthlyBudgetDollars: 693,
-      platformFeeDollars: 69,
+      platformFeeDollars: 35,
       interval: 'week',
       businessName: 'Apex Roofing',
       trade: 'Roofing',
@@ -142,9 +142,9 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(result.url).toBe('https://checkout.stripe.com/mock');
     expect(createdSessionConfig).not.toBeNull();
     expect(createdSessionConfig.mode).toBe('subscription');
-    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(17600);
+    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(16800);
     expect(createdSessionConfig.line_items[0].price_data.recurring.interval).toBe('week');
-    expect(createdSessionConfig.metadata.weekly_amount_cents).toBe('17600');
+    expect(createdSessionConfig.metadata.weekly_amount_cents).toBe('16800');
     expect(createdSessionConfig.metadata.weekly_ad_spend_cents).toBe('16000');
     expect(createdSessionConfig.metadata.monthly_budget_cents).toBe('69300'); // True monthly Google Ads rate ($693)
   });
@@ -174,10 +174,10 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     expect(result.url).toBe('https://checkout.stripe.com/mock-monthly');
     expect(createdSessionConfig).not.toBeNull();
     expect(createdSessionConfig.mode).toBe('subscription');
-    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(66000); // $600 + $60 fee
+    expect(createdSessionConfig.line_items[0].price_data.unit_amount).toBe(63000); // $600 + $30 fee
     expect(createdSessionConfig.line_items[0].price_data.recurring.interval).toBe('month');
     expect(createdSessionConfig.line_items[0].price_data.product_data.description).toBe(
-      'Automated search ad campaigns in Austin for Roofing ($600/mo ads + $60/mo AI management). Cancel or pause anytime.'
+      'Automated search ad campaigns in Austin for Roofing ($600/mo ads + $30/mo AI management). Cancel or pause anytime.'
     );
     expect(createdSessionConfig.line_items[0].price_data.product_data.description).not.toContain(
       '100% applied to Google search clicks'
@@ -426,7 +426,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
 
     expect(refillResult.success).toBe(true);
     expect(refillResult.refilled).toBe(true);
-    expect(refillResult.chargedCents).toBe(27500); // $250 ad spend + 10% platform fee ($25.00)
+    expect(refillResult.chargedCents).toBe(26250); // $250 ad spend + 5% platform fee ($12.50)
     expect(updatedAdCampaign).not.toBeNull();
     const campaignState = updatedAdCampaign as unknown as Record<string, unknown>;
     expect(campaignState.walletBalanceCents).toBe(30000); // $50 + $250 = $300

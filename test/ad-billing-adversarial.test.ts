@@ -189,7 +189,7 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
               account_id: 'acc_123',
               funding_model: 'weekly_drip',
               weekly_ad_spend_cents: '16000',
-              weekly_amount_cents: '17600',
+              weekly_amount_cents: '16800',
             },
           },
         },

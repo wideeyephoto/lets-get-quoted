@@ -50,7 +50,7 @@ const COMPARISON_ROWS = [
   {
     metric: 'Billing Structure & Cash Flow',
     agency: '$2,000 – $3,500 / mo up-front retainer',
-    lgq: '💧 Weekly Drip Funding ($176 – $616 / week)',
+    lgq: '💧 Weekly Drip Funding ($168 – $588 / week)',
   },
   {
     metric: 'Direct Ad Click Spend',
@@ -87,7 +87,7 @@ const COMPARISON_ROWS = [
 const FAQS = [
   {
     q: 'Why do you use Weekly Drip Billing instead of a monthly invoice?',
-    a: 'Weekly drip billing lowers your initial out-of-pocket cash commitment by over 75% (starting at just $176 to get live) without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, but bill your card once every 7 days so you avoid dozens of separate daily credit card transactions.',
+    a: 'Weekly drip billing lowers your initial out-of-pocket cash commitment by over 75% (starting at just $168 to get live) without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, but bill your card once every 7 days so you avoid dozens of separate daily credit card transactions.',
   },
   {
     q: 'How is this different from hiring a local marketing agency?',
@@ -814,7 +814,7 @@ export default function ManagedAdsScreen({
 
       {/* Streamlined Trust & Guarantees Bar */}
       <div className={styles.trustChipsBar}>
-        <span className={styles.trustChip}>💧 Weekly Drip ($176–$616/wk) or Auto-Refill Wallet</span>
+        <span className={styles.trustChip}>💧 Weekly Drip ($168–$588/wk) or Auto-Refill Wallet</span>
         <span className={styles.trustChip}>🛡️ Zero Agency Retainers ($0 vs $2,500/mo)</span>
         <span className={styles.trustChip}>⚡ &lt;60s Speed-to-Lead AI SMS</span>
         <span className={styles.trustChip}>🌦️ Weather Surge &amp; Capacity Guard</span>
@@ -1666,7 +1666,7 @@ export default function ManagedAdsScreen({
                   <div style={{ textAlign: 'left' }}>
                     <strong style={{ display: 'block', fontSize: '0.85rem' }}>Weekly Drip Funding</strong>
                     <small style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                      Predictable all-in weekly plans ($176–$616/wk)
+                      Predictable all-in weekly plans ($168–$588/wk)
                     </small>
                   </div>
                 </button>

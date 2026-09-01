@@ -203,7 +203,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     title: 'Marketing & advertising',
     intro: 'Run AI search campaigns with zero agency markups and bring past customers back.',
     features: [
-      { id: 'ai-ads-autopilot', name: 'AI Ads Autopilot & Smart Bundles', desc: '1-click Google Search, Meta and Retargeting campaigns with zero agency markups and 10% transparent management.', favorite: true },
+      { id: 'ai-ads-autopilot', name: 'AI Ads Autopilot & Smart Bundles', desc: '1-click Google Search, Meta and Retargeting campaigns with zero agency markups and 5% transparent management.', favorite: true },
       { id: 'neighborhood-halo', name: 'Neighborhood Halo 1-Mile Micro-Ads', desc: 'Auto-launches geofenced 1-mile ads around completed job sites using site photos and sanitized street copy to win neighbor leads.', favorite: true },
       { id: 'speed-to-lead-sms', name: 'Instant Speed-to-Lead SMS', desc: 'Personalized sub-60-second text messages sent to ad leads to double booking rates.', favorite: true },
       { id: 'message-match-hero', name: 'Dynamic Message-Match Hero', desc: 'Auto-customizes website headlines to match homeowner Google search terms for max Quality Score.' },

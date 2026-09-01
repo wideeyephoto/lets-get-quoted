@@ -6,7 +6,7 @@ export type AdCampaignBillingStatus =
   | 'pending_provisioning'
   | 'failed';
 
-export const AD_PLATFORM_FEE_RATE = 0.10; // 10% Platform Management Fee
+export const AD_PLATFORM_FEE_RATE = 0.05; // 5% Platform Management Fee
 
 export type AdWeeklyTierId = 'launch' | 'growth' | 'scale';
 
@@ -31,15 +31,15 @@ export const AD_WEEKLY_TIERS: Record<AdWeeklyTierId, AdWeeklyTier> = {
   launch: {
     id: 'launch',
     name: 'Launch Plan',
-    weeklyAmountDollars: 176,
+    weeklyAmountDollars: 168,
     weeklyAdSpendDollars: 160,
-    weeklyFeeDollars: 16,
-    weeklyAmountCents: 17600,
+    weeklyFeeDollars: 8,
+    weeklyAmountCents: 16800,
     weeklyAdSpendCents: 16000,
-    weeklyFeeCents: 1600,
+    weeklyFeeCents: 800,
     monthlyBudgetCents: 69300,
-    platformFeeCents: 6900,
-    totalMonthlyCents: 76200,
+    platformFeeCents: 3500,
+    totalMonthlyCents: 72800,
     leadMin: 4,
     leadMax: 8,
     features: [
@@ -52,15 +52,15 @@ export const AD_WEEKLY_TIERS: Record<AdWeeklyTierId, AdWeeklyTier> = {
   growth: {
     id: 'growth',
     name: 'Growth Engine',
-    weeklyAmountDollars: 330,
+    weeklyAmountDollars: 315,
     weeklyAdSpendDollars: 300,
-    weeklyFeeDollars: 30,
-    weeklyAmountCents: 33000,
+    weeklyFeeDollars: 15,
+    weeklyAmountCents: 31500,
     weeklyAdSpendCents: 30000,
-    weeklyFeeCents: 3000,
+    weeklyFeeCents: 1500,
     monthlyBudgetCents: 130000,
-    platformFeeCents: 13000,
-    totalMonthlyCents: 143000,
+    platformFeeCents: 6500,
+    totalMonthlyCents: 136500,
     leadMin: 10,
     leadMax: 18,
     features: [
@@ -75,15 +75,15 @@ export const AD_WEEKLY_TIERS: Record<AdWeeklyTierId, AdWeeklyTier> = {
   scale: {
     id: 'scale',
     name: 'Scale & Dominate',
-    weeklyAmountDollars: 616,
+    weeklyAmountDollars: 588,
     weeklyAdSpendDollars: 560,
-    weeklyFeeDollars: 56,
-    weeklyAmountCents: 61600,
+    weeklyFeeDollars: 28,
+    weeklyAmountCents: 58800,
     weeklyAdSpendCents: 56000,
-    weeklyFeeCents: 5600,
+    weeklyFeeCents: 2800,
     monthlyBudgetCents: 242700,
-    platformFeeCents: 24300,
-    totalMonthlyCents: 267000,
+    platformFeeCents: 12100,
+    totalMonthlyCents: 254800,
     leadMin: 22,
     leadMax: 38,
     features: [
@@ -105,15 +105,15 @@ export function resolveAdWeeklyTier(tierOrAmount: string | number | undefined): 
     if (normalized === 'scale' || normalized === 'dominate') return AD_WEEKLY_TIERS.scale;
   }
   if (typeof tierOrAmount === 'number') {
-    if (tierOrAmount === 176 || tierOrAmount === 160 || tierOrAmount === 185) return AD_WEEKLY_TIERS.launch;
-    if (tierOrAmount === 330 || tierOrAmount === 300 || tierOrAmount === 345) return AD_WEEKLY_TIERS.growth;
-    if (tierOrAmount === 616 || tierOrAmount === 560 || tierOrAmount === 645) return AD_WEEKLY_TIERS.scale;
+    if (tierOrAmount === 168 || tierOrAmount === 176 || tierOrAmount === 160 || tierOrAmount === 185) return AD_WEEKLY_TIERS.launch;
+    if (tierOrAmount === 315 || tierOrAmount === 330 || tierOrAmount === 300 || tierOrAmount === 345) return AD_WEEKLY_TIERS.growth;
+    if (tierOrAmount === 588 || tierOrAmount === 616 || tierOrAmount === 560 || tierOrAmount === 645) return AD_WEEKLY_TIERS.scale;
   }
   // Default to Growth Engine if unspecified
   if (tierOrAmount === undefined || tierOrAmount === '') {
     return AD_WEEKLY_TIERS.growth;
   }
-  throw new Error(`Invalid weekly ad budget tier: ${tierOrAmount}. Allowed tiers: launch ($176/wk), growth ($330/wk), scale ($616/wk).`);
+  throw new Error(`Invalid weekly ad budget tier: ${tierOrAmount}. Allowed tiers: launch ($168/wk), growth ($315/wk), scale ($588/wk).`);
 }
 
 export const ALLOWED_WALLET_DEPOSIT_DOLLARS = [250, 500, 1000] as const;
@@ -137,7 +137,7 @@ export function calculateAdBudgetBreakdown(adSpendDollars: number): AdBudgetBrea
     adSpendDollars: adSpend,
     platformFeeDollars,
     totalMonthlyDollars: adSpend + platformFeeDollars,
-    feeRatePct: 10,
+    feeRatePct: 5,
   };
 }
 
@@ -460,7 +460,7 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   platformFeeCents: 0, // Zero fee default
   totalMonthlyCents: 60000,
   weeklyBudgetCents: 16000,
-  weeklyAmountCents: 17600,
+  weeklyAmountCents: 16800,
   walletBalanceCents: 25000,
   refillThresholdCents: 7500,
   refillAmountCents: 25000,

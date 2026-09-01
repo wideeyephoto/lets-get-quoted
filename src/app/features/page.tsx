@@ -510,9 +510,9 @@ export default async function FeaturesPage() {
             <span style={{ fontSize: '1.25rem', color: '#f97316' }}>🚀</span>
             <small>GOOGLE &amp; META ADS AUTOPILOT</small>
             <h3>AI Search &amp; Social Ads</h3>
-            <p>Launch profitable Google Search, Meta, and Retargeting campaigns in 60s. Zero agency markups with 10% transparent platform fee.</p>
+            <p>Launch profitable Google Search, Meta, and Retargeting campaigns in 60s. Zero agency markups with 5% transparent platform fee.</p>
             <ul className="feature-produces" aria-label="What AI Ads gives you">
-              <li>💧 Weekly Drip Bundles (from $176/wk)</li>
+              <li>💧 Weekly Drip Bundles (from $168/wk)</li>
               <li>⚡ Sub-60s Speed-to-Lead Auto-SMS</li>
               <li>⛈️ Weather Surge &amp; Capacity Guard</li>
             </ul>
