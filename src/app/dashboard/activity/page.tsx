@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { queryTenantAuditEvents } from '@/lib/tenant-audit';
 import ActivityLedgerClient from './ActivityLedgerClient';
@@ -16,7 +17,12 @@ export default async function ActivityLedgerPage() {
     <div className="p-6 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">Activity Ledger & Audit</h1>
+          <div className="mb-2">
+            <Link href="/dashboard/settings#activity" className="text-sm font-medium text-amber-500 hover:text-amber-400">
+              &larr; Back to Account settings
+            </Link>
+          </div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">Activity Ledger &amp; Audit</h1>
           <p className="text-sm text-slate-400 mt-1">
             Complete, immutable chronological record of material tenant actions, deletions, restorations, and actor snapshots.
           </p>

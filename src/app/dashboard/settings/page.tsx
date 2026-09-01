@@ -831,9 +831,9 @@ export default async function SettingsPage({
         },
         {
           id: 'data',
-          label: 'Import & data',
-          blurb: 'Bring your records in, or take them out.',
-          anchors: ['import', 'export'],
+          label: 'Data & recovery',
+          blurb: 'Import, export, audit log, and recoverable trash.',
+          anchors: ['import', 'export', 'trash', 'activity', 'governance', 'recovery', 'audit'],
           content: (
               <>
                 <section className="panel workspace-section-card" id="import">
@@ -881,6 +881,38 @@ export default async function SettingsPage({
                     <a href="/api/export/jobs">jobs</a>{', '}
                     <a href="/api/export/invoices">invoices</a>.
                   </p>
+                </section>
+
+                <section className="panel workspace-section-card" id="trash">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Safety &amp; recovery</p>
+                    <h2>Trash bin &amp; recovery</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Soft-deleted leads, jobs, crew members, and services are preserved for 30 days before permanent purging.
+                    Review trashed records and restore them with safe inactive/archived status defaults at any time.
+                  </p>
+                  <div className="workspace-inline-row">
+                    <Link href="/dashboard/trash" className="btn primary">
+                      Open trash bin
+                    </Link>
+                  </div>
+                </section>
+
+                <section className="panel workspace-section-card" id="activity">
+                  <div className="section-heading workspace-section-heading compact-heading">
+                    <p className="eyebrow">Governance &amp; audit</p>
+                    <h2>Activity ledger</h2>
+                  </div>
+                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                    Complete, immutable chronological record of workspace changes, actor snapshots, record modifications,
+                    deletions, and restorations. Search events or export audit logs for compliance.
+                  </p>
+                  <div className="workspace-inline-row">
+                    <Link href="/dashboard/activity" className="btn secondary">
+                      View activity ledger
+                    </Link>
+                  </div>
                 </section>
               </>
           ),
