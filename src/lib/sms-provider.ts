@@ -201,6 +201,10 @@ function twilioConfig(): SmsProviderConfig | null {
   };
 }
 
+export function twilioCallsUrl(accountSid: string): string {
+  return `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Calls.json`;
+}
+
 function signalwireConfig(): SmsProviderConfig | null {
   // The Space host is SignalWire's alone — Twilio has no equivalent — which is
   // what makes it a safe thing to infer the provider from. You cannot have a

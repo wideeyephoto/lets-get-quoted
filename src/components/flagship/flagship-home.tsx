@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiteFooter, SiteHeader } from './site-chrome';
-import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
+import CommandCenterDeck, { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
 import HeroConnectedWorkflow from './HeroConnectedWorkflow';
 import HeroAmbientGlow from './HeroAmbientGlow';
@@ -21,7 +21,6 @@ import ThemeFab from '@/components/theme-fab';
 import IntegrationTrustStrip from '@/components/marketing/IntegrationTrustStrip';
 
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: false });
-const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: false });
 const HighTechShowcase = dynamic(() => import('@/components/marketing/HighTechShowcase'), {
   ssr: false,
   loading: () => (

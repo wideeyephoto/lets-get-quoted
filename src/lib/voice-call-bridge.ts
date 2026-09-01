@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { twilioCallsUrl } from '@/lib/sms-provider';
 
 export interface VoiceCallBridgeConfig {
   leadId: string;
@@ -49,7 +50,7 @@ export function buildTwilioCallRequest(config: VoiceCallBridgeConfig) {
   const twimlPrompt = generateContractorCallBridgeTwiml(config);
 
   const authHeader = `Basic ${Buffer.from(`${accountSid}:${authToken}`).toString('base64')}`;
-  const endpoint = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Calls.json`;
+  const endpoint = twilioCallsUrl(accountSid);
 
   const body = new URLSearchParams({
     To: config.contractorPhone,

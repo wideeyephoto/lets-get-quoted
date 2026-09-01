@@ -67,16 +67,14 @@ describe('Interactive Demonstration Accessibility & Performance Architecture', (
       expect(flagshipSource).toContain("const HighTechShowcase = dynamic(() => import('@/components/marketing/HighTechShowcase'), {\n  ssr: false,");
       expect(flagshipSource).toContain("const InteractiveQuoteUpsellDemo = dynamic(() => import('@/components/marketing/InteractiveQuoteUpsellDemo'), {\n  ssr: false,");
       expect(flagshipSource).toContain("const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: false });");
-      expect(flagshipSource).toContain("const CommandCenterDeck = dynamic(() => import('@/components/command-center-deck'), { ssr: false });");
     });
 
     it('defers initial scroll measurement to idle time to avoid main-thread blocking', () => {
       expect(flagshipSource).toContain('requestIdleCallback');
     });
 
-    it('marks the marketing homepage as static for CDN edge caching', () => {
-      expect(homePageSource).toContain("export const dynamic = 'force-static'");
-      expect(homePageSource).toContain('export const revalidate = 86400');
+    it('marks the marketing homepage as dynamic for per-request CSP nonce stamping', () => {
+      expect(homePageSource).toContain("export const dynamic = 'force-dynamic'");
     });
 
     it('configures display: swap for root fonts to avoid render-blocking latency', () => {

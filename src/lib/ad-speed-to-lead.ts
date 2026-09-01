@@ -487,7 +487,7 @@ export async function dispatchMultiChannelSpeedToLead(params: {
   let smsSent = false;
   try {
     const smsResult = await dispatchSpeedToLeadSms({
-      admin: params.admin as any,
+      admin: params.admin,
       accountId: params.accountId,
       recipientPhone: params.recipientPhone,
       businessName: params.businessName,
