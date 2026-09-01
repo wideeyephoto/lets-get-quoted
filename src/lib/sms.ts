@@ -1743,6 +1743,24 @@ export async function sendSpeedToLeadSms(params: {
   });
 }
 
+// Instant contractor dispatch alert for ad-acquired leads.
+export async function sendContractorAdLeadSms(params: {
+  phone: string;
+  body: string;
+  accountId: string;
+  idempotencyKey?: string;
+}) {
+  return queueAccountSms({
+    accountId: params.accountId,
+    phone: params.phone,
+    body: params.body,
+    messageKind: 'contractor-ad-lead-alert',
+    category: 'system_alert',
+    idempotencyKey: params.idempotencyKey,
+  });
+}
+
+
 
 /**
  * Dispatches an SMS alert when an advertising wallet balance auto-refills.

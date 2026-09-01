@@ -1,5 +1,4 @@
-import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendSpeedToLeadSms } from '@/lib/sms';
+import { sendSpeedToLeadSms, sendContractorAdLeadSms } from '@/lib/sms';
 import { withOptOut } from '@/lib/sms-templates';
 import {
   resolveRecipientTimeZone,
@@ -36,6 +35,125 @@ export type SpeedToLeadParams = {
 };
 
 /**
+ * State mini-TCPA rules that enforce stricter 8:00 PM quiet hour cutoffs (instead of 9:00 PM).
+ */
+const STRICT_QUIET_HOUR_STATES: Record<string, { name: string; statute: string; maxHour: number }> = {
+  FL: { name: 'Florida FTSA', statute: 'Fla. Stat. § 501.059', maxHour: 20 },
+  OK: { name: 'Oklahoma OTA', statute: '15 O.S. § 775C.3', maxHour: 20 },
+  WA: { name: 'Washington Commercial Solicitations', statute: 'Wash. Rev. Code § 80.36.390', maxHour: 20 },
+  MD: { name: 'Maryland Stop the Spam Calls Act', statute: 'Md. Code, Com. Law § 14-4501', maxHour: 20 },
+};
+
+/**
+ * Extracts a 2-letter state code from address/city/state strings.
+ */
+export function extractUsStateCode(input?: string | null): string | null {
+  if (!input) return null;
+  const match = input.toUpperCase().match(/\b(AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)\b/);
+  return match ? match[1] : null;
+}
+
+export type JurisdictionTcpaRules = {
+  jurisdiction: 'federal_tcpa' | 'state_mini_tcpa';
+  stateCode: string | null;
+  ruleName: string;
+  statute: string;
+  quietStartHour: number; // 20 (8:00 PM) or 21 (9:00 PM)
+  quietEndHour: number;   // 8 (8:00 AM)
+};
+
+/**
+ * Resolves the applicable TCPA / Mini-TCPA quiet hours rule for a lead location.
+ */
+export function getJurisdictionTcpaRules(locationOrState?: string | null): JurisdictionTcpaRules {
+  const stateCode = extractUsStateCode(locationOrState);
+  if (stateCode && STRICT_QUIET_HOUR_STATES[stateCode]) {
+    const stateRule = STRICT_QUIET_HOUR_STATES[stateCode];
+    return {
+      jurisdiction: 'state_mini_tcpa',
+      stateCode,
+      ruleName: stateRule.name,
+      statute: stateRule.statute,
+      quietStartHour: stateRule.maxHour,
+      quietEndHour: 8,
+    };
+  }
+
+  return {
+    jurisdiction: 'federal_tcpa',
+    stateCode,
+    ruleName: 'FCC Federal TCPA',
+    statute: '47 C.F.R. § 64.1200(c)(1)',
+    quietStartHour: 21,
+    quietEndHour: 8,
+  };
+}
+
+/**
+ * Resolves recipient time zone with source attribution for auditing and telemetry.
+ */
+export function resolveRecipientTimeZoneWithSource(params: {
+  phone?: string | null;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postalCode?: string | null;
+  explicitTimeZone?: string | null;
+  accountTimeZone?: string | null;
+}): {
+  timeZone: string;
+  source: 'explicit' | 'phone_npa' | 'location' | 'account' | 'default';
+  stateCode: string | null;
+} {
+  const { phone, address, city, state, postalCode, explicitTimeZone, accountTimeZone } = params;
+
+  if (explicitTimeZone && isValidTimeZone(explicitTimeZone)) {
+    return {
+      timeZone: explicitTimeZone,
+      source: 'explicit',
+      stateCode: extractUsStateCode(state || address || city),
+    };
+  }
+
+  if (phone) {
+    const fromPhone = getTimeZoneFromPhone(phone);
+    if (fromPhone) {
+      return {
+        timeZone: fromPhone,
+        source: 'phone_npa',
+        stateCode: extractUsStateCode(state || address || city),
+      };
+    }
+  }
+
+  const locationStr = [address, city, state, postalCode].filter(Boolean).join(', ');
+  if (locationStr) {
+    const fromLocation = getTimeZoneFromLocation(locationStr);
+    if (fromLocation) {
+      return {
+        timeZone: fromLocation,
+        source: 'location',
+        stateCode: extractUsStateCode(locationStr),
+      };
+    }
+  }
+
+  if (accountTimeZone && isValidTimeZone(accountTimeZone)) {
+    return {
+      timeZone: accountTimeZone,
+      source: 'account',
+      stateCode: extractUsStateCode(state || address || city),
+    };
+  }
+
+  return {
+    timeZone: 'America/New_York',
+    source: 'default',
+    stateCode: extractUsStateCode(state || address || city),
+  };
+}
+
+/**
  * Generates an instant, personalized, high-converting SMS response for ad-acquired leads.
  */
 export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
@@ -68,6 +186,35 @@ export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
 }
 
 /**
+ * Formats a contractor dispatch alert SMS when a new ad lead arrives.
+ */
+export function generateContractorAdLeadAlert(params: {
+  businessName: string;
+  leadName?: string | null;
+  phone: string;
+  projectType?: string | null;
+  city?: string | null;
+  speedToLeadStatus: 'sent' | 'queued_quiet_hours' | 'opted_out' | 'failed';
+  sendAtFormatted?: string | null;
+}): string {
+  const { businessName, leadName, phone, projectType, city, speedToLeadStatus, sendAtFormatted } = params;
+  const cleanName = leadName?.trim() || 'New Lead';
+  const cleanService = projectType?.trim() || 'General Request';
+  const cleanCity = city ? ` in ${city.trim()}` : '';
+
+  let statusText = 'Auto-SMS sent to homeowner.';
+  if (speedToLeadStatus === 'queued_quiet_hours') {
+    statusText = `Auto-SMS queued for ${sendAtFormatted || 'morning delivery'} (quiet hours).`;
+  } else if (speedToLeadStatus === 'opted_out') {
+    statusText = 'Homeowner is SMS opted-out.';
+  } else if (speedToLeadStatus === 'failed') {
+    statusText = 'Auto-SMS delivery skipped.';
+  }
+
+  return `🔥 [Ad Lead] ${cleanName} requested ${cleanService}${cleanCity}. ${statusText} Phone: ${phone}. Call lead now: ${phone}`;
+}
+
+/**
  * Generates an idempotency key with time-window deduplication (default 15 minutes)
  * to prevent duplicate SMS blasts if a lead submits multiple forms.
  */
@@ -84,17 +231,28 @@ export function generateSpeedToLeadIdempotencyKey(
   return `stl:${accountId}:${cleanPhone}:${timeBucket}`;
 }
 
+export type SpeedToLeadTelemetry = {
+  recipientPhone: string;
+  resolvedTimeZone: string;
+  timeZoneSource: 'explicit' | 'phone_npa' | 'location' | 'account' | 'default';
+  jurisdiction: string;
+  ruleName: string;
+  statute: string;
+  isQuietHours: boolean;
+  queuedForQuietHours: boolean;
+  sendAt: Date;
+  idempotencyKey: string;
+  dispatchedAt: string;
+  dispatchLatencyMs: number;
+  deliveryStatus: 'sent' | 'queued' | 'skipped' | 'failed';
+  contractorAlertStatus?: 'sent' | 'skipped' | 'failed';
+};
+
 /**
  * Automatically dispatches the speed-to-lead text message when an ad lead arrives.
  *
- * Under FCC TCPA rules (47 C.F.R. § 64.1200(c)(1)), quiet hours are evaluated
- * at the called party's (recipient's) local time (8:00 AM - 9:00 PM).
- * The recipient's local time zone is resolved hierarchically:
- * 1. Explicit recipient time zone
- * 2. Recipient phone number area code (NPA)
- * 3. Recipient address / city / state
- * 4. Account local operating time zone
- * 5. Default fallback to America/New_York
+ * Under FCC TCPA rules (47 C.F.R. § 64.1200(c)(1)) and state mini-TCPAs (FL, OK, WA, MD),
+ * quiet hours are evaluated at the called party's local time (8:00 AM - 8:00/9:00 PM).
  */
 export async function dispatchSpeedToLeadSms(params: {
   admin: SupabaseClient;
@@ -112,13 +270,16 @@ export async function dispatchSpeedToLeadSms(params: {
   timeZone?: string;
   recipientTimeZone?: string | null;
   accountTimeZone?: string | null;
+  contractorAlertPhone?: string | null;
 }): Promise<{
   sent: boolean;
   message: string;
   queuedForQuietHours?: boolean;
   resolvedTimeZone?: string;
   sendAt?: Date;
+  telemetry: SpeedToLeadTelemetry;
 }> {
+  const startTime = Date.now();
   const {
     admin: _admin,
     accountId,
@@ -135,14 +296,30 @@ export async function dispatchSpeedToLeadSms(params: {
     timeZone,
     recipientTimeZone,
     accountTimeZone,
+    contractorAlertPhone,
   } = params;
 
   if (!recipientPhone || recipientPhone.length < 10) {
-    return { sent: false, message: 'Invalid phone number' };
+    const invalidTelemetry: SpeedToLeadTelemetry = {
+      recipientPhone: recipientPhone || '',
+      resolvedTimeZone: 'America/New_York',
+      timeZoneSource: 'default',
+      jurisdiction: 'federal_tcpa',
+      ruleName: 'FCC Federal TCPA',
+      statute: '47 C.F.R. § 64.1200(c)(1)',
+      isQuietHours: false,
+      queuedForQuietHours: false,
+      sendAt: new Date(),
+      idempotencyKey: '',
+      dispatchedAt: new Date().toISOString(),
+      dispatchLatencyMs: Date.now() - startTime,
+      deliveryStatus: 'skipped',
+    };
+    return { sent: false, message: 'Invalid phone number', telemetry: invalidTelemetry };
   }
 
-  // Resolve recipient's / called party's local time zone
-  const resolvedTimeZone = resolveRecipientTimeZone({
+  // Resolve recipient's local time zone with source attribution
+  const tzResult = resolveRecipientTimeZoneWithSource({
     phone: recipientPhone,
     address: address || city,
     city,
@@ -152,7 +329,14 @@ export async function dispatchSpeedToLeadSms(params: {
     accountTimeZone,
   });
 
-  const quietHoursCheck = getTcpaCompliantSendTime(new Date(), resolvedTimeZone);
+  const resolvedTimeZone = tzResult.timeZone;
+  const jurisdictionRule = getJurisdictionTcpaRules(state || address || city);
+  const quietHoursCheck = getTcpaCompliantSendTime(
+    new Date(),
+    resolvedTimeZone,
+    jurisdictionRule.quietStartHour,
+    jurisdictionRule.quietEndHour
+  );
   const idempotencyKey = generateSpeedToLeadIdempotencyKey(accountId, recipientPhone);
 
   const message = generateSpeedToLeadSms({
@@ -163,6 +347,22 @@ export async function dispatchSpeedToLeadSms(params: {
     urgency,
     haloContext,
   });
+
+  const baseTelemetry: SpeedToLeadTelemetry = {
+    recipientPhone,
+    resolvedTimeZone,
+    timeZoneSource: tzResult.source,
+    jurisdiction: jurisdictionRule.jurisdiction,
+    ruleName: jurisdictionRule.ruleName,
+    statute: jurisdictionRule.statute,
+    isQuietHours: quietHoursCheck.isDelayed,
+    queuedForQuietHours: quietHoursCheck.isDelayed,
+    sendAt: quietHoursCheck.sendAt,
+    idempotencyKey,
+    dispatchedAt: new Date().toISOString(),
+    dispatchLatencyMs: 0,
+    deliveryStatus: quietHoursCheck.isDelayed ? 'queued' : 'sent',
+  };
 
   if (quietHoursCheck.isDelayed) {
     try {
@@ -177,16 +377,41 @@ export async function dispatchSpeedToLeadSms(params: {
     } catch (err) {
       console.warn('Quiet-hours speed-to-lead delayed enqueue warning:', err instanceof Error ? err.message : err);
     }
+
+    // Optionally alert the contractor
+    if (contractorAlertPhone) {
+      try {
+        const contractorAlert = generateContractorAdLeadAlert({
+          businessName,
+          leadName,
+          phone: recipientPhone,
+          projectType,
+          city,
+          speedToLeadStatus: 'queued_quiet_hours',
+          sendAtFormatted: `8:01 AM (${resolvedTimeZone})`,
+        });
+        await sendContractorAdLeadSms({
+          accountId,
+          phone: contractorAlertPhone,
+          body: contractorAlert,
+          idempotencyKey: `contractor-alert:${idempotencyKey}`,
+        });
+        baseTelemetry.contractorAlertStatus = 'sent';
+      } catch {
+        baseTelemetry.contractorAlertStatus = 'failed';
+      }
+    }
+
+    baseTelemetry.dispatchLatencyMs = Date.now() - startTime;
     return {
       sent: false,
       message: quietHoursCheck.reason || `Message queued for TCPA-compliant delayed delivery (${resolvedTimeZone}).`,
       queuedForQuietHours: true,
       resolvedTimeZone,
       sendAt: quietHoursCheck.sendAt,
+      telemetry: baseTelemetry,
     };
   }
-
-
 
   try {
     const eventId = await sendSpeedToLeadSms({
@@ -196,15 +421,44 @@ export async function dispatchSpeedToLeadSms(params: {
       body: message,
       idempotencyKey,
     });
+
+    if (contractorAlertPhone) {
+      try {
+        const contractorAlert = generateContractorAdLeadAlert({
+          businessName,
+          leadName,
+          phone: recipientPhone,
+          projectType,
+          city,
+          speedToLeadStatus: eventId ? 'sent' : 'failed',
+        });
+        await sendContractorAdLeadSms({
+          accountId,
+          phone: contractorAlertPhone,
+          body: contractorAlert,
+          idempotencyKey: `contractor-alert:${idempotencyKey}`,
+        });
+        baseTelemetry.contractorAlertStatus = 'sent';
+      } catch {
+        baseTelemetry.contractorAlertStatus = 'failed';
+      }
+    }
+
+    baseTelemetry.deliveryStatus = eventId ? 'sent' : 'failed';
+    baseTelemetry.dispatchLatencyMs = Date.now() - startTime;
+
     return {
       sent: Boolean(eventId),
       message,
       queuedForQuietHours: false,
       resolvedTimeZone,
       sendAt: quietHoursCheck.sendAt,
+      telemetry: baseTelemetry,
     };
   } catch (error) {
     console.warn('Speed-to-lead SMS dispatch skipped:', error instanceof Error ? error.message : error);
-    return { sent: false, message, resolvedTimeZone };
+    baseTelemetry.deliveryStatus = 'failed';
+    baseTelemetry.dispatchLatencyMs = Date.now() - startTime;
+    return { sent: false, message, resolvedTimeZone, telemetry: baseTelemetry };
   }
 }

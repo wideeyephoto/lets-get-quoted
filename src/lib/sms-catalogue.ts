@@ -49,7 +49,7 @@ import {
 // on the request it belongs to. Imported here so this page shows the real
 // string and not a retyped one.
 import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatch';
-import { generateSpeedToLeadSms } from '@/lib/ad-speed-to-lead';
+import { generateSpeedToLeadSms, generateContractorAdLeadAlert } from '@/lib/ad-speed-to-lead';
 
 /**
  * Every text message this app can send, in one list, with the real words.
@@ -712,6 +712,21 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     }),
   },
   {
+    id: 'contractor-ad-lead-alert',
+    title: 'Ad lead contractor dispatch alert',
+    trigger: 'Instant SMS dispatch alert sent to the contractor mobile when a new ad lead arrives',
+    audience: 'owner',
+    control: always('Triggered on paid ad lead intake'),
+    body: generateContractorAdLeadAlert({
+      businessName: SAMPLE.business,
+      leadName: SAMPLE.client,
+      phone: '(555) 234-5678',
+      projectType: 'Roof Replacement',
+      city: 'Austin',
+      speedToLeadStatus: 'sent',
+    }),
+  },
+  {
     id: 'ad-wallet-refill',
     title: 'Ad wallet auto-refill alert',
     trigger: 'Sent to account owner when advertising balance drops below threshold and auto-refills',
@@ -753,6 +768,7 @@ export const CATALOGUE_SENDERS = [
   'sendCardUpdateSms',
   'sendClientJobDashboardSms',
   'sendClientPortalLinkSms',
+  'sendContractorAdLeadSms',
   'sendCrewAssignmentSms',
   'sendCrewPhoneVerificationCodeSms',
   'sendCrewScheduleSelectedSms',

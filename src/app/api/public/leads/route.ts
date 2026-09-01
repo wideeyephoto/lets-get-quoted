@@ -447,6 +447,7 @@ export async function POST(request: NextRequest) {
         address: leadAddress,
         urgency: isHighValue ? 'emergency' : 'standard',
         accountTimeZone: accountTz,
+        contractorAlertPhone: smsEnabled && alertPhone ? alertPhone : null,
       }).catch((err) => console.warn('Speed-to-lead SMS dispatch skipped:', err));
     } else if (phone && filters.instantConfirmationSms) {
       sendIntakeConfirmationSms({
