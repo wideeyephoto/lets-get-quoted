@@ -35,6 +35,12 @@ export type RecurringPlan = {
    * until migrations/2026-08-01-recurring-anchor-day.sql has run.
    */
   anchor_day?: number | null;
+  /** Service-Club Membership Tier linkage */
+  membership_tier_id?: string | null;
+  membership_tier_name?: string | null;
+  tier_level?: number | null;
+  tier_benefits?: Record<string, unknown> | null;
+  member_number?: string | null;
   stripe_customer_id: string | null;
   stripe_payment_method_id: string | null;
   card_brand: string | null;
@@ -219,6 +225,12 @@ export type RecurringPlanInput = {
   autoCharge: boolean;
   // Optional term: the plan stops after this many visits. Omit/0 = ongoing.
   termCycles?: number | null;
+  // Optional Service-Club Membership linkage
+  membershipTierId?: string | null;
+  membershipTierName?: string | null;
+  tierLevel?: number | null;
+  tierBenefits?: Record<string, unknown> | null;
+  memberNumber?: string | null;
 };
 
 export async function createRecurringPlan(
@@ -233,6 +245,8 @@ export async function createRecurringPlan(
     email: input.clientEmail,
     address: input.address,
   });
+
+  const memberNum = input.memberNumber || (input.membershipTierId ? `MEM-${Date.now().toString(36).toUpperCase()}` : null);
 
   const { data, error } = await supabase
     .from('recurring_plans')
@@ -253,11 +267,64 @@ export async function createRecurringPlan(
       anchor_day: anchorDayFrom(input.firstVisitDate),
       auto_charge: input.autoCharge,
       remaining_cycles: input.termCycles && input.termCycles > 0 ? Math.floor(input.termCycles) : null,
+      membership_tier_id: input.membershipTierId || null,
+      membership_tier_name: input.membershipTierName || null,
+      tier_level: input.tierLevel || null,
+      tier_benefits: input.tierBenefits || null,
+      member_number: memberNum,
     })
     .select('*')
     .single();
   if (error || !data) throw error ?? new Error('Unable to create the plan.');
   return data as RecurringPlan;
+}
+
+/**
+ * Enroll a customer into a Service-Club Membership Tier.
+ * Links recurring auto-billing, member number, and tier benefits.
+ */
+export async function enrollMembershipPlan(
+  supabase: SupabaseClient,
+  accountId: string,
+  clientInfo: {
+    name: string;
+    phone?: string | null;
+    email?: string | null;
+    address?: string | null;
+  },
+  tier: {
+    id: string;
+    name: string;
+    tierLevel: number;
+    monthlyPrice: number;
+    annualPrice?: number;
+    benefits: Record<string, unknown>;
+  },
+  billingCadence: 'monthly' | 'annual' = 'monthly',
+  firstVisitDate: string = todayDateKey(),
+  autoCharge = true,
+): Promise<RecurringPlan> {
+  const amount = billingCadence === 'annual' ? (tier.annualPrice || tier.monthlyPrice * 11) : tier.monthlyPrice;
+  const frequency: RecurringFrequency = 'monthly';
+  const memberNumber = `VIP-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
+
+  return createRecurringPlan(supabase, accountId, {
+    title: `${tier.name} Membership`,
+    scope: `Service Club Membership: ${tier.name}. Includes scheduled tune-ups, member pricing, and priority dispatch.`,
+    clientName: clientInfo.name,
+    clientPhone: clientInfo.phone || null,
+    clientEmail: clientInfo.email || null,
+    address: clientInfo.address || null,
+    amount,
+    frequency,
+    firstVisitDate,
+    autoCharge,
+    membershipTierId: tier.id,
+    membershipTierName: tier.name,
+    tierLevel: tier.tierLevel,
+    tierBenefits: tier.benefits,
+    memberNumber,
+  });
 }
 
 export async function listRecurringPlans(supabase: SupabaseClient, accountId: string): Promise<RecurringPlan[]> {
