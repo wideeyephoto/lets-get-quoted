@@ -1,5 +1,6 @@
 'use server';
 
+import { createHash } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
 import { recordAccountEvent } from '@/lib/account-events';
 import { requireOwnerContext } from '@/lib/auth';
@@ -21,8 +22,33 @@ import { sendFounderSignupAlert } from '@/lib/founder-alerts';
 import { sendContractorWelcomeEmail } from '@/lib/contractor-lifecycle-emails';
 
 export type FirstRunResult =
-  | { ok: true; destinationPath: string; planCheckoutPath: string | null }
+  | {
+      ok: true;
+      destinationPath: string;
+      planCheckoutPath: string | null;
+      signupConversionTransactionId: string | null;
+    }
   | { ok: false; error: string };
+
+function initialSignupConversionTransactionId(
+  accountId: string,
+  account: Record<string, unknown> | null,
+): string | null {
+  const hasTermsAcceptance = account
+    && Object.prototype.hasOwnProperty.call(account, 'terms_accepted_at');
+
+  if (!hasTermsAcceptance || account.terms_accepted_at !== null) {
+    return null;
+  }
+
+  // Google Ads uses transaction_id to deduplicate repeat delivery. Hash the
+  // internal account ID so the browser and Google never receive the raw ID.
+  const digest = createHash('sha256')
+    .update(`lgq-signup:${accountId}`)
+    .digest('hex')
+    .slice(0, 32);
+  return `signup_${digest}`;
+}
 
 /**
  * The plan a visitor picked on /pricing, if it survived to first run.
@@ -66,7 +92,8 @@ export async function completeFirstRunAction(input: {
   feature?: string | null;
   next?: string | null;
 }): Promise<FirstRunResult> {
-  const { supabase, accountId, userId } = await requireOwnerContext({ skipFirstRunGate: true });
+  const { supabase, accountId, userId, account } = await requireOwnerContext({ skipFirstRunGate: true });
+  const signupConversionTransactionId = initialSignupConversionTransactionId(accountId, account);
 
   if (input.accepted !== true) {
     return { ok: false, error: 'Please accept the Terms of Service to continue.' };
@@ -85,7 +112,7 @@ export async function completeFirstRunAction(input: {
     return { ok: false, error: 'Pick a trade from the list, or choose "Something else".' };
   }
 
-  const { error } = await supabase
+  const { data: updatedAccount, error } = await supabase
     .from('accounts')
     .update({
       business_name: normalizeBusinessName(input.businessName),
@@ -95,32 +122,36 @@ export async function completeFirstRunAction(input: {
       terms_version: TERMS_VERSION,
       terms_accepted_by: userId,
     })
-    .eq('id', accountId);
+    .eq('id', accountId)
+    .select('id')
+    .maybeSingle();
 
-  if (error) {
-    console.error('completeFirstRunAction update failed:', error.message);
+  if (error || !updatedAccount) {
+    console.error('completeFirstRunAction update failed:', error?.message || 'No account row was updated.');
     return { ok: false, error: 'Something went wrong saving that. Try again.' };
   }
 
   revalidatePath('/dashboard');
 
-  // Asynchronously alert founder of new contractor activation
-  void sendFounderSignupAlert({
-    accountId,
-    businessName: input.businessName,
-    trade: requested || 'General',
-    postalCode: input.postalCode,
-    plan: input.plan || null,
-    billing: input.billing || null,
-  });
+  if (signupConversionTransactionId) {
+    // These notifications describe a new activation, not an existing owner
+    // accepting a newer Terms version.
+    void sendFounderSignupAlert({
+      accountId,
+      businessName: input.businessName,
+      trade: requested || 'General',
+      postalCode: input.postalCode,
+      plan: input.plan || null,
+      billing: input.billing || null,
+    });
 
-  // Asynchronously dispatch Day 0 Welcome Email to the newly registered contractor
-  void sendContractorWelcomeEmail({
-    accountId,
-    businessName: input.businessName,
-    trade: requested || 'General',
-    postalCode: input.postalCode,
-  });
+    void sendContractorWelcomeEmail({
+      accountId,
+      businessName: input.businessName,
+      trade: requested || 'General',
+      postalCode: input.postalCode,
+    });
+  }
 
   const intent = resolvePlanIntent(input);
   const destinationPath = resolveDestination({
@@ -130,7 +161,12 @@ export async function completeFirstRunAction(input: {
   }, 'active');
 
   if (!intent) {
-    return { ok: true, destinationPath, planCheckoutPath: null };
+    return {
+      ok: true,
+      destinationPath,
+      planCheckoutPath: null,
+      signupConversionTransactionId,
+    };
   }
 
   // Best-effort and deliberately after the update above: a failure to record
@@ -148,5 +184,6 @@ export async function completeFirstRunAction(input: {
     ok: true,
     destinationPath,
     planCheckoutPath: surfaceIsLive ? planCheckoutPath(intent) : null,
+    signupConversionTransactionId,
   };
 }

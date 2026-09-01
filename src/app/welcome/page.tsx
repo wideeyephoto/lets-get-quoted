@@ -7,7 +7,6 @@ import { planUsageDashboardEnabled } from '@/lib/billing/plan-usage';
 import { parsePlanIntent, planCheckoutPath } from '@/lib/plan-intent';
 import { TRADES } from '@/lib/trades';
 import { initialBusinessName, needsFirstRun, TERMS_EFFECTIVE_DATE } from '@/lib/terms';
-import GoogleTagConversion from '@/components/google-tag-conversion';
 import WelcomeForm from './WelcomeForm';
 
 import { parseSignupIntent, resolveDestination } from '@/lib/signup-intent';
@@ -72,7 +71,6 @@ export default async function WelcomePage({
 
   return (
     <main className="page-shell">
-      {!returning ? <GoogleTagConversion /> : null}
       <div className="hero-card auth-card">
         <p className="eyebrow">{returning ? 'Updated terms' : 'Welcome'}</p>
         <h1>{returning ? 'We\'ve updated our terms' : 'Let\'s set up your business'}</h1>

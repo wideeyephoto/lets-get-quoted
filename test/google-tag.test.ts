@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
   getGoogleTagId,
+  getGoogleAdsSignupTrackingConfig,
   getSignupConversionSendTo,
   trackGoogleAdsConversion,
   trackSignupConversion,
@@ -14,6 +15,8 @@ const read = (...parts: string[]) =>
 
 const GOOGLE_TAG_CODE = read('src', 'components', 'google-tag.tsx');
 const ROOT_LAYOUT_CODE = read('src', 'app', 'layout.tsx');
+const WELCOME_PAGE_CODE = read('src', 'app', 'welcome', 'page.tsx');
+const WELCOME_FORM_CODE = read('src', 'app', 'welcome', 'WelcomeForm.tsx');
 
 describe('google-tag defaults and configuration', () => {
   it('loads nonced Google scripts after hydration from the document body', () => {
@@ -35,6 +38,7 @@ describe('google-tag defaults and configuration', () => {
       vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID', '');
       expect(getGoogleTagId()).toBe('');
       expect(getSignupConversionSendTo()).toBe('');
+      expect(getGoogleAdsSignupTrackingConfig()).toBeNull();
     } finally {
       vi.unstubAllEnvs();
     }
@@ -46,9 +50,45 @@ describe('google-tag defaults and configuration', () => {
       vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID', 'AW-999999999/customLabel');
       expect(getGoogleTagId()).toBe('AW-999999999');
       expect(getSignupConversionSendTo()).toBe('AW-999999999/customLabel');
+      expect(getGoogleAdsSignupTrackingConfig()).toEqual({
+        tagId: 'AW-999999999',
+        sendTo: 'AW-999999999/customLabel',
+      });
     } finally {
       vi.unstubAllEnvs();
     }
+  });
+
+  it.each([
+    ['tag only', 'AW-999999999', ''],
+    ['conversion only', '', 'AW-999999999/customLabel'],
+    ['different base IDs', 'AW-999999999', 'AW-111111111/customLabel'],
+    ['malformed tag ID', 'G-999999999', 'G-999999999/customLabel'],
+    ['missing conversion label', 'AW-999999999', 'AW-999999999'],
+  ])('fails closed for %s configuration', (_case, tagId, sendTo) => {
+    try {
+      vi.stubEnv('NEXT_PUBLIC_GOOGLE_TAG_ID', tagId);
+      vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID', sendTo);
+      expect(getGoogleAdsSignupTrackingConfig()).toBeNull();
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('emits no conversion on welcome-page arrival and tracks only an eligible successful action', () => {
+    expect(WELCOME_PAGE_CODE).not.toContain('GoogleTagConversion');
+    expect(WELCOME_PAGE_CODE).not.toContain('trackSignupConversion');
+
+    const successGuard = WELCOME_FORM_CODE.indexOf('if (!result.ok)');
+    const eligibilityGuard = WELCOME_FORM_CODE.indexOf('if (result.signupConversionTransactionId)');
+    const conversionCall = WELCOME_FORM_CODE.indexOf(
+      'trackSignupConversion(result.signupConversionTransactionId)',
+    );
+
+    expect(successGuard).toBeGreaterThan(-1);
+    expect(eligibilityGuard).toBeGreaterThan(successGuard);
+    expect(conversionCall).toBeGreaterThan(eligibilityGuard);
+    expect(WELCOME_FORM_CODE.match(/trackSignupConversion\(/g)).toHaveLength(1);
   });
 });
 
@@ -200,7 +240,11 @@ describe('trackGoogleAdsConversion and trackSignupConversion', () => {
   });
 
   it('prevents double-tracking signup conversion in trackSignupConversion', () => {
+    vi.stubEnv('NEXT_PUBLIC_GOOGLE_TAG_ID', 'AW-999999999');
     vi.stubEnv('NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID', 'AW-999999999/customLabel');
+    if ((globalThis as any).window) {
+      delete (globalThis as any).window.__lgq_signup_converted;
+    }
     const gtagMock = vi.fn();
     (globalThis as any).window.gtag = gtagMock;
 
