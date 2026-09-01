@@ -5,6 +5,16 @@ import { refreshStripeStatusAction } from '../stripe-actions';
 // refresh URLs point here). Refreshes the connected account's capability
 // status, then sends the owner back to the dashboard.
 export default async function StripeReturnPage() {
-  await refreshStripeStatusAction();
+  let failed = false;
+  try {
+    await refreshStripeStatusAction();
+  } catch {
+    failed = true;
+  }
+
+  if (failed) {
+    redirect('/dashboard/settings#payments');
+  }
+
   redirect('/dashboard');
 }

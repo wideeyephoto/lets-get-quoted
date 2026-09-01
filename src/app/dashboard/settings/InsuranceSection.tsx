@@ -71,86 +71,91 @@ export default function InsuranceSection({
         : 'Nothing is on file yet, so quotes go out without it.';
 
   const form = (
-    <form action={saveAction} className="workspace-form" encType="multipart/form-data">
-      <div className="field">
-        <label htmlFor="ins-file">
-          {onFile ? 'Replace the certificate' : 'Certificate of insurance'}
-        </label>
-        <div className="ins-dropzone">
-          <input
-            id="ins-file"
-            name="certificate"
-            type="file"
-            className="ins-dropzone-input"
-            accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              setSelectedFileName(file ? file.name : null);
-            }}
-          />
-          <svg className="ins-dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span className="ins-dropzone-title">
-            {selectedFileName ? 'Certificate selected' : onFile ? 'Click or drag to replace certificate' : 'Click or drag certificate here'}
-          </span>
-          <span className="ins-dropzone-subtitle">
-            {selectedFileName ? (
-              <span className="ins-dropzone-selected">📄 {selectedFileName}</span>
-            ) : (
-              'A PDF from your agent, or a photo of the paper certificate. Up to 10 MB.'
-            )}
-          </span>
-        </div>
-      </div>
-
-      <div className="cost-form-row">
+    <div className="workspace-form-stack">
+      <form action={saveAction} className="workspace-form" encType="multipart/form-data">
         <div className="field">
-          <label htmlFor="ins-carrier">Insurer</label>
-          <input id="ins-carrier" name="carrier" type="text" maxLength={120} defaultValue={record.carrier ?? ''} placeholder="Grange Insurance" />
-        </div>
-        <div className="field">
-          <label htmlFor="ins-coverage">General liability cover</label>
-          <input id="ins-coverage" name="coverageAmount" type="text" inputMode="numeric" defaultValue={record.coverageAmount ? String(Math.round(record.coverageAmount)) : ''} placeholder="1,000,000" />
-        </div>
-        <div className="field">
-          <label htmlFor="ins-expires">Expires</label>
-          <input id="ins-expires" name="expiresOn" type="date" defaultValue={record.expiresOn ?? ''} />
-          {/* The single most valuable field on this form, and the one most
-              likely to be skipped — so it says why rather than sitting blank. */}
-          <p className="field-note">Without it we can&rsquo;t pull the certificate the day it lapses.</p>
-        </div>
-      </div>
-
-      <div className="field">
-        <label htmlFor="ins-policy">Policy number</label>
-        <input id="ins-policy" name="policyNumber" type="text" maxLength={80} defaultValue={record.policyNumber ?? ''} placeholder="GL-4471902" />
-        {/* Worth saying, because typing a policy number into a CRM feels like
-            publishing it. It is on the certificate anyway. */}
-        <p className="field-note">Kept for your own records. It never appears on the quote itself.</p>
-      </div>
-
-      <div className="ins-show-row">
-        <label className="recurring-autocharge">
-          <input type="checkbox" name="showOnQuotes" defaultChecked={record.showOnQuotes} />
-          <span>
-            <strong>Show it on quotes</strong>
-            <span className="field-note">
-              An expired certificate stops going out on its own the day it lapses, whatever this says.
+          <label htmlFor="ins-file">
+            {onFile ? 'Replace the certificate' : 'Certificate of insurance'}
+          </label>
+          <div className="ins-dropzone">
+            <input
+              id="ins-file"
+              name="certificate"
+              type="file"
+              className="ins-dropzone-input"
+              accept="application/pdf,image/jpeg,image/png,image/webp,image/heic"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                setSelectedFileName(file ? file.name : null);
+              }}
+            />
+            <svg className="ins-dropzone-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span className="ins-dropzone-title">
+              {selectedFileName ? 'Certificate selected' : onFile ? 'Click or drag to replace certificate' : 'Click or drag certificate here'}
             </span>
-          </span>
-        </label>
-        {/* The effect of this checkbox is on a page the contractor never opens —
-            their quotes go out to other people. Without this the only way to
-            check the answer is to send yourself a test quote. */}
-        <InsurancePreview summary={previewSummary} withheldReason={withheldReason} />
-      </div>
+            <span className="ins-dropzone-subtitle">
+              {selectedFileName ? (
+                <span className="ins-dropzone-selected">📄 {selectedFileName}</span>
+              ) : (
+                'A PDF from your agent, or a photo of the paper certificate. Up to 10 MB.'
+              )}
+            </span>
+          </div>
+        </div>
 
-      <div className="workspace-inline-row">
-        <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓" onlyWhenChanged>Save</SaveButton>
-        {onFile ? (
+        <div className="cost-form-row">
+          <div className="field">
+            <label htmlFor="ins-carrier">Insurer</label>
+            <input id="ins-carrier" name="carrier" type="text" maxLength={120} defaultValue={record.carrier ?? ''} placeholder="Grange Insurance" />
+          </div>
+          <div className="field">
+            <label htmlFor="ins-coverage">General liability cover</label>
+            <input id="ins-coverage" name="coverageAmount" type="text" inputMode="numeric" defaultValue={record.coverageAmount ? String(Math.round(record.coverageAmount)) : ''} placeholder="1,000,000" />
+          </div>
+          <div className="field">
+            <label htmlFor="ins-expires">Expires</label>
+            <input id="ins-expires" name="expiresOn" type="date" defaultValue={record.expiresOn ?? ''} />
+            {/* The single most valuable field on this form, and the one most
+                likely to be skipped — so it says why rather than sitting blank. */}
+            <p className="field-note">Without it we can&rsquo;t pull the certificate the day it lapses.</p>
+          </div>
+        </div>
+
+        <div className="field">
+          <label htmlFor="ins-policy">Policy number</label>
+          <input id="ins-policy" name="policyNumber" type="text" maxLength={80} defaultValue={record.policyNumber ?? ''} placeholder="GL-4471902" />
+          {/* Worth saying, because typing a policy number into a CRM feels like
+              publishing it. It is on the certificate anyway. */}
+          <p className="field-note">Kept for your own records. It never appears on the quote itself.</p>
+        </div>
+
+        <div className="ins-show-row">
+          <label className="recurring-autocharge">
+            <input type="checkbox" name="showOnQuotes" defaultChecked={record.showOnQuotes} />
+            <span>
+              <strong>Show it on quotes</strong>
+              <span className="field-note">
+                An expired certificate stops going out on its own the day it lapses, whatever this says.
+              </span>
+            </span>
+          </label>
+          {/* The effect of this checkbox is on a page the contractor never opens —
+              their quotes go out to other people. Without this the only way to
+              check the answer is to send yourself a test quote. */}
+          <InsurancePreview summary={previewSummary} withheldReason={withheldReason} />
+        </div>
+
+        <div className="workspace-inline-row">
+          <SaveButton className="btn primary" pendingLabel="Saving…" savedLabel="Saved ✓" onlyWhenChanged>Save</SaveButton>
+        </div>
+      </form>
+
+      {onFile ? (
+        <div className="ins-remove-row" style={{ marginTop: '0.75rem' }}>
           <ConfirmActionButton
             action={removeAction}
             confirmMessage="Remove your certificate? Quotes stop carrying it straight away, and you'd need to upload it again."
@@ -160,9 +165,9 @@ export default function InsuranceSection({
           >
             Remove it
           </ConfirmActionButton>
-        ) : null}
-      </div>
-    </form>
+        </div>
+      ) : null}
+    </div>
   );
 
   return (

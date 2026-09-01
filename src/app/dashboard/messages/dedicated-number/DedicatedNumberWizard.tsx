@@ -219,7 +219,7 @@ export default function DedicatedNumberWizard({
             if (currentStep === 3) {
               setStepError(null);
               setCurrentStep(2);
-            } else if (currentStep === 1 && !validateStep1()) {
+            } else if (currentStep === 1) {
               goToStep2();
             }
           }}
@@ -236,8 +236,22 @@ export default function DedicatedNumberWizard({
           aria-selected={currentStep === 3}
           className={`${styles.stepTab} ${currentStep === 3 ? styles.activeTab : ''}`}
           onClick={() => {
-            if (currentStep === 2 && !validateStep2()) {
+            if (currentStep === 2) {
               goToStep3();
+            } else if (currentStep === 1) {
+              const err1 = validateStep1();
+              if (err1) {
+                setStepError(err1);
+                return;
+              }
+              const err2 = validateStep2();
+              if (err2) {
+                setStepError(err2);
+                setCurrentStep(2);
+                return;
+              }
+              setStepError(null);
+              setCurrentStep(3);
             }
           }}
         >
