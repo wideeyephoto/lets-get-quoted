@@ -61,7 +61,7 @@ async function startRun(admin: SupabaseClient, job: string): Promise<string | nu
 async function finishRun(
   admin: SupabaseClient,
   runId: string | null,
-  patch: { ok: boolean; durationMs: number; summary?: unknown; error?: string },
+  patch: { ok: boolean; durationMs: number; summary?: unknown; error?: string | null },
 ): Promise<void> {
   if (!runId) return;
   try {
@@ -148,12 +148,11 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
       const summary = await run();
       const summaryJson = asJson(summary);
       const logicalFailure = cronSummaryHasFailures(summaryJson);
-      const logicalError = logicalFailure ? extractLogicalFailureReason(job, summaryJson) : undefined;
       await finishRun(admin, runId, {
         ok: !logicalFailure,
         durationMs: Date.now() - startedMs,
         summary,
-        error: logicalError ?? null,
+        error: null,
       });
       if (Math.floor(Math.random() * PRUNE_ODDS) === 0) await pruneOldRuns(admin);
       if (logicalFailure) {

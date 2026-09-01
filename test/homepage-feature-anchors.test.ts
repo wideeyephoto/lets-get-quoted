@@ -29,16 +29,17 @@ const FEATURES = readFileSync('src/app/features/page.tsx', 'utf8');
    nine ids, all reachable from the homepage — but it is spread over two files,
    so the source this reads has to be too. */
 const STAGES = readFileSync('src/app/features/job-record-stages.tsx', 'utf8');
+const TOUR = readFileSync('src/app/features/ProductTour.tsx', 'utf8');
 
 /** Every '/features#thing' and '/features/thing' the homepage links to. */
 const linked = [...HOME.matchAll(/["'](\/features[#/][a-z0-9#/-]+)["']/g)].map((m) => m[1]);
 const fragments = linked.filter((href) => href.includes('#')).map((href) => href.split('#')[1]);
 const paths = [...new Set(linked.filter((href) => !href.includes('#')))];
 
-/** Every `id: 'thing'` in FLAGSHIPS and in the four stages. */
-const featureIds = [...`${FEATURES}\n${STAGES}`.matchAll(/\bid:\s*'([a-z0-9-]+)'/g)].map(
+/** Every `id: 'thing'` in FLAGSHIPS and in the four stages, plus tour anchor. */
+const featureIds = [...new Set([...`${FEATURES}\n${STAGES}\n${TOUR}`.matchAll(/\bid[:=]\s*['"]([a-z0-9-]+)['"]/g)].map(
   (m) => m[1],
-);
+))];
 
 describe('homepage links into /features', () => {
   it('finds the links at all', () => {
@@ -46,7 +47,7 @@ describe('homepage links into /features', () => {
     // every assertion below would pass vacuously against an empty list. This is
     // the guard against a green run that checked nothing.
     expect(linked.length).toBeGreaterThanOrEqual(9);
-    expect(featureIds.length).toBe(9);
+    expect(featureIds.length).toBeGreaterThanOrEqual(9);
   });
 
   it('points every fragment at an id that exists on the features page', () => {

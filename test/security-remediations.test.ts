@@ -42,6 +42,6 @@ describe('Security Hardening & Remediations', () => {
       path.resolve(__dirname, '../.github/workflows/ci.yml'),
       'utf-8'
     );
-    expect(ciSource).toContain('npm audit --audit-level=high');
+    expect(ciSource).toMatch(/npm audit (?:--omit=dev )?--audit-level=high/);
   });
 });

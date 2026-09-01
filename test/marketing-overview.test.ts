@@ -125,7 +125,7 @@ describe('the overview chooses one account-aware priority', () => {
   it('surfaces the legal setup blocker before suggesting a campaign', () => {
     const priority = chooseOverviewPriority({ ...input, mailingAddressReady: false });
     expect(priority.title).toBe('Add your mailing address');
-    expect(priority.primary.href).toBe('/dashboard/settings');
+    expect(priority.primary.href).toBe('/dashboard/settings#marketing-address');
   });
 
   it('grows a tiny audience before spending time in the composer', () => {

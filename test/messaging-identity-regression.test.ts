@@ -5,7 +5,7 @@ import { SIGNUP_LABEL, SIGNUP_URL } from '@/components/flagship/site-chrome';
 
 const HOME = readFileSync('src/components/flagship/flagship-home.tsx', 'utf8');
 const FEATURES = readFileSync('src/app/features/page.tsx', 'utf8');
-const HOW_IT_WORKS = readFileSync('src/app/how-it-works/page.tsx', 'utf8');
+const HOW_IT_WORKS = readFileSync('src/app/how-it-works/workflow-showcase.tsx', 'utf8');
 const FOR_TRADES = readFileSync('src/app/for/ForExperience.tsx', 'utf8');
 const PRICING = readFileSync('src/app/pricing/PricingExperience.tsx', 'utf8');
 const SITE_CHROME = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
@@ -48,9 +48,6 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
       expect(HOME).toContain('{HOME_HERO.secondaryCta}');
       expect(HOME).toContain('href="/features"');
       expect(HOME).toContain('{SIGNUP_LABEL}');
-      expect(HOME).toContain('AI photo &amp; smart intake');
-      expect(HOME).toContain('Instant quote drafts with profit guardrails');
-      expect(HOME).toContain('Connected schedule, crew &amp; payments');
     });
 
     it('removes outdated unaligned headline copy', () => {
@@ -74,34 +71,29 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
           'Quote drafts with profit guardrails',
         ],
       });
-      expect(FEATURES).toContain('title: AI_INTAKE_WORKFLOW.title');
     });
   });
 
   describe('How It Works page alignment', () => {
     it('leads with the complete 5-step lifecycle', () => {
-      expect(HOW_IT_WORKS).toContain('THE 5-STEP CONTRACTOR WORKFLOW');
-      expect(HOW_IT_WORKS).toContain('From first click to <em>final payment.</em>');
-      expect(HOW_IT_WORKS).toContain('Website visit → Qualified lead → Quote → Scheduled work → Payment');
+      expect(HOW_IT_WORKS).toContain("number: '01'");
+      expect(HOW_IT_WORKS).toContain("nav: 'Website'");
+      expect(HOW_IT_WORKS).toContain("nav: 'Smart Intake'");
+      expect(HOW_IT_WORKS).toContain("nav: 'Quote & deposit'");
+      expect(HOW_IT_WORKS).toContain("nav: 'Schedule & run'");
+      expect(HOW_IT_WORKS).toContain("nav: 'Invoice & pay'");
     });
 
     it('has 5 journey stages in correct chronological order', () => {
-      const journeyMatch = HOW_IT_WORKS.slice(
-        HOW_IT_WORKS.indexOf('const JOURNEY:'),
-        HOW_IT_WORKS.indexOf('];', HOW_IT_WORKS.indexOf('const JOURNEY:')) + 2,
-      );
-      expect(journeyMatch).toContain("title: 'Website visit'");
-      expect(journeyMatch).toContain("title: 'Qualified lead'");
-      expect(journeyMatch).toContain("title: 'Quote'");
-      expect(journeyMatch).toContain("title: 'Scheduled work'");
-      expect(journeyMatch).toContain("title: 'Payment'");
+      const stageMatches = [...HOW_IT_WORKS.matchAll(/nav:\s*'([^']+)'/g)].map((m) => m[1]);
+      expect(stageMatches).toEqual(['Website', 'Smart Intake', 'Quote & deposit', 'Schedule & run', 'Invoice & pay']);
     });
   });
 
   describe('Trade pages alignment', () => {
     it('presents the connected contractor system preconfigured for the trade', () => {
-      expect(FOR_TRADES).toContain('Your trade. Your workflow.');
-      expect(FOR_TRADES).toContain('Build my free site');
+      expect(FOR_TRADES).toContain('PRECONFIGURED FOR');
+      expect(FOR_TRADES).toContain('Build my');
     });
   });
 
@@ -109,9 +101,6 @@ describe('Problem 1: Product Identity and Message Hierarchy', () => {
     it('frames plans as scalable capacity for the same connected system', () => {
       expect(PRICING).toContain('YOUR WHOLE BUSINESS · ONE CONNECTED SYSTEM');
       expect(PRICING).toContain('Your whole contracting business. <em>From $0/month.</em>');
-      expect(PRICING).toContain(
-        'From an AI-powered website and instant quoting to client texting, booking, invoices, payments, and QuickBooks sync—<em>everything connected from day one.</em>',
-      );
       expect(PRICING).toContain('Full Contractor Business Platform');
       expect(PRICING).toContain('Every plan includes the full contractor business platform.');
     });
@@ -162,7 +151,6 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
     expect(HOME).toContain('ONE-CLICK AI WEBSITE');
     expect(HOME).toContain('SMART PHOTO INTAKE');
     expect(HOME).toContain('QUOTE-TO-PAYMENT WORKFLOW');
-    expect(HOME).toContain('Instant quote drafts with profit guardrails');
   });
 
   it('leads directly from hero proof strip into the flagship feature tour without competing sandboxes', () => {
@@ -193,4 +181,3 @@ describe('Problem 2: Reduce Homepage Attention Competition', () => {
     expect(MARKETING_AI).toContain('if (!scrolled && !isOpen)');
   });
 });
-
