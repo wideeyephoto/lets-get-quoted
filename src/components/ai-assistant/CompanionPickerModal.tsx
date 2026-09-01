@@ -3,7 +3,7 @@
 import React from 'react';
 import Image from 'next/image';
 import { useAssistant } from './AssistantProvider';
-import { COMPANIONS, type CompanionId, type CompanionProfile } from '@/lib/ai-assistant/companions';
+import { COMPANIONS, getCompanion, type CompanionId, type CompanionProfile } from '@/lib/ai-assistant/companions';
 import MiniFusionReactor from '@/components/mascot/MiniFusionReactor';
 import styles from './companion-picker.module.css';
 
@@ -65,6 +65,11 @@ export default function CompanionPickerModal() {
           <div className={styles.grid}>
             {COMPANIONS.map((comp: CompanionProfile) => {
               const isSelected = companionId === comp.id;
+              const displayAvatarSrc =
+                comp.id === 'sparky' && companionTrade
+                  ? (getCompanion('sparky', companionTrade).avatarSrc || comp.avatarSrc)
+                  : comp.avatarSrc;
+
               return (
                 <div
                   key={comp.id}
@@ -81,7 +86,7 @@ export default function CompanionPickerModal() {
                   }}
                 >
                   <div className={styles.avatarWrapper}>
-                    {comp.id === 'assistant' || comp.avatarSrc?.includes('spark') ? (
+                    {comp.id === 'assistant' ? (
                       <MiniFusionReactor
                         size={60}
                         interactive={true}
@@ -89,7 +94,7 @@ export default function CompanionPickerModal() {
                       />
                     ) : (
                       <Image
-                        src={comp.avatarSrc}
+                        src={displayAvatarSrc}
                         alt={comp.name}
                         width={64}
                         height={64}

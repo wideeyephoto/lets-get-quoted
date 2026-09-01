@@ -43,6 +43,8 @@ const EXPRESSION_SRC: Record<SparkyExpression, string> = {
 };
 
 const TRADE_AVATAR_SRC: Record<string, string> = {
+  general: '/brand/sparky/sparky-avatar.jpg',
+  gc: '/brand/sparky/sparky-avatar.jpg',
   electrician: '/brand/sparky/sparky-electrician.jpg',
   electrical: '/brand/sparky/sparky-electrician.jpg',
   carpentry: '/brand/sparky/sparky-carpenter.jpg',
@@ -52,7 +54,6 @@ const TRADE_AVATAR_SRC: Record<string, string> = {
   inspector: '/brand/sparky/sparky-inspector.jpg',
   safety: '/brand/sparky/sparky-inspector.jpg',
   hvac: '/brand/sparky/sparky-inspector.jpg',
-  general: '/brand/sparky/sparky-inspector.jpg',
   lawncare: '/brand/sparky/sparky-lawncare.jpg',
   'lawn-care': '/brand/sparky/sparky-lawncare.jpg',
   landscaping: '/brand/sparky/sparky-lawncare.jpg',
@@ -65,6 +66,8 @@ const TRADE_AVATAR_SRC: Record<string, string> = {
   roofing: '/brand/sparky/sparky-roofer.jpg',
   roofer: '/brand/sparky/sparky-roofer.jpg',
   masonry: '/brand/sparky/sparky-roofer.jpg',
+  painting: '/brand/sparky/sparky-painter.jpg',
+  painter: '/brand/sparky/sparky-painter.jpg',
 };
 
 const SIZE_MAP: Record<'xs' | 'sm' | 'md' | 'lg' | 'xl' | '2xl', number> = {
