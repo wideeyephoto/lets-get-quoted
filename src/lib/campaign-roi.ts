@@ -84,8 +84,10 @@ export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionC
     source === 'facebook' ||
     source === 'instagram' ||
     source === 'meta' ||
+    source === 'meta_lead_ads' ||
     medium.includes('fb') ||
-    medium.includes('insta')
+    medium.includes('insta') ||
+    medium === 'meta_lead_ad'
   ) {
     return 'meta';
   }
@@ -105,9 +107,13 @@ export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionC
   if (
     source === 'nextdoor' ||
     source === 'yelp' ||
+    source === 'angi' ||
     source === 'angie' ||
     source === 'thumbtack' ||
-    medium === 'referral'
+    source === 'marketplace' ||
+    medium === 'referral' ||
+    medium === 'marketplace_lead' ||
+    medium === 'paid_lead'
   ) {
     return 'local';
   }

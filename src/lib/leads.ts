@@ -7,7 +7,7 @@ import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import { sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
 export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
 
-export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice' | 'google_lsa';
+export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice' | 'google_lsa' | 'meta_lead_ads' | 'angi' | 'thumbtack' | 'marketplace';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export type LeadScore = 'hot' | 'warm' | 'low';
@@ -302,6 +302,8 @@ export type Lead = {
   source_voice_event_id?: string | null;
   /** Immutable Google Local Services lead resource used for replay-safe imports. */
   source_google_lsa_resource?: string | null;
+  /** Immutable Marketplace reference identifier used for replay-safe deduplication. */
+  source_marketplace_ref?: string | null;
   converted_job: string | null;
   client_id: string | null;
   triage: LeadTriage | null;
@@ -335,6 +337,8 @@ export type LeadInput = {
   sourceVoiceEventId?: string | null;
   /** Stable provider resource used only by the Google Local Services importer. */
   sourceGoogleLsaResource?: string | null;
+  /** Stable marketplace identifier used for replay-safe imports and webhook retries. */
+  sourceMarketplaceRef?: string | null;
   /** Preserve the provider's creation time when importing historical leads. */
   createdAt?: string | null;
   triage?: LeadTriage | null;
@@ -346,6 +350,10 @@ export function formatLeadSource(source: LeadSource): string {
   if (source === 'referral') return 'Referral';
   if (source === 'ai_voice') return 'AI receptionist';
   if (source === 'google_lsa') return 'Google Local Services Ads';
+  if (source === 'meta_lead_ads') return 'Meta Lead Ads';
+  if (source === 'angi') return 'Angi Leads';
+  if (source === 'thumbtack') return 'Thumbtack';
+  if (source === 'marketplace') return 'Marketplace Lead';
   return 'Manual';
 }
 
@@ -451,6 +459,9 @@ export async function createLead(
     ...(input.sourceGoogleLsaResource
       ? { source_google_lsa_resource: input.sourceGoogleLsaResource }
       : {}),
+    ...(input.sourceMarketplaceRef
+      ? { source_marketplace_ref: input.sourceMarketplaceRef }
+      : {}),
     ...(input.createdAt ? { created_at: input.createdAt } : {}),
   };
   let lead: Lead;
@@ -458,7 +469,9 @@ export async function createLead(
     ? { column: 'source_voice_event_id', value: input.sourceVoiceEventId }
     : input.sourceGoogleLsaResource
       ? { column: 'source_google_lsa_resource', value: input.sourceGoogleLsaResource }
-      : null;
+      : input.sourceMarketplaceRef
+        ? { column: 'source_marketplace_ref', value: input.sourceMarketplaceRef }
+        : null;
   if (immutableSource) {
     // Receipt work can be replayed after either a worker failure or a lost HTTP
     // response. Conflict-do-nothing is essential here: an ordinary UPSERT
@@ -551,7 +564,7 @@ export async function createLead(
 async function recoverExistingProviderLead(
   supabase: SupabaseClient,
   accountId: string,
-  column: 'source_voice_event_id' | 'source_google_lsa_resource',
+  column: 'source_voice_event_id' | 'source_google_lsa_resource' | 'source_marketplace_ref',
   value: string,
   originalError: unknown,
 ): Promise<Lead> {
