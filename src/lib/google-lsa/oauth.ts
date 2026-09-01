@@ -36,7 +36,6 @@ export function buildGoogleAuthorizeUrl(state: string): string {
     access_type: 'offline',
     // Google otherwise often omits a refresh token after a previous consent.
     prompt: 'consent',
-    include_granted_scopes: 'true',
     state,
   });
   return `${AUTHORIZE_URL}?${params.toString()}`;
@@ -52,27 +51,54 @@ type GoogleTokenWireResponse = {
   error_description?: string;
 };
 
+export class GoogleOAuthError extends Error {
+  readonly status: number;
+  readonly code: string | null;
+
+  constructor(message: string, status: number, code: string | null) {
+    super(message);
+    this.name = 'GoogleOAuthError';
+    this.status = status;
+    this.code = code;
+  }
+}
+
+/** A new authorization grant is useful only when Google says the grant itself is dead. */
+export function googleOAuthRequiresReconnect(error: unknown): boolean {
+  return error instanceof GoogleOAuthError && error.code === 'invalid_grant';
+}
+
 async function requestGoogleTokens(
   body: URLSearchParams,
   previousRefreshToken: string | null,
   fetchImpl: GoogleLsaFetch,
 ): Promise<GoogleOAuthTokens> {
-  const response = await fetchImpl(TOKEN_URL, {
-    method: 'POST',
-    headers: {
-      Accept: 'application/json',
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: body.toString(),
-    cache: 'no-store',
-    signal: AbortSignal.timeout(10_000),
-  });
+  let response: Response;
+  try {
+    response = await fetchImpl(TOKEN_URL, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/json',
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: body.toString(),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Network request failed.';
+    throw new GoogleOAuthError(`Google OAuth token request failed: ${detail}`, 0, null);
+  }
 
   const payload = (await response.json().catch(() => ({}))) as GoogleTokenWireResponse;
   const refreshToken = payload.refresh_token || previousRefreshToken;
   if (!response.ok || !payload.access_token || !refreshToken) {
     const detail = payload.error_description || payload.error || `HTTP ${response.status}`;
-    throw new Error(`Google OAuth token request failed: ${detail}`);
+    throw new GoogleOAuthError(
+      `Google OAuth token request failed: ${detail}`,
+      response.status,
+      payload.error || null,
+    );
   }
 
   return {

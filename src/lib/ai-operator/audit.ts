@@ -36,6 +36,7 @@ export const REQUIRES_APPROVAL_ACTION_TYPES = new Set([
   'waive_platform_fee',
   'force_payout_settlement',
   'replay_failed_webhook',
+  'replay_failed_webhooks',
   'execute_database_mutation',
 ]);
 

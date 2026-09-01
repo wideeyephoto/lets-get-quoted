@@ -1,10 +1,11 @@
-import { requireOfficeContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { listCampaigns } from '@/lib/campaigns';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import { countStates, todayKeyOf } from '@/lib/marketing-status';
 import { listLeads } from '@/lib/leads';
 import { listJobs } from '@/lib/jobs';
 import { calculateCampaignRoi, type JobFinancialLookup } from '@/lib/campaign-roi';
+import { getGoogleLsaReportingSummary } from '@/lib/google-lsa/reporting';
 import PerformanceScreen from './PerformanceScreen';
 
 export const dynamic = 'force-dynamic';
@@ -12,13 +13,21 @@ export const metadata = { title: 'Marketing performance & ROI' };
 
 export default async function MarketingPerformancePage() {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const admin = createAdminClient();
   const today = todayKeyOf();
 
-  const [campaigns, blogData, leads, jobs] = await Promise.all([
+  const [campaigns, blogData, leads, jobs, lsaSummary] = await Promise.all([
     listCampaigns(supabase, accountId),
     loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
     listLeads(supabase, accountId),
     listJobs(supabase, accountId),
+    getGoogleLsaReportingSummary(admin, accountId).catch((error) => {
+      console.error(
+        `Google LSA performance reporting failed for account ${accountId}:`,
+        error instanceof Error ? error.message : error,
+      );
+      return null;
+    }),
   ]);
 
   const jobLookup: JobFinancialLookup = {};
@@ -34,6 +43,7 @@ export default async function MarketingPerformancePage() {
       campaigns={campaigns}
       counts={countStates(blogData?.posts ?? [], today)}
       roiSummary={roiSummary}
+      lsaSummary={lsaSummary}
     />
   );
 }

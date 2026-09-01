@@ -240,6 +240,14 @@ export interface OperatorExecutionContext {
   supabase: SupabaseClient;
   adminUserId?: string;
   source: 'cron' | 'founder_cli' | 'admin_dashboard' | 'telegram' | 'webhook';
+  staff?: {
+    role: any;
+    active: boolean;
+    id?: string;
+    email?: string;
+    display_name?: string | null;
+  };
+  isFounderApproved?: boolean;
 }
 
 export interface OperatorToolResult {

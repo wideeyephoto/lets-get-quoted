@@ -58,6 +58,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/leads', label: 'Leads', hint: 'New & website leads' },
   { href: '/dashboard/messages', label: 'Customer Messages', hint: 'Two-way customer texts' },
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
+  { href: '/dashboard/forms', label: 'Forms & QA', hint: 'Inspections · Commissioning · Certificates' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
@@ -75,6 +76,8 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
+  { href: '/dashboard/activity', label: 'Activity Ledger', hint: 'Immutable audit log of workspace changes' },
+  { href: '/dashboard/trash', label: 'Trash Bin', hint: 'Recover deleted records within 30 days' },
   { href: '/dashboard/settings', label: 'Account' },
   { href: '/dashboard/help', label: 'Help', hint: 'Ask us a question and track the answer' },
 ];
@@ -120,6 +123,7 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
       '/dashboard/leads',
       '/dashboard/messages',
       '/dashboard/jobs',
+      '/dashboard/forms',
       '/dashboard/schedule',
       '/dashboard/crew',
       '/dashboard/clients',
@@ -154,6 +158,14 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
       '/dashboard/automations',
       '/dashboard/marketing',
       '/dashboard/reviews',
+    ],
+  },
+  {
+    label: 'Governance & Recovery',
+    accent: 'governance',
+    hrefs: [
+      '/dashboard/activity',
+      '/dashboard/trash',
     ],
   },
 ];

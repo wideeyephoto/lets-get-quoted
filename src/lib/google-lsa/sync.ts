@@ -5,6 +5,7 @@ import { createLead } from '@/lib/leads';
 import {
   fetchLegacyLsaAccountReport,
   fetchPmaxLsaDailySpend,
+  discoverGoogleLsaCustomers,
   listGoogleLsaConversations,
   listGoogleLsaLeads,
 } from './api';
@@ -13,9 +14,9 @@ import {
   claimGoogleLsaSync,
   completeGoogleLsaSync,
   listGoogleLsaConnectedAccountIds,
+  reconcileGoogleLsaCandidates,
 } from './connection';
 import {
-  googleLocalDateTimeToIso,
   googleLsaConversationRow,
   googleLsaCrmLeadInput,
   googleLsaLeadRow,
@@ -185,7 +186,18 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
     };
   }
 
-  const connection = await activeGoogleLsaConnection(accountId);
+  let connection;
+  try {
+    connection = await activeGoogleLsaConnection(accountId);
+  } catch (error) {
+    const detail = error instanceof Error ? error.message : 'Google access is temporarily unavailable.';
+    const message = `Google Local Services import could not refresh access: ${detail}`;
+    await completeGoogleLsaSync({ accountId, summary: message, fullRescan: false, error: message });
+    return {
+      ok: false, busy: false, fullRescan: false, leadsSeen: 0, leadsLinked: 0,
+      conversations: 0, spendRows: 0, failed: 1, message,
+    };
+  }
   if (!connection) {
     const result = {
       ok: false, busy: false, fullRescan: false, leadsSeen: 0, leadsLinked: 0,
@@ -199,6 +211,33 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
   const now = Date.now();
   const lastFull = connection.lastFullRescanAt ? new Date(connection.lastFullRescanAt).getTime() : NaN;
   const fullRescan = !Number.isFinite(lastFull) || now - lastFull >= FULL_RESCAN_INTERVAL_MS;
+  if (fullRescan) {
+    try {
+      const discovered = await discoverGoogleLsaCustomers({ accessToken: connection.accessToken });
+      const selected = await reconcileGoogleLsaCandidates(accountId, discovered.map((candidate) => ({
+        customerId: candidate.customerId,
+        customerName: candidate.descriptiveName,
+        timeZone: candidate.timeZone,
+        loginCustomerId: candidate.loginCustomerId,
+        campaignId: candidate.campaign.id,
+        campaignMode: candidate.campaignKind,
+      })));
+      if (selected) {
+        connection = {
+          ...connection,
+          customerName: selected.customerName,
+          customerTimeZone: selected.timeZone,
+          loginCustomerId: selected.loginCustomerId,
+          campaignId: selected.campaignId,
+          campaignMode: selected.campaignMode,
+        };
+      }
+    } catch (error) {
+      // Existing imports remain useful when discovery has a transient outage.
+      // The daily pass will retry migration reconciliation on its next run.
+      console.error('Google LSA campaign reconciliation failed:', error instanceof Error ? error.message : error);
+    }
+  }
   const startDate = dateKey(daysAgo(fullRescan ? FULL_RESCAN_DAYS - 1 : INCREMENTAL_OVERLAP_DAYS, now), connection.customerTimeZone);
   const endDate = dateKey(new Date(now), connection.customerTimeZone);
   let leadsSeen = 0;
@@ -270,10 +309,13 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
       // 90-day snapshot. Reporting selects the newest matching snapshot rather
       // than summing overlapping windows.
       const reportStart = dateKey(daysAgo(FULL_RESCAN_DAYS - 1, now), connection.customerTimeZone);
+      if (!connection.loginCustomerId) {
+        throw new Error('Legacy Local Services cost reporting requires an accessible Google Ads manager account. Reconnect through the manager account to import spend.');
+      }
       const reports = await fetchLegacyLsaAccountReport({
         accessToken: connection.accessToken,
-        managerCustomerId: connection.loginCustomerId || connection.customerId,
-        ...(connection.loginCustomerId ? { customerId: connection.customerId } : {}),
+        managerCustomerId: connection.loginCustomerId,
+        customerId: connection.customerId,
         startDate: reportStart,
         endDate,
       });

@@ -63,6 +63,7 @@ export async function listServices(
     .from('services')
     .select('*')
     .eq('account_id', accountId)
+    .is('deleted_at', null)
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true });
   if (options?.activeOnly) query = query.eq('active', true);
@@ -120,9 +121,57 @@ export async function setServiceActive(supabase: SupabaseClient, accountId: stri
   if (error) throw error;
 }
 
-export async function deleteService(supabase: SupabaseClient, accountId: string, serviceId: string): Promise<void> {
-  const { error } = await supabase.from('services').delete().eq('account_id', accountId).eq('id', serviceId);
+export async function deleteService(
+  supabase: SupabaseClient,
+  accountId: string,
+  serviceId: string,
+  actor?: { userId?: string; role?: string; email?: string }
+): Promise<void> {
+  const { data: service, error: selectError } = await supabase
+    .from('services')
+    .select('id, name, unit_price')
+    .eq('account_id', accountId)
+    .eq('id', serviceId)
+    .is('deleted_at', null)
+    .single();
+
+  if (selectError || !service) throw selectError ?? new Error('Service not found.');
+
+  const now = new Date();
+  const purgeAt = new Date(now.getTime() + 30 * 86400000);
+  const opId = crypto.randomUUID();
+
+  const { error } = await supabase
+    .from('services')
+    .update({
+      deleted_at: now.toISOString(),
+      purge_after: purgeAt.toISOString(),
+      deleted_by_user_id: actor?.userId ?? null,
+      deletion_reason: 'Service moved to trash bin',
+      delete_operation_id: opId,
+    })
+    .eq('account_id', accountId)
+    .eq('id', serviceId);
+
   if (error) throw error;
+
+  await supabase.from('recoverable_deletions').insert({
+    id: opId,
+    account_id: accountId,
+    entity_type: 'service',
+    entity_id: serviceId,
+    display_snapshot: {
+      title: service.name,
+      subtitle: service.unit_price > 0 ? `${service.unit_price}` : 'Custom Price',
+      badge: 'Price Book Service',
+    },
+    deleted_at: now.toISOString(),
+    purge_eligible_at: purgeAt.toISOString(),
+    deleted_by_user_id: actor?.userId ?? null,
+    deleted_by_role: actor?.role ?? 'office',
+    deletion_reason: 'Service moved to trash bin',
+    status: 'trashed',
+  });
 }
 
 const DAY = 24 * 60 * 60 * 1000;

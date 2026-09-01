@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { loadCrewContext } from '@/lib/crew-auth';
 import { getOpenShift } from '@/lib/time-clock-data';
+import { updateTechPosition, type TrackingRow } from '@/lib/job-tracking';
 
 export const dynamic = 'force-dynamic';
 
@@ -124,6 +125,13 @@ export async function POST(req: Request) {
   if (upsertError) {
     console.error('Failed to upsert crew location:', upsertError);
     return badRequest('Could not record location telemetry', 500);
+  }
+
+  // Continuously recalculate live ETA and window for active arrival trips
+  if (hasActiveArrival && activeArrival?.data) {
+    void updateTechPosition(admin, activeArrival.data as TrackingRow, { lat, lng }, 'street', now).catch((err) => {
+      console.warn('Continuous ETA update from location ingestion non-blocking error:', err);
+    });
   }
 
   // Realtime Broadcast notification on private topic

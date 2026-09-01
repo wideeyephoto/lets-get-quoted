@@ -1,0 +1,423 @@
+/* Styles for Conditional Form Builder, Field Runner, and Job Panels */
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+}
+
+.headerInfo h1 {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.headerInfo p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.headerActions {
+  display: flex;
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.filterBar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+}
+
+.categoryPills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.pill {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  border-radius: 20px;
+  border: 1px solid var(--border-default, #cbd5e1);
+  background: transparent;
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pill:hover {
+  background: var(--surface-hover, #f8fafc);
+  color: var(--text-primary, #0f172a);
+}
+
+.pillActive {
+  background: #0284c7 !important;
+  color: #ffffff !important;
+  border-color: #0284c7 !important;
+  font-weight: 600;
+}
+
+.selectTrade {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+  border: 1px solid var(--border-default, #cbd5e1);
+  background: var(--surface-primary, #ffffff);
+  color: var(--text-primary, #0f172a);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+  gap: 1.25rem;
+}
+
+.card {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 1rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+}
+
+.cardHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.badgePreset {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.badgeCustom {
+  background: #f3e8ff;
+  color: #7e22ce;
+}
+
+.badgeCategory {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+.badgePassed {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.badgeNeedsRemediation {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.badgeAwaitingSig {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+.cardTitle {
+  margin: 0.35rem 0 0.25rem 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.cardDesc {
+  margin: 0;
+  font-size: 0.83rem;
+  color: var(--text-secondary, #64748b);
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.cardMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: var(--text-muted, #94a3b8);
+  border-top: 1px dashed var(--border-subtle, #f1f5f9);
+  padding-top: 0.75rem;
+}
+
+.cardFooter {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: auto;
+}
+
+/* Builder Layout */
+.builderWorkspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  align-items: start;
+}
+
+@media (max-width: 960px) {
+  .builderWorkspace {
+    grid-template-columns: 1fr;
+  }
+}
+
+.builderPanel {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.panelTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0 0 0.5rem 0;
+  color: var(--text-primary, #0f172a);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionBlock {
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.sectionHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.fieldItem {
+  background: var(--surface-card, #ffffff);
+  border: 1px solid var(--border-default, #cbd5e1);
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.fieldHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.fieldMeta {
+  display: flex;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-secondary, #64748b);
+}
+
+.conditionTag {
+  background: #fef3c7;
+  color: #92400e;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+/* Simulator / Runner */
+.simulatorBox {
+  background: var(--surface-card, #ffffff);
+  border: 2px solid #0284c7;
+  border-radius: 12px;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.08);
+}
+
+.simHeader {
+  background: #f0f9ff;
+  border: 1px solid #bae6fd;
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.scorecard {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.5rem;
+  background: var(--surface-subtle, #f8fafc);
+  border: 1px solid var(--border-default, #e2e8f0);
+  border-radius: 8px;
+  padding: 0.75rem;
+  text-align: center;
+}
+
+.scoreItem strong {
+  display: block;
+  font-size: 1.2rem;
+  color: var(--text-primary, #0f172a);
+}
+
+.scoreItem span {
+  font-size: 0.72rem;
+  color: var(--text-secondary, #64748b);
+  text-transform: uppercase;
+}
+
+.criticalAlert {
+  background: #fef2f2;
+  border-left: 4px solid #ef4444;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  color: #991b1b;
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.passFailGroup {
+  display: inline-flex;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-default, #cbd5e1);
+}
+
+.passFailBtn {
+  padding: 0.4rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  border: none;
+  background: var(--surface-card, #ffffff);
+  color: var(--text-secondary, #475569);
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.passFailBtn:not(:last-child) {
+  border-right: 1px solid var(--border-default, #cbd5e1);
+}
+
+.passActive {
+  background: #16a34a !important;
+  color: #ffffff !important;
+}
+
+.failActive {
+  background: #dc2626 !important;
+  color: #ffffff !important;
+}
+
+.naActive {
+  background: #64748b !important;
+  color: #ffffff !important;
+}
+
+.photoUploadBox {
+  border: 2px dashed var(--border-default, #cbd5e1);
+  border-radius: 8px;
+  padding: 1rem;
+  text-align: center;
+  background: var(--surface-subtle, #f8fafc);
+  cursor: pointer;
+}
+
+.photoThumbGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+.photoThumb {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid var(--border-default, #cbd5e1);
+  background: #000000;
+}
+
+.photoThumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.sigPadWrapper {
+  border: 1px solid var(--border-default, #cbd5e1);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}

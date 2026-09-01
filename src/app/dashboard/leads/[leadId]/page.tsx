@@ -11,7 +11,7 @@ import { normalizeBookingWeekdays } from '@/lib/booking-availability';
 import { LEAD_STATUS_LABEL } from '@/lib/lead-detail-labels';
 import { resolveClientChannel } from '@/lib/client-channel';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
-import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, sendQuoteAction, setLeadLayoutAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
+import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, sendQuoteAction, setLeadLayoutAction, submitGoogleLsaFeedbackAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
 import QuoteSendGate from './QuoteSendGate';
 import { quoteShape } from './quote-shape';
@@ -27,6 +27,8 @@ import SaveButton, { ScrollTopOnSaveProvider } from '@/components/save-button';
 import QuickFillButtons from '@/components/quick-fill-buttons';
 import SendQuoteForm from './SendQuoteForm';
 import StripeQuoteGate from './StripeQuoteGate';
+import GoogleLsaLeadCard from './GoogleLsaLeadCard';
+import { loadGoogleLsaLeadDetail } from '@/lib/google-lsa/lead-detail';
 import styles from '../leads.module.css';
 
 export const metadata = { title: 'Lead' };
@@ -115,7 +117,7 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
   const { supabase, accountId, role } = await requireOfficeContext('leads.read');
   const ownerControls = role === 'owner';
   await expireStaleLeads(supabase, accountId);
-  const [lead, jobs, leads, { data: account }, { data: site }] = await Promise.all([
+  const [lead, jobs, leads, { data: account }, { data: site }, googleLsaDetail] = await Promise.all([
     getLead(supabase, accountId, params.leadId),
     listJobs(supabase, accountId, undefined, { includeLeadQuotes: true }),
     listLeads(supabase, accountId),
@@ -131,6 +133,7 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
     ownerControls
       ? supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle()
       : Promise.resolve({ data: null }),
+    loadGoogleLsaLeadDetail(accountId, params.leadId),
   ]);
   if (!lead) notFound();
 
@@ -157,6 +160,7 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
   const photos = await createLeadPhotoLinks(accountId, lead.photo_paths || []);
   const defaultPhoto = photos[0];
   const updateLeadDetails = updateLeadDetailsAction.bind(null, lead.id);
+  const submitGoogleLsaFeedback = submitGoogleLsaFeedbackAction.bind(null, lead.id);
   const sendQuote = sendQuoteAction.bind(null, lead.id);
   const undoConvertLead = undoConvertLeadAction.bind(null, lead.id);
   const rescheduleLater = clearLeadQuoteVisitAction.bind(null, lead.id);
@@ -418,6 +422,14 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
           </div>
         </div>
       </section>
+
+      {googleLsaDetail ? (
+        <GoogleLsaLeadCard
+          detail={googleLsaDetail}
+          ownerControls={ownerControls}
+          submitFeedback={submitGoogleLsaFeedback}
+        />
+      ) : null}
 
       {searchParams.details === 'photos' ? (
         <div id="lead-photos-modal" className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="leadPhotosTitle">

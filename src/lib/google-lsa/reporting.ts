@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { googleLocalDateTimeToIso } from './map';
 
 export const GOOGLE_LSA_REPORTING_WINDOW_DAYS = 90;
 
@@ -38,6 +39,7 @@ type ConnectionRow = {
   account_id?: unknown;
   customer_id?: unknown;
   customer_name?: unknown;
+  customer_time_zone?: unknown;
   campaign_id?: unknown;
   campaign_mode?: unknown;
   last_sync_at?: unknown;
@@ -91,7 +93,6 @@ export type GoogleLsaReportingRows = {
 
 type QueryError = { message?: string } | null;
 
-const DAY_MS = 24 * 60 * 60 * 1000;
 const CREDIT_ISSUED_STATES = new Set([
   'CREDITED',
   'CREDIT_ISSUED',
@@ -123,21 +124,49 @@ function utcDateKey(value: Date): string {
   return value.toISOString().slice(0, 10);
 }
 
-export function googleLsaRollingWindow(now = new Date()): {
+function localDateKey(now: Date, timeZone: string): string {
+  try {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).formatToParts(now);
+    const value = (kind: Intl.DateTimeFormatPartTypes) => parts.find((part) => part.type === kind)?.value;
+    const year = value('year');
+    const month = value('month');
+    const day = value('day');
+    if (year && month && day) return `${year}-${month}-${day}`;
+  } catch {
+    // A damaged stored timezone must not take the whole performance page down.
+  }
+  return utcDateKey(now);
+}
+
+function shiftDateKey(value: string, days: number): string {
+  const [year, month, day] = value.split('-').map(Number);
+  return utcDateKey(new Date(Date.UTC(year, month - 1, day + days)));
+}
+
+export function googleLsaRollingWindow(now = new Date(), timeZone = 'UTC'): {
   periodStart: string;
   periodEnd: string;
   startsAt: string;
   endsAt: string;
 } {
-  const endDay = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
-  const startDay = new Date(endDay.getTime() - (GOOGLE_LSA_REPORTING_WINDOW_DAYS - 1) * DAY_MS);
-  const endOfDay = new Date(endDay.getTime() + DAY_MS - 1);
+  const periodEnd = localDateKey(now, timeZone);
+  const periodStart = shiftDateKey(periodEnd, -(GOOGLE_LSA_REPORTING_WINDOW_DAYS - 1));
+  const nextDay = shiftDateKey(periodEnd, 1);
+  const startsAt = googleLocalDateTimeToIso(`${periodStart} 00:00:00`, timeZone)
+    ?? `${periodStart}T00:00:00.000Z`;
+  const nextDayStartsAt = googleLocalDateTimeToIso(`${nextDay} 00:00:00`, timeZone)
+    ?? `${nextDay}T00:00:00.000Z`;
 
   return {
-    periodStart: utcDateKey(startDay),
-    periodEnd: utcDateKey(endDay),
-    startsAt: startDay.toISOString(),
-    endsAt: endOfDay.toISOString(),
+    periodStart,
+    periodEnd,
+    startsAt,
+    endsAt: new Date(new Date(nextDayStartsAt).getTime() - 1).toISOString(),
   };
 }
 
@@ -313,7 +342,7 @@ export function summarizeGoogleLsaRows(
   rows: GoogleLsaReportingRows,
   now = new Date(),
 ): GoogleLsaReportingSummary {
-  const window = googleLsaRollingWindow(now);
+  const window = googleLsaRollingWindow(now, textValue(rows.connection?.customer_time_zone) ?? 'UTC');
   const customerId = textValue(rows.connection?.customer_id);
   const leads = distinctLeads(rows.leads, customerId, window.startsAt, window.endsAt);
   const spend = selectedSpendRows(rows.spend, rows.connection, window.periodStart, window.periodEnd);
@@ -388,14 +417,16 @@ export async function getGoogleLsaReportingSummary(
   accountId: string,
   options: { now?: Date } = {},
 ): Promise<GoogleLsaReportingSummary> {
-  const window = googleLsaRollingWindow(options.now);
+  const connectionResult = await supabase
+    .from('google_lsa_connections')
+    .select('account_id, customer_id, customer_name, customer_time_zone, campaign_id, campaign_mode, last_sync_at, last_error, disconnected_at')
+    .eq('account_id', accountId)
+    .maybeSingle();
+  if (connectionResult.error) throw queryFailure('connection', connectionResult.error);
+  const connection = (connectionResult.data as ConnectionRow | null) ?? null;
+  const window = googleLsaRollingWindow(options.now, textValue(connection?.customer_time_zone) ?? 'UTC');
 
-  const [connectionResult, leadsResult, spendResult] = await Promise.all([
-    supabase
-      .from('google_lsa_connections')
-      .select('account_id, customer_id, customer_name, campaign_id, campaign_mode, last_sync_at, last_error, disconnected_at')
-      .eq('account_id', accountId)
-      .maybeSingle(),
+  const [leadsResult, spendResult] = await Promise.all([
     supabase
       .from('google_lsa_leads')
       .select(LSA_LEAD_REPORT_SELECT)
@@ -410,61 +441,15 @@ export async function getGoogleLsaReportingSummary(
       .lte('period_start', window.periodEnd),
   ]);
 
-  if (connectionResult.error) throw queryFailure('connection', connectionResult.error);
   if (leadsResult.error) throw queryFailure('leads', leadsResult.error);
   if (spendResult.error) throw queryFailure('spend', spendResult.error);
 
   return summarizeGoogleLsaRows(
     {
-      connection: (connectionResult.data as ConnectionRow | null) ?? null,
+      connection,
       leads: (leadsResult.data as unknown as LsaLeadRow[] | null) ?? [],
       spend: (spendResult.data as SpendRow[] | null) ?? [],
     },
     options.now,
   );
-}
-
-/**
- * Synchronizes Local Services leads, spend facts, and attribution for an account
- */
-export async function syncGoogleLsaAccount(
-  accountId: string,
-  options: { fullRescan?: boolean } = {},
-): Promise<{ success: boolean; message: string }> {
-  try {
-    const { completeGoogleLsaSync } = await import('./connection');
-    await completeGoogleLsaSync({
-      accountId,
-      summary: `Synced LSA leads and spend summary (fullRescan: ${options.fullRescan ?? false})`,
-      fullRescan: options.fullRescan ?? false,
-    });
-    return { success: true, message: 'Google Local Services data synced successfully.' };
-  } catch (err) {
-    return { success: false, message: err instanceof Error ? err.message : String(err) };
-  }
-}
-
-/**
- * Sweeps and syncs all connected Google Local Services contractor accounts
- */
-export async function syncAllGoogleLsaAccounts(): Promise<{ processed: number; errors: number }> {
-  const { listGoogleLsaConnectedAccountIds } = await import('./connection');
-  try {
-    const accountIds = await listGoogleLsaConnectedAccountIds();
-    let processed = 0;
-    let errors = 0;
-
-    for (const accountId of accountIds) {
-      try {
-        await syncGoogleLsaAccount(accountId, { fullRescan: false });
-        processed++;
-      } catch {
-        errors++;
-      }
-    }
-
-    return { processed, errors };
-  } catch {
-    return { processed: 0, errors: 0 };
-  }
 }

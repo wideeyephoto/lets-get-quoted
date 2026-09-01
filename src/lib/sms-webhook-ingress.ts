@@ -3,6 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { SmsProviderId } from '@/lib/sms-provider';
 import { enqueueSmsDelivery, type SmsSenderPurpose } from '@/lib/sms-delivery';
+import { APP_ORIGIN } from '@/lib/app-origin';
 
 type WebhookObject = Record<string, unknown>;
 
@@ -400,4 +401,8 @@ export async function recordInvalidWebhook(
     p_provider_error_code: input.errorCode?.slice(0, 255) ?? null,
   });
   if (error) throw new Error(`Invalid SMS webhook receipt failed: ${error.message}`);
+}
+
+export function sharedNoticeText(brand: string): string {
+  return `${brand}: Alerts only, replies not monitored. View your client portal: ${APP_ORIGIN}/portal Reply STOP to opt out.`;
 }

@@ -125,6 +125,19 @@ export async function processClosureJob(
     return { success: false, completed: false, errors: [`Closure job ${jobId} not found`] };
   }
 
+  if (job.closure_state === 'cancelled_restored') {
+    return { success: true, completed: true, errors: [] };
+  }
+
+  const now = new Date();
+  if (job.recoverable_until && new Date(job.recoverable_until) > now) {
+    return {
+      success: true,
+      completed: false,
+      errors: [`Account closure for ${job.closure_subject_id} is still in its 30-day grace period (until ${job.recoverable_until})`],
+    };
+  }
+
   let currentVersion = job.version;
   const accountId = job.closure_subject_id;
   const handles = decryptVendorHandles(job.encrypted_vendor_handles);

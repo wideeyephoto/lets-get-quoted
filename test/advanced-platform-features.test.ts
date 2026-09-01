@@ -75,6 +75,21 @@ describe('20 Advanced Platform Features Suite', () => {
     expect(twiml).toContain('<Response>');
     expect(twiml).toContain('Press 1 now to connect');
 
+    // Verify XML escaping prevents injection into TwiML
+    const maliciousTwiml = generateContractorCallBridgeTwiml({
+      leadId: 'ld-safe',
+      contractorPhone: '+15125550100',
+      homeownerPhone: '+15125550199',
+      contractorName: 'Bob & Sons <LLC>',
+      homeownerName: 'Alice "The Builder" <script>',
+      projectType: 'deck & patio',
+      city: 'Austin <TX>',
+    });
+    expect(maliciousTwiml).not.toContain('<script>');
+    expect(maliciousTwiml).toContain('&lt;script&gt;');
+    expect(maliciousTwiml).toContain('deck &amp; patio');
+    expect(maliciousTwiml).toContain('in Austin &lt;TX&gt;');
+
     const result = await initiateSpeedToLeadCallBridge({
       leadId: 'ld-123',
       contractorPhone: '+15125550100',

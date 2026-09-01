@@ -24,6 +24,9 @@ import {
 } from '@/lib/arrival';
 import { getActiveTracking } from '@/lib/job-tracking';
 import { createAdminClient } from '@/lib/auth';
+import FieldJobForms from '@/components/forms/FieldJobForms';
+import { saveFieldFormAction } from './form-actions';
+import { listJobFormSubmissions } from '@/lib/forms/forms-data';
 
 export const dynamic = 'force-dynamic';
 
@@ -68,7 +71,7 @@ export default async function FieldJobPage({ params: paramsPromise, searchParams
   const arrivalSettings = arrivalSettingsFromAccount(accountRow as Record<string, unknown> | null);
   const arrivalPermissions = arrivalPermissionsFromCrew(crew as unknown as Record<string, unknown>);
 
-  const [{ data: feed }, { data: myCosts }] = await Promise.all([
+  const [{ data: feed }, { data: myCosts }, formSubmissions] = await Promise.all([
     supabase
       .from('job_feed')
       .select('id, title, body, author, created_at')
@@ -85,6 +88,7 @@ export default async function FieldJobPage({ params: paramsPromise, searchParams
       .eq('crew_id', crew.id)
       .in('type', ['labor', 'material'])
       .order('created_at', { ascending: false }),
+    listJobFormSubmissions(supabase, accountId, params.id),
   ]);
 
   const loggedCosts = myCosts ?? [];
@@ -222,6 +226,12 @@ export default async function FieldJobPage({ params: paramsPromise, searchParams
           <h2 className="field-block-title">Scope of work</h2>
           <p className="field-scope-body">{job.scope || 'No scope notes added yet.'}</p>
         </section>
+
+        <FieldJobForms
+          submissions={formSubmissions}
+          crewName={crew.name}
+          onSaveAction={saveFieldFormAction}
+        />
 
         {/* Proof for a stage payment. Above the change-order form because this
             is routine end-of-stage work, where finding extra work is not. */}

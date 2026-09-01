@@ -1,7 +1,8 @@
 import type { LatLng } from '@/lib/distance';
 
-// Real road distance + drive time via the Google Distance Matrix API (server
-// GOOGLE_MAPS_API_KEY), for the "nearby" upgrade over straight-line haversine.
+// Real road distance + traffic-aware drive time via the Google Distance Matrix
+// API (server GOOGLE_MAPS_API_KEY), with live traffic congestion awareness,
+// departure-time predictions, and fallback to straight-line haversine.
 // One batched call per booking evaluation (lead origin × all anchor
 // destinations). Returns null for the whole batch on ANY failure — no key, the
 // Distance Matrix API not enabled (REQUEST_DENIED), a non-OK response — so the
@@ -10,9 +11,40 @@ import type { LatLng } from '@/lib/distance';
 
 const METERS_PER_MILE = 1609.344;
 
-export type DriveResult = { miles: number; minutes: number };
+export type DriveResult = {
+  miles: number;
+  minutes: number;
+  minutesInTraffic?: number;
+  trafficDelayMinutes?: number;
+  isTrafficAware?: boolean;
+};
 
-export async function driveDistances(origin: LatLng, destinations: LatLng[]): Promise<(DriveResult | null)[] | null> {
+export type DriveTrafficModel = 'best_guess' | 'pessimistic' | 'optimistic';
+
+export type DriveOptions = {
+  departureTime?: Date | number | 'now';
+  trafficModel?: DriveTrafficModel;
+  trafficAware?: boolean;
+};
+
+function formatDepartureTimeParam(val: Date | number | 'now' | undefined): string | null {
+  if (val === undefined || val === 'now') return 'now';
+  if (val instanceof Date) {
+    const sec = Math.floor(val.getTime() / 1000);
+    return Number.isFinite(sec) && sec > 0 ? String(sec) : 'now';
+  }
+  if (typeof val === 'number' && Number.isFinite(val)) {
+    const sec = val > 1_000_000_000_000 ? Math.floor(val / 1000) : Math.floor(val);
+    return sec > 0 ? String(sec) : 'now';
+  }
+  return 'now';
+}
+
+export async function driveDistances(
+  origin: LatLng,
+  destinations: LatLng[],
+  options?: DriveOptions,
+): Promise<(DriveResult | null)[] | null> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key || destinations.length === 0) return null;
   // Distance Matrix caps elements per request; one origin × up to 25 destinations
@@ -20,22 +52,54 @@ export async function driveDistances(origin: LatLng, destinations: LatLng[]): Pr
   const dests = destinations.slice(0, 25);
   try {
     const destParam = dests.map((d) => `${d.lat},${d.lng}`).join('|');
-    const url =
+    const trafficAware = options?.trafficAware !== false;
+    const depTime = trafficAware ? formatDepartureTimeParam(options?.departureTime) : null;
+    const trafficModel = trafficAware && depTime ? (options?.trafficModel || 'best_guess') : null;
+
+    let url =
       `https://maps.googleapis.com/maps/api/distancematrix/json` +
-      `?origins=${origin.lat},${origin.lng}&destinations=${encodeURIComponent(destParam)}&units=imperial&key=${key}`;
+      `?origins=${origin.lat},${origin.lng}&destinations=${encodeURIComponent(destParam)}&units=imperial`;
+
+    if (depTime) {
+      url += `&departure_time=${depTime}`;
+      if (trafficModel) {
+        url += `&traffic_model=${trafficModel}`;
+      }
+    }
+    url += `&key=${key}`;
+
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
 
     const data = (await res.json()) as {
       status?: string;
-      rows?: Array<{ elements?: Array<{ status?: string; distance?: { value?: number }; duration?: { value?: number } }> }>;
+      rows?: Array<{
+        elements?: Array<{
+          status?: string;
+          distance?: { value?: number };
+          duration?: { value?: number };
+          duration_in_traffic?: { value?: number };
+        }>;
+      }>;
     };
     if (data.status !== 'OK') return null;
     const elements = data.rows?.[0]?.elements;
     if (!Array.isArray(elements)) return null;
     return elements.map((el) => {
       if (el?.status !== 'OK' || typeof el.distance?.value !== 'number' || typeof el.duration?.value !== 'number') return null;
-      return { miles: el.distance.value / METERS_PER_MILE, minutes: el.duration.value / 60 };
+      const baseMinutes = el.duration.value / 60;
+      const trafficSec = typeof el.duration_in_traffic?.value === 'number' ? el.duration_in_traffic.value : undefined;
+      const minutesInTraffic = trafficSec != null ? trafficSec / 60 : undefined;
+      const trafficDelayMinutes = trafficSec != null ? Math.max(0, (trafficSec - el.duration.value) / 60) : 0;
+      const minutes = minutesInTraffic ?? baseMinutes;
+
+      return {
+        miles: el.distance.value / METERS_PER_MILE,
+        minutes,
+        minutesInTraffic,
+        trafficDelayMinutes,
+        isTrafficAware: trafficSec != null,
+      };
     });
   } catch (error) {
     console.error('driveDistances failed:', error instanceof Error ? error.message : error);
@@ -55,20 +119,41 @@ export const DRIVE_MATRIX_MAX_POINTS = 10;
 
 export async function driveMatrix(
   points: Array<{ id: string; coord: LatLng }>,
+  options?: DriveOptions,
 ): Promise<Map<string, DriveResult> | null> {
   const key = process.env.GOOGLE_MAPS_API_KEY;
   if (!key || points.length < 2 || points.length > DRIVE_MATRIX_MAX_POINTS) return null;
   try {
     const param = points.map((p) => `${p.coord.lat},${p.coord.lng}`).join('|');
-    const url =
+    const trafficAware = options?.trafficAware !== false;
+    const depTime = trafficAware ? formatDepartureTimeParam(options?.departureTime) : null;
+    const trafficModel = trafficAware && depTime ? (options?.trafficModel || 'best_guess') : null;
+
+    let url =
       `https://maps.googleapis.com/maps/api/distancematrix/json` +
-      `?origins=${encodeURIComponent(param)}&destinations=${encodeURIComponent(param)}&units=imperial&key=${key}`;
+      `?origins=${encodeURIComponent(param)}&destinations=${encodeURIComponent(param)}&units=imperial`;
+
+    if (depTime) {
+      url += `&departure_time=${depTime}`;
+      if (trafficModel) {
+        url += `&traffic_model=${trafficModel}`;
+      }
+    }
+    url += `&key=${key}`;
+
     const res = await fetch(url, { signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
 
     const data = (await res.json()) as {
       status?: string;
-      rows?: Array<{ elements?: Array<{ status?: string; distance?: { value?: number }; duration?: { value?: number } }> }>;
+      rows?: Array<{
+        elements?: Array<{
+          status?: string;
+          distance?: { value?: number };
+          duration?: { value?: number };
+          duration_in_traffic?: { value?: number };
+        }>;
+      }>;
     };
     if (data.status !== 'OK' || !Array.isArray(data.rows) || data.rows.length !== points.length) return null;
 
@@ -77,9 +162,18 @@ export async function driveMatrix(
       row.elements?.forEach((el, to) => {
         if (from === to) return;
         if (el?.status !== 'OK' || typeof el.distance?.value !== 'number' || typeof el.duration?.value !== 'number') return;
+        const baseMinutes = el.duration.value / 60;
+        const trafficSec = typeof el.duration_in_traffic?.value === 'number' ? el.duration_in_traffic.value : undefined;
+        const minutesInTraffic = trafficSec != null ? trafficSec / 60 : undefined;
+        const trafficDelayMinutes = trafficSec != null ? Math.max(0, (trafficSec - el.duration.value) / 60) : 0;
+        const minutes = minutesInTraffic ?? baseMinutes;
+
         legs.set(`${points[from].id}->${points[to].id}`, {
           miles: el.distance.value / METERS_PER_MILE,
-          minutes: el.duration.value / 60,
+          minutes,
+          minutesInTraffic,
+          trafficDelayMinutes,
+          isTrafficAware: trafficSec != null,
         });
       });
     });
@@ -89,3 +183,53 @@ export async function driveMatrix(
     return null;
   }
 }
+
+/**
+ * Single-leg traffic-aware drive calculation.
+ */
+export async function calculateLiveDriveTime(
+  origin: LatLng,
+  destination: LatLng,
+  options?: DriveOptions,
+): Promise<DriveResult | null> {
+  const results = await driveDistances(origin, [destination], options);
+  return results?.[0] ?? null;
+}
+
+/**
+ * Calculates live ETA between two points, using real-time traffic-aware Distance Matrix
+ * when available, and falling back safely to haversine city-speed estimation.
+ */
+export async function calculateLiveEtaWithFallback(
+  origin: LatLng | null,
+  destination: LatLng | null,
+  options?: DriveOptions,
+): Promise<{ miles: number; minutes: number; trafficDelayMinutes: number; isTrafficAware: boolean } | null> {
+  if (!origin || !destination || !Number.isFinite(origin.lat) || !Number.isFinite(destination.lat)) return null;
+
+  const live = await calculateLiveDriveTime(origin, destination, options);
+  if (live) {
+    return {
+      miles: Math.round(live.miles * 10) / 10,
+      minutes: Math.max(1, Math.round(live.minutes)),
+      trafficDelayMinutes: Math.round((live.trafficDelayMinutes ?? 0) * 10) / 10,
+      isTrafficAware: Boolean(live.isTrafficAware),
+    };
+  }
+
+  // Fallback: Haversine distance with city driving speed (~28 mph), floored at 5 mins
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(destination.lat - origin.lat);
+  const dLng = toRad(destination.lng - origin.lng);
+  const s = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(origin.lat)) * Math.cos(toRad(destination.lat)) * Math.sin(dLng / 2) ** 2;
+  const straightMiles = 2 * 3958.8 * Math.asin(Math.min(1, Math.sqrt(s)));
+  const fallbackMinutes = Math.max(5, Math.round((straightMiles / 28) * 60));
+
+  return {
+    miles: Math.round(straightMiles * 10) / 10,
+    minutes: fallbackMinutes,
+    trafficDelayMinutes: 0,
+    isTrafficAware: false,
+  };
+}
+

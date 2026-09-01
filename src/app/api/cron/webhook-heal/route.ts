@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-export async function runWebhookHealCronBatch(admin?: SupabaseClient) {
+async function runWebhookHealCronBatch(admin?: SupabaseClient) {
   const client = admin || createAdminClient();
   const result = await runWebhookAutoHealer(client);
   return {

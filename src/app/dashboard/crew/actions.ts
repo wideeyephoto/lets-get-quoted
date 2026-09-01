@@ -317,7 +317,7 @@ export async function setCrewActiveAction(
 }
 
 export async function deleteArchivedCrewAction(crewId: string) {
-  const { supabase, accountId } = await requireOfficeContext('crew.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContext('crew.write');
 
   // Someone who has been paid can't be deleted. Their payment records are the
   // answer to "did we pay them for that week", and deleting the person would
@@ -340,12 +340,13 @@ export async function deleteArchivedCrewAction(crewId: string) {
     );
   }
 
-  const photoPath = await deleteArchivedCrewMember(supabase, accountId, crewId);
-  if (photoPath) await deleteCrewPhotos(accountId, [photoPath]);
+  await deleteArchivedCrewMember(supabase, accountId, crewId, { userId, role, email: userEmail ?? undefined });
 
   revalidatePath('/dashboard/crew');
   revalidatePath('/dashboard/jobs');
   revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/trash');
+  revalidatePath('/dashboard/activity');
 }
 
 // Emails a crew member a magic link into the mobile field app. Requires an email

@@ -958,9 +958,9 @@ export async function sendTestDigestAction() {
   revalidatePath('/dashboard/settings');
 }
 
-// Permanently closes and anonymizes the signed-in owner's account via the durable closure orchestrator.
+// Requests closure with a 30-day recoverable grace period, immediately suspending access and freezing billing.
 export async function deleteAccountAction() {
-  const { supabase, accountId, userId } = await requireOwnerContext();
+  const { supabase, accountId, userId, userEmail } = await requireOwnerContext();
   const admin = createAdminClient();
 
   const { data: acct } = await admin
@@ -969,12 +969,10 @@ export async function deleteAccountAction() {
     .eq('id', accountId)
     .maybeSingle();
 
-  const { requestAccountClosure, processClosureJob, buildProductionClosureAdapters } = await import(
-    '@/lib/account-closure-orchestrator'
-  );
+  const { requestAccountClosure } = await import('@/lib/account-closure-orchestrator');
 
-  // Durable account closure replaces legacy direct from('accounts').delete()
-  const { jobId } = await requestAccountClosure(admin, {
+  // Durable account closure with 30-day grace period
+  await requestAccountClosure(admin, {
     accountId,
     requestedByUserId: userId,
     requestedByRole: 'owner',
@@ -986,16 +984,9 @@ export async function deleteAccountAction() {
     },
   });
 
-  const adapters = buildProductionClosureAdapters(admin);
-  const result = await processClosureJob(admin, jobId, adapters);
-  if (!result.success || !result.completed) {
-    console.error('Customer deleteAccountAction closure saga incomplete or errored:', result.errors);
-    throw new Error(`Account deletion could not be fully finalized (${result.errors.join('; ') || 'in-progress'}). Please try again or contact support.`);
-  }
-
-  // Clear session locally and redirect to login
+  // Clear session locally and redirect to login with recovery instructions
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-  redirect('/login?closed=1');
+  redirect('/login?closure_requested=1&recoverable_days=30');
 }
 
 // The on/off switch on its own, for the Plan my day panel.
@@ -1206,5 +1197,31 @@ export async function setClientQuoteChangesAction(next: boolean) {
 
   if (error) throw new Error('Could not save that setting.');
 
+  revalidatePath('/dashboard/settings');
+}
+
+export async function chooseGoogleLsaCustomerAction(formData: FormData) {
+  const { accountId } = await requireOfficeContext('settings.write');
+  const customerId = String(formData.get('customerId') ?? '').trim();
+  if (!customerId) throw new Error('Choose a Google Ads customer account.');
+
+  const { chooseGoogleLsaCustomer } = await import('@/lib/google-lsa/connection');
+  const selected = await chooseGoogleLsaCustomer(accountId, customerId);
+  revalidatePath('/dashboard/settings');
+  redirect(`/dashboard/settings?google_lsa=${selected ? 'selected' : 'invalid-customer'}#google-local-services`);
+}
+
+export async function syncGoogleLsaAction() {
+  const { accountId } = await requireOfficeContext('settings.write');
+  const { syncGoogleLsaAccount } = await import('@/lib/google-lsa/sync');
+  const summary = await syncGoogleLsaAccount(accountId);
+  revalidatePath('/dashboard/settings');
+  redirect(`/dashboard/settings?google_lsa=${summary.busy ? 'busy' : summary.ok ? 'synced' : 'sync-failed'}#google-local-services`);
+}
+
+export async function disconnectGoogleLsaAction() {
+  const { accountId } = await requireOfficeContext('settings.write');
+  const { deleteGoogleLsaConnection } = await import('@/lib/google-lsa/connection');
+  await deleteGoogleLsaConnection(accountId);
   revalidatePath('/dashboard/settings');
 }

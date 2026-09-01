@@ -752,6 +752,18 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
         ],
       },
       {
+        id: 'conditional-field-forms',
+        name: 'Conditional Field-Form Builder & QA Checklists',
+        desc: 'Customizable trade forms for commissioning, diagnostics, safety audits, and customer completion certificates.',
+        tags: ['Forms', 'QA', 'Commissioning', 'Certificates'],
+        subBullets: [
+          'Interactive conditional logic rules that reveal required defect descriptions, photos, and safety alerts when checks fail.',
+          'Built-in industry presets for HVAC commissioning, electrical torque audits, plumbing pressure tests, roofing QA, and general handovers.',
+          'Dual digital signatures capturing lead technician certification and client completion certificate acceptance with timestamps and IP logging.',
+          'Generate official printable PDF certificates with pass scores, measurement readings, verified photos, and legal execution stamps.',
+        ],
+      },
+      {
         id: 'field-cost-logging',
         name: 'Material & Labor Cost Logging in the Field',
         desc: 'Crew members log used materials and on-site labor hours for live job profitability tracking.',

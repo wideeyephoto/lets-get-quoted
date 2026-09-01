@@ -21,13 +21,24 @@ export interface VoiceCallBridgeResult {
   initiatedAt: string;
 }
 
+import { randomUUID } from 'node:crypto';
+
+export function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
 /**
  * Generates TwiML voice XML that greets the contractor first and prompts them to press 1 to connect to the homeowner.
  */
 export function generateContractorCallBridgeTwiml(config: VoiceCallBridgeConfig): string {
-  const cleanProjectType = config.projectType || 'new project';
-  const cleanHomeowner = config.homeownerName || 'a homeowner';
-  const cleanCity = config.city ? ` in ${config.city}` : '';
+  const cleanProjectType = escapeXml(config.projectType || 'new project');
+  const cleanHomeowner = escapeXml(config.homeownerName || 'a homeowner');
+  const cleanCity = config.city ? ` in ${escapeXml(config.city)}` : '';
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -73,7 +84,7 @@ export async function initiateSpeedToLeadCallBridge(
   config: VoiceCallBridgeConfig,
   _supabase?: SupabaseClient,
 ): Promise<VoiceCallBridgeResult> {
-  const bridgeId = `bridge_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const bridgeId = `bridge_${Date.now()}_${randomUUID().slice(0, 8)}`;
   const reqDetails = buildTwilioCallRequest(config);
 
   // In test environment or when credentials are dummy/unconfigured, return simulated success without making live egress

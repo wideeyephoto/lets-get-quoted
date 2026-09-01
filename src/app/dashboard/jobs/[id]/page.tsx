@@ -32,6 +32,9 @@ import ChangeOrderPanel from './ChangeOrderPanel';
 import WarrantyPanel from './WarrantyPanel';
 import LienWaiverPanel from './LienWaiverPanel';
 import SelectionBoard from './SelectionBoard';
+import JobFormsPanel from '@/components/forms/JobFormsPanel';
+import { attachJobFormAction, requestCustomerSignatureAction } from './form-actions';
+import { listJobFormSubmissions, listFormTemplates } from '@/lib/forms/forms-data';
 import TaskAddForm from './TaskAddForm';
 import { zonedNowParts } from '@/lib/quick-stop';
 import { lastSelectionSendAt, listSelections, listSelectionTemplates, signSelectionPhotos } from '@/lib/selections-data';
@@ -211,6 +214,10 @@ export default async function JobDetailPage({
   const feed = await listJobFeed(supabase, accountId, job.id);
   const activeClientLinkCount = await getActiveClientAccessCount(supabase, accountId, job.id);
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
+  const [jobFormSubmissions, availableFormTemplates] = await Promise.all([
+    listJobFormSubmissions(supabase, accountId, job.id),
+    listFormTemplates(supabase, accountId, { includePresets: true }),
+  ]);
 
   // Arrival. The live trip and the account's arrival rules — read with the
   // admin client because job_tracking is owner-scoped by RLS and this page is
@@ -1862,9 +1869,22 @@ export default async function JobDetailPage({
           </>
         );
 
+        const formsBlock = (
+          <JobFormsPanel
+            jobId={job.id}
+            jobRef={job.ref}
+            clientName={job.client_name}
+            initialSubmissions={jobFormSubmissions}
+            availableTemplates={availableFormTemplates}
+            attachFormAction={attachJobFormAction}
+            requestSignatureAction={requestCustomerSignatureAction}
+          />
+        );
+
         const executionPane = (
           <>
             {milestonesBlock}
+            {formsBlock}
             {punchListBlock}
             <div className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading">
@@ -1914,6 +1934,7 @@ export default async function JobDetailPage({
             </nav>
             {arrivalBlock}
             {milestonesBlock}
+            {formsBlock}
             {quoteBreakdownBlock}
             {recurringPlansBlock}
             {punchListBlock}

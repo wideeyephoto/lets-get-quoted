@@ -216,7 +216,10 @@ export async function computeQuickStopRoute(
   // the far side of a river — so the winner is re-picked from the real legs.
   // Falls back silently to the straight-line estimate on any failure.
   if (opts.driveTime && candidates.length > 0) {
-    const legs = await driveDistances(target, candidates.map((candidate) => candidate.coord));
+    const legs = await driveDistances(target, candidates.map((candidate) => candidate.coord), {
+      departureTime: 'now',
+      trafficModel: 'best_guess',
+    });
     if (legs) {
       let bestLeg = -1;
       for (let index = 0; index < legs.length; index += 1) {
@@ -231,7 +234,10 @@ export async function computeQuickStopRoute(
       }
     }
   } else if (opts.driveTime) {
-    const results = await driveDistances(anchor, [target]);
+    const results = await driveDistances(anchor, [target], {
+      departureTime: 'now',
+      trafficModel: 'best_guess',
+    });
     const leg = results?.[0];
     if (leg) {
       miles = leg.miles;

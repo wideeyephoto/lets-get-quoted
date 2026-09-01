@@ -21,6 +21,7 @@ import { createCardSetupSession } from '@/lib/card-on-file';
 import { sendJobAppointmentReminder, type RemindableJob } from '@/lib/reminders';
 import { sendCardSetupSms } from '@/lib/sms';
 import { sendCardSetupEmail } from '@/lib/email';
+import { deleteJob } from '@/lib/jobs';
 
 const FREQUENCIES: RecurringFrequency[] = ['weekly', 'biweekly', 'monthly'];
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
@@ -100,7 +101,7 @@ export async function runPlanNowAction(planId: string) {
 }
 
 export async function setPlanActiveAction(planId: string, active: boolean) {
-  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContext('jobs.write');
   await setRecurringPlanActive(supabase, accountId, planId, active);
   // Pausing removes upcoming visits and resuming puts them back, so the calendar
   // this changed has to be re-rendered too.
@@ -132,7 +133,7 @@ export async function deletePlanAction(planId: string) {
  * point the honest action is Create the next visit early, not a skip.
  */
 export async function skipNextVisitAction(planId: string) {
-  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+  const { supabase, accountId, userId, role, userEmail } = await requireOfficeContext('jobs.write');
   const plan = await getRecurringPlan(supabase, accountId, planId);
   if (!plan) throw new Error('Plan not found.');
   if (!plan.active) throw new Error('This plan is paused, so there is no next visit to skip. Resume it first.');
@@ -159,8 +160,7 @@ export async function skipNextVisitAction(planId: string) {
     if ((count ?? 0) > 0) {
       throw new Error(`The ${shortDay(skipped)} visit has already been billed. Void or refund that payment before skipping it.`);
     }
-    const { error: deleteError } = await supabase.from('jobs').delete().eq('account_id', accountId).eq('id', visit.id);
-    if (deleteError) throw deleteError;
+    await deleteJob(supabase, accountId, visit.id, { userId, role, email: userEmail ?? undefined });
   }
 
   const nextDate = advanceDate(skipped, plan.frequency, plan.anchor_day);

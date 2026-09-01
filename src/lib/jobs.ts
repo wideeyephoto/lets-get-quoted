@@ -540,6 +540,7 @@ export async function listJobs(
     .from('jobs')
     .select('*')
     .eq('account_id', accountId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
   if (statusFilter) {
@@ -588,6 +589,7 @@ export async function getJob(supabase: SupabaseClient, accountId: string, jobId:
     .select('*')
     .eq('account_id', accountId)
     .eq('id', jobId)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) {
@@ -974,7 +976,12 @@ const PAYMENT_STATES_BLOCKING_JOB_DELETE = [
  * delete a billed recurring visit; that precedent blocks on any payment at all,
  * and this one allows the two states where no money ever moved.
  */
-export async function deleteJob(supabase: SupabaseClient, accountId: string, jobId: string): Promise<void> {
+export async function deleteJob(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  actor?: { userId?: string; role?: string; email?: string }
+): Promise<void> {
   const { data: blocking, error: paymentError } = await supabase
     .from('payments')
     .select('status')
@@ -996,11 +1003,53 @@ export async function deleteJob(supabase: SupabaseClient, accountId: string, job
     );
   }
 
-  const { error } = await supabase.from('jobs').delete().eq('account_id', accountId).eq('id', jobId);
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .select('id, title, client_name, address, total')
+    .eq('account_id', accountId)
+    .eq('id', jobId)
+    .is('deleted_at', null)
+    .single();
+
+  if (jobError || !job) throw jobError ?? new Error('Job not found.');
+
+  const now = new Date();
+  const purgeAt = new Date(now.getTime() + 30 * 86400000);
+  const opId = crypto.randomUUID();
+
+  const { error } = await supabase
+    .from('jobs')
+    .update({
+      deleted_at: now.toISOString(),
+      purge_after: purgeAt.toISOString(),
+      deleted_by_user_id: actor?.userId ?? null,
+      deletion_reason: 'Job moved to trash bin',
+      delete_operation_id: opId,
+    })
+    .eq('account_id', accountId)
+    .eq('id', jobId);
 
   if (error) {
     throw error;
   }
+
+  await supabase.from('recoverable_deletions').insert({
+    id: opId,
+    account_id: accountId,
+    entity_type: 'job',
+    entity_id: jobId,
+    display_snapshot: {
+      title: job.title || `Job #${jobId.slice(0, 8)}`,
+      subtitle: job.client_name || job.address || 'No client details',
+      badge: job.total > 0 ? `${(job.total / 100).toFixed(2)}` : 'Job',
+    },
+    deleted_at: now.toISOString(),
+    purge_eligible_at: purgeAt.toISOString(),
+    deleted_by_user_id: actor?.userId ?? null,
+    deleted_by_role: actor?.role ?? 'office',
+    deletion_reason: 'Job moved to trash bin',
+    status: 'trashed',
+  });
 }
 
 // Targeted update used by the schedule/calendar view — only touches

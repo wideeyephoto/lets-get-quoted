@@ -20,6 +20,7 @@ import {
 import { runRevOpsGrowthScan } from '@/lib/ai-operator/revops';
 import { generateExecutiveBriefing } from '@/lib/ai-operator/briefing';
 import { runAutonomousOperatorCycle, askAiOperator } from '@/lib/ai-operator/engine';
+import { isSafeReadOnlySqlQuery } from '@/lib/ai-operator/sql-interpreter';
 import type { OperatorExecutionContext } from '@/lib/ai-operator/types';
 
 // Configurable Mock Supabase client for unit testing
@@ -515,6 +516,26 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((resolveRes.data as any).success).toBe(true);
   });
 
+  it('enforces RBAC on replay_failed_webhooks: denies unauthorized staff without ops.manage', async () => {
+    const supportCtx: OperatorExecutionContext = {
+      ...ctx,
+      staff: { role: 'support', active: true, id: 'st-support', email: 'support@test.com' },
+    };
+
+    const deniedRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, supportCtx);
+    expect((deniedRes.data as any).success).toBe(false);
+    expect((deniedRes.data as any).error).toContain('Forbidden');
+    expect((deniedRes.data as any).error).toContain('ops.manage');
+
+    const opsCtx: OperatorExecutionContext = {
+      ...ctx,
+      staff: { role: 'ops', active: true, id: 'st-ops', email: 'ops@test.com' },
+    };
+
+    const allowedRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, opsCtx);
+    expect((allowedRes.data as any).success).toBe(true);
+  });
+
   it('executes triage_email_deliverability and categorizes bounce events', async () => {
     const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, ctx);
     expect(res.data).toBeDefined();
@@ -563,5 +584,22 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     const res = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
     expect(res.data).toBeDefined();
     expect((res.data as any).history.length).toBe(7);
+  });
+
+  it('validates SQL safety: permits read-only queries and rejects multi-statement/mutating constructs', () => {
+    expect(isSafeReadOnlySqlQuery('SELECT id, business_name FROM accounts WHERE plan = "solo"')).toBe(true);
+    expect(isSafeReadOnlySqlQuery('WITH active_subs AS (SELECT * FROM billing_subscriptions) SELECT count(*) FROM active_subs;')).toBe(true);
+
+    // Multi-statement injection attempt
+    expect(isSafeReadOnlySqlQuery('SELECT 1; DROP TABLE accounts;')).toBe(false);
+    expect(isSafeReadOnlySqlQuery('SELECT 1; DO $$ BEGIN NULL; END $$;')).toBe(false);
+
+    // Mutation keywords
+    expect(isSafeReadOnlySqlQuery('UPDATE accounts SET plan = "scale"')).toBe(false);
+    expect(isSafeReadOnlySqlQuery('DELETE FROM webhook_failures WHERE id = "123"')).toBe(false);
+    expect(isSafeReadOnlySqlQuery('INSERT INTO staff (email) VALUES ("attacker@test.com")')).toBe(false);
+
+    // Dangerous functions
+    expect(isSafeReadOnlySqlQuery('SELECT pg_sleep(10)')).toBe(false);
   });
 });

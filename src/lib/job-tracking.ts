@@ -2,8 +2,10 @@ import { randomBytes, createHash } from 'crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   applyPrecision, arrivalWindowTimes, isClosedStatus, locationExpiry, locationVisible,
+  recalculateLiveArrivalTimes,
   type ArrivalSettings, type ArrivalStatus, type ArrivalWindowTimes, type SmsStatus,
 } from '@/lib/arrival';
+import { calculateLiveEtaWithFallback } from '@/lib/drive-time';
 
 // The storage side of arrival management. One row per TRIP — a tech heading to
 // a house, once — carrying the promise made, who made it, whether it was
@@ -253,13 +255,10 @@ export async function setArrivalStatus(
 }
 
 /**
- * Move the tech's pin on a trip already in flight.
+ * Move the tech's pin on a trip already in flight and continuously recalculate live ETA.
  *
- * Only ever called while the field app's job screen is OPEN and the tech has
- * already consented to sharing on this trip — there is no background tracking
- * here, by choice. It re-arms the location expiry, so the share stays alive
- * while they're actively driving and lapses on its own the moment they stop
- * looking at it.
+ * Re-arms the location expiry, updates the tech's pin coordinates, and dynamically
+ * recalculates traffic-aware arrival times and windows to the job destination.
  */
 export async function updateTechPosition(
   admin: SupabaseClient,
@@ -267,20 +266,102 @@ export async function updateTechPosition(
   point: { lat: number; lng: number },
   precision: ArrivalSettings['locationPrecision'],
   now = new Date(),
-): Promise<void> {
+  jobDest?: LatLng | null,
+  settings?: Pick<ArrivalSettings, 'windowStyle' | 'windowMinutes'>,
+): Promise<{
+  etaMinutes: number | null;
+  arrivalStart: string | null;
+  arrivalEnd: string | null;
+  isDelayed: boolean;
+} | void> {
   if (!row.share_location) return;
   if (row.status !== 'en_route' && row.status !== 'delayed') return;
   const blurred = applyPrecision(point, precision);
   if (!blurred) return;
+
+  // Resolve destination coordinates for the job if not provided
+  let dest: LatLng | null = jobDest ?? null;
+  if (!dest && row.job_id) {
+    try {
+      const { data: job } = await admin
+        .from('jobs')
+        .select('lat, lng')
+        .eq('id', row.job_id)
+        .maybeSingle();
+      if (job && job.lat != null && job.lng != null && Number.isFinite(Number(job.lat)) && Number.isFinite(Number(job.lng))) {
+        dest = { lat: Number(job.lat), lng: Number(job.lng) };
+      }
+    } catch {
+      // Non-blocking query failure
+    }
+  }
+
+  // Continuously recalculate live ETA with traffic awareness if destination is available
+  let recalcEtaMinutes: number | null = null;
+  let newArrivalStart: string | null = null;
+  let newArrivalEnd: string | null = null;
+  let isDelayed = row.status === 'delayed';
+
+  if (dest) {
+    try {
+      const liveEta = await calculateLiveEtaWithFallback(point, dest, {
+        departureTime: 'now',
+        trafficModel: 'best_guess',
+      });
+      if (liveEta && Number.isFinite(liveEta.minutes)) {
+        recalcEtaMinutes = Math.max(1, liveEta.minutes);
+
+        // Derive window style and width
+        const currentWindowWidth = row.arrival_start && row.arrival_end
+          ? Math.max(0, Math.round((new Date(row.arrival_end).getTime() - new Date(row.arrival_start).getTime()) / 60_000))
+          : 30;
+
+        const effectiveSettings: Pick<ArrivalSettings, 'windowStyle' | 'windowMinutes'> = settings ?? {
+          windowStyle: currentWindowWidth > 0 ? 'window' : 'exact',
+          windowMinutes: currentWindowWidth > 0 ? currentWindowWidth : 30,
+        };
+
+        const recalculated = recalculateLiveArrivalTimes(now, recalcEtaMinutes, effectiveSettings, row.arrival_end);
+        newArrivalStart = recalculated.times.start.toISOString();
+        newArrivalEnd = recalculated.times.end.toISOString();
+        isDelayed = recalculated.isDelayed || row.status === 'delayed';
+      }
+    } catch (err) {
+      console.warn('Continuous live ETA recalculation non-blocking error:', err);
+    }
+  }
+
+  const updates: Record<string, unknown> = {
+    tech_lat: blurred.lat,
+    tech_lng: blurred.lng,
+    location_expires_at: locationExpiry(now).toISOString(),
+    updated_at: now.toISOString(),
+  };
+
+  if (recalcEtaMinutes != null) {
+    updates.eta_minutes = recalcEtaMinutes;
+  }
+  if (newArrivalStart) {
+    updates.arrival_start = newArrivalStart;
+  }
+  if (newArrivalEnd) {
+    updates.arrival_end = newArrivalEnd;
+  }
+  if (isDelayed && row.status === 'en_route') {
+    updates.status = 'delayed';
+  }
+
   await admin
     .from('job_tracking')
-    .update({
-      tech_lat: blurred.lat,
-      tech_lng: blurred.lng,
-      location_expires_at: locationExpiry(now).toISOString(),
-      updated_at: now.toISOString(),
-    })
+    .update(updates)
     .eq('id', row.id);
+
+  return {
+    etaMinutes: recalcEtaMinutes,
+    arrivalStart: newArrivalStart,
+    arrivalEnd: newArrivalEnd,
+    isDelayed,
+  };
 }
 
 /** Record what actually happened to the text, so the tech is told the truth. */

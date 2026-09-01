@@ -19,6 +19,10 @@ import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOpti
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 import { sendClientQuoteEmail, sendQuoteSentConfirmationEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
+import { provideGoogleLsaFeedback } from '@/lib/google-lsa/api';
+import { activeGoogleLsaConnection } from '@/lib/google-lsa/connection';
+import type { GoogleLsaFeedback } from '@/lib/google-lsa/types';
+import { softDeleteEntity } from '@/lib/recoverable-deletions';
 
 function optionalText(value: FormDataEntryValue | null): string | null {
   const text = (value ?? '').toString().trim();
@@ -822,20 +826,22 @@ export async function archiveLeadAction(leadId: string, archived: boolean) {
  * leaving them behind is billed storage nobody can reach.
  */
 export async function deleteLeadAction(leadId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId, userId, userEmail } = await requireOwnerContext();
   const lead = await getLead(supabase, accountId, leadId);
   if (!lead) throw new Error('Lead not found.');
   if (lead.converted_job) throw new Error('This lead became a job — open the job to delete it instead.');
 
-  // Storage first: if the row goes and this then fails, the files are orphaned
-  // with nothing left pointing at them. This way a failure leaves the lead
-  // intact and the owner can try again.
-  await deleteLeadPhotos(accountId, lead.photo_paths || []);
-
-  const { error } = await supabase.from('leads').delete().eq('account_id', accountId).eq('id', leadId);
-  if (error) throw error;
+  await softDeleteEntity({
+    accountId,
+    entityType: 'lead',
+    entityId: leadId,
+    actor: { userId, role: 'owner', email: userEmail ?? undefined },
+    reason: 'Owner moved lead to trash bin',
+  });
 
   revalidatePath('/dashboard/leads');
+  revalidatePath('/dashboard/trash');
+  revalidatePath('/dashboard/activity');
 }
 
 // Decline: mark the lead lost + archived. When notify is true and the lead
@@ -969,4 +975,77 @@ export async function setLeadLostAfterDaysAction(formData: FormData) {
   // next one. Said plainly on the page rather than implied here.
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard');
+}
+
+/**
+ * Send lead-quality feedback to Google and keep the exact submitted payload.
+ * Google's read model later exposes only a boolean, so without this local fact
+ * the owner could not audit which answer or reason was sent.
+ */
+export async function submitGoogleLsaFeedbackAction(leadId: string, formData: FormData) {
+  const { accountId, userId } = await requireOwnerContext();
+  const admin = createAdminClient();
+  const { data: providerLead, error } = await admin
+    .from('google_lsa_leads')
+    .select('customer_id, google_lead_id, resource_name, crm_lead_id')
+    .eq('account_id', accountId)
+    .eq('crm_lead_id', leadId)
+    .maybeSingle();
+  if (error || !providerLead) throw new Error('This CRM lead is not linked to a Google Local Services lead.');
+
+  const connection = await activeGoogleLsaConnection(accountId);
+  if (!connection || connection.customerId !== providerLead.customer_id) {
+    throw new Error('Reconnect Google Local Services before sending lead feedback.');
+  }
+
+  const outcome = String(formData.get('outcome') ?? '').trim();
+  const [outcomeAnswer, outcomeReason] = outcome.split(':');
+  const surveyAnswer = outcomeAnswer === 'very_satisfied'
+    ? 'VERY_SATISFIED'
+    : outcomeAnswer === 'satisfied'
+      ? 'SATISFIED'
+      : outcomeAnswer === 'neutral'
+        ? 'NEUTRAL'
+        : outcomeAnswer === 'very_dissatisfied'
+          ? 'VERY_DISSATISFIED'
+          : outcomeAnswer === 'dissatisfied'
+            ? 'DISSATISFIED'
+            : String(formData.get('surveyAnswer') ?? '').trim() as GoogleLsaFeedback['surveyAnswer'];
+  const reason = outcomeReason || String(formData.get('reason') ?? '').trim() || undefined;
+  const otherReasonComment = String(formData.get('comment') ?? '').trim() || undefined;
+  const feedback = {
+    surveyAnswer,
+    ...(reason ? { reason: reason as GoogleLsaFeedback['reason'] } : {}),
+    ...(otherReasonComment ? { otherReasonComment } : {}),
+  } satisfies GoogleLsaFeedback;
+
+  const response = await provideGoogleLsaFeedback({
+    accessToken: connection.accessToken,
+    customerId: connection.customerId,
+    loginCustomerId: connection.loginCustomerId,
+    resourceName: String(providerLead.resource_name),
+    feedback,
+  });
+  const now = new Date().toISOString();
+  const { error: writeError } = await admin
+    .from('google_lsa_feedback')
+    .upsert({
+      account_id: accountId,
+      google_lead_id: String(providerLead.google_lead_id),
+      crm_lead_id: leadId,
+      answer: feedback.surveyAnswer,
+      reason: feedback.reason ?? null,
+      comment: feedback.otherReasonComment ?? null,
+      credit_issuance_decision: response.creditIssuanceDecision,
+      submitted_by: userId,
+      submitted_at: now,
+    }, { onConflict: 'account_id,google_lead_id' });
+  if (writeError) throw new Error(writeError.message);
+  await admin
+    .from('google_lsa_leads')
+    .update({ feedback_submitted: true, last_synced_at: now })
+    .eq('account_id', accountId)
+    .eq('google_lead_id', String(providerLead.google_lead_id));
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/marketing/performance');
 }

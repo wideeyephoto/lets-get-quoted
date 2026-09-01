@@ -615,11 +615,13 @@ export async function sendClientScheduleOptionsAction(jobId: string, formData: F
 }
 
 export async function deleteJobAction(jobId: string) {
-  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+  const { supabase, accountId, userId, userEmail, role } = await requireOfficeContext('jobs.write');
 
-  await deleteJob(supabase, accountId, jobId);
+  await deleteJob(supabase, accountId, jobId, { userId, role, email: userEmail ?? undefined });
 
   revalidatePath('/dashboard/jobs');
+  revalidatePath('/dashboard/trash');
+  revalidatePath('/dashboard/activity');
   redirect('/dashboard/jobs');
 }
 

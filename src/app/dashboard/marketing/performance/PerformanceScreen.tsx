@@ -5,22 +5,135 @@ import Link from 'next/link';
 import type { Campaign } from '@/lib/campaigns';
 import type { PostCounts } from '@/lib/marketing-status';
 import type { OverallRoiSummary } from '@/lib/campaign-roi';
+import type { GoogleLsaReportingSummary } from '@/lib/google-lsa/reporting';
 import MarketingNav from '../MarketingNav';
 
 function formatMoney(amount: number): string {
   return `$${amount.toLocaleString('en-US')}`;
 }
 
+function formatLsaMoney(amount: number, currencyCode: string | null): string {
+  if (!currencyCode) return amount === 0 ? '—' : `$${amount.toLocaleString('en-US')}`;
+  try {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currencyCode,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  } catch {
+    return `${amount.toLocaleString('en-US', { maximumFractionDigits: 2 })} ${currencyCode}`;
+  }
+}
+
+function formatImportedAt(value: string | null): string {
+  if (!value) return 'No completed import yet';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Import time unavailable';
+  return `Last import ${new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  }).format(date)} UTC`;
+}
+
+const LSA_STATE_LABEL: Record<GoogleLsaReportingSummary['connectionState'], string> = {
+  not_connected: 'Not connected',
+  connected: 'Connected',
+  needs_attention: 'Needs attention',
+  disconnected: 'Disconnected',
+};
+
+function GoogleLsaPerformancePanel({ summary }: { summary: GoogleLsaReportingSummary | null }) {
+  if (!summary) {
+    return (
+      <section className="panel workspace-section-card" aria-labelledby="google-lsa-performance-title" style={{ marginBottom: '1.25rem' }}>
+        <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+          <div>
+            <p className="eyebrow">Exact provider reporting</p>
+            <h2 id="google-lsa-performance-title">Google Local Services Ads</h2>
+          </div>
+        </div>
+        <p style={{ margin: '0.65rem 0 0', color: 'var(--muted)', fontSize: '0.84rem' }}>
+          LSA reporting is temporarily unavailable. The existing channel estimates below are unchanged.
+        </p>
+      </section>
+    );
+  }
+
+  const isHealthy = summary.connectionState === 'connected';
+  const stateColor = isHealthy ? '#10b981' : summary.connectionState === 'needs_attention' ? '#f97316' : 'var(--muted)';
+  const spendSource = summary.spendSource === 'google_ads_api'
+    ? 'Google Ads daily facts'
+    : summary.spendSource === 'local_services_account_report'
+      ? 'Latest matching legacy snapshot'
+      : 'No spend facts imported';
+  const metrics = [
+    { label: 'Spend', value: formatLsaMoney(summary.costDollars, summary.currencyCode), note: spendSource },
+    { label: 'Leads', value: summary.leadCount.toLocaleString('en-US'), note: 'Distinct provider leads' },
+    { label: 'Calls', value: summary.callCount.toLocaleString('en-US'), note: 'Deduplicated lead/provider facts' },
+    { label: 'Bookings', value: summary.bookingCount.toLocaleString('en-US'), note: 'Booking lead type' },
+    { label: 'Credits', value: summary.creditCount.toLocaleString('en-US'), note: 'Issued-credit count' },
+    { label: 'Feedback', value: summary.feedbackCount.toLocaleString('en-US'), note: 'Submitted to Google' },
+    { label: 'Signed jobs', value: summary.signedJobCount.toLocaleString('en-US'), note: 'CRM quote signature required' },
+    { label: 'Signed revenue', value: formatLsaMoney(summary.signedRevenueDollars, summary.currencyCode ?? 'USD'), note: 'Signed quoted amount' },
+    { label: 'ROAS', value: summary.roas === null ? '—' : `${summary.roas.toFixed(1)}x`, note: 'Signed revenue / spend' },
+  ];
+
+  return (
+    <section className="panel workspace-section-card" aria-labelledby="google-lsa-performance-title" style={{ marginBottom: '1.25rem' }}>
+      <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
+        <div>
+          <p className="eyebrow">Exact provider reporting · rolling {summary.windowDays} days</p>
+          <h2 id="google-lsa-performance-title">Google Local Services Ads</h2>
+          <p style={{ margin: '0.25rem 0 0', color: 'var(--muted)', fontSize: '0.78rem' }}>
+            {summary.customerName || (summary.customerId ? `Customer ${summary.customerId}` : 'No LSA customer selected')} · {formatImportedAt(summary.lastSyncAt)}
+          </p>
+        </div>
+        <span
+          style={{
+            fontSize: '0.72rem',
+            color: stateColor,
+            background: isHealthy ? 'rgba(16, 185, 129, 0.15)' : 'rgba(249, 115, 22, 0.1)',
+            border: `1px solid color-mix(in srgb, ${stateColor} 35%, transparent)`,
+            padding: '0.2rem 0.5rem',
+            borderRadius: '999px',
+            fontWeight: 700,
+          }}
+        >
+          {LSA_STATE_LABEL[summary.connectionState]}
+        </span>
+      </div>
+
+      <dl style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(128px, 1fr))', gap: '0.55rem', margin: '0.8rem 0 0' }}>
+        {metrics.map((metric) => (
+          <div key={metric.label} style={{ background: 'rgba(255, 255, 255, 0.035)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.65rem' }}>
+            <dt style={{ color: 'var(--muted)', fontSize: '0.7rem' }}>{metric.label}</dt>
+            <dd style={{ margin: '0.15rem 0 0', fontSize: '1.05rem', fontWeight: 750, color: 'var(--foreground)' }}>{metric.value}</dd>
+            <dd style={{ margin: '0.15rem 0 0', color: 'var(--muted)', fontSize: '0.66rem', lineHeight: 1.35 }}>{metric.note}</dd>
+          </div>
+        ))}
+      </dl>
+
+      <p style={{ margin: '0.75rem 0 0', color: 'var(--muted)', fontSize: '0.74rem', lineHeight: 1.45 }}>
+        {summary.attributionCaveat}
+      </p>
+    </section>
+  );
+}
+
 export default function PerformanceScreen({
   campaigns,
   counts,
   roiSummary,
+  lsaSummary,
   basePath = '/dashboard',
   navOnly,
 }: {
   campaigns: Campaign[];
   counts: PostCounts;
   roiSummary?: OverallRoiSummary;
+  lsaSummary?: GoogleLsaReportingSummary | null;
   basePath?: string;
   navOnly?: string[];
 }) {
@@ -148,6 +261,8 @@ export default function PerformanceScreen({
           </div>
         </div>
       </section>
+
+      {lsaSummary !== undefined ? <GoogleLsaPerformancePanel summary={lsaSummary} /> : null}
 
       {/* 1. Outcome Metrics (8 Financial & Conversion Metrics) */}
       <div className="mkt-tiles" style={{ marginBottom: '1.25rem' }}>

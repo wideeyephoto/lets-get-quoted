@@ -187,6 +187,49 @@ type GoogleAdsSearchResponse = {
   nextPageToken?: string;
 };
 
+const READ_RETRY_STATUSES = new Set([429, 500, 502, 503, 504]);
+
+function retryDelayMs(response: Response | null, attempt: number): number {
+  const retryAfter = response?.headers.get('retry-after')?.trim();
+  if (retryAfter) {
+    const seconds = Number(retryAfter);
+    if (Number.isFinite(seconds) && seconds >= 0) return Math.min(seconds * 1_000, 5_000);
+    const at = Date.parse(retryAfter);
+    if (Number.isFinite(at)) return Math.min(Math.max(0, at - Date.now()), 5_000);
+  }
+  return 250 * (2 ** attempt);
+}
+
+function delay(milliseconds: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
+}
+
+/** Retry only idempotent report/list reads; feedback writes intentionally use one attempt. */
+async function fetchGoogleRead(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  fetchImpl: GoogleLsaFetch,
+  timeoutMs: number,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    let response: Response | null = null;
+    try {
+      response = await fetchImpl(input, {
+        ...init,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (!READ_RETRY_STATUSES.has(response.status) || attempt === 2) return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 2) throw error;
+    }
+    if (response?.body) await response.body.cancel().catch(() => undefined);
+    await delay(retryDelayMs(response, attempt));
+  }
+  throw lastError instanceof Error ? lastError : new Error('Google read request failed.');
+}
+
 async function googleAdsSearch(
   request: GoogleAdsAuth & { customerId: string },
   query: string,
@@ -202,13 +245,12 @@ async function googleAdsSearch(
     const body: { query: string; pageToken?: string } = { query };
     if (pageToken) body.pageToken = pageToken;
     // Search v25 has a fixed 10,000-row page and rejects pageSize.
-    const response = await fetchImpl(url, {
+    const response = await fetchGoogleRead(url, {
       method: 'POST',
       headers: googleAdsHeaders(request),
       body: JSON.stringify(body),
       cache: 'no-store',
-      signal: AbortSignal.timeout(30_000),
-    });
+    }, fetchImpl, 30_000);
     const payload = await parseGoogleLsaApiResponse<GoogleAdsSearchResponse>(response);
     if (Array.isArray(payload.results)) rows.push(...payload.results.map(object));
     pageToken = stringOrNull(payload.nextPageToken) ?? undefined;
@@ -331,6 +373,8 @@ type AccountInfo = {
   currencyCode: string;
   timeZone: string;
   loginCustomerId: string | null;
+  /** Manager path retained specifically for the legacy accountReports API. */
+  legacyManagerCustomerId: string | null;
   manager: boolean;
   hidden: boolean;
   level: number;
@@ -344,6 +388,7 @@ function parseCustomerRow(row: JsonObject, rootId: string): AccountInfo {
     currencyCode: stringOrNull(customer.currencyCode) || '',
     timeZone: stringOrNull(customer.timeZone) || 'UTC',
     loginCustomerId: null,
+    legacyManagerCustomerId: null,
     manager: customer.manager === true,
     hidden: false,
     level: 0,
@@ -359,6 +404,7 @@ function parseCustomerClientRow(row: JsonObject, rootId: string): AccountInfo {
     currencyCode: stringOrNull(client.currencyCode) || '',
     timeZone: stringOrNull(client.timeZone) || 'UTC',
     loginCustomerId: customerId === rootId ? null : rootId,
+    legacyManagerCustomerId: customerId === rootId ? null : rootId,
     manager: client.manager === true,
     hidden: client.hidden === true,
     level: numberOrZero(client.level),
@@ -369,11 +415,10 @@ async function listAccessibleCustomerIds(
   request: DiscoverGoogleLsaCustomersRequest,
   fetchImpl: GoogleLsaFetch,
 ): Promise<string[]> {
-  const response = await fetchImpl(`${GOOGLE_ADS_API_ORIGIN}/${GOOGLE_ADS_API_VERSION}/customers:listAccessibleCustomers`, {
+  const response = await fetchGoogleRead(`${GOOGLE_ADS_API_ORIGIN}/${GOOGLE_ADS_API_VERSION}/customers:listAccessibleCustomers`, {
     headers: googleAdsHeaders(request, false),
     cache: 'no-store',
-    signal: AbortSignal.timeout(20_000),
-  });
+  }, fetchImpl, 20_000);
   const payload = await parseGoogleLsaApiResponse<{ resourceNames?: string[] }>(response);
   return (payload.resourceNames ?? []).map((resourceName) => {
     const match = /^customers\/(\d+)$/.exec(resourceName);
@@ -400,7 +445,14 @@ export async function discoverGoogleLsaCustomers(
 
     // Prefer a direct OAuth path over an overlapping manager hierarchy.
     const existingRoot = accounts.get(root.customerId);
-    if (!existingRoot || existingRoot.loginCustomerId) accounts.set(root.customerId, root);
+    if (!existingRoot) {
+      accounts.set(root.customerId, root);
+    } else if (existingRoot.loginCustomerId) {
+      accounts.set(root.customerId, {
+        ...root,
+        legacyManagerCustomerId: existingRoot.legacyManagerCustomerId,
+      });
+    }
 
     if (!root.manager) continue;
     const hierarchyRows = await googleAdsSearch({
@@ -411,8 +463,18 @@ export async function discoverGoogleLsaCustomers(
     for (const row of hierarchyRows) {
       const account = parseCustomerClientRow(row, rootId);
       const existing = accounts.get(account.customerId);
-      if (!existing || account.level < existing.level || (existing.loginCustomerId && !account.loginCustomerId)) {
+      if (!existing) {
         accounts.set(account.customerId, account);
+      } else if (existing.loginCustomerId && account.level < existing.level) {
+        accounts.set(account.customerId, {
+          ...account,
+          legacyManagerCustomerId: existing.legacyManagerCustomerId || account.legacyManagerCustomerId,
+        });
+      } else if (!existing.legacyManagerCustomerId && account.legacyManagerCustomerId) {
+        accounts.set(account.customerId, {
+          ...existing,
+          legacyManagerCustomerId: account.legacyManagerCustomerId,
+        });
       }
     }
   }
@@ -433,15 +495,21 @@ export async function discoverGoogleLsaCustomers(
       const legacy = channel === 'LOCAL_SERVICES';
       const migrated = channel === 'PERFORMANCE_MAX' && pmax.localServicesEnabled === true;
       if (!legacy && !migrated) continue;
+      // Legacy aggregate cost exists only through Local Services accountReports,
+      // whose manager_customer_id must really be a manager. A direct-only
+      // legacy account can provide leads but cannot satisfy this integration's
+      // spend contract, so it is not offered as a connectable candidate.
+      if (legacy && !account.legacyManagerCustomerId) continue;
 
       const campaignId = requiredString(campaign.id, 'campaign.id');
+      const loginCustomerId = legacy ? account.legacyManagerCustomerId : account.loginCustomerId;
       const candidate: GoogleLsaCustomerCandidate = {
         customerId: account.customerId,
         descriptiveName: account.descriptiveName,
         customerName: account.descriptiveName,
         currencyCode: account.currencyCode,
         timeZone: account.timeZone,
-        loginCustomerId: account.loginCustomerId,
+        loginCustomerId,
         campaignKind: legacy ? 'legacy' : 'pmax',
         campaignMode: legacy ? 'legacy' : 'pmax',
         campaignId,
@@ -454,7 +522,17 @@ export async function discoverGoogleLsaCustomers(
           localServicesEnabled: migrated,
         },
       };
-      candidates.set(`${candidate.customerId}:${campaignId}`, candidate);
+      const existing = candidates.get(candidate.customerId);
+      const candidateRank = (candidate.campaignKind === 'pmax' ? 10 : 0)
+        + (candidate.campaign.status === 'ENABLED' ? 1 : 0);
+      const existingRank = existing
+        ? (existing.campaignKind === 'pmax' ? 10 : 0) + (existing.campaign.status === 'ENABLED' ? 1 : 0)
+        : -1;
+      // The connection picker selects an Ads customer, not an individual
+      // campaign. Prefer the migrated PMax path during a transition where both
+      // campaign records are briefly visible, and return at most one candidate
+      // per customer so selection remains unambiguous.
+      if (!existing || candidateRank > existingRank) candidates.set(candidate.customerId, candidate);
     }
   }
 
@@ -531,14 +609,13 @@ export async function fetchLegacyLsaAccountReport(
       pageSize: '10000',
     });
     if (pageToken) params.set('pageToken', pageToken);
-    const response = await fetchImpl(`${LOCAL_SERVICES_API_ORIGIN}/v1/accountReports:search?${params.toString()}`, {
+    const response = await fetchGoogleRead(`${LOCAL_SERVICES_API_ORIGIN}/v1/accountReports:search?${params.toString()}`, {
       headers: {
         Authorization: `Bearer ${request.accessToken}`,
         Accept: 'application/json',
       },
       cache: 'no-store',
-      signal: AbortSignal.timeout(30_000),
-    });
+    }, fetchImpl, 30_000);
     const payload = await parseGoogleLsaApiResponse<{
       accountReports?: LegacyLsaAccountReport[];
       nextPageToken?: string;
@@ -573,9 +650,7 @@ export async function fetchPmaxLsaDailySpend(
   campaign.id,
   campaign.name,
   segments.date,
-  metrics.cost_micros,
-  metrics.conversions,
-  metrics.cost_per_conversion
+  metrics.cost_micros
 FROM campaign
 WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
   AND campaign.advertising_channel_type = 'PERFORMANCE_MAX'
@@ -594,8 +669,6 @@ WHERE segments.date BETWEEN '${startDate}' AND '${endDate}'
       campaignName: stringOrNull(campaign.name) || '',
       date: requiredString(segments.date, 'segments.date'),
       costMicros: stringOrNull(metrics.costMicros) || '0',
-      conversions: numberOrZero(metrics.conversions),
-      costPerConversion: numberOrZero(metrics.costPerConversion),
     };
   });
 }

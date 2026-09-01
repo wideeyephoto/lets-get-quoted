@@ -62,9 +62,11 @@ export async function setServiceActiveAction(serviceId: string, active: boolean)
 }
 
 export async function deleteServiceAction(serviceId: string) {
-  const { supabase, accountId } = await requireOfficeContext('jobs.write');
-  await deleteService(supabase, accountId, serviceId);
+  const { supabase, accountId, userId, userEmail, role } = await requireOfficeContext('jobs.write');
+  await deleteService(supabase, accountId, serviceId, { userId, role, email: userEmail ?? undefined });
   revalidatePath('/dashboard/services');
+  revalidatePath('/dashboard/trash');
+  revalidatePath('/dashboard/activity');
 }
 
 export async function loadTradeStarterCatalogAction(formData: FormData) {

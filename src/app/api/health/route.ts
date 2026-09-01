@@ -25,7 +25,7 @@ export type HealthResponse = {
   };
 };
 
-export async function GET(req?: NextRequest) {
+export async function GET(req: NextRequest) {
   const startTime = performance.now();
   const services: HealthService[] = [];
 

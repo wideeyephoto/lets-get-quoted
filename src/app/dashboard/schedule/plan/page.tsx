@@ -189,7 +189,7 @@ export default async function PlanDayPage({
       if (coord) points.push({ id: stop.id, coord });
     }
     if (points.length >= 2 && points.length <= DRIVE_MATRIX_MAX_POINTS) {
-      matrix = (await driveMatrix(points)) ?? undefined;
+      matrix = (await driveMatrix(points, { departureTime: 'now', trafficModel: 'best_guess' })) ?? undefined;
     } else if (points.length > DRIVE_MATRIX_MAX_POINTS) {
       driveTimeSkipped = 'too_many_stops';
     }

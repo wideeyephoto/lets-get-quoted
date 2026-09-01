@@ -284,6 +284,42 @@ export function arrivalWindowTimes(
 }
 
 /**
+ * Recalculates the live arrival window during an active trip from updated ETA minutes.
+ */
+export function recalculateLiveArrivalTimes(
+  now: Date,
+  recalculatedEtaMinutes: number,
+  settings: Pick<ArrivalSettings, 'windowStyle' | 'windowMinutes'>,
+  originalEnd?: Date | string | null,
+): {
+  times: ArrivalWindowTimes;
+  etaMinutes: number;
+  isDelayed: boolean;
+  minutesLate: number;
+} {
+  const etaMinutes = clampInt(recalculatedEtaMinutes, MIN_ETA_MINUTES, MAX_ETA_MINUTES, 15);
+  const times = arrivalWindowTimes(now, etaMinutes, settings);
+
+  let isDelayed = false;
+  let delayMinutes = 0;
+  if (originalEnd) {
+    const origEndMs = typeof originalEnd === 'string' ? new Date(originalEnd).getTime() : originalEnd.getTime();
+    if (Number.isFinite(origEndMs)) {
+      delayMinutes = Math.max(0, Math.round((times.start.getTime() - origEndMs) / 60_000));
+      // Marked delayed if the newly calculated arrival start is past the promised window end + 2m grace
+      isDelayed = delayMinutes > 2;
+    }
+  }
+
+  return {
+    times,
+    etaMinutes,
+    isDelayed,
+    minutesLate: delayMinutes,
+  };
+}
+
+/**
  * The real instant of a wall-clock time in a given zone.
  *
  * Parsing "2026-08-03" + "08:00" with `new Date(...)` uses the SERVER's

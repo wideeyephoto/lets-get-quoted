@@ -51,19 +51,31 @@ function point(stop: { lat: number | null; lng: number | null }): { lat: number;
  */
 export function departurePlans(
   stops: PlannedStop[],
-  options: { day: string; timeZone: string; bufferMinutes?: number; origin?: { lat: number; lng: number } | null; now?: Date },
+  options: {
+    day: string;
+    timeZone: string;
+    bufferMinutes?: number;
+    origin?: { lat: number; lng: number } | null;
+    now?: Date;
+    matrix?: Map<string, { miles: number; minutes: number }>;
+  },
 ): DeparturePlan[] {
   const now = options.now ?? new Date();
   const buffer = Math.max(0, options.bufferMinutes ?? 0);
   let previous = options.origin ?? null;
+  let prevId = 'start';
 
   return stops.map((stop) => {
     const here = point(stop);
     const appointment = stop.scheduledTime ? zonedInstant(options.day, stop.scheduledTime, options.timeZone) : null;
-    const driveMinutes = estimateEtaMinutes(previous, here);
+    const matrixLeg = options.matrix?.get(`${prevId}->${stop.id}`);
+    const driveMinutes = matrixLeg ? Math.round(matrixLeg.minutes) : estimateEtaMinutes(previous, here);
     // Carry the position forward even when this stop can't be planned, so one
     // ungeocoded address in the middle doesn't blank the rest of the day.
-    if (here) previous = here;
+    if (here) {
+      previous = here;
+      prevId = stop.id;
+    }
 
     if (!appointment || driveMinutes === null) {
       return { id: stop.id, leaveBy: null, driveMinutes, overdue: false, soon: false };

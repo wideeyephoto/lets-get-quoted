@@ -200,8 +200,6 @@ export type GoogleLsaDailySpendRow = {
   campaignName: string;
   date: string;
   costMicros: string;
-  conversions: number;
-  costPerConversion: number;
 };
 
 export type GoogleLsaSurveyAnswer =

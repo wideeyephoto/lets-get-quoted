@@ -10,17 +10,40 @@ export interface SqlQueryResult {
   executionTimeMs: number;
 }
 
-const FORBIDDEN_SQL_KEYWORDS = /\b(DROP|DELETE|TRUNCATE|UPDATE|INSERT|ALTER|CREATE|GRANT|REVOKE|EXEC|EXECUTE)\b/i;
+const FORBIDDEN_SQL_PATTERNS = [
+  /\b(DROP|DELETE|TRUNCATE|UPDATE|INSERT|ALTER|CREATE|GRANT|REVOKE|EXEC|EXECUTE|CALL|DO|COPY|VACUUM|REINDEX)\b/i,
+  /\b(PG_SLEEP|DBLINK|LO_EXPORT|LO_IMPORT|SET_CONFIG)\b/i,
+];
 
 /**
- * Validates that a generated query is strictly read-only and safe
+ * Validates that a generated query is strictly read-only and safe.
+ *
+ * CRITICAL SECURITY INVARIANT:
+ * Regex keyword denylists are defense-in-depth and must NOT be the sole security
+ * barrier if a live database execution path is ever wired. Live execution must run
+ * under a dedicated Postgres unprivileged read-only role (`GRANT SELECT ON ...`)
+ * within an explicit `SET TRANSACTION READ ONLY;` session.
  */
 export function isSafeReadOnlySqlQuery(sql: string): boolean {
-  const clean = sql.trim();
-  if (!clean.toUpperCase().startsWith('SELECT') && !clean.toUpperCase().startsWith('WITH')) {
+  // Strip single-line and multi-line comments
+  const stripped = sql
+    .replace(/--.*$/gm, '')
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    .trim();
+
+  // Multi-statement prevention: disallow internal semicolons
+  const statements = stripped.split(';').map((s) => s.trim()).filter(Boolean);
+  if (statements.length !== 1) {
     return false;
   }
-  return !FORBIDDEN_SQL_KEYWORDS.test(clean);
+
+  const query = statements[0];
+  const upper = query.toUpperCase();
+  if (!upper.startsWith('SELECT') && !upper.startsWith('WITH')) {
+    return false;
+  }
+
+  return !FORBIDDEN_SQL_PATTERNS.some((pattern) => pattern.test(query));
 }
 
 /**

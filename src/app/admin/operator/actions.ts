@@ -45,6 +45,7 @@ export async function askOperatorServerAction(query: string) {
     supabase: context.admin,
     adminUserId: context.adminEmail,
     source: 'admin_dashboard',
+    staff: context.staff,
   });
   return response;
 }
@@ -67,6 +68,7 @@ export async function replayWebhooksServerAction(action: 'diagnose' | 'replay_an
     supabase: context.admin,
     adminUserId: context.adminEmail,
     source: 'admin_dashboard',
+    staff: context.staff,
   });
 
   await logAdminAction(context.admin, context, {

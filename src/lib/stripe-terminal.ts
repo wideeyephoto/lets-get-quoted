@@ -158,7 +158,7 @@ export async function listTerminalReaders(
           status: r.status === 'online' ? 'online' : 'offline',
           ipAddress: r.ip_address,
           serialNumber: r.serial_number,
-          locationId: r.location || locId,
+          locationId: (typeof r.location === 'string' ? r.location : r.location?.id) || locId,
           simulated: r.device_type.includes('simulated') || r.id.startsWith('tmr_simulated'),
         });
       }
@@ -224,7 +224,7 @@ export async function registerTerminalReader(
     status: created.status === 'online' ? 'online' : 'offline',
     ipAddress: created.ip_address,
     serialNumber: created.serial_number,
-    locationId: created.location || locationId,
+    locationId: (typeof created.location === 'string' ? created.location : created.location?.id) || locationId,
     simulated: created.device_type.includes('simulated'),
   };
 }
@@ -266,12 +266,10 @@ export async function createTerminalPaymentIntent(
   const stripe = getStripeClient();
   const feeRateObj = await resolvePaymentFeeRate(supabase, {
     account_id: accountId,
-    amount,
-    invoice_id: invoiceId,
+    kind: 'stage',
   });
   const feeRate = feeRateObj.feeRate;
   const basis = await resolveFeeBasisCents(supabase, {
-    account_id: accountId,
     amount,
     invoice_id: invoiceId,
   });
@@ -286,7 +284,7 @@ export async function createTerminalPaymentIntent(
       job_id: jobId,
       invoice_id: invoiceId || null,
       kind: 'stage',
-      label: `Tap to Pay · In-Person Contactless (${job.clientName || 'Jobsite'})`,
+      label: `Tap to Pay · In-Person Contactless (${job.client_name || 'Jobsite'})`,
       amount,
       status: 'requested',
       charge_model: 'destination',
@@ -316,7 +314,7 @@ export async function createTerminalPaymentIntent(
       currency: 'usd',
       payment_method_types: ['card_present'],
       capture_method: 'automatic',
-      description: description || `Tap to Pay: ${job.ref} - ${job.clientName}`,
+      description: description || `Tap to Pay: ${job.ref} - ${job.client_name}`,
       metadata: {
         payment_id: payment.id,
         job_id: jobId,

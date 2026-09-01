@@ -144,15 +144,17 @@ export async function updateArrivalPositionAction(jobId: string, lat: number, ln
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
 
   const admin = createAdminClient();
-  const [{ data: account }, active] = await Promise.all([
+  const [{ data: account }, active, { data: job }] = await Promise.all([
     admin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
     getActiveTracking(admin, accountId, jobId),
+    admin.from('jobs').select('lat, lng').eq('id', jobId).maybeSingle(),
   ]);
   if (!active) return;
 
   const settings = arrivalSettingsFromAccount(account as Record<string, unknown> | null);
   if (settings.locationPolicy === 'off') return;
-  await updateTechPosition(admin, active, { lat, lng }, settings.locationPrecision);
+  const jobDest = job && job.lat != null && job.lng != null ? { lat: Number(job.lat), lng: Number(job.lng) } : null;
+  await updateTechPosition(admin, active, { lat, lng }, settings.locationPrecision, new Date(), jobDest, settings);
 }
 
 // Arrived / couldn't get in / rescheduled / cancelled. One action, because they

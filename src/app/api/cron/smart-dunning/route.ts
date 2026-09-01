@@ -6,7 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-export async function runSmartDunningCronBatch(admin?: SupabaseClient) {
+async function runSmartDunningCronBatch(admin?: SupabaseClient) {
   const client = admin || createAdminClient();
   const result = await runSmartDunningSweep(client);
   return {

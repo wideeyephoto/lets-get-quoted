@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { sharedNoticeText } from '../src/app/api/sms/inbound/route';
+import { sharedNoticeText } from '../src/lib/sms-webhook-ingress';
 
 /**
  * The shared number answers replies with a courtesy notice.

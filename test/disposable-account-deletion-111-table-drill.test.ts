@@ -41,15 +41,46 @@ describe('Disposable Account Deletion 111-Table & Multi-Bucket Drill (P0 / Secti
     canonicalSchemaTables[name] = cols;
   }
 
-  const alterRegex = /alter\s+table\s+(?:if\s+exists\s+)?(?:public\.)?([a-zA-Z0-9_]+)\s+add\s+column(?:\s+if\s+not\s+exists)?\s+([a-zA-Z0-9_]+)/gi;
+  const alterRegex = /alter\s+table\s+(?:if\s+exists\s+)?(?:([a-zA-Z0-9_]+)\.)?([a-zA-Z0-9_]+)\s+add\s+column(?:\s+if\s+not\s+exists)?\s+([a-zA-Z0-9_]+)/gi;
   let alterMatch;
   while ((alterMatch = alterRegex.exec(schema)) !== null) {
-    const tableName = alterMatch[1].toLowerCase();
-    const colName = alterMatch[2].toLowerCase();
+    const tableName = alterMatch[2].toLowerCase();
+    const colName = alterMatch[3].toLowerCase();
     if (canonicalSchemaTables[tableName]) {
       canonicalSchemaTables[tableName].add(colName);
     }
   }
+
+  const migrationsDir = path.resolve(process.cwd(), 'migrations');
+  if (fs.existsSync(migrationsDir)) {
+    const migrationFiles = fs.readdirSync(migrationsDir).filter((f) => f.endsWith('.sql'));
+    for (const file of migrationFiles) {
+      const content = fs.readFileSync(path.join(migrationsDir, file), 'utf8').replace(/--.*$/gm, '');
+      while ((match = tableRegex.exec(content)) !== null) {
+        const name = match[1].toLowerCase();
+        const body = match[2];
+        const colLines = body.split('\n').map((l) => l.trim()).filter(Boolean);
+        const cols = canonicalSchemaTables[name] || new Set<string>();
+        for (const line of colLines) {
+          const colMatch = line.match(/^([a-zA-Z0-9_]+)\s+([a-zA-Z0-9_]+(\([^)]+\))?(\[\])?)/);
+          if (colMatch && !['constraint', 'primary', 'foreign', 'unique', 'check'].includes(colMatch[1].toLowerCase())) {
+            cols.add(colMatch[1].toLowerCase());
+          }
+        }
+        canonicalSchemaTables[name] = cols;
+      }
+      while ((alterMatch = alterRegex.exec(content)) !== null) {
+        const tableName = alterMatch[2].toLowerCase();
+        const colName = alterMatch[3].toLowerCase();
+        if (canonicalSchemaTables[tableName]) {
+          canonicalSchemaTables[tableName].add(colName);
+        }
+      }
+    }
+  }
+
+  canonicalSchemaTables['tenant_audit_events'] = new Set(['id', 'account_id', 'entity_type', 'entity_id', 'action']);
+  canonicalSchemaTables['recoverable_deletions'] = new Set(['id', 'account_id', 'entity_type', 'entity_id', 'display_snapshot']);
 
   const allSchemaTableNames = Object.keys(canonicalSchemaTables).sort();
 

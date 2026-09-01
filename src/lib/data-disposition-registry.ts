@@ -1,9 +1,9 @@
 /**
- * Multidimensional Data Disposition Registry (111+ Schema Tables)
+ * Multidimensional Data Disposition Registry (189+ Schema Tables)
  *
  * Defines the comprehensive data lifecycle, privacy categorization, and
- * retention/anonymization rules strictly aligned with PostgreSQL schema.sql definitions.
- * Covers 100% of all 115 PostgreSQL tables defined in the canonical database schema.
+ * retention/anonymization rules strictly aligned with PostgreSQL schema.sql and migrations.
+ * Covers 100% of all 191 PostgreSQL tables.
  */
 
 export interface RetentionPolicy {
@@ -19,7 +19,7 @@ export interface TableDisposition {
   primaryKeyColumn?: string;
   fkPath?: string[];
   localAction: 'delete' | 'anonymize_columns' | 'retain_immutable';
-  targetColumns?: string[]; // Verified columns present in schema.sql
+  targetColumns?: string[]; // Verified columns present in schema
   portability: 'full' | 'redacted' | 'exempt' | 'internal_system';
   exportRedactions?: string[];
   retention: RetentionPolicy;
@@ -153,6 +153,72 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Storage usage tracking per workspace
+  workspace_storage_usage: {
+    tableName: 'workspace_storage_usage',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'account_id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Account closure saga ledger
+  account_closure_jobs: {
+    tableName: 'account_closure_jobs',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Catalog membership tier definitions
+  membership_tiers: {
+    tableName: 'membership_tiers',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Office team RBAC capability catalog
+  office_capabilities: {
+    tableName: 'office_capabilities',
+    relationship: 'system_global',
+    primaryKeyColumn: 'capability',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Office member invitation tokens
+  office_invitations: {
+    tableName: 'office_invitations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Explicit granular office permissions
+  office_member_capabilities: {
+    tableName: 'office_member_capabilities',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Homeowner client directory
   clients: {
     tableName: 'clients',
@@ -225,6 +291,29 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Client portal access records
+  client_portal_access: {
+    tableName: 'client_portal_access',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["sent_to","token_hash"],
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Client duplicate merge dismissal records
+  client_duplicate_dismissals: {
+    tableName: 'client_duplicate_dismissals',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Outbound quote proposals and interactive options
   estimate_offers: {
     tableName: 'estimate_offers',
@@ -268,6 +357,28 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     localAction: 'delete',
     portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Quick-stop geographic priority zone definitions
+  quick_stop_priority_zones: {
+    tableName: 'quick_stop_priority_zones',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Async payment settlement queue for quick stops
+  quick_stop_payment_tasks: {
+    tableName: 'quick_stop_payment_tasks',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
@@ -327,6 +438,28 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Customer cancellation waitlist requests
+  cancellation_waitlist: {
+    tableName: 'cancellation_waitlist',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Waitlist offer dispatches to clients
+  waitlist_offers: {
+    tableName: 'waitlist_offers',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Spam and suppressed lead numbers
   lead_blocklist: {
     tableName: 'lead_blocklist',
@@ -341,6 +474,28 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
   // Field technician form responses
   field_submissions: {
     tableName: 'field_submissions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Conditional form and survey templates
+  form_templates: {
+    tableName: 'form_templates',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Client form submission entries
+  job_form_submissions: {
+    tableName: 'job_form_submissions',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'delete',
@@ -368,6 +523,154 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     localAction: 'delete',
     portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Job scope adjustments and change orders
+  change_orders: {
+    tableName: 'change_orders',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["title","field_note","scope","signature_name"],
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Client material and finish choices
+  job_selections: {
+    tableName: 'job_selections',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Individual selection choices and pricing
+  selection_options: {
+    tableName: 'selection_options',
+    relationship: 'fk_chain',
+    primaryKeyColumn: 'id',
+    fkPath: ["selection_id","job_selections.account_id"],
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Reusable material selection templates
+  selection_templates: {
+    tableName: 'selection_templates',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Selection choice reminder schedule
+  selection_reminders: {
+    tableName: 'selection_reminders',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Issued warranty certificates
+  warranties: {
+    tableName: 'warranties',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["title","covers","excludes","maintenance_notes"],
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Client warranty claim requests
+  warranty_claims: {
+    tableName: 'warranty_claims',
+    relationship: 'fk_chain',
+    primaryKeyColumn: 'id',
+    fkPath: ["warranty_id","warranties.account_id"],
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Property asset history passport documents
+  property_passports: {
+    tableName: 'property_passports',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Immutable property asset modification history
+  property_passport_ledger: {
+    tableName: 'property_passport_ledger',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Installed equipment warranties and specs
+  equipment_passports: {
+    tableName: 'equipment_passports',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // User dashboard orientation tour progress
+  product_tour_progress: {
+    tableName: 'product_tour_progress',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Tour interaction event telemetry
+  product_tour_events: {
+    tableName: 'product_tour_events',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Customer review invitations and response records
+  review_invites: {
+    tableName: 'review_invites',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["client_name","feedback"],
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
@@ -599,7 +902,169 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Purchased extra crew seats
+  // QuickBooks Online OAuth connection tokens
+  quickbooks_connections: {
+    tableName: 'quickbooks_connections',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'account_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'quickbooks',
+  },
+
+  // Encrypted tax vault for 1099 contractor TINs
+  subcontractor_tax_identities: {
+    tableName: 'subcontractor_tax_identities',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Quota reset worker operational state
+  billing_allowance_reset_worker_states: {
+    tableName: 'billing_allowance_reset_worker_states',
+    relationship: 'system_global',
+    primaryKeyColumn: 'worker_name',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Quota reset cron attempt ledger
+  billing_allowance_reset_worker_attempts: {
+    tableName: 'billing_allowance_reset_worker_attempts',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Stripe customer and billing subscription mappings
+  billing_subscription_customers: {
+    tableName: 'billing_subscription_customers',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'account_id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // SaaS plan checkout idempotent operation ledger
+  billing_subscription_checkout_operations: {
+    tableName: 'billing_subscription_checkout_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Contractor recurring billing terms consent records
+  billing_subscription_consent_acceptances: {
+    tableName: 'billing_subscription_consent_acceptances',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // SaaS plan upgrade/downgrade state ledger
+  billing_subscription_plan_change_operations: {
+    tableName: 'billing_subscription_plan_change_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Late payment arrival reconciliation queue
+  billing_direct_checkout_late_success_tasks: {
+    tableName: 'billing_direct_checkout_late_success_tasks',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Late checkout manual disposition ledger
+  billing_direct_checkout_late_success_resolutions: {
+    tableName: 'billing_direct_checkout_late_success_resolutions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Direct payment refund authorization tokens
+  billing_direct_refund_authorizations: {
+    tableName: 'billing_direct_refund_authorizations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Direct refund execution state ledger
+  billing_direct_refund_operations: {
+    tableName: 'billing_direct_refund_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Expired checkout session cleanup queue
+  stripe_connected_checkout_expirations: {
+    tableName: 'stripe_connected_checkout_expirations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Stripe Connect merchant onboarding state ledger
+  stripe_merchant_provisioning_operations: {
+    tableName: 'stripe_merchant_provisioning_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Active purchased capacity grants
   workspace_purchased_capacity: {
     tableName: 'workspace_purchased_capacity',
     relationship: 'direct_account_id',
@@ -610,7 +1075,7 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Metered overage opt-in authorizations
+  // Opt-in metered overage spending limit authorizations
   workspace_overage_authorizations: {
     tableName: 'workspace_overage_authorizations',
     relationship: 'direct_account_id',
@@ -621,18 +1086,18 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Overage warning thresholds and limits
+  // Workspace overage self-serve preferences
   workspace_overage_settings: {
     tableName: 'workspace_overage_settings',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'account_id',
     localAction: 'delete',
     portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Accrued unpaid metered units
+  // Metered overage consumption accrual log
   workspace_overage_accruals: {
     tableName: 'workspace_overage_accruals',
     relationship: 'direct_account_id',
@@ -643,18 +1108,7 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Periodic overage invoice settlements
-  workspace_overage_settlements: {
-    tableName: 'workspace_overage_settlements',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'retain_immutable',
-    portability: 'internal_system',
-    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Raw metered usage event logs
+  // Overage usage state transition ledger
   workspace_overage_accrual_events: {
     tableName: 'workspace_overage_accrual_events',
     relationship: 'direct_account_id',
@@ -665,44 +1119,82 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Settlement links to metered events
+  // Settlement records for overage usage events
   workspace_overage_event_settlements: {
     tableName: 'workspace_overage_event_settlements',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Invoiced monthly usage overage charges
+  workspace_overage_settlements: {
+    tableName: 'workspace_overage_settlements',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Legacy Stripe checkout event audit receipts
+  legacy_destination_checkout_event_receipts: {
+    tableName: 'legacy_destination_checkout_event_receipts',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'retain_immutable',
     portability: 'internal_system',
     retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
   },
 
-  // Inbound AI voice reception call logs
-  voice_calls: {
-    tableName: 'voice_calls',
+  // Legacy checkout operation records
+  legacy_destination_checkout_operations: {
+    tableName: 'legacy_destination_checkout_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Audited adoptions of legacy Stripe sessions
+  legacy_destination_checkout_session_adoptions: {
+    tableName: 'legacy_destination_checkout_session_adoptions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Customer SMS message timeline
+  sms_messages: {
+    tableName: 'sms_messages',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'anonymize_columns',
-    targetColumns: ["caller_number","summary","transcript"],
+    targetColumns: ["body"],
     portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'voice_quality_review', durationDays: 90, startEvent: 'call_ended' },
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
     vendorDependency: 'signalwire',
   },
 
-  // Concurrency admissions for voice trunking
-  voice_call_admissions: {
-    tableName: 'voice_call_admissions',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'internal_system',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'call_ended' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // SignalWire webhook and SIP event journal
-  voice_events: {
-    tableName: 'voice_events',
+  // SMS status transitions and delivery ledger
+  sms_events: {
+    tableName: 'sms_events',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'retain_immutable',
@@ -711,162 +1203,104 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Voice assistant tone, script, and hours
+  // TCPA customer SMS opt-in evidence
+  sms_consent: {
+    tableName: 'sms_consent',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'phone_number',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Granular opt-in channel permissions
+  sms_consent_scopes: {
+    tableName: 'sms_consent_scopes',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // AI receptionist call recordings and logs
+  voice_calls: {
+    tableName: 'voice_calls',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["transcript"],
+    portability: 'full',
+    exportRedactions: ["recording_url"],
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'voice_quality_review', durationDays: 90, startEvent: 'call_ended' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // AI voice receptionist configuration
   voice_settings: {
     tableName: 'voice_settings',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'account_id',
     localAction: 'delete',
     portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Interactive voice response execution state
+  // Voice call concurrency admission tokens
+  voice_call_admissions: {
+    tableName: 'voice_call_admissions',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Raw telephony webhook event stream
+  voice_events: {
+    tableName: 'voice_events',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Call workflow and scheduling intents
   voice_call_workflows: {
     tableName: 'voice_call_workflows',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'delete',
     portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'call_ended' },
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Operator notes on recorded call sessions
+  // Staff notes on AI receptionist calls
   voice_call_notes: {
     tableName: 'voice_call_notes',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'delete',
     portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'call_ended' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // SMS message content and delivery state
-  sms_messages: {
-    tableName: 'sms_messages',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'anonymize_columns',
-    targetColumns: ["phone_number","body"],
-    portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-    vendorDependency: 'signalwire',
-  },
-
-  // Telephony carrier delivery receipts
-  sms_events: {
-    tableName: 'sms_events',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'internal_system',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // TCPA opt-in/opt-out consent tracking
-  sms_consent: {
-    tableName: 'sms_consent',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'anonymize_columns',
-    targetColumns: ["phone_number"],
-    portability: 'full',
-    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Granular topic-based SMS consent scopes
-  sms_consent_scopes: {
-    tableName: 'sms_consent_scopes',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'phone_number',
-    localAction: 'anonymize_columns',
-    targetColumns: ["phone_number"],
-    portability: 'full',
-    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Contractor customized auto-SMS copy
-  message_templates: {
-    tableName: 'message_templates',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Marketing SMS/email broadcast campaigns
-  campaigns: {
-    tableName: 'campaigns',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Google review invitation tokens and feedback
-  review_invites: {
-    tableName: 'review_invites',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'anonymize_columns',
-    targetColumns: ["client_name","google_url","feedback"],
-    portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Email unsubscribe suppressions
-  email_suppression: {
-    tableName: 'email_suppression',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Resend transactional email delivery log
-  email_events: {
-    tableName: 'email_events',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'retain_immutable',
-    portability: 'internal_system',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-    vendorDependency: 'resend',
-  },
-
-  // Browser web push notification endpoints
-  push_subscriptions: {
-    tableName: 'push_subscriptions',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'internal_system',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // 10DLC brand & campaign registration
+  // Carrier TCR brand registration profiles
   messaging_registrations: {
     tableName: 'messaging_registrations',
-    relationship: 'account_primary_key',
+    relationship: 'direct_account_id',
     primaryKeyColumn: 'account_id',
-    localAction: 'anonymize_columns',
-    targetColumns: ["status_detail","assigned_number","provider_reference"],
+    localAction: 'delete',
     portability: 'full',
     retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
@@ -878,7 +1312,7 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
     localAction: 'anonymize_columns',
-    targetColumns: ["legal_business_name","dba_name","business_email","business_phone","authorized_contact_name","authorized_contact_title","authorized_contact_email","authorized_contact_phone","messaging_support_email","messaging_support_phone","address_line1","address_line2","city","region","postal_code","privacy_policy_url","terms_url"],
+    targetColumns: ["legal_business_name","dba_name","business_email","business_phone","authorized_contact_name","authorized_contact_email","authorized_contact_phone","messaging_support_email","messaging_support_phone","address_line1","address_line2","city","region","postal_code","privacy_policy_url","terms_url"],
     portability: 'full',
     retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
@@ -1074,6 +1508,51 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Email dispatch audit history
+  email_events: {
+    tableName: 'email_events',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'resend',
+  },
+
+  // Unsubscribed or bounced email suppression list
+  email_suppression: {
+    tableName: 'email_suppression',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'email',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Contractor customizable message templates
+  message_templates: {
+    tableName: 'message_templates',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Web push notification endpoints
+  push_subscriptions: {
+    tableName: 'push_subscriptions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Field crew roster and contact info
   crew: {
     tableName: 'crew',
@@ -1093,6 +1572,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     localAction: 'delete',
     portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Latest GPS check-in state for crew members
+  crew_location_state: {
+    tableName: 'crew_location_state',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'crew_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
@@ -1204,6 +1694,354 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     localAction: 'delete',
     portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Contractor trade licenses, bonds and COIs
+  contractor_credentials: {
+    tableName: 'contractor_credentials',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["license_number","holder_name","policy_number","insurance_carrier","notes"],
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'storage',
+  },
+
+  // Warehouses, yards, and service trucks
+  inventory_locations: {
+    tableName: 'inventory_locations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Catalog items and material parts
+  inventory_stock_items: {
+    tableName: 'inventory_stock_items',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Stock transfer orders between locations
+  inventory_stock_transfers: {
+    tableName: 'inventory_stock_transfers',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Asset tracked tools and specialized gear
+  inventory_tools: {
+    tableName: 'inventory_tools',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Contractor vehicle fleet records
+  inventory_vehicles: {
+    tableName: 'inventory_vehicles',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Vehicle and tool maintenance history
+  inventory_maintenance_records: {
+    tableName: 'inventory_maintenance_records',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Municipal permit application dossiers
+  job_permit_cases: {
+    tableName: 'job_permit_cases',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Submitted permit drawings and plans
+  job_permit_documents: {
+    tableName: 'job_permit_documents',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'storage',
+  },
+
+  // City inspector appointments and pass/fail logs
+  job_permit_inspections: {
+    tableName: 'job_permit_inspections',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'job_completed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Municipal building department directory
+  permit_authorities: {
+    tableName: 'permit_authorities',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Municipal jurisdiction boundary mappings
+  permit_authority_coverage: {
+    tableName: 'permit_authority_coverage',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Adopted building codes (IBC/IRC/NEC)
+  permit_code_adoptions: {
+    tableName: 'permit_code_adoptions',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Local municipal building code amendments
+  permit_code_amendments: {
+    tableName: 'permit_code_amendments',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Trade permit threshold determination rules
+  permit_requirement_rules: {
+    tableName: 'permit_requirement_rules',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Official municipal building department portals
+  permit_sources: {
+    tableName: 'permit_sources',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Outbound marketing campaigns and dispatches
+  campaigns: {
+    tableName: 'campaigns',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["subject","body"],
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Google Local Services Ads OAuth connections
+  google_lsa_connections: {
+    tableName: 'google_lsa_connections',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'account_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Inbound phone and message leads from Google LSA
+  google_lsa_leads: {
+    tableName: 'google_lsa_leads',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["consumer_name","consumer_phone","note"],
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Google LSA direct message transcripts
+  google_lsa_conversations: {
+    tableName: 'google_lsa_conversations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ["message_text"],
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Google LSA ad spend and billing receipts
+  google_lsa_spend: {
+    tableName: 'google_lsa_spend',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Lead quality feedback and credit requests sent to Google
+  google_lsa_feedback: {
+    tableName: 'google_lsa_feedback',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // External marketplace lead webhook audit ledger
+  marketplace_lead_receipts: {
+    tableName: 'marketplace_lead_receipts',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // External integration event audit stream
+  integration_events: {
+    tableName: 'integration_events',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Geocoded meteorological forecast cache
+  weather_cache: {
+    tableName: 'weather_cache',
+    relationship: 'system_global',
+    primaryKeyColumn: 'cache_key',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 7, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Public REST API keys and webhook signing secrets
+  api_credentials: {
+    tableName: 'api_credentials',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Public API request audit logging
+  api_request_audit: {
+    tableName: 'api_request_audit',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Idempotency key lock table for REST API
+  api_idempotency_records: {
+    tableName: 'api_idempotency_records',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 7, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Customer configured outbound webhook targets
+  webhook_subscriptions: {
+    tableName: 'webhook_subscriptions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Outbound webhook delivery event log
+  webhook_deliveries: {
+    tableName: 'webhook_deliveries',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 90, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Individual HTTP attempt records for webhooks
+  webhook_delivery_attempts: {
+    tableName: 'webhook_delivery_attempts',
+    relationship: 'fk_chain',
+    primaryKeyColumn: 'id',
+    fkPath: ["delivery_id","webhook_deliveries.account_id"],
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
@@ -1328,6 +2166,28 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     localAction: 'delete',
     portability: 'internal_system',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'dispute_limitation', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Immutable tenant-level material mutation audit ledger
+  tenant_audit_events: {
+    tableName: 'tenant_audit_events',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Trash bin recoverable deletion manifest and state
+  recoverable_deletions: {
+    tableName: 'recoverable_deletions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 

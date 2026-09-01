@@ -1002,6 +1002,10 @@ export default async function SchedulePage({
           <p>Select a job to reschedule it, remove it from the schedule, or manage crew.</p>
           <div className="schedule-panel-foot-links">
             {/* Secondary, and phrased as what it does rather than as a slogan. */}
+            <Link href="/dashboard/schedule/waitlist" className="schedule-foot-waitlist" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
+              <span aria-hidden="true">⚡</span>
+              Cancellation waitlist
+            </Link>
             <Link href="/dashboard/schedule/plan" className="schedule-foot-plan">
               <ActionIcon name="plan" />
               Plan today&apos;s route

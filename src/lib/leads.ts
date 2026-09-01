@@ -466,11 +466,11 @@ export async function createLead(
   };
   let lead: Lead;
   const immutableSource = input.sourceVoiceEventId
-    ? ({ column: 'source_voice_event_id' as const, value: input.sourceVoiceEventId })
+    ? ({ column: 'source_voice_event_id' as const, value: input.sourceVoiceEventId, onConflict: 'source_voice_event_id' })
     : input.sourceGoogleLsaResource
-      ? ({ column: 'source_google_lsa_resource' as const, value: input.sourceGoogleLsaResource })
+      ? ({ column: 'source_google_lsa_resource' as const, value: input.sourceGoogleLsaResource, onConflict: 'account_id,source_google_lsa_resource' })
       : input.sourceMarketplaceRef
-        ? ({ column: 'source_marketplace_ref' as const, value: input.sourceMarketplaceRef })
+        ? ({ column: 'source_marketplace_ref' as const, value: input.sourceMarketplaceRef, onConflict: 'source_marketplace_ref' })
         : null;
   if (immutableSource) {
     // Receipt work can be replayed after either a worker failure or a lost HTTP
@@ -482,7 +482,7 @@ export async function createLead(
       result = await supabase
         .from('leads')
         .upsert(values, {
-          onConflict: immutableSource.column,
+          onConflict: immutableSource.onConflict,
           ignoreDuplicates: true,
         })
         .select('*')
@@ -568,6 +568,9 @@ async function recoverExistingProviderLead(
   value: string,
   originalError: unknown,
 ): Promise<Lead> {
+  if (column === 'source_voice_event_id') {
+    return recoverExistingVoiceLead(supabase, accountId, value, originalError);
+  }
   try {
     const { data, error } = await supabase
       .from('leads')
@@ -579,6 +582,26 @@ async function recoverExistingProviderLead(
   } catch {
     // Preserve the causal insert/transport failure below. A later receipt retry
     // repeats this exact lookup after the ambiguous write has become visible.
+  }
+  throw originalError;
+}
+
+async function recoverExistingVoiceLead(
+  supabase: SupabaseClient,
+  accountId: string,
+  voiceEventId: string,
+  originalError: unknown,
+): Promise<Lead> {
+  try {
+    const { data, error } = await supabase
+      .from('leads')
+      .select('*')
+      .eq('source_voice_event_id', voiceEventId)
+      .eq('account_id', accountId)
+      .maybeSingle();
+    if (!error && data) return data as Lead;
+  } catch {
+    // Preserve the original ambiguous insert/transport failure for retry.
   }
   throw originalError;
 }

@@ -371,11 +371,12 @@ export async function setCrewActive(
 export async function deleteArchivedCrewMember(
   supabase: SupabaseClient,
   accountId: string,
-  crewId: string
+  crewId: string,
+  actor?: { userId?: string; role?: string; email?: string }
 ): Promise<string | null> {
   const { data: member, error: selectError } = await supabase
     .from('crew')
-    .select('id, active, photo_path')
+    .select('id, active, photo_path, name, phone, role')
     .eq('account_id', accountId)
     .eq('id', crewId)
     .is('deleted_at', null)
@@ -384,14 +385,50 @@ export async function deleteArchivedCrewMember(
   if (selectError || !member) throw selectError ?? new Error('Crew member not found.');
   if (member.active) throw new Error('Archive this crew member before deleting them.');
 
+  const now = new Date();
+  const purgeAt = new Date(now.getTime() + 30 * 86400000);
+  const opId = crypto.randomUUID();
+
   const { error } = await supabase
     .from('crew')
-    .update({ deleted_at: new Date().toISOString() })
+    .update({
+      deleted_at: now.toISOString(),
+      active: false,
+      purge_after: purgeAt.toISOString(),
+      deleted_by_user_id: actor?.userId ?? null,
+      deletion_reason: 'Archived crew member moved to trash bin',
+      delete_operation_id: opId,
+    })
     .eq('account_id', accountId)
     .eq('id', crewId)
     .eq('active', false);
 
   if (error) throw error;
+
+  // Insert recoverable deletion manifest
+  const storageManifest = member.photo_path
+    ? [{ bucket: 'crew-photos', path: member.photo_path, quarantined: true }]
+    : [];
+
+  await supabase.from('recoverable_deletions').insert({
+    id: opId,
+    account_id: accountId,
+    entity_type: 'crew',
+    entity_id: crewId,
+    display_snapshot: {
+      title: member.name || 'Crew Member',
+      subtitle: member.phone || member.role || 'Technician',
+      badge: 'Inactive',
+    },
+    storage_manifest: storageManifest,
+    deleted_at: now.toISOString(),
+    purge_eligible_at: purgeAt.toISOString(),
+    deleted_by_user_id: actor?.userId ?? null,
+    deleted_by_role: actor?.role ?? 'office',
+    deletion_reason: 'Archived crew member moved to trash bin',
+    status: 'trashed',
+  });
+
   return (member.photo_path as string | null | undefined) ?? null;
 }
 

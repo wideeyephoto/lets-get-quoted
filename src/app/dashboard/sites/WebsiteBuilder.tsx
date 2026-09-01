@@ -3267,8 +3267,8 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                     defaultQuery={googleSearchGuess}
                                     trade={siteContent.trade}
                                     city={siteContent.serviceAreas?.cities?.[0] || ''}
-                                    phone={siteContent.phone}
-                                    websiteUrl={siteContent.domain || ''}
+                                    phone={site?.phone ?? ''}
+                                    websiteUrl={site?.custom_domain || (site?.subdomain ? `https://${site.subdomain}.onrender.com` : '')}
                                     importedReviews={siteContent.testimonials.googleReviews}
                                     onImport={(data) => updateTestimonials({ ...siteContent.testimonials, enabled: true, sourceMode: 'mixed', googlePlaceId: data.placeId, googleName: data.name, googleUrl: data.url, googleRating: data.rating, googleReviewCount: data.reviewCount, googleReviews: data.reviews, googleImportedAt: new Date().toISOString().slice(0, 10) })}
                                     onClear={() => updateTestimonials({ ...siteContent.testimonials, sourceMode: 'manual', googlePlaceId: '', googleName: '', googleUrl: '', googleRating: 0, googleReviewCount: 0, googleReviews: [], googleImportedAt: '' })}

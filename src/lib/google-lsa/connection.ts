@@ -3,6 +3,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/auth';
 import {
   googleLsaConfigured,
+  googleOAuthRequiresReconnect,
   refreshGoogleTokens,
 } from './oauth';
 
@@ -55,6 +56,7 @@ export type GoogleLsaConnectionStatus =
       connectedAt: string;
       lastSyncAt: string | null;
       lastSyncSummary: string | null;
+      lastError: string | null;
     }
   | { state: 'needs_reconnect'; customerName: string | null; reason: string };
 
@@ -139,6 +141,7 @@ export async function googleLsaConnectionStatus(accountId: string): Promise<Goog
     connectedAt: row.connected_at,
     lastSyncAt: row.last_sync_at,
     lastSyncSummary: row.last_sync_summary,
+    lastError: row.last_error,
   };
 }
 
@@ -205,6 +208,40 @@ export async function chooseGoogleLsaCustomer(accountId: string, selection: stri
   return true;
 }
 
+/**
+ * Refresh the selected campaign facts without changing the tenant's chosen
+ * Google Ads customer. Google migrates legacy Local Services campaigns to
+ * Performance Max in place, so a once-correct connection cannot be treated as
+ * static forever.
+ */
+export async function reconcileGoogleLsaCandidates(
+  accountId: string,
+  discovered: GoogleLsaCandidate[],
+): Promise<GoogleLsaCandidate | null> {
+  const row = await loadRow(accountId);
+  if (!row || row.disconnected_at || !row.customer_id) return null;
+
+  const selected = discovered.find((candidate) => candidate.customerId === row.customer_id) ?? null;
+  const now = new Date().toISOString();
+  const { error } = await createAdminClient()
+    .from('google_lsa_connections')
+    .update({
+      candidate_customers: discovered,
+      ...(selected ? {
+        login_customer_id: selected.loginCustomerId,
+        customer_name: selected.customerName,
+        customer_time_zone: selected.timeZone,
+        campaign_id: selected.campaignId,
+        campaign_mode: selected.campaignMode,
+      } : {}),
+      updated_at: now,
+    })
+    .eq('account_id', accountId)
+    .is('disconnected_at', null);
+  if (error) throw new Error(error.message);
+  return selected;
+}
+
 export async function deleteGoogleLsaConnection(accountId: string): Promise<void> {
   const { error } = await createAdminClient()
     .from('google_lsa_connections')
@@ -247,8 +284,10 @@ export async function activeGoogleLsaConnection(accountId: string): Promise<Acti
         .eq('account_id', accountId);
       if (error) throw new Error(error.message);
     } catch (error) {
-      await markGoogleLsaConnectionError(accountId, error, true);
-      return null;
+      const reconnect = googleOAuthRequiresReconnect(error);
+      await markGoogleLsaConnectionError(accountId, error, reconnect);
+      if (reconnect) return null;
+      throw error;
     }
   }
 

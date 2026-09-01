@@ -45,6 +45,9 @@ import { googleReviewUrl } from '@/lib/review-routing';
 import Selections from './Selections';
 import { loadClientSelections, toSignedClientSelections } from '@/lib/selections-data';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
+import ClientCompletionCertificate from '@/components/forms/ClientCompletionCertificate';
+import { signClientFormAction } from './form-actions';
+import { listJobFormSubmissions } from '@/lib/forms/forms-data';
 
 const PAYMENT_STATUS_LABEL: Record<string, string> = {
   requested: 'Awaiting payment',
@@ -136,6 +139,9 @@ export default async function ClientJobDashboardPage({
   });
   const clientSelections = access
     ? await toSignedClientSelections(admin, access.accountId, await loadClientSelections(admin, access.accountId, access.jobId))
+    : [];
+  const clientFormSubmissions = access
+    ? await listJobFormSubmissions(admin, access.accountId, access.jobId)
     : [];
 
   // Proof of insurance, for the quote. Everything about whether this appears at
@@ -743,10 +749,12 @@ export default async function ClientJobDashboardPage({
               {subscriptionsSection}
               {settledSection}
 
-              {/* Cover, and the way back to the contractor. Placed with the rest
-                  of the job rather than in a separate portal, because this page
-                  is the link a homeowner still has in their inbox two years
-                  later. */}
+              <ClientCompletionCertificate
+                token={params.token}
+                submissions={clientFormSubmissions}
+                clientName={dashboard.job.client_name || ''}
+                onSignAction={signClientFormAction}
+              />
               <Warranties token={params.token} warranties={clientWarranties} />
               <ClientReviewCard
                 token={params.token}

@@ -30,6 +30,7 @@ import {
   diagnoseContractorOnboarding,
   triageSupportCase,
 } from './support-copilot';
+import { staffCan } from '@/lib/staff';
 
 type OperatorFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
@@ -597,6 +598,42 @@ export async function executeOperatorTool(
     case 'replay_failed_webhooks': {
       const action = String(args.action || 'diagnose');
       const targetIds = Array.isArray(args.ids) ? (args.ids as string[]) : undefined;
+
+      // Verify staff authority: mutating callers must hold ops.manage permission
+      if (action === 'replay_and_resolve') {
+        if (ctx.staff && !staffCan(ctx.staff, 'ops.manage')) {
+          return {
+            data: {
+              success: false,
+              replayedCount: 0,
+              resolvedCount: 0,
+              error: `Forbidden: Staff role "${ctx.staff.role}" does not hold "ops.manage" permission required to replay and resolve webhooks.`,
+              remediationSummary: 'Permission denied: mutating webhook failure states requires ops.manage permission.',
+            },
+          };
+        }
+
+        const safety = validateActionExecutionSafety('replay_failed_webhooks', {
+          isFounderApproved:
+            ctx.isFounderApproved ||
+            ctx.source === 'founder_cli' ||
+            ctx.source === 'cron' ||
+            (ctx.staff ? staffCan(ctx.staff, 'ops.manage') : true),
+        });
+
+        if (!safety.allowed) {
+          return {
+            data: {
+              success: false,
+              replayedCount: 0,
+              resolvedCount: 0,
+              requiresHitl: true,
+              error: safety.reason || 'Action requires explicit founder approval.',
+              remediationSummary: safety.reason,
+            },
+          };
+        }
+      }
 
       try {
         const failures = await getUnresolvedWebhookFailures(supabase);
