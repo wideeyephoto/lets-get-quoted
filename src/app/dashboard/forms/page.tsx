@@ -7,6 +7,10 @@ import { cloneTemplateAction, deleteTemplateAction, installPresetAction } from '
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Forms & Checklists',
+};
+
 export default async function FormsHubPage({
   searchParams: searchParamsPromise,
 }: {

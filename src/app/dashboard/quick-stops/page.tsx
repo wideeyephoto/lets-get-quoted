@@ -34,6 +34,7 @@ const LEAD_SOURCE_LABEL: Record<string, string> = {
   ai_voice: 'AI receptionist',
   manual: 'Added by you',
   referral: 'Referral',
+  google_lsa: 'Google Local Services Ads',
 };
 
 const WEEKDAY_SHORT = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];

@@ -19,7 +19,7 @@ import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOpti
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 import { sendClientQuoteEmail, sendQuoteSentConfirmationEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
-import { provideGoogleLsaFeedback } from '@/lib/google-lsa/api';
+import { buildGoogleLsaFeedbackBody, provideGoogleLsaFeedback } from '@/lib/google-lsa/api';
 import { activeGoogleLsaConnection } from '@/lib/google-lsa/connection';
 import type { GoogleLsaFeedback } from '@/lib/google-lsa/types';
 import { softDeleteEntity } from '@/lib/recoverable-deletions';
@@ -987,11 +987,12 @@ export async function submitGoogleLsaFeedbackAction(leadId: string, formData: Fo
   const admin = createAdminClient();
   const { data: providerLead, error } = await admin
     .from('google_lsa_leads')
-    .select('customer_id, google_lead_id, resource_name, crm_lead_id')
+    .select('customer_id, google_lead_id, resource_name, crm_lead_id, feedback_submitted')
     .eq('account_id', accountId)
     .eq('crm_lead_id', leadId)
     .maybeSingle();
   if (error || !providerLead) throw new Error('This CRM lead is not linked to a Google Local Services lead.');
+  if (providerLead.feedback_submitted) throw new Error('Lead feedback has already been submitted to Google.');
 
   const connection = await activeGoogleLsaConnection(accountId);
   if (!connection || connection.customerId !== providerLead.customer_id) {
@@ -1019,35 +1020,86 @@ export async function submitGoogleLsaFeedbackAction(leadId: string, formData: Fo
     ...(otherReasonComment ? { otherReasonComment } : {}),
   } satisfies GoogleLsaFeedback;
 
-  const response = await provideGoogleLsaFeedback({
-    accessToken: connection.accessToken,
-    customerId: connection.customerId,
-    loginCustomerId: connection.loginCustomerId,
-    resourceName: String(providerLead.resource_name),
-    feedback,
-  });
+  // Validate the oneof reason/comment rules before taking the local claim.
+  buildGoogleLsaFeedbackBody(feedback);
+
   const now = new Date().toISOString();
-  const { error: writeError } = await admin
+  const claim = {
+    account_id: accountId,
+    customer_id: String(providerLead.customer_id),
+    google_lead_id: String(providerLead.google_lead_id),
+    crm_lead_id: leadId,
+    answer: feedback.surveyAnswer,
+    reason: feedback.reason ?? null,
+    comment: feedback.otherReasonComment ?? null,
+    credit_issuance_decision: null,
+    submission_status: 'pending',
+    last_error: null,
+    submitted_by: userId,
+    submitted_at: now,
+  };
+  const { error: claimError } = await admin.from('google_lsa_feedback').insert(claim);
+  if (claimError) {
+    if (claimError.code !== '23505') throw new Error(claimError.message);
+    const { data: reclaimed, error: reclaimError } = await admin
+      .from('google_lsa_feedback')
+      .update(claim)
+      .eq('account_id', accountId)
+      .eq('customer_id', String(providerLead.customer_id))
+      .eq('google_lead_id', String(providerLead.google_lead_id))
+      .eq('submission_status', 'failed')
+      .select('id')
+      .maybeSingle();
+    if (reclaimError) throw new Error(reclaimError.message);
+    if (!reclaimed) throw new Error('Lead feedback is already submitted or currently being sent.');
+  }
+
+  let response;
+  try {
+    response = await provideGoogleLsaFeedback({
+      accessToken: connection.accessToken,
+      customerId: connection.customerId,
+      loginCustomerId: connection.loginCustomerId,
+      resourceName: String(providerLead.resource_name),
+      feedback,
+    });
+  } catch (providerError) {
+    const detail = providerError instanceof Error ? providerError.message : 'Google feedback request failed.';
+    const { error: failureWriteError } = await admin
+      .from('google_lsa_feedback')
+      .update({ submission_status: 'failed', last_error: detail.slice(0, 500) })
+      .eq('account_id', accountId)
+      .eq('customer_id', String(providerLead.customer_id))
+      .eq('google_lead_id', String(providerLead.google_lead_id))
+      .eq('submission_status', 'pending');
+    if (failureWriteError) {
+      throw new Error(`${detail} The retry state could not be saved: ${failureWriteError.message}`);
+    }
+    throw providerError;
+  }
+  const { data: completed, error: writeError } = await admin
     .from('google_lsa_feedback')
-    .upsert({
-      account_id: accountId,
-      customer_id: String(providerLead.customer_id),
-      google_lead_id: String(providerLead.google_lead_id),
-      crm_lead_id: leadId,
-      answer: feedback.surveyAnswer,
-      reason: feedback.reason ?? null,
-      comment: feedback.otherReasonComment ?? null,
+    .update({
       credit_issuance_decision: response.creditIssuanceDecision,
-      submitted_by: userId,
-      submitted_at: now,
-    }, { onConflict: 'account_id,customer_id,google_lead_id' });
+      submission_status: 'succeeded',
+      last_error: null,
+      submitted_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('customer_id', String(providerLead.customer_id))
+    .eq('google_lead_id', String(providerLead.google_lead_id))
+    .eq('submission_status', 'pending')
+    .select('id')
+    .maybeSingle();
   if (writeError) throw new Error(writeError.message);
-  await admin
+  if (!completed) throw new Error('Lead feedback claim changed before it could be completed.');
+  const { error: leadWriteError } = await admin
     .from('google_lsa_leads')
-    .update({ feedback_submitted: true, last_synced_at: now })
+    .update({ feedback_submitted: true, last_synced_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('customer_id', String(providerLead.customer_id))
     .eq('google_lead_id', String(providerLead.google_lead_id));
+  if (leadWriteError) throw new Error(leadWriteError.message);
   revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/marketing/performance');
 }

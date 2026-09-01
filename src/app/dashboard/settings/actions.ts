@@ -969,7 +969,7 @@ export async function deleteAccountAction() {
     .eq('id', accountId)
     .maybeSingle();
 
-  const { requestAccountClosure } = await import('@/lib/account-closure-orchestrator');
+  const { requestAccountClosure, processClosureJob } = await import('@/lib/account-closure-orchestrator');
 
   // Durable account closure with 30-day grace period
   await requestAccountClosure(admin, {
@@ -1201,7 +1201,7 @@ export async function setClientQuoteChangesAction(next: boolean) {
 }
 
 export async function chooseGoogleLsaCustomerAction(formData: FormData) {
-  const { accountId } = await requireOfficeContext('settings.write');
+  const { accountId } = await requireOwnerContext();
   const customerId = String(formData.get('customerId') ?? '').trim();
   if (!customerId) throw new Error('Choose a Google Ads customer account.');
 

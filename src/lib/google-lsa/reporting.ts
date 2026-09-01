@@ -21,6 +21,9 @@ export type GoogleLsaReportingSummary = {
   campaignMode: 'legacy' | 'pmax' | null;
   lastSyncAt: string | null;
   spendSource: GoogleLsaSpendSource;
+  spendPeriodStart: string | null;
+  spendPeriodEnd: string | null;
+  spendStale: boolean;
   costMicros: number;
   costDollars: number;
   currencyCode: string | null;
@@ -62,6 +65,7 @@ type CrmLeadRow = {
 
 type LsaLeadRow = {
   id?: unknown;
+  account_id?: unknown;
   customer_id?: unknown;
   google_lead_id?: unknown;
   resource_name?: unknown;
@@ -69,6 +73,7 @@ type LsaLeadRow = {
   lead_type?: unknown;
   credit_state?: unknown;
   feedback_submitted?: unknown;
+  submitted_feedback?: { submission_status?: unknown } | Array<{ submission_status?: unknown }> | null;
   google_created_at?: unknown;
   crm_lead?: CrmLeadRow | CrmLeadRow[] | null;
 };
@@ -95,6 +100,7 @@ export type GoogleLsaReportingRows = {
 
 type QueryError = { message?: string } | null;
 
+const REPORT_PAGE_SIZE = 1_000;
 const CREDIT_ISSUED_STATES = new Set([
   'CREDITED',
   'CREDIT_ISSUED',
@@ -104,6 +110,7 @@ const CREDIT_ISSUED_STATES = new Set([
 
 const LSA_LEAD_REPORT_SELECT = `
   id,
+  account_id,
   customer_id,
   google_lead_id,
   resource_name,
@@ -111,6 +118,9 @@ const LSA_LEAD_REPORT_SELECT = `
   lead_type,
   credit_state,
   feedback_submitted,
+  submitted_feedback:google_lsa_feedback!google_lsa_feedback_google_lead_fkey(
+    submission_status
+  ),
   google_created_at,
   crm_lead:leads!google_lsa_leads_crm_lead_id_fkey(
     converted_job,
@@ -304,14 +314,21 @@ function latestLegacySnapshot(
   periodStart: string,
   periodEnd: string,
 ): SpendRow | null {
-  let latest: SpendRow | null = null;
+  let exact: SpendRow | null = null;
+  let fallback: SpendRow | null = null;
   for (const row of rows) {
     if (enumValue(row.source).toLowerCase() !== 'local_services_account_report') continue;
     if (!matchesCustomer(row.customer_id, customerId)) continue;
-    if (textValue(row.period_start) !== periodStart || textValue(row.period_end) !== periodEnd) continue;
-    latest = newest(latest, row);
+    const start = textValue(row.period_start);
+    const end = textValue(row.period_end);
+    if (!start || !end || start > end || end > periodEnd) continue;
+    fallback = newest(fallback, row);
+    if (start === periodStart && end === periodEnd) exact = newest(exact, row);
   }
-  return latest;
+  // A delayed or intentionally disconnected legacy account has no new
+  // snapshot for today's exact key. Showing the newest bounded snapshot with
+  // its real period is honest; silently changing spend to $0 is not.
+  return exact ?? fallback;
 }
 
 function selectedSpendRows(
@@ -341,9 +358,12 @@ export function summarizeGoogleLsaRows(
   rows: GoogleLsaReportingRows,
   now = new Date(),
 ): GoogleLsaReportingSummary {
-  const window = googleLsaRollingWindow(now, textValue(rows.connection?.customer_time_zone) ?? 'UTC');
+  const disconnectedAt = textValue(rows.connection?.disconnected_at);
+  const reportingNow = disconnectedAt && Number.isFinite(Date.parse(disconnectedAt))
+    ? new Date(disconnectedAt)
+    : now;
+  const window = googleLsaRollingWindow(reportingNow, textValue(rows.connection?.customer_time_zone) ?? 'UTC');
   const customerId = textValue(rows.connection?.customer_id);
-  const accountId = textValue(rows.connection?.account_id);
   const leads = distinctLeads(rows.leads, customerId, window.startsAt, window.endsAt);
   const spend = selectedSpendRows(rows.spend, rows.connection, window.periodStart, window.periodEnd);
   const signedJobs = new Map<string, number>();
@@ -358,13 +378,16 @@ export function summarizeGoogleLsaRows(
     if (leadType === 'PHONE_CALL') phoneLeadCount += 1;
     if (leadType === 'BOOKING') bookingCount += 1;
     if (isIssuedGoogleLsaCreditState(lead.credit_state)) creditCount += 1;
-    if (persistedBoolean(lead.feedback_submitted)) feedbackCount += 1;
+    const submittedFeedback = one(lead.submitted_feedback);
+    if (persistedBoolean(lead.feedback_submitted)
+      || enumValue(submittedFeedback?.submission_status) === 'SUCCEEDED') feedbackCount += 1;
 
     const crmLead = one(lead.crm_lead);
     const job = one(crmLead?.signed_job);
+    const providerAccountId = textValue(lead.account_id);
     const jobId = textValue(job?.id) ?? textValue(crmLead?.converted_job);
-    if (!accountId
-      || textValue(job?.account_id) !== accountId
+    if (!providerAccountId
+      || textValue(job?.account_id) !== providerAccountId
       || !jobId
       || !textValue(job?.quote_signed_at)
       || textValue(job?.deleted_at)
@@ -378,6 +401,10 @@ export function summarizeGoogleLsaRows(
   const providerConnectedCalls = spend.rows.reduce((total, row) => total + nonNegativeInteger(row.connected_phone_calls), 0);
   const providerCallCount = Math.max(providerPhoneCalls, providerConnectedCalls);
   const signedRevenueDollars = [...signedJobs.values()].reduce((total, amount) => total + amount, 0);
+  const spendPeriodStarts = spend.rows.map((row) => textValue(row.period_start)).filter((value): value is string => Boolean(value));
+  const spendPeriodEnds = spend.rows.map((row) => textValue(row.period_end)).filter((value): value is string => Boolean(value));
+  const spendPeriodStart = spendPeriodStarts.length ? spendPeriodStarts.sort()[0] : null;
+  const spendPeriodEnd = spendPeriodEnds.length ? spendPeriodEnds.sort().at(-1) ?? null : null;
 
   return {
     windowDays: GOOGLE_LSA_REPORTING_WINDOW_DAYS,
@@ -389,6 +416,9 @@ export function summarizeGoogleLsaRows(
     campaignMode: normalizedCampaignMode(rows.connection?.campaign_mode),
     lastSyncAt: textValue(rows.connection?.last_sync_at),
     spendSource: spend.source,
+    spendPeriodStart,
+    spendPeriodEnd,
+    spendStale: Boolean(spendPeriodEnd && spendPeriodEnd < window.periodEnd),
     costMicros,
     costDollars,
     currencyCode: currencyCode(spend.rows),
@@ -411,6 +441,52 @@ function queryFailure(label: string, error: QueryError): Error {
   return new Error(`Unable to load Google LSA ${label}: ${error?.message ?? 'unknown database error'}`);
 }
 
+async function loadGoogleLsaLeadPages(
+  supabase: SupabaseClient,
+  accountId: string,
+  startsAt: string,
+  endsAt: string,
+): Promise<LsaLeadRow[]> {
+  const rows: LsaLeadRow[] = [];
+  for (let offset = 0; ; offset += REPORT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('google_lsa_leads')
+      .select(LSA_LEAD_REPORT_SELECT)
+      .eq('account_id', accountId)
+      .gte('google_created_at', startsAt)
+      .lte('google_created_at', endsAt)
+      .order('id', { ascending: true })
+      .range(offset, offset + REPORT_PAGE_SIZE - 1);
+    if (error) throw queryFailure('leads', error);
+    const page = (data as unknown as LsaLeadRow[] | null) ?? [];
+    rows.push(...page);
+    if (page.length < REPORT_PAGE_SIZE) return rows;
+  }
+}
+
+async function loadGoogleLsaSpendPages(
+  supabase: SupabaseClient,
+  accountId: string,
+  periodStart: string,
+  periodEnd: string,
+): Promise<SpendRow[]> {
+  const rows: SpendRow[] = [];
+  for (let offset = 0; ; offset += REPORT_PAGE_SIZE) {
+    const { data, error } = await supabase
+      .from('google_lsa_spend')
+      .select('id, customer_id, campaign_id, source, period_start, period_end, gross_cost_micros, phone_calls, connected_phone_calls, currency_code, captured_at')
+      .eq('account_id', accountId)
+      .gte('period_end', periodStart)
+      .lte('period_start', periodEnd)
+      .order('id', { ascending: true })
+      .range(offset, offset + REPORT_PAGE_SIZE - 1);
+    if (error) throw queryFailure('spend', error);
+    const page = (data as SpendRow[] | null) ?? [];
+    rows.push(...page);
+    if (page.length < REPORT_PAGE_SIZE) return rows;
+  }
+}
+
 /**
  * Reads a tenant-scoped, rolling 90-day LSA summary without constructing or
  * assuming a particular Supabase client. The current dark-table grants require
@@ -429,31 +505,22 @@ export async function getGoogleLsaReportingSummary(
     .maybeSingle();
   if (connectionResult.error) throw queryFailure('connection', connectionResult.error);
   const connection = (connectionResult.data as ConnectionRow | null) ?? null;
-  const window = googleLsaRollingWindow(options.now, textValue(connection?.customer_time_zone) ?? 'UTC');
+  const disconnectedAt = textValue(connection?.disconnected_at);
+  const reportingNow = disconnectedAt && Number.isFinite(Date.parse(disconnectedAt))
+    ? new Date(disconnectedAt)
+    : options.now;
+  const window = googleLsaRollingWindow(reportingNow, textValue(connection?.customer_time_zone) ?? 'UTC');
 
-  const [leadsResult, spendResult] = await Promise.all([
-    supabase
-      .from('google_lsa_leads')
-      .select(LSA_LEAD_REPORT_SELECT)
-      .eq('account_id', accountId)
-      .gte('google_created_at', window.startsAt)
-      .lte('google_created_at', window.endsAt),
-    supabase
-      .from('google_lsa_spend')
-      .select('id, customer_id, campaign_id, source, period_start, period_end, gross_cost_micros, phone_calls, connected_phone_calls, currency_code, captured_at')
-      .eq('account_id', accountId)
-      .gte('period_end', window.periodStart)
-      .lte('period_start', window.periodEnd),
+  const [leads, spend] = await Promise.all([
+    loadGoogleLsaLeadPages(supabase, accountId, window.startsAt, window.endsAt),
+    loadGoogleLsaSpendPages(supabase, accountId, window.periodStart, window.periodEnd),
   ]);
-
-  if (leadsResult.error) throw queryFailure('leads', leadsResult.error);
-  if (spendResult.error) throw queryFailure('spend', spendResult.error);
 
   return summarizeGoogleLsaRows(
     {
       connection,
-      leads: (leadsResult.data as unknown as LsaLeadRow[] | null) ?? [],
-      spend: (spendResult.data as SpendRow[] | null) ?? [],
+      leads,
+      spend,
     },
     options.now,
   );

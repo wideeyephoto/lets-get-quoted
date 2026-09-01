@@ -728,6 +728,7 @@ const SOURCE_LABELS: Record<string, string> = {
   ai_voice: 'AI receptionist',
   referral: 'Referral',
   booking: 'Online booking',
+  google_lsa: 'Google Local Services Ads',
 };
 
 export async function buildInsights(

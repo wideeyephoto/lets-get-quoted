@@ -26,11 +26,13 @@ function dayTime(value: string): string {
 export default function GoogleLocalServicesSection({
   status,
   notice,
+  canManageCredentials,
   chooseCustomerAction,
   syncAction,
 }: {
   status: GoogleLsaConnectionStatus;
   notice?: string;
+  canManageCredentials: boolean;
   chooseCustomerAction: (formData: FormData) => Promise<void>;
   syncAction: () => Promise<void>;
 }) {
@@ -63,13 +65,15 @@ export default function GoogleLocalServicesSection({
 
       {status.state === 'not_connected' ? (
         <div className="workspace-inline-row">
-          <a href="/api/google-lsa/connect" className="btn primary">Connect Google Local Services</a>
+          {canManageCredentials ? (
+            <a href="/api/google-lsa/connect" className="btn primary">Connect Google Local Services</a>
+          ) : <p className="empty-state">An account owner must connect Google Local Services.</p>}
         </div>
       ) : null}
 
       {status.state === 'choose_customer' ? (
         <>
-          {status.candidates.length ? (
+          {status.candidates.length && canManageCredentials ? (
             <form action={chooseCustomerAction} className="form-grid">
               <div className="field full">
                 <label htmlFor="googleLsaCustomer">Local Services account</label>
@@ -86,17 +90,19 @@ export default function GoogleLocalServicesSection({
                 <SaveButton pendingLabel="Selecting…" savedLabel="Selected ✓">Use this account</SaveButton>
               </div>
             </form>
-          ) : (
+          ) : canManageCredentials ? (
             <p className="form-error">
               {status.reason || 'Google did not return an eligible Local Services campaign for this login.'}
             </p>
-          )}
-          <div className="workspace-inline-row">
-            <a href="/api/google-lsa/connect" className="btn secondary">Try another Google login</a>
-            <form action="/api/google-lsa/disconnect" method="post">
-              <button type="submit" className="btn secondary">Remove the connection</button>
-            </form>
-          </div>
+          ) : <p className="empty-state">An account owner must choose the Google Ads customer.</p>}
+          {canManageCredentials ? (
+            <div className="workspace-inline-row">
+              <a href="/api/google-lsa/connect" className="btn secondary">Try another Google login</a>
+              <form action="/api/google-lsa/disconnect" method="post">
+                <button type="submit" className="btn secondary">Remove the connection</button>
+              </form>
+            </div>
+          ) : null}
         </>
       ) : null}
 
@@ -105,12 +111,28 @@ export default function GoogleLocalServicesSection({
           <p className="form-error">
             {status.customerName ? <><strong>{status.customerName}</strong> — </> : null}{status.reason}
           </p>
-          <div className="workspace-inline-row">
-            <a href="/api/google-lsa/connect" className="btn primary">Reconnect Google</a>
-            <form action="/api/google-lsa/disconnect" method="post">
-              <button type="submit" className="btn secondary">Remove the connection</button>
-            </form>
-          </div>
+          {canManageCredentials ? (
+            <div className="workspace-inline-row">
+              <a href="/api/google-lsa/connect" className="btn primary">Reconnect Google</a>
+              <form action="/api/google-lsa/disconnect" method="post">
+                <button type="submit" className="btn secondary">Remove the connection</button>
+              </form>
+            </div>
+          ) : <p className="empty-state">An account owner must reconnect Google.</p>}
+        </>
+      ) : null}
+
+      {status.state === 'disconnected' ? (
+        <>
+          <p className="workspace-details-copy">
+            Imports are disconnected{status.customerName ? <> from <strong>{status.customerName}</strong></> : ''}.
+            {' '}Historical leads and performance facts remain available.
+          </p>
+          {canManageCredentials ? (
+            <div className="workspace-inline-row">
+              <a href="/api/google-lsa/connect" className="btn primary">Reconnect Google</a>
+            </div>
+          ) : <p className="empty-state">An account owner must reconnect Google.</p>}
         </>
       ) : null}
 
@@ -139,7 +161,7 @@ export default function GoogleLocalServicesSection({
               </SaveButton>
             </form>
           </div>
-          <div className="qb-danger">
+          {canManageCredentials ? <div className="qb-danger">
             <span>
               <strong>Disconnect Google Local Services</strong>
               <small>Imports stop. Existing leads and historical reporting stay here.</small>
@@ -147,7 +169,7 @@ export default function GoogleLocalServicesSection({
             <form action="/api/google-lsa/disconnect" method="post">
               <button type="submit" className="linklike danger">Disconnect</button>
             </form>
-          </div>
+          </div> : null}
         </>
       ) : null}
     </section>

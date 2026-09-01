@@ -4,6 +4,10 @@ import ActivityLedgerClient from './ActivityLedgerClient';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Activity Ledger',
+};
+
 export default async function ActivityLedgerPage() {
   const { accountId } = await requireOfficeContext('settings.read');
   const { events, total } = await queryTenantAuditEvents({ accountId, limit: 100 });

@@ -10,14 +10,14 @@ import {
 
 type Row = Record<string, unknown>;
 type Filter = { operation: 'eq' | 'gte' | 'lte'; column: string; value: unknown };
-type QueryCall = { table: string; selected: string; filters: Filter[] };
+type QueryCall = { table: string; selected: string; filters: Filter[]; range: [number, number] | null };
 
 function fakeSupabase(tables: Record<string, Row[]>) {
   const calls: QueryCall[] = [];
 
   const client = {
     from(table: string) {
-      const call: QueryCall = { table, selected: '', filters: [] };
+      const call: QueryCall = { table, selected: '', filters: [], range: null };
       calls.push(call);
 
       const filtered = () => (tables[table] ?? []).filter((row) =>
@@ -45,11 +45,20 @@ function fakeSupabase(tables: Record<string, Row[]>) {
           call.filters.push({ operation: 'lte', column, value });
           return query;
         },
+        order() {
+          return query;
+        },
+        range(from: number, to: number) {
+          call.range = [from, to];
+          return query;
+        },
         maybeSingle() {
           return Promise.resolve({ data: filtered()[0] ?? null, error: null });
         },
         then(resolve: (value: { data: Row[]; error: null }) => unknown, reject?: (reason: unknown) => unknown) {
-          return Promise.resolve({ data: filtered(), error: null }).then(resolve, reject);
+          const data = filtered();
+          const ranged = call.range ? data.slice(call.range[0], call.range[1] + 1) : data;
+          return Promise.resolve({ data: ranged, error: null }).then(resolve, reject);
         },
       };
 
@@ -129,7 +138,8 @@ describe('Google LSA reporting', () => {
         },
         {
           id: 'lsa-4', account_id: accountId, customer_id: '123', google_lead_id: 'g-4', lead_type: 'MESSAGE',
-          credit_state: null, feedback_submitted: false, google_created_at: '2026-08-04T12:00:00.000Z', crm_lead: null,
+          credit_state: null, feedback_submitted: false, submitted_feedback: { submission_status: 'succeeded' },
+          google_created_at: '2026-08-04T12:00:00.000Z', crm_lead: null,
         },
         {
           id: 'lsa-cross-tenant', account_id: accountId, customer_id: '123', google_lead_id: 'g-cross', lead_type: 'MESSAGE',
@@ -198,7 +208,7 @@ describe('Google LSA reporting', () => {
       callCount: 5,
       bookingCount: 1,
       creditCount: 2,
-      feedbackCount: 2,
+      feedbackCount: 3,
       signedJobCount: 1,
       signedRevenueDollars: 12_000,
       roas: 1200,
@@ -212,6 +222,7 @@ describe('Google LSA reporting', () => {
     expect(calls[1].selected).toContain('quote_signed_at');
     expect(calls[1].selected).toContain('account_id');
     expect(calls[1].selected).toContain('deleted_at');
+    expect(calls[1].selected).toContain('submission_status');
     expect(calls[1].filters).toContainEqual({ operation: 'gte', column: 'google_created_at', value: '2026-06-04T00:00:00.000Z' });
     expect(calls[2].filters).toContainEqual({ operation: 'gte', column: 'period_end', value: '2026-06-04' });
   });
@@ -261,6 +272,52 @@ describe('Google LSA reporting', () => {
     });
   });
 
+  it('surfaces the newest bounded legacy snapshot instead of turning delayed spend into zero', () => {
+    const summary = summarizeGoogleLsaRows({
+      connection: { account_id: 'account-1', customer_id: '123', customer_time_zone: 'UTC', campaign_mode: 'legacy' },
+      leads: [],
+      spend: [{
+        id: 'yesterday', customer_id: '123', source: 'local_services_account_report',
+        period_start: '2026-06-03', period_end: '2026-08-31', gross_cost_micros: 25_000_000,
+        phone_calls: 2, currency_code: 'USD', captured_at: '2026-08-31T23:00:00Z',
+      }],
+    }, NOW);
+
+    expect(summary).toMatchObject({
+      spendSource: 'local_services_account_report',
+      spendPeriodStart: '2026-06-03',
+      spendPeriodEnd: '2026-08-31',
+      spendStale: true,
+      costDollars: 25,
+      callCount: 2,
+    });
+  });
+
+  it('paginates beyond the PostgREST row cap instead of truncating high-volume accounts', async () => {
+    const accountId = 'account-volume';
+    const leads = Array.from({ length: 1001 }, (_, index) => ({
+      id: `lead-${String(index).padStart(4, '0')}`,
+      account_id: accountId,
+      customer_id: '123',
+      google_lead_id: `google-${index}`,
+      lead_type: 'MESSAGE',
+      google_created_at: '2026-08-01T12:00:00Z',
+    }));
+    const { client, calls } = fakeSupabase({
+      google_lsa_connections: [{
+        account_id: accountId, customer_id: '123', customer_time_zone: 'UTC', campaign_mode: 'pmax',
+      }],
+      google_lsa_leads: leads,
+      google_lsa_spend: [],
+    });
+
+    const summary = await getGoogleLsaReportingSummary(client, accountId, { now: NOW });
+
+    expect(summary.leadCount).toBe(1001);
+    expect(calls.filter((call) => call.table === 'google_lsa_leads').map((call) => call.range))
+      .toEqual([[0, 999], [1000, 1999]]);
+  });
+
   it('returns an honest empty state when no connection or facts exist', () => {
     const summary = summarizeGoogleLsaRows({ connection: null, leads: [], spend: [] }, NOW);
 
@@ -276,5 +333,38 @@ describe('Google LSA reporting', () => {
     });
     expect(summary.attributionCaveat).toContain('Credits are a count only');
     expect(summary.attributionCaveat).toContain('appointment details');
+  });
+
+  it('keeps tenant-scoped signed history visible from a disconnected reporting tombstone', () => {
+    const summary = summarizeGoogleLsaRows({
+      connection: {
+        account_id: 'account-1',
+        customer_id: '123',
+        customer_time_zone: 'America/New_York',
+        campaign_mode: 'legacy',
+        disconnected_at: '2026-09-01T12:00:00Z',
+      },
+      leads: [{
+        id: 'lead-1', account_id: 'account-1', customer_id: '123', google_lead_id: 'g-1',
+        google_created_at: '2026-08-01T12:00:00Z',
+        crm_lead: {
+          converted_job: 'job-1',
+          signed_job: { id: 'job-1', account_id: 'account-1', quoted_amount: 5000, quote_signed_at: '2026-08-10T12:00:00Z' },
+        },
+      }],
+      spend: [{
+        id: 'spend-1', customer_id: '123', source: 'local_services_account_report',
+        period_start: '2026-06-04', period_end: '2026-09-01', gross_cost_micros: 1_000_000,
+        currency_code: 'USD', captured_at: '2026-09-01T00:00:00Z',
+      }],
+    }, NOW);
+
+    expect(summary).toMatchObject({
+      connectionState: 'disconnected',
+      signedJobCount: 1,
+      signedRevenueDollars: 5000,
+      costDollars: 1,
+      roas: 5000,
+    });
   });
 });

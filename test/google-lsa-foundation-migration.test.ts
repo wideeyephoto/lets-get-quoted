@@ -89,6 +89,7 @@ describe('Google Local Services Ads database foundation', () => {
       'gross_cost_micros bigint not null default 0',
       'connected_phone_calls integer not null default 0',
       'credit_issuance_decision text',
+      "submission_status text not null default 'succeeded'",
     ]) {
       expect(compact).toContain(field);
     }

@@ -1,4 +1,5 @@
 import SaveButton from '@/components/save-button';
+import Link from 'next/link';
 import type { GoogleLsaLeadDetail } from '@/lib/google-lsa/lead-detail';
 
 function label(value: string | null): string {
@@ -22,7 +23,7 @@ export default function GoogleLsaLeadCard({
   ownerControls: boolean;
   submitFeedback: (formData: FormData) => Promise<void>;
 }) {
-  const feedbackKnown = detail.feedbackSubmitted || Boolean(detail.feedback);
+  const feedbackKnown = detail.feedbackSubmitted || detail.feedbackStatus === 'succeeded';
   return (
     <section className="panel workspace-section-card" id="google-lsa-lead">
       <div className="section-heading workspace-section-heading compact-heading">
@@ -56,8 +57,13 @@ export default function GoogleLsaLeadCard({
           Lead feedback was submitted{detail.feedback?.answer ? <>: <strong>{label(detail.feedback.answer)}</strong></> : ' in Google'}.
           {detail.feedback?.creditIssuanceDecision ? <> Bonus-credit decision: {label(detail.feedback.creditIssuanceDecision)}.</> : null}
         </p>
-      ) : ownerControls ? (
+      ) : detail.feedbackStatus === 'pending' ? (
+        <p className="empty-state" style={{ marginTop: '1rem' }}>Lead feedback is currently being sent to Google.</p>
+      ) : ownerControls && detail.canSubmitFeedback ? (
         <form action={submitFeedback} className="form-grid compact-form" style={{ marginTop: '1rem' }}>
+          {detail.feedbackStatus === 'failed' ? (
+            <p className="form-error field full">The previous send failed{detail.feedbackError ? `: ${detail.feedbackError}` : '.'} You can retry below.</p>
+          ) : null}
           <div className="field full">
             <label htmlFor="googleLsaFeedbackOutcome">Was this a useful lead?</label>
             <select id="googleLsaFeedbackOutcome" name="outcome" required defaultValue="">
@@ -89,6 +95,10 @@ export default function GoogleLsaLeadCard({
             <SaveButton pendingLabel="Sending to Google…" savedLabel="Feedback sent ✓">Send lead feedback</SaveButton>
           </div>
         </form>
+      ) : ownerControls ? (
+        <p className="empty-state" style={{ marginTop: '1rem' }}>
+          Reconnect Google Local Services in <Link href="/dashboard/settings#google-local-services">Connected apps</Link> to send lead feedback.
+        </p>
       ) : null}
     </section>
   );

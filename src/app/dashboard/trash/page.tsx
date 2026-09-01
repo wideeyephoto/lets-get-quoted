@@ -4,6 +4,10 @@ import TrashBinClient from './TrashBinClient';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Trash & Recovery',
+};
+
 export default async function TrashBinPage() {
   const { accountId } = await requireOfficeContext('settings.read');
   const { items } = await listTrashItems({ accountId, limit: 100 });

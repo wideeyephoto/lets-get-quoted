@@ -83,7 +83,7 @@ export default async function SettingsPage({
   }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const { supabase, accountId, role } = await requireOfficeContext('settings.write');
   const pricingDashboardEnabled = planUsageDashboardEnabled();
   const subscriptionCheckoutEnabled = basePlanSubscriptionCheckoutEnabled();
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
@@ -110,7 +110,9 @@ export default async function SettingsPage({
     supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
     supabase.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', accountId).in('status', ['requested', 'processing']),
     pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
-    merchantOnboardingEnabled ? loadMerchantOnboardingSurfaceForOwner({ accountId }) : Promise.resolve(null),
+    merchantOnboardingEnabled
+        ? loadMerchantOnboardingSurfaceForOwner({ accountId })
+        : Promise.resolve(null),
     pricingDashboardEnabled ? loadWorkspaceStorageState(createAdminClient(), accountId) : Promise.resolve(null),
     pricingDashboardEnabled ? loadPurchasedSeats(createAdminClient(), accountId) : Promise.resolve(NO_PURCHASED_SEATS),
     pricingDashboardEnabled ? loadActivePurchasedCapacitySubscriptions(createAdminClient(), accountId) : Promise.resolve([]),
@@ -787,6 +789,7 @@ export default async function SettingsPage({
                 <GoogleLocalServicesSection
                   status={googleLsaStatus}
                   notice={searchParams.google_lsa}
+                  canManageCredentials={role === 'owner'}
                   chooseCustomerAction={chooseGoogleLsaCustomerAction}
                   syncAction={syncGoogleLsaAction}
                 />

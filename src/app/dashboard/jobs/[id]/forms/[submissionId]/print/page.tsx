@@ -6,6 +6,10 @@ import PrintableCertificate from '@/components/forms/PrintableCertificate';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Print Form Certificate',
+};
+
 export default async function PrintCertificatePage({
   params: paramsPromise,
 }: {

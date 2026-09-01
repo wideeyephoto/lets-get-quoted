@@ -1481,7 +1481,7 @@ export default function HoursAndPay({
                         : `Submit directly to ${PAYROLL_PROVIDER_LABEL[exportPlan.result.provider] === 'A spreadsheet (any provider, or a bookkeeper)' ? 'Payroll API' : `${PAYROLL_PROVIDER_LABEL[exportPlan.result.provider]} API`}`}
                     </button>
                     <button type="button" className="btn secondary" onClick={confirmPayrollExport}>
-                      Download CSV file
+                      Download this file
                     </button>
                   </div>
                 ) : null}

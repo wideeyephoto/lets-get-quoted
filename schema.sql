@@ -26429,6 +26429,8 @@ create table if not exists public.google_lsa_feedback (
   reason text,
   comment text,
   credit_issuance_decision text,
+  submission_status text not null default 'succeeded',
+  last_error text,
   submitted_by uuid references auth.users(id) on delete set null,
   submitted_at timestamptz not null default pg_catalog.now(),
 
@@ -26437,6 +26439,9 @@ create table if not exists public.google_lsa_feedback (
   ),
   constraint google_lsa_feedback_customer_id_digits check (
     customer_id ~ '^[0-9]+$'
+  ),
+  constraint google_lsa_feedback_submission_status_check check (
+    submission_status in ('pending', 'succeeded', 'failed')
   ),
   constraint google_lsa_feedback_account_customer_google_lead_key
     unique (account_id, customer_id, google_lead_id),
@@ -26525,6 +26530,12 @@ create table if not exists public.job_form_submissions (
 
 create index if not exists job_form_submissions_job_idx
   on public.job_form_submissions (account_id, job_id, status);
+
+create index if not exists job_form_submissions_job_id_idx
+  on public.job_form_submissions (job_id);
+
+create index if not exists job_form_submissions_submitted_by_crew_id_idx
+  on public.job_form_submissions (submitted_by_crew_id);
 
 alter table public.form_templates enable row level security;
 alter table public.job_form_submissions enable row level security;

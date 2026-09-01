@@ -92,6 +92,41 @@ async function upsertSpendRows(rows: Record<string, unknown>[]): Promise<number>
   return rows.length;
 }
 
+async function reconcilePendingGoogleLsaFeedback(
+  accountId: string,
+  provider: { customer_id: string; google_lead_id: string; feedback_submitted: boolean },
+): Promise<void> {
+  const admin = createAdminClient();
+  if (provider.feedback_submitted) {
+    const { error } = await admin
+      .from('google_lsa_feedback')
+      .update({ submission_status: 'succeeded', last_error: null })
+      .eq('account_id', accountId)
+      .eq('customer_id', provider.customer_id)
+      .eq('google_lead_id', provider.google_lead_id)
+      .eq('submission_status', 'pending');
+    if (error) throw new Error(error.message);
+    return;
+  }
+
+  // A fresh provider read still saying "not submitted" resolves a stale,
+  // ambiguous pending claim. The 30-minute floor gives Google's read model two
+  // normal polling cycles to reflect a request that actually succeeded.
+  const staleAt = new Date(Date.now() - 30 * 60_000).toISOString();
+  const { error } = await admin
+    .from('google_lsa_feedback')
+    .update({
+      submission_status: 'failed',
+      last_error: 'Google did not report this feedback as submitted after a fresh lead sync. It is safe to retry.',
+    })
+    .eq('account_id', accountId)
+    .eq('customer_id', provider.customer_id)
+    .eq('google_lead_id', provider.google_lead_id)
+    .eq('submission_status', 'pending')
+    .lt('submitted_at', staleAt);
+  if (error) throw new Error(error.message);
+}
+
 async function importLeads(input: {
   accountId: string;
   customerId: string;
@@ -102,10 +137,11 @@ async function importLeads(input: {
   let linked = 0;
   let failed = 0;
 
-  // Deliberately sequential. createLead also links a unified client record, and
-  // an unbounded Promise.all on a first 90-day import can exhaust PostgREST's
-  // connection pool for every other request in the workspace.
-  for (const lead of input.rows) {
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < input.rows.length) {
+      const lead = input.rows[nextIndex];
+      nextIndex += 1;
     const raw = lead as RawGoogleLsaLead;
     const provider = googleLsaLeadRow({
       accountId: input.accountId,
@@ -123,6 +159,7 @@ async function importLeads(input: {
         .from('google_lsa_leads')
         .upsert({ ...provider, crm_lead_id: crm.id }, { onConflict: 'account_id,customer_id,google_lead_id' });
       if (error) throw new Error(error.message);
+      await reconcilePendingGoogleLsaFeedback(input.accountId, provider);
       linked += 1;
     } catch (error) {
       failed += 1;
@@ -133,7 +170,11 @@ async function importLeads(input: {
         .upsert(provider, { onConflict: 'account_id,customer_id,google_lead_id' });
       console.error('Google LSA lead projection failed:', error instanceof Error ? error.message : error);
     }
-  }
+    }
+  };
+  // Bounded concurrency lets a large first import finish inside the cron
+  // budget without opening an unbounded PostgREST fan-out.
+  await Promise.all(Array.from({ length: Math.min(4, input.rows.length) }, () => worker()));
   return { linked, failed };
 }
 
@@ -147,14 +188,18 @@ async function importConversations(input: {
   const admin = createAdminClient();
   const ids = [...new Set(input.rows.map((row) => providerLeadId(row.leadResourceName)).filter((id): id is string => Boolean(id)))];
   if (!ids.length) return 0;
-  const { data: known, error: knownError } = await admin
-    .from('google_lsa_leads')
-    .select('google_lead_id')
-    .eq('account_id', input.accountId)
-    .eq('customer_id', input.customerId)
-    .in('google_lead_id', ids);
-  if (knownError) throw new Error(knownError.message);
-  const knownIds = new Set((known ?? []).map((row) => String((row as { google_lead_id: string }).google_lead_id)));
+  const knownIds = new Set<string>();
+  const batchSize = 200;
+  for (let offset = 0; offset < ids.length; offset += batchSize) {
+    const { data: known, error: knownError } = await admin
+      .from('google_lsa_leads')
+      .select('google_lead_id')
+      .eq('account_id', input.accountId)
+      .eq('customer_id', input.customerId)
+      .in('google_lead_id', ids.slice(offset, offset + batchSize));
+    if (knownError) throw new Error(knownError.message);
+    for (const row of known ?? []) knownIds.add(String((row as { google_lead_id: string }).google_lead_id));
+  }
   const rows = input.rows.flatMap((conversation) => {
     const leadId = providerLeadId(conversation.leadResourceName);
     if (!leadId || !knownIds.has(leadId)) return [];
@@ -166,10 +211,14 @@ async function importConversations(input: {
     })];
   });
   if (!rows.length) return 0;
-  const { error } = await admin
-    .from('google_lsa_conversations')
-    .upsert(rows, { onConflict: 'account_id,customer_id,google_conversation_id' });
-  if (error) throw new Error(error.message);
+  for (let offset = 0; offset < rows.length; offset += batchSize) {
+    const { error } = await admin
+      .from('google_lsa_conversations')
+      .upsert(rows.slice(offset, offset + batchSize), {
+        onConflict: 'account_id,customer_id,google_conversation_id',
+      });
+    if (error) throw new Error(error.message);
+  }
   return rows.length;
 }
 
@@ -326,9 +375,11 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
         startDate: reportStart,
         endDate,
       });
-      const report = reports.find((row) => String(row.accountId).replace(/\D/g, '') === connection.customerId) ?? reports[0];
-      if (report) {
-        spendRows = await upsertSpendRows([{
+      const report = reports.find((row) => String(row.accountId).replace(/\D/g, '') === connection.customerId);
+      if (!report) {
+        throw new Error('Google did not return the selected Local Services account in its cost report.');
+      }
+      spendRows = await upsertSpendRows([{
           account_id: accountId,
           customer_id: connection.customerId,
           campaign_id: connection.campaignId,
@@ -341,8 +392,7 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
           connected_phone_calls: nonNegativeInteger(report.currentPeriodConnectedPhoneCalls),
           currency_code: String(report.currencyCode || 'USD').toUpperCase().slice(0, 3),
           captured_at: new Date().toISOString(),
-        }]);
-      }
+      }]);
     }
   } catch (error) {
     failed += 1;

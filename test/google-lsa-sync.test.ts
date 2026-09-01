@@ -19,6 +19,9 @@ describe('Google Local Services synchronization contract', () => {
     expect(sync).toContain('googleLsaCrmLeadInput(raw, lead.resourceName, provider.google_created_at)');
     expect(sync).toContain("onConflict: 'account_id,customer_id,google_lead_id'");
     expect(sync).toContain("onConflict: 'account_id,customer_id,google_conversation_id'");
+    expect(sync).toContain('const batchSize = 200');
+    expect(sync).toContain("ids.slice(offset, offset + batchSize)");
+    expect(sync).toContain('rows.slice(offset, offset + batchSize)');
   });
 
   it('keeps LSA spend in the provider ledger and never sends it through managed-ads billing', () => {
@@ -40,11 +43,13 @@ describe('Google Local Services synchronization contract', () => {
     expect(sync).toContain('managerCustomerId: connection.loginCustomerId');
     expect(sync).toContain('customerId: connection.customerId');
     expect(sync).not.toContain('connection.loginCustomerId || connection.customerId');
+    expect(sync).not.toContain('?? reports[0]');
+    expect(sync).toContain('if (!report)');
   });
 
   it('disconnects only when Google reports a terminal OAuth grant failure', () => {
     expect(connection).toContain('googleOAuthRequiresReconnect(error)');
-    expect(connection).toContain('markGoogleLsaConnectionError(accountId, error, reconnect)');
+    expect(connection).toContain('markGoogleLsaConnectionError(accountId, error, reconnect, row.refresh_token)');
     expect(connection).toContain('if (reconnect) return null');
     expect(connection).toContain('throw error');
     expect(connection).not.toContain('markGoogleLsaConnectionError(accountId, error, true)');
@@ -58,5 +63,11 @@ describe('Google Local Services synchronization contract', () => {
     expect(connection).toContain("access_token: ''");
     expect(connection).toContain("refresh_token: ''");
     expect(connection).toContain('disconnected_at: now');
+  });
+
+  it('uses a bounded oldest-first account batch so later tenants cannot starve', () => {
+    expect(connection).toContain(".order('last_sync_attempt_at', { ascending: true, nullsFirst: true })");
+    expect(connection).toContain(".order('account_id', { ascending: true })");
+    expect(connection).toContain('.limit(Math.max(1, Math.min(50, Math.trunc(limit))))');
   });
 });

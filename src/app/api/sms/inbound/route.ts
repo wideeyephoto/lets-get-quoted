@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import { createAdminClient } from '@/lib/auth';
 import {
   hasSignatureHeader,
@@ -13,7 +14,6 @@ import {
   loadInboundReceiptDisposition,
   parseSmsWebhookBody,
   recordInvalidWebhook,
-  sharedNoticeText,
   type InboundIngressResult,
   type ParsedInboundWebhook,
 } from '@/lib/sms-webhook-ingress';
@@ -114,11 +114,12 @@ async function minimumComplianceKeywordTwiml(
  *
  * NEVER FOR A DEDICATED NUMBER. A contractor's own number is a real two-way
  * conversation with their customer; auto-answering it on their behalf would be
- * putting words in their mouth. The database function enforces this too.
  */
 const SHARED_NOTICE_LANES = new Set(['lgq_shared', 'lgq_dispatch']);
 
-
+function sharedNoticeText(brand: string): string {
+  return `${brand}: Alerts only, replies not monitored. View your client portal: ${APP_ORIGIN}/portal Reply STOP to opt out.`;
+}
 
 /**
  * Answer with the notice, or empty TwiML if anything says no.

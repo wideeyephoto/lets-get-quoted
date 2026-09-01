@@ -6,6 +6,10 @@ import { saveTemplateAction } from '../actions';
 
 export const dynamic = 'force-dynamic';
 
+export const metadata = {
+  title: 'Edit Form',
+};
+
 export default async function EditFormBuilderPage({
   params: paramsPromise,
 }: {

@@ -12,6 +12,9 @@ export type GoogleLsaLeadDetail = {
   leadCharged: boolean;
   creditState: string | null;
   feedbackSubmitted: boolean;
+  canSubmitFeedback: boolean;
+  feedbackStatus: 'pending' | 'succeeded' | 'failed' | null;
+  feedbackError: string | null;
   note: string | null;
   googleCreatedAt: string | null;
   conversations: Array<{
@@ -47,7 +50,7 @@ export async function loadGoogleLsaLeadDetail(
     if (error || !lead) return null;
     const row = lead as Record<string, unknown>;
     const googleLeadId = String(row.google_lead_id);
-    const [{ data: conversations }, { data: feedback }] = await Promise.all([
+    const [{ data: conversations }, { data: feedback }, { data: connection }] = await Promise.all([
       admin
         .from('google_lsa_conversations')
         .select('google_conversation_id, channel, participant, event_at, message_text, call_duration_seconds, recording_url')
@@ -57,14 +60,24 @@ export async function loadGoogleLsaLeadDetail(
         .order('event_at', { ascending: true }),
       admin
         .from('google_lsa_feedback')
-        .select('answer, reason, comment, credit_issuance_decision, submitted_at')
+        .select('answer, reason, comment, credit_issuance_decision, submission_status, last_error, submitted_at')
         .eq('account_id', accountId)
         .eq('customer_id', String(row.customer_id))
         .eq('google_lead_id', googleLeadId)
         .maybeSingle(),
+      admin
+        .from('google_lsa_connections')
+        .select('customer_id, disconnected_at')
+        .eq('account_id', accountId)
+        .maybeSingle(),
     ]);
 
     const asText = (value: unknown) => (typeof value === 'string' && value ? value : null);
+    const feedbackRow = feedback as Record<string, unknown> | null;
+    const rawFeedbackStatus = asText(feedbackRow?.submission_status);
+    const feedbackStatus = rawFeedbackStatus === 'pending' || rawFeedbackStatus === 'succeeded' || rawFeedbackStatus === 'failed'
+      ? rawFeedbackStatus
+      : null;
     return {
       googleLeadId,
       resourceName: String(row.resource_name),
@@ -75,11 +88,20 @@ export async function loadGoogleLsaLeadDetail(
       leadCharged: row.lead_charged === true,
       creditState: asText(row.credit_state),
       feedbackSubmitted: row.feedback_submitted === true,
+      canSubmitFeedback: Boolean(
+        connection
+        && !(connection as Record<string, unknown>).disconnected_at
+        && String((connection as Record<string, unknown>).customer_id) === String(row.customer_id)
+        && row.feedback_submitted !== true
+        && feedbackStatus !== 'pending'
+      ),
+      feedbackStatus,
+      feedbackError: asText(feedbackRow?.last_error),
       note: asText(row.note),
       googleCreatedAt: asText(row.google_created_at),
       conversations: (conversations ?? []).map((conversation) => {
         const item = conversation as Record<string, unknown>;
-        const duration = Number(item.call_duration_seconds);
+        const duration = item.call_duration_seconds == null ? NaN : Number(item.call_duration_seconds);
         return {
           id: String(item.google_conversation_id),
           channel: asText(item.channel) || 'UNKNOWN',
@@ -92,12 +114,12 @@ export async function loadGoogleLsaLeadDetail(
           hasRecording: Boolean(asText(item.recording_url)),
         };
       }),
-      feedback: feedback ? {
-        answer: asText((feedback as Record<string, unknown>).answer),
-        reason: asText((feedback as Record<string, unknown>).reason),
-        comment: asText((feedback as Record<string, unknown>).comment),
-        creditIssuanceDecision: asText((feedback as Record<string, unknown>).credit_issuance_decision),
-        submittedAt: String((feedback as Record<string, unknown>).submitted_at),
+      feedback: feedbackRow && feedbackStatus === 'succeeded' ? {
+        answer: asText(feedbackRow.answer),
+        reason: asText(feedbackRow.reason),
+        comment: asText(feedbackRow.comment),
+        creditIssuanceDecision: asText(feedbackRow.credit_issuance_decision),
+        submittedAt: String(feedbackRow.submitted_at),
       } : null,
     };
   } catch {

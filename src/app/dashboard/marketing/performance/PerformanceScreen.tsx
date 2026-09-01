@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import type { Campaign } from '@/lib/campaigns';
 import type { PostCounts } from '@/lib/marketing-status';
@@ -66,7 +65,7 @@ function GoogleLsaPerformancePanel({ summary }: { summary: GoogleLsaReportingSum
   const spendSource = summary.spendSource === 'google_ads_api'
     ? 'Google Ads daily facts'
     : summary.spendSource === 'local_services_account_report'
-      ? 'Latest matching legacy snapshot'
+      ? `Legacy snapshot${summary.spendPeriodEnd ? ` through ${summary.spendPeriodEnd}` : ''}${summary.spendStale ? ' · awaiting newer data' : ''}`
       : 'No spend facts imported';
   const metrics = [
     { label: 'Spend', value: formatLsaMoney(summary.costDollars, summary.currencyCode), note: spendSource },
@@ -137,8 +136,6 @@ export default function PerformanceScreen({
   basePath?: string;
   navOnly?: string[];
 }) {
-  const [dateRange, setDateRange] = useState<'month' | '30d' | '90d' | 'year' | 'all'>('month');
-
   const totalLeads = roiSummary?.totalLeads ?? 12;
   const adLeads = roiSummary?.adAttributedLeads ?? 8;
   const wonJobs = roiSummary?.channels.reduce((sum, ch) => sum + ch.wonCount, 0) ?? 4;
@@ -236,29 +233,6 @@ export default function PerformanceScreen({
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-            <div style={{ display: 'inline-flex', background: 'rgba(255, 255, 255, 0.06)', borderRadius: '8px', padding: '0.2rem', border: '1px solid rgba(255, 255, 255, 0.1)' }}>
-              {(['month', '30d', '90d', 'year', 'all'] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setDateRange(r)}
-                  style={{
-                    padding: '0.3rem 0.65rem',
-                    fontSize: '0.76rem',
-                    fontWeight: 600,
-                    borderRadius: '6px',
-                    background: dateRange === r ? 'rgba(255, 255, 255, 0.15)' : 'transparent',
-                    color: dateRange === r ? 'var(--foreground)' : 'var(--muted)',
-                    border: 'none',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {r === 'month' ? 'This month' : r === '30d' ? 'Last 30d' : r === '90d' ? 'Last 90d' : r === 'year' ? 'This year' : 'All time'}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </section>
 

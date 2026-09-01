@@ -60,6 +60,11 @@ export type GoogleLsaConnectionStatus =
       lastSyncSummary: string | null;
       lastError: string | null;
     }
+  | {
+      state: 'disconnected';
+      customerName: string | null;
+      disconnectedAt: string;
+    }
   | { state: 'needs_reconnect'; customerName: string | null; reason: string };
 
 export type ActiveGoogleLsaConnection = {
@@ -121,6 +126,13 @@ export async function googleLsaConnectionStatus(accountId: string): Promise<Goog
   const row = await loadRow(accountId);
   if (!row) return { state: 'not_connected' };
   if (row.disconnected_at) {
+    if (!row.access_token && !row.refresh_token) {
+      return {
+        state: 'disconnected',
+        customerName: row.customer_name,
+        disconnectedAt: row.disconnected_at,
+      };
+    }
     return {
       state: 'needs_reconnect',
       customerName: row.customer_name,
@@ -240,7 +252,7 @@ export async function reconcileGoogleLsaCandidates(
 
   const selected = discovered.find((candidate) => candidate.customerId === row.customer_id) ?? null;
   const now = new Date().toISOString();
-  const { error } = await createAdminClient()
+  const { data, error } = await createAdminClient()
     .from('google_lsa_connections')
     .update({
       candidate_customers: discovered,
@@ -254,9 +266,11 @@ export async function reconcileGoogleLsaCandidates(
       updated_at: now,
     })
     .eq('account_id', accountId)
-    .is('disconnected_at', null);
+    .is('disconnected_at', null)
+    .select('account_id')
+    .maybeSingle();
   if (error) throw new Error(error.message);
-  return selected;
+  return data ? selected : null;
 }
 
 /** Stop all imports and scrub OAuth secrets while retaining reporting context. */
@@ -277,16 +291,25 @@ export async function disconnectGoogleLsaConnection(accountId: string): Promise<
   if (error) throw new Error(error.message);
 }
 
-export async function markGoogleLsaConnectionError(accountId: string, error: unknown, reconnect = false): Promise<void> {
+export async function markGoogleLsaConnectionError(
+  accountId: string,
+  error: unknown,
+  reconnect = false,
+  expectedRefreshToken?: string,
+): Promise<void> {
   const message = error instanceof Error ? error.message : String(error);
-  await createAdminClient()
+  let query = createAdminClient()
     .from('google_lsa_connections')
     .update({
       last_error: message.slice(0, 500),
       ...(reconnect ? { disconnected_at: new Date().toISOString() } : {}),
       updated_at: new Date().toISOString(),
     })
-    .eq('account_id', accountId);
+    .eq('account_id', accountId)
+    .is('disconnected_at', null);
+  if (expectedRefreshToken) query = query.eq('refresh_token', expectedRefreshToken);
+  const { error: writeError } = await query;
+  if (writeError) throw new Error(writeError.message);
 }
 
 export async function activeGoogleLsaConnection(accountId: string): Promise<ActiveGoogleLsaConnection | null> {
@@ -299,7 +322,7 @@ export async function activeGoogleLsaConnection(accountId: string): Promise<Acti
     try {
       const refreshed = await refreshGoogleTokens(row.refresh_token);
       accessToken = refreshed.accessToken;
-      const { error } = await createAdminClient()
+      const { data, error } = await createAdminClient()
         .from('google_lsa_connections')
         .update({
           access_token: refreshed.accessToken,
@@ -308,11 +331,16 @@ export async function activeGoogleLsaConnection(accountId: string): Promise<Acti
           last_error: null,
           updated_at: new Date().toISOString(),
         })
-        .eq('account_id', accountId);
+        .eq('account_id', accountId)
+        .eq('refresh_token', row.refresh_token)
+        .is('disconnected_at', null)
+        .select('account_id')
+        .maybeSingle();
       if (error) throw new Error(error.message);
+      if (!data) throw new Error('Google Local Services connection changed during token refresh.');
     } catch (error) {
       const reconnect = googleOAuthRequiresReconnect(error);
-      await markGoogleLsaConnectionError(accountId, error, reconnect);
+      await markGoogleLsaConnectionError(accountId, error, reconnect, row.refresh_token);
       if (reconnect) return null;
       throw error;
     }
@@ -376,12 +404,17 @@ export async function completeGoogleLsaSync(input: {
   if (!data) throw new Error('Google Local Services sync lease changed before completion.');
 }
 
-export async function listGoogleLsaConnectedAccountIds(): Promise<string[]> {
+export async function listGoogleLsaConnectedAccountIds(limit = 12): Promise<string[]> {
+  const staleAt = new Date(Date.now() - 20 * 60_000).toISOString();
   const { data, error } = await createAdminClient()
     .from('google_lsa_connections')
-    .select('account_id')
+    .select('account_id, last_sync_attempt_at')
     .is('disconnected_at', null)
-    .not('customer_id', 'is', null);
+    .not('customer_id', 'is', null)
+    .or(`sync_started_at.is.null,sync_started_at.lt.${staleAt}`)
+    .order('last_sync_attempt_at', { ascending: true, nullsFirst: true })
+    .order('account_id', { ascending: true })
+    .limit(Math.max(1, Math.min(50, Math.trunc(limit))));
   if (error) throw new Error(error.message);
   return (data ?? []).map((row) => String((row as { account_id: string }).account_id));
 }
