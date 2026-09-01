@@ -187,3 +187,35 @@ describe('looking a job up', () => {
     expect(cronJob('not-a-job')).toBeUndefined();
   });
 });
+
+describe('extracting logical failure reason from cron summaries', () => {
+  it('extracts explicit reason string', async () => {
+    const { extractLogicalFailureReason } = await import('@/lib/cron-runs');
+    expect(extractLogicalFailureReason('reminders', { reason: 'Twilio auth rejected' })).toBe(
+      'reminders failed: Twilio auth rejected'
+    );
+  });
+
+  it('extracts errors list into readable message', async () => {
+    const { extractLogicalFailureReason } = await import('@/lib/cron-runs');
+    expect(
+      extractLogicalFailureReason('quote-followups', {
+        candidates: 19,
+        failed: 18,
+        errors: ['job 1: timeout', 'job 2: unconfigured phone'],
+      })
+    ).toBe('quote-followups logical failure (18 failed items: job 1: timeout; job 2: unconfigured phone)');
+  });
+
+  it('extracts failed count and candidate context when errors array is omitted', async () => {
+    const { extractLogicalFailureReason } = await import('@/lib/cron-runs');
+    expect(
+      extractLogicalFailureReason('appointment-reminders', {
+        candidates: 1,
+        sent: 0,
+        skipped: 0,
+        failed: 1,
+      })
+    ).toBe('appointment-reminders reported logical failures (1/1 candidates failed)');
+  });
+});
