@@ -934,10 +934,36 @@
 .proofRating { display: inline-flex; align-items: center; gap: .4rem; font-size: .92rem; }
 .proofStars { color: var(--theme-accent); letter-spacing: .04em; }
 .proofRating strong { font-weight: 800; }
-.proofRatingMeta { color: color-mix(in srgb, currentColor 68%, transparent); font-size: .82rem; }
-.proofChip { display: inline-flex; align-items: center; gap: .35rem; padding: .32rem .7rem; border: 1px solid color-mix(in srgb, currentColor 22%, transparent); border-radius: 999px; font-size: .8rem; font-weight: 600; }
+.proofRatingMeta { color: color-mix(in srgb, currentColor 75%, transparent); font-size: .82rem; }
+.proofChip { display: inline-flex; align-items: center; gap: .35rem; padding: .32rem .7rem; border: 1px solid color-mix(in srgb, currentColor 24%, transparent); border-radius: 999px; font-size: .8rem; font-weight: 600; background: color-mix(in srgb, currentColor 6%, transparent); }
 .proofChip > span { color: var(--theme-accent); font-weight: 900; font-size: .85em; }
 .guild[data-mode='dark'] .proofStars, .guild[data-mode='dark'] .proofChip > span { color: color-mix(in srgb, var(--theme-accent) 60%, #ffffff); }
+
+/* Proof strip legibility over dark photo heroes and deep maroon backgrounds */
+.forgeHeroCopy .proofStrip,
+.vistaHeroCopy .proofStrip,
+.coatHeroCopy .proofStrip {
+  color: var(--c-on-photo, #f3f0e7);
+}
+.forgeHeroCopy .proofChip,
+.vistaHeroCopy .proofChip,
+.coatHeroCopy .proofChip {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+.forgeHeroCopy .proofRatingMeta,
+.vistaHeroCopy .proofRatingMeta,
+.coatHeroCopy .proofRatingMeta {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.renoHeroCopy .proofChip,
+.shineHeroCopy .proofChip {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+  border-color: color-mix(in srgb, currentColor 24%, transparent);
+  color: currentColor;
+}
 .heroFormPhotoRow { display: flex; flex-direction: column; gap: .4rem; }
 .heroFormPhotoInput { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 /* Actively nudge visitors to attach photos — better photos = faster, more
@@ -1659,9 +1685,9 @@
 .forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.68) 52%, rgba(10,10,9,.25) 100%), linear-gradient(0deg, rgba(10,10,9,.65) 0%, rgba(10,10,9,.2) 50%, transparent 100%), repeating-linear-gradient(90deg, rgba(243,240,231,.035) 0 1px, transparent 1px 88px); }
 .forgeHeroCopy { position: relative; z-index: 1; width: 100%; max-width: 1320px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, 420px); gap: clamp(2rem, 4.5vw, 4rem); align-items: center; color: var(--c-on-photo, #f3f0e7); }
 .forgeHeroTextColumn { display: flex; flex-direction: column; color: var(--c-on-photo, #f3f0e7); }
-.forgeHeroTextColumn h1, .forgeHeroCopy h1 { color: var(--c-on-photo, #f3f0e7); max-width: 11ch; margin-bottom: 1.1rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 6vw, 5.4rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
-.forgeHeroTextColumn .kicker, .forgeHeroCopy .kicker { color: var(--theme-accent, #f0b429); }
-.forgeHeroTextColumn .heroText, .forgeHeroCopy .heroText { max-width: 34rem; margin-bottom: 1.5rem; color: color-mix(in srgb, var(--c-on-photo, #f3f0e7) 88%, transparent); font-size: 1.18rem; line-height: 1.5; }
+.forgeHero h1, .forgeHeroTextColumn h1, .forgeHeroCopy h1 { color: var(--c-on-photo, #f3f0e7) !important; max-width: 11ch; margin-bottom: 1.1rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 6vw, 5.4rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
+.forgeHero .kicker, .forgeHeroTextColumn .kicker, .forgeHeroCopy .kicker { color: var(--theme-accent, #f0b429) !important; }
+.forgeHero .heroText, .forgeHeroTextColumn .heroText, .forgeHeroCopy .heroText { max-width: 34rem; margin-bottom: 1.5rem; color: color-mix(in srgb, var(--c-on-photo, #f3f0e7) 88%, transparent) !important; font-size: 1.18rem; line-height: 1.5; }
 .forgeHeroCopy .heroQuickForm { margin-top: 0; justify-self: end; width: 100%; max-width: 420px; }
 .forgeIndex { position: absolute; z-index: 1; right: 4vw; bottom: 5vh; font-family: var(--font-mono); font-size: .78rem; font-weight: 500; letter-spacing: .1em; color: rgba(255,255,255,.6); }
 .forgeTrust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 4vw; border-block: 1px solid var(--c-line); }
@@ -1765,8 +1791,8 @@
    (--c-line), and the dark work slab as --c-deep. Existing dark-mode per-element
    overrides stay (they resolve to the same token values) — harmless. */
 .guild {
-  --c-bg: #f5f1e8; --c-surface: #ffffff; --c-ink: #24271f; --c-muted: var(--c-muted); --c-line: var(--c-line); --c-deep: #2a332a; --c-on-deep: #f1ede2;
-  --guild-ambient: radial-gradient(circle at 80% 0%, rgba(176, 71, 47, 0.07), transparent 40%), radial-gradient(circle at 10% 40%, rgba(217, 119, 6, 0.05), transparent 40%), linear-gradient(180deg, #faf7f0 0%, #f5f1e8 50%, #eae4d7 100%);
+  --c-bg: #fff; --c-surface: #fbf9f4; --c-ink: #2a251e; --c-muted: #6b6357; --c-line: #e8e2d5; --c-deep: #1b1713; --c-on-deep: #fff;
+  --guild-ambient: radial-gradient(circle at 80% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 10% 40%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 40%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
   background: var(--c-bg); color: var(--c-ink); font-family: var(--font-guild-body), system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; --theme-radius: 12px;
 }
 .guild[data-mode='dark'] {
@@ -2085,7 +2111,7 @@
 .handy {
   --c-bg: #fff; --c-surface: #f4f8f8; --c-ink: #17272e; --c-muted: #5b6b73; --c-line: #e4eaec; --c-deep: #14253a; --c-on-deep: #fff;
   --care-grad: linear-gradient(120deg, var(--theme-accent), color-mix(in srgb, var(--theme-accent) 55%, #7ef0c0));
-  --care-ambient: radial-gradient(ellipse at 50% 0%, rgba(16, 176, 184, 0.1), transparent 55%), radial-gradient(circle at 85% 25%, rgba(45, 212, 191, 0.08), transparent 40%), linear-gradient(180deg, #f7fbfb 0%, #edf5f5 50%, #e2eeef 100%);
+  --care-ambient: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--theme-accent) 14%, transparent), transparent 55%), radial-gradient(circle at 85% 25%, color-mix(in srgb, var(--theme-accent) 10%, transparent), transparent 40%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
   /* Accent-derived text (eyebrows, accent headline word, ghost buttons, check
      marks, service icons) sits on white / light surfaces, so it must clear AA —
      a light cyan accent at 74% failed. Weight the blend toward the deep teal so
@@ -2328,8 +2354,8 @@
    share --c-deep (Foundry's maroon), so a scheme repalettes both together. */
 .coat {
   --c-bg: #fff; --c-surface: #f4f3f6; --c-ink: #1b1a1f; --c-muted: #6a6870; --c-line: #ececf1; --c-deep: #3a080b; --c-on-deep: #fff;
-  --coat-ink: var(--c-surface-ink, var(--c-ink)); --coat-muted: var(--c-surface-muted, var(--c-muted)); --coat-surface: var(--c-surface); --coat-maroon: var(--c-deep);
-  --coat-ambient: radial-gradient(circle at 75% 0%, rgba(224, 50, 42, 0.07), transparent 40%), radial-gradient(circle at 20% 30%, rgba(244, 63, 94, 0.05), transparent 35%), linear-gradient(180deg, #fbfbfc 0%, #f4f3f6 50%, #ebe9ef 100%);
+  --coat-ink: var(--c-ink); --coat-muted: var(--c-muted); --coat-surface: var(--c-surface); --coat-maroon: var(--c-deep);
+  --coat-ambient: radial-gradient(circle at 75% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .coat[data-mode='dark'] {
@@ -2345,11 +2371,11 @@
 .coatHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.1fr .9fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: radial-gradient(120% 120% at 80% 8%, color-mix(in srgb, var(--c-deep) 78%, #ffffff 12%), var(--c-deep) 60%); color: var(--c-on-deep); }
 .coatBokeh { position: absolute; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
 .coatHeroCopy { position: relative; z-index: 1; max-width: 640px; }
-.coatEyebrowLight { margin: 0 0 1rem; font-size: .78rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: color-mix(in srgb, var(--theme-accent) 45%, var(--c-on-deep)); }
-.coatHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.02; letter-spacing: -.025em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
-.coatHeroText { font-size: clamp(1rem, 1.4vw, 1.18rem); line-height: 1.6; color: color-mix(in srgb, var(--c-on-deep) 86%, transparent); margin: 0 0 1.7rem; max-width: 48ch; }
+.coatEyebrowLight { margin: 0 0 1rem; font-size: .78rem; font-weight: 800; letter-spacing: .18em; text-transform: uppercase; color: color-mix(in srgb, var(--theme-accent) 45%, var(--c-on-deep)) !important; }
+.coatHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.02; letter-spacing: -.025em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; color: var(--c-on-deep, #ffffff) !important; }
+.coatHeroText { font-size: clamp(1rem, 1.4vw, 1.18rem); line-height: 1.6; color: color-mix(in srgb, var(--c-on-deep, #ffffff) 86%, transparent) !important; margin: 0 0 1.7rem; max-width: 48ch; }
 .coatHeroActions { display: flex; align-items: center; gap: 1.1rem 1.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.coatHeroCall { color: var(--c-on-deep); font-weight: 600; font-size: .95rem; }
+.coatHeroCall { color: var(--c-on-deep, #ffffff) !important; font-weight: 600; font-size: .95rem; }
 .coatHeroCall strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--theme-accent); }
 .coatHeroMedia { position: relative; z-index: 1; }
 .coatHeroImg { width: 100%; aspect-ratio: 4 / 5; object-fit: cover; border-radius: 22px; box-shadow: 0 40px 80px -34px rgba(0,0,0,.6); }
@@ -2465,8 +2491,8 @@
    footer bar is the only deep ground (--c-deep). */
 .fixit {
   --c-bg: #fff; --c-surface: #f5f5f7; --c-ink: #2b2b30; --c-muted: #6a6a72; --c-line: #ececef; --c-deep: #201f24; --c-on-deep: #fff;
-  --fx-ink: var(--c-surface-ink, var(--c-ink)); --fx-muted: var(--c-surface-muted, var(--c-muted)); --fx-surface: var(--c-surface);
-  --fixit-ambient: radial-gradient(circle at 60% 0%, rgba(245, 130, 42, 0.08), transparent 40%), radial-gradient(circle at 10% 20%, rgba(251, 191, 36, 0.06), transparent 35%), linear-gradient(180deg, #fdfdfd 0%, #f5f5f7 50%, #ebebef 100%);
+  --fx-ink: var(--c-ink); --fx-muted: var(--c-muted); --fx-surface: var(--c-surface);
+  --fixit-ambient: radial-gradient(circle at 60% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 10% 20%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .fixit[data-mode='dark'] {
@@ -2581,8 +2607,8 @@
    usages follow a scheme. Header/body use --c-bg; hero + footer are --c-deep. */
 .reno {
   --c-bg: #fff; --c-surface: #f4f5f7; --c-ink: #26303c; --c-muted: #667180; --c-line: #e6e8ec; --c-deep: #1b2431; --c-on-deep: #fff;
-  --rn-navy: var(--c-deep); --rn-ink: var(--c-surface-ink, var(--c-ink)); --rn-muted: var(--c-surface-muted, var(--c-muted)); --rn-surface: var(--c-surface);
-  --reno-ambient: radial-gradient(circle at 70% 0%, rgba(47, 109, 246, 0.07), transparent 40%), radial-gradient(circle at 20% 30%, rgba(99, 102, 241, 0.05), transparent 35%), linear-gradient(180deg, #fafbfd 0%, #f4f5f7 50%, #e8eaf0 100%);
+  --rn-navy: var(--c-deep); --rn-ink: var(--c-ink); --rn-muted: var(--c-muted); --rn-surface: var(--c-surface);
+  --reno-ambient: radial-gradient(circle at 70% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .reno[data-mode='dark'] {
@@ -2597,13 +2623,13 @@
 .renoHex { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 34px; height: 34px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%); background: var(--theme-accent); color: var(--rn-navy); font-size: .9rem; }
 .renoHeader .navLinks { text-transform: uppercase; letter-spacing: .04em; font-size: .82rem; font-weight: 700; }
 .renoHeaderPhone { justify-self: end; display: inline-flex; align-items: center; gap: .5rem; font-weight: 800; font-size: .95rem; color: var(--rn-ink); white-space: nowrap; }
-.renoHero { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; align-items: stretch; background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 36px), repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 36px), var(--reno-ambient, var(--rn-navy)); color: var(--c-on-deep); }
+.renoHero { position: relative; display: grid; grid-template-columns: 1.05fr .95fr; align-items: stretch; background: repeating-linear-gradient(0deg, rgba(255,255,255,.018) 0 1px, transparent 1px 36px), repeating-linear-gradient(90deg, rgba(255,255,255,.018) 0 1px, transparent 1px 36px), var(--reno-ambient, var(--rn-navy)); color: var(--c-ink); }
 .renoHeroCopy { position: relative; z-index: 1; max-width: 620px; align-self: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem); }
 .renoEyebrow { margin: 0 0 1rem; font-size: .8rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--theme-accent); }
-.renoHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.6rem, 5.8vw, 4.6rem); line-height: 1.02; letter-spacing: -.03em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
-.renoHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: color-mix(in srgb, var(--c-on-deep) 80%, transparent); margin: 0 0 1.7rem; max-width: 46ch; }
+.renoHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.6rem, 5.8vw, 4.6rem); line-height: 1.02; letter-spacing: -.03em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; color: var(--c-ink); }
+.renoHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: var(--c-muted); margin: 0 0 1.7rem; max-width: 46ch; }
 .renoHeroActions { display: flex; align-items: center; gap: 1.1rem 1.4rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-.renoHeroCall { color: var(--c-on-deep); font-weight: 600; font-size: .95rem; }
+.renoHeroCall { color: var(--c-ink); font-weight: 600; font-size: .95rem; }
 .renoHeroCall strong { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--theme-accent); }
 .renoHeroMedia { position: relative; min-height: 380px; }
 .renoHeroImg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; clip-path: polygon(14% 0, 100% 0, 100% 100%, 0 100%); }
@@ -2707,8 +2733,8 @@
    Defaults below reproduce Shine's native navy-and-white palette. */
 .shine {
   --c-bg: #fff; --c-surface: #f2f3f5; --c-ink: #14202e; --c-muted: #5c6675; --c-line: #e7e9ed; --c-deep: #0f1b2d; --c-on-deep: #fff;
-  --sh-navy: var(--c-deep); --sh-ink: var(--c-surface-ink, var(--c-ink)); --sh-muted: var(--c-surface-muted, var(--c-muted)); --sh-surface: var(--c-surface);
-  --shine-ambient: radial-gradient(circle at 75% 0%, rgba(123, 92, 255, 0.08), transparent 40%), radial-gradient(circle at 15% 30%, rgba(236, 72, 153, 0.05), transparent 35%), linear-gradient(180deg, #fcfbff 0%, #f2f3f5 50%, #e6e7ec 100%);
+  --sh-navy: var(--c-deep); --sh-ink: var(--c-ink); --sh-muted: var(--c-muted); --sh-surface: var(--c-surface);
+  --shine-ambient: radial-gradient(circle at 75% 0%, color-mix(in srgb, var(--theme-accent) 12%, transparent), transparent 40%), radial-gradient(circle at 15% 30%, color-mix(in srgb, var(--theme-accent) 8%, transparent), transparent 35%), linear-gradient(180deg, var(--c-bg) 0%, color-mix(in srgb, var(--c-bg) 88%, var(--c-surface)) 50%, var(--c-bg) 100%);
   background: var(--c-bg); color: var(--c-ink); font-family: "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
 }
 .shine[data-mode='dark'] {
@@ -2731,7 +2757,7 @@
 .shineHeader .shineHeaderCta:hover { filter: brightness(1.08); }
 .shineHeaderCta:hover span { transform: translateX(3px); }
 @media (prefers-reduced-motion: reduce) { .shineBrandMark, .shineHeaderCta span { transition: none; } .shineBrand:hover .shineBrandMark { transform: none; } }
-.shineHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: var(--shine-ambient, radial-gradient(120% 100% at 15% 0, color-mix(in srgb, var(--c-deep) 84%, #7cc4ff), var(--c-deep) 62%)); color: var(--c-on-deep); }
+.shineHero { position: relative; overflow: hidden; display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(1.5rem, 4vw, 3.5rem); align-items: center; padding: clamp(2.5rem, 6vw, 5rem) clamp(1.25rem, 5vw, 4rem) clamp(3rem, 7vw, 5.5rem); background: var(--shine-ambient, radial-gradient(120% 100% at 15% 0, color-mix(in srgb, var(--c-deep) 84%, #7cc4ff), var(--c-deep) 62%)); color: var(--c-ink); }
 .shineHeroCopy, .shineHeroMedia { position: relative; z-index: 1; }
 .shineHeroBg { position: absolute; inset: 0; z-index: 0; overflow: hidden; }
 .shineHeroBg img { width: 100%; height: 100%; object-fit: cover; }
@@ -2739,6 +2765,7 @@
    right so the floating photo tiles read against it (the Purely reference). */
 .shineHeroBgActive::after { content: ''; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(9,16,28,.92) 0%, rgba(9,16,28,.66) 46%, rgba(9,16,28,.34) 100%); }
 .shineHeroHasBg .shineHeroText { color: color-mix(in srgb, var(--c-on-deep) 86%, transparent); }
+.shineHeroHasBg .shineHeroCopy h1 { color: var(--c-on-deep); }
 /* Soft aurora glows drifting behind the hero — accent-tinted + cool white,
    transform-only so they can't stall invisible in the preview iframe. */
 .shineGlow1, .shineGlow2 { position: absolute; z-index: 0; border-radius: 50%; filter: blur(70px); pointer-events: none; will-change: transform; }
@@ -2747,8 +2774,8 @@
 @keyframes shineGlowA { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(-44px, 32px, 0) scale(1.12); } }
 @keyframes shineGlowB { 0%, 100% { transform: translate3d(0, 0, 0) scale(1); } 50% { transform: translate3d(48px, -26px, 0) scale(1.08); } }
 .shineHeroCopy { max-width: 620px; }
-.shineHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; }
-.shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: color-mix(in srgb, var(--c-on-deep) 78%, transparent); margin: 0 0 1.7rem; max-width: 46ch; }
+.shineHeroCopy h1 { font-family: var(--theme-display); font-weight: 800; font-size: clamp(2.5rem, 5.6vw, 4.4rem); line-height: 1.04; letter-spacing: -.02em; margin: 0 0 1.2rem; text-wrap: balance; overflow-wrap: anywhere; color: var(--c-ink); }
+.shineHeroText { font-size: clamp(1rem, 1.4vw, 1.16rem); line-height: 1.6; color: var(--c-muted); margin: 0 0 1.7rem; max-width: 46ch; }
 /* The hero CTA is the smart-intake HeroQuickForm card (see .heroQuickForm);
    center it in the stacked mobile layout. */
 .shineHeroCopy .heroQuickForm {
@@ -2833,35 +2860,40 @@
 .shineBadgeCustomers small { display: block; font-size: .74rem; color: var(--c-muted); }
 
 /* Hero badge treatments — data-badge-style on the template root restyles every
-   template's floating hero badge at once. Default (solid) keeps each badge's
-   own white-card look; outline and soft go transparent/glass with white text. */
+   template's floating hero badge at once. High-contrast tokens ensure badges
+   never render white-on-white or black-on-black in any style. */
 .site[data-badge-style='outline'] .shineBadge,
+.site[data-badge-style='outline'] .fixitHeroCard { background: transparent; border: 2px solid var(--c-line); box-shadow: none; color: var(--c-ink); }
 .site[data-badge-style='outline'] .coatHeroBadge,
-.site[data-badge-style='outline'] .fixitHeroCard,
-.site[data-badge-style='outline'] .guildBadge { background: transparent; border: 2px solid rgba(255,255,255,.82); box-shadow: none; color: #fff; }
+.site[data-badge-style='outline'] .guildBadge,
+.site[data-badge-style='outline'] .renoBadge { background: rgba(16, 24, 38, 0.75); border: 2px solid rgba(255,255,255,.82); box-shadow: none; color: #fff; }
+
 .site[data-badge-style='soft'] .shineBadge,
+.site[data-badge-style='soft'] .fixitHeroCard { background: color-mix(in srgb, var(--c-surface) 90%, transparent); backdrop-filter: blur(10px); border: 1px solid var(--c-line); color: var(--c-surface-ink, var(--c-ink)); }
 .site[data-badge-style='soft'] .coatHeroBadge,
-.site[data-badge-style='soft'] .fixitHeroCard,
-.site[data-badge-style='soft'] .guildBadge { background: rgba(255,255,255,.28); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.42); color: #fff; }
+.site[data-badge-style='soft'] .guildBadge,
+.site[data-badge-style='soft'] .renoBadge { background: rgba(16, 24, 38, 0.85); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,.32); color: #fff; }
+
 .site[data-badge-style='outline'] .shineBadge strong, .site[data-badge-style='soft'] .shineBadge strong,
-.site[data-badge-style='outline'] .coatHeroBadge strong, .site[data-badge-style='soft'] .coatHeroBadge strong,
-.site[data-badge-style='outline'] .coatHeroBadge small, .site[data-badge-style='soft'] .coatHeroBadge small,
-.site[data-badge-style='outline'] .fixitHeroCard strong, .site[data-badge-style='soft'] .fixitHeroCard strong,
-.site[data-badge-style='outline'] .fixitHeroCard small, .site[data-badge-style='soft'] .fixitHeroCard small,
-.site[data-badge-style='outline'] .shineBadgeCustomers strong, .site[data-badge-style='soft'] .shineBadgeCustomers strong,
-.site[data-badge-style='outline'] .shineBadgeCustomers small, .site[data-badge-style='soft'] .shineBadgeCustomers small,
+.site[data-badge-style='outline'] .fixitHeroCard strong, .site[data-badge-style='soft'] .fixitHeroCard strong { color: var(--c-surface-ink, var(--c-ink)); }
 .site[data-badge-style='outline'] .shineBadge small, .site[data-badge-style='soft'] .shineBadge small,
+.site[data-badge-style='outline'] .fixitHeroCard small, .site[data-badge-style='soft'] .fixitHeroCard small { color: var(--c-surface-muted, var(--c-muted)); }
+
+.site[data-badge-style='outline'] .coatHeroBadge strong, .site[data-badge-style='soft'] .coatHeroBadge strong,
 .site[data-badge-style='outline'] .guildBadge strong, .site[data-badge-style='soft'] .guildBadge strong,
-.site[data-badge-style='outline'] .guildBadge span, .site[data-badge-style='soft'] .guildBadge span { color: #fff; }
-/* On the glass style the accent icon chips were washing out — give the color
-   icons and their circle more presence against the translucent panel. */
+.site[data-badge-style='outline'] .renoBadge strong, .site[data-badge-style='soft'] .renoBadge strong { color: #fff; }
+.site[data-badge-style='outline'] .coatHeroBadge small, .site[data-badge-style='soft'] .coatHeroBadge small,
+.site[data-badge-style='outline'] .guildBadge span, .site[data-badge-style='soft'] .guildBadge span,
+.site[data-badge-style='outline'] .renoBadge small, .site[data-badge-style='soft'] .renoBadge small { color: #cbd5e1; }
+
+.site[data-badge-style='outline'] .shineBadgeCustomers strong, .site[data-badge-style='soft'] .shineBadgeCustomers strong { color: var(--c-surface-ink, var(--c-ink)); }
+.site[data-badge-style='outline'] .shineBadgeCustomers small, .site[data-badge-style='soft'] .shineBadgeCustomers small { color: var(--c-surface-muted, var(--c-muted)); }
+
+/* Accent icon chips on badges */
 .site[data-badge-style='soft'] .coatHeroBadgeIcon,
 .site[data-badge-style='soft'] .fixitHeroCardIcon,
-.site[data-badge-style='soft'] .guildBadge .guildBadgeIcon { background: color-mix(in srgb, var(--theme-accent) 42%, transparent); color: #fff; }
-/* Guild's soft badge was a flat white-frost panel with no accent anywhere. Tint
-   the glass (and its border) toward the theme accent so the whole badge carries
-   color, matching its now-accented icon, while staying translucent over the photo. */
-.site[data-badge-style='soft'] .guildBadge { background: color-mix(in srgb, var(--theme-accent) 32%, rgba(255,255,255,.24)); border-color: color-mix(in srgb, var(--theme-accent) 42%, rgba(255,255,255,.5)); }
+.site[data-badge-style='soft'] .guildBadge .guildBadgeIcon { background: color-mix(in srgb, var(--theme-accent) 24%, transparent); color: var(--theme-accent); }
+.site[data-badge-style='soft'] .guildBadge { background: rgba(16, 24, 38, 0.85); border-color: rgba(255, 255, 255, 0.25); color: #fff; }
 
 /* Badge detailing — an accent rail down the leading edge, a haloed icon chip,
    and a response on hover, so the floating chips read as designed objects

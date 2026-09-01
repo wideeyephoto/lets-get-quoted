@@ -18,8 +18,8 @@ const FRAME_WIDTH = 1280;
 export default function HeroThemeCyclerDark() {
   const [index, setIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
-  const [showFrame, setShowFrame] = useState(false);
-  const [box, setBox] = useState<{ scale: number; frameHeight: number } | null>(null);
+  const [showFrame, setShowFrame] = useState(true);
+  const [box, setBox] = useState<{ scale: number; frameHeight: number } | null>({ scale: 0.58, frameHeight: 780 });
 
   // Manual override state if contractor clicks a specific theme or scheme
   const [manualStep, setManualStep] = useState<ThemeCycleStep | null>(null);
@@ -235,7 +235,7 @@ export default function HeroThemeCyclerDark() {
                   height: box.frameHeight,
                   transform: `scale(${box.scale})`,
                 }}
-                loading="eager"
+                loading="lazy"
                 scrolling="no"
                 tabIndex={-1}
                 aria-hidden="true"

@@ -41,6 +41,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
       ? readableAccentText(site.accent_override, [scheme?.bg || '#111722', scheme?.surface || '#1b2431'])
       : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
+    '--c-on-deep': scheme?.onDeep || '#ffffff',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,

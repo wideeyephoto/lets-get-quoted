@@ -41,6 +41,9 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
       : (scheme?.accentText || defaultAccent),
     '--theme-radius': '10px',
     '--theme-display': site.header_font || 'var(--font-care), "Segoe UI", system-ui, sans-serif',
+    '--care-text-teal': scheme?.tone === 'dark'
+      ? (scheme?.accentText || 'color-mix(in srgb, var(--theme-accent) 70%, #ffffff)')
+      : 'color-mix(in srgb, var(--theme-accent) 34%, #04333b)',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,

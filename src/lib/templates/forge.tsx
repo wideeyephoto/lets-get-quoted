@@ -37,6 +37,7 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       ? readableAccentText(site.accent_override, [scheme?.bg || '#10100f', scheme?.surface || '#1a1a17'])
       : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-forge-display), Impact, Haettenschweiler, sans-serif',
+    '--c-on-photo': scheme?.onPhoto || '#f3f0e7',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,

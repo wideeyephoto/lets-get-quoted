@@ -60,6 +60,7 @@ export default function GuildTemplate({ site }: TemplateProps) {
       ? readableAccentText(site.accent_override, [scheme?.bg || '#f5f1e8', scheme?.surface || '#ffffff'])
       : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-guild-display), Georgia, Times New Roman, serif',
+    '--c-on-deep': scheme?.onDeep || '#ffffff',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,

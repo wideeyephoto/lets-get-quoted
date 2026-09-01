@@ -49,6 +49,7 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       ? readableAccentText(site.accent_override, [scheme?.bg || '#1a1412', scheme?.surface || '#271f1b'])
       : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
+    '--c-on-deep': scheme?.onDeep || '#ffffff',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,

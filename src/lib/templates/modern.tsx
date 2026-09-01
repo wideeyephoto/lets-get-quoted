@@ -38,6 +38,7 @@ export default function VistaTemplate({ site }: TemplateProps) {
       ? readableAccentText(site.accent_override, [scheme?.bg || '#0f1115', scheme?.surface || '#171a20'])
       : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), Arial Black, Helvetica, sans-serif',
+    '--c-on-photo': scheme?.onPhoto || '#f0f2f5',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,

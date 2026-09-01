@@ -55,6 +55,7 @@ export default function ShineTemplate({ site, galleryImages = [] }: TemplateProp
       ? readableAccentText(site.accent_override, [scheme?.bg || '#0b1320', scheme?.surface || '#121d2f'])
       : (scheme?.accentText || defaultAccent),
     '--theme-display': site.header_font || 'var(--font-display), system-ui, sans-serif',
+    '--c-on-deep': scheme?.onDeep || '#ffffff',
     ...(content.brandFont ? { '--brand-font': content.brandFont } : {}),
     ...(scheme ? {
       '--c-bg': scheme.bg,
