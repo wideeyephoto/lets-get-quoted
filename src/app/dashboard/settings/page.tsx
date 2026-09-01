@@ -11,6 +11,8 @@ import PayoutAccount from './PayoutAccount';
 import SettingsTabs from './SettingsTabs';
 import QuickBooksSection from './QuickBooksSection';
 import { connectionStatus } from '@/lib/quickbooks/connection';
+import GoogleLocalServicesSection from './GoogleLocalServicesSection';
+import { googleLsaConnectionStatus } from '@/lib/google-lsa/connection';
 import SaveButton from '@/components/save-button';
 import ThemeToggle from '@/components/theme-toggle';
 import AddressAutocomplete from '@/components/address-autocomplete';
@@ -19,6 +21,7 @@ import ExportData from './ExportData';
 import DeleteAccountButton from './DeleteAccountButton';
 import { updateBusinessAddressesAction, updateBusinessBasicsAction, deleteAccountAction } from './actions';
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
+import { chooseGoogleLsaCustomerAction, syncGoogleLsaAction } from './actions';
 import InsuranceSection from './InsuranceSection';
 import BusinessWorkspace from './BusinessWorkspace';
 import { businessSetup } from '@/lib/business-setup';
@@ -57,6 +60,8 @@ import type { AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import PlanUsageSection from './PlanUsageSection';
 import OfficeTeamSection from './OfficeTeamSection';
 import MerchantOnboardingSection from './MerchantOnboardingSection';
+import DeveloperApiSection, { type WebhookSubscriptionView, type WebhookDeliveryView } from './DeveloperApiSection';
+import { listApiTokens } from '@/lib/public-api/api-credentials';
 
 export const metadata = { title: 'Account' };
 
@@ -70,10 +75,9 @@ export default async function SettingsPage({
   searchParams: Promise<{
     year?: string;
     quickbooks?: string;
+    google_lsa?: string;
     merchant_onboarding?: string;
     top_up_checkout?: string;
-    // Carried from /pricing through signup. Pre-selects the paid-plan checkout
-    // below rather than making someone re-answer a question they already did.
     plan?: string;
     billing?: string;
   }>;
@@ -85,64 +89,44 @@ export default async function SettingsPage({
   const topUpPurchaseCheckoutEnabled = topUpPurchaseEnabled();
   const merchantOnboardingEnabled = stripeMerchantOnboardingV2Enabled();
 
-  const [{ data: userData }, { data: identityData }, { data: account }, { data: site }, { count: pendingPaymentsCount }, planUsage, merchantOnboarding, storageState, purchasedSeats, purchasedCapacitySubscriptions] =
-    await Promise.all([
-      supabase.auth.getUser(),
-      supabase.auth.getUserIdentities(),
-      // Narrowed when Automations moved to its own page. Thirteen of these
-      // columns — the workday, the buffer, call forwarding, every arrival_* and
-      // the time-clock mode — were read for cards that now live on
-      // /dashboard/automations, and nothing on this page has consumed them
-      // since. ESLint cannot see inside a select string, so an over-wide read
-      // like this one goes unnoticed forever unless it is trimmed by hand at
-      // the moment its consumers leave.
-      supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone').eq('id', accountId).single(),
-      // Still the whole row: the Business tab reads company_name, published,
-      // content and the domain fields off it, and getSiteContent takes the
-      // content blob wholesale. (The justification used to be the intake
-      // preview, which went to /dashboard/automations with everything else it
-      // belonged to.)
-      supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
-      supabase
-        .from('payments')
-        .select('id', { count: 'exact', head: true })
-        .eq('account_id', accountId)
-        .in('status', ['requested', 'processing']),
-      // Dark by default. A disabled rollout performs no entitlement query, so
-      // deploying the code ahead of the production migration cannot disturb
-      // the existing Account page.
-      pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
-      // A separate exact-1 gate keeps the Accounts v2 surface and its
-      // service-role readiness read completely dark. This does not replace or
-      // alter the live Recipient payout card above it.
-      merchantOnboardingEnabled
-        ? loadMerchantOnboardingSurfaceForOwner({ accountId })
-        : Promise.resolve(null),
-      // The ONE read on this page that does not go through the owner's session
-      // client. The effective limit is the plan allowance plus purchased
-      // capacity, and workspace_purchased_capacity is deliberately service-role
-      // only -- owners see the effect, not the ledger. accountId is already
-      // authenticated by requireOwnerContext above and is passed explicitly, so
-      // the widened client never widens the scope.
-      pricingDashboardEnabled
-        ? loadWorkspaceStorageState(createAdminClient(), accountId)
-        : Promise.resolve(null),
-      // Same posture and the same reason as the storage read above: the ledger
-      // behind a purchased seat is service-role only, and the owner is shown its
-      // effect rather than its rows. Reads to zero on failure, which is exactly
-      // the plan-allowance-only behavior that shipped before it existed.
-      pricingDashboardEnabled
-        ? loadPurchasedSeats(createAdminClient(), accountId)
-        : Promise.resolve(NO_PURCHASED_SEATS),
-      pricingDashboardEnabled
-        ? loadActivePurchasedCapacitySubscriptions(createAdminClient(), accountId)
-        : Promise.resolve([]),
-    ]);
-
-  // Its own read, and tolerant of the migrations not being applied. Everything
-  // it touches -- office_invitations, and memberships filtered to office --
-  // lands ahead of its migration on any environment that has not run it, and
-  // loadOfficeTeam already degrades an unreadable team to an empty one rather
+  const [
+    { data: userData },
+    { data: identityData },
+    { data: account },
+    { data: site },
+    { count: pendingPaymentsCount },
+    planUsage,
+    merchantOnboarding,
+    storageState,
+    purchasedSeats,
+    purchasedCapacitySubscriptions,
+    apiTokens,
+    webhookSubsResult,
+    webhookDeliveriesResult,
+  ] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.auth.getUserIdentities(),
+    supabase.from('accounts').select('account_number, business_name, created_at, connect_onboarded, connect_disabled_at, timezone').eq('id', accountId).single(),
+    supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
+    supabase.from('payments').select('id', { count: 'exact', head: true }).eq('account_id', accountId).in('status', ['requested', 'processing']),
+    pricingDashboardEnabled ? loadWorkspacePlanUsage(supabase, accountId) : Promise.resolve(null),
+    merchantOnboardingEnabled ? loadMerchantOnboardingSurfaceForOwner({ accountId }) : Promise.resolve(null),
+    pricingDashboardEnabled ? loadWorkspaceStorageState(createAdminClient(), accountId) : Promise.resolve(null),
+    pricingDashboardEnabled ? loadPurchasedSeats(createAdminClient(), accountId) : Promise.resolve(NO_PURCHASED_SEATS),
+    pricingDashboardEnabled ? loadActivePurchasedCapacitySubscriptions(createAdminClient(), accountId) : Promise.resolve([]),
+    listApiTokens(createAdminClient(), accountId).catch(() => []),
+    createAdminClient()
+      .from('webhook_subscriptions')
+      .select('id, target_url, event_types, secret_preview, status, disabled_reason, consecutive_failures, created_at')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false }),
+    createAdminClient()
+      .from('webhook_deliveries')
+      .select('id, subscription_id, event_id, status, attempt_count, max_attempts, last_error, created_at')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false })
+      .limit(20),
+  ]);
   // than throwing. A Settings page that 500s because one card cannot load is a
   // worse failure than a card that says nobody is here.
   const officeTeam = await loadOfficeTeam(createAdminClient(), accountId);
@@ -315,7 +299,10 @@ export default async function SettingsPage({
 
   // Never throws and never returns a token — a missing table (feature deployed
   // ahead of its migration) reports "not connected".
-  const quickBooksStatus = await connectionStatus(accountId);
+  const [quickBooksStatus, googleLsaStatus] = await Promise.all([
+    connectionStatus(accountId),
+    googleLsaConnectionStatus(accountId),
+  ]);
 
   // Proof of insurance. Read straight off the account so a lapsed certificate
   // reports as lapsed on the day it lapses, with no sweep to wait for.
@@ -783,7 +770,7 @@ export default async function SettingsPage({
           id: 'apps',
           label: 'Connected apps',
           blurb: 'The other tools your business runs on.',
-          anchors: ['quickbooks'],
+          anchors: ['quickbooks', 'google-local-services'],
           content: (
               <>
                 <QuickBooksSection
@@ -791,6 +778,13 @@ export default async function SettingsPage({
                   notice={searchParams.quickbooks}
                   syncAction={syncQuickBooksAction}
                   backfillAction={backfillQuickBooksAction}
+                />
+
+                <GoogleLocalServicesSection
+                  status={googleLsaStatus}
+                  notice={searchParams.google_lsa}
+                  chooseCustomerAction={chooseGoogleLsaCustomerAction}
+                  syncAction={syncGoogleLsaAction}
                 />
 
                 {/* The status lives here, where somebody looking for their
@@ -835,9 +829,6 @@ export default async function SettingsPage({
           anchors: ['import', 'export'],
           content: (
               <>
-                {/* Migrating is an onboarding action, not an everyday setting.
-                    Once there is a book of customers it stops holding the top
-                    of the section and becomes one more way in among three. */}
                 <section className="panel workspace-section-card" id="import">
                   <div className="section-heading workspace-section-heading compact-heading">
                     <p className="eyebrow">{stillMovingIn ? 'Get set up' : 'Bring data in'}</p>
@@ -861,9 +852,6 @@ export default async function SettingsPage({
                     </Link>
                     <Link href="/dashboard/clients/import" className="btn secondary">Import customers</Link>
                     <Link href="/dashboard/services/import" className="btn secondary">Import services</Link>
-                    {/* These two came off the Jobs page, which is not a place
-                        anybody sets up their account from. Without them here
-                        both importers would exist with nothing linking to them. */}
                     <Link href="/dashboard/jobs/import" className="btn secondary">Import jobs</Link>
                     <Link href="/dashboard/jobs/import-invoices" className="btn secondary">Import invoices</Link>
                   </div>
@@ -878,9 +866,6 @@ export default async function SettingsPage({
                     Download your records as CSV. The columns match what the importer accepts, so anything you
                     export here can be re-imported as-is. It&apos;s your data; no lock-in.
                   </p>
-                  {/* One action, with the choice behind it. Four pills side by
-                      side made picking the SET the first decision, when the
-                      first decision is almost always "give me all of it". */}
                   <ExportData />
                   <p className="bz-quick-exports">
                     Or grab one on its own:{' '}
@@ -899,35 +884,40 @@ export default async function SettingsPage({
           blurb: 'Your figures, prepared the way a bookkeeper wants them.',
           anchors: ['finances'],
           content: (
-                /* A shortcut, not the reports. They are output, not settings —
-                   nothing in them is a preference — and building three of them
-                   on every render of a page people open to change a phone
-                   number was work nobody asked for. The id stays so
-                   /dashboard/settings#finances still lands here. */
-                <section className="panel workspace-section-card" id="finances">
-                  <div className="section-heading workspace-section-heading compact-heading">
-                    <p className="eyebrow">Finances</p>
-                    <h2>Financial reports</h2>
-                  </div>
-                  <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-                    Prepare your records for bookkeeping and tax season. These are prep tools, not official IRS
-                    forms &mdash; hand them to your accountant, or use them to fill out your own Schedule C.
-                  </p>
-                  <ul className="bz-report-links">
-                    <li><Link href="/dashboard/reports">Profit &amp; loss</Link></li>
-                    <li><Link href="/dashboard/reports">Schedule C worksheet</Link></li>
-                    <li><Link href="/dashboard/reports">Subcontractor and 1099 report</Link></li>
-                  </ul>
-                  <Link className="btn primary" href="/dashboard/reports">View financial reports</Link>
-                </section>
+            <section className="panel workspace-section-card" id="finances">
+              <div className="section-heading workspace-section-heading compact-heading">
+                <p className="eyebrow">Finances</p>
+                <h2>Financial reports</h2>
+              </div>
+              <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+                Prepare your records for bookkeeping and tax season. These are prep tools, not official IRS
+                forms &mdash; hand them to your accountant, or use them to fill out your own Schedule C.
+              </p>
+              <ul className="bz-report-links">
+                <li><Link href="/dashboard/reports">Profit &amp; loss</Link></li>
+                <li><Link href="/dashboard/reports">Schedule C worksheet</Link></li>
+                <li><Link href="/dashboard/reports">Subcontractor and 1099 report</Link></li>
+              </ul>
+              <Link className="btn primary" href="/dashboard/reports">View financial reports</Link>
+            </section>
           ),
         },
-                ]}
-              />
-            ),
-          },
-        ]}
-      />
-    </main>
-  );
+        {
+          id: 'developers',
+          label: 'Developers & APIs',
+          anchors: ['api-tokens', 'webhooks', 'webhook-deliveries', 'api-docs'],
+          content: (
+            <DeveloperApiSection
+              tokens={apiTokens}
+              subscriptions={((webhookSubsResult as { data?: unknown[] })?.data ?? []) as WebhookSubscriptionView[]}
+              deliveries={((webhookDeliveriesResult as { data?: unknown[] })?.data ?? []) as WebhookDeliveryView[]}
+            />
+          ),
+        },
+      ]}
+    />
+  </main>
+);
+}
+);
 }

@@ -7,6 +7,19 @@ import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { sendPaymentSmsEvent } from '@/lib/sms';
 import { assembleDisputeEvidence, type DisputeEvidenceBundle } from '@/lib/dispute-evidence';
 import { calculateFinancingOptions, type FinancingTermOption } from '@/lib/financing-calculator';
+import {
+  createTerminalConnectionToken,
+  listTerminalReaders,
+  registerTerminalReader,
+  createTerminalPaymentIntent,
+  simulateTerminalCardTap,
+  cancelTerminalReaderAction,
+  confirmTerminalPayment,
+  type TerminalReader,
+  type TerminalConnectionToken,
+  type TerminalPaymentIntentResult,
+  type TerminalPaymentStatusResult,
+} from '@/lib/stripe-terminal';
 
 export type ActionState<T = unknown> = {
   success: boolean;
@@ -819,5 +832,160 @@ export async function saveAchIncentiveSettingsAction(_params: {
     };
   }
 }
+
+/**
+ * Fetch a Stripe Terminal Connection Token for Reader SDK / Tap to Pay.
+ */
+export async function getTerminalConnectionTokenAction(): Promise<ActionState<TerminalConnectionToken>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const token = await createTerminalConnectionToken(supabase, accountId);
+    return { success: true, data: token };
+  } catch (error) {
+    console.error('getTerminalConnectionTokenAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to initialize Terminal connection.',
+    };
+  }
+}
+
+/**
+ * List registered Stripe Terminal readers and smart devices.
+ */
+export async function listTerminalReadersAction(locationId?: string): Promise<ActionState<TerminalReader[]>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.read');
+    const readers = await listTerminalReaders(supabase, accountId, locationId);
+    return { success: true, data: readers };
+  } catch (error) {
+    console.error('listTerminalReadersAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to list terminal readers.',
+    };
+  }
+}
+
+/**
+ * Register a new physical Stripe Terminal reader via pairing code.
+ */
+export async function registerTerminalReaderAction(
+  registrationCode: string,
+  label?: string,
+  locationId?: string
+): Promise<ActionState<TerminalReader>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    if (!registrationCode) {
+      return { success: false, error: 'Registration code is required.' };
+    }
+    const reader = await registerTerminalReader(supabase, accountId, {
+      registrationCode: registrationCode.trim(),
+      label: label?.trim(),
+      locationId,
+    });
+    return { success: true, message: `Registered reader "${reader.label}".`, data: reader };
+  } catch (error) {
+    console.error('registerTerminalReaderAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to register terminal reader.',
+    };
+  }
+}
+
+/**
+ * Create an in-person card_present PaymentIntent and initialize reader collection.
+ */
+export async function createTerminalPaymentIntentAction(params: {
+  jobId: string;
+  amount: number;
+  invoiceId?: string;
+  description?: string;
+  readerId?: string;
+}): Promise<ActionState<TerminalPaymentIntentResult>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const result = await createTerminalPaymentIntent(supabase, accountId, params);
+
+    revalidatePath('/dashboard/payments');
+    revalidatePath(`/dashboard/jobs/${params.jobId}`);
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('createTerminalPaymentIntentAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to initialize contactless card reader.',
+    };
+  }
+}
+
+/**
+ * Simulate card presentation / tap in test mode.
+ */
+export async function simulateTerminalTapAction(
+  readerId: string,
+  paymentIntentId?: string
+): Promise<ActionState<{ message: string }>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const result = await simulateTerminalCardTap(supabase, accountId, readerId, paymentIntentId);
+    return { success: true, message: result.message };
+  } catch (error) {
+    console.error('simulateTerminalTapAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to simulate card tap.',
+    };
+  }
+}
+
+/**
+ * Cancel an in-flight reader payment action.
+ */
+export async function cancelTerminalAction(params: {
+  readerId?: string;
+  paymentIntentId?: string;
+  paymentId?: string;
+}): Promise<ActionState<boolean>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    await cancelTerminalReaderAction(supabase, accountId, params);
+
+    revalidatePath('/dashboard/payments');
+    return { success: true, data: true };
+  } catch (error) {
+    console.error('cancelTerminalAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to cancel terminal transaction.',
+    };
+  }
+}
+
+/**
+ * Verify, confirm and settle the Terminal card_present payment.
+ */
+export async function confirmTerminalPaymentAction(
+  paymentId: string,
+  paymentIntentId: string
+): Promise<ActionState<TerminalPaymentStatusResult>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const result = await confirmTerminalPayment(supabase, accountId, paymentId, paymentIntentId);
+
+    revalidatePath('/dashboard/payments');
+    revalidatePath('/dashboard/cash-flow');
+    return { success: true, data: result };
+  } catch (error) {
+    console.error('confirmTerminalPaymentAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to confirm terminal payment.',
+    };
+  }
+}
+
 
 
