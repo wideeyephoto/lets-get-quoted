@@ -599,3 +599,8 @@ export function listTradeStarterCatalogs(): TradeStarterCatalog[] {
 export function getStarterCatalogByTrade(tradeId: string): TradeStarterCatalog | null {
   return TRADE_STARTER_CATALOGS[tradeId] ?? null;
 }
+
+
+import type { MaterialOrderItem, MaterialCategory, MaterialDistributor } from './material-supply-ordering';
+
+

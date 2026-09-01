@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import { recordRequestMetric, getApmSummary } from '@/lib/apm-telemetry';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,11 +18,19 @@ export type HealthResponse = {
   timestamp: string;
   latencyMs: number;
   services: HealthService[];
+  apm?: {
+    p95Ms: number;
+    errorRatePct: number;
+    active: boolean;
+  };
 };
 
-export async function GET() {
+export async function GET(req?: NextRequest) {
   const startTime = performance.now();
   const services: HealthService[] = [];
+
+  // Fast ping for synthetic monitoring heartbeats (Better Stack / Pingdom / UptimeRobot)
+  const isPing = req ? req.nextUrl?.searchParams?.get('ping') === '1' : false;
 
   // 1. Quoting Engine & Database
   const dbStart = performance.now();
@@ -48,7 +57,6 @@ export async function GET() {
     dbStatus = 'outage';
     dbDetail = 'Database service unreachable';
   }
-
 
   services.push({
     id: 'quoting-engine',
@@ -103,13 +111,37 @@ export async function GET() {
     overallStatus = 'degraded';
   }
 
-  return NextResponse.json(
-    {
-      status: overallStatus,
-      timestamp: new Date().toISOString(),
-      latencyMs: totalLatencyMs,
-      services,
+  // Record APM metric for this health probe
+  recordRequestMetric({
+    path: '/api/health',
+    method: 'GET',
+    statusCode: overallStatus === 'outage' ? 503 : 200,
+    durationMs: totalLatencyMs,
+  });
+
+  const apmSummary = getApmSummary();
+
+  const responseBody: HealthResponse = {
+    status: overallStatus,
+    timestamp: new Date().toISOString(),
+    latencyMs: totalLatencyMs,
+    services,
+    apm: {
+      p95Ms: apmSummary.latencyPercentiles.p95Ms,
+      errorRatePct: apmSummary.errorRatePct,
+      active: true,
     },
-    { status: overallStatus === 'outage' ? 503 : 200 },
+  };
+
+  return NextResponse.json(
+    responseBody,
+    {
+      status: overallStatus === 'outage' ? 503 : 200,
+      headers: {
+        'Cache-Control': 'no-store, max-age=0',
+        'X-LGQ-Uptime-Status': overallStatus,
+        'X-LGQ-APM-P95': `${apmSummary.latencyPercentiles.p95Ms}ms`,
+      },
+    },
   );
 }

@@ -66,6 +66,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Queued account alerts, dispatch messages, and approved contractor texts stop reaching recipients.',
   },
   {
+    job: 'webhook-deliveries',
+    label: 'Webhook delivery queue',
+    schedule: '* * * * *',
+    importance: 'customer',
+    consequence: 'Queued webhook event notifications stop reaching subscriber endpoints like Zapier, Make, and n8n.',
+  },
+  {
     job: 'legacy-quick-stop-late-refunds',
     label: 'Legacy Quick Stop late refunds',
     schedule: '*/5 * * * *',
@@ -173,6 +180,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '0 6 * * *',
     importance: 'money',
     consequence: 'Connected accounts stop receiving their books, and the gap is only found at reconciliation.',
+  },
+  {
+    job: 'google-lsa-sync',
+    label: 'Google Local Services import',
+    schedule: '*/15 * * * *',
+    importance: 'money',
+    consequence: 'Local Services leads, charge and credit facts, spend, and signed-job revenue attribution stop updating.',
   },
   {
     job: 'appointment-reminders',

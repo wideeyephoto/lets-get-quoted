@@ -466,11 +466,11 @@ export async function createLead(
   };
   let lead: Lead;
   const immutableSource = input.sourceVoiceEventId
-    ? { column: 'source_voice_event_id', value: input.sourceVoiceEventId }
+    ? ({ column: 'source_voice_event_id' as const, value: input.sourceVoiceEventId })
     : input.sourceGoogleLsaResource
-      ? { column: 'source_google_lsa_resource', value: input.sourceGoogleLsaResource }
+      ? ({ column: 'source_google_lsa_resource' as const, value: input.sourceGoogleLsaResource })
       : input.sourceMarketplaceRef
-        ? { column: 'source_marketplace_ref', value: input.sourceMarketplaceRef }
+        ? ({ column: 'source_marketplace_ref' as const, value: input.sourceMarketplaceRef })
         : null;
   if (immutableSource) {
     // Receipt work can be replayed after either a worker failure or a lost HTTP

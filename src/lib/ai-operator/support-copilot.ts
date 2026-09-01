@@ -168,17 +168,6 @@ export async function triageSupportCase(
 
   // Topic classification & diagnostic drafting
   if (
-    text.includes('payout') ||
-    text.includes('deposit') ||
-    text.includes('transfer to bank') ||
-    text.includes('when do i get paid') ||
-    text.includes('where is my money')
-  ) {
-    topic = 'stripe_payouts';
-    urgency = 'high';
-    reply = `Hi there! For Stripe payouts, customer card payments deposit automatically into your connected bank account according to your standard payout cadence (typically 1–2 business days for established accounts). You can review your real-time payout ledger and upcoming settlement batches directly in Settings > Payments. If you need any assistance updating payout schedules, please let us know!`;
-    internalAction = 'Inspect payout schedule and recent charge settlement batches in /admin/payments.';
-  } else if (
     (text.includes('stripe') && (text.includes('connect') || text.includes('bank') || text.includes('setup') || text.includes('onboard') || text.includes('account'))) ||
     text.includes('connect stripe') ||
     text.includes('kyc') ||
@@ -191,6 +180,17 @@ export async function triageSupportCase(
     urgency = 'high';
     reply = `Hi there! Thank you for contacting Let's Get Quoted support. To complete your Stripe Connect setup and unlock instant card payments, please navigate to Settings > Payments & Payouts (under your dashboard). From there, click "Complete Stripe Verification" to confirm your bank account and tax details. Once verified, deposits will route straight to your account automatically!`;
     internalAction = 'Check Stripe Connect onboarding status in /admin/accounts and verify charges_enabled.';
+  } else if (
+    text.includes('payout') ||
+    text.includes('deposit') ||
+    text.includes('transfer to bank') ||
+    text.includes('when do i get paid') ||
+    text.includes('where is my money')
+  ) {
+    topic = 'stripe_payouts';
+    urgency = 'high';
+    reply = `Hi there! For Stripe payouts, customer card payments deposit automatically into your connected bank account according to your standard payout cadence (typically 1–2 business days for established accounts). You can review your real-time payout ledger and upcoming settlement batches directly in Settings > Payments. If you need any assistance updating payout schedules, please let us know!`;
+    internalAction = 'Inspect payout schedule and recent charge settlement batches in /admin/payments.';
   } else if (
     text.includes('sms') ||
     text.includes('text') ||
