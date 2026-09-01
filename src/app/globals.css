@@ -19331,6 +19331,30 @@ a.job-actions-item:focus-visible {
   gap: 0.6rem;
   cursor: pointer;
   line-height: 1.4;
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.field label.checkbox-row {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: 0.88rem;
+  font-weight: 400;
+  color: var(--text);
+}
+
+.field-hint a {
+  color: #ff8a3d;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  font-weight: 600;
+}
+
+.field-hint a:hover {
+  color: #ffaa66;
 }
 
 .checkbox-row input[type='checkbox'] {
