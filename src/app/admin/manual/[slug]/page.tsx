@@ -2,7 +2,10 @@ import React from 'react';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
-import { getPermittedManualArticle } from '@/lib/admin-manual';
+import {
+  getPermittedManualArticle,
+  getAdjacentPermittedManualArticles,
+} from '@/lib/admin-manual';
 import AdminManualArticle from '../_components/AdminManualArticle';
 import styles from '../manual.module.css';
 
@@ -47,9 +50,12 @@ export default async function AdminManualArticlePage({
     notFound();
   }
 
+  const { prev, next } = getAdjacentPermittedManualArticles(slug, role, active);
+
   return (
     <div className={styles.container}>
-      <AdminManualArticle article={article} />
+      <AdminManualArticle article={article} prevArticle={prev} nextArticle={next} />
     </div>
   );
 }
+

@@ -75,6 +75,20 @@ export async function runRevOpsGrowthScan(
   }
 
   // 2. Process onboarding nudges for unactivated contractors
+  if (notOnboardedRows.length > 0) {
+    createHitlAction({
+      category: 'growth_lifecycle',
+      title: `Send First-Quote Activation Nudges (${notOnboardedRows.length} Contractors)`,
+      description: `${notOnboardedRows.length} contractor(s) signed up recently without sending quotes. 1-click approve to send targeted SMS/email guidance with quote templates.`,
+      actionType: 'batch_activation_nudges',
+      payload: {
+        accountIds: notOnboardedRows.map((a) => a.id),
+        contractorCount: notOnboardedRows.length,
+      },
+    });
+    hitlActionsCount++;
+  }
+
   for (const account of notOnboardedRows.slice(0, 15)) {
     const displayName = account.business_name || `Account #${account.account_number || account.id}`;
     details.onboardingNudges.push({

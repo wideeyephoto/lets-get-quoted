@@ -492,13 +492,76 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     const cycle = await runAutonomousOperatorCycle(mockSupabase);
     expect(cycle.cycleId).toBeDefined();
     expect(cycle.briefing).toBeDefined();
+    expect(cycle.briefing.kpiTiles).toBeDefined();
+    expect(cycle.briefing.kpiTiles?.length).toBe(6);
     expect(cycle.revOpsScan).toBeDefined();
     expect(cycle.pendingHitlActions).toBeDefined();
+    expect(cycle.auditLogs).toBeDefined();
   });
 
   it('answers founder natural language queries via askAiOperator fallback', async () => {
     const res = await askAiOperator('What is our billing and dunning status?', ctx);
     expect(res.answer).toBeDefined();
     expect(res.toolCallsExecuted).toContain('get_revenue_and_billing_summary');
+  });
+
+  it('executes replay_failed_webhooks in both diagnose and replay_and_resolve modes', async () => {
+    const diagRes = await executeOperatorTool('replay_failed_webhooks', { action: 'diagnose' }, ctx);
+    expect(diagRes.data).toBeDefined();
+    expect((diagRes.data as any).success).toBe(true);
+
+    const resolveRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, ctx);
+    expect(resolveRes.data).toBeDefined();
+    expect((resolveRes.data as any).success).toBe(true);
+  });
+
+  it('executes triage_email_deliverability and categorizes bounce events', async () => {
+    const res = await executeOperatorTool('triage_email_deliverability', { limit: 10 }, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).totalBounced).toBeDefined();
+  });
+
+  it('executes check_sms_carrier_health and evaluates deliverability rate', async () => {
+    const res = await executeOperatorTool('check_sms_carrier_health', {}, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).carrierDeliverabilityPct).toBeDefined();
+    expect((res.data as any).tenDlcStatus).toBe('approved');
+  });
+
+  it('executes detect_cron_lateness and flags delayed scheduled tasks', async () => {
+    const res = await executeOperatorTool('detect_cron_lateness', {}, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).healthy).toBeDefined();
+  });
+
+  it('executes scan_plan_upgrade_candidates and estimates ARR expansion', async () => {
+    const res = await executeOperatorTool('scan_plan_upgrade_candidates', { thresholdQuotes: 5 }, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).qualifiedCandidatesCount).toBeDefined();
+  });
+
+  it('executes optimize_dunning_retries and calculates optimal retry windows', async () => {
+    const res = await executeOperatorTool('optimize_dunning_retries', {}, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).dunningCount).toBeDefined();
+  });
+
+  it('executes check_connect_payout_compliance for paused Stripe Connect accounts', async () => {
+    const res = await executeOperatorTool('check_connect_payout_compliance', {}, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).pausedPayoutsCount).toBeDefined();
+  });
+
+  it('executes generate_dispute_evidence_packet with complete timeline defense', async () => {
+    const res = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: 'dp_123' }, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).timeline.length).toBeGreaterThan(0);
+    expect((res.data as any).readyForSubmission).toBe(true);
+  });
+
+  it('executes get_ops_trend_history across multi-day snapshot series', async () => {
+    const res = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).history.length).toBe(7);
   });
 });

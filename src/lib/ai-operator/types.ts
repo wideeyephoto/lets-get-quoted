@@ -64,10 +64,97 @@ export interface OperatorHealthMetrics {
   casesNearSlaCount: number;
 }
 
+export interface KpiStatTile {
+  id: string;
+  label: string;
+  value: string | number;
+  subValue?: string;
+  status: 'healthy' | 'warning' | 'critical' | 'neutral';
+  deepLink?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  sender: 'user' | 'operator';
+  text: string;
+  timestamp: string;
+  toolCalls?: string[];
+  hitlActionCreated?: boolean;
+}
+
+export interface WebhookReplayResult {
+  success: boolean;
+  replayedCount: number;
+  resolvedCount: number;
+  errors: string[];
+  remediationSummary: string;
+}
+
+export interface EmailDeliverabilityTriageResult {
+  totalBounced: number;
+  details: Array<{
+    id: string;
+    recipient: string;
+    bounceType: string;
+    accountId?: string;
+    accountName?: string;
+    timestamp: string;
+    recommendation: string;
+  }>;
+}
+
+export interface SmsCarrierHealthResult {
+  carrierDeliverabilityPct: number;
+  activeHotlines: number;
+  tenDlcStatus: 'approved' | 'in_review' | 'attention_needed';
+  flaggedIssues: string[];
+}
+
+export interface CronLatenessResult {
+  healthy: boolean;
+  delayedJobs: Array<{
+    name: string;
+    lastRun: string;
+    delayMinutes: number;
+    severity: 'warning' | 'critical';
+  }>;
+}
+
+export interface UpgradeCandidate {
+  accountId: string;
+  accountName: string;
+  currentPlan: string;
+  suggestedPlan: string;
+  monthlyQuoteCount: number;
+  reason: string;
+  estimatedAnnualLift: number;
+}
+
+export interface DisputeEvidencePacket {
+  disputeId: string;
+  accountId: string;
+  amount: number;
+  homeownerName?: string;
+  timeline: Array<{ timestamp: string; event: string; details: string }>;
+  defenseSummary: string;
+  readyForSubmission: boolean;
+}
+
+export interface OpsTrendSnapshot {
+  date: string;
+  mrrEstimated: number;
+  totalActiveContractors: number;
+  stripeConnectedContractors: number;
+  smsDeliverabilityPct: number;
+  unresolvedWebhooksCount: number;
+  incidentCount: number;
+}
+
 export interface ExecutiveBriefing {
   generatedAt: string;
   period: string;
   headline: string;
+  kpiTiles?: KpiStatTile[];
   revenue: {
     mrrEstimated: number;
     activeSubscriptions: number;
@@ -148,7 +235,6 @@ export interface SupportCaseTriageResult {
   requiresFounderReview: boolean;
   onboardingDiagnosis?: ContractorBlockerAnalysis;
 }
-
 
 export interface OperatorExecutionContext {
   supabase: SupabaseClient;

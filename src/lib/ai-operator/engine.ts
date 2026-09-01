@@ -25,6 +25,7 @@ export interface AutonomousCycleReport {
   revOpsScan: RevOpsScanResult;
   pendingHitlActions: OperatorHitlActionRequest[];
   safeActionsExecuted: number;
+  auditLogs?: import('./types').OperatorAuditLogEntry[];
 }
 
 /**
@@ -48,15 +49,6 @@ export async function runAutonomousOperatorCycle(
   // 3. Collect pending HITL actions
   const pendingHitlActions = listPendingHitlActions();
 
-  const report: AutonomousCycleReport = {
-    cycleId,
-    timestamp: new Date().toISOString(),
-    briefing,
-    revOpsScan,
-    pendingHitlActions,
-    safeActionsExecuted: revOpsScan.onboardingNudgesQueued,
-  };
-
   recordOperatorAudit({
     category: 'executive',
     actionName: 'Autonomous Cycle Completed',
@@ -64,12 +56,24 @@ export async function runAutonomousOperatorCycle(
     toolName: 'runAutonomousOperatorCycle',
     outputResult: {
       cycleId,
-      safeActions: report.safeActionsExecuted,
+      safeActions: revOpsScan.onboardingNudgesQueued,
       pendingHitl: pendingHitlActions.length,
     },
-    reasoningSummary: `Autonomous cycle completed. ${report.safeActionsExecuted} automated actions run, ${pendingHitlActions.length} HITL approvals pending.`,
+    reasoningSummary: `Autonomous cycle completed. ${revOpsScan.onboardingNudgesQueued} automated actions run, ${pendingHitlActions.length} HITL approvals pending.`,
     status: 'success',
   });
+
+  const auditLogs = getOperatorAuditLogs({ limit: 25 });
+
+  const report: AutonomousCycleReport = {
+    cycleId,
+    timestamp: new Date().toISOString(),
+    briefing,
+    revOpsScan,
+    pendingHitlActions,
+    safeActionsExecuted: revOpsScan.onboardingNudgesQueued,
+    auditLogs,
+  };
 
   return report;
 }
@@ -90,7 +94,61 @@ export async function askAiOperator(
 
   if (!apiKey) {
     const q = query.toLowerCase();
-    if (q.includes('billing') || q.includes('revenue') || q.includes('dunning') || q.includes('dispute') || q.includes('payout')) {
+    if (q.includes('webhook') || q.includes('failure')) {
+      const webhooks = await executeOperatorTool('replay_failed_webhooks', { action: 'diagnose' }, ctx);
+      return {
+        answer: `**Webhook SRE Diagnostics**:\n\n${JSON.stringify(webhooks.data, null, 2)}`,
+        toolCallsExecuted: ['replay_failed_webhooks'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('email') || q.includes('bounce') || q.includes('deliverability')) {
+      const emailTri = await executeOperatorTool('triage_email_deliverability', {}, ctx);
+      return {
+        answer: `**Email Deliverability & Bounce Triage**:\n\n${JSON.stringify(emailTri.data, null, 2)}`,
+        toolCallsExecuted: ['triage_email_deliverability'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('upgrade') || q.includes('candidate') || q.includes('expansion')) {
+      const upgrades = await executeOperatorTool('scan_plan_upgrade_candidates', {}, ctx);
+      return {
+        answer: `**Plan Tier Upgrade Candidates**:\n\n${JSON.stringify(upgrades.data, null, 2)}`,
+        toolCallsExecuted: ['scan_plan_upgrade_candidates'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('dispute') || q.includes('chargeback') || q.includes('evidence')) {
+      const evidence = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: 'dp_sample_123' }, ctx);
+      return {
+        answer: `**Dispute Defense Packet**:\n\n${JSON.stringify(evidence.data, null, 2)}`,
+        toolCallsExecuted: ['generate_dispute_evidence_packet'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('cron') || q.includes('lateness') || q.includes('delay')) {
+      const cronLateness = await executeOperatorTool('detect_cron_lateness', {}, ctx);
+      return {
+        answer: `**Background Cron Lateness Monitor**:\n\n${JSON.stringify(cronLateness.data, null, 2)}`,
+        toolCallsExecuted: ['detect_cron_lateness'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('trend') || q.includes('history') || q.includes('growth')) {
+      const trends = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
+      return {
+        answer: `**7-Day Operational Trends**:\n\n${JSON.stringify(trends.data, null, 2)}`,
+        toolCallsExecuted: ['get_ops_trend_history'],
+        pendingHitlActions: listPendingHitlActions(),
+      };
+    }
+
+    if (q.includes('billing') || q.includes('revenue') || q.includes('dunning') || q.includes('payout')) {
       const billing = await executeOperatorTool('get_revenue_and_billing_summary', { includeDisputes: true }, ctx);
       return {
         answer: `**Billing & Revenue Summary**: ${JSON.stringify(billing.data, null, 2)}`,
@@ -108,7 +166,7 @@ export async function askAiOperator(
       };
     }
 
-    if (q.includes('onboarding') || q.includes('blocker') || q.includes('connect')) {
+    if (q.includes('onboarding') || q.includes('blocker') || q.includes('nudge') || q.includes('connect')) {
       const diagnosis = await executeOperatorTool('diagnose_contractor_onboarding', { accountId: 'acc-test-123' }, ctx);
       return {
         answer: `**Onboarding Diagnostics**: ${JSON.stringify(diagnosis.data, null, 2)}`,

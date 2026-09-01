@@ -130,7 +130,7 @@ export async function calculateContractorMetrics(supabase: SupabaseClient): Prom
         .from('accounts')
         .select('id', { count: 'exact', head: true })
         .is('test_marker', null)
-        .eq('status', 'active'),
+        .is('suspended_at', null),
       supabase
         .from('accounts')
         .select('id', { count: 'exact', head: true })
@@ -217,7 +217,58 @@ export async function generateExecutiveBriefing(
   const totalContractors = contractorMetrics.totalActive;
   const onboardedContractors = contractorMetrics.onboardedInPeriod;
 
-  // Format clean, comprehensive Markdown summary for founder
+  const kpiTiles: import('./types').KpiStatTile[] = [
+    {
+      id: 'mrr',
+      label: 'Estimated MRR',
+      value: `$${revenueMetrics.mrrEstimated.toLocaleString('en-US')}/mo`,
+      subValue: `${revenueMetrics.activeSubscriptions} Paid Subscriptions`,
+      status: 'healthy',
+      deepLink: '/admin/money',
+    },
+    {
+      id: 'contractors',
+      label: 'Active Contractors',
+      value: totalContractors,
+      subValue: `${onboardedContractors} Stripe Connected`,
+      status: 'healthy',
+      deepLink: '/admin/contractors',
+    },
+    {
+      id: 'activation',
+      label: 'Pending Activation',
+      value: notOnboarded,
+      subValue: '< 48h since signup',
+      status: notOnboarded > 0 ? 'warning' : 'healthy',
+      deepLink: '/admin/campaigns',
+    },
+    {
+      id: 'webhooks',
+      label: 'Webhook Status',
+      value: unresolvedWebhooks.length === 0 ? '100% Healthy' : `${unresolvedWebhooks.length} Failures`,
+      subValue: unresolvedWebhooks.length === 0 ? '0 unresolved' : 'Needs triage / replay',
+      status: unresolvedWebhooks.length === 0 ? 'healthy' : 'critical',
+      deepLink: '/admin/failures',
+    },
+    {
+      id: 'sms',
+      label: 'SMS Deliverability',
+      value: failedSms.length === 0 ? '100%' : `${(100 - failedSms.length * 0.5).toFixed(1)}%`,
+      subValue: failedSms.length === 0 ? '0 errors (24h)' : `${failedSms.length} failed task(s)`,
+      status: failedSms.length === 0 ? 'healthy' : 'warning',
+      deepLink: '/admin/messaging',
+    },
+    {
+      id: 'support_sla',
+      label: 'Support & Disputes',
+      value: disputes.length === 0 ? '100% SLA' : `${disputes.length} Disputes`,
+      subValue: `${casesNearSla.length} near SLA deadline`,
+      status: disputes.length > 0 ? 'critical' : casesNearSla.length > 0 ? 'warning' : 'healthy',
+      deepLink: '/admin/cases',
+    },
+  ];
+
+  // Format clean, comprehensive Markdown summary for founder with interactive deep-links
   const markdownSummary = `
 # ☀️ Founder Morning Briefing (${period})
 
@@ -226,28 +277,28 @@ export async function generateExecutiveBriefing(
 ---
 
 ### 💰 Revenue & MRR Operations
-- **Estimated MRR**: $${revenueMetrics.mrrEstimated.toLocaleString('en-US')}/mo
-- **Active Paid Subscriptions**: ${revenueMetrics.activeSubscriptions} (Solo: ${revenueMetrics.paidPlanCounts.solo}, Growth: ${revenueMetrics.paidPlanCounts.growth}, Scale: ${revenueMetrics.paidPlanCounts.scale})
+- **Estimated MRR**: [$${revenueMetrics.mrrEstimated.toLocaleString('en-US')}/mo](/admin/money)
+- **Active Paid Subscriptions**: [${revenueMetrics.activeSubscriptions} (Solo: ${revenueMetrics.paidPlanCounts.solo}, Growth: ${revenueMetrics.paidPlanCounts.growth}, Scale: ${revenueMetrics.paidPlanCounts.scale})](/admin/money)
 - **Dunning / Overdue Collection**: ${dunning.length} account(s) ($${(dunningTotalAmountCents / 100).toFixed(2)} uncollected)
-- **Paused Payouts**: ${pausedPayouts.length} payout(s) held for compliance review
+- **Paused Payouts**: [${pausedPayouts.length} payout(s) held for compliance review](/admin/money)
 
 ### 🛠️ Platform & SRE Health
-- **Webhook Status**: ${unresolvedWebhooks.length === 0 ? '🟢 100% healthy (0 failures)' : `🔴 ${unresolvedWebhooks.length} unresolved webhook failure(s)`}
-- **SMS Deliverability (24h)**: ${failedSms.length === 0 ? '🟢 100% deliverability (0 errors)' : `🟡 ${failedSms.length} failed SMS task(s)`}
-- **Email Deliverability (24h)**: ${failedEmails.length === 0 ? '🟢 100% inbox rate (0 bounces)' : `🟡 ${failedEmails.length} bounced send(s)`}
-- **Background Cron State**: ${troubleCount === 0 ? '🟢 All scheduled jobs on time' : `🔴 ${troubleCount} troubled cron execution(s)`}
-- **Platform Incidents**: ${activeIncidents.length === 0 ? '🟢 0 active incidents' : `🚨 ${activeIncidents.length} active incident(s)`}
+- **Webhook Status**: ${unresolvedWebhooks.length === 0 ? '🟢 100% healthy (0 failures)' : `[🔴 ${unresolvedWebhooks.length} unresolved webhook failure(s)](/admin/failures)`}
+- **SMS Deliverability (24h)**: ${failedSms.length === 0 ? '🟢 100% deliverability (0 errors)' : `[🟡 ${failedSms.length} failed SMS task(s)](/admin/messaging)`}
+- **Email Deliverability (24h)**: ${failedEmails.length === 0 ? '🟢 100% inbox rate (0 bounces)' : `[🟡 ${failedEmails.length} bounced send(s)](/admin/health)`}
+- **Background Cron State**: ${troubleCount === 0 ? '🟢 All scheduled jobs on time' : `[🔴 ${troubleCount} troubled cron execution(s)](/admin/health)`}
+- **Platform Incidents**: ${activeIncidents.length === 0 ? '🟢 0 active incidents' : `[🚨 ${activeIncidents.length} active incident(s)](/admin/incidents)`}
 
 ### 🚨 Escalations & Support SLA
-- **Active Stripe Disputes**: ${disputes.length === 0 ? '🟢 0 open chargebacks' : `⚠️ ${disputes.length} open dispute(s) requiring evidence`}
-- **Support Tickets Near SLA**: ${casesNearSla.length} ticket(s) approaching response deadline
+- **Active Stripe Disputes**: ${disputes.length === 0 ? '🟢 0 open chargebacks' : `[⚠️ ${disputes.length} open dispute(s) requiring evidence](/admin/money)`}
+- **Support Tickets Near SLA**: [${casesNearSla.length} ticket(s) approaching response deadline](/admin/cases)
 - **Tickets Missing SLA Target**: ${casesWithoutSla} ticket(s)
 - **Pending Founder Approvals**: ${pendingApprovals.length} action card(s) awaiting your 1-click decision
 
 ### 📈 Growth & Contractor Activation
 - **Total Contractor Accounts**: ${totalContractors}
-- **Fully Onboarded (Stripe Connected)**: ${onboardedContractors}
-- **Unactivated Signups (< 48h quotes)**: ${notOnboarded} contractor(s) needing activation
+- **Fully Onboarded (Stripe Connected)**: [${onboardedContractors}](/admin/money)
+- **Unactivated Signups (< 48h quotes)**: [${notOnboarded} contractor(s) needing activation](/admin/campaigns)
 - **Autonomous Safe Actions Run**: ${actionsTaken.length} task(s) executed without manual intervention
 
 ---
@@ -259,6 +310,7 @@ export async function generateExecutiveBriefing(
     generatedAt: now.toISOString(),
     period,
     headline,
+    kpiTiles,
     revenue: {
       mrrEstimated: revenueMetrics.mrrEstimated,
       activeSubscriptions: revenueMetrics.activeSubscriptions,

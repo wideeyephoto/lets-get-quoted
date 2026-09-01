@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import type { ManualArticleSummary, ManualChapter } from '@/lib/admin-manual';
 import styles from '../manual.module.css';
@@ -10,10 +10,73 @@ interface AdminManualExplorerProps {
   summaries: ManualArticleSummary[];
 }
 
+const CATEGORY_PILLS = [
+  { id: 'all', label: 'All Guides', icon: '📚' },
+  { id: 'payments', label: 'Payments & Rails', icon: '💳' },
+  { id: 'security', label: 'Security & MFA', icon: '🛡️' },
+  { id: 'support', label: 'Support & Copilot', icon: '🤖' },
+  { id: 'risk', label: 'Risk & Enforcement', icon: '⚖️' },
+  { id: 'messaging', label: 'Messaging & TCPA', icon: '📱' },
+  { id: 'operations', label: 'Platform Ops', icon: '⚙️' },
+  { id: 'engineering', label: 'Engineering & Themes', icon: '🛠️' },
+  { id: 'recovery', label: 'Disaster Recovery', icon: '🔄' },
+];
+
+const PINNED_RUNBOOK_SLUGS = [
+  {
+    slug: 'payment-investigation-reconciliation',
+    title: 'Late-Success Payment Reconciler',
+    meta: 'Stripe & Connect · Chapter 5',
+    risk: 'production',
+  },
+  {
+    slug: 'ai-operator-copilot-triage',
+    title: 'AI Operator Blocker Triage',
+    meta: 'Onboarding & KYC · Chapter 3',
+    risk: 'general',
+  },
+  {
+    slug: 'ad-budget-wallets-billing',
+    title: 'Google Ads Auto-Refill Recovery',
+    meta: 'Ad Wallets & CPC · Chapter 5',
+    risk: 'production',
+  },
+  {
+    slug: 'speed-to-lead-tcpa-compliance',
+    title: 'TCPA Quiet Hours & Morning Queue',
+    meta: 'State Mini-TCPA · Chapter 6',
+    risk: 'general',
+  },
+];
+
 export default function AdminManualExplorer({ chapters, summaries }: AdminManualExplorerProps) {
   const [query, setQuery] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('all');
   const [selectedRisk, setSelectedRisk] = useState('all');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  // Global Keyboard Shortcut: '/' or 'Ctrl+K' / 'Cmd+K' to focus search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+        if (e.key === 'Escape') {
+          setQuery('');
+          searchInputRef.current?.blur();
+        }
+        return;
+      }
+
+      if (e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key === 'k')) {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const filteredSummaries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -42,15 +105,74 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
 
   return (
     <div className={styles.explorer}>
+      {/* Pinned Quick & Emergency Runbooks */}
+      {!isFiltered && (
+        <section className={styles.pinnedSection} aria-label="Pinned Emergency Runbooks">
+          <div className={styles.pinnedHeader}>
+            <span>⚡ Frequently Accessed & Incident Runbooks</span>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>1-Click Triage</span>
+          </div>
+          <div className={styles.pinnedGrid}>
+            {PINNED_RUNBOOK_SLUGS.map((pinned) => (
+              <Link
+                key={pinned.slug}
+                href={`/admin/manual/${pinned.slug}`}
+                className={styles.pinnedCard}
+              >
+                <span className={styles.pinnedCardTitle}>{pinned.title}</span>
+                <span className={styles.pinnedCardMeta}>{pinned.meta}</span>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Category Filter Pills */}
+      <div className={styles.categoryPillList} role="tablist" aria-label="Category quick filter">
+        {CATEGORY_PILLS.map((pill) => {
+          const isActive = selectedChapter === pill.id;
+          return (
+            <button
+              key={pill.id}
+              type="button"
+              className={`${styles.categoryPill} ${isActive ? styles.categoryPillActive : ''}`}
+              onClick={() => setSelectedChapter(pill.id)}
+            >
+              <span>{pill.icon}</span>
+              <span>{pill.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Main Search Bar */}
       <div className={styles.searchBar}>
-        <input
-          type="search"
-          placeholder="Search by task, symptom, page (/admin/*), permission, or keyword..."
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className={styles.searchInput}
-          aria-label="Search manual articles"
-        />
+        <div className={styles.searchInputWrapper}>
+          <span className={styles.searchIcon}>🔍</span>
+          <input
+            ref={searchInputRef}
+            type="search"
+            placeholder="Search tasks, symptoms, routes (/admin/*), error codes, or permissions..."
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className={styles.searchInput}
+            aria-label="Search manual articles"
+          />
+          <div className={styles.searchActions}>
+            {query ? (
+              <button
+                type="button"
+                onClick={() => setQuery('')}
+                className={styles.clearSearchBtn}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            ) : (
+              <kbd className={styles.shortcutBadge}>/</kbd>
+            )}
+          </div>
+        </div>
 
         <select
           value={selectedChapter}
@@ -73,17 +195,19 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
           aria-label="Filter by risk level"
         >
           <option value="all">All Risk Levels</option>
-          <option value="general">General (Read-Only/Standard)</option>
+          <option value="general">General (Standard / Read-Only)</option>
           <option value="production">Production Impact / Sensitive</option>
         </select>
       </div>
 
+      {/* Results View */}
       {isFiltered ? (
         <div className={styles.chapterSection}>
           <div className={styles.chapterHeader}>
-            <h2 className={styles.chapterTitle}>Search Results</h2>
+            <h2 className={styles.chapterTitle}>Search & Filtered Results</h2>
             <span className={styles.chapterMeta}>
-              Found {filteredSummaries.length} permitted guide{filteredSummaries.length === 1 ? '' : 's'}
+              Found {filteredSummaries.length} permitted guide
+              {filteredSummaries.length === 1 ? '' : 's'}
             </span>
           </div>
 
@@ -103,7 +227,9 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
                     <div className={styles.cardBadgeRow}>
                       <span
                         className={`${styles.badge} ${
-                          art.riskLevel === 'production' ? styles.badgeProduction : styles.badgeGeneral
+                          art.riskLevel === 'production'
+                            ? styles.badgeProduction
+                            : styles.badgeGeneral
                         }`}
                       >
                         {art.riskLevel}
@@ -140,7 +266,9 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
                     {chapter.summary}
                   </p>
                 </div>
-                <span className={styles.chapterMeta}>Owner: {chapter.owner}</span>
+                <span className={styles.chapterMeta}>
+                  {chapter.articles.length} guides · Owner: {chapter.owner}
+                </span>
               </div>
 
               <div className={styles.articleGrid}>
@@ -185,3 +313,4 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
     </div>
   );
 }
+

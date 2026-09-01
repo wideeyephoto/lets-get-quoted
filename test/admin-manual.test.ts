@@ -6,6 +6,7 @@ import {
   getPermittedManualChapters,
   getPermittedManualSummaries,
   getPermittedManualArticle,
+  getAdjacentPermittedManualArticles,
   canStaffReadArticle,
 } from '@/lib/admin-manual';
 import { ADMIN_MANUAL_VISUAL_COMPONENTS } from '@/components/admin-manual/visuals';
@@ -77,6 +78,9 @@ describe('Admin Manual Authoritative Articles & Chapters', () => {
     expect(slugs.has('ad-budget-wallets-billing')).toBe(true);
     expect(slugs.has('speed-to-lead-tcpa-compliance')).toBe(true);
     expect(slugs.has('theme-engine-custom-domains')).toBe(true);
+    expect(slugs.has('quickbooks-sync-triage')).toBe(true);
+    expect(slugs.has('sms-hotline-provisioning')).toBe(true);
+    expect(slugs.has('contractor-lifecycle-dunning')).toBe(true);
   });
 });
 
@@ -102,17 +106,31 @@ describe('Admin Manual Role Permissions & Filtering', () => {
   it('filters role access appropriately for support and finance', () => {
     const aiArticle = MANUAL_ARTICLES.find((a) => a.slug === 'ai-operator-copilot-triage')!;
     const adArticle = MANUAL_ARTICLES.find((a) => a.slug === 'ad-budget-wallets-billing')!;
+    const qbArticle = MANUAL_ARTICLES.find((a) => a.slug === 'quickbooks-sync-triage')!;
     const deleteArticle = MANUAL_ARTICLES.find((a) => a.slug === 'account-closure-cascade')!;
 
-    // Support can read AI operator copilot
+    // Support can read AI operator copilot & QuickBooks triage
     expect(canStaffReadArticle(aiArticle, 'support', true)).toBe(true);
+    expect(canStaffReadArticle(qbArticle, 'support', true)).toBe(true);
     // Support cannot read account closure cascade
     expect(canStaffReadArticle(deleteArticle, 'support', true)).toBe(false);
 
-    // Finance can read ad budget wallet billing
+    // Finance can read ad budget wallet billing & QuickBooks triage
     expect(canStaffReadArticle(adArticle, 'finance', true)).toBe(true);
+    expect(canStaffReadArticle(qbArticle, 'finance', true)).toBe(true);
     // Finance cannot read account closure cascade
     expect(canStaffReadArticle(deleteArticle, 'finance', true)).toBe(false);
+  });
+
+  it('correctly calculates adjacent permitted articles within the same chapter', () => {
+    const startHereAdjacent = getAdjacentPermittedManualArticles('start-here', 'super_admin', true);
+    expect(startHereAdjacent.prev).toBeNull();
+    expect(startHereAdjacent.next).not.toBeNull();
+    expect(startHereAdjacent.next?.slug).toBe('console-navigation-map');
+
+    const consoleMapAdjacent = getAdjacentPermittedManualArticles('console-navigation-map', 'super_admin', true);
+    expect(consoleMapAdjacent.prev?.slug).toBe('start-here');
+    expect(consoleMapAdjacent.next).toBeNull();
   });
 
   it('sanitizes article summaries for client search indexing without exposing procedures', () => {
@@ -127,3 +145,4 @@ describe('Admin Manual Role Permissions & Filtering', () => {
     }
   });
 });
+

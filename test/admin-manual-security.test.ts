@@ -1,5 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import * as auth from '@/lib/auth';
+
+vi.mock('@/lib/auth', () => ({
+  requireAdmin: vi.fn(),
+  requirePermission: vi.fn(),
+  requirePermissions: vi.fn(),
+  createAdminClient: vi.fn(),
+}));
+
 import {
   triggerOperatorCycleAction,
   resolveHitlActionServerAction,
@@ -15,12 +23,24 @@ import {
 
 describe('Admin Server Action Security Gating', () => {
   beforeEach(() => {
-    vi.restoreAllMocks();
+    vi.clearAllMocks();
+    vi.mocked(auth.requireAdmin).mockResolvedValue({
+      admin: { from: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: null }) } as any,
+      adminEmail: 'test@admin.com',
+      role: 'super_admin',
+      active: true,
+    } as any);
+    vi.mocked(auth.requirePermission).mockResolvedValue({
+      admin: { from: vi.fn().mockReturnThis(), select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: null }) } as any,
+      adminEmail: 'test@admin.com',
+      role: 'super_admin',
+      active: true,
+    } as any);
   });
 
   describe('AI Operator Server Actions', () => {
     it('rejects unauthenticated triggerOperatorCycleAction calls', async () => {
-      vi.spyOn(auth, 'requirePermission').mockRejectedValueOnce(
+      vi.mocked(auth.requireAdmin).mockRejectedValue(
         new Error('Your read only role does not include "ops.manage"'),
       );
 
@@ -30,7 +50,7 @@ describe('Admin Server Action Security Gating', () => {
     });
 
     it('rejects unauthenticated resolveHitlActionServerAction calls', async () => {
-      vi.spyOn(auth, 'requirePermission').mockRejectedValueOnce(
+      vi.mocked(auth.requireAdmin).mockRejectedValue(
         new Error('Your support role does not include "ops.manage"'),
       );
 
@@ -40,7 +60,7 @@ describe('Admin Server Action Security Gating', () => {
     });
 
     it('rejects unauthorized triageCaseServerAction calls', async () => {
-      vi.spyOn(auth, 'requirePermission').mockRejectedValueOnce(
+      vi.mocked(auth.requireAdmin).mockRejectedValue(
         new Error('Your read only role does not include "account.support"'),
       );
 
@@ -52,7 +72,7 @@ describe('Admin Server Action Security Gating', () => {
 
   describe('Campaigns Server Actions', () => {
     it('rejects unauthorized sendPlatformCampaignBlastAction without ops.manage permission', async () => {
-      vi.spyOn(auth, 'requirePermission').mockRejectedValueOnce(
+      vi.mocked(auth.requirePermission).mockRejectedValue(
         new Error('Your support role does not include "ops.manage"'),
       );
 
@@ -69,7 +89,7 @@ describe('Admin Server Action Security Gating', () => {
     });
 
     it('rejects previewPlatformCampaignAction if not authenticated', async () => {
-      vi.spyOn(auth, 'requireAdmin').mockRejectedValueOnce(new Error('NEXT_NOT_FOUND'));
+      vi.mocked(auth.requireAdmin).mockRejectedValue(new Error('NEXT_NOT_FOUND'));
 
       const result = await previewPlatformCampaignAction({
         subject: 'Test Subject',

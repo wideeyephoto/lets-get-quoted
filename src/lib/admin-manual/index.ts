@@ -1000,6 +1000,129 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
     visualId: 'ad-billing-wallet',
   },
+  {
+    slug: 'quickbooks-sync-triage',
+    chapterId: 'payments',
+    chapterTitle: 'Payments, Billing & Rails',
+    order: 6,
+    title: 'QuickBooks Online 2-Way Sync, Token Lifecycle & Error Resolution SOP',
+    summary: 'Troubleshooting QuickBooks OAuth2 refresh failures, Error 6240 DisplayName conflicts, automated sales tax overrides, and payment push sequence dependencies.',
+    keywords: ['quickbooks', 'qbo', 'intuit', 'oauth', 'sync', 'accounting', 'ledger', 'error 6240', 'sales tax', 'invoices'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'finance', 'ops', 'support'],
+    requiredPermission: 'account.support',
+    requiresMfa: false,
+    riskLevel: 'general',
+    environment: 'all',
+    useThisWhen: 'Contractor reports invoices or payments are failing to sync to QuickBooks Online, or connection shows disconnected.',
+    desiredOutcome: 'QuickBooks OAuth connection restored, mapping errors resolved, and pending invoices/payments pushed cleanly.',
+    prerequisites: ['Active staff session with account.support permission'],
+    routes: [
+      { label: 'Accounts Directory', href: '/admin/accounts' },
+      { label: 'Billing Operations', href: '/admin/billing-operations' },
+      { label: 'Payments Ledger', href: '/admin/payments' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Check Connection Health & Realm ID',
+        instruction: 'Inspect contractor account profile or /dashboard/settings/quickbooks for quickbooks_connections row. Check if token expiration timestamp is in the past.',
+        verification: 'Connection displays active realmId and valid refreshToken timestamp.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Diagnose Sync Error Code',
+        instruction: 'Inspect quickbooks_sync_logs for specific failure codes. Common codes: Error 6240 (DisplayName already exists with different casing/whitespace in Intuit), missing income service item, or sales tax calculation mismatch.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Resolve Mapping Collision & Trigger Re-Sync',
+        instruction: 'For Error 6240, adjust customer name or link existing QuickBooks customer ID. For invoice sequence errors, ensure invoice has successfully posted before pushing attached payments.',
+        caution: 'Never delete an invoice in QuickBooks if a payment has already been matched; this creates orphaned ledger entries.',
+      },
+    ],
+    stopConditions: [
+      'Contractor company was disconnected directly in Intuit App Store (must re-authorize from contractor dashboard).',
+      'Invoice is in draft or unfinalized state.',
+    ],
+    expectedResult: 'Invoices and payments synchronize to QuickBooks with valid Intuit IDs and matched ledger items.',
+    impact: {
+      customer: 'Zero double-entry bookkeeping and synchronized accounts receivable.',
+      business: 'High contractor retention for accounting automation features.',
+    },
+    evidenceAfterward: ['quickbooks_sync_logs record with status: success and intuit_entity_id.'],
+    auditLogExpectation: 'Writes support action audit record for manual sync trigger or mapping override.',
+    recoveryOrRollback: 'If incorrect invoice was pushed, mark invoice deleted in QuickBooks and update local mapping ID.',
+    escalationContact: 'Finance Lead (finance@letsgetquoted.com)',
+    relatedArticles: ['payment-rails-overview', 'payment-investigation-reconciliation'],
+    owner: 'Finance Lead',
+    backupOwner: 'Support Lead',
+    authoritativeFiles: ['src/lib/quickbooks/sync.ts', 'src/lib/quickbooks/api.ts', 'src/lib/quickbooks/map.ts'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+    visualId: 'payment-rails',
+  },
+  {
+    slug: 'contractor-lifecycle-dunning',
+    chapterId: 'payments',
+    chapterTitle: 'Payments, Billing & Rails',
+    order: 7,
+    title: 'Contractor Lifecycle Automation, Trial Expirations & Dunning Protocols',
+    summary: 'Managing trial-to-paid conversion sequences, invoice overdue notices, automated Stripe dunning retry schedules, and churn prevention interventions.',
+    keywords: ['dunning', 'trial', 'lifecycle', 'churn', 'overdue', 'stripe retry', 'emails', 'resend', 'grace period'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'finance', 'ops', 'support'],
+    requiredPermission: 'account.support',
+    requiresMfa: false,
+    riskLevel: 'general',
+    environment: 'all',
+    useThisWhen: 'Assisting a contractor with expired trial status, failed monthly subscription renewal, or investigating automated dunning emails.',
+    desiredOutcome: 'Subscription recovered, payment method updated, or temporary courtesy grace period applied.',
+    prerequisites: ['account.support permission'],
+    routes: [
+      { label: 'Billing Operations', href: '/admin/billing-operations' },
+      { label: 'Accounts Directory', href: '/admin/accounts' },
+      { label: 'Marketing Campaigns', href: '/admin/campaigns' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Inspect Subscription & Trial Status',
+        instruction: 'Look up contractor account on /admin/accounts. Check plan (Starter, Growth, Scale), trial_ends_at timestamp, and Stripe subscription status (active, past_due, canceled).',
+      },
+      {
+        stepNumber: 2,
+        title: 'Review Dunning Retry Cadence',
+        instruction: 'Check Stripe invoice attempt count (Day 1, Day 3, Day 5, Day 7). Verify that Resend delivered the corresponding lifecycle warning emails.',
+        verification: 'Contractor received payment update link (/dashboard/settings/billing) without hard platform lockout during 7-day grace window.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Apply Grace Extension or Send Recovery Link',
+        instruction: 'If contractor requires bank wire or payroll timing extension, staff can grant a 3-day grace period extension or resend the direct Stripe payment update link.',
+      },
+    ],
+    stopConditions: [
+      'Account has repeated past chargebacks or fraudulent dispute history.',
+      'Subscription has already been permanently deleted in Stripe (>30 days past due).',
+    ],
+    expectedResult: 'Contractor subscription restored to active without data loss or feature disruption.',
+    impact: {
+      customer: 'Uninterrupted quote generation and client communications.',
+      business: 'Reduced involuntary churn and protected recurring SaaS revenue.',
+    },
+    evidenceAfterward: ['Updated accounts.subscription_status and Stripe payment method token.'],
+    auditLogExpectation: 'Writes account.support audit row if grace period or manual renewal is applied.',
+    recoveryOrRollback: 'If payment fails after grace period, account automatically moves to restricted read-only mode.',
+    escalationContact: 'Finance Lead (finance@letsgetquoted.com)',
+    relatedArticles: ['payment-rails-overview', 'payout-restrictions-entitlements'],
+    owner: 'Finance Lead',
+    backupOwner: 'Operations Lead',
+    authoritativeFiles: ['src/lib/contractor-lifecycle-emails.ts', 'src/lib/billing-catalog.ts', 'src/lib/admin-billing-operations.ts'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+    visualId: 'payment-rails',
+  },
 
   // --- Chapter 6: Messaging, Voice & Campaigns ---
   {
@@ -1211,6 +1334,68 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     lastVerified: MANUAL_LAST_VERIFIED_DATE,
     lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
     visualId: 'speed-to-lead-tcpa',
+  },
+  {
+    slug: 'sms-hotline-provisioning',
+    chapterId: 'messaging',
+    chapterTitle: 'Messaging, Voice & Campaigns',
+    order: 5,
+    title: 'Dedicated SMS Number Provisioning, 10DLC Brand Vetting & Setup Fees SOP',
+    summary: 'Step-by-step workflow for SignalWire 10DLC campaign vetting, dedicated local/toll-free phone number acquisition, $15 setup fee tracking, and carrier rejection remediation.',
+    keywords: ['dedicated number', 'sms hotline', 'signalwire', '10dlc', 'brand vetting', 'setup fee', 'phone provisioning', 'carrier rejection'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'ops', 'support'],
+    requiredPermission: 'ops.manage',
+    requiresMfa: false,
+    riskLevel: 'general',
+    environment: 'all',
+    useThisWhen: 'Contractor orders a dedicated trade hotline number, 10DLC campaign registration fails or is rejected, or verifying $15 number setup fee ledger entry.',
+    desiredOutcome: 'Dedicated phone number provisioned on SignalWire, 10DLC campaign approved by TCR, and incoming/outgoing SMS routed through contractor inbox.',
+    prerequisites: ['ops.manage or account.support permission'],
+    routes: [
+      { label: 'Messaging Operations', href: '/admin/messaging' },
+      { label: 'Accounts Directory', href: '/admin/accounts' },
+      { label: 'Service Health', href: '/admin/health' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Review 10DLC Brand & Campaign Submission',
+        instruction: 'Inspect contractor legal business name, EIN/tax ID, and website privacy policy link in /admin/messaging. Ensure sample SMS messages include required opt-out language (e.g. "Reply STOP to cancel").',
+        verification: 'Campaign state in SignalWire / TCR shows submitted or in_review.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Acquire Dedicated Number & Reconcile Setup Fee',
+        instruction: 'Select area code matching contractor primary operating market. Verify that $15 dedicated number setup fee has settled in Stripe ledger before provisioning.',
+        caution: 'Do not allocate phone numbers before 10DLC brand registration is submitted; unvetted numbers incur high carrier filtering rates.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Perform End-to-End Test Message',
+        instruction: 'Send a test quote text through the newly assigned hotline. Verify two-way delivery and webhook reception in /api/webhooks/sms.',
+      },
+    ],
+    stopConditions: [
+      'The Campaign Registry (TCR) rejected 10DLC brand due to mismatched legal name/EIN.',
+      'Contractor has no verified business address on file.',
+    ],
+    expectedResult: 'Dedicated hotline number active, webhook routing verified, and contractor messaging inbox live.',
+    impact: {
+      customer: 'Homeowners recognize local contractor caller ID and receive trusted, reliable texts.',
+      business: 'Compliant 10DLC throughput with near-zero carrier spam filtering.',
+    },
+    evidenceAfterward: ['messaging_numbers row with status: active and signalwire_sid.'],
+    auditLogExpectation: 'Writes ops.manage audit log for number provisioning or 10DLC resubmission.',
+    recoveryOrRollback: 'If number was provisioned in error, release number on SignalWire and re-allocate budget credit.',
+    escalationContact: 'Communications Lead (ops@letsgetquoted.com)',
+    relatedArticles: ['sms-delivery-failures', 'inbound-replies-consent', 'speed-to-lead-tcpa-compliance'],
+    owner: 'Communications Lead',
+    backupOwner: 'Operations Lead',
+    authoritativeFiles: ['src/lib/messaging-number-provisioning.ts', 'src/lib/sms.ts', 'src/app/api/webhooks/sms/route.ts'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+    visualId: 'sms-consent-delivery',
   },
 
   // --- Chapter 7: Platform Operations ---
@@ -1950,3 +2135,34 @@ export function getAllManualArticles(): readonly ManualArticle[] {
 export function getAllManualVisuals(): readonly ManualVisual[] {
   return MANUAL_VISUALS;
 }
+
+/**
+ * Returns previous and next permitted articles within the same chapter for linear navigation.
+ */
+export function getAdjacentPermittedManualArticles(
+  slug: string,
+  role: StaffRole,
+  active: boolean,
+): { prev: ManualArticleSummary | null; next: ManualArticleSummary | null } {
+  if (!active) return { prev: null, next: null };
+  const currentArticle = MANUAL_ARTICLES.find((a) => a.slug === slug);
+  if (!currentArticle || !canStaffReadArticle(currentArticle, role, active)) {
+    return { prev: null, next: null };
+  }
+
+  const chapterPermitted = MANUAL_ARTICLES
+    .filter((art) => art.chapterId === currentArticle.chapterId && canStaffReadArticle(art, role, active))
+    .sort((a, b) => a.order - b.order);
+
+  const currentIndex = chapterPermitted.findIndex((art) => art.slug === slug);
+  if (currentIndex === -1) return { prev: null, next: null };
+
+  const prev = currentIndex > 0 ? summarizeManualArticle(chapterPermitted[currentIndex - 1]) : null;
+  const next =
+    currentIndex < chapterPermitted.length - 1
+      ? summarizeManualArticle(chapterPermitted[currentIndex + 1])
+      : null;
+
+  return { prev, next };
+}
+
