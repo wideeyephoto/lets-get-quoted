@@ -6,15 +6,15 @@ import SiteFooter from '@/components/site-footer';
 import ForExperience from './ForExperience';
 
 export const metadata: Metadata = {
-  title: { absolute: titleWithBrand('Contractor Website & Software by Trade') },
-  description: `A website, AI Intake, quotes, scheduling, and Stripe payments tailored to your trade. Browse all ${TRADES.length} trades. Plans start at ${FLEX_PRICE.monthlyPrice}.`,
+  title: { absolute: titleWithBrand('Contractor Websites, Estimators & Quotes by Trade') },
+  description: `Choose from ${TRADES.length}+ trades and start with editable services, smart intake questions, an instant estimator, and highly customizable Smart Quotes. Plans start at ${FLEX_PRICE.monthlyPrice}.`,
   alternates: { canonical: 'https://letsgetquoted.com/for' },
   openGraph: {
     type: 'website',
     url: 'https://letsgetquoted.com/for',
     siteName: "Let's Get Quoted",
-    title: 'Contractor Website & Quoting Software by Trade · Let’s Get Quoted',
-    description: `Websites and quoting software built for your trade — ${TRADES.length} of them. Win the lead, quote the job, and get paid. Plans start at ${FLEX_PRICE.monthlyPrice}.`,
+    title: 'Contractor Websites, Estimators & Quotes by Trade · Let’s Get Quoted',
+    description: `Choose your trade and start with editable services, smart intake, an instant estimator, and highly customizable Smart Quotes. Plans start at ${FLEX_PRICE.monthlyPrice}.`,
     images: [
       {
         url: '/template-previews/professional.jpg',
@@ -26,8 +26,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Contractor Website & Quoting Software by Trade',
-    description: `Websites and quoting software built for your trade — ${TRADES.length} of them. Plans start at ${FLEX_PRICE.monthlyPrice}.`,
+    title: 'Contractor Websites, Estimators & Quotes by Trade',
+    description: `Choose from ${TRADES.length}+ trade starting points with editable services, smart intake, estimators, and Smart Quotes. Plans start at ${FLEX_PRICE.monthlyPrice}.`,
     images: ['/template-previews/professional.jpg'],
   },
 };

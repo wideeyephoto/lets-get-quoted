@@ -9,7 +9,7 @@ import { seasonalTrades } from '@/lib/trade-collections';
  * /for trade hub and directory test suite.
  *
  * Verifies that all 150 trades are catalogued and linked, SEO metadata is intact,
- * and interactive trade simulators/calculators are properly structured.
+ * and the focused trade-finder experience is properly structured.
  */
 
 const read = (...parts: string[]) =>
@@ -20,11 +20,8 @@ const stripJs = (source: string) =>
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
-const stripCss = (source: string) => source.replace(/\/\*[\s\S]*?\*\//g, '');
-
 const PAGE = stripJs(read('src', 'app', 'for', 'page.tsx'));
 const EXP = stripJs(read('src', 'app', 'for', 'ForExperience.tsx'));
-const CSS = stripCss(read('src', 'app', 'for', 'for.module.css'));
 const LAYOUT = read('src', 'app', 'for', 'layout.tsx');
 
 /* ===========================================================================
@@ -39,12 +36,14 @@ describe('the trade directory links and categorization', () => {
 
   it('renders links to trade detail routes', () => {
     expect(EXP).toContain('href={`/for/${trade.slug}`}');
-    expect(EXP).toContain('filteredTrades.map(');
+    expect(EXP).toContain('visibleTrades.map(');
+    expect(EXP).toContain('directoryMatches.slice(0, 4)');
   });
 
   it('provides category filter tabs for all trade categories', () => {
     expect(EXP).toContain('TRADE_CATEGORIES.map(');
-    expect(EXP).toContain('All {TRADES.length} Trades');
+    expect(EXP).toContain('All trades');
+    expect(EXP).toContain('showAllTrades &&');
   });
 });
 
@@ -54,7 +53,7 @@ describe('the trade directory links and categorization', () => {
 describe('/for SEO and metadata surface', () => {
   it('defines canonical and title metadata', () => {
     expect(PAGE).toContain("canonical: 'https://letsgetquoted.com/for'");
-    expect(PAGE).toContain("titleWithBrand('Contractor Website & Software by Trade')");
+    expect(PAGE).toContain("titleWithBrand('Contractor Websites, Estimators & Quotes by Trade')");
   });
 
   it('defines OpenGraph and Twitter cards for /for', () => {
@@ -65,31 +64,33 @@ describe('/for SEO and metadata surface', () => {
 
   it('descends from H1 hero to H2 section landmarks', () => {
     expect(EXP).toContain('<h1 id="hero-title"');
-    expect(EXP).toContain('<h2 id="features-title"');
+    expect(EXP).toContain('<h2 id="benefits-title"');
+    expect(EXP).toContain('<h2 id="smart-quotes-title"');
     expect(EXP).toContain('<h2 id="seasonal-title"');
     expect(EXP).toContain('<h2 id="directory-title"');
   });
 });
 
 /* ===========================================================================
-   3. Interactive Features: Simulator & Seasonal Calculator
+   3. Interactive Features: Finder, previews, and seasonal timeline
    ======================================================================== */
 describe('interactive trade experience features', () => {
-  it('features multi-trade hero simulator presets', () => {
-    expect(EXP).toContain('HERO_TRADES');
-    expect(EXP).toContain('activeSimulatorTab');
+  it('features a searchable hero and four setup previews', () => {
+    expect(EXP).toContain('heroMatches');
+    expect(EXP).toContain("type VisualKey = 'quote' | 'website' | 'journey' | 'kit'");
+    expect(EXP).toContain('role="tablist" aria-label="Setup previews"');
   });
 
-  it('features seasonal calculator and trade tags', () => {
-    expect(EXP).toContain('seasonalActiveMonths');
-    expect(EXP).toContain('seasonalMonthlyRevenue');
+  it('features a concise seasonal timeline and trade tags', () => {
+    expect(EXP).toContain('styles.seasonTimeline');
+    expect(EXP).toContain('styles.months');
     expect(seasonalTrades().length).toBeGreaterThan(0);
   });
 
   it('includes interactive FAQ accordion with aria accessibility', () => {
     expect(EXP).toContain('FAQS');
-    expect(EXP).toContain('aria-expanded={isOpen}');
-    expect(EXP).toContain('aria-controls=');
+    expect(EXP).toContain('aria-expanded={openFaq === index}');
+    expect(EXP).toContain('setOpenFaq(openFaq === index ? null : index)');
   });
 });
 
@@ -102,7 +103,8 @@ describe('layout integration', () => {
   });
 
   it('includes trade closing CTA and footer', () => {
-    expect(EXP).toContain('styles.closingCtaCard');
+    expect(EXP).toContain('styles.finalSection');
+    expect(EXP).toContain('Build my {selectedTrade.name} setup');
     expect(EXP).toContain('APP_SIGNUP_URL');
     expect(PAGE).toContain('<SiteFooter />');
   });
