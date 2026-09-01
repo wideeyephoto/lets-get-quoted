@@ -69,5 +69,9 @@ describe('Google Local Services synchronization contract', () => {
     expect(connection).toContain(".order('last_sync_attempt_at', { ascending: true, nullsFirst: true })");
     expect(connection).toContain(".order('account_id', { ascending: true })");
     expect(connection).toContain('.limit(Math.max(1, Math.min(50, Math.trunc(limit))))');
+    expect(sync).toContain('Math.min(3, accountIds.length)');
+    expect(sync).toContain('const workerCount = Math.min(4, input.rows.length)');
+    expect(sync).toContain("String(lead.contactDetails?.phoneNumber ?? '').replace(/\\D/g, '').slice(-10)");
+    expect(sync).toContain('queues[hash % workerCount].push(lead)');
   });
 });

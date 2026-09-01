@@ -94,37 +94,59 @@ async function upsertSpendRows(rows: Record<string, unknown>[]): Promise<number>
 
 async function reconcilePendingGoogleLsaFeedback(
   accountId: string,
-  provider: { customer_id: string; google_lead_id: string; feedback_submitted: boolean },
+  customerId: string,
+  providers: Array<{ google_lead_id: string; feedback_submitted: boolean }>,
 ): Promise<void> {
+  if (!providers.length) return;
   const admin = createAdminClient();
-  if (provider.feedback_submitted) {
-    const { error } = await admin
-      .from('google_lsa_feedback')
-      .update({ submission_status: 'succeeded', last_error: null })
-      .eq('account_id', accountId)
-      .eq('customer_id', provider.customer_id)
-      .eq('google_lead_id', provider.google_lead_id)
-      .eq('submission_status', 'pending');
-    if (error) throw new Error(error.message);
-    return;
-  }
-
-  // A fresh provider read still saying "not submitted" resolves a stale,
-  // ambiguous pending claim. The 30-minute floor gives Google's read model two
-  // normal polling cycles to reflect a request that actually succeeded.
+  const providerById = new Map(providers.map((provider) => [provider.google_lead_id, provider]));
+  const ids = [...providerById.keys()];
+  const batchSize = 200;
   const staleAt = new Date(Date.now() - 30 * 60_000).toISOString();
-  const { error } = await admin
-    .from('google_lsa_feedback')
-    .update({
-      submission_status: 'failed',
-      last_error: 'Google did not report this feedback as submitted after a fresh lead sync. It is safe to retry.',
-    })
-    .eq('account_id', accountId)
-    .eq('customer_id', provider.customer_id)
-    .eq('google_lead_id', provider.google_lead_id)
-    .eq('submission_status', 'pending')
-    .lt('submitted_at', staleAt);
-  if (error) throw new Error(error.message);
+  for (let offset = 0; offset < ids.length; offset += batchSize) {
+    const idBatch = ids.slice(offset, offset + batchSize);
+    const { data: pending, error: pendingError } = await admin
+      .from('google_lsa_feedback')
+      .select('google_lead_id, submitted_at')
+      .eq('account_id', accountId)
+      .eq('customer_id', customerId)
+      .eq('submission_status', 'pending')
+      .in('google_lead_id', idBatch);
+    if (pendingError) throw new Error(pendingError.message);
+
+    const confirmed = (pending ?? [])
+      .map((row) => String((row as { google_lead_id: string }).google_lead_id))
+      .filter((id) => providerById.get(id)?.feedback_submitted === true);
+    const retryable = (pending ?? [])
+      .filter((row) => String((row as { submitted_at?: string }).submitted_at ?? '') < staleAt)
+      .map((row) => String((row as { google_lead_id: string }).google_lead_id))
+      .filter((id) => providerById.get(id)?.feedback_submitted !== true);
+
+    if (confirmed.length) {
+      const { error } = await admin
+        .from('google_lsa_feedback')
+        .update({ submission_status: 'succeeded', last_error: null })
+        .eq('account_id', accountId)
+        .eq('customer_id', customerId)
+        .eq('submission_status', 'pending')
+        .in('google_lead_id', confirmed);
+      if (error) throw new Error(error.message);
+    }
+    if (retryable.length) {
+      const { error } = await admin
+        .from('google_lsa_feedback')
+        .update({
+          submission_status: 'failed',
+          last_error: 'Google did not report this feedback as submitted after a fresh lead sync. It is safe to retry.',
+        })
+        .eq('account_id', accountId)
+        .eq('customer_id', customerId)
+        .eq('submission_status', 'pending')
+        .lt('submitted_at', staleAt)
+        .in('google_lead_id', retryable);
+      if (error) throw new Error(error.message);
+    }
+  }
 }
 
 async function importLeads(input: {
@@ -136,45 +158,61 @@ async function importLeads(input: {
   const admin = createAdminClient();
   let linked = 0;
   let failed = 0;
+  const providerFacts = new Map<string, { google_lead_id: string; feedback_submitted: boolean }>();
 
-  let nextIndex = 0;
-  const worker = async () => {
-    while (nextIndex < input.rows.length) {
-      const lead = input.rows[nextIndex];
-      nextIndex += 1;
-    const raw = lead as RawGoogleLsaLead;
-    const provider = googleLsaLeadRow({
-      accountId: input.accountId,
-      customerId: input.customerId,
-      customerTimeZone: input.customerTimeZone,
-      lead: raw,
-    });
-    try {
-      const crm = await createLead(
-        admin,
-        input.accountId,
-        googleLsaCrmLeadInput(raw, lead.resourceName, provider.google_created_at),
-      );
-      const { error } = await admin
-        .from('google_lsa_leads')
-        .upsert({ ...provider, crm_lead_id: crm.id }, { onConflict: 'account_id,customer_id,google_lead_id' });
-      if (error) throw new Error(error.message);
-      await reconcilePendingGoogleLsaFeedback(input.accountId, provider);
-      linked += 1;
-    } catch (error) {
-      failed += 1;
-      // Keep the provider fact even if CRM projection hit a transient error.
-      // The next overlapping poll retries the link without losing charge state.
-      await admin
-        .from('google_lsa_leads')
-        .upsert(provider, { onConflict: 'account_id,customer_id,google_lead_id' });
-      console.error('Google LSA lead projection failed:', error instanceof Error ? error.message : error);
-    }
+  const workerCount = Math.min(4, input.rows.length);
+  const queues = Array.from({ length: workerCount }, () => [] as GoogleLsaLeadRow[]);
+  input.rows.forEach((lead, index) => {
+    const phoneKey = String(lead.contactDetails?.phoneNumber ?? '').replace(/\D/g, '').slice(-10);
+    const hash = phoneKey
+      ? [...phoneKey].reduce((total, character) => (total * 31 + character.charCodeAt(0)) >>> 0, 0)
+      : index;
+    queues[hash % workerCount].push(lead);
+  });
+
+  const worker = async (queue: GoogleLsaLeadRow[]) => {
+    for (const lead of queue) {
+      const raw = lead as RawGoogleLsaLead;
+      const provider = googleLsaLeadRow({
+        accountId: input.accountId,
+        customerId: input.customerId,
+        customerTimeZone: input.customerTimeZone,
+        lead: raw,
+      });
+      providerFacts.set(provider.google_lead_id, provider);
+      try {
+        const crm = await createLead(
+          admin,
+          input.accountId,
+          googleLsaCrmLeadInput(raw, lead.resourceName, provider.google_created_at),
+        );
+        const { error } = await admin
+          .from('google_lsa_leads')
+          .upsert({ ...provider, crm_lead_id: crm.id }, { onConflict: 'account_id,customer_id,google_lead_id' });
+        if (error) throw new Error(error.message);
+        linked += 1;
+      } catch (error) {
+        failed += 1;
+        // Keep the provider fact even if CRM projection hit a transient error.
+        // The next overlapping poll retries the link without losing charge state.
+        await admin
+          .from('google_lsa_leads')
+          .upsert(provider, { onConflict: 'account_id,customer_id,google_lead_id' });
+        console.error('Google LSA lead projection failed:', error instanceof Error ? error.message : error);
+      }
     }
   };
   // Bounded concurrency lets a large first import finish inside the cron
-  // budget without opening an unbounded PostgREST fan-out.
-  await Promise.all(Array.from({ length: Math.min(4, input.rows.length) }, () => worker()));
+  // budget without opening an unbounded PostgREST fan-out. All rows for the
+  // same normalized phone share a queue, preserving createLead's client-dedupe
+  // serialization for repeat contacts.
+  await Promise.all(queues.map((queue) => worker(queue)));
+  try {
+    await reconcilePendingGoogleLsaFeedback(input.accountId, input.customerId, [...providerFacts.values()]);
+  } catch (error) {
+    failed += 1;
+    console.error('Google LSA feedback reconciliation failed:', error instanceof Error ? error.message : error);
+  }
   return { linked, failed };
 }
 
@@ -430,18 +468,24 @@ export async function syncAllGoogleLsaAccounts(): Promise<{
 }> {
   const accountIds = await listGoogleLsaConnectedAccountIds();
   const totals = { processed: accountIds.length, succeeded: 0, busy: 0, failed: 0, leads: 0, conversations: 0 };
-  for (const accountId of accountIds) {
-    try {
-      const result = await syncGoogleLsaAccount(accountId);
-      totals.leads += result.leadsLinked;
-      totals.conversations += result.conversations;
-      if (result.busy) totals.busy += 1;
-      else if (result.ok) totals.succeeded += 1;
-      else totals.failed += 1;
-    } catch (error) {
-      totals.failed += 1;
-      console.error('Google LSA account sync failed:', error instanceof Error ? error.message : error);
+  let nextIndex = 0;
+  const worker = async () => {
+    while (nextIndex < accountIds.length) {
+      const accountId = accountIds[nextIndex];
+      nextIndex += 1;
+      try {
+        const result = await syncGoogleLsaAccount(accountId);
+        totals.leads += result.leadsLinked;
+        totals.conversations += result.conversations;
+        if (result.busy) totals.busy += 1;
+        else if (result.ok) totals.succeeded += 1;
+        else totals.failed += 1;
+      } catch (error) {
+        totals.failed += 1;
+        console.error('Google LSA account sync failed:', error instanceof Error ? error.message : error);
+      }
     }
-  }
+  };
+  await Promise.all(Array.from({ length: Math.min(3, accountIds.length) }, () => worker()));
   return totals;
 }

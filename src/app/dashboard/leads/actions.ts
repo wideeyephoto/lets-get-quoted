@@ -19,7 +19,7 @@ import { createAndSendScheduleRequest, createScheduleRequest, formatScheduleOpti
 import { isPhoneOptedOut, recordSmsConsent, sendClientJobDashboardSms, sendLeadDeclineSms, sendLeadQuoteVisitOptionsSms, sendLeadQuoteVisitSms } from '@/lib/sms';
 import { sendClientQuoteEmail, sendQuoteSentConfirmationEmail } from '@/lib/email';
 import { wantsConfirmation } from '@/lib/confirmation-prefs';
-import { buildGoogleLsaFeedbackBody, provideGoogleLsaFeedback } from '@/lib/google-lsa/api';
+import { GoogleLsaApiError, buildGoogleLsaFeedbackBody, provideGoogleLsaFeedback } from '@/lib/google-lsa/api';
 import { activeGoogleLsaConnection } from '@/lib/google-lsa/connection';
 import type { GoogleLsaFeedback } from '@/lib/google-lsa/types';
 import { softDeleteEntity } from '@/lib/recoverable-deletions';
@@ -1065,9 +1065,18 @@ export async function submitGoogleLsaFeedbackAction(leadId: string, formData: Fo
     });
   } catch (providerError) {
     const detail = providerError instanceof Error ? providerError.message : 'Google feedback request failed.';
+    const definiteFailure = providerError instanceof GoogleLsaApiError
+      && providerError.status >= 400
+      && providerError.status < 500
+      && ![408, 409, 429].includes(providerError.status);
     const { error: failureWriteError } = await admin
       .from('google_lsa_feedback')
-      .update({ submission_status: 'failed', last_error: detail.slice(0, 500) })
+      .update({
+        submission_status: definiteFailure ? 'failed' : 'pending',
+        last_error: (definiteFailure
+          ? detail
+          : `${detail} Submission outcome is not confirmed; the next Google lead sync will reconcile it.`).slice(0, 500),
+      })
       .eq('account_id', accountId)
       .eq('customer_id', String(providerLead.customer_id))
       .eq('google_lead_id', String(providerLead.google_lead_id))
