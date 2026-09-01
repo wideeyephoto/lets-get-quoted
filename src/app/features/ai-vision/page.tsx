@@ -16,14 +16,14 @@ export const metadata: Metadata = {
     title: 'Turn job photos into instant scopes and material pick-lists',
     description:
       'AI photo inspection reads damage, recognizes equipment models, drafts material lists, and grounds estimate ranges before you step on site.',
-    images: [{ url: '/features/og-vision.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted AI Vision for Contractors' }],
+    images: [{ url: '/features/og-ai-vision.jpg', width: 1200, height: 630, alt: 'Let’s Get Quoted AI Vision for Contractors' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Turn job photos into instant scopes and material pick-lists',
     description:
       'AI photo inspection reads damage, recognizes equipment models, drafts material lists, and grounds estimate ranges before you step on site.',
-    images: ['/features/og-vision.jpg'],
+    images: ['/features/og-ai-vision.jpg'],
   },
 };
 

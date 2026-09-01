@@ -151,7 +151,7 @@ describe('verification is bought only where it is needed', () => {
     expect(state.createClientCalls).toBe(0);
     expect(state.getClaimsCalls).toBe(0);
     expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('http://localhost:3010/login');
+    expect(res.headers.get('location')).toBe('http://localhost:3010/login?next=%2Fdashboard%2Fjobs');
   });
 
   it('treats a chunked auth cookie as present', async () => {

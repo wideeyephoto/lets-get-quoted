@@ -209,7 +209,7 @@ export async function getPublicSiteBySubdomain(
       header_font: null,
       button_style: null,
       accent_override: null,
-      email_theme: 'modern',
+      email_theme: 'neighborly',
       company_name: DEMO_COMPANY_NAME,
       headline: 'Commercial & Residential Lawn Care in Metro Detroit',
       tagline: 'Reliable weekly mowing, cleanup, and fertilization.',

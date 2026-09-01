@@ -34,7 +34,7 @@ describe('Page Load Performance Optimizations', () => {
       });
       const res = await middleware(req);
       expect(res.status).toBe(307);
-      expect(res.headers.get('location')).toBe('http://localhost:3010/login');
+      expect(res.headers.get('location')).toBe('http://localhost:3010/login?next=%2Fdashboard%2Fjobs');
     });
 
     it('allows unauthenticated marketing homepage through with CSP', async () => {

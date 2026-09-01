@@ -15,7 +15,13 @@
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import dns from 'node:dns';
 import { Client } from 'pg';
+import { createClient } from '@supabase/supabase-js';
+
+try {
+  dns.setDefaultResultOrder?.('ipv4first');
+} catch {}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
@@ -211,42 +217,93 @@ export async function runCronInspection({
     return { silent: [], stale: [], failing: [], idle: [], ok: [], skipped: true };
   }
 
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
-  });
-  await client.connect();
+  let client = null;
+  if (process.env.DATABASE_URL) {
+    try {
+      client = new Client({
+        connectionString: process.env.DATABASE_URL,
+        ssl: { rejectUnauthorized: false },
+      });
+      await client.connect();
+    } catch (connErr) {
+      console.warn('Direct postgres connection failed, attempting Supabase REST fallback:', connErr.message);
+      client = null;
+    }
+  }
+
+  let rows = [];
+  let everRows = [];
+  let successRows = [];
 
   try {
     const declared = await declaredCrons();
-    const { rows } = await client.query(
-      `select job,
-              count(*)::int as runs,
-              count(*) filter (where not ok)::int as failures,
-              max(started_at) as last_run
-         from public.cron_runs
-        where started_at > now() - ($1::int * interval '1 minute')
-        group by job`,
-      [windowMinutes],
-    );
+    if (client) {
+      const res1 = await client.query(
+        `select job,
+                count(*)::int as runs,
+                count(*) filter (where not ok)::int as failures,
+                max(started_at) as last_run
+           from public.cron_runs
+          where started_at > now() - ($1::int * interval '1 minute')
+          group by job`,
+        [windowMinutes],
+      );
+      rows = res1.rows;
 
-    const { rows: everRows } = await client.query(
-      `select distinct on (job)
-              job,
-              started_at as last_run,
-              ok as latest_ok,
-              error as last_error
-         from public.cron_runs
-        order by job, started_at desc`,
-    );
+      const res2 = await client.query(
+        `select distinct on (job)
+                job,
+                started_at as last_run,
+                ok as latest_ok,
+                error as last_error
+           from public.cron_runs
+          order by job, started_at desc`,
+      );
+      everRows = res2.rows;
 
-    const { rows: successRows } = await client.query(
-      `select job,
-              max(started_at) as last_success
-         from public.cron_runs
-        where ok = true
-        group by job`,
-    );
+      const res3 = await client.query(
+        `select job,
+                max(started_at) as last_success
+           from public.cron_runs
+          where ok = true
+          group by job`,
+      );
+      successRows = res3.rows;
+    } else if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+      const cutoff = new Date(Date.now() - windowMinutes * 60000).toISOString();
+      const { data: allRecent } = await supabase.from('cron_runs').select('job, ok, started_at, error').gte('started_at', cutoff);
+      const { data: allEver } = await supabase.from('cron_runs').select('job, ok, started_at, error').order('started_at', { ascending: false }).limit(1000);
+
+      const recentByJob = new Map();
+      for (const r of allRecent || []) {
+        if (!recentByJob.has(r.job)) {
+          recentByJob.set(r.job, { job: r.job, runs: 0, failures: 0, last_run: r.started_at });
+        }
+        const entry = recentByJob.get(r.job);
+        entry.runs++;
+        if (!r.ok) entry.failures++;
+        if (new Date(r.started_at) > new Date(entry.last_run)) entry.last_run = r.started_at;
+      }
+      rows = Array.from(recentByJob.values());
+
+      const everMap = new Map();
+      const successMapRaw = new Map();
+      for (const r of allEver || []) {
+        if (!everMap.has(r.job)) {
+          everMap.set(r.job, { job: r.job, last_run: r.started_at, latest_ok: r.ok, last_error: r.error });
+        }
+        if (r.ok && !successMapRaw.has(r.job)) {
+          successMapRaw.set(r.job, r.started_at);
+        }
+      }
+      everRows = Array.from(everMap.values());
+      successRows = Array.from(successMapRaw.entries()).map(([job, last_success]) => ({ job, last_success }));
+    } else if (strict) {
+      console.error('No database connection available; failing in --strict mode.');
+      process.exitCode = 1;
+      return { silent: [], stale: [], failing: [], idle: [], ok: [], error: 'Database connection failed' };
+    }
 
     const successMap = new Map(successRows.map((row) => [row.job, row.last_success]));
     const seen = new Map(rows.map((row) => [row.job, row]));
@@ -313,7 +370,7 @@ export async function runCronInspection({
 
     return { silent, stale, failing, idle, ok, disabled, undeclared };
   } finally {
-    await client.end();
+    if (client) await client.end();
   }
 }
 

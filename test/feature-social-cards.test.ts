@@ -28,6 +28,11 @@ const SLUGS = [
   'recurring',
   'cash-flow',
   'reviews',
+  'ai-ads',
+  'ai-vision',
+  'ai-voice',
+  'dispatch',
+  'text-to-job',
 ];
 
 const source = (slug: string) =>

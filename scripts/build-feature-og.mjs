@@ -108,6 +108,36 @@ const CARDS = [
     title: 'More reviews, without gaming the reviews.',
     foot: 'No star-rating gating · Sent when the job is done · Bring past customers back',
   },
+  {
+    slug: 'ai-ads',
+    eyebrow: 'AI ADVERTISING AUTOPILOT',
+    title: 'Google & Meta search ads that win high-ticket jobs.',
+    foot: 'Zero agency markups · 5% fee · Weather surge automation',
+  },
+  {
+    slug: 'ai-vision',
+    eyebrow: 'AI VISION ESTIMATOR',
+    title: 'Turn job photos into instant scopes and material lists.',
+    foot: 'Equipment plate OCR · Damage detection · Material pick-lists',
+  },
+  {
+    slug: 'ai-voice',
+    eyebrow: '24/7 AI VOICE DISPATCHER',
+    title: 'Answer every call, even while on the tools.',
+    foot: 'Dedicated phone line · 2-way call forwarding · Audio transcripts',
+  },
+  {
+    slug: 'dispatch',
+    eyebrow: 'CREW BRIEFINGS & DISPATCH',
+    title: 'One-click morning crew briefings, route maps and checklists.',
+    foot: 'Turn-by-turn routes · Tool loadouts · Site hazard alerts',
+  },
+  {
+    slug: 'text-to-job',
+    eyebrow: 'TEXT-TO-JOB & VOICE MEMOS',
+    title: 'Run your jobs hands-free from the truck.',
+    foot: 'Dictate change orders · File receipt photos · 15-minute undo',
+  },
 ];
 
 /** The real mark, inlined — the renderer has no origin to fetch it from. */

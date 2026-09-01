@@ -16,14 +16,14 @@ export const metadata: Metadata = {
     title: 'AI Voice Dispatcher · 24/7 Phone Receptionist for Contractors',
     description:
       'Answer every incoming call, qualify homeowner project details, transcribe audio, and dispatch quotes hands-free with your AI Copilot.',
-    images: [{ url: '/features/og-voice.jpg', width: 1200, height: 630, alt: 'AI Voice Dispatcher for Contractors' }],
+    images: [{ url: '/features/og-ai-voice.jpg', width: 1200, height: 630, alt: 'AI Voice Dispatcher for Contractors' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'AI Voice Dispatcher · 24/7 Phone Receptionist for Contractors',
     description:
       'Answer every incoming call, qualify homeowner project details, transcribe audio, and dispatch quotes hands-free with your AI Copilot.',
-    images: ['/features/og-voice.jpg'],
+    images: ['/features/og-ai-voice.jpg'],
   },
 };
 

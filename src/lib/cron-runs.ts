@@ -153,7 +153,7 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
         ok: !logicalFailure,
         durationMs: Date.now() - startedMs,
         summary,
-        error: logicalError,
+        error: logicalError ?? null,
       });
       if (Math.floor(Math.random() * PRUNE_ODDS) === 0) await pruneOldRuns(admin);
       if (logicalFailure) {

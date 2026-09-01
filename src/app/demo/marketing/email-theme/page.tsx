@@ -20,7 +20,7 @@ export default async function DemoMarketingEmailThemePage() {
         businessName={DEMO_COMPANY_NAME}
         accent={null}
         logoUrl={null}
-        currentTheme={(DEMO_SITE_ROW.email_theme as string | null) ?? 'modern'}
+        currentTheme={(DEMO_SITE_ROW.email_theme as string | null) ?? 'studio'}
         websiteTemplate="fresh"
         userEmail="dana@evergreenlawn.com"
         replyToEmail="office@evergreenlawn.com"

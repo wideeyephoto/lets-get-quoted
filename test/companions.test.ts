@@ -54,6 +54,8 @@ describe('AI Assistant Companions', () => {
   it('includes comprehensive Google Ads, single billing payment, and trifecta knowledge in system instructions', async () => {
     const { buildSystemInstruction } = await import('@/lib/ai-assistant/engine');
     const prompt = buildSystemInstruction({
+      userId: 'usr_test_123',
+      accountId: 'acc_test_123',
       businessName: 'Apex Roofing & Solar',
       role: 'owner',
       currentPath: '/dashboard',

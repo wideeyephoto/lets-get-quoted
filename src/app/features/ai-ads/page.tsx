@@ -4,16 +4,14 @@ import AiAdsSimulator from './AiAdsSimulator';
 import ClosedLoopFlywheel from './ClosedLoopFlywheel';
 import MultiChannelShieldGrid from './MultiChannelShieldGrid';
 
-const AI_ADS_URL = 'https://letsgetquoted.com/features/ai-ads';
-
 export const metadata: Metadata = {
   title: 'AI Advertising Autopilot for Contractors',
   description:
     'Launch Google Search, Meta, and Retargeting campaigns in 60 seconds. Zero agency markups, 5% transparent management fee, and closed-loop offline conversion feedback.',
-  alternates: { canonical: AI_ADS_URL },
+  alternates: { canonical: 'https://letsgetquoted.com/features/ai-ads' },
   openGraph: {
     type: 'website',
-    url: AI_ADS_URL,
+    url: 'https://letsgetquoted.com/features/ai-ads',
     siteName: "Let's Get Quoted",
     title: 'AI Advertising Autopilot for Contractors · Zero Agency Markup',
     description:

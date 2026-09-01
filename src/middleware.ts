@@ -280,7 +280,8 @@ export async function middleware(request: NextRequest) {
 
   if (request.nextUrl.pathname.startsWith('/dashboard')) {
     if (!signedIn) {
-      return NextResponse.redirect(new URL('/login', request.url));
+      const destination = request.nextUrl.pathname + request.nextUrl.search;
+      return NextResponse.redirect(new URL(`/login?next=${encodeURIComponent(destination)}`, request.url));
     }
   }
 

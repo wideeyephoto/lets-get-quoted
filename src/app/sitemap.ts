@@ -4,6 +4,7 @@ import { TRADES } from '@/lib/trades';
 import { ARTICLES } from '@/lib/resources';
 import { getAllArticles } from '@/components/help-center/help-center-data';
 import { COMPARISONS } from '@/app/compare/compare-data';
+import { MANUAL_ARTICLES } from '@/lib/help/user-manual';
 
 export const dynamic = 'force-dynamic';
 
@@ -101,7 +102,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${origin}/security`, lastModified, changeFrequency: 'yearly', priority: 0.5 },
     { url: `${origin}/resources`, lastModified, changeFrequency: 'weekly', priority: 0.6 },
     { url: `${origin}/changelog`, lastModified: '2026-08-26', changeFrequency: 'weekly', priority: 0.7 },
-    { url: `${origin}/help`, lastModified, changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${origin}/help`, lastModified: '2026-08-29', changeFrequency: 'weekly', priority: 0.8 },
+    { url: `${origin}/help/manual`, lastModified: '2026-08-29', changeFrequency: 'weekly', priority: 0.7 },
+    ...MANUAL_ARTICLES.map((article) => ({
+      url: `${origin}/help/manual/${article.slug}`,
+      lastModified: '2026-08-29',
+      changeFrequency: 'monthly' as const,
+      priority: 0.6,
+    })),
     ...getAllArticles().map((article) => ({
       url: `${origin}/help/articles/${article.slug}`,
       lastModified: '2026-08-25',

@@ -266,30 +266,6 @@ export default function ManagedAdsScreen({
   const [walletRefillAmountDollars, setWalletRefillAmountDollars] = useState<number>(250);
   const [walletMaxMonthlySpendDollars, setWalletMaxMonthlySpendDollars] = useState<number>(1000);
 
-  // Calculated Ad Wallet Burn & Runway Depletion Analysis
-  const walletBurn = useMemo(() => {
-    const currentBalance =
-      initialWalletState?.walletBalanceCents !== undefined
-        ? initialWalletState.walletBalanceCents / 100
-        : fundingModel === 'auto_refill_wallet'
-          ? walletDepositDollars
-          : 250;
-
-    const recentSpend =
-      initialWalletState?.dailySpendHistory && initialWalletState.dailySpendHistory.length > 0
-        ? initialWalletState.dailySpendHistory.map((d) => d.spendCents / 100)
-        : [activeDaysPaceDaily || 35];
-
-    return predictAdWalletDepletion({
-      accountId: initialWalletState?.googleCampaignId || 'current_account',
-      currentBalanceDollars: currentBalance,
-      recentDailySpend: recentSpend,
-      autoRefillAmountDollars: initialWalletState?.autoRefillAmountCents
-        ? initialWalletState.autoRefillAmountCents / 100
-        : walletRefillAmountDollars,
-    });
-  }, [initialWalletState, fundingModel, walletDepositDollars, activeDaysPaceDaily, walletRefillAmountDollars]);
-
   // Seasonal Demand Posture & Pricing Guidance Intelligence
   const tradeFamily = useMemo(() => {
     const families = matchTradeFamilies(tradeSlug || trade);
@@ -385,6 +361,30 @@ export default function ManagedAdsScreen({
     }
     return Math.round((currentBundle.weeklyAdSpendDollars / Math.max(1, activeDaysCount)) * 100) / 100;
   }, [fundingModel, walletMaxMonthlySpendDollars, currentBundle.weeklyAdSpendDollars, activeDaysCount]);
+
+  // Calculated Ad Wallet Burn & Runway Depletion Analysis
+  const walletBurn = useMemo(() => {
+    const currentBalance =
+      initialWalletState?.walletBalanceCents !== undefined
+        ? initialWalletState.walletBalanceCents / 100
+        : fundingModel === 'auto_refill_wallet'
+          ? walletDepositDollars
+          : 250;
+
+    const recentSpend =
+      initialWalletState?.dailySpendHistory && initialWalletState.dailySpendHistory.length > 0
+        ? initialWalletState.dailySpendHistory.map((d) => d.spendCents / 100)
+        : [activeDaysPaceDaily || 35];
+
+    return predictAdWalletDepletion({
+      accountId: initialWalletState?.googleCampaignId || 'current_account',
+      currentBalanceDollars: currentBalance,
+      recentDailySpend: recentSpend,
+      autoRefillAmountDollars: initialWalletState?.refillAmountCents
+        ? initialWalletState.refillAmountCents / 100
+        : walletRefillAmountDollars,
+    });
+  }, [initialWalletState, fundingModel, walletDepositDollars, activeDaysPaceDaily, walletRefillAmountDollars]);
 
   // Projections for Google Search
   const _projections = useMemo(

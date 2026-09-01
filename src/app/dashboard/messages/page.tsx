@@ -142,7 +142,7 @@ export default async function MessagesPage({
   // know whether a thread was CHOSEN or merely defaulted to — without the
   // distinction, landing on /dashboard/messages would drop a phone straight
   // into the newest conversation with no way back to the list.
-  const threadChosen = Boolean(requestedThread);
+  const threadChosen = Boolean(searchParams.thread);
 
   const messageRead = activePhone
     ? await loadConversationMessages(supabase, accountId, activePhone)

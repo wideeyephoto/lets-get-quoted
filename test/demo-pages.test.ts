@@ -117,4 +117,21 @@ describe('every builder the demo runs can be answered by the fixture client', ()
     expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Evergreen Lawn & Landscape');
     expect(DEMO_SHOWCASE_WORKFLOW.job.lineItems.length).toBeGreaterThan(0);
   });
+
+  it('demo client detail and statements', async () => {
+    const { getClient, getClientStatement } = await import('@/lib/clients');
+    const client = await getClient(demoSupabase, DEMO_ACCOUNT_ID, 'demo-client-1');
+    expect(client).toBeDefined();
+    expect(client?.name).toBe('Karen Whitfield');
+    const statement = await getClientStatement(demoSupabase, DEMO_ACCOUNT_ID, 'demo-client-1');
+    expect(statement).toBeDefined();
+  });
+
+  it('demo site subdomain resolution for evergreenlawn', async () => {
+    const { getPublicSiteBySubdomain } = await import('@/lib/sites');
+    const site = await getPublicSiteBySubdomain(demoSupabase, 'evergreenlawn');
+    expect(site).toBeDefined();
+    expect(site?.company_name).toBe('Evergreen Lawn & Landscape');
+    expect(site?.subdomain).toBe('evergreenlawn');
+  });
 });

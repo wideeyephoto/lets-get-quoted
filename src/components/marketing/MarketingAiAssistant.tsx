@@ -477,7 +477,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
     answer:
       'LGQ features an integrated 2-way messaging inbox, automated quote links, and a 24/7 AI Receptionist that qualifies phone leads and books estimates when you’re on a job.',
     ctaText: 'Explore AI Receptionist & SMS',
-    ctaHref: '/features/ai-intake',
+    ctaHref: '/features/ai-voice',
   },
   {
     id: 'support',
