@@ -44,7 +44,7 @@ import {
  * collect global CSS imported from special files like not-found.tsx. Wiring it
  * per-route left the 404 rendering the whole chrome in Times New Roman.
  */
-import './globals-lite.css';
+import './globals.css';
 
 const bodyFont = IBM_Plex_Sans({
   subsets: ['latin'],
