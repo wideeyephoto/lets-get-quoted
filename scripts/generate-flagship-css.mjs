@@ -7228,6 +7228,171 @@ const TWEAKS = `
     opacity: 0.22;
   }
 }
+
+/* ---- 10. AI Photo Intake & Scope Scanner Section Ambient Atmosphere ---- */
+.root :global(.product-demo-section) {
+  position: relative;
+  padding: clamp(80px, 9vw, 110px) clamp(24px, 5vw, 86px) clamp(90px, 10vw, 120px);
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 12%, rgba(255, 106, 36, 0.16) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 55% at 50% 52%, rgba(14, 165, 233, 0.13) 0%, rgba(94, 214, 160, 0.08) 45%, transparent 68%),
+    radial-gradient(ellipse 70% 40% at 50% 95%, rgba(255, 106, 36, 0.09) 0%, transparent 70%),
+    linear-gradient(180deg, #050d17 0%, #08192a 35%, #0a1e32 65%, #050f1a 100%);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), inset 0 -1px 0 rgba(255, 255, 255, 0.06);
+}
+
+:root[data-theme='light'] .root :global(.product-demo-section) {
+  background:
+    radial-gradient(ellipse 80% 50% at 50% 12%, rgba(255, 106, 36, 0.10) 0%, transparent 60%),
+    radial-gradient(ellipse 65% 55% at 50% 52%, rgba(14, 165, 233, 0.08) 0%, transparent 68%),
+    linear-gradient(180deg, #f0f6fa 0%, #e6f0f7 50%, #f4f8fb 100%);
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.root :global(.intake-ambient-glow) {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Subtle High-Tech Precision Dot Matrix Background */
+.root :global(.intake-glow-grid) {
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.09) 1px, transparent 1px);
+  background-size: 28px 28px;
+  background-position: center center;
+  mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 80%);
+  -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 50%, black 20%, transparent 80%);
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+:root[data-theme='light'] .root :global(.intake-glow-grid) {
+  background-image: radial-gradient(rgba(0, 0, 0, 0.07) 1px, transparent 1px);
+  opacity: 0.5;
+}
+
+/* Header Solar / Amber Aurora */
+.root :global(.intake-glow-orb-header) {
+  position: absolute;
+  top: -40px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: clamp(480px, 58vw, 820px);
+  height: clamp(240px, 30vw, 400px);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 40%, rgba(255, 106, 36, 0.26) 0%, rgba(255, 180, 50, 0.14) 35%, rgba(255, 106, 36, 0.03) 65%, transparent 75%);
+  filter: blur(52px);
+  animation: intakeGlowFloatHeader 16s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Showcase Left Flank — Electric Cyan / Sky */
+.root :global(.intake-glow-orb-cyan) {
+  position: absolute;
+  top: 36%;
+  left: calc(50% - clamp(260px, 28vw, 440px));
+  width: clamp(360px, 36vw, 540px);
+  height: clamp(360px, 36vw, 540px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 45% 45%, rgba(14, 165, 233, 0.22) 0%, rgba(56, 189, 248, 0.12) 40%, rgba(14, 165, 233, 0.02) 65%, transparent 70%);
+  filter: blur(54px);
+  animation: intakeGlowFloatCyan 18s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Showcase Right Flank — Emerald / Mint */
+.root :global(.intake-glow-orb-emerald) {
+  position: absolute;
+  top: 40%;
+  right: calc(50% - clamp(260px, 28vw, 440px));
+  width: clamp(360px, 36vw, 540px);
+  height: clamp(360px, 36vw, 540px);
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 50%, rgba(94, 214, 160, 0.22) 0%, rgba(16, 185, 129, 0.12) 40%, rgba(6, 78, 59, 0.03) 65%, transparent 70%);
+  filter: blur(54px);
+  animation: intakeGlowFloatEmerald 20s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Core Backlight directly behind the product card */
+.root :global(.intake-glow-orb-core) {
+  position: absolute;
+  top: 55%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: clamp(460px, 46vw, 700px);
+  height: clamp(460px, 46vw, 700px);
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 50%, rgba(255, 106, 36, 0.14) 0%, rgba(14, 165, 233, 0.12) 40%, rgba(94, 214, 160, 0.05) 65%, transparent 72%);
+  filter: blur(58px);
+  animation: intakeGlowFloatCore 15s ease-in-out infinite alternate;
+  will-change: transform, opacity;
+}
+
+/* Atmospheric Kinetic Shimmer */
+.root :global(.intake-glow-ray) {
+  position: absolute;
+  top: -40%;
+  left: 15%;
+  width: 220px;
+  height: 180%;
+  transform: rotate(-32deg);
+  background: linear-gradient(90deg, transparent 0%, rgba(255, 180, 50, 0.03) 30%, rgba(255, 255, 255, 0.05) 50%, rgba(94, 214, 160, 0.035) 70%, transparent 100%);
+  filter: blur(30px);
+  animation: intakeRayTravel 24s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+}
+
+@keyframes intakeGlowFloatHeader {
+  0% { transform: translateX(-50%) translate3d(0, 0, 0) scale(1); opacity: 0.85; }
+  50% { transform: translateX(-50%) translate3d(0, 16px, 0) scale(1.06); opacity: 1; }
+  100% { transform: translateX(-50%) translate3d(0, -8px, 0) scale(0.96); opacity: 0.9; }
+}
+
+@keyframes intakeGlowFloatCyan {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate3d(22px, -16px, 0) scale(1.07); opacity: 1; }
+  100% { transform: translate3d(-14px, 18px, 0) scale(0.95); opacity: 0.85; }
+}
+
+@keyframes intakeGlowFloatEmerald {
+  0% { transform: translate3d(0, 0, 0) scale(1); opacity: 0.8; }
+  50% { transform: translate3d(-22px, 18px, 0) scale(1.06); opacity: 1; }
+  100% { transform: translate3d(16px, -14px, 0) scale(0.95); opacity: 0.85; }
+}
+
+@keyframes intakeGlowFloatCore {
+  0% { transform: translate(-50%, -50%) scale(0.96); opacity: 0.8; }
+  50% { transform: translate(-50%, -50%) scale(1.06); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(0.98); opacity: 0.85; }
+}
+
+@keyframes intakeRayTravel {
+  0% { transform: translate3d(-100%, -20%, 0) rotate(-32deg); opacity: 0; }
+  15% { opacity: 0.75; }
+  85% { opacity: 0.75; }
+  100% { transform: translate3d(260%, 20%, 0) rotate(-32deg); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .root :global(.intake-glow-orb-header),
+  .root :global(.intake-glow-orb-cyan),
+  .root :global(.intake-glow-orb-emerald),
+  .root :global(.intake-glow-orb-core),
+  .root :global(.intake-glow-ray) {
+    animation: none !important;
+  }
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.

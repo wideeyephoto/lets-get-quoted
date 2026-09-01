@@ -10,6 +10,7 @@ import { COMMAND_CENTER_SCREENS } from '@/components/command-center-deck';
 import HeroAiIntakeShowcase from './hero-ai-intake-showcase';
 import HeroConnectedWorkflow from './HeroConnectedWorkflow';
 import HeroAmbientGlow from './HeroAmbientGlow';
+import IntakeAmbientGlow from './IntakeAmbientGlow';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { BRAND_POSITIONING } from '@/lib/brand-messaging';
 import { STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
@@ -743,25 +744,26 @@ export default function FlagshipHome() {
       {/* DEDICATED PRODUCT EXPERIENCE SECTION: AI PHOTO INTAKE & SCOPE SCANNER */}
       <section
         id="product-demo"
+        className="product-demo-section"
         data-track
-        style={{
-          position: 'relative',
-          padding: '90px clamp(24px, 5vw, 86px) 100px',
-          overflow: 'hidden',
-          background: 'radial-gradient(circle at 50% 30%, rgba(255, 106, 36, 0.08), transparent 60%), linear-gradient(180deg, #07131d 0%, #0a1b2d 100%)',
-          borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-          borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-        }}
       >
+        <IntakeAmbientGlow />
         <Glare />
-        <div className="section-intro" data-rise style={{ maxWidth: '920px', margin: '0 auto 48px', textAlign: 'center' }}>
+        <div className="section-intro" data-rise style={{ position: 'relative', zIndex: 1, maxWidth: '920px', margin: '0 auto 48px', textAlign: 'center' }}>
           <p className="eyebrow" style={{ justifyContent: 'center', display: 'flex', alignItems: 'center' }}>
             <span className="pulse-dot" aria-hidden="true" />
             PROPRIETARY AI INTAKE · SEE SCOPE BEFORE YOU ROLL A TRUCK
           </p>
           <h2 style={{ fontSize: 'clamp(32px, 3.8vw, 54px)', lineHeight: 1.04, margin: '12px 0 18px', fontWeight: 850 }}>
             Turn homeowner photos into<br />
-            <em style={{ color: 'var(--orange, #ff6a24)', fontStyle: 'normal' }}>
+            <em style={{
+              background: 'linear-gradient(135deg, #ff8c42 0%, #ff6a24 50%, #ffa726 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              fontStyle: 'normal',
+              filter: 'drop-shadow(0 0 24px rgba(255, 106, 36, 0.35))',
+              display: 'inline-block',
+            }}>
               quote-ready project summaries.
             </em>
           </h2>
@@ -770,11 +772,11 @@ export default function FlagshipHome() {
           </p>
         </div>
 
-        <div style={{ maxWidth: '640px', margin: '0 auto' }} data-rise>
+        <div style={{ position: 'relative', zIndex: 1, maxWidth: '640px', margin: '0 auto' }} data-rise>
           <HeroAiIntakeShowcase />
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '42px' }} data-rise>
+        <div style={{ position: 'relative', zIndex: 1, textAlign: 'center', marginTop: '42px' }} data-rise>
           <a
             className="button primary"
             href="https://app.letsgetquoted.com/start?goal=build_site&source=home_demo"

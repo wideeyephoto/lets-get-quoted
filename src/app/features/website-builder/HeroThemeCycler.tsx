@@ -239,7 +239,7 @@ export default function HeroThemeCycler() {
                   height: box.frameHeight,
                   transform: `scale(${box.scale})`,
                 }}
-                loading="eager"
+                loading="lazy"
                 scrolling="no"
                 tabIndex={-1}
                 aria-hidden="true"

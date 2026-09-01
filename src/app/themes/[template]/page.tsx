@@ -390,6 +390,7 @@ export default async function ThemeDemoPage({
   const site: Site = {
     ...DEMO_SITE,
     template: params.template as TemplateType,
+    portal_mode: params.template === 'carbon' ? 'dark' : (DEMO_SITE.portal_mode || 'light'),
     company_name: demo.company,
     headline: demo.headline,
     tagline: demo.tagline,

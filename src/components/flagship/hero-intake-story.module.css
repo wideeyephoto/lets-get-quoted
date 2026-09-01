@@ -15,32 +15,33 @@
   position: absolute;
   border-radius: 50%;
   pointer-events: none;
-  filter: blur(54px);
-  opacity: 0.55;
+  filter: blur(60px);
+  opacity: 0.7;
   z-index: 0;
-  transition: opacity 0.5s ease;
+  transition: opacity 0.5s ease, transform 0.5s ease;
 }
 
 /* Upper-left orange atmospheric glow */
 .container::before {
-  top: -24px;
-  left: -24px;
-  width: 220px;
-  height: 220px;
-  background: radial-gradient(circle, rgba(255, 107, 53, 0.28) 0%, transparent 70%);
+  top: -32px;
+  left: -32px;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, rgba(255, 107, 53, 0.36) 0%, rgba(255, 180, 50, 0.16) 45%, transparent 70%);
 }
 
 /* Lower-right teal/mint atmospheric glow */
 .container::after {
-  bottom: -24px;
-  right: -24px;
-  width: 240px;
-  height: 240px;
-  background: radial-gradient(circle, rgba(94, 214, 160, 0.22) 0%, transparent 70%);
+  bottom: -32px;
+  right: -32px;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(94, 214, 160, 0.30) 0%, rgba(56, 189, 248, 0.15) 45%, transparent 70%);
 }
 
 .container[data-scanning="true"]::after {
-  opacity: 0.85;
+  opacity: 0.95;
+  transform: scale(1.08);
 }
 
 /* Main panel shell */

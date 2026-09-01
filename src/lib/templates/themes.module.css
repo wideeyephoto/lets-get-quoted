@@ -1657,10 +1657,11 @@
 @keyframes heroKenBurns { from { transform: scale(1.03); } to { transform: scale(1.12); } }
 @media (prefers-reduced-motion: reduce) { .heroImage, .guildHeroFrame > img { animation: none; } }
 .forgeScrim { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(10,10,9,.94) 0%, rgba(10,10,9,.68) 52%, rgba(10,10,9,.25) 100%), linear-gradient(0deg, rgba(10,10,9,.65) 0%, rgba(10,10,9,.2) 50%, transparent 100%), repeating-linear-gradient(90deg, rgba(243,240,231,.035) 0 1px, transparent 1px 88px); }
-.forgeHeroCopy { position: relative; z-index: 1; width: 100%; max-width: 1320px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, 420px); gap: clamp(2rem, 4.5vw, 4rem); align-items: center; }
-.forgeHeroTextColumn { display: flex; flex-direction: column; }
-.forgeHeroTextColumn h1, .forgeHeroCopy h1 { max-width: 11ch; margin-bottom: 1.1rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 6vw, 5.4rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
-.forgeHeroTextColumn .heroText, .forgeHeroCopy .heroText { max-width: 34rem; margin-bottom: 1.5rem; color: rgba(255,255,255,.86); font-size: 1.18rem; line-height: 1.5; }
+.forgeHeroCopy { position: relative; z-index: 1; width: 100%; max-width: 1320px; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(360px, 420px); gap: clamp(2rem, 4.5vw, 4rem); align-items: center; color: var(--c-on-photo, #f3f0e7); }
+.forgeHeroTextColumn { display: flex; flex-direction: column; color: var(--c-on-photo, #f3f0e7); }
+.forgeHeroTextColumn h1, .forgeHeroCopy h1 { color: var(--c-on-photo, #f3f0e7); max-width: 11ch; margin-bottom: 1.1rem; font-family: var(--theme-display); font-size: clamp(2.9rem, 6vw, 5.4rem); font-weight: 900; line-height: .95; letter-spacing: -.01em; text-transform: uppercase; }
+.forgeHeroTextColumn .kicker, .forgeHeroCopy .kicker { color: var(--theme-accent, #f0b429); }
+.forgeHeroTextColumn .heroText, .forgeHeroCopy .heroText { max-width: 34rem; margin-bottom: 1.5rem; color: color-mix(in srgb, var(--c-on-photo, #f3f0e7) 88%, transparent); font-size: 1.18rem; line-height: 1.5; }
 .forgeHeroCopy .heroQuickForm { margin-top: 0; justify-self: end; width: 100%; max-width: 420px; }
 .forgeIndex { position: absolute; z-index: 1; right: 4vw; bottom: 5vh; font-family: var(--font-mono); font-size: .78rem; font-weight: 500; letter-spacing: .1em; color: rgba(255,255,255,.6); }
 .forgeTrust { display: grid; grid-template-columns: repeat(3, 1fr); padding: 0 4vw; border-block: 1px solid var(--c-line); }
