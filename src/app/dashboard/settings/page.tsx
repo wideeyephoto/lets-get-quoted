@@ -902,22 +902,24 @@ export default async function SettingsPage({
             </section>
           ),
         },
-        {
-          id: 'developers',
-          label: 'Developers & APIs',
-          anchors: ['api-tokens', 'webhooks', 'webhook-deliveries', 'api-docs'],
-          content: (
-            <DeveloperApiSection
-              tokens={apiTokens}
-              subscriptions={((webhookSubsResult as { data?: unknown[] })?.data ?? []) as WebhookSubscriptionView[]}
-              deliveries={((webhookDeliveriesResult as { data?: unknown[] })?.data ?? []) as WebhookDeliveryView[]}
-            />
-          ),
-        },
       ]}
     />
-  </main>
-);
-}
-);
+  ),
+},
+{
+  id: 'developers',
+  label: 'Developers & APIs',
+  anchors: ['api-tokens', 'webhooks', 'webhook-deliveries', 'api-docs'],
+  content: (
+    <DeveloperApiSection
+      tokens={apiTokens}
+      subscriptions={webhookSubscriptions}
+      deliveries={webhookDeliveries}
+    />
+  ),
+},
+        ]}
+      />
+    </main>
+  );
 }

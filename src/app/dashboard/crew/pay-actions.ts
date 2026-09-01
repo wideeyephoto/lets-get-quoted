@@ -36,6 +36,13 @@ import {
 } from '@/lib/crew-pay-data';
 import { normalizeOffset, normalizePeriodMode, resolvePayPeriod, type PayPeriod } from '@/lib/labor';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
+import { normalizePayrollProvider, PAYROLL_PROVIDER_LABEL } from '@/lib/payroll-export';
+import {
+  validatePayrollSubmission,
+  buildProviderPayload,
+  submitPayrollToProvider,
+  type PayrollProviderConfig,
+} from '@/lib/payroll-api-integration';
 
 // Every payment action on the Hours & pay tab.
 //
@@ -329,6 +336,92 @@ export async function markSentAction(_prev: PayActionState, formData: FormData):
 
     refresh();
     return OK(`${chosen.length} marked as sent to payroll. They stay unpaid until you record the payment.`);
+  } catch (error) {
+    return FAIL(messageFor(error));
+  }
+}
+
+/**
+ * Direct API Submission to configured payroll provider (Gusto, QuickBooks, ADP, Paychex).
+ * Validates approved hours, transmits the payload to the provider API, marks rows as sent, and logs the audit event.
+ */
+export async function submitPayrollApiAction(_prev: PayActionState, formData: FormData): Promise<PayActionState> {
+  try {
+    const { supabase, accountId, userEmail, period, state } = await context(formData);
+    const provider = normalizePayrollProvider(text(formData, 'payrollProvider'));
+    const companyId = optional(formData, 'companyId') || undefined;
+    const realmId = optional(formData, 'realmId') || undefined;
+
+    const chosen = rowsFor(state.rows, selectedIds(formData));
+    const validation = validatePayrollSubmission(provider, chosen, {
+      rangeLabel: period.rangeLabel,
+      periodEndKey: periodEndKey(period),
+      alreadySent: chosen.some((r) => r.record?.sentAt),
+      companyId,
+    });
+
+    if (!validation.valid) {
+      return FAIL(
+        `Validation failed before sending to ${PAYROLL_PROVIDER_LABEL[provider]}.`,
+        [...validation.problems, ...validation.excluded.map((e) => `${e.name}: ${e.reason}`)],
+      );
+    }
+
+    const payload = buildProviderPayload(provider, validation.payable, {
+      rangeLabel: period.rangeLabel,
+      periodStartKey: periodStartKey(period),
+      periodEndKey: periodEndKey(period),
+      companyId,
+      realmId,
+    });
+
+    const providerConfig: PayrollProviderConfig = {
+      provider,
+      companyId,
+      realmId,
+      status: 'connected',
+    };
+
+    const submissionResult = await submitPayrollToProvider(providerConfig, payload, { dryRun: false });
+
+    if (!submissionResult.success) {
+      return FAIL(submissionResult.message, submissionResult.errors);
+    }
+
+    const periodRow = await ensurePayPeriodRow(supabase, accountId, period);
+    const approvedRows = chosen.filter(
+      (row) => row.eligible && row.hours > 0 && row.review === 'approved' && row.payment === 'unpaid',
+    );
+
+    if (approvedRows.length > 0) {
+      await markSentToPayroll(supabase, accountId, periodRow.id, approvedRows.map(snapshotOf), userEmail);
+    }
+
+    await logPayEvent(supabase, accountId, {
+      periodId: periodRow.id,
+      action: 'marked_sent',
+      summary: `Submitted ${validation.payable.length} records (${payMoney(validation.totalGross)}) to ${PAYROLL_PROVIDER_LABEL[provider]} API (Batch #${submissionResult.batchId}).`,
+      actorEmail: userEmail,
+      meta: {
+        provider,
+        batchId: submissionResult.batchId,
+        transactionId: submissionResult.transactionId,
+        recordCount: validation.payable.length,
+        totalGross: validation.totalGross,
+        totalHours: validation.totalHours,
+        rangeLabel: formatKeyRange(periodStartKey(period), periodEndKey(period)),
+      },
+    });
+
+    refresh();
+    return OK(
+      `Submitted ${validation.payable.length} records to ${PAYROLL_PROVIDER_LABEL[provider]} (Batch #${submissionResult.batchId}).`,
+      [
+        `Transaction Reference: ${submissionResult.transactionId}`,
+        `Total Hours: ${validation.totalHours} hrs · Gross: ${payMoney(validation.totalGross)}`,
+        'Hours marked as sent to payroll. Record payments once settled.',
+      ],
+    );
   } catch (error) {
     return FAIL(messageFor(error));
   }

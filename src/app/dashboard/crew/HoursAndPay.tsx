@@ -71,6 +71,7 @@ import {
   recordExportAction,
   reopenPeriodAction,
   setEntryLockAction,
+  submitPayrollApiAction,
   undoPaidAction,
   type PayActionState,
 } from './pay-actions';
@@ -278,7 +279,7 @@ function dayLabel(value: string | null): string {
 }
 
 /** What a button has asked to happen. Held by the page, not by the button. */
-type Armed = { kind: 'approve' | 'sent'; crewIds: string[] } | { kind: 'close'; crewIds?: undefined } | null;
+type Armed = { kind: 'approve' | 'sent' | 'api_submit'; crewIds: string[] } | { kind: 'close'; crewIds?: undefined } | null;
 
 /**
  * A pay action as an always-mounted form that a button arms.
@@ -1468,9 +1469,21 @@ export default function HoursAndPay({
                   <p key={note} className={styles.exportNote}>{note}</p>
                 ))}
                 {exportPlan.result.included > 0 && !exportPlan.confirmed ? (
-                  <button type="button" className="btn primary" onClick={confirmPayrollExport}>
-                    Download this file
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '12px' }}>
+                    <button
+                      type="button"
+                      className="btn primary"
+                      disabled={busy('api_submit') || exportPlan.result.problems.length > 0}
+                      onClick={() => arm({ kind: 'api_submit', crewIds: [] })}
+                    >
+                      {busy('api_submit')
+                        ? 'Transmitting…'
+                        : `Submit directly to ${PAYROLL_PROVIDER_LABEL[exportPlan.result.provider] === 'A spreadsheet (any provider, or a bookkeeper)' ? 'Payroll API' : `${PAYROLL_PROVIDER_LABEL[exportPlan.result.provider]} API`}`}
+                    </button>
+                    <button type="button" className="btn secondary" onClick={confirmPayrollExport}>
+                      Download CSV file
+                    </button>
+                  </div>
                 ) : null}
                 <button type="button" className="btn ghost" onClick={() => setExportPlan(null)}>
                   {exportPlan.confirmed || exportPlan.result.included === 0 ? 'Dismiss' : 'Cancel'}
@@ -2107,6 +2120,22 @@ export default function HoursAndPay({
           always has somewhere to land — see ArmedForm. */}
       <ArmedForm action={approveHoursAction} armed={armed?.kind === 'approve' ? armed : null} fields={periodFields} onDone={handleDone} />
       <ArmedForm action={markSentAction} armed={armed?.kind === 'sent' ? armed : null} fields={periodFields} onDone={handleDone} />
+      <ArmedForm
+        action={submitPayrollApiAction}
+        armed={armed?.kind === 'api_submit' ? armed : null}
+        fields={
+          <>
+            {periodFields}
+            <input type="hidden" name="payrollProvider" value={payrollProvider} />
+          </>
+        }
+        onDone={(state) => {
+          handleDone(state);
+          if (state.ok && exportPlan) {
+            setExportPlan({ ...exportPlan, confirmed: true });
+          }
+        }}
+      />
       <ArmedForm action={closePeriodAction} armed={armed?.kind === 'close' ? armed : null} fields={periodFields} onDone={handleDone} />
 
       {/* Submitted by the CSV download so the export lands in the history. */}
