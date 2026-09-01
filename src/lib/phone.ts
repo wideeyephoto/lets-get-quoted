@@ -23,6 +23,11 @@ export function displayPhone(value: string) {
   return value;
 }
 
+export function formatUsPhone(value?: string | null): string {
+  if (!value) return '';
+  return displayPhone(value);
+}
+
 // A business number ready to put on a page: the href and the words, from
 // whatever the owner typed into the site builder.
 //

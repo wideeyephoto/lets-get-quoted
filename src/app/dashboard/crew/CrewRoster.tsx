@@ -1805,7 +1805,7 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               <label className="checkbox-row" htmlFor={`phoneVerified-${row.id}`}>
                 <input id={`phoneVerified-${row.id}`} name="phoneVerified" type="checkbox" defaultChecked={row.phoneVerified} />
                 <span>
-                  <strong>Allow Voice Hotline Access:</strong> Phone number is verified to call into our shared business line for AI voice dispatch &amp; job updates
+                  <strong>AI Field Copilot Access:</strong> Phone number is verified to text notes/receipts and call our shared field hotline hands-free (using Voice credits).
                 </span>
               </label>
             </fieldset>

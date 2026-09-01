@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { NextRequest } from 'next/server';
 import { GET } from '@/app/api/health/route';
 
 vi.mock('@/lib/auth', () => ({
@@ -13,7 +14,8 @@ vi.mock('@/lib/auth', () => ({
 
 describe('/api/health route', () => {
   it('returns valid health response with dynamic latency and live services', async () => {
-    const res = await GET();
+    const req = new NextRequest('https://app.letsgetquoted.com/api/health');
+    const res = await GET(req);
     expect(res).toBeDefined();
     expect([200, 503]).toContain(res.status);
 

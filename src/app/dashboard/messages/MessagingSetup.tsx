@@ -27,7 +27,15 @@ import OwnerAlertsForm from './OwnerAlertsForm';
  * in the customer context rail — nothing about a carrier registration belongs
  * beside the person you are talking to.
  */
-export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; openOnLoad: boolean }) {
+export default function MessagingSetup({
+  setup,
+  openOnLoad,
+  sharedPhoneNumber,
+}: {
+  setup: Setup;
+  openOnLoad: boolean;
+  sharedPhoneNumber?: string;
+}) {
   const alerts = ownerAlertChip(setup.alerts);
   const registration = registrationChip(setup.registration);
   const summary = aggregateChip(setup.alerts, setup.registration);
@@ -122,6 +130,7 @@ export default function MessagingSetup({ setup, openOnLoad }: { setup: Setup; op
               consentedAt={setup.alerts.kind === 'ok' ? setup.alerts.consentedAt : null}
               consentVersion={setup.alerts.kind === 'ok' ? setup.alerts.consentVersion : null}
               disabled={!canSaveOwnerAlerts(setup.alerts)}
+              sharedPhoneNumber={sharedPhoneNumber}
             />
           </section>
 

@@ -220,7 +220,6 @@ export interface TextToJobWorkspaceProps {
   } | null;
   crewMembers?: CrewRow[];
   initialMessages?: InboundMessage[];
-  isDedicatedNumber?: boolean;
   sharedPhoneNumber?: string;
   isQualified?: boolean;
   activeJobCount: number;
@@ -238,16 +237,9 @@ const TRADE_PHRASES: Record<string, {
   Electrical: {
     changeOrder: '“Add $450 to Miller job for extra 12/2 Romex line and pantry GFCI”',
     milestone: '“Miller 200A service upgrade passed rough inspection. Schedule drywall.”',
-    punchList: '“Punch list for Smith: 1) label breaker panel 2) test master bedroom arc-faults”',
-    newLead: '“New lead: Dave Miller 248-555-0812 burning smell in main panel needs emergency visit”',
-    receipts: '“Supply house receipt ($184.20 Square D breakers & Romex wire)”',
-  },
-  HVAC: {
-    changeOrder: '“Add $285 to Johnson job for 45/5 dual capacitor and 2 lbs R-410A refrigerant”',
-    milestone: '“Carrier furnace install complete and pressure tested. Ready for final inspection.”',
-    punchList: '“Punch list for Davis: 1) install Ecobee thermostat 2) seal plenum ductwork”',
-    newLead: '“New lead: Sarah Jenkins 248-555-0991 AC blowing warm air needs repair ASAP”',
-    receipts: '“Johnstone Supply receipt ($340 filter driers and recovery tank)”',
+    punchList: '“Smith punch list: 1) replace basement GFCI 2) label panel breakers”',
+    newLead: '“New lead: Dave Miller 248-555-0199 needs 200A panel upgrade estimate”',
+    receipts: '“Bought $185 supplies at Home Depot for Miller: 250ft 12/2 wire, boxes”',
   },
   Plumbing: {
     changeOrder: '“Add $350 to Roberts job for extra 3/4 PEX loop and pressure regulator valve”',
@@ -300,7 +292,6 @@ export default function TextToJobWorkspace({
   account,
   crewMembers = [],
   initialMessages,
-  isDedicatedNumber = false,
   sharedPhoneNumber,
   isQualified = true,
   activeJobCount,
@@ -628,15 +619,11 @@ export default function TextToJobWorkspace({
   }, [showPrintModal, showSimModal, filteredMessages, selectedMsgId]);
 
   const fieldPhoneNumber = isQualified
-    ? isDedicatedNumber && account?.call_tracking_number
-      ? formatUsPhone(account.call_tracking_number)
-      : formatUsPhone(sharedPhoneNumber || '+19479412323')
+    ? formatUsPhone(sharedPhoneNumber || '+19479412323')
     : '🔒 Setup Alert Phone to Unlock';
 
   const rawCallableNumber = isQualified
-    ? isDedicatedNumber && account?.call_tracking_number
-      ? account.call_tracking_number
-      : sharedPhoneNumber || '+19479412323'
+    ? sharedPhoneNumber || '+19479412323'
     : '';
 
   const alertPhone = account?.alert_phone ? formatUsPhone(account.alert_phone) : '(No cell phone set)';
@@ -934,7 +921,7 @@ export default function TextToJobWorkspace({
                 </button>
               </div>
               <p className={styles.subtitle}>
-                Text or dictate notes from the road—{companion.name} updates quotes, punch lists, and schedules instantly.
+                Text, send voice memos, or call {fieldPhoneNumber} hands-free (using Voice credits)—{companion.name} updates quotes, punch lists, and schedules instantly.
               </p>
             </div>
           </div>
@@ -1770,7 +1757,7 @@ export default function TextToJobWorkspace({
                 </div>
                 <div className={styles.cardHotlineTag}>
                   <span>
-                    📱 Text: {isQualified ? fieldPhoneNumber : '🔒 Setup Alert Phone to Unlock'}
+                    📱 Text / Call: {isQualified ? fieldPhoneNumber : '🔒 Setup Alert Phone to Unlock'}
                   </span>
                 </div>
               </div>
@@ -1813,7 +1800,7 @@ export default function TextToJobWorkspace({
               </div>
 
               <div className={styles.cardFooterRules}>
-                <span>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</span>
+                <span>↺ <strong>15-Min Undo:</strong> Reply <code>UNDO</code> to revert. 📞 Call or text hands-free (calls use Voice credits).</span>
                 <span className={styles.cardPoweredBy}>{companion.name} Field Hotline &bull; Let&apos;s Get Quoted</span>
               </div>
             </div>

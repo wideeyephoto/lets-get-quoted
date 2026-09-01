@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useFormState } from 'react-dom';
 import SaveButton from '@/components/save-button';
+import SaveFieldContactButton from '@/components/SaveFieldContactButton';
+import { formatUsPhone } from '@/lib/phone';
 import { saveOwnerAlertsAction, sendOwnerPhoneVerificationCodeAction } from './actions';
 // The idle state comes from the pure module, not from the action file: a
 // 'use server' file may only export async functions, and lib/owner-sms imports
@@ -44,6 +46,7 @@ export default function OwnerAlertsForm({
   consentedAt,
   consentVersion,
   disabled,
+  sharedPhoneNumber,
 }: {
   phone: string | null;
   enabled: boolean;
@@ -54,6 +57,7 @@ export default function OwnerAlertsForm({
   consentVersion: string | null;
   /** True when the settings could not be read — see the note on the fieldset. */
   disabled: boolean;
+  sharedPhoneNumber?: string;
 }) {
   const [state, action] = useFormState(saveOwnerAlertsAction, OWNER_ALERTS_IDLE);
   const errors = state.status === 'error' ? state.errors : [];
@@ -287,6 +291,31 @@ export default function OwnerAlertsForm({
 
         {errorFor('form') ? <p className="field-error" role="alert">{errorFor('form')}</p> : null}
         {state.status === 'saved' ? <p className="msg-setup-note is-ready" role="status">{state.message}</p> : null}
+
+        {/* Confirmed Phone -> AI Copilot Field Line Callout */}
+        {(isAlreadyOptedIn && (phone || currentPhone)) || otpState === 'verified' || state.status === 'saved' ? (
+          <div className="msg-setup-copilot-card">
+            <div className="msg-setup-copilot-head">
+              <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
+              <span className="msg-setup-copilot-num">{formatUsPhone(sharedPhoneNumber || '+19479412323')}</span>
+            </div>
+            <p className="msg-setup-copilot-text">
+              Text notes, material receipts, gate codes, or punch lists to <b>{formatUsPhone(sharedPhoneNumber || '+19479412323')}</b> from your verified mobile ({formatUsPhone(currentPhone || phone || '')}). Your AI Copilot organizes and updates job records automatically.
+            </p>
+            <p className="msg-setup-copilot-voice-tip">
+              📞 <b>Hands-Free Dictation:</b> You can also call this number directly from your truck to dictate updates hands-free using your Voice credits.
+            </p>
+            <div className="msg-setup-copilot-actions">
+              <SaveFieldContactButton size="small" label="Save Contact Card (.vcf)" />
+              <a href={`sms:${(sharedPhoneNumber || '+19479412323').replace(/[^\d+]/g, '')}`} className="btn secondary sm msg-setup-copilot-btn">
+                💬 Text Copilot
+              </a>
+              <Link href="/dashboard/text-to-job" className="btn quiet sm msg-setup-copilot-link">
+                Open Text-to-Job →
+              </Link>
+            </div>
+          </div>
+        ) : null}
 
         <div className="msg-setup-save">
           <SaveButton className="btn primary msg-setup-submit">Save notification settings</SaveButton>

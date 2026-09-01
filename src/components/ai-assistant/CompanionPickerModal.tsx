@@ -12,6 +12,7 @@ export default function CompanionPickerModal() {
     isCompanionPickerOpen,
     closeCompanionPicker,
     companionId,
+    companionTrade,
     setCompanion,
   } = useAssistant();
 
@@ -20,6 +21,12 @@ export default function CompanionPickerModal() {
   const handleSelectCompanion = (id: CompanionId) => {
     setCompanion(id);
   };
+
+  const handleSelectTrade = (tradeId: string) => {
+    setCompanion('sparky', tradeId);
+  };
+
+  const selectedCompanion = COMPANIONS.find((c) => c.id === companionId) || COMPANIONS[0];
 
   return (
     <div className={styles.overlay} onClick={closeCompanionPicker} aria-hidden="true">
@@ -129,6 +136,32 @@ export default function CompanionPickerModal() {
               );
             })}
           </div>
+
+          {/* If Sparky is selected, show trade options cleanly underneath */}
+          {companionId === 'sparky' && selectedCompanion.tradeOptions && (
+            <div className={styles.tradeCustomizationSection}>
+              <div className={styles.tradeSectionHeader}>
+                <span className={styles.tradeSectionIcon}>🎨</span>
+                <span className={styles.tradeSectionTitle}>Optional: Customize Sparky&apos;s Trade Uniform</span>
+              </div>
+              <div className={styles.tradePillGrid}>
+                {selectedCompanion.tradeOptions.map((trade) => {
+                  const isTradeActive = (companionTrade || 'general').toLowerCase() === trade.id.toLowerCase();
+                  return (
+                    <button
+                      key={trade.id}
+                      type="button"
+                      className={`${styles.tradePill} ${isTradeActive ? styles.tradePillActive : ''}`}
+                      onClick={() => handleSelectTrade(trade.id)}
+                    >
+                      <span className={styles.tradeEmoji}>{trade.emoji}</span>
+                      <span>{trade.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Footer info */}

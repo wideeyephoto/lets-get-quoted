@@ -108,7 +108,6 @@ export default async function TextToJobDashboardPage() {
       account={account}
       crewMembers={mappedCrew}
       initialMessages={realMessages.length > 0 ? realMessages : undefined}
-      isDedicatedNumber={Boolean(account?.call_tracking_number)}
       sharedPhoneNumber={rawSharedNumber}
       isQualified={isQualified}
       activeJobCount={jobCount ?? 0}

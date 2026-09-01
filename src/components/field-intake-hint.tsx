@@ -20,7 +20,7 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Lead',
     title: '🎙️ Voice & Text-to-Lead',
     tag: 'From the road',
-    description: 'Text or send a voice memo to your shared number from your truck to log new prospects without typing forms.',
+    description: 'Text, send a voice memo, or call your shared field line hands-free (using Voice credits) from your truck to log new prospects without typing forms.',
     examples: [
       '"Met Dave at 124 Main St, needs roof replacement, phone 555-0192."',
       '"New lead: Sarah Miller on Oak Ave, wants kitchen remodel estimate."',
@@ -30,7 +30,7 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Job',
     title: '🎙️ Voice & Text-to-Job',
     tag: 'Owner & Crew',
-    description: 'You and your registered crew members can text or send voice memos to your shared number to log site notes, material costs, gate codes, or punch list items.',
+    description: 'You and your verified crew can text, send voice memos, or call our shared field number (using Voice credits) to log site notes, material costs, gate codes, or punch list items.',
     examples: [
       '"Gate code for Smith job on Main St is 4821."',
       '"Used $75 of cement and $40 dump fee on the Miller job."',
@@ -42,7 +42,7 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Schedule',
     title: '🎙️ Voice & Text-to-Schedule',
     tag: 'Calendar dispatch',
-    description: 'Reschedule jobs or customer estimate visits from the road with a quick voice note or text message.',
+    description: 'Reschedule jobs or customer estimate visits from the road with a quick voice note, text, or hands-free call (using Voice credits).',
     examples: [
       '"Move the Smith job to Friday at 10am."',
       '"Reschedule Johnson estimate to next Tuesday morning."',
@@ -52,7 +52,7 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Client',
     title: '🎙️ Voice & Text-to-Client',
     tag: 'Customer book',
-    description: 'Update client phone numbers, emails, addresses, or client profile notes by sending a quick text.',
+    description: 'Update client phone numbers, emails, addresses, or client profile notes by sending a quick text or voice message.',
     examples: [
       '"Update phone for Dave Miller to (248) 555-9876."',
       '"Client note for Sarah Johnson: prefer text updates only, dog in backyard."',
@@ -62,7 +62,7 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Crew',
     title: '🎙️ Voice & Text-to-Crew',
     tag: 'Field assignments',
-    description: 'Assign crew from the road. Registered crew members can also message your shared number to log job site updates and expenses.',
+    description: 'Assign crew from the road. Verified crew members can also message or call our shared field number (using Voice credits) to log job site updates and expenses.',
     examples: [
       '"Assign Mike and Dave to the Smith job tomorrow."',
       '"Put Alex on the Main St roof repair."',

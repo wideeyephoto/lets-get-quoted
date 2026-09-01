@@ -38,7 +38,7 @@ const FAQ = [
   },
   {
     q: 'Can I choose different AI companions and avatars?',
-    a: 'Yes! Let’s Get Quoted includes customizable AI avatars tailored to your style and trade—including AI Assistant ⚡ (Energy Orbit Copilot), Diesel 🔨 (Jobsite Foreman), and Echo 🦉 (Code & Safety Auditor). You can switch between them anytime in your dashboard.',
+    a: 'Yes! Let’s Get Quoted includes customizable AI companions tailored to your style and trade—including Sparky ⚡ (Contractor AI Sidekick), Diesel 🔨 (Jobsite Foreman), Echo 🦉 (Code & Safety Auditor), and AI Assistant 💡 (Modern Energy Orbit). You can switch between them anytime in your dashboard.',
   },
   {
     q: 'Can I text my AI Copilot photos, receipts, and voice memos from the job site?',
@@ -77,7 +77,7 @@ export default function SparkyFeaturePage() {
           <em>Run your business by simply texting or calling your AI Copilot.</em>
         </>
       }
-      lede="Text or call your Copilot from the truck, or open it when you walk up to an estimate. Tell it everything you’re thinking—it calculates the math, updates active job files, files site photos, tracks unpaid invoices, and sets reminders. Plus, choose from customizable companions like Energy Orbit, Diesel, and Echo."
+      lede="Text or call your Copilot from the truck, or open it when you walk up to an estimate. Tell it everything you’re thinking—it calculates the math, updates active job files, files site photos, tracks unpaid invoices, and sets reminders. Plus, choose from customizable companions like Sparky, Diesel, Echo, and Energy Orbit."
       heroNote="Zero app fatigue · Run everything by text & phone · Walk-up estimate brain dump · Included on all plans"
       heroChips={[
         '⚡ No App Download Needed',

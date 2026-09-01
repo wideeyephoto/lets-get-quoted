@@ -26,8 +26,7 @@ export type HealthResponse = {
   };
 };
 
-function isAuthorizedDiagnosticCaller(req?: NextRequest): boolean {
-  if (!req) return false;
+function isAuthorizedDiagnosticCaller(req: NextRequest): boolean {
   const cronSecret = process.env.CRON_SECRET;
   if (!cronSecret) return false;
 
@@ -49,14 +48,14 @@ function isAuthorizedDiagnosticCaller(req?: NextRequest): boolean {
   return false;
 }
 
-export async function GET(req?: NextRequest) {
+export async function GET(req: NextRequest) {
   const startTime = performance.now();
   const services: HealthService[] = [];
 
   const isAuthed = isAuthorizedDiagnosticCaller(req);
 
   // Rate-limit unauthenticated diagnostic probes to prevent abuse
-  if (req && !isAuthed) {
+  if (!isAuthed) {
     try {
       const ip = clientIpFrom(req.headers);
       const admin = createAdminClient();
@@ -68,9 +67,6 @@ export async function GET(req?: NextRequest) {
       // Fail open on rate limiter connection errors
     }
   }
-
-  // Fast ping for synthetic monitoring heartbeats (Better Stack / Pingdom / UptimeRobot)
-  const isPing = req ? req.nextUrl?.searchParams?.get('ping') === '1' : false;
 
   // 1. Quoting Engine & Database
   const dbStart = performance.now();

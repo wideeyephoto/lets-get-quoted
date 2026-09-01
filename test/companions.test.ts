@@ -2,11 +2,12 @@ import { describe, it, expect } from 'vitest';
 import { COMPANIONS, getCompanion, DEFAULT_COMPANION_ID } from '@/lib/ai-assistant/companions';
 
 describe('AI Assistant Companions', () => {
-  it('includes AI Assistant (Energy Orbit), Diesel, and Echo in the companion roster', () => {
+  it('includes Sparky, Diesel, Echo, and AI Assistant in the companion roster', () => {
     const ids = COMPANIONS.map((c) => c.id);
-    expect(ids).toContain('assistant');
+    expect(ids).toContain('sparky');
     expect(ids).toContain('diesel');
     expect(ids).toContain('echo');
+    expect(ids).toContain('assistant');
   });
 
   it('provides Echo with safety inspector attributes', () => {
@@ -26,23 +27,27 @@ describe('AI Assistant Companions', () => {
     expect(assistant.avatarSrc).toBe('/brand/companions/spark.jpg');
   });
 
-  it('migrates legacy sparky and nova ids to AI Assistant gracefully', () => {
-    const sparkyMigrated = getCompanion('sparky');
-    expect(sparkyMigrated.id).toBe('assistant');
-    expect(sparkyMigrated.name).toBe('AI Assistant');
-
+  it('migrates legacy nova id to AI Assistant gracefully', () => {
     const novaMigrated = getCompanion('nova');
     expect(novaMigrated.id).toBe('assistant');
     expect(novaMigrated.name).toBe('AI Assistant');
   });
 
-  it('defaults to AI Assistant (Energy Orbit) if no companion or unknown id is provided', () => {
+  it('defaults to Sparky if no companion or unknown id is provided', () => {
     const defaultComp = getCompanion();
     expect(defaultComp.id).toBe(DEFAULT_COMPANION_ID);
-    expect(defaultComp.id).toBe('assistant');
+    expect(defaultComp.id).toBe('sparky');
 
     const unknownComp = getCompanion('unknown_id' as any);
     expect(unknownComp.id).toBe(DEFAULT_COMPANION_ID);
-    expect(unknownComp.id).toBe('assistant');
+    expect(unknownComp.id).toBe('sparky');
+  });
+
+  it('resolves trade uniform variations for Sparky', () => {
+    const electricianSparky = getCompanion('sparky', 'electrician');
+    expect(electricianSparky.avatarSrc).toBe('/brand/sparky/sparky-electrician.jpg');
+
+    const rooferSparky = getCompanion('sparky', 'roofing');
+    expect(rooferSparky.avatarSrc).toBe('/brand/sparky/sparky-roofer.jpg');
   });
 });

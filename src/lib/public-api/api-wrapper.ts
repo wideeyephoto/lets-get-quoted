@@ -78,6 +78,11 @@ function errorResponse(
   });
 }
 
+export type PublicApiRouteHandler = {
+  (req: NextRequest): Promise<Response>;
+  (req: NextRequest, routeSegment: { params: Promise<Record<string, string>> }): Promise<Response>;
+};
+
 /**
  * Higher-order Route Handler wrapper for all Public API v1 endpoints.
  */
@@ -88,8 +93,8 @@ export function publicApiRoute<T = unknown>(
     params?: { params?: Promise<Record<string, string>> }
   ) => Promise<NextResponse<T | StandardErrorResponse | unknown> | Response>,
   options: PublicApiOptions = {}
-) {
-  return async function (
+): PublicApiRouteHandler {
+  const routeHandler = async function (
     req: NextRequest,
     routeSegment?: { params?: Promise<Record<string, string>> }
   ): Promise<Response> {
@@ -310,4 +315,6 @@ export function publicApiRoute<T = unknown>(
       }
     }
   };
+
+  return routeHandler as PublicApiRouteHandler;
 }

@@ -70471,3 +70471,99 @@ a.sms-cat-switch:focus-visible {
   }
 }
 
+/* ===========================================================================
+   MSG SETUP COPILOT FIELD LINE CARD
+   =========================================================================== */
+.msg-setup-copilot-card {
+  margin-top: 0.85rem;
+  margin-bottom: 0.85rem;
+  padding: 0.95rem 1.1rem;
+  background: linear-gradient(145deg, rgba(14, 30, 48, 0.96), rgba(7, 18, 30, 0.98));
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 12px rgba(56, 189, 248, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.msg-setup-copilot-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.msg-setup-copilot-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.75rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 6px;
+  padding: 0.2rem 0.55rem;
+}
+
+.msg-setup-copilot-num {
+  font-size: 1.05rem;
+  font-weight: 850;
+  color: #ffffff;
+  letter-spacing: 0.02em;
+  font-family: monospace, var(--font-mono, sans-serif);
+}
+
+.msg-setup-copilot-text {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.45;
+  color: #cbd5e1;
+}
+
+.msg-setup-copilot-voice-tip {
+  margin: 0;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.08);
+  border-radius: 6px;
+  padding: 0.45rem 0.65rem;
+  border-left: 3px solid #38bdf8;
+}
+
+.msg-setup-copilot-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
+.msg-setup-copilot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.3rem 0.65rem;
+}
+
+.msg-setup-copilot-link {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #94a3b8;
+  text-decoration: none;
+  margin-left: auto;
+}
+
+.msg-setup-copilot-link:hover {
+  color: #ffffff;
+}
+
+

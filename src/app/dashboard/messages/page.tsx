@@ -262,7 +262,11 @@ export default async function MessagesPage({
           could say is behind it in a dialog — measured at 511x648, an expanded
           setup panel here pushes the first conversation off the screen, and
           conversations are what this page is for. See MessagingSetup. */}
-      <MessagingSetup setup={setup} openOnLoad={searchParams.setup === '1'} />
+      <MessagingSetup
+        setup={setup}
+        openOnLoad={searchParams.setup === '1'}
+        sharedPhoneNumber={process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323'}
+      />
 
       {/* ONE SHAPE, ALWAYS. An empty result used to replace the whole workspace
           with a single panel, so searching for a name that matched nothing
