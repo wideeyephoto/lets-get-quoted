@@ -282,15 +282,19 @@ export type HistoricalQuote = {
   scope: string | null;
   total: number;
   lines: Array<{ label: string; amount: number }>;
+  status?: string | null;
+  zip?: string | null;
+  isSameZip?: boolean;
+  won?: boolean;
 };
 
 /**
  * Comparable work this business has actually quoted.
  *
- * Scope and money only. The client's name, phone, email and address are
- * deliberately NOT here: none of them improve a price, and a third-party model
- * has no business holding a list of who lives where. The same rule is why the
- * job being quoted is sent as its scope text alone.
+ * Scope, pricing provenance, localized ZIP markers and win/loss outcomes.
+ * The client's name, phone, email and street address are deliberately NOT here:
+ * none of them improve a price, and a third-party model has no business holding
+ * a list of who lives where.
  */
 export function formatQuoteHistory(quotes: HistoricalQuote[]): string {
   const usable = quotes
@@ -305,7 +309,24 @@ export function formatQuoteHistory(quotes: HistoricalQuote[]): string {
         .slice(0, 6)
         .map((line) => `${line.label.replace(/\s+/g, ' ').trim().slice(0, 48)} $${Math.round(line.amount)}`)
         .join('; ');
-      return `- "${scope}" → $${Math.round(quote.total)}${lines ? ` (${lines})` : ''}`;
+
+      const tags: string[] = [];
+      if (quote.isSameZip && quote.zip) {
+        tags.push(`[Same ZIP: ${quote.zip}]`);
+      } else if (quote.isSameZip) {
+        tags.push('[Same ZIP]');
+      } else if (quote.zip) {
+        tags.push(`[ZIP ${quote.zip}]`);
+      }
+
+      if (quote.won === true || quote.status === 'complete' || quote.status === 'in_progress') {
+        tags.push('[Won]');
+      } else if (quote.won === false || quote.status === 'archived' || quote.status === 'declined') {
+        tags.push('[Lost]');
+      }
+
+      const prefix = tags.length > 0 ? `${tags.join(' ')} ` : '';
+      return `- ${prefix}"${scope}" → $${Math.round(quote.total)}${lines ? ` (${lines})` : ''}`;
     })
     .join('\n');
 }

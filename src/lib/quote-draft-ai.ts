@@ -17,6 +17,14 @@ import {
   type PropertyIntelligenceSummary,
 } from '@/lib/property-intel';
 import type { RoomDimensionsSummary } from '@/lib/property-intel/room-spatial-intel';
+import {
+  computeAccountPricingIntelligence,
+  formatPricingIntelligenceForPrompt,
+  extractZipFromAddress,
+  isJobWon,
+  type AccountPricingIntelligence,
+  type HistoricalPricingJob,
+} from '@/lib/pricing-intelligence';
 
 // The model call behind "Draft this quote".
 //
@@ -39,6 +47,10 @@ export type DraftContext = {
   roomSpatialScan?: RoomDimensionsSummary | null;
   /** Signed URLs or data URLs of job/lead photos to visually ground the quote */
   photos?: string[];
+  /** Adaptive ZIP, seasonal, and close-rate pricing intelligence */
+  pricingIntel?: AccountPricingIntelligence | null;
+  /** Target 5-digit ZIP code if resolved from job address */
+  targetZip?: string | null;
 };
 
 export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
@@ -46,8 +58,9 @@ export { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
 /**
  * Everything the drafter needs, in one place.
  *
- * Deliberately does NOT load the client's name, phone, email or address into the prompt.
- * Only verified geometric measurements (e.g. roof squares, footprint sq ft) and visual photos are passed.
+ * Deliberately does NOT load the client's name, phone, email or street address into the prompt.
+ * Only verified geometric measurements (e.g. roof squares, footprint sq ft), visual photos,
+ * and aggregated non-PII pricing intelligence (ZIP market signals, seasonal demand posture, close-rate analytics) are passed.
  */
 export async function loadDraftContext(
   supabase: SupabaseClient,
@@ -71,12 +84,12 @@ export async function loadDraftContext(
     // which beats what the trade charges nationally every time.
     supabase
       .from('jobs')
-      .select('scope, quoted_amount, quote_items')
+      .select('id, scope, quoted_amount, quote_items, address, status, created_at')
       .eq('account_id', accountId)
       .neq('id', jobId)
       .gt('quoted_amount', 0)
       .order('created_at', { ascending: false })
-      .limit(MAX_HISTORY_JOBS * 2),
+      .limit(50),
     // If the job has an address, fetch property & roof measurements to size quantities accurately
     typeof job.address === 'string' && job.address.trim().length >= 5
       ? getPropertyIntelligence({ address: job.address.trim() }).catch(() => null)
@@ -100,11 +113,49 @@ export async function loadDraftContext(
     }
   }
 
-  const history: HistoricalQuote[] = (past ?? []).map((row) => ({
+  const targetZip = typeof job.address === 'string' ? extractZipFromAddress(job.address) : null;
+
+  const rawPricingJobs: HistoricalPricingJob[] = (past ?? []).map((row) => ({
+    id: row.id,
     scope: (row.scope as string | null) ?? null,
-    total: Number(row.quoted_amount) || 0,
+    quotedAmount: Number(row.quoted_amount) || 0,
+    quoteItems: row.quote_items,
+    status: (row.status as string | null) ?? null,
+    address: (row.address as string | null) ?? null,
+    zip: extractZipFromAddress(row.address as string | null),
+    createdAt: (row.created_at as string | null) ?? null,
     lines: parseQuoteItems(row.quote_items).map((item) => ({ label: item.label, amount: Number(item.amount) || 0 })),
   }));
+
+  const pricingIntel = computeAccountPricingIntelligence({
+    jobs: rawPricingJobs,
+    targetAddress: typeof job.address === 'string' ? job.address : null,
+    trade,
+    referenceDate: new Date(),
+  });
+
+  const history: HistoricalQuote[] = rawPricingJobs.map((row) => {
+    const isSameZip = Boolean(targetZip && row.zip === targetZip);
+    const won = isJobWon(row.status);
+    return {
+      scope: row.scope,
+      total: row.quotedAmount,
+      lines: row.lines ?? [],
+      status: row.status,
+      zip: row.zip,
+      isSameZip,
+      won,
+    };
+  });
+
+  // Prioritize localized same-ZIP comps, then won jobs, then recent quotes
+  history.sort((a, b) => {
+    if (a.isSameZip && !b.isSameZip) return -1;
+    if (!a.isSameZip && b.isSameZip) return 1;
+    if (a.won && !b.won) return -1;
+    if (!a.won && b.won) return 1;
+    return 0;
+  });
 
   return {
     accountId,
@@ -122,6 +173,8 @@ export async function loadDraftContext(
     refinement: refinement?.trim() || null,
     propertyIntel: summarizePropertyIntelligence(propertyIntel),
     photos: photoUrls.slice(0, 4),
+    pricingIntel,
+    targetZip,
   };
 }
 
@@ -140,6 +193,7 @@ function extractOutputText(payload: unknown): string {
 export function buildDraftInstructions(context: DraftContext): string {
   const book = formatPriceBook(context.services);
   const history = formatQuoteHistory(context.history);
+  const pricingIntelLines = formatPricingIntelligenceForPrompt(context.pricingIntel);
 
   let propertyLines = '';
   if (context.propertyIntel) {
@@ -235,6 +289,7 @@ export function buildDraftInstructions(context: DraftContext): string {
       ? `THIS CONTRACTOR'S PRICE BOOK — use these services wherever the work matches one:\n${book}`
       : 'This contractor has not set up a price book, so you will have to estimate every line.',
     '',
+    pricingIntelLines ? `${pricingIntelLines}\n` : '',
     history ? `WHAT THEY HAVE CHARGED RECENTLY (their real quotes):\n${history}` : '',
     '',
     propertyLines ? `${propertyLines}\n` : '',
@@ -250,6 +305,11 @@ export function buildDraftInstructions(context: DraftContext): string {
     `  A quick service call is 1-2 lines. Substantial work (a replacement, a repipe, a re-roof) is 4-8 lines covering the real components a tradesperson knows it takes: access and demolition, materials, labour, fixtures or units, permits and inspection where that trade requires them, and making good afterwards. Never more than ${MAX_DRAFT_LINES}.`,
     '- Do NOT pad. Every line must be work somebody actually does on this job; if you would struggle to justify it to the customer, leave it out. A line the contractor has to delete costs them more attention than one they have to add.',
     '- When a line matches a price-book service, put that service name in "service" EXACTLY as written above, and set "quantity" (hours, sqft, or how many of that flat job). The contractor\'s own price will be applied — your "amount" is only a sanity check.',
+    '- ADAPTIVE PRICING & CLOSE-RATE OPTIMIZATION:',
+    '  * Leverage the account close-rate and sweet-spot intelligence provided above to structure quotes for maximum conversion.',
+    '  * Keep essential core work in "base" lines priced competitively around winning historical ranges. Place nice-to-have or premium additions in "kind":"addon" so clients can opt in without jeopardizing base quote approval.',
+    '  * Reflect seasonal demand posture: in peak seasons, quote full rates without undercutting; in shoulder/off-peak seasons, emphasize clear value and high-conversion base pricing.',
+    '  * When historical comps marked [Same ZIP] are available, give them strong weighting for localized labor and material scale.',
     '- SCOPE-CONSCIOUS MEASUREMENT APPLICATION:',
     '  * When verified 3D LiDAR room measurements are provided above, snap relevant line-item quantities DIRECTLY to these numbers:',
     '    - Flooring/tile lines MUST use the Floor Area.',
