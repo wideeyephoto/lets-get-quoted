@@ -1911,6 +1911,322 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     lastVerified: MANUAL_LAST_VERIFIED_DATE,
     lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
   },
+  {
+    slug: 'stripe-dispute-evidence-packet',
+    chapterId: 'payments',
+    chapterTitle: 'Chapter 5: Payments, Billing & Rails',
+    order: 7,
+    title: 'Stripe Connect Dispute & Chargeback Defense Assembly',
+    summary: 'Standard operating procedure for gathering electronic quote approvals, homeowner IP records, SMS reminders, job completion certificates, and submitting formatted evidence packets to defeat chargebacks on Stripe Connect.',
+    keywords: ['stripe', 'dispute', 'chargeback', 'evidence', 'fraud', 'connect', 'quote approval', 'ip log', 'win rate', 'dp_'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'finance', 'risk', 'support'],
+    requiredPermission: 'money.refund',
+    requiresMfa: true,
+    slaMinutes: 60,
+    interactiveParams: [
+      { key: 'disputeId', label: 'Stripe Dispute ID', placeholder: 'dp_1Qxyz123' },
+      { key: 'accountId', label: 'Contractor Account ID', placeholder: 'acc_contractor_123' },
+      { key: 'customerEmail', label: 'Homeowner Email', placeholder: 'homeowner@example.com' },
+    ],
+    riskLevel: 'production',
+    environment: 'all',
+    useThisWhen: 'A homeowner or cardholder initiates an unauthorized charge or product-not-received dispute via Stripe Connect on an invoiced job or deposit payment.',
+    desiredOutcome: 'Compile a chronologically stamped, legally compelling dispute evidence packet in PDF/text format with audit trail links within 24 hours of notice, maximizing merchant win rate.',
+    prerequisites: [
+      'Access to /admin/money and /admin/disputes with payments.refund or finance permissions.',
+      'Active Stripe Dashboard Connect Merchant access.',
+      'Access to quote acceptance audit records and SMS dispatch logs.',
+    ],
+    routes: [
+      { label: 'Disputes & Risk Console', href: '/admin/risk' },
+      { label: 'Payments & Settlement Ledger', href: '/admin/money' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Extract Transaction & Quote Metadata',
+        instruction: 'Look up the Stripe Dispute ID (dp_...) in /admin/risk. Note the associated account_id, charge_id, payment_intent_id, and job quote number.',
+        commandOrAction: 'SELECT * FROM direct_payment_events WHERE stripe_charge_id = :chargeId OR stripe_payment_intent_id = :paymentIntentId;',
+        verification: 'Verify that the dispute amount and customer email match the original approved invoice.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Retrieve Electronic Signature & Acceptance Timestamps',
+        instruction: 'Query the quote acceptance log to obtain the exact UTC timestamp, customer IP address, user-agent string, and authorized phone number that approved the quote.',
+        commandOrAction: 'SELECT id, approved_at, approval_ip, approval_name, customer_phone FROM quotes WHERE id = :quoteId;',
+        verification: 'Confirm the electronic acceptance occurred BEFORE the credit card charge timestamp.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Aggregate Service Execution & Communication Evidence',
+        instruction: 'Collect SMS quote notifications, appointment dispatch timestamps, field crew work photos, and signed completion certificates from the job record.',
+        verification: 'Ensure all media files are clear, unedited, and timestamped.',
+      },
+      {
+        stepNumber: 4,
+        title: 'Format and Submit Evidence via Stripe Connect API / Dashboard',
+        instruction: 'Assemble the evidence packet following Stripe Connect chargeback guidelines: 1) Customer Communication, 2) Proof of Service, 3) Terms of Service & Electronic Signature Certificate, 4) Refund/Cancellation Policy.',
+        commandOrAction: 'curl https://api.stripe.com/v1/disputes/:disputeId/close -u sk_live_...:',
+        verification: 'Stripe dispute status updates to "under_review" with confirmation reference.',
+      },
+    ],
+    stopConditions: [
+      'Stop if the contractor admits the work was never performed or the charge was duplicated; process an agreed refund/settlement instead of disputing.',
+      'Stop if the dispute deadline has expired in Stripe Connect (past the submission window).',
+    ],
+    expectedResult: 'Evidence packet submitted to card issuer with full electronic proof of work, authorization, and terms.',
+    impact: {
+      customer: 'Fair, transparent review of legitimate field service delivery.',
+      business: 'Protects contractor payout funds and minimizes platform chargeback dispute ratios.',
+    },
+    evidenceAfterward: ['Stripe dispute status set to under_review', 'Audit log entry under dispute.evidence_submitted'],
+    auditLogExpectation: 'Audit log entry created with disputeId, accountId, and staff user ID.',
+    recoveryOrRollback: 'If additional evidence emerges, submit supplemental documentation before the issuer decision cut-off.',
+    escalationContact: 'Finance Lead (finance@letsgetquoted.com)',
+    relatedArticles: ['payment-investigation-reconciliation', 'contractor-lifecycle-dunning'],
+    owner: 'Finance Lead',
+    backupOwner: 'Risk Lead',
+    authoritativeFiles: ['src/lib/payments.ts', 'src/app/admin/money/page.tsx'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+  },
+  {
+    slug: 'custom-domain-dns-ssl-triage',
+    chapterId: 'engineering',
+    chapterTitle: 'Chapter 9: Engineering Operations',
+    order: 3,
+    title: 'Custom Domain DNS, CAA & SSL Handshake Triage',
+    summary: 'Diagnose and remediate contractor custom domain validation failures, CAA record restrictions, Cloudflare proxy loop collisions, and pending SSL certificate generation.',
+    keywords: ['custom domain', 'ssl', 'dns', 'cname', 'caa', 'cloudflare', 'letsencrypt', 'tls', 'theme', 'apex'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'ops', 'support'],
+    requiredPermission: 'ops.manage',
+    requiresMfa: false,
+    slaMinutes: 30,
+    interactiveParams: [
+      { key: 'domain', label: 'Contractor Custom Domain', placeholder: 'www.millerplumbing.com' },
+      { key: 'accountId', label: 'Account ID', placeholder: 'acc_contractor_123' },
+    ],
+    riskLevel: 'general',
+    environment: 'all',
+    useThisWhen: 'A contractor configures a custom domain (e.g. www.smithroofing.com) and their public website returns SSL handshake errors, SSL_ERROR_NO_CYPHER_OVERLAP, or remains stuck in "pending_validation".',
+    desiredOutcome: 'Identify the exact DNS misconfiguration (missing CNAME, conflicting A records, or restrictive CAA records), resolve SSL provisioning, and verify green HTTPS lock.',
+    prerequisites: [
+      'Access to /admin/marketing or contractor website settings.',
+      'Access to public DNS resolution tools (dig, nslookup, or Cloudflare DNS trace).',
+    ],
+    routes: [
+      { label: 'Marketing & Domains Console', href: '/admin/marketing' },
+      { label: 'Contractors Management', href: '/admin/contractors' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Inspect Live DNS Resolution',
+        instruction: 'Run dig on both the apex domain and the subdomain to inspect current CNAME and A record routing.',
+        commandOrAction: 'dig +noall +answer :domain CNAME; dig +noall +answer :domain A',
+        verification: 'Verify CNAME points to custom.letsgetquoted.com without conflicting apex A records.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Check CAA (Certificate Authority Authorization) Records',
+        instruction: 'Verify if the contractor has restrictive CAA records on their root domain that block Let\'s Encrypt / Google Trust Services from issuing SSL certificates.',
+        commandOrAction: 'dig +noall +answer :domain CAA',
+        verification: 'If CAA records exist, ensure issue "letsencrypt.org" or issue "pki.goog" is allowed.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Verify Cloudflare Proxy Mode (Orange Cloud vs Grey Cloud)',
+        instruction: 'If the contractor uses Cloudflare DNS, instruct them to set the CNAME record to "DNS Only" (Grey Cloud) or configure SSL mode to "Full (Strict)". Proxied (Orange Cloud) with Flexible SSL triggers endless redirect loops (ERR_TOO_MANY_REDIRECTS).',
+        verification: 'Curl response returns HTTP 200/301 without redirect loops.',
+      },
+      {
+        stepNumber: 4,
+        title: 'Trigger Platform SSL Re-Verification',
+        instruction: 'In /admin/marketing, click "Re-verify Domain & Issue SSL". Wait 60 seconds for certificate propagation.',
+        commandOrAction: 'curl -Iv https://:domain',
+        verification: 'HTTP response returns 200 OK with valid SSL certificate issued to the custom domain.',
+      },
+    ],
+    stopConditions: [
+      'Stop if the domain registrar has DNSSEC enabled with broken DS records; contractor must disable DNSSEC at their registrar before proceeding.',
+    ],
+    expectedResult: 'Contractor website loads cleanly over HTTPS with valid SSL certificate and theme styling.',
+    impact: {
+      customer: 'Homeowners safely browse and request quotes on the contractor\'s branded domain.',
+      business: 'High customer satisfaction and brand credibility for paid plan tiers.',
+    },
+    evidenceAfterward: ['HTTPS curl test returns 200 OK', 'Domain status in accounts table updated to verified'],
+    auditLogExpectation: 'Domain verification logged under domain.verified.',
+    recoveryOrRollback: 'If custom domain fails irreparably, revert routing to the fallback subdomain (account.letsgetquoted.com).',
+    escalationContact: 'Platform Engineering (ops@letsgetquoted.com)',
+    relatedArticles: ['theme-engine-custom-domains'],
+    owner: 'Platform Engineering',
+    backupOwner: 'Support Lead',
+    authoritativeFiles: ['src/lib/custom-domains.ts', 'src/middleware.ts'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+  },
+  {
+    slug: 'database-pooler-lock-triage',
+    chapterId: 'operations',
+    chapterTitle: 'Chapter 7: Platform Operations',
+    order: 5,
+    title: 'Supabase Postgres Transaction Pooler Saturation & Lock Triage',
+    summary: 'Emergency SRE playbook for isolating pooler exhaustion (Error 53300/57014), identifying long-running transactions, safely terminating orphaned locks with pg_terminate_backend, and scaling pool allocation.',
+    keywords: ['supabase', 'postgres', 'pooler', 'pgbouncer', 'lock', 'timeout', '53300', '57014', 'pg_terminate_backend', 'sre', 'saturation'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'ops'],
+    requiredPermission: 'ops.manage',
+    requiresMfa: true,
+    requiresDualAuth: true,
+    slaMinutes: 15,
+    interactiveParams: [
+      { key: 'pid', label: 'Blocked PID', placeholder: '12345' },
+      { key: 'minSeconds', label: 'Minimum Duration (Seconds)', placeholder: '30' },
+    ],
+    riskLevel: 'production',
+    environment: 'production',
+    useThisWhen: 'Supabase transaction pooler reaches 100% capacity, API routes return HTTP 500 with "Max client connections reached (53300)" or "canceling statement due to statement timeout (57014)".',
+    desiredOutcome: 'Identify the offending query or unindexed table lock, safely terminate blocking connections, restore connection headroom, and resume normal API traffic within 15 minutes.',
+    prerequisites: [
+      'Super Admin or Ops role with active MFA.',
+      'Access to Supabase Database Console / psql direct pooler connection string.',
+    ],
+    routes: [
+      { label: 'SRE Incidents Console', href: '/admin/incidents' },
+      { label: 'System Failures & Heartbeats', href: '/admin/failures' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Check Active Connection Pool Count & Wait Events',
+        instruction: 'Inspect active client connections vs max pool allocation across serverless functions and long-running cron jobs.',
+        commandOrAction: 'SELECT count(*), state, wait_event_type, wait_event FROM pg_stat_activity WHERE state IS NOT NULL GROUP BY 2, 3, 4 ORDER BY 1 DESC;',
+        verification: 'Identify whether connections are in "active", "idle in transaction", or waiting on ExclusiveLock.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Identify Long-Running Blocking Queries (>30s)',
+        instruction: 'Query pg_stat_activity to find all transactions running longer than 30 seconds that are holding locks on high-velocity tables (quotes, accounts, direct_payment_events).',
+        commandOrAction: 'SELECT pid, now() - xact_start AS duration, query, state, client_addr FROM pg_stat_activity WHERE state != \'idle\' AND (now() - xact_start) > interval \'30 seconds\' ORDER BY duration DESC;',
+        verification: 'Note the offending PID(s) and query patterns (e.g. unindexed full table scans or unbounded batch updates).',
+      },
+      {
+        stepNumber: 3,
+        title: 'Safely Terminate Blocking Connections',
+        instruction: 'Execute pg_cancel_backend() first for graceful cancellation. If connection does not yield within 5 seconds, escalate to pg_terminate_backend().',
+        caution: 'Ensure you do not terminate the current admin maintenance session or critical payment processing workers.',
+        commandOrAction: 'SELECT pg_cancel_backend(:pid); -- Graceful\nSELECT pg_terminate_backend(:pid); -- Force kill',
+        verification: 'Re-run pg_stat_activity to confirm PID is terminated and connection count drops below 75% capacity.',
+      },
+      {
+        stepNumber: 4,
+        title: 'Verify Pooler Headroom & Route Latency Recovery',
+        instruction: 'Monitor /api/health and /admin/failures for 5 minutes. Verify that query latencies return below 150ms and error rates drop to zero.',
+        commandOrAction: 'curl -I https://app.letsgetquoted.com/api/health',
+        verification: 'HTTP 200 OK returned with database status healthy.',
+      },
+    ],
+    stopConditions: [
+      'Stop if connection exhaustion is caused by an active DDoS attack; activate Cloudflare Under Attack mode immediately.',
+      'Stop if terminating connections causes repeated immediate re-saturation; scale Supabase compute tier in Cloud Dashboard.',
+    ],
+    expectedResult: 'Postgres pooler connections stabilized with ample headroom and zero API timeouts.',
+    impact: {
+      customer: 'Immediate recovery of app responsiveness and checkout flow availability.',
+      business: 'Avoids multi-minute downtime SLA breaches.',
+    },
+    evidenceAfterward: ['pg_stat_activity shows healthy connection counts', 'API latency graphs recover to baseline <150ms'],
+    auditLogExpectation: 'Audit log entry under sre.database_connection_terminated with terminated PIDs.',
+    recoveryOrRollback: 'If pooler remains unresponsive, execute a graceful restart of the Supabase Transaction Pooler from the cloud management dashboard.',
+    escalationContact: 'Platform Engineering Lead (ops@letsgetquoted.com)',
+    relatedArticles: ['database-migration-zero-downtime', 'incident-triage-pathways'],
+    owner: 'Platform Engineering',
+    backupOwner: 'Super Admin',
+    authoritativeFiles: ['src/lib/auth.ts', 'src/app/api/health/route.ts'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+  },
+  {
+    slug: 'voice-recording-ingest-pipeline',
+    chapterId: 'messaging',
+    chapterTitle: 'Chapter 6: Messaging, Voice & Campaigns',
+    order: 6,
+    title: 'Voice Recording Storage & MP3 Transcription Ingest Pipeline',
+    summary: 'Playbook for handling SignalWire call recording webhooks, failed transcription ingests, Supabase Storage signed audio URL generation, and audio retention storage policies.',
+    keywords: ['voice', 'recording', 'signalwire', 'call recording', 'transcription', 'mp3', 'storage', 'audio signed url', 'hotline'],
+    status: 'current',
+    intendedRoles: ['super_admin', 'ops', 'support'],
+    requiredPermission: 'ops.manage',
+    requiresMfa: false,
+    slaMinutes: 45,
+    interactiveParams: [
+      { key: 'callSid', label: 'SignalWire Call SID', placeholder: 'CA123456789' },
+      { key: 'phone', label: 'Contractor Phone Number', placeholder: '+15125550199' },
+    ],
+    riskLevel: 'general',
+    environment: 'all',
+    useThisWhen: 'A contractor reports missing call recordings, audio player playback errors ("Failed to load audio resource"), or missing AI call transcription summaries in their dashboard inbox.',
+    desiredOutcome: 'Trace the SignalWire recording webhook, re-download the audio payload to Supabase Storage, generate a fresh signed URL, and trigger the AI transcription pipeline.',
+    prerequisites: [
+      'Access to /admin/messaging and /admin/failures.',
+      'SignalWire Space API credentials for call recording retrieval.',
+    ],
+    routes: [
+      { label: 'Messaging & Voice Console', href: '/admin/messaging' },
+      { label: 'System Failures & Webhooks', href: '/admin/failures' },
+    ],
+    procedure: [
+      {
+        stepNumber: 1,
+        title: 'Locate Inbound Call Record & Webhook Event',
+        instruction: 'Search /admin/messaging for the contractor phone or Call SID. Check if the recording callback webhook was received or dropped.',
+        commandOrAction: 'SELECT * FROM voice_calls WHERE call_sid = :callSid OR contractor_phone = :phone ORDER BY created_at DESC LIMIT 5;',
+        verification: 'Confirm call status is "completed" and inspect recording_url field.',
+      },
+      {
+        stepNumber: 2,
+        title: 'Verify Supabase Storage Bucket File Existence',
+        instruction: 'Check if the MP3 audio file was successfully ingested into the "voice-recordings" private storage bucket under the contractor\'s account directory.',
+        commandOrAction: 'SELECT name, id, created_at, metadata FROM storage.objects WHERE bucket_id = \'voice-recordings\' AND name LIKE \'%' + ':callSid' + '%\';',
+        verification: 'Verify file exists and file size is >0 bytes.',
+      },
+      {
+        stepNumber: 3,
+        title: 'Test Audio Signed URL Generation',
+        instruction: 'Generate a 1-hour signed URL for the audio object to ensure the storage signing keys and RLS policies allow authenticated contractor playback.',
+        verification: 'Playback loads in browser without 403 Forbidden or 404 Not Found errors.',
+      },
+      {
+        stepNumber: 4,
+        title: 'Re-trigger AI Transcription Pipeline (if missing)',
+        instruction: 'If audio exists but transcription text is null, trigger the Gemini audio transcription ingest worker to generate the summary and customer action items.',
+        commandOrAction: 'SELECT triage_voice_recording(:callSid);',
+        verification: 'voice_calls table updates with full transcription text and sentiment score.',
+      },
+    ],
+    stopConditions: [
+      'Stop if the call was under 5 seconds (empty/abandoned call without recorded speech).',
+      'Stop if recording consent was denied by state two-party consent laws without contractor recording disclaimer.',
+    ],
+    expectedResult: 'Call recording is securely stored, signed URL streams audio smoothly, and AI transcription displays in contractor dashboard.',
+    impact: {
+      customer: 'Contractors never lose homeowner job specifications or customer lead calls.',
+      business: 'Ensures voice add-on package reliability and retention.',
+    },
+    evidenceAfterward: ['voice_calls row populated with valid storage_path and transcription', 'Audio player functions in contractor dashboard'],
+    auditLogExpectation: 'Audit log entry under voice.recording_reingested.',
+    recoveryOrRollback: 'If storage upload failed, pull the backup recording directly from SignalWire REST API before the 30-day provider retention window expires.',
+    escalationContact: 'Communications Lead (voice@letsgetquoted.com)',
+    relatedArticles: ['sms-hotline-provisioning', 'speed-to-lead-tcpa-compliance'],
+    owner: 'Communications Lead',
+    backupOwner: 'Support Lead',
+    authoritativeFiles: ['src/lib/voice.ts', 'src/app/api/webhooks/voice/'],
+    lastVerified: MANUAL_LAST_VERIFIED_DATE,
+    lastVerifiedCommit: MANUAL_LAST_VERIFIED_COMMIT,
+  },
 ];
 
 export const MANUAL_CHAPTER_DEFS: Array<Omit<ManualChapter, 'articles'>> = [
@@ -2165,4 +2481,81 @@ export function getAdjacentPermittedManualArticles(
 
   return { prev, next };
 }
+
+/**
+ * Generates an offline standalone Markdown document containing all permitted operational SOPs.
+ * Designed for air-gapped disaster recovery runbooks.
+ */
+export function exportAllManualArticlesMarkdown(role: StaffRole, active: boolean): string {
+  if (!active) return '# Unauthorized\nStaff session is inactive.';
+  const permittedChapters = getPermittedManualChapters(role, active);
+
+  let doc = `# Let's Get Quoted — Authoritative Operations Manual & SOPs\n\n`;
+  doc += `**Export Timestamp**: ${new Date().toISOString()}\n`;
+  doc += `**Audience Role**: ${role}\n`;
+  doc += `**Platform Verification**: ${MANUAL_LAST_VERIFIED_DATE} (Commit ${MANUAL_LAST_VERIFIED_COMMIT})\n\n`;
+  doc += `---\n\n## Table of Contents\n\n`;
+
+  for (const chapter of permittedChapters) {
+    doc += `### Chapter ${chapter.number}: ${chapter.title}\n`;
+    for (const art of chapter.articles) {
+      doc += `- [${art.title}](#${art.slug})\n`;
+    }
+    doc += `\n`;
+  }
+
+  doc += `---\n\n`;
+
+  for (const article of MANUAL_ARTICLES) {
+    if (!canStaffReadArticle(article, role, active)) continue;
+
+    doc += `<a id="${article.slug}"></a>\n\n`;
+    doc += `# ${article.title}\n\n`;
+    doc += `**Chapter**: ${article.chapterTitle} | **Risk**: \`${article.riskLevel.toUpperCase()}\` | **Owner**: ${article.owner}\n\n`;
+    doc += `> **Use This When**: ${article.useThisWhen}\n\n`;
+    doc += `> **Desired Outcome**: ${article.desiredOutcome}\n\n`;
+
+    if (article.prerequisites.length > 0) {
+      doc += `### Prerequisites\n`;
+      for (const req of article.prerequisites) {
+        doc += `- ${req}\n`;
+      }
+      doc += `\n`;
+    }
+
+    doc += `### Step-by-Step Procedure\n\n`;
+    for (const step of article.procedure) {
+      doc += `#### Step ${step.stepNumber}: ${step.title}\n`;
+      doc += `${step.instruction}\n\n`;
+      if (step.caution) {
+        doc += `> ⚠️ **CAUTION**: ${step.caution}\n\n`;
+      }
+      if (step.commandOrAction) {
+        doc += `\`\`\`bash\n${step.commandOrAction}\n\`\`\`\n\n`;
+      }
+      if (step.verification) {
+        doc += `*Verification*: ${step.verification}\n\n`;
+      }
+    }
+
+    if (article.stopConditions.length > 0) {
+      doc += `### Stop Conditions\n`;
+      for (const stop of article.stopConditions) {
+        doc += `- 🛑 ${stop}\n`;
+      }
+      doc += `\n`;
+    }
+
+    doc += `### Verification & Impact\n`;
+    doc += `- **Expected Result**: ${article.expectedResult}\n`;
+    doc += `- **Customer Impact**: ${article.impact.customer}\n`;
+    doc += `- **Business Impact**: ${article.impact.business}\n`;
+    doc += `- **Rollback / Recovery**: ${article.recoveryOrRollback}\n`;
+    doc += `- **Escalation Contact**: ${article.escalationContact}\n\n`;
+    doc += `---\n\n`;
+  }
+
+  return doc;
+}
+
 

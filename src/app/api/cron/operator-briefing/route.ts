@@ -7,7 +7,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
-export async function runOperatorMorningBriefingCron(admin?: SupabaseClient) {
+async function runOperatorMorningBriefingCron(admin?: SupabaseClient) {
   const client = admin || createAdminClient();
   const report = await runAutonomousOperatorCycle(client, { adminUserId: 'cron-operator-7am' });
   const digestResult = await dispatchExecutiveBriefingDigest(report.briefing);

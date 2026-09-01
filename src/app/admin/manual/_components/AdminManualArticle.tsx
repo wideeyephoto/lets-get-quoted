@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import type { ManualArticle, ManualArticleSummary } from '@/lib/admin-manual';
 import { ADMIN_MANUAL_VISUAL_COMPONENTS } from '@/components/admin-manual/visuals';
+import {
+  logManualResolutionAction,
+  requestDualApprovalAction,
+} from '../actions';
 import styles from '../manual.module.css';
 
 interface AdminManualArticleProps {
@@ -17,6 +22,7 @@ export default function AdminManualArticle({
   prevArticle,
   nextArticle,
 }: AdminManualArticleProps) {
+  const searchParams = useSearchParams();
   const VisualComponent = article.visualId
     ? ADMIN_MANUAL_VISUAL_COMPONENTS[article.visualId]
     : null;
@@ -27,6 +33,49 @@ export default function AdminManualArticle({
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [showIncidentShare, setShowIncidentShare] = useState(false);
 
+  // Incident Stopwatch & SLA Timer
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const [isTimerRunning, setIsTimerRunning] = useState(false);
+
+  // Parameterized Command Values (bound to URL search params & inputs)
+  const [paramValues, setParamValues] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {};
+    if (article.interactiveParams) {
+      for (const p of article.interactiveParams) {
+        const fromUrl = searchParams.get(p.key);
+        initial[p.key] = fromUrl || p.default || '';
+      }
+    }
+    return initial;
+  });
+
+  // Audit Resolution Modal State
+  const [isResolving, setIsResolving] = useState(false);
+  const [resolutionNotes, setResolutionNotes] = useState('');
+  const [resolutionSuccess, setResolutionSuccess] = useState(false);
+
+  // Dual Approval State
+  const [dualAuthRequested, setDualAuthRequested] = useState(false);
+  const [dualAuthReason, setDualAuthReason] = useState('');
+  const [isRequestingDualAuth, setIsRequestingDualAuth] = useState(false);
+
+  // Sync params if URL search params change
+  useEffect(() => {
+    if (article.interactiveParams) {
+      setParamValues((prev) => {
+        const updated = { ...prev };
+        for (const p of article.interactiveParams || []) {
+          const fromUrl = searchParams.get(p.key);
+          if (fromUrl && fromUrl !== prev[p.key]) {
+            updated[p.key] = fromUrl;
+          }
+        }
+        return updated;
+      });
+    }
+  }, [searchParams, article.interactiveParams]);
+
+  // Load checklist progress
   useEffect(() => {
     try {
       const saved = sessionStorage.getItem(storageKey);
@@ -38,7 +87,20 @@ export default function AdminManualArticle({
     }
   }, [storageKey]);
 
-  const toggleStep = (stepNumber: number) => {
+  // Stopwatch Interval
+  useEffect(() => {
+    let interval: NodeJS.Timeout | null = null;
+    if (isTimerRunning) {
+      interval = setInterval(() => {
+        setTimerSeconds((sec) => sec + 1);
+      }, 1000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [isTimerRunning]);
+
+  const toggleStep = useCallback((stepNumber: number) => {
     setCheckedSteps((prev) => {
       const updated = { ...prev, [stepNumber]: !prev[stepNumber] };
       try {
@@ -48,7 +110,7 @@ export default function AdminManualArticle({
       }
       return updated;
     });
-  };
+  }, [storageKey]);
 
   const resetChecklist = () => {
     setCheckedSteps({});
@@ -66,6 +128,30 @@ export default function AdminManualArticle({
 
   const progressPercent = totalSteps > 0 ? Math.round((completedSteps / totalSteps) * 100) : 0;
 
+  // Keyboard navigation: 'x' toggles next uncompleted step, 't' toggles timer
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
+        return;
+      }
+
+      if (e.key === 't' || e.key === 'T') {
+        e.preventDefault();
+        setIsTimerRunning((r) => !r);
+      } else if (e.key === 'x' || e.key === 'X') {
+        e.preventDefault();
+        const nextIncomplete = article.procedure.find((s) => !checkedSteps[s.stepNumber]);
+        if (nextIncomplete) {
+          toggleStep(nextIncomplete.stepNumber);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [article.procedure, checkedSteps, toggleStep]);
+
   const copyToClipboard = async (text: string, key: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -76,12 +162,67 @@ export default function AdminManualArticle({
     }
   };
 
+  // Interpolate :parameter tokens inside shell/SQL commands
+  const interpolateCommand = (rawCommand?: string) => {
+    if (!rawCommand) return '';
+    let interpolated = rawCommand;
+    for (const [k, v] of Object.entries(paramValues)) {
+      if (v.trim()) {
+        interpolated = interpolated.split(`:${k}`).join(v.trim());
+      }
+    }
+    return interpolated;
+  };
+
+  const formatTimer = (totalSeconds: number) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  };
+
+  const isSlaBreached = article.slaMinutes && timerSeconds > article.slaMinutes * 60;
+
+  // Handle Audit Sign-off
+  const handleLogResolution = async () => {
+    setIsResolving(true);
+    const res = await logManualResolutionAction({
+      slug: article.slug,
+      articleTitle: article.title,
+      stepsCompleted: completedSteps,
+      totalSteps,
+      durationSeconds: timerSeconds,
+      targetEntityId: paramValues.accountId || paramValues.disputeId || paramValues.domain || undefined,
+      notes: resolutionNotes,
+    });
+    setIsResolving(false);
+    if (res.success) {
+      setResolutionSuccess(true);
+      setTimeout(() => setResolutionSuccess(false), 4000);
+    }
+  };
+
+  // Handle Dual Approval Request
+  const handleRequestDualApproval = async () => {
+    setIsRequestingDualAuth(true);
+    const res = await requestDualApprovalAction({
+      slug: article.slug,
+      articleTitle: article.title,
+      targetEntityId: paramValues.accountId || paramValues.disputeId || undefined,
+      reason: dualAuthReason || 'High-impact mutation execution',
+    });
+    setIsRequestingDualAuth(false);
+    if (res.success) {
+      setDualAuthRequested(true);
+    }
+  };
+
   const incidentMarkdown = `🚨 *Operating Runbook: ${article.title}*
 - *Guide:* https://app.letsgetquoted.com/admin/manual/${article.slug}
 - *Chapter:* ${article.chapterTitle}
 - *Owner:* ${article.owner} | *Escalation:* ${article.escalationContact}
-- *Risk Level:* ${article.riskLevel.toUpperCase()}${article.requiresMfa ? ' (MFA Required)' : ''}
+- *Risk Level:* ${article.riskLevel.toUpperCase()}${article.requiresMfa ? ' (MFA Required)' : ''}${article.requiresDualAuth ? ' (Dual Auth Required)' : ''}
 - *Status:* ${completedSteps}/${totalSteps} steps completed (${progressPercent}%)
+- *Duration:* ${formatTimer(timerSeconds)}${article.slaMinutes ? ` (SLA: ${article.slaMinutes}m)` : ''}
 ${article.stopConditions.length > 0 ? `\n*🛑 Stop Conditions:*\n${article.stopConditions.map((c) => `• ${c}`).join('\n')}` : ''}
 ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsgetquoted.com${article.routes[0]?.href}` : ''}`;
 
@@ -134,6 +275,44 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
         </div>
       )}
 
+      {/* Dual Authorization Warning Banner */}
+      {article.requiresDualAuth && (
+        <div className={styles.dualAuthBanner}>
+          <div className={styles.dualAuthHeader}>
+            <span style={{ fontSize: '1.1rem' }}>🛡️</span>
+            <div>
+              <strong>Two-Person Dual-Authorization Rule Required</strong>
+              <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: '#fef08a' }}>
+                Executing mutations in this runbook requires secondary manager review and sign-off.
+              </p>
+            </div>
+          </div>
+          {!dualAuthRequested ? (
+            <div className={styles.dualAuthActionRow}>
+              <input
+                type="text"
+                placeholder="Reason / justification for secondary sign-off..."
+                value={dualAuthReason}
+                onChange={(e) => setDualAuthReason(e.target.value)}
+                className={styles.dualAuthInput}
+              />
+              <button
+                type="button"
+                onClick={handleRequestDualApproval}
+                disabled={isRequestingDualAuth}
+                className={styles.dualAuthBtn}
+              >
+                {isRequestingDualAuth ? 'Requesting...' : 'Request Secondary Sign-Off'}
+              </button>
+            </div>
+          ) : (
+            <div className={styles.dualAuthSuccess}>
+              ✓ Dual authorization request logged to audit trail and dispatched to #ops-incidents.
+            </div>
+          )}
+        </div>
+      )}
+
       <header className={styles.header}>
         <div className={styles.headerTitleRow}>
           <h1 className={styles.title}>{article.title}</h1>
@@ -147,6 +326,9 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
             </span>
             {article.requiresMfa && (
               <span className={`${styles.badge} ${styles.badgeMfa}`}>MFA Required</span>
+            )}
+            {article.requiresDualAuth && (
+              <span className={`${styles.badge} ${styles.badgeDualAuth}`}>Dual Auth</span>
             )}
             {article.requiredPermission && (
               <span className={styles.badge}>Permission: {article.requiredPermission}</span>
@@ -176,6 +358,53 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
         </div>
       </header>
 
+      {/* Incident Stopwatch & SLA Bar */}
+      <div className={styles.stopwatchBar}>
+        <div className={styles.stopwatchLeft}>
+          <span className={styles.stopwatchIcon}>⏱️</span>
+          <div>
+            <span className={styles.stopwatchLabel}>Incident Response Timer: </span>
+            <strong className={styles.stopwatchTime}>{formatTimer(timerSeconds)}</strong>
+            <span style={{ fontSize: '0.72rem', color: '#94a3b8', marginLeft: '0.4rem' }}>
+              (Press <kbd className={styles.keyKbd}>t</kbd> to toggle)
+            </span>
+          </div>
+        </div>
+
+        <div className={styles.stopwatchRight}>
+          {article.slaMinutes && (
+            <span
+              className={`${styles.slaBadge} ${
+                isSlaBreached ? styles.slaBadgeBreached : styles.slaBadgeHealthy
+              }`}
+            >
+              {isSlaBreached ? '⚠️ SLA Breached' : '🟢 SLA Target'}: {article.slaMinutes}m
+            </span>
+          )}
+
+          <div className={styles.stopwatchControls}>
+            <button
+              type="button"
+              onClick={() => setIsTimerRunning(!isTimerRunning)}
+              className={styles.timerBtn}
+            >
+              {isTimerRunning ? '⏸ Pause' : '▶ Start Timer'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setIsTimerRunning(false);
+                setTimerSeconds(0);
+              }}
+              className={styles.timerBtnReset}
+              title="Reset stopwatch"
+            >
+              ↺ Reset
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Table of Contents Quick Jump */}
       <nav className={styles.tocNav} aria-label="Table of Contents">
         <span className={styles.tocTitle}>Jump to:</span>
@@ -187,6 +416,11 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
         <a href="#use-when" className={styles.tocLink}>
           Use This When
         </a>
+        {article.interactiveParams && article.interactiveParams.length > 0 && (
+          <a href="#params" className={styles.tocLink}>
+            Live Parameters
+          </a>
+        )}
         {article.prerequisites.length > 0 && (
           <a href="#prerequisites" className={styles.tocLink}>
             Prerequisites
@@ -209,7 +443,7 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
           Impact
         </a>
         <a href="#audit" className={styles.tocLink}>
-          Audit
+          Audit & Sign-Off
         </a>
         <a href="#rollback" className={styles.tocLink}>
           Rollback
@@ -224,6 +458,37 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
       {VisualComponent && (
         <section id="visual" className={styles.sectionBlock} aria-label="Architecture & Flow Visual">
           <VisualComponent />
+        </section>
+      )}
+
+      {/* Parameterized CLI / Query Builder */}
+      {article.interactiveParams && article.interactiveParams.length > 0 && (
+        <section id="params" className={styles.paramSectionBlock} aria-label="Live Parameters">
+          <div className={styles.paramSectionHeader}>
+            <span>⚡ Dynamic Parameter Interpolation</span>
+            <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+              Values auto-populate in commands and copy snippets
+            </span>
+          </div>
+          <div className={styles.paramInputGrid}>
+            {article.interactiveParams.map((p) => (
+              <div key={p.key} className={styles.paramInputGroup}>
+                <label htmlFor={`param-${p.key}`} className={styles.paramLabel}>
+                  {p.label} (<code>:{p.key}</code>)
+                </label>
+                <input
+                  id={`param-${p.key}`}
+                  type="text"
+                  placeholder={p.placeholder}
+                  value={paramValues[p.key] || ''}
+                  onChange={(e) =>
+                    setParamValues({ ...paramValues, [p.key]: e.target.value })
+                  }
+                  className={styles.paramInput}
+                />
+              </div>
+            ))}
+          </div>
         </section>
       )}
 
@@ -284,7 +549,7 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
           <div className={styles.sectionTitle}>
             <span>Step-by-Step Operating Procedure</span>
             <span style={{ fontSize: '0.82rem', fontWeight: 500, color: '#38bdf8' }}>
-              {completedSteps} of {totalSteps} Completed ({progressPercent}%)
+              {completedSteps} of {totalSteps} Completed ({progressPercent}%) · Press <kbd className={styles.keyKbd}>x</kbd> to toggle next
             </span>
           </div>
 
@@ -315,6 +580,8 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
           <div className={styles.stepList}>
             {article.procedure.map((step) => {
               const isChecked = !!checkedSteps[step.stepNumber];
+              const interpolatedCmd = interpolateCommand(step.commandOrAction);
+
               return (
                 <div
                   key={step.stepNumber}
@@ -350,6 +617,21 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
                     <p className={styles.stepInstruction}>{step.instruction}</p>
                     {step.caution && (
                       <div className={styles.cautionBox}>Caution: {step.caution}</div>
+                    )}
+                    {step.commandOrAction && (
+                      <div className={styles.stepCommandBox}>
+                        <div className={styles.stepCommandHeader}>
+                          <span>Command / Query Execution:</span>
+                          <button
+                            type="button"
+                            className={styles.actionBtn}
+                            onClick={() => copyToClipboard(interpolatedCmd, `cmd_${step.stepNumber}`)}
+                          >
+                            {copiedKey === `cmd_${step.stepNumber}` ? '✓ Copied!' : '📋 Copy Command'}
+                          </button>
+                        </div>
+                        <pre className={styles.stepCommandPre}>{interpolatedCmd}</pre>
+                      </div>
                     )}
                     {step.verification && (
                       <div className={styles.verificationBox}>
@@ -434,16 +716,45 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
           </div>
         </section>
 
-        {/* Audit & Evidence */}
+        {/* Audit Log Sign-Off & Evidence */}
         <section id="audit" className={styles.sectionBlock}>
-          <h2 className={styles.sectionTitle}>Audit Log & Post-Action Evidence</h2>
+          <h2 className={styles.sectionTitle}>Audit Log Sign-Off & Resolution</h2>
           <p style={{ color: '#cbd5e1', fontSize: '0.88rem', margin: 0 }}>
             <strong>Audit Expectation:</strong> {article.auditLogExpectation}
           </p>
+
+          <div className={styles.auditSignOffBox}>
+            <span style={{ fontSize: '0.84rem', fontWeight: 600, color: '#38bdf8' }}>
+              Log Resolution to Admin Audit Trail
+            </span>
+            <input
+              type="text"
+              placeholder="Optional notes or ticket reference (e.g. #INC-402)..."
+              value={resolutionNotes}
+              onChange={(e) => setResolutionNotes(e.target.value)}
+              className={styles.auditNoteInput}
+            />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={handleLogResolution}
+                disabled={isResolving}
+                className={styles.auditSubmitBtn}
+              >
+                {isResolving ? 'Logging to Audit...' : '✓ Complete & Log to Audit Log'}
+              </button>
+              {resolutionSuccess && (
+                <span style={{ color: '#34d399', fontSize: '0.82rem', fontWeight: 600 }}>
+                  ✓ Resolution recorded to database audit log!
+                </span>
+              )}
+            </div>
+          </div>
+
           {article.evidenceAfterward.length > 0 && (
             <ul
               style={{
-                margin: '0.5rem 0 0',
+                margin: '0.75rem 0 0',
                 paddingLeft: '1.25rem',
                 color: '#94a3b8',
                 fontSize: '0.85rem',
@@ -520,4 +831,3 @@ ${article.routes.length > 0 ? `\n*🔗 Primary Console Route:* https://app.letsg
     </article>
   );
 }
-

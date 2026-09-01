@@ -36,6 +36,9 @@ export type ManualArticle = {
   intendedRoles: StaffRole[];
   requiredPermission?: Permission;
   requiresMfa: boolean;
+  requiresDualAuth?: boolean;
+  slaMinutes?: number;
+  interactiveParams?: Array<{ key: string; label: string; placeholder: string; default?: string }>;
   riskLevel: ManualRiskLevel;
   environment: 'all' | 'staging' | 'production';
   useThisWhen: string;

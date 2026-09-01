@@ -54,7 +54,9 @@ export default async function AdminManualArticlePage({
 
   return (
     <div className={styles.container}>
-      <AdminManualArticle article={article} prevArticle={prev} nextArticle={next} />
+      <React.Suspense fallback={<div style={{ color: '#94a3b8', padding: '2rem 0' }}>Loading operational guide...</div>}>
+        <AdminManualArticle article={article} prevArticle={prev} nextArticle={next} />
+      </React.Suspense>
     </div>
   );
 }

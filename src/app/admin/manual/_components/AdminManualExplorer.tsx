@@ -2,7 +2,9 @@
 
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { ManualArticleSummary, ManualChapter } from '@/lib/admin-manual';
+import { exportManualMarkdownAction } from '../actions';
 import styles from '../manual.module.css';
 
 interface AdminManualExplorerProps {
@@ -42,6 +44,12 @@ const PINNED_RUNBOOK_SLUGS = [
     risk: 'production',
   },
   {
+    slug: 'database-pooler-lock-triage',
+    title: 'Postgres Pooler Exhaustion Triage',
+    meta: 'Supabase SRE · Chapter 7',
+    risk: 'production',
+  },
+  {
     slug: 'speed-to-lead-tcpa-compliance',
     title: 'TCPA Quiet Hours & Morning Queue',
     meta: 'State Mini-TCPA · Chapter 6',
@@ -50,33 +58,13 @@ const PINNED_RUNBOOK_SLUGS = [
 ];
 
 export default function AdminManualExplorer({ chapters, summaries }: AdminManualExplorerProps) {
+  const router = useRouter();
   const [query, setQuery] = useState('');
   const [selectedChapter, setSelectedChapter] = useState('all');
   const [selectedRisk, setSelectedRisk] = useState('all');
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
+  const [isExporting, setIsExporting] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-
-  // Global Keyboard Shortcut: '/' or 'Ctrl+K' / 'Cmd+K' to focus search
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const activeTag = document.activeElement?.tagName.toLowerCase();
-      if (activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select') {
-        if (e.key === 'Escape') {
-          setQuery('');
-          searchInputRef.current?.blur();
-        }
-        return;
-      }
-
-      if (e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key === 'k')) {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   const filteredSummaries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -96,12 +84,85 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
       const matchesRoutes = item.routes.some(
         (r) => r.label.toLowerCase().includes(q) || r.href.toLowerCase().includes(q),
       );
+      const matchesPermission = item.requiredPermission
+        ? item.requiredPermission.toLowerCase().includes(q)
+        : false;
 
-      return matchesTitle || matchesSummary || matchesChapter || matchesKeywords || matchesRoutes;
+      return (
+        matchesTitle ||
+        matchesSummary ||
+        matchesChapter ||
+        matchesKeywords ||
+        matchesRoutes ||
+        matchesPermission
+      );
     });
   }, [summaries, query, selectedChapter, selectedRisk]);
 
   const isFiltered = query.trim().length > 0 || selectedChapter !== 'all' || selectedRisk !== 'all';
+
+  // Global Keyboard Shortcuts: '/' focus, 'Escape' blur/clear, 'j'/'k' navigation, 'Enter' open
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const activeTag = document.activeElement?.tagName.toLowerCase();
+      const isInput = activeTag === 'input' || activeTag === 'textarea' || activeTag === 'select';
+
+      if (e.key === 'Escape') {
+        setQuery('');
+        setSelectedIndex(-1);
+        searchInputRef.current?.blur();
+        return;
+      }
+
+      if (!isInput) {
+        if (e.key === '/' || ((e.metaKey || e.ctrlKey) && e.key === 'k')) {
+          e.preventDefault();
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        } else if (e.key === 'j' || e.key === 'ArrowDown') {
+          e.preventDefault();
+          setSelectedIndex((idx) => {
+            const max = filteredSummaries.length - 1;
+            return idx < max ? idx + 1 : 0;
+          });
+        } else if (e.key === 'k' || e.key === 'ArrowUp') {
+          e.preventDefault();
+          setSelectedIndex((idx) => {
+            const max = filteredSummaries.length - 1;
+            return idx > 0 ? idx - 1 : max;
+          });
+        } else if (e.key === 'Enter' && selectedIndex >= 0 && selectedIndex < filteredSummaries.length) {
+          e.preventDefault();
+          const target = filteredSummaries[selectedIndex];
+          if (target) {
+            router.push(`/admin/manual/${target.slug}`);
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredSummaries, selectedIndex, router]);
+
+  // Offline Markdown Bundle Download
+  const handleExportOfflineBundle = async () => {
+    setIsExporting(true);
+    const res = await exportManualMarkdownAction();
+    setIsExporting(false);
+
+    if (res.success && res.markdown) {
+      const blob = new Blob([res.markdown], { type: 'text/markdown;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `letsgetquoted-operations-manual-${new Date().toISOString().split('T')[0]}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+  };
 
   return (
     <div className={styles.explorer}>
@@ -110,7 +171,18 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
         <section className={styles.pinnedSection} aria-label="Pinned Emergency Runbooks">
           <div className={styles.pinnedHeader}>
             <span>⚡ Frequently Accessed & Incident Runbooks</span>
-            <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>1-Click Triage</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button
+                type="button"
+                onClick={handleExportOfflineBundle}
+                disabled={isExporting}
+                className={styles.offlineExportBtn}
+                title="Download single-file markdown manual for air-gapped disaster recovery"
+              >
+                {isExporting ? 'Exporting...' : '💾 Export Offline Bundle'}
+              </button>
+              <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>1-Click Triage</span>
+            </div>
           </div>
           <div className={styles.pinnedGrid}>
             {PINNED_RUNBOOK_SLUGS.map((pinned) => (
@@ -136,7 +208,10 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
               key={pill.id}
               type="button"
               className={`${styles.categoryPill} ${isActive ? styles.categoryPillActive : ''}`}
-              onClick={() => setSelectedChapter(pill.id)}
+              onClick={() => {
+                setSelectedChapter(pill.id);
+                setSelectedIndex(-1);
+              }}
             >
               <span>{pill.icon}</span>
               <span>{pill.label}</span>
@@ -152,9 +227,12 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
           <input
             ref={searchInputRef}
             type="search"
-            placeholder="Search tasks, symptoms, routes (/admin/*), error codes, or permissions..."
+            placeholder="Search tasks, error codes (6240, 53300, 429), routes (/admin/*), or permissions..."
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setSelectedIndex(-1);
+            }}
             className={styles.searchInput}
             aria-label="Search manual articles"
           />
@@ -162,7 +240,10 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
             {query ? (
               <button
                 type="button"
-                onClick={() => setQuery('')}
+                onClick={() => {
+                  setQuery('');
+                  setSelectedIndex(-1);
+                }}
                 className={styles.clearSearchBtn}
                 title="Clear search"
               >
@@ -176,7 +257,10 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
 
         <select
           value={selectedChapter}
-          onChange={(e) => setSelectedChapter(e.target.value)}
+          onChange={(e) => {
+            setSelectedChapter(e.target.value);
+            setSelectedIndex(-1);
+          }}
           className={styles.filterSelect}
           aria-label="Filter by chapter"
         >
@@ -190,7 +274,10 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
 
         <select
           value={selectedRisk}
-          onChange={(e) => setSelectedRisk(e.target.value)}
+          onChange={(e) => {
+            setSelectedRisk(e.target.value);
+            setSelectedIndex(-1);
+          }}
           className={styles.filterSelect}
           aria-label="Filter by risk level"
         >
@@ -204,7 +291,12 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
       {isFiltered ? (
         <div className={styles.chapterSection}>
           <div className={styles.chapterHeader}>
-            <h2 className={styles.chapterTitle}>Search & Filtered Results</h2>
+            <div>
+              <h2 className={styles.chapterTitle}>Search & Filtered Results</h2>
+              <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                Use <kbd className={styles.keyKbd}>j</kbd>/<kbd className={styles.keyKbd}>k</kbd> to cycle, <kbd className={styles.keyKbd}>Enter</kbd> to open
+              </span>
+            </div>
             <span className={styles.chapterMeta}>
               Found {filteredSummaries.length} permitted guide
               {filteredSummaries.length === 1 ? '' : 's'}
@@ -217,39 +309,42 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
             </p>
           ) : (
             <div className={styles.articleGrid}>
-              {filteredSummaries.map((art) => (
-                <Link
-                  key={art.slug}
-                  href={`/admin/manual/${art.slug}`}
-                  className={styles.articleCard}
-                >
-                  <div className={styles.cardTop}>
-                    <div className={styles.cardBadgeRow}>
-                      <span
-                        className={`${styles.badge} ${
-                          art.riskLevel === 'production'
-                            ? styles.badgeProduction
-                            : styles.badgeGeneral
-                        }`}
-                      >
-                        {art.riskLevel}
-                      </span>
-                      {art.requiresMfa && (
-                        <span className={`${styles.badge} ${styles.badgeMfa}`}>MFA</span>
-                      )}
-                      {art.requiredPermission && (
-                        <span className={styles.badge}>{art.requiredPermission}</span>
-                      )}
+              {filteredSummaries.map((art, idx) => {
+                const isSelected = idx === selectedIndex;
+                return (
+                  <Link
+                    key={art.slug}
+                    href={`/admin/manual/${art.slug}`}
+                    className={`${styles.articleCard} ${isSelected ? styles.articleCardSelected : ''}`}
+                  >
+                    <div className={styles.cardTop}>
+                      <div className={styles.cardBadgeRow}>
+                        <span
+                          className={`${styles.badge} ${
+                            art.riskLevel === 'production'
+                              ? styles.badgeProduction
+                              : styles.badgeGeneral
+                          }`}
+                        >
+                          {art.riskLevel}
+                        </span>
+                        {art.requiresMfa && (
+                          <span className={`${styles.badge} ${styles.badgeMfa}`}>MFA</span>
+                        )}
+                        {art.requiredPermission && (
+                          <span className={styles.badge}>{art.requiredPermission}</span>
+                        )}
+                      </div>
+                      <h3 className={styles.cardTitle}>{art.title}</h3>
+                      <p className={styles.cardSummary}>{art.summary}</p>
                     </div>
-                    <h3 className={styles.cardTitle}>{art.title}</h3>
-                    <p className={styles.cardSummary}>{art.summary}</p>
-                  </div>
-                  <div className={styles.cardFoot}>
-                    <span>{art.chapterTitle}</span>
-                    <span>Owner: {art.owner}</span>
-                  </div>
-                </Link>
-              ))}
+                    <div className={styles.cardFoot}>
+                      <span>{art.chapterTitle}</span>
+                      <span>Owner: {art.owner}</span>
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>
@@ -313,4 +408,3 @@ export default function AdminManualExplorer({ chapters, summaries }: AdminManual
     </div>
   );
 }
-

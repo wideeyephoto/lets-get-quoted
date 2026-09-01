@@ -7,6 +7,7 @@ import {
   getPermittedManualSummaries,
   getPermittedManualArticle,
   getAdjacentPermittedManualArticles,
+  exportAllManualArticlesMarkdown,
   canStaffReadArticle,
 } from '@/lib/admin-manual';
 import { ADMIN_MANUAL_VISUAL_COMPONENTS } from '@/components/admin-manual/visuals';
@@ -81,6 +82,18 @@ describe('Admin Manual Authoritative Articles & Chapters', () => {
     expect(slugs.has('quickbooks-sync-triage')).toBe(true);
     expect(slugs.has('sms-hotline-provisioning')).toBe(true);
     expect(slugs.has('contractor-lifecycle-dunning')).toBe(true);
+    expect(slugs.has('stripe-dispute-evidence-packet')).toBe(true);
+    expect(slugs.has('custom-domain-dns-ssl-triage')).toBe(true);
+    expect(slugs.has('database-pooler-lock-triage')).toBe(true);
+    expect(slugs.has('voice-recording-ingest-pipeline')).toBe(true);
+  });
+
+  it('exports standalone markdown bundle for air-gapped disaster recovery', () => {
+    const md = exportAllManualArticlesMarkdown('super_admin', true);
+    expect(md).toContain('# Let\'s Get Quoted — Authoritative Operations Manual & SOPs');
+    expect(md).toContain('Table of Contents');
+    expect(md).toContain('Stripe Connect Dispute & Chargeback Defense Assembly');
+    expect(md).toContain('Supabase Postgres Transaction Pooler Saturation & Lock Triage');
   });
 });
 
