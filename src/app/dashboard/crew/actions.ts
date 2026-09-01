@@ -25,7 +25,9 @@ import { countLaborEntriesForCrew, countPayRecordsForCrew, laborEntryLockReason 
 import { deleteCrewPhotos, isCrewPhotoFile, uploadCrewPhoto, validateCrewPhotoFile } from '@/lib/crew-photo-storage';
 import { createCost, getJob } from '@/lib/jobs';
 import { createJobFeedEvent } from '@/lib/job-feed';
-import { ensureSmsConsentBaseline, sendCrewAssignmentSms, sendCrewWelcomeSms } from '@/lib/sms';
+import { normalizeUsPhone } from '@/lib/phone';
+import { CREW_SMS_DISCLOSURE_VERSION } from '@/lib/crew-sms-disclosure';
+import { recordCrewSmsConsent, sendCrewAssignmentSms, sendCrewWelcomeSms } from '@/lib/sms';
 import { revokeCrewAccess, sendCrewMagicLink, stampCrewInvite } from '@/lib/crew-auth';
 
 function optionalText(value: FormDataEntryValue | null): string | undefined {
@@ -104,6 +106,21 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
   const email = optionalText(formData.get('email')) ?? null;
   const wantsInvite = formData.get('intent') === 'invite';
 
+  const smsConsentAccepted = formData.get('crewSmsConsent') === 'on';
+  const submittedDisclosureVersion = String(formData.get('crewSmsDisclosureVersion') ?? '');
+  if (!smsConsentAccepted) {
+    return {
+      status: 'error',
+      message: 'Confirm that this crew member gave permission to receive text messages.',
+    };
+  }
+  if (submittedDisclosureVersion !== CREW_SMS_DISCLOSURE_VERSION) {
+    return {
+      status: 'error',
+      message: 'The SMS consent wording has changed. Review it and try again.',
+    };
+  }
+
   if (!name) return { status: 'error', message: 'Enter their name before saving.' };
   // A phone number is not paperwork here: assigning somebody to a job texts
   // them (sendCrewAssignmentSms), a customer picking a time texts them
@@ -116,7 +133,7 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
   }
 
   try {
-    const { supabase, accountId } = await requireOfficeContext('crew.write');
+    const { supabase, accountId, userId } = await requireOfficeContext('crew.write');
 
     const photo = formData.get('photo');
     // Checked BEFORE the insert rather than after: validateCrewPhotoFile throws,
@@ -132,19 +149,32 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
       ...payFromForm(formData),
     });
 
-    // Seed a baseline consent row so a future STOP from this crew number has a
-    // row to flip (the inbound handler only updates existing rows). Best-effort.
-    await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
+    // Record audited consent evidence. Fail closed if evidence storage fails.
+    const consentOutcome = await recordCrewSmsConsent({
+      accountId,
+      phone,
+      disclosureVersion: submittedDisclosureVersion,
+      userId: userId ?? null,
+      crewId: member.id,
+      sourcePage: '/dashboard/crew',
+      source: 'crew_roster',
+    });
+
+    if (consentOutcome === 'failed') {
+      throw new Error('Could not record SMS consent evidence. SMS sending is not authorized.');
+    }
 
     // Send welcome onboarding SMS introducing the shared number for field intake
-    const businessName = await loadBusinessName(supabase, accountId);
-    await sendCrewWelcomeSms({
-      accountId,
-      crewId: member.id,
-      phone,
-      crewName: member.name,
-      businessName,
-    }).catch(() => {});
+    if (consentOutcome !== 'suppressed') {
+      const businessName = await loadBusinessName(supabase, accountId);
+      await sendCrewWelcomeSms({
+        accountId,
+        crewId: member.id,
+        phone,
+        crewName: member.name,
+        businessName,
+      }).catch(() => {});
+    }
 
     if (isCrewPhotoFile(photo)) {
       const photoPath = await uploadCrewPhoto(accountId, member.id, photo);
@@ -205,13 +235,60 @@ export async function createCrewAction(_previous: CreateCrewState, formData: For
 }
 
 export async function updateCrewAction(crewId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOfficeContext('crew.write');
+  const { supabase, accountId, userId } = await requireOfficeContext('crew.write');
 
   const name = (formData.get('name') ?? '').toString().trim();
   const phone = (formData.get('phone') ?? '').toString().trim();
 
   if (!name || !phone) {
     throw new Error('Name and phone are required to update a crew member.');
+  }
+
+  const { data: existing } = await supabase
+    .from('crew')
+    .select('phone')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .maybeSingle();
+
+  const oldNormalized = existing?.phone ? normalizeUsPhone(existing.phone) : null;
+  const newNormalized = normalizeUsPhone(phone);
+  const phoneChanged = Boolean(newNormalized && oldNormalized !== newNormalized);
+
+  if (phoneChanged) {
+    const smsConsentAccepted = formData.get('crewSmsConsent') === 'on';
+    const submittedDisclosureVersion = String(formData.get('crewSmsDisclosureVersion') ?? '');
+    if (!smsConsentAccepted) {
+      throw new Error('Confirm that this crew member gave permission to receive text messages.');
+    }
+    if (submittedDisclosureVersion !== CREW_SMS_DISCLOSURE_VERSION) {
+      throw new Error('The SMS consent wording has changed. Review it and try again.');
+    }
+
+    const consentOutcome = await recordCrewSmsConsent({
+      accountId,
+      phone,
+      disclosureVersion: submittedDisclosureVersion,
+      userId: userId ?? null,
+      crewId,
+      sourcePage: '/dashboard/crew',
+      source: 'crew_roster',
+    });
+
+    if (consentOutcome === 'failed') {
+      throw new Error('Could not record SMS consent evidence. SMS sending is not authorized.');
+    }
+
+    if (consentOutcome !== 'suppressed') {
+      const businessName = await loadBusinessName(supabase, accountId);
+      await sendCrewWelcomeSms({
+        accountId,
+        crewId,
+        phone,
+        crewName: name,
+        businessName,
+      }).catch(() => {});
+    }
   }
 
   await updateCrewMember(supabase, accountId, crewId, {
@@ -238,9 +315,6 @@ export async function updateCrewAction(crewId: string, formData: FormData) {
     viewContact: formData.get('canViewClientContact') === 'on',
     reschedule: formData.get('canReschedule') === 'on',
   });
-
-  // Keep a baseline consent row in step with the (possibly new) phone number.
-  await ensureSmsConsentBaseline(accountId, phone).catch(() => {});
 
   const phoneVerified = formData.get('phoneVerified') === 'on';
   await supabase

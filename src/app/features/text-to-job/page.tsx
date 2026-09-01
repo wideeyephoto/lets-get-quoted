@@ -5,13 +5,7 @@ import TextToRecordSimulator from '@/components/marketing/TextToRecordSimulator'
 import AdditionalFieldWorkflows from '@/components/marketing/AdditionalFieldWorkflows';
 import TextToJobDataBeams from '@/components/marketing/TextToJobDataBeams';
 import ScrapLumberComparison from '@/components/marketing/ScrapLumberComparison';
-import ChangeOrderLeakageCalculator from '@/components/marketing/ChangeOrderLeakageCalculator';
-import SteeringWheelCheatsheet from '@/components/marketing/SteeringWheelCheatsheet';
-import SiriHandsFreeWizard from '@/components/marketing/SiriHandsFreeWizard';
 import PhotoScopeEstimator from '@/components/marketing/PhotoScopeEstimator';
-import UndoTimeMachine from '@/components/marketing/UndoTimeMachine';
-import SunVisorCardGenerator from '@/components/marketing/SunVisorCardGenerator';
-import LiveSmsSandbox from '@/components/marketing/LiveSmsSandbox';
 import TradePlaybooksFilter from '@/components/marketing/TradePlaybooksFilter';
 import styles from './text-to-job.module.css';
 
@@ -112,8 +106,8 @@ export default function TextToJobPage() {
       demo={
         <ExampleFrame
           variant="plain"
-          label="Live Field Intake with AI Copilot"
-          note="Contractor texts change → quote increases by $450 → customer approval is ready."
+          label="Live Speech-to-Record AI Entity Extraction"
+          note="Contractor speaks word-by-word → AI extracts entities → details are filed away into live database records."
         >
           <div id="simulator-frame">
             <TextToRecordSimulator />
@@ -141,28 +135,78 @@ export default function TextToJobPage() {
       story={{
         eyebrow: 'Where contractor revenue and job notes disappear',
         title: 'The most expensive notes are the ones written on scrap 2x4s and forgotten.',
-        body: 'You’re on-site and spot an extra $400 in materials. Or the building inspector signs off while you’re packing the truck. You tell yourself you’ll log it on your computer at 9:00 PM—but by then, the scrap lumber note is lost, the change order goes unbilled, and your crew is left guessing. Text-to-Job with your AI Copilot turns every text, site photo, and voice memo into an instant, permanent update to the job file while your hands are still dirty.',
+        body: 'By 9:00 PM, the scrap lumber note is lost and the change order goes unbilled. Text-to-Job turns your field texts, site photos, and voice memos into instant updates while your hands are still dirty.',
       }}
       benefits={[
         {
           title: 'Capture Every Change Order On-Site',
-          body: 'Never give away free labor or materials again. Text "$350 for extra drywall patch to Miller" and watch your Copilot update your quote and invoice math immediately.',
+          body: (
+            <>
+              <span>
+                Never give away free labor or materials again. Text your Copilot on-site and watch your quote and invoice math update immediately.
+              </span>
+              <span className="contractor-sample">
+                <strong>💬 Text to Copilot</strong>
+                <em>&ldquo;Add $350 for extra drywall patch &amp; primer to Miller job&rdquo;</em>
+              </span>
+            </>
+          ),
         },
         {
           title: 'Hands-Free Driving Updates with Your Copilot',
-          body: 'Use Siri, Google Assistant, or direct voice calls while driving between job sites. Dictate progress notes, gate codes, and schedule adjustments without looking at a screen.',
+          body: (
+            <>
+              <span>
+                Use Siri, Google Assistant, or direct voice calls while driving between job sites. Dictate progress notes, gate codes, and schedule adjustments without looking at a screen.
+              </span>
+              <span className="contractor-sample">
+                <strong>🎙️ Siri / Voice Memo</strong>
+                <em>&ldquo;Miller site gate code is 4491, finished rough-in 2 hours early today&rdquo;</em>
+              </span>
+            </>
+          ),
         },
         {
           title: 'Automated Punch List Delegation',
-          body: 'Text a 3-item punch list to your Copilot after your final walkthrough. It splits them into discrete tasks and notifies your field crew automatically.',
+          body: (
+            <>
+              <span>
+                Text a punch list to your Copilot after your final walkthrough. It splits items into discrete tasks and notifies your field crew automatically.
+              </span>
+              <span className="contractor-sample">
+                <strong>💬 Punch List SMS</strong>
+                <em>&ldquo;Punch list Miller: 1) touch up baseboard trim 2) caulk guest bath 3) reinstall vent cover&rdquo;</em>
+              </span>
+            </>
+          ),
         },
         {
           title: 'Send Photos & Get Reminded Later',
-          body: 'Text site photos, receipts, or walkthrough notes directly to your Copilot via SMS. It sorts them into the right customer folder and sets automated reminders so you never forget to send quotes or order parts when you return to your desk.',
+          body: (
+            <>
+              <span>
+                Text site photos, receipts, or walkthrough notes directly to your Copilot via SMS. It sorts them into the customer folder and sets automated reminders so you never forget to quote or order parts.
+              </span>
+              <span className="contractor-sample">
+                <strong>📸 Photo + SMS</strong>
+                <em>&ldquo;[Photo of subpanel] File to Miller, remind me to order 200A breaker tonight at 7pm&rdquo;</em>
+              </span>
+            </>
+          ),
         },
         {
           title: 'Instant Lead Capture Anywhere',
-          body: 'Met a neighbor while loading tools? Text their name, phone number, and issue to your Copilot. It creates the lead, scores urgency, and stages the quote slot.',
+          body: (
+            <>
+              <span>
+                Met a neighbor while loading tools? Text their name, phone number, and issue to your Copilot. It creates the lead, scores urgency, and stages the quote slot.
+              </span>
+              <span className="contractor-sample">
+                <strong>💬 Lead SMS</strong>
+                <em>&ldquo;New lead: Dave Peterson 512-555-0194 needs water heater replacement tomorrow morning&rdquo;</em>
+              </span>
+            </>
+          ),
         },
       ]}
       afterBenefits={
@@ -177,19 +221,9 @@ export default function TextToJobPage() {
             <TextToJobDataBeams />
           </section>
 
-          {/* 1-Tap Live SMS Sandbox & Real Phone Tester */}
-          <section className={styles.customSection}>
-            <LiveSmsSandbox />
-          </section>
-
           {/* Before & After Scrap Lumber vs. Digital File Comparison */}
           <section className={styles.customSection}>
             <ScrapLumberComparison />
-          </section>
-
-          {/* Interactive Change Order Profit Leakage ROI Calculator */}
-          <section className={styles.customSection}>
-            <ChangeOrderLeakageCalculator />
           </section>
 
           {/* Gemini Vision Photo-to-Scope AI Estimator */}
@@ -367,26 +401,6 @@ export default function TextToJobPage() {
           {/* Trade-Specific Voice & SMS Playbooks */}
           <section className={styles.customSection}>
             <TradePlaybooksFilter />
-          </section>
-
-          {/* Undo Time Machine Safety Guarantee Band */}
-          <section className={styles.customSection}>
-            <UndoTimeMachine />
-          </section>
-
-          {/* Siri & Google Assistant Hands-Free Setup Wizard */}
-          <section className={styles.customSection}>
-            <SiriHandsFreeWizard />
-          </section>
-
-          {/* Sun Visor Emergency Prompt Cheatsheet Generator */}
-          <section className={styles.customSection}>
-            <SunVisorCardGenerator />
-          </section>
-
-          {/* Steering Wheel Voice Intake Cheatsheet Band */}
-          <section className={styles.customSection}>
-            <SteeringWheelCheatsheet />
           </section>
         </>
       }

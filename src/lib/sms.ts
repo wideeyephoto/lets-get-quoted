@@ -3,6 +3,11 @@ import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveRecipientTimeZone, getTcpaCompliantSendTime } from '@/lib/phone-timezone';
 import {
+  CREW_SMS_FULL_DISCLOSURE,
+  CREW_SMS_WELCOME_MESSAGE,
+  getCrewSmsDisclosureHash,
+} from '@/lib/crew-sms-disclosure';
+import {
   adWalletRefillText,
   appointmentReminderText,
   arrivalTimeChangedText,
@@ -894,6 +899,160 @@ export async function recordOwnerSmsConsent(
   }
 }
 
+export type CrewConsentOutcome = 'recorded' | 'suppressed' | 'failed';
+
+export interface RecordCrewSmsConsentParams {
+  accountId: string;
+  phone: string;
+  disclosureVersion: string;
+  userId?: string | null;
+  crewId?: string | null;
+  sourcePage?: string;
+  source?: string;
+}
+
+/**
+ * Records audited consent evidence for a crew member before activating SMS sending.
+ *
+ * Evidence records:
+ * - Account ID
+ * - Normalized crew phone number
+ * - Consent scope: crew
+ * - Disclosure version
+ * - Exact disclosure text and its SHA-256 hash
+ * - User who checked the box
+ * - Acceptance timestamp
+ * - Source: crew_roster
+ * - Source page: /dashboard/crew
+ * - Crew member ID
+ *
+ * Fail closed: if evidence cannot be recorded, do not authorize SMS sending.
+ * A prior STOP is NEVER overridden (returns 'suppressed').
+ */
+export async function recordCrewSmsConsent(
+  params: RecordCrewSmsConsentParams,
+): Promise<CrewConsentOutcome> {
+  const normalized = normalizeUsPhone(params.phone);
+  if (!normalized) return 'failed';
+  const admin = createAdminClient();
+  const now = new Date().toISOString();
+  const source = params.source ?? 'crew_roster';
+  const sourcePage = params.sourcePage ?? '/dashboard/crew';
+  const disclosureText = CREW_SMS_FULL_DISCLOSURE;
+  const disclosureHash = getCrewSmsDisclosureHash(disclosureText);
+
+  try {
+    // 1. Insert audited consent evidence first
+    const { error: evidenceError } = await admin.from('sms_consent_evidence').insert({
+      account_id: params.accountId,
+      phone_number: normalized,
+      consent_scope: 'crew',
+      disclosure_version: params.disclosureVersion,
+      disclosure_text: disclosureText,
+      disclosure_hash: disclosureHash,
+      consented_by_user_id: params.userId || null,
+      consented_at: now,
+      source,
+      source_page: sourcePage,
+      crew_id: params.crewId || null,
+    });
+
+    if (evidenceError) {
+      console.error('Failed to record crew SMS consent evidence:', evidenceError);
+      return 'failed';
+    }
+
+    // 2. Update sms_consent ledger without overriding STOP
+    const { data: updated, error: updateError } = await admin
+      .from('sms_consent')
+      .update({
+        status: 'opted_in',
+        source,
+        consented_at: now,
+        opted_out_at: null,
+        disclosure_version: params.disclosureVersion,
+        updated_at: now,
+      })
+      .eq('account_id', params.accountId)
+      .eq('phone_number', normalized)
+      .neq('status', 'opted_out')
+      .select('id');
+
+    if (updateError) {
+      console.error('Failed to update sms_consent for crew:', updateError);
+      return 'failed';
+    }
+
+    if (updated && updated.length > 0) {
+      await admin
+        .from('sms_consent_scopes')
+        .upsert(
+          {
+            account_id: params.accountId,
+            phone_number: normalized,
+            consent_scope: 'crew',
+            evidence_source: source,
+            established_at: now,
+          },
+          { onConflict: 'account_id,phone_number,consent_scope', ignoreDuplicates: true },
+        );
+      return 'recorded';
+    }
+
+    // Nothing updated. Check if row exists and says opted_out
+    const { data: existing, error: readError } = await admin
+      .from('sms_consent')
+      .select('status')
+      .eq('account_id', params.accountId)
+      .eq('phone_number', normalized)
+      .maybeSingle();
+
+    if (readError) {
+      console.error('Failed to read existing sms_consent for crew:', readError);
+      return 'failed';
+    }
+
+    if (existing) {
+      return existing.status === 'opted_out' ? 'suppressed' : 'failed';
+    }
+
+    // Insert new consent row
+    const { error: insertError } = await admin.from('sms_consent').insert({
+      account_id: params.accountId,
+      phone_number: normalized,
+      status: 'opted_in',
+      source,
+      consented_at: now,
+      disclosure_version: params.disclosureVersion,
+      updated_at: now,
+    });
+
+    if (insertError) {
+      if (insertError.code === '23505') return 'suppressed';
+      console.error('Failed to insert sms_consent for crew:', insertError);
+      return 'failed';
+    }
+
+    await admin
+      .from('sms_consent_scopes')
+      .upsert(
+        {
+          account_id: params.accountId,
+          phone_number: normalized,
+          consent_scope: 'crew',
+          evidence_source: source,
+          established_at: now,
+        },
+        { onConflict: 'account_id,phone_number,consent_scope', ignoreDuplicates: true },
+      );
+
+    return 'recorded';
+  } catch (error) {
+    console.error('Crew SMS consent write failed:', error);
+    return 'failed';
+  }
+}
+
 // Sends a crew-directed text through the consent ledger. An opted-out number is
 // skipped; otherwise the atomic enqueue RPC creates both sms_events and its
 // delivery task. Producers never write orphan ledger rows for preflight skips.
@@ -1144,18 +1303,15 @@ export async function sendCrewWelcomeSms(params: {
   accountId: string;
   crewId: string;
   phone: string;
-  crewName: string;
-  businessName: string;
+  crewName?: string;
+  businessName?: string;
 }): Promise<{ status: 'queued' | 'opted_out' | 'failed'; eventId?: string }> {
   const normalized = normalizeUsPhone(params.phone) ?? params.phone.trim();
   if (await isPhoneOptedOut(params.accountId, normalized)) {
     return { status: 'opted_out' };
   }
 
-  const body = crewWelcomeText({
-    crewName: params.crewName,
-    businessName: params.businessName,
-  });
+  const body = CREW_SMS_WELCOME_MESSAGE;
 
   try {
     const eventId = await queueAccountSms({
@@ -1168,7 +1324,7 @@ export async function sendCrewWelcomeSms(params: {
       eventType: 'crew_welcome',
       crewId: params.crewId,
       senderPurpose: 'lgq_shared',
-      idempotencyKey: `crew-welcome:${params.crewId}`,
+      idempotencyKey: `crew-welcome:${params.crewId}:${normalized}`,
     });
     return { status: 'queued', eventId };
   } catch (sendError) {

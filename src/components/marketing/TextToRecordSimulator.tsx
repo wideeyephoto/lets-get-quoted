@@ -1,651 +1,727 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import styles from './text-to-record-simulator.module.css';
 
-export type HeroScenario = {
+export type ExtractedEntity = {
+  id: string;
+  wordIndices: number[]; // index range of words in the sentence
+  label: string;
+  category: string;
+  color: 'cyan' | 'amber' | 'orange' | 'purple' | 'emerald';
+  icon: string;
+  targetRecord: string;
+  filedField: string;
+  filedValue: string;
+  actionTaken: string;
+  badge: string;
+};
+
+export type VoiceExtractionScenario = {
   id: string;
   tabLabel: string;
   icon: string;
-  contractorInputType: 'text' | 'voice' | 'receipt';
-  contractorSender: string;
-  contractorText?: string;
-  receiptDetails?: {
-    vendor: string;
-    date: string;
-    items: { name: string; price: string }[];
-    total: string;
-  };
-  voiceAudioDuration?: string;
-  voiceTranscript?: string;
-  aiResponse: string;
-  jobNumber: string;
-  clientName: string;
-  address: string;
-  dominantMetrics: {
-    label: string;
-    value: string;
-    subtext?: string;
-    type?: 'success' | 'highlight' | 'default';
-  }[];
-  lineItems?: { label: string; amount: string; isNew?: boolean }[];
-  previousTotal?: string;
-  updatedTotal?: string;
-  costsSummary?: {
-    totalRevenue: string;
-    totalCosts: string;
-    grossProfit: string;
-    marginPercent: number;
-    receiptItem: string;
-    receiptAmount: string;
-  };
-  voiceFeed?: {
-    duration: string;
-    transcript: string;
-    timestamp: string;
-  };
-  customerOutcome: {
+  badge: string;
+  title: string;
+  speakerRole: string;
+  audioDuration: string;
+  words: string[];
+  entities: ExtractedEntity[];
+  summaryOutcome: {
     title: string;
-    status: string;
-    messageText: string;
-    actionLabel?: string;
-    approvedLabel?: string;
-    hasInteractivePay?: boolean;
+    description: string;
+    actionTag: string;
+    ctaButton?: {
+      label: string;
+      successLabel: string;
+    };
   };
 };
 
-const HERO_SCENARIOS: HeroScenario[] = [
+const EXTRACTION_SCENARIOS: VoiceExtractionScenario[] = [
   {
     id: 'change-order',
-    tabLabel: 'Change order',
+    tabLabel: 'On-Site Change Order',
     icon: '💰',
-    contractorInputType: 'text',
-    contractorSender: 'You (Alert Phone)',
-    contractorText: 'Add $450 to Miller job for extra 12/2 Romex line and GFCI outlet in pantry',
-    aiResponse:
-      '✅ Added $450.00 Electrical Line Item to Job J-104 (Miller). Total quote updated from $2,800 to $3,250.\nCustomer approval link prepared for Dave Miller.',
-    jobNumber: 'J-104',
-    clientName: 'Miller Residence',
-    address: '124 Main St, Royal Oak, MI',
-    dominantMetrics: [
+    badge: 'Real-Time Quote Mutation',
+    title: 'Contractor Adding $450 Change Order on Jobsite',
+    speakerRole: 'Lead Contractor (Truck Bluetooth / Voice Memo)',
+    audioDuration: '0:07',
+    words: [
+      'Hey',
+      'Copilot,',
+      'add',
+      '$450',
+      'to',
+      'the',
+      'Miller',
+      'job',
+      'at',
+      '124',
+      'Main',
+      'for',
+      'extra',
+      '12/2',
+      'Romex',
+      'and',
+      'a',
+      'pantry',
+      'GFCI',
+      'outlet',
+      'because',
+      'the',
+      'inspector',
+      'requested',
+      'it,',
+      'and',
+      'text',
+      'Dave',
+      'Miller',
+      'the',
+      'approval',
+      'link.',
+    ],
+    entities: [
       {
-        label: 'Revenue Added',
-        value: '+$450 captured',
-        subtext: 'Extra Romex & GFCI',
-        type: 'success',
+        id: 'job-match',
+        wordIndices: [6, 7, 9, 10], // Miller, job, 124, Main
+        label: 'Miller · 124 Main',
+        category: 'Job File Match',
+        color: 'cyan',
+        icon: '🎯',
+        targetRecord: 'Job #J-104 · Miller Residence',
+        filedField: 'Active Project Record',
+        filedValue: '124 Main St, Royal Oak, MI',
+        actionTaken: 'Zero destructive guesses. Matched active project record in 0.4s.',
+        badge: 'Job File Locked',
       },
       {
-        label: 'Quote Math',
-        value: '$3,250',
-        subtext: 'Was $2,800.00',
-        type: 'highlight',
+        id: 'quote-math',
+        wordIndices: [3], // $450
+        label: '+$450.00',
+        category: 'Quote & Balance Math',
+        color: 'amber',
+        icon: '💰',
+        targetRecord: 'Quote & Invoice Ledger',
+        filedField: 'Total Quote Adjusted',
+        filedValue: 'Was $2,800.00 ➔ Now $3,250.00',
+        actionTaken: 'Atomic transaction recalculated quote balance & invoice draft automatically.',
+        badge: '+$450 Added',
       },
       {
-        label: 'Client Link',
-        value: 'Approval ready',
-        subtext: 'Dave Miller (SMS)',
-        type: 'default',
+        id: 'scope-material',
+        wordIndices: [12, 13, 14, 17, 18, 19], // extra, 12/2, Romex, pantry, GFCI, outlet
+        label: '12/2 Romex & GFCI',
+        category: 'Itemized Scope Breakdown',
+        color: 'orange',
+        icon: '⚡',
+        targetRecord: 'Line Item Inventory',
+        filedField: 'Item #2: Electrical Line Item',
+        filedValue: 'Pantry Dedicated Circuit & Outlet ($180 mat / $270 labor)',
+        actionTaken: 'Itemized into materials and labor without typing line items at night.',
+        badge: 'Scope Itemized',
+      },
+      {
+        id: 'audit-reason',
+        wordIndices: [22, 23], // inspector, requested
+        label: 'Inspector Request',
+        category: 'Audit Reason Log',
+        color: 'purple',
+        icon: '📋',
+        targetRecord: 'Job Milestone History',
+        filedField: 'Change Order Justification',
+        filedValue: 'Building Code Compliance Sign-Off',
+        actionTaken: 'Preserved permanent timestamped reason in customer portal activity feed.',
+        badge: 'Reason Logged',
+      },
+      {
+        id: 'client-sms',
+        wordIndices: [27, 28, 30, 31], // Dave, Miller, approval, link
+        label: 'Dave Miller · SMS Auth',
+        category: '1-Tap Client Approval',
+        color: 'emerald',
+        icon: '📱',
+        targetRecord: 'Client SMS Gateway',
+        filedField: '10DLC Verified SMS Dispatch',
+        filedValue: 'Link sent to Dave Miller (248-555-0182)',
+        actionTaken: 'Drafted 1-tap customer authorization link. Customer can approve via Apple Pay.',
+        badge: 'SMS Dispatched',
       },
     ],
-    lineItems: [
-      { label: 'Kitchen Subpanel & Circuit Setup', amount: '$2,800.00' },
-      { label: 'Extra 12/2 Romex & Pantry GFCI (via text)', amount: '$450.00', isNew: true },
-    ],
-    previousTotal: '$2,800.00',
-    updatedTotal: '$3,250.00',
-    customerOutcome: {
-      title: 'Customer 1-Tap Authorization',
-      status: 'SMS Link Ready',
-      messageText:
-        '“Hi Dave, Apex Electric added Change Order #1 ($450.00 for pantry 12/2 Romex line & GFCI outlet). Tap below to authorize with 1 tap.”',
-      actionLabel: 'Pay 1-Tap Authorize ($450.00)',
-      approvedLabel: '✓ Authorized & Paid via Apple Pay',
-      hasInteractivePay: true,
+    summaryOutcome: {
+      title: 'Quote Total: $3,250.00 (+$450 Added)',
+      description:
+        'Contractor spoke for 7 seconds. Zero apps opened, zero manual data entry. Quote math, line items, job notes, and customer SMS approval were updated simultaneously in 1.4 seconds.',
+      actionTag: '⚡ Atomic Transaction Confirmed',
+      ctaButton: {
+        label: 'Pay 1-Tap Authorize ($450.00)',
+        successLabel: '✓ Customer Authorized ($450.00 Received)',
+      },
     },
   },
   {
-    id: 'voice-memo',
-    tabLabel: 'Voice note',
-    icon: '🎙️',
-    contractorInputType: 'voice',
-    contractorSender: 'You (Voice Memo MMS)',
-    voiceAudioDuration: '0:09',
-    voiceTranscript:
-      '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
-    aiResponse:
-      '🎙️ Logged Voice Memo to Job J-108 (Wilson - 428 Elm).\nMilestone: Rough Inspection Passed.\nDrywall crew queued for Thursday 8:00 AM arrival.',
-    jobNumber: 'J-108',
-    clientName: 'Wilson Remodel',
-    address: '428 Elm St, Birmingham, MI',
-    dominantMetrics: [
+    id: 'lead-capture',
+    tabLabel: 'Walk-Up Lead Brain Dump',
+    icon: '⚡',
+    badge: 'Instant Lead Intake',
+    title: 'Capturing a New Customer Lead While Loading the Truck',
+    speakerRole: 'Contractor Dictating at Supply House (Bluetooth)',
+    audioDuration: '0:06',
+    words: [
+      'New',
+      'lead',
+      'from',
+      'the',
+      'supply',
+      'house:',
+      'Sarah',
+      'Jenkins',
+      'at',
+      '512-555-0194',
+      'needs',
+      'a',
+      'tankless',
+      'water',
+      'heater',
+      'replacement',
+      'for',
+      'urgent',
+      'install',
+      'this',
+      'Friday',
+      'morning.',
+    ],
+    entities: [
       {
-        label: 'Inspection Milestone',
-        value: 'Rough passed',
-        subtext: 'Voice note verified',
-        type: 'success',
+        id: 'lead-contact',
+        wordIndices: [6, 7, 9], // Sarah, Jenkins, 512-555-0194
+        label: 'Sarah Jenkins · 512-555-0194',
+        category: 'Client & Phone Profile',
+        color: 'cyan',
+        icon: '👤',
+        targetRecord: 'Customer Directory',
+        filedField: 'New Client File',
+        filedValue: 'Sarah Jenkins · 512-555-0194 (Verified)',
+        actionTaken: 'Created account contact, assigned trade tag, and formatted phone for SMS.',
+        badge: 'Contact Saved',
       },
       {
-        label: 'Next Scheduled Window',
-        value: 'Thu 8:00 AM',
-        subtext: 'Drywall crew arrival',
-        type: 'highlight',
+        id: 'lead-scope',
+        wordIndices: [12, 13, 14, 15], // tankless, water, heater, replacement
+        label: 'Tankless Water Heater',
+        category: 'Trade Scope & Specs',
+        color: 'orange',
+        icon: '🔥',
+        targetRecord: 'Quote Proposal Staging',
+        filedField: 'Equipment Specification',
+        filedValue: 'Navien NPE-240A2 Gas Tankless Unit',
+        actionTaken: 'Staged estimate template with standard gas line sizing and venting kit.',
+        badge: 'Equipment Staged',
       },
       {
-        label: 'Ledger Audit',
-        value: 'Audio filed',
-        subtext: '0:09 proof attached',
-        type: 'default',
+        id: 'lead-urgency',
+        wordIndices: [17, 18], // urgent, install
+        label: 'Urgent Install',
+        category: 'Priority Triage Score',
+        color: 'amber',
+        icon: '🚨',
+        targetRecord: 'Lead Triage Queue',
+        filedField: 'Pipeline Priority Level',
+        filedValue: 'Priority 1 · Emergency Equipment Replacement',
+        actionTaken: 'Scored high urgency; placed at top of daily callback queue.',
+        badge: 'Priority 1 Alert',
+      },
+      {
+        id: 'lead-schedule',
+        wordIndices: [19, 20, 21], // this, Friday, morning
+        label: 'Friday Morning Window',
+        category: 'Dispatch Calendar Block',
+        color: 'emerald',
+        icon: '📅',
+        targetRecord: 'Dispatch & Crew Calendar',
+        filedField: 'Hold Estimate Slot',
+        filedValue: 'Friday 8:00 AM – 10:00 AM (Lead Plumber)',
+        actionTaken: 'Tentatively held arrival window on schedule without booking collisions.',
+        badge: 'Window Held',
       },
     ],
-    voiceFeed: {
-      duration: '0:09 MMS Audio',
-      transcript:
-        '“Rough-in plumbing inspected and passed on Elm St. Waiting on drywall crew Thursday 8 AM.”',
-      timestamp: 'Today at 3:14 PM · Alert Phone',
-    },
-    customerOutcome: {
-      title: 'Automated Job & Crew Sync',
-      status: 'Schedule Blocked',
-      messageText:
-        'Milestone recorded on Wilson job feed. Drywall crew notified for Thursday 8:00 AM on-site arrival without making a single phone call.',
+    summaryOutcome: {
+      title: 'Lead Staged: Sarah Jenkins (Urgent Tankless Quote)',
+      description:
+        'New customer profile created, equipment specs staged, emergency urgency scored, and Friday estimate window reserved—all from a single 6-second sentence while carrying pipe.',
+      actionTag: '✓ Lead Staged in Pipeline',
+      ctaButton: {
+        label: 'Send 1-Tap Quote Proposal to Sarah',
+        successLabel: '✓ Quote Delivered to Sarah (512-555-0194)',
+      },
     },
   },
   {
-    id: 'receipt-ocr',
-    tabLabel: 'Receipt',
-    icon: '🧾',
-    contractorInputType: 'receipt',
-    contractorSender: 'You (Receipt Photo MMS)',
-    contractorText: 'Home Depot receipt for Miller - 124 Main',
-    receiptDetails: {
-      vendor: 'THE HOME DEPOT #2741',
-      date: 'Today · 2:45 PM',
-      items: [
-        { name: '3/4" x 100ft Blue PEX-A Tubing', price: '$84.90' },
-        { name: 'SharkBite 3/4" Brass Tee (x4)', price: '$43.60' },
-        { name: 'Pipe Clamps & Fasteners', price: '$20.00' },
-      ],
-      total: '$148.50',
-    },
-    aiResponse:
-      '🧾 Logged $148.50 Home Depot receipt to Job J-104 (Miller).\nJob Material Costs: $620.00 | Total Quote: $3,250.00\nGross Profit: $2,630.00 (80.9% Margin).',
-    jobNumber: 'J-104',
-    clientName: 'Miller Residence',
-    address: '124 Main St, Royal Oak, MI',
-    dominantMetrics: [
+    id: 'punch-list',
+    tabLabel: 'Gate Code & Crew Dispatch',
+    icon: '📋',
+    badge: 'Automated Crew Delegation',
+    title: 'Logging Site Access Code & Assigning Field Crew',
+    speakerRole: 'Job Superintendent Leaving Jobsite (Siri)',
+    audioDuration: '0:08',
+    words: [
+      'Copilot,',
+      'file',
+      'gate',
+      'code',
+      '#4491',
+      'for',
+      'the',
+      'Wilson',
+      'project',
+      'on',
+      'Elm',
+      'St,',
+      'and',
+      'assign',
+      'Jake',
+      'to',
+      'finish',
+      'drywall',
+      'patching',
+      'and',
+      'touch',
+      'up',
+      'trim',
+      'tomorrow',
+      'at',
+      '8',
+      'AM.',
+    ],
+    entities: [
       {
-        label: 'Receipt OCR',
-        value: '+$148.50 logged',
-        subtext: 'Home Depot #2741',
-        type: 'success',
+        id: 'access-code',
+        wordIndices: [2, 3, 4], // gate, code, #4491
+        label: 'Gate Code #4491',
+        category: 'Site Access Credentials',
+        color: 'amber',
+        icon: '🔑',
+        targetRecord: 'Job Header & Field Guide',
+        filedField: 'Permanent Site Credentials',
+        filedValue: 'Front Security Gate PIN: #4491',
+        actionTaken: 'Pinned gate code to job card; automatically shared with dispatched crew.',
+        badge: 'Credentials Pinned',
       },
       {
-        label: 'Gross Profit Margin',
-        value: '80.9% margin',
-        subtext: '$2,630.00 profit',
-        type: 'highlight',
+        id: 'project-wilson',
+        wordIndices: [7, 8, 10, 11], // Wilson, project, Elm, St
+        label: 'Wilson · Elm St',
+        category: 'Job File Resolution',
+        color: 'cyan',
+        icon: '📍',
+        targetRecord: 'Job #J-108 · Wilson Remodel',
+        filedField: 'Active Site Location',
+        filedValue: '428 Elm St, Birmingham, MI',
+        actionTaken: 'Mapped speech to active remodel file with zero ambiguity.',
+        badge: 'Job Verified',
       },
       {
-        label: 'Job Allocation',
-        value: 'Miller (J-104)',
-        subtext: 'Proof photo saved',
-        type: 'default',
+        id: 'punch-tasks',
+        wordIndices: [17, 18, 20, 21, 22], // drywall, patching, touch, up, trim
+        label: 'Drywall Patch & Trim',
+        category: 'Punch List Extraction',
+        color: 'orange',
+        icon: '📋',
+        targetRecord: 'Field Task Checklist',
+        filedField: '2 Actionable Tasks Created',
+        filedValue: '1) Finish drywall patch · 2) Baseboard trim touch-up',
+        actionTaken: 'Parsed sentence into two distinct actionable checklist items.',
+        badge: '2 Tasks Created',
+      },
+      {
+        id: 'crew-assign',
+        wordIndices: [13, 14, 23, 24, 25, 26], // assign, Jake, tomorrow, at, 8, AM
+        label: 'Assign Jake · Tomorrow 8 AM',
+        category: 'Crew SMS Dispatch',
+        color: 'emerald',
+        icon: '👷',
+        targetRecord: 'Crew Dispatch Hub',
+        filedField: 'Worker Task Push Notification',
+        filedValue: 'Jake Miller (Field Crew) · Thu 8:00 AM',
+        actionTaken: 'Dispatched task assignment with site address and gate code to crew mobile.',
+        badge: 'Crew Notified',
       },
     ],
-    costsSummary: {
-      totalRevenue: '$3,250.00',
-      totalCosts: '$620.00',
-      grossProfit: '$2,630.00',
-      marginPercent: 80.9,
-      receiptItem: 'Home Depot: 3/4" PEX & SharkBite Fittings',
-      receiptAmount: '$148.50',
-    },
-    customerOutcome: {
-      title: 'Real-Time Margin Protection',
-      status: 'Cost Tracked',
-      messageText:
-        'Material cost itemized and deducted from job gross margin in real-time. Zero receipt slips lost in truck floorboards at tax time.',
+    summaryOutcome: {
+      title: 'Tasks Assigned: Jake Dispatched for Tomorrow 8:00 AM',
+      description:
+        'Gate code pinned to job header, punch list split into discrete task items, and worker dispatched via automated SMS without opening an app or typing on a screen.',
+      actionTag: '✓ Crew Dispatched Automatically',
+      ctaButton: {
+        label: 'View Jake’s Mobile Task Receipt',
+        successLabel: '✓ Task Verified on Jake’s Mobile Feed',
+      },
     },
   },
 ];
 
 export default function TextToRecordSimulator() {
   const [activeScenarioId, setActiveScenarioId] = useState<string>('change-order');
-  const [isPlayingVoice, setIsPlayingVoice] = useState(false);
-  const [voiceSeconds, setVoiceSeconds] = useState(9);
-  const [isRecordingLive, setIsRecordingLive] = useState(false);
-  const [liveTranscript, setLiveTranscript] = useState<string>('');
-  const [customerApproved, setCustomerApproved] = useState(false);
+  const [currentWordCount, setCurrentWordCount] = useState<number>(0);
+  const [isPlaying, setIsPlaying] = useState<boolean>(true);
+  const [selectedEntityId, setSelectedEntityId] = useState<string | null>(null);
+  const [isVoiceAudioPlaying, setIsVoiceAudioPlaying] = useState<boolean>(false);
+  const [isActionCompleted, setIsActionCompleted] = useState<boolean>(false);
+  const [playbackSpeed, setPlaybackSpeed] = useState<number>(1); // 1x or 1.5x
 
-  const scenario = HERO_SCENARIOS.find((s) => s.id === activeScenarioId) || HERO_SCENARIOS[0];
+  const scenario =
+    EXTRACTION_SCENARIOS.find((s) => s.id === activeScenarioId) || EXTRACTION_SCENARIOS[0];
 
-  // Stop speech playback on tab switch & reset approval
+  const totalWords = scenario.words.length;
+  const isComplete = currentWordCount >= totalWords;
+
+  // Stream words in word by word
   useEffect(() => {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-    }
-    setIsPlayingVoice(false);
-    setVoiceSeconds(9);
-    setCustomerApproved(false);
+    setCurrentWordCount(0);
+    setSelectedEntityId(null);
+    setIsActionCompleted(false);
+    setIsPlaying(true);
   }, [activeScenarioId]);
 
-  function toggleVoicePlayback() {
-    if (isPlayingVoice) {
-      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+  useEffect(() => {
+    if (!isPlaying || currentWordCount >= totalWords) return;
+
+    const intervalMs = playbackSpeed === 1.5 ? 90 : 130;
+    const timer = setTimeout(() => {
+      setCurrentWordCount((prev) => prev + 1);
+    }, intervalMs);
+
+    return () => clearTimeout(timer);
+  }, [isPlaying, currentWordCount, totalWords, playbackSpeed]);
+
+  // Find which entity a word index belongs to (if any)
+  function getEntityForWord(wordIndex: number): ExtractedEntity | undefined {
+    return scenario.entities.find((e) => e.wordIndices.includes(wordIndex));
+  }
+
+  // Check if an entity is currently fully or partially revealed
+  function isEntityActive(entity: ExtractedEntity): boolean {
+    if (!isComplete) {
+      // Is at least the last index of the entity revealed?
+      const maxIndex = Math.max(...entity.wordIndices);
+      return currentWordCount > maxIndex;
+    }
+    return true;
+  }
+
+  // Toggle voice speech simulation with Web Speech API
+  function toggleVoiceSynthesis() {
+    if (typeof window === 'undefined') return;
+
+    if (isVoiceAudioPlaying) {
+      if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
-      setIsPlayingVoice(false);
+      setIsVoiceAudioPlaying(false);
       return;
     }
 
-    setIsPlayingVoice(true);
-    setVoiceSeconds(9);
-
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    if ('speechSynthesis' in window) {
       window.speechSynthesis.cancel();
-      const textToSpeak =
-        'Rough-in plumbing inspected and passed on Elm Street. Waiting on drywall crew Thursday 8 AM.';
-      const utterance = new SpeechSynthesisUtterance(textToSpeak);
-      utterance.rate = 1.05;
+      const sentenceText = scenario.words.join(' ');
+      const utterance = new SpeechSynthesisUtterance(sentenceText);
+      utterance.rate = playbackSpeed === 1.5 ? 1.2 : 1.0;
       utterance.pitch = 0.95;
+
+      utterance.onstart = () => {
+        setIsVoiceAudioPlaying(true);
+        setCurrentWordCount(0);
+        setIsPlaying(true);
+      };
+
       utterance.onend = () => {
-        setIsPlayingVoice(false);
+        setIsVoiceAudioPlaying(false);
       };
+
       utterance.onerror = () => {
-        setIsPlayingVoice(false);
+        setIsVoiceAudioPlaying(false);
       };
+
       window.speechSynthesis.speak(utterance);
+    } else {
+      // Fallback if synthesis not supported
+      replayStream();
     }
   }
 
-  function toggleLiveMic() {
-    if (typeof window === 'undefined') return;
-
-    const win = window as unknown as {
-      SpeechRecognition?: new () => {
-        continuous: boolean;
-        interimResults: boolean;
-        lang: string;
-        onstart: () => void;
-        onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
-        onend: () => void;
-        onerror: () => void;
-        start: () => void;
-      };
-      webkitSpeechRecognition?: new () => {
-        continuous: boolean;
-        interimResults: boolean;
-        lang: string;
-        onstart: () => void;
-        onresult: (e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void;
-        onend: () => void;
-        onerror: () => void;
-        start: () => void;
-      };
-    };
-
-    const SpeechRec = win.SpeechRecognition || win.webkitSpeechRecognition;
-
-    if (!SpeechRec) {
-      alert('Speech recognition is available in Chrome, Safari, and Edge.');
-      return;
+  function replayStream() {
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
     }
-
-    if (isRecordingLive) {
-      setIsRecordingLive(false);
-      return;
-    }
-
-    try {
-      const recognition = new SpeechRec();
-      recognition.continuous = false;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-
-      recognition.onstart = () => {
-        setIsRecordingLive(true);
-        setLiveTranscript('Listening to your voice...');
-      };
-
-      recognition.onresult = (event) => {
-        const transcript = Array.from(event.results)
-          .map((result) => result[0]?.transcript || '')
-          .join('');
-        setLiveTranscript(`“${transcript}”`);
-      };
-
-      recognition.onend = () => {
-        setIsRecordingLive(false);
-      };
-
-      recognition.onerror = () => {
-        setIsRecordingLive(false);
-      };
-
-      recognition.start();
-    } catch {
-      setIsRecordingLive(false);
-    }
+    setIsVoiceAudioPlaying(false);
+    setCurrentWordCount(0);
+    setIsPlaying(true);
+    setSelectedEntityId(null);
   }
 
   return (
     <div className={styles.simulatorWrapper}>
-      {/* Causal Sequence Story Banner */}
-      <div className={styles.storyBanner}>
-        <div className={styles.storySteps}>
-          <div className={`${styles.storyStep} ${styles.storyStepActive}`}>
-            <span className={styles.stepNum}>1</span>
-            <span>Contractor texts change</span>
+      {/* Top Banner: Real-Time Acoustic & Extraction Pulse */}
+      <div className={styles.topConduitBar}>
+        <div className={styles.streamStatusGroup}>
+          <div className={styles.micPulseOrb}>
+            <span className={styles.micIcon}>🎙️</span>
+            <span className={styles.pulseRing}></span>
           </div>
-          <span className={styles.stepArrow}>→</span>
-          <div className={`${styles.storyStep} ${styles.storyStepActive}`}>
-            <span className={styles.stepNum}>2</span>
-            <span>
-              {scenario.id === 'change-order'
-                ? 'Quote increases by $450'
-                : scenario.id === 'voice-memo'
-                ? 'Milestone logged & scheduled'
-                : 'Material margin captured'}
-            </span>
+          <div className={styles.streamInfo}>
+            <div className={styles.streamHeading}>
+              <span className={styles.liveIndicator}>● LIVE CONVERSATION</span>
+              <strong>{scenario.title}</strong>
+            </div>
+            <div className={styles.streamSub}>
+              <span>{scenario.speakerRole}</span>
+              <span className={styles.subDot}>•</span>
+              <span>{scenario.audioDuration} Voice Memo</span>
+            </div>
           </div>
-          <span className={styles.stepArrow}>→</span>
-          <div className={`${styles.storyStep} ${styles.storyStepActive}`}>
-            <span className={styles.stepNum}>3</span>
-            <span>Customer approval is ready</span>
+        </div>
+
+        {/* Dynamic Waveform Visualizer */}
+        <div className={styles.waveformContainer}>
+          <div className={`${styles.equalizerBars} ${isPlaying && !isComplete ? styles.eqActive : ''}`}>
+            <span style={{ height: '35%' }}></span>
+            <span style={{ height: '70%' }}></span>
+            <span style={{ height: '100%' }}></span>
+            <span style={{ height: '55%' }}></span>
+            <span style={{ height: '85%' }}></span>
+            <span style={{ height: '40%' }}></span>
+            <span style={{ height: '95%' }}></span>
+            <span style={{ height: '60%' }}></span>
+            <span style={{ height: '80%' }}></span>
+            <span style={{ height: '45%' }}></span>
           </div>
+          <span className={styles.codecTag}>AI Entity Parser Active</span>
         </div>
       </div>
 
-      {/* 3 Scenario Tabs */}
-      <div className={styles.tabBarContainer}>
-        <div className={styles.tabBarLabelGroup}>
-          <span className={styles.livePulseDot}></span>
-          <span className={styles.tabBarLabel}>Select Field Scenario:</span>
+      {/* 3 Interactive Scenario Picker Tabs */}
+      <div className={styles.scenarioTabsBar}>
+        <div className={styles.tabLabelGroup}>
+          <span className={styles.tabHeadingTag}>Field Trade Scenarios:</span>
         </div>
-        <div className={styles.tabBar}>
-          {HERO_SCENARIOS.map((sc) => {
+        <div className={styles.tabButtonsRow}>
+          {EXTRACTION_SCENARIOS.map((sc) => {
             const isActive = sc.id === activeScenarioId;
             return (
               <button
                 key={sc.id}
                 type="button"
-                className={`${styles.tabBtn} ${isActive ? styles.tabActive : ''}`}
+                className={`${styles.scenarioTabBtn} ${isActive ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveScenarioId(sc.id)}
               >
-                <span className={styles.tabIconWrapper}>{sc.icon}</span>
-                <span>{sc.tabLabel}</span>
+                <span className={styles.tabIcon}>{sc.icon}</span>
+                <span className={styles.tabTitleText}>{sc.tabLabel}</span>
+                {isActive && <span className={styles.activeGlowPill}></span>}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Main Dual Column Workspace Frame */}
-      <div className={styles.workspaceFrame}>
-        {/* Left Column: Phone Device (Inbound Message) */}
-        <div className={styles.phoneColumn}>
-          <div className={styles.phoneDevice}>
-            {/* Phone Top Notch */}
-            <div className={styles.phoneTopBar}>
-              <span className={styles.phoneTime}>9:41</span>
-              <div className={styles.phoneIsland}>
-                {isPlayingVoice && (
-                  <span className={styles.islandEq}>
-                    <i></i>
-                    <i></i>
-                    <i></i>
-                  </span>
-                )}
+      {/* Main Dual-Column Interactive Stage */}
+      <div className={styles.extractionStageGrid}>
+        {/* Left Column: Word-by-Word Voice Sentence Stream & Entity Target Box */}
+        <div className={styles.speechColumn}>
+          <div className={styles.sentenceCard}>
+            {/* Sentence Header */}
+            <div className={styles.sentenceHeader}>
+              <div className={styles.speakerPill}>
+                <span className={styles.speakerDot}></span>
+                <span>Contractor Speech Stream (Word by Word)</span>
               </div>
-              <div className={styles.phoneSignals}>
-                <span>5G</span>
-                <span className={styles.signalIcon}>●●●●</span>
+              <div className={styles.playbackControls}>
+                <button
+                  type="button"
+                  onClick={toggleVoiceSynthesis}
+                  className={`${styles.audioPlayBtn} ${isVoiceAudioPlaying ? styles.audioPlaying : ''}`}
+                  title="Play browser voice audio"
+                >
+                  {isVoiceAudioPlaying ? '🔊 Pause Voice' : '🔈 Listen to Voice'}
+                </button>
+                <button
+                  type="button"
+                  onClick={replayStream}
+                  className={styles.replayBtn}
+                  title="Replay word-by-word extraction"
+                >
+                  ⏮ Replay
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlaybackSpeed((s) => (s === 1 ? 1.5 : 1))}
+                  className={styles.speedBtn}
+                  title="Toggle playback speed"
+                >
+                  {playbackSpeed}x
+                </button>
               </div>
             </div>
 
-            {/* Chat Header */}
-            <div className={styles.chatHeader}>
-              <div className={styles.chatAvatar}>⚡</div>
-              <div className={styles.chatInfo}>
-                <div className={styles.chatTitle}>AI Copilot · 24/7 Field Sidekick</div>
-                <div className={styles.chatSub}>(248) 555-0199 · Active Line</div>
-              </div>
-              <div className={styles.headerIndicator}>
-                <span className={styles.onlineDot}></span>
-                <span className={styles.onlineText}>Online</span>
-              </div>
-            </div>
+            {/* Word-by-Word Interactive Display Area */}
+            <div className={styles.wordsDisplayBox}>
+              <div className={styles.wordsStreamFlow}>
+                {scenario.words.map((word, idx) => {
+                  const isVisible = idx < currentWordCount;
+                  const isLatest = idx === currentWordCount - 1 && !isComplete;
+                  const entity = getEntityForWord(idx);
+                  const isExtracted = entity && isEntityActive(entity);
+                  const isSelected = selectedEntityId === entity?.id;
 
-            {/* Chat Message Stream */}
-            <div className={styles.chatBody}>
-              <div className={styles.stepTag}>Step 1 · Contractor Message</div>
+                  if (!isVisible) {
+                    return null;
+                  }
 
-              {/* Scenario: Voice Note */}
-              {scenario.contractorInputType === 'voice' && (
-                <div className={styles.contractorBubble}>
-                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
-                  <div className={styles.voicePlayer}>
-                    <button
-                      type="button"
-                      onClick={toggleVoicePlayback}
-                      className={`${styles.voicePlayBtn} ${
-                        isPlayingVoice ? styles.voicePlaying : ''
-                      }`}
-                      aria-label="Play Voice Memo"
+                  return (
+                    <span
+                      key={idx}
+                      className={`${styles.streamWord} ${isLatest ? styles.wordLatest : ''} ${
+                        isExtracted ? styles[`wordEntity_${entity.color}`] : ''
+                      } ${isSelected ? styles.wordSelected : ''}`}
+                      onClick={() => entity && setSelectedEntityId(entity.id)}
+                      title={entity ? `AI Target: ${entity.category} ➔ ${entity.targetRecord}` : undefined}
                     >
-                      {isPlayingVoice ? '⏸' : '▶'}
-                    </button>
-                    <div className={styles.waveformBars}>
-                      <span style={{ height: '45%' }}></span>
-                      <span style={{ height: '75%' }}></span>
-                      <span style={{ height: '100%' }}></span>
-                      <span style={{ height: '65%' }}></span>
-                      <span style={{ height: '90%' }}></span>
-                      <span style={{ height: '40%' }}></span>
-                      <span style={{ height: '95%' }}></span>
-                      <span style={{ height: '55%' }}></span>
-                    </div>
-                    <span className={styles.voiceDuration}>
-                      {isPlayingVoice ? `0:0${voiceSeconds}` : scenario.voiceAudioDuration}
+                      {word}
                     </span>
-                  </div>
-                  <small className={styles.audioHint}>
-                    {isPlayingVoice ? '🔊 Playing voice audio...' : 'Tap ▶ to hear voice note'}
-                  </small>
-                </div>
-              )}
+                  );
+                })}
 
-              {/* Scenario: Receipt OCR Photo */}
-              {scenario.contractorInputType === 'receipt' && scenario.receiptDetails && (
-                <div className={styles.contractorBubble}>
-                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
-                  <div className={styles.receiptCard}>
-                    <div className={styles.receiptBanner}>
-                      <strong>{scenario.receiptDetails.vendor}</strong>
-                      <span className={styles.receiptDate}>{scenario.receiptDetails.date}</span>
-                    </div>
-                    <div className={styles.receiptItemsList}>
-                      {scenario.receiptDetails.items.map((item, idx) => (
-                        <div key={idx} className={styles.receiptRow}>
-                          <span>{item.name}</span>
-                          <strong>{item.price}</strong>
-                        </div>
-                      ))}
-                    </div>
-                    <div className={styles.receiptTotalRow}>
-                      <span>TOTAL</span>
-                      <span>{scenario.receiptDetails.total}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
+                {/* Animated Cursor */}
+                {!isComplete && <span className={styles.streamingCursor}></span>}
+              </div>
 
-              {/* Scenario: Standard Text */}
-              {scenario.contractorInputType === 'text' && scenario.contractorText && (
-                <div className={styles.contractorBubble}>
-                  <div className={styles.senderTag}>{scenario.contractorSender}</div>
-                  <p className={styles.bubbleText}>{scenario.contractorText}</p>
+              {/* Real-time Extraction Status Bar */}
+              <div className={styles.extractionProgressFoot}>
+                <div className={styles.progressText}>
+                  {isComplete ? (
+                    <span className={styles.completeStatus}>
+                      ✓ All <strong>{scenario.entities.length} entities</strong> successfully parsed &amp; filed to database
+                    </span>
+                  ) : (
+                    <span>
+                      Transcribing word <strong>{currentWordCount}</strong> of <strong>{totalWords}</strong>...
+                    </span>
+                  )}
                 </div>
-              )}
-
-              {/* AI Copilot Response */}
-              <div className={styles.aiBubble}>
-                <div className={styles.aiSenderTag}>
-                  <span className={styles.aiGlowDot}></span>
-                  AI Copilot Response
+                <div className={styles.progressBarTrack}>
+                  <div
+                    className={styles.progressBarFill}
+                    style={{ width: `${(currentWordCount / totalWords) * 100}%` }}
+                  ></div>
                 </div>
-                <p className={styles.aiResponseText}>{scenario.aiResponse}</p>
               </div>
             </div>
 
-            {/* Input Bar */}
-            <div className={styles.chatInputBar}>
-              <button
-                type="button"
-                onClick={toggleLiveMic}
-                className={`${styles.micBtn} ${isRecordingLive ? styles.micBtnActive : ''}`}
-                title="Tap to speak live"
-              >
-                🎙️
-              </button>
-              <div className={styles.inputMock}>
-                {isRecordingLive
-                  ? '🔴 Listening to voice...'
-                  : liveTranscript || 'Text or tap 🎙️ to dictate...'}
+            {/* Extracted Tokens Quick Legend & Visual Beams Header */}
+            <div className={styles.entityLegendBox}>
+              <div className={styles.legendHead}>
+                <span className={styles.legendTitle}>⚡ AI Extracted Tokens (Click token to trace filing destination):</span>
               </div>
-              <span className={styles.sendMock}>↑</span>
+              <div className={styles.entityChipsList}>
+                {scenario.entities.map((entity) => {
+                  const isActive = isEntityActive(entity);
+                  const isSelected = selectedEntityId === entity.id;
+
+                  return (
+                    <button
+                      key={entity.id}
+                      type="button"
+                      onClick={() => setSelectedEntityId(isSelected ? null : entity.id)}
+                      className={`${styles.entityChip} ${styles[`chip_${entity.color}`]} ${
+                        isActive ? styles.chipActive : styles.chipPending
+                      } ${isSelected ? styles.chipSelected : ''}`}
+                    >
+                      <span className={styles.chipIcon}>{entity.icon}</span>
+                      <span className={styles.chipLabel}>{entity.label}</span>
+                      <span className={styles.chipArrow}>➔ {entity.category}</span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Right Column: Dominant Result & Outcome */}
-        <div className={styles.recordColumn}>
-          <div className={styles.recordCard}>
-            {/* Record Header */}
-            <div className={styles.recordHeader}>
-              <div className={styles.recordMain}>
-                <div className={styles.jobIdRow}>
-                  <span className={styles.jobIdTag}>{scenario.jobNumber}</span>
-                  <span className={styles.recordAddress}>{scenario.address}</span>
+        {/* Right Column: Visual of Where Details are Filed Away in the Database */}
+        <div className={styles.filingColumn}>
+          <div className={styles.filingContainer}>
+            <div className={styles.filingHeader}>
+              <div className={styles.filingTitleGroup}>
+                <span className={styles.dbIcon}>🗄️</span>
+                <div>
+                  <h4 className={styles.filingTitle}>Where Details Are Filed Away</h4>
+                  <span className={styles.filingSubtitle}>Live database mutation records &amp; field routing</span>
                 </div>
-                <h4 className={styles.recordTitle}>{scenario.clientName}</h4>
               </div>
+              <span className={styles.liveSyncBadge}>● Real-Time Sync</span>
             </div>
 
-            {/* Dominant 3-Card Result Grid */}
-            <div className={styles.dominantGrid}>
-              {scenario.dominantMetrics.map((m, i) => (
-                <div
-                  key={i}
-                  className={`${styles.dominantCard} ${
-                    m.type === 'success'
-                      ? styles.dominantCardSuccess
-                      : m.type === 'highlight'
-                      ? styles.dominantCardHighlight
-                      : ''
-                  }`}
-                >
-                  <span className={styles.dominantLabel}>{m.label}</span>
-                  <strong className={styles.dominantValue}>{m.value}</strong>
-                  {m.subtext && <span className={styles.dominantSubtext}>{m.subtext}</span>}
-                </div>
-              ))}
-            </div>
+            {/* Destination Filing Cards Grid */}
+            <div className={styles.filingCardsGrid}>
+              {scenario.entities.map((entity, index) => {
+                const isActive = isEntityActive(entity);
+                const isSelected = selectedEntityId === entity.id;
 
-            {/* Itemized Scope Math (Change Order Scenario) */}
-            {scenario.lineItems && (
-              <div className={styles.scopeSection}>
-                <h5 className={styles.sectionHeading}>Itemized Scope & Math</h5>
-                <div className={styles.lineItemsList}>
-                  {scenario.lineItems.map((item, idx) => (
-                    <div
-                      key={idx}
-                      className={`${styles.lineItemRow} ${item.isNew ? styles.newItemGlow : ''}`}
-                    >
-                      <span className={styles.itemLabel}>
-                        {item.isNew && <span className={styles.newTag}>+ NEW ITEM</span>}
-                        {item.label}
+                return (
+                  <div
+                    key={entity.id}
+                    className={`${styles.filingCard} ${styles[`filingCard_${entity.color}`]} ${
+                      isActive ? styles.cardActive : styles.cardPending
+                    } ${isSelected ? styles.cardSelected : ''}`}
+                    onClick={() => setSelectedEntityId(isSelected ? null : entity.id)}
+                  >
+                    <div className={styles.cardTopRow}>
+                      <div className={styles.cardTargetTag}>
+                        <span className={styles.cardIcon}>{entity.icon}</span>
+                        <strong className={styles.cardRecordName}>{entity.targetRecord}</strong>
+                      </div>
+                      <span className={styles.cardBadge}>
+                        {isActive ? `✓ ${entity.badge}` : '⏳ Scanning...'}
                       </span>
-                      <span className={styles.itemAmount}>{item.amount}</span>
                     </div>
-                  ))}
-                </div>
 
-                <div className={styles.totalRow}>
-                  <div className={styles.totalLabel}>
-                    <span>Updated Quote Total</span>
-                    {scenario.previousTotal && (
-                      <span className={styles.prevAmount}>Was {scenario.previousTotal}</span>
+                    <div className={styles.cardFieldRow}>
+                      <span className={styles.cardFieldLabel}>{entity.filedField}:</span>
+                      <strong className={styles.cardFieldValue}>{entity.filedValue}</strong>
+                    </div>
+
+                    <p className={styles.cardActionDescription}>{entity.actionTaken}</p>
+
+                    {/* Beam Animation Connection Indicator */}
+                    {isSelected && (
+                      <div className={styles.activeBeamIndicator}>
+                        <span>✨ Linked to spoken words in sentence</span>
+                      </div>
                     )}
                   </div>
-                  <div className={styles.totalVal}>{scenario.updatedTotal}</div>
-                </div>
-              </div>
-            )}
+                );
+              })}
+            </div>
 
-            {/* Voice Memo Activity Feed (Voice Note Scenario) */}
-            {scenario.voiceFeed && (
-              <div className={styles.voiceFeedCard}>
-                <div className={styles.feedHead}>
-                  <span className={styles.audioBadge}>🎙️ {scenario.voiceFeed.duration}</span>
-                  <span className={styles.feedTime}>{scenario.voiceFeed.timestamp}</span>
-                </div>
-                <p className={styles.feedTranscript}>{scenario.voiceFeed.transcript}</p>
+            {/* Summary Outcome & 1-Tap Execution Box */}
+            <div className={styles.outcomeSummaryCard}>
+              <div className={styles.outcomeTopBanner}>
+                <span className={styles.outcomeTag}>{scenario.summaryOutcome.actionTag}</span>
+                <strong className={styles.outcomeTitleText}>{scenario.summaryOutcome.title}</strong>
               </div>
-            )}
+              <p className={styles.outcomeDescriptionText}>{scenario.summaryOutcome.description}</p>
 
-            {/* Real-time Material Costs & Margin (Receipt Scenario) */}
-            {scenario.costsSummary && (
-              <div className={styles.marginCard}>
-                <div className={styles.marginHeader}>
-                  <span>Real-Time Gross Profit Margin</span>
-                  <span className={styles.marginValue}>
-                    {scenario.costsSummary.marginPercent}%
-                  </span>
-                </div>
-                <div className={styles.marginTrack}>
-                  <div
-                    className={styles.marginFill}
-                    style={{ width: `${scenario.costsSummary.marginPercent}%` }}
-                  />
-                </div>
-                <div className={styles.marginSub}>
-                  <span>Revenue: {scenario.costsSummary.totalRevenue}</span>
-                  <span>Costs: {scenario.costsSummary.totalCosts}</span>
-                  <span className={styles.profitHighlight}>
-                    Profit: {scenario.costsSummary.grossProfit}
-                  </span>
-                </div>
-              </div>
-            )}
-
-            {/* Step 3: Customer Outcome Card */}
-            <div className={styles.outcomeCard}>
-              <div className={styles.outcomeHead}>
-                <span className={styles.outcomeStepTag}>Step 3 · {scenario.customerOutcome.title}</span>
-                <span className={styles.outcomeStatusPill}>{scenario.customerOutcome.status}</span>
-              </div>
-              <p className={styles.outcomeMessageText}>{scenario.customerOutcome.messageText}</p>
-
-              {scenario.customerOutcome.hasInteractivePay && (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => setCustomerApproved((prev) => !prev)}
-                    className={`${styles.customerAuthorizeBtn} ${
-                      customerApproved ? styles.customerAuthorizeApproved : ''
-                    }`}
-                  >
-                    {customerApproved
-                      ? scenario.customerOutcome.approvedLabel
-                      : scenario.customerOutcome.actionLabel}
-                  </button>
-                  {customerApproved && (
-                    <div className={styles.approvalNotice}>
-                      ⚡ Instant confirmation alert delivered to contractor steering wheel!
-                    </div>
-                  )}
-                </>
+              {scenario.summaryOutcome.ctaButton && (
+                <button
+                  type="button"
+                  onClick={() => setIsActionCompleted((prev) => !prev)}
+                  className={`${styles.interactiveOutcomeBtn} ${
+                    isActionCompleted ? styles.outcomeBtnCompleted : ''
+                  }`}
+                >
+                  {isActionCompleted
+                    ? scenario.summaryOutcome.ctaButton.successLabel
+                    : scenario.summaryOutcome.ctaButton.label}
+                </button>
               )}
             </div>
           </div>

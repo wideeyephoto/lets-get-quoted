@@ -7467,37 +7467,205 @@ const TWEAKS = `
 }
 
 /* ---- 12. Proof & metric strip multi-theme contrast fixes ---- */
+.root :global(.detail-proof) {
+  background: var(--cream, #f5f0e7);
+  color: #07131d;
+  border-bottom: 1px solid #d8d1c6;
+}
+
+.root :global(.detail-proof b) {
+  color: #07131d !important;
+  font-size: 13.5px !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.root :global(.detail-proof small) {
+  color: #243944 !important;
+  font-size: 12.5px !important;
+  line-height: 1.55 !important;
+}
+
 :root[data-theme='light'] .root :global(.index-proof b),
 :root[data-theme='sunlight'] .root :global(.index-proof b),
 :root[data-theme='light'] .root :global(.detail-proof b),
-:root[data-theme='sunlight'] .root :global(.detail-proof b) {
-  color: #090d16 !important;
+:root[data-theme='sunlight'] .root :global(.detail-proof b),
+:root[data-theme='dark'] .root :global(.detail-proof b),
+:root[data-theme='onyx'] .root :global(.detail-proof b),
+:root:not([data-theme]) .root :global(.detail-proof b) {
+  color: #07131d !important;
 }
 
 :root[data-theme='light'] .root :global(.index-proof small),
 :root[data-theme='sunlight'] .root :global(.index-proof small),
 :root[data-theme='light'] .root :global(.detail-proof small),
-:root[data-theme='sunlight'] .root :global(.detail-proof small) {
-  color: #475569 !important;
+:root[data-theme='sunlight'] .root :global(.detail-proof small),
+:root[data-theme='dark'] .root :global(.detail-proof small),
+:root[data-theme='onyx'] .root :global(.detail-proof small),
+:root:not([data-theme]) .root :global(.detail-proof small) {
+  color: #243944 !important;
 }
 
 :root[data-theme='dim'] .root :global(.index-proof b),
 :root[data-theme='dim'] .root :global(.detail-proof b) {
-  color: #f3f4f6 !important;
+  color: #f8fafc !important;
 }
 
 :root[data-theme='dim'] .root :global(.index-proof small),
 :root[data-theme='dim'] .root :global(.detail-proof small) {
-  color: #9ca3af !important;
+  color: #cbd5e1 !important;
 }
 
-:root[data-theme='dark'] .root :global(.detail-proof b) {
-  color: #f3f4f6 !important;
+/* ---- 13. Detail Story & Benefits Grid Multi-Theme Contrast Fixes ---- */
+.root :global(.detail-story) {
+  color: #07131d;
 }
 
-:root[data-theme='dark'] .root :global(.detail-proof small) {
-  color: #94a3b8 !important;
+.root :global(.detail-story h2) {
+  color: #07131d !important;
 }
+
+.root :global(.detail-story .eyebrow) {
+  color: #d94f06 !important;
+}
+
+.root :global(.detail-story > div > p),
+.root :global(.detail-story p:not(.eyebrow)) {
+  margin-top: 24px;
+  color: #1e293b !important;
+  font-size: 16px;
+  line-height: 1.72;
+}
+
+.root :global(.detail-benefits article) {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: #d1c9bd !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.root :global(.detail-benefits article > span) {
+  color: #d94f06 !important;
+  font-weight: 850;
+}
+
+.root :global(.detail-benefits h3) {
+  color: #07131d !important;
+  font-weight: 800;
+  margin: 32px 0 10px;
+}
+
+.root :global(.detail-benefits article p) {
+  color: #334155 !important;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Contractor Example Speech / SMS Bubble within Cards */
+.root :global(.contractor-sample) {
+  display: block;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 106, 36, 0.05);
+  border: 1px solid rgba(255, 106, 36, 0.22);
+  border-left: 3px solid #ff6a24;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.root :global(.contractor-sample strong) {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #d94f06;
+  margin-bottom: 4px;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.root :global(.contractor-sample em) {
+  display: block;
+  font-style: normal;
+  color: #111827;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Light / Sunlight Theme Overrides */
+:root[data-theme='light'] .root :global(.detail-story h2),
+:root[data-theme='sunlight'] .root :global(.detail-story h2) {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .root :global(.detail-story p:not(.eyebrow)),
+:root[data-theme='sunlight'] .root :global(.detail-story p:not(.eyebrow)) {
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] .root :global(.detail-benefits h3),
+:root[data-theme='sunlight'] .root :global(.detail-benefits h3) {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .root :global(.detail-benefits article p),
+:root[data-theme='sunlight'] .root :global(.detail-benefits article p) {
+  color: #475569 !important;
+}
+
+/* Dim Mode Overrides (Dark Surface on Dim Mode) */
+:root[data-theme='dim'] .root :global(.detail-story) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-story h2) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-story .eyebrow) {
+  color: #ff7137 !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-story > div > p),
+:root[data-theme='dim'] .root :global(.detail-story p:not(.eyebrow)) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits article) {
+  background: rgba(13, 23, 34, 0.75) !important;
+  border-color: rgba(174, 199, 211, 0.16) !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits article > span) {
+  color: #ff7137 !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits h3) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits article p) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='dim'] .root :global(.contractor-sample) {
+  background: rgba(4, 12, 20, 0.75);
+  border-color: rgba(255, 113, 55, 0.3);
+  border-left-color: #ff7137;
+}
+
+:root[data-theme='dim'] .root :global(.contractor-sample strong) {
+  color: #ff7137;
+}
+
+:root[data-theme='dim'] .root :global(.contractor-sample em) {
+  color: #f1f5f9;
+}
+
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.

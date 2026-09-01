@@ -43,6 +43,11 @@ import {
   updateCrewPhotoAction,
 } from './actions';
 import { avatarTone } from '@/lib/avatar-tone';
+import {
+  CREW_SMS_CONSENT_LABEL,
+  CREW_SMS_DISCLOSURE,
+  CREW_SMS_DISCLOSURE_VERSION,
+} from '@/lib/crew-sms-disclosure';
 import styles from './crew.module.css';
 
 // The roster, as rows rather than cards.
@@ -1757,6 +1762,29 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
             <div className="field">
               <label htmlFor={`phone-${row.id}`}>Phone</label>
               <input id={`phone-${row.id}`} name="phone" type="tel" required defaultValue={row.phone ?? ''} />
+            </div>
+            <div className="field full">
+              <label className="checkbox-row" htmlFor={`crew-sms-consent-${row.id}`}>
+                <input
+                  id={`crew-sms-consent-${row.id}`}
+                  name="crewSmsConsent"
+                  type="checkbox"
+                  aria-describedby={`crew-sms-disclosure-${row.id}`}
+                />
+                <span>{CREW_SMS_CONSENT_LABEL}</span>
+              </label>
+              <p id={`crew-sms-disclosure-${row.id}`} className="field-hint">
+                {CREW_SMS_DISCLOSURE}{' '}
+                <a href="/sms-terms" target="_blank" rel="noreferrer">
+                  SMS Terms
+                </a>
+                {' and '}
+                <a href="/privacy" target="_blank" rel="noreferrer">
+                  Privacy Policy
+                </a>
+                .
+              </p>
+              <input type="hidden" name="crewSmsDisclosureVersion" value={CREW_SMS_DISCLOSURE_VERSION} />
             </div>
             <div className="field">
               <label htmlFor={`email-${row.id}`}>Email (for the field app)</label>

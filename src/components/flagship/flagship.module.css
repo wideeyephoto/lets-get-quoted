@@ -489,7 +489,7 @@
 
 .root :global(.ai-rail h3) { margin: 9px 0 8px; font-size: 18px; letter-spacing: -.5px; line-height: 1.15; }
 
-.root :global(.ai-rail p) { margin: 0; color: #b2c4ce; font-size: 13px; line-height: 1.55; }
+.root :global(.ai-rail p) { margin: 0; color: #8196a2; font-size: 11px; line-height: 1.55; }
 
 .root :global(.ai-rail > i) { align-self: center; color: #4d6572; font-style: normal; }
 
@@ -511,7 +511,7 @@
 
 .root :global(.suite-grid h3) {font-size:20px;letter-spacing:-.6px;margin:43px 0 12px}
 
-.root :global(.suite-grid p) {color:#444d4c;font-size:13.5px;line-height:1.6;margin:0}
+.root :global(.suite-grid p) {color:#6a706f;font-size:12px;line-height:1.6;margin:0}
 
 .root :global(.difference) { padding: 130px clamp(24px,6vw,100px); background: #fdfbf6; color: var(--ink); display: grid; grid-template-columns: .82fr 1.18fr; gap: clamp(55px,7vw,120px); align-items: center; border-top: 1px solid #ded7cc; }
 
@@ -4443,43 +4443,17 @@
   padding-bottom: clamp(56px, 6vw, 84px);
 }
 
-@media (max-width: 900px) {
-  .root :global(.hero.hero-split) {
-    min-height: auto;
-    grid-template-columns: 1fr;
-    padding: 108px 20px 52px;
-    gap: 28px;
-  }
-}
-
-/* -- the footer's links and legal row --------------------------------------- */
-.root :global(.footer-links a) {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 6px 14px;
-  color: #9cb1be;
-  font-size: 13.5px;
-  text-decoration: none;
-}
-.root :global(.footer-links a:hover) {
-  color: #ffffff;
-}
-
+/* -- the footer's legal row ------------------------------------------------ */
 .root :global(.footer-legal) {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 4px 18px;
+  gap: 8px 20px;
   margin: 14px 0 0;
 }
 .root :global(.footer-legal a) {
-  display: inline-flex;
-  align-items: center;
-  min-height: 44px;
-  padding: 4px 10px;
-  color: #8da2ad;
-  font-size: 13px;
+  color: #7e9099;
+  font-size: 12px;
   text-decoration: none;
 }
 .root :global(.footer-legal a:hover) { color: #cfdbe2; text-decoration: underline; }
@@ -8910,6 +8884,7 @@
 
 /* ---- 7. Dynamic Background Motion, Hero Aurora & Radiance Halos --------- */
 .root :global(.hero) {
+  min-height: 900px;
   position: relative;
   overflow: hidden;
   background:
@@ -9501,50 +9476,202 @@
 }
 
 /* ---- 12. Proof & metric strip multi-theme contrast fixes ---- */
+.root :global(.detail-proof) {
+  background: var(--cream, #f5f0e7);
+  color: #07131d;
+  border-bottom: 1px solid #d8d1c6;
+}
+
+.root :global(.detail-proof b) {
+  color: #07131d !important;
+  font-size: 13.5px !important;
+  font-weight: 850 !important;
+  letter-spacing: -0.01em !important;
+}
+
+.root :global(.detail-proof small) {
+  color: #243944 !important;
+  font-size: 12.5px !important;
+  line-height: 1.55 !important;
+}
+
 :root[data-theme='light'] .root :global(.index-proof b),
 :root[data-theme='sunlight'] .root :global(.index-proof b),
 :root[data-theme='light'] .root :global(.detail-proof b),
-:root[data-theme='sunlight'] .root :global(.detail-proof b) {
-  color: #090d16 !important;
+:root[data-theme='sunlight'] .root :global(.detail-proof b),
+:root[data-theme='dark'] .root :global(.detail-proof b),
+:root[data-theme='onyx'] .root :global(.detail-proof b),
+:root:not([data-theme]) .root :global(.detail-proof b) {
+  color: #07131d !important;
 }
 
 :root[data-theme='light'] .root :global(.index-proof small),
 :root[data-theme='sunlight'] .root :global(.index-proof small),
 :root[data-theme='light'] .root :global(.detail-proof small),
-:root[data-theme='sunlight'] .root :global(.detail-proof small) {
-  color: #475569 !important;
+:root[data-theme='sunlight'] .root :global(.detail-proof small),
+:root[data-theme='dark'] .root :global(.detail-proof small),
+:root[data-theme='onyx'] .root :global(.detail-proof small),
+:root:not([data-theme]) .root :global(.detail-proof small) {
+  color: #243944 !important;
 }
 
 :root[data-theme='dim'] .root :global(.index-proof b),
 :root[data-theme='dim'] .root :global(.detail-proof b) {
-  color: #f3f4f6 !important;
+  color: #f8fafc !important;
 }
 
 :root[data-theme='dim'] .root :global(.index-proof small),
 :root[data-theme='dim'] .root :global(.detail-proof small) {
-  color: #9ca3af !important;
+  color: #cbd5e1 !important;
 }
 
-:root[data-theme='dark'] .root :global(.detail-proof b) {
-  color: #f3f4f6 !important;
+/* ---- 13. Detail Story & Benefits Grid Multi-Theme Contrast Fixes ---- */
+.root :global(.detail-story) {
+  color: #07131d;
 }
 
-:root[data-theme='dark'] .root :global(.detail-proof small) {
-  color: #94a3b8 !important;
+.root :global(.detail-story h2) {
+  color: #07131d !important;
 }
 
-/* ---- 13. Public Marketing ThemeFab Non-Obstructive Positioning ---- */
-.root :global(.theme-fab) {
-  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
-  left: 1.5rem;
-  z-index: 25;
+.root :global(.detail-story .eyebrow) {
+  color: #d94f06 !important;
 }
 
-@media (max-width: 900px) {
-  .root :global(.theme-fab) {
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    left: 1rem;
-    width: 44px;
-    height: 44px;
-  }
+.root :global(.detail-story > div > p),
+.root :global(.detail-story p:not(.eyebrow)) {
+  margin-top: 24px;
+  color: #1e293b !important;
+  font-size: 16px;
+  line-height: 1.72;
 }
+
+.root :global(.detail-benefits article) {
+  background: rgba(255, 255, 255, 0.72) !important;
+  border-color: #d1c9bd !important;
+  display: flex;
+  flex-direction: column;
+}
+
+.root :global(.detail-benefits article > span) {
+  color: #d94f06 !important;
+  font-weight: 850;
+}
+
+.root :global(.detail-benefits h3) {
+  color: #07131d !important;
+  font-weight: 800;
+  margin: 32px 0 10px;
+}
+
+.root :global(.detail-benefits article p) {
+  color: #334155 !important;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Contractor Example Speech / SMS Bubble within Cards */
+.root :global(.contractor-sample) {
+  display: block;
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(255, 106, 36, 0.05);
+  border: 1px solid rgba(255, 106, 36, 0.22);
+  border-left: 3px solid #ff6a24;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
+}
+
+.root :global(.contractor-sample strong) {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  font-weight: 850;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #d94f06;
+  margin-bottom: 4px;
+  font-family: var(--font-geist-sans), sans-serif;
+}
+
+.root :global(.contractor-sample em) {
+  display: block;
+  font-style: normal;
+  color: #111827;
+  font-weight: 600;
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* Light / Sunlight Theme Overrides */
+:root[data-theme='light'] .root :global(.detail-story h2),
+:root[data-theme='sunlight'] .root :global(.detail-story h2) {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .root :global(.detail-story p:not(.eyebrow)),
+:root[data-theme='sunlight'] .root :global(.detail-story p:not(.eyebrow)) {
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] .root :global(.detail-benefits h3),
+:root[data-theme='sunlight'] .root :global(.detail-benefits h3) {
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .root :global(.detail-benefits article p),
+:root[data-theme='sunlight'] .root :global(.detail-benefits article p) {
+  color: #475569 !important;
+}
+
+/* Dim Mode Overrides (Dark Surface on Dim Mode) */
+:root[data-theme='dim'] .root :global(.detail-story) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-story h2) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-story .eyebrow) {
+  color: #ff7137 !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-story > div > p),
+:root[data-theme='dim'] .root :global(.detail-story p:not(.eyebrow)) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits article) {
+  background: rgba(13, 23, 34, 0.75) !important;
+  border-color: rgba(174, 199, 211, 0.16) !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits article > span) {
+  color: #ff7137 !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits h3) {
+  color: #f8fafc !important;
+}
+
+:root[data-theme='dim'] .root :global(.detail-benefits article p) {
+  color: #cbd5e1 !important;
+}
+
+:root[data-theme='dim'] .root :global(.contractor-sample) {
+  background: rgba(4, 12, 20, 0.75);
+  border-color: rgba(255, 113, 55, 0.3);
+  border-left-color: #ff7137;
+}
+
+:root[data-theme='dim'] .root :global(.contractor-sample strong) {
+  color: #ff7137;
+}
+
+:root[data-theme='dim'] .root :global(.contractor-sample em) {
+  color: #f1f5f9;
+}
+
