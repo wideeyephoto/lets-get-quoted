@@ -2,6 +2,7 @@ import 'server-only';
 
 import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/genai';
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { APP_ORIGIN } from '@/lib/app-origin';
 import {
   formatCrewCostConfirmation,
   formatCrewNoteConfirmation,
@@ -593,11 +594,12 @@ INSTRUCTIONS:
     const targetJob = activeJobs.find((j) => j.id === args.jobId);
     const ref = targetJob?.ref ?? 'Job';
     const clientName = targetJob?.clientName ?? 'Client';
+    const reviewUrl = `${APP_ORIGIN}/field/intake/${claim.taskId}`;
 
     if (toolName === 'append_internal_note') {
       confirmationText = isCrew
-        ? formatCrewNoteConfirmation(ref, clientName, callerName)
-        : formatFieldNoteConfirmation(ref, clientName);
+        ? formatCrewNoteConfirmation(ref, clientName, callerName, reviewUrl)
+        : formatFieldNoteConfirmation(ref, clientName, reviewUrl);
     } else if (toolName === 'log_cost') {
       const amount = Number(args.amount ?? 0);
       const label = String(args.label ?? 'material');
@@ -605,35 +607,35 @@ INSTRUCTIONS:
       const itemsSummary = args.itemsSummary ? String(args.itemsSummary) : undefined;
       if (vendor) {
         confirmationText = isCrew
-          ? formatCrewReceiptConfirmation(ref, clientName, amount, vendor, callerName)
-          : formatFieldReceiptConfirmation(ref, clientName, amount, vendor, itemsSummary);
+          ? formatCrewReceiptConfirmation(ref, clientName, amount, vendor, callerName, reviewUrl)
+          : formatFieldReceiptConfirmation(ref, clientName, amount, vendor, itemsSummary, reviewUrl);
       } else {
         confirmationText = isCrew
-          ? formatCrewCostConfirmation(ref, clientName, amount, label, callerName)
-          : formatFieldCostConfirmation(ref, clientName, amount, label);
+          ? formatCrewCostConfirmation(ref, clientName, amount, label, callerName, reviewUrl)
+          : formatFieldCostConfirmation(ref, clientName, amount, label, reviewUrl);
       }
     } else if (toolName === 'add_job_task') {
       const title = String(args.title ?? 'Task');
       confirmationText = isCrew
-        ? formatCrewTaskConfirmation(ref, clientName, title, callerName)
-        : formatFieldTaskConfirmation(ref, clientName, title);
+        ? formatCrewTaskConfirmation(ref, clientName, title, callerName, reviewUrl)
+        : formatFieldTaskConfirmation(ref, clientName, title, reviewUrl);
     } else if (toolName === 'complete_job_task') {
       const title = String(args.title ?? 'Task');
-      confirmationText = formatFieldTaskCompletedConfirmation(ref, clientName, title, isCrew ? callerName : undefined);
+      confirmationText = formatFieldTaskCompletedConfirmation(ref, clientName, title, isCrew ? callerName : undefined, reviewUrl);
     } else if (toolName === 'reschedule_job') {
       const when = String(args.scheduled_for ?? 'scheduled date');
-      confirmationText = formatFieldScheduleConfirmation(ref, clientName, when);
+      confirmationText = formatFieldScheduleConfirmation(ref, clientName, when, reviewUrl);
     } else if (toolName === 'update_client') {
       const targetClient = activeClients.find((c) => c.id === args.client_id);
       const cName = targetClient?.name ?? 'Client';
-      confirmationText = formatFieldClientConfirmation(cName);
+      confirmationText = formatFieldClientConfirmation(cName, reviewUrl);
     } else if (toolName === 'assign_crew') {
       const targetCrew = activeCrew.find((cr) => cr.id === args.crew_id);
       const crewName = targetCrew?.name ?? 'Crew member';
-      confirmationText = formatFieldCrewConfirmation(ref, clientName, crewName);
+      confirmationText = formatFieldCrewConfirmation(ref, clientName, crewName, reviewUrl);
     } else if (toolName === 'create_lead') {
       const leadName = String(args.clientName ?? 'New Prospect');
-      confirmationText = formatFieldLeadConfirmation(leadName);
+      confirmationText = formatFieldLeadConfirmation(leadName, reviewUrl);
     } else if (toolName === 'add_quote_line_item') {
       const amount = Number(args.amount ?? 0);
       const currentQuoted = targetJob?.quotedAmount ?? 0;

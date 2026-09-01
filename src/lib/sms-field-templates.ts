@@ -18,17 +18,26 @@ export function sanitizeGsm7Text(text: string): string {
     .trim();
 }
 
-export function formatFieldNoteConfirmation(ref: string, clientName: string): string {
-  const cleanRef = sanitizeGsm7Text(ref);
-  const cleanName = sanitizeGsm7Text(clientName);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged field note.`);
+export function attachFieldReviewLink(baseText: string, reviewUrl?: string): string {
+  const cleanBase = sanitizeGsm7Text(baseText);
+  if (!reviewUrl) return cleanBase;
+  const cleanUrl = sanitizeGsm7Text(reviewUrl);
+  return sanitizeGsm7Text(`${cleanBase} Review: ${cleanUrl}`);
 }
 
-export function formatCrewNoteConfirmation(ref: string, clientName: string, crewName: string): string {
+export function formatFieldNoteConfirmation(ref: string, clientName: string, reviewUrl?: string): string {
+  const cleanRef = sanitizeGsm7Text(ref);
+  const cleanName = sanitizeGsm7Text(clientName);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Logged field note.`;
+  return attachFieldReviewLink(base, reviewUrl);
+}
+
+export function formatCrewNoteConfirmation(ref: string, clientName: string, crewName: string, reviewUrl?: string): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanCrew = sanitizeGsm7Text(crewName);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged field note from ${cleanCrew}.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Logged field note from ${cleanCrew}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatFieldCostConfirmation(
@@ -36,11 +45,13 @@ export function formatFieldCostConfirmation(
   clientName: string,
   amount: number,
   category: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanCat = sanitizeGsm7Text(category || 'material');
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanCat} cost.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanCat} cost.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatFieldReceiptConfirmation(
@@ -49,6 +60,7 @@ export function formatFieldReceiptConfirmation(
   amount: number,
   vendor?: string,
   summary?: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
@@ -57,13 +69,16 @@ export function formatFieldReceiptConfirmation(
   
   if (cleanVendor && cleanSummary) {
     const text = `[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanVendor} receipt (${cleanSummary}).`;
-    if (text.length <= 160) return sanitizeGsm7Text(text);
+    if (!reviewUrl && text.length <= 160) return sanitizeGsm7Text(text);
+    if (reviewUrl) return attachFieldReviewLink(text, reviewUrl);
   }
   if (cleanVendor) {
     const text = `[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanVendor} receipt.`;
-    if (text.length <= 160) return sanitizeGsm7Text(text);
+    if (!reviewUrl && text.length <= 160) return sanitizeGsm7Text(text);
+    if (reviewUrl) return attachFieldReviewLink(text, reviewUrl);
   }
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} material receipt.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} material receipt.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatCrewCostConfirmation(
@@ -72,12 +87,14 @@ export function formatCrewCostConfirmation(
   amount: number,
   category: string,
   crewName: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanCat = sanitizeGsm7Text(category || 'material');
   const cleanCrew = sanitizeGsm7Text(crewName);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanCat} cost from ${cleanCrew}.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanCat} cost from ${cleanCrew}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatCrewReceiptConfirmation(
@@ -86,23 +103,27 @@ export function formatCrewReceiptConfirmation(
   amount: number,
   vendor: string,
   crewName: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanVendor = sanitizeGsm7Text(vendor || 'material');
   const cleanCrew = sanitizeGsm7Text(crewName);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanVendor} receipt from ${cleanCrew}.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Logged $${amount.toFixed(2)} ${cleanVendor} receipt from ${cleanCrew}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatFieldTaskConfirmation(
   ref: string,
   clientName: string,
   taskTitle: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanTask = sanitizeGsm7Text(taskTitle).slice(0, 50);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Added task "${cleanTask}".`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Added task "${cleanTask}".`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatCrewTaskConfirmation(
@@ -110,12 +131,14 @@ export function formatCrewTaskConfirmation(
   clientName: string,
   taskTitle: string,
   crewName: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanTask = sanitizeGsm7Text(taskTitle).slice(0, 40);
   const cleanCrew = sanitizeGsm7Text(crewName);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Added task "${cleanTask}" from ${cleanCrew}.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Added task "${cleanTask}" from ${cleanCrew}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatFieldTaskCompletedConfirmation(
@@ -123,36 +146,42 @@ export function formatFieldTaskCompletedConfirmation(
   clientName: string,
   taskTitle: string,
   crewName?: string,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanTask = sanitizeGsm7Text(taskTitle).slice(0, 40);
   const fromClause = crewName ? ` by ${sanitizeGsm7Text(crewName)}` : '';
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Marked task "${cleanTask}" completed${fromClause}.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Marked task "${cleanTask}" completed${fromClause}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
-export function formatFieldLeadConfirmation(clientName: string): string {
+export function formatFieldLeadConfirmation(clientName: string, reviewUrl?: string): string {
   const cleanName = sanitizeGsm7Text(clientName);
-  return sanitizeGsm7Text(`[LGQ] Created new lead for ${cleanName}.`);
+  const base = `[LGQ] Created new lead for ${cleanName}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
-export function formatFieldScheduleConfirmation(ref: string, clientName: string, when: string): string {
+export function formatFieldScheduleConfirmation(ref: string, clientName: string, when: string, reviewUrl?: string): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanWhen = sanitizeGsm7Text(when);
-  return sanitizeGsm7Text(`[LGQ] ${cleanRef} (${cleanName}): Scheduled for ${cleanWhen}.`);
+  const base = `[LGQ] ${cleanRef} (${cleanName}): Scheduled for ${cleanWhen}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
-export function formatFieldClientConfirmation(clientName: string): string {
+export function formatFieldClientConfirmation(clientName: string, reviewUrl?: string): string {
   const cleanName = sanitizeGsm7Text(clientName);
-  return sanitizeGsm7Text(`[LGQ] Updated client profile for ${cleanName}.`);
+  const base = `[LGQ] Updated client profile for ${cleanName}.`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
-export function formatFieldCrewConfirmation(ref: string, clientName: string, crewName: string): string {
+export function formatFieldCrewConfirmation(ref: string, clientName: string, crewName: string, reviewUrl?: string): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const cleanCrew = sanitizeGsm7Text(crewName);
-  return sanitizeGsm7Text(`[LGQ] Assigned ${cleanCrew} to ${cleanRef} (${cleanName}).`);
+  const base = `[LGQ] Assigned ${cleanCrew} to ${cleanRef} (${cleanName}).`;
+  return attachFieldReviewLink(base, reviewUrl);
 }
 
 export function formatFieldAmbiguityClarification(candidates: Array<{ ref: string; address?: string | null }>): string {
@@ -168,11 +197,13 @@ export function formatFieldQuoteWithSendPrompt(
   clientName: string,
   amount: number,
   totalAmount?: number,
+  reviewUrl?: string,
 ): string {
   const cleanRef = sanitizeGsm7Text(ref);
   const cleanName = sanitizeGsm7Text(clientName);
   const totalPart = totalAmount ? ` (Total $${totalAmount.toFixed(2)})` : '';
   const text = `[LGQ] ${cleanRef} (${cleanName}): Added $${amount.toFixed(2)} item${totalPart}. Reply SEND to text approval link to client.`;
+  if (reviewUrl) return attachFieldReviewLink(text, reviewUrl);
   if (text.length <= 160) return sanitizeGsm7Text(text);
   return sanitizeGsm7Text(`[LGQ] ${cleanRef}: Added $${amount.toFixed(2)}. Reply SEND to text client.`);
 }

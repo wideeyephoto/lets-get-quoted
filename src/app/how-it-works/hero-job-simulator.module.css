@@ -1,0 +1,523 @@
+.heroJobSimulator {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(151, 192, 207, 0.26);
+  border-radius: 22px;
+  background: linear-gradient(145deg, rgba(14, 43, 54, 0.98), rgba(6, 24, 32, 0.99));
+  box-shadow: 0 35px 85px rgba(0, 0, 0, 0.42), inset 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+}
+
+.heroJobSimulator::before {
+  position: absolute;
+  top: -85px;
+  right: -75px;
+  width: 280px;
+  height: 280px;
+  border: 1px solid rgba(255, 106, 36, 0.25);
+  border-radius: 50%;
+  content: '';
+  box-shadow: 0 0 0 35px rgba(255, 106, 36, 0.035), 0 0 0 75px rgba(255, 106, 36, 0.015);
+  pointer-events: none;
+}
+
+/* Trade selector tabs */
+.tradeSelectorBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 18px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(3, 14, 20, 0.65);
+  scrollbar-width: none;
+}
+
+.tradeSelectorBar::-webkit-scrollbar {
+  display: none;
+}
+
+.tradeTab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 11px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #8da4ae;
+  cursor: pointer;
+  font-size: 0.68rem;
+  font-weight: 750;
+  white-space: nowrap;
+  transition: all 160ms ease;
+}
+
+.tradeTab:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e3eff3;
+}
+
+.tradeTabActive {
+  border-color: rgba(255, 106, 36, 0.6);
+  background: rgba(255, 106, 36, 0.15);
+  box-shadow: 0 0 12px rgba(255, 106, 36, 0.18);
+  color: #ff9868;
+}
+
+/* Header bar */
+.heroJobTop {
+  display: flex;
+  min-height: 48px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(2, 12, 18, 0.45);
+  color: #8da3ae;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.metaWrap {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.sampleTag {
+  color: #a0b7c2;
+}
+
+.controlsWrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stageBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  font-size: 0.62rem;
+  font-weight: 850;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.stageBadge[data-tone="hot"] {
+  border: 1px solid rgba(255, 106, 36, 0.4);
+  background: rgba(255, 106, 36, 0.14);
+  color: #ff925f;
+}
+
+.stageBadge[data-tone="approved"] {
+  border: 1px solid rgba(104, 224, 189, 0.4);
+  background: rgba(104, 224, 189, 0.14);
+  color: #79f0cb;
+}
+
+.stageBadge[data-tone="scheduled"] {
+  border: 1px solid rgba(94, 203, 245, 0.4);
+  background: rgba(94, 203, 245, 0.14);
+  color: #8be1ff;
+}
+
+.stageBadge[data-tone="work"] {
+  border: 1px solid rgba(255, 215, 107, 0.4);
+  background: rgba(255, 215, 107, 0.14);
+  color: #ffe083;
+}
+
+.stageBadge[data-tone="paid"] {
+  border: 1px solid rgba(104, 224, 189, 0.5);
+  background: rgba(104, 224, 189, 0.2);
+  color: #79f0cb;
+}
+
+.playToggle {
+  display: inline-flex;
+  width: 28px;
+  height: 28px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #b7cbcd;
+  cursor: pointer;
+  font-size: 0.68rem;
+  transition: all 140ms ease;
+}
+
+.playToggle:hover {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+/* Hero Title section */
+.heroJobTitle {
+  position: relative;
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 26px 26px 20px;
+}
+
+.tradeEyebrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ff996b;
+  font-size: 0.63rem;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.tradeEyebrow span {
+  color: #78929e;
+}
+
+.heroJobTitle h2 {
+  max-width: 380px;
+  margin: 6px 0 0;
+  font-size: clamp(1.35rem, 2vw, 1.85rem);
+  font-weight: 820;
+  letter-spacing: -0.035em;
+  line-height: 1.15;
+  color: #f6fbfa;
+}
+
+.amountBox {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: right;
+  flex: none;
+}
+
+.amountMain {
+  color: #f2f8f9;
+  font-size: 1.22rem;
+  font-weight: 850;
+  letter-spacing: -0.02em;
+}
+
+.amountSub {
+  margin-top: 3px;
+  color: #92a9b3;
+  font-size: 0.65rem;
+  font-weight: 700;
+}
+
+/* Facts Grid */
+.heroJobFacts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0 24px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+}
+
+.heroJobFacts div {
+  min-width: 0;
+  padding: 13px 15px;
+}
+
+.heroJobFacts div + div {
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.heroJobFacts dt {
+  margin-bottom: 5px;
+  color: #7b949f;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+
+.heroJobFacts dd {
+  margin: 0;
+  color: #e1edf0;
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.factCheck {
+  display: inline-flex;
+  margin-right: 5px;
+  color: #68e0bd;
+  font-weight: 900;
+}
+
+/* AI Copilot & Automation Insight Bar */
+.copilotBar {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  margin: 16px 24px 0;
+  padding: 10px 14px;
+  border: 1px solid rgba(104, 224, 189, 0.22);
+  border-radius: 10px;
+  background: rgba(104, 224, 189, 0.06);
+  font-size: 0.71rem;
+  line-height: 1.4;
+}
+
+.copilotBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: rgba(104, 224, 189, 0.18);
+  color: #7bf4cf;
+  font-size: 0.58rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.copilotText {
+  color: #d1e8ee;
+  font-weight: 650;
+}
+
+/* Customer SMS snapshot */
+.smsCard {
+  margin: 14px 24px 0;
+  padding: 11px 14px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(2, 12, 17, 0.55);
+}
+
+.smsHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 5px;
+  color: #7d96a1;
+  font-size: 0.57rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.smsHeader span:last-child {
+  color: #68e0bd;
+}
+
+.smsBubble {
+  margin: 0;
+  color: #deecf0;
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
+.smsHighlight {
+  color: #ff9a69;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Stage Stepper */
+.journeyWrap {
+  position: relative;
+  margin: 22px 20px 18px;
+}
+
+.progressBarTrack {
+  position: absolute;
+  top: 15px;
+  right: 8%;
+  left: 8%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: 0;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff6a24, #68e0bd);
+  transition: width 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.journeyList {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.journeyBtn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #8ca3ae;
+  cursor: pointer;
+  text-align: center;
+  transition: all 160ms ease;
+}
+
+.journeyBtn:hover {
+  color: #e5f1f4;
+}
+
+.journeyNode {
+  position: relative;
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border: 1px solid #2d4c5a;
+  border-radius: 50%;
+  background: #09212c;
+  color: #a2b7bf;
+  font-size: 0.67rem;
+  font-weight: 850;
+  transition: all 200ms ease;
+}
+
+.journeyBtn[data-state="active"] .journeyNode {
+  border-color: #ff6a24;
+  background: #ff6a24;
+  box-shadow: 0 0 0 6px rgba(255, 106, 36, 0.22), 0 0 16px rgba(255, 106, 36, 0.4);
+  color: #1a0802;
+  transform: scale(1.08);
+}
+
+.journeyBtn[data-state="completed"] .journeyNode {
+  border-color: rgba(104, 224, 189, 0.7);
+  background: rgba(104, 224, 189, 0.18);
+  color: #68e0bd;
+}
+
+.journeyLabel {
+  font-size: 0.7rem;
+  font-weight: 750;
+  line-height: 1.2;
+}
+
+.journeyBtn[data-state="active"] .journeyLabel {
+  color: #ffffff;
+  font-weight: 850;
+}
+
+/* Status footer */
+.statusFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(3, 15, 22, 0.55);
+  color: #d1e2e6;
+  font-size: 0.73rem;
+  font-weight: 700;
+}
+
+.statusIndicator {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.statusDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ff6a24;
+  box-shadow: 0 0 8px #ff6a24;
+  animation: pulseDot 2.2s infinite ease-in-out;
+}
+
+@keyframes pulseDot {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+}
+
+.nextStepAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #ff9362;
+  font-size: 0.7rem;
+  font-weight: 800;
+  text-decoration: none;
+  transition: color 140ms ease;
+}
+
+.nextStepAction:hover {
+  color: #ffaa82;
+  text-decoration: underline;
+}
+
+@media (max-width: 700px) {
+  .heroJobTitle {
+    flex-direction: column;
+    padding: 20px 18px 16px;
+    gap: 12px;
+  }
+
+  .amountBox {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .heroJobFacts {
+    grid-template-columns: 1fr;
+    margin: 0 18px;
+  }
+
+  .heroJobFacts div + div {
+    border-left: 0;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .copilotBar,
+  .smsCard {
+    margin-inline: 18px;
+  }
+
+  .journeyWrap {
+    margin-inline: 12px;
+  }
+
+  .journeyLabel {
+    font-size: 0.62rem;
+  }
+
+  .statusFooter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 12px 18px;
+  }
+}

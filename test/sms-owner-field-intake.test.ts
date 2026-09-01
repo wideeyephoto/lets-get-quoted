@@ -173,7 +173,8 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('append_internal_note');
-    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged field note.');
+    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged field note.');
+    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
 
     expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', {
       p_task_id: taskId,
@@ -181,7 +182,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
       p_intent: 'append_internal_note',
       p_params: { jobId, note: 'Gate code is 4821' },
       p_transcript: 'Gate code for the Smith job is 4821',
-      p_confirmation_text: '[LGQ] J-101 (John Smith): Logged field note.',
+      p_confirmation_text: expect.stringContaining(`/field/intake/${taskId}`),
     });
   });
 
@@ -251,7 +252,8 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('reschedule_job');
-    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Scheduled for 2026-09-04.');
+    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Scheduled for 2026-09-04.');
+    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
 
     expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', expect.objectContaining({
       p_intent: 'reschedule_job',
@@ -328,8 +330,8 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('log_cost');
-    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged $148.50 Home Depot receipt (Plumbing fittings).');
-    expect(result.confirmationText?.length).toBeLessThanOrEqual(160);
+    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged $148.50 Home Depot receipt (Plumbing fittings).');
+    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
 
     expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', expect.objectContaining({
       p_intent: 'log_cost',

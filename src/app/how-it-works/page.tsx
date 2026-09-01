@@ -12,6 +12,7 @@ import { titleWithBrand } from '@/lib/seo/marketing-seo';
 import styles from './how-it-works.module.css';
 import SectionNav, { type NavSection } from './section-nav';
 import WorkflowShowcase from './workflow-showcase';
+import HeroJobSimulator from './hero-job-simulator';
 
 export const metadata: Metadata = {
   title: { absolute: titleWithBrand('How It Works — Website Request to Paid Job') },
@@ -204,44 +205,7 @@ export default function HowItWorksPage() {
               </ul>
             </div>
 
-            <aside className={styles.heroJob} aria-label="Illustrative electrical job moving through Let’s Get Quoted">
-              <div className={styles.heroJobTop}>
-                <span>ILLUSTRATIVE JOB · SAMPLE #2081</span>
-                <strong>HOT</strong>
-              </div>
-              <div className={styles.heroJobTitle}>
-                <div>
-                  <small>ELECTRICAL</small>
-                  <h2>Panel upgrade + EV charger</h2>
-                </div>
-                <span>$8,000–$9,500</span>
-              </div>
-              <dl className={styles.heroJobFacts}>
-                <div>
-                  <dt>Location</dt>
-                  <dd><span aria-hidden="true">✓</span> Inside service area</dd>
-                </div>
-                <div>
-                  <dt>Timeline</dt>
-                  <dd><span aria-hidden="true">✓</span> Within 30 days</dd>
-                </div>
-                <div>
-                  <dt>Contact</dt>
-                  <dd><span aria-hidden="true">✓</span> Phone verified</dd>
-                </div>
-              </dl>
-              <ol className={styles.heroJourney} aria-label="Illustrative job stages">
-                {['Request', 'Quote', 'Scheduled', 'Work', 'Paid'].map((label, index) => (
-                  <li key={label} data-current={index === 0 ? 'true' : undefined}>
-                    <span aria-hidden="true">{index + 1}</span>
-                    <strong>{label}</strong>
-                  </li>
-                ))}
-              </ol>
-              <p className={styles.heroJobStatus}>
-                <span aria-hidden="true">●</span> Needs response
-              </p>
-            </aside>
+            <HeroJobSimulator />
           </div>
           <p className={styles.heroDisclosure}>
             Illustrative electrical job · Fictional business, customer, dates, settings, and amounts.

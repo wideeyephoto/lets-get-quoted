@@ -172,7 +172,8 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('append_internal_note');
-    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged field note from Mike Davis.');
+    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged field note from Mike Davis.');
+    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
 
     expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', {
       p_task_id: taskId,
@@ -180,7 +181,7 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
       p_intent: 'append_internal_note',
       p_params: { jobId, note: 'Finished drywall, ready for paint inspection' },
       p_transcript: 'Finished the drywall on Smith job on Main St',
-      p_confirmation_text: '[LGQ] J-101 (John Smith): Logged field note from Mike Davis.',
+      p_confirmation_text: expect.stringContaining(`/field/intake/${taskId}`),
     });
   });
 
@@ -261,7 +262,8 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
     expect(result.handled).toBe(true);
     expect(result.outcome).toBe('completed');
     expect(result.intent).toBe('log_cost');
-    expect(result.confirmationText).toBe('[LGQ] J-101 (John Smith): Logged $85.00 Copper pipe cost from Mike Davis.');
+    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged $85.00 Copper pipe cost from Mike Davis.');
+    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
   });
 });
 
