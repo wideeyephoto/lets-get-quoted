@@ -1411,12 +1411,12 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       },
       {
         id: 'quickbooks-export-sync',
-        name: 'QuickBooks Online Export & Sync',
-        desc: 'Import-ready CSVs and direct push sync for sales, customer profiles, invoices, and payment records.',
+        name: 'QuickBooks Online 2-Way Sync & Export',
+        desc: 'Import-ready CSVs and official OAuth 2.0 two-way sync for customers, invoices, and payment reconciliations.',
         tags: ['QuickBooks', 'Accounting'],
         subBullets: [
           'One-click export of sales, customer records, paid invoices, and categorized expenses in QuickBooks-ready CSV formats.',
-          'Direct synchronization for streamlined bookkeeping.',
+          'Two-way synchronization: pushes invoices and payments to QuickBooks, pulls customers and reconciles payment receipts in Let\'s Get Quoted.',
         ],
       },
       {

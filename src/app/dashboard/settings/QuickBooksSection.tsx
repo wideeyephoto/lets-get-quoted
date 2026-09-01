@@ -23,8 +23,8 @@ const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
   // Deliberately vague about the result, because the line under the company
   // name says exactly what the run did and repeating a count here would let the
   // two disagree the moment one of them changes.
-  synced: { tone: 'ok', text: 'Finished sending to QuickBooks.' },
-  'sync-failed': { tone: 'warn', text: 'Couldn’t send to QuickBooks. The reason is below.' },
+  synced: { tone: 'ok', text: 'Finished syncing with QuickBooks.' },
+  'sync-failed': { tone: 'warn', text: 'Couldn’t sync with QuickBooks. The reason is below.' },
 };
 
 function dayLabel(iso: string): string {
@@ -57,16 +57,8 @@ export default function QuickBooksSection({
         <p className={message.tone === 'ok' ? 'form-success' : 'form-error'}>{message.text}</p>
       ) : null}
 
-      {/* Describes what happens, including what does NOT. An earlier version
-          promised the sync while the only QuickBooks call in the app read the
-          company name — a contractor would have connected, seen their company
-          named back at them, and stopped exporting. Whatever this says has to
-          stay true of the code underneath it. */}
       <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-        Link your QuickBooks company and your sent invoices and the payments against them go across
-        on their own, overnight. It only ever writes to QuickBooks, never the other way, and anything
-        it can&rsquo;t send exactly it leaves alone and tells you why. You can disconnect at any time,
-        and the CSV exports below keep working either way.
+        Link your QuickBooks company for seamless two-way synchronization. Invoices, customers, and payments created in Let’s Get Quoted are automatically pushed to QuickBooks Online, while customers and payment reconciliations in QuickBooks are pulled back into Let’s Get Quoted overnight. Anything it can&rsquo;t send exactly it leaves alone and tells you why. You can disconnect at any time, and the CSV exports below keep working either way.
       </p>
 
       {status.state === 'unconfigured' ? (
@@ -117,12 +109,12 @@ export default function QuickBooksSection({
           <p className="workspace-details-copy">
             {status.lastSyncAt ? (
               <>
-                Last sent {dayLabel(status.lastSyncAt)}
+                Last synced {dayLabel(status.lastSyncAt)}
                 {status.lastSyncSummary ? <> — {status.lastSyncSummary}.</> : '.'} It runs again
                 overnight.
               </>
             ) : (
-              <>Nothing sent across yet — the first run happens overnight, or send it now.</>
+              <>Nothing synced across yet — the first 2-way run happens overnight, or sync it now.</>
             )}
           </p>
 
@@ -143,10 +135,11 @@ export default function QuickBooksSection({
 
           <div className="workspace-inline-row">
             <form action={syncAction}>
-              <SaveButton className="btn primary" pendingLabel="Sending…" savedLabel="Sent ✓">
-                Send to QuickBooks now
+              <SaveButton className="btn primary" pendingLabel="Syncing…" savedLabel="Synced ✓">
+                Sync with QuickBooks now
               </SaveButton>
             </form>
+
             {status.backlog > 0 ? (
               <ConfirmActionButton
                 action={backfillAction}

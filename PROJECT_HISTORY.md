@@ -241,10 +241,12 @@ PDF invoice attachment, pre-checkout fee transparency.
   `disputed` payment status (would need a `payment_status` enum migration), no
   homeowner/contractor notification, no failed-transfer retry/reversal.
 
+**Implemented (✅):**
+- QuickBooks **two-way OAuth sync** — Genuine OAuth 2.0 bidirectional sync
+  pushing invoices, customers, and payments to QuickBooks Online, and pulling
+  customers, payments, and invoice reconciliations into Let's Get Quoted.
+
 **Not implemented (❌):**
-- QuickBooks **two-way OAuth sync** — CSV export is the only path today
-  (`quickbooks_realm_id`/`quickbooks_connected` columns exist but unused for
-  live sync).
 - Twilio **missed-call text-back + AI (Claude) text intake** — `lead_source`
   enum has `missed_call` but no capture pipeline.
 - **Wisetack financing** — `finance_plans` table is dormant, blocked on

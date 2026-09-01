@@ -173,3 +173,60 @@ export async function qboResolveServiceItem(connection: ActiveConnection): Promi
   });
   return String(created.Id);
 }
+
+/**
+ * Query active customers from QuickBooks Online.
+ */
+export async function qboQueryCustomers(
+  connection: ActiveConnection,
+  options: { updatedSince?: string; maxResults?: number } = {},
+): Promise<Record<string, unknown>[]> {
+  const max = Math.min(options.maxResults ?? 500, 1000);
+  let stmt = 'select * from Customer where Active = true';
+  if (options.updatedSince) {
+    stmt += ` and Metadata.LastUpdatedTime > '${escapeQboString(options.updatedSince)}'`;
+  }
+  stmt += ` maxresults ${max}`;
+  return qboQuery<Record<string, unknown>>(connection, stmt);
+}
+
+/**
+ * Query invoices from QuickBooks Online (by ID list or updated timestamp).
+ */
+export async function qboQueryInvoices(
+  connection: ActiveConnection,
+  options: { ids?: string[]; updatedSince?: string; maxResults?: number } = {},
+): Promise<Record<string, unknown>[]> {
+  const max = Math.min(options.maxResults ?? 500, 1000);
+  let stmt = 'select * from Invoice';
+  const conditions: string[] = [];
+  if (options.ids && options.ids.length > 0) {
+    const escapedIds = options.ids.map((id) => `'${escapeQboString(id)}'`).join(', ');
+    conditions.push(`Id in (${escapedIds})`);
+  }
+  if (options.updatedSince) {
+    conditions.push(`Metadata.LastUpdatedTime > '${escapeQboString(options.updatedSince)}'`);
+  }
+  if (conditions.length > 0) {
+    stmt += ` where ${conditions.join(' and ')}`;
+  }
+  stmt += ` maxresults ${max}`;
+  return qboQuery<Record<string, unknown>>(connection, stmt);
+}
+
+/**
+ * Query payments from QuickBooks Online.
+ */
+export async function qboQueryPayments(
+  connection: ActiveConnection,
+  options: { updatedSince?: string; maxResults?: number } = {},
+): Promise<Record<string, unknown>[]> {
+  const max = Math.min(options.maxResults ?? 500, 1000);
+  let stmt = 'select * from Payment';
+  if (options.updatedSince) {
+    stmt += ` where Metadata.LastUpdatedTime > '${escapeQboString(options.updatedSince)}'`;
+  }
+  stmt += ` maxresults ${max}`;
+  return qboQuery<Record<string, unknown>>(connection, stmt);
+}
+

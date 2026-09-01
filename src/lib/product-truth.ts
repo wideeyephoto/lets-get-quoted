@@ -48,9 +48,9 @@ export const CAPABILITIES: Record<string, CapabilityTruth> = {
   },
   quickbooks_sync: {
     id: 'quickbooks_sync',
-    name: 'QuickBooks Online Integration',
+    name: 'QuickBooks Online 2-Way Sync',
     status: 'live',
-    description: '1-Click direct ledger sync pushing invoices, customers, and payments to QuickBooks via official Intuit OAuth API.',
+    description: 'Official Intuit OAuth 2.0 two-way bidirectional sync: pushes invoices and payments to QuickBooks Online, and pulls customers and payment reconciliations into Let\'s Get Quoted.',
   },
   stripe_payouts: {
     id: 'stripe_payouts',

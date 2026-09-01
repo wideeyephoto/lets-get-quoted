@@ -263,3 +263,205 @@ export function summarize(counts: {
   if (counts.failed) tail.push(`${counts.failed} failed`);
   return tail.length ? `${sent} · ${tail.join(' · ')}` : sent;
 }
+
+export type InboundSyncClient = {
+  qboCustomerId: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  notes: string | null;
+  active: boolean;
+};
+
+export type InboundSyncPayment = {
+  qboPaymentId: string;
+  amount: number;
+  paidAt: string | null;
+  qboCustomerId: string | null;
+  linkedInvoiceQboIds: string[];
+};
+
+export type InboundInvoiceStatus = {
+  qboInvoiceId: string;
+  docNumber: string | null;
+  total: number;
+  balance: number;
+  isPaid: boolean;
+  linkedPaymentQboIds: string[];
+};
+
+/**
+ * Pure mapping of a QuickBooks Customer payload into our Client model.
+ */
+export function mapQboCustomerToClient(raw: Record<string, unknown>): InboundSyncClient | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.Id ?? '').trim();
+  if (!id) return null;
+
+  const displayName = typeof raw.DisplayName === 'string' ? raw.DisplayName.trim() : '';
+  const givenName = typeof raw.GivenName === 'string' ? raw.GivenName.trim() : '';
+  const familyName = typeof raw.FamilyName === 'string' ? raw.FamilyName.trim() : '';
+  const companyName = typeof raw.CompanyName === 'string' ? raw.CompanyName.trim() : '';
+  const nameCombined = [givenName, familyName].filter(Boolean).join(' ').trim();
+
+  const name = displayName || nameCombined || companyName || '';
+  if (!name) return null;
+
+  const emailObj = raw.PrimaryEmailAddr as { Address?: string } | undefined;
+  const email = emailObj?.Address?.trim().toLowerCase() || null;
+
+  const phoneObj = raw.PrimaryPhone as { FreeFormNumber?: string } | undefined;
+  const phone = phoneObj?.FreeFormNumber?.trim() || null;
+
+  const billAddr = raw.BillAddr as {
+    Line1?: string;
+    Line2?: string;
+    City?: string;
+    CountrySubDivisionCode?: string;
+    PostalCode?: string;
+  } | undefined;
+
+  let address: string | null = null;
+  if (billAddr) {
+    const lines = [billAddr.Line1, billAddr.Line2].filter(Boolean).map((s) => String(s).trim());
+    const cityStateZip = [
+      billAddr.City?.trim(),
+      [billAddr.CountrySubDivisionCode?.trim(), billAddr.PostalCode?.trim()].filter(Boolean).join(' '),
+    ].filter(Boolean).join(', ');
+    const full = [...lines, cityStateZip].filter(Boolean).join(', ');
+    address = full || null;
+  }
+
+  const notes = typeof raw.Notes === 'string' ? raw.Notes.trim() || null : null;
+  const active = raw.Active !== false;
+
+  return {
+    qboCustomerId: id,
+    name,
+    email,
+    phone,
+    address,
+    notes,
+    active,
+  };
+}
+
+/**
+ * Pure mapping of a QuickBooks Payment payload.
+ */
+export function mapQboPaymentToInbound(raw: Record<string, unknown>): InboundSyncPayment | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.Id ?? '').trim();
+  if (!id) return null;
+
+  const amount = money(Number(raw.TotalAmt) || 0);
+  const paidAt = typeof raw.TxnDate === 'string' ? raw.TxnDate : null;
+
+  const customerRef = raw.CustomerRef as { value?: string } | undefined;
+  const qboCustomerId = customerRef?.value ? String(customerRef.value).trim() : null;
+
+  const lines = Array.isArray(raw.Line) ? raw.Line : [];
+  const linkedInvoiceQboIds: string[] = [];
+
+  for (const line of lines) {
+    if (line && typeof line === 'object' && Array.isArray((line as { LinkedTxn?: unknown[] }).LinkedTxn)) {
+      for (const link of (line as { LinkedTxn: Record<string, unknown>[] }).LinkedTxn) {
+        if (link && (link.TxnType === 'Invoice' || link.TxnType === 'invoice') && link.TxnId) {
+          linkedInvoiceQboIds.push(String(link.TxnId).trim());
+        }
+      }
+    }
+  }
+
+  return {
+    qboPaymentId: id,
+    amount,
+    paidAt,
+    qboCustomerId,
+    linkedInvoiceQboIds: [...new Set(linkedInvoiceQboIds)],
+  };
+}
+
+/**
+ * Pure mapping of a QuickBooks Invoice for balance / payment status reconciliation.
+ */
+export function mapQboInvoiceStatus(raw: Record<string, unknown>): InboundInvoiceStatus | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const id = String(raw.Id ?? '').trim();
+  if (!id) return null;
+
+  const docNumber = typeof raw.DocNumber === 'string' ? raw.DocNumber.trim() || null : null;
+  const total = money(Number(raw.TotalAmt) || 0);
+  const balance = money(Number(raw.Balance) || 0);
+  const isPaid = balance === 0 && total > 0;
+
+  const lines = Array.isArray(raw.LinkedTxn) ? raw.LinkedTxn : [];
+  const linkedPaymentQboIds: string[] = [];
+  for (const link of lines) {
+    if (link && typeof link === 'object' && (link.TxnType === 'Payment' || link.TxnType === 'payment') && link.TxnId) {
+      linkedPaymentQboIds.push(String(link.TxnId).trim());
+    }
+  }
+
+  return {
+    qboInvoiceId: id,
+    docNumber,
+    total,
+    balance,
+    isPaid,
+    linkedPaymentQboIds: [...new Set(linkedPaymentQboIds)],
+  };
+}
+
+function joinList(parts: string[]): string {
+  if (parts.length === 0) return '';
+  if (parts.length === 1) return parts[0];
+  if (parts.length === 2) return `${parts[0]} and ${parts[1]}`;
+  return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`;
+}
+
+/**
+ * Format summary for a 2-way bidirectional sync run.
+ */
+export function summarizeBidirectional(counts: {
+  invoicesPushed?: number;
+  paymentsPushed?: number;
+  customersPulled?: number;
+  paymentsPulled?: number;
+  invoicesReconciled?: number;
+  held?: number;
+  failed?: number;
+}): string {
+  const pushParts: string[] = [];
+  if (counts.invoicesPushed) {
+    pushParts.push(`${counts.invoicesPushed} invoice${counts.invoicesPushed === 1 ? '' : 's'}`);
+  }
+  if (counts.paymentsPushed) {
+    pushParts.push(`${counts.paymentsPushed} payment${counts.paymentsPushed === 1 ? '' : 's'}`);
+  }
+  const pushed = pushParts.length ? `Pushed ${joinList(pushParts)}` : null;
+
+  const pullParts: string[] = [];
+  if (counts.customersPulled) {
+    pullParts.push(`${counts.customersPulled} customer${counts.customersPulled === 1 ? '' : 's'}`);
+  }
+  if (counts.paymentsPulled) {
+    pullParts.push(`${counts.paymentsPulled} payment${counts.paymentsPulled === 1 ? '' : 's'}`);
+  }
+  if (counts.invoicesReconciled) {
+    pullParts.push(`${counts.invoicesReconciled} invoice reconciliation${counts.invoicesReconciled === 1 ? '' : 's'}`);
+  }
+  const pulled = pullParts.length ? `Pulled ${joinList(pullParts)}` : null;
+
+  const mainParts = [pushed, pulled].filter(Boolean);
+  const actionText = mainParts.length ? mainParts.join(' · ') : 'Nothing new to sync';
+
+  const tail: string[] = [];
+  if (counts.held) tail.push(`${counts.held} waiting on you`);
+  if (counts.failed) tail.push(`${counts.failed} failed`);
+
+  return tail.length ? `${actionText} · ${tail.join(' · ')}` : actionText;
+}
+
+

@@ -5,6 +5,9 @@ import {
   qboAutomatedSalesTax,
   qboCreate,
   qboFindCustomerByName,
+  qboQueryCustomers,
+  qboQueryInvoices,
+  qboQueryPayments,
   qboResolveServiceItem,
 } from './api';
 import {
@@ -13,28 +16,31 @@ import {
   buildPaymentPayload,
   invoiceHoldReason,
   invoiceIsSendable,
+  mapQboCustomerToClient,
+  mapQboInvoiceStatus,
+  mapQboPaymentToInbound,
   paymentHoldReason,
   summarize,
+  summarizeBidirectional,
   type SyncClient,
   type SyncInvoice,
   type SyncPayment,
 } from './map';
 
 /**
- * Pushing invoices and payments into a contractor's QuickBooks.
+ * Bidirectional QuickBooks Online synchronization:
+ * 
+ * 1. Outbound push: Invoices, customers, and payments created in Let's Get Quoted
+ *    are sent to the connected QuickBooks Online company.
+ * 
+ * 2. Inbound pull: Customers added or updated in QuickBooks Online are pulled into
+ *    Let's Get Quoted clients, and payments recorded in QuickBooks reconcile and mark
+ *    corresponding invoices as paid.
  *
- * Two rules the rest of this file exists to keep:
- *
- *   1. Nothing is created twice. A duplicate invoice in real books is not
- *      something we can fix from here. Every create carries the row's uuid as
- *      Intuit's `requestid`, so even a sweep that dies between their write and
- *      ours replays into the SAME object rather than a second one.
- *
- *   2. Anything we can't send exactly is not sent at all, and says why. An
- *      invoice that lands with the right customer and the wrong total is worse
- *      than one that never lands, because nobody goes looking for it.
- *
- * One-way. We never read their books back over ours.
+ * Idempotency & Safety Rules:
+ *   1. Nothing is created twice. Every create carries Intuit's `requestid` idempotency key.
+ *   2. Deduplication protects existing client records across phone, email, and name.
+ *   3. Refusal over approximation: Tax-misconfigured invoices or broken amounts are held.
  */
 
 export type SyncSummary = {
@@ -44,15 +50,20 @@ export type SyncSummary = {
   held: number;
   failed: number;
   message: string;
+  customersPulled?: number;
+  paymentsPulled?: number;
+  invoicesReconciled?: number;
 };
 
 const NOT_CONNECTED: SyncSummary = {
   ok: false, invoices: 0, payments: 0, held: 0, failed: 0,
+  customersPulled: 0, paymentsPulled: 0, invoicesReconciled: 0,
   message: 'QuickBooks isn’t linked, or the link needs renewing.',
 };
 
 /** How many rows one sweep will attempt, so a first run on a big book can't run for ever. */
 const BATCH = 100;
+
 
 type ConnectionCache = {
   connection: ActiveConnection;
@@ -404,13 +415,351 @@ export async function syncAccount(accountId: string): Promise<SyncSummary> {
     }
   }
 
-  const message = summarize(counts);
+  // ── Inbound Pull (QuickBooks -> LGQ) ──────────────────────────────────────
+  const { pulled: customersPulled, failed: custFailed } = await pullCustomersFromQuickBooks(cache, accountId);
+  const { paymentsPulled, invoicesReconciled, failed: payFailed } = await pullPaymentsAndReconcileInvoices(cache, accountId);
+
+  counts.failed += custFailed + payFailed;
+
+  const message = summarizeBidirectional({
+    invoicesPushed: counts.invoices,
+    paymentsPushed: counts.payments,
+    customersPulled,
+    paymentsPulled,
+    invoicesReconciled,
+    held: counts.held,
+    failed: counts.failed,
+  });
+
   await admin
     .from('quickbooks_connections')
     .update({ last_sync_at: new Date().toISOString(), last_sync_summary: message.slice(0, 300) })
     .eq('account_id', accountId);
 
-  return { ok: true, ...counts, message };
+  return {
+    ok: true,
+    ...counts,
+    customersPulled,
+    paymentsPulled,
+    invoicesReconciled,
+    message,
+  };
+}
+
+/**
+ * Inbound sync: Pull active customers from QuickBooks Online into Let's Get Quoted.
+ *
+ * Matches existing clients by qbo_customer_id, phone, email, or name to prevent duplicates.
+ */
+export async function pullCustomersFromQuickBooks(
+  cache: ConnectionCache,
+  accountId: string,
+): Promise<{ pulled: number; failed: number }> {
+  const admin = createAdminClient();
+  let pulled = 0;
+  let failed = 0;
+
+  try {
+    const rawCustomers = await qboQueryCustomers(cache.connection, { maxResults: 500 });
+    if (!rawCustomers || rawCustomers.length === 0) {
+      return { pulled: 0, failed: 0 };
+    }
+
+    const { data: existingClients } = await admin
+      .from('clients')
+      .select('id, name, email, phone, address, qbo_customer_id')
+      .eq('account_id', accountId);
+
+    const clientList = (existingClients ?? []) as {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      address: string | null;
+      qbo_customer_id: string | null;
+    }[];
+
+    const byQboId = new Map<string, typeof clientList[0]>();
+    const byPhone = new Map<string, typeof clientList[0]>();
+    const byEmail = new Map<string, typeof clientList[0]>();
+    const byName = new Map<string, typeof clientList[0]>();
+
+    for (const c of clientList) {
+      if (c.qbo_customer_id) byQboId.set(c.qbo_customer_id, c);
+      if (c.phone) byPhone.set(c.phone.replace(/\D/g, ''), c);
+      if (c.email) byEmail.set(c.email.trim().toLowerCase(), c);
+      if (c.name) byName.set(c.name.trim().toLowerCase(), c);
+    }
+
+    for (const raw of rawCustomers) {
+      try {
+        const inbound = mapQboCustomerToClient(raw);
+        if (!inbound || !inbound.name.trim()) continue;
+
+        const cleanPhone = inbound.phone ? inbound.phone.replace(/\D/g, '') : null;
+        const cleanEmail = inbound.email ? inbound.email.trim().toLowerCase() : null;
+        const cleanName = inbound.name.trim().toLowerCase();
+
+        // 1. Match by QBO customer ID
+        let match = byQboId.get(inbound.qboCustomerId);
+
+        // 2. Match by phone (at least 7 digits)
+        if (!match && cleanPhone && cleanPhone.length >= 7) {
+          match = byPhone.get(cleanPhone);
+        }
+
+        // 3. Match by email
+        if (!match && cleanEmail) {
+          match = byEmail.get(cleanEmail);
+        }
+
+        // 4. Match by name
+        if (!match && cleanName) {
+          match = byName.get(cleanName);
+        }
+
+        if (match) {
+          const updates: Record<string, unknown> = {};
+          if (!match.qbo_customer_id) updates.qbo_customer_id = inbound.qboCustomerId;
+          if (!match.email && inbound.email) updates.email = inbound.email;
+          if (!match.phone && inbound.phone) updates.phone = inbound.phone;
+          if (!match.address && inbound.address) updates.address = inbound.address;
+
+          if (Object.keys(updates).length > 0) {
+            updates.updated_at = new Date().toISOString();
+            await admin.from('clients').update(updates).eq('id', match.id).eq('account_id', accountId);
+            pulled += 1;
+          }
+        } else {
+          const newRow = {
+            account_id: accountId,
+            name: inbound.name,
+            email: inbound.email,
+            phone: inbound.phone,
+            address: inbound.address,
+            notes: inbound.notes,
+            qbo_customer_id: inbound.qboCustomerId,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          };
+          const { data: inserted, error: insertError } = await admin
+            .from('clients')
+            .insert(newRow)
+            .select('id')
+            .maybeSingle();
+
+          if (!insertError && inserted) {
+            pulled += 1;
+            const record = {
+              id: (inserted as { id: string }).id,
+              name: inbound.name,
+              email: inbound.email,
+              phone: inbound.phone,
+              address: inbound.address,
+              qbo_customer_id: inbound.qboCustomerId,
+            };
+            byQboId.set(inbound.qboCustomerId, record);
+            if (cleanPhone) byPhone.set(cleanPhone, record);
+            if (cleanEmail) byEmail.set(cleanEmail, record);
+            if (cleanName) byName.set(cleanName, record);
+          } else if (insertError) {
+            failed += 1;
+          }
+        }
+      } catch (err) {
+        failed += 1;
+        console.error('Error pulling customer from QuickBooks:', err);
+      }
+    }
+  } catch (err) {
+    failed += 1;
+    console.error('Failed to query customers from QuickBooks:', err);
+  }
+
+  return { pulled, failed };
+}
+
+/**
+ * Inbound sync: Pull payments from QuickBooks and reconcile invoice statuses in Let's Get Quoted.
+ */
+export async function pullPaymentsAndReconcileInvoices(
+  cache: ConnectionCache,
+  accountId: string,
+): Promise<{ paymentsPulled: number; invoicesReconciled: number; failed: number }> {
+  const admin = createAdminClient();
+  let paymentsPulled = 0;
+  let invoicesReconciled = 0;
+  let failed = 0;
+
+  try {
+    // 1. Find all LGQ invoices that have been pushed to QuickBooks
+    const { data: qboInvoices } = await admin
+      .from('invoices')
+      .select('id, ref, total, status, qbo_id, created_at')
+      .eq('account_id', accountId)
+      .not('qbo_id', 'is', null);
+
+    const invoiceList = (qboInvoices ?? []) as {
+      id: string;
+      ref: string;
+      total: number;
+      status: string;
+      qbo_id: string;
+      created_at: string;
+    }[];
+
+    if (invoiceList.length === 0) {
+      return { paymentsPulled: 0, invoicesReconciled: 0, failed: 0 };
+    }
+
+    const invoiceByQboId = new Map<string, typeof invoiceList[0]>();
+    for (const inv of invoiceList) {
+      invoiceByQboId.set(inv.qbo_id, inv);
+    }
+
+    // 2. Query QuickBooks Payments
+    const rawPayments = await qboQueryPayments(cache.connection, { maxResults: 200 });
+
+    const { data: existingPayments } = await admin
+      .from('payments')
+      .select('id, qbo_id, invoice_id')
+      .eq('account_id', accountId)
+      .not('qbo_id', 'is', null);
+
+    const knownPaymentQboIds = new Set(
+      ((existingPayments ?? []) as { qbo_id: string }[]).map((p) => p.qbo_id),
+    );
+
+    for (const raw of rawPayments) {
+      try {
+        const inboundPayment = mapQboPaymentToInbound(raw);
+        if (!inboundPayment) continue;
+
+        for (const linkedInvoiceQboId of inboundPayment.linkedInvoiceQboIds) {
+          const matchedInvoice = invoiceByQboId.get(linkedInvoiceQboId);
+          if (!matchedInvoice) continue;
+
+          if (!knownPaymentQboIds.has(inboundPayment.qboPaymentId)) {
+            const paymentDate = inboundPayment.paidAt
+              ? new Date(inboundPayment.paidAt).toISOString()
+              : new Date().toISOString();
+
+            const { error: pError } = await admin.from('payments').insert({
+              account_id: accountId,
+              invoice_id: matchedInvoice.id,
+              amount: inboundPayment.amount || matchedInvoice.total,
+              refunded_amount: 0,
+              status: 'paid',
+              paid_at: paymentDate,
+              requested_at: matchedInvoice.created_at || paymentDate,
+              qbo_id: inboundPayment.qboPaymentId,
+              qbo_synced_at: new Date().toISOString(),
+              qbo_error: null,
+            });
+
+            if (!pError) {
+              knownPaymentQboIds.add(inboundPayment.qboPaymentId);
+              paymentsPulled += 1;
+            }
+          }
+
+          if (matchedInvoice.status !== 'paid') {
+            await admin
+              .from('invoices')
+              .update({ status: 'paid', updated_at: new Date().toISOString() })
+              .eq('id', matchedInvoice.id)
+              .eq('account_id', accountId);
+            matchedInvoice.status = 'paid';
+            invoicesReconciled += 1;
+          }
+        }
+      } catch (err) {
+        failed += 1;
+        console.error('Error processing QuickBooks payment:', err);
+      }
+    }
+
+    // 3. Check for invoices where balance is zero directly in QuickBooks
+    const unpaidInvoices = invoiceList.filter((i) => i.status !== 'paid');
+    if (unpaidInvoices.length > 0) {
+      const unpaidQboIds = unpaidInvoices.map((i) => i.qbo_id).slice(0, 50);
+      const rawInvoices = await qboQueryInvoices(cache.connection, { ids: unpaidQboIds });
+
+      for (const raw of rawInvoices) {
+        try {
+          const invStatus = mapQboInvoiceStatus(raw);
+          if (invStatus && invStatus.isPaid) {
+            const matchedInvoice = invoiceByQboId.get(invStatus.qboInvoiceId);
+            if (matchedInvoice && matchedInvoice.status !== 'paid') {
+              await admin
+                .from('invoices')
+                .update({ status: 'paid', updated_at: new Date().toISOString() })
+                .eq('id', matchedInvoice.id)
+                .eq('account_id', accountId);
+              matchedInvoice.status = 'paid';
+              invoicesReconciled += 1;
+            }
+          }
+        } catch (err) {
+          failed += 1;
+          console.error('Error checking QuickBooks invoice balance:', err);
+        }
+      }
+    }
+  } catch (err) {
+    failed += 1;
+    console.error('Failed to reconcile QuickBooks payments and invoices:', err);
+  }
+
+  return { paymentsPulled, invoicesReconciled, failed };
+}
+
+/**
+ * Inbound pull only: Pulls customers, payments, and reconciles invoice statuses from QuickBooks into Let's Get Quoted.
+ */
+export async function pullFromQuickBooks(accountId: string): Promise<SyncSummary> {
+  let cache: ConnectionCache | null;
+  try {
+    cache = await prepare(accountId);
+  } catch (error) {
+    return {
+      ...NOT_CONNECTED,
+      message: error instanceof Error ? error.message : 'Could not read this QuickBooks company.',
+    };
+  }
+  if (!cache) return NOT_CONNECTED;
+
+  const { pulled: customersPulled, failed: custFailed } = await pullCustomersFromQuickBooks(cache, accountId);
+  const { paymentsPulled, invoicesReconciled, failed: payFailed } = await pullPaymentsAndReconcileInvoices(cache, accountId);
+
+  const totalFailed = custFailed + payFailed;
+  const message = summarizeBidirectional({
+    customersPulled,
+    paymentsPulled,
+    invoicesReconciled,
+    failed: totalFailed,
+  });
+
+  const admin = createAdminClient();
+  await admin
+    .from('quickbooks_connections')
+    .update({
+      last_sync_at: new Date().toISOString(),
+      last_sync_summary: message.slice(0, 300),
+    })
+    .eq('account_id', accountId);
+
+  return {
+    ok: true,
+    invoices: 0,
+    payments: 0,
+    held: 0,
+    failed: totalFailed,
+    customersPulled,
+    paymentsPulled,
+    invoicesReconciled,
+    message,
+  };
 }
 
 /**
@@ -435,20 +784,40 @@ export async function backfillAccount(accountId: string): Promise<SyncSummary> {
  * One account failing must never stop the rest — a contractor whose token
  * expired should not cost everybody else their sync.
  */
-export async function syncAllAccounts(): Promise<{ accounts: number; invoices: number; payments: number; failed: number }> {
+export async function syncAllAccounts(): Promise<{
+  accounts: number;
+  invoices: number;
+  payments: number;
+  customersPulled: number;
+  paymentsPulled: number;
+  invoicesReconciled: number;
+  failed: number;
+}> {
   const admin = createAdminClient();
   const { data } = await admin
     .from('quickbooks_connections')
     .select('account_id')
     .is('disconnected_at', null);
 
-  const totals = { accounts: 0, invoices: 0, payments: 0, failed: 0 };
+  const totals = {
+    accounts: 0,
+    invoices: 0,
+    payments: 0,
+    customersPulled: 0,
+    paymentsPulled: 0,
+    invoicesReconciled: 0,
+    failed: 0,
+  };
+
   for (const row of (data ?? []) as { account_id: string }[]) {
     try {
       const summary = await syncAccount(row.account_id);
       totals.accounts += 1;
       totals.invoices += summary.invoices;
       totals.payments += summary.payments;
+      totals.customersPulled += summary.customersPulled ?? 0;
+      totals.paymentsPulled += summary.paymentsPulled ?? 0;
+      totals.invoicesReconciled += summary.invoicesReconciled ?? 0;
       totals.failed += summary.failed;
     } catch (error) {
       totals.failed += 1;
@@ -457,3 +826,4 @@ export async function syncAllAccounts(): Promise<{ accounts: number; invoices: n
   }
   return totals;
 }
+

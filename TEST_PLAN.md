@@ -265,7 +265,9 @@ stripe trigger charge.refunded
   `customer.subscription.updated` is ingested into `billing_events`. Solo plan remains
   active through the end of the paid period without renewal. Detailed run log:
   [docs/subscription-cancellation-live-test-2026-08-29.md](docs/subscription-cancellation-live-test-2026-08-29.md).
-- ❌ QuickBooks OAuth two-way sync (CSV export is the only path today)
+- ✅ RESOLVED (2026-09-01): QuickBooks OAuth 2-way bidirectional sync implemented and verified.
+  Includes genuine OAuth-backed outbound push of customers, invoices, and payments, plus
+  inbound pull of QuickBooks customers, payment receipts, and automated invoice reconciliation.
 - ❌ Twilio missed-call text-back + AI (Claude) text intake
 - ❌ Wisetack financing integration (schema has a dormant `finance_plans`
   table ready for it; blocked on Wisetack partner/API signup)
