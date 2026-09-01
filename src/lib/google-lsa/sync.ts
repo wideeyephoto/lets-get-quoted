@@ -20,6 +20,7 @@ import {
   googleLsaConversationRow,
   googleLsaCrmLeadInput,
   googleLsaLeadRow,
+  shiftGoogleCalendarDate,
   type RawGoogleLsaConversation,
   type RawGoogleLsaLead,
 } from './map';
@@ -56,10 +57,6 @@ function dateKey(date: Date, timeZone: string): string {
     // UTC below is a safe bounded fallback for an invalid stored timezone.
   }
   return date.toISOString().slice(0, 10);
-}
-
-function daysAgo(days: number, now = Date.now()): Date {
-  return new Date(now - days * 24 * 60 * 60 * 1000);
 }
 
 function numberValue(value: unknown): number {
@@ -124,7 +121,7 @@ async function importLeads(input: {
       );
       const { error } = await admin
         .from('google_lsa_leads')
-        .upsert({ ...provider, crm_lead_id: crm.id }, { onConflict: 'account_id,google_lead_id' });
+        .upsert({ ...provider, crm_lead_id: crm.id }, { onConflict: 'account_id,customer_id,google_lead_id' });
       if (error) throw new Error(error.message);
       linked += 1;
     } catch (error) {
@@ -133,7 +130,7 @@ async function importLeads(input: {
       // The next overlapping poll retries the link without losing charge state.
       await admin
         .from('google_lsa_leads')
-        .upsert(provider, { onConflict: 'account_id,google_lead_id' });
+        .upsert(provider, { onConflict: 'account_id,customer_id,google_lead_id' });
       console.error('Google LSA lead projection failed:', error instanceof Error ? error.message : error);
     }
   }
@@ -171,14 +168,23 @@ async function importConversations(input: {
   if (!rows.length) return 0;
   const { error } = await admin
     .from('google_lsa_conversations')
-    .upsert(rows, { onConflict: 'account_id,google_conversation_id' });
+    .upsert(rows, { onConflict: 'account_id,customer_id,google_conversation_id' });
   if (error) throw new Error(error.message);
   return rows.length;
 }
 
 export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsaSyncSummary> {
-  const claimed = await claimGoogleLsaSync(accountId);
-  if (!claimed) {
+  let leaseStartedAt: string | null;
+  try {
+    leaseStartedAt = await claimGoogleLsaSync(accountId);
+  } catch (error) {
+    const message = `Google Local Services import could not acquire its database lease: ${error instanceof Error ? error.message : 'unknown database error'}`;
+    return {
+      ok: false, busy: false, fullRescan: false, leadsSeen: 0, leadsLinked: 0,
+      conversations: 0, spendRows: 0, failed: 1, message,
+    };
+  }
+  if (!leaseStartedAt) {
     return {
       ok: false, busy: true, fullRescan: false, leadsSeen: 0, leadsLinked: 0,
       conversations: 0, spendRows: 0, failed: 0,
@@ -192,7 +198,7 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
   } catch (error) {
     const detail = error instanceof Error ? error.message : 'Google access is temporarily unavailable.';
     const message = `Google Local Services import could not refresh access: ${detail}`;
-    await completeGoogleLsaSync({ accountId, summary: message, fullRescan: false, error: message });
+    await completeGoogleLsaSync({ accountId, leaseStartedAt, summary: message, fullRescan: false, error: message });
     return {
       ok: false, busy: false, fullRescan: false, leadsSeen: 0, leadsLinked: 0,
       conversations: 0, spendRows: 0, failed: 1, message,
@@ -204,7 +210,7 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
       conversations: 0, spendRows: 0, failed: 1,
     };
     const message = 'Google access needs to be renewed before data can be imported.';
-    await completeGoogleLsaSync({ accountId, summary: message, fullRescan: false, error: message });
+    await completeGoogleLsaSync({ accountId, leaseStartedAt, summary: message, fullRescan: false, error: message });
     return { ...result, message };
   }
 
@@ -238,8 +244,9 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
       console.error('Google LSA campaign reconciliation failed:', error instanceof Error ? error.message : error);
     }
   }
-  const startDate = dateKey(daysAgo(fullRescan ? FULL_RESCAN_DAYS - 1 : INCREMENTAL_OVERLAP_DAYS, now), connection.customerTimeZone);
   const endDate = dateKey(new Date(now), connection.customerTimeZone);
+  const windowDays = fullRescan ? FULL_RESCAN_DAYS : INCREMENTAL_OVERLAP_DAYS;
+  const startDate = shiftGoogleCalendarDate(endDate, -(windowDays - 1));
   let leadsSeen = 0;
   let leadsLinked = 0;
   let conversations = 0;
@@ -308,7 +315,7 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
       // Legacy Local Services reports only aggregate spend, so every row is a
       // 90-day snapshot. Reporting selects the newest matching snapshot rather
       // than summing overlapping windows.
-      const reportStart = dateKey(daysAgo(FULL_RESCAN_DAYS - 1, now), connection.customerTimeZone);
+      const reportStart = shiftGoogleCalendarDate(endDate, -(FULL_RESCAN_DAYS - 1));
       if (!connection.loginCustomerId) {
         throw new Error('Legacy Local Services cost reporting requires an accessible Google Ads manager account. Reconnect through the manager account to import spend.');
       }
@@ -355,6 +362,7 @@ export async function syncGoogleLsaAccount(accountId: string): Promise<GoogleLsa
   const message = summaryMessage(base);
   await completeGoogleLsaSync({
     accountId,
+    leaseStartedAt,
     summary: message,
     fullRescan: fullRescan && failed === 0,
     error: errors.length ? errors.join('; ').slice(0, 500) : null,

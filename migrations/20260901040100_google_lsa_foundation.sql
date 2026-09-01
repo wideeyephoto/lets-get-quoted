@@ -33,6 +33,7 @@ create table if not exists public.google_lsa_connections (
   connected_at timestamptz not null default pg_catalog.now(),
   connected_by uuid references auth.users(id) on delete set null,
   sync_started_at timestamptz,
+  last_sync_attempt_at timestamptz,
   last_sync_at timestamptz,
   last_full_rescan_at timestamptz,
   last_sync_summary text,
@@ -104,8 +105,6 @@ create table if not exists public.google_lsa_leads (
   constraint google_lsa_leads_sync_order check (
     last_synced_at >= first_synced_at
   ),
-  constraint google_lsa_leads_account_google_lead_key
-    unique (account_id, google_lead_id),
   constraint google_lsa_leads_account_resource_key
     unique (account_id, resource_name),
   constraint google_lsa_leads_account_customer_google_lead_key
@@ -161,8 +160,8 @@ create table if not exists public.google_lsa_conversations (
   constraint google_lsa_conversations_sync_order check (
     last_synced_at >= first_synced_at
   ),
-  constraint google_lsa_conversations_account_google_id_key
-    unique (account_id, google_conversation_id),
+  constraint google_lsa_conversations_account_customer_google_id_key
+    unique (account_id, customer_id, google_conversation_id),
   constraint google_lsa_conversations_account_resource_key
     unique (account_id, resource_name),
   constraint google_lsa_conversations_lead_fkey
@@ -233,6 +232,7 @@ create table if not exists public.google_lsa_feedback (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null
     references public.accounts(id) on delete cascade,
+  customer_id text not null,
   google_lead_id text not null,
   crm_lead_id uuid references public.leads(id) on delete set null,
   answer text,
@@ -245,11 +245,14 @@ create table if not exists public.google_lsa_feedback (
   constraint google_lsa_feedback_google_id_nonempty check (
     pg_catalog.btrim(google_lead_id) <> ''
   ),
-  constraint google_lsa_feedback_account_google_lead_key
-    unique (account_id, google_lead_id),
+  constraint google_lsa_feedback_customer_id_digits check (
+    customer_id ~ '^[0-9]+$'
+  ),
+  constraint google_lsa_feedback_account_customer_google_lead_key
+    unique (account_id, customer_id, google_lead_id),
   constraint google_lsa_feedback_google_lead_fkey
-    foreign key (account_id, google_lead_id)
-    references public.google_lsa_leads(account_id, google_lead_id)
+    foreign key (account_id, customer_id, google_lead_id)
+    references public.google_lsa_leads(account_id, customer_id, google_lead_id)
     on delete cascade
 );
 

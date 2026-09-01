@@ -96,6 +96,7 @@ describe('Google LSA reporting', () => {
     const accountId = 'account-1';
     const sharedSignedJob = {
       id: 'job-1',
+      account_id: accountId,
       quoted_amount: '12000.00',
       quote_signed_at: '2026-08-20T14:00:00.000Z',
     };
@@ -124,11 +125,21 @@ describe('Google LSA reporting', () => {
         {
           id: 'lsa-3', account_id: accountId, customer_id: '123', google_lead_id: 'g-3', lead_type: 'BOOKING',
           credit_state: 'PENDING', feedback_submitted: false, google_created_at: '2026-08-03T12:00:00.000Z',
-          crm_lead: { converted_job: 'job-2', signed_job: { id: 'job-2', quoted_amount: 8000, quote_signed_at: null } },
+          crm_lead: { converted_job: 'job-2', signed_job: { id: 'job-2', account_id: accountId, quoted_amount: 8000, quote_signed_at: null } },
         },
         {
           id: 'lsa-4', account_id: accountId, customer_id: '123', google_lead_id: 'g-4', lead_type: 'MESSAGE',
           credit_state: null, feedback_submitted: false, google_created_at: '2026-08-04T12:00:00.000Z', crm_lead: null,
+        },
+        {
+          id: 'lsa-cross-tenant', account_id: accountId, customer_id: '123', google_lead_id: 'g-cross', lead_type: 'MESSAGE',
+          google_created_at: '2026-08-05T12:00:00.000Z',
+          crm_lead: { converted_job: 'foreign-job', signed_job: { id: 'foreign-job', account_id: 'account-2', quoted_amount: 999999, quote_signed_at: '2026-08-20T00:00:00Z' } },
+        },
+        {
+          id: 'lsa-trashed-job', account_id: accountId, customer_id: '123', google_lead_id: 'g-trashed', lead_type: 'MESSAGE',
+          google_created_at: '2026-08-06T12:00:00.000Z',
+          crm_lead: { converted_job: 'trashed-job', signed_job: { id: 'trashed-job', account_id: accountId, quoted_amount: 888888, quote_signed_at: '2026-08-20T00:00:00Z', deleted_at: '2026-08-30T00:00:00Z' } },
         },
         // Same provider identity must not inflate any count.
         {
@@ -183,7 +194,7 @@ describe('Google LSA reporting', () => {
       costMicros: 10_000_000,
       costDollars: 10,
       currencyCode: 'USD',
-      leadCount: 4,
+      leadCount: 6,
       callCount: 5,
       bookingCount: 1,
       creditCount: 2,
@@ -199,6 +210,8 @@ describe('Google LSA reporting', () => {
       'google_lsa_spend',
     ]);
     expect(calls[1].selected).toContain('quote_signed_at');
+    expect(calls[1].selected).toContain('account_id');
+    expect(calls[1].selected).toContain('deleted_at');
     expect(calls[1].filters).toContainEqual({ operation: 'gte', column: 'google_created_at', value: '2026-06-04T00:00:00.000Z' });
     expect(calls[2].filters).toContainEqual({ operation: 'gte', column: 'period_end', value: '2026-06-04' });
   });

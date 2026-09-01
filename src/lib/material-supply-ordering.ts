@@ -12,7 +12,11 @@ export type MaterialCategory =
   | 'hvac'
   | 'flooring'
   | 'concrete'
-  | 'accessories';
+  | 'accessories'
+  | 'roofing'
+  | 'electrical'
+  | 'drywall_paint'
+  | 'hardware';
 
 export interface MaterialOrderItem {
   sku: string;

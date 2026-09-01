@@ -3,6 +3,7 @@ import { requireOfficeContext } from '@/lib/auth';
 import { listServices, SERVICE_UNITS, type Service } from '@/lib/services';
 import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
 import { listTradeStarterCatalogs } from '@/lib/trade-catalogs';
+import TradeCatalogHub from './TradeCatalogHub';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import PriceBookStats from '@/components/price-book-stats';
 import SaveButton from '@/components/save-button';
@@ -64,59 +65,7 @@ export default async function ServicesPage({
         {stats ? <PriceBookStats stats={stats} /> : null}
       </section>
 
-      {services.length === 0 ? (
-        <section className="panel workspace-section-card starter-catalogs-card">
-          <div className="section-heading workspace-section-heading">
-            <p className="eyebrow">Quick Start</p>
-            <h2>Load a 1-tap trade starter pack</h2>
-          </div>
-          <p className="workspace-lead" style={{ fontSize: '0.95rem', marginBottom: '1.25rem' }}>
-            Start with industry-standard services, market rates, and healthy profit margins for your trade. You can customize every price and description anytime.
-          </p>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-              gap: '1rem',
-            }}
-          >
-            {starterCatalogs.map((cat) => (
-              <div
-                key={cat.id}
-                style={{
-                  padding: '1.1rem',
-                  border: '1px solid var(--border-color, rgba(0,0,0,0.08))',
-                  borderRadius: '10px',
-                  background: 'var(--surface-subtle, rgba(0,0,0,0.02))',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '0.75rem',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem' }}>
-                    <span style={{ fontSize: '1.35rem' }}>{cat.icon}</span>
-                    <strong style={{ fontSize: '1.05rem' }}>{cat.name}</strong>
-                  </div>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted, #64748b)', margin: 0, lineHeight: 1.4 }}>
-                    {cat.description}
-                  </p>
-                  <small style={{ display: 'block', marginTop: '0.5rem', color: 'var(--text-muted, #64748b)' }}>
-                    Includes {cat.items.length} pre-costed items
-                  </small>
-                </div>
-                <form action={loadTradeStarterCatalogAction}>
-                  <input type="hidden" name="tradeId" value={cat.id} />
-                  <SaveButton pendingLabel="Loading…" savedLabel="Loaded ✓" className="btn primary">
-                    Load {cat.name} Pack
-                  </SaveButton>
-                </form>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <TradeCatalogHub onLoadStarterPack={loadTradeStarterCatalogAction} />
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading">

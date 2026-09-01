@@ -42,7 +42,10 @@ describe('Google Local Services Ads database foundation', () => {
     expect(compact).not.toContain(
       'on public.leads (account_id, source_google_lsa_resource) where source_google_lsa_resource is not null',
     );
-    expect(compact).toContain('unique (account_id, google_lead_id)');
+    expect(compact).toContain('unique (account_id, customer_id, google_lead_id)');
+    expect(compact).not.toContain(
+      'constraint google_lsa_leads_account_google_lead_key unique (account_id, google_lead_id)',
+    );
     expect(compact).toContain('unique (account_id, resource_name)');
   });
 
@@ -57,6 +60,7 @@ describe('Google Local Services Ads database foundation', () => {
       'access_expires_at timestamptz not null',
       "candidate_customers jsonb not null default '[]'::jsonb",
       'sync_started_at timestamptz',
+      'last_sync_attempt_at timestamptz',
       'last_sync_at timestamptz',
       'last_full_rescan_at timestamptz',
       'last_sync_summary text',
@@ -92,6 +96,8 @@ describe('Google Local Services Ads database foundation', () => {
     expect(compact).toContain(
       'foreign key (account_id, customer_id, google_lead_id) references public.google_lsa_leads(account_id, customer_id, google_lead_id) on delete cascade',
     );
+    expect(compact).toContain('unique (account_id, customer_id, google_conversation_id)');
+    expect(compact).toContain('customer_id text not null');
     expect(compact).toContain(
       "source in ('google_ads_api', 'local_services_account_report')",
     );

@@ -1031,6 +1031,7 @@ export async function submitGoogleLsaFeedbackAction(leadId: string, formData: Fo
     .from('google_lsa_feedback')
     .upsert({
       account_id: accountId,
+      customer_id: String(providerLead.customer_id),
       google_lead_id: String(providerLead.google_lead_id),
       crm_lead_id: leadId,
       answer: feedback.surveyAnswer,
@@ -1039,12 +1040,13 @@ export async function submitGoogleLsaFeedbackAction(leadId: string, formData: Fo
       credit_issuance_decision: response.creditIssuanceDecision,
       submitted_by: userId,
       submitted_at: now,
-    }, { onConflict: 'account_id,google_lead_id' });
+    }, { onConflict: 'account_id,customer_id,google_lead_id' });
   if (writeError) throw new Error(writeError.message);
   await admin
     .from('google_lsa_leads')
     .update({ feedback_submitted: true, last_synced_at: now })
     .eq('account_id', accountId)
+    .eq('customer_id', String(providerLead.customer_id))
     .eq('google_lead_id', String(providerLead.google_lead_id));
   revalidatePath(`/dashboard/leads/${leadId}`);
   revalidatePath('/dashboard/marketing/performance');

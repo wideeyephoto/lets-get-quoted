@@ -1,7 +1,7 @@
 import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { googleLocalDateTimeToIso } from './map';
+import { googleLocalDateTimeToIso, shiftGoogleCalendarDate } from './map';
 
 export const GOOGLE_LSA_REPORTING_WINDOW_DAYS = 90;
 
@@ -49,8 +49,10 @@ type ConnectionRow = {
 
 type SignedJobRow = {
   id?: unknown;
+  account_id?: unknown;
   quoted_amount?: unknown;
   quote_signed_at?: unknown;
+  deleted_at?: unknown;
 };
 
 type CrmLeadRow = {
@@ -114,8 +116,10 @@ const LSA_LEAD_REPORT_SELECT = `
     converted_job,
     signed_job:jobs!leads_converted_job_fkey(
       id,
+      account_id,
       quoted_amount,
-      quote_signed_at
+      quote_signed_at,
+      deleted_at
     )
   )
 `;
@@ -143,11 +147,6 @@ function localDateKey(now: Date, timeZone: string): string {
   return utcDateKey(now);
 }
 
-function shiftDateKey(value: string, days: number): string {
-  const [year, month, day] = value.split('-').map(Number);
-  return utcDateKey(new Date(Date.UTC(year, month - 1, day + days)));
-}
-
 export function googleLsaRollingWindow(now = new Date(), timeZone = 'UTC'): {
   periodStart: string;
   periodEnd: string;
@@ -155,8 +154,8 @@ export function googleLsaRollingWindow(now = new Date(), timeZone = 'UTC'): {
   endsAt: string;
 } {
   const periodEnd = localDateKey(now, timeZone);
-  const periodStart = shiftDateKey(periodEnd, -(GOOGLE_LSA_REPORTING_WINDOW_DAYS - 1));
-  const nextDay = shiftDateKey(periodEnd, 1);
+  const periodStart = shiftGoogleCalendarDate(periodEnd, -(GOOGLE_LSA_REPORTING_WINDOW_DAYS - 1));
+  const nextDay = shiftGoogleCalendarDate(periodEnd, 1);
   const startsAt = googleLocalDateTimeToIso(`${periodStart} 00:00:00`, timeZone)
     ?? `${periodStart}T00:00:00.000Z`;
   const nextDayStartsAt = googleLocalDateTimeToIso(`${nextDay} 00:00:00`, timeZone)
@@ -344,6 +343,7 @@ export function summarizeGoogleLsaRows(
 ): GoogleLsaReportingSummary {
   const window = googleLsaRollingWindow(now, textValue(rows.connection?.customer_time_zone) ?? 'UTC');
   const customerId = textValue(rows.connection?.customer_id);
+  const accountId = textValue(rows.connection?.account_id);
   const leads = distinctLeads(rows.leads, customerId, window.startsAt, window.endsAt);
   const spend = selectedSpendRows(rows.spend, rows.connection, window.periodStart, window.periodEnd);
   const signedJobs = new Map<string, number>();
@@ -363,7 +363,12 @@ export function summarizeGoogleLsaRows(
     const crmLead = one(lead.crm_lead);
     const job = one(crmLead?.signed_job);
     const jobId = textValue(job?.id) ?? textValue(crmLead?.converted_job);
-    if (!jobId || !textValue(job?.quote_signed_at) || signedJobs.has(jobId)) continue;
+    if (!accountId
+      || textValue(job?.account_id) !== accountId
+      || !jobId
+      || !textValue(job?.quote_signed_at)
+      || textValue(job?.deleted_at)
+      || signedJobs.has(jobId)) continue;
     signedJobs.set(jobId, Math.max(0, numberValue(job?.quoted_amount)));
   }
 

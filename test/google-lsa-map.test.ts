@@ -4,12 +4,18 @@ import {
   googleLsaConversationRow,
   googleLsaCrmLeadInput,
   googleLsaLeadRow,
+  shiftGoogleCalendarDate,
 } from '@/lib/google-lsa/map';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CUSTOMER = '1234567890';
 
 describe('Google Local Services provider normalization', () => {
+  it('shifts provider calendar windows without DST-sensitive millisecond subtraction', () => {
+    expect(shiftGoogleCalendarDate('2026-11-01', -89)).toBe('2026-08-04');
+    expect(shiftGoogleCalendarDate('2028-03-01', -1)).toBe('2028-02-29');
+  });
+
   it('interprets offset-free Google timestamps in the Ads account timezone', () => {
     expect(googleLocalDateTimeToIso('2026-07-01 09:30:00', 'America/New_York'))
       .toBe('2026-07-01T13:30:00.000Z');

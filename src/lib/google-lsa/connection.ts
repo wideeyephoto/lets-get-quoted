@@ -31,6 +31,7 @@ type ConnectionRow = {
   candidate_customers: unknown;
   connected_at: string;
   connected_by: string | null;
+  last_sync_attempt_at: string | null;
   last_sync_at: string | null;
   last_full_rescan_at: string | null;
   last_sync_summary: string | null;
@@ -54,6 +55,7 @@ export type GoogleLsaConnectionStatus =
       customerName: string | null;
       campaignMode: 'legacy' | 'pmax';
       connectedAt: string;
+      lastSyncAttemptAt: string | null;
       lastSyncAt: string | null;
       lastSyncSummary: string | null;
       lastError: string | null;
@@ -139,6 +141,7 @@ export async function googleLsaConnectionStatus(accountId: string): Promise<Goog
     customerName: row.customer_name,
     campaignMode: row.campaign_mode,
     connectedAt: row.connected_at,
+    lastSyncAttemptAt: row.last_sync_attempt_at,
     lastSyncAt: row.last_sync_at,
     lastSyncSummary: row.last_sync_summary,
     lastError: row.last_error,
@@ -171,6 +174,11 @@ export async function saveGoogleLsaAuthorization(input: {
       candidate_customers: input.candidates,
       connected_at: now.toISOString(),
       connected_by: input.connectedBy,
+      sync_started_at: null,
+      last_sync_attempt_at: null,
+      last_sync_at: null,
+      last_full_rescan_at: null,
+      last_sync_summary: null,
       disconnected_at: null,
       last_error: input.candidates.length === 0
         ? 'No eligible Local Services campaign was found under this Google login.'
@@ -191,6 +199,8 @@ export async function chooseGoogleLsaCustomer(accountId: string, selection: stri
     ? matches.find((candidate) => candidate.campaignId === campaignId)
     : matches.length === 1 ? matches[0] : null;
   if (!selected) return false;
+  const selectionChanged = row.customer_id !== selected.customerId
+    || row.campaign_id !== selected.campaignId;
   const { error } = await createAdminClient()
     .from('google_lsa_connections')
     .update({
@@ -201,6 +211,13 @@ export async function chooseGoogleLsaCustomer(accountId: string, selection: stri
       campaign_id: selected.campaignId,
       campaign_mode: selected.campaignMode,
       last_error: null,
+      ...(selectionChanged ? {
+        sync_started_at: null,
+        last_sync_attempt_at: null,
+        last_sync_at: null,
+        last_full_rescan_at: null,
+        last_sync_summary: null,
+      } : {}),
       updated_at: new Date().toISOString(),
     })
     .eq('account_id', accountId);
@@ -242,10 +259,20 @@ export async function reconcileGoogleLsaCandidates(
   return selected;
 }
 
-export async function deleteGoogleLsaConnection(accountId: string): Promise<void> {
+/** Stop all imports and scrub OAuth secrets while retaining reporting context. */
+export async function disconnectGoogleLsaConnection(accountId: string): Promise<void> {
+  const now = new Date().toISOString();
   const { error } = await createAdminClient()
     .from('google_lsa_connections')
-    .delete()
+    .update({
+      access_token: '',
+      refresh_token: '',
+      access_expires_at: now,
+      sync_started_at: null,
+      disconnected_at: now,
+      last_error: null,
+      updated_at: now,
+    })
     .eq('account_id', accountId);
   if (error) throw new Error(error.message);
 }
@@ -305,38 +332,48 @@ export async function activeGoogleLsaConnection(accountId: string): Promise<Acti
   };
 }
 
-export async function claimGoogleLsaSync(accountId: string, staleAfterMinutes = 20): Promise<boolean> {
+export async function claimGoogleLsaSync(accountId: string, staleAfterMinutes = 20): Promise<string | null> {
   const staleAt = new Date(Date.now() - staleAfterMinutes * 60_000).toISOString();
+  const leaseStartedAt = new Date().toISOString();
   const { data, error } = await createAdminClient()
     .from('google_lsa_connections')
-    .update({ sync_started_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+    .update({ sync_started_at: leaseStartedAt, updated_at: leaseStartedAt })
     .eq('account_id', accountId)
     .is('disconnected_at', null)
     .or(`sync_started_at.is.null,sync_started_at.lt.${staleAt}`)
-    .select('account_id')
+    .select('sync_started_at')
     .maybeSingle();
-  if (error) return false;
-  return Boolean(data);
+  if (error) throw new Error(error.message);
+  return data ? String((data as { sync_started_at: string }).sync_started_at) : null;
 }
 
 export async function completeGoogleLsaSync(input: {
   accountId: string;
+  leaseStartedAt: string;
   summary: string;
   fullRescan: boolean;
   error?: string | null;
 }): Promise<void> {
   const now = new Date().toISOString();
-  await createAdminClient()
+  const { data, error } = await createAdminClient()
     .from('google_lsa_connections')
     .update({
       sync_started_at: null,
-      last_sync_at: now,
-      last_sync_summary: input.summary.slice(0, 500),
+      last_sync_attempt_at: now,
+      ...(!input.error ? {
+        last_sync_at: now,
+        last_sync_summary: input.summary.slice(0, 500),
+      } : {}),
       last_error: input.error?.slice(0, 500) ?? null,
       ...(input.fullRescan ? { last_full_rescan_at: now } : {}),
       updated_at: now,
     })
-    .eq('account_id', input.accountId);
+    .eq('account_id', input.accountId)
+    .eq('sync_started_at', input.leaseStartedAt)
+    .select('account_id')
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error('Google Local Services sync lease changed before completion.');
 }
 
 export async function listGoogleLsaConnectedAccountIds(): Promise<string[]> {

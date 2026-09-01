@@ -122,12 +122,16 @@ export default function GoogleLocalServicesSection({
           </p>
           <p className="workspace-details-copy">
             {status.lastSyncAt ? (
-              <>Last imported {dayTime(status.lastSyncAt)}{status.lastSyncSummary ? <> — {status.lastSyncSummary}.</> : '.'}</>
+              <>Last successful import {dayTime(status.lastSyncAt)}{status.lastSyncSummary ? <> — {status.lastSyncSummary}.</> : '.'}</>
             ) : (
               <>Nothing imported yet. Run the first import now; later imports run automatically every 15 minutes.</>
             )}
           </p>
-          {status.lastError ? <p className="form-error">Latest import issue: {status.lastError}</p> : null}
+          {status.lastError ? (
+            <p className="form-error">
+              Latest import attempt{status.lastSyncAttemptAt ? ` (${dayTime(status.lastSyncAttemptAt)})` : ''} failed: {status.lastError}
+            </p>
+          ) : null}
           <div className="workspace-inline-row">
             <form action={syncAction}>
               <SaveButton className="btn primary" pendingLabel="Importing…" savedLabel="Imported ✓">

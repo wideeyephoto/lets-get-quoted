@@ -49,6 +49,18 @@ export function normalizeGoogleAdsId(value: unknown): string | null {
   return normalized || null;
 }
 
+/** Shift a YYYY-MM-DD key by whole calendar days without DST-sensitive math. */
+export function shiftGoogleCalendarDate(value: string, days: number): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) throw new Error('Google calendar dates must use YYYY-MM-DD.');
+  const shifted = new Date(Date.UTC(
+    Number(match[1]),
+    Number(match[2]) - 1,
+    Number(match[3]) + Math.trunc(days),
+  ));
+  return shifted.toISOString().slice(0, 10);
+}
+
 function numericParts(date: Date, timeZone: string): number[] | null {
   try {
     const parts = new Intl.DateTimeFormat('en-US', {

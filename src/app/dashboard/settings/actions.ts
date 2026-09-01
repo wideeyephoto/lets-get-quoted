@@ -1219,9 +1219,3 @@ export async function syncGoogleLsaAction() {
   redirect(`/dashboard/settings?google_lsa=${summary.busy ? 'busy' : summary.ok ? 'synced' : 'sync-failed'}#google-local-services`);
 }
 
-export async function disconnectGoogleLsaAction() {
-  const { accountId } = await requireOfficeContext('settings.write');
-  const { deleteGoogleLsaConnection } = await import('@/lib/google-lsa/connection');
-  await deleteGoogleLsaConnection(accountId);
-  revalidatePath('/dashboard/settings');
-}

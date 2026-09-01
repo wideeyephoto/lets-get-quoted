@@ -59,6 +59,7 @@ export async function loadGoogleLsaLeadDetail(
         .from('google_lsa_feedback')
         .select('answer, reason, comment, credit_issuance_decision, submitted_at')
         .eq('account_id', accountId)
+        .eq('customer_id', String(row.customer_id))
         .eq('google_lead_id', googleLeadId)
         .maybeSingle(),
     ]);

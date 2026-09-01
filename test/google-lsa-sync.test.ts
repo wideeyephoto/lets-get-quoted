@@ -11,10 +11,14 @@ describe('Google Local Services synchronization contract', () => {
   it('polls overlapping provider windows and projects every lead through the replay-safe CRM identity', () => {
     expect(sync).toContain('const INCREMENTAL_OVERLAP_DAYS = 14');
     expect(sync).toContain('const FULL_RESCAN_DAYS = 90');
+    expect(sync).toContain('shiftGoogleCalendarDate(endDate, -(windowDays - 1))');
+    expect(sync).toContain('shiftGoogleCalendarDate(endDate, -(FULL_RESCAN_DAYS - 1))');
+    expect(sync).not.toContain('days * 24 * 60 * 60 * 1000');
     expect(sync).toContain('listGoogleLsaLeads({ ...auth, startDate, endDate })');
     expect(sync).toContain('listGoogleLsaConversations({ ...auth, startDate, endDate })');
     expect(sync).toContain('googleLsaCrmLeadInput(raw, lead.resourceName, provider.google_created_at)');
-    expect(sync).toContain("onConflict: 'account_id,google_lead_id'");
+    expect(sync).toContain("onConflict: 'account_id,customer_id,google_lead_id'");
+    expect(sync).toContain("onConflict: 'account_id,customer_id,google_conversation_id'");
   });
 
   it('keeps LSA spend in the provider ledger and never sends it through managed-ads billing', () => {
@@ -47,9 +51,12 @@ describe('Google Local Services synchronization contract', () => {
   });
 
   it('never reports a disconnect when the local credential could not be removed', () => {
-    expect(disconnectRoute).toContain('await deleteGoogleLsaConnection(accountId)');
+    expect(disconnectRoute).toContain('await disconnectGoogleLsaConnection(accountId)');
     expect(disconnectRoute).toContain("google_lsa=disconnect-failed");
     expect(disconnectRoute).toContain("revokeConfirmed ? 'disconnected' : 'disconnected-local'");
-    expect(disconnectRoute).not.toContain('deleteGoogleLsaConnection(accountId).catch');
+    expect(disconnectRoute).not.toContain('disconnectGoogleLsaConnection(accountId).catch');
+    expect(connection).toContain("access_token: ''");
+    expect(connection).toContain("refresh_token: ''");
+    expect(connection).toContain('disconnected_at: now');
   });
 });
