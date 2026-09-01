@@ -33,6 +33,43 @@ export type OfflineConversionQueueItem = {
   uploadedAt?: string;
 };
 
+/**
+ * Normalizes phone numbers to E.164 format (+1XXXXXXXXXX for US).
+ */
+export function normalizeE164Phone(phone?: string | null): string | null {
+  if (!phone || !phone.trim()) return null;
+  const digits = phone.replace(/[^\d]/g, '');
+  if (!digits) return null;
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+  if (phone.trim().startsWith('+')) return `+${digits}`;
+  return `+${digits}`;
+}
+
+/**
+ * Normalizes email address for Google Ads Enhanced Conversions matching.
+ */
+export function normalizeEmail(email?: string | null): string | null {
+  if (!email || !email.trim()) return null;
+  return email.trim().toLowerCase();
+}
+
+/**
+ * Checks whether a Click ID (gclid/gbraid/wbraid) has exceeded Google Ads 90-day lifetime.
+ */
+export function isClickIdExpired(conversionDateTime: string, maxAgeDays = 90): boolean {
+  if (!conversionDateTime) return false;
+  try {
+    const convTime = new Date(conversionDateTime).getTime();
+    if (isNaN(convTime)) return false;
+    const ageMs = Date.now() - convTime;
+    const maxAgeMs = maxAgeDays * 24 * 60 * 60 * 1000;
+    return ageMs > maxAgeMs;
+  } catch {
+    return false;
+  }
+}
+
 // In-memory durable buffer for runtime outbox processing
 const memoryConversionQueue: Map<string, OfflineConversionQueueItem> = new Map();
 
@@ -43,8 +80,13 @@ export function enqueueOfflineConversion(
   input: Omit<OfflineConversionQueueItem, 'id' | 'status' | 'attempts' | 'createdAt'>
 ): OfflineConversionQueueItem {
   const id = `conv_outbox_${randomUUID()}`;
+  const normalizedPhone = normalizeE164Phone(input.phone);
+  const normalizedEmail = normalizeEmail(input.email);
+
   const item: OfflineConversionQueueItem = {
     ...input,
+    email: normalizedEmail,
+    phone: normalizedPhone,
     id,
     status: 'pending',
     attempts: 0,
@@ -57,6 +99,7 @@ export function enqueueOfflineConversion(
 
 /**
  * Executes an offline conversion upload with automatic retry and error logging.
+ * Includes 90-day Click ID expiration guard with automatic Enhanced Conversions fallback.
  */
 export async function processOfflineConversionItem(
   item: OfflineConversionQueueItem,
@@ -64,10 +107,15 @@ export async function processOfflineConversionItem(
 ): Promise<OfflineConversionResult> {
   item.attempts += 1;
 
+  const isExpired = isClickIdExpired(item.conversionDateTime, 90);
+  const effectiveGclid = isExpired ? undefined : item.gclid;
+  const effectiveGbraid = isExpired ? undefined : item.gbraid;
+  const effectiveWbraid = isExpired ? undefined : item.wbraid;
+
   const uploadParams: OfflineConversionParams = {
-    gclid: item.gclid,
-    gbraid: item.gbraid,
-    wbraid: item.wbraid,
+    gclid: effectiveGclid,
+    gbraid: effectiveGbraid,
+    wbraid: effectiveWbraid,
     conversionActionName: item.conversionActionName,
     conversionDateTime: item.conversionDateTime,
     conversionValueDollars: item.conversionValueDollars,
@@ -98,9 +146,9 @@ export async function processOfflineConversionItem(
     item.lastError = errMsg;
     return {
       success: false,
-      gclid: item.gclid,
-      gbraid: item.gbraid,
-      wbraid: item.wbraid,
+      gclid: effectiveGclid,
+      gbraid: effectiveGbraid,
+      wbraid: effectiveWbraid,
       conversionValueDollars: item.conversionValueDollars,
       enhancedConversionsActive: Boolean(item.email || item.phone),
       uploadedAt: new Date().toISOString(),

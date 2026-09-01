@@ -645,7 +645,7 @@ export async function uploadOfflineConversion(
         partialFailure: true,
       };
 
-      const res = await fetch(
+      const res = await fetchGoogleAdsWithBackoff(
         `${GOOGLE_ADS_API_BASE_URL}/customers/${customerId}:uploadClickConversions`,
         {
           method: 'POST',
@@ -847,12 +847,42 @@ export async function fetchLiveCampaignStats(
   };
 }
 
-async function fetchGoogleAdsAccessToken(config: GoogleAdsConfig): Promise<string> {
+export async function fetchGoogleAdsWithBackoff(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+  initialDelayMs = 300
+): Promise<Response> {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      const response = await fetch(url, options);
+      if (response.status === 429 || response.status === 503 || response.status === 500) {
+        attempt++;
+        if (attempt >= maxRetries) return response;
+        const jitter = Math.floor(Math.random() * 150);
+        const delay = initialDelayMs * Math.pow(2, attempt - 1) + jitter;
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        continue;
+      }
+      return response;
+    } catch (err) {
+      attempt++;
+      if (attempt >= maxRetries) throw err;
+      const jitter = Math.floor(Math.random() * 150);
+      const delay = initialDelayMs * Math.pow(2, attempt - 1) + jitter;
+      await new Promise((resolve) => setTimeout(resolve, delay));
+    }
+  }
+  return fetch(url, options);
+}
+
+export async function fetchGoogleAdsAccessToken(config: GoogleAdsConfig): Promise<string> {
   if (!config.clientId || !config.clientSecret || !config.refreshToken) {
     throw new Error('Google Ads OAuth credentials missing.');
   }
 
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await fetchGoogleAdsWithBackoff('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     signal: AbortSignal.timeout(10000),

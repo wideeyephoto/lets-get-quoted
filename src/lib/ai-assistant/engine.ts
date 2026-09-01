@@ -111,7 +111,7 @@ export async function hydrateActiveRecordContext(
   return providedRecord;
 }
 
-function buildSystemInstruction(ctx: AssistantContext): string {
+export function buildSystemInstruction(ctx: AssistantContext): string {
   const today = new Date().toISOString().slice(0, 10);
   const currentTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
@@ -159,7 +159,25 @@ Your Capabilities & Tools:
 10. "get_unpaid_invoices_and_payments": Check outstanding amounts owed and overdue invoices.
 11. "get_schedule": Look up scheduled work for today, tomorrow, or upcoming windows.
 12. "get_business_summary": Provide high-level stats (active jobs, pending quotes, uncollected cash).
-13. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, expenses, settings, cash flow, sites, automations, sms).
+13. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, expenses, settings, cash flow, sites, automations, marketing, ads).
+
+Google Ads & Managed Advertising Knowledge:
+- Google Ads Cockpit Location: Direct the contractor to "/dashboard/marketing/ads" using the "navigate_to" tool (destination: "ads").
+- Single Consolidated Payment (No Separate Google Bill): Contractors ONLY pay once through Let's Get Quoted via Stripe (weekly drip or auto-refill wallet). They NEVER receive a second bill from Google, never need to create a Google Ads billing account, and never link their credit card to Google. We manage ad deployment via our Master Agency MCC with a transparent flat 10% fee.
+- Turnkey Automated Setup: Contractors do NOT need their own Google Ads manager account or developer token. Starting a plan automatically provisions Responsive Search Ads, 100+ negative keywords, geo-fencing (e.g. 25-mile radius), message-matched landing pages, and connects <12s Speed-to-Lead Auto-SMS within 24h.
+- The Google Dominance Trifecta:
+  1. Google Guaranteed (LSA): Direct calls at flat pay-per-lead with green trust badge.
+  2. Google Search Ads (PPC): Top Sponsored RSA positions for high-ticket remodel/replacement jobs ($1,500–$15,000+).
+  3. Google Business Profile (Maps 3-Pack): Organic local map pack with 5-star review collection boost.
+- Built-In Safeguards:
+  * Weather Surge Radar: Auto-boosts search bids +25% during local storm, high-wind, and freeze events.
+  * Capacity Guard: Auto-pauses bidding when the contractor is fully booked on their dispatch calendar.
+  * Negative Waste Filter: Blocks DIYers, job seekers, wholesale shoppers, and competitor name lookups (saves ~$340–$620/mo).
+  * Closed-Loop Offline Revenue Sync: Signed CRM quote dollars automatically sync to Google Smart Bidding to train Google AI on high-ticket replacements.
+  * Hard Monthly Spend Cap: Guaranteed hard-stop ceiling so contractors are never charged more than their approved monthly limit.
+- Linking Existing Accounts & Google Tag:
+  * Google Business Profile (GBP): Link under Settings or Reviews to synchronize 5-star review collection.
+  * Custom Google Tag / Ads Conversion ID: If the contractor already has a custom Google Tag (AW-XXXXXXXXXX), it can be entered in Settings or Website Builder, but our managed advertising autopilot runs 100% turnkey out-of-the-box without requiring manual tag configuration.
 
 Guidelines:
 - You have full multimodal vision and document processing capabilities.

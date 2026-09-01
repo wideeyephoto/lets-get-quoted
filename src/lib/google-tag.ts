@@ -6,6 +6,28 @@ export function getSignupConversionSendTo(): string {
   return process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID?.trim() || '';
 }
 
+export type GoogleAdsSignupTrackingConfig = {
+  tagId: string;
+  sendTo: string;
+};
+
+/**
+ * The base Google tag and sign-up conversion target are one configuration.
+ * Refuse partial or cross-account values so acquisition tracking cannot look
+ * enabled while silently dropping or misrouting conversions.
+ */
+export function getGoogleAdsSignupTrackingConfig(): GoogleAdsSignupTrackingConfig | null {
+  const tagId = getGoogleTagId();
+  const sendTo = getSignupConversionSendTo();
+  const sendToMatch = /^(AW-\d+)\/[^/\s]+$/.exec(sendTo);
+
+  if (!/^AW-\d+$/.test(tagId) || !sendToMatch || sendToMatch[1] !== tagId) {
+    return null;
+  }
+
+  return { tagId, sendTo };
+}
+
 export type GoogleAdsConversionPayload = {
   send_to?: string;
   value?: number;
@@ -29,7 +51,7 @@ declare global {
 export function trackGoogleAdsConversion(payload?: Partial<GoogleAdsConversionPayload>): boolean {
   if (typeof window === 'undefined') return false;
 
-  const sendTo = payload?.send_to || getSignupConversionSendTo();
+  const sendTo = payload?.send_to || getGoogleAdsSignupTrackingConfig()?.sendTo;
   if (!sendTo) return false;
 
   const value = payload?.value ?? 1.0;

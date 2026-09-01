@@ -1,7 +1,7 @@
 import Script from 'next/script';
 import { headers } from 'next/headers';
 import { cspNonce } from '@/lib/csp-nonce';
-import { getGoogleTagId } from '@/lib/google-tag';
+import { getGoogleAdsSignupTrackingConfig } from '@/lib/google-tag';
 
 export const SENSITIVE_PREFIXES = [
   '/account-suspended',
@@ -46,7 +46,8 @@ export function isSensitivePath(pathname: string | null | undefined): boolean {
  *
  * Loads after hydration on public marketing pages only.
  * Suppressed on all token-bearing, sensitive, or authenticated routes.
- * Fails closed when pathname headers are unavailable or when NEXT_PUBLIC_GOOGLE_TAG_ID is unset.
+ * Fails closed when pathname headers are unavailable or when the paired Google
+ * Ads tag + sign-up conversion configuration is missing or inconsistent.
  */
 export default async function GoogleTag() {
   const pathname = (await headers()).get('x-pathname');
@@ -54,10 +55,12 @@ export default async function GoogleTag() {
     return null;
   }
 
-  const tagId = getGoogleTagId();
+  const trackingConfig = getGoogleAdsSignupTrackingConfig();
   const nonce = await cspNonce();
 
-  if (!tagId) return null;
+  if (!trackingConfig) return null;
+
+  const { tagId } = trackingConfig;
 
   const initScript = `window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}

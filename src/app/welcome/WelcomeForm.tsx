@@ -79,7 +79,9 @@ export default function WelcomeForm({
         return;
       }
 
-      trackSignupConversion();
+      if (result.signupConversionTransactionId) {
+        trackSignupConversion(result.signupConversionTransactionId);
+      }
       setBuilding(true);
       const seeded = await seedSiteFromFirstRunAction();
 

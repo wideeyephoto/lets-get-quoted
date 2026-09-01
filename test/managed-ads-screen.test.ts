@@ -124,6 +124,106 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
     expect(CSS_SRC).toContain('.aiKeywordsVerificationGrid');
   });
 
+  it('renders the Ad Wallet Burn & Depletion Predictor widget with runway pacing and weekend surge detection', () => {
+    expect(SCREEN_SRC).toContain('walletBurnWidget');
+    expect(SCREEN_SRC).toContain('Ad Wallet Runway &amp; Depletion Forecast');
+    expect(SCREEN_SRC).toContain('walletBurnDaysPill');
+    expect(SCREEN_SRC).toContain('Estimated Runway');
+    expect(SCREEN_SRC).toContain('Daily Burn Rate');
+    expect(SCREEN_SRC).toContain('Predicted Refill Date');
+    expect(SCREEN_SRC).toContain('Weekend Search Surge Active (+35%)');
+
+    expect(CSS_SRC).toContain('.walletBurnWidget');
+    expect(CSS_SRC).toContain('.walletBurnHeader');
+    expect(CSS_SRC).toContain('.walletBurnDaysPill');
+    expect(CSS_SRC).toContain('.walletBurnGrid');
+    expect(CSS_SRC).toContain('.walletBurnSurgeAlert');
+  });
+
+  it('renders the Google Ads 10/10 Quality Score & Message-Match Readiness Meter with tripartite scoring', () => {
+    expect(SCREEN_SRC).toContain('qualityScoreCard');
+    expect(SCREEN_SRC).toContain('Google Ads Quality Score Readiness');
+    expect(SCREEN_SRC).toContain('10/10 Quality Score');
+    expect(SCREEN_SRC).toContain('Expected CTR');
+    expect(SCREEN_SRC).toContain('Ad Relevance');
+    expect(SCREEN_SRC).toContain('Landing Page Experience');
+    expect(SCREEN_SRC).toContain('100% Message-Match Verification Chain');
+    expect(SCREEN_SRC).toContain('messageMatchChain');
+
+    expect(CSS_SRC).toContain('.qualityScoreCard');
+    expect(CSS_SRC).toContain('.qualityScoreHeader');
+    expect(CSS_SRC).toContain('.qualityScoreBadge');
+    expect(CSS_SRC).toContain('.qualityScoreGrid');
+    expect(CSS_SRC).toContain('.messageMatchChain');
+  });
+
+  it('renders the Google Trifecta Dominance Hub (Search Ads + LSA + GBP Maps 3-Pack)', () => {
+    expect(SCREEN_SRC).toContain('The Google Dominance Trifecta: Search Ads, Local Services & Google Maps 3-Pack');
+    expect(SCREEN_SRC).toContain('Google Trifecta (Ads + LSA + GBP)');
+    expect(SCREEN_SRC).toContain('lsaSynergyCard');
+    expect(SCREEN_SRC).toContain('googleTrifectaGrid');
+    expect(SCREEN_SRC).toContain('trifectaCol');
+    expect(SCREEN_SRC).toContain('Google Guaranteed (LSA)');
+    expect(SCREEN_SRC).toContain('Google Search Ads (PPC)');
+    expect(SCREEN_SRC).toContain('Google Maps 3-Pack (GBP)');
+    expect(SCREEN_SRC).toContain('The 3-Pillar Google Dominance Synergy');
+
+    expect(CSS_SRC).toContain('.lsaSynergyCard');
+    expect(CSS_SRC).toContain('.googleTrifectaGrid');
+    expect(CSS_SRC).toContain('.trifectaCol');
+    expect(CSS_SRC).toContain('.lsaColHeader');
+    expect(CSS_SRC).toContain('.lsaFeatureList');
+    expect(CSS_SRC).toContain('.lsaSynergyBanner');
+  });
+
+  it('renders the Seasonal Demand Posture & Multiplier Badge with trade-specific directive', () => {
+    expect(SCREEN_SRC).toContain('seasonalDemandBadge');
+    expect(SCREEN_SRC).toContain('seasonalDemandCard');
+    expect(SCREEN_SRC).toContain('Trade Seasonal Pricing &amp; Bidding Directive');
+    expect(CSS_SRC).toContain('.seasonalDemandBadge');
+    expect(CSS_SRC).toContain('.seasonalDemandCard');
+  });
+
+  it('renders Closed-Loop Offline Revenue Synchronization telemetry connected to Google Ads API v20', () => {
+    expect(SCREEN_SRC).toContain('offlineSyncCard');
+    expect(SCREEN_SRC).toContain('Closed-Loop Offline Revenue Synchronization');
+    expect(SCREEN_SRC).toContain('offlineSyncBadge');
+    expect(SCREEN_SRC).toContain('Active &amp; Synced with Google Ads API v20');
+    expect(SCREEN_SRC).toContain('Enhanced Offline Conversions');
+    expect(SCREEN_SRC).toContain('Max Value / Target ROAS');
+
+    expect(CSS_SRC).toContain('.offlineSyncCard');
+    expect(CSS_SRC).toContain('.offlineSyncHeader');
+    expect(CSS_SRC).toContain('.offlineSyncBadge');
+    expect(CSS_SRC).toContain('.offlineSyncGrid');
+    expect(CSS_SRC).toContain('.offlineSyncItem');
+  });
+
+  it('renders Speed-to-Lead velocity conversion benchmark with 12s vs 42m comparison', () => {
+    expect(SCREEN_SRC).toContain('speedToLeadBenchmarkBox');
+    expect(SCREEN_SRC).toContain('Speed-to-Lead Conversion Velocity Benchmark');
+    expect(SCREEN_SRC).toContain('+391% Close Rate Advantage');
+    expect(SCREEN_SRC).toContain('78% Lead-to-Appointment Rate');
+
+    expect(CSS_SRC).toContain('.speedToLeadBenchmarkBox');
+    expect(CSS_SRC).toContain('.benchmarkRow');
+    expect(CSS_SRC).toContain('.benchmarkBar');
+    expect(CSS_SRC).toContain('.benchmarkBarFillFast');
+    expect(CSS_SRC).toContain('.benchmarkBarFillSlow');
+  });
+
+  it('renders Negative Keyword Waste Prevention Ticker with live category pills and estimated monthly savings', () => {
+    expect(SCREEN_SRC).toContain('negativeWasteTicker');
+    expect(SCREEN_SRC).toContain('100+ Negative Search Queries Scrubbed 24/7');
+    expect(SCREEN_SRC).toContain('wasteCategoryPill');
+    expect(SCREEN_SRC).toContain('wasteSavingsTag');
+    expect(SCREEN_SRC).toContain('Saves ~$340–$620/mo in Wasted Clicks');
+
+    expect(CSS_SRC).toContain('.negativeWasteTicker');
+    expect(CSS_SRC).toContain('.wasteCategoryPill');
+    expect(CSS_SRC).toContain('.wasteSavingsTag');
+  });
+
   it('has corresponding CSS styles for all enhanced modules', () => {
     expect(CSS_SRC).toContain('.roiCalcCard');
     expect(CSS_SRC).toContain('.smsDemoContainer');
@@ -135,3 +235,5 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
     expect(CSS_SRC).toContain('.faqList');
   });
 });
+
+

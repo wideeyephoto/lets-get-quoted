@@ -10,15 +10,15 @@ import { ogCard, OG_SIZE, OG_CONTENT_TYPE } from '@/lib/og-card';
    in lib/trades, lib/resources and lib/pricing. */
 export const runtime = 'edge';
 
-export const alt = 'How Let’s Get Quoted works — your best jobs rise to the top';
+export const alt = 'How Let’s Get Quoted works — website request to paid job';
 export const size = OG_SIZE;
 export const contentType = OG_CONTENT_TYPE;
 
 export default function Image() {
   return ogCard({
     eyebrow: 'How it works',
-    title: 'Your best jobs rise to the top.',
-    subtitle: 'Requests are qualified, scored and surfaced when they deserve an answer — then carried through quote, schedule, crew and payment.',
-    tag: 'Request → Paid',
+    title: 'One request. One connected job.',
+    subtitle: 'Website, Smart Intake, quote, schedule, crew, invoice and payment — carried on one record.',
+    tag: 'Website → Paid',
   });
 }

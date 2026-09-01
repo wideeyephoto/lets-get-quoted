@@ -50,4 +50,41 @@ describe('AI Assistant Companions', () => {
     const rooferSparky = getCompanion('sparky', 'roofing');
     expect(rooferSparky.avatarSrc).toBe('/brand/sparky/sparky-roofer.jpg');
   });
+
+  it('includes comprehensive Google Ads, single billing payment, and trifecta knowledge in system instructions', async () => {
+    const { buildSystemInstruction } = await import('@/lib/ai-assistant/engine');
+    const prompt = buildSystemInstruction({
+      businessName: 'Apex Roofing & Solar',
+      role: 'owner',
+      currentPath: '/dashboard',
+      companionId: 'sparky',
+    });
+
+    expect(prompt).toContain('/dashboard/marketing/ads');
+    expect(prompt).toContain('Single Consolidated Payment');
+    expect(prompt).toContain('Contractors ONLY pay once through Let\'s Get Quoted');
+    expect(prompt).toContain('NEVER receive a second bill from Google');
+    expect(prompt).toContain('The Google Dominance Trifecta');
+    expect(prompt).toContain('Weather Surge Radar');
+    expect(prompt).toContain('Capacity Guard');
+    expect(prompt).toContain('Negative Waste Filter');
+    expect(prompt).toContain('Closed-Loop Offline Revenue Sync');
+  });
+
+  it('routes navigate_to destination "ads" and "google_ads" to /dashboard/marketing/ads', async () => {
+    const { executeAssistantTool } = await import('@/lib/ai-assistant/tools');
+    const mockCtx = {
+      supabase: {} as any,
+      accountId: 'acc_123',
+      userId: 'usr_123',
+      role: 'owner' as const,
+    };
+
+    const resultAds = await executeAssistantTool('navigate_to', { destination: 'ads' }, mockCtx);
+    expect((resultAds.data as any).path).toBe('/dashboard/marketing/ads');
+    expect(resultAds.actionCard?.linkUrl).toBe('/dashboard/marketing/ads');
+
+    const resultGoogleAds = await executeAssistantTool('navigate_to', { destination: 'google_ads' }, mockCtx);
+    expect((resultGoogleAds.data as any).path).toBe('/dashboard/marketing/ads');
+  });
 });

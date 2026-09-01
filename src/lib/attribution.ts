@@ -164,8 +164,55 @@ export function parseAttribution(urlString: string, referrerString?: string): Le
   }
 }
 
+function getStoredAttributionRaw(): LeadAttribution | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const rawSession = window.sessionStorage?.getItem(ATTRIBUTION_STORAGE_KEY);
+    if (rawSession) return JSON.parse(rawSession) as LeadAttribution;
+  } catch {
+    // ignore sessionStorage errors
+  }
+  try {
+    const rawLocal = window.localStorage?.getItem(ATTRIBUTION_STORAGE_KEY);
+    if (rawLocal) return JSON.parse(rawLocal) as LeadAttribution;
+  } catch {
+    // ignore localStorage errors
+  }
+  try {
+    const match = document.cookie?.match(new RegExp(`(?:^|; )${ATTRIBUTION_STORAGE_KEY}=([^;]*)`));
+    if (match?.[1]) {
+      return JSON.parse(decodeURIComponent(match[1])) as LeadAttribution;
+    }
+  } catch {
+    // ignore cookie errors
+  }
+  return null;
+}
+
+function persistAttributionRaw(data: LeadAttribution): void {
+  if (typeof window === 'undefined') return;
+  const json = JSON.stringify(data);
+  try {
+    window.sessionStorage?.setItem(ATTRIBUTION_STORAGE_KEY, json);
+  } catch {
+    // ignore
+  }
+  try {
+    window.localStorage?.setItem(ATTRIBUTION_STORAGE_KEY, json);
+  } catch {
+    // ignore
+  }
+  try {
+    // Store 30-day first-party cookie for cross-session attribution
+    document.cookie = `${ATTRIBUTION_STORAGE_KEY}=${encodeURIComponent(json)}; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax`;
+  } catch {
+    // ignore
+  }
+}
+
 /**
- * Initializes and persists attribution in the browser's sessionStorage.
+ * Initializes and persists attribution in the browser across sessionStorage,
+ * localStorage, and first-party cookies for seamless cross-session attribution.
  * Safe to call on every client-side page load.
  */
 export function getOrCaptureAttribution(): LeadAttribution | null {
@@ -176,15 +223,11 @@ export function getOrCaptureAttribution(): LeadAttribution | null {
     const currentReferrer = document.referrer;
     const fresh = parseAttribution(currentUrl, currentReferrer);
 
-    let stored: LeadAttribution | null = null;
-    const rawStored = window.sessionStorage.getItem(ATTRIBUTION_STORAGE_KEY);
-    if (rawStored) {
-      stored = JSON.parse(rawStored) as LeadAttribution;
-    }
+    const stored = getStoredAttributionRaw();
 
-    // If fresh parameters (like UTMs or Click IDs) are found in current URL, update session
+    // If fresh parameters (like UTMs or Click IDs) are found in current URL, update storage
     if (fresh && (fresh.campaign || fresh.clickId || fresh.source !== stored?.source)) {
-      window.sessionStorage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(fresh));
+      persistAttributionRaw(fresh);
       return fresh;
     }
 
@@ -192,7 +235,7 @@ export function getOrCaptureAttribution(): LeadAttribution | null {
 
     // If no stored attribution and fresh referrer/campaign exists, store it
     if (fresh) {
-      window.sessionStorage.setItem(ATTRIBUTION_STORAGE_KEY, JSON.stringify(fresh));
+      persistAttributionRaw(fresh);
       return fresh;
     }
 

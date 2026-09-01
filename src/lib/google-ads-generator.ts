@@ -360,7 +360,8 @@ export type ResponsiveSearchAd = {
 export function clampText(text: string, maxLen: number): string {
   const clean = text.trim();
   if (clean.length <= maxLen) return clean;
-  return clean.slice(0, maxLen - 1).trim() + '…';
+  const sliced = clean.slice(0, maxLen - 1).replace(/[,.:;\-–—/\\|]+$/, '').trim();
+  return sliced + '…';
 }
 
 export function toTitleCase(str: string): string {

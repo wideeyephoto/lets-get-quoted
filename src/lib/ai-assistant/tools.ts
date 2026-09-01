@@ -343,7 +343,7 @@ export const ASSISTANT_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
       properties: {
         destination: {
           type: Type.STRING,
-          description: 'Target section: "dashboard", "jobs", "schedule", "clients", "invoices", "cash_flow", "expenses", "settings", "sites", "automations", "leads", "reviews", "crew", "marketing", or "sms_settings"',
+          description: 'Target section: "dashboard", "jobs", "schedule", "clients", "invoices", "cash_flow", "expenses", "settings", "sites", "automations", "leads", "reviews", "crew", "marketing", "ads", "google_ads", or "sms_settings"',
         },
         description: {
           type: Type.STRING,
@@ -1140,6 +1140,10 @@ export async function executeAssistantTool(
         reviews: { path: '/dashboard/reviews', label: 'Customer Reviews' },
         crew: { path: '/dashboard/crew', label: 'Crew & Labor' },
         marketing: { path: '/dashboard/marketing', label: 'Marketing & Campaigns' },
+        ads: { path: '/dashboard/marketing/ads', label: 'Google Ads Autopilot & Managed Campaigns' },
+        google_ads: { path: '/dashboard/marketing/ads', label: 'Google Ads Autopilot & Managed Campaigns' },
+        google_lsa: { path: '/dashboard/marketing/ads', label: 'Google Guaranteed (LSA) & Ads Hub' },
+        ad_billing: { path: '/dashboard/marketing/ads', label: 'Ad Wallet & Campaign Budget' },
         sms_settings: { path: '/dashboard/messages/dedicated-number', label: 'SMS Dedicated Number Settings' },
       };
 

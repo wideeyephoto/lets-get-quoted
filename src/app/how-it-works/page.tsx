@@ -1,532 +1,605 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
-import LaunchBanner from '@/components/marketing/launch-banner';
 
-// The flagship chrome and stylesheet — the same ones the homepage and
-// /features draw, so this page is the site rather than a document about it.
-import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
-import ThemeFab from '@/components/theme-fab';
-import styles from '@/components/flagship/flagship.module.css';
+import LaunchBanner from '@/components/marketing/launch-banner';
 import { APP_SIGNUP_URL, DEMO_URL } from '@/components/marketing/links';
+import { SiteFooter, SiteHeader } from '@/components/flagship/site-chrome';
+import flagshipStyles from '@/components/flagship/flagship.module.css';
+import { FLEX_PRICE, PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
 import { titleWithBrand } from '@/lib/seo/marketing-seo';
 
-import OpportunityCards from './opportunity-cards';
+import styles from './how-it-works.module.css';
 import SectionNav, { type NavSection } from './section-nav';
-import TextAlertDemo from './text-alert-demo';
+import WorkflowShowcase from './workflow-showcase';
 
 export const metadata: Metadata = {
-  // absolute: the root template's " · Let's Get Quoted" pushed this to 77
-  // characters, and the brand is already the third word. See titleWithBrand.
-  title: { absolute: titleWithBrand('How It Works — The Connected Contractor System') },
+  title: { absolute: titleWithBrand('How It Works — Website Request to Paid Job') },
   description:
-    'From website lead to paid job: see how Let’s Get Quoted qualifies requests, sends quotes, schedules crew, and collects payments in one connected system.',
+    'See how Let’s Get Quoted connects a contractor website, Smart Intake, quotes, scheduling, crews, invoices, payments, and repeat work in one job record.',
   alternates: { canonical: 'https://letsgetquoted.com/how-it-works' },
   openGraph: {
-    title: 'How It Works · From First Click to Final Payment',
+    title: 'How It Works · Website Request to Paid Job',
     description:
-      'From website lead to paid job: see how Let’s Get Quoted qualifies requests, sends quotes, schedules crew, and collects payments in one connected system.',
+      'Follow one contractor job through website intake, quoting, scheduling, field work, invoicing, and payment.',
     url: 'https://letsgetquoted.com/how-it-works',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
     title: 'How Let’s Get Quoted Works',
-    description:
-      'From website lead to paid job: one connected workflow for contractors.',
+    description: 'One connected contractor workflow, from website request to paid job.',
   },
 };
 
-/* ---------------------------------------------------------------------------
- * WHAT THIS PAGE MAY AND MAY NOT CLAIM.
- *
- * Let's Get Quoted does not buy, sell or supply leads. Every request on this
- * page arrives at the contractor's OWN website; what the product does is
- * qualify it, estimate it, score it, rank it and surface it. So the verbs here
- * are qualify / estimate / score / prioritize / surface, and never "get",
- * "deliver", "send you" or "generate" leads. If a sentence here would still be
- * true of a lead-gen marketplace, it is the wrong sentence.
- *
- * Every number, name and address below is invented. The section that shows the
- * most of them carries its own marker saying so.
- * ------------------------------------------------------------------------- */
-
 const NAV_SECTIONS: NavSection[] = [
-  { id: 'opportunities', label: 'Opportunities' },
-  { id: 'text-alerts', label: 'Text alerts' },
-  { id: 'back-office', label: 'What happens next' },
+  { id: 'workflow', label: 'Workflow' },
+  { id: 'control', label: 'Your control' },
+  { id: 'field', label: 'Field + portal' },
+  { id: 'automations', label: 'Automations' },
+  { id: 'faq', label: 'FAQ' },
 ];
 
-/** The receipt rows are the four signals the ranking is actually made of. */
-type ReceiptRow = { label: string; value: string };
-
-const HERO_ROWS: ReceiptRow[] = [
-  { label: 'Estimated value', value: '$8,600 · HIGH' },
-  { label: 'Lead score', value: 'HOT' },
-  { label: 'Service area', value: '✓ 4.2 MILES' },
-  { label: 'Timeline', value: '✓ WITHIN 30 DAYS' },
-];
-
-const WHY_ROWS: ReceiptRow[] = [
-  { label: 'Estimated value', value: '$8,600 · HIGH' },
-  { label: 'Trade match', value: '✓ ELECTRICAL' },
-  { label: 'Distance', value: '✓ 4.2 MILES' },
-  { label: 'Readiness', value: '✓ PHONE VERIFIED' },
-];
-
-/* The three facts under the hero. Each is a claim about the queue, not about
-   the company — "surfaces first" is checkable on the screen above it. */
-const FACTS: { fact: string; of: string }[] = [
-  { fact: 'High value', of: 'surfaces first' },
-  { fact: 'Hot · Warm · Low', of: 'AI lead scoring' },
-  { fact: '1 text', of: 'to decide now or later' },
-];
-
-/**
- * THE TWO QUESTIONS "AI-RANKED LEAD QUEUE" RAISES IN THE FIRST SECOND.
- *
- * How does it know, and will it hide a good one. Both were answered on this
- * page — three sections and 2,600px below the words that raised them, in a
- * receipt captioned "why this job surfaced". A reader who is not sure a machine
- * is safe with their leads does not scroll to find out; they leave.
- *
- * EVERY LINE IS CHECKED AGAINST THE CODE, not against the pitch:
- *
- *   the signals   api/public/leads/route.ts computes the flags from the OWNER'S
- *                 filters — service area, minimum job size, work-you-don't-take,
- *                 timeline, fully-booked mode — plus the AI estimate and whether
- *                 the phone was verified.
- *   demote only   "Flags demote; they never reject" is a comment on that
- *                 function and LEAD_PRUNE_FLAGS only ever writes score 'low'.
- *                 Nothing is deleted, hidden or withheld.
- *   the estimate  classify-estimate/route.ts asks one question at a time until
- *                 it can price confidently, prices what this trade would
- *                 actually charge, shades it by the posture the owner picked
- *                 (estimate-posture.ts), and — this is the honest part —
- *                 returns no price at all rather than inventing one.
- */
-const TRUST: { term: string; detail: ReactNode }[] = [
+const AUTOMATIONS = [
   {
-    term: 'It scores on rules you set',
-    detail:
-      'The service area you drew, the smallest job worth your time, the work you don’t take, how soon they need it, and whether the number checked out. Your filters, applied to their answers.',
+    number: '01',
+    title: 'Quote follow-up',
+    body: 'Follow up automatically on an unapproved quote, then stop after the reminder limit you set.',
   },
   {
-    term: 'It demotes. It never hides',
-    detail:
-      'A low score means a request doesn’t interrupt your day — it does not mean you don’t get it. Every request lands on the same board, with the reason it was demoted printed on it, and you can act on any of them.',
+    number: '02',
+    title: 'Appointment reminder + on-my-way',
+    body: 'Remind the customer before the visit, then send an arrival update when the tech leaves.',
   },
   {
-    term: 'The value is an estimate, not your quote',
-    detail:
-      'The range comes from the homeowner’s own answers, asked one at a time until the job can be priced, at what your trade actually charges for that work. You choose whether it leans budget or premium — and when it can’t price something confidently it shows no number rather than a wrong one.',
+    number: '03',
+    title: 'Review request',
+    body: 'When work is complete, offer every customer the same two choices: post a public review or share private feedback.',
+  },
+  {
+    number: '04',
+    title: 'Rebook + recurring',
+    body: 'Invite the customer back, or set weekly, every-other-week, or monthly visits from the same record.',
   },
 ];
 
-/**
- * THE JOURNEY, NAMED.
- *
- * The page follows one invented $8,600 job from the hero to the closing
- * receipt, which is the right idea and was doing it implicitly — the same
- * numbers turning up in four places over 5,300px reads as repetition unless
- * the page says out loud that it is the same job moving. Six beats, in order,
- * with the three the page has already shown marked as shown.
- */
-const JOURNEY: { n: string; title: string; body: string; href: string; done?: boolean }[] = [
-  { n: '1', title: 'Website visit', body: 'A homeowner requests an instant estimate on your contractor site.', href: '/features/website-builder', done: true },
-  { n: '2', title: 'Qualified lead', body: 'Estimated, scored against your trade rules, and ranked in your queue.', href: '/features/ai-intake', done: true },
-  { n: '3', title: 'Quote', body: 'The summary turns into an itemized quote for e-signature and deposit.', href: '/features/quotes' },
-  { n: '4', title: 'Scheduled work', body: 'Book the arrival window, assign your crew, and dispatch the route.', href: '/features/scheduling' },
-  { n: '5', title: 'Payment', body: 'Two-way customer texts, client portal updates, and Stripe payouts.', href: '/features/client-portal' },
-];
-
-/* THE LAST PIECE OF PAPER ON THE PAGE.
-   It was the wordmark on a card, which is the one thing on this page that
-   asked the reader to look at something and gave them nothing back. This is
-   the same job the hero opened on, four stages later — the only honest way to
-   close a page whose argument is that the request you accept is the record
-   that gets paid. */
-const PAID_ROWS: ReceiptRow[] = [
-  { label: 'Quote signed', value: '✓ MAR 4' },
-  { label: 'Scheduled', value: '✓ MAR 11 · 9–11' },
-  { label: 'Work complete', value: '✓ MAR 12' },
-  { label: 'Deposit + balance', value: '✓ PAID IN FULL' },
-];
-
-/* What the alert is made of. Three rows, and each names the thing on the
-   phone screen beside it rather than a product feature. */
-const ALERT_NOTES: { term: string; detail: ReactNode }[] = [
+const RELATED_FEATURES = [
   {
-    term: 'Value estimated',
-    detail: 'Your intake turns the homeowner’s own answers into a useful range.',
+    eyebrow: 'QUICK STOPS',
+    title: 'Offer paid priority visits along routes you already drive.',
+    body: 'You set the priority fee and arrival window. The customer pays that fee before the visit is booked; the service itself is charged separately.',
+    href: '/features/quick-stops',
+    cta: 'Explore Quick Stops',
   },
   {
-    term: 'Priority scored',
-    detail: 'Budget, location, timing and trade fit decide what rises first.',
+    eyebrow: 'RECURRING WORK',
+    title: 'Turn a finished job into the next scheduled visit.',
+    body: 'Each weekly, every-other-week, or monthly cycle creates a real scheduled job and itemized charge.',
+    href: '/features/recurring',
+    cta: 'Explore recurring work',
   },
   {
-    term: 'You choose when',
-    detail: 'Open the request straight away, or let it come back to you later.',
+    eyebrow: 'REVIEWS + REBOOKING',
+    title: 'Ask properly. Then ask the customer back.',
+    body: 'Every customer gets the same public-review and private-feedback choices. Rebook past customers separately with consent-aware email or SMS.',
+    href: '/features/reviews',
+    cta: 'Explore reviews and rebooking',
+  },
+  {
+    eyebrow: 'CASH FLOW',
+    title: 'See the difficult week before it arrives.',
+    body: 'Read deposits, balances, payroll, and bills by date, then export QuickBooks-ready CSV files for your accountant.',
+    href: '/features/cash-flow',
+    cta: 'Explore cash flow',
   },
 ];
 
-function Receipt({
-  className,
-  title,
-  id,
-  rows,
-  stamp,
-  total,
-  label,
-}: {
-  className: string;
-  title: string;
-  id: string;
-  rows: ReceiptRow[];
-  stamp: string;
-  /** The hero's receipt closes on the number; the qualification one does not. */
-  total?: string;
-  label: string;
-}) {
+const FAQS = [
+  {
+    question: 'Can I use a domain I already own?',
+    answer:
+      'Yes. Start on the included LGQ subdomain, then connect a domain you own whenever you are ready. Smart Intake is built into the LGQ website.',
+  },
+  {
+    question: 'Where do the requests come from?',
+    answer:
+      'Each request comes through the website built for your business and stays in your account. Let’s Get Quoted is contractor business software—not a marketplace that buys, shares, or resells leads.',
+  },
+  {
+    question: 'Is the preliminary estimate a price I have to honor?',
+    answer:
+      'No. When Smart Intake can produce one, it is a preliminary range based on the homeowner’s answers and your pricing setup. You review the scope and set the final quote; if no range is available, the homeowner can still submit the request.',
+  },
+  {
+    question: 'What happens to lower-fit requests?',
+    answer:
+      'They stay visible on your lead board. A lower score changes the alert, not your access to the request, and nothing is discarded.',
+  },
+  {
+    question: 'Does this work for a solo operator and a crew?',
+    answer:
+      'Yes. A solo operator can run the workflow personally. As the team grows, the same job record supports crew assignment, field access, hours, materials, and owner-only margin.',
+  },
+  {
+    question: 'Does my customer need an account or app?',
+    answer:
+      'No. The homeowner receives a private job link and can also reply through ordinary SMS. There is no password or app to install.',
+  },
+  {
+    question: 'Where does payment go?',
+    answer:
+      'Payments move through your connected Stripe account on Stripe’s payout schedule. LGQ does not hold your funds or see card numbers.',
+  },
+  {
+    question: 'Are the 0%-interest plans financing?',
+    answer:
+      'No. They are installment plans with no interest, credit check, or upfront financing advance. You receive the deposit and each installment as it is charged.',
+  },
+  {
+    question: 'What fees apply?',
+    answer: `${PUBLIC_PRICING_SUMMARY} The LGQ fee applies only to the discount-adjusted service subtotal successfully collected through LGQ. Taxes, tips, refunds, credits, and Stripe costs are excluded. Stripe processing and payment-infrastructure costs are separate.`,
+  },
+  {
+    question: 'Can I import existing customers and job history?',
+    answer:
+      'You can bulk-import an existing customer list. Historical jobs, quotes, messages, and payments require a separate migration review because support varies by record type and source.',
+  },
+];
+
+function Check({ children }: { children: ReactNode }) {
   return (
-    <article className={`hiq-receipt ${className}`} aria-label={label}>
-      <div className="hiq-receipt-head">
-        <h3>{title}</h3>
-        <span>{id}</span>
-      </div>
-      {rows.map((row) => (
-        <div className="hiq-receipt-row" key={row.label}>
-          <span>{row.label}</span>
-          <strong>{row.value}</strong>
-        </div>
-      ))}
-      {total ? (
-        <div className="hiq-receipt-total">
-          <span className="hiq-stamp">{stamp}</span>
-          <strong>{total}</strong>
-        </div>
-      ) : (
-        <div className="hiq-stamp hiq-stamp-solo">{stamp}</div>
-      )}
-    </article>
+    <li>
+      <span aria-hidden="true">✓</span>
+      {children}
+    </li>
   );
 }
 
 export default function HowItWorksPage() {
   return (
-    <main className={`${styles.root} hiq-page`}>
-      {/* Dynamic ambient backdrop glow orbs */}
-      <div className="hiq-ambient hiq-ambient-one" aria-hidden="true" />
-      <div className="hiq-ambient hiq-ambient-two" aria-hidden="true" />
-      <div className="hiq-ambient hiq-ambient-three" aria-hidden="true" />
-
-      {/* The page had no skip link before the header, and the header comes
-          first in the DOM — a skip link written after it is not one. */}
-      <a className="skip-link" href="#main-content">Skip to content</a>
-
-      {/* SiteHeader has to be INSIDE .root: every rule that styles it is scoped
-          to that class, so rendered as a sibling it comes out as a 600px logo
-          above five run-together links. The site's navigation is unchanged; the
-          page's own three anchors are the bar underneath it. */}
-      <SiteHeader />
+    <div className={styles.page}>
+      <div className={flagshipStyles.root}>
+        <a className="skip-link" href="#main-content">
+          Skip to content
+        </a>
+        <SiteHeader />
+      </div>
       <LaunchBanner offsetHeader />
-      <ThemeFab />
       <SectionNav sections={NAV_SECTIONS} />
 
-      {/* ------------------------------------------------------------------
-          HERO — the queue's top row, drawn at full size.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-hero" id="main-content" aria-labelledby="hiq-title">
-        <div className="hiq-hero-copy">
-          <div className="hiq-eyebrow-chip">
-            <span aria-hidden="true">✦</span>
-            <p className="hiq-eyebrow">THE 5-STEP CONTRACTOR WORKFLOW</p>
-          </div>
-          <h1 id="hiq-title">
-            From first click to <em>final payment.</em>
-          </h1>
-          <p className="hiq-lede">
-            Let’s Get Quoted is one connected system: launch your free website, qualify leads 24/7, send quotes, schedule crew, and collect payment without switching tools.
-          </p>
-          <div className="hiq-actions">
-            <a className="hiq-button" href={APP_SIGNUP_URL}>
-              Build my free site <span aria-hidden="true">→</span>
-            </a>
-            <Link className="hiq-textlink" href={DEMO_URL}>
-              Explore the demo
-            </Link>
-          </div>
-          <div className="hiq-hero-chips-row" aria-label="Key contractor features">
-            <span className="hiq-hero-chip"><span className="hiq-hero-chip-check">✓</span> AI Lead Scoring &amp; Ranking</span>
-            <span className="hiq-hero-chip"><span className="hiq-hero-chip-check">✓</span> 24/7 Smart Intake</span>
-            <span className="hiq-hero-chip"><span className="hiq-hero-chip-check">✓</span> 1 Connected Record</span>
-          </div>
-        </div>
-
-        <div className="hiq-hero-receipt">
-          <Receipt
-            className="hiq-receipt-hero"
-            label="Example high-priority request"
-            title="Panel upgrade + EV charger"
-            id="LEAD #2081"
-            rows={HERO_ROWS}
-            stamp="BEST MATCH"
-            total="$8,600"
-          />
-        </div>
-      </section>
-
-      {/* Three facts about the queue, on the seam between the hero and the
-          paper section — the strip is what carries the color change. */}
-      <section className="hiq-facts" aria-label="At a glance">
-        {FACTS.map((fact) => (
-          <div key={fact.fact}>
-            <strong>{fact.fact}</strong>
-            <span>{fact.of}</span>
-          </div>
-        ))}
-      </section>
-
-      {/* ------------------------------------------------------------------
-          THE ANSWER TO THE QUESTION THE HERO JUST RAISED.
-
-          "AI-ranked lead queue" asks two things of a contractor in the first
-          second: how does it know, and will it hide a good one. Both were
-          answered on this page — 2,600px and three sections below the words
-          that raised them. Somebody unsure a machine is safe with their leads
-          does not scroll to find out.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-trust" aria-labelledby="hiq-trust-title">
-        <div className="hiq-shell">
-          <div className="hiq-split">
-            <div>
-              <p className="hiq-eyebrow hiq-eyebrow-dark">Before you trust it with your leads</p>
-              <h2 id="hiq-trust-title">How the ranking decides, and what it cannot do.</h2>
-            </div>
-            <p>
-              Nothing here is a judgement about your business. It is your own filters, applied to
-              what the homeowner answered — and the worst it can do to a request is stop it from
-              interrupting you.
-            </p>
-          </div>
-
-          <dl className="hiq-trust-list">
-            {TRUST.map((item) => (
-              <div key={item.term}>
-                <dt>{item.term}</dt>
-                <dd>{item.detail}</dd>
+      <main id="main-content">
+      <section className={styles.hero} aria-labelledby="how-title">
+        <div className={styles.heroGlowOne} aria-hidden="true" />
+        <div className={styles.heroGlowTwo} aria-hidden="true" />
+        <div className={styles.shell}>
+          <div className={styles.heroLayout}>
+            <div className={styles.heroCopy}>
+              <p className={styles.heroEyebrow}>
+                <span aria-hidden="true">✦</span> FROM WEBSITE REQUEST TO PAID JOB
+              </p>
+              <h1 id="how-title">
+                Turn website visitors into <em>paid jobs.</em>
+              </h1>
+              <p className={styles.heroLede}>
+                Launch a contractor website, qualify each request, then quote, schedule, update,
+                invoice, and get paid from one connected job record.
+              </p>
+              <div className={styles.heroActions}>
+                <a className={styles.primaryButton} href={APP_SIGNUP_URL}>
+                  Build my free website <span aria-hidden="true">→</span>
+                </a>
+                <a className={styles.secondaryButton} href="#workflow">
+                  Follow one job to payment
+                </a>
               </div>
-            ))}
-          </dl>
+              <p className={styles.heroPricing}>
+                Flex is {FLEX_PRICE.monthlyPrice}. Its {FLEX_PRICE.platformFee} LGQ fee applies to
+                the discount-adjusted service subtotal successfully collected through LGQ; Stripe
+                costs are separate.
+              </p>
+              <ul className={styles.assuranceList} aria-label="How the workflow stays in your control">
+                <Check>Requests come through the website built for your business</Check>
+                <Check>You set the fit rules and final price</Check>
+                <Check>One record follows the job through payment</Check>
+              </ul>
+            </div>
 
-          <Link className="hiq-inlinelink hiq-inlinelink-light" href="/features/ai-intake">
-            See exactly what the intake asks and scores <span aria-hidden="true">→</span>
-          </Link>
+            <aside className={styles.heroJob} aria-label="Illustrative electrical job moving through Let’s Get Quoted">
+              <div className={styles.heroJobTop}>
+                <span>ILLUSTRATIVE JOB · SAMPLE #2081</span>
+                <strong>HOT</strong>
+              </div>
+              <div className={styles.heroJobTitle}>
+                <div>
+                  <small>ELECTRICAL</small>
+                  <h2>Panel upgrade + EV charger</h2>
+                </div>
+                <span>$8,000–$9,500</span>
+              </div>
+              <dl className={styles.heroJobFacts}>
+                <div>
+                  <dt>Location</dt>
+                  <dd><span aria-hidden="true">✓</span> Inside service area</dd>
+                </div>
+                <div>
+                  <dt>Timeline</dt>
+                  <dd><span aria-hidden="true">✓</span> Within 30 days</dd>
+                </div>
+                <div>
+                  <dt>Contact</dt>
+                  <dd><span aria-hidden="true">✓</span> Phone verified</dd>
+                </div>
+              </dl>
+              <ol className={styles.heroJourney} aria-label="Illustrative job stages">
+                {['Request', 'Quote', 'Scheduled', 'Work', 'Paid'].map((label, index) => (
+                  <li key={label} data-current={index === 0 ? 'true' : undefined}>
+                    <span aria-hidden="true">{index + 1}</span>
+                    <strong>{label}</strong>
+                  </li>
+                ))}
+              </ol>
+              <p className={styles.heroJobStatus}>
+                <span aria-hidden="true">●</span> Needs response
+              </p>
+            </aside>
+          </div>
+          <p className={styles.heroDisclosure}>
+            Illustrative electrical job · Fictional business, customer, dates, settings, and amounts.
+            Illustrates product workflow, not a customer result.
+          </p>
         </div>
       </section>
 
-      {/* ------------------------------------------------------------------
-          THE JOURNEY, NAMED.
+      <section className={styles.workflowSection} id="workflow" aria-labelledby="workflow-title">
+        <div className={styles.shell}>
+          <div className={styles.sectionIntro}>
+            <p className={styles.kicker}>ONE JOB · FIVE CONNECTED STAGES</p>
+            <h2 id="workflow-title">See what carries forward at every handoff.</h2>
+            <p>Follow one illustrative electrical job from request to payment. Product screens use separate demo data.</p>
+          </div>
 
-          One invented $8,600 job runs from the hero to the closing receipt.
-          That is the right idea, and over 5,300px of desktop it reads as
-          repetition unless the page says out loud that it is the same job
-          moving. Six beats, in order; the first three are what the sections
-          above have just shown.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-journey" aria-labelledby="hiq-journey-title">
-        <div className="hiq-shell">
-          <h2 id="hiq-journey-title" className="hiq-journey-title">
-            One connected workflow, five steps: <em>Website visit → Qualified lead → Quote → Scheduled work → Payment.</em>
-          </h2>
-          <ol className="hiq-journey-rail">
-            {JOURNEY.map((beat) => (
-              <li key={beat.n} data-done={beat.done ? 'true' : 'false'}>
-                <Link href={beat.href}>
-                  <span className="hiq-journey-n" aria-hidden="true">
-                    {beat.n}
-                  </span>
-                  <strong>{beat.title}</strong>
-                  <span className="hiq-journey-body">{beat.body}</span>
-                </Link>
+          <WorkflowShowcase />
+
+          <aside className={styles.firstStepCta} aria-labelledby="first-step-title">
+            <div>
+              <p className={styles.kicker}>TRY STEP ONE</p>
+              <h3 id="first-step-title">See your contractor website before you publish.</h3>
+            </div>
+            <div>
+              <p>
+                Enter your business name, trade, and service area. Review the generated pages and
+                Smart Intake, then publish when you are ready.
+              </p>
+              <div className={styles.firstStepActions}>
+                <a className={styles.primaryButton} href={APP_SIGNUP_URL}>
+                  Create my site preview <span aria-hidden="true">→</span>
+                </a>
+                <Link href="/pricing">See pricing and fees</Link>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section className={styles.controlSection} id="control" aria-labelledby="control-title">
+        <div className={styles.shell}>
+          <div className={styles.controlLayout}>
+            <div className={styles.controlCopy}>
+              <p className={styles.kickerLight}>YOU STAY IN CONTROL</p>
+              <h2 id="control-title">See what needs attention first. Keep every request.</h2>
+              <p>
+                Your intake rules shape the score and alerts. The Priority inbox surfaces new
+                requests, overdue follow-ups, and quotes awaiting action; lower-fit requests stay
+                on the board. You still review the scope and set the final price.
+              </p>
+              <Link className={styles.lightLink} href="/features/ai-intake">
+                See exactly what Smart Intake asks <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+            <dl className={styles.controlProof}>
+              <div>
+                <dt><span>01</span> Your rules</dt>
+                <dd>Set service area, minimum job size, excluded work, timing, and the high-value threshold.</dd>
+              </div>
+              <div>
+                <dt><span>02</span> Nothing discarded</dt>
+                <dd>A lower score changes the alert—not your access to the request.</dd>
+              </div>
+              <div>
+                <dt><span>03</span> Estimate, not quote</dt>
+                <dd>The homeowner sees a preliminary range. You decide the final scope and price.</dd>
+              </div>
+            </dl>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.fieldSection} id="field" aria-labelledby="field-title">
+        <div className={styles.shell}>
+          <div className={styles.sectionIntro}>
+            <p className={styles.kicker}>UPDATE ONCE · KEEP EVERYONE CURRENT</p>
+            <h2 id="field-title">Fast in the field. Clear for the homeowner.</h2>
+            <p>Text-to-Job keeps the job record current. The private portal keeps the homeowner informed.</p>
+          </div>
+
+          <div className={styles.fieldGrid}>
+            <article className={styles.fieldCard}>
+              <div className={styles.cardLabel}>
+                <span aria-hidden="true">↗</span> TEXT-TO-JOB WITH SPARKY · ILLUSTRATIVE
+              </div>
+              <h3>Update the job while you are still on site.</h3>
+              <p>
+                Text or send a voice memo, attach a photo, or draft an on-site change order. Sparky
+                matches the update to the right job and texts back what changed.
+              </p>
+              <figure className={styles.phoneDemo} aria-labelledby="phone-demo-caption">
+                <figcaption id="phone-demo-caption">Illustrative Text-to-Job conversation</figcaption>
+                <div className={styles.phoneTop}>
+                  <span>9:41</span>
+                  <strong>Sparky</strong>
+                  <span aria-hidden="true">•••</span>
+                </div>
+                <div className={styles.outgoingMessage}>
+                  Add a $350 change order to Taylor’s panel job. Extra conduit run.
+                  <span>▧ 1 photo</span>
+                </div>
+                <div className={styles.incomingMessage}>
+                  <span aria-hidden="true">✓</span>
+                  <p>
+                    Added a $350 change order to <strong>Panel upgrade + EV charger</strong>. The
+                    change-order approval is ready to send.
+                  </p>
+                </div>
+                <div className={styles.phoneComposer}>Message Sparky… <span aria-hidden="true">→</span></div>
+              </figure>
+              <ul className={styles.microList}>
+                <Check>Notes and photos filed with the job</Check>
+                <Check>Ambiguous customer matches confirmed first</Check>
+                <Check>Approved change orders carry into the updated invoice</Check>
+              </ul>
+              <Link className={styles.inlineLink} href="/features/text-to-job">
+                Explore Text-to-Job <span aria-hidden="true">→</span>
+              </Link>
+            </article>
+
+            <article className={styles.fieldCard}>
+              <div className={styles.cardLabel}>
+                <span aria-hidden="true">◎</span> HOMEOWNER PORTAL · ILLUSTRATIVE
+              </div>
+              <h3>One private link for the whole job.</h3>
+              <p>
+                The homeowner can review the signed quote, check the schedule, message you, and
+                pay—without an app or password.
+              </p>
+              <figure className={styles.portalDemo} aria-labelledby="portal-demo-caption">
+                <figcaption id="portal-demo-caption">Illustrative private homeowner portal</figcaption>
+                <div className={styles.portalBrand}>
+                  <strong>HARBOR ELECTRIC</strong>
+                  <span>Private project portal</span>
+                </div>
+                <div className={styles.portalTitle}>
+                  <small>PANEL UPGRADE + EV CHARGER</small>
+                  <strong>Everything is on schedule.</strong>
+                </div>
+                <ol className={styles.portalTimeline}>
+                  <li data-done="true"><span aria-hidden="true">✓</span> Quote approved</li>
+                  <li data-current="true"><span aria-hidden="true">●</span> Tue, Mar 11 · 9–11 AM</li>
+                  <li><span aria-hidden="true">○</span> Balance due after work</li>
+                </ol>
+                <div className={styles.portalActions}>
+                  <span>Message contractor</span>
+                  <span>View signed quote</span>
+                </div>
+              </figure>
+              <ul className={styles.microList}>
+                <Check>Replies work through ordinary SMS</Check>
+                <Check>Messages stay attached to the right job</Check>
+                <Check>Payments use the connected Stripe account</Check>
+              </ul>
+              <Link className={styles.inlineLink} href="/features/client-portal">
+                Explore the client portal <span aria-hidden="true">→</span>
+              </Link>
+            </article>
+          </div>
+          <p className={styles.fieldDisclosure}>
+            Fictional business, customer, messages, dates, and amounts. Illustrates product workflow,
+            not a customer result.
+          </p>
+        </div>
+      </section>
+
+      <section className={styles.marginSection} aria-labelledby="margin-title">
+        <div className={styles.shell}>
+          <div className={styles.marginCard}>
+            <div className={styles.marginCopy}>
+              <p className={styles.kickerLight}>CREW + JOB COSTING</p>
+              <h2 id="margin-title">See job margin before you invoice.</h2>
+              <p>
+                The assigned crew sees the address, scope, photos, and any customer contact details
+                you allow. Hours and materials logged from the field update the same job record—and
+                its margin.
+              </p>
+              <ul className={styles.darkCheckList}>
+                <Check>The job on the crew’s phone</Check>
+                <Check>Hours and materials logged on site</Check>
+                <Check>Margin visible to the owner before invoicing</Check>
+              </ul>
+              <Link className={styles.lightLink} href="/features/crew">
+                Explore crew and job costing <span aria-hidden="true">→</span>
+              </Link>
+            </div>
+
+            <aside className={styles.marginProof} aria-label="Illustrative job economics">
+              <div className={styles.marginProofHead}>
+                <div>
+                  <span>ILLUSTRATIVE JOB ECONOMICS</span>
+                  <strong>Panel upgrade + EV charger</strong>
+                </div>
+                <span>SAMPLE #2081</span>
+              </div>
+              <dl>
+                <div><dt>Approved job revenue</dt><dd>$8,950</dd></div>
+                <div><dt>Logged labor · Mike + Tanya · 13.5h</dt><dd>−$1,650</dd></div>
+                <div><dt>Logged materials</dt><dd>−$3,900</dd></div>
+                <div className={styles.marginTotal}><dt>Job margin before overhead</dt><dd>$3,400</dd></div>
+              </dl>
+              <p>Fictional job, crew names, and amounts. Illustrates job-costing math, not a customer result. Margin is approved job revenue minus logged labor and materials, before overhead.</p>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.automationSection} id="automations" aria-labelledby="automation-title">
+        <div className={styles.shell}>
+          <div className={styles.sectionIntro}>
+            <p className={styles.kicker}>BEFORE, DURING, AND AFTER THE JOB</p>
+            <h2 id="automation-title">Let routine follow-up happen on time.</h2>
+            <p>Choose the reminders you want. Each one uses the quote, appointment, or customer record already in LGQ.</p>
+          </div>
+          <ol className={styles.automationRail}>
+            {AUTOMATIONS.map((item) => (
+              <li key={item.number}>
+                <span>{item.number}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
               </li>
             ))}
           </ol>
         </div>
       </section>
 
-      {/* ------------------------------------------------------------------
-          OPPORTUNITIES — three tickets, three different reasons.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-opps" id="opportunities" aria-labelledby="hiq-opps-title">
-        <div className="hiq-shell">
-          <div className="hiq-split">
-            <div>
-              <p className="hiq-eyebrow hiq-eyebrow-dark">Worth your attention</p>
-              <h2 id="hiq-opps-title">Three reasons a job deserves a look.</h2>
+      <section className={styles.completionSection} aria-labelledby="completion-title">
+        <div className={styles.shell}>
+          <div className={styles.completionLayout}>
+            <div className={styles.completionCopy}>
+              <p className={styles.kicker}>THE ILLUSTRATIVE JOB · COMPLETE AND PAID</p>
+              <h2 id="completion-title">The same request becomes a quoted, scheduled, paid job.</h2>
+              <p>
+                After payment, the signed quote, invoice, messages, and receipt remain together in
+                the customer history—ready when the customer books again.
+              </p>
+              <ol className={styles.jobTimeline}>
+                <li>
+                  <span>MAR 03</span>
+                  <div><strong>Request reviewed</strong><small>Scope, photos, timing, service-area fit, and preliminary range captured</small></div>
+                </li>
+                <li>
+                  <span>MAR 04</span>
+                  <div><strong>Quote signed + deposit paid</strong><small>Final scope and price approved with a typed signature</small></div>
+                </li>
+                <li>
+                  <span>MAR 11</span>
+                  <div><strong>Work completed</strong><small>$350 extra-conduit change approved; completion triggers the review request</small></div>
+                </li>
+                <li>
+                  <span>MAR 12</span>
+                  <div><strong>Final balance paid</strong><small>Payment reached the connected Stripe account and the receipt was sent</small></div>
+                </li>
+              </ol>
             </div>
-            <p>
-              A valuable new lead, a paid Quick Stop near your route, or a quote worth following
-              up—ranked by what can move your business today.
-            </p>
-          </div>
 
-          <OpportunityCards />
-
-          <p className="hiq-example">Example opportunities · values and customers are illustrative</p>
-        </div>
-      </section>
-
-      {/* ------------------------------------------------------------------
-          THE TEXT — one screen, one decision.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-text" id="text-alerts" aria-labelledby="hiq-text-title">
-        <div className="hiq-shell hiq-text-layout">
-          <TextAlertDemo />
-
-          <div className="hiq-text-copy">
-            <p className="hiq-eyebrow hiq-eyebrow-dark">A quiet interruption</p>
-            <h2 id="hiq-text-title">The right job. One quick decision.</h2>
-            <p className="hiq-text-lede">
-              Respond now—or save it for later and keep working.
-            </p>
-            <dl>
-              {ALERT_NOTES.map((note) => (
-                <div key={note.term}>
-                  <dt>{note.term}</dt>
-                  <dd>{note.detail}</dd>
+            <div className={styles.paidReceiptWrap}>
+              <article className={styles.paidReceipt} aria-label="Illustrative paid job summary">
+                <div className={styles.paidReceiptTop}>
+                  <span>ILLUSTRATIVE JOB SUMMARY</span>
+                  <span>SAMPLE #2081</span>
                 </div>
-              ))}
-            </dl>
-            <Link className="hiq-inlinelink" href="/features/client-portal">
-              See texts and the client portal <span aria-hidden="true">→</span>
-            </Link>
+                <small>FICTIONAL BUSINESS · HARBOR ELECTRIC</small>
+                <h3>Panel upgrade + EV charger</h3>
+                <dl>
+                  <div><dt>Quote signed</dt><dd>✓ MAR 04</dd></div>
+                  <div><dt>Deposit paid</dt><dd>✓ MAR 04</dd></div>
+                  <div><dt>Work complete</dt><dd>✓ MAR 11</dd></div>
+                  <div><dt>Final balance</dt><dd>✓ PAID MAR 12</dd></div>
+                </dl>
+                <div className={styles.paidTotal}>
+                  <span>Total collected</span>
+                  <strong>$8,950</strong>
+                </div>
+                <span className={styles.paidStamp}>PAID</span>
+              </article>
+              <p className={styles.sampleDisclosure}>
+                Fictional business, job, dates, settings, and amounts. Illustrates product workflow,
+                not a customer result.
+              </p>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ------------------------------------------------------------------
-          THE BRIDGE.
-
-          Without this section the page reads as a ranking tool. The job a
-          contractor accepts here is the same record that gets quoted, booked,
-          worked, paid and reviewed — said once, in five short stages, with the
-          detail left on /features where it belongs.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-bridge" id="back-office" aria-labelledby="hiq-bridge-title">
-        <div className="hiq-shell">
-          <div className="hiq-split hiq-split-bridge">
+      <section className={styles.relatedSection} aria-labelledby="related-title">
+        <div className={styles.shell}>
+          <div className={styles.relatedIntro}>
             <div>
-              <p className="hiq-eyebrow">The alert is only the beginning</p>
-              <h2 id="hiq-bridge-title">
-                You choose the job. Let’s Get Quoted carries it the rest of the way.
-              </h2>
+              <p className={styles.kickerLight}>BEYOND THE FIRST JOB</p>
+              <h2 id="related-title">Keep more work connected.</h2>
             </div>
-            <p>
-              Once you respond, the same request becomes the quote, schedule, crew plan, customer
-              conversation, payment and review—without rebuilding the record.
-            </p>
+            <p>Use the same customer and job history for priority visits, recurring work, reviews, and financial reporting.</p>
           </div>
-
-          <div className="hiq-bridge-grid">
-            <div className="hiq-bridge-card">
-              <span className="hiq-bridge-num">01</span>
-              <h3>Instant Estimator</h3>
-              <p>Intake turns homeowner project scope into real contractor trade estimates.</p>
-            </div>
-            <div className="hiq-bridge-card">
-              <span className="hiq-bridge-num">02</span>
-              <h3>Intelligent Priority</h3>
-              <p>Lead scoring prioritizes trade fit, route proximity, and hot readiness.</p>
-            </div>
-            <div className="hiq-bridge-card">
-              <span className="hiq-bridge-num">03</span>
-              <h3>1-Tap Conversion</h3>
-              <p>Turn incoming leads into itemized quotes with deposit collection and e-sign.</p>
-            </div>
-            <div className="hiq-bridge-card">
-              <span className="hiq-bridge-num">04</span>
-              <h3>Seamless Payout</h3>
-              <p>Schedule dispatch, message clients via portal, and collect balance via Stripe.</p>
-            </div>
-          </div>
-
-          <div className="hiq-actions hiq-bridge-actions">
-            <Link className="hiq-button" href="/features/back-office">
-              Explore the connected back office <span aria-hidden="true">→</span>
-            </Link>
-            <Link className="hiq-textlink" href="/features">
-              See every feature
-            </Link>
+          <div className={styles.relatedGrid}>
+            {RELATED_FEATURES.map((feature) => (
+              <article key={feature.eyebrow}>
+                <span>{feature.eyebrow}</span>
+                <h3>{feature.title}</h3>
+                <p>{feature.body}</p>
+                <Link href={feature.href}>{feature.cta} <span aria-hidden="true">→</span></Link>
+              </article>
+            ))}
           </div>
         </div>
       </section>
 
-      {/* ------------------------------------------------------------------
-          WHY IT SURFACED — the receipt, second time, as an explanation.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-why" aria-labelledby="hiq-why-title">
-        <div className="hiq-why-copy">
-          <p className="hiq-eyebrow">Before we text you</p>
-          <h2 id="hiq-why-title">It doesn’t just say “new lead.”</h2>
-          <p>
-            You see why the job surfaced—its estimated value, lead score, distance and timeline—so
-            you can make the call without digging through another form.
-          </p>
-          {/* The section shows the OUTPUT of the ranking. This is the way to
-              the page that explains how each of those four lines is decided. */}
-          <Link className="hiq-inlinelink hiq-inlinelink-light" href="/features/ai-intake">
-            See how AI Smart Intake scores a request <span aria-hidden="true">→</span>
-          </Link>
-        </div>
-
-        <Receipt
-          className="hiq-receipt-why"
-          label="Why this request was ranked first"
-          title="Why this job surfaced"
-          id="LEAD #2081"
-          rows={WHY_ROWS}
-          stamp="WORTH A LOOK"
-        />
-      </section>
-
-      {/* ------------------------------------------------------------------
-          THE ASK.
-          ------------------------------------------------------------------ */}
-      <section className="hiq-final" aria-labelledby="hiq-final-title">
-        <div className="hiq-shell hiq-final-layout">
-          <div>
-            <p className="hiq-eyebrow">Know what deserves your attention</p>
-            <h2 id="hiq-final-title">
-              The right job. The right moment. <em>One quick decision.</em>
-            </h2>
-            <div className="hiq-actions">
-              <a className="hiq-button" href={APP_SIGNUP_URL}>
-                Start free <span aria-hidden="true">→</span>
-              </a>
-              <Link className="hiq-textlink" href={DEMO_URL}>
-                Explore the demo
-              </Link>
+      <section className={styles.faqSection} id="faq" aria-labelledby="faq-title">
+        <div className={styles.shell}>
+          <div className={styles.faqLayout}>
+            <div className={styles.faqIntro}>
+              <p className={styles.kicker}>STRAIGHT ANSWERS</p>
+              <h2 id="faq-title">What contractors want to know before getting started.</h2>
+              <p>Lead ownership, estimates, crews, payments, imports, and fees—plainly explained.</p>
             </div>
-            <p className="hiq-reassurance">Flex includes a website · $0/month + 1.25%</p>
-          </div>
-
-          <div className="hiq-final-receipt">
-            <Receipt
-              className="hiq-receipt-paid"
-              label="The same example job, paid"
-              title="Panel upgrade + EV charger"
-              id="JOB #1048"
-              rows={PAID_ROWS}
-              stamp="PAID"
-              total="$8,600"
-            />
-            <p className="hiq-example">The same example request, eight days later</p>
+            <div className={styles.faqList}>
+              {FAQS.map((faq, index) => (
+                <details key={faq.question} open={index === 0}>
+                  <summary>
+                    <span>{faq.question}</span>
+                    <span aria-hidden="true">+</span>
+                  </summary>
+                  <p>{faq.answer}</p>
+                </details>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      <SiteFooter />
-    </main>
+      <section className={styles.finalCta} aria-labelledby="final-title">
+        <div className={styles.shell}>
+          <div className={styles.finalLayout}>
+            <div>
+              <p className={styles.kickerLight}>BUILD YOUR WEBSITE FREE</p>
+              <h2 id="final-title">Start with the website. Run the next job in one place.</h2>
+            </div>
+            <div>
+              <p>
+                Build your contractor website, set your intake rules, and keep the work connected
+                from first request through final payment.
+              </p>
+              <div className={styles.finalActions}>
+                <a className={styles.primaryButton} href={APP_SIGNUP_URL}>
+                  Build my free website <span aria-hidden="true">→</span>
+                </a>
+                <Link className={styles.lightLink} href={DEMO_URL}>Explore the live demo</Link>
+              </div>
+              <small>{PUBLIC_PRICING_SUMMARY} Stripe processing and payment-infrastructure costs are separate.</small>
+            </div>
+          </div>
+        </div>
+      </section>
+      </main>
+
+      <div className={flagshipStyles.root}>
+        <SiteFooter />
+      </div>
+    </div>
   );
 }

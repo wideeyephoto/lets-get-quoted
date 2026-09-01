@@ -249,6 +249,31 @@ export function checkAutoRefillTrigger(params: {
   };
 }
 
+/**
+ * Enforces the contractor's explicit monthly spend cap circuit breaker.
+ * If spend this month reaches or exceeds the cap, bidding is automatically paused.
+ */
+export function enforceMonthlySpendHardCap(params: {
+  spentThisMonthDollars: number;
+  maxMonthlySpendDollars: number;
+}): {
+  isHardCapReached: boolean;
+  remainingAllowanceDollars: number;
+  reason?: string;
+} {
+  const { spentThisMonthDollars, maxMonthlySpendDollars } = params;
+  const remainingAllowanceDollars = Math.max(0, maxMonthlySpendDollars - spentThisMonthDollars);
+  const isHardCapReached = spentThisMonthDollars >= maxMonthlySpendDollars;
+
+  return {
+    isHardCapReached,
+    remainingAllowanceDollars,
+    reason: isHardCapReached
+      ? `Monthly ad spend hard-cap of $${maxMonthlySpendDollars.toFixed(2)} has been reached ($${spentThisMonthDollars.toFixed(2)} spent this month). Campaign bidding paused.`
+      : undefined,
+  };
+}
+
 export type TradeBiddingProfile = {
   trade: string;
   targetCpaDollars: number;

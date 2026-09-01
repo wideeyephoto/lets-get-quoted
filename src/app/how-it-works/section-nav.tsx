@@ -1,23 +1,20 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+
+import styles from './how-it-works.module.css';
 
 /**
- * THE PAGE'S OWN THREE STOPS.
- *
- * The site header is the site's navigation and it stays exactly as it is on
- * every other marketing page. This is the page's, and it carries the three
- * anchors the brief names — Opportunities, Text alerts, What happens next —
- * so the header never has to grow a second, page-specific set of links.
- *
- * Anchors, so it works with the script off; the only thing the script adds is
- * which one you are currently reading.
+ * Page-level anchors keep the full workflow easy to scan without adding more
+ * links to the shared marketing header. The anchors work without JavaScript;
+ * the observer only highlights and centers the section currently being read.
  */
 
 export type NavSection = { id: string; label: string };
 
 export default function SectionNav({ sections }: { sections: NavSection[] }) {
   const [active, setActive] = useState<string | null>(null);
+  const linkRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
 
   useEffect(() => {
     const nodes = sections
@@ -41,12 +38,28 @@ export default function SectionNav({ sections }: { sections: NavSection[] }) {
     return () => io.disconnect();
   }, [sections]);
 
+  useEffect(() => {
+    if (!active) return;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    linkRefs.current[active]?.scrollIntoView({
+      behavior: reduceMotion ? 'auto' : 'smooth',
+      block: 'nearest',
+      inline: 'center',
+    });
+  }, [active]);
+
   return (
-    <nav className="hiq-nav" aria-label="On this page">
+    <nav className={styles.sectionNav} aria-label="On this page">
       <ol>
         {sections.map((section) => (
           <li key={section.id}>
-            <a href={`#${section.id}`} aria-current={section.id === active ? 'true' : undefined}>
+            <a
+              ref={(node) => {
+                linkRefs.current[section.id] = node;
+              }}
+              href={`#${section.id}`}
+              aria-current={section.id === active ? 'location' : undefined}
+            >
               {section.label}
             </a>
           </li>
