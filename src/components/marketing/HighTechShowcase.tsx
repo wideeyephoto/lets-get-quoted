@@ -11,20 +11,9 @@ type SparkyFeature = {
   tabIcon: string;
   tabLabel: string;
   tabBadge: string;
-  tabSummary: string;
-  badgeStyle: string;
-  cardStyle: string;
   eyebrow: string;
   title: string;
   blurb: string;
-  bullets: string[];
-  testimonial: {
-    quote: string;
-    author: string;
-    tradeLocation: string;
-    avatar: string;
-    verifiedProof: string;
-  };
   primaryCtaText: string;
   primaryHref: string;
   secondaryCtaText: string;
@@ -35,29 +24,12 @@ const SPARKY_FEATURES: SparkyFeature[] = [
   {
     id: 'texts',
     tabIcon: '💬',
-    tabLabel: 'Texts & Inbound SMS',
+    tabLabel: 'SMS & Text-to-Job',
     tabBadge: 'No App Needed',
-    tabSummary: 'Run change orders & quotes straight via text',
-    badgeStyle: styles.badgeCyan,
-    cardStyle: styles.testimonialMicroCardCyan,
-    eyebrow: 'TEXT-TO-JOB™ WITH YOUR AI COPILOT · RUN YOUR DAY VIA SMS',
+    eyebrow: 'TEXT-TO-JOB™ WITH YOUR AI COPILOT',
     title: 'Text your AI Copilot change orders, quote tweaks & reminders.',
     blurb:
-      'You don’t even need to open an app. Text your AI Copilot from Apple iMessage or Android Messages—it calculates line items, updates customer invoices, matches active job files, and texts back instant confirmation.',
-    bullets: [
-      'Zero app fatigue — execute entire jobs through native SMS & iMessage',
-      'Zero Destructive Guesses — verifies ambiguous customer names with safety checks',
-      'Texted reminders auto-schedule push alerts and dashboard tasks (e.g. "Remind me at 7:30 AM")',
-      'Automatic client portal sync with no late-night desk paperwork',
-    ],
-    testimonial: {
-      quote:
-        '“I haven’t opened a laptop to write a change order in 6 months. I just text my AI Copilot from the top of the ladder and the customer gets an updated invoice in 10 seconds.”',
-      author: 'Dave M.',
-      tradeLocation: 'Master Electrician · Detroit, MI',
-      avatar: '⚡',
-      verifiedProof: '✓ Verified Master Electrician · 480+ SMS Jobs Synced',
-    },
+      'Text your AI Copilot from Apple iMessage or Android Messages—it calculates line items, updates customer invoices, matches active job files, and texts back instant confirmation.',
     primaryCtaText: 'Meet Your AI Copilot & Text-to-Job',
     primaryHref: '/features/sparky',
     secondaryCtaText: 'Explore Text-to-Job Docs →',
@@ -66,95 +38,44 @@ const SPARKY_FEATURES: SparkyFeature[] = [
   {
     id: 'images',
     tabIcon: '📸',
-    tabLabel: 'Images & Photo Scope',
+    tabLabel: 'Photo & OCR Scope',
     tabBadge: 'Computer Vision',
-    tabSummary: 'Auto-detect damage & read equipment serial OCR',
-    badgeStyle: styles.badgePurple,
-    cardStyle: styles.testimonialMicroCardPurple,
-    eyebrow: 'MULTIMODAL PHOTO SCOPE · COMPUTER VISION & OCR',
+    eyebrow: 'MULTIMODAL PHOTO SCOPE & OCR',
     title: 'Text job photos & receipts—your AI Copilot extracts OCR & files them.',
     blurb:
-      'Snap a photo of equipment rating plates, subfloor rot, or supply house receipts and text it to your AI Copilot. Computer Vision reads model/serial numbers via OCR, assesses damage dimensions, and files photos to the right job.',
-    bullets: [
-      'Automated equipment rating plate OCR (model, serial, BTU, tonnage)',
-      'Pre-visit damage detection (dry rot, non-compliant wiring, pipe corrosion)',
-      'Instant material pick-lists and trade-specific labor estimations',
-      'Texted photos auto-attach to the active customer folder without manual uploads',
-    ],
-    testimonial: {
-      quote:
-        '“I snapped a photo of a rusted 1998 boiler plate in a dark basement. My Copilot read the serial number via OCR, matched the 80k BTU specs, and drafted the quote before I got back to my van.”',
-      author: 'Marcus R.',
-      tradeLocation: 'HVAC & Hydronics Pro · Dallas, TX',
-      avatar: '❄️',
-      verifiedProof: '✓ Verified HVAC Contractor · 1,200+ Photos Filed',
-    },
+      'Snap a photo of equipment rating plates, subfloor rot, or supply house receipts and text it to your AI Copilot. Computer Vision reads model/serial numbers via OCR and files photos automatically.',
     primaryCtaText: 'Explore AI Vision Estimator',
     primaryHref: '/features/ai-vision',
     secondaryCtaText: 'Test Photo Sandbox →',
     secondaryHref: '/features/ai-intake#sandbox',
   },
   {
-    id: 'videos',
-    tabIcon: '🎥',
-    tabLabel: 'Videos & Reel Studio',
-    tabBadge: 'Video Engine',
-    tabSummary: 'Walkthrough scope analysis & website video sections',
-    badgeStyle: styles.badgeAmber,
-    cardStyle: styles.testimonialMicroCardAmber,
-    eyebrow: 'MULTIMODAL VIDEO STUDIO & WALKTHROUGH SCOPE',
-    title: 'Process video site walkthroughs & publish high-speed reels.',
-    blurb:
-      'Send a video walkthrough of a job site for automated scope notes, or upload your footage for your contractor website. Your AI Copilot verifies video codecs, checks file sizes, and generates trade video sections.',
-    bullets: [
-      'Site walkthrough video analysis for comprehensive job scope notes',
-      '6 toggleable video website layouts (hero loops, project stories, testimonial reels)',
-      'Automated codec & size verification (warns for HEVC or oversized files)',
-      'Rich video schema JSON-LD for Google search video rich-results',
-    ],
-    testimonial: {
-      quote:
-        '“I take a 45-second phone video walking through the job site. My AI Copilot turns it into itemized line items, and our website hero video reel brought in 6 new high-ticket remodels last month alone.”',
-      author: 'Sarah T.',
-      tradeLocation: 'Design-Build Contractor · Seattle, WA',
-      avatar: '🪵',
-      verifiedProof: '✓ Verified Custom Remodeler · 85 Video Reels Published',
-    },
-    primaryCtaText: 'Explore Website Video Studio',
-    primaryHref: '/features/website-builder#video-studio',
-    secondaryCtaText: 'View All Features →',
-    secondaryHref: '/features',
-  },
-  {
     id: 'voice',
     tabIcon: '🎙️',
     tabLabel: 'Voice & Driveway Brain Dump',
     tabBadge: 'Speech-to-Quote',
-    tabSummary: 'Walk-up voice brain dump to send-ready quotes',
-    badgeStyle: styles.badgeEmerald,
-    cardStyle: styles.testimonialMicroCardEmerald,
-    eyebrow: 'WALK-UP ESTIMATE BRAIN DUMP & HANDS-FREE VOICE',
+    eyebrow: 'WALK-UP ESTIMATE BRAIN DUMP',
     title: 'Speak your raw thoughts—your AI Copilot builds the quote.',
     blurb:
-      'Walk up to a job site, tap Create Quote, and just talk. Tell your AI Copilot the measurements, materials, and labor—it calculates quantities, structures line items, and gives you a send-ready quote before you leave the driveway.',
-    bullets: [
-      'Walk-up driveway brain dump turned into professional itemized quotes',
-      'Hands-free steering wheel dictation with Apple Siri & Google Assistant shortcuts',
-      'Gemini Multimodal noise cancellation filtering diesel trucks & job site tools',
-      '24/7 AI Voice phone receptionist answering calls in 2 rings with audio transcripts',
-    ],
-    testimonial: {
-      quote:
-        '“I talk through measurements and labor while walking down the customer’s driveway. By the time I put the key in the ignition, the customer has a branded PDF quote with instant financing options.”',
-      author: 'Brett K.',
-      tradeLocation: 'Hardscaping & Masonry · Orlando, FL',
-      avatar: '🧱',
-      verifiedProof: '✓ Verified Hardscaper · $420k+ Quoted from Driveway',
-    },
+      'Walk up to a job site, tap Create Quote, and just talk. Tell your AI Copilot the measurements, materials, and labor—it calculates quantities and structures line items before you leave the driveway.',
     primaryCtaText: 'Explore Voice & Smart Intake',
     primaryHref: '/features/ai-voice',
     secondaryCtaText: 'Try Voice in Demo →',
     secondaryHref: '/demo',
+  },
+  {
+    id: 'videos',
+    tabIcon: '🎬',
+    tabLabel: 'Video Walkthroughs',
+    tabBadge: 'Video Engine',
+    eyebrow: 'MULTIMODAL VIDEO STUDIO',
+    title: 'Process video site walkthroughs & publish high-speed reels.',
+    blurb:
+      'Send a video walkthrough of a job site for automated scope notes, or upload your footage for your contractor website with verified video codecs and Google rich results.',
+    primaryCtaText: 'Explore Website Video Studio',
+    primaryHref: '/features/website-builder#video-studio',
+    secondaryCtaText: 'View All Features →',
+    secondaryHref: '/features',
   },
 ];
 
@@ -169,18 +90,18 @@ const TRADES_PRESETS = [
 ];
 
 const LIVE_TICKER_ITEMS = [
-  '🟢 Royal Oak, MI · Electrician texted panel photo → AI Copilot extracted Zinsco 100A OCR (14s ago)',
-  '🟢 Austin, TX · Roofer dictated quote via Siri while driving → $4,200 quote sent (38s ago)',
-  '🟢 Scottsdale, AZ · Plumber captured Quick Stop detour → $149 pre-paid via Stripe (1m ago)',
-  '🟢 Denver, CO · HVAC contractor walk-up brain dump → 3-ton heat pump quote ready (2m ago)',
-  '🟢 Charlotte, NC · Carpenter texted supply receipt → $240 lumber auto-reconciled (3m ago)',
-  '🟢 Seattle, WA · Remodeler uploaded walkthrough video → 4 scope line items drafted (4m ago)',
+  'Royal Oak, MI · Electrician texted panel photo → AI Copilot extracted Zinsco 100A OCR',
+  'Austin, TX · Roofer dictated quote via Siri while driving → $4,200 quote sent',
+  'Scottsdale, AZ · Plumber captured Quick Stop detour → $149 pre-paid via Stripe',
+  'Denver, CO · HVAC contractor walk-up brain dump → 3-ton heat pump quote ready',
+  'Charlotte, NC · Carpenter texted supply receipt → $240 lumber auto-reconciled',
+  'Seattle, WA · Remodeler uploaded walkthrough video → 4 scope line items drafted',
 ];
 
 const TEXT_SCENARIOS = [
   {
     id: 'change-order-text',
-    label: '💬 Text: +$450 Gutter Guards',
+    label: '💬 +$450 Gutter Guards',
     userText: 'Add $450 for aluminum gutter guards to Miller\'s quote',
     userTimestamp: '10:14 AM · Sent from iPhone',
     sparkyReply: 'Done! Added $450 for Aluminum Gutter Guards to Quote #1048 for Miller. New quote total: $3,250. Client portal updated.',
@@ -192,7 +113,7 @@ const TEXT_SCENARIOS = [
   },
   {
     id: 'reminder-text',
-    label: '⏰ Text: Remind Me at 7:30 AM',
+    label: '⏰ Remind Me at 7:30 AM',
     userText: 'Remind me tomorrow at 7:30 AM to send a quote for 2 sheets of 3/4 plywood for 142 Elm St',
     userTimestamp: '2:45 PM · Sent from Truck',
     sparkyReply: 'Reminder scheduled for tomorrow at 7:30 AM: "Send quote for 2 sheets 3/4 plywood for 142 Elm St". Logged to Job #1039.',
@@ -204,7 +125,7 @@ const TEXT_SCENARIOS = [
   },
   {
     id: 'reschedule-text',
-    label: '🔄 Text: Reschedule to Friday',
+    label: '🔄 Reschedule to Friday',
     userText: 'Reschedule Jenkins to Friday at 9am, crew needs 4 hours',
     userTimestamp: '4:12 PM · Sent via Siri',
     sparkyReply: 'Moved Job #1052 (Sarah Jenkins) to Friday, 9:00 AM – 1:00 PM. Crew calendar updated and on-my-way alert queued.',
@@ -342,8 +263,6 @@ export default function HighTechShowcase() {
   const [activeVoiceScenario, setActiveVoiceScenario] = useState(0);
   const [activeVisionLayer, setActiveVisionLayer] = useState<'ocr' | 'heatmap' | 'picklist'>('ocr');
   const [sliderPos, setSliderPos] = useState(52);
-
-  // Live Ticker State
   const [tickerIndex, setTickerIndex] = useState(0);
 
   // Custom User Input Chat Sandbox State
@@ -416,11 +335,11 @@ export default function HighTechShowcase() {
     }
   };
 
-  // Rotate Live Activity Ticker every 4.5 seconds
+  // Rotate Live Activity Ticker smoothly in background
   useEffect(() => {
     const timer = setInterval(() => {
       setTickerIndex((prev) => (prev + 1) % LIVE_TICKER_ITEMS.length);
-    }, 4500);
+    }, 5000);
     return () => clearInterval(timer);
   }, []);
 
@@ -476,7 +395,7 @@ export default function HighTechShowcase() {
         diffTitle,
         diffAmount,
       });
-    }, 750);
+    }, 600);
   };
 
   const handleTradeFilterKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, index: number) => {
@@ -529,28 +448,26 @@ export default function HighTechShowcase() {
       <div className={`${styles.ambientGlow} ${styles.ambientBottom}`} aria-hidden="true" />
 
       <div className={styles.container}>
-        {/* Header */}
+        {/* Streamlined, Punchy Header */}
         <header className={styles.showcaseHeader}>
-          <div className={styles.badgeRow}>
-            <span className={styles.badgeSpark}>
-              <span className={styles.sparkIcon}>⚡</span> NEXT-GEN AI ARCHITECTURE
-            </span>
-            <span className={styles.badgeSub}>2026 Live Multi-Modal Engine</span>
+          <div className={styles.eyebrowPill}>
+            <span className={styles.sparkIcon} aria-hidden="true">✦</span>
+            <span>24/7 AI CONTRACTOR COPILOT</span>
           </div>
 
           <h2 className={styles.mainTitle} id="showcase-heading">
             Run your contracting business from your truck.<br />
-            <em>No laptops. No typing. Just text, photo &amp; voice.</em>
+            <em className={styles.gradientEmphasis}>No laptops. No typing. Just text, photo &amp; voice.</em>
           </h2>
 
           <p className={styles.mainSubtitle}>
-            You don’t even need to open an app. Meet your <strong>AI Copilot</strong>—the multimodal AI contractor sidekick that processes text messages, job site photos, video walkthroughs, and driveway voice notes directly into your live job files.
+            You don’t even need to open an app. Text change orders, snap equipment photos, or speak voice notes on the job. Your AI Copilot updates quotes, schedules crew, and files records in real time.
           </p>
 
-          {/* LIVE ACTIVITY PULSE TICKER */}
+          {/* Clean live status ticker */}
           <div className={styles.liveTickerBar} role="status" aria-live="polite">
             <span className={styles.liveTickerPulseDot} aria-hidden="true" />
-            <span className={styles.liveTickerLabel}>LIVE FIELD PULSE:</span>
+            <span className={styles.liveTickerLabel}>LIVE FIELD SYNC:</span>
             <span className={styles.liveTickerText}>{LIVE_TICKER_ITEMS[tickerIndex]}</span>
           </div>
 
@@ -578,7 +495,7 @@ export default function HighTechShowcase() {
           </div>
         </header>
 
-        {/* 4 Multimodal Tabs */}
+        {/* Clean Segmented Mode Tabs */}
         <div className={styles.tabList} role="tablist" aria-label="Sparky Multimodal AI Showcase">
           {SPARKY_FEATURES.map((feature, idx) => {
             const isActive = feature.id === activeTab;
@@ -595,20 +512,14 @@ export default function HighTechShowcase() {
                 onClick={() => setActiveTab(feature.id)}
                 onKeyDown={(e) => handleKeyDown(e, idx)}
               >
-                <div className={styles.tabTopRow}>
-                  <span className={styles.tabIcon} aria-hidden="true">
-                    {feature.tabIcon}
-                  </span>
-                  <span className={styles.tabBadge}>{feature.tabBadge}</span>
-                </div>
-                <p className={styles.tabLabel}>{feature.tabLabel}</p>
-                <p className={styles.tabSummary}>{feature.tabSummary}</p>
+                <span className={styles.tabIcon} aria-hidden="true">{feature.tabIcon}</span>
+                <span className={styles.tabLabel}>{feature.tabLabel}</span>
               </button>
             );
           })}
         </div>
 
-        {/* Main Showcase Stage with Mouse Tracking Spotlight */}
+        {/* Main Showcase Stage with Centerpiece Simulator */}
         <div
           ref={stageRef}
           onMouseMove={handleMouseMove}
@@ -617,56 +528,16 @@ export default function HighTechShowcase() {
           role="tabpanel"
           aria-labelledby={`sparky-tab-${currentFeature.id}`}
         >
+          {/* Active Mode Summary Strip */}
+          <div className={styles.modeSummaryBar}>
+            <span className={styles.modeEyebrow}>
+              <span>⚡</span> {currentFeature.eyebrow}
+            </span>
+            <p className={styles.modeBlurb}>{currentFeature.blurb}</p>
+          </div>
+
           <div className={styles.stageGrid}>
-            {/* Left Column: Feature Description, Capabilities & Authentic Field Testimonial */}
-            <div className={styles.featureInfo}>
-              <span className={`${styles.badgePill} ${currentFeature.badgeStyle}`}>
-                <span>⚡</span> {currentFeature.eyebrow}
-              </span>
-              <h3 className={styles.featureTitle}>{currentFeature.title}</h3>
-              <p className={styles.featureBlurb}>{currentFeature.blurb}</p>
-
-              <ul className={styles.bulletList} aria-label={`${currentFeature.tabLabel} Capabilities`}>
-                {currentFeature.bullets.map((bullet) => (
-                  <li key={bullet} className={styles.bulletItem}>
-                    <span className={styles.bulletIcon} aria-hidden="true">
-                      ✓
-                    </span>
-                    <span>{bullet}</span>
-                  </li>
-                ))}
-              </ul>
-
-              {/* AUTHENTIC FIELD TESTIMONIAL MICRO-CARD */}
-              <aside className={`${styles.testimonialMicroCard} ${currentFeature.cardStyle}`} aria-label="Contractor field review">
-                <p className={styles.testimonialQuote}>{currentFeature.testimonial.quote}</p>
-                <div className={styles.testimonialAuthorRow}>
-                  <div className={styles.testimonialAuthorInfo}>
-                    <span className={styles.testimonialAvatar} aria-hidden="true">
-                      {currentFeature.testimonial.avatar}
-                    </span>
-                    <div>
-                      <span className={styles.testimonialName}>{currentFeature.testimonial.author}</span> ·{' '}
-                      <span className={styles.testimonialTrade}>{currentFeature.testimonial.tradeLocation}</span>
-                    </div>
-                  </div>
-                  <span className={styles.testimonialVerifiedPill}>
-                    {currentFeature.testimonial.verifiedProof}
-                  </span>
-                </div>
-              </aside>
-
-              <div className={styles.actionRow}>
-                <Link className={styles.primaryLink} href={currentFeature.primaryHref}>
-                  {currentFeature.primaryCtaText} <span aria-hidden="true">→</span>
-                </Link>
-                <Link className={styles.secondaryLink} href={currentFeature.secondaryHref}>
-                  {currentFeature.secondaryCtaText}
-                </Link>
-              </div>
-            </div>
-
-            {/* Right Column: Live Interactive Hardware & Software Simulators */}
+            {/* Centerpiece: Live Interactive Multimodal Simulator */}
             <div className={styles.interactiveCanvas}>
               <div className={styles.canvasHeader}>
                 <div className={styles.windowDots} aria-hidden="true">
@@ -860,7 +731,7 @@ export default function HighTechShowcase() {
                       >
                         <div className={styles.laserScanLine} aria-hidden="true" />
 
-                        {/* Raw Unaltered Photo Side (Background) */}
+                        {/* Raw Unaltered Photo Side */}
                         <div className={styles.rawSide}>
                           <img
                             src={IMAGE_SCENARIOS[activeImageScenario]?.imageSrc}
@@ -869,9 +740,7 @@ export default function HighTechShowcase() {
                             draggable={false}
                           />
                           <div className={styles.rawSideOverlay}>
-                            <span className={styles.rawPhotoBadge}>
-                              📷 RAW TEXTED PHOTO
-                            </span>
+                            <span className={styles.rawPhotoBadge}>📷 RAW TEXTED PHOTO</span>
                             <b className={styles.rawPhotoTitle}>
                               {IMAGE_SCENARIOS[activeImageScenario]?.imageFile}
                             </b>
@@ -879,7 +748,7 @@ export default function HighTechShowcase() {
                           </div>
                         </div>
 
-                        {/* AI Vision Layer (Clipped by slider position) */}
+                        {/* AI Vision Layer */}
                         <div
                           className={styles.arSide}
                           style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
@@ -915,7 +784,7 @@ export default function HighTechShowcase() {
                           </div>
                         </div>
 
-                        {/* Draggable Divider Line & Knob Handle */}
+                        {/* Divider Knob */}
                         <div
                           className={styles.sliderDivider}
                           style={{ left: `${sliderPos}%` }}
@@ -1064,14 +933,17 @@ export default function HighTechShowcase() {
                 </>
               )}
 
-              {/* SIMULATOR 4: VOICE (18-BAR EQUALIZER & DRIVEWAY-TO-QUOTE CONVERTER) */}
+              {/* SIMULATOR 4: VOICE (EQUALIZER & DRIVEWAY-TO-QUOTE CONVERTER) */}
               {activeTab === 'voice' && (
                 <>
-                  <div className={styles.canvasScenarioBar} role="group" aria-label="Select Voice Scenario">
+                  <div className={styles.canvasScenarioBar} role="radiogroup" aria-label="Select Voice Scenario">
                     {VOICE_SCENARIOS.map((sc, idx) => (
                       <button
                         key={sc.id}
                         type="button"
+                        role="radio"
+                        aria-checked={activeVoiceScenario === idx}
+                        tabIndex={activeVoiceScenario === idx ? 0 : -1}
                         className={`${styles.scenarioChip} ${activeVoiceScenario === idx ? styles.scenarioChipActive : ''}`}
                         onClick={() => setActiveVoiceScenario(idx)}
                       >
@@ -1136,19 +1008,23 @@ export default function HighTechShowcase() {
             </div>
           </div>
 
-          {/* Bottom Trust & Tech Benchmarks */}
-          <div className={styles.bottomTrustRow}>
-            <div className={styles.trustStat}>
-              <b>⚡ Zero App Friction</b>
-              <span>Run quotes, jobs &amp; reminders directly through Apple iMessage &amp; Android SMS</span>
-            </div>
-            <div className={styles.trustStat}>
-              <b>📸 Multimodal Vision OCR</b>
-              <span>Reads equipment plates, logs receipts &amp; detects structural damage from photos</span>
-            </div>
-            <div className={styles.trustStat}>
-              <b>🎥 Video &amp; Voice Grounded</b>
-              <span>Analyzes walkthrough videos &amp; turns driveway brain dumps into send-ready quotes</span>
+          {/* Clean Action & Link Bar */}
+          <div className={styles.actionRow}>
+            <Link className={styles.primaryLink} href={currentFeature.primaryHref}>
+              {currentFeature.primaryCtaText} <span aria-hidden="true">→</span>
+            </Link>
+            <div className={styles.secondaryLinks}>
+              <Link className={styles.secondaryLink} href="/features/text-to-job">
+                SMS Text-to-Job
+              </Link>
+              <span className={styles.dotDivider} aria-hidden="true">•</span>
+              <Link className={styles.secondaryLink} href="/features/ai-intake#sandbox">
+                Photo Sandbox
+              </Link>
+              <span className={styles.dotDivider} aria-hidden="true">•</span>
+              <Link className={styles.secondaryLink} href="/features/website-builder#video-studio">
+                Video Studio
+              </Link>
             </div>
           </div>
         </div>
