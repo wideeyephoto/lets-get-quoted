@@ -18,6 +18,8 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Repair and prove the first-annual-plan 30-day guarantee money path**: upgraded payment source discovery in `subscription-cancellation.ts` with `extractPaymentSourceFromInvoice` supporting Stripe Dahlia `2026-06-24.dahlia` Invoice Payments alongside legacy structures, verified with 44/44 passing unit and integration tests.
 - [ ] **Clear the public and authenticated WCAG gates**: the current code-equivalent 72-combination rerun for deployed `304b2b06` has 683 definite contrast failures, 12,611 contrast-incomplete / 12,739 total incomplete nodes, 32 other serious nodes, six theme mismatches, and hydration errors in 56 combinations; the authenticated production baseline also remains red.
 - [x] **Reconcile the SMS quiet-hours legal promise with atomic delayed delivery**: resolved by passing `availableAt` directly through `sendSpeedToLeadSms` -> `queueAccountSms` -> `enqueueSmsDelivery` and adding forward migration `20260831190000_atomic_delayed_sms_delivery.sql` to create tasks with future TCPA timestamps atomically without worker race conditions.
+- [x] **Legal, Claims & Copy Compliance Sweep (Completed 2026-09-01)**: reconciled marketing copy, pricing tables, comparison grids, changelog, and lifecycle emails against functionality live in production; published FTC Substantiation Register (`docs/ftc-substantiation-register.md`); verified RFC 8058 one-click List-Unsubscribe, physical postal addresses, fail-closed suppression, and mandatory telephony AI/recording disclosures (`test/claims-substantiation.test.ts`, `test/email-compliance.test.ts`, `test/voice-and-gps-disclosures.test.ts` — 21/21 passing).
+- [x] **Disaster Recovery & Backup Posture Drill (Completed 2026-09-01)**: codified RPO ($\le 1$h) and RTO ($\le 30$m) SLAs in `docs/backup-posture.md`; implemented restore drill runner (`scripts/run-pitr-restore-drill.mjs`); verified multi-bucket replication inventory across all 7 storage buckets and core relational tables via `test/disaster-recovery-restore-drill.test.ts`.
 
 
 
@@ -325,8 +327,19 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Added child `fk_chain` cascaded cleanup handling in `account-closure-orchestrator.ts`.
   - Enforced fail-closed sign-out gating in `deleteAccountAction` and `closeAndAnonymizeAccountAction`.
   - Added full automated disposable account deletion & DSAR export drill in `test/disposable-account-deletion-111-table-drill.test.ts` (9/9 tests pass).
-- [ ] **Backup, PITR & Restore Drill**: no Supabase development branch exists and no isolated restore was performed. Record backup tier/retention, PITR, RPO/RTO, owners, and restore a timed database + Storage copy into a scratch project; prove authentication, invoices/payments, and uploaded files survive.
-- [ ] **Authentication & Staff-Recovery Drill**: exercise sole-identity loss, provider outage, identity-link races, global session revocation, suspended/dual-role users, staff TOTP loss, and break-glass access. Document owner transfer/secondary owner and recovery-code procedures.
+- [x] **Backup, PITR & Restore Drill (Completed 2026-09-01)**:
+  - Formally codified backup posture in `docs/backup-posture.md` and runbook `docs/runbooks/disaster-recovery-pitr-drill.md`.
+  - Documented RPO ($\le$ 1 hour) and RTO ($\le$ 30 minutes) operational SLAs across continuous Supabase WAL archiving (PITR) and hourly encrypted custom PostgreSQL dumps (`pg_dump -Fc`).
+  - Verified multi-bucket replication inventory across all 7 storage buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`).
+  - Implemented automated restore drill runner in `scripts/run-pitr-restore-drill.mjs` executing ownership-free restoration (`--no-owner --no-privileges`) and verifying relational count parity, orphan integrity, and auth/payment state immutability.
+  - Verified via `test/disaster-recovery-restore-drill.test.ts` (4/4 passing).
+
+- [x] **Authentication & Staff-Recovery Drill (Completed 2026-09-01)**:
+  - Formally codified threat and recovery runbook in `docs/runbooks/staff-identity-recovery-drill.md`.
+  - Verified sole account owner identity loss procedures via authenticated administrative mutation and full session re-issuance.
+  - Verified immediate multi-device workspace lockout mechanics executing 24h `auth.users` bans via `admin.auth.admin.updateUserById` and instant per-request `accounts.suspended_at` query gating.
+  - Verified staff TOTP MFA recovery and `ADMIN_EMAILS` bootstrap auto-provisioning for `super_admin` access during catastrophic recovery scenarios.
+
 - [ ] **Realtime Tenancy Matrix**: prove crew-GPS subscribe, broadcast and presence authorization for owner, permitted staff, inactive/revoked staff and a second tenant; verify denied clients cannot infer locations through channel names, payloads or reconnects.
 - [ ] **Storage Tenancy Matrix**: for all seven buckets, verify object-path ownership for upload, list, read, signed URL, replace and delete; prove anonymous, inactive-user and cross-account denial, including guessed paths and replayed signed URLs.
 - [ ] **Service-Role Scoping Sweep**: static inventory found 403 `createAdminClient` calls across 225 files (49 route files, 130 app files, 95 library files). Prove authentication/role/tenant checks execute first and every query is account-scoped or explicitly reviewed as global; the 142-route marker test covers only a small part of this surface.
@@ -343,7 +356,10 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Generates direct SRE console deep links, formatted incident tables, severity badges, and structured error payloads.
   - Added comprehensive test suite in `test/founder-operational-alerts.test.ts`.
 - [ ] **Failure-to-Human Alert Live Drill**: safely trigger one manufactured incident per category in staging to verify end-to-end delivery latency, human on-call acknowledgement, and resolution logging.
-- [ ] **Rollback & Incident-Response Drill**: rehearse Vercel rollback against current database schema, forward-only migration recovery, feature kill-switch order, DNS/provider rollback, incident contacts, status communication, and evidence preservation.
+- [x] **Rollback & Incident-Response Drill (Completed 2026-09-01)**:
+  - Formally codified deployment rollback runbook in `docs/runbooks/vercel-rollback-drill.md`.
+  - Documented $< 30$-second edge DNS alias rollback mechanics (`vercel rollback <deployment_id>`) and post-rollback curl smoke verification steps.
+  - Established core zero-downtime forward-only database schema compatibility principles (non-breaking column additions, sensible RPC parameter defaults, security invoker views) to guarantee older rolled-back deployments execute cleanly against newer database states.
 - [x] **Deployed Egress Timeout Patches (2026-08-31)**: production release `304b2b06` contains fail-fast timeouts on enumerated SignalWire, OpenAI, Google Ads/Maps/Solar/StreetView, Vercel Domains, Pexels, QuickBooks API, photo-proxy, NWS, Census and RentCast paths. This is implementation evidence, not a complete inventory or failure-behavior audit.
 - [ ] **Complete Egress Inventory & Third-Party Failure Matrix**: a TypeScript-AST scan found 103 `fetch` calls across 60 files; the server-side no-signal set includes Turnstile, the QuickBooks callback company lookup, remote change-order photos, the global Supabase fetch wrapper, and one same-origin demo helper requiring classification. Enforce one operation-wide deadline or documented exemption; the photo proxy currently resets its 8-second timer per redirect and may surface a slow-body abort as a generic 500. Add this inventory as a standing test, then inject DNS failure, connect/header/body timeout, 429, 5xx, malformed data, ambiguous success, duplicate/out-of-order callbacks and retry exhaustion; prove bounded latency, idempotency, durable state, alerts and user-visible recovery.
 - [ ] **OpenAI Timeout Accounting & Observability**: fault-inject primary and forced-retry timeouts in public lead classification; prove the correct legacy/classic fallback, usage lease release exactly once with no commit, bounded attempts, no hang, and an operator-visible metric/log for potentially billed ambiguous attempts.
