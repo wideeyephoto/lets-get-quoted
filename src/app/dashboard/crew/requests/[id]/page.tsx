@@ -310,7 +310,7 @@ export default async function SubcontractorRequestPage({
               recipients={recipients}
               defaultMessage={defaultMessage}
               action={sendRequestAction.bind(null, request.id)}
-              sampleLink={`${process.env.NEXT_PUBLIC_APP_URL || 'https://letsgetquoted.com'}/sub/…`}
+              sampleLink={`${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/sub/…`}
             />
           )}
         </section>

@@ -24,11 +24,17 @@ export default function WarrantyPanel({
   warranties,
   claims,
   defaultMonths,
+  businessName,
+  servicePhone,
+  portalUrl,
 }: {
   jobId: string;
   warranties: Warranty[];
   claims: WarrantyClaim[];
   defaultMonths: number;
+  businessName?: string;
+  servicePhone?: string;
+  portalUrl?: string;
 }) {
   const today = todayKey();
 
@@ -45,6 +51,9 @@ export default function WarrantyPanel({
             const status = warrantyStatus(warranty, today);
             const service = serviceDue(warranty, today);
             const own = claims.filter((claim) => claim.warrantyId === warranty.id);
+            const stickerPortalUrl = portalUrl
+              ? `${portalUrl}#warranty-${warranty.id}`
+              : `${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/portal/view/${jobId}#warranty-${warranty.id}`;
             return (
               <article key={warranty.id} className={`warranty-card status-${status}`}>
                 <header className="warranty-card-head">
@@ -113,9 +122,9 @@ export default function WarrantyPanel({
                           brand: '',
                           installedOn: warranty.startsOn,
                           filterSpecs: warranty.maintenanceNotes || null,
-                          businessName: "Let's Get Quoted",
-                          servicePhone: 'Service & Support',
-                          portalUrl: `https://letsgetquoted.com/portal/view/${jobId}#warranty-${warranty.id}`,
+                          businessName: (businessName || 'Your contractor').trim(),
+                          servicePhone: (servicePhone || '').trim(),
+                          portalUrl: stickerPortalUrl,
                         }),
                       }}
                     />

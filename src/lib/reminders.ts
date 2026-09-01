@@ -368,7 +368,7 @@ async function sendReminderSummaries(
   admin: SupabaseClient,
   byAccount: Map<string, { sent: number; failed: number }>,
 ): Promise<void> {
-  const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://letsgetquoted.com').replace(/\/$/, '');
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
   for (const [accountId, counts] of byAccount) {
     if (counts.sent === 0 && counts.failed === 0) continue;
     try {

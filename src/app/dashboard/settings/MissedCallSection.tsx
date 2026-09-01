@@ -154,7 +154,7 @@ export default function MissedCallSection({
                 when the provider changes. */}
             <p className="missed-note">
               Point the number&apos;s <strong>Voice webhook</strong> to{' '}
-              <code>{`${(process.env.NEXT_PUBLIC_APP_URL || 'https://letsgetquoted.com').replace(/\/$/, '')}/api/sms/voice`}</code>.
+              <code>{`${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/api/sms/voice`}</code>.
               Don&apos;t have a separate number yet? Get in touch and we&apos;ll set one up for you — you
               shouldn&apos;t have to do this part.
             </p>

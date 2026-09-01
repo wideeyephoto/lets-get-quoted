@@ -65,7 +65,7 @@ export default function BriefCrewModal({
   homeBaseAddress = null,
   weatherSummary = null,
   lastBriefing = null,
-  portalUrl = 'https://letsgetquoted.com/field',
+  portalUrl = `${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/field`,
 }: BriefCrewModalProps) {
   // Local roster state so inline phone additions update immediately without full reload
   const [roster, setRoster] = useState<CrewBriefMember[]>(initialCrew);

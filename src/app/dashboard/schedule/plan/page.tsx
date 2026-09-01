@@ -496,7 +496,7 @@ export default async function PlanDayPage({
               homeBaseAddress={anchor.address}
               weatherSummary={weatherSummary}
               lastBriefing={lastBriefing}
-              portalUrl="https://letsgetquoted.com/field"
+              portalUrl={`${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/field`}
             />
           ) : null}
           <Link href="/dashboard/schedule" className="btn ghost plan-back">Back to calendar</Link>

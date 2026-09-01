@@ -136,46 +136,76 @@ export default function PerformanceScreen({
   basePath?: string;
   navOnly?: string[];
 }) {
-  const totalLeads = roiSummary?.totalLeads ?? 12;
-  const adLeads = roiSummary?.adAttributedLeads ?? 8;
-  const wonJobs = roiSummary?.channels.reduce((sum, ch) => sum + ch.wonCount, 0) ?? 4;
-  const attributedRevenue = roiSummary?.adAttributedRevenue ?? 18400;
-  const estimatedSpend = roiSummary?.totalAdSpend ?? (adLeads > 0 ? 1200 : 0);
+  const totalLeads = roiSummary?.totalLeads ?? 0;
+  const adLeads = roiSummary?.adAttributedLeads ?? 0;
+  const wonJobs = roiSummary?.channels.reduce((sum, ch) => sum + ch.wonCount, 0) ?? 0;
+  const attributedRevenue = roiSummary?.adAttributedRevenue ?? 0;
+  const estimatedSpend = roiSummary?.totalAdSpend ?? (adLeads > 0 ? adLeads * 42 : 0);
   const roasMultiplier = estimatedSpend > 0 ? Math.round((attributedRevenue / estimatedSpend) * 10) / 10 : 0;
   const cpl = adLeads > 0 ? Math.round(estimatedSpend / adLeads) : 0;
   const cac = wonJobs > 0 ? Math.round(estimatedSpend / wonJobs) : 0;
 
   // Funnel steps calculation
-  const estimatedVisits = Math.max(150, adLeads * 14);
+  const estimatedVisits = adLeads > 0 ? adLeads * 14 : 0;
   const quotesSent = Math.max(wonJobs, Math.round(adLeads * 0.75));
-  const visitToLeadRate = Math.round((adLeads / estimatedVisits) * 100);
-  const leadToQuoteRate = Math.round((quotesSent / Math.max(1, adLeads)) * 100);
-  const quoteToCloseRate = Math.round((wonJobs / Math.max(1, quotesSent)) * 100);
+  const visitToLeadRate = estimatedVisits > 0 ? Math.round((adLeads / estimatedVisits) * 100) : 0;
+  const leadToQuoteRate = adLeads > 0 ? Math.round((quotesSent / adLeads) * 100) : 0;
+  const quoteToCloseRate = quotesSent > 0 ? Math.round((wonJobs / quotesSent) * 100) : 0;
+
+  const googleChannel = roiSummary?.channels.find((c) => c.id === 'google');
+  const metaChannel = roiSummary?.channels.find((c) => c.id === 'meta');
+  const printQrChannel = roiSummary?.channels.find((c) => c.id === 'print_qr');
+  const promoChannel = roiSummary?.channels.find((c) => c.id === 'promo');
+  const directChannel = roiSummary?.channels.find((c) => c.id === 'direct');
+
+  const googleLeads = googleChannel?.leadsCount ?? 0;
+  const googleWon = googleChannel?.wonCount ?? 0;
+  const googleRev = googleChannel?.totalRevenue ?? 0;
+  const googleSpend = googleLeads > 0 ? googleLeads * 42 : 0;
+  const googleRoas = googleSpend > 0 ? Math.round((googleRev / googleSpend) * 10) / 10 : 0;
+
+  const metaLeads = metaChannel?.leadsCount ?? 0;
+  const metaWon = metaChannel?.wonCount ?? 0;
+  const metaRev = metaChannel?.totalRevenue ?? 0;
+  const metaSpend = metaLeads > 0 ? metaLeads * 42 : 0;
+  const metaRoas = metaSpend > 0 ? Math.round((metaRev / metaSpend) * 10) / 10 : 0;
+
+  const printQrLeads = printQrChannel?.leadsCount ?? 0;
+  const printQrWon = printQrChannel?.wonCount ?? 0;
+  const printQrRev = printQrChannel?.totalRevenue ?? 0;
+
+  const promoLeads = promoChannel?.leadsCount ?? 0;
+  const promoWon = promoChannel?.wonCount ?? 0;
+  const promoRev = promoChannel?.totalRevenue ?? 0;
+
+  const directLeads = directChannel?.leadsCount ?? 0;
+  const directWon = directChannel?.wonCount ?? 0;
+  const directRev = directChannel?.totalRevenue ?? 0;
 
   const channelsList = [
     {
       id: 'google_search',
       name: 'Google Search Ads',
       icon: '🔍',
-      isActive: true,
-      spend: estimatedSpend > 0 ? Math.round(estimatedSpend * 0.7) : 0,
-      leads: Math.round(adLeads * 0.65),
-      wonJobs: Math.round(wonJobs * 0.6),
-      revenue: Math.round(attributedRevenue * 0.65),
-      roas: roasMultiplier > 0 ? `${roasMultiplier}x` : '—',
-      setupHref: '/dashboard/marketing/ads',
+      isActive: Boolean(lsaSummary && lsaSummary.connectionState === 'connected') || googleLeads > 0,
+      spend: googleSpend,
+      leads: googleLeads,
+      wonJobs: googleWon,
+      revenue: googleRev,
+      roas: googleRoas > 0 ? `${googleRoas}x` : googleSpend > 0 ? '0x' : '—',
+      setupHref: `${basePath}/marketing/ads`,
     },
     {
       id: 'meta_social',
       name: 'Meta / Instagram Ads',
       icon: '📱',
-      isActive: true,
-      spend: estimatedSpend > 0 ? Math.round(estimatedSpend * 0.3) : 0,
-      leads: Math.round(adLeads * 0.35),
-      wonJobs: Math.round(wonJobs * 0.4),
-      revenue: Math.round(attributedRevenue * 0.35),
-      roas: roasMultiplier > 0 ? `${roasMultiplier}x` : '—',
-      setupHref: '/dashboard/marketing/ads',
+      isActive: metaLeads > 0,
+      spend: metaSpend,
+      leads: metaLeads,
+      wonJobs: metaWon,
+      revenue: metaRev,
+      roas: metaRoas > 0 ? `${metaRoas}x` : metaSpend > 0 ? '0x' : '—',
+      setupHref: `${basePath}/marketing/ads`,
     },
     {
       id: 'email_text',
@@ -183,36 +213,36 @@ export default function PerformanceScreen({
       icon: '✉️',
       isActive: campaigns.length > 0,
       spend: 0,
-      leads: campaigns.length > 0 ? 5 : 0,
-      wonJobs: campaigns.length > 0 ? 2 : 0,
-      revenue: campaigns.length > 0 ? 7500 : 0,
+      leads: promoLeads,
+      wonJobs: promoWon,
+      revenue: promoRev,
       roas: 'Organic',
       note: 'Texts queued across direct broadcasts',
-      setupHref: '/dashboard/marketing/campaigns',
+      setupHref: `${basePath}/marketing/campaigns`,
     },
     {
       id: 'yard_signs_print',
       name: 'Yard Signs & Vehicle QR',
       icon: '🪧',
-      isActive: true,
-      spend: 75,
-      leads: 3,
-      wonJobs: 1,
-      revenue: 4200,
-      roas: '56x',
-      setupHref: '/dashboard/marketing/links',
+      isActive: printQrLeads > 0,
+      spend: 0,
+      leads: printQrLeads,
+      wonJobs: printQrWon,
+      revenue: printQrRev,
+      roas: 'Organic',
+      setupHref: `${basePath}/marketing/links`,
     },
     {
       id: 'organic_seo',
       name: 'Organic Blog & SEO',
       icon: '✍️',
-      isActive: counts.published > 0,
+      isActive: counts.published > 0 || directLeads > 0,
       spend: 0,
-      leads: counts.published > 0 ? 4 : 0,
-      wonJobs: counts.published > 0 ? 1 : 0,
-      revenue: counts.published > 0 ? 3800 : 0,
+      leads: directLeads,
+      wonJobs: directWon,
+      revenue: directRev,
       roas: 'Organic',
-      setupHref: '/dashboard/marketing/blog',
+      setupHref: `${basePath}/marketing/blog`,
     },
   ];
 

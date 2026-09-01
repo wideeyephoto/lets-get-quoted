@@ -330,7 +330,7 @@ export default async function SettingsPage({
   const insuranceUrl = await insuranceProofUrl(accountId, insuranceRecord.path);
   // Expiry is a calendar question, so it is answered in the owner's own zone.
   const insuranceToday = new Date().toLocaleDateString('en-CA', {
-    timeZone: (account?.timezone as string) || 'America/Detroit',
+    timeZone: (account?.timezone as string) || 'America/New_York',
   });
 
   // Is this account still moving in?

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import MarketingNav from '../MarketingNav';
 import {
   CAMPAIGN_LINK_PRESETS,
@@ -24,47 +24,7 @@ type SavedTrackingCampaign = {
   createdAt: string;
 };
 
-const INITIAL_SAVED_CAMPAIGNS: SavedTrackingCampaign[] = [
-  {
-    id: 'track-1',
-    name: 'Jobsite Yard Signs',
-    source: 'yard_sign',
-    medium: 'print_qr',
-    placement: 'Customer Front Lawn',
-    url: 'https://example.com/estimate?utm_source=yard_sign&utm_medium=print_qr&utm_campaign=jobsite_yard_signs',
-    visits: 142,
-    leads: 18,
-    wonJobs: 7,
-    revenue: 24500,
-    createdAt: '2026-08-15',
-  },
-  {
-    id: 'track-2',
-    name: 'Van & Truck Rear Window QR',
-    source: 'truck_wrap',
-    medium: 'vehicle_qr',
-    placement: 'Fleet Graphics',
-    url: 'https://example.com/estimate?utm_source=truck_wrap&utm_medium=vehicle_qr&utm_campaign=fleet_branding',
-    visits: 89,
-    leads: 11,
-    wonJobs: 4,
-    revenue: 16200,
-    createdAt: '2026-08-10',
-  },
-  {
-    id: 'track-3',
-    name: 'Instagram Bio Link',
-    source: 'instagram',
-    medium: 'social_bio',
-    placement: 'Profile Bio',
-    url: 'https://example.com/estimate?utm_source=instagram&utm_medium=social_bio&utm_campaign=ig_bio',
-    visits: 215,
-    leads: 24,
-    wonJobs: 9,
-    revenue: 31000,
-    createdAt: '2026-08-01',
-  },
-];
+const STORAGE_KEY = 'lgq.saved_tracking_campaigns';
 
 type Props = {
   defaultBaseUrl: string;
@@ -79,7 +39,25 @@ export default function LinkBuilderScreen({
   basePath = '/dashboard',
   navOnly,
 }: Props) {
-  const [savedCampaigns, setSavedCampaigns] = useState<SavedTrackingCampaign[]>(INITIAL_SAVED_CAMPAIGNS);
+  const [savedCampaigns, setSavedCampaigns] = useState<SavedTrackingCampaign[]>([]);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Restore saved campaigns from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          setSavedCampaigns(parsed);
+        }
+      }
+    } catch {
+      // Ignore localStorage errors
+    } finally {
+      setIsLoaded(true);
+    }
+  }, []);
   const [showBuilder, setShowBuilder] = useState(false);
 
   const [selectedPresetId, setSelectedPresetId] = useState<CampaignLinkPresetId>('yard_sign');
@@ -220,8 +198,28 @@ export default function LinkBuilderScreen({
       revenue: 0,
       createdAt: new Date().toISOString().slice(0, 10),
     };
-    setSavedCampaigns((prev) => [newCamp, ...prev]);
+    setSavedCampaigns((prev) => {
+      const next = [newCamp, ...prev];
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
     setShowBuilder(false);
+  };
+
+  const handleDeleteCampaign = (id: string) => {
+    setSavedCampaigns((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      try {
+        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      } catch {
+        // Ignore localStorage errors
+      }
+      return next;
+    });
   };
 
   // Metrics summary
@@ -427,62 +425,82 @@ export default function LinkBuilderScreen({
           <span style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>{savedCampaigns.length} campaigns active</span>
         </div>
 
-        <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--muted)' }}>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Campaign Name</th>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Source / Type</th>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Visits</th>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Leads</th>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Won Jobs</th>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Revenue</th>
-                <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600, textAlign: 'right' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {savedCampaigns.map((camp) => (
-                <tr key={camp.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                  <td style={{ padding: '0.75rem 0.5rem' }}>
-                    <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--foreground)' }}>
-                      {camp.name}
-                    </strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Created {camp.createdAt}</span>
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem' }}>
-                    <span style={{ background: 'rgba(255, 255, 255, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.74rem' }}>
-                      {camp.source} · {camp.medium}
-                    </span>
-                  </td>
-                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>{camp.visits}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: '#38bdf8' }}>{camp.leads}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: '#10b981' }}>{camp.wonJobs}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>${camp.revenue.toLocaleString()}</td>
-                  <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>
-                    <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
-                      <button
-                        type="button"
-                        className="btn ghost btn-sm"
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem' }}
-                        onClick={() => handleCopy(camp.url)}
-                      >
-                        Copy
-                      </button>
-                      <button
-                        type="button"
-                        className="btn ghost btn-sm"
-                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem' }}
-                        onClick={() => handleDownloadQr(camp.name)}
-                      >
-                        QR
-                      </button>
-                    </div>
-                  </td>
+        {savedCampaigns.length === 0 ? (
+          <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', color: 'var(--muted)' }}>
+            <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 600, color: 'var(--foreground)' }}>
+              No tracking touchpoints created yet
+            </p>
+            <p style={{ margin: '0.35rem 0 0', fontSize: '0.82rem' }}>
+              Click “+ New Tracking Link” above to generate trackable URLs and QR codes for yard signs, truck decals, and ads.
+            </p>
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto', marginTop: '0.5rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', textAlign: 'left' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', color: 'var(--muted)' }}>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Campaign Name</th>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Source / Type</th>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Visits</th>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Leads</th>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Won Jobs</th>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600 }}>Revenue</th>
+                  <th style={{ padding: '0.65rem 0.5rem', fontWeight: 600, textAlign: 'right' }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {savedCampaigns.map((camp) => (
+                  <tr key={camp.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
+                    <td style={{ padding: '0.75rem 0.5rem' }}>
+                      <strong style={{ display: 'block', fontSize: '0.86rem', color: 'var(--foreground)' }}>
+                        {camp.name}
+                      </strong>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>Created {camp.createdAt}</span>
+                    </td>
+                    <td style={{ padding: '0.75rem 0.5rem' }}>
+                      <span style={{ background: 'rgba(255, 255, 255, 0.06)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.74rem' }}>
+                        {camp.source} · {camp.medium}
+                      </span>
+                    </td>
+                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600 }}>{camp.visits}</td>
+                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: '#38bdf8' }}>{camp.leads}</td>
+                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 600, color: '#10b981' }}>{camp.wonJobs}</td>
+                    <td style={{ padding: '0.75rem 0.5rem', fontWeight: 700 }}>${camp.revenue.toLocaleString()}</td>
+                    <td style={{ padding: '0.75rem 0.5rem', textAlign: 'right' }}>
+                      <div style={{ display: 'inline-flex', gap: '0.35rem' }}>
+                        <button
+                          type="button"
+                          className="btn ghost btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem' }}
+                          onClick={() => handleCopy(camp.url)}
+                        >
+                          Copy
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem' }}
+                          onClick={() => handleDownloadQr(camp.name)}
+                        >
+                          QR
+                        </button>
+                        <button
+                          type="button"
+                          className="btn ghost btn-sm"
+                          style={{ padding: '0.25rem 0.5rem', fontSize: '0.72rem', color: '#f87171' }}
+                          onClick={() => handleDeleteCampaign(camp.id)}
+                          title="Delete saved campaign"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </section>
     </main>
   );

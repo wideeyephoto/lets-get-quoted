@@ -1104,7 +1104,7 @@ export default function PaymentModals({
 
   // 8. Job-Site QR Code Viewer Modal
   if (activeModal === 'qr_code' && selectedPayment) {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://letsgetquoted.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.letsgetquoted.com';
     const payUrl = `${origin}/pay/${selectedPayment.id}`;
     return (
       <ControlledModal title={`Job-Site QR Code · ${selectedPayment.label}`} onClose={onClose}>
@@ -1525,7 +1525,7 @@ export default function PaymentModals({
 
   // 13. Printable Job-Site QR Poster & Walkthrough Slip Modal
   if (activeModal === 'qr_poster') {
-    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://letsgetquoted.com';
+    const origin = typeof window !== 'undefined' ? window.location.origin : 'https://app.letsgetquoted.com';
     const generalPayUrl = `${origin}/dashboard/payments`;
     return (
       <ControlledModal title="🖨️ Job-Site Payment QR Poster" onClose={onClose} maxWidth="600px">

@@ -412,7 +412,7 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       businessName,
       date: dateKey,
       stops,
-      portalUrl: includePortal ? 'https://letsgetquoted.com/field' : null,
+      portalUrl: includePortal ? `${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/field` : null,
       customNote,
       weatherSummary,
       navProvider,

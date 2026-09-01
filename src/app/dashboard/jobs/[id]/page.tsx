@@ -225,7 +225,7 @@ export default async function JobDetailPage({
   const arrivalAdmin = createAdminClient();
   const [{ data: arrivalAccount }, { data: arrivalSite }, activeArrival] = await Promise.all([
     arrivalAdmin.from('accounts').select('*').eq('id', accountId).maybeSingle(),
-    arrivalAdmin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
+    arrivalAdmin.from('sites').select('company_name, phone, subdomain, custom_domain').eq('account_id', accountId).limit(1).maybeSingle(),
     getActiveTracking(arrivalAdmin, accountId, job.id),
   ]);
   const arrivalSettings = arrivalSettingsFromAccount(arrivalAccount as Record<string, unknown> | null);
@@ -1726,7 +1726,21 @@ export default async function JobDetailPage({
                     }.`}
               </span>
             </summary>
-            <WarrantyPanel jobId={job.id} warranties={warranties} claims={warrantyClaims} defaultMonths={defaultWarrantyMonths} />
+            <WarrantyPanel
+              jobId={job.id}
+              warranties={warranties}
+              claims={warrantyClaims}
+              defaultMonths={defaultWarrantyMonths}
+              businessName={previewBusinessName}
+              servicePhone={(arrivalSite?.phone || (arrivalAccount as Record<string, unknown> | null)?.phone || '') as string}
+              portalUrl={
+                arrivalSite?.custom_domain
+                  ? `https://${arrivalSite.custom_domain}/portal`
+                  : arrivalSite?.subdomain
+                  ? `https://${arrivalSite.subdomain}.${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}/portal`
+                  : `${quoteLinkOrigin}/portal/view/${job.id}`
+              }
+            />
           </details>
         );
 
