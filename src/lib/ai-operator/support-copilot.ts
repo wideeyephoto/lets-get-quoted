@@ -168,6 +168,7 @@ export async function triageSupportCase(
 
   // Topic classification & diagnostic drafting
   if (
+    (text.includes('stripe') && (text.includes('connect') || text.includes('bank') || text.includes('setup') || text.includes('onboard') || text.includes('account'))) ||
     text.includes('connect stripe') ||
     text.includes('kyc') ||
     text.includes('identity verification') ||
@@ -292,7 +293,7 @@ export async function triageSupportCase(
   }
 
 
-  const requiresFounder = urgency === 'urgent' || urgency === 'high';
+  const requiresFounder = urgency === 'urgent' || (topic === 'billing' && text.includes('dispute'));
 
   const result: SupportCaseTriageResult = {
     caseId: caseItem.id,
