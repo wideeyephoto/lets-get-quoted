@@ -545,8 +545,3 @@
 :global(:root[data-theme='dim']) .faq details > p {
   color: #9ca3af !important;
 }
-
-:global(:root[data-theme='light']) :global(.eyebrow),
-:global(:root[data-theme='sunlight']) :global(.eyebrow) {
-  color: #9a3412 !important;
-}

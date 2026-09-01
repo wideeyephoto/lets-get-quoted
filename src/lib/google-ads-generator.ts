@@ -380,12 +380,15 @@ export function generateResponsiveSearchAd(params: {
   services: string[];
   phone?: string;
   landingPageUrl: string;
+  customFocus?: string;
 }): ResponsiveSearchAd {
-  const { businessName, trade, city, services, phone, landingPageUrl } = params;
+  const { businessName, trade, city, services, phone, landingPageUrl, customFocus } = params;
   const cleanCity = (city || '').replace(/,\s*[A-Z]{2}$/i, '').trim();
   const titleTrade = toTitleCase(trade);
+  const customFocusHeadline = customFocus?.trim() ? clampText(toTitleCase(customFocus.trim()), 30) : null;
 
   const rawHeadlines: string[] = [
+    ...(customFocusHeadline ? [customFocusHeadline] : []),
     clampText(`${titleTrade} in ${cleanCity}`, 30),
     clampText(businessName || `${titleTrade} Pros`, 30),
     clampText('Fast Free Estimates', 30),
@@ -403,6 +406,9 @@ export function generateResponsiveSearchAd(params: {
   const headlines = Array.from(new Set(rawHeadlines.filter(Boolean))).slice(0, 15);
 
   const rawDescriptions: string[] = [
+    ...(customFocus?.trim()
+      ? [clampText(`Looking for ${customFocus.trim()} in ${cleanCity}? Book local certified pros online today!`, 90)]
+      : []),
     clampText(`Need reliable ${trade.toLowerCase()} in ${cleanCity}? Instant online quotes & expert local service.`, 90),
     clampText(`Locally owned, licensed & insured. Top-rated quality backed by warranty. Request a quote!`, 90),
     clampText(`Fast response time and transparent upfront pricing. Book your project estimate online now.`, 90),

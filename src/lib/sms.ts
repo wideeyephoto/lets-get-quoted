@@ -1,7 +1,7 @@
 import { createAdminClient } from '@/lib/auth';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
-import { resolveRecipientTimeZone, isWithinTcpaQuietHours, getTcpaCompliantSendTime } from '@/lib/phone-timezone';
+import { resolveRecipientTimeZone, getTcpaCompliantSendTime } from '@/lib/phone-timezone';
 import {
   adWalletRefillText,
   appointmentReminderText,
