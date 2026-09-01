@@ -140,6 +140,7 @@ describe('buildCsp', () => {
       'https://*.google-analytics.com',
       'https://www.googleadservices.com',
       'https://*.googleadservices.com',
+      'https://pagead2.googlesyndication.com',
       'https://googleads.g.doubleclick.net',
       'https://*.doubleclick.net',
       'https://www.google.com',
