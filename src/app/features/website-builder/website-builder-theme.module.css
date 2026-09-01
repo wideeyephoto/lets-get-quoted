@@ -165,7 +165,7 @@
   line-height: 1.12;
   font-weight: 850;
   letter-spacing: -0.025em;
-  color: var(--ink);
+  color: #f7f7f4;
   margin: 0;
 }
 
@@ -180,7 +180,7 @@
 .heroLede {
   font-size: clamp(16px, 1.2vw, 19px);
   line-height: 1.6;
-  color: var(--muted);
+  color: #cbd5e1;
   margin: 0;
   max-width: 540px;
 }

@@ -29,9 +29,9 @@ export default function HeroThemeCyclerDark() {
 
   // Check reduced motion
   useEffect(() => {
+    setShowFrame(true);
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setIsPlaying(false);
-      setShowFrame(true);
     }
   }, []);
 
@@ -235,7 +235,7 @@ export default function HeroThemeCyclerDark() {
                   height: box.frameHeight,
                   transform: `scale(${box.scale})`,
                 }}
-                loading="lazy"
+                loading="eager"
                 scrolling="no"
                 tabIndex={-1}
                 aria-hidden="true"

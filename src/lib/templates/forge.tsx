@@ -61,20 +61,18 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
       <Parallax />
+      <header className={styles.forgeHeader}>
+        <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
+          {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
+          <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
+        </a>
+        <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
+        <div className={styles.forgeHeaderActions}>
+          {site.phone && <a className={styles.headerPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
+          <a className={styles.forgeHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
+        </div>
+      </header>
       <section className={styles.forgeHero} id="top">
-        {/* Header lives inside the hero so its absolute overlay pins to the hero
-            top (below the availability bar), not the page top. */}
-        <header className={styles.forgeHeader}>
-          <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
-            {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-            <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
-          </a>
-          <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
-          <div className={styles.forgeHeaderActions}>
-            {site.phone && <a className={styles.headerPhone} data-edit="bizPhone" href={`tel:${site.phone}`}>{site.phone}</a>}
-            <a className={styles.forgeHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)}</a>
-          </div>
-        </header>
         <HeroImageCycle images={getHeroImages(site.content, heroImage)} video={getHeroVideo(site.content)} className={styles.heroImage} alt="Home construction work" />
         <div className={styles.forgeScrim} />
         <div className={styles.forgeHeroCopy}>

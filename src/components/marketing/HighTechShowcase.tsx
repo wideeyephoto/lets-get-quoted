@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import styles from './high-tech-showcase.module.css';
 
@@ -358,6 +358,63 @@ export default function HighTechShowcase() {
   const [isTyping, setIsTyping] = useState(false);
 
   const stageRef = useRef<HTMLDivElement>(null);
+  const imageSliderRef = useRef<HTMLDivElement>(null);
+  const isDraggingSliderRef = useRef(false);
+
+  const updateSliderFromClientX = useCallback((clientX: number) => {
+    const container = imageSliderRef.current;
+    if (!container) return;
+    const rect = container.getBoundingClientRect();
+    if (rect.width === 0) return;
+    const percentage = ((clientX - rect.left) / rect.width) * 100;
+    const clamped = Math.max(5, Math.min(95, Math.round(percentage)));
+    setSliderPos(clamped);
+  }, []);
+
+  const handleSliderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    isDraggingSliderRef.current = true;
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // fallback
+    }
+    updateSliderFromClientX(e.clientX);
+  };
+
+  const handleSliderPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingSliderRef.current) {
+      updateSliderFromClientX(e.clientX);
+    }
+  };
+
+  const handleSliderPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (isDraggingSliderRef.current) {
+      isDraggingSliderRef.current = false;
+      try {
+        if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // fallback
+      }
+    }
+  };
+
+  const handleSliderKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowDown') {
+      setSliderPos((prev) => Math.max(5, prev - 5));
+      e.preventDefault();
+    } else if (e.key === 'ArrowRight' || e.key === 'ArrowUp') {
+      setSliderPos((prev) => Math.min(95, prev + 5));
+      e.preventDefault();
+    } else if (e.key === 'Home') {
+      setSliderPos(5);
+      e.preventDefault();
+    } else if (e.key === 'End') {
+      setSliderPos(95);
+      e.preventDefault();
+    }
+  };
 
   // Rotate Live Activity Ticker every 4.5 seconds
   useEffect(() => {
@@ -785,16 +842,31 @@ export default function HighTechShowcase() {
 
                   <div className={styles.canvasBody}>
                     <div className={styles.arVisionFrame}>
-                      <div className={styles.laserScanLine} aria-hidden="true" />
-
                       {/* Interactive Before / After Split View */}
-                      <div className={styles.beforeAfterContainer}>
+                      <div
+                        ref={imageSliderRef}
+                        className={styles.beforeAfterContainer}
+                        onPointerDown={handleSliderPointerDown}
+                        onPointerMove={handleSliderPointerMove}
+                        onPointerUp={handleSliderPointerUp}
+                        onPointerCancel={handleSliderPointerUp}
+                        role="slider"
+                        aria-label="Before and after AI vision comparison slider"
+                        aria-valuemin={5}
+                        aria-valuemax={95}
+                        aria-valuenow={sliderPos}
+                        tabIndex={0}
+                        onKeyDown={handleSliderKeyDown}
+                      >
+                        <div className={styles.laserScanLine} aria-hidden="true" />
+
                         {/* Raw Unaltered Photo Side (Background) */}
                         <div className={styles.rawSide}>
                           <img
                             src={IMAGE_SCENARIOS[activeImageScenario]?.imageSrc}
                             alt={IMAGE_SCENARIOS[activeImageScenario]?.label}
                             className={styles.visionBgImage}
+                            draggable={false}
                           />
                           <div className={styles.rawSideOverlay}>
                             <span className={styles.rawPhotoBadge}>
@@ -808,35 +880,49 @@ export default function HighTechShowcase() {
                         </div>
 
                         {/* AI Vision Layer (Clipped by slider position) */}
-                        <div className={styles.arSide} style={{ width: `${sliderPos}%` }}>
+                        <div
+                          className={styles.arSide}
+                          style={{ clipPath: `inset(0 ${100 - sliderPos}% 0 0)` }}
+                        >
                           <img
                             src={IMAGE_SCENARIOS[activeImageScenario]?.imageSrc}
                             alt={IMAGE_SCENARIOS[activeImageScenario]?.label}
                             className={styles.visionBgImageAr}
+                            draggable={false}
                           />
                           <div className={styles.arMeshOverlay} aria-hidden="true" />
-                          <div className={styles.arReticleBox}>
-                            <span className={styles.arTagHeader}>
-                              ✦ AI VISION · {IMAGE_SCENARIOS[activeImageScenario]?.confidence}
-                            </span>
-                            <div className={styles.arMetadataRow}>
-                              <div>
-                                <small style={{ color: '#c084fc', display: 'block', fontWeight: 750 }}>OCR DETECTED</small>
-                                <b>{IMAGE_SCENARIOS[activeImageScenario]?.plateOcr}</b>
-                                <span style={{ color: '#38bdf8', fontSize: '0.72rem', display: 'block', marginTop: '2px' }}>
-                                   {IMAGE_SCENARIOS[activeImageScenario]?.techSpecs}
-                                </span>
+                          <div className={styles.arHudLayer}>
+                            <div className={styles.arReticleBox}>
+                              <div className={styles.arTagHeader}>
+                                ✦ AI VISION · {IMAGE_SCENARIOS[activeImageScenario]?.confidence}
                               </div>
-                              <div>
-                                <small style={{ color: '#c084fc', display: 'block', fontWeight: 750 }}>RISK SEGMENTATION</small>
-                                <span style={{ color: '#fbbf24', fontWeight: 600 }}>
-                                  {IMAGE_SCENARIOS[activeImageScenario]?.diagnosedIssue}
-                                </span>
+                              <div className={styles.arMetadataRow}>
+                                <div className={`${styles.arMetaBlock} ${activeVisionLayer === 'ocr' ? styles.arMetaBlockActive : ''}`}>
+                                  <small className={styles.arMetaLabel}>OCR DETECTED</small>
+                                  <b className={styles.arMetaValue}>{IMAGE_SCENARIOS[activeImageScenario]?.plateOcr}</b>
+                                  <span className={styles.arMetaSub}>
+                                    {IMAGE_SCENARIOS[activeImageScenario]?.techSpecs}
+                                  </span>
+                                </div>
+                                <div className={`${styles.arMetaBlock} ${activeVisionLayer === 'heatmap' ? styles.arMetaBlockActive : ''}`}>
+                                  <small className={styles.arMetaLabelRisk}>RISK SEGMENTATION</small>
+                                  <span className={styles.arRiskValue}>
+                                    {IMAGE_SCENARIOS[activeImageScenario]?.diagnosedIssue}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                           </div>
-                          <div className={styles.sliderDividerHandle} aria-hidden="true">
-                            ↔
+                        </div>
+
+                        {/* Draggable Divider Line & Knob Handle */}
+                        <div
+                          className={styles.sliderDivider}
+                          style={{ left: `${sliderPos}%` }}
+                          aria-hidden="true"
+                        >
+                          <div className={styles.sliderDividerHandle}>
+                            <span>↔</span>
                           </div>
                         </div>
                       </div>
@@ -846,14 +932,16 @@ export default function HighTechShowcase() {
                         <span>Drag slider to inspect AI optical layer:</span>
                         <input
                           type="range"
-                          min="10"
-                          max="90"
+                          min="5"
+                          max="95"
                           value={sliderPos}
                           onChange={(e) => setSliderPos(Number(e.target.value))}
                           className={styles.sliderRangeInput}
                           aria-label="Before/After AI vision comparison slider"
                         />
-                        <span style={{ fontWeight: 700, color: '#c084fc' }}>{sliderPos}% AI</span>
+                        <span style={{ fontWeight: 700, color: '#c084fc', minWidth: '55px', textAlign: 'right' }}>
+                          {sliderPos}% AI
+                        </span>
                       </div>
 
                       <div className={styles.visionLayerToggle}>
@@ -926,71 +1014,6 @@ export default function HighTechShowcase() {
                           tabIndex={isSelected ? 0 : -1}
                           className={`${styles.scenarioChip} ${isSelected ? styles.scenarioChipActive : ''}`}
                           onClick={() => setActiveVideoScenario(idx)}
-                        >
-                          {sc.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  <div className={styles.canvasBody}>
-                    <div className={styles.videoStudioPlayer}>
-                      <div className={styles.videoViewport}>
-                        <button type="button" className={styles.videoPlayButton} aria-label="Play video simulation">
-                          ▶
-                        </button>
-                        <b style={{ color: '#ffffff', fontSize: '0.92rem' }}>
-                          {VIDEO_SCENARIOS[activeVideoScenario]?.videoTitle}
-                        </b>
-                        <small style={{ color: '#94a3b8' }}>
-                          {VIDEO_SCENARIOS[activeVideoScenario]?.specs} · 4K 60FPS
-                        </small>
-                        <div className={styles.videoScrubberBar}>
-                          <div className={styles.videoScrubberProgress} />
-                        </div>
-                      </div>
-
-                      <div className={styles.videoScopeTimestamps}>
-                        <span style={{ fontSize: '0.72rem', color: '#94a3b8', fontWeight: 700 }}>
-                          AI COPILOT EXTRACTED SCOPE TIMESTAMPS:
-                        </span>
-                        {VIDEO_SCENARIOS[activeVideoScenario]?.timestamps.map((ts) => (
-                          <div key={ts.time} className={styles.timestampRow}>
-                            <span className={styles.timestampTag}>{ts.time}</span>
-                            <span>{ts.note}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className={styles.liveJobPreviewCard} style={{ borderColor: 'rgba(245, 158, 11, 0.35)' }}>
-                      <div className={styles.liveJobHead}>
-                        <span>MOBILE VIDEO SPEED &amp; CODEC COMPLIANCE</span>
-                        <span style={{ color: '#34d399' }}>HARDWARE ACCELERATED</span>
-                      </div>
-                      <p style={{ color: '#f8fafc', margin: '4px 0 0', fontSize: '0.86rem', fontWeight: 600 }}>
-                        {VIDEO_SCENARIOS[activeVideoScenario]?.compliance}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {/* SIMULATOR 4: VOICE (18-BAR EQUALIZER & DRIVEWAY-TO-QUOTE CONVERTER) */}
-              {activeTab === 'voice' && (
-                <>
-                  <div className={styles.canvasScenarioBar} role="radiogroup" aria-label="Select Voice Scenario">
-                    {VOICE_SCENARIOS.map((sc, idx) => {
-                      const isSelected = activeVoiceScenario === idx;
-                      return (
-                        <button
-                          key={sc.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isSelected}
-                          tabIndex={isSelected ? 0 : -1}
-                          className={`${styles.scenarioChip} ${isSelected ? styles.scenarioChipActive : ''}`}
-                          onClick={() => setActiveVoiceScenario(idx)}
                         >
                           {sc.label}
                         </button>
