@@ -2,7 +2,7 @@
 
 Date started: 2026-09-01
 
-Current status: the new manager account is linked to the existing advertiser account and the active relationship was verified from the advertiser account. The Google Ads API Access application is fully staged as an Agency/SEM submission; Google's API Terms remain unchecked and the developer token has not been created pending explicit user confirmation.
+Current status: complete. All five values are stored as Vercel Production secrets, their names and Production scope were verified without revealing values, and the redeployment completed with Ready status. The exact five-input application configuration predicate is satisfied. OAuth refresh and Google Ads API v25 read access were also verified successfully.
 
 Purpose: provision the five server-side Google Ads credentials required by the production application without storing credential values, OAuth tokens, or customer IDs in the repository.
 
@@ -30,12 +30,20 @@ Purpose: provision the five server-side Google Ads credentials required by the p
 - [x] Add a second client secret while preserving the existing website-login secret.
 - [x] Create a production Google Ads manager account for the company's own accounts (United States, New York time, USD).
 - [x] Link the existing advertiser account to the manager account, accept the link, and verify the active relationship from the advertiser account.
-- [ ] Submit the Google Ads API Access form and record the issued developer-token access level.
-- [ ] Generate a long-lived refresh token using the official OAuth flow and the organization identity.
-- [ ] Store all five values as encrypted, Production-only Vercel environment variables.
-- [ ] Redeploy Production so the new environment revision is active.
-- [ ] Verify all five names exist in Production without printing their values.
-- [ ] Verify the application's Google Ads configuration check succeeds.
+- [x] Submit the Google Ads API Access form and record the issued developer-token access level (Explorer Access).
+- [x] Generate a long-lived refresh token using the official OAuth flow and the organization identity; remove and verify removal of the temporary OAuth Playground redirect URI.
+- [x] Store all five values as encrypted, Production-only Vercel environment variables.
+- [x] Redeploy Production so the new environment revision is active; verify the deployment reaches Ready status.
+- [x] Verify all five names exist with Production scope without printing their values.
+- [x] Verify the application's exact Google Ads configuration predicate is satisfied by the five non-empty Production secrets in the Ready deployment.
+
+## Verification results
+
+- The OAuth refresh grant returned HTTP 200 and issued an access token.
+- A read-only Google Ads API v25 `customers:listAccessibleCustomers` request returned HTTP 200.
+- Both the linked manager account and advertiser account were present in the accessible-account response; their IDs were not printed or recorded here.
+- The deployed application does not expose a dedicated read-only endpoint for the exact five-variable predicate. Verification therefore paired the exact predicate in `src/lib/google-ads-api.ts` with the five Production-only secret entries and the Ready redeployment.
+- Separate compatibility finding: the primary Google Ads client in `src/lib/google-ads-api.ts` is pinned to API `v20`. That endpoint returned HTTP 404 during verification, while `v25` succeeded. The credentials are valid, but primary campaign operations should be upgraded to a supported API version before relying on them.
 
 ## Security notes
 
@@ -43,4 +51,5 @@ Purpose: provision the five server-side Google Ads credentials required by the p
 - No secret value is printed to command output, committed, or retained in a temporary repository file.
 - Adding a second OAuth client secret leaves the existing secret enabled; the existing website-login integration is not rotated during this work.
 - A newly issued developer token may initially have Test Account Access. Production calls require Explorer, Basic, or Standard Access; Basic Access review is typically five business days when an automatic Explorer upgrade is not granted.
+- The issued developer token has Explorer Access, so it can make production-account requests within Google's Explorer quota.
 - Google Cloud projects become paired with a Google Ads developer token after the first API request. This project must not be tested with a different manager account's token.
