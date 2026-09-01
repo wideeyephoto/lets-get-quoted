@@ -64,7 +64,8 @@ describe('Token-Surface & Bearer Link Cryptographic Security Audit', () => {
       const hash = hashInvitationToken(token);
 
       expect(invitationTokenMatches(hash, hash)).toBe(true);
-      expect(invitationTokenMatches(hash, hash.replace(/^./, 'f'))).toBe(false);
+      const mutated = (hash[0] === '0' ? '1' : '0') + hash.slice(1);
+      expect(invitationTokenMatches(hash, mutated)).toBe(false);
       expect(invitationTokenMatches('invalid', hash)).toBe(false);
     });
 
