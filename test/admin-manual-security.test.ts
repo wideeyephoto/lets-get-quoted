@@ -40,7 +40,7 @@ describe('Admin Server Action Security Gating', () => {
 
   describe('AI Operator Server Actions', () => {
     it('rejects unauthenticated triggerOperatorCycleAction calls', async () => {
-      vi.mocked(auth.requireAdmin).mockRejectedValue(
+      vi.mocked(auth.requirePermission).mockRejectedValue(
         new Error('Your read only role does not include "ops.manage"'),
       );
 
@@ -50,7 +50,7 @@ describe('Admin Server Action Security Gating', () => {
     });
 
     it('rejects unauthenticated resolveHitlActionServerAction calls', async () => {
-      vi.mocked(auth.requireAdmin).mockRejectedValue(
+      vi.mocked(auth.requirePermission).mockRejectedValue(
         new Error('Your support role does not include "ops.manage"'),
       );
 
@@ -60,7 +60,7 @@ describe('Admin Server Action Security Gating', () => {
     });
 
     it('rejects unauthorized triageCaseServerAction calls', async () => {
-      vi.mocked(auth.requireAdmin).mockRejectedValue(
+      vi.mocked(auth.requirePermission).mockRejectedValue(
         new Error('Your read only role does not include "account.support"'),
       );
 

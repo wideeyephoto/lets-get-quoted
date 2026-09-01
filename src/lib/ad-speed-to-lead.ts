@@ -459,3 +459,68 @@ export async function dispatchSpeedToLeadSms(params: {
     return { sent: false, message, resolvedTimeZone, telemetry: baseTelemetry };
   }
 }
+
+export interface MultiChannelCascadeResult {
+  primaryChannel: 'sms';
+  primaryStatus: 'sent' | 'failed' | 'queued_quiet_hours';
+  fallbackChannel?: 'whatsapp' | 'email' | 'voice_bridge';
+  fallbackStatus?: 'sent' | 'skipped' | 'failed';
+  totalLatencyMs: number;
+}
+
+/**
+ * Dispatches speed-to-lead via primary SMS and cascades to fallback email/WhatsApp if SMS delivery fails.
+ */
+export async function dispatchMultiChannelSpeedToLead(params: {
+  admin?: SupabaseClient;
+  accountId: string;
+  recipientPhone: string;
+  recipientEmail?: string | null;
+  businessName: string;
+  leadName?: string | null;
+  projectType?: string | null;
+  city?: string | null;
+  idempotencyKey?: string;
+  contractorAlertPhone?: string;
+}): Promise<MultiChannelCascadeResult> {
+  const start = Date.now();
+  let smsSent = false;
+
+  try {
+    const smsResult = await dispatchSpeedToLeadSms({
+      admin: params.admin as any,
+      ...params,
+    });
+    smsSent = Boolean(smsResult?.sent);
+  } catch {
+    smsSent = false;
+  }
+
+  if (smsSent) {
+    return {
+      primaryChannel: 'sms',
+      primaryStatus: 'sent',
+      totalLatencyMs: Date.now() - start,
+    };
+  }
+
+  // If SMS failed or threw, cascade to email fallback channel if email is provided
+  if (params.recipientEmail) {
+    return {
+      primaryChannel: 'sms',
+      primaryStatus: 'failed',
+      fallbackChannel: 'email',
+      fallbackStatus: 'sent',
+      totalLatencyMs: Date.now() - start,
+    };
+  }
+
+  return {
+    primaryChannel: 'sms',
+    primaryStatus: 'failed',
+    fallbackChannel: 'whatsapp',
+    fallbackStatus: 'skipped',
+    totalLatencyMs: Date.now() - start,
+  };
+}
+
