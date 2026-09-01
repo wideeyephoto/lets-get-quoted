@@ -262,5 +262,59 @@ describe('Ad Billing Module', () => {
     expect(handled).toBe(false);
     expect(siteUpdated).toBe(false);
   });
+
+  it('paces automated refill retries when nextRefillRetryAt is in the future and no pending idempotency key exists', async () => {
+    const { executeWalletRefillCharge } = await import('@/lib/ad-billing');
+    const futureDate = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString();
+
+    const mockAdmin: any = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: {
+                id: 'site_paced',
+                content: {
+                  adCampaign: {
+                    ...DEFAULT_AD_WALLET_STATE,
+                    fundingModel: 'auto_refill_wallet',
+                    status: 'past_due',
+                    walletBalanceCents: 1000,
+                    refillThresholdCents: 7500,
+                    refillAmountCents: 25000,
+                    nextRefillRetryAt: futureDate,
+                    failedRefillAttempts: 2,
+                    pendingRefillIdempotencyKey: null,
+                  },
+                },
+              },
+            }),
+          }),
+        }),
+        update: () => ({
+          eq: async () => ({ error: null }),
+        }),
+      }),
+    };
+
+    const pacedRes = await executeWalletRefillCharge({
+      admin: mockAdmin,
+      accountId: 'acc_paced',
+    });
+
+    expect(pacedRes.success).toBe(false);
+    expect(pacedRes.refilled).toBe(false);
+    expect(pacedRes.message).toContain('Automated refill retry is paced until');
+
+    const forcedRes = await executeWalletRefillCharge({
+      admin: mockAdmin,
+      accountId: 'acc_paced',
+      force: true,
+    });
+
+    // Force bypasses pacing check and proceeds to check customer ID (fails here because mock has no stripeCustomerId)
+    expect(forcedRes.message).not.toContain('Automated refill retry is paced until');
+  });
 });
+
 

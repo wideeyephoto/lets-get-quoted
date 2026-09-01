@@ -190,7 +190,7 @@ export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
  * Formats a contractor dispatch alert SMS when a new ad lead arrives.
  */
 export function generateContractorAdLeadAlert(params: {
-  businessName: string;
+  businessName?: string;
   leadName?: string | null;
   phone: string;
   projectType?: string | null;
@@ -198,7 +198,7 @@ export function generateContractorAdLeadAlert(params: {
   speedToLeadStatus: 'sent' | 'queued_quiet_hours' | 'opted_out' | 'failed';
   sendAtFormatted?: string | null;
 }): string {
-  const { businessName, leadName, phone, projectType, city, speedToLeadStatus, sendAtFormatted } = params;
+  const { businessName: _businessName, leadName, phone, projectType, city, speedToLeadStatus, sendAtFormatted } = params;
   const cleanName = leadName?.trim() || 'New Lead';
   const cleanService = projectType?.trim() || 'General Request';
   const cleanCity = city ? ` in ${city.trim()}` : '';

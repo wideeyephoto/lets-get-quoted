@@ -1087,6 +1087,7 @@ export async function executeWalletRefillCharge(params: {
   admin: SupabaseClient;
   accountId: string;
   reason?: string;
+  force?: boolean;
 }): Promise<{
   success: boolean;
   refilled: boolean;
@@ -1094,7 +1095,7 @@ export async function executeWalletRefillCharge(params: {
   chargedCents?: number;
   paymentIntentId?: string | null;
 }> {
-  const { admin, accountId, reason } = params;
+  const { admin, accountId, reason, force } = params;
 
   const { data: site } = await admin
     .from('sites')
@@ -1130,8 +1131,12 @@ export async function executeWalletRefillCharge(params: {
   }
 
   if (
+    !adState.pendingRefillIdempotencyKey &&
     adState.nextRefillRetryAt &&
+    !force &&
     !reason?.includes('manual') &&
+    !reason?.includes('force') &&
+    !reason?.includes('retry') &&
     new Date(adState.nextRefillRetryAt).getTime() > Date.now()
   ) {
     return {
