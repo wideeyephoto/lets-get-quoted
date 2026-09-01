@@ -70,6 +70,12 @@ export const CAPABILITIES: Record<string, CapabilityTruth> = {
     status: 'live',
     description: 'Automated SMS dispatches for quote approvals, arrival windows, and review requests.',
   },
+  live_technician_eta_sharing: {
+    id: 'live_technician_eta_sharing',
+    name: 'Live Technician ETA Sharing',
+    status: 'live',
+    description: 'Expiring live map link, dynamic arrival window updates, and automatic traffic delay notices via SMS.',
+  },
   ai_voice_receptionist: {
     id: 'ai_voice_receptionist',
     name: 'AI Voice Receptionist',

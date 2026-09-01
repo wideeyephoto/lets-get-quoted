@@ -771,6 +771,16 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
           'Export clean timesheet summaries for payroll processing (Gusto, ADP, QuickBooks).',
         ],
       },
+      {
+        id: 'live-technician-eta-sharing',
+        name: 'Live Technician ETA Sharing',
+        desc: 'Give customers an expiring map link, updated arrival window, and delay notices.',
+        tags: ['GPS', 'ETA', 'Customer Portal'],
+        subBullets: [
+          'Generates a secure, expiring tracking link with live map pin and technician first name/photo.',
+          'Dynamically recalculates arrival windows with traffic awareness and dispatches automatic delay notices when running behind.',
+        ],
+      },
     ],
   },
   {
