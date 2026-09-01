@@ -22,6 +22,8 @@ describe('Master Production Environment Variable Parity & Sanitization Audit', (
       'DATABASE_URL',
       'NEXT_PUBLIC_SUPABASE_URL',
       'NEXT_PUBLIC_SUPABASE_ANON_KEY',
+      'NEXT_PUBLIC_GOOGLE_TAG_ID',
+      'NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID',
       'SUPABASE_SERVICE_ROLE_KEY',
       'STRIPE_SECRET_KEY',
       'NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY',

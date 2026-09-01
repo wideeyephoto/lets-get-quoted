@@ -173,6 +173,9 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 
 - [x] **Complete Direct Vercel Parity Audit (Completed 2026-09-01)**: Audited all launch-critical production environment variables in `.env.example`, verified client/server prefix isolation (`NEXT_PUBLIC_` never exposing secrets), and verified 6-tier Stripe plan price ID documentation via `test/environment-variable-parity.test.ts` (4/4 passing).
 - [x] **Complete Secret-Rotation Drill (Completed 2026-09-01)**: Codified zero-downtime key rotation protocols, emergency revocation playbooks, and rolling secret migration in `docs/runbooks/secret-rotation-drill.md`. Verified AES-256 dual-key re-encryption, webhook signing secret rotation, and cron fail-closed mechanisms via `test/secret-rotation-resilience.test.ts` (3/3 passing).; prove old credentials fail.
+- [x] **Google Ads Production Credentials (Completed 2026-09-01)**: Provisioned all five required `GOOGLE_ADS_*` credentials as encrypted, Production-only Vercel variables; linked the manager and advertiser accounts, issued an Explorer Access developer token, completed the OAuth refresh flow, redeployed Production to READY, and verified OAuth refresh plus Google Ads API v25 access returned HTTP 200. Secret-free setup record: `docs/google-ads-production-credential-setup.md`.
+- [x] **Google Ads Sign-Up Attribution (Completed 2026-09-01)**: Configured the paired public `NEXT_PUBLIC_GOOGLE_TAG_ID` and `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID` values for Vercel Production and deployed the corrected first-run trigger plus CSP allowlist in READY release `97761d26`. Production browser verification proved `gtag.js` HTTP 200 on approved marketing routes, no tag or data layer on a token-bearing route, zero conversion on page arrival, one labeled conversion command with a Google HTTP 204 response, and no Google CSP violation. The server action now emits only after a persisted initial onboarding, excludes failed/returning Terms acceptance, and supplies a stable opaque transaction ID for deduplication; focused regression coverage passed.
+- [ ] **Upgrade Google Ads API Compatibility to v25**: `src/lib/google-ads-api.ts` still targets retired API v20 (HTTP 404). Upgrade it to supported v25 and rerun primary campaign-operation smoke tests before relying on managed-ads production flows.
 
 | Environment Variable | Production Value / Note |
 | :--- | :--- |
@@ -199,6 +202,8 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 | `RESEND_API_KEY` | `re_...` |
 | `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` | `AIzaSy...` (Referrer-restricted) |
 | `GOOGLE_MAPS_API_KEY` | `AIzaSy...` (Server-side geocoding) |
+| `NEXT_PUBLIC_GOOGLE_TAG_ID` | Public Google tag ID; Vercel Production scope; required while paid acquisition is active |
+| `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID` | Public sign-up `send_to` target; configured as a pair with the tag ID; Vercel Production scope |
 | `SIGNALWIRE_PROJECT_ID` | `2687f308-939e-4e73-97bd-4edfc0d7fd5a` |
 | `SIGNALWIRE_API_TOKEN` | *Live API Token* |
 | `SIGNALWIRE_SPACE_URL` | `lets-get-quoted.signalwire.com` |
