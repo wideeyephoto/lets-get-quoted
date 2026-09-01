@@ -51,6 +51,23 @@ describe('Text-to-Job Verified Phone & Shared Copilot Hotline', () => {
       expect(OWNER_ALERTS_FORM).toContain('href="/dashboard/text-to-job"');
     });
 
+    it('renders the AI Copilot Field Line Ready card on TextToJobWorkspace when qualified', () => {
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('🎙️ AI Copilot Field Line Ready');
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('msg-setup-copilot-card');
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('SaveFieldContactButton');
+    });
+
+    it('replaces hardcoded Sparky references with dynamic AI Copilot companion labels in TextToJobWorkspace', () => {
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('Your AI Copilot (Currently: {companion.name})');
+      expect(TEXT_TO_JOB_WORKSPACE).not.toContain('Who Can Text {companion.name}');
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('Who Can Text Your AI Copilot (Currently: {companion.name})');
+    });
+
+    it('includes verified field hotline and voice credits on the visor card and quick commands', () => {
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('isQualified ? fieldPhoneNumber :');
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('Text-to-Job Field Guide');
+    });
+
     it('includes clear guidance on calling the number using Voice credits', () => {
       expect(OWNER_ALERTS_FORM).toContain('Voice credits');
       expect(TEXT_TO_JOB_WORKSPACE).toContain('Voice credits');

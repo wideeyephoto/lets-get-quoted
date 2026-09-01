@@ -59,7 +59,7 @@ export default function SiteFooter({ site }: { site: Site }) {
   const areaLine = content.serviceAreas.intro.trim() || site.service_area || '';
 
   const mark = site.logo_url
-    ? <img className={styles.footerLogo} src={site.logo_url} alt="" />
+    ? <img className={styles.footerLogo} src={site.logo_url} alt="" data-edit="logo" />
     : <span className={styles.sfMark} data-edit="brandIcon" aria-hidden="true"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>;
   const brand = <span className={styles.sfBrandRow}>{mark}<span className={styles.sfName} data-edit="identity">{site.company_name}</span></span>;
   const tagline = <p className={styles.sfTagline} data-edit="bizTagline">{site.tagline || 'Trusted local service, done right.'}</p>;
@@ -89,7 +89,7 @@ export default function SiteFooter({ site }: { site: Site }) {
   const legal = siteLegalLinks(site);
   const bar = (
     <div className={styles.sfBar}>
-      <span>© {site.company_name}</span>
+      <span>© {new Date().getFullYear()} {site.company_name}</span>
       {(legal.privacy || legal.terms) && (
         <nav className={styles.sfLegal} aria-label="Legal" data-edit="legal">
           {legal.privacy && <a href="/privacy" data-edit="legal">Privacy Policy</a>}
@@ -102,6 +102,7 @@ export default function SiteFooter({ site }: { site: Site }) {
     </div>
   );
 
+  const hasContactLines = Boolean(site.phone || areaLine || site.hours || site.license);
   let body: ReactNode = null;
 
   if (style === 'cta') {
@@ -114,21 +115,24 @@ export default function SiteFooter({ site }: { site: Site }) {
         <div className={styles.sfPad}>
           <div className={styles.sfTwo}>
             <div className={styles.sfBrandCol}>{brand}{tagline}{linkList}{socials}</div>
-            <div className={styles.sfCol}><h3>Get in touch</h3>{contactLines}</div>
+            {hasContactLines && <div className={styles.sfCol}><h3>Get in touch</h3>{contactLines}</div>}
           </div>
         </div>
       </>
     );
   } else if (style === 'centered') {
+    const hasChips = Boolean(areaLine || site.hours || site.phone);
     body = (
       <div className={styles.sfCenter}>
         {brand}
         {tagline}
-        <div className={styles.sfChips}>
-          {areaLine && <span className={styles.sfChip} data-edit="bizArea">{PinIcon}{areaLine}</span>}
-          {site.hours && <span className={styles.sfChip} data-edit="bizHours">{ClockIcon}{site.hours}</span>}
-          {site.phone && <a className={styles.sfChip} href={`tel:${site.phone}`} data-edit="bizPhone">{PhoneIcon}{site.phone}</a>}
-        </div>
+        {hasChips && (
+          <div className={styles.sfChips}>
+            {areaLine && <span className={styles.sfChip} data-edit="bizArea">{PinIcon}{areaLine}</span>}
+            {site.hours && <span className={styles.sfChip} data-edit="bizHours">{ClockIcon}{site.hours}</span>}
+            {site.phone && <a className={styles.sfChip} href={`tel:${site.phone}`} data-edit="bizPhone">{PhoneIcon}{site.phone}</a>}
+          </div>
+        )}
         {(links.length > 0 || site.license) && (
           <nav className={styles.sfLinksRow} aria-label="Footer navigation">
             {links.map((l) => (
@@ -161,7 +165,13 @@ export default function SiteFooter({ site }: { site: Site }) {
           )}
           {areaLine && <div className={styles.sfCol}><h3>Areas served</h3><span data-edit="bizArea">{areaLine}</span></div>}
           {site.hours && <div className={styles.sfCol}><h3>Hours</h3><span data-edit="bizHours">{site.hours}</span></div>}
-          <div className={styles.sfCol}><h3>Contact</h3>{site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}{site.license && <span data-edit="bizLicense">{site.license}</span>}</div>
+          {(site.phone || site.license) && (
+            <div className={styles.sfCol}>
+              <h3>Contact</h3>
+              {site.phone && <a href={`tel:${site.phone}`} data-edit="bizPhone">{site.phone}</a>}
+              {site.license && <span data-edit="bizLicense">{site.license}</span>}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -172,7 +182,7 @@ export default function SiteFooter({ site }: { site: Site }) {
         <div className={styles.sfThree}>
           <div className={styles.sfBrandCol}>{brand}{tagline}{quoteBtn}{socials}</div>
           {linkList}
-          <div className={styles.sfCol}><h3>Get in touch</h3>{contactLines}</div>
+          {hasContactLines && <div className={styles.sfCol}><h3>Get in touch</h3>{contactLines}</div>}
         </div>
       </div>
     );

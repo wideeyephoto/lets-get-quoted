@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { useFormState } from 'react-dom';
 import SaveButton from '@/components/save-button';
 import SaveFieldContactButton from '@/components/SaveFieldContactButton';
+import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
 import { formatUsPhone } from '@/lib/phone';
 import { saveOwnerAlertsAction, sendOwnerPhoneVerificationCodeAction } from './actions';
 // The idle state comes from the pure module, not from the action file: a
@@ -62,6 +63,16 @@ export default function OwnerAlertsForm({
   const [state, action] = useFormState(saveOwnerAlertsAction, OWNER_ALERTS_IDLE);
   const errors = state.status === 'error' ? state.errors : [];
   const errorFor = (field: 'phone' | 'consent' | 'form') => errors.find((one) => one.field === field)?.message ?? null;
+
+  let companionName = 'Sparky';
+  try {
+    const assistant = useAssistant();
+    if (assistant?.companion?.name) {
+      companionName = assistant.companion.name;
+    }
+  } catch {
+    companionName = 'Sparky';
+  }
 
   const [currentPhone, setCurrentPhone] = useState(phone ?? '');
   const [otpState, setOtpState] = useState<'idle' | 'sending' | 'sent' | 'verified'>('idle');
@@ -300,7 +311,7 @@ export default function OwnerAlertsForm({
               <span className="msg-setup-copilot-num">{formatUsPhone(sharedPhoneNumber || '+19479412323')}</span>
             </div>
             <p className="msg-setup-copilot-text">
-              Text notes, material receipts, gate codes, or punch lists to <b>{formatUsPhone(sharedPhoneNumber || '+19479412323')}</b> from your verified mobile ({formatUsPhone(currentPhone || phone || '')}). Your AI Copilot organizes and updates job records automatically.
+              Text notes, material receipts, gate codes, or punch lists to <b>{formatUsPhone(sharedPhoneNumber || '+19479412323')}</b> from your verified mobile ({formatUsPhone(currentPhone || phone || '')}). Your AI Copilot (Currently: {companionName}) organizes and updates job records automatically.
             </p>
             <p className="msg-setup-copilot-voice-tip">
               📞 <b>Hands-Free Dictation:</b> You can also call this number directly from your truck to dictate updates hands-free using your Voice credits.

@@ -3878,11 +3878,10 @@
 /* grid */
 .sfTop { display: flex; align-items: flex-start; gap: 1.5rem; flex-wrap: wrap; padding-bottom: 1.6rem; margin-bottom: 1.6rem; border-bottom: 1px solid color-mix(in srgb, var(--c-on-deep) 12%, transparent); }
 .sfTop .sfTagline { margin-top: 0; flex: 1 1 320px; }
-.sfGrid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+.sfGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1.5rem; }
 
 @media (max-width: 720px) {
   .sfThree, .sfTwo { grid-template-columns: 1fr; }
-  .sfGrid { grid-template-columns: 1fr 1fr; }
   .sfCtaBand { text-align: left; }
 }
 @media (max-width: 440px) { .sfGrid { grid-template-columns: 1fr; } }

@@ -764,6 +764,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
       projectShowcase: 'projectShowcase',
       video: 'video',
       chatButton: 'chatButton',
+      footer: 'footer',
     };
 
     function onEditRequest(event: MessageEvent) {
@@ -3582,7 +3583,20 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                 </div>
                                 <label className={styles.formField}><span>Business hours (optional)</span><input id="bf-hours" value={site.hours || ''} onChange={(event) => handleChange('hours', event.target.value || null)} placeholder="Monday-Friday, 7am-5pm" /><small className={styles.fieldHint}>Shown in the footer. Leave blank to hide it.</small></label>
                                 <label className={styles.formField}><span>License (optional)</span><input id="bf-license" value={site.license || ''} onChange={(event) => handleChange('license', event.target.value || null)} placeholder="LIC #123456" /><small className={styles.fieldHint}>Shown in the footer to back your work. Leave blank to hide it.</small></label>
-                                <small className={styles.fieldHint}>Your service area (from Cities you serve) and phone also fill the footer.</small>
+                                
+                                <hr className={styles.logoDivider} />
+                                <div className={styles.contentSubhead}><strong>More footer details</strong><small>These come from other sections of your site.</small></div>
+                                <div className={styles.chatNumberChips} style={{ marginTop: '0.6rem' }}>
+                                  <button type="button" className={styles.chatNumberChip} onClick={() => jumpTo('page', 'serviceAreas', 'bf-area-intro')}>
+                                    📍 Service Areas (Cities you serve) →
+                                  </button>
+                                  <button type="button" className={styles.chatNumberChip} onClick={() => jumpTo('page', 'estimate', 'bf-phone')}>
+                                    📞 Phone Number &amp; Call Settings →
+                                  </button>
+                                  <button type="button" className={styles.chatNumberChip} onClick={() => jumpTo('business', 'socials')}>
+                                    🌐 Social Media Profiles →
+                                  </button>
+                                </div>
                               </SectionCard>
                             )}
                           </div>

@@ -41,7 +41,7 @@ function resolveEditable(el: Element): Editable | null {
   }
 
   const footer = el.closest('footer');
-  if (footer) return { key: 'identity', node: footer, isImage: false };
+  if (footer) return { key: 'footer', node: footer, isImage: false };
   return null;
 }
 
@@ -51,6 +51,7 @@ const PENCIL = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stro
 function labelFor(match: Editable): string {
   if (match.key === 'logo') return `${CAMERA} Replace logo`;
   if (match.key === 'header') return `${PENCIL} Edit header`;
+  if (match.key === 'footer') return `${PENCIL} Edit footer`;
   if (match.key === 'brandIcon') return `${PENCIL} Edit logo & icon`;
   // The video band contains a poster <img>, so the generic image test fires on
   // it — but the thing you'd be editing is the section, not that still frame.

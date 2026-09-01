@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
+import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
 import { evaluateFieldNoteConfidence, type FieldConfidenceVerdict } from '@/lib/field-intake-quality';
 import styles from './text-to-job.module.css';
@@ -514,8 +515,8 @@ export default function TextToJobWorkspace({
       </div>
     </div>
     <div class="footer">
-      <div>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change.</div>
-      <div class="footer-right">${companion.name} Field Hotline &bull; Let's Get Quoted</div>
+      <div>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change. 📞 Call or text hands-free (calls use Voice credits).</div>
+      <div class="footer-right">Your AI Copilot (Currently: ${companion.name}) Field Hotline &bull; Let's Get Quoted</div>
     </div>
   </div>
   <script>
@@ -533,6 +534,7 @@ export default function TextToJobWorkspace({
 
   function handleCopyVisorCheatsheet() {
     const text = `📱 ${printBizName || businessTitle} Field Ingest Hotline: ${fieldPhoneNumber}
+(Verified Mobile: ${alertPhone} · Powered by Your AI Copilot: ${companion.name})
 
 1. CHANGE ORDERS & QUOTES:
    ${selectedPhrases.changeOrder}
@@ -549,6 +551,7 @@ export default function TextToJobWorkspace({
 5. RECEIPTS & EXPENSES:
    ${selectedPhrases.receipts}
 
+📞 Hands-Free Dictation: Call ${fieldPhoneNumber} from your truck to dictate updates hands-free using your Voice credits.
 🛡️ 15-Min SMS Undo: Reply UNDO within 15 minutes to revert.`;
     navigator.clipboard.writeText(text);
     setNotification('📋 Copied text cheatsheet to clipboard!');
@@ -875,8 +878,8 @@ export default function TextToJobWorkspace({
 
   return (
     <div className={styles.container}>
-      {/* 0. Top Alert Banner When Unqualified */}
-      {!isQualified && (
+      {/* 0. Top Alert Banner When Unqualified or AI Copilot Field Line Ready Banner When Qualified */}
+      {!isQualified ? (
         <div className={styles.topQualificationBanner}>
           <div className={styles.topQualificationLeft}>
             <span className={styles.topQualificationIcon}>🔒</span>
@@ -889,9 +892,36 @@ export default function TextToJobWorkspace({
               </p>
             </div>
           </div>
-          <Link href="/dashboard/automations#urgent-lead-sms" className={styles.topQualificationBtn}>
+          <Link href="/dashboard/messages?setup=1" className={styles.topQualificationBtn}>
             📱 Connect Cell Phone &rarr;
           </Link>
+        </div>
+      ) : (
+        <div className="msg-setup-copilot-card" style={{ marginBottom: '1.25rem' }}>
+          <div className="msg-setup-copilot-head">
+            <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
+            <span className="msg-setup-copilot-num">{fieldPhoneNumber}</span>
+          </div>
+          <p className="msg-setup-copilot-text">
+            Text notes, material receipts, gate codes, or punch lists to <b>{fieldPhoneNumber}</b> from your verified mobile ({alertPhone}). Your AI Copilot (Currently: {companion.name}) organizes and updates job records automatically.
+          </p>
+          <p className="msg-setup-copilot-voice-tip">
+            📞 <b>Hands-Free Dictation:</b> You can also call this number directly from your truck to dictate updates hands-free using your Voice credits.
+          </p>
+          <div className="msg-setup-copilot-actions">
+            <SaveFieldContactButton size="small" label="Save Contact Card (.vcf)" />
+            <a href={`sms:${rawCallableNumber.replace(/[^\d+]/g, '')}`} className="btn secondary sm msg-setup-copilot-btn">
+              💬 Text Copilot
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              className="btn quiet sm msg-setup-copilot-link"
+              style={{ cursor: 'pointer', background: 'transparent', border: 'none' }}
+            >
+              🪪 Quick Commands / Visor Card →
+            </button>
+          </div>
         </div>
       )}
 
@@ -907,7 +937,7 @@ export default function TextToJobWorkspace({
             />
             <div>
               <div className={styles.sparkyBadgeRow}>
-                <span className={styles.badge}>✦ {companion.name} · {companion.badgeLabel}</span>
+                <span className={styles.badge}>✦ Your AI Copilot (Currently: {companion.name}) · {companion.badgeLabel}</span>
               </div>
               <div className={styles.headerTitleRow}>
                 <h1 className={styles.title}>Text-to-Job Dashboard</h1>
@@ -921,7 +951,7 @@ export default function TextToJobWorkspace({
                 </button>
               </div>
               <p className={styles.subtitle}>
-                Text, send voice memos, or call {fieldPhoneNumber} hands-free (using Voice credits)—{companion.name} updates quotes, punch lists, and schedules instantly.
+                Text, send voice memos, or call {fieldPhoneNumber} hands-free (using Voice credits)—your AI Copilot (Currently: {companion.name}) updates quotes, punch lists, and schedules instantly.
               </p>
             </div>
           </div>
@@ -1263,7 +1293,7 @@ export default function TextToJobWorkspace({
         <div className={styles.setupAdvancedHeader}>
           <div className={styles.setupAdvancedTitleGroup}>
             <span className={styles.badge}>⚙️ Team Access &amp; Voice Setup</span>
-            <h2 className={styles.setupAdvancedTitle}>Who Can Text {companion.name} &amp; Driving Voice Setup</h2>
+            <h2 className={styles.setupAdvancedTitle}>Who Can Text Your AI Copilot (Currently: {companion.name}) &amp; Driving Voice Setup</h2>
             <p className={styles.setupAdvancedSubtitle}>
               Manage authorized crew phone numbers, or view 1-minute Siri &amp; Google Assistant steering wheel dictation setup.
             </p>
@@ -1284,10 +1314,10 @@ export default function TextToJobWorkspace({
                 <span className={styles.accordionIcon}>👥</span>
                 <div>
                   <strong className={styles.accordionTitle}>
-                    Who Can Text {companion.name} (Team Phone Access)
+                    Who Can Text Your AI Copilot (Currently: {companion.name}) (Team Phone Access)
                   </strong>
                   <p className={styles.accordionSubtitle}>
-                    {totalAuthorizedDevices} {totalAuthorizedDevices === 1 ? 'phone' : 'phones'} configured to send job updates directly to {companion.name}
+                    {totalAuthorizedDevices} {totalAuthorizedDevices === 1 ? 'phone' : 'phones'} configured to send job updates directly to your AI Copilot (Currently: {companion.name})
                   </p>
                 </div>
               </div>
@@ -1307,10 +1337,10 @@ export default function TextToJobWorkspace({
                         Connect Your Cell Phone to Start Texting
                       </strong>
                       <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#cbd5e1', lineHeight: 1.4 }}>
-                        Add your mobile number so {companion.name} recognizes you when you text from the job site.
+                        Add your mobile number so your AI Copilot (Currently: {companion.name}) recognizes you when you text from the job site.
                       </p>
                     </div>
-                    <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+                    <Link href="/dashboard/messages?setup=1" className={styles.verifyBtn}>
                       📱 Connect Mobile Phone &rarr;
                     </Link>
                   </div>
@@ -1321,14 +1351,14 @@ export default function TextToJobWorkspace({
                     <div className={styles.sendersTitleGroup}>
                       <h3 className={styles.sendersTitle}>Authorized Phone Numbers</h3>
                       <p className={styles.sendersSubtitle}>
-                        When these phone numbers text <strong>{fieldPhoneNumber}</strong>, {companion.name} automatically links updates to the correct technician.
+                        When these phone numbers text <strong>{fieldPhoneNumber}</strong>, your AI Copilot (Currently: {companion.name}) automatically links updates to the correct technician.
                       </p>
                     </div>
                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                       <Link href="/dashboard/crew?tab=people&add=1" className={styles.vcardBtn}>
                         + Add Crew Member
                       </Link>
-                      <Link href="/dashboard/automations#urgent-lead-sms" className={styles.resetBtn}>
+                      <Link href="/dashboard/messages?setup=1" className={styles.resetBtn}>
                         Manage My Phone
                       </Link>
                     </div>
@@ -1374,7 +1404,7 @@ export default function TextToJobWorkspace({
                                 <span className={styles.liveDot} /> Active
                               </span>
                             ) : (
-                              <Link href="/dashboard/automations#urgent-lead-sms" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
+                              <Link href="/dashboard/messages?setup=1" style={{ color: '#f59e0b', fontSize: '12px', fontWeight: 700, textDecoration: 'none' }}>
                                 ⚠️ Connect &rarr;
                               </Link>
                             )}
@@ -1494,7 +1524,7 @@ export default function TextToJobWorkspace({
                           📱 Download .vcf Card
                         </a>
                       ) : (
-                        <Link href="/dashboard/automations#urgent-lead-sms" className={styles.verifyBtn}>
+                        <Link href="/dashboard/messages?setup=1" className={styles.verifyBtn}>
                           📱 Setup Alert Phone to Download
                         </Link>
                       )}
@@ -1588,7 +1618,7 @@ export default function TextToJobWorkspace({
                 <span className={styles.badge}>⚡ Test Sandbox</span>
                 <h3 className={styles.modalTitle}>Test a Field Note</h3>
                 <p className={styles.modalSubtitle}>
-                  Type or dictate a note to see how {companion.name} creates change orders, punch list tasks, and schedule slots.
+                  Type or dictate a note to see how your AI Copilot (Currently: {companion.name}) creates change orders, punch list tasks, and schedule slots.
                 </p>
               </div>
               <button
@@ -1801,7 +1831,7 @@ export default function TextToJobWorkspace({
 
               <div className={styles.cardFooterRules}>
                 <span>↺ <strong>15-Min Undo:</strong> Reply <code>UNDO</code> to revert. 📞 Call or text hands-free (calls use Voice credits).</span>
-                <span className={styles.cardPoweredBy}>{companion.name} Field Hotline &bull; Let&apos;s Get Quoted</span>
+                <span className={styles.cardPoweredBy}>Your AI Copilot (Currently: {companion.name}) Field Hotline &bull; Let&apos;s Get Quoted</span>
               </div>
             </div>
 
