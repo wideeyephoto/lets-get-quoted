@@ -92,63 +92,6 @@ async function upsertSpendRows(rows: Record<string, unknown>[]): Promise<number>
   return rows.length;
 }
 
-async function reconcilePendingGoogleLsaFeedback(
-  accountId: string,
-  customerId: string,
-  providers: Array<{ google_lead_id: string; feedback_submitted: boolean }>,
-): Promise<void> {
-  if (!providers.length) return;
-  const admin = createAdminClient();
-  const providerById = new Map(providers.map((provider) => [provider.google_lead_id, provider]));
-  const ids = [...providerById.keys()];
-  const batchSize = 200;
-  const staleAt = new Date(Date.now() - 30 * 60_000).toISOString();
-  for (let offset = 0; offset < ids.length; offset += batchSize) {
-    const idBatch = ids.slice(offset, offset + batchSize);
-    const { data: pending, error: pendingError } = await admin
-      .from('google_lsa_feedback')
-      .select('google_lead_id, submitted_at')
-      .eq('account_id', accountId)
-      .eq('customer_id', customerId)
-      .eq('submission_status', 'pending')
-      .in('google_lead_id', idBatch);
-    if (pendingError) throw new Error(pendingError.message);
-
-    const confirmed = (pending ?? [])
-      .map((row) => String((row as { google_lead_id: string }).google_lead_id))
-      .filter((id) => providerById.get(id)?.feedback_submitted === true);
-    const retryable = (pending ?? [])
-      .filter((row) => String((row as { submitted_at?: string }).submitted_at ?? '') < staleAt)
-      .map((row) => String((row as { google_lead_id: string }).google_lead_id))
-      .filter((id) => providerById.get(id)?.feedback_submitted !== true);
-
-    if (confirmed.length) {
-      const { error } = await admin
-        .from('google_lsa_feedback')
-        .update({ submission_status: 'succeeded', last_error: null })
-        .eq('account_id', accountId)
-        .eq('customer_id', customerId)
-        .eq('submission_status', 'pending')
-        .in('google_lead_id', confirmed);
-      if (error) throw new Error(error.message);
-    }
-    if (retryable.length) {
-      const { error } = await admin
-        .from('google_lsa_feedback')
-        .update({
-          submission_status: 'failed',
-          last_error: 'Google did not report this feedback as submitted after a fresh lead sync. It is safe to retry.',
-        })
-        .eq('account_id', accountId)
-        .eq('customer_id', customerId)
-        .eq('submission_status', 'pending')
-        .lt('submitted_at', staleAt)
-        .in('google_lead_id', retryable);
-      if (error) throw new Error(error.message);
-    }
-  }
-}
-
 async function importLeads(input: {
   accountId: string;
   customerId: string;
@@ -158,7 +101,6 @@ async function importLeads(input: {
   const admin = createAdminClient();
   let linked = 0;
   let failed = 0;
-  const providerFacts = new Map<string, { google_lead_id: string; feedback_submitted: boolean }>();
 
   const workerCount = Math.min(4, input.rows.length);
   const queues = Array.from({ length: workerCount }, () => [] as GoogleLsaLeadRow[]);
@@ -179,7 +121,6 @@ async function importLeads(input: {
         customerTimeZone: input.customerTimeZone,
         lead: raw,
       });
-      providerFacts.set(provider.google_lead_id, provider);
       try {
         const crm = await createLead(
           admin,
@@ -207,12 +148,6 @@ async function importLeads(input: {
   // same normalized phone share a queue, preserving createLead's client-dedupe
   // serialization for repeat contacts.
   await Promise.all(queues.map((queue) => worker(queue)));
-  try {
-    await reconcilePendingGoogleLsaFeedback(input.accountId, input.customerId, [...providerFacts.values()]);
-  } catch (error) {
-    failed += 1;
-    console.error('Google LSA feedback reconciliation failed:', error instanceof Error ? error.message : error);
-  }
   return { linked, failed };
 }
 

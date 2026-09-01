@@ -24,6 +24,7 @@ export default function GoogleLsaLeadCard({
   submitFeedback: (formData: FormData) => Promise<void>;
 }) {
   const feedbackKnown = detail.feedbackSubmitted || detail.feedbackStatus === 'succeeded';
+  const feedbackOutcomeUnknown = detail.feedbackSubmitted && detail.feedbackStatus === 'pending';
   return (
     <section className="panel workspace-section-card" id="google-lsa-lead">
       <div className="section-heading workspace-section-heading compact-heading">
@@ -52,7 +53,12 @@ export default function GoogleLsaLeadCard({
         </div>
       ) : <p className="empty-state">No conversation events have been returned for this lead yet.</p>}
 
-      {feedbackKnown ? (
+      {feedbackOutcomeUnknown ? (
+        <p className="empty-state" style={{ marginTop: '1rem' }}>
+          Google reports that feedback exists for this lead, but it does not expose the accepted answer.
+          This app&rsquo;s last submission outcome is still unconfirmed, so it will not send a duplicate.
+        </p>
+      ) : feedbackKnown ? (
         <p className="form-success" style={{ marginTop: '1rem' }}>
           Lead feedback was submitted{detail.feedback?.answer ? <>: <strong>{label(detail.feedback.answer)}</strong></> : ' in Google'}.
           {detail.feedback?.creditIssuanceDecision ? <> Bonus-credit decision: {label(detail.feedback.creditIssuanceDecision)}.</> : null}

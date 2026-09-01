@@ -55,6 +55,12 @@ describe('Google Local Services synchronization contract', () => {
     expect(connection).not.toContain('markGoogleLsaConnectionError(accountId, error, true)');
   });
 
+  it('never infers an exact feedback outcome or retry window from Google\'s boolean read model', () => {
+    expect(sync).not.toContain('reconcilePendingGoogleLsaFeedback');
+    expect(sync).not.toContain('It is safe to retry');
+    expect(sync).not.toContain("submission_status: 'succeeded'");
+  });
+
   it('never reports a disconnect when the local credential could not be removed', () => {
     expect(disconnectRoute).toContain('await disconnectGoogleLsaConnection(accountId)');
     expect(disconnectRoute).toContain("google_lsa=disconnect-failed");

@@ -1075,7 +1075,7 @@ export async function submitGoogleLsaFeedbackAction(leadId: string, formData: Fo
         submission_status: definiteFailure ? 'failed' : 'pending',
         last_error: (definiteFailure
           ? detail
-          : `${detail} Submission outcome is not confirmed; the next Google lead sync will reconcile it.`).slice(0, 500),
+          : `${detail} Submission outcome is not confirmed and will not be retried automatically.`).slice(0, 500),
       })
       .eq('account_id', accountId)
       .eq('customer_id', String(providerLead.customer_id))
