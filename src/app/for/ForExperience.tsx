@@ -2,11 +2,13 @@
 
 import { useId, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { FLEX_PRICE } from '@/lib/pricing';
 import { TRADE_CATEGORIES, categoryOf, searchIndexFor } from '@/lib/trade-categories';
 import { seasonalTrades } from '@/lib/trade-collections';
 import { TRADES, type Trade } from '@/lib/trades';
+import { matchTrades, findBestTradeMatch } from '@/lib/trade-matching';
 import styles from './for.module.css';
 
 type VisualKey = 'quote' | 'website' | 'journey' | 'kit';
@@ -106,6 +108,7 @@ function HeroVisual({ selectedTrade }: { selectedTrade: Trade }) {
 }
 
 export default function ForExperience() {
+  const router = useRouter();
   const [selectedTrade, setSelectedTrade] = useState<Trade>(FEATURED_TRADES[0] ?? TRADES[0]);
   const [heroQuery, setHeroQuery] = useState('');
   const [directoryQuery, setDirectoryQuery] = useState('');
@@ -115,20 +118,36 @@ export default function ForExperience() {
   const directorySearchId = useId();
 
   const heroMatches = useMemo(() => {
-    const query = heroQuery.trim().toLowerCase();
-    return query ? TRADES.filter((trade) => searchIndexFor(trade).includes(query)).slice(0, 5) : [];
+    const query = heroQuery.trim();
+    return query ? matchTrades(query, { limit: 5 }) : [];
   }, [heroQuery]);
 
   const directoryMatches = useMemo(() => {
-    const query = directoryQuery.trim().toLowerCase();
-    return TRADES.filter((trade) => (!query || searchIndexFor(trade).includes(query)) && (selectedCategory === 'all' || categoryOf(trade.slug)?.id === selectedCategory));
+    const query = directoryQuery.trim();
+    const matched = query ? matchTrades(query, { limit: 100 }) : TRADES;
+    return matched.filter((trade) => selectedCategory === 'all' || categoryOf(trade.slug)?.id === selectedCategory);
   }, [directoryQuery, selectedCategory]);
 
   const visibleTrades = showAllTrades || directoryQuery || selectedCategory !== 'all' ? directoryMatches : directoryMatches.slice(0, 4);
+
   const chooseTrade = (trade: Trade, scroll = false) => {
     setSelectedTrade(trade);
     setHeroQuery(trade.name);
     if (scroll) document.getElementById('start')?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  const handleFindSetup = (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const query = heroQuery.trim();
+    const target = (query ? findBestTradeMatch(query) : null) ?? selectedTrade;
+
+    if (target) {
+      router.push(`/for/${target.slug}`);
+    } else if (query) {
+      window.location.href = `${APP_SIGNUP_URL}&source=for_trade_custom&custom=${encodeURIComponent(heroQuery.trim())}`;
+    } else {
+      router.push(`/for/${selectedTrade.slug}`);
+    }
   };
 
   return (
@@ -141,12 +160,107 @@ export default function ForExperience() {
             <h1 id="hero-title">Your trade website, estimator, and quotes—<em>ready in minutes.</em></h1>
             <p className={styles.heroDescription}>Choose your trade and get editable services, smart intake questions, and highly customizable Smart Quotes—ready for the work you do.</p>
             <div className={styles.tradeFinder}>
-              <label htmlFor="hero-trade-search">What kind of work do you do?</label>
-              <div className={styles.finderInputRow}><span aria-hidden="true">⌕</span><input id="hero-trade-search" value={heroQuery} onChange={(event) => setHeroQuery(event.target.value)} placeholder="Try “plumber,” “HVAC,” or “painter”…" autoComplete="off" /><button type="button" onClick={() => heroMatches[0] && chooseTrade(heroMatches[0])}>Find my setup <span>→</span></button></div>
-              {heroQuery && heroQuery.toLowerCase() !== selectedTrade.name.toLowerCase() && <div className={styles.heroSuggestions} role="listbox" aria-label="Matching trades">{heroMatches.length ? heroMatches.map((trade) => <button key={trade.slug} type="button" role="option" aria-selected={selectedTrade.slug === trade.slug} onClick={() => chooseTrade(trade)}><span><b>{trade.name}</b><small>{trade.services.slice(0, 3).join(' · ')}</small></span><i>↗</i></button>) : <p>Start with a custom specialty—we’ll tailor it from there.</p>}</div>}
+              <div className={styles.finderHeader}>
+                <label htmlFor="hero-trade-search" className={styles.finderLabel}>
+                  What kind of work do you do?
+                </label>
+                <span className={styles.finderBadge}>
+                  <span className={styles.badgePulse} aria-hidden="true" />
+                  {TRADES.length}+ Trades Prebuilt
+                </span>
+              </div>
+              <form onSubmit={handleFindSetup} className={styles.finderForm} role="search">
+                <div className={styles.finderInputRow}>
+                  <svg className={styles.searchIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    id="hero-trade-search"
+                    type="text"
+                    value={heroQuery}
+                    onChange={(event) => setHeroQuery(event.target.value)}
+                    placeholder="Try “painter,” “plumber,” or “roofing”…"
+                    autoComplete="off"
+                    aria-label="Trade search input"
+                  />
+                  {heroQuery && (
+                    <button
+                      type="button"
+                      className={styles.clearBtn}
+                      onClick={() => setHeroQuery('')}
+                      aria-label="Clear search input"
+                    >
+                      ✕
+                    </button>
+                  )}
+                  <button type="submit" className={styles.finderButton} id="find-my-setup-btn">
+                    <span>Find my setup</span>
+                    <svg className={styles.buttonArrow} width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                  </button>
+                </div>
+              </form>
+              {heroQuery && heroQuery.toLowerCase() !== selectedTrade.name.toLowerCase() && (
+                <div className={styles.heroSuggestions} role="listbox" aria-label="Matching trades">
+                  {heroMatches.length ? (
+                    heroMatches.map((trade) => (
+                      <button
+                        key={trade.slug}
+                        type="button"
+                        role="option"
+                        aria-selected={selectedTrade.slug === trade.slug}
+                        onClick={() => {
+                          chooseTrade(trade);
+                          router.push(`/for/${trade.slug}`);
+                        }}
+                      >
+                        <span>
+                          <b>{trade.name}</b>
+                          <small>{trade.services.slice(0, 3).join(' · ')}</small>
+                        </span>
+                        <i>→</i>
+                      </button>
+                    ))
+                  ) : (
+                    <div className={styles.noMatchSuggestion}>
+                      <p>Start with a custom specialty—we’ll tailor it from there.</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          window.location.href = `${APP_SIGNUP_URL}&source=for_trade_custom&custom=${encodeURIComponent(heroQuery.trim())}`;
+                        }}
+                      >
+                        Build custom trade setup →
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+              <div className={styles.tradeChips} aria-label="Trade shortcuts">
+                {FEATURED_TRADES.map((trade) => {
+                  const isSelected = selectedTrade.slug === trade.slug;
+                  return (
+                    <button
+                      type="button"
+                      key={trade.slug}
+                      className={isSelected ? styles.chipActive : styles.chip}
+                      onClick={() => chooseTrade(trade)}
+                      aria-selected={isSelected}
+                    >
+                      {isSelected && <span className={styles.chipCheck} aria-hidden="true">✓</span>}
+                      {trade.name}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className={styles.finePrint}>
+                <span className={styles.finePrintDot} aria-hidden="true" />
+                Type a trade to auto-fill your starting setup · No card required
+              </p>
             </div>
-            <div className={styles.tradeChips} aria-label="Trade shortcuts">{FEATURED_TRADES.map((trade) => <button type="button" key={trade.slug} onClick={() => chooseTrade(trade)}>{trade.name}</button>)}</div>
-            <p className={styles.finePrint}>Type a trade to auto-fill your starting setup · No card required</p>
           </div>
           <HeroVisual selectedTrade={selectedTrade} />
         </div>
