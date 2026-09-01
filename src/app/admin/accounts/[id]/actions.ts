@@ -31,6 +31,11 @@ function requireConfirmation(accountId: string, formData: FormData, expected: st
 }
 
 export async function suspendAccountAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
+  const { admin } = ctx;
+  const reason = actionReason(accountId, formData);
+  requireConfirmation(accountId, formData, 'SUSPEND');
+  const nowIso = new Date().toISOString();
   // Read first so the trail can say what it WAS. "Suspended" with no prior
   // state cannot distinguish a first suspension from re-suspending somebody
   // who was already blocked, and those are different conversations later.

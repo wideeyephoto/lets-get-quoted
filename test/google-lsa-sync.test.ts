@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const source = (path: string) => readFileSync(join(process.cwd(), path), 'utf8').replace(/\r\n/g, '\n');
 const sync = source('src/lib/google-lsa/sync.ts');
 const connection = source('src/lib/google-lsa/connection.ts');
+const disconnectRoute = source('src/app/api/google-lsa/disconnect/route.ts');
 
 describe('Google Local Services synchronization contract', () => {
   it('polls overlapping provider windows and projects every lead through the replay-safe CRM identity', () => {
@@ -43,5 +44,12 @@ describe('Google Local Services synchronization contract', () => {
     expect(connection).toContain('if (reconnect) return null');
     expect(connection).toContain('throw error');
     expect(connection).not.toContain('markGoogleLsaConnectionError(accountId, error, true)');
+  });
+
+  it('never reports a disconnect when the local credential could not be removed', () => {
+    expect(disconnectRoute).toContain('await deleteGoogleLsaConnection(accountId)');
+    expect(disconnectRoute).toContain("google_lsa=disconnect-failed");
+    expect(disconnectRoute).toContain("revokeConfirmed ? 'disconnected' : 'disconnected-local'");
+    expect(disconnectRoute).not.toContain('deleteGoogleLsaConnection(accountId).catch');
   });
 });

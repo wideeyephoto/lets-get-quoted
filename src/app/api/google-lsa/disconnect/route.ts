@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request: NextRequest) {
   const { accountId } = await requireOwnerContext();
+  let revokeConfirmed = false;
 
   try {
     const { data } = await createAdminClient()
@@ -15,15 +16,22 @@ export async function POST(request: NextRequest) {
       .eq('account_id', accountId)
       .maybeSingle();
     const refreshToken = (data as { refresh_token?: string } | null)?.refresh_token;
-    if (refreshToken) await revokeGoogleToken(refreshToken);
+    revokeConfirmed = refreshToken ? await revokeGoogleToken(refreshToken) : true;
   } catch {
-    // A missing migration or an unreachable revoke endpoint never prevents the
-    // local credential from being removed.
+    // Remote revocation is best-effort. Local deletion below is authoritative:
+    // once that succeeds no future import can use the credential.
   }
 
-  await deleteGoogleLsaConnection(accountId).catch(() => undefined);
+  try {
+    await deleteGoogleLsaConnection(accountId);
+  } catch {
+    return NextResponse.redirect(
+      new URL('/dashboard/settings?google_lsa=disconnect-failed#google-local-services', request.nextUrl.origin),
+      { status: 303 },
+    );
+  }
   return NextResponse.redirect(
-    new URL('/dashboard/settings?google_lsa=disconnected#google-local-services', request.nextUrl.origin),
+    new URL(`/dashboard/settings?google_lsa=${revokeConfirmed ? 'disconnected' : 'disconnected-local'}#google-local-services`, request.nextUrl.origin),
     { status: 303 },
   );
 }

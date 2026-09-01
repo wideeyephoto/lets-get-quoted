@@ -4,6 +4,8 @@ import type { GoogleLsaConnectionStatus } from '@/lib/google-lsa/connection';
 const NOTICES: Record<string, { tone: 'ok' | 'warn'; text: string }> = {
   connected: { tone: 'ok', text: 'Google Local Services Ads is linked.' },
   disconnected: { tone: 'ok', text: 'Google Local Services Ads has been disconnected and Google access was revoked.' },
+  'disconnected-local': { tone: 'warn', text: 'Imports are disconnected and the local credential was removed. Google did not confirm remote revocation; you can also remove access from your Google account.' },
+  'disconnect-failed': { tone: 'warn', text: 'The connection could not be removed, so imports may still run. Please try disconnecting again.' },
   cancelled: { tone: 'warn', text: 'Connection cancelled — nothing changed.' },
   state: { tone: 'warn', text: 'That connection attempt expired. Start again from this page.' },
   failed: { tone: 'warn', text: 'Google could not complete the connection. Please try again.' },
