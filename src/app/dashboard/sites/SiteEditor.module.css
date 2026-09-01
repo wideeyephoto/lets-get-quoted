@@ -667,36 +667,81 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .sectionGripArrows button:not(:disabled):hover { background: rgba(255,122,33,.16); border-color: #ff7a21; }
 .sectionLock { padding: 0 .1rem 0 .6rem; font-size: .95rem; line-height: 1; opacity: .7; cursor: not-allowed; }
 
-.googleImport { display: grid; gap: .6rem; font-weight: 400; }
+.googleImport { display: grid; gap: .85rem; font-weight: 400; }
 .googleImportSearch { position: relative; }
 .googleImportSearch input { width: 100%; min-height: 43px; padding: .68rem .75rem; border: 1px solid var(--edge-t16); border-radius: 6px; background: rgba(var(--tint), .055); color: var(--text); }
 .googleImportSuggestions { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; right: 0; display: grid; overflow: hidden; border: 1px solid var(--edge-t16); border-radius: 8px; background: var(--bg-3); box-shadow: 0 20px 44px -20px rgba(var(--shade), .6); }
 .googleImportSuggestions button { display: grid; gap: .1rem; padding: .6rem .75rem; border: 0; border-bottom: 1px solid var(--rule-t08); background: transparent; color: var(--text); text-align: left; cursor: pointer; }
 .googleImportSuggestions button:hover { background: rgba(255,122,33,.14); }
 .googleImportSuggestions button small { color: var(--muted-2); font-size: .74rem; }
-/* The pre-typing guess. Inline, not the floating .googleImportSuggestions menu:
-   this one appears on its own rather than in response to a keystroke, so it has
-   to push the card down instead of covering it. */
+/* The pre-typing guess. Inline, not the floating .googleImportSuggestions menu */
 .googleImportGuess { display: grid; gap: .35rem; }
 .googleImportGuess > small { color: var(--muted-2); font-size: .76rem; }
 .googleImportGuess button { display: grid; gap: .1rem; padding: .55rem .7rem; border: 1px solid var(--edge-t16); border-radius: 8px; background: rgba(var(--tint), .05); color: var(--text); text-align: left; cursor: pointer; }
 .googleImportGuess button:hover:not(:disabled) { border-color: var(--cedge-orange-71); background: rgba(255,122,33,.1); }
 .googleImportGuess button:disabled { opacity: .5; cursor: default; }
 .googleImportGuess button small { color: var(--muted-2); font-size: .74rem; }
-.googleImportLinked { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .7rem .8rem; border: 1px solid var(--cedge-green-58); border-radius: 8px; background: rgba(74,222,128,.06); }
-.googleImportLinked strong { display: block; color: var(--text); }
+.googleImportLinked { display: flex; align-items: center; justify-content: space-between; gap: .75rem; padding: .8rem .9rem; border: 1px solid var(--cedge-green-58); border-radius: 9px; background: rgba(74,222,128,.06); }
+.googleImportLinked strong { display: block; color: var(--text); font-size: .92rem; }
 .googleImportLinked small { color: var(--muted-2); font-size: .76rem; }
 .googleImportActions { display: inline-flex; gap: .4rem; flex: 0 0 auto; }
-.googleImportActions button { min-height: 34px; padding: .4rem .7rem; border: 1px solid var(--edge-t16); border-radius: 6px; background: rgba(var(--tint), .06); color: var(--text); font-weight: 700; font-size: .78rem; cursor: pointer; }
-.googleImportUnlink { color: var(--bad); }
+.googleImportActions button, .googleImportActions a { min-height: 34px; padding: .4rem .7rem; border: 1px solid var(--edge-t16); border-radius: 6px; background: rgba(var(--tint), .06); color: var(--text); font-weight: 700; font-size: .78rem; cursor: pointer; text-decoration: none; display: inline-flex; align-items: center; justify-content: center; }
+.googleImportActions a:hover, .googleImportActions button:hover:not(:disabled) { background: rgba(var(--tint), .12); }
+.googleImportUnlink { color: var(--bad) !important; }
 .googleImportBusy { margin: 0; color: var(--gold-ink); font-size: .82rem; }
 .googleImportError { margin: 0; color: var(--bad); font-size: .82rem; }
 .googleReviewPreview { display: grid; gap: .5rem; }
-.googleReviewPreviewItem { padding: .6rem .7rem; border: 1px solid var(--edge-t12); border-radius: 7px; background: rgba(var(--tint), .03); }
-.googleReviewPreviewItem > div { color: var(--gold-ink); font-size: .8rem; }
+.googleReviewPreviewItem { padding: .65rem .8rem; border: 1px solid var(--edge-t12); border-radius: 8px; background: rgba(var(--tint), .03); }
+.googleReviewPreviewItem > div { color: var(--gold-ink); font-size: .82rem; display: flex; align-items: center; justify-content: space-between; }
 .googleReviewPreviewItem strong { color: var(--text); }
 .googleReviewPreviewItem em { color: var(--muted-2); font-style: normal; }
-.googleReviewPreviewItem p { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; margin: .3rem 0 0; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+.googleReviewPreviewItem p { margin: .35rem 0 0; color: var(--muted); font-size: .82rem; line-height: 1.45; }
+
+/* Google Business Profile Growth Hub suite */
+.gbpHub { border: 1px solid var(--edge-t16); border-radius: 12px; background: rgba(var(--tint), .025); overflow: hidden; }
+.gbpHubHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .6rem; padding: .85rem 1rem; border-bottom: 1px solid var(--edge-t12); background: rgba(var(--tint), .04); }
+.gbpHubTitleGroup { display: flex; align-items: center; gap: .6rem; }
+.gbpHubTitle { margin: 0; font-size: .95rem; font-weight: 800; color: var(--text); display: flex; align-items: center; gap: .4rem; }
+.gbpScorePill { font-size: .72rem; font-weight: 800; padding: .2rem .55rem; border-radius: 999px; background: rgba(74,222,128,.15); color: #4ade80; border: 1px solid rgba(74,222,128,.3); }
+.gbpScorePillWarn { background: rgba(251,191,36,.15); color: #fbbf24; border-color: rgba(251,191,36,.3); }
+.gbpNav { display: flex; flex-wrap: wrap; gap: .25rem; padding: .5rem .75rem; border-bottom: 1px solid var(--edge-t12); background: rgba(var(--tint), .02); }
+.gbpTabBtn { padding: .42rem .75rem; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--muted-2); font-size: .78rem; font-weight: 700; cursor: pointer; transition: all .15s ease; }
+.gbpTabBtn:hover { color: var(--text); background: rgba(var(--tint), .05); }
+.gbpTabBtnActive { color: var(--text) !important; background: rgba(255,122,33,.12) !important; border-color: rgba(255,122,33,.3) !important; }
+.gbpTabBody { padding: 1rem; display: grid; gap: 1rem; }
+
+/* Growth Hub tools */
+.gbpCardBox { border: 1px solid var(--edge-t12); border-radius: 9px; padding: .9rem 1rem; background: rgba(var(--tint), .02); display: grid; gap: .75rem; }
+.gbpCardHeader { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; }
+.gbpCardHeader strong { color: var(--text); font-size: .88rem; }
+.gbpCardHeader small { color: var(--muted-2); font-size: .75rem; }
+.gbpCopyRow { display: flex; gap: .4rem; align-items: center; }
+.gbpCopyInput { flex: 1; min-width: 0; min-height: 38px; padding: .45rem .7rem; border: 1px solid var(--edge-t16); border-radius: 6px; background: rgba(var(--tint), .05); color: var(--text); font-size: .82rem; }
+.gbpBtn { min-height: 36px; padding: .4rem .8rem; border: 1px solid var(--edge-t16); border-radius: 6px; background: rgba(var(--tint), .08); color: var(--text); font-weight: 700; font-size: .78rem; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: .35rem; text-decoration: none; white-space: nowrap; }
+.gbpBtn:hover:not(:disabled) { background: rgba(var(--tint), .14); border-color: var(--edge-t20); }
+.gbpBtnPrimary { background: #ff7a21 !important; color: #17120b !important; border-color: #ff7a21 !important; }
+.gbpBtnPrimary:hover:not(:disabled) { background: #ff9147 !important; }
+.gbpBtnSuccess { background: rgba(74,222,128,.15) !important; color: #4ade80 !important; border-color: rgba(74,222,128,.3) !important; }
+.gbpPillGroup { display: flex; flex-wrap: wrap; gap: .35rem; }
+.gbpPillBtn { padding: .3rem .6rem; border: 1px solid var(--edge-t12); border-radius: 999px; background: transparent; color: var(--muted-2); font-size: .75rem; font-weight: 600; cursor: pointer; }
+.gbpPillBtn:hover { color: var(--text); background: rgba(var(--tint), .06); }
+.gbpPillBtnActive { background: rgba(255,122,33,.14) !important; color: #ff9b54 !important; border-color: rgba(255,122,33,.35) !important; }
+.gbpPostArea { width: 100%; min-height: 120px; padding: .75rem; border: 1px solid var(--edge-t16); border-radius: 8px; background: rgba(var(--tint), .04); color: var(--text); font-size: .83rem; line-height: 1.5; resize: vertical; }
+.gbpPostFooter { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem; font-size: .76rem; color: var(--muted-2); }
+.gbpScoreGrid { display: grid; gap: .65rem; }
+.gbpScoreItem { display: grid; grid-template-columns: auto 1fr auto; gap: .75rem; align-items: start; padding: .7rem .85rem; border: 1px solid var(--edge-t12); border-radius: 8px; background: rgba(var(--tint), .02); }
+.gbpScoreIcon { font-size: 1.1rem; line-height: 1; }
+.gbpScoreMeta strong { display: block; color: var(--text); font-size: .84rem; margin-bottom: .15rem; }
+.gbpScoreMeta p { margin: 0; color: var(--muted-2); font-size: .76rem; line-height: 1.4; }
+.gbpScoreTag { font-size: .7rem; font-weight: 700; text-transform: uppercase; padding: .15rem .45rem; border-radius: 4px; }
+.gbpScoreTagComplete { background: rgba(74,222,128,.15); color: #4ade80; }
+.gbpScoreTagWarning { background: rgba(251,191,36,.15); color: #fbbf24; }
+.gbpScoreTagMissing { background: rgba(239,68,68,.15); color: #ef4444; }
+.gbpQrFlex { display: flex; flex-wrap: wrap; gap: 1.25rem; align-items: center; }
+.gbpQrGraphic { background: #fff; padding: .5rem; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,.15); display: grid; place-items: center; flex: 0 0 auto; }
+.gbpQrInfo { display: grid; gap: .4rem; flex: 1; min-width: 200px; }
+.gbpQrInfo strong { color: var(--text); font-size: .9rem; }
+.gbpQrInfo p { margin: 0; color: var(--muted-2); font-size: .78rem; line-height: 1.45; }
 .domainControl { display: grid; grid-template-columns: 1fr auto; gap: .5rem; }
 .domainControl button { padding: 0 .9rem; border: 1px solid rgba(255,255,255,.18); border-radius: 6px; background: rgba(255,255,255,.07); color: #fff; font-weight: 700; cursor: pointer; }
 /* Subdomain input with an inline, non-editable ".letsgetquoted.com" suffix so
