@@ -7,7 +7,7 @@ import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import { sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
 export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
 
-export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice';
+export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice' | 'google_lsa';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export type LeadScore = 'hot' | 'warm' | 'low';
@@ -300,6 +300,8 @@ export type Lead = {
   photo_paths: string[];
   source_page: string | null;
   source_voice_event_id?: string | null;
+  /** Immutable Google Local Services lead resource used for replay-safe imports. */
+  source_google_lsa_resource?: string | null;
   converted_job: string | null;
   client_id: string | null;
   triage: LeadTriage | null;
@@ -331,6 +333,10 @@ export type LeadInput = {
   sourcePage?: string | null;
   /** Stable receipt identity used only by the AI Voice settlement replay. */
   sourceVoiceEventId?: string | null;
+  /** Stable provider resource used only by the Google Local Services importer. */
+  sourceGoogleLsaResource?: string | null;
+  /** Preserve the provider's creation time when importing historical leads. */
+  createdAt?: string | null;
   triage?: LeadTriage | null;
 };
 
@@ -339,6 +345,7 @@ export function formatLeadSource(source: LeadSource): string {
   if (source === 'missed_call') return 'Missed call';
   if (source === 'referral') return 'Referral';
   if (source === 'ai_voice') return 'AI receptionist';
+  if (source === 'google_lsa') return 'Google Local Services Ads';
   return 'Manual';
 }
 
@@ -441,9 +448,18 @@ export async function createLead(
     ...(input.sourceVoiceEventId
       ? { source_voice_event_id: input.sourceVoiceEventId }
       : {}),
+    ...(input.sourceGoogleLsaResource
+      ? { source_google_lsa_resource: input.sourceGoogleLsaResource }
+      : {}),
+    ...(input.createdAt ? { created_at: input.createdAt } : {}),
   };
   let lead: Lead;
-  if (input.sourceVoiceEventId) {
+  const immutableSource = input.sourceVoiceEventId
+    ? { column: 'source_voice_event_id', value: input.sourceVoiceEventId }
+    : input.sourceGoogleLsaResource
+      ? { column: 'source_google_lsa_resource', value: input.sourceGoogleLsaResource }
+      : null;
+  if (immutableSource) {
     // Receipt work can be replayed after either a worker failure or a lost HTTP
     // response. Conflict-do-nothing is essential here: an ordinary UPSERT
     // would put a lead that staff already progressed back into `new` and replace
@@ -453,22 +469,23 @@ export async function createLead(
       result = await supabase
         .from('leads')
         .upsert(values, {
-          onConflict: 'source_voice_event_id',
+          onConflict: immutableSource.column,
           ignoreDuplicates: true,
         })
         .select('*')
         .maybeSingle();
     } catch (error) {
-      return recoverExistingVoiceLead(
-        supabase, accountId, input.sourceVoiceEventId, error,
+      return recoverExistingProviderLead(
+        supabase, accountId, immutableSource.column, immutableSource.value, error,
       );
     }
 
     if (result.error || !result.data) {
-      return recoverExistingVoiceLead(
+      return recoverExistingProviderLead(
         supabase,
         accountId,
-        input.sourceVoiceEventId,
+        immutableSource.column,
+        immutableSource.value,
         result.error ?? new Error('Unable to create voice lead.'),
       );
     }
@@ -531,17 +548,18 @@ export async function createLead(
  * processor retries. Returning here deliberately skips client-link/geocoding:
  * those best-effort enrichments must not modify a progressed existing lead.
  */
-async function recoverExistingVoiceLead(
+async function recoverExistingProviderLead(
   supabase: SupabaseClient,
   accountId: string,
-  voiceEventId: string,
+  column: 'source_voice_event_id' | 'source_google_lsa_resource',
+  value: string,
   originalError: unknown,
 ): Promise<Lead> {
   try {
     const { data, error } = await supabase
       .from('leads')
       .select('*')
-      .eq('source_voice_event_id', voiceEventId)
+      .eq(column, value)
       .eq('account_id', accountId)
       .maybeSingle();
     if (!error && data) return data as Lead;

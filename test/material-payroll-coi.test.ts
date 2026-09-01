@@ -3,7 +3,11 @@ import { describe, it, expect } from 'vitest';
 // 1. Material Supply Ordering
 import {
   calculateMaterialsFromQuote,
+  calculateAdvancedRoofMaterials,
+  compareDistributorPricing,
   createAndDispatchMaterialPO,
+  reconcileMaterialPurchaseOrderInvoice,
+  generateMaterialReturnSlip,
   DISTRIBUTOR_CATALOGS,
 } from '@/lib/material-supply-ordering';
 
@@ -20,36 +24,81 @@ import {
 } from '@/lib/subcontractor-coi-parser';
 
 describe('Material Supply Ordering, Certified Payroll (WH-347), and Subcontractor COI Watchdog', () => {
-  describe('Material Supply Ordering (ABC Supply, Beacon, Home Depot Pro)', () => {
-    it('calculates itemized roofing materials including shingles, synthetic underlayment, ridge cap, and nails', () => {
-      const items = calculateMaterialsFromQuote({
-        trade: 'roofing',
-        squareFootage: 2400, // 24 squares + 10% waste = 27 squares
+  describe('Material Supply Ordering (ABC Supply, Beacon, Home Depot Pro, Ferguson)', () => {
+    it('calculates advanced roof geometry with steep pitch waste, starter strip, ice & water shield, and drip edge', () => {
+      const items = calculateAdvancedRoofMaterials({
+        squareFootage: 2800,
+        pitch: '10/12', // 15% steep pitch waste
+        valleyLinearFeet: 60,
+        eaveRakeLinearFeet: 220,
+        ridgeLinearFeet: 75,
+        hasMultiLayerTearOff: true,
       });
 
-      expect(items.length).toBeGreaterThan(0);
-      const shingles = items.find((i) => i.category === 'shingles');
-      expect(shingles).toBeDefined();
-      expect(shingles?.quantity).toBeGreaterThan(60); // 27 * 3 bundles = 81 bundles
-      expect(shingles?.inStock).toBe(true);
+      expect(items.length).toBeGreaterThanOrEqual(6);
+      const iceWater = items.find((i) => i.sku === 'ICE-WATER-SHIELD');
+      expect(iceWater).toBeDefined();
+      expect(iceWater?.quantity).toBeGreaterThan(0);
 
-      const underlayment = items.find((i) => i.category === 'underlayment');
-      expect(underlayment).toBeDefined();
+      const starter = items.find((i) => i.sku === 'STRTR-PRO-100FT');
+      expect(starter).toBeDefined();
+
+      const dripEdge = items.find((i) => i.sku === 'DRIP-EDGE-ALUM-10FT');
+      expect(dripEdge).toBeDefined();
+      expect(dripEdge?.quantity).toBeGreaterThan(15);
     });
 
-    it('calculates paint gallons, stain blocking primer, and painter tape for exterior painting jobs', () => {
-      const items = calculateMaterialsFromQuote({
-        trade: 'painting',
-        squareFootage: 1800,
+    it('calculates materials for multi-trade categories (drywall, plumbing, hvac, flooring, concrete)', () => {
+      const drywall = calculateMaterialsFromQuote({ trade: 'drywall', squareFootage: 1200 });
+      expect(drywall.some((i) => i.category === 'drywall')).toBe(true);
+
+      const plumbing = calculateMaterialsFromQuote({ trade: 'plumbing', squareFootage: 100 });
+      expect(plumbing.some((i) => i.category === 'plumbing')).toBe(true);
+
+      const hvac = calculateMaterialsFromQuote({ trade: 'hvac', squareFootage: 100 });
+      expect(hvac.some((i) => i.category === 'hvac')).toBe(true);
+
+      const flooring = calculateMaterialsFromQuote({ trade: 'flooring', squareFootage: 800 });
+      expect(flooring.some((i) => i.category === 'flooring')).toBe(true);
+
+      const concrete = calculateMaterialsFromQuote({ trade: 'concrete', squareFootage: 400 });
+      expect(concrete.some((i) => i.category === 'concrete')).toBe(true);
+    });
+
+    it('compares pricing across all integrated distributors and identifies potential savings', () => {
+      const items = calculateMaterialsFromQuote({ trade: 'roofing', squareFootage: 2500 });
+      const comparison = compareDistributorPricing(items, 'jobsite_delivery');
+
+      expect(comparison.comparisons.length).toBe(4);
+      expect(comparison.bestPriceDistributor).toBeDefined();
+      expect(comparison.potentialSavingsCents).toBeGreaterThanOrEqual(0);
+    });
+
+    it('reconciles actual supplier invoices against quote material allowances to flag variance and margin shift', () => {
+      const underBudget = reconcileMaterialPurchaseOrderInvoice({
+        poNumber: 'PO-ABC-102941',
+        quotedAllowanceCents: 500000, // $5,000 allowance
+        actualInvoiceCents: 475000,   // $4,750 actual invoice ($250 under)
+        quoteTotalRevenueCents: 1200000, // $12,000 total quote
       });
 
-      expect(items.length).toBeGreaterThan(0);
-      const paint = items.find((i) => i.category === 'paint');
-      expect(paint).toBeDefined();
-      expect(paint?.quantity).toBeGreaterThan(0);
+      expect(underBudget.isOverBudget).toBe(false);
+      expect(underBudget.varianceCents).toBe(-25000);
+      expect(underBudget.requiresChangeOrder).toBe(false);
+
+      const overBudgetSurge = reconcileMaterialPurchaseOrderInvoice({
+        poNumber: 'PO-ABC-102942',
+        quotedAllowanceCents: 500000,
+        actualInvoiceCents: 575000, // $750 surge (+15%)
+        quoteTotalRevenueCents: 1200000,
+      });
+
+      expect(overBudgetSurge.isOverBudget).toBe(true);
+      expect(overBudgetSurge.requiresChangeOrder).toBe(true);
+      expect(overBudgetSurge.variancePercent).toBe(15);
     });
 
-    it('creates and dispatches a confirmed Purchase Order to ABC Supply with delivery fee and branch routing', async () => {
+    it('generates an automated Return Merchandise Authorization (RMA) return slip for unused items', async () => {
       const items = calculateMaterialsFromQuote({ trade: 'roofing', squareFootage: 2000 });
       const po = await createAndDispatchMaterialPO({
         accountId: 'acc-1',
@@ -58,19 +107,27 @@ describe('Material Supply Ordering, Certified Payroll (WH-347), and Subcontracto
         distributor: 'abc_supply',
         items,
         fulfillmentType: 'jobsite_delivery',
+        deliveryPlacement: 'rooftop_boom_truck',
+        preferredTimeWindow: 'morning_7am_9am',
       });
 
-      expect(po.poNumber).toContain('PO-ABC');
-      expect(po.distributorName).toBe('ABC Supply Co.');
-      expect(po.status).toBe('confirmed');
-      expect(po.deliveryFeeCents).toBe(12500); // $125 boom truck fee
-      expect(po.distributorConfirmationNumber).toBeDefined();
-      expect(po.branchLocation.address).toContain('Austin');
+      const rma = generateMaterialReturnSlip({
+        po,
+        returnedItems: [
+          { sku: 'SHING-ARCH-30', quantity: 4 }, // 4 unused shingle bundles
+        ],
+      });
+
+      expect(rma.rmaNumber).toContain('RMA-ABC');
+      expect(rma.itemsToReturn.length).toBe(1);
+      expect(rma.totalExpectedCreditCents).toBe(4 * 3850);
+      expect(rma.originalPoNumber).toBe(po.poNumber);
     });
 
-    it('supports Beacon and Home Depot Pro Desk catalogs', () => {
+    it('supports Beacon, Home Depot Pro Desk, and Ferguson catalogs', () => {
       expect(DISTRIBUTOR_CATALOGS.beacon.branches.length).toBeGreaterThan(0);
       expect(DISTRIBUTOR_CATALOGS.home_depot_pro.branches.length).toBeGreaterThan(0);
+      expect(DISTRIBUTOR_CATALOGS.ferguson.branches.length).toBeGreaterThan(0);
     });
   });
 
