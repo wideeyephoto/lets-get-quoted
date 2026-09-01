@@ -96,6 +96,32 @@ async function pruneOldRuns(admin: SupabaseClient): Promise<void> {
   }
 }
 
+export function extractLogicalFailureReason(job: string, summary: Record<string, unknown> | null): string {
+  if (!summary) return `${job} reported failed work`;
+
+  if (typeof summary.reason === 'string' && summary.reason.trim().length > 0) {
+    return `${job} failed: ${summary.reason}`.slice(0, 2000);
+  }
+  if (typeof summary.error === 'string' && summary.error.trim().length > 0) {
+    return `${job} failed: ${summary.error}`.slice(0, 2000);
+  }
+  if (Array.isArray(summary.errors) && summary.errors.length > 0) {
+    const errorList = summary.errors.map(String).join('; ');
+    const countPrefix = summary.failed ? `${summary.failed} failed items: ` : '';
+    return `${job} logical failure (${countPrefix}${errorList})`.slice(0, 2000);
+  }
+  if (Array.isArray(summary.failures) && summary.failures.length > 0) {
+    return `${job} logical failure: ${JSON.stringify(summary.failures)}`.slice(0, 2000);
+  }
+  if (typeof summary.failed === 'number' && summary.failed > 0) {
+    const candidateInfo = typeof summary.candidates === 'number'
+      ? ` (${summary.failed}/${summary.candidates} candidates failed)`
+      : ` (${summary.failed} items failed)`;
+    return `${job} reported logical failures${candidateInfo}`.slice(0, 2000);
+  }
+  return `${job} reported failed work: ${JSON.stringify(summary)}`.slice(0, 2000);
+}
+
 /**
  * Wrap a scheduled job in the auth check and the heartbeat.
  *
@@ -120,8 +146,15 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
 
     try {
       const summary = await run();
-      const logicalFailure = cronSummaryHasFailures(asJson(summary));
-      await finishRun(admin, runId, { ok: !logicalFailure, durationMs: Date.now() - startedMs, summary });
+      const summaryJson = asJson(summary);
+      const logicalFailure = cronSummaryHasFailures(summaryJson);
+      const logicalError = logicalFailure ? extractLogicalFailureReason(job, summaryJson) : undefined;
+      await finishRun(admin, runId, {
+        ok: !logicalFailure,
+        durationMs: Date.now() - startedMs,
+        summary,
+        error: logicalError,
+      });
       if (Math.floor(Math.random() * PRUNE_ODDS) === 0) await pruneOldRuns(admin);
       if (logicalFailure) {
         return NextResponse.json({ error: `${job} reported failed work`, summary }, { status: 500 });

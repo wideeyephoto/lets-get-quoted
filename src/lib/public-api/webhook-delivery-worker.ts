@@ -220,7 +220,11 @@ export async function runWebhookDeliveryBatch(
     p_batch_size: Math.min(50, Math.max(1, batchSize)),
   });
 
-  if (claimError || !Array.isArray(claims) || claims.length === 0) {
+  if (claimError) {
+    throw new Error(`claim_webhook_delivery_tasks failed: ${claimError.message}`);
+  }
+
+  if (!Array.isArray(claims) || claims.length === 0) {
     return result;
   }
 

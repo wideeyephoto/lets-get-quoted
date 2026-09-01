@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   deliverSingleWebhookTask,
   calculateExponentialBackoffSeconds,
+  runWebhookDeliveryBatch,
   type ClaimedWebhookTask,
 } from '@/lib/public-api/webhook-delivery-worker';
 import { encryptWebhookSecret } from '@/lib/public-api/webhook-vault-crypto';
@@ -49,5 +50,36 @@ describe('Webhook Delivery Worker', () => {
     const outcome = await deliverSingleWebhookTask(mockAdmin as any, mockTask);
     expect(outcome).toBe('disabled');
     expect(rpcCalled).toBe(true);
+  });
+
+  it('throws an error when claim_webhook_delivery_tasks returns an RPC error', async () => {
+    const mockAdmin = {
+      rpc: (method: string) => {
+        expect(method).toBe('claim_webhook_delivery_tasks');
+        return Promise.resolve({ data: null, error: { message: 'database connection lost' } });
+      },
+    };
+
+    await expect(runWebhookDeliveryBatch(10, mockAdmin as any)).rejects.toThrow(
+      'claim_webhook_delivery_tasks failed: database connection lost'
+    );
+  });
+
+  it('returns empty result when no tasks are available to claim', async () => {
+    const mockAdmin = {
+      rpc: (method: string) => {
+        expect(method).toBe('claim_webhook_delivery_tasks');
+        return Promise.resolve({ data: [], error: null });
+      },
+    };
+
+    const res = await runWebhookDeliveryBatch(10, mockAdmin as any);
+    expect(res).toEqual({
+      claimedCount: 0,
+      completedCount: 0,
+      failedCount: 0,
+      disabledCount: 0,
+      deadLetterCount: 0,
+    });
   });
 });

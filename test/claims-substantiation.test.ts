@@ -74,6 +74,28 @@ describe('Legal & Claims Substantiation Invariants', () => {
     }
   });
 
+  it('prohibits unsubstantiated copy claims in lifecycle email and campaign templates', () => {
+    const prohibitedCopyPatterns = [
+      /activate\s+a\s+new\s+dedicated\s+local\s+line\s+with\s+1\s+click/i,
+      /Custom\s+Domain\s+Setup/i,
+      /80%\s+of\s+homeowners\s+who\s+(?:hit|reach)\s+(?:a\s+)?voicemail/i,
+    ];
+
+    for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
+      const combined = `${step.subject} ${step.preheader} ${step.heading} ${step.body}`;
+      for (const pattern of prohibitedCopyPatterns) {
+        expect(combined).not.toMatch(pattern);
+      }
+    }
+
+    for (const template of PLATFORM_CAMPAIGN_TEMPLATES) {
+      const combined = `${template.subject} ${template.preheader} ${template.heading} ${template.body}`;
+      for (const pattern of prohibitedCopyPatterns) {
+        expect(combined).not.toMatch(pattern);
+      }
+    }
+  });
+
   it('pricing comparison table quantitative parameters match BILLING_PLANS exactly', () => {
     const feeRow = COMPARISON_ROWS.find((row) => row[0] === 'LGQ platform fee');
     expect(feeRow).toBeDefined();

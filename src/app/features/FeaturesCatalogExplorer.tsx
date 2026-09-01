@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { FEATURE_CATEGORIES, ALL_FEATURES, FEATURE_COUNT } from '@/lib/features';
 import styles from './features-theme.module.css';
@@ -36,7 +36,36 @@ const FEATURE_DEEP_LINKS: Record<string, string> = {
 export default function FeaturesCatalogExplorer() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [isExpandedAll, setIsExpandedAll] = useState<boolean>(false);
   const headingId = useId();
+
+  const allTabs = useMemo(() => [
+    { slug: 'all', title: 'All Features', count: FEATURE_COUNT },
+    ...FEATURE_CATEGORIES.map((c) => ({ slug: c.slug, title: c.title, count: c.features.length })),
+  ], []);
+
+  const catTabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const handleCatKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (index + 1) % allTabs.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (index - 1 + allTabs.length) % allTabs.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = allTabs.length - 1;
+    }
+    if (nextIndex !== index) {
+      setSelectedCategory(allTabs[nextIndex].slug);
+      catTabRefs.current[nextIndex]?.focus();
+    }
+  };
 
   const filteredFeatures = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -68,6 +97,14 @@ export default function FeaturesCatalogExplorer() {
       };
     });
   }, [searchQuery, selectedCategory]);
+
+  const displayedFeatures = useMemo(() => {
+    // When on "All Features" without search, display first 16 cards initially with expand button
+    if (selectedCategory === 'all' && !searchQuery && !isExpandedAll) {
+      return filteredFeatures.slice(0, 16);
+    }
+    return filteredFeatures;
+  }, [filteredFeatures, selectedCategory, searchQuery, isExpandedAll]);
 
   return (
     <section
@@ -114,28 +151,23 @@ export default function FeaturesCatalogExplorer() {
 
         {/* Category Pills */}
         <div className={styles.categoryFilterRow} role="tablist" aria-label="Feature categories">
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedCategory === 'all'}
-            className={`${styles.catPill} ${selectedCategory === 'all' ? styles.catPillActive : ''}`}
-            onClick={() => setSelectedCategory('all')}
-          >
-            All Features <span className={styles.catCount}>{FEATURE_COUNT}</span>
-          </button>
-
-          {FEATURE_CATEGORIES.map((cat) => {
+          {allTabs.map((cat, index) => {
             const isSelected = selectedCategory === cat.slug;
             return (
               <button
                 key={cat.slug}
+                ref={(el) => { catTabRefs.current[index] = el; }}
+                id={`cat-tab-${cat.slug}`}
                 type="button"
                 role="tab"
                 aria-selected={isSelected}
+                aria-controls="catalog-features-panel"
+                tabIndex={isSelected ? 0 : -1}
                 className={`${styles.catPill} ${isSelected ? styles.catPillActive : ''}`}
                 onClick={() => setSelectedCategory(cat.slug)}
+                onKeyDown={(e) => handleCatKeyDown(e, index)}
               >
-                {cat.title} <span className={styles.catCount}>{cat.features.length}</span>
+                {cat.title} <span className={styles.catCount}>{cat.count}</span>
               </button>
             );
           })}
@@ -145,16 +177,17 @@ export default function FeaturesCatalogExplorer() {
       {/* Results Count Banner */}
       <div className={styles.catalogResultsBar}>
         <span>
-          Showing <strong>{filteredFeatures.length}</strong> of {FEATURE_COUNT} features
+          Showing <strong>{displayedFeatures.length}</strong> of {filteredFeatures.length} matching features ({FEATURE_COUNT} total)
           {searchQuery ? ` matching "${searchQuery}"` : ''}
         </span>
-        {searchQuery || selectedCategory !== 'all' ? (
+        {searchQuery || selectedCategory !== 'all' || isExpandedAll ? (
           <button
             type="button"
             className={styles.resetFilterBtn}
             onClick={() => {
               setSearchQuery('');
               setSelectedCategory('all');
+              setIsExpandedAll(false);
             }}
           >
             Reset filters
@@ -163,23 +196,45 @@ export default function FeaturesCatalogExplorer() {
       </div>
 
       {/* Feature Grid */}
-      <div className={styles.featureCatalogGrid}>
-        {filteredFeatures.length > 0 ? (
-          filteredFeatures.map((feat) => (
-            <div key={feat.id} className={styles.featureCatalogCard}>
-              <div className={styles.featureCardTop}>
-                <span className={styles.featureCategoryTag}>{feat.categoryTitle}</span>
-                {feat.favorite ? (
-                  <span className={styles.featureFavoriteTag}>★ Core Advantage</span>
-                ) : null}
+      <div
+        className={styles.featureCatalogGrid}
+        id="catalog-features-panel"
+        role="tabpanel"
+        aria-labelledby={`cat-tab-${selectedCategory}`}
+      >
+        {displayedFeatures.length > 0 ? (
+          <>
+            {displayedFeatures.map((feat) => (
+              <div key={feat.id} className={styles.featureCatalogCard}>
+                <div className={styles.featureCardTop}>
+                  <span className={styles.featureCategoryTag}>{feat.categoryTitle}</span>
+                  {feat.favorite ? (
+                    <span className={styles.featureFavoriteTag}>★ Core Advantage</span>
+                  ) : null}
+                </div>
+                <h3 className={styles.featureCardTitle}>{feat.name}</h3>
+                <p className={styles.featureCardDesc}>{feat.desc}</p>
+                <Link
+                  href={feat.deepLink}
+                  className={styles.featureDeepLink}
+                  aria-label={`Learn more about ${feat.name} (${feat.categoryTitle})`}
+                >
+                  Learn more <span aria-hidden="true">→</span>
+                </Link>
               </div>
-              <h3 className={styles.featureCardTitle}>{feat.name}</h3>
-              <p className={styles.featureCardDesc}>{feat.desc}</p>
-              <Link href={feat.deepLink} className={styles.featureDeepLink}>
-                Learn more <span aria-hidden="true">→</span>
-              </Link>
-            </div>
-          ))
+            ))}
+            {selectedCategory === 'all' && !searchQuery && !isExpandedAll && filteredFeatures.length > displayedFeatures.length && (
+              <div className={styles.showMoreCatalogWrap}>
+                <button
+                  type="button"
+                  className={styles.showMoreCatalogBtn}
+                  onClick={() => setIsExpandedAll(true)}
+                >
+                  Show all {FEATURE_COUNT} features ({filteredFeatures.length - displayedFeatures.length} more) ↓
+                </button>
+              </div>
+            )}
+          </>
         ) : (
           <div className={styles.emptyResultsBox}>
             <p>No features matched &ldquo;{searchQuery}&rdquo; in this category.</p>

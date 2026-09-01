@@ -141,15 +141,31 @@ export default function LiveFieldPulse() {
         </div>
 
         <div className={styles.pulseControls} aria-label="Activity carousel controls">
-          {PULSE_EVENTS.map((evt, idx) => (
-            <button
-              key={evt.id}
-              type="button"
-              className={`${styles.pulseDotBtn} ${idx === activeIndex ? styles.pulseDotActive : ''}`}
-              onClick={() => setActiveIndex(idx)}
-              aria-label={`View update from ${evt.location}`}
-            />
-          ))}
+          <button
+            type="button"
+            className={styles.pulsePlayPauseBtn}
+            onClick={() => setIsPaused((prev) => !prev)}
+            aria-label={isPaused ? 'Resume live field pulse carousel' : 'Pause live field pulse carousel'}
+            title={isPaused ? 'Resume updates' : 'Pause updates'}
+          >
+            <span aria-hidden="true">{isPaused ? '▶' : '⏸'}</span>
+          </button>
+          <div className={styles.pulseDotsList} role="tablist" aria-label="Live field updates">
+            {PULSE_EVENTS.map((evt, idx) => (
+              <button
+                key={evt.id}
+                type="button"
+                role="tab"
+                aria-selected={idx === activeIndex}
+                aria-current={idx === activeIndex ? 'true' : undefined}
+                className={`${styles.pulseDotBtn} ${idx === activeIndex ? styles.pulseDotActive : ''}`}
+                onClick={() => setActiveIndex(idx)}
+                aria-label={`View update ${idx + 1} of ${PULSE_EVENTS.length}: ${evt.trade} in ${evt.location}`}
+              >
+                <span className={styles.pulseDotInner} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </aside>

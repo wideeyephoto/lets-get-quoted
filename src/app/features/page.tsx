@@ -106,7 +106,7 @@ export const metadata: Metadata = {
  * from the canonical billing catalog rather than copied into this page.
  */
 const PROOF: { stat: string; label: string }[] = [
-  { stat: `${TRADES.length} trades`, label: 'Pages, FAQs and intake questions written for yours' },
+  { stat: `${TRADES.length} trades`, label: 'Pages, FAQs and intake questions written for your trade' },
   { stat: FLEX_PRICE.monthlyPrice, label: 'Flex base price; its LGQ platform fee is 1.25%' },
   { stat: PLAN_FEE_RANGE_LABEL, label: 'LGQ platform fee, selected by plan rather than payment volume' },
   { stat: `${FEATURE_COUNT} features`, label: 'One connected product; included limits and seats vary by plan' },
@@ -308,7 +308,7 @@ export default async function FeaturesPage() {
           <div className={`${themeStyles.ambient} ${themeStyles.ambientThree}`} aria-hidden="true" />
           <div className={`${themeStyles.ambient} ${themeStyles.ambientFour}`} aria-hidden="true" />
           <div className={`${themeStyles.ambient} ${themeStyles.ambientFive}`} aria-hidden="true" />
-          <main className={`${styles.root} inner-site feature-index-page`}>
+          <div className={`${styles.root} inner-site feature-index-page`}>
           <a className="skip-link" href="#main-content">
             Skip to content
           </a>
@@ -316,12 +316,13 @@ export default async function FeaturesPage() {
           <LaunchBanner offsetHeader />
           <ThemeFab />
 
+          <main id="main-content">
           {/* Two columns, not one. The copy keeps the left and the thread takes the
               right; every child is placed explicitly in the grid rather than
               wrapped in a column div, because .index-hero > h1 and
               .index-hero > p:not(.eyebrow) are load-bearing selectors in the
               generated sheet and a wrapper would silently drop both. */}
-          <section className="index-hero index-hero-beside" id="main-content">
+          <section className="index-hero index-hero-beside">
             <p className="eyebrow">
               <span aria-hidden="true">✦</span> ONE JOB RECORD. EVERY STEP CONNECTED.
             </p>
@@ -703,12 +704,13 @@ export default async function FeaturesPage() {
         body={`${PUBLIC_PRICING_SUMMARY} See /pricing for included capacity, add-ons, and fee terms.`}
         href={FEATURE_SIGNUP_URL}
       />
+      </main>
 
       {/* 24/7 Interactive AI Contractor Field Companion */}
       <CompanionHUD />
 
       <SiteFooter />
-      </main>
+      </div>
         </div>
       </div>
     </>

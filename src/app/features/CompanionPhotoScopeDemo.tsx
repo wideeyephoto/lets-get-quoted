@@ -107,10 +107,33 @@ export default function CompanionPhotoScopeDemo() {
 
   const scenario = SCENARIOS.find((s) => s.id === activeTab) || SCENARIOS[0];
 
+  const scenarioTabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
   const handleSelectTab = (id: string) => {
     setIsScanning(true);
     setActiveTab(id);
     setTimeout(() => setIsScanning(false), 600);
+  };
+
+  const handleScenarioKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (index + 1) % SCENARIOS.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (index - 1 + SCENARIOS.length) % SCENARIOS.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = SCENARIOS.length - 1;
+    }
+    if (nextIndex !== index) {
+      handleSelectTab(SCENARIOS[nextIndex].id);
+      scenarioTabRefs.current[nextIndex]?.focus();
+    }
   };
 
   return (
@@ -131,23 +154,36 @@ export default function CompanionPhotoScopeDemo() {
       </div>
 
       <div className={styles.photoDemoTabs} role="tablist" aria-label="Trade photo scenarios">
-        {SCENARIOS.map((sc) => (
-          <button
-            key={sc.id}
-            type="button"
-            role="tab"
-            aria-selected={activeTab === sc.id}
-            className={`${styles.photoDemoTabBtn} ${activeTab === sc.id ? styles.photoDemoTabActive : ''}`}
-            onClick={() => handleSelectTab(sc.id)}
-          >
-            <span className={styles.photoDemoTabIcon}>{sc.icon}</span>
-            <span className={styles.photoDemoTabName}>{sc.title}</span>
-            <span className={styles.photoDemoTabBadge}>{sc.trade}</span>
-          </button>
-        ))}
+        {SCENARIOS.map((sc, index) => {
+          const isActive = activeTab === sc.id;
+          return (
+            <button
+              key={sc.id}
+              ref={(el) => { scenarioTabRefs.current[index] = el; }}
+              id={`photo-tab-${sc.id}`}
+              type="button"
+              role="tab"
+              aria-selected={isActive}
+              aria-controls="photo-scenario-panel"
+              tabIndex={isActive ? 0 : -1}
+              className={`${styles.photoDemoTabBtn} ${isActive ? styles.photoDemoTabActive : ''}`}
+              onClick={() => handleSelectTab(sc.id)}
+              onKeyDown={(e) => handleScenarioKeyDown(e, index)}
+            >
+              <span className={styles.photoDemoTabIcon}>{sc.icon}</span>
+              <span className={styles.photoDemoTabName}>{sc.title}</span>
+              <span className={styles.photoDemoTabBadge}>{sc.trade}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <div className={styles.photoDemoCardGrid}>
+      <div
+        className={styles.photoDemoCardGrid}
+        id="photo-scenario-panel"
+        role="tabpanel"
+        aria-labelledby={`photo-tab-${activeTab}`}
+      >
         {/* Left: Photo + Live Scanning Laser */}
         <div className={styles.photoScannerBox}>
           <div className={styles.photoScannerVisual}>
@@ -227,7 +263,7 @@ export default function CompanionPhotoScopeDemo() {
 
           <div className={styles.photoActionRow}>
             <a
-              href="https://app.letsgetquoted.com/start?goal=build_site&source=feature_photo_demo"
+              href="https://app.letsgetquoted.com/start?goal=feature&feature=quotes&source=feature_photo_demo"
               className={styles.photoActionButton}
             >
               Start Quoting with AI Vision <span aria-hidden="true">→</span>

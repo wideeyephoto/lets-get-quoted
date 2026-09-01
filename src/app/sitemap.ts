@@ -14,22 +14,24 @@ export const dynamic = 'force-dynamic';
 // pages the homepage's card grid links at — each one used to land on an anchor
 // part-way down back-office or on a capability group on /features.
 const FEATURE_SLUGS = [
+  'ai-ads',
   'ai-intake',
-  'ai-voice',
   'ai-vision',
-  'text-to-job',
-  'dispatch',
-  'quick-stops',
-  'client-portal',
-  'website-builder',
+  'ai-voice',
   'back-office',
-  'quotes',
-  'scheduling',
-  'crew',
-  'payments',
-  'recurring',
   'cash-flow',
+  'client-portal',
+  'crew',
+  'dispatch',
+  'payments',
+  'quick-stops',
+  'quotes',
+  'recurring',
   'reviews',
+  'scheduling',
+  'sparky',
+  'text-to-job',
+  'website-builder',
 ] as const;
 
 /**

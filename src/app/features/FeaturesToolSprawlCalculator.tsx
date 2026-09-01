@@ -1,6 +1,6 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useId, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import styles from './features-theme.module.css';
 
@@ -101,6 +101,7 @@ export default function FeaturesToolSprawlCalculator() {
   });
 
   const headingId = useId();
+  const profileTabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const handleProfileSelect = (index: number) => {
     setSelectedProfileIndex(index);
@@ -110,6 +111,27 @@ export default function FeaturesToolSprawlCalculator() {
       newSelected[t.id] = profile.selectedIds.includes(t.id);
     });
     setSelectedTools(newSelected);
+  };
+
+  const handleProfileKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (index + 1) % PROFILES.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (index - 1 + PROFILES.length) % PROFILES.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = PROFILES.length - 1;
+    }
+    if (nextIndex !== index) {
+      handleProfileSelect(nextIndex);
+      profileTabRefs.current[nextIndex]?.focus();
+    }
   };
 
   const toggleTool = (id: string) => {
@@ -160,18 +182,23 @@ export default function FeaturesToolSprawlCalculator() {
         </p>
       </div>
 
-      {/* Preset Profile Tabs */}
+      {/* Preset Profile Tabs with Accessible Keyboard Navigation */}
       <div className={styles.profileTabs} role="tablist" aria-label="Contractor business size">
         {PROFILES.map((profile, idx) => {
           const isSelected = selectedProfileIndex === idx;
           return (
             <button
               key={profile.label}
+              ref={(el) => { profileTabRefs.current[idx] = el; }}
+              id={`sprawl-tab-${idx}`}
               type="button"
               role="tab"
               aria-selected={isSelected}
+              aria-controls="sprawl-profile-panel"
+              tabIndex={isSelected ? 0 : -1}
               className={`${styles.profileTab} ${isSelected ? styles.profileTabActive : ''}`}
               onClick={() => handleProfileSelect(idx)}
+              onKeyDown={(e) => handleProfileKeyDown(e, idx)}
             >
               <strong>{profile.label}</strong>
               <small>{profile.trucks}</small>
@@ -180,7 +207,12 @@ export default function FeaturesToolSprawlCalculator() {
         })}
       </div>
 
-      <div className={styles.sprawlGrid}>
+      <div
+        className={styles.sprawlGrid}
+        id="sprawl-profile-panel"
+        role="tabpanel"
+        aria-labelledby={`sprawl-tab-${selectedProfileIndex}`}
+      >
         {/* Left Column: Interactive App Checklist */}
         <div className={styles.sprawlListCard}>
           <div className={styles.sprawlListHeader}>
@@ -252,8 +284,8 @@ export default function FeaturesToolSprawlCalculator() {
 
             <div className={styles.savingsHighlight}>
               <div className={styles.savingsMetric}>
-                <small>Estimated Annual Software Savings</small>
-                <strong>${totalAnnualSprawl.toLocaleString()}</strong>
+                <small>Gross Fixed SaaS Savings</small>
+                <strong>${totalAnnualSprawl.toLocaleString()} / yr</strong>
               </div>
               <div className={styles.savingsMetric}>
                 <small>Weekly Admin Hours Reclaimed</small>
@@ -286,6 +318,13 @@ export default function FeaturesToolSprawlCalculator() {
               <Link href="/demo/sites" className={styles.calcSecondaryBtn}>
                 Test Live Demo
               </Link>
+            </div>
+
+            <div className={styles.assumptionsDisclaimer}>
+              <small>
+                <strong>Assumptions &amp; Pricing Sources:</strong> Comparison reflects published standard monthly SaaS subscriptions as of Q1 2026: Jobber Grow ($169/mo), Podium Core ($289/mo), Wix Business ($29/mo), DocuSign Standard ($20/mo), Calendly Standard ($15/mo).
+                Let&apos;s Get Quoted Flex plan has $0 monthly base subscription; standard Stripe card processing (2.9% + 30¢) and LGQ platform fee (1.25% on Flex, or as low as 0.10% on Enterprise plans) apply only when customer payments are collected. Example: On $15,000/mo payment volume, a 1.25% platform fee equals $187.50, delivering an estimated net savings of ~$334/mo versus $522/mo in fixed SaaS overhead—with zero subscription fees during slow winter months.
+              </small>
             </div>
           </div>
         </div>

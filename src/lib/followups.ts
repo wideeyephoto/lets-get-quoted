@@ -28,6 +28,7 @@ export type FollowupRunSummary = {
   sent: number;
   skipped: number;
   failed: number;
+  errors?: string[];
 };
 
 /** An account with follow-ups switched on, and the schedule it chose. */
@@ -184,6 +185,7 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const errorSamples: string[] = [];
 
   for (const [jobId, link] of byJob) {
     if (sent >= MAX_SENDS_PER_RUN) break;
@@ -328,10 +330,20 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
       });
       sent++;
     } catch (error) {
-      console.error(`Quote follow-up failed for job ${jobId}:`, error instanceof Error ? error.message : error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`Quote follow-up failed for job ${jobId}:`, msg);
       failed++;
+      if (errorSamples.length < 5) {
+        errorSamples.push(`job ${jobId}: ${msg}`);
+      }
     }
   }
 
-  return { candidates: byJob.size, sent, skipped, failed };
+  return {
+    candidates: byJob.size,
+    sent,
+    skipped,
+    failed,
+    ...(errorSamples.length > 0 ? { errors: errorSamples } : {}),
+  };
 }

@@ -815,21 +815,40 @@
 }
 
 @media (max-width: 768px) {
+  .sim {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+
   .sim .tradeBar {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     gap: 4px;
     margin-bottom: 10px;
   }
 
   .sim .tradeTab {
-    padding: 4px 8px;
-    font-size: 10.5px;
+    padding: 5px 8px;
+    font-size: 11px;
+  }
+
+  .sim .stage {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+    perspective: none;
   }
 
   .sim .jobCard {
+    width: 100%;
+    max-width: 100%;
     padding: 15px 16px 13px;
     gap: 10px;
     border-radius: 20px;
     transform: none !important;
+    box-sizing: border-box;
   }
 
   .sim .stepItem {
@@ -855,11 +874,17 @@
     box-sizing: border-box !important;
     padding: 4px 6px;
     gap: 3px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
   }
 
   .sim .tradeTab {
     padding: 4px 6px;
     font-size: 10px;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-width: 0;
   }
 
   .sim .stage {
@@ -872,8 +897,43 @@
   .sim .jobCard {
     width: 100% !important;
     max-width: 100% !important;
-    padding: 12px 14px;
+    padding: 12px 12px;
     box-sizing: border-box !important;
+  }
+
+  .sim .cardHeader {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .sim .copilotInsightBar {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 6px 10px;
+  }
+
+  .sim .copilotInsightText {
+    white-space: normal;
+    font-size: 11px;
+    line-height: 1.35;
+  }
+
+  .sim .stepLabelRow,
+  .sim .stepMetaRow {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .sim .eventBanner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .sim .eventBody {
+    align-items: flex-start;
+    text-align: left;
   }
 
   .sim .smsToast {
@@ -887,5 +947,6 @@
     max-width: 100% !important;
     box-sizing: border-box !important;
     word-break: break-word;
+    overflow-wrap: anywhere;
   }
 }

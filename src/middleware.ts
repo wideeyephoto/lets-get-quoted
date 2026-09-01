@@ -310,6 +310,13 @@ export async function middleware(request: NextRequest) {
     );
   }
 
+  if (!signedIn && isMarketingPath(request.nextUrl.pathname)) {
+    response.headers.set(
+      'Cache-Control',
+      'public, max-age=0, s-maxage=3600, stale-while-revalidate=86400'
+    );
+  }
+
   return applyCsp(response);
 }
 

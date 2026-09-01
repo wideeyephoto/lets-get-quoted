@@ -181,9 +181,20 @@ export default function CompanionHUD() {
   const [activeAnswer, setActiveAnswer] = useState<number | null>(null);
   const [isTouring, setIsTouring] = useState<boolean>(false);
   const [tourStep, setTourStep] = useState<number>(0);
-  const [hasDismissedSpeech, setHasDismissedSpeech] = useState<boolean>(false);
+  const [hasDismissedSpeech, setHasDismissedSpeech] = useState<boolean>(true);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Close on Escape key
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isExpanded) {
+        setIsExpanded(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isExpanded]);
 
   // Set up section scroll observers
   useEffect(() => {
@@ -194,7 +205,6 @@ export default function CompanionHUD() {
           const match = SECTION_CONTEXTS.find((c) => entry.target.matches(c.selector));
           if (match) {
             setActiveSection(match);
-            setHasDismissedSpeech(false);
             break;
           }
         }
@@ -293,7 +303,12 @@ export default function CompanionHUD() {
 
       {/* Expanded Companion Panel */}
       {isExpanded && (
-        <div className={styles.companionPanel}>
+        <div
+          id="companion-hud-panel"
+          className={styles.companionPanel}
+          role="region"
+          aria-label="AI Copilot Field Assistant"
+        >
           <div className={styles.companionPanelHead}>
             <div className={styles.companionPanelTitleWrap}>
               <div className={styles.companionAvatarLarge}>
@@ -443,6 +458,8 @@ export default function CompanionHUD() {
         type="button"
         className={`${styles.companionDockBtn} ${isExpanded ? styles.companionDockActive : ''}`}
         onClick={() => setIsExpanded(!isExpanded)}
+        aria-expanded={isExpanded}
+        aria-controls="companion-hud-panel"
         aria-label={isExpanded ? 'Minimize AI Copilot' : 'Open AI Copilot'}
       >
         <span className={styles.companionDockPulseRing} aria-hidden="true" />

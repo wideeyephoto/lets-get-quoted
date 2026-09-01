@@ -352,22 +352,50 @@ export default function CinematicMessageSimulation() {
     ? (currentStages[3]?.label || 'Scheduled')
     : 'Booked & Paid';
 
+  const tradeTabRefs = useRef<(HTMLButtonElement | null)[]>([]);
+
+  const handleTradeKeyDown = (e: React.KeyboardEvent, index: number) => {
+    let nextIndex = index;
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = (index + 1) % TRADES.length;
+    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = (index - 1 + TRADES.length) % TRADES.length;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = TRADES.length - 1;
+    }
+    if (nextIndex !== index) {
+      handleTradeChange(TRADES[nextIndex].id);
+      tradeTabRefs.current[nextIndex]?.focus();
+    }
+  };
+
   return (
     <div className={`hero-thread hero-thread-sim ${styles.sim}`} ref={rootRef}>
       <p className="sr-only">{HERO_SUMMARY}</p>
 
       {/* Trade Selector Switcher */}
       <div className={styles.tradeBar} role="tablist" aria-label="Select contractor trade">
-        {TRADES.map((t) => {
+        {TRADES.map((t, index) => {
           const isActive = activeTradeId === t.id;
           return (
             <button
               key={t.id}
+              ref={(el) => { tradeTabRefs.current[index] = el; }}
+              id={`trade-tab-${t.id}`}
               type="button"
               role="tab"
               aria-selected={isActive}
+              aria-controls="trade-workflow-panel"
+              tabIndex={isActive ? 0 : -1}
               className={`${styles.tradeTab} ${isActive ? styles.tradeTabActive : ''}`}
               onClick={() => handleTradeChange(t.id)}
+              onKeyDown={(e) => handleTradeKeyDown(e, index)}
             >
               <span className={styles.tradeTabIcon} aria-hidden="true">
                 {t.icon}
@@ -381,17 +409,16 @@ export default function CinematicMessageSimulation() {
 
       <div
         className={styles.stage}
-        aria-hidden="true"
         data-armed={armed ? 'true' : 'false'}
         data-still={stilled ? 'true' : 'false'}
         data-paused={armed && !playing && !finished && !stilled ? 'true' : 'false'}
       >
         {/* Dynamic Multi-Spectrum Ambient Glow */}
-        <span className={styles.glow} />
-        <span className={styles.glowSecondary} />
+        <span className={styles.glow} aria-hidden="true" />
+        <span className={styles.glowSecondary} aria-hidden="true" />
 
         {/* Floating 3D Micro-Badges */}
-        <div className={`${styles.floatingPill} ${styles.floatingPillTop}`} data-tone={activeTrade.floatingPillTop.tone}>
+        <div className={`${styles.floatingPill} ${styles.floatingPillTop}`} data-tone={activeTrade.floatingPillTop.tone} aria-hidden="true">
           <span className={styles.floatingPillIcon}>{activeTrade.floatingPillTop.icon}</span>
           <div className={styles.floatingPillContent}>
             <strong>{activeTrade.floatingPillTop.title}</strong>
@@ -399,7 +426,7 @@ export default function CinematicMessageSimulation() {
           </div>
         </div>
 
-        <div className={`${styles.floatingPill} ${styles.floatingPillBottom}`} data-tone={activeTrade.floatingPillBottom.tone}>
+        <div className={`${styles.floatingPill} ${styles.floatingPillBottom}`} data-tone={activeTrade.floatingPillBottom.tone} aria-hidden="true">
           <span className={styles.floatingPillIcon}>{activeTrade.floatingPillBottom.icon}</span>
           <div className={styles.floatingPillContent}>
             <strong>{activeTrade.floatingPillBottom.title}</strong>
@@ -407,7 +434,12 @@ export default function CinematicMessageSimulation() {
           </div>
         </div>
 
-        <div className={styles.jobCard}>
+        <div
+          className={styles.jobCard}
+          id="trade-workflow-panel"
+          role="tabpanel"
+          aria-labelledby={`trade-tab-${activeTradeId}`}
+        >
           {/* Header with business name, job identifier, and current live status */}
           <div className={styles.cardHeader}>
             <div className={styles.jobMeta}>

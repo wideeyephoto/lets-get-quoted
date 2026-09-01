@@ -1448,11 +1448,46 @@
 }
 
 @media (max-width: 768px) {
+  .featuresTheme :global(.index-hero) {
+    padding: 88px 20px 48px;
+    min-height: auto;
+  }
+  .featuresTheme :global(.index-hero.index-hero-beside) {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .featuresTheme :global(.index-hero h1) {
+    font-size: clamp(28px, 6.8vw, 42px);
+    letter-spacing: -0.02em;
+    word-break: break-word;
+    overflow-wrap: break-word;
+  }
+  .featuresTheme :global(.index-hero .hero-actions) {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .featuresTheme :global(.index-hero .hero-actions .button) {
+    width: 100%;
+    justify-content: center;
+  }
   .featuresTheme :global(.workflow-feature-grid) {
     grid-template-columns: 1fr;
   }
   .featuresTheme :global(.index-proof) {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .featuresTheme :global(.index-hero) {
+    padding: 80px 16px 40px;
+  }
+  .featuresTheme :global(.index-hero.index-hero-beside) {
+    padding-left: 0;
+    padding-right: 0;
   }
 }
 
@@ -1904,14 +1939,23 @@
   flex: 1;
   min-width: 160px;
   text-align: center;
-  background: var(--orange);
-  color: #fff;
-  font-weight: 750;
+  background: linear-gradient(135deg, #ff7137 0%, #ff8c5a 100%);
+  color: #06111f !important;
+  font-weight: 850;
   font-size: 14px;
   padding: 12px 18px;
   border-radius: 10px;
   box-shadow: 0 4px 14px rgba(255, 113, 55, 0.4);
   transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.calcPrimaryBtn:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
 }
 
 .calcPrimaryBtn:hover {
@@ -1930,10 +1974,34 @@
   font-weight: 700;
   font-size: 14px;
   transition: all 0.2s ease;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .calcSecondaryBtn:hover {
   background: rgba(255, 255, 255, 0.16);
+  color: #fff;
+}
+
+.assumptionsDisclaimer {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.assumptionsDisclaimer small {
+  font-size: 11px;
+  line-height: 1.5;
+  color: #94a3b8;
+  display: block;
+}
+
+.assumptionsDisclaimer strong {
+  color: #cbd5e1;
 }
 
 /* =========================================================================
@@ -2189,6 +2257,34 @@
   color: #ff854f;
 }
 
+.showMoreCatalogWrap {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+  padding: 1.5rem 0 0.5rem;
+}
+
+.showMoreCatalogBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 28px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.2);
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14.5px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.showMoreCatalogBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
 .emptyResultsBox {
   grid-column: 1 / -1;
   text-align: center;
@@ -2339,7 +2435,7 @@
 .pulseEventAction {
   margin: 2px 0 0;
   font-size: 13px;
-  color: var(--ink);
+  color: #f8fafc;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -2365,25 +2461,68 @@
 .pulseControls {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
-.pulseDotBtn {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  padding: 0;
+.pulsePlayPauseBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 11px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  margin-right: 4px;
+}
+
+.pulsePlayPauseBtn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+}
+
+.pulseDotsList {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.pulseDotBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.pulseDotInner {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.25);
   transition: all 0.2s ease;
 }
 
-.pulseDotActive {
+.pulseDotBtn:hover .pulseDotInner {
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.pulseDotActive .pulseDotInner {
   background: #ff7137;
   width: 18px;
   border-radius: 999px;
+  box-shadow: 0 0 8px rgba(255, 113, 55, 0.5);
 }
 
 @keyframes pulseGlow {
@@ -2453,14 +2592,14 @@
   font-size: clamp(22px, 2.5vw, 32px);
   line-height: 1.15;
   font-weight: 800;
-  color: var(--ink);
+  color: #f8fafc;
   margin: 0 0 0.5rem;
 }
 
 .photoDemoSub {
   font-size: 15px;
   line-height: 1.6;
-  color: var(--muted);
+  color: #cbd5e1;
   max-width: 780px;
   margin: 0 0 1.5rem;
 }
@@ -2482,7 +2621,7 @@
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--line);
-  color: var(--muted);
+  color: #cbd5e1;
   font-size: 13.5px;
   font-weight: 700;
   cursor: pointer;
@@ -2492,13 +2631,15 @@
 
 .photoDemoTabBtn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--ink);
+  color: #ffffff;
 }
 
 .photoDemoTabActive {
   background: rgba(179, 136, 255, 0.16);
   border-color: rgba(179, 136, 255, 0.45);
-  color: var(--ink);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(179, 136, 255, 0.2);
+}
   box-shadow: 0 0 16px rgba(179, 136, 255, 0.2);
 }
 
@@ -2604,14 +2745,14 @@
 .photoMockupDesc strong {
   display: block;
   font-size: 13px;
-  color: var(--ink);
+  color: #f8fafc;
   margin-bottom: 4px;
 }
 
 .photoMockupDesc p {
   font-size: 12.5px;
   line-height: 1.45;
-  color: var(--muted);
+  color: #cbd5e1;
   margin: 0;
 }
 
@@ -2828,7 +2969,7 @@
 
 .photoActionNote {
   font-size: 12px;
-  color: var(--dim);
+  color: #94a3b8;
 }
 
 /* ==========================================================================
@@ -2872,7 +3013,7 @@
 .routeDemoHeader h4 {
   font-size: 20px;
   font-weight: 800;
-  color: var(--ink);
+  color: #f8fafc;
   margin: 4px 0 0;
 }
 
@@ -2907,7 +3048,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 13px;
-  color: var(--muted);
+  color: #cbd5e1;
   margin-bottom: 0.6rem;
 }
 
@@ -2928,7 +3069,7 @@
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid var(--line);
   border-radius: 10px;
-  color: var(--muted);
+  color: #cbd5e1;
   font-size: 14px;
   font-weight: 800;
   cursor: pointer;
@@ -2937,7 +3078,7 @@
 
 .routePillBtn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: var(--ink);
+  color: #ffffff;
 }
 
 .routePillActive {
@@ -2949,7 +3090,7 @@
 .routeControlGroup small {
   display: block;
   font-size: 11.5px;
-  color: var(--dim);
+  color: #94a3b8;
 }
 
 .routeRangeInput {
@@ -2962,7 +3103,7 @@
   display: flex;
   justify-content: space-between;
   font-size: 10.5px;
-  color: var(--dim);
+  color: #94a3b8;
 }
 
 .routeEarningsCard {
@@ -2994,7 +3135,7 @@
 .routeEarningsCard p {
   font-size: 12.5px;
   line-height: 1.5;
-  color: var(--ink);
+  color: #f8fafc;
   margin: 0;
 }
 
@@ -3010,7 +3151,7 @@
   justify-content: space-between;
   align-items: center;
   font-size: 12px;
-  color: var(--muted);
+  color: #cbd5e1;
   border-bottom: 1px solid var(--line);
   padding-bottom: 0.75rem;
   margin-bottom: 1rem;
@@ -3022,7 +3163,7 @@
   color: #4ee0bc;
   border-radius: 6px;
   font-size: 11px;
-  font-weight: 800;
+  font-weight: 850;
 }
 
 .routeTimeline {
@@ -3052,18 +3193,18 @@
   justify-content: center;
   font-size: 11px;
   font-weight: 800;
-  color: var(--ink);
+  color: #f8fafc;
 }
 
 .routeStopNode strong {
   display: block;
   font-size: 13px;
-  color: var(--ink);
+  color: #f8fafc;
 }
 
 .routeStopNode small {
   font-size: 11px;
-  color: var(--dim);
+  color: #94a3b8;
 }
 
 .routeNodeDone {
@@ -3077,7 +3218,7 @@
   margin-left: auto;
   font-size: 11px;
   font-weight: 700;
-  color: var(--dim);
+  color: #94a3b8;
 }
 
 .routeQuickStopNode {
@@ -3692,14 +3833,16 @@
   .companionHUD {
     bottom: 16px;
     right: 16px;
-    left: 16px;
-    align-items: stretch;
+    left: auto;
+    align-items: flex-end;
+    max-width: calc(100vw - 32px);
   }
   .companionPanel {
-    width: 100%;
+    width: min(calc(100vw - 32px), 380px);
+    max-height: 80vh;
   }
   .companionMiniBubble {
-    max-width: 100%;
+    max-width: min(calc(100vw - 32px), 340px);
   }
   .companionDockBtn {
     align-self: flex-end;

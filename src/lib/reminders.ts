@@ -26,6 +26,7 @@ export type ReminderRunSummary = {
   skipped: number;
   failed: number;
   reason?: string;
+  errors?: string[];
 };
 
 /**
@@ -261,6 +262,7 @@ export async function runAppointmentReminders(now = new Date()): Promise<Reminde
   let sent = 0;
   let skipped = 0;
   let failed = 0;
+  const errorSamples: string[] = [];
   // Per-account tallies for the end-of-run summary, so a contractor hears once
   // about their own customers rather than once per customer.
   const byAccount = new Map<string, { sent: number; failed: number }>();
@@ -281,15 +283,25 @@ export async function runAppointmentReminders(now = new Date()): Promise<Reminde
       sent++;
       tally(job.account_id, 'sent');
     } catch (error) {
-      console.error(`Appointment reminder failed for job ${job.id}:`, error instanceof Error ? error.message : error);
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`Appointment reminder failed for job ${job.id}:`, msg);
       failed++;
       tally(job.account_id, 'failed');
+      if (errorSamples.length < 5) {
+        errorSamples.push(`job ${job.id}: ${msg}`);
+      }
     }
   }
 
   await sendReminderSummaries(admin, byAccount);
 
-  return { candidates: jobs.length, sent, skipped, failed };
+  return {
+    candidates: jobs.length,
+    sent,
+    skipped,
+    failed,
+    ...(errorSamples.length > 0 ? { errors: errorSamples } : {}),
+  };
 }
 
 export type ConfirmResult = {
