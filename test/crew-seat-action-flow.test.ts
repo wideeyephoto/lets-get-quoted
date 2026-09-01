@@ -22,7 +22,7 @@ describe('crew-seat server action flow', () => {
     expect(ACTIONS).toContain('createCrewMemberForSeatGate(supabase, createAdminClient, accountId');
     expect(ACTIONS).toContain('setCrewActiveForSeatGate(supabase, createAdminClient, accountId, crewId, active)');
     expect(ACTIONS).toContain('await updateCrewMember(supabase, accountId, crewId');
-    expect(ACTIONS).toContain('await deleteArchivedCrewMember(supabase, accountId, crewId)');
+    expect(ACTIONS).toContain('await deleteArchivedCrewMember(supabase, accountId, crewId');
   });
 
   it('returns the gate sentence into the existing accessible drawer error', () => {

@@ -526,6 +526,7 @@ export default function WaitlistManager({
           {/* Search & Urgency filter */}
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
             <select
+              aria-label="Filter by urgency"
               value={urgencyFilter}
               onChange={(e) => setUrgencyFilter(e.target.value)}
               style={{
@@ -989,6 +990,7 @@ export default function WaitlistManager({
                       Hold Reservation Timer
                     </label>
                     <select
+                      aria-label="Hold reservation timer"
                       value={holdMinutes}
                       onChange={(e) => setHoldMinutes(Number(e.target.value))}
                       style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
@@ -1179,6 +1181,7 @@ export default function WaitlistManager({
                     Urgency Level
                   </label>
                   <select
+                    aria-label="Urgency level"
                     value={formUrgency}
                     onChange={(e) => setFormUrgency(e.target.value as WaitlistUrgency)}
                     style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
@@ -1194,6 +1197,7 @@ export default function WaitlistManager({
                     Preferred Time Window
                   </label>
                   <select
+                    aria-label="Preferred time window"
                     value={formWindow}
                     onChange={(e) => setFormWindow(e.target.value as WaitlistWindow)}
                     style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}

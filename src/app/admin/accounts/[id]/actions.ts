@@ -10,7 +10,6 @@ import { addAccountNote, addAccountTag, removeAccountTag } from '@/lib/account-n
 import { uploadAccountAttachment, deleteAccountAttachment, isAttachmentFile } from '@/lib/account-attachments';
 import { logPrivacyRequest, resolvePrivacyRequest, isPrivacyRequestKind } from '@/lib/privacy-requests';
 import { isAccountFlag } from '@/lib/account-flags';
-import { executeAccountClosureSaga } from '@/lib/account-deletion-saga';
 
 // All account-level staff actions. Each re-runs requireAdmin() (a server action
 // is its own entry point — never trust that the page guarded it) and writes to
@@ -421,10 +420,10 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
   //
   // So: delete, check, and only then scrub and log. If it fails, nothing has
   // been touched and the operator is told.
-  const sagaResult = await executeAccountClosureSaga(admin, accountId);
-  if (!sagaResult.success) {
-    console.error('account hard delete saga failed:', sagaResult.errors);
-    backTo(accountId, 'error=delete_failed');
+  const { error: deleteError } = await admin.from('accounts').delete().eq('id', accountId);
+  if (deleteError) {
+    console.error('deleteAccountAction failed:', deleteError);
+    backTo(accountId, deleteError.code === '23503' ? 'error=delete_blocked' : 'error=delete_failed');
   }
 
   // Everything below is after a CONFIRMED delete. `details` is free text a staff

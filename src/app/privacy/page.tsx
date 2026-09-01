@@ -101,21 +101,21 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2>4. Data Sharing and Subprocessors</h2>
+          <h2>4. Data Sharing, Subprocessors &amp; AI Zero-Retention Policy</h2>
           <p>
             We share personal information only with authorized service providers and subprocessors that process data under strict
             contractual instructions to help us deliver the Service, including:
           </p>
           <ul>
-            <li>Hosting and serverless compute platforms (Vercel, Inc.).</li>
-            <li>Cloud hosting and database infrastructure providers (Supabase, Inc. / AWS).</li>
-            <li>Payment processors (Stripe, Inc. for subscriptions and merchant payouts under Stripe Connect).</li>
-            <li>Telephony, SMS, and voice communication carriers (SignalWire, Inc.).</li>
-            <li>Accounting integration services (Intuit Inc. for QuickBooks, where connected).</li>
-            <li>Artificial intelligence inference platforms (OpenAI, LLC and Google GenAI) operating under commitments not to train public foundation models on customer business data.</li>
-            <li>Email delivery providers (Resend, Inc.).</li>
-            <li>Property intelligence and market valuation providers (RentCast, Inc., for address-based structural estimates).</li>
-            <li>Mapping, geocoding, and conversion analytics providers (Google LLC, operating with Consent Mode controls, and optional Meta Platforms, Inc. pixels configured by contractors).</li>
+            <li><strong>Hosting and Serverless Compute:</strong> Vercel, Inc. (global edge network, secure serverless execution).</li>
+            <li><strong>Database &amp; Cloud Storage:</strong> Supabase, Inc. / AWS (PostgreSQL database with Row Level Security, encrypted in transit via TLS 1.3 and at rest with AES-256).</li>
+            <li><strong>Payment Processing:</strong> Stripe, Inc. (PCI-DSS Level 1 certified payments, deposits, and merchant payouts under Stripe Connect).</li>
+            <li><strong>Telephony &amp; Voice Communications:</strong> SignalWire, Inc. (carrier 10DLC messaging, programmable SIP, and real-time voice dispatching).</li>
+            <li><strong>Accounting Integrations:</strong> Intuit Inc. (bi-directional QuickBooks sync for customers, invoices, and payments, where authorized by contractor).</li>
+            <li><strong>Artificial Intelligence Inference Platforms:</strong> Google LLC (Google Gemini API) and OpenAI, LLC. All AI inference is conducted exclusively through paid enterprise API tiers with strict zero-data-retention and non-training guarantees: customer data, prompts, job notes, photos, and voice transcripts are never used to train public foundation models.</li>
+            <li><strong>Transactional Email Delivery:</strong> Resend, Inc. (DKIM/SPF-signed transactional and notification emails).</li>
+            <li><strong>Property Intelligence:</strong> RentCast, Inc. (address-level structural and valuation baselines for estimating).</li>
+            <li><strong>Mapping &amp; Geocoding:</strong> Google Maps Platform (server-side geocoding and browser mapping with referrer restrictions).</li>
           </ul>
           <p>
             For contractors processing personal data subject to state privacy regulations (such as the CCPA), our{' '}
@@ -125,19 +125,28 @@ export default function PrivacyPolicyPage() {
         </section>
 
         <section>
-          <h2>5. Data Retention, Security &amp; Legal Holds</h2>
+          <h2>5. Data Retention, Storage Security &amp; Deletion Lifecycle</h2>
           <p>
             We retain personal information for as long as your account remains active and as necessary to fulfill the business
             purposes outlined in this policy.
           </p>
           <p>
-            <strong>Financial &amp; Compliance Records:</strong> Records related to payment transactions, invoices, tax summaries,
-            carrier 10DLC registrations, and messaging logs are retained for minimum statutory periods to comply with applicable
-            tax laws, financial reporting regulations, and carrier anti-spam requirements, even after an account is deactivated.
+            <strong>Media &amp; Photo Storage Security:</strong> Homeowner project photos, material receipts, and site videos are
+            stored in encrypted, tenant-isolated storage buckets (`job-photos`, `lead-photos`, `site-videos`, `site-images`,
+            `insurance-proof`, `crew-photos`, `account-attachments`). Direct object access is protected by Row Level Security and
+            short-lived cryptographically signed URLs.
           </p>
           <p>
-            We employ administrative, technical, and organizational security controls designed to protect information from
-            unauthorized access, loss, or alteration.
+            <strong>Account Deletion &amp; 30-Day Grace Period:</strong> When a contractor requests account closure, a 30-day soft
+            deletion grace period begins. During this quarantine window, public sites and scheduling links are deactivated while
+            account owners retain the ability to restore their workspace or complete full DSAR data exports. Following the grace
+            period, our automated account closure orchestrator permanently and irreversibly purges all relational database records
+            across all registered schema tables and deletes all associated assets from storage buckets.
+          </p>
+          <p>
+            <strong>Financial &amp; Compliance Records:</strong> Records related to processed Stripe payments, finalized invoices,
+            carrier 10DLC registrations, and TCPA consent timestamps are retained for statutory minimum periods to comply with
+            tax reporting, financial audits, and carrier anti-spam regulations.
           </p>
         </section>
 

@@ -168,7 +168,7 @@ export async function triageSupportCase(
 
   // Topic classification & diagnostic drafting
   if (
-    (text.includes('stripe') && (text.includes('connect') || text.includes('setup') || text.includes('onboard') || text.includes('identity') || text.includes('kyc') || text.includes('bank'))) ||
+    (text.includes('stripe') && (text.includes('connect') || text.includes('setup') || text.includes('setting up') || text.includes('onboard') || text.includes('identity') || text.includes('kyc') || text.includes('connect bank') || text.includes('bank setup'))) ||
     text.includes('connect stripe') ||
     text.includes('connect my stripe') ||
     text.includes('connect bank') ||

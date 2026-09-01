@@ -100,6 +100,7 @@ export default function ActivityLedgerClient({ initialEvents }: ActivityLedgerCl
         <div>
           <label className="block text-xs font-semibold text-slate-400 mb-1">Entity Type</label>
           <select
+            aria-label="Filter by entity type"
             value={selectedEntity}
             onChange={(e) => setSelectedEntity(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -115,6 +116,7 @@ export default function ActivityLedgerClient({ initialEvents }: ActivityLedgerCl
         <div>
           <label className="block text-xs font-semibold text-slate-400 mb-1">Source Channel</label>
           <select
+            aria-label="Filter by source channel"
             value={selectedSource}
             onChange={(e) => setSelectedSource(e.target.value)}
             className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500"

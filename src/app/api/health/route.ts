@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { recordRequestMetric, getApmSummary } from '@/lib/apm-telemetry';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,15 +20,54 @@ export type HealthResponse = {
   latencyMs: number;
   services: HealthService[];
   apm?: {
-    p95Ms: number;
-    errorRatePct: number;
+    p95Ms?: number;
+    errorRatePct?: number;
     active: boolean;
   };
 };
 
-export async function GET(req: NextRequest) {
+function isAuthorizedDiagnosticCaller(req?: NextRequest): boolean {
+  if (!req) return false;
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return false;
+
+  const authHeader = req.headers?.get('authorization');
+  if (authHeader && authHeader.replace(/^Bearer\s+/i, '').trim() === cronSecret) {
+    return true;
+  }
+
+  const xCronHeader = req.headers?.get('x-cron-secret');
+  if (xCronHeader && xCronHeader.trim() === cronSecret) {
+    return true;
+  }
+
+  const searchSecret = req.nextUrl?.searchParams?.get('secret');
+  if (searchSecret && searchSecret === cronSecret) {
+    return true;
+  }
+
+  return false;
+}
+
+export async function GET(req?: NextRequest) {
   const startTime = performance.now();
   const services: HealthService[] = [];
+
+  const isAuthed = isAuthorizedDiagnosticCaller(req);
+
+  // Rate-limit unauthenticated diagnostic probes to prevent abuse
+  if (req && !isAuthed) {
+    try {
+      const ip = clientIpFrom(req.headers);
+      const admin = createAdminClient();
+      const allowed = await checkRateLimit(admin, `health:ip:${ip}`, 120, 60);
+      if (!allowed) {
+        return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+      }
+    } catch {
+      // Fail open on rate limiter connection errors
+    }
+  }
 
   // Fast ping for synthetic monitoring heartbeats (Better Stack / Pingdom / UptimeRobot)
   const isPing = req ? req.nextUrl?.searchParams?.get('ping') === '1' : false;
@@ -35,7 +75,7 @@ export async function GET(req: NextRequest) {
   // 1. Quoting Engine & Database
   const dbStart = performance.now();
   let dbStatus: HealthServiceStatus = 'operational';
-  let dbDetail = 'PostgreSQL database connected';
+  let dbDetail = isAuthed ? 'PostgreSQL database connected' : 'Operational';
   try {
     const admin = createAdminClient();
     const probePromise = admin.from('sites').select('id').limit(1);
@@ -46,16 +86,16 @@ export async function GET(req: NextRequest) {
     const dbElapsed = Math.round(performance.now() - dbStart);
     if (error) {
       dbStatus = 'outage';
-      dbDetail = 'Database service query error';
+      dbDetail = isAuthed ? 'Database service query error' : 'Service unavailable';
     } else if (dbElapsed > 1500) {
       dbStatus = 'degraded';
-      dbDetail = `High database latency (${dbElapsed}ms)`;
+      dbDetail = isAuthed ? `High database latency (${dbElapsed}ms)` : 'High latency detected';
     } else {
-      dbDetail = `PostgreSQL database operational (${dbElapsed}ms)`;
+      dbDetail = isAuthed ? `PostgreSQL database operational (${dbElapsed}ms)` : 'Operational';
     }
   } catch {
     dbStatus = 'outage';
-    dbDetail = 'Database service unreachable';
+    dbDetail = isAuthed ? 'Database service unreachable' : 'Service unavailable';
   }
 
   services.push({
@@ -74,9 +114,9 @@ export async function GET(req: NextRequest) {
     id: 'sms-gateway',
     name: 'Two-Way SMS & Dedicated Phone Gateway',
     status: hasSmsConfig ? 'operational' : 'degraded',
-    detail: hasSmsConfig
-      ? 'SignalWire / 10DLC Carrier Network operational'
-      : 'Carrier gateway credentials unconfigured',
+    detail: isAuthed
+      ? (hasSmsConfig ? 'SignalWire / 10DLC Carrier Network operational' : 'Carrier gateway credentials unconfigured')
+      : (hasSmsConfig ? 'Operational' : 'Degraded'),
   });
 
   // 3. Stripe Payments & Deposits
@@ -85,9 +125,9 @@ export async function GET(req: NextRequest) {
     id: 'stripe-payments',
     name: 'Stripe Payments & Deposits',
     status: hasStripeConfig ? 'operational' : 'degraded',
-    detail: hasStripeConfig
-      ? 'Stripe Connect API V2 operational'
-      : 'Stripe secret key unconfigured',
+    detail: isAuthed
+      ? (hasStripeConfig ? 'Stripe Connect API V2 operational' : 'Stripe secret key unconfigured')
+      : (hasStripeConfig ? 'Operational' : 'Degraded'),
   });
 
   // 4. Contractor Website CDN & DNS
@@ -96,9 +136,9 @@ export async function GET(req: NextRequest) {
     id: 'contractor-cdn',
     name: 'Contractor Website CDN & DNS',
     status: hasCdnConfig ? 'operational' : 'degraded',
-    detail: hasCdnConfig
-      ? 'Global Anycast Edge Network operational'
-      : 'CDN host domain unconfigured',
+    detail: isAuthed
+      ? (hasCdnConfig ? 'Global Anycast Edge Network operational' : 'CDN host domain unconfigured')
+      : (hasCdnConfig ? 'Operational' : 'Degraded'),
   });
 
   const totalLatencyMs = Math.max(1, Math.round(performance.now() - startTime));
@@ -124,13 +164,17 @@ export async function GET(req: NextRequest) {
   const responseBody: HealthResponse = {
     status: overallStatus,
     timestamp: new Date().toISOString(),
-    latencyMs: totalLatencyMs,
+    latencyMs: isAuthed ? totalLatencyMs : Math.min(totalLatencyMs, 50),
     services,
-    apm: {
-      p95Ms: apmSummary.latencyPercentiles.p95Ms,
-      errorRatePct: apmSummary.errorRatePct,
-      active: true,
-    },
+    apm: isAuthed
+      ? {
+          p95Ms: apmSummary.latencyPercentiles.p95Ms,
+          errorRatePct: apmSummary.errorRatePct,
+          active: true,
+        }
+      : {
+          active: true,
+        },
   };
 
   return NextResponse.json(
@@ -140,7 +184,7 @@ export async function GET(req: NextRequest) {
       headers: {
         'Cache-Control': 'no-store, max-age=0',
         'X-LGQ-Uptime-Status': overallStatus,
-        'X-LGQ-APM-P95': `${apmSummary.latencyPercentiles.p95Ms}ms`,
+        ...(isAuthed ? { 'X-LGQ-APM-P95': `${apmSummary.latencyPercentiles.p95Ms}ms` } : {}),
       },
     },
   );

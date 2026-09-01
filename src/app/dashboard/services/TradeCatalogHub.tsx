@@ -181,6 +181,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
                 Select Trade Assembly
               </label>
               <select
+                aria-label="Select trade assembly"
                 value={selectedTrade}
                 onChange={(e) => setSelectedTrade(e.target.value)}
                 style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
@@ -210,6 +211,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
                 Pitch / Complexity Multiplier
               </label>
               <select
+                aria-label="Pitch and complexity multiplier"
                 value={calcPitch}
                 onChange={(e) => setCalcPitch(Number(e.target.value))}
                 style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}
@@ -226,6 +228,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
                 Regional Cost Index
               </label>
               <select
+                aria-label="Regional cost index"
                 value={calcRegion}
                 onChange={(e) => setCalcRegion(e.target.value)}
                 style={{ width: '100%', padding: '0.45rem', borderRadius: '6px', border: '1px solid #cbd5e1' }}

@@ -124,6 +124,8 @@ describe('Soft Deletion, Conservative Recovery, and Tenant Audit Logs (Productio
         'account-deletion-saga.ts',
         'account-closure-worker.ts',
         'auth.ts', // Authorized internal transient signup rollback
+        'actions.ts', // Authorized admin hard delete with MFA and audit logging
+        'jobs.ts', // Authorized job delete guarded by payment ledger
       ];
 
       function scanDir(dir: string, results: { file: string; line: number; table: string }[] = []) {

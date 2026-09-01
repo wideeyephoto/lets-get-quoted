@@ -297,6 +297,7 @@ export default function FieldFormRunner({
                       {/* Dropdown Select */}
                       {field.type === 'select' && (
                         <select
+                          aria-label={field.label || 'Select option'}
                           className="select"
                           style={{ fontSize: '0.9rem', padding: '0.5rem' }}
                           value={currentVal ?? ''}

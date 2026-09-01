@@ -1440,6 +1440,7 @@ export default function InventoryClient({
                   Assign to Crew Member / Technician:
                 </label>
                 <select
+                  aria-label="Assign to crew member or technician"
                   value={selectedCrewName}
                   onChange={(e) => setSelectedCrewName(e.target.value)}
                   className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
@@ -1518,6 +1519,7 @@ export default function InventoryClient({
               <div>
                 <label className="font-semibold text-stone-700 dark:text-stone-300 block mb-1">Return Condition:</label>
                 <select
+                  aria-label="Return condition"
                   value={checkinCondition}
                   onChange={(e) => setCheckinCondition(e.target.value as ToolAssetStatus)}
                   className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
@@ -1877,6 +1879,7 @@ export default function InventoryClient({
               <div>
                 <label className="font-semibold block mb-1">Location *</label>
                 <select
+                  aria-label="Item location"
                   name="location"
                   defaultValue={stockModal.item?.location || availableLocationNames[0] || 'Main Shop & Warehouse'}
                   className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
@@ -1988,6 +1991,7 @@ export default function InventoryClient({
                   Destination Location:
                 </label>
                 <select
+                  aria-label="Destination location"
                   value={transferModal.toLocation}
                   onChange={(e) => setTransferModal((prev) => ({ ...prev, toLocation: e.target.value }))}
                   className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
@@ -2063,6 +2067,7 @@ export default function InventoryClient({
               <div>
                 <label className="font-semibold block mb-1">Asset Type *</label>
                 <select
+                  aria-label="Asset type"
                   name="assetType"
                   defaultValue={maintenanceModal.record.assetType}
                   className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"
@@ -2193,6 +2198,7 @@ export default function InventoryClient({
               <div>
                 <label className="font-semibold block mb-1">Location Type *</label>
                 <select
+                  aria-label="Location type"
                   name="type"
                   defaultValue={locationModal.location?.type || 'warehouse'}
                   className="w-full p-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-900 dark:text-stone-100"

@@ -113,6 +113,7 @@ export default function FormsHubClient({
           />
 
           <select
+            aria-label="Filter by trade"
             className={styles.selectTrade}
             value={selectedTrade}
             onChange={(e) => setSelectedTrade(e.target.value as TradeSpecialization | 'all')}

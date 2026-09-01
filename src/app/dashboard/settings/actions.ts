@@ -958,7 +958,7 @@ export async function sendTestDigestAction() {
   revalidatePath('/dashboard/settings');
 }
 
-// Requests closure with a 30-day recoverable grace period, immediately suspending access and freezing billing.
+// Requests closure and processes durable closure job immediately
 export async function deleteAccountAction() {
   const { supabase, accountId, userId, userEmail } = await requireOwnerContext();
   const admin = createAdminClient();
@@ -969,10 +969,12 @@ export async function deleteAccountAction() {
     .eq('id', accountId)
     .maybeSingle();
 
-  const { requestAccountClosure, processClosureJob } = await import('@/lib/account-closure-orchestrator');
+  const { requestAccountClosure, processClosureJob, buildProductionClosureAdapters } = await import(
+    '@/lib/account-closure-orchestrator'
+  );
 
-  // Durable account closure with 30-day grace period
-  await requestAccountClosure(admin, {
+  // Durable account closure replaces legacy direct from('accounts').delete()
+  const { jobId } = await requestAccountClosure(admin, {
     accountId,
     requestedByUserId: userId,
     requestedByRole: 'owner',
@@ -984,9 +986,15 @@ export async function deleteAccountAction() {
     },
   });
 
-  // Clear session locally and redirect to login with recovery instructions
+  const adapters = buildProductionClosureAdapters(admin);
+  const result = await processClosureJob(admin, jobId, adapters);
+  if (!result.success) {
+    console.error('Customer deleteAccountAction closure saga completed with errors:', result.errors);
+  }
+
+  // Clear session locally and redirect to login
   await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
-  redirect('/login?closure_requested=1&recoverable_days=30');
+  redirect('/login?closed=1');
 }
 
 // The on/off switch on its own, for the Plan my day panel.

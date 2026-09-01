@@ -6,6 +6,26 @@ import { createAdminClient } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+function isAuthorizedPermitDiagnosticCaller(request: NextRequest): boolean {
+  const cronSecret = process.env.CRON_SECRET;
+  const permitSecret = process.env.PERMIT_WEBHOOK_SECRET;
+
+  const authHeader = request.headers.get('authorization');
+  if (authHeader) {
+    const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+    if ((cronSecret && token === cronSecret) || (permitSecret && token === permitSecret)) {
+      return true;
+    }
+  }
+
+  const searchSecret = request.nextUrl?.searchParams?.get('secret');
+  if (searchSecret && ((cronSecret && searchSecret === cronSecret) || (permitSecret && searchSecret === permitSecret))) {
+    return true;
+  }
+
+  return false;
+}
+
 /**
  * GET /api/permits/health
  * System health check and diagnostics for the Permit & Local Codes Intelligence Engine.
@@ -46,6 +66,15 @@ export async function GET(request: NextRequest) {
       : 'degraded';
 
   const isHealthy = jurisdictionResolverStatus === 'healthy' && codeCatalogStatus === 'healthy';
+  const isAuthed = isAuthorizedPermitDiagnosticCaller(request);
+
+  if (!isAuthed) {
+    return NextResponse.json({
+      status: isHealthy ? 'healthy' : 'degraded',
+      version: '1.0.0',
+      timestamp,
+    });
+  }
 
   return NextResponse.json({
     status: isHealthy ? 'healthy' : 'degraded',

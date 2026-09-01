@@ -85,13 +85,13 @@ export function publicApiRoute<T = unknown>(
   handler: (
     req: NextRequest,
     ctx: PublicApiContext,
-    params?: { params: Promise<Record<string, string>> }
+    params?: { params?: Promise<Record<string, string>> }
   ) => Promise<NextResponse<T | StandardErrorResponse | unknown> | Response>,
   options: PublicApiOptions = {}
 ) {
   return async function (
     req: NextRequest,
-    routeSegment: { params: Promise<Record<string, string>> }
+    routeSegment?: { params?: Promise<Record<string, string>> }
   ): Promise<Response> {
     const requestId = generateRequestId();
     const startTime = Date.now();

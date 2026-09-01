@@ -503,6 +503,7 @@ export default function FormBuilderWorkspace({
 
                       <div className={styles.fieldMeta}>
                         <select
+                          aria-label="Field type"
                           className="select"
                           style={{ fontSize: '0.75rem', padding: '0.15rem 0.35rem' }}
                           value={field.type}
@@ -563,6 +564,7 @@ export default function FormBuilderWorkspace({
                                   <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <span style={{ fontWeight: 600 }}>WHEN this field</span>
                                     <select
+                                      aria-label="Rule operator"
                                       value={rule.operator}
                                       onChange={(e) => updateRule(field.id, rule.id, { operator: e.target.value as RuleOperator })}
                                       style={{ padding: '0.15rem' }}
@@ -586,6 +588,7 @@ export default function FormBuilderWorkspace({
 
                                     <span style={{ fontWeight: 600 }}>THEN</span>
                                     <select
+                                      aria-label="Rule action"
                                       value={rule.action}
                                       onChange={(e) => updateRule(field.id, rule.id, { action: e.target.value as RuleAction })}
                                       style={{ padding: '0.15rem' }}
@@ -598,6 +601,7 @@ export default function FormBuilderWorkspace({
 
                                     {rule.action !== 'flag_critical_issue' && (
                                       <select
+                                        aria-label="Target field for rule"
                                         value={rule.targetFieldId || field.id}
                                         onChange={(e) => updateRule(field.id, rule.id, { targetFieldId: e.target.value })}
                                         style={{ padding: '0.15rem' }}
@@ -834,6 +838,7 @@ export default function FormBuilderWorkspace({
                           {/* Select */}
                           {field.type === 'select' && (
                             <select
+                              aria-label={field.label || 'Select option'}
                               className="select"
                               value={currentVal ?? ''}
                               onChange={(e) => setSimValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
