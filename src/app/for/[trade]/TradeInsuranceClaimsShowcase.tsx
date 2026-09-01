@@ -36,7 +36,7 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
                   ⚡ AI Scope & Supplement Engine
                 </span>
                 <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-bold text-emerald-300 border border-emerald-400/30">
-                  🛡️ UPPA Compliant
+                  🛡️ UPPA-Aligned Workflow
                 </span>
               </div>
               <h3 className={styles.projectTitle}>
@@ -113,7 +113,7 @@ export default function TradeInsuranceClaimsShowcase({ trade }: { trade: Trade }
               <span className="text-lg">💬</span>
               <h4 className="text-sm font-bold text-stone-100">Homeowner Claim Co-Pilot</h4>
               <p className="text-xs text-stone-400 leading-relaxed">
-                Provide crystal-clear answers on ACV vs. RCV, deductibles, and policyholder rights while keeping your business 100% UPPA compliant.
+                Provide crystal-clear answers on ACV vs. RCV, deductibles, and policyholder rights while keeping your business aligned with UPPA standards and transparent contractor estimating.
               </p>
             </div>
           </div>

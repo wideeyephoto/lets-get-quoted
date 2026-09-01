@@ -230,7 +230,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Is AI Voice Receptionist & Field Assistant available?',
-    a: 'Yes, AI Voice is available! For customer-facing call reception and automatic quote intake, it connects to your dedicated 2-way business number (requiring carrier 10DLC registration). For talking directly to your AI Field Assistant to update jobs, create leads, and log work while driving or on-site, you and your crew can dial in using your voice credits immediately on our shared number.',
+    a: 'AI Voice Receptionist is currently in preview while carrier line routing and dedicated voice numbers complete final rollout. Web-based 24/7 Smart Intake, instant quote generation, automated SMS dispatch, and multi-tier estimate workflows are fully live across all accounts today. Dedicated business lines and AI call answering add-ons become active as carrier 10DLC registrations are verified.',
   },
   {
     q: 'Can the AI receptionist answer multiple calls at once?',

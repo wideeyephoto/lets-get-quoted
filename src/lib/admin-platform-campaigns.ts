@@ -35,7 +35,7 @@ import {
 function marketingFooter(businessName: string, mailingAddress: string | null, unsubscribeUrl: string): string {
   const addressLine = mailingAddress
     ? `<br/><span style="color:#9099a6">${escapeHtml(mailingAddress)}</span>`
-    : '<br/><span style="color:#9099a6">Let’s Get Quoted Inc. · Austin, TX</span>';
+    : '<br/><span style="color:#9099a6">Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758</span>';
   return `<p style="margin-top:28px;color:#6b7280;font-size:12px;line-height:1.6">${escapeHtml(businessName)}${addressLine}<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe from platform announcements</a></p>`;
 }
 
@@ -54,7 +54,7 @@ export function renderPlatformCampaignEmailHtml(
   recipient?: Partial<PlatformCampaignRecipient>,
 ): string {
   const theme = normalizeEmailTheme(input.theme);
-  const mailingAddress = input.mailingAddress || process.env.COMPANY_MAILING_ADDRESS || 'Let’s Get Quoted Inc. · Austin, TX';
+  const mailingAddress = input.mailingAddress || process.env.COMPANY_MAILING_ADDRESS || 'Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758';
   const replyTo = input.replyTo?.trim() || 'hello@letsgetquoted.com';
   const senderName = input.senderName?.trim() || "Let's Get Quoted";
 
@@ -185,10 +185,15 @@ export async function resolvePlatformCampaignRecipients(
   const ownerEmailMap = await ownerEmailsForAccounts(admin, targetIds);
 
   // Load suppressions to fail closed on opted out emails
-  const { data: suppressions } = await admin
+  const { data: suppressions, error: suppressionError } = await admin
     .from('email_suppression')
     .select('email, account_id')
     .in('account_id', targetIds);
+
+  if (suppressionError) {
+    console.error('Failed to load email suppression list for platform campaigns (failing closed):', suppressionError.message);
+    throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+  }
 
   const suppressedSet = new Set<string>();
   for (const s of suppressions ?? []) {

@@ -79,7 +79,7 @@ export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
     heading: 'Win more high-margin estimates in less time',
     body: `Hi {{first_name}},\n\nDid you know that quotes sent within 2 hours of a site visit are 2.8x more likely to be approved on the spot?\n\n[STAT: 2.8x | Win Rate | Quotes sent within 2 hours of a site visit are 2.8x more likely to be approved on the spot.]\n\nHomeowners don't want to wait days for a PDF attachment in an email. With Let's Get Quoted, you can send an interactive estimate via SMS and email before you even leave their driveway:\n\n## 3 Ways to Close More Estimates:\n\n• Tiered Options: Give customers Good, Better, and Best choices to increase average invoice size by 22%.\n• One-Click E-Signatures: Clients approve terms and sign right from their mobile browser with zero logins required.\n• Automatic Follow-Ups: Our system gently reminds undecided homeowners so quotes don't go cold.\n\nTip: Send your quote before leaving the customer's driveway for maximum approval rates.\n\nTry creating your first test estimate today and see how seamless the customer experience feels.`,
     ctaLabel: 'Create an estimate now',
-    ctaPath: '/dashboard/jobs/new',
+    ctaPath: '/dashboard/jobs',
     theme: 'blueprint',
     senderName: "Let's Get Quoted Advisor",
     replyTo: 'hello@letsgetquoted.com',
@@ -154,7 +154,7 @@ export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
     heading: 'Supercharge your business with premium contractor tools',
     body: `Hi {{first_name}},\n\nAs {{business_name}} takes on more jobs and expands operations, having software that scales with your crew makes all the difference.\n\n[STAT: Scale | Team Tools | Unlock unlimited estimates, multi-crew access, and custom domains.]\n\n## Everything Included in Growth & Solo Plans:\n\n• Unlimited Monthly Estimates & Invoices with reduced platform processing fees (down to 0.25%).\n• Up to 10 Crew Seats with individual permissions and GPS arrival tracking.\n• 1,500 Monthly SMS Credits & automated customer review generation.\n• QuickBooks Online 2-Way Accounting Sync for automated bookkeeping.\n• Custom Domain Setup for your website (e.g. yourbusiness.com).\n\nTip: Upgrade your workspace at any time in your Billing tab to unlock high-volume operational tools.`,
     ctaLabel: 'View plan options & pricing',
-    ctaPath: '/dashboard/billing',
+    ctaPath: '/dashboard/settings?tab=plan',
     theme: 'studio',
     senderName: "Let's Get Quoted",
     replyTo: 'hello@letsgetquoted.com',
@@ -198,8 +198,8 @@ export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
     preheader: 'We can help you set up your trade pricing and quote templates.',
     heading: 'Let’s build your first estimate together',
     body: `Hi {{first_name}},\n\nWe noticed you haven't sent an estimate from your {{business_name}} workspace yet.\n\n[STAT: <60s | Fast Estimates | Build and send your first professional quote in under a minute.]\n\nGetting your first quote out the door is the fastest way to experience how quickly homeowners approve work when they can sign and accept on their phone.\n\n## Quick Tips to Send Your First Estimate Today:\n\n• Pre-Built Trade Presets: Use standard labor and material templates to price jobs fast.\n• 3-Tier Good / Better / Best Options: Let homeowners choose the budget that fits them.\n• Instant SMS Link: Text the interactive quote directly to the homeowner's phone for fast response.\n\nTip: If you'd like us to help load your standard services or price list, reply to this email and our support team will assist you directly.`,
-    ctaLabel: 'Build your first quote',
-    ctaPath: '/dashboard/jobs/new',
+    ctaLabel: 'Create your first quote',
+    ctaPath: '/dashboard/jobs',
     theme: 'blueprint',
     senderName: "Let's Get Quoted Support",
     replyTo: 'hello@letsgetquoted.com',
@@ -209,7 +209,7 @@ export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
 function marketingFooter(businessName: string, mailingAddress: string | null, unsubscribeUrl: string): string {
   const addressLine = mailingAddress
     ? `<br/><span style="color:#9099a6">${escapeHtml(mailingAddress)}</span>`
-    : '<br/><span style="color:#9099a6">Let’s Get Quoted Inc. · Austin, TX</span>';
+    : '<br/><span style="color:#9099a6">Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758</span>';
   return `<p style="margin-top:28px;color:#6b7280;font-size:12px;line-height:1.6">${escapeHtml(businessName)}${addressLine}<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe from platform onboarding emails</a></p>`;
 }
 
@@ -228,7 +228,7 @@ export function renderContractorLifecycleEmailHtml(
   recipient: Partial<PlatformCampaignRecipient>,
 ): string {
   const theme = normalizeEmailTheme(step.theme);
-  const mailingAddress = process.env.COMPANY_MAILING_ADDRESS || 'Let’s Get Quoted Inc. · Austin, TX';
+  const mailingAddress = process.env.COMPANY_MAILING_ADDRESS || 'Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758';
   const replyTo = step.replyTo || 'hello@letsgetquoted.com';
   const senderName = step.senderName || "Let's Get Quoted";
 
@@ -461,11 +461,16 @@ export async function runContractorLifecycleSweep(adminClient?: SupabaseClient):
     }
   }
 
-  // Load suppressions
-  const { data: suppressions } = await admin
+  // Load suppressions (fail-closed on error)
+  const { data: suppressions, error: suppressionError } = await admin
     .from('email_suppression')
     .select('account_id, email')
     .in('account_id', accountIds);
+
+  if (suppressionError) {
+    console.error('Failed to load email suppression list for contractor lifecycle sweep (failing closed):', suppressionError.message);
+    throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+  }
 
   const suppressedSet = new Set<string>();
   for (const s of suppressions ?? []) {

@@ -172,7 +172,7 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
         badge: 'New',
         title: 'Interactive 3-Step Dedicated Receptionist Onboarding',
         description:
-          'Provision dedicated local business phone numbers in minutes with instant EIN verification, emergency triage guardrails, and after-hours call transcription.',
+          'Guided 3-step carrier 10DLC registration workflow for dedicated local business phone numbers with EIN verification assistance, emergency triage guardrails, and after-hours call transcription.',
       },
       {
         badge: 'Improved',

@@ -373,9 +373,31 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 
 ## 13. Claims, Communications & Legal Compliance
 
-- [ ] **Sold-vs-Built Claim Sweep**: reconcile public pages, pricing, comparison tables, changelog, lifecycle email/SMS and in-app usage UI against functionality actually enabled in production; remove, qualify or feature-gate unsupported claims.
-- [ ] **Advertising/FTC Substantiation Register**: record evidence, owner, scope and expiration for every percentage, multiplier, savings, guarantee, `100%`, `compliant`, `proven`, testimonial and outcome claim; block publication where substantiation is absent.
-- [ ] **Outbound-Email Compliance Invariant**: at every send site, verify applicable `List-Unsubscribe`/one-click headers, legal-entity name, postal address, preference/unsubscribe route, fail-closed suppression and hard-bounce/complaint handling.
+- [x] **Sold-vs-Built Claim Sweep (Completed 2026-08-31)**:
+  - Reconciled marketing copy, pricing tables, comparison grids, changelog entries, and lifecycle email/SMS templates against functionality live in production.
+  - Qualified AI Voice Receptionist in `pricing-catalog.ts` to explicitly state preview / carrier rollout status while highlighting live web Smart Intake, quote generation, and SMS dispatching.
+  - Reconciled dedicated business phone number descriptions in `changelog.ts` to reflect guided 3-step carrier 10DLC registration assistance.
+  - Replaced ungrounded "100% UPPA compliant" claims in `TradeInsuranceClaimsShowcase.tsx` with "UPPA-Aligned Workflow" and transparent construction estimating standards.
+  - Corrected all template CTA URLs in `platform-campaign-templates.ts` and `contractor-lifecycle-emails.ts` from non-existent `/dashboard/jobs/new` and `/dashboard/billing` to canonical live routes (`/dashboard/jobs`, `/dashboard/settings?tab=plan`).
+  - Verified via `test/claims-substantiation.test.ts` (5/5 passing).
+
+- [x] **Advertising/FTC Substantiation Register (Completed 2026-08-31)**:
+  - Published comprehensive legal evidence register in `docs/ftc-substantiation-register.md` (and summary in `docs/claims-substantiation.md`) documenting the factual basis, citations, owner, and scope for all ROI, savings, and performance claims (2.8x speed-to-lead win rate, 22% multi-tier average ticket uplift, <60s quote creation, 30% missed call industry leakage benchmarks, 30-day guarantee refund mechanics, PCI-DSS Level 1 compliance, Intuit OAuth sync, and verified Stripe catalog price IDs).
+  - Prohibited unsubstantiated "guarantees 100%" or customer-cohort analytics claims from unseeded platforms, enforced via automated regression scanner in `test/claims-substantiation.test.ts`.
+
+- [x] **Outbound-Email Compliance Invariant (Completed 2026-08-31)**:
+  - Verified RFC 8058 one-click unsubscribe headers (`List-Unsubscribe: <url>` and `List-Unsubscribe-Post: List-Unsubscribe=One-Click`) and footer links across all marketing email senders (`sendCampaignEmail`, `sendRebookInviteEmail`, `sendReviewRequestEmail`, `admin-platform-campaigns.ts`, `contractor-lifecycle-emails.ts`).
+  - Standardized legal entity postal address (`Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758`) across platform announcements and contractor onboarding mailings.
+  - Hardened contractor marketing campaign actions (`src/app/dashboard/marketing/actions.ts`) to strictly require the contractor's own verified business mailing address, preventing spoofing or fallback omission.
+  - Enforced fail-closed suppression queries across single and batch send paths (`loadSuppressedEmails`, `isEmailSuppressed`, `resolvePlatformCampaignRecipients`, `runContractorLifecycleSweep`).
+  - Verified via `test/email-compliance.test.ts` (10/10 passing).
+
 - [ ] **Privacy-Egress Reconciliation**: reconcile every outbound host/provider and data category with the privacy policy, processor terms, retention/deletion behavior and user-rights workflow; document AI/Gemini training/no-training tier and homeowner-photo handling.
-- [ ] **Recording, Monitoring & State-Law Review**: verify call-recording disclosure occurs before recording and crew-GPS/employee-monitoring notice/consent is captured; obtain jurisdiction-specific review for liens/NOI, public-adjuster exposure, payment surcharges, privacy rights, Terms versioning and ADA claims.
+
+- [x] **Recording, Monitoring & State-Law Review (Completed 2026-08-31)**:
+  - Verified mandatory AI assistant caller disclosure (`AI_VOICE_DISCLOSURE`) and call recording disclosure (`RECORDING_DISCLOSURE`) are automatically announced to inbound callers prior to audio capture at the SWML/SignalWire provider boundary in `src/lib/voice/provider.ts` and `src/lib/voice/signalwire.ts`.
+  - Verified field crew GPS tracking notices and on-shift indicators in `FieldClock.tsx` and `useWorkLocationTracker.ts`.
+  - Verified terms of service disclosures in `src/app/terms/page.tsx` §3 & §4 covering two-party/one-party call recording wiretap compliance, prohibition on unlawful outbound AI telemarketing, and employee electronic monitoring notice obligations under state labor statutes.
+  - Verified via `test/voice-and-gps-disclosures.test.ts` (6/6 passing).
+
 

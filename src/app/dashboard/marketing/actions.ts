@@ -300,7 +300,7 @@ const AUDIENCES: CampaignAudience[] = ['all', 'past', 'repeat', 'lapsed'];
 type Supa = Awaited<ReturnType<typeof requireOfficeContext>>['supabase'];
 
 // Resolve the sender identity shown in marketing email: the display name and the
-// CAN-SPAM physical mailing address (contractor's own, else platform fallback).
+// CAN-SPAM physical mailing address (strictly the contractor's own business address).
 async function resolveSenderIdentity(
   supabase: Supa,
   accountId: string,
@@ -312,9 +312,10 @@ async function resolveSenderIdentity(
     supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
   const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
+  const contractorAddress = (addressRow?.mailing_address as string | null)?.trim() || null;
   return {
     businessName: pickBusinessName(site, account),
-    mailingAddress: resolveMarketingMailingAddress(addressRow?.mailing_address as string | null),
+    mailingAddress: contractorAddress,
   };
 }
 
