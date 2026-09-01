@@ -2,6 +2,16 @@ import { formatUsdExact } from '@/lib/money-format';
 
 export type ToolAssetStatus = 'available' | 'checked_out' | 'in_maintenance' | 'lost_damaged';
 export type VehicleStatus = 'active' | 'in_shop' | 'retired';
+export type InventoryLocationType = 'warehouse' | 'vehicle' | 'job_site' | 'cage';
+
+export type InventoryLocation = {
+  id: string;
+  name: string;
+  type: InventoryLocationType;
+  code?: string | null;
+  address?: string | null;
+  isActive: boolean;
+};
 
 export type ToolAsset = {
   id: string;
@@ -14,6 +24,8 @@ export type ToolAsset = {
   purchasePrice?: number | null;
   purchaseDate?: string | null;
   status: ToolAssetStatus;
+  locationId?: string | null;
+  locationName?: string | null;
   assignedCrewId?: string | null;
   assignedCrewName?: string | null;
   assignedJobId?: string | null;
@@ -54,6 +66,29 @@ export type VanStockItem = {
   preferredSupplier: string;
   reorderQty: number;
   location: string;
+  locationId?: string | null;
+  notes?: string | null;
+};
+
+export type StockTransfer = {
+  id: string;
+  itemId: string;
+  itemName: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number;
+  performedBy?: string | null;
+  notes?: string | null;
+  createdAt: string;
+};
+
+export type InventoryPayload = {
+  locations: InventoryLocation[];
+  tools: ToolAsset[];
+  vehicles: FleetVehicle[];
+  stock: VanStockItem[];
+  transfers: StockTransfer[];
+  maintenance: MaintenanceRecord[];
 };
 
 export type MaintenanceRecord = {
