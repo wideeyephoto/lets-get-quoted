@@ -44,7 +44,7 @@ export function findBestOpportunity(input: {
       reason: 'Prompt first responses close over 70% more contractor bids than delayed replies.',
       estimatedValue: null,
       actionLabel: 'Respond to lead',
-      actionHref: `${basePath}/leads`,
+      actionHref: `${basePath}/leads/${lead.id}`,
     });
   }
 

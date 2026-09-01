@@ -153,7 +153,7 @@ export default function AiVisionPage() {
       lede="Stop guessing job requirements from vague phone calls. AI photo analysis identifies equipment models, calculates square footage, spots hazards, and drafts material pick-lists before you step on site."
       heroNote={`Trained for ${TRADES.length} trades · High-resolution OCR on equipment plates · One-click PDF inspection reports`}
       heroChips={['Photo Damage Detection', 'Serial & Rating Plate OCR', 'Instant Material Pick-Lists']}
-      primary={{ label: 'Try Photo Analysis in Demo', href: '/demo/leads' }}
+      primary={{ label: 'Start Free Platform Trial', href: 'https://app.letsgetquoted.com/start?goal=feature&feature=ai_intake&source=feature_page' }}
       secondary={{ label: 'See all features', href: '/features' }}
       demo={
         <ExampleFrame

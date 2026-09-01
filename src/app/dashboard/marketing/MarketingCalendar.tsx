@@ -100,7 +100,7 @@ export default function MarketingCalendar({
         {!view.state ? (
           <>
             {' '}We couldn&apos;t work out your state from your mailing address, so this assumes four seasons —{' '}
-            <Link href="/dashboard/settings">add it in Settings</Link> and the calendar shifts to match.
+            <Link href="/dashboard/settings#marketing-address">add it in Settings</Link> and the calendar shifts to match.
           </>
         ) : null}
       </p>

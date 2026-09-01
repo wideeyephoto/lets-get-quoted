@@ -388,7 +388,7 @@ export default function CompanionHUD() {
                   <Link href="/features/sparky" className={styles.companionChip}>
                     ⚡ AI Companions
                   </Link>
-                  <a href="#sprawl-calculator" className={styles.companionChip}>
+                  <a href="#software-sprawl-calculator" className={styles.companionChip}>
                     💰 Calculate Savings
                   </a>
                   <button

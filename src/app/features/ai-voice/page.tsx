@@ -126,7 +126,7 @@ export default function AiVoicePage() {
       lede="Never lose a high-value job because you couldn't pick up the phone. Your AI Voice Receptionist & Dispatcher qualifies callers, records transcripts, dispatches urgent leads, and lets you dictate job notes hands-free from the truck."
       heroNote="Dedicated phone line · 2-way call forwarding · Audio recording + instant transcripts · Included on eligible plans"
       heroChips={['⚡ 24/7 Voice Dispatcher', '⚡ Trade-Specific Follow-ups', '⚡ Hands-Free Truck Dictation']}
-      primary={{ label: 'Explore Interactive Demo', href: '/demo/messages' }}
+      primary={{ label: 'Start Free Platform Trial', href: 'https://app.letsgetquoted.com/start?goal=feature&feature=ai_intake&source=feature_page' }}
       secondary={{ label: 'See all features', href: '/features' }}
 
       demo={

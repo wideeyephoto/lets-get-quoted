@@ -518,7 +518,7 @@ export const ARTICLES: Article[] = [
     ],
     featureLinks: [
       { href: '/sms-terms', label: 'Compliant SMS terms template', blurb: 'See our standard carrier-compliant SMS disclosure and opt-in language.' },
-      { href: '/features/ai-intake', label: 'Two-way SMS platform', blurb: 'Send verified customer messages with high carrier deliverability.' },
+      { href: '/features/client-portal', label: 'Two-way SMS platform', blurb: 'Send verified customer messages with high carrier deliverability.' },
     ],
   },
   {
@@ -545,7 +545,7 @@ export const ARTICLES: Article[] = [
       { type: 'p', text: 'With Let’s Get Quoted, you can provision a verified 10DLC business number in 3 steps, set your business hours, and activate AI call answering without expensive PBX hardware or answering service retainers.' },
     ],
     featureLinks: [
-      { href: '/features/ai-intake', label: '24/7 AI Receptionist', blurb: 'See how automated phone intake captures and qualifies homeowner leads.' },
+      { href: '/features/ai-voice', label: '24/7 AI Receptionist', blurb: 'See how automated phone intake captures and qualifies homeowner leads.' },
       { href: '/dashboard/voice-calls', label: 'Voice Assistant settings', blurb: 'Configure call triage rules and provision your dedicated local number.' },
     ],
   },

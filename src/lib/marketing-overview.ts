@@ -180,7 +180,7 @@ export function chooseOverviewPriority(input: {
     return {
       title: 'Add your mailing address',
       description: 'Marketing email needs a physical postal address before it can be sent. Add it now so a finished campaign never gets blocked at the last step.',
-      primary: { label: 'Add mailing address', href: '/dashboard/settings', primary: true },
+      primary: { label: 'Add mailing address', href: '/dashboard/settings#marketing-address', primary: true },
       secondary: keepPublishing,
       metricLabel: 'Email setup',
       metricValue: 'Blocked',

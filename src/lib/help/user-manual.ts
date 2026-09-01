@@ -479,7 +479,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     audiences: ['Owner'],
     readMinutes: 8,
     routes: [
-      { label: 'Quotes', href: '/dashboard/quotes' },
+      { label: 'Quotes', href: '/dashboard/jobs' },
       { label: 'Leads', href: '/dashboard/leads' },
     ],
     prerequisites: ['Owner access', 'Stripe Connect connected account (required to send quotes)'],
@@ -523,7 +523,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will understand the customer experience and respond smoothly to questions or custom upgrade selections.',
     audiences: ['Owner'],
     readMinutes: 6,
-    routes: [{ label: 'Quotes', href: '/dashboard/quotes' }],
+    routes: [{ label: 'Quotes', href: '/dashboard/jobs' }],
     prerequisites: ['Owner access'],
     keywords: ['approval flow', 'customer signature', 'optional extras', 'ask question', 'deposit payment'],
     sections: [
@@ -602,7 +602,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       {
         title: 'Enable weather alerts in schedule settings',
         paragraphs: [
-          'Weather alerts on the schedule calendar are turned off by default. To activate real-time precipitation and extreme temperature warnings on your dispatch board, go to Schedule Settings (/dashboard/schedule#settings) and enable "Weather Alerts".',
+          'Weather alerts on the schedule calendar are turned off by default. To activate real-time precipitation and extreme temperature warnings on your dispatch board, go to Schedule Settings (/dashboard/schedule/settings) and enable "Weather Alerts".',
         ],
       },
       {
@@ -616,7 +616,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     customerView: 'Customers receive clear SMS updates with technician names and arrival timeframes.',
     troubleshooting: [
-      { problem: 'Weather warnings are not showing on rainy days.', fix: 'Open Schedule Settings (/dashboard/schedule#settings) and verify the Weather Alerts toggle is enabled.' },
+      { problem: 'Weather warnings are not showing on rainy days.', fix: 'Open Schedule Settings (/dashboard/schedule/settings) and verify the Weather Alerts toggle is enabled.' },
     ],
     related: ['plan-a-day-and-dispatch-crew', 'manage-the-job-workspace', 'configure-appointment-and-arrival-messages'],
   },
@@ -944,7 +944,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     audiences: ['Owner', 'Office staff'],
     readMinutes: 5,
     routes: [
-      { label: 'Settings', href: '/dashboard/settings#alerts' },
+      { label: 'Settings', href: '/dashboard/settings#business' },
       { label: 'Messages', href: '/dashboard/messages' },
     ],
     prerequisites: ['Verified mobile phone number', 'Active workspace texting allowance'],
@@ -953,7 +953,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       {
         title: 'Configure Owner Alert Phone',
         steps: [
-          'Go to Settings → Alerts and enter your personal mobile phone number in "Owner Alert Phone".',
+          'Go to Settings → Business and enter your personal mobile phone number in "Owner Alert Phone".',
           'Verify the number with the 6-digit confirmation code sent to your phone.',
           'Select the specific alert triggers you want forwarded via SMS.',
         ],
@@ -969,7 +969,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       },
     ],
     troubleshooting: [
-      { problem: 'Alert texts are not arriving on mobile.', fix: 'Verify your phone number in Settings → Alerts and confirm that notification toggles are switched on.' },
+      { problem: 'Alert texts are not arriving on mobile.', fix: 'Verify your phone number in Settings → Business and confirm that notification toggles are switched on.' },
     ],
     related: ['work-the-customer-text-inbox', 'set-up-business-texting', 'configure-smart-intake'],
   },
@@ -988,7 +988,6 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     readMinutes: 6,
     routes: [
       { label: 'Crew', href: '/dashboard/crew' },
-      { label: 'Settings', href: '/dashboard/settings#crew' },
     ],
     prerequisites: ['Crew management access'],
     keywords: ['crew', 'technicians', 'field access', 'magic link', 'labor rates', 'field routes'],
@@ -1074,7 +1073,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will run accurate job costing and export clean payroll records with verified audit trails.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Timecards', href: '/dashboard/timecards' }],
+    routes: [{ label: 'Timecards', href: '/dashboard/crew?tab=timecards' }],
     prerequisites: ['Timecards review access'],
     keywords: ['timecards', 'payroll export', 'labor cost', 'hourly pay', 'salaried exclusion', 'shift audit'],
     sections: [
@@ -1109,7 +1108,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will protect your business from liability by ensuring all subcontractors have active insurance on file.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 5,
-    routes: [{ label: 'Subcontractors', href: '/dashboard/crew#subcontractors' }],
+    routes: [{ label: 'Subcontractors', href: '/dashboard/crew?tab=team' }],
     prerequisites: ['Crew management access'],
     keywords: ['subcontractors', 'coi', 'insurance', '1099', 'compliance', 'expiration alerts'],
     sections: [
@@ -1189,7 +1188,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     readMinutes: 6,
     routes: [
       { label: 'Inventory', href: '/dashboard/inventory' },
-      { label: 'Price Book', href: '/dashboard/price-book' },
+      { label: 'Price Book', href: '/dashboard/services' },
     ],
     prerequisites: ['Inventory access enabled'],
     keywords: ['inventory', 'materials', 'distributor pricing', 'supply house', 'purchase orders', 'truck stock', 'edi 850', 'stock levels'],
@@ -1237,8 +1236,8 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     audiences: ['Owner'],
     readMinutes: 8,
     routes: [
-      { label: 'Invoices', href: '/dashboard/invoices' },
-      { label: 'Payments Settings', href: '/dashboard/settings#stripe' },
+      { label: 'Payments', href: '/dashboard/payments' },
+      { label: 'Payments Settings', href: '/dashboard/settings#payouts' },
     ],
     prerequisites: ['Owner access', 'US business checking account and Tax ID (EIN or SSN)'],
     keywords: ['stripe connect', 'platform fee', 'application fee', 'payouts', 'credit card processing', 'fee basis', 'rates'],
@@ -1283,7 +1282,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will bill clients promptly and get paid faster with 1-tap mobile payment links.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Invoices', href: '/dashboard/invoices' }],
+    routes: [{ label: 'Payments', href: '/dashboard/payments' }],
     prerequisites: ['Invoices access', 'Stripe Connect connected'],
     keywords: ['invoices', 'send invoice', 'billing', 'tax calculation', 'payment link', 'pdf invoice', 'print', 'print invoice'],
     sections: [
@@ -1322,8 +1321,8 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
     routes: [
-      { label: 'Invoices', href: '/dashboard/invoices' },
-      { label: 'Quotes', href: '/dashboard/quotes' },
+      { label: 'Payments', href: '/dashboard/payments' },
+      { label: 'Quotes', href: '/dashboard/jobs' },
     ],
     prerequisites: ['Invoices access', 'Stripe Connect connected'],
     keywords: ['deposits', 'stage payments', 'progress billing', 'milestone payments', 'fee allocation'],
@@ -1357,7 +1356,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will anticipate cash needs and avoid cash flow pinches on materials and payroll.',
     audiences: ['Owner'],
     readMinutes: 6,
-    routes: [{ label: 'Cash Flow', href: '/dashboard/reports/cash-flow' }],
+    routes: [{ label: 'Cash Flow', href: '/dashboard/cash-flow' }],
     prerequisites: ['Owner access'],
     keywords: ['cash flow', 'forecast', 'payout timing', 'projected revenue', 'financial planning'],
     sections: [
@@ -1424,7 +1423,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     audiences: ['Owner'],
     readMinutes: 7,
     routes: [
-      { label: 'Invoices', href: '/dashboard/invoices' },
+      { label: 'Payments', href: '/dashboard/payments' },
       { label: 'Help', href: '/dashboard/help' },
     ],
     prerequisites: ['Owner access'],
@@ -1619,7 +1618,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will generate steady repeat work from your existing customer database during slow seasons.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Automations', href: '/dashboard/automations#rebooking' }],
+    routes: [{ label: 'Rebook', href: '/dashboard/rebook' }],
     prerequisites: ['Automations access'],
     keywords: ['rebooking', 'seasonal tune ups', 'repeat business', 'customer lifecycle', 'follow up'],
     sections: [
@@ -1652,7 +1651,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will launch revenue-generating marketing broadcasts while staying within delivery and compliance limits.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 7,
-    routes: [{ label: 'Campaigns', href: '/dashboard/campaigns' }],
+    routes: [{ label: 'Campaigns', href: '/dashboard/marketing/campaigns' }],
     prerequisites: ['Campaigns access', 'Saved business mailing address', 'Available marketing send allowance'],
     keywords: ['campaigns', 'sms marketing', 'max recipients', '250 limit', 'immediate send', 'opted in', 'broadcast'],
     sections: [
@@ -1691,7 +1690,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will boost website SEO and elevate client communication with rich branding and educational articles.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Blog & Content', href: '/dashboard/sites#blog' }],
+    routes: [{ label: 'Blog & Content', href: '/dashboard/marketing/blog' }],
     prerequisites: ['Website builder access'],
     keywords: ['blog', 'seo articles', 'instant publish', 'email suppression', 'content marketing'],
     sections: [
@@ -1726,7 +1725,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
     routes: [
-      { label: 'Campaigns', href: '/dashboard/campaigns' },
+      { label: 'Campaigns', href: '/dashboard/marketing/campaigns' },
       { label: 'Messages', href: '/dashboard/messages' },
     ],
     prerequisites: ['Owner or Office staff access', 'Verified business mailing address saved'],
@@ -1814,7 +1813,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will collect structured project requirements and photos on every incoming homeowner request.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Smart Intake', href: '/dashboard/intake' }],
+    routes: [{ label: 'Smart Intake', href: '/dashboard/automations#intake-ai' }],
     prerequisites: ['Intake access'],
     keywords: ['smart intake', 'lead forms', 'photo intake', 'emergency triage', 'embed forms'],
     sections: [
@@ -1834,7 +1833,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       },
     ],
     troubleshooting: [
-      { problem: 'Intake form submissions do not notify the owner.', fix: 'Verify Owner Alert Phone is configured under Settings → Alerts.' },
+      { problem: 'Intake form submissions do not notify the owner.', fix: 'Verify Owner Alert Phone is configured under Settings → Business.' },
     ],
     related: ['build-and-publish-your-website', 'manage-the-lead-inbox', 'configure-text-to-job-and-field-intake'],
   },
@@ -1847,7 +1846,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'Homeowners will book consultations and repair visits directly into your open schedule windows.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Online Booking', href: '/dashboard/sites#booking' }],
+    routes: [{ label: 'Online Booking', href: '/dashboard/automations#booking-availability' }],
     prerequisites: ['Booking settings access'],
     keywords: ['online booking', 'service windows', 'appointment slots', 'booking buffer', 'availability'],
     sections: [
@@ -1881,7 +1880,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will fill calendar gaps between major projects with high-margin quick repair calls.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 5,
-    routes: [{ label: 'Quick Stops', href: '/dashboard/sites#quick-stops' }],
+    routes: [{ label: 'Quick Stops', href: '/dashboard/quick-stops' }],
     prerequisites: ['Quick Stops access'],
     keywords: ['quick stops', 'diagnostic fee', 'minor repair', 'same day', 'gap filling'],
     sections: [
@@ -2178,7 +2177,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will import your historical client database and service catalog cleanly with zero data corruption.',
     audiences: ['Owner'],
     readMinutes: 6,
-    routes: [{ label: 'Import data', href: '/dashboard/settings#data-import' }],
+    routes: [{ label: 'Import data', href: '/dashboard/settings#import' }],
     prerequisites: ['Owner access (all four importers are strictly owner-gated)'],
     keywords: ['data import', 'csv import', 'migrate clients', 'price book import', 'leads import'],
     sections: [
@@ -2212,7 +2211,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will build consistent, high-margin estimates in seconds using standardized price book items.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
-    routes: [{ label: 'Price Book', href: '/dashboard/price-book' }],
+    routes: [{ label: 'Price Book', href: '/dashboard/services' }],
     prerequisites: ['Price book access'],
     keywords: ['price book', 'flat rate', 'materials', 'labor rates', 'service catalog', 'tiers', 'ocr', 'import'],
     sections: [
@@ -2256,7 +2255,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will keep your accounting and CRM records synced with full data portability.',
     audiences: ['Owner'],
     readMinutes: 5,
-    routes: [{ label: 'Integrations & Export', href: '/dashboard/settings#integrations' }],
+    routes: [{ label: 'Integrations & Export', href: '/dashboard/settings#export' }],
     prerequisites: ['Owner access'],
     keywords: ['export data', 'quickbooks', 'csv export', 'integrations', 'calendar sync', 'data backup'],
     sections: [
@@ -2291,7 +2290,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     readMinutes: 6,
     routes: [
       { label: 'Plan & usage', href: '/dashboard/settings#plan-at-a-glance' },
-      { label: 'Account settings', href: '/dashboard/settings#danger-zone' },
+      { label: 'Account settings', href: '/dashboard/settings#account' },
     ],
     prerequisites: ['Owner access only'],
     keywords: ['cancel plan', 'delete account', 'danger zone', 'subscription', 'refund policy', 'data loss', 'irreversible', 'resumable'],
@@ -2327,7 +2326,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     outcome: 'You will safely automate external CRMs, Zapier, Make, and internal servers with verified HMAC webhooks and scoped API keys.',
     audiences: ['Owner'],
     readMinutes: 7,
-    routes: [{ label: 'Developer API & Webhooks', href: '/dashboard/settings#developer-api' }],
+    routes: [{ label: 'Developer API & Webhooks', href: '/dashboard/settings#developers' }],
     prerequisites: ['Owner role access', 'HTTPS endpoint for webhook subscriptions'],
     keywords: ['developer api', 'webhooks', 'api tokens', 'openapi', 'rest api', 'zapier', 'make', 'hmac signature', 'dead letter queue', 'secret key'],
     sections: [

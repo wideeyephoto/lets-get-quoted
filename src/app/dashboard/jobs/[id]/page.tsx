@@ -1179,7 +1179,7 @@ export default async function JobDetailPage({
                   until you finish onboarding.
                 </p>
                 <p>
-                  <Link href="/dashboard/settings">Connect Stripe in Account settings →</Link>
+                  <Link href="/dashboard/settings#payouts">Connect Stripe in Settings →</Link>
                 </p>
               </div>
             ) : null}

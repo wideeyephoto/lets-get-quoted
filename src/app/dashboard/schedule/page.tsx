@@ -162,12 +162,20 @@ function StatIcon({ shape }: { shape: keyof typeof STAT_PATHS }) {
 export default async function SchedulePage({
   searchParams: searchParamsPromise,
 }: {
-  /** `day` is read only by the mobile agenda — stepping off the end of a month
+  /** `day` or `date` is read by the agenda and day views — stepping off the end of a month
       has to carry the day as well as the month, or coming back lands on the
-      1st. The desktop calendar ignores it. */
-  searchParams: Promise<{ month?: string; day?: string }>;
+      1st. */
+  searchParams: Promise<{ month?: string; day?: string; date?: string }>;
 }) {
-  const searchParams = (await searchParamsPromise) || {};
+  const rawSearchParams = (await searchParamsPromise) || {};
+  const explicitDate = typeof rawSearchParams.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawSearchParams.date)
+    ? rawSearchParams.date
+    : typeof rawSearchParams.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(rawSearchParams.day)
+      ? rawSearchParams.day
+      : null;
+  const month = rawSearchParams.month || (explicitDate ? explicitDate.slice(0, 7) : undefined);
+  const day = rawSearchParams.day || (explicitDate ? explicitDate : undefined);
+  const searchParams = { ...rawSearchParams, month, day, date: explicitDate ?? rawSearchParams.date };
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
     supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng').eq('id', accountId).single(),

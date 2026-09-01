@@ -179,11 +179,11 @@ export default function AiAdsSimulator() {
             <span className={styles.adPill}>Sponsored</span>
             <span>https://{trade.toLowerCase()}-pro.letsgetquoted.com/{city.split(',')[0].toLowerCase().trim()}</span>
           </div>
-          <a href="#demo" onClick={(e) => e.preventDefault()} className={styles.serpTitle}>
+          <span className={styles.serpTitle}>
             {weatherSurgeActive
               ? `Emergency ${trade} in ${city.split(',')[0]} · Storm & Freeze Dispatch`
               : `Top-Rated ${trade} in ${city.split(',')[0]} · 24/7 Fast Local Dispatch`}
-          </a>
+          </span>
           <p className={styles.serpSnippet}>
             Licensed, Insured & 5-Star Rated. Upfront pricing with free estimates and 0% financing available. Call now or book online in 60 seconds.
           </p>

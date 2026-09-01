@@ -666,7 +666,22 @@ export default async function AutomationsPage() {
               <VoiceCallHistorySection history={voiceHistory} timezone={accountTimeZone} />
             ) : null}
           </AutomationCard>
-        ) : null}
+        ) : (
+          <AutomationCard
+            group="booking-intake"
+            id="ai-receptionist"
+            title="AI receptionist"
+            subtitle="Answers the calls you can’t"
+            status={{ label: 'Not enabled', tone: 'off' }}
+          >
+            <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+              AI phone call answering is available on supported plans. Visit Voice Calls to review settings and phone line readiness.
+            </p>
+            <Link className="btn secondary" href="/dashboard/voice-calls">
+              View Voice Controls →
+            </Link>
+          </AutomationCard>
+        )}
 
         <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}>
           <MissedCallSection

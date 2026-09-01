@@ -221,6 +221,7 @@ export default function CrewRoster({
   initialWorkerType = 'all',
   initialView,
   initialOverview,
+  highlight,
   readOnly = false,
   basePath = '/dashboard',
 }: {
@@ -236,6 +237,7 @@ export default function CrewRoster({
   initialView: RosterView;
   /** Whether the whole page is in Overview. Outranks initialView while it's on. */
   initialOverview: boolean;
+  highlight?: string;
   /**
    * ACCEPTED AND IGNORED. This used to be the add form's open state, read as
    * `useState(openAdd)` — an initializer, so the header link's soft navigation
@@ -377,6 +379,18 @@ export default function CrewRoster({
     const timer = setTimeout(() => setAdded(null), 10000);
     return () => clearTimeout(timer);
   }, [added]);
+
+  useEffect(() => {
+    if (!highlight) return;
+    const target = rows.find((r) => r.id === highlight);
+    if (target) {
+      if (!target.active) setStatus('archived');
+      if (workerType !== 'all' && workerType !== target.workerType) {
+        setWorkerType('all');
+      }
+      setAdded({ id: target.id, name: target.name, message: 'Matching team member' });
+    }
+  }, [highlight, rows]);
 
   const visible = useMemo(() => {
     const needle = query.trim().toLowerCase();

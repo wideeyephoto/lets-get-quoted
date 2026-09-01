@@ -41,6 +41,7 @@ export default function CampaignWorkspace({
   hasRecipients,
   recommendations,
   view,
+  initialTab,
 }: {
   composer: Omit<ComposerProps, 'initial'> & { initial?: ComposerProps['initial'] };
   campaigns: Campaign[];
@@ -49,12 +50,28 @@ export default function CampaignWorkspace({
   /** null when there are no recipients to build recommendations from. */
   recommendations: CampaignRecommendations | null;
   view: CalendarView;
+  initialTab?: CampaignTab;
 }) {
-  const [activeTab, setActiveTab] = useState<CampaignTab>('create');
+  const normalizeTab = (tab?: string | null): CampaignTab => {
+    if (tab === 'calendar' || tab === 'seasonal') return 'calendar';
+    if (tab === 'templates' || tab === 'starters') return 'templates';
+    if (tab === 'sent' || tab === 'history') return 'sent';
+    return 'create';
+  };
+
+  const [activeTab, setActiveTab] = useState<CampaignTab>(() => normalizeTab(initialTab));
   const [handedOver, setHandedOver] = useState<CampaignDraft | null>(null);
   const [fill, setFill] = useState(0);
   const [dirty, setDirty] = useState(false);
   const composerRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = window.location.hash.replace(/^#/, '');
+    if (hash === 'seasonal' || hash === 'calendar') {
+      setActiveTab('calendar');
+    }
+  }, []);
 
   const applyDraft = useCallback(
     (draft: CampaignDraft, opts?: { skipConfirm?: boolean }) => {

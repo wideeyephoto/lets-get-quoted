@@ -1,6 +1,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSiteContent } from '@/lib/site-content';
 import type { EmailThemeId } from '@/emails/brand';
+import { DEMO_ACCOUNT_ID, DEMO_COMPANY_NAME, DEMO_SERVICE_AREA, DEMO_SITE_HOST } from '@/lib/demo-data';
+import { DEMO_BLOG_POSTS } from '@/lib/demo-rows';
 
 // The 3 curated templates. Legacy sites may still hold a retired id in the DB;
 // getTemplate falls those back to Forge, so this narrow type is safe.
@@ -190,7 +192,49 @@ export async function getPublicSiteBySubdomain(
     .eq('published', true)
     .maybeSingle();
 
-  return data ? withResponseStat(supabase, withPublicContact(data as Site)) : null;
+  if (data) {
+    return withResponseStat(supabase, withPublicContact(data as Site));
+  }
+
+  const demoSubdomain = DEMO_SITE_HOST.split('.')[0];
+  if (subdomain.toLowerCase() === demoSubdomain.toLowerCase()) {
+    return {
+      id: 'demo-site',
+      account_id: DEMO_ACCOUNT_ID,
+      subdomain: demoSubdomain,
+      custom_domain: null,
+      custom_domain_verified_at: null,
+      published: true,
+      template: 'fresh',
+      header_font: null,
+      button_style: null,
+      accent_override: null,
+      email_theme: 'modern',
+      company_name: DEMO_COMPANY_NAME,
+      headline: 'Commercial & Residential Lawn Care in Metro Detroit',
+      tagline: 'Reliable weekly mowing, cleanup, and fertilization.',
+      phone: '248-555-0199',
+      license: 'MI-849204',
+      hours: 'Mon-Fri 7:30am - 5:00pm',
+      service_area: DEMO_SERVICE_AREA,
+      logo_url: null,
+      hero_url: null,
+      avg_response_ms: 15 * 60 * 1000,
+      seo_title: `${DEMO_COMPANY_NAME} · Royal Oak, MI`,
+      seo_description: `Top-rated residential and commercial landscaping and lawn care in ${DEMO_SERVICE_AREA}.`,
+      sections: {},
+      content: {
+        trade: 'Lawn & landscape',
+        blog: { enabled: true, reminderWeeks: 4, posts: DEMO_BLOG_POSTS },
+      },
+      chrome: {},
+      reviews_cache: null,
+      portal_mode: 'light',
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  return null;
 }
 
 // Get public site by custom domain (no auth)

@@ -484,7 +484,7 @@ export default async function SettingsPage({
           {
             id: 'account',
             label: 'Login & security',
-            anchors: ['appearance', 'support'],
+            anchors: ['appearance', 'support', 'danger-zone', 'account'],
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -554,6 +554,8 @@ export default async function SettingsPage({
             // this tab and never saw what was wrong on it.
             anchors: [
               'payouts',
+              'stripe',
+              'payments',
               ...(merchantOnboardingEnabled && merchantOnboarding ? ['merchant-payments'] : []),
               ...(!pricingDashboardEnabled ? ['platform-fee'] : []),
             ],
@@ -597,7 +599,22 @@ export default async function SettingsPage({
             // job-costing was missing, so /dashboard/settings#job-costing
             // resolved to no tab and did nothing at all — the section exists,
             // carries that id, and could not be linked to.
-            anchors: ['job-costing', 'business-basics', 'quote-changes', 'import', 'export', 'marketing-address', 'finances', 'insurance', 'quickbooks', 'addresses'],
+            anchors: [
+              'job-costing',
+              'business-basics',
+              'business',
+              'quote-changes',
+              'import',
+              'data-import',
+              'export',
+              'integrations',
+              'marketing-address',
+              'finances',
+              'insurance',
+              'quickbooks',
+              'addresses',
+              'alerts',
+            ],
             content: (
               <BusinessWorkspace
                 setup={setup}
@@ -948,7 +965,7 @@ export default async function SettingsPage({
 {
   id: 'developers',
   label: 'Developers & APIs',
-  anchors: ['api-tokens', 'webhooks', 'webhook-deliveries', 'api-docs'],
+  anchors: ['api-tokens', 'webhooks', 'webhook-deliveries', 'api-docs', 'developer-api', 'developers'],
   content: (
     <DeveloperApiSection
       tokens={apiTokens}

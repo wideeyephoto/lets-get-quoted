@@ -163,7 +163,7 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
             ))}
           </div>
           <div className="mid-cta">
-            <Link href="/demo" className="btn secondary">See the templates live &rarr;</Link>
+            <Link href="/demo/sites" className="btn secondary">See the templates live &rarr;</Link>
           </div>
         </section>
       ) : null}

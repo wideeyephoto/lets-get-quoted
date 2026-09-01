@@ -54,7 +54,7 @@ export default async function ManualArticlePage({ params: paramsPromise }: Manua
             <a href="#at-a-glance">At a glance</a>
             <a href="#steps">Instructions</a>
             <a href="#completion-check">Checklist</a>
-            <Link href="/dashboard/help">Contact support</Link>
+            <Link href="/help#contact-support">Contact support</Link>
           </nav>
         </div>
       </div>

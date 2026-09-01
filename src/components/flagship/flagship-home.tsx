@@ -105,7 +105,7 @@ const PROOF_POINTS = [
   {
     label: 'QUOTE-TO-PAYMENT WORKFLOW',
     blurb: 'One connected system',
-    href: '#workflow',
+    href: '/how-it-works#workflow',
     ariaLabel: 'Jump to connected quote-to-payment workflow features',
   },
 ];
@@ -683,7 +683,7 @@ export default function FlagshipHome() {
           </p>
           <div className="hero-actions">
             <a className="button primary" href="https://app.letsgetquoted.com/start?goal=build_site&source=home_hero" ref={heroCtaRef}>{SIGNUP_LABEL} <span>→</span></a>
-            <Link className="button secondary" href="/features">{HOME_HERO.secondaryCta}</Link>
+            <Link className="button secondary" href="/features#tour">{HOME_HERO.secondaryCta}</Link>
           </div>
           <div className="hero-trust-bar" aria-label="Trust assurances">
             <span className="trust-pill">⚡ 60-second instant setup</span>

@@ -65,7 +65,18 @@ export default function SettingsTabs({ tabs }: { tabs: SettingsTab[] }) {
       setActive(ownerId);
       if (hash !== ownerId) scrollWhenReady(hash);
     };
-    const applyHash = () => open(window.location.hash.replace(/^#/, ''));
+    const applyHash = () => {
+      const hash = window.location.hash.replace(/^#/, '');
+      if (hash) {
+        open(hash);
+        return;
+      }
+      try {
+        const url = new URL(window.location.href);
+        const tab = url.searchParams.get('tab');
+        if (tab) open(tab);
+      } catch {}
+    };
     // An explicit request from a link elsewhere in the app. Needed because
     // hashchange is not enough on its own: Next's <Link> navigates with
     // pushState, which never fires it, and a link to the hash the URL already

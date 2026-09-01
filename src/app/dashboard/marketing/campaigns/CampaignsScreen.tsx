@@ -27,7 +27,17 @@ type Props = {
   availableEmailCredits?: number | null;
   availableSmsCredits?: number | null;
   draft?: Parameters<typeof CampaignWorkspace>[0]['composer']['initial'];
-  searchParams: { emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string };
+  searchParams: {
+    emailSent?: string;
+    smsQueued?: string;
+    recipients?: string;
+    skipped?: string;
+    failed?: string;
+    test?: string;
+    draft?: string;
+    tab?: string;
+    channel?: string;
+  };
   basePath?: string;
   /** See MarketingNav — the demo lists only the sections it has built. */
   navOnly?: string[];
@@ -89,6 +99,7 @@ export default function CampaignsScreen({
         hasRecipients={hasRecipients}
         recommendations={recommendations}
         view={view}
+        initialTab={searchParams.tab as any}
         composer={{
           audiences: AUDIENCE_DEFS,
           reach,

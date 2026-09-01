@@ -72,6 +72,7 @@ export default async function CrewLaborPage({
     worker?: string;
     risk?: string;
     add?: string;
+    highlight?: string;
   }>;
 }) {
   const resolvedSearchParams = (await searchParams) || {};
@@ -358,6 +359,7 @@ export default async function CrewLaborPage({
               initialWorkerType={resolvedSearchParams.worker === 'subcontractor' || resolvedSearchParams.worker === 'employee' ? resolvedSearchParams.worker : 'all'}
               initialView={rosterView === 'table' ? 'table' : 'rows'}
               initialOverview={crewTheme === 'overview'}
+              highlight={resolvedSearchParams.highlight}
             />
           </>
         ) : null}

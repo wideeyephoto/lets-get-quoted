@@ -92,7 +92,7 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     primaryCtaText: 'Explore AI Vision Estimator',
     primaryHref: '/features/ai-vision',
     secondaryCtaText: 'Test Photo Sandbox →',
-    secondaryHref: '/features/ai-intake',
+    secondaryHref: '/features/ai-intake#sandbox',
   },
   {
     id: 'videos',
@@ -121,7 +121,7 @@ const SPARKY_FEATURES: SparkyFeature[] = [
       verifiedProof: '✓ Verified Custom Remodeler · 85 Video Reels Published',
     },
     primaryCtaText: 'Explore Website Video Studio',
-    primaryHref: '/features/website-builder',
+    primaryHref: '/features/website-builder#video-studio',
     secondaryCtaText: 'View All Features →',
     secondaryHref: '/features',
   },

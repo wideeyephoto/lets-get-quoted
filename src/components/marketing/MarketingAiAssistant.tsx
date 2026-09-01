@@ -235,7 +235,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
     answer:
       'Homeowners on your site get an instant, conversational estimate 24/7 based on your trade rules and price ranges. When you approve or send an official quote, clients can sign online, pay required deposits via Apple Pay or card, and get scheduled immediately.',
     ctaText: 'Test AI Lead & Quote Sandbox',
-    ctaHref: '/features/ai-intake',
+    ctaHref: '/features/ai-intake#sandbox',
   },
   {
     id: 'flex-plan',
@@ -338,7 +338,7 @@ const KNOWLEDGE_BASE: FaqItem[] = [
     answer:
       'Quick Stops match incoming emergency and small repair leads to your crew’s live route proximity. If you are finishing a job in a neighborhood, nearby requests are dispatched directly to your phone so you book an extra $300–$600 on the way home.',
     ctaText: 'Test AI Lead Sandbox',
-    ctaHref: '/features/ai-intake',
+    ctaHref: '/features/ai-intake#sandbox',
   },
   {
     id: 'integrations',

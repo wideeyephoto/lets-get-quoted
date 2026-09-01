@@ -274,7 +274,7 @@ export function ContractorHotlineShowcase({ dedicatedNumber }: { dedicatedNumber
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <Link
-            href="/dashboard/settings#team"
+            href="/dashboard/crew?tab=people"
             className="btn secondary"
             style={{ fontSize: '0.82rem', padding: '0.4rem 0.85rem' }}
           >

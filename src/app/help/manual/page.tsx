@@ -28,7 +28,7 @@ export default function UserManualPage() {
           <nav className={styles.topLinks} aria-label="Manual shortcuts">
             <a href="#quick-start">Quick start</a>
             <a href="#manual-library-heading">All guides</a>
-            <Link href="/dashboard/help">Contact support</Link>
+            <Link href="/help#contact-support">Contact support</Link>
           </nav>
         </div>
       </div>

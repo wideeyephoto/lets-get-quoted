@@ -101,8 +101,13 @@ const nextConfig = {
       //
       // Canonical dashboard redirects
       { source: '/dashboard/payroll', destination: '/dashboard/crew', permanent: true },
-      { source: '/dashboard/crew/requests/new', destination: '/dashboard/schedule/requests', permanent: true },
-      { source: '/dashboard/campaigns', destination: '/dashboard/marketing', permanent: false },
+      { source: '/dashboard/campaigns', destination: '/dashboard/marketing/campaigns', permanent: false },
+      { source: '/dashboard/quotes', destination: '/dashboard/jobs', permanent: false },
+      { source: '/dashboard/timecards', destination: '/dashboard/crew?tab=timecards', permanent: false },
+      { source: '/dashboard/price-book', destination: '/dashboard/services', permanent: false },
+      { source: '/dashboard/invoices', destination: '/dashboard/payments', permanent: false },
+      { source: '/dashboard/reports/cash-flow', destination: '/dashboard/cash-flow', permanent: false },
+      { source: '/dashboard/intake', destination: '/dashboard/automations#intake-ai', permanent: false },
     ];
   },
   images: {

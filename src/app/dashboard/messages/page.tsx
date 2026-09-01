@@ -76,7 +76,16 @@ function MessageBody({ body }: { body: string }) {
 export default async function MessagesPage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ thread?: string; q?: string; filter?: string; setup?: string; sent?: string; queued?: string }>;
+  searchParams: Promise<{
+    thread?: string;
+    phone?: string;
+    to?: string;
+    q?: string;
+    filter?: string;
+    setup?: string;
+    sent?: string;
+    queued?: string;
+  }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('messages.read');
@@ -124,15 +133,16 @@ export default async function MessagesPage({
     return name.includes(query) || label.includes(query) || conversation.phone.includes(query) || (conversation.lastBody ?? '').toLowerCase().includes(query);
   });
 
-  const activePhone = searchParams.thread
-    ? normalizeUsPhone(searchParams.thread) ?? searchParams.thread
+  const requestedThread = searchParams.thread || searchParams.phone || searchParams.to || null;
+  const activePhone = requestedThread
+    ? normalizeUsPhone(requestedThread) ?? requestedThread
     : conversations[0]?.phone ?? null;
   // On a phone the two panes cannot sit side by side, so the page shows one at
   // a time: the list until you pick a thread, the thread after. That needs to
   // know whether a thread was CHOSEN or merely defaulted to — without the
   // distinction, landing on /dashboard/messages would drop a phone straight
   // into the newest conversation with no way back to the list.
-  const threadChosen = Boolean(searchParams.thread);
+  const threadChosen = Boolean(requestedThread);
 
   const messageRead = activePhone
     ? await loadConversationMessages(supabase, accountId, activePhone)

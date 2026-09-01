@@ -36,7 +36,17 @@ export const metadata = { title: 'Campaigns' };
 export default async function CampaignsPage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ emailSent?: string; smsQueued?: string; recipients?: string; skipped?: string; failed?: string; test?: string; draft?: string }>;
+  searchParams: Promise<{
+    emailSent?: string;
+    smsQueued?: string;
+    recipients?: string;
+    skipped?: string;
+    failed?: string;
+    test?: string;
+    draft?: string;
+    tab?: string;
+    channel?: string;
+  }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('settings.write');
@@ -141,6 +151,8 @@ export default async function CampaignsPage({
     draft = { channel: 'email', audience: 'past', subject: pitch.subject, body: pitch.body };
   } else if (searchParams.draft?.startsWith('beat:')) {
     draft = await campaignDraftForBeat(supabase, accountId, searchParams.draft.slice('beat:'.length));
+  } else if (searchParams.channel === 'sms' || searchParams.channel === 'email' || searchParams.channel === 'both') {
+    draft = { channel: searchParams.channel, audience: 'past', subject: '', body: '' };
   }
 
   return (

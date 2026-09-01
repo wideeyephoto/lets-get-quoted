@@ -85,7 +85,7 @@ export default function SparkyFeaturePage() {
         '⚡ Walk-Up Estimate Brain Dump',
         '⚡ Customizable Companions & Avatars',
       ]}
-      primary={{ label: 'Try AI Copilot in the Demo', href: '/demo' }}
+      primary={{ label: 'Start Free Platform Trial', href: 'https://app.letsgetquoted.com/start?goal=feature&source=feature_page' }}
       secondary={{ label: 'See all features', href: '/features' }}
       demo={
         <ExampleFrame
