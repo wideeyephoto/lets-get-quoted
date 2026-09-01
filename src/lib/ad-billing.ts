@@ -26,6 +26,10 @@ import {
   type AdBudgetWalletState,
   type AdWeeklyTier,
   type AdWeeklyTierId,
+  type TradeBiddingProfile,
+  type MultiChannelBudgetAllocation,
+  getTradeBiddingProfile,
+  calculateMultiChannelAllocation,
 } from '@/lib/ad-billing-shared';
 
 export {
@@ -42,6 +46,8 @@ export {
   validateWalletConfig,
   DEFAULT_AUTO_REFILL_CONFIG,
   DEFAULT_AD_WALLET_STATE,
+  getTradeBiddingProfile,
+  calculateMultiChannelAllocation,
   type AdCampaignBillingStatus,
   type AdFundingModel,
   type AutoRefillWalletConfig,
@@ -50,6 +56,8 @@ export {
   type AdBudgetWalletState,
   type AdWeeklyTier,
   type AdWeeklyTierId,
+  type TradeBiddingProfile,
+  type MultiChannelBudgetAllocation,
 };
 
 /**
@@ -480,6 +488,7 @@ export async function atomicCreditAdWalletState(
     stripeSubscriptionId?: string | null;
     cancelAtPeriodEnd?: boolean;
     currentPeriodEnd?: string | null;
+    targetCpaDollars?: number;
   }
 ): Promise<{
   success: boolean;
@@ -506,6 +515,7 @@ export async function atomicCreditAdWalletState(
     stripeSubscriptionId,
     cancelAtPeriodEnd,
     currentPeriodEnd,
+    targetCpaDollars,
   } = params;
 
   // Attempt Postgres RPC first for row-locked atomic execution
@@ -576,6 +586,9 @@ export async function atomicCreditAdWalletState(
     walletBalanceCents: newBalance,
     lastPaymentAt: new Date().toISOString(),
     lastPaymentError: null,
+    failedRefillAttempts: 0,
+    nextRefillRetryAt: null,
+    recoveryUrl: null,
     pendingRefillIdempotencyKey: null,
     pendingRefillAmountCents: null,
     pendingRefillFeeCents: null,
@@ -595,6 +608,7 @@ export async function atomicCreditAdWalletState(
     ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
     ...(cancelAtPeriodEnd !== undefined ? { cancelAtPeriodEnd } : {}),
     ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
+    ...(targetCpaDollars ? { targetCpaDollars } : {}),
   };
 
   await admin
@@ -921,11 +935,14 @@ export async function handleAdBudgetWebhookEvent(
     const smsAlertsEnabled = session.metadata?.sms_alerts_enabled !== 'false';
     const smsAlertPhone = session.metadata?.sms_alert_phone || null;
 
+    const trade = session.metadata?.trade || 'Contractor';
+    const biddingProfile = getTradeBiddingProfile(trade);
+
     // Synchronously await and verify campaign provisioning in Google Ads
     const provisioningResult = await provisionManagedSearchCampaign({
       accountId,
       businessName: session.metadata?.business_name || 'Contractor',
-      trade: session.metadata?.trade || 'Contractor',
+      trade,
       city: session.metadata?.city || 'Local Area',
       radiusMiles: Number(session.metadata?.radius_miles) || 25,
       services,
@@ -953,6 +970,7 @@ export async function handleAdBudgetWebhookEvent(
       smsAlertPhone,
       stripeCustomerId: customerId,
       stripeSubscriptionId: subscriptionId,
+      targetCpaDollars: biddingProfile.targetCpaDollars,
     });
 
     return true;
@@ -1108,6 +1126,18 @@ export async function executeWalletRefillCharge(params: {
       success: false,
       refilled: false,
       message: 'Campaign is scheduled for cancellation. Automated wallet refills are disabled.',
+    };
+  }
+
+  if (
+    adState.nextRefillRetryAt &&
+    !reason?.includes('manual') &&
+    new Date(adState.nextRefillRetryAt).getTime() > Date.now()
+  ) {
+    return {
+      success: false,
+      refilled: false,
+      message: `Automated refill retry is paced until ${adState.nextRefillRetryAt} after previous payment failure.`,
     };
   }
 
@@ -1273,11 +1303,31 @@ export async function executeWalletRefillCharge(params: {
       errCode === 'incorrect_cvc' ||
       errCode === 'insufficient_funds';
 
+    const attempts = (adState.failedRefillAttempts || 0) + 1;
+    const retryIntervalHours = attempts > 3 ? 24 : 12;
+    const nextRetry = new Date(Date.now() + retryIntervalHours * 60 * 60 * 1000).toISOString();
+    let recoveryUrl: string | null = null;
+    if (customerId) {
+      try {
+        const portal = await createAdBudgetBillingPortalSession({
+          admin,
+          accountId,
+          returnUrl: '/dashboard/marketing/ads',
+        });
+        recoveryUrl = portal.url;
+      } catch {
+        // ignore portal generation error in recovery flow
+      }
+    }
+
     if (isDefinitiveFailure) {
       // Safe to clear pending idempotency key
       await updateAccountAdBudgetState(admin, accountId, {
         status: 'past_due',
         lastPaymentError: errMsg,
+        failedRefillAttempts: attempts,
+        nextRefillRetryAt: nextRetry,
+        recoveryUrl,
         pendingRefillIdempotencyKey: null,
         pendingRefillAmountCents: null,
         pendingRefillFeeCents: null,
@@ -1288,6 +1338,9 @@ export async function executeWalletRefillCharge(params: {
       await updateAccountAdBudgetState(admin, accountId, {
         status: 'past_due',
         lastPaymentError: `Payment outcome ambiguous: ${errMsg}. Pending idempotency key retained for retry safety.`,
+        failedRefillAttempts: attempts,
+        nextRefillRetryAt: nextRetry,
+        recoveryUrl,
       });
     }
 

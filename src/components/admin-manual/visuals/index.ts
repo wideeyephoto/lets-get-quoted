@@ -7,6 +7,9 @@ import { AuthTenancyMfaVisual } from './AuthTenancyMfaVisual';
 import { SmsConsentDeliveryVisual } from './SmsConsentDeliveryVisual';
 import { ScheduledJobsHealthVisual } from './ScheduledJobsHealthVisual';
 import { IncidentInvestigationVisual } from './IncidentInvestigationVisual';
+import { AiOperatorCopilotVisual } from './AiOperatorCopilotVisual';
+import { AdBillingWalletVisual } from './AdBillingWalletVisual';
+import { SpeedToLeadTcpaVisual } from './SpeedToLeadTcpaVisual';
 
 export const ADMIN_MANUAL_VISUAL_COMPONENTS: Record<string, React.FC> = {
   'system-landscape': SystemLandscapeVisual,
@@ -17,6 +20,9 @@ export const ADMIN_MANUAL_VISUAL_COMPONENTS: Record<string, React.FC> = {
   'sms-consent-delivery': SmsConsentDeliveryVisual,
   'scheduled-jobs-health': ScheduledJobsHealthVisual,
   'incident-investigation': IncidentInvestigationVisual,
+  'ai-operator-copilot': AiOperatorCopilotVisual,
+  'ad-billing-wallet': AdBillingWalletVisual,
+  'speed-to-lead-tcpa': SpeedToLeadTcpaVisual,
 };
 
 export {
@@ -28,4 +34,7 @@ export {
   SmsConsentDeliveryVisual,
   ScheduledJobsHealthVisual,
   IncidentInvestigationVisual,
+  AiOperatorCopilotVisual,
+  AdBillingWalletVisual,
+  SpeedToLeadTcpaVisual,
 };

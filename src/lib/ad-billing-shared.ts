@@ -208,12 +208,21 @@ export function checkAutoRefillTrigger(params: {
   currentBalanceDollars: number;
   spentThisMonthDollars: number;
   config: AutoRefillWalletConfig;
+  nextRefillRetryAt?: string | null;
 }): {
   shouldRefill: boolean;
   reason?: string;
   refillAmountDollars: number;
 } {
-  const { currentBalanceDollars, spentThisMonthDollars, config } = params;
+  const { currentBalanceDollars, spentThisMonthDollars, config, nextRefillRetryAt } = params;
+
+  if (nextRefillRetryAt && new Date(nextRefillRetryAt).getTime() > Date.now()) {
+    return {
+      shouldRefill: false,
+      reason: `Automated refill retry is paced until ${nextRefillRetryAt} after previous payment failure.`,
+      refillAmountDollars: 0,
+    };
+  }
 
   if (currentBalanceDollars > config.refillThresholdDollars) {
     return {
@@ -240,6 +249,133 @@ export function checkAutoRefillTrigger(params: {
   };
 }
 
+export type TradeBiddingProfile = {
+  trade: string;
+  targetCpaDollars: number;
+  minCpcDollars: number;
+  maxCpcDollars: number;
+  avgCpcDollars: number;
+  expectedConvRatePct: number;
+  highIntentSearchTerms: string[];
+};
+
+export function getTradeBiddingProfile(trade?: string | null): TradeBiddingProfile {
+  const normalized = (trade || '').toLowerCase().trim();
+  if (normalized.includes('roof')) {
+    return {
+      trade: 'Roofing',
+      targetCpaDollars: 75,
+      minCpcDollars: 6.5,
+      maxCpcDollars: 14.0,
+      avgCpcDollars: 8.5,
+      expectedConvRatePct: 11.3,
+      highIntentSearchTerms: ['roof replacement cost', 'emergency roof leak repair', 'best roofer near me'],
+    };
+  }
+  if (normalized.includes('plumb')) {
+    return {
+      trade: 'Plumbing',
+      targetCpaDollars: 45,
+      minCpcDollars: 5.0,
+      maxCpcDollars: 11.5,
+      avgCpcDollars: 7.2,
+      expectedConvRatePct: 16.0,
+      highIntentSearchTerms: ['emergency plumber near me', 'water heater replacement', 'clogged drain repair'],
+    };
+  }
+  if (normalized.includes('hvac') || normalized.includes('heat') || normalized.includes('air') || normalized.includes('cool')) {
+    return {
+      trade: 'HVAC',
+      targetCpaDollars: 55,
+      minCpcDollars: 5.5,
+      maxCpcDollars: 12.0,
+      avgCpcDollars: 8.0,
+      expectedConvRatePct: 14.5,
+      highIntentSearchTerms: ['ac repair service', 'furnace installation quote', 'hvac replacement cost'],
+    };
+  }
+  if (normalized.includes('electr')) {
+    return {
+      trade: 'Electrical',
+      targetCpaDollars: 40,
+      minCpcDollars: 4.5,
+      maxCpcDollars: 9.5,
+      avgCpcDollars: 6.5,
+      expectedConvRatePct: 16.2,
+      highIntentSearchTerms: ['licensed electrician near me', 'panel upgrade cost', 'emergency electrical repair'],
+    };
+  }
+  if (normalized.includes('paint')) {
+    return {
+      trade: 'Painting',
+      targetCpaDollars: 35,
+      minCpcDollars: 3.0,
+      maxCpcDollars: 7.0,
+      avgCpcDollars: 4.5,
+      expectedConvRatePct: 12.8,
+      highIntentSearchTerms: ['exterior house painter', 'interior painting estimate', 'cabinet painting cost'],
+    };
+  }
+  if (normalized.includes('landscap') || normalized.includes('lawn') || normalized.includes('tree')) {
+    return {
+      trade: 'Landscaping & Tree Care',
+      targetCpaDollars: 30,
+      minCpcDollars: 2.5,
+      maxCpcDollars: 5.5,
+      avgCpcDollars: 3.5,
+      expectedConvRatePct: 11.7,
+      highIntentSearchTerms: ['tree removal service', 'lawn care maintenance', 'hardscape patio contractor'],
+    };
+  }
+  if (normalized.includes('concrete') || normalized.includes('paving') || normalized.includes('mason')) {
+    return {
+      trade: 'Concrete & Masonry',
+      targetCpaDollars: 60,
+      minCpcDollars: 4.5,
+      maxCpcDollars: 10.0,
+      avgCpcDollars: 6.8,
+      expectedConvRatePct: 11.3,
+      highIntentSearchTerms: ['driveway replacement cost', 'concrete patio contractor', 'retaining wall installation'],
+    };
+  }
+  return {
+    trade: trade || 'Contractor',
+    targetCpaDollars: 50,
+    minCpcDollars: 4.0,
+    maxCpcDollars: 9.0,
+    avgCpcDollars: 6.0,
+    expectedConvRatePct: 12.0,
+    highIntentSearchTerms: ['contractor near me', 'free estimate contractor', 'licensed local contractor'],
+  };
+}
+
+export type MultiChannelBudgetAllocation = {
+  totalMonthlyBudgetDollars: number;
+  googleSearchPpcDollars: number;
+  metaRetargetingDollars: number;
+  neighborhoodMicroAdsDollars: number;
+  googleSearchPpcPct: number;
+  metaRetargetingPct: number;
+  neighborhoodMicroAdsPct: number;
+};
+
+export function calculateMultiChannelAllocation(monthlyBudgetDollars: number): MultiChannelBudgetAllocation {
+  const total = Math.max(100, monthlyBudgetDollars);
+  const googleSearchPpcDollars = Math.round(total * 0.70);
+  const metaRetargetingDollars = Math.round(total * 0.20);
+  const neighborhoodMicroAdsDollars = total - googleSearchPpcDollars - metaRetargetingDollars;
+
+  return {
+    totalMonthlyBudgetDollars: total,
+    googleSearchPpcDollars,
+    metaRetargetingDollars,
+    neighborhoodMicroAdsDollars,
+    googleSearchPpcPct: 70,
+    metaRetargetingPct: 20,
+    neighborhoodMicroAdsPct: 10,
+  };
+}
+
 export type AdSpendDailyEntry = {
   date: string; // YYYY-MM-DD
   spendCents: number;
@@ -262,12 +398,16 @@ export type AdBudgetWalletState = {
   refillThresholdCents?: number;
   refillAmountCents?: number;
   maxMonthlySpendCents?: number;
+  targetCpaDollars?: number;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   currentPeriodEnd: string | null;
   cancelAtPeriodEnd: boolean;
   lastPaymentAt: string | null;
   lastPaymentError: string | null;
+  failedRefillAttempts?: number;
+  nextRefillRetryAt?: string | null;
+  recoveryUrl?: string | null;
   spendThisMonthCents: number;
   totalSpendAllTimeCents?: number;
   lastSpendSyncAt?: string | null;

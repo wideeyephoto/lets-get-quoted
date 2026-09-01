@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { handleAdBudgetWebhookEvent } from '@/lib/ad-billing';
+import {
+  handleAdBudgetWebhookEvent,
+  executeWalletRefillCharge,
+  getTradeBiddingProfile,
+  calculateMultiChannelAllocation,
+  checkAutoRefillTrigger,
+} from '@/lib/ad-billing';
 import type Stripe from 'stripe';
 
 vi.mock('@/lib/sms', () => ({
@@ -991,4 +997,123 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     const handled = await handleAdBudgetWebhookEvent(dupEvent, mockAdmin);
     expect(handled).toBe(true);
   });
+
+  it('calculates trade-specific target CPA bidding profiles', () => {
+    const roofing = getTradeBiddingProfile('Roofing');
+    expect(roofing.trade).toBe('Roofing');
+    expect(roofing.targetCpaDollars).toBe(75);
+    expect(roofing.avgCpcDollars).toBe(8.5);
+    expect(roofing.expectedConvRatePct).toBeGreaterThan(10);
+    expect(roofing.highIntentSearchTerms).toContain('roof replacement cost');
+
+    const plumbing = getTradeBiddingProfile('Plumbing');
+    expect(plumbing.targetCpaDollars).toBe(45);
+    expect(plumbing.highIntentSearchTerms).toContain('emergency plumber near me');
+
+    const hvac = getTradeBiddingProfile('HVAC Heating & AC');
+    expect(hvac.targetCpaDollars).toBe(55);
+
+    const electrical = getTradeBiddingProfile('Electrical');
+    expect(electrical.targetCpaDollars).toBe(40);
+
+    const painting = getTradeBiddingProfile('Painting');
+    expect(painting.targetCpaDollars).toBe(35);
+
+    const landscaping = getTradeBiddingProfile('Landscaping');
+    expect(landscaping.targetCpaDollars).toBe(30);
+
+    const defaultProfile = getTradeBiddingProfile(null);
+    expect(defaultProfile.targetCpaDollars).toBe(50);
+  });
+
+  it('calculates multi-channel budget allocation splits for scale tier', () => {
+    const split = calculateMultiChannelAllocation(2500);
+    expect(split.totalMonthlyBudgetDollars).toBe(2500);
+    expect(split.googleSearchPpcDollars).toBe(1750); // 70%
+    expect(split.metaRetargetingDollars).toBe(500); // 20%
+    expect(split.neighborhoodMicroAdsDollars).toBe(250); // 10%
+    expect(split.googleSearchPpcPct).toBe(70);
+    expect(split.metaRetargetingPct).toBe(20);
+    expect(split.neighborhoodMicroAdsPct).toBe(10);
+  });
+
+  it('paces auto-refill trigger when nextRefillRetryAt is in the future', () => {
+    const futureRetry = new Date(Date.now() + 60 * 60 * 1000).toISOString();
+    const result = checkAutoRefillTrigger({
+      currentBalanceDollars: 20, // below $75 threshold
+      spentThisMonthDollars: 100,
+      config: {
+        depositAmountDollars: 250,
+        refillThresholdDollars: 75,
+        refillAmountDollars: 250,
+        maxMonthlySpendDollars: 1000,
+      },
+      nextRefillRetryAt: futureRetry,
+    });
+
+    expect(result.shouldRefill).toBe(false);
+    expect(result.reason).toContain('Automated refill retry is paced');
+  });
+
+  it('records target CPA in site ad campaign state during checkout completion', async () => {
+    let savedAdCampaign: any = null;
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        if (table === 'sites') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: {
+                    id: 'site_cpa_test',
+                    subdomain: 'austin-roofing',
+                    content: {},
+                  },
+                }),
+              }),
+            }),
+            update: (payload: any) => ({
+              eq: async () => {
+                savedAdCampaign = payload.content?.adCampaign;
+                return { error: null };
+              },
+            }),
+          };
+        }
+        return { select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: null }) }) }) };
+      },
+    };
+
+    const event: Stripe.Event = {
+      id: 'evt_cpa_test',
+      object: 'event',
+      api_version: '2023-10-16',
+      created: Date.now(),
+      type: 'checkout.session.completed',
+      data: {
+        object: {
+          id: 'cs_cpa_123',
+          payment_status: 'paid',
+          metadata: {
+            kind: 'ad_budget',
+            account_id: 'acc_cpa_test',
+            business_name: 'Austin Elite Roofing',
+            trade: 'Roofing',
+            city: 'Austin, TX',
+            monthly_budget_cents: '60000',
+          },
+        } as unknown as Stripe.Checkout.Session,
+      },
+      livemode: false,
+      pending_webhooks: 0,
+      request: null,
+    };
+
+    const handled = await handleAdBudgetWebhookEvent(event, mockAdmin);
+    expect(handled).toBe(true);
+    expect(savedAdCampaign).toBeDefined();
+    expect(savedAdCampaign.targetCpaDollars).toBe(75); // Roofing target CPA
+  });
 });
+
