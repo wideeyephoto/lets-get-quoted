@@ -7,6 +7,8 @@ import TextToJobDataBeams from '@/components/marketing/TextToJobDataBeams';
 import ScrapLumberComparison from '@/components/marketing/ScrapLumberComparison';
 import PhotoScopeEstimator from '@/components/marketing/PhotoScopeEstimator';
 import TradePlaybooksFilter from '@/components/marketing/TradePlaybooksFilter';
+import MockSmsBubble from '@/components/marketing/MockSmsBubble';
+import ScrapToSmsVisual from '@/components/marketing/ScrapToSmsVisual';
 import styles from './text-to-job.module.css';
 
 export const metadata: Metadata = {
@@ -114,6 +116,11 @@ export default function TextToJobPage() {
           </div>
         </ExampleFrame>
       }
+      afterHero={
+        <section className={styles.customSection}>
+          <TradePlaybooksFilter />
+        </section>
+      }
       proof={[
         {
           title: 'Zero App Fatigue',
@@ -136,33 +143,42 @@ export default function TextToJobPage() {
         eyebrow: 'Where contractor revenue and job notes disappear',
         title: 'The most expensive notes are the ones written on scrap 2x4s and forgotten.',
         body: 'By 9:00 PM, the scrap lumber note is lost and the change order goes unbilled. Text-to-Job turns your field texts, site photos, and voice memos into instant updates while your hands are still dirty.',
+        visual: <ScrapToSmsVisual />,
       }}
       benefits={[
         {
           title: 'Capture Every Change Order On-Site',
           body: (
             <>
-              <span>
+              <p>
                 Never give away free labor or materials again. Text your Copilot on-site and watch your quote and invoice math update immediately.
-              </span>
-              <span className="contractor-sample">
-                <strong>💬 Text to Copilot</strong>
-                <em>&ldquo;Add $350 for extra drywall patch &amp; primer to Miller job&rdquo;</em>
-              </span>
+              </p>
+              <MockSmsBubble
+                channel="iMessage · Text to Copilot"
+                icon="💬"
+                time="2:14 PM"
+                userMessage="Add $350 for extra drywall patch & primer to Miller job"
+                copilotReply="✓ Added $350.00 drywall patch & primer to Job J-104 (Miller). Invoice updated to $3,570.00."
+                actionTag="Stripe Quote Recalculated"
+              />
             </>
           ),
         },
         {
-          title: 'Hands-Free Driving Updates with Your Copilot',
+          title: 'Hands-Free Driving Updates with Siri',
           body: (
             <>
-              <span>
-                Use Siri, Google Assistant, or direct voice calls while driving between job sites. Dictate progress notes, gate codes, and schedule adjustments without looking at a screen.
-              </span>
-              <span className="contractor-sample">
-                <strong>🎙️ Siri / Voice Memo</strong>
-                <em>&ldquo;Miller site gate code is 4491, finished rough-in 2 hours early today&rdquo;</em>
-              </span>
+              <p>
+                Use Siri, Google Assistant, or voice memos while driving between sites. Dictate progress notes, gate codes, and schedule adjustments hands-free.
+              </p>
+              <MockSmsBubble
+                channel="Siri · Hands-Free Voice"
+                icon="🎙️"
+                time="4:12 PM"
+                userMessage="Miller site gate code is 4491, finished rough-in 2 hours early today"
+                copilotReply="✓ Gate code 4491 saved to Miller job file. Status marked: Rough-in complete. 2 hrs logged."
+                actionTag="Timesheet & Calendar Synced"
+              />
             </>
           ),
         },
@@ -170,41 +186,35 @@ export default function TextToJobPage() {
           title: 'Automated Punch List Delegation',
           body: (
             <>
-              <span>
+              <p>
                 Text a punch list to your Copilot after your final walkthrough. It splits items into discrete tasks and notifies your field crew automatically.
-              </span>
-              <span className="contractor-sample">
-                <strong>💬 Punch List SMS</strong>
-                <em>&ldquo;Punch list Miller: 1) touch up baseboard trim 2) caulk guest bath 3) reinstall vent cover&rdquo;</em>
-              </span>
+              </p>
+              <MockSmsBubble
+                channel="SMS · Punch List Dispatch"
+                icon="📝"
+                time="5:03 PM"
+                userMessage="Punch list Miller: 1) touch up baseboard trim 2) caulk guest bath 3) reinstall vent cover"
+                copilotReply="✓ 3 punch list tasks created and scheduled for Mike tomorrow at 8:00 AM."
+                actionTag="Crew Dispatched"
+              />
             </>
           ),
         },
         {
-          title: 'Send Photos & Get Reminded Later',
+          title: 'Field Photos, Reminders & Fast Leads',
           body: (
             <>
-              <span>
-                Text site photos, receipts, or walkthrough notes directly to your Copilot via SMS. It sorts them into the customer folder and sets automated reminders so you never forget to quote or order parts.
-              </span>
-              <span className="contractor-sample">
-                <strong>📸 Photo + SMS</strong>
-                <em>&ldquo;[Photo of subpanel] File to Miller, remind me to order 200A breaker tonight at 7pm&rdquo;</em>
-              </span>
-            </>
-          ),
-        },
-        {
-          title: 'Instant Lead Capture Anywhere',
-          body: (
-            <>
-              <span>
-                Met a neighbor while loading tools? Text their name, phone number, and issue to your Copilot. It creates the lead, scores urgency, and stages the quote slot.
-              </span>
-              <span className="contractor-sample">
-                <strong>💬 Lead SMS</strong>
-                <em>&ldquo;New lead: Dave Peterson 512-555-0194 needs water heater replacement tomorrow morning&rdquo;</em>
-              </span>
+              <p>
+                Text site photos, receipts, or new lead info. Copilot files them into customer folders and stages next steps before you forget.
+              </p>
+              <MockSmsBubble
+                channel="MMS · Photo & Lead Intake"
+                icon="📸"
+                time="11:45 AM"
+                userMessage="[Photo of subpanel] File to Miller, remind me to order 200A breaker tonight at 7pm"
+                copilotReply="✓ Photo tagged to Miller subpanel. Reminder set: Order 200A breaker tonight at 7:00 PM."
+                actionTag="Auto-Filed + Reminder Set"
+              />
             </>
           ),
         },
@@ -219,11 +229,6 @@ export default function TextToJobPage() {
           {/* Live Interactive 4-Pillar Data Beams Neural Conduit */}
           <section className={styles.customSection}>
             <TextToJobDataBeams />
-          </section>
-
-          {/* Before & After Scrap Lumber vs. Digital File Comparison */}
-          <section className={styles.customSection}>
-            <ScrapLumberComparison />
           </section>
 
           {/* Gemini Vision Photo-to-Scope AI Estimator */}
@@ -396,11 +401,6 @@ export default function TextToJobPage() {
                 </tbody>
               </table>
             </div>
-          </section>
-
-          {/* Trade-Specific Voice & SMS Playbooks */}
-          <section className={styles.customSection}>
-            <TradePlaybooksFilter />
           </section>
         </>
       }

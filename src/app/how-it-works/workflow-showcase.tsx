@@ -81,11 +81,20 @@ const STAGES: WorkflowStage[] = [
     cta: 'Try a sample intake',
     visuals: [
       {
+        src: '/features/smart-intake-qualification.png',
+        alt: 'Let’s Get Quoted Smart Intake showing homeowner intake form with trade-specific questions, panel photo, and SMS verification connected to the contractor priority brief scored by fit and rules.',
+        width: 2160,
+        height: 1350,
+        label: 'Smart Intake form & scored brief',
+        badge: 'SMART INTAKE IN ACTION · DEMO DATA',
+      },
+      {
         src: '/features/ai-smart-intake.jpg',
         alt: 'Let’s Get Quoted Current Leads pipeline with needs-response, contacted, quote-sent, won, and lost columns.',
         width: 2160,
         height: 1350,
         label: 'Lead pipeline by stage',
+        badge: 'ACTUAL PRODUCT SCREEN · DEMO DATA',
       },
     ],
   },
@@ -106,11 +115,12 @@ const STAGES: WorkflowStage[] = [
     cta: 'Explore quotes and Price Book',
     visuals: [
       {
-        src: '/media/quotes/quote-builder-line-items.jpg',
-        alt: 'Let’s Get Quoted quote builder with included line items, optional add-ons, and a live quote total.',
-        width: 1570,
-        height: 824,
-        label: 'Itemized quote and upgrades',
+        src: '/features/quote-builder-modern.png',
+        alt: 'Let’s Get Quoted itemized quote builder with Price Book line items, optional generator interlock upgrade, live total calculation, typed e-signature, and Stripe deposit clearance.',
+        width: 2160,
+        height: 1350,
+        label: 'Itemized quote & e-signature',
+        badge: 'QUOTE & DEPOSIT IN ACTION · DEMO DATA',
       },
       {
         src: '/media/quotes/quote-builder-payment-terms.jpg',
@@ -118,6 +128,7 @@ const STAGES: WorkflowStage[] = [
         width: 1568,
         height: 770,
         label: 'Deposit and payment terms',
+        badge: 'ACTUAL PRODUCT SCREEN · DEMO DATA',
       },
     ],
   },

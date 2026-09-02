@@ -8841,6 +8841,41 @@
     0 0 18px -4px rgba(255, 106, 36, 0.14),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
   transition: transform 0.22s ease, border-color 0.22s ease, box-shadow 0.22s ease;
+  color: #f1f5f9;
+}
+
+.root :global(.suite-grid article h3),
+.root :global(.suite-grid article .suite-card-link) {
+  color: #f8fafc !important;
+  font-weight: 750;
+  transition: color 0.2s ease;
+}
+
+.root :global(.suite-grid article:hover .suite-card-link) {
+  color: #ff9e58 !important;
+}
+
+.root :global(.suite-grid article p) {
+  color: #cbd5e1 !important;
+}
+
+.root :global(.suite-grid article > span) {
+  color: #ff9e58;
+  background: rgba(255, 106, 36, 0.16);
+  border: 1px solid rgba(255, 106, 36, 0.45);
+  font-weight: 750;
+}
+
+.root :global(.suite-grid article .suite-card-go) {
+  color: #ff7c40;
+  opacity: 0.9;
+  transition: transform 0.2s ease, opacity 0.2s ease, color 0.2s ease;
+}
+
+.root :global(.suite-grid article:hover .suite-card-go) {
+  color: #ffaa5e;
+  opacity: 1;
+  transform: translateX(4px);
 }
 
 .root :global(.suite-grid article:hover) {
@@ -9590,16 +9625,28 @@
   font-weight: 850;
 }
 
+.root :global(.detail-benefits article) {
+  min-height: auto;
+  padding: 20px 22px;
+}
+
 .root :global(.detail-benefits h3) {
   color: #07131d !important;
   font-weight: 800;
-  margin: 32px 0 10px;
+  margin: 16px 0 8px;
+  font-size: 17px;
 }
 
-.root :global(.detail-benefits article p) {
+.root :global(.detail-benefits article p),
+.root :global(.detail-benefit-body > p) {
   color: #334155 !important;
-  font-size: 14px;
-  line-height: 1.6;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.root :global(.detail-story-visual) {
+  margin-top: 20px;
 }
 
 /* Contractor Example Speech / SMS Bubble within Cards */
@@ -9689,7 +9736,8 @@
   color: #f8fafc !important;
 }
 
-:root[data-theme='dim'] .root :global(.detail-benefits article p) {
+:root[data-theme='dim'] .root :global(.detail-benefits article p),
+:root[data-theme='dim'] .root :global(.detail-benefit-body > p) {
   color: #cbd5e1 !important;
 }
 

@@ -444,8 +444,16 @@ export default function HighTechShowcase() {
 
   return (
     <section className={styles.showcaseSection} id="high-tech-showcase" aria-labelledby="showcase-heading">
-      <div className={`${styles.ambientGlow} ${styles.ambientTop}`} aria-hidden="true" />
-      <div className={`${styles.ambientGlow} ${styles.ambientBottom}`} aria-hidden="true" />
+      {/* High-Tech Truck & Copilot Atmospheric Living Background */}
+      <div className={styles.backgroundAtmosphere} aria-hidden="true">
+        <div className={styles.gridPattern} />
+        <div className={styles.dotMatrix} />
+        <div className={styles.glowOrbHeader} />
+        <div className={styles.glowOrbCyan} />
+        <div className={styles.glowOrbAmber} />
+        <div className={styles.glowOrbCore} />
+        <div className={styles.glowRay} />
+      </div>
 
       <div className={styles.container}>
         {/* Streamlined, Punchy Header */}

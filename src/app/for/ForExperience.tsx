@@ -1,11 +1,10 @@
 'use client';
 
-import { useId, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 import { FLEX_PRICE } from '@/lib/pricing';
-import { TRADE_CATEGORIES, categoryOf, searchIndexFor } from '@/lib/trade-categories';
 import { seasonalTrades } from '@/lib/trade-collections';
 import { TRADES, type Trade } from '@/lib/trades';
 import { matchTrades, findBestTradeMatch } from '@/lib/trade-matching';
@@ -111,24 +110,12 @@ export default function ForExperience() {
   const router = useRouter();
   const [selectedTrade, setSelectedTrade] = useState<Trade>(FEATURED_TRADES[0] ?? TRADES[0]);
   const [heroQuery, setHeroQuery] = useState('');
-  const [directoryQuery, setDirectoryQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showAllTrades, setShowAllTrades] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
-  const directorySearchId = useId();
 
   const heroMatches = useMemo(() => {
     const query = heroQuery.trim();
     return query ? matchTrades(query, { limit: 5 }) : [];
   }, [heroQuery]);
-
-  const directoryMatches = useMemo(() => {
-    const query = directoryQuery.trim();
-    const matched = query ? matchTrades(query, { limit: 100 }) : TRADES;
-    return matched.filter((trade) => selectedCategory === 'all' || categoryOf(trade.slug)?.id === selectedCategory);
-  }, [directoryQuery, selectedCategory]);
-
-  const visibleTrades = showAllTrades || directoryQuery || selectedCategory !== 'all' ? directoryMatches : directoryMatches.slice(0, 4);
 
   const chooseTrade = (trade: Trade, scroll = false) => {
     setSelectedTrade(trade);
@@ -279,23 +266,13 @@ export default function ForExperience() {
       </section>
 
       <section className={styles.seasonalSection} aria-labelledby="seasonal-title">
-        <div><p className={styles.sectionKicker}>BUILT FOR SEASONAL TRADES</p><h2 id="seasonal-title">Quiet months shouldn’t come with a year-round software bill.</h2><p>Start on Flex at {FLEX_PRICE.monthlyPrice} and pay the platform fee only when you collect eligible customer payments. Upgrade when your volume makes the math work.</p><div className={styles.seasonalLinks}>{seasonalTrades().slice(0, 5).map((trade) => <Link href={`/for/${trade.slug}`} key={trade.slug}>{trade.name}</Link>)}</div><Link className={styles.textLink} href="/pricing">See exact pricing and fees →</Link></div>
-        <div className={styles.seasonTimeline} aria-label="Example seasonal business activity"><div><span>QUIET SEASON</span><b>$0 base subscription</b></div><div className={styles.months}>{['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].map((month, index) => <span className={index >= 2 && index <= 9 ? styles.activeMonth : undefined} key={month}>{month}<i /></span>)}</div><p><b>Active months</b> Platform fee applies when eligible payments are collected.</p></div>
+        <div><p className={styles.sectionKicker}>BUILT FOR SEASONAL TRADES</p><h2 id="seasonal-title">Quiet months shouldn’t come with a year-round software bill.</h2><p>Even when your business is on pause, you still need a website and online presence so customers can find you and book work for next season—and we provide it completely free. Start on Flex at {FLEX_PRICE.monthlyPrice} with no monthly software subscription, and pay the platform fee only when you collect eligible customer payments during active months. Upgrade when your volume makes the math work.</p><div className={styles.seasonalLinks}>{seasonalTrades().slice(0, 5).map((trade) => <Link href={`/for/${trade.slug}`} key={trade.slug}>{trade.name}</Link>)}</div><Link className={styles.textLink} href="/pricing">See exact pricing and fees →</Link></div>
+        <div className={styles.seasonTimeline} aria-label="Example seasonal business activity"><div><span>QUIET SEASON</span><b>$0 base subscription · Website stays live free</b></div><div className={styles.months}>{['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'].map((month, index) => <span className={index >= 2 && index <= 9 ? styles.activeMonth : undefined} key={month}>{month}<i /></span>)}</div><p><b>Business on pause</b> Your website and online presence stay live 100% free.<br /><b>Active months</b> Platform fee applies only when eligible payments are collected.</p></div>
       </section>
-
-      <section className={styles.directorySection} id="trades-directory" aria-labelledby="directory-title">
-        <div className={styles.directoryHeader}><div><p className={styles.sectionKicker}>{TRADES.length}+ TRADES AND COUNTING</p><h2 id="directory-title">Find your trade, then make it yours.</h2><p>Search by trade, specialty, or service. Choose the closest starting point and customize every detail for your business.</p></div><label className={styles.directorySearch} htmlFor={directorySearchId}><span>⌕</span><input id={directorySearchId} type="search" value={directoryQuery} onChange={(event) => setDirectoryQuery(event.target.value)} placeholder="Search any trade or service" /></label></div>
-        {showAllTrades && <div className={styles.categoryFilters} role="tablist" aria-label="Filter trades by category"><button type="button" role="tab" aria-selected={selectedCategory === 'all'} onClick={() => setSelectedCategory('all')}>All trades</button>{TRADE_CATEGORIES.map((category) => <button type="button" role="tab" aria-selected={selectedCategory === category.id} key={category.id} onClick={() => setSelectedCategory(category.id)}>{category.label}</button>)}</div>}
-        <div className={styles.tradeGrid}>{visibleTrades.map((trade, index) => <article className={selectedTrade.slug === trade.slug ? styles.tradeSelected : undefined} key={trade.slug}><button type="button" onClick={() => chooseTrade(trade, true)}><span>{String(index + 1).padStart(2, '0')}</span><h3>{trade.name}</h3><p>{trade.services.slice(0, 3).join(' · ')}</p><b>Build this setup →</b></button><Link href={`/for/${trade.slug}`}>Explore trade page ↗</Link></article>)}</div>
-        {!visibleTrades.length && <div className={styles.emptyState}><b>No exact match yet.</b><p>Start with a custom specialty and define the services, questions, and formulas you need.</p><a href={`${APP_SIGNUP_URL}&source=for_trade_custom`}>Start with a custom trade →</a></div>}
-        <div className={styles.directoryFooter}><span>{showAllTrades || directoryQuery || selectedCategory !== 'all' ? `Showing ${visibleTrades.length} matching trades` : 'Showing four starting points'}</span>{directoryMatches.length > 4 && !directoryQuery && selectedCategory === 'all' && <button type="button" onClick={() => setShowAllTrades((current) => !current)}>{showAllTrades ? 'Show fewer trades' : 'View every trade'} →</button>}</div>
-      </section>
-
-      <section className={styles.multiTradeSection} aria-labelledby="multi-title"><div><p className={styles.sectionKicker}>ONE BUSINESS. EVERY SERVICE LINE.</p><h2 id="multi-title">Run more than one trade? Keep it all connected.</h2><p>Combine service catalogs, intake flows, quote templates, crews, and customer records inside one account.</p></div><div className={styles.multiVisual}><div><span>HVAC</span><span>PLUMBING</span><span>ELECTRICAL</span></div><i>→</i><article><small>ONE LGQ WORKSPACE</small><b>Shared customers, crews &amp; quotes</b><span>Everything stays organized.</span></article></div></section>
 
       <section className={styles.faqSection} aria-labelledby="faq-title"><div className={styles.faqIntro}><p className={styles.sectionKicker}>CLEAR BEFORE YOU COMMIT</p><h2 id="faq-title">Questions, answered.</h2><p>Trade customization, multiple service lines, pricing, domains, and payouts—without the guesswork.</p><a href={signupHref(selectedTrade.slug)}>Start your free setup →</a></div><div className={styles.faqList}>{FAQS.map(([question, answer], index) => <article key={question}><button type="button" aria-expanded={openFaq === index} aria-controls={`for-faq-${index}`} onClick={() => setOpenFaq(openFaq === index ? null : index)}><span>{question}</span><b>{openFaq === index ? '−' : '+'}</b></button>{openFaq === index && <p id={`for-faq-${index}`}>{answer}</p>}</article>)}</div></section>
 
-      <section className={styles.finalSection} id="start" aria-labelledby="final-title"><p className={styles.sectionKicker}>READY WHEN YOU ARE</p><h2 id="final-title">Let’s build the setup that fits your trade.</h2><p>Your {selectedTrade.name.toLowerCase()} starting point is selected. Review it, customize every detail, and publish only when it feels like your business.</p><div><a href={signupHref(selectedTrade.slug)}>Build my {selectedTrade.name} setup →</a><button type="button" onClick={() => document.getElementById('trades-directory')?.scrollIntoView({ behavior: 'smooth' })}>Choose another trade</button></div><small>{FLEX_PRICE.monthlyPrice} to start · No card required · Edit before you publish</small></section>
+      <section className={styles.finalSection} id="start" aria-labelledby="final-title"><p className={styles.sectionKicker}>READY WHEN YOU ARE</p><h2 id="final-title">Let’s build the setup that fits your trade.</h2><p>Your {selectedTrade.name.toLowerCase()} starting point is selected. Review it, customize every detail, and publish only when it feels like your business.</p><div><a href={signupHref(selectedTrade.slug)}>Build my {selectedTrade.name} setup →</a><button type="button" onClick={() => { document.getElementById('hero-trade-search')?.focus(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}>Choose another trade</button></div><small>{FLEX_PRICE.monthlyPrice} to start · No card required · Edit before you publish</small></section>
     </main>
   );
 }

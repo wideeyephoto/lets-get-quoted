@@ -4,6 +4,7 @@
   position: relative;
   border-radius: 26px;
   padding: 1.5px;
+  margin: 28px 0 34px;
   background: linear-gradient(
     140deg,
     rgba(255, 106, 36, 0.45) 0%,
@@ -119,13 +120,13 @@
 }
 
 .floatingPillTop {
-  top: -16px;
-  right: 26px;
+  top: -34px;
+  right: 24px;
   animation: floatBadgeTop 6s ease-in-out infinite alternate;
 }
 
 .floatingPillBottom {
-  bottom: -16px;
+  bottom: -36px;
   left: 24px;
   animation: floatBadgeBottom 6s ease-in-out infinite alternate -3s;
 }

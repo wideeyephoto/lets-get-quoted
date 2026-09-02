@@ -1,0 +1,219 @@
+.visualCard {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 440px;
+}
+
+.lumberSnippet {
+  background: rgba(14, 23, 31, 0.9);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+:root[data-theme='light'] .lumberSnippet {
+  background: #fffdf8;
+  border-color: #fca5a5;
+}
+
+.snippetHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lumberBadge {
+  font-size: 11px;
+  font-weight: 850;
+  color: #f87171;
+}
+
+.lostBadge {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 850;
+  color: #f87171;
+  background: rgba(239, 68, 68, 0.14);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.woodPlank {
+  position: relative;
+  background: linear-gradient(135deg, #a67c52 0%, #8c6239 100%);
+  border: 1px solid #704d2b;
+  border-radius: 6px;
+  padding: 10px 14px;
+  overflow: hidden;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.pencilText {
+  font-family: 'Comic Sans MS', cursive, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #26190f;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.coffeeRing {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: 3px solid rgba(75, 45, 20, 0.4);
+  border-radius: 50%;
+  pointer-events: none;
+}
+
+.lumberOutcome {
+  font-size: 11px;
+  color: #94a3b8;
+  line-height: 1.35;
+}
+
+:root[data-theme='light'] .lumberOutcome {
+  color: #64748b;
+}
+
+.transitionBeam {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 11px;
+  font-weight: 800;
+  color: #50e3bd;
+  padding: 2px 0;
+}
+
+:root[data-theme='light'] .transitionBeam {
+  color: #059669;
+}
+
+.beamPulse {
+  background: rgba(80, 227, 189, 0.12);
+  border: 1px solid rgba(80, 227, 189, 0.35);
+  border-radius: 20px;
+  padding: 3px 10px;
+}
+
+:root[data-theme='light'] .beamPulse {
+  background: #ecfdf5;
+  border-color: #86efac;
+}
+
+.downArrow {
+  font-size: 14px;
+  animation: bounceDown 1.5s infinite;
+}
+
+@keyframes bounceDown {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(3px); }
+}
+
+.copilotSnippet {
+  background: rgba(4, 18, 26, 0.95);
+  border: 1px solid rgba(80, 227, 189, 0.4);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 20px rgba(80, 227, 189, 0.12);
+}
+
+:root[data-theme='light'] .copilotSnippet {
+  background: #ffffff;
+  border-color: #86efac;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.1);
+}
+
+.copilotBadge {
+  font-size: 11px;
+  font-weight: 850;
+  color: #50e3bd;
+}
+
+:root[data-theme='light'] .copilotBadge {
+  color: #059669;
+}
+
+.capturedBadge {
+  font-family: var(--font-mono), ui-monospace, monospace;
+  font-size: 10px;
+  font-weight: 850;
+  color: #50e3bd;
+  background: rgba(80, 227, 189, 0.14);
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+:root[data-theme='light'] .capturedBadge {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.miniChat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.outgoingBubble {
+  align-self: flex-end;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border-radius: 12px 12px 2px 12px;
+  padding: 6px 10px;
+  font-size: 11.5px;
+  max-width: 90%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.bubbleMeta {
+  font-size: 9px;
+  opacity: 0.8;
+  align-self: flex-end;
+}
+
+.incomingBubble {
+  align-self: flex-start;
+  background: rgba(14, 38, 52, 0.9);
+  border: 1px solid rgba(80, 227, 189, 0.3);
+  border-radius: 12px 12px 12px 2px;
+  padding: 6px 10px;
+  font-size: 11px;
+  color: #e2e8f0;
+  max-width: 95%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+:root[data-theme='light'] .incomingBubble {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #1e293b;
+}
+
+.copilotName {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #50e3bd;
+}
+
+:root[data-theme='light'] .copilotName {
+  color: #059669;
+}

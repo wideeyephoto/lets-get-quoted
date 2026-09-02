@@ -7,9 +7,19 @@ type PhotoScenario = {
   id: string;
   tabLabel: string;
   icon: string;
+  imageSrc: string;
+  imageAlt: string;
+  reticle: {
+    top: string;
+    left: string;
+    width: string;
+    height: string;
+    label: string;
+  };
   trade: string;
   detectedDamage: string;
   boundingNote: string;
+  confidence: string;
   scopeSummary: string;
   materials: { name: string; cost: string }[];
   laborEstimate: string;
@@ -21,9 +31,19 @@ const PHOTO_SCENARIOS: PhotoScenario[] = [
     id: 'subfloor',
     tabLabel: 'Subfloor Water Damage',
     icon: '🪵',
+    imageSrc: '/features/subfloor-rot-bathroom.jpg',
+    imageAlt: 'Field inspection photo showing moisture rot and joist decay on subfloor',
+    reticle: {
+      top: '20%',
+      left: '14%',
+      width: '66%',
+      height: '65%',
+      label: 'DEFECT SEGMENTATION · 24 SQ FT',
+    },
     trade: 'Carpentry & Flooring',
     detectedDamage: 'Severe moisture rot on 3/4" subfloor beneath dishwasher leak (4ft x 6ft area)',
     boundingNote: 'Detected: 24 sq ft dry rot + compromised 2x10 joist edge',
+    confidence: '98.4% Match',
     scopeSummary:
       'Cut out and replace 24 sq ft rotted subfloor, sister one 2x10 joist with structural screws, and apply anti-microbial subfloor seal.',
     materials: [
@@ -38,9 +58,19 @@ const PHOTO_SCENARIOS: PhotoScenario[] = [
     id: 'electrical-panel',
     tabLabel: '100A Outdated Panel',
     icon: '⚡',
+    imageSrc: '/images/ai-vision/electrical-panel.jpg',
+    imageAlt: 'Field inspection photo of crowded 100-Amp Zinsco electrical service panel',
+    reticle: {
+      top: '32%',
+      left: '36%',
+      width: '32%',
+      height: '52%',
+      label: 'OCR + BUSBAR HAZARD',
+    },
     trade: 'Electrical',
     detectedDamage: 'Crowded 100-Amp Zinsco split-bus panel with double-tapped 20A breakers',
     boundingNote: 'Detected: Zinsco non-compliant busbar + zero open breaker slots',
+    confidence: '99.1% Match',
     scopeSummary:
       'Install 50A subpanel adjacent to main service, relocate 4 branch circuits, and label panel schedule per NEC 2024.',
     materials: [
@@ -55,9 +85,19 @@ const PHOTO_SCENARIOS: PhotoScenario[] = [
     id: 'siding-rot',
     tabLabel: 'Siding Trim & Flashing',
     icon: '🏠',
+    imageSrc: '/features/siding-rot-damage.jpg',
+    imageAlt: 'Field inspection photo of rotted exterior corner trim board and water intrusion',
+    reticle: {
+      top: '10%',
+      left: '48%',
+      width: '24%',
+      height: '78%',
+      label: 'ROT & FLASHING DEFECT',
+    },
     trade: 'Siding & Exteriors',
     detectedDamage: 'Water penetration along corner trim with missing Z-flashing above window',
     boundingNote: 'Detected: 8ft rotted LP SmartSide corner board + exposed sheathing',
+    confidence: '97.6% Match',
     scopeSummary:
       'Remove rotted corner board, install drip cap Z-flashing, re-tape housewrap with ZIP tape, and install prepainted PVC trim.',
     materials: [
@@ -105,26 +145,61 @@ export default function PhotoScopeEstimator() {
       <div className={styles.inspectorGrid}>
         {/* Left: Photo Scanner Viewport */}
         <div className={styles.photoViewport}>
-          <div className={styles.scannerOverlay}></div>
+          <div className={styles.scannerOverlay} aria-hidden="true" />
 
           <div className={styles.photoCardContent}>
             <div className={styles.photoHeader}>
               <span className={styles.photoTag}>📸 MMS Field Photo Upload</span>
-              <span style={{ fontSize: '11px', color: '#7da0b3' }}>{scenario.trade}</span>
+              <span className={styles.photoTradeBadge}>{scenario.trade}</span>
             </div>
 
-            <div className={styles.photoGraphic}>
-              <span style={{ fontSize: '42px' }}>{scenario.icon}</span>
-              <span className={styles.boundingBadge}>
-                [AI Bounding Box] {scenario.boundingNote}
-              </span>
-              <p style={{ fontSize: '12px', color: '#d1e2eb', margin: 0 }}>
-                {scenario.detectedDamage}
-              </p>
+            <div className={styles.photoContainer}>
+              <div className={styles.imageStage}>
+                <img
+                  src={scenario.imageSrc}
+                  alt={scenario.imageAlt}
+                  className={styles.photoImage}
+                  loading="eager"
+                  decoding="async"
+                />
+
+                {/* Computer Vision Optical Mesh Overlay */}
+                <div className={styles.opticalGrid} aria-hidden="true" />
+
+                {/* AI Bounding Box Reticle */}
+                <div
+                  className={styles.boundingReticle}
+                  style={{
+                    top: scenario.reticle.top,
+                    left: scenario.reticle.left,
+                    width: scenario.reticle.width,
+                    height: scenario.reticle.height,
+                  }}
+                  aria-hidden="true"
+                >
+                  <span className={styles.reticleTag}>{scenario.reticle.label}</span>
+                  <span className={`${styles.reticleCorner} ${styles.cornerTL}`} />
+                  <span className={`${styles.reticleCorner} ${styles.cornerTR}`} />
+                  <span className={`${styles.reticleCorner} ${styles.cornerBL}`} />
+                  <span className={`${styles.reticleCorner} ${styles.cornerBR}`} />
+                </div>
+              </div>
+
+              <div className={styles.photoMetaFooter}>
+                <div className={styles.boundingBadgeRow}>
+                  <span className={styles.boundingBadge}>
+                    [AI Bounding Box] {scenario.boundingNote}
+                  </span>
+                  <span className={styles.confidenceBadge}>{scenario.confidence}</span>
+                </div>
+                <p className={styles.damageDescription}>
+                  {scenario.detectedDamage}
+                </p>
+              </div>
             </div>
           </div>
 
-          <div style={{ fontSize: '11px', color: '#8fa6b5', textAlign: 'center' }}>
+          <div className={styles.laserScanFooter}>
             ⚡ Laser scan active · OCR + spatial defect detection
           </div>
         </div>

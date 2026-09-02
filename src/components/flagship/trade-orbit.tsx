@@ -92,7 +92,9 @@ function gutterWidth(section: HTMLElement): number {
 
 export default function TradeOrbit() {
   const layerRef = useRef<HTMLDivElement>(null);
-  const ringRef = useRef<HTMLElement>(null);
+  const coreRef = useRef<SVGEllipseElement>(null);
+  const glowRef = useRef<SVGEllipseElement>(null);
+  const auraRef = useRef<SVGEllipseElement>(null);
   const itemRefs = useRef<(HTMLElement | null)[]>([]);
 
   useEffect(() => {
@@ -145,12 +147,29 @@ export default function TradeOrbit() {
         scale,
       );
       layer.style.setProperty('--orbit-scale', String(scale));
-      const ring = ringRef.current;
-      if (ring) {
-        ring.style.width = `${geo.rx * 2}px`;
-        ring.style.height = `${geo.ry * 2}px`;
-        ring.style.transform = `translate3d(${geo.cx - geo.rx}px, ${geo.cy - geo.ry}px, 0)`;
+
+      if (coreRef.current && glowRef.current && auraRef.current) {
+        const cx = String(geo.cx);
+        const cy = String(geo.cy);
+        const rx = String(geo.rx);
+        const ry = String(geo.ry);
+
+        coreRef.current.setAttribute('cx', cx);
+        coreRef.current.setAttribute('cy', cy);
+        coreRef.current.setAttribute('rx', rx);
+        coreRef.current.setAttribute('ry', ry);
+
+        glowRef.current.setAttribute('cx', cx);
+        glowRef.current.setAttribute('cy', cy);
+        glowRef.current.setAttribute('rx', rx);
+        glowRef.current.setAttribute('ry', ry);
+
+        auraRef.current.setAttribute('cx', cx);
+        auraRef.current.setAttribute('cy', cy);
+        auraRef.current.setAttribute('rx', rx);
+        auraRef.current.setAttribute('ry', ry);
       }
+
       draw(accumulated + (runningSince === null ? 0 : performance.now() - runningSince));
       layer.dataset.ready = 'true';
     };
@@ -224,9 +243,13 @@ export default function TradeOrbit() {
 
   return (
     <div className="trade-orbit" ref={layerRef} aria-hidden="true">
-      {/* The path, drawn. A 1px ellipse at 15% orange — enough to say the
-          objects are on a track rather than wandering. */}
-      <i className="trade-orbit-ring" ref={ringRef} />
+      {/* The path, drawn as a vector SVG ellipse with multi-stage silky Gaussian glow —
+          replacing the old CSS box-shadow which caused chunky banding on non-circular ellipses. */}
+      <svg className="trade-orbit-svg" aria-hidden="true">
+        <ellipse ref={auraRef} fill="none" className="trade-orbit-aura" />
+        <ellipse ref={glowRef} fill="none" className="trade-orbit-glow" />
+        <ellipse ref={coreRef} fill="none" className="trade-orbit-core" />
+      </svg>
       {TRADE_ICONS.map((icon, index) => (
         <picture
           key={icon.slug}

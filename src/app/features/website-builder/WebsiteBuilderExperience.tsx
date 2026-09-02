@@ -52,13 +52,16 @@ const JOURNEY_STEPS = [
     ],
     mockup: {
       tag: '✦ SEO Town Engine',
-      service: '📍 Fairview Roofing · #1 Rated Roofs in Fairview, NJ',
-      status: '● Map Pack #1',
-      chips: ['📍 18 Nearby Town Pages', '📈 +240% Search Visibility', '⚡ Schema Verified'],
-      label: 'Target Search Traffic:',
-      highlight: '#1 in Local Pack (380+ monthly visits)',
-      btnPrimary: '📍 View Town Pages (18)',
-      btnSecondary: '⚡ Auto-Rank Radius',
+      searchQuery: 'roof repair near me',
+      searchRank: 'Map Pack #1',
+      service: '📍 Fairview Roofing',
+      serviceSub: 'Fairview, NJ · Licensed Roofing Contractor',
+      status: 'Live in Local Pack',
+      chips: ['⭐ 4.9 (48 Reviews)', '🗺️ 18 Town Pages Active', '⚡ Rich Schema Verified'],
+      label: 'Local Organic Traffic:',
+      highlight: '#1 Rank · 380+ visits/mo',
+      btnPrimary: 'View Town Landing Page →',
+      btnSecondary: '📍 18 Towns',
     },
   },
   {
@@ -346,9 +349,25 @@ export default function WebsiteBuilderExperience() {
                     {/* Right Column: High-Craft Interactive Mockup Card */}
                     <div className={styles.linearMockupCol}>
                       <div className={styles.linearMockupCard} key={activeStep}>
+                        {'searchQuery' in currentStep.mockup && currentStep.mockup.searchQuery && (
+                          <div className={styles.searchSnippet}>
+                            <span>🔍</span>
+                            <span>Google: <strong className={styles.searchQuery}>&ldquo;{currentStep.mockup.searchQuery}&rdquo;</strong></span>
+                            <span className={styles.searchRank}>{'searchRank' in currentStep.mockup ? currentStep.mockup.searchRank : 'Map Pack #1'}</span>
+                          </div>
+                        )}
+
                         <div className={styles.ticketTopRow}>
-                          <span className={styles.ticketService}>{currentStep.mockup.service}</span>
-                          <span className={styles.ticketStatusPill}>{currentStep.mockup.status}</span>
+                          <div className={styles.businessInfo}>
+                            <span className={styles.ticketService}>{currentStep.mockup.service}</span>
+                            {'serviceSub' in currentStep.mockup && currentStep.mockup.serviceSub && (
+                              <span className={styles.businessSub}>{currentStep.mockup.serviceSub}</span>
+                            )}
+                          </div>
+                          <span className={styles.ticketStatusPill}>
+                            <span className={styles.liveBeacon} aria-hidden="true" />
+                            {currentStep.mockup.status.replace(/^●\s*/, '')}
+                          </span>
                         </div>
 
                         <div className={styles.ticketSpecsGrid}>

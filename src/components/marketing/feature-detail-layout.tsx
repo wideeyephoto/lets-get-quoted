@@ -118,6 +118,7 @@ export type FeatureDetailLayoutProps = {
     eyebrow: string;
     title: ReactNode;
     body: ReactNode;
+    visual?: ReactNode;
   };
   benefits?: FeatureDetailCard[];
   /**
@@ -298,6 +299,7 @@ export default async function FeatureDetailLayout({
               </p>
               <h2>{story.title}</h2>
               <p>{story.body}</p>
+              {story.visual ? <div className="detail-story-visual">{story.visual}</div> : null}
             </div>
           ) : null}
           <div className="detail-benefits">
@@ -308,7 +310,7 @@ export default async function FeatureDetailLayout({
                     is noise. */}
                 <span aria-hidden="true">{String(index + 1).padStart(2, '0')}</span>
                 <h3>{item.title}</h3>
-                <p>{item.body}</p>
+                <div className="detail-benefit-body">{item.body}</div>
               </article>
             ))}
           </div>

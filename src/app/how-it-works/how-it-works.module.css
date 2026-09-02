@@ -488,7 +488,6 @@
 }
 
 .workflowSection,
-.fieldSection,
 .completionSection,
 .faqSection {
   background: var(--hiq-paper);
@@ -1091,81 +1090,106 @@
 }
 
 .fieldSection {
-  padding: clamp(95px, 10vw, 145px) 0 76px;
+  padding: clamp(48px, 6vw, 76px) 0 42px;
+  background:
+    radial-gradient(circle at 18% 18%, rgba(255, 106, 36, 0.1), transparent 45%),
+    radial-gradient(circle at 82% 82%, rgba(104, 224, 189, 0.08), transparent 45%),
+    linear-gradient(150deg, #07151e 0%, #0a202c 50%, #06141c 100%);
+  color: #f1f5f9;
+}
+
+.fieldSection .sectionIntro {
+  margin: 0 auto 32px;
+}
+
+.fieldSection .sectionIntro h2 {
+  color: #ffffff;
+}
+
+.fieldSection .sectionIntro p {
+  color: #94a3b8;
+  margin-top: 10px;
+  font-size: 0.95rem;
 }
 
 .fieldGrid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 22px;
+  gap: 20px;
 }
 
 .fieldCard {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  padding: clamp(28px, 3.2vw, 45px);
-  border: 1px solid #ddd3c6;
+  padding: clamp(22px, 2.5vw, 32px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 20px;
-  background: var(--hiq-paper-2);
-  box-shadow: 0 20px 55px rgba(56, 40, 25, 0.07);
+  background: rgba(14, 34, 46, 0.72);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  color: #f1f5f9;
 }
 
 .fieldCard:nth-child(2) {
-  background: #fff3e9;
+  background: rgba(18, 40, 54, 0.76);
+  border-color: rgba(255, 106, 36, 0.28);
 }
 
 .cardLabel {
   display: flex;
   gap: 8px;
   align-items: center;
-  color: var(--hiq-orange-dark);
+  color: #ff9e58;
 }
 
 .cardLabel span {
   display: grid;
-  width: 27px;
-  height: 27px;
+  width: 25px;
+  height: 25px;
   place-items: center;
   border-radius: 50%;
-  background: #fdd8c6;
-  font-size: 0.76rem;
+  background: rgba(255, 106, 36, 0.18);
+  border: 1px solid rgba(255, 106, 36, 0.35);
+  color: #ff9e58;
+  font-size: 0.74rem;
 }
 
 .fieldCard > h3 {
   max-width: 540px;
-  margin: 20px 0 0;
-  font-size: clamp(1.7rem, 3vw, 2.7rem);
-  letter-spacing: -0.052em;
-  line-height: 1.02;
+  margin: 12px 0 0;
+  font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+  letter-spacing: -0.04em;
+  line-height: 1.15;
+  color: #ffffff;
   text-wrap: balance;
 }
 
 .fieldCard > p {
-  margin: 18px 0 0;
-  color: #56676c;
-  font-size: 0.9rem;
-  line-height: 1.67;
+  margin: 8px 0 0;
+  color: #94a3b8;
+  font-size: 0.86rem;
+  line-height: 1.55;
 }
 
 .phoneDemo,
 .portalDemo {
   position: relative;
-  width: min(100%, 500px);
-  margin: 31px auto 0;
+  width: min(100%, 480px);
+  margin: 16px auto 0;
   overflow: hidden;
-  border: 1px solid #d0c5b7;
-  background: #fff;
-  box-shadow: 0 17px 37px rgba(48, 33, 20, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #040e15;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
 }
 
 .phoneDemo figcaption,
 .portalDemo figcaption {
-  padding: 8px 14px;
-  border-bottom: 1px solid #ded6ca;
-  background: #eee8df;
-  color: #526164;
-  font-size: 0.65rem;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #94a3b8;
+  font-size: 0.62rem;
   font-weight: 780;
   letter-spacing: 0.08em;
   line-height: 1.4;
@@ -1174,25 +1198,25 @@
 }
 
 .phoneDemo {
-  padding-bottom: 13px;
-  border-radius: 25px;
-  background: #f3f5f5;
+  padding-bottom: 10px;
+  border-radius: 20px;
+  background: #040e15;
 }
 
 .phoneTop {
   display: grid;
-  min-height: 49px;
+  min-height: 38px;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  padding: 0 17px;
-  border-bottom: 1px solid #dde2e2;
-  background: #fff;
-  color: #55666b;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #081923;
+  color: #94a3b8;
   font-size: 0.64rem;
 }
 
 .phoneTop strong {
-  color: #172a31;
+  color: #f1f5f9;
   font-size: 0.77rem;
 }
 
@@ -1202,12 +1226,12 @@
 
 .outgoingMessage,
 .incomingMessage {
-  max-width: 78%;
-  margin: 18px 15px 0 auto;
-  padding: 12px 14px;
-  border-radius: 15px 15px 4px 15px;
+  max-width: 82%;
+  margin: 10px 12px 0 auto;
+  padding: 9px 12px;
+  border-radius: 14px 14px 4px 14px;
   font-size: 0.73rem;
-  line-height: 1.5;
+  line-height: 1.45;
 }
 
 .outgoingMessage {
@@ -1217,90 +1241,99 @@
 
 .outgoingMessage > span {
   display: block;
-  margin-top: 8px;
-  color: #f0f7ff;
-  font-size: 0.62rem;
+  margin-top: 5px;
+  color: #dbeafe;
+  font-size: 0.6rem;
 }
 
 .incomingMessage {
   display: grid;
-  max-width: 84%;
-  grid-template-columns: 21px 1fr;
+  max-width: 88%;
+  grid-template-columns: 20px 1fr;
   gap: 8px;
-  margin: 12px auto 0 15px;
-  border-radius: 15px 15px 15px 4px;
-  background: #e3e7e8;
-  color: #25373c;
+  margin: 8px auto 0 12px;
+  border-radius: 14px 14px 14px 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  color: #e2e8f0;
 }
 
 .incomingMessage > span {
   display: grid;
-  width: 21px;
-  height: 21px;
+  width: 20px;
+  height: 20px;
   place-items: center;
   border-radius: 50%;
   background: var(--hiq-green);
   color: #fff;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
 }
 
 .incomingMessage p {
   margin: 0;
-  color: #25373c;
+  color: #e2e8f0;
+}
+
+.incomingMessage strong {
+  color: #ffffff;
 }
 
 .phoneComposer {
   display: flex;
-  min-height: 40px;
+  min-height: 34px;
   align-items: center;
   justify-content: space-between;
-  margin: 19px 12px 0;
-  padding: 0 9px 0 14px;
-  border: 1px solid #cdd4d5;
+  margin: 10px 10px 0;
+  padding: 0 8px 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 999px;
-  background: #fff;
-  color: #59686b;
-  font-size: 0.7rem;
+  background: #081923;
+  color: #64748b;
+  font-size: 0.68rem;
 }
 
 .phoneComposer span {
   display: grid;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   place-items: center;
   border-radius: 50%;
   background: #196dd7;
   color: #fff;
+  font-size: 0.65rem;
 }
 
 .portalDemo {
   border-radius: 15px;
+  background: #040e15;
 }
 
 .portalBrand {
   display: flex;
-  min-height: 53px;
+  min-height: 38px;
   align-items: center;
   justify-content: space-between;
-  padding: 0 17px;
-  border-bottom: 1px solid #e2ddd6;
-  color: var(--hiq-ink);
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  color: #f1f5f9;
+  background: #081923;
   font-size: 0.67rem;
 }
 
 .portalBrand strong {
   letter-spacing: 0.05em;
+  color: #ffffff;
 }
 
 .portalBrand span {
-  color: #59686b;
-  font-size: 0.65rem;
+  color: #94a3b8;
+  font-size: 0.62rem;
 }
 
 .portalTitle {
   display: grid;
-  gap: 8px;
-  padding: 22px 20px 19px;
+  gap: 4px;
+  padding: 12px 16px;
   background: linear-gradient(140deg, #0a242e, #103744);
   color: #fff;
 }
@@ -1313,28 +1346,28 @@
 }
 
 .portalTitle strong {
-  font-size: 1.1rem;
-  letter-spacing: -0.025em;
+  font-size: 0.95rem;
+  letter-spacing: -0.02em;
 }
 
 .portalTimeline {
   display: grid;
   gap: 0;
   margin: 0;
-  padding: 6px 17px;
+  padding: 4px 14px;
   list-style: none;
 }
 
 .portalTimeline li {
   display: grid;
-  min-height: 47px;
-  grid-template-columns: 23px 1fr;
+  min-height: 36px;
+  grid-template-columns: 20px 1fr;
   gap: 6px;
   align-items: center;
-  border-bottom: 1px solid #eee8e0;
-  color: #58676b;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
   font-size: 0.68rem;
-  font-weight: 680;
+  font-weight: 600;
 }
 
 .portalTimeline li:last-child {
@@ -1342,7 +1375,11 @@
 }
 
 .portalTimeline li span {
-  color: #9aa4a5;
+  color: #64748b;
+}
+
+.portalTimeline li[data-done='true'] {
+  color: #cbd5e1;
 }
 
 .portalTimeline li[data-done='true'] span {
@@ -1350,31 +1387,32 @@
 }
 
 .portalTimeline li[data-current='true'] {
-  color: var(--hiq-ink);
+  color: #ffffff;
+  font-weight: 750;
 }
 
 .portalTimeline li[data-current='true'] span {
-  color: var(--hiq-orange-dark);
+  color: var(--hiq-orange);
 }
 
 .portalActions {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: 8px;
-  padding: 11px;
-  border-top: 1px solid #e5ddd4;
-  background: #f7f2ec;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #081923;
 }
 
 .portalActions span {
   display: flex;
-  min-height: 34px;
+  min-height: 28px;
   align-items: center;
-  gap: 7px;
-  padding: 0 5px;
-  color: #33464c;
-  font-size: 0.61rem;
-  font-weight: 750;
+  gap: 6px;
+  padding: 0 4px;
+  color: #cbd5e1;
+  font-size: 0.62rem;
+  font-weight: 700;
 }
 
 .portalActions span::before {
@@ -1383,30 +1421,56 @@
   font-weight: 900;
 }
 
-.microList {
-  gap: 9px;
-  margin-top: 26px;
-  color: #405258;
+.fieldCard .microList {
+  display: grid;
+  gap: 7px;
+  margin-top: 16px;
+  color: #cbd5e1;
   font-size: 0.76rem;
+  padding: 0;
+  list-style: none;
+}
+
+.fieldCard .microList li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fieldCard .microList li span {
+  color: #50e3bd;
+  font-weight: 900;
 }
 
 .fieldDisclosure {
   max-width: 760px;
-  margin: 18px auto 0;
-  color: #59686b;
-  font-size: 0.72rem;
-  line-height: 1.55;
+  margin: 16px auto 0;
+  color: #64748b;
+  font-size: 0.7rem;
+  line-height: 1.5;
   text-align: center;
 }
 
 .fieldCard > .inlineLink {
-  margin-top: auto;
-  padding-top: 19px;
+  margin-top: 16px;
+  padding-top: 0;
+  color: #ff9e58;
+  font-size: 0.82rem;
+  font-weight: 750;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fieldCard > .inlineLink:hover {
+  color: #ffffff;
 }
 
 .marginSection {
-  padding: 0 0 clamp(90px, 10vw, 145px);
-  background: var(--hiq-paper);
+  padding: 0 0 clamp(60px, 7vw, 100px);
+  background:
+    radial-gradient(circle at 82% 82%, rgba(104, 224, 189, 0.08), transparent 45%),
+    linear-gradient(150deg, #06141c 0%, #081a24 100%);
   color: #fff;
 }
 

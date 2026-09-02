@@ -20,6 +20,7 @@ import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import IntegrationTrustStrip from '@/components/marketing/IntegrationTrustStrip';
 
+// Dynamic imports for flagship components
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: false });
 const HighTechShowcase = dynamic(() => import('@/components/marketing/HighTechShowcase'), {
   ssr: false,

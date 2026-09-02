@@ -226,16 +226,12 @@ export default function WebsiteMediaStudioShowcase() {
         <div className={styles.studioHeader}>
           <div className={styles.studioHeaderTop}>
             <span className={styles.badge}>🎬 Built-in Video Studio</span>
-            <span style={{ fontSize: '0.8rem', color: '#64748b', fontFamily: 'var(--font-mono)' }}>
-              Up to 4 video bands per page
-            </span>
           </div>
           <h3 className={styles.studioTitle}>
-            Show your craftsmanship with six dedicated video layouts.
+            Show your craftsmanship with six video layouts.
           </h3>
           <p className={styles.studioSubtitle}>
-            Video builds instant trust with homeowners. Upload clips from your phone (MP4, MOV, WebM) or paste a YouTube
-            link. Switch between six layouts anytime—your footage and copy are preserved automatically.
+            Upload phone clips or link YouTube. Switch layouts anytime without losing your footage.
           </p>
         </div>
 
