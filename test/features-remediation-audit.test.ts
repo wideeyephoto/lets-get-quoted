@@ -14,6 +14,7 @@ describe('/features comprehensive audit & remediation verification', () => {
   const SIM = read('src/app/features/CinematicMessageSimulation.tsx');
   const THEME_CSS = read('src/app/features/features-theme.module.css');
   const SIM_CSS = read('src/app/features/cinematic-message-simulation.module.css');
+  const HIGH_TECH_CSS = read('src/components/marketing/high-tech-showcase.module.css');
   const SITEMAP = read('src/app/sitemap.ts');
 
   describe('1. Landmark semantics and copy defects', () => {
@@ -68,6 +69,28 @@ describe('/features comprehensive audit & remediation verification', () => {
       expect(THEME_CSS).toContain('.photoDemoTitle');
       expect(THEME_CSS).toContain('color: #f8fafc;');
       expect(THEME_CSS).toContain('color: #cbd5e1;');
+    });
+
+    it('keeps feature resets from overriding component CTA colors', () => {
+      expect(THEME_CSS).toContain(':where(.featuresTheme) :where(a)');
+      expect(THEME_CSS).not.toMatch(/\.featuresTheme a\s*\{/);
+      expect(HIGH_TECH_CSS).toMatch(
+        /\.primaryLink\s*\{[\s\S]*?background:\s*linear-gradient\([\s\S]*?color:\s*#1a0800;/,
+      );
+      expect(HIGH_TECH_CSS).toContain(
+        'transition: transform 0.2s ease, box-shadow 0.2s ease;',
+      );
+      expect(HIGH_TECH_CSS).toMatch(/\.primaryLink:hover\s*\{[\s\S]*?color:\s*#1a0800;/);
+    });
+
+    it('protects interactive demo colors from the shared flagship reset', () => {
+      expect(THEME_CSS).toMatch(
+        /\.featuresTheme \.routeSendOfferBtn\s*\{[\s\S]*?background:\s*linear-gradient\(135deg, #ffc44d, #ff7137\);[\s\S]*?color:\s*#07101a;/,
+      );
+      expect(THEME_CSS).toMatch(
+        /\.featuresTheme \.routeSendOfferBtn span\s*\{\s*color:\s*inherit;/,
+      );
+      expect(THEME_CSS).toMatch(/\.photoOverlayBadge small\s*\{\s*color:\s*#cbd5e1;/);
     });
   });
 

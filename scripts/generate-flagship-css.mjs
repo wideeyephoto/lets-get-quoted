@@ -7721,6 +7721,12 @@ const TWEAKS = `
   color: #f1f5f9;
 }
 
+/* The outer app themes redefine --paper and --ink. The skip link is painted
+   above every flagship surface, so keep its own high-contrast pair invariant. */
+.root :global(.skip-link) {
+  background: #fffdf8;
+  color: #07131d;
+}
 `;
 
 const HEADER = `/* GENERATED — do not edit. Run \`node scripts/generate-flagship-css.mjs\`.

@@ -156,7 +156,7 @@
 }
 
 /* Global Typography & Elements within .featuresTheme */
-.featuresTheme a {
+:where(.featuresTheme) :where(a) {
   color: inherit;
   text-decoration: none;
 }
@@ -3044,7 +3044,7 @@
 }
 
 .photoOverlayBadge small {
-  color: var(--muted);
+  color: #cbd5e1;
   font-size: 10px;
 }
 
@@ -3583,7 +3583,7 @@
   margin-top: 0.5rem;
 }
 
-.routeSendOfferBtn {
+.featuresTheme .routeSendOfferBtn {
   width: 100%;
   padding: 10px;
   background: linear-gradient(135deg, #ffc44d, #ff7137);
@@ -3596,7 +3596,11 @@
   transition: transform 0.2s ease;
 }
 
-.routeSendOfferBtn:hover {
+.featuresTheme .routeSendOfferBtn span {
+  color: inherit;
+}
+
+.featuresTheme .routeSendOfferBtn:hover {
   transform: translateY(-1px);
 }
 

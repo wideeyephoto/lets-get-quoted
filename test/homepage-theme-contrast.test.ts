@@ -56,6 +56,14 @@ describe('homepage theme contrast isolation', () => {
     }
   });
 
+  it('keeps the keyboard skip link readable when outer themes replace flagship tokens', () => {
+    for (const css of [flagship, generator]) {
+      expect(css).toMatch(
+        /\.root :global\(\.skip-link\)\s*\{[\s\S]*?background:\s*#fffdf8;[\s\S]*?color:\s*#07131d;/,
+      );
+    }
+  });
+
   it('uses readable foregrounds for solid homepage action buttons', () => {
     expect(highTechShowcase).toMatch(/\.chatSendBtn\s*\{[\s\S]*?background:\s*#0369a1;[\s\S]*?color:\s*#(?:fff|ffffff);/);
     expect(highTechShowcase).toMatch(/\.chatSendBtn:hover\s*\{[\s\S]*?background:\s*#075985;/);
