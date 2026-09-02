@@ -27,6 +27,8 @@ export default function AssistantWidget() {
     companionTrade,
     companion,
     openCompanionPicker,
+    isFloatingEnabled,
+    setFloatingEnabled,
   } = useAssistant();
   const pathname = usePathname() || '';
 
@@ -109,6 +111,55 @@ export default function AssistantWidget() {
   const [isLoading, setIsLoading] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Show full Copilot button on first visit/login, then minimal avatar badge on all subsequent pages
+  const [isMinimal, setIsMinimal] = useState(true);
+  const initialPathRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    try {
+      const seen = localStorage.getItem('copilot_full_pill_seen');
+      if (!seen) {
+        setIsMinimal(false);
+      }
+    } catch {
+      // ignore storage access error
+    }
+  }, []);
+
+  useEffect(() => {
+    if (initialPathRef.current === null) {
+      initialPathRef.current = pathname;
+    } else if (initialPathRef.current !== pathname) {
+      try {
+        localStorage.setItem('copilot_full_pill_seen', '1');
+      } catch {}
+      setIsMinimal(true);
+    }
+  }, [pathname]);
+
+  const [hideToastVisible, setHideToastVisible] = useState(false);
+
+  useEffect(() => {
+    if (hideToastVisible) {
+      const timer = setTimeout(() => setHideToastVisible(false), 6000);
+      return () => clearTimeout(timer);
+    }
+  }, [hideToastVisible]);
+
+  const handleHideFloating = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setFloatingEnabled(false);
+    setHideToastVisible(true);
+  };
+
+  const handleTriggerClick = () => {
+    try {
+      localStorage.setItem('copilot_full_pill_seen', '1');
+    } catch {}
+    setIsMinimal(true);
+    toggleAssistant();
+  };
 
   // Update initial welcome message if companion changes and chat is untouched
   useEffect(() => {
@@ -329,14 +380,40 @@ export default function AssistantWidget() {
 
   return (
     <>
+      {/* Toast notification when user hides the floating button */}
+      {hideToastVisible && !isOpen ? (
+        <div className={styles.hideToast} role="status">
+          <span>Floating Copilot hidden. Press <strong>⌘J</strong> or <strong>Ctrl+J</strong> to open.</span>
+          <button
+            type="button"
+            className={styles.undoBtn}
+            onClick={() => {
+              setFloatingEnabled(true);
+              setHideToastVisible(false);
+            }}
+          >
+            Undo
+          </button>
+          <button
+            type="button"
+            className={styles.closeToastBtn}
+            onClick={() => setHideToastVisible(false)}
+            aria-label="Dismiss message"
+          >
+            ✕
+          </button>
+        </div>
+      ) : null}
+
       {/* Compact Floating Trigger (Zero Clutter) */}
-      {!isOpen ? (
+      {!isOpen && isFloatingEnabled ? (
         <div className={styles.triggerWrapper}>
           <button
             type="button"
-            className={styles.floatingTrigger}
-            onClick={toggleAssistant}
-            aria-label={`Open ${companion.name} Copilot`}
+            className={`${styles.floatingTrigger}${isMinimal ? ` ${styles.isMinimal}` : ''}`}
+            onClick={handleTriggerClick}
+            aria-label={`Open ${companion.name} Copilot (⌘J)`}
+            title={`Ask ${companion.name} (AI Copilot) — ⌘J / Ctrl+J`}
           >
             <div className={styles.triggerAvatarWrap}>
               <SparkyAvatar
@@ -352,6 +429,15 @@ export default function AssistantWidget() {
             <div className={styles.triggerInfo}>
               <span className={styles.triggerName}>Copilot</span>
               <span className={styles.triggerBadge}>{companion.name}</span>
+              <button
+                type="button"
+                className={styles.triggerHideBtn}
+                onClick={handleHideFloating}
+                title="Hide floating Copilot (press ⌘J anytime)"
+                aria-label="Hide floating Copilot button"
+              >
+                ✕
+              </button>
             </div>
           </button>
         </div>

@@ -18,12 +18,15 @@ interface AssistantContextType {
   isCompanionPickerOpen: boolean;
   openCompanionPicker: () => void;
   closeCompanionPicker: () => void;
+  isFloatingEnabled: boolean;
+  setFloatingEnabled: (enabled: boolean) => void;
 }
 
 const AssistantContext = createContext<AssistantContextType | null>(null);
 
 const STORAGE_KEY_ID = 'copilot_companion_id';
 const STORAGE_KEY_TRADE = 'copilot_companion_trade';
+const STORAGE_KEY_FLOATING = 'copilot_floating_enabled';
 
 export function AssistantProvider({ children }: { children: ReactNode }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -31,6 +34,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
   const [companionId, setCompanionIdState] = useState<CompanionId>(DEFAULT_COMPANION_ID);
   const [companionTrade, setCompanionTradeState] = useState<string>('general');
   const [isCompanionPickerOpen, setIsCompanionPickerOpen] = useState(false);
+  const [isFloatingEnabled, setIsFloatingEnabledState] = useState(true);
 
   // Initialize from localStorage on mount and listen to cross-tab updates
   useEffect(() => {
@@ -38,6 +42,7 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
       try {
         const savedId = localStorage.getItem(STORAGE_KEY_ID) as CompanionId | null;
         const savedTrade = localStorage.getItem(STORAGE_KEY_TRADE);
+        const savedFloating = localStorage.getItem(STORAGE_KEY_FLOATING);
         if (savedId && COMPANIONS.some((c) => c.id === savedId)) {
           setCompanionIdState(savedId);
         } else {
@@ -45,6 +50,9 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         }
         if (savedTrade) {
           setCompanionTradeState(savedTrade);
+        }
+        if (savedFloating !== null) {
+          setIsFloatingEnabledState(savedFloating !== '0' && savedFloating !== 'false');
         }
       } catch {
         // ignore storage access errors
@@ -54,13 +62,20 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     syncFromStorage();
 
     const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY_ID || e.key === STORAGE_KEY_TRADE) {
+      if (e.key === STORAGE_KEY_ID || e.key === STORAGE_KEY_TRADE || e.key === STORAGE_KEY_FLOATING) {
         syncFromStorage();
       }
     };
 
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  const setFloatingEnabled = useCallback((enabled: boolean) => {
+    setIsFloatingEnabledState(enabled);
+    try {
+      localStorage.setItem(STORAGE_KEY_FLOATING, enabled ? '1' : '0');
+    } catch {}
   }, []);
 
   const setCompanion = useCallback((id: CompanionId, trade?: string) => {
@@ -109,10 +124,11 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
     return getCompanion(companionId, companionTrade);
   }, [companionId, companionTrade]);
 
-  // Global keyboard shortcut: Cmd+K / Ctrl+K to toggle, Escape to close
+  // Global keyboard shortcut: Cmd+J / Ctrl+J or Cmd+K / Ctrl+K to toggle, Escape to close
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && (key === 'j' || key === 'k')) {
         e.preventDefault();
         setIsOpen((prev) => !prev);
       } else if (e.key === 'Escape') {
@@ -144,6 +160,8 @@ export function AssistantProvider({ children }: { children: ReactNode }) {
         isCompanionPickerOpen,
         openCompanionPicker,
         closeCompanionPicker,
+        isFloatingEnabled,
+        setFloatingEnabled,
       }}
     >
       {children}

@@ -15,6 +15,7 @@ import GoogleLocalServicesSection from './GoogleLocalServicesSection';
 import { googleLsaConnectionStatus } from '@/lib/google-lsa/connection';
 import SaveButton from '@/components/save-button';
 import ThemeToggle from '@/components/theme-toggle';
+import CopilotSettingsSection from './CopilotSettingsSection';
 import AddressAutocomplete from '@/components/address-autocomplete';
 import TradeAutocomplete from '@/components/trade-autocomplete';
 import ExportData from './ExportData';
@@ -484,7 +485,7 @@ export default async function SettingsPage({
           {
             id: 'account',
             label: 'Login & security',
-            anchors: ['appearance', 'support', 'danger-zone', 'account'],
+            anchors: ['appearance', 'copilot', 'support', 'danger-zone', 'account'],
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -518,6 +519,8 @@ export default async function SettingsPage({
                   </p>
                   <ThemeToggle />
                 </section>
+
+                <CopilotSettingsSection />
 
                 <section className="panel workspace-section-card" id="support">
                   <div className="section-heading workspace-section-heading compact-heading">
