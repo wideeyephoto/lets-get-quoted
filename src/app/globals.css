@@ -67324,29 +67324,29 @@ a.sms-cat-switch:focus-visible {
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.08), 0 2px 6px -1px rgba(0, 0, 0, 0.05);
 }
 
-:root[data-theme='sunlight'] h1,
-:root[data-theme='sunlight'] h2,
-:root[data-theme='sunlight'] h3,
-:root[data-theme='sunlight'] h4,
-:root[data-theme='sunlight'] .section-heading h2,
-:root[data-theme='sunlight'] .workspace-section-heading h2,
-:root[data-theme='sunlight'] .compact-heading h2,
-:root[data-theme='sunlight'] .settings-heading h1 {
+:root[data-theme='sunlight'] .chrome-shell h1,
+:root[data-theme='sunlight'] .chrome-shell h2,
+:root[data-theme='sunlight'] .chrome-shell h3,
+:root[data-theme='sunlight'] .chrome-shell h4,
+:root[data-theme='sunlight'] .chrome-shell .section-heading h2,
+:root[data-theme='sunlight'] .chrome-shell .workspace-section-heading h2,
+:root[data-theme='sunlight'] .chrome-shell .compact-heading h2,
+:root[data-theme='sunlight'] .chrome-shell .settings-heading h1 {
   color: #090d16;
   font-weight: 750;
 }
 
-:root[data-theme='sunlight'] p,
-:root[data-theme='sunlight'] .workspace-card-copy,
-:root[data-theme='sunlight'] .section-desc,
-:root[data-theme='sunlight'] .settings-desc,
-:root[data-theme='sunlight'] .card-desc {
+:root[data-theme='sunlight'] .chrome-shell p,
+:root[data-theme='sunlight'] .chrome-shell .workspace-card-copy,
+:root[data-theme='sunlight'] .chrome-shell .section-desc,
+:root[data-theme='sunlight'] .chrome-shell .settings-desc,
+:root[data-theme='sunlight'] .chrome-shell .card-desc {
   color: #090d16;
 }
 
-:root[data-theme='sunlight'] .eyebrow,
-:root[data-theme='sunlight'] .section-eyebrow,
-:root[data-theme='sunlight'] .compact-heading .eyebrow {
+:root[data-theme='sunlight'] .chrome-shell .eyebrow,
+:root[data-theme='sunlight'] .chrome-shell .section-eyebrow,
+:root[data-theme='sunlight'] .chrome-shell .compact-heading .eyebrow {
   color: #9a3412;
   font-weight: 800;
   letter-spacing: 0.07em;
@@ -69107,7 +69107,7 @@ a.sms-cat-switch:focus-visible {
 
 :root[data-theme='light'] [class*='feedCardTitle'],
 :root[data-theme='light'] [class*='receiptTitle'],
-:root[data-theme='light'] [class*='title'] {
+:root[data-theme='light'] .chrome-shell-sidenav [class*='title'] {
   color: #090d16 !important;
   font-weight: 850 !important;
 }
@@ -70590,5 +70590,4 @@ a.sms-cat-switch:focus-visible {
 .msg-setup-copilot-link:hover {
   color: #ffffff;
 }
-
 

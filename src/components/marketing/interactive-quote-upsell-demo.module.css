@@ -136,7 +136,7 @@
   height: 32px;
   border-radius: 8px;
   background: var(--orange, #ff6a24);
-  color: #ffffff;
+  color: #3d1200;
   display: grid;
   place-items: center;
   font-weight: 800;
@@ -464,9 +464,9 @@
   border: none;
   border-radius: 10px;
   padding: 10px 20px;
-  color: #ffffff;
+  color: #3d1200;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 800;
   cursor: pointer;
   display: flex;
   align-items: center;

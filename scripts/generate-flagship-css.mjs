@@ -110,7 +110,29 @@ function transform(block) {
     .join('\n\n');
 }
 
-const scoped = transform(css);
+function lowerResetSpecificity(input) {
+  const replacements = [
+    [
+      '.root :global(button),\n.root :global(a) { font: inherit; }',
+      '.root :where(button, a) { font: inherit; }',
+    ],
+    [
+      '.root :global(a) { color: inherit; text-decoration: none; }',
+      '.root :where(a) { color: inherit; text-decoration: none; }',
+    ],
+    [
+      '.root :global(button) { color: inherit; }',
+      '.root :where(button) { color: inherit; }',
+    ],
+  ];
+
+  return replacements.reduce((output, [from, to]) => {
+    if (!output.includes(from)) throw new Error(`Expected source reset was not found: ${from}`);
+    return output.replace(from, to);
+  }, input);
+}
+
+const scoped = lowerResetSpecificity(transform(css));
 
 const PREFLIGHT = `
 /* ---------------------------------------------------------------------------
@@ -120,20 +142,20 @@ const PREFLIGHT = `
    rules apply inside the scope — globals.css sets \`h1 { max-width: 11ch }\`,
    which alone collapses every hero headline into a narrow tower.
    --------------------------------------------------------------------------- */
-.root h1, .root h2, .root h3, .root h4, .root h5, .root h6 {
+.root :where(h1, h2, h3, h4, h5, h6) {
   margin: 0; max-width: none; font-size: inherit; font-weight: inherit;
   line-height: inherit; letter-spacing: normal; font-family: inherit; color: inherit;
 }
-.root p, .root figure, .root blockquote, .root dl, .root dd { margin: 0; }
-.root ul, .root ol { margin: 0; padding: 0; list-style: none; }
-.root button, .root input, .root select, .root textarea { font: inherit; color: inherit; margin: 0; }
-.root button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
-.root img, .root svg, .root video, .root canvas { display: block; max-width: 100%; height: auto; }
-.root a { color: inherit; text-decoration: none; }
-.root small { font-size: inherit; }
-.root b, .root strong { font-weight: inherit; }
-.root i, .root em { font-style: normal; }
-.root table { border-collapse: collapse; }
+.root :where(p, figure, blockquote, dl, dd) { margin: 0; }
+.root :where(ul, ol) { margin: 0; padding: 0; list-style: none; }
+.root :where(button, input, select, textarea) { font: inherit; color: inherit; margin: 0; }
+.root :where(button) { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+.root :where(img, svg, video, canvas) { display: block; max-width: 100%; height: auto; }
+.root :where(a) { color: inherit; text-decoration: none; }
+.root :where(small) { font-size: inherit; }
+.root :where(b, strong) { font-weight: inherit; }
+.root :where(i, em) { font-style: normal; }
+.root :where(table) { border-collapse: collapse; }
 `;
 
 const TWEAKS = `
@@ -6325,6 +6347,20 @@ const TWEAKS = `
   color: #0f172a;
 }
 
+:root[data-theme='light'] .root :global(.pricing-copy > .eyebrow) {
+  color: #c9430a;
+}
+
+:root[data-theme='light'] .root :global(.pricing-copy > p:not(.eyebrow)),
+:root[data-theme='light'] .root :global(.pricing-fineprint) {
+  color: #475569;
+}
+
+:root[data-theme='light'] .root :global(.pricing-points),
+:root[data-theme='light'] .root :global(.pricing-fineprint b) {
+  color: #334155;
+}
+
 :root[data-theme='light'] .root :global(.feature-step h3) {
   color: #0f172a;
 }
@@ -6438,6 +6474,16 @@ const TWEAKS = `
   --muted: #94a3b8;
   background: var(--ink);
   color: #f1f5f9;
+}
+
+:root[data-theme='dim'] .root :global(.trust-strip span:hover),
+:root[data-theme='dim'] .root :global(.trust-strip span:focus-within) {
+  color: #f1f5f9;
+}
+
+:root[data-theme='dim'] .root :global(.trust-strip span:hover b),
+:root[data-theme='dim'] .root :global(.trust-strip span:focus-within b) {
+  color: #ff9564;
 }
 
 :root[data-theme='dim'] .root :global(.site-header) {

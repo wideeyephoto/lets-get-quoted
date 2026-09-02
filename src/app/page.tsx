@@ -66,8 +66,10 @@ export default async function HomePage() {
   return (
     <>
       <script
+        id="homepage-structured-data"
         type="application/ld+json"
         nonce={await cspNonce()}
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <FlagshipHome />

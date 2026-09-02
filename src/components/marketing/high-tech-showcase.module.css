@@ -638,7 +638,7 @@
 }
 
 .chatSendBtn {
-  background: #0284c7;
+  background: #0369a1;
   border: none;
   color: #ffffff;
   font-size: 0.78rem;
@@ -651,7 +651,7 @@
 }
 
 .chatSendBtn:hover {
-  background: #0369a1;
+  background: #075985;
 }
 
 .quickPromptPills {
