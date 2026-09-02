@@ -349,9 +349,6 @@ export default function FeaturesEnergyFlowHero() {
             <span className={styles.liveDot} aria-hidden="true" />
             ONE JOB RECORD · EVERY STEP CONNECTED
           </span>
-          <span className={styles.flowHeaderHeading}>
-            Website Lead → Paid Job
-          </span>
           <span className={styles.flowReplacedToolsTag}>
             {activePillar.replacesTool}
           </span>
@@ -376,14 +373,12 @@ export default function FeaturesEnergyFlowHero() {
                 }`}
                 onClick={() => {
                   setActiveIdx(idx);
-                  setProgress(0);
                 }}
                 role="button"
                 tabIndex={0}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     setActiveIdx(idx);
-                    setProgress(0);
                   }
                 }}
                 aria-label={`Feature ${pillar.number}: ${pillar.name}`}
@@ -608,29 +603,6 @@ export default function FeaturesEnergyFlowHero() {
                 {activePillar.exploreLabel} <span aria-hidden="true">→</span>
               </Link>
             </div>
-          </div>
-
-          <div
-            className={styles.stepPillSelector}
-            role="tablist"
-            aria-label="Job stage selection"
-          >
-            {FEATURE_PILLARS.map((_, dotIdx) => (
-              <button
-                key={dotIdx}
-                type="button"
-                className={`${styles.stepPillBtn} ${
-                  activeIdx === dotIdx ? styles.stepPillBtnActive : ""
-                }`}
-                onClick={() => {
-                  setActiveIdx(dotIdx);
-                  setProgress(0);
-                }}
-                aria-label={`Select stage ${dotIdx + 1}: ${FEATURE_PILLARS[dotIdx].name}`}
-                aria-selected={activeIdx === dotIdx}
-                role="tab"
-              />
-            ))}
           </div>
         </div>
       </div>
