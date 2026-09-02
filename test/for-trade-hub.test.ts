@@ -36,7 +36,14 @@ describe('the trade directory links and categorization', () => {
 
   it('renders links to trade detail routes', () => {
     expect(EXP).toContain('href={`/for/${trade.slug}`}');
-    expect(EXP).toContain('seasonalTrades().slice(0, 5).map(');
+    expect(EXP).toContain('visibleTrades.map(');
+    expect(EXP).toContain('directoryMatches.slice(0, 4)');
+  });
+
+  it('provides category filter tabs for all trade categories', () => {
+    expect(EXP).toContain('TRADE_CATEGORIES.map(');
+    expect(EXP).toContain('All trades');
+    expect(EXP).toContain('showAllTrades &&');
   });
 });
 
@@ -60,6 +67,8 @@ describe('/for SEO and metadata surface', () => {
     expect(EXP).toContain('<h2 id="benefits-title"');
     expect(EXP).toContain('<h2 id="smart-quotes-title"');
     expect(EXP).toContain('<h2 id="seasonal-title"');
+    expect(EXP).toContain('<h2 id="directory-title"');
+    expect(EXP).toContain('<h2 id="multi-title"');
     expect(EXP).toContain('<h2 id="faq-title"');
     expect(EXP).toContain('<h2 id="final-title"');
   });
