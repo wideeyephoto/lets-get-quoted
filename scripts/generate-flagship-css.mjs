@@ -2360,17 +2360,22 @@ const TWEAKS = `
   /* 44px of target, from the padding rather than from a min-height, so the
      text stays vertically centred at every font size. */
   padding: 12px 17px;
-  border: 1px solid rgba(164, 153, 137, 0.5);
+  border: 1px solid rgba(150, 138, 122, 0.55);
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.42);
-  color: #4a5158;
+  background: rgba(255, 255, 255, 0.65);
+  color: #334155;
   font-size: 13px;
   font-weight: 650;
   white-space: nowrap;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
 }
-.root :global(.suite-tabs button:hover) { background: var(--paper); color: var(--ink); }
+.root :global(.suite-tabs button:hover) {
+  background: #ffffff !important;
+  color: #07131d !important;
+  border-color: rgba(130, 115, 96, 0.75) !important;
+  box-shadow: 0 4px 14px rgba(18, 38, 48, 0.08) !important;
+}
 .root :global(.suite-tabs button.is-on) {
   border-color: var(--orange);
   background: rgba(255, 106, 36, 0.12);
