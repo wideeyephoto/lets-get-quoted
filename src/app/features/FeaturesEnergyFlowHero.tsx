@@ -572,7 +572,6 @@ export default function FeaturesEnergyFlowHero() {
                 <span>{activePillar.icon}</span>
                 <span>{activePillar.name}</span>
               </div>
-              <span className={styles.cardBadge}>Stage {activePillar.number}</span>
             </div>
 
             <div className={styles.microPreviewContainer}>
