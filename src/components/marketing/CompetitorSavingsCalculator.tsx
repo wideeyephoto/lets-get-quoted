@@ -19,18 +19,32 @@ const TEAM_SIZES: readonly TeamSizeOption[] = [
   { id: 'large', label: '15 Users', users: 15, sub: 'Established fleet' },
 ];
 
+export type CompetitorOption = 'Jobber' | 'Housecall Pro' | 'ServiceTitan' | 'Angi Leads' | 'Thumbtack';
+
+const COMPETITOR_OPTIONS: readonly CompetitorOption[] = [
+  'Jobber',
+  'Housecall Pro',
+  'ServiceTitan',
+  'Angi Leads',
+  'Thumbtack',
+];
+
 export type CompetitorSavingsCalculatorProps = {
   competitorName?: string;
+  allowCompetitorSwitch?: boolean;
   className?: string;
 };
 
 export default function CompetitorSavingsCalculator({
-  competitorName = 'Jobber',
+  competitorName: initialCompetitorName = 'Jobber',
+  allowCompetitorSwitch = false,
   className,
 }: CompetitorSavingsCalculatorProps) {
+  const [activeCompetitor, setActiveCompetitor] = useState<string>(initialCompetitorName);
   const [selectedTeam, setSelectedTeam] = useState<TeamSizeOption['id']>('small');
   const [includeWebsiteCost, setIncludeWebsiteCost] = useState(true);
 
+  const competitorName = allowCompetitorSwitch ? activeCompetitor : initialCompetitorName;
   const team = TEAM_SIZES.find((t) => t.id === selectedTeam) ?? TEAM_SIZES[1];
 
   const lowerName = competitorName.toLowerCase();
@@ -110,6 +124,41 @@ export default function CompetitorSavingsCalculator({
         </div>
 
         <div className={styles.calculatorCard}>
+          {allowCompetitorSwitch && (
+            <div style={{ padding: '18px 28px', borderBottom: '1px solid rgba(174, 199, 211, 0.15)', background: 'rgba(6, 18, 27, 0.85)' }}>
+              <label style={{ display: 'block', fontSize: '11.5px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.8px', color: '#50e3bd', marginBottom: '10px' }}>
+                Compare Against Your Current Platform:
+              </label>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }} role="tablist" aria-label="Select competitor to compare">
+                {COMPETITOR_OPTIONS.map((opt) => {
+                  const isActive = opt === activeCompetitor;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveCompetitor(opt)}
+                      style={{
+                        padding: '8px 16px',
+                        borderRadius: '999px',
+                        fontSize: '13px',
+                        fontWeight: 750,
+                        cursor: 'pointer',
+                        border: isActive ? '1px solid #50e3bd' : '1px solid rgba(174, 199, 211, 0.2)',
+                        background: isActive ? '#50e3bd' : 'rgba(16, 36, 48, 0.7)',
+                        color: isActive ? '#06131f' : '#c2d4df',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Controls Bar */}
           <div className={styles.controlsGrid}>
             <div className={styles.controlGroup}>

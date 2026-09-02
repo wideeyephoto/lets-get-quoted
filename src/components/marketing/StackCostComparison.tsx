@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import styles from './stack-cost-comparison.module.css';
 
 type StackItem = {
@@ -13,6 +16,14 @@ const LGQ_STACK: readonly StackItem[] = [
   { label: '2-Way SMS & Dedicated Business Line', cost: 'INCLUDED', note: 'Integrated customer chat feeds' },
   { label: '24/7 AI Smart Intake & Scorer', cost: 'INCLUDED', note: 'Instant scoping & hot lead triage' },
 ];
+
+const COMPETITOR_OPTIONS = [
+  'Jobber',
+  'Housecall Pro',
+  'ServiceTitan',
+  'Angi Leads',
+  'Thumbtack',
+] as const;
 
 function getCompetitorStack(name: string): { items: readonly StackItem[]; totalMonthly: string; totalAnnual: string } {
   const lower = name.toLowerCase();
@@ -72,13 +83,17 @@ function getCompetitorStack(name: string): { items: readonly StackItem[]; totalM
 
 export type StackCostComparisonProps = {
   competitorName?: string;
+  allowCompetitorSwitch?: boolean;
   className?: string;
 };
 
 export default function StackCostComparison({
-  competitorName = 'Jobber',
+  competitorName: initialCompetitorName = 'Jobber',
+  allowCompetitorSwitch = false,
   className,
 }: StackCostComparisonProps) {
+  const [activeCompetitor, setActiveCompetitor] = useState<string>(initialCompetitorName);
+  const competitorName = allowCompetitorSwitch ? activeCompetitor : initialCompetitorName;
   const competitorStack = getCompetitorStack(competitorName);
 
   return (
@@ -90,9 +105,39 @@ export default function StackCostComparison({
             The Fragmented {competitorName} Stack vs. <em>The Unified Platform</em>
           </h2>
           <p className={styles.subtitle}>
-            Most contractors using {competitorName} pay for multiple separate tools because {competitorName} doesn&apos;t include a
-            website, AI intake, or full review routing. Here is what you actually pay:
+            Most contractors pay for 4 to 6 separate subscriptions because legacy platforms don&apos;t include a
+            website, AI intake, or review routing. Here is what you actually pay:
           </p>
+
+          {allowCompetitorSwitch && (
+            <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '8px' }} role="tablist" aria-label="Select stack competitor">
+              {COMPETITOR_OPTIONS.map((opt) => {
+                const isActive = opt === activeCompetitor;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => setActiveCompetitor(opt)}
+                    style={{
+                      padding: '7px 16px',
+                      borderRadius: '999px',
+                      fontSize: '13px',
+                      fontWeight: 750,
+                      cursor: 'pointer',
+                      border: isActive ? '1px solid #ff6a24' : '1px solid rgba(174, 199, 211, 0.2)',
+                      background: isActive ? '#ff6a24' : 'rgba(16, 36, 48, 0.7)',
+                      color: isActive ? '#081722' : '#c2d4df',
+                      transition: 'all 0.2s ease',
+                    }}
+                  >
+                    {opt} Stack
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         <div className={styles.grid}>

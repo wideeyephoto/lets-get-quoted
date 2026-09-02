@@ -1204,3 +1204,1003 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
     ],
   },
 };
+
+export type PlatformKey = 'lgq' | 'jobber' | 'housecall' | 'servicetitan' | 'angi' | 'thumbtack';
+
+export type PlatformInfo = {
+  key: PlatformKey;
+  name: string;
+  badge: string;
+  summaryPrice: string;
+  isFlagship?: boolean;
+  slug?: string;
+};
+
+export type MatrixCellStatus = 'positive' | 'neutral' | 'negative';
+
+export type MatrixCell = {
+  value: string;
+  subtext?: string;
+  status: MatrixCellStatus;
+  highlight?: boolean;
+};
+
+export type MatrixRow = {
+  id: string;
+  feature: string;
+  category: string;
+  description?: string;
+  cells: Record<PlatformKey, MatrixCell>;
+};
+
+export type MatrixCategory = {
+  id: string;
+  label: string;
+  icon: string;
+  description: string;
+};
+
+export const COMPARE_PLATFORMS: readonly PlatformInfo[] = [
+  {
+    key: 'lgq',
+    name: "Let's Get Quoted",
+    badge: 'Built for Profit',
+    summaryPrice: 'From $0/mo',
+    isFlagship: true,
+  },
+  {
+    key: 'jobber',
+    name: 'Jobber',
+    badge: 'Legacy SaaS',
+    summaryPrice: '$49–$349/mo',
+    slug: 'jobber-alternative',
+  },
+  {
+    key: 'housecall',
+    name: 'Housecall Pro',
+    badge: 'SaaS + Add-Ons',
+    summaryPrice: '$65–$299/mo',
+    slug: 'housecall-pro-alternative',
+  },
+  {
+    key: 'servicetitan',
+    name: 'ServiceTitan',
+    badge: 'Enterprise Lock-In',
+    summaryPrice: '$398–$1k+/mo/tech',
+    slug: 'servicetitan-alternative',
+  },
+  {
+    key: 'angi',
+    name: 'Angi Leads',
+    badge: 'Shared Lead Broker',
+    summaryPrice: '$500–$2.5k/mo',
+    slug: 'angi-leads-alternative',
+  },
+  {
+    key: 'thumbtack',
+    name: 'Thumbtack',
+    badge: 'Auto-Billed Directory',
+    summaryPrice: '$300–$2k/mo',
+    slug: 'thumbtack-alternative',
+  },
+];
+
+export const MATRIX_CATEGORIES: readonly MatrixCategory[] = [
+  {
+    id: 'all',
+    label: 'All Features',
+    icon: '✦',
+    description: 'Complete side-by-side breakdown across all 22 criteria',
+  },
+  {
+    id: 'pricing',
+    label: 'Pricing & Overhead',
+    icon: '💳',
+    description: 'Subscriptions, slow season safety, setup fees, and user penalties',
+  },
+  {
+    id: 'marketing',
+    label: 'Website & Lead Engine',
+    icon: '🌐',
+    description: 'Custom websites, lead exclusivity, cost per lead, and reviews',
+  },
+  {
+    id: 'ai_dispatch',
+    label: 'AI Intake & Dispatch',
+    icon: '🤖',
+    description: '24/7 AI scoping, HOT lead triage, and route-aware Quick Stops',
+  },
+  {
+    id: 'operations',
+    label: 'Quotes & Field Crew',
+    icon: '📋',
+    description: 'Good/Better/Best tiers, e-signatures, texting, and mobile job feeds',
+  },
+  {
+    id: 'payments',
+    label: 'Payments & QuickBooks',
+    icon: '💰',
+    description: 'Stripe payouts, Apple/Google Pay, ACH, and accounting 2-way sync',
+  },
+];
+
+export const ALL_SERVICES_MATRIX: readonly MatrixRow[] = [
+  // ----------------------------------------------------
+  // Category 1: Pricing & Overhead Economics
+  // ----------------------------------------------------
+  {
+    id: 'starting-price',
+    category: 'pricing',
+    feature: 'Entry / Base Monthly Subscription',
+    description: 'Fixed monthly fee required just to keep your software running',
+    cells: {
+      lgq: {
+        value: '$0 / month (Flex)',
+        subtext: 'Pay only 1.25% fee when you get paid',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: '$49 – $349 / mo',
+        subtext: 'Recurring bill regardless of volume',
+        status: 'negative',
+      },
+      housecall: {
+        value: '$65 – $299 / mo',
+        subtext: 'Base tier before add-on modules',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: '$398 – $1,000+ / mo',
+        subtext: 'Billed per technician license',
+        status: 'negative',
+      },
+      angi: {
+        value: '$500 – $2,500 / mo',
+        subtext: 'Required monthly lead retainers',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: '$300 – $2,000 / mo',
+        subtext: 'Auto-reloaded monthly lead spend',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'slow-season',
+    category: 'pricing',
+    feature: 'Slow Season / Weather Down-Time',
+    description: 'Software cost when work slows down during winter or rain delays',
+    cells: {
+      lgq: {
+        value: '$0 Software Bill',
+        subtext: 'Zero fees on Flex when zero jobs run',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Full Monthly Bill',
+        subtext: 'Paid every 30 days regardless',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Full Monthly Bill',
+        subtext: 'Paid every 30 days regardless',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Full Contract Bill',
+        subtext: 'Locked in throughout slow months',
+        status: 'negative',
+      },
+      angi: {
+        value: 'Full Retainer Bill',
+        subtext: 'Pause penalties or lost credits',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Auto-Reload Charged',
+        subtext: 'Credit card auto-billed',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'setup-fees',
+    category: 'pricing',
+    feature: 'Setup & Implementation Fees',
+    description: 'Upfront onboarding, data migration, or system training costs',
+    cells: {
+      lgq: {
+        value: '$0 Setup Fee',
+        subtext: 'Self-serve live in 15 minutes',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: '$0 Setup Fee',
+        subtext: 'Self-serve onboarding',
+        status: 'neutral',
+      },
+      housecall: {
+        value: '$0 – $299',
+        subtext: 'Optional onboarding packages',
+        status: 'neutral',
+      },
+      servicetitan: {
+        value: '$2,000 – $5,000+',
+        subtext: 'Mandatory implementation fee',
+        status: 'negative',
+      },
+      angi: {
+        value: '$0 – $300',
+        subtext: 'Annual business membership fee',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: '$0 Setup',
+        subtext: 'Self-serve profile creation',
+        status: 'neutral',
+      },
+    },
+  },
+  {
+    id: 'contracts',
+    category: 'pricing',
+    feature: 'Contracts & Cancellation Lock-In',
+    description: 'Commitment terms and cancellation penalty policies',
+    cells: {
+      lgq: {
+        value: 'No Contracts',
+        subtext: 'Month-to-month · Cancel anytime',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Month or Annual',
+        subtext: 'Discounts tied to 12mo lock-in',
+        status: 'neutral',
+      },
+      housecall: {
+        value: 'Month or Annual',
+        subtext: 'Discounts tied to 12mo lock-in',
+        status: 'neutral',
+      },
+      servicetitan: {
+        value: '12 – 36 Months',
+        subtext: 'Strict locked enterprise contract',
+        status: 'negative',
+      },
+      angi: {
+        value: 'Annual Lock-In',
+        subtext: 'Auto-renewing lead contracts',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Ongoing Auto-Bill',
+        subtext: 'Direct Lead auto-reload',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'extra-seats',
+    category: 'pricing',
+    feature: 'Extra User / Seat Penalties',
+    description: 'Fees charged when adding office staff or field crew members',
+    cells: {
+      lgq: {
+        value: 'Generous Included Seats',
+        subtext: 'Crew mobile feeds with zero user penalties',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: '+$29 / mo / user',
+        subtext: 'Extra monthly fee per team member',
+        status: 'negative',
+      },
+      housecall: {
+        value: '+$35 / mo / user',
+        subtext: 'Extra monthly fee per team member',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: '+$398–$1,000 / tech',
+        subtext: 'Billed per technician license',
+        status: 'negative',
+      },
+      angi: {
+        value: 'N/A',
+        subtext: 'Directory broker only',
+        status: 'neutral',
+      },
+      thumbtack: {
+        value: 'N/A',
+        subtext: 'Directory broker only',
+        status: 'neutral',
+      },
+    },
+  },
+
+  // ----------------------------------------------------
+  // Category 2: Website, Marketing & Lead Engine
+  // ----------------------------------------------------
+  {
+    id: 'custom-website',
+    category: 'marketing',
+    feature: 'Custom Contractor Website',
+    description: 'High-converting standalone website with custom domain and SSL',
+    cells: {
+      lgq: {
+        value: 'Included Free',
+        subtext: '20+ trade themes, custom domain & SSL',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Not Included',
+        subtext: 'Must build on WordPress/Squarespace ($30–$60/mo)',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Paid Add-On ($99–$199/mo)',
+        subtext: 'Recurring monthly website fee',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Paid Agency Build',
+        subtext: 'High-cost enterprise web packages',
+        status: 'negative',
+      },
+      angi: {
+        value: 'Directory Profile Only',
+        subtext: 'No standalone brand website',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Directory Profile Only',
+        subtext: 'No standalone brand website',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'lead-exclusivity',
+    category: 'marketing',
+    feature: 'Lead Exclusivity & Ownership',
+    description: 'Whether homeowner inquiries are direct to you or shared with competitors',
+    cells: {
+      lgq: {
+        value: '100% Exclusive',
+        subtext: 'Direct inquiries you own forever',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Direct (Your Site)',
+        subtext: 'If you build an external website',
+        status: 'neutral',
+      },
+      housecall: {
+        value: 'Direct (Your Site)',
+        subtext: 'If you pay for website add-on',
+        status: 'neutral',
+      },
+      servicetitan: {
+        value: 'Direct (Your Site)',
+        subtext: 'On enterprise marketing tier',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'Shared (3–6 Pros)',
+        subtext: 'Sold simultaneously to competitors',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Marketplace Shared',
+        subtext: 'Homeowners compare 5+ pros in app',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'cost-per-lead',
+    category: 'marketing',
+    feature: 'Cost Per Inbound Lead',
+    description: 'Price paid to software or directory each time a customer reaches out',
+    cells: {
+      lgq: {
+        value: '$0 per lead',
+        subtext: 'Unlimited direct inquiries through your site',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: '$0 (Software only)',
+        subtext: 'Requires separate ad spend',
+        status: 'neutral',
+      },
+      housecall: {
+        value: '$0 (Software only)',
+        subtext: 'Requires separate ad spend',
+        status: 'neutral',
+      },
+      servicetitan: {
+        value: '$0 (Software only)',
+        subtext: 'Requires separate ad spend',
+        status: 'neutral',
+      },
+      angi: {
+        value: '$40 – $150 / lead',
+        subtext: 'Billed per shared inquiry click',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: '$25 – $120 / message',
+        subtext: 'Auto-charged per message received',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'estimate-calculator',
+    category: 'marketing',
+    feature: 'Interactive Estimate Calculator',
+    description: 'Instant pricing widget on your site that converts curious visitors',
+    cells: {
+      lgq: {
+        value: 'Included Live Widget',
+        subtext: 'Converts visitors into phone-verified leads',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Basic Form Only',
+        subtext: 'Standard static contact fields',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Basic Booking Form',
+        subtext: 'Standard booking widget',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Enterprise Widget',
+        subtext: 'Requires complex custom setup',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'Directory Form',
+        subtext: 'Routes homeowner into Angi broker queue',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'App Chat Box',
+        subtext: 'Locked inside Thumbtack inbox',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'google-reviews',
+    category: 'marketing',
+    feature: 'Google Reviews & Reputation Hub',
+    description: 'Post-job review routing directly to your Google Business Profile',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: 'Routes reviews directly to Google to boost SEO',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Grow Tier Only ($349/mo)',
+        subtext: 'Locked behind highest pricing tier',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Paid Add-On',
+        subtext: 'Extra monthly marketing module fee',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Marketing Pro ($250+/mo)',
+        subtext: 'High-cost enterprise module',
+        status: 'negative',
+      },
+      angi: {
+        value: 'Trapped on Angi',
+        subtext: 'Reviews boost Angi ranking, not your Google Profile',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Trapped on Thumbtack',
+        subtext: 'Reviews stay inside Thumbtack directory',
+        status: 'negative',
+      },
+    },
+  },
+
+  // ----------------------------------------------------
+  // Category 3: AI Intake & Dispatch Intelligence
+  // ----------------------------------------------------
+  {
+    id: 'ai-smart-intake',
+    category: 'ai_dispatch',
+    feature: '24/7 AI Smart Scoping & Intake',
+    description: 'Automated scoping questions, photo intake, and timeline analysis',
+    cells: {
+      lgq: {
+        value: 'Included 24/7',
+        subtext: 'Asks trade scoping questions & collects photos',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Static Forms Only',
+        subtext: 'No interactive scoping logic',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Static Forms Only',
+        subtext: 'Standard request forms',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Titan Intelligence ($$$)',
+        subtext: 'Enterprise AI add-on pricing',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'Generic Broker Form',
+        subtext: 'Standard marketplace dropdowns',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Generic Chat Form',
+        subtext: 'Basic questionnaire',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'lead-triage',
+    category: 'ai_dispatch',
+    feature: 'HOT / WARM / LOW Lead Triage',
+    description: 'Automated project fit calculation, ticket estimation, and SMS alert',
+    cells: {
+      lgq: {
+        value: 'Automated Scoring',
+        subtext: 'Scores fit & ticket value + sends instant SMS alert',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Manual Sorting',
+        subtext: 'Contractor manually reviews all inquiries',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Manual Sorting',
+        subtext: 'No automated urgency scoring',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Enterprise Rules',
+        subtext: 'Call center routing rules configuration',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'No Qualification',
+        subtext: 'You pay regardless of lead quality',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'No Qualification',
+        subtext: 'Charged for wrong numbers and tire-kickers',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'quick-stops',
+    category: 'ai_dispatch',
+    feature: 'Route-Aware Quick Stops Dispatch',
+    description: 'Monetizes driving downtime by matching nearby homeowners with calendar gaps',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: 'Fills afternoon route gaps with same-day booking',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Not Available',
+        subtext: 'Traditional calendar scheduling only',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Not Available',
+        subtext: 'Standard calendar views',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Basic GPS Routing',
+        subtext: 'Fleet tracking, no proactive gap filler',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'Not Available',
+        subtext: 'Lead broker only',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Not Available',
+        subtext: 'Directory only',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'phone-verification',
+    category: 'ai_dispatch',
+    feature: '1-Tap SMS Phone Verification',
+    description: 'Verifies homeowner phone numbers to stop fake inquiries and spam',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: 'Eliminates fake numbers and phone tag',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'No Verification',
+        subtext: 'Unchecked phone numbers',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'No Verification',
+        subtext: 'Unchecked phone numbers',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Manual Call Check',
+        subtext: 'Requires CSR manual verification',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'Frequent Bad Numbers',
+        subtext: 'High dispute rate for fake phone leads',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Auto-Charged Regardless',
+        subtext: 'No phone verification before billing',
+        status: 'negative',
+      },
+    },
+  },
+
+  // ----------------------------------------------------
+  // Category 4: Quotes, Field Operations & Crew
+  // ----------------------------------------------------
+  {
+    id: 'tier-quotes',
+    category: 'operations',
+    feature: 'Multi-Option Quotes (Good / Better / Best)',
+    description: 'Interactive option tiers that allow homeowners to choose upgrades',
+    cells: {
+      lgq: {
+        value: 'Included on All Plans',
+        subtext: 'Interactive tiers with itemized add-on options',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Grow Tier Only ($349/mo)',
+        subtext: 'Locked behind highest tier',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Max Tier Only ($299/mo)',
+        subtext: 'Locked behind highest tier',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Included',
+        subtext: 'Tiered enterprise sales presentation',
+        status: 'positive',
+      },
+      angi: {
+        value: 'Not Available',
+        subtext: 'Lead broker only',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Basic Text Quote',
+        subtext: 'Chat messages only',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'esignatures',
+    category: 'operations',
+    feature: 'Mobile E-Signatures & Customer Hub',
+    description: 'Instant mobile approval and signed contract generation',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: '1-tap sign & deposit payment portal',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Included',
+        subtext: 'Client Hub portal',
+        status: 'positive',
+      },
+      housecall: {
+        value: 'Included',
+        subtext: 'Customer Portal',
+        status: 'positive',
+      },
+      servicetitan: {
+        value: 'Included',
+        subtext: 'Enterprise customer portal',
+        status: 'positive',
+      },
+      angi: {
+        value: 'Not Available',
+        subtext: 'No contract portal',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Not Available',
+        subtext: 'No contract e-signature system',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'two-way-texting',
+    category: 'operations',
+    feature: '2-Way Customer Text Messaging',
+    description: 'Dedicated business texting synced directly to jobs and customer records',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: 'Syncs to customer record & job feed',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Connect Tier ($169+/mo)',
+        subtext: 'Paid upgrade required',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Higher Tier ($169+/mo)',
+        subtext: 'Paid upgrade required',
+        status: 'negative',
+      },
+      servicetitan: {
+        value: 'Phones Pro Add-On',
+        subtext: 'Enterprise telephony add-on',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'In-App Chat Only',
+        subtext: 'No dedicated SMS business number',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'In-App Chat Only',
+        subtext: 'No dedicated SMS business number',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'crew-dispatch',
+    category: 'operations',
+    feature: 'Crew Dispatch & Mobile Job Feeds',
+    description: 'Photo logs, labor tracking, mobile assignments, and job feeds',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: 'Photo logs, labor tracking & mobile routes',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Included',
+        subtext: 'Mobile app for team',
+        status: 'positive',
+      },
+      housecall: {
+        value: 'Included',
+        subtext: 'Field technician mobile app',
+        status: 'positive',
+      },
+      servicetitan: {
+        value: 'Included',
+        subtext: 'Comprehensive mobile tech suite',
+        status: 'positive',
+      },
+      angi: {
+        value: 'Not Available',
+        subtext: 'No field management tools',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Not Available',
+        subtext: 'No field management tools',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'recurring-plans',
+    category: 'operations',
+    feature: 'Recurring Service Agreements & Cards on File',
+    description: 'Automated recurring maintenance billing with stored payment methods',
+    cells: {
+      lgq: {
+        value: 'Included',
+        subtext: 'Automated recurring billing + stored cards',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Included on Paid Tiers',
+        subtext: 'Recurring job schedules',
+        status: 'positive',
+      },
+      housecall: {
+        value: 'Included on Paid Tiers',
+        subtext: 'Service agreements module',
+        status: 'positive',
+      },
+      servicetitan: {
+        value: 'Included',
+        subtext: 'Enterprise membership tracking',
+        status: 'positive',
+      },
+      angi: {
+        value: 'Not Available',
+        subtext: 'No recurring billing support',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Not Available',
+        subtext: 'No recurring billing support',
+        status: 'negative',
+      },
+    },
+  },
+
+  // ----------------------------------------------------
+  // Category 5: Payments, Payouts & Accounting
+  // ----------------------------------------------------
+  {
+    id: 'stripe-payouts',
+    category: 'payments',
+    feature: 'Direct Stripe Connect Payouts',
+    description: 'Direct merchant account ownership with transparent rates and fast payouts',
+    cells: {
+      lgq: {
+        value: 'Direct Stripe Connect',
+        subtext: 'Direct merchant account ownership',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Jobber Payments',
+        subtext: 'Proprietary payment rail',
+        status: 'neutral',
+      },
+      housecall: {
+        value: 'Housecall Payments',
+        subtext: 'Proprietary payment rail',
+        status: 'neutral',
+      },
+      servicetitan: {
+        value: 'ServiceTitan Payments',
+        subtext: 'Proprietary payment processing',
+        status: 'neutral',
+      },
+      angi: {
+        value: 'Angi Pay Escrow',
+        subtext: 'Broker payment intermediary',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Thumbtack Pay',
+        subtext: 'Platform payout holds',
+        status: 'negative',
+      },
+    },
+  },
+  {
+    id: 'payment-methods',
+    category: 'payments',
+    feature: 'Payment Methods Supported',
+    description: 'Accepted homeowner payment options on mobile and desktop',
+    cells: {
+      lgq: {
+        value: 'All Major Methods',
+        subtext: 'Apple Pay, Google Pay, Cards & Bank ACH',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Cards & ACH',
+        subtext: 'Apple Pay on select workflows',
+        status: 'positive',
+      },
+      housecall: {
+        value: 'Cards & ACH',
+        subtext: 'Standard card & bank checkout',
+        status: 'positive',
+      },
+      servicetitan: {
+        value: 'Cards, ACH & Financing',
+        subtext: 'Includes consumer financing options',
+        status: 'positive',
+      },
+      angi: {
+        value: 'Card Only',
+        subtext: 'Through Angi app interface',
+        status: 'neutral',
+      },
+      thumbtack: {
+        value: 'Card Only',
+        subtext: 'Through Thumbtack app interface',
+        status: 'neutral',
+      },
+    },
+  },
+  {
+    id: 'quickbooks-sync',
+    category: 'payments',
+    feature: 'QuickBooks Online 2-Way Sync',
+    description: 'Automatic reconciliation for invoices, customers, and payments',
+    cells: {
+      lgq: {
+        value: 'Included on All Plans',
+        subtext: 'Zero extra fee · Invoices & payments sync auto',
+        status: 'positive',
+        highlight: true,
+      },
+      jobber: {
+        value: 'Connect Tier ($169+/mo)',
+        subtext: 'Not included on Core tier',
+        status: 'negative',
+      },
+      housecall: {
+        value: 'Included on Paid Plans',
+        subtext: 'Standard QuickBooks integration',
+        status: 'positive',
+      },
+      servicetitan: {
+        value: 'Included Enterprise Sync',
+        subtext: 'QBO and QuickBooks Desktop',
+        status: 'positive',
+      },
+      angi: {
+        value: 'Not Available',
+        subtext: 'No accounting sync',
+        status: 'negative',
+      },
+      thumbtack: {
+        value: 'Not Available',
+        subtext: 'No accounting sync',
+        status: 'negative',
+      },
+    },
+  },
+];
+
