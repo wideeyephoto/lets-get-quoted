@@ -24,6 +24,8 @@ import { updateBusinessAddressesAction, updateBusinessBasicsAction, deleteAccoun
 import { syncQuickBooksAction, backfillQuickBooksAction, updateInsuranceAction, removeInsuranceAction } from './actions';
 import { chooseGoogleLsaCustomerAction, syncGoogleLsaAction } from './actions';
 import InsuranceSection from './InsuranceSection';
+import FieldFormsSettingsSection from './FieldFormsSettingsSection';
+import { listFormTemplates } from '@/lib/forms/forms-data';
 import BusinessWorkspace from './BusinessWorkspace';
 import { businessSetup } from '@/lib/business-setup';
 import { insuranceState } from '@/lib/insurance';
@@ -104,6 +106,7 @@ export default async function SettingsPage({
     apiTokens,
     webhookSubsResult,
     webhookDeliveriesResult,
+    formTemplates,
   ] = await Promise.all([
     supabase.auth.getUser(),
     supabase.auth.getUserIdentities(),
@@ -129,6 +132,7 @@ export default async function SettingsPage({
       .eq('account_id', accountId)
       .order('created_at', { ascending: false })
       .limit(20),
+    listFormTemplates(supabase, accountId, { includePresets: true }).catch(() => []),
   ]);
 
   const webhookSubscriptions = ((webhookSubsResult?.data ?? []) as unknown[]) as WebhookSubscriptionView[];
@@ -614,6 +618,9 @@ export default async function SettingsPage({
               'marketing-address',
               'finances',
               'insurance',
+              'forms',
+              'field-forms',
+              'qa',
               'quickbooks',
               'addresses',
               'alerts',
@@ -780,16 +787,19 @@ export default async function SettingsPage({
           id: 'trust',
           label: 'Trust & compliance',
           blurb: 'The credentials that go in front of a customer.',
-          anchors: ['insurance'],
+          anchors: ['insurance', 'forms', 'field-forms', 'qa'],
           content: (
-                <InsuranceSection
-                  record={insuranceRecord}
-                  todayKey={insuranceToday}
-                  proofUrl={insuranceUrl}
-                  uploadedAt={(ins.insurance_uploaded_at as string) ?? null}
-                  saveAction={updateInsuranceAction}
-                  removeAction={removeInsuranceAction}
-                />
+            <>
+              <InsuranceSection
+                record={insuranceRecord}
+                todayKey={insuranceToday}
+                proofUrl={insuranceUrl}
+                uploadedAt={(ins.insurance_uploaded_at as string) ?? null}
+                saveAction={updateInsuranceAction}
+                removeAction={removeInsuranceAction}
+              />
+              <FieldFormsSettingsSection templates={formTemplates} />
+            </>
           ),
         },
         {

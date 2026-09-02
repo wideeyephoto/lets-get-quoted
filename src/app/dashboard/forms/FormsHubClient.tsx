@@ -53,6 +53,22 @@ export default function FormsHubClient({
 
   return (
     <div className={styles.container}>
+      <div style={{ marginBottom: '1rem' }}>
+        <Link
+          href="/dashboard/settings#forms"
+          style={{
+            fontSize: '0.85rem',
+            color: 'var(--mute-t55, #64748b)',
+            textDecoration: 'none',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: '0.35rem',
+          }}
+        >
+          &larr; Back to Business settings
+        </Link>
+      </div>
+
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerInfo}>
