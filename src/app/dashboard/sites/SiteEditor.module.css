@@ -262,15 +262,16 @@
 
 /* Compact toggle-and-label rows (trust badges) */
 .fieldHint { margin: 0; color: var(--muted-2); font-size: .78rem; line-height: 1.4; }
-/* Floating save pill — the header Save button scrolls away on the long Design
-   tab, so unsaved changes surface a fixed reminder with a one-tap save. */
-.savePill { position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 60; display: flex; align-items: center; gap: .9rem; padding: .55rem .6rem .55rem 1.05rem; border-radius: 999px; border: 1px solid var(--edge-t14); background: rgba(var(--panel-rgb), .96); box-shadow: 0 22px 44px -18px rgba(var(--shade), .7); font-size: .82rem; color: var(--text); animation: savePillIn .25s cubic-bezier(.22, .61, .36, 1) both; }
-.savePill > span { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; }
+/* Floating save pill — centered at the bottom to avoid overlapping floating tools (Copilot).
+   The header Save button scrolls away on the long Design tab, so unsaved changes surface
+   a fixed reminder with a one-tap save. */
+.savePill { position: fixed; left: 50%; transform: translateX(-50%); bottom: 1.25rem; z-index: 100; display: flex; align-items: center; gap: .9rem; max-width: calc(100vw - 2rem); padding: .55rem .6rem .55rem 1.05rem; border-radius: 999px; border: 1px solid var(--edge-t14); background: rgba(var(--panel-rgb), .96); box-shadow: 0 22px 44px -18px rgba(var(--shade), .7); font-size: .82rem; color: var(--text); animation: savePillIn .25s cubic-bezier(.22, .61, .36, 1) both; }
+.savePill > span { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; white-space: nowrap; }
 .savePill > span::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #f5b83d; }
-.savePill button { min-height: 40px; padding: .45rem 1.15rem; border: none; border-radius: 999px; background: #ff7a21; color: #14110b; font-weight: 800; font-size: .82rem; cursor: pointer; }
+.savePill button { min-height: 40px; padding: .45rem 1.15rem; border: none; border-radius: 999px; background: #ff7a21; color: #14110b; font-weight: 800; font-size: .82rem; cursor: pointer; white-space: nowrap; }
 .savePill button:disabled { opacity: .6; cursor: default; }
-@keyframes savePillIn { from { transform: translateY(12px); } to { transform: none; } }
-@media (prefers-reduced-motion: reduce) { .savePill { animation: none; } }
+@keyframes savePillIn { from { transform: translate(-50%, 12px); opacity: 0; } to { transform: translate(-50%, 0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .savePill { animation: none; transform: translateX(-50%); } }
 .blogCoverPreview { position: relative; align-self: flex-start; border-radius: 10px; overflow: hidden; border: 1px solid var(--edge-t12); }
 .blogCoverPreview img { display: block; width: 200px; height: 120px; object-fit: cover; }
 .blogCoverPreview button { position: absolute; top: 6px; right: 6px; border: none; border-radius: 999px; padding: 4px 10px; background: rgba(0,0,0,.72); color: #fff; font-size: .72rem; font-weight: 700; cursor: pointer; }
