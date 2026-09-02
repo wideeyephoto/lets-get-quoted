@@ -30,193 +30,179 @@ export default function FieldFormsSettingsSection({
 
   return (
     <section className="panel workspace-section-card" id="forms" style={{ marginTop: '1.5rem' }}>
-      <div className="section-heading workspace-section-heading">
+      <div className="section-heading workspace-section-heading compact-heading">
         <p className="eyebrow">Trust &amp; Quality</p>
         <h2>Field forms, checklists &amp; QA</h2>
       </div>
 
-      <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
+      <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '0.75rem' }}>
         Standardized inspection checklists, equipment commissioning forms, safety audits (JHA), and customer completion certificates. Attached directly to job records and signed by your crew or homeowners in the field.
       </p>
 
-      {/* Stats summary banner */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
-          gap: '0.75rem',
-          marginBottom: '1.25rem',
-        }}
-      >
-        <div
-          style={{
-            padding: '0.85rem 1rem',
-            borderRadius: '8px',
-            border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
-            background: 'var(--surface-card, rgba(255,255,255,0.02))',
-          }}
-        >
-          <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--mute-t55, #94a3b8)', fontWeight: 600 }}>Total Library</span>
-          <p style={{ margin: '0.2rem 0 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--ink-primary, currentColor)' }}>{templates.length} Forms</p>
+      {/* Clean status summary matching Insurance card styling */}
+      <div className="cert-summary is-ok">
+        <div className="cert-summary-main">
+          <strong>Quality control, diagnostics &amp; completion sign-offs</strong>
+          <p className="cert-summary-facts">
+            {[
+              `${templates.length} form templates`,
+              `${presetCount} trade presets ready`,
+              customCount > 0 ? `${customCount} custom` : null,
+            ].filter(Boolean).join(' · ')}
+          </p>
+          <p className="cert-summary-state">
+            Available to attach to any job in the field for technician check-offs and customer e-signatures.
+          </p>
         </div>
-        <div
-          style={{
-            padding: '0.85rem 1rem',
-            borderRadius: '8px',
-            border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
-            background: 'var(--surface-card, rgba(255,255,255,0.02))',
-          }}
-        >
-          <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--cedge-sky, #0284c7)', fontWeight: 600 }}>Trade Presets</span>
-          <p style={{ margin: '0.2rem 0 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--cedge-sky, #0284c7)' }}>{presetCount} Ready</p>
-        </div>
-        <div
-          style={{
-            padding: '0.85rem 1rem',
-            borderRadius: '8px',
-            border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
-            background: 'var(--surface-card, rgba(255,255,255,0.02))',
-          }}
-        >
-          <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--cedge-purple, #a855f7)', fontWeight: 600 }}>Customized</span>
-          <p style={{ margin: '0.2rem 0 0', fontSize: '1.25rem', fontWeight: 700, color: 'var(--cedge-purple, #a855f7)' }}>{customCount} Active</p>
-        </div>
+        <span className="cert-summary-chip">
+          {templates.length} Active
+        </span>
       </div>
 
-      {/* Action buttons */}
-      <div className="workspace-inline-row" style={{ marginBottom: '1.25rem', gap: '0.75rem', flexWrap: 'wrap' }}>
-        <Link href="/dashboard/forms/builder" className="btn primary" style={{ fontSize: '0.85rem' }}>
-          + New form template
+      {/* Quick Actions */}
+      <div className="workspace-inline-row" style={{ marginTop: '0.85rem', flexWrap: 'wrap', gap: '0.6rem' }}>
+        <Link href="/dashboard/forms" className="btn secondary" style={{ fontSize: '0.84rem' }}>
+          Open forms library &rarr;
         </Link>
-        <Link href="/dashboard/forms" className="btn secondary" style={{ fontSize: '0.85rem' }}>
-          Open full forms manager &rarr;
+        <Link href="/dashboard/forms/builder" className="btn secondary" style={{ fontSize: '0.84rem' }}>
+          + New custom form
         </Link>
       </div>
 
-      {/* Category filter pills */}
-      <div
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          gap: '0.4rem',
-          marginBottom: '1rem',
-        }}
-      >
-        {CATEGORY_TABS.map((tab) => {
-          const isActive = selectedCategory === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setSelectedCategory(tab.id)}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                fontSize: '0.78rem',
-                fontWeight: 600,
-                padding: '0.3rem 0.65rem',
-                borderRadius: '999px',
-                border: '1px solid',
-                borderColor: isActive ? 'var(--cedge-orange-78, #ea580c)' : 'var(--border-default, rgba(255,255,255,0.1))',
-                background: isActive ? 'rgba(234, 88, 12, 0.12)' : 'transparent',
-                color: isActive ? 'var(--cedge-orange-78, #ea580c)' : 'var(--mute-t55, #94a3b8)',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>{tab.icon}</span>
-              <span>{tab.label}</span>
-            </button>
-          );
-        })}
-      </div>
+      {/* Tucked-away collapsible preview drawer */}
+      <details className="workspace-details" style={{ marginTop: '1rem' }}>
+        <summary className="workspace-details-summary">
+          <span className="btn secondary" style={{ fontSize: '0.82rem' }}>Browse templates &amp; presets</span>
+          <span className="workspace-details-copy">Preview presets for HVAC, Electrical, Plumbing, Roofing, and General Contracting.</span>
+        </summary>
 
-      {/* Template list */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '0.75rem',
-        }}
-      >
-        {filteredTemplates.slice(0, 6).map((t) => {
-          const totalFields = t.sections.reduce((sum, s) => sum + s.fields.length, 0);
-
-          return (
-            <div
-              key={t.id}
-              style={{
-                border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
-                borderRadius: '8px',
-                padding: '0.9rem',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                background: 'var(--surface-secondary, rgba(255,255,255,0.015))',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem', gap: '0.5rem' }}>
-                  <span
-                    style={{
-                      fontSize: '0.68rem',
-                      fontWeight: 700,
-                      textTransform: 'uppercase',
-                      padding: '0.15rem 0.45rem',
-                      borderRadius: '4px',
-                      background: t.isPreset ? 'rgba(2, 132, 199, 0.12)' : 'rgba(168, 85, 247, 0.12)',
-                      color: t.isPreset ? '#0284c7' : '#a855f7',
-                    }}
-                  >
-                    {t.isPreset ? 'Preset' : 'Custom'}
-                  </span>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--mute-t55, #94a3b8)', textTransform: 'capitalize' }}>
-                    {t.trade !== 'all' ? `${t.trade} · ` : ''}{t.category.replace('_', ' ')}
-                  </span>
-                </div>
-
-                <h4 style={{ margin: '0.25rem 0 0.35rem', fontSize: '0.92rem', fontWeight: 600, color: 'var(--ink-primary, currentColor)' }}>
-                  {t.title}
-                </h4>
-                <p style={{ margin: 0, fontSize: '0.78rem', color: 'var(--mute-t55, #94a3b8)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                  {t.description}
-                </p>
-              </div>
-
-              <div style={{ marginTop: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.05))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', color: 'var(--mute-t55, #94a3b8)' }}>
-                <span>{totalFields} items {t.requireCustomerSignature ? '· ✍️ E-Sign' : ''}</span>
-                <Link
-                  href={`/dashboard/forms/${t.id}`}
-                  style={{
-                    color: 'var(--cedge-orange-78, #ea580c)',
-                    fontWeight: 600,
-                    textDecoration: 'none',
-                  }}
-                >
-                  {t.isPreset ? 'Customize &rarr;' : 'Edit &rarr;'}
-                </Link>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredTemplates.length > 6 && (
-        <div style={{ marginTop: '0.85rem', textAlign: 'center' }}>
-          <Link
-            href="/dashboard/forms"
+        <div style={{ marginTop: '1rem' }}>
+          {/* Category filter pills */}
+          <div
             style={{
-              fontSize: '0.82rem',
-              color: 'var(--cedge-orange-78, #ea580c)',
-              fontWeight: 600,
-              textDecoration: 'underline',
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: '0.35rem',
+              marginBottom: '0.85rem',
             }}
           >
-            View all {filteredTemplates.length} templates in forms manager &rarr;
-          </Link>
+            {CATEGORY_TABS.map((tab) => {
+              const isActive = selectedCategory === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setSelectedCategory(tab.id)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.3rem',
+                    fontSize: '0.75rem',
+                    fontWeight: 600,
+                    padding: '0.25rem 0.55rem',
+                    borderRadius: '999px',
+                    border: '1px solid',
+                    borderColor: isActive ? 'var(--cedge-orange-78, #ea580c)' : 'var(--border-default, rgba(255,255,255,0.1))',
+                    background: isActive ? 'rgba(234, 88, 12, 0.12)' : 'transparent',
+                    color: isActive ? 'var(--cedge-orange-78, #ea580c)' : 'var(--mute-t55, #94a3b8)',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span>{tab.icon}</span>
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Template cards grid */}
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))',
+              gap: '0.65rem',
+            }}
+          >
+            {filteredTemplates.slice(0, 6).map((t) => {
+              const totalFields = t.sections.reduce((sum, s) => sum + s.fields.length, 0);
+
+              return (
+                <div
+                  key={t.id}
+                  style={{
+                    border: '1px solid var(--border-default, rgba(255,255,255,0.08))',
+                    borderRadius: '8px',
+                    padding: '0.8rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'space-between',
+                    background: 'var(--surface-secondary, rgba(255,255,255,0.015))',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem', gap: '0.5rem' }}>
+                      <span
+                        style={{
+                          fontSize: '0.65rem',
+                          fontWeight: 700,
+                          textTransform: 'uppercase',
+                          padding: '0.12rem 0.4rem',
+                          borderRadius: '4px',
+                          background: t.isPreset ? 'rgba(2, 132, 199, 0.12)' : 'rgba(168, 85, 247, 0.12)',
+                          color: t.isPreset ? '#0284c7' : '#a855f7',
+                        }}
+                      >
+                        {t.isPreset ? 'Preset' : 'Custom'}
+                      </span>
+                      <span style={{ fontSize: '0.65rem', color: 'var(--mute-t55, #94a3b8)', textTransform: 'capitalize' }}>
+                        {t.trade !== 'all' ? `${t.trade} · ` : ''}{t.category.replace('_', ' ')}
+                      </span>
+                    </div>
+
+                    <h4 style={{ margin: '0.2rem 0 0.25rem', fontSize: '0.88rem', fontWeight: 600, color: 'var(--ink-primary, currentColor)' }}>
+                      {t.title}
+                    </h4>
+                    <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--mute-t55, #94a3b8)', lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                      {t.description}
+                    </p>
+                  </div>
+
+                  <div style={{ marginTop: '0.65rem', paddingTop: '0.45rem', borderTop: '1px solid var(--border-subtle, rgba(255,255,255,0.05))', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', color: 'var(--mute-t55, #94a3b8)' }}>
+                    <span>{totalFields} items {t.requireCustomerSignature ? '· ✍️ E-Sign' : ''}</span>
+                    <Link
+                      href={`/dashboard/forms/${t.id}`}
+                      style={{
+                        color: 'var(--cedge-orange-78, #ea580c)',
+                        fontWeight: 600,
+                        textDecoration: 'none',
+                      }}
+                    >
+                      {t.isPreset ? 'Customize &rarr;' : 'Edit &rarr;'}
+                    </Link>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {filteredTemplates.length > 6 && (
+            <div style={{ marginTop: '0.75rem', textAlign: 'center' }}>
+              <Link
+                href="/dashboard/forms"
+                style={{
+                  fontSize: '0.8rem',
+                  color: 'var(--cedge-orange-78, #ea580c)',
+                  fontWeight: 600,
+                  textDecoration: 'underline',
+                }}
+              >
+                View all {filteredTemplates.length} templates in forms manager &rarr;
+              </Link>
+            </div>
+          )}
         </div>
-      )}
+      </details>
     </section>
   );
 }
