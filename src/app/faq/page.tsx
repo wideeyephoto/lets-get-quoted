@@ -1,23 +1,41 @@
-import Link from 'next/link';
 import type { Metadata } from 'next';
 import SiteFooter from '@/components/site-footer';
 import { cspNonce } from '@/lib/csp-nonce';
-import { APP_SIGNUP_URL } from '@/components/marketing/links';
-import FaqDeepLink from './FaqDeepLink';
+import FaqClient, { type FaqGroup } from './FaqClient';
 
 export const metadata: Metadata = {
   title: 'FAQ',
   description:
     'Is it really free, how payments work, whether you need a domain, how the AI estimate works, how to switch, how to export your data, and what happens to refunds.',
   alternates: { canonical: 'https://letsgetquoted.com/faq' },
+  openGraph: {
+    type: 'website',
+    url: 'https://letsgetquoted.com/faq',
+    siteName: "Let's Get Quoted",
+    title: 'FAQ · Let’s Get Quoted',
+    description:
+      'Is it really free, how payments work, whether you need a domain, how the AI estimate works, how to switch, how to export your data, and what happens to refunds.',
+    images: [
+      {
+        url: '/product/jobs.webp',
+        width: 1600,
+        height: 1000,
+        alt: 'Let’s Get Quoted FAQ',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'FAQ · Let’s Get Quoted',
+    description:
+      'Is it really free, how payments work, whether you need a domain, how the AI estimate works, how to switch, how to export your data, and what happens to refunds.',
+    images: ['/product/jobs.webp'],
+  },
 };
 
 /** `id` is the URL fragment — stable, and part of the page's contract with
  *  anyone who has ever sent one of these links. Renaming one breaks a link
  *  somebody pasted into a text message; add a new entry instead. */
-type QA = { id: string; q: string; a: string };
-type FaqGroup = { id: string; heading: string; items: QA[] };
-
 // Grouped for the page; flattened into FAQPage JSON-LD below. Answers are plain
 // text (no markup) so they're valid for both the rendered page and rich results.
 const FAQ_GROUPS: FaqGroup[] = [
@@ -168,85 +186,24 @@ const faqJsonLd = {
     group.items.map((item) => ({
       '@type': 'Question',
       name: item.q,
+      url: `https://letsgetquoted.com/faq#${item.id}`,
       acceptedAnswer: { '@type': 'Answer', text: item.a },
     })),
   ),
 };
 
 export default async function FaqPage() {
+  const nonce = await cspNonce();
   return (
     <main className="marketing-shell" id="main-content">
-      <script type="application/ld+json" nonce={await cspNonce()} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
-      <FaqDeepLink />
+      <script
+        type="application/ld+json"
+        nonce={nonce}
+        suppressHydrationWarning
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="ambient-glow ambient-glow-a" aria-hidden="true" />
-
-      <section className="section-block features-hero">
-        <div className="section-heading">
-          <p className="eyebrow">Questions, answered</p>
-          {/* The page's own title, so it's the h1 — every other heading here is
-              a section under it. Sized by .section-heading h1, not the global. */}
-          <h1>Everything you’re wondering, before you sign up.</h1>
-          <p>Clear plan prices, usage limits, payment fees, and answers about how Let’s Get Quoted works.</p>
-        </div>
-        <div className="actions">
-          <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
-          <Link href="/demo" className="btn secondary">Explore the demo &mdash; no signup</Link>
-        </div>
-      </section>
-
-      {/* CONTENTS. Nineteen answers under five headings is past the length
-          where scrolling is a reasonable way to find one, and the jump links
-          double as the list of what this page actually covers — which is what
-          somebody deciding whether to read it wants first. */}
-      <nav className="faq-contents" aria-label="Questions on this page">
-        {FAQ_GROUPS.map((group) => (
-          <div key={group.id}>
-            <p className="eyebrow">{group.heading}</p>
-            <ul>
-              {group.items.map((item) => (
-                <li key={item.id}><a href={`#${item.id}`}>{item.q}</a></li>
-              ))}
-            </ul>
-          </div>
-        ))}
-      </nav>
-
-      {FAQ_GROUPS.map((group) => (
-        <section className="section-block" key={group.id} id={group.id}>
-          <div className="section-heading">
-            <p className="eyebrow">{group.heading}</p>
-          </div>
-          <div className="faq-list">
-            {group.items.map((item) => (
-              /* The id is on the <details> itself, which is what FaqDeepLink
-                 opens when the fragment names it. */
-              <details className="faq-item" key={item.id} id={item.id}>
-                <summary>{item.q}</summary>
-                <p>{item.a}</p>
-                {/* A link TO this answer, so it can be sent. It only means
-                    anything once the answer is open, which is exactly when it
-                    is rendered visible. */}
-                <p className="faq-permalink">
-                  <a href={`#${item.id}`}>Link to this answer</a>
-                </p>
-              </details>
-            ))}
-          </div>
-        </section>
-      ))}
-
-      <section className="cta-band">
-        <div className="cta-band-inner">
-          <p className="eyebrow">Still have a question?</p>
-          <h2>The fastest way to see it is to try it.</h2>
-          <p>Start with Flex at $0/month plus a 1.25% LGQ platform fee.</p>
-          <div className="actions">
-            <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
-            <Link href="/contact" className="btn secondary">Ask us directly</Link>
-          </div>
-        </div>
-      </section>
-
+      <FaqClient groups={FAQ_GROUPS} />
       <SiteFooter />
     </main>
   );
