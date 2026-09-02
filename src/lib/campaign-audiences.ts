@@ -9,6 +9,19 @@
 export type CampaignChannel = 'email' | 'sms' | 'both';
 export type CampaignAudience = 'all' | 'past' | 'repeat' | 'lapsed' | 'leads' | 'high_value';
 
+export type Reach = {
+  total: number;
+  email: number;
+  sms: number;
+  either: number;
+  /** No email and no phone at all — nothing to reach them on. */
+  missingContact: number;
+  /** Has a phone on file that isn't consented for marketing texts. */
+  optedOut: number;
+  /** Has an email on file that's suppressed (unsubscribed/bounced) or undeliverable. */
+  excluded: number;
+};
+
 // A customer with no job in this many days is "lapsed" — the segment worth a
 // "we're booking again / here's an offer" nudge.
 export const LAPSED_DAYS = 120;

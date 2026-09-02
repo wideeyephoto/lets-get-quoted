@@ -114,7 +114,7 @@ describe('every builder the demo runs can be answered by the fixture client', ()
         expect(step.nextHref).toBeNull();
       }
     }
-    expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Evergreen Lawn & Landscape');
+    expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Broke Pipes Plumbing');
     expect(DEMO_SHOWCASE_WORKFLOW.job.lineItems.length).toBeGreaterThan(0);
   });
 

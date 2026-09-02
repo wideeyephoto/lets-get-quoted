@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 6e96f1c58b5724ec
+   source-sha256: 2194eb3570d36aa3
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -49,6 +49,7 @@
   --bg-soft: rgba(var(--tint), 0.04);
   --line: rgba(var(--tint), 0.07);
   --text: #eef1f6;
+  --foreground: var(--text);
   --muted: #99a2b2;
   --mute: var(--muted);
   /* The dimmer of the two secondary greys, used for captions and hints. */
@@ -3303,6 +3304,135 @@ h3 {
 :root[data-theme='sunlight'] .sidenav-wordmark {
   background: #ffffff;
   box-shadow: 0 2px 6px rgba(15, 23, 42, 0.08);
+}
+
+/* --- Contractor Nav Branding ---------------------------------------------- */
+.sidenav-brand--contractor {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 0.65rem;
+  padding: 0.35rem 0.55rem 0.65rem;
+  min-height: 46px;
+  border-radius: 8px;
+  text-decoration: none;
+  color: inherit;
+  overflow: hidden;
+}
+
+.sidenav-contractor-logo {
+  max-height: 38px;
+  max-width: 88px;
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+}
+
+.sidenav-contractor-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.92rem;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+}
+
+.sidenav-contractor-bizname {
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  letter-spacing: -0.01em;
+}
+
+.sidenav-brand--contractor-mobile {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  text-decoration: none;
+  min-width: 0;
+}
+
+.mobilebar-contractor-logo {
+  max-height: 28px;
+  max-width: 65px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.mobilebar-contractor-mark {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.78rem;
+  flex-shrink: 0;
+}
+
+.mobilebar-contractor-bizname {
+  font-family: var(--font-display);
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 140px;
+}
+
+.sidenav-foot-brand-wrap {
+  width: 100%;
+  padding-top: 0.45rem;
+  margin-top: 0.2rem;
+  border-top: 1px solid var(--edge-t08);
+  display: flex;
+  justify-content: center;
+}
+
+.sidenav-foot-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  text-decoration: none;
+  color: var(--muted-2);
+  font-size: 0.74rem;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.sidenav-foot-brand:hover {
+  color: var(--text);
+  background: rgba(var(--tint), 0.05);
+}
+
+.sidenav-foot-brand-logo {
+  opacity: 0.85;
+  flex-shrink: 0;
+}
+
+.sidenav-foot-brand-text {
+  letter-spacing: 0.01em;
+}
+
+.sidenav-foot-brand-text strong {
+  color: var(--accent);
+  font-weight: 700;
 }
 
 /* Marketing rail: the "Create Free Account" CTA fills the foot, matching the
@@ -17452,6 +17582,92 @@ a.ropsrow-fact:hover {
   font-size: 1rem;
 }
 
+.field-header-brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-width: 0;
+}
+
+.field-header-brand-wrap--sub {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.field-header-back-wrap {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.field-header-logo {
+  max-height: 34px;
+  max-width: 80px;
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.field-header-logo--compact {
+  max-height: 26px;
+  max-width: 60px;
+}
+
+.field-header-mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.88rem;
+  letter-spacing: 0.04em;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.3);
+}
+
+.field-header-mark--compact {
+  width: 26px;
+  height: 26px;
+  border-radius: 5px;
+  font-size: 0.74rem;
+}
+
+.field-header-lgq-badge {
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.field-header-lgq-wordmark {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 0.82rem;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.field-header-lgq-wordmark span {
+  color: var(--accent);
+}
+
+.field-brand--compact {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
 .field-crew {
   font-size: 0.8rem;
   color: var(--mute-t55);
@@ -17472,6 +17688,60 @@ a.ropsrow-fact:hover {
   padding: 0.4rem 0.85rem;
   font-size: 0.82rem;
   cursor: pointer;
+}
+
+/* Field Footer: Powered by Let's Get Quoted */
+.field-footer {
+  width: 100%;
+  max-width: 640px;
+  margin: 1.5rem auto 2.5rem;
+  padding: 1.25rem 1.1rem 0;
+  border-top: 1px solid var(--rule-t08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.field-footer-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  color: var(--mute-t55);
+  font-size: 0.76rem;
+  text-decoration: none;
+}
+
+.field-footer-logo {
+  opacity: 0.8;
+  flex-shrink: 0;
+}
+
+.field-footer-text strong {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+/* Field Choose Business Brand Monogram & Logo */
+.field-choose-logo {
+  max-height: 28px;
+  max-width: 60px;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+
+.field-choose-monogram {
+  width: 28px;
+  height: 28px;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 0.76rem;
+  flex-shrink: 0;
 }
 
 /* -- My jobs -- */

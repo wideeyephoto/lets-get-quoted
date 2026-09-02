@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AUDIENCE_DEFS, type CampaignAudience, type Reach } from '@/lib/campaigns';
+import { AUDIENCE_DEFS, type CampaignAudience, type Reach } from '@/lib/campaign-audiences';
 import type { CalendarView } from '@/lib/marketing-calendar-data';
 import { EMAIL_THEMES, normalizeEmailTheme, type EmailThemeId } from '@/emails/brand';
 import MarketingNav from '../MarketingNav';

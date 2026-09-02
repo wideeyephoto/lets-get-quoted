@@ -29,8 +29,9 @@ export {
   type Campaign,
   type CampaignAudience,
   type CampaignChannel,
+  type Reach,
 } from '@/lib/campaign-audiences';
-import { matchesAudience, type Campaign, type CampaignAudience, type CampaignChannel } from '@/lib/campaign-audiences';
+import { matchesAudience, type Campaign, type CampaignAudience, type CampaignChannel, type Reach } from '@/lib/campaign-audiences';
 
 // Bound one send so a server action never runs long enough to time out. A single
 // contractor's list is well under this; larger lists get the most-recent slice.
@@ -175,18 +176,6 @@ export async function loadRecipients(supabase: SupabaseClient, accountId: string
   return [...clientList, ...leadList];
 }
 
-export type Reach = {
-  total: number;
-  email: number;
-  sms: number;
-  either: number;
-  /** No email and no phone at all — nothing to reach them on. */
-  missingContact: number;
-  /** Has a phone on file that isn't consented for marketing texts. */
-  optedOut: number;
-  /** Has an email on file that's suppressed (unsubscribed/bounced) or undeliverable. */
-  excluded: number;
-};
 
 // A reach breakdown for one already-filtered audience slice. The three
 // diagnostic counts are independent facts about the SAME group, not a

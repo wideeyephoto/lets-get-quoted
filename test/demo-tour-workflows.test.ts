@@ -55,20 +55,20 @@ describe('Demo Tour High-Impact Workflows & Quality Hardening', () => {
   });
 
   describe('3. Final Outcome KPI Summary & Branch Calculation', () => {
-    it('calculates the $16,000 branch with lighting and $15,250 branch without lighting', () => {
+    it('calculates the $1,770 branch with shutoff valve upgrade and $1,450 branch without shutoff valve upgrade', () => {
       const stateWithUpgrade: DemoTourState = {
         ...DEFAULT_DEMO_TOUR_STATE,
         upgradeSelected: true,
       };
       const totalWith = DEMO_TOUR_JOB.baseTotal + (stateWithUpgrade.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
-      expect(totalWith).toBe(16000);
+      expect(totalWith).toBe(1770);
 
       const stateWithoutUpgrade: DemoTourState = {
         ...DEFAULT_DEMO_TOUR_STATE,
         upgradeSelected: false,
       };
       const totalWithout = DEMO_TOUR_JOB.baseTotal + (stateWithoutUpgrade.upgradeSelected ? DEMO_TOUR_JOB.upgradeTotal : 0);
-      expect(totalWithout).toBe(15250);
+      expect(totalWithout).toBe(1450);
     });
 
     it('renders the compact Outcome KPI Summary card with illustrative demo metrics', () => {
@@ -99,8 +99,8 @@ describe('Demo Tour High-Impact Workflows & Quality Hardening', () => {
 
   describe('5. Trade-Specific CTA & Acquisition Intent Attribution', () => {
     it('customizes the primary CTA to the demonstrated trade', () => {
-      expect(DEMO_TOUR_CONTRACTOR.tradeKey).toBe('landscaping');
-      expect(DEMO_TOUR_CONTRACTOR.tradeCta).toBe('Build my landscaping site →');
+      expect(DEMO_TOUR_CONTRACTOR.tradeKey).toBe('plumber');
+      expect(DEMO_TOUR_CONTRACTOR.tradeCta).toBe('Build my plumbing site →');
       expect(COMPLETE_SCREEN).toContain('tradeCtaLabel');
       expect(COMPLETE_SCREEN).toContain('Build my landscaping site →');
     });
