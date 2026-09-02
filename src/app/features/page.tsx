@@ -19,7 +19,6 @@ import { buildSignupUrl } from '@/lib/signup-intent';
 import { cspNonce } from '@/lib/csp-nonce';
 import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
-import CinematicMessageSimulation from './CinematicMessageSimulation';
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
 import ProductTour from './ProductTour';
@@ -34,6 +33,8 @@ import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
 import CompanionRouteDemo from './CompanionRouteDemo';
 import CompanionHUD from './CompanionHUD';
 import HighTechShowcase from '@/components/marketing/HighTechShowcase';
+import FeaturesEnergyFlowHero from './FeaturesEnergyFlowHero';
+import ContractorSecretWeapons from './ContractorSecretWeapons';
 import themeStyles from './features-theme.module.css';
 
 const FEATURES_URL = 'https://letsgetquoted.com/features';
@@ -317,12 +318,8 @@ export default async function FeaturesPage() {
           <ThemeFab />
 
           <main id="main-content">
-          {/* Two columns, not one. The copy keeps the left and the thread takes the
-              right; every child is placed explicitly in the grid rather than
-              wrapped in a column div, because .index-hero > h1 and
-              .index-hero > p:not(.eyebrow) are load-bearing selectors in the
-              generated sheet and a wrapper would silently drop both. */}
-          <section className="index-hero index-hero-beside">
+          {/* Centered flagship hero: the workflow simulation has moved to the tour section below */}
+          <section className="index-hero">
             <p className="eyebrow">
               <span aria-hidden="true">✦</span> ONE JOB RECORD. EVERY STEP CONNECTED.
             </p>
@@ -341,16 +338,19 @@ export default async function FeaturesPage() {
               </a>
             </div>
 
-        {/* The plan range stays beside the primary action and comes from the
-            same canonical catalog as /pricing. */}
-        <p className="index-hero-fee">
-          Flex starts at {FLEX_PRICE.platformFee} platform fee (or as low as {LOWEST_PLATFORM_FEE} on {LOWEST_FEE_PLAN.name}) on collected payments. Free to build &amp; quote.{' '}
-          <Link href="/pricing">Compare exact prices and limits</Link>
-        </p>
+            {/* The plan range stays beside the primary action and comes from the
+                same canonical catalog as /pricing. */}
+            <p className="index-hero-fee">
+              Flex starts at {FLEX_PRICE.platformFee} platform fee (or as low as {LOWEST_PLATFORM_FEE} on {LOWEST_FEE_PLAN.name}) on collected payments. Free to build &amp; quote.{' '}
+              <Link href="/pricing">Compare exact prices and limits</Link>
+            </p>
 
-        {/* One connected Job Record workflow simulation */}
-        <CinematicMessageSimulation />
-      </section>
+            {/* 6-PILLAR INTERACTIVE ENERGY FLOW CHART */}
+            <FeaturesEnergyFlowHero />
+
+            {/* CONTRACTOR SECRET WEAPONS: 4-CARD HIGH MARGIN GRID */}
+            <ContractorSecretWeapons />
+          </section>
 
       {/* Four facts about the product, immediately after the claims that need
           them. Not outcomes, not customers, not stars — see PROOF above for
