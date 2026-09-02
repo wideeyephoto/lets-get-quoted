@@ -10,8 +10,7 @@ describe('features companion and live interactivity with sparky', () => {
   const PHOTO_DEMO = read('src/app/features/CompanionPhotoScopeDemo.tsx');
   const ROUTE_DEMO = read('src/app/features/CompanionRouteDemo.tsx');
 
-  it('renders LiveFieldPulse, CompanionHUD, PhotoScopeDemo and RouteDemo on the features page', () => {
-    expect(PAGE).toContain('<LiveFieldPulse />');
+  it('renders CompanionHUD, PhotoScopeDemo and RouteDemo on the features page', () => {
     expect(PAGE).toContain('<CompanionHUD />');
     expect(PAGE).toContain('<CompanionPhotoScopeDemo />');
     expect(PAGE).toContain('<CompanionRouteDemo />');

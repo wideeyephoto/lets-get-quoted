@@ -1,4 +1,4 @@
-/* Features Hub - Dark Luxury & Blueprint Design System */
+﻿/* Features Hub - Dark Luxury & Blueprint Design System */
 
 .featuresTheme {
   color-scheme: dark;
@@ -707,7 +707,7 @@
 }
 
 .featuresTheme :global(.website-capabilities li::before) {
-  content: '✓';
+  content: 'âœ“';
   position: absolute;
   left: 0;
   top: 2px;
@@ -824,7 +824,7 @@
 }
 
 .featuresTheme :global(.workflow-feature-grid .feature-produces li::before) {
-  content: '✦';
+  content: 'âœ¦';
   position: absolute;
   left: 0;
   top: 0;
@@ -1062,7 +1062,7 @@
 
 .featuresTheme :global(.breakthroughs-band .feature-produces li::before),
 .featuresTheme :global(.tools-showcase-band .feature-produces li::before) {
-  content: '✦';
+  content: 'âœ¦';
   position: absolute;
   left: 0;
   top: 0;
@@ -1726,7 +1726,7 @@
 }
 
 .featuresTheme :global(.home-faq-list details[open] summary::after) {
-  content: '−';
+  content: 'âˆ’';
   transform: rotate(180deg);
 }
 
@@ -3059,7 +3059,231 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  gap: 2px;
+}
+
+.pulseDotBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+
+.pulseDotInner {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  transition: all 0.2s ease;
+}
+
+.pulseDotBtn:hover .pulseDotInner {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.pulseDotActive .pulseDotInner {
+  background: #ff7137;
+  width: 18px;
+  border-radius: 999px;
+  box-shadow: 0 0 8px rgba(255, 113, 55, 0.5);
+}
+
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.6; }
+}
+
+@media (max-width: 768px) {
+  .pulseInner {
+    border-radius: 18px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+  }
+  .pulseEventCard {
+    width: 100%;
+  }
+  .pulseEventAction {
+    white-space: normal;
+  }
+  .pulseControls {
+    align-self: center;
+  }
+}
+
+/* ==========================================================================
+   COMPANION PHOTO SCOPE SCANNER DEMO
+   ========================================================================== */
+
+.photoDemoContainer {
+  background: linear-gradient(135deg, rgba(14, 28, 48, 0.85) 0%, rgba(9, 14, 23, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 24px;
+  padding: clamp(1.5rem, 3vw, 2.5rem);
+  margin: 3rem auto;
+  max-width: 1200px;
+  box-shadow: 0 24px 64px -12px rgba(0, 0, 0, 0.6);
+  position: relative;
+  overflow: hidden;
+}
+
+.photoDemoContainer::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  width: 400px;
+  height: 250px;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%);
+  pointer-events: none;
+}
+
+.photoDemoEyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  color: #b388ff;
+  text-transform: uppercase;
+  margin-bottom: 0.5rem;
+}
+
+.photoDemoTitle {
+  font-size: clamp(22px, 2.5vw, 32px);
+  line-height: 1.15;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0 0 0.5rem;
+}
+
+.photoDemoSub {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #cbd5e1;
+  max-width: 780px;
+  margin: 0 0 1.5rem;
+}
+
+.photoDemoTabs {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.photoDemoTabBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  color: #cbd5e1;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.photoDemoTabBtn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.photoDemoTabActive {
+  background: rgba(179, 136, 255, 0.16);
+  border-color: rgba(179, 136, 255, 0.45);
+  color: #ffffff;
+  box-shadow: 0 0 16px rgba(179, 136, 255, 0.2);
+}
+
+.photoDemoTabBadge {
+  font-size: 10.5px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #e2e8f0;
+}
+
+.photoDemoTabActive .photoDemoTabBadge {
+  background: rgba(179, 136, 255, 0.45);
+  color: #ffffff;
+}
+
+.photoDemoCardGrid {
+  display: grid;
+  grid-template-columns: 1fr 1.35fr;
+  gap: 1.75rem;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .photoDemoCardGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.photoScannerBox {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.photoScannerVisual {
+  position: relative;
+  background: #060b13;
+  border: 1px solid rgba(179, 136, 255, 0.35);
+  border-radius: 18px;
+  min-height: 280px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
   justify-content: space-between;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.5);
+}
+
+.photoJobImageWrap {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+}
+
+.photoJobImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  display: block;
+  filter: contrast(1.05) brightness(0.92);
+}
+
+.photoImageGradientOverlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    rgba(6, 11, 19, 0.7) 0%,
+    rgba(6, 11, 19, 0.15) 30%,
+    rgba(6, 11, 19, 0.15) 60%,
+    rgba(6, 11, 19, 0.85) 100%
+  );
+  pointer-events: none;
+  z-index: 2;
 }
 
 .photoLaser {
@@ -3072,6 +3296,7 @@
   box-shadow: 0 0 14px #b388ff, 0 0 24px #ff7137;
   animation: laserScan 2.6s infinite ease-in-out;
   pointer-events: none;
+  z-index: 5;
 }
 
 @keyframes laserScan {
@@ -3081,18 +3306,23 @@
 }
 
 .photoOverlayBadge {
+  position: relative;
+  z-index: 4;
+  margin: 1rem 0 0 1rem;
   display: inline-flex;
   flex-direction: column;
   gap: 2px;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(179, 136, 255, 0.4);
+  background: rgba(6, 12, 22, 0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(179, 136, 255, 0.45);
   padding: 6px 12px;
   border-radius: 10px;
   align-self: flex-start;
   font-size: 11px;
   font-weight: 800;
   color: #b388ff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 .photoOverlayBadge small {
@@ -3100,32 +3330,83 @@
   font-size: 10px;
 }
 
-.photoMockupDisplay {
+.photoOcrTargetsContainer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.photoOcrTarget {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(6, 14, 26, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(78, 224, 188, 0.6);
+  padding: 4px 8px;
+  border-radius: 6px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 10px rgba(78, 224, 188, 0.35);
+  animation: ocrTargetPulse 3s ease-in-out infinite alternate;
+}
+
+.photoOcrTargetWarning {
+  border-color: rgba(255, 113, 55, 0.7);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.6), 0 0 10px rgba(255, 113, 55, 0.45);
+}
+
+.photoOcrDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ee0bc;
+  box-shadow: 0 0 6px #4ee0bc;
+}
+
+.photoOcrDotWarning {
+  background: #ff7137;
+  box-shadow: 0 0 6px #ff7137;
+}
+
+.photoOcrLabel {
+  font-size: 11px;
+  font-weight: 750;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+@keyframes ocrTargetPulse {
+  0% { transform: translate(-50%, -50%) scale(0.98); }
+  100% { transform: translate(-50%, -50%) scale(1.02); }
+}
+
+.photoMockupBar {
+  position: relative;
+  z-index: 4;
+  margin: 1rem;
+  background: rgba(6, 14, 26, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+
+.photoMockupBarTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffc44d;
+  margin-bottom: 2px;
   display: flex;
   align-items: center;
-  gap: 1rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px dashed rgba(255, 255, 255, 0.15);
-  border-radius: 12px;
-  padding: 1rem;
-  margin-top: 1rem;
+  gap: 6px;
 }
 
-.photoMockupIcon {
-  font-size: 36px;
-  line-height: 1;
-}
-
-.photoMockupDesc strong {
-  display: block;
-  font-size: 13px;
-  color: #f8fafc;
-  margin-bottom: 4px;
-}
-
-.photoMockupDesc p {
-  font-size: 12.5px;
-  line-height: 1.45;
+.photoMockupBarDesc {
+  font-size: 12px;
+  line-height: 1.4;
   color: #cbd5e1;
   margin: 0;
 }

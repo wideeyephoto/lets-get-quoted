@@ -313,69 +313,9 @@ describe('the quote builder is shown, not drawn', () => {
  * pay 2.4MB for a section they may never reach; removing any part of that
  * mechanism looks identical on a desktop with a fast connection.
  */
-describe('the product tour', () => {
-  const TOUR = strip(read('src/app/features/ProductTour.tsx'));
-
-  it('sits directly above the five cards', () => {
-    expect(CODE).toContain('<ProductTour />');
-    const tour = CODE.indexOf('<ProductTour />');
-    expect(CODE.indexOf('className="index-proof"')).toBeLessThan(tour);
-    expect(tour).toBeLessThan(CODE.indexOf('className="flagship-index"'));
-  });
-
-  it('offers WebM before MP4, and both files exist', () => {
-    expect(TOUR.indexOf('type="video/webm"')).toBeLessThan(TOUR.indexOf('type="video/mp4"'));
-    for (const name of ['lets-get-quoted-hero-video-paced.webm', 'lets-get-quoted-hero-video-paced.mp4', 'lets-get-quoted-hero-video-paced-poster.jpg']) {
-      expect(statSync(`public/videos/${name}`).size, name).toBeGreaterThan(10_000);
-    }
-    // The smaller one has to be the one offered first, or the ordering is
-    // decoration rather than a saving.
-    const webm = statSync('public/videos/lets-get-quoted-hero-video-paced.webm').size;
-    const mp4 = statSync('public/videos/lets-get-quoted-hero-video-paced.mp4').size;
-    expect(webm).toBeLessThan(mp4);
-  });
-
-  it('holds the sources back until the section is approached', () => {
-    // <source src> is fetched the moment it has one, so the URLs live in
-    // data-src and are attached by the observer.
-    expect(TOUR).toContain('data-src={`${BASE}.webm`}');
-    expect(TOUR).toContain('data-src={`${BASE}.mp4`}');
-    expect(TOUR).toContain('source.src = source.dataset.src');
-    expect(TOUR).toContain('video.load()');
-    expect(TOUR).toContain('preload="none"');
-    expect(TOUR).toContain("rootMargin: '300px 0px'");
-  });
-
-  it('will not start itself for reduced motion, reduced data or Save-Data', () => {
-    expect(TOUR).toContain("matchMedia('(prefers-reduced-motion: reduce)')");
-    expect(TOUR).toContain("matchMedia('(prefers-reduced-data: reduce)')");
-    expect(TOUR).toContain('saveData');
-    // The server renders the not-allowed state, so hydration cannot disagree.
-    expect(TOUR).toContain('useState(false)');
-    // And there is always a button, so the decision is never final.
-    expect(TOUR).toContain('className="tour-play"');
-  });
-
-  it('stops when it leaves the screen or the tab is hidden', () => {
-    expect(TOUR).toContain('setOnScreen(entry.isIntersecting)');
-    expect(TOUR).toContain("addEventListener('visibilitychange'");
-    expect(TOUR).toContain('const shouldPlay = wantsPlay && near && onScreen;');
-  });
-
-  it('never upscales the capture it is showing', () => {
-    // 1280x720 native. Filling a 1712px band is a 1.34x upscale of a screen
-    // recording and the product's own text inside it goes soft — the same
-    // measurement that capped the example-site frame.
-    expect(CSS).toMatch(/\.tour-frame\)\s*\{[^}]*max-width: 1280px/);
-    expect(CSS).toMatch(/\.tour-video\)\s*\{[^}]*aspect-ratio: 1280 \/ 720/);
-    expect(TOUR).toContain('const WIDTH = 1280');
-    expect(TOUR).toContain('const HEIGHT = 720');
-  });
-
-  it('says what the recording is, and claims nothing else', () => {
-    expect(TOUR).toMatch(/demo account/i);
-    expect(TOUR).toMatch(/numbers are\s+invented/i);
-    expect(TOUR).not.toMatch(/\b(testimonial|case study|our customer|success story)\b/i);
+describe('the page flow into the flagship index', () => {
+  it('connects the proof strip into the flagship index', () => {
+    expect(CODE.indexOf('className="index-proof"')).toBeLessThan(CODE.indexOf('className="flagship-index"'));
   });
 });
 

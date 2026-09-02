@@ -21,13 +21,11 @@ import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
-import ProductTour from './ProductTour';
 import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
 import FeaturesCatalogExplorer from './FeaturesCatalogExplorer';
-import LiveFieldPulse from './LiveFieldPulse';
 import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
 import CompanionRouteDemo from './CompanionRouteDemo';
 import CompanionHUD from './CompanionHUD';
@@ -332,8 +330,8 @@ export default async function FeaturesPage() {
               <a className="button primary" href={FEATURE_SIGNUP_URL}>
                 Build my free site <span aria-hidden="true">→</span>
               </a>
-              <a className="button secondary" href="#tour">
-                Watch one job move
+              <a className="button secondary" href="#flagship-index">
+                Explore platform
               </a>
             </div>
 
@@ -362,16 +360,6 @@ export default async function FeaturesPage() {
           </span>
         ))}
       </section>
-
-      {/* LIVE FIELD PULSE: Real-time simulated contractor actions & co-pilot activity */}
-      <LiveFieldPulse />
-
-      {/* THE PRODUCT, MOVING, BEFORE THE PAGE DESCRIBES IT FIVE MORE TIMES.
-          Directly above "Five connected advantages", which is the last moment
-          before the page turns into a list of claims. Nothing here autoplays
-          for somebody who asked for less motion or less data, and the 2.4MB is
-          not fetched at all until the section is within a screen. */}
-      <ProductTour />
 
       <section className="flagship-index" id="flagship-index">
         <div className="index-heading">

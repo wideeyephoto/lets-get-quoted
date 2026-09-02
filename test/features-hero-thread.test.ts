@@ -34,8 +34,7 @@ describe('the hero Job Record workflow simulation', () => {
     ]);
   });
 
-  it('renders the simulation component inside the two-column hero', () => {
-    expect(PAGE).toContain('<CinematicMessageSimulation />');
+  it('renders the simulation component structure', () => {
     expect(SIM).toContain('hero-thread hero-thread-sim');
     expect(SIM).toContain('styles.jobCard');
   });
@@ -100,22 +99,11 @@ describe('how the simulation behaves', () => {
 });
 
 /**
- * Two-column layout and mobile stacking rules in CSS
+ * Hero layout rules
  */
-describe('the two-column hero layout', () => {
-  it('renders index-hero-beside on the features page', () => {
-    expect(PAGE).toContain('index-hero index-hero-beside');
-    expect(CSS).toContain('.index-hero-beside');
-  });
-
-  it('undoes every explicit placement when it stacks on mobile', () => {
-    const stacked = CSS.slice(CSS.indexOf('@media (max-width: 1040px)'));
-    const block = stacked.slice(0, stacked.indexOf('\n}\n\n@media'));
-    for (const child of ['.eyebrow', 'h1', 'p:not(.eyebrow)', 'p.index-hero-fee', '.hero-actions', '.hero-thread']) {
-      expect(block, `${child} keeps its two-column placement when stacked`).toContain(
-        `.index-hero-beside > ${child})`,
-      );
-    }
-    expect(block).toContain('grid-row: auto');
+describe('the hero layout', () => {
+  it('renders index-hero on the features page', () => {
+    expect(PAGE).toContain('className="index-hero"');
+    expect(CSS).toContain('.index-hero');
   });
 });

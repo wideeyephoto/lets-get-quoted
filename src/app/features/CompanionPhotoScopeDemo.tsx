@@ -1,7 +1,15 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useRef } from 'react';
+import Image from 'next/image';
 import styles from './features-theme.module.css';
+
+interface OcrTarget {
+  top: string;
+  left: string;
+  label: string;
+  isWarning?: boolean;
+}
 
 interface PhotoScenario {
   id: string;
@@ -9,7 +17,10 @@ interface PhotoScenario {
   badge: string;
   icon: string;
   trade: string;
+  imageSrc: string;
+  imageAlt: string;
   sampleImgDescription: string;
+  ocrTargets: OcrTarget[];
   detectedSpecs: { label: string; value: string }[];
   risksDetected: string[];
   billOfMaterials: { item: string; qty: string; unitPrice: number }[];
@@ -24,7 +35,14 @@ const SCENARIOS: PhotoScenario[] = [
     badge: 'ELECTRICAL OCR',
     icon: '⚡',
     trade: 'Electrical',
+    imageSrc: '/images/ai-vision/electrical-panel.jpg',
+    imageAlt: 'Basement Federal Pacific electrical panel with breakers and wiring',
     sampleImgDescription: 'Basement 100A Federal Pacific panel with double-tapped breakers & corroded main lug',
+    ocrTargets: [
+      { top: '32%', left: '26%', label: '⚡ Federal Pacific 100A' },
+      { top: '56%', left: '50%', label: '⚠️ Double-Tapped Breaker', isWarning: true },
+      { top: '82%', left: '52%', label: '🔍 Corroded Main Lug' },
+    ],
     detectedSpecs: [
       { label: 'Existing Brand', value: 'Federal Pacific Stab-Lok 100A' },
       { label: 'Bus Rating', value: '100A Max / 20-Circuit' },
@@ -51,7 +69,14 @@ const SCENARIOS: PhotoScenario[] = [
     badge: 'HVAC VISION SCOPE',
     icon: '❄️',
     trade: 'HVAC',
+    imageSrc: '/images/ai-vision/hvac-condenser.jpg',
+    imageAlt: 'Outdoor AC condenser unit with rating plate and line set on gravel pad',
     sampleImgDescription: 'Outdoor condenser rating plate & rusted suction line showing R-22 Freon system',
+    ocrTargets: [
+      { top: '38%', left: '54%', label: '❄️ Carrier 4-Ton 10 SEER' },
+      { top: '70%', left: '26%', label: '⚠️ R-22 Phased Out', isWarning: true },
+      { top: '82%', left: '58%', label: '📐 3° Settled Tilt' },
+    ],
     detectedSpecs: [
       { label: 'Unit Model', value: 'Carrier 38TKB048300 (4-Ton 10 SEER)' },
       { label: 'Refrigerant', value: 'R-22 Freon (Phased Out)' },
@@ -78,7 +103,14 @@ const SCENARIOS: PhotoScenario[] = [
     badge: 'PLUMBING SCOPE',
     icon: '🚰',
     trade: 'Plumbing',
+    imageSrc: '/images/ai-vision/water-heater.jpg',
+    imageAlt: 'Basement gas water heater tank with draft hood and copper piping',
     sampleImgDescription: 'Leaking 12-year-old atmospheric gas water heater with corroded galvanized nipples',
+    ocrTargets: [
+      { top: '44%', left: '50%', label: '🚰 Rheem 40-Gal Gas' },
+      { top: '16%', left: '50%', label: '⚠️ Corroded 3" B-Vent', isWarning: true },
+      { top: '78%', left: '46%', label: '💧 Leaking Union' },
+    ],
     detectedSpecs: [
       { label: 'Existing Unit', value: 'Rheem 40-Gal Gas Natural Draft' },
       { label: 'Gas Supply', value: '1/2" Black Iron Pipe' },
@@ -187,17 +219,49 @@ export default function CompanionPhotoScopeDemo() {
         {/* Left: Photo + Live Scanning Laser */}
         <div className={styles.photoScannerBox}>
           <div className={styles.photoScannerVisual}>
+            {/* Real Jobsite Photo */}
+            <div className={styles.photoJobImageWrap}>
+              <Image
+                src={scenario.imageSrc}
+                alt={scenario.imageAlt}
+                fill
+                sizes="(max-width: 900px) 100vw, 450px"
+                className={styles.photoJobImage}
+                priority
+              />
+              <div className={styles.photoImageGradientOverlay} aria-hidden="true" />
+            </div>
+
+            {/* OCR Live Laser */}
             <div className={`${styles.photoLaser} ${isScanning ? styles.photoLaserActive : ''}`} />
+
+            {/* Top Badge */}
             <div className={styles.photoOverlayBadge}>
               <span>{scenario.badge}</span>
               <small>OCR &amp; Multimodal Analysis</small>
             </div>
-            <div className={styles.photoMockupDisplay}>
-              <div className={styles.photoMockupIcon}>{scenario.icon}</div>
-              <div className={styles.photoMockupDesc}>
-                <strong>Uploaded Job Photo</strong>
-                <p>{scenario.sampleImgDescription}</p>
+
+            {/* In-Image OCR Pinpoint Targets */}
+            <div className={styles.photoOcrTargetsContainer} aria-hidden="true">
+              {scenario.ocrTargets.map((target, tIdx) => (
+                <div
+                  key={tIdx}
+                  className={`${styles.photoOcrTarget} ${target.isWarning ? styles.photoOcrTargetWarning : ''}`}
+                  style={{ top: target.top, left: target.left }}
+                >
+                  <span className={`${styles.photoOcrDot} ${target.isWarning ? styles.photoOcrDotWarning : ''}`} />
+                  <span className={styles.photoOcrLabel}>{target.label}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* Bottom Caption Bar */}
+            <div className={styles.photoMockupBar}>
+              <div className={styles.photoMockupBarTitle}>
+                <span>{scenario.icon}</span>
+                <span>Uploaded Jobsite Photo</span>
               </div>
+              <p className={styles.photoMockupBarDesc}>{scenario.sampleImgDescription}</p>
             </div>
           </div>
 
