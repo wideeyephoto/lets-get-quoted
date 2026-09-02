@@ -1,4 +1,4 @@
-﻿/* Features Hub - Dark Luxury & Blueprint Design System */
+/* Features Hub - Dark Luxury & Blueprint Design System */
 
 .featuresTheme {
   color-scheme: dark;
@@ -863,21 +863,23 @@
 
 /* Quick Stops Route Band */
 .featuresTheme :global(.route-band) {
-  max-width: 1360px;
-  margin: 0 auto clamp(80px, 10vh, 120px);
-  padding: clamp(36px, 5vw, 60px);
-  display: grid;
-  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-  gap: clamp(32px, 5vw, 60px);
-  align-items: start;
-  background: linear-gradient(135deg, rgba(42, 24, 30, 0.9) 0%, rgba(14, 28, 48, 0.9) 100%);
-  border: 1px solid rgba(255, 113, 55, 0.38);
-  border-radius: 24px;
+  max-width: 1360px !important;
+  width: min(calc(100% - clamp(32px, 6vw, 80px)), 1360px) !important;
+  margin: 0 auto clamp(80px, 10vh, 120px) !important;
+  padding: clamp(36px, 5vw, 60px) !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr) !important;
+  gap: clamp(32px, 5vw, 60px) !important;
+  align-items: start !important;
+  background: linear-gradient(135deg, rgba(42, 24, 30, 0.9) 0%, rgba(14, 28, 48, 0.9) 100%) !important;
+  border: 1px solid rgba(255, 113, 55, 0.38) !important;
+  border-radius: 24px !important;
   box-shadow:
     0 28px 70px rgba(0, 0, 0, 0.45),
     0 0 38px rgba(255, 113, 55, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
-  backdrop-filter: blur(20px);
+    inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(20px) !important;
+  box-sizing: border-box !important;
 }
 
 .featuresTheme :global(.route-band > .features-theme_routeDemoBox__GtTiL),
@@ -889,8 +891,32 @@
 
 @media (max-width: 900px) {
   .featuresTheme :global(.route-band) {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1fr !important;
   }
+}
+
+@media (max-width: 560px) {
+  .featuresTheme :global(.route-band) {
+    padding: 22px 18px !important;
+    width: calc(100% - 32px) !important;
+    margin: 0 auto clamp(48px, 8vh, 80px) !important;
+  }
+}
+
+.featuresTheme :global(.route-copy .eyebrow) {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 6px 14px !important;
+  border-radius: 999px !important;
+  border: 1px solid rgba(255, 113, 55, 0.38) !important;
+  background: rgba(255, 113, 55, 0.14) !important;
+  color: var(--yellow, #ffc44d) !important;
+  font-size: 12px !important;
+  font-weight: 850 !important;
+  letter-spacing: 0.08em !important;
+  width: fit-content !important;
+  margin: 0 0 16px !important;
 }
 
 .featuresTheme :global(.route-copy h2) {

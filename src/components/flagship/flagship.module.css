@@ -7549,9 +7549,11 @@
 .root :global(.route-band) {
   display: grid;
   grid-template-columns: minmax(0, 1.05fr) minmax(0, .95fr);
-  align-items: center;
+  align-items: start;
   gap: clamp(28px, 4vw, 64px);
-  margin: 0 clamp(24px, 6vw, 104px) clamp(64px, 7vw, 104px);
+  max-width: 1360px;
+  width: min(calc(100% - clamp(32px, 6vw, 80px)), 1360px);
+  margin: 0 auto clamp(64px, 7vw, 104px);
   padding: clamp(28px, 3.4vw, 46px);
   border: 1px solid rgba(255, 122, 33, .28);
   border-radius: 22px;
