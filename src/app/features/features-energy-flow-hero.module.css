@@ -1,0 +1,1272 @@
+﻿/* =========================================================================
+   FEATURES HERO 6-PILLAR INTERACTIVE ENERGY FLOW CHART STYLES (HERO-ALIGNED)
+   ========================================================================= */
+
+.flowContainer {
+  position: relative;
+  width: 100%;
+  max-width: 1160px;
+  margin: 32px auto 0;
+  background: radial-gradient(circle at 50% 50%, rgba(13, 27, 46, 0.95) 0%, rgba(6, 14, 24, 0.98) 100%);
+  border: 1px solid rgba(78, 224, 188, 0.28);
+  border-radius: 20px;
+  padding: 20px 24px;
+  overflow: hidden;
+  box-shadow: 0 16px 45px rgba(0, 0, 0, 0.5), inset 0 1px 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px);
+  text-align: left;
+  box-sizing: border-box;
+}
+
+/* Background Ambient Glow */
+.flowBackdropGlow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 360px;
+  height: 360px;
+  background: radial-gradient(circle, rgba(255, 113, 55, 0.12) 0%, rgba(78, 224, 188, 0.08) 40%, rgba(168, 85, 247, 0) 70%);
+  filter: blur(45px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Header Banner inside Flow */
+.flowHeaderBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  position: relative;
+  z-index: 2;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.flowHeaderTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.flowLiveBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: rgba(78, 224, 188, 0.15);
+  border: 1px solid rgba(78, 224, 188, 0.35);
+  color: #4ee0bc;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.liveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4ee0bc;
+  box-shadow: 0 0 8px #4ee0bc;
+  animation: livePulse 2s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.4); opacity: 0.6; }
+}
+
+.flowHeaderHeading {
+  font-size: 13.5px;
+  font-weight: 800;
+  color: #f1f5f9;
+}
+
+.flowReplacedToolsTag {
+  font-size: 10.5px;
+  font-weight: 750;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+}
+
+.flowHeaderRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Play Full Journey Action Button */
+.journeyTriggerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.25) 0%, rgba(255, 196, 77, 0.2) 100%);
+  border: 1px solid rgba(255, 113, 55, 0.5);
+  color: #ffc44d;
+  font-size: 11.5px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 180ms ease;
+  box-shadow: 0 2px 8px rgba(255, 113, 55, 0.2);
+}
+
+.journeyTriggerBtn:hover {
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.38) 0%, rgba(255, 196, 77, 0.3) 100%);
+  border-color: #ffc44d;
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.journeyTriggerBtnActive {
+  background: linear-gradient(135deg, #ff7137 0%, #ff9869 100%) !important;
+  border-color: #ffc44d !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 14px rgba(255, 113, 55, 0.5) !important;
+}
+
+.progressBarContainer {
+  width: 60px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background: linear-gradient(90deg, #ff7137, #4ee0bc);
+  border-radius: 999px;
+  transition: width 100ms linear;
+}
+
+/* JOURNEY STORY PROGRESS TRACKER BAR */
+.journeyTimelineStrip {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+  margin-bottom: 14px;
+  padding: 6px 8px;
+  background: rgba(6, 14, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.journeyTimelineNode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 180ms ease;
+  min-width: 0;
+}
+
+.journeyTimelineNode:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.journeyTimelineNodeActive {
+  background: rgba(255, 113, 55, 0.18) !important;
+  border: 1px solid rgba(255, 113, 55, 0.4) !important;
+}
+
+.journeyNodeNum {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 10px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.journeyNodeNumActive {
+  background: #ff7137 !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 8px #ff7137;
+}
+
+.journeyNodeLabel {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.journeyNodeLabelActive {
+  color: #ffc44d !important;
+}
+
+/* 3-Column Main Stage */
+.flowStage {
+  display: grid;
+  grid-template-columns: 320px 110px 1fr;
+  align-items: center;
+  gap: 8px;
+  position: relative;
+  min-height: 336px;
+  z-index: 2;
+}
+
+/* -------------------------------------------------------------
+   LEFT: 6 CORE FEATURE PILLARS
+   ------------------------------------------------------------- */
+.featureStack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  height: 336px;
+  justify-content: space-between;
+}
+
+.featureCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 48px;
+  padding: 0 12px;
+  background: rgba(15, 27, 44, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  text-align: left;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.featureCard:hover {
+  background: rgba(24, 40, 64, 0.95);
+  border-color: rgba(255, 113, 55, 0.4);
+  transform: translateX(3px);
+}
+
+.featureActive {
+  background: linear-gradient(135deg, rgba(255, 113, 55, 0.22) 0%, rgba(255, 196, 77, 0.16) 100%) !important;
+  border-color: rgba(255, 113, 55, 0.65) !important;
+  box-shadow: 0 0 16px rgba(255, 113, 55, 0.22), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transform: translateX(4px);
+}
+
+.terminalPin {
+  position: absolute;
+  right: -5px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #0f1c2e;
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  transition: all 200ms ease;
+  z-index: 3;
+}
+
+.terminalPinActive {
+  background: #ffc44d !important;
+  border-color: #ffffff !important;
+  box-shadow: 0 0 10px #ffc44d, 0 0 16px rgba(255, 113, 55, 0.8) !important;
+  transform: translateY(-50%) scale(1.25);
+}
+
+/* Squircle Icon Containers */
+.iconSquircle {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(8, 16, 28, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  transition: all 180ms ease;
+}
+
+.squircle_website {
+  background: rgba(56, 189, 248, 0.15) !important;
+  border-color: rgba(56, 189, 248, 0.35) !important;
+}
+
+.squircle_voice {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.35) !important;
+}
+
+.squircle_updates {
+  background: rgba(139, 92, 246, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.35) !important;
+}
+
+.squircle_quotes {
+  background: rgba(255, 113, 55, 0.15) !important;
+  border-color: rgba(255, 113, 55, 0.35) !important;
+}
+
+.squircle_scheduling {
+  background: rgba(234, 179, 8, 0.15) !important;
+  border-color: rgba(234, 179, 8, 0.35) !important;
+}
+
+.squircle_payments {
+  background: rgba(78, 224, 188, 0.15) !important;
+  border-color: rgba(78, 224, 188, 0.35) !important;
+}
+
+.featureTextGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.featureTitleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+}
+
+.featureNameDesktop {
+  display: inline;
+  font-size: 13px;
+  font-weight: 750;
+  color: #f1f5f9;
+  white-space: nowrap;
+}
+
+.featureNameMobile {
+  display: none;
+}
+
+.featureMicroTag {
+  font-size: 9.5px;
+  font-weight: 750;
+  padding: 1.5px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.featureMicroTagActive {
+  background: rgba(255, 113, 55, 0.22);
+  color: #ffc44d;
+  border-color: rgba(255, 113, 55, 0.5);
+}
+
+.featureSub {
+  font-size: 10px;
+  font-weight: 600;
+  color: #94a3b8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* -------------------------------------------------------------
+   CENTER: CIRCUIT CONDUIT & AI HUB ORB
+   ------------------------------------------------------------- */
+.conduitArea {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 336px;
+  width: 100%;
+}
+
+.circuitSvgDesktop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.circuitSvgMobile {
+  display: none;
+}
+
+.circuitTrace {
+  fill: none;
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-dasharray: 3 3;
+  transition: stroke 220ms ease;
+}
+
+.circuitTraceActive {
+  fill: none;
+  stroke: rgba(255, 113, 55, 0.75);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  transition: stroke 220ms ease;
+}
+
+.circuitTraceActiveRight {
+  fill: none;
+  stroke: rgba(78, 224, 188, 0.75);
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+/* Central AI Hub Node: Live Job Record Core */
+.hubNodeWrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.hubRecordTag {
+  font-size: 8.5px;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #ffc44d;
+  background: rgba(255, 113, 55, 0.2);
+  border: 1px solid rgba(255, 113, 55, 0.4);
+  padding: 1px 6px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
+
+.hubOrb {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #1e293b 0%, #090e17 100%);
+  border: 1.5px solid rgba(255, 255, 255, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  box-shadow: 
+    0 0 16px rgba(255, 113, 55, 0.3),
+    0 0 28px rgba(78, 224, 188, 0.18),
+    inset 0 1px 2px rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  transition: all 220ms ease;
+}
+
+.hubOrb:hover {
+  transform: scale(1.06);
+  box-shadow: 
+    0 0 24px rgba(255, 113, 55, 0.45),
+    0 0 38px rgba(78, 224, 188, 0.3),
+    inset 0 1px 3px rgba(255, 255, 255, 0.45);
+}
+
+.hubHaloRing {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, #ff7137, #ffc44d, #4ee0bc, #a855f7, #ff7137);
+  z-index: -1;
+  filter: blur(4px);
+  opacity: 0.8;
+  animation: rotateHalo 8s linear infinite;
+}
+
+@keyframes rotateHalo {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.hubStarIcon {
+  font-size: 19px;
+  color: #ffffff;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
+  animation: breatheStar 3s ease-in-out infinite;
+}
+
+@keyframes breatheStar {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6)); }
+  50% { transform: scale(1.08); filter: drop-shadow(0 0 8px rgba(255, 196, 77, 0.8)); }
+}
+
+.hubLabel {
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #cbd5e1;
+  background: rgba(15, 27, 44, 0.94);
+  padding: 2px 7px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+/* -------------------------------------------------------------
+   RIGHT: INTERACTIVE FEATURE INTELLIGENCE CARD / JOURNEY STORY CARD
+   ------------------------------------------------------------- */
+.cardContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.intelligenceCard {
+  background: linear-gradient(165deg, rgba(14, 30, 48, 0.92) 0%, rgba(8, 20, 36, 0.96) 100%);
+  border: 1px solid rgba(78, 224, 188, 0.35);
+  border-radius: 14px;
+  padding: 16px 18px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4), 0 0 20px rgba(78, 224, 188, 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: slideOutcomeIn 240ms cubic-bezier(0.16, 1, 0.3, 1);
+  min-width: 0;
+}
+
+@keyframes slideOutcomeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cardHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cardTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #ffffff;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cardBadge {
+  font-size: 10.5px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 5px;
+  background: rgba(78, 224, 188, 0.2);
+  color: #4ee0bc;
+  border: 1px solid rgba(78, 224, 188, 0.4);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* JOURNEY STORY BANNER */
+.journeyStoryHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: rgba(255, 113, 55, 0.15);
+  border: 1px solid rgba(255, 113, 55, 0.35);
+  border-radius: 8px;
+}
+
+.journeyStoryStepTag {
+  font-size: 11px;
+  font-weight: 850;
+  color: #ffc44d;
+}
+
+.journeyStoryTimeTag {
+  font-size: 10.5px;
+  color: #cbd5e1;
+  font-family: monospace;
+}
+
+.journeyNarrativeBox {
+  background: rgba(6, 14, 24, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.journeyNarrativeLabel {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #38bdf8;
+}
+
+.journeyNarrativeText {
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: #f1f5f9;
+  font-weight: 600;
+  margin: 0;
+}
+
+.journeyOutcomeTag {
+  font-size: 11px;
+  font-weight: 750;
+  color: #4ee0bc;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* LIVE MICRO-UI PREVIEW BOXES */
+.microPreviewContainer {
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(6, 14, 24, 0.85);
+  border: 1px solid rgba(78, 224, 188, 0.25);
+  font-size: 12px;
+}
+
+/* Website snippet */
+.microSnippetWebsite {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snippetWebsiteHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.websiteUrlBadge {
+  font-size: 10px;
+  font-weight: 750;
+  color: #38bdf8;
+  font-family: monospace;
+}
+
+.websiteLsaBadge {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #4ee0bc;
+  background: rgba(78, 224, 188, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.snippetWebsiteHeadline {
+  font-size: 12px;
+  font-weight: 750;
+  color: #f1f5f9;
+}
+
+.snippetWebsiteSub {
+  font-size: 10.5px;
+  color: #94a3b8;
+}
+
+/* Voice snippet */
+.microSnippetVoice {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.snippetVoiceTop {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.voiceLiveDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.voiceStatusText {
+  font-size: 11px;
+  font-weight: 750;
+  color: #34d399;
+  flex: 1;
+}
+
+.voiceDuration {
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
+.voiceTranscript {
+  font-size: 11.5px;
+  color: #e2e8f0;
+  font-style: italic;
+  line-height: 1.4;
+}
+
+/* Updates snippet */
+.microSnippetUpdates {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.smsBubbleReceived {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+}
+
+.smsBubbleReceived span {
+  font-weight: 750;
+  color: #94a3b8;
+}
+
+.smsBubbleSent {
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #e0f2fe;
+}
+
+.smsAutoTag {
+  font-weight: 800;
+  color: #38bdf8;
+}
+
+/* Quote snippet */
+.microSnippetQuote {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.quoteRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.quoteItem {
+  font-weight: 750;
+  color: #f1f5f9;
+  font-size: 12px;
+}
+
+.quotePrice {
+  font-weight: 850;
+  color: #4ee0bc;
+  font-size: 13.5px;
+}
+
+.quoteFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+}
+
+.quoteMarginBadge {
+  color: #ffc44d;
+  font-weight: 750;
+}
+
+.quoteSignBadge {
+  color: #34d399;
+  font-weight: 750;
+}
+
+/* Scheduling & Crew snippet */
+.microSnippetScheduling {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.dispatchHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11.5px;
+}
+
+.dispatchTruck {
+  font-weight: 800;
+  color: #fde047;
+}
+
+.dispatchStatus {
+  font-weight: 750;
+  color: #4ee0bc;
+  font-size: 11px;
+}
+
+.dispatchDetails {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+/* Payments snippet with Fee Breakdown */
+.microSnippetPayments {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.paymentsTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.paymentsDepositTitle {
+  font-size: 12px;
+  font-weight: 800;
+  color: #ffffff;
+}
+
+.paymentsDepositAmount {
+  font-size: 13.5px;
+  font-weight: 850;
+  color: #4ee0bc;
+}
+
+.paymentsFeeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10.5px;
+  color: #94a3b8;
+  padding-top: 3px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.paymentsFeeHighlight {
+  color: #ffc44d;
+  font-weight: 750;
+}
+
+.paymentsSyncTag {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+/* Capability Section */
+.cardSectionBox {
+  background: rgba(6, 14, 24, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cardSectionLabel {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #ffc44d;
+}
+
+.cardSectionText {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #f1f5f9;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Problem Solved Section */
+.cardProblemBox {
+  background: rgba(16, 28, 44, 0.55);
+  border: 1px solid rgba(78, 224, 188, 0.2);
+  border-radius: 10px;
+  padding: 9px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.cardProblemLabel {
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #4ee0bc;
+}
+
+.cardProblemText {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #e2e8f0;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* Key Metrics / Specs Checklist */
+.cardSpecsList {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.cardSpecItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  color: #cbd5e1;
+  font-weight: 600;
+}
+
+.cardSpecIcon {
+  color: #4ee0bc;
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+/* Action Bar */
+.cardActionBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.cardActionPrimary {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: linear-gradient(135deg, #ff7137 0%, #ff9869 100%);
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12.5px;
+  font-weight: 800;
+  color: #ffffff;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(255, 113, 55, 0.35);
+  transition: all 180ms ease;
+  white-space: nowrap;
+}
+
+.cardActionPrimary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 113, 55, 0.45);
+  color: #ffffff;
+}
+
+/* Journey Controls */
+.journeyControlRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.journeyBtnPrev,
+.journeyBtnNext {
+  padding: 7px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 180ms ease;
+}
+
+.journeyBtnPrev {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+}
+
+.journeyBtnPrev:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.journeyBtnNext {
+  flex: 1;
+  background: linear-gradient(135deg, #ff7137 0%, #ff9869 100%);
+  border: none;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(255, 113, 55, 0.35);
+}
+
+.journeyBtnNext:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 113, 55, 0.45);
+}
+
+/* Stepper Pill Indicators */
+.stepPillSelector {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  justify-content: center;
+  margin-top: 2px;
+}
+
+.stepPillBtn {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.18);
+  border: none;
+  cursor: pointer;
+  transition: all 180ms ease;
+  padding: 0;
+}
+
+.stepPillBtnActive {
+  width: 20px;
+  border-radius: 999px;
+  background: #ff7137;
+  box-shadow: 0 0 8px #ff7137;
+}
+
+/* -------------------------------------------------------------
+   RESPONSIVE LAYOUT (TABLETS & MOBILE)
+   ------------------------------------------------------------- */
+@media (max-width: 960px) {
+  .journeyTimelineStrip {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .flowStage {
+    grid-template-columns: 1fr;
+    gap: 6px;
+    min-height: auto;
+  }
+  .featureStack {
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+  }
+  .circuitSvgDesktop {
+    display: none;
+  }
+  .circuitSvgMobile {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    overflow: visible;
+  }
+  .conduitArea {
+    min-height: 76px;
+    height: 76px;
+    width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 2px 0;
+  }
+  .hubNodeWrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    gap: 4px;
+  }
+  .hubOrb {
+    width: 42px;
+    height: 42px;
+  }
+  .hubStarIcon {
+    font-size: 17px;
+  }
+  .hubLabel {
+    font-size: 9px;
+    padding: 1px 6px;
+  }
+  .terminalPin {
+    display: none;
+  }
+  .featureCard:hover {
+    transform: none;
+  }
+  .featureActive {
+    transform: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .flowContainer {
+    padding: 14px 12px;
+    border-radius: 16px;
+    margin-top: 20px;
+  }
+  .flowHeaderBar {
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+  }
+  .flowHeaderHeading {
+    font-size: 12px;
+  }
+  .flowReplacedToolsTag {
+    display: none;
+  }
+  .flowHeaderRight {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .journeyTimelineStrip {
+    display: none;
+  }
+
+  /* 3-Column Compact Feature Cards in 2 rows */
+  .featureStack {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5px;
+  }
+  .featureCard {
+    height: auto;
+    padding: 5px 6px;
+    border-radius: 7px;
+    gap: 6px;
+    justify-content: flex-start;
+  }
+  .iconSquircle {
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+  }
+  .iconSquircle svg {
+    width: 12px;
+    height: 12px;
+  }
+  .featureNameDesktop {
+    display: none;
+  }
+  .featureNameMobile {
+    display: inline;
+    font-size: 11px;
+    font-weight: 750;
+    color: #f1f5f9;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .featureMicroTag {
+    display: none;
+  }
+  .featureSub {
+    display: none;
+  }
+
+  /* Conduit on Mobile */
+  .conduitArea {
+    min-height: 72px;
+    height: 72px;
+    margin: 1px 0;
+  }
+  .hubOrb {
+    width: 38px;
+    height: 38px;
+  }
+  .hubStarIcon {
+    font-size: 15px;
+  }
+  .hubLabel {
+    font-size: 8.5px;
+    padding: 1px 5px;
+  }
+
+  /* Intelligence Card on Mobile */
+  .intelligenceCard {
+    padding: 12px 14px;
+    gap: 8px;
+  }
+  .cardTitleGroup {
+    font-size: 13.5px;
+  }
+  .cardBadge {
+    font-size: 9.5px;
+    padding: 1px 5px;
+  }
+  .cardSectionBox,
+  .cardProblemBox {
+    padding: 8px 10px;
+    gap: 3px;
+  }
+  .cardSectionText,
+  .cardProblemText {
+    font-size: 11.5px;
+  }
+  .cardSpecItem {
+    font-size: 11px;
+  }
+  .cardActionPrimary {
+    padding: 7px 10px;
+    font-size: 11.5px;
+  }
+}

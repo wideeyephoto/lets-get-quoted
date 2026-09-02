@@ -214,7 +214,7 @@ describe('the section around it', () => {
     // workflow, and a copy change is not what this test is for — the thing it
     // guards is that swapping the capability bands for the job record did not
     // take a section of the page with it.
-    for (const kept of ['flagship-index', 'index-hero-beside', '<PageCTA', '<SiteFooter />']) {
+    for (const kept of ['flagship-index', 'index-hero', '<PageCTA', '<SiteFooter />']) {
       expect(PAGE).toContain(kept);
     }
     // The hero still opens with an eyebrow, a headline and a lede.
