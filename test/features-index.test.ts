@@ -96,14 +96,12 @@ describe('the proof strip proves things we can actually show', () => {
   });
 });
 
-describe('the features section leads with the website and connects the four workflow stages', () => {
-  const SITE_FEATURE = CODE.slice(CODE.indexOf('const WEBSITE_FEATURE'), CODE.indexOf('const WORKFLOW_FEATURES'));
+describe('the features section leads with the website and connects the workflow stages', () => {
   const WORKFLOW = CODE.slice(CODE.indexOf('const WORKFLOW_FEATURES'), CODE.indexOf('export default'));
   const workflowIds = [...WORKFLOW.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
 
-  it('runs website block → intake → quotes → scheduling → customer portal', () => {
-    expect(SITE_FEATURE).toContain("id: 'website-builder'");
-    expect(workflowIds).toEqual(['smart-intake', 'quotes', 'scheduling', 'client-portal']);
+  it('runs website → intake → quotes → scheduling → customer portal', () => {
+    expect(workflowIds).toEqual(['website-builder', 'smart-intake', 'quotes', 'scheduling', 'client-portal']);
   });
 
   it('moves the previous homepage AI promise into the intake workflow card', () => {
@@ -113,19 +111,10 @@ describe('the features section leads with the website and connects the four work
     expect(WORKFLOW).toContain('produces: AI_INTAKE_WORKFLOW.produces');
   });
 
-  it('renders the featured Website block before the workflow features grid', () => {
-    expect(CODE).toContain('<article');
-    expect(CODE).toContain('className="website-featured"');
-    expect(CODE).toContain('id={WEBSITE_FEATURE.id}');
-    expect(CODE).toContain('<WebsiteFeaturePreview />');
-    expect(CODE.indexOf('className="website-featured"')).toBeLessThan(CODE.indexOf('workflow-feature-grid'));
-  });
-
-  it('offers both site preview and deep-dive destinations for the website', () => {
-    expect(SITE_FEATURE).toContain("demoHref: '/demo/sites'");
-    expect(SITE_FEATURE).toContain("deepHref: '/features/website-builder'");
-    expect(CODE).toContain('href={WEBSITE_FEATURE.demoHref}');
-    expect(CODE).toContain('href={WEBSITE_FEATURE.deepHref}');
+  it('renders all 5 workflow cards inside the workflow features grid', () => {
+    expect(CODE).toContain('className="feature-link-grid workflow-feature-grid"');
+    expect(WORKFLOW).toContain("id: 'website-builder'");
+    expect(WORKFLOW).toContain("href: '/features/website-builder'");
   });
 
   it('gives quoting a card, which the heading has always promised', () => {
@@ -333,15 +322,10 @@ describe('the website feature preview and accessibility', () => {
     expect(PREVIEW_SRC).toContain('<figcaption className="sr-only">');
   });
 
-  it('has no nested anchors in the featured website block', () => {
-    const featuredBlock = CODE.slice(CODE.indexOf('className="website-featured"'), CODE.indexOf('workflow-feature-grid'));
-    // The outer element is an article rather than a parent Link/a wrapping child Links
-    expect(CODE).toContain('<article');
-    expect(CODE).toContain('className="website-featured"');
-    expect(CODE).not.toMatch(/<Link\b[^>]*className="website-featured"/);
-    expect(CODE).not.toMatch(/<a\b[^>]*className="website-featured"/);
-    expect(featuredBlock).not.toMatch(/<Link\b[^>]*>(?:(?!<\/Link>)[\s\S])*?<Link\b/);
-    expect(featuredBlock).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>)[\s\S])*?<a\b/);
+  it('has clean accessible anchor links for each workflow stage card', () => {
+    const gridBlock = CODE.slice(CODE.indexOf('workflow-feature-grid'), CODE.indexOf('className="route-band"'));
+    expect(gridBlock).not.toMatch(/<Link\b[^>]*>(?:(?!<\/Link>)[\s\S])*?<Link\b/);
+    expect(gridBlock).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>)[\s\S])*?<a\b/);
   });
 });
 

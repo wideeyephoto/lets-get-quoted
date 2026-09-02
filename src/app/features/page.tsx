@@ -21,7 +21,6 @@ import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import styles from '@/components/flagship/flagship.module.css';
 import JobRecordStages from './job-record-stages';
-import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
@@ -183,49 +182,6 @@ const jsonLd = {
  * Renaming an id here breaks a homepage link silently. There is a test that
  * asserts every homepage anchor resolves to an id on this page.
  */
-type WebsiteCapability = {
-  title: string;
-  body: string;
-};
-
-type WebsiteFeature = {
-  id: string;
-  eyebrow: string;
-  title: string;
-  description: string;
-  capabilities: WebsiteCapability[];
-  demoHref: string;
-  deepHref: string;
-};
-
-const WEBSITE_FEATURE: WebsiteFeature = {
-  id: 'website-builder',
-  eyebrow: 'BUILD THE FRONT DOOR',
-  title: 'A complete contractor website, generated in minutes.',
-  description:
-    'Tell us your business name, trade, and service area. LGQ generates your service pages, local pages, FAQs, trust content, and instant estimate—ready to edit and publish.',
-  capabilities: [
-    {
-      title: 'Generated trade and local pages',
-      body: 'Services, town pages, FAQs, and intake questions written for your trade.',
-    },
-    {
-      title: 'Editable themes and layout sections',
-      body: 'Brand colors, typography, project galleries, video, and flexible sections.',
-    },
-    {
-      title: 'Automatic local SEO and structured data',
-      body: 'LocalBusiness, review, and breadcrumb JSON-LD for Google search presence.',
-    },
-    {
-      title: 'Instant estimate connected to the job',
-      body: 'Requests arrive with scope, photos, budget, and urgency ready to quote.',
-    },
-  ],
-  demoHref: '/demo/sites',
-  deepHref: '/features/website-builder',
-};
-
 type WorkflowFeature = {
   number: string;
   id: string;
@@ -237,10 +193,24 @@ type WorkflowFeature = {
   actionLabel: string;
 };
 
-/* THE WORKFLOW STAGES THAT RUN BEHIND THE FRONT DOOR */
+/* THE 5 WORKFLOW STAGES: FROM FRONT DOOR TO FINAL PAYMENT */
 const WORKFLOW_FEATURES: WorkflowFeature[] = [
   {
     number: '01',
+    id: 'website-builder',
+    title: 'One-click contractor website',
+    body: 'Tell us your business name, trade, and service area. LGQ generates your full website with instant estimates in minutes.',
+    href: '/features/website-builder',
+    kicker: 'BUILD THE FRONT DOOR',
+    produces: [
+      'Generated trade & local pages',
+      'Mobile-ready on your own domain',
+      'Instant estimate connected to jobs',
+    ],
+    actionLabel: 'Explore Website Builder',
+  },
+  {
+    number: '02',
     id: 'smart-intake',
     title: AI_INTAKE_WORKFLOW.title,
     body: AI_INTAKE_WORKFLOW.description,
@@ -250,7 +220,7 @@ const WORKFLOW_FEATURES: WorkflowFeature[] = [
     actionLabel: 'Explore AI Intake',
   },
   {
-    number: '02',
+    number: '03',
     id: 'quotes',
     title: 'Quotes and approvals',
     body: 'Send an itemized quote with optional add-ons, take the signature on a phone, and collect the deposit before the truck moves.',
@@ -260,7 +230,7 @@ const WORKFLOW_FEATURES: WorkflowFeature[] = [
     actionLabel: 'Explore Quotes',
   },
   {
-    number: '03',
+    number: '04',
     id: 'scheduling',
     title: 'Scheduling and crew',
     body: 'Turn an approved quote into a booked day, assign who is going, and plan the route without retyping the job.',
@@ -270,7 +240,7 @@ const WORKFLOW_FEATURES: WorkflowFeature[] = [
     actionLabel: 'Explore Scheduling',
   },
   {
-    number: '04',
+    number: '05',
     id: 'client-portal',
     title: 'Customer texts and payments',
     body: 'Two-way texting, on-my-way alerts, and one link where the homeowner approves, follows and pays.',
@@ -376,40 +346,7 @@ export default async function FeaturesPage() {
           </p>
         </div>
 
-        {/* FEATURED WEBSITE BLOCK */}
-        <article
-          className="website-featured"
-          id={WEBSITE_FEATURE.id}
-          aria-labelledby="website-featured-title"
-        >
-          <div className="website-featured-copy">
-            <p className="eyebrow">{WEBSITE_FEATURE.eyebrow}</p>
-            <h3 id="website-featured-title">{WEBSITE_FEATURE.title}</h3>
-            <p>{WEBSITE_FEATURE.description}</p>
-
-            <ul className="website-capabilities" aria-label="Website builder capabilities">
-              {WEBSITE_FEATURE.capabilities.map((capability) => (
-                <li key={capability.title}>
-                  <strong>{capability.title}</strong>
-                  <span>{capability.body}</span>
-                </li>
-              ))}
-            </ul>
-
-            <div className="website-featured-actions">
-              <Link className="button primary" href={WEBSITE_FEATURE.demoHref}>
-                Preview site templates <span aria-hidden="true">→</span>
-              </Link>
-              <Link className="button secondary" href={WEBSITE_FEATURE.deepHref}>
-                Explore the website builder <span aria-hidden="true">→</span>
-              </Link>
-            </div>
-          </div>
-
-          <WebsiteFeaturePreview />
-        </article>
-
-        {/* FOUR WORKFLOW STAGES */}
+        {/* FIVE WORKFLOW STAGES */}
         <div className="feature-link-grid workflow-feature-grid">
           {WORKFLOW_FEATURES.map(({ number, id, title, body, href, kicker, produces, actionLabel }) => (
             <Link href={href} key={id} id={id}>
