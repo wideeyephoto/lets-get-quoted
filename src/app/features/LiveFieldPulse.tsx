@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import styles from './features-theme.module.css';
@@ -8,8 +8,8 @@ interface PulseEvent {
   trade: string;
   icon: string;
   location: string;
-  action: string;
-  highlight: string;
+  trigger: string;
+  outcome: string;
   value: string;
   timeAgo: string;
   featureHref: string;
@@ -18,69 +18,58 @@ interface PulseEvent {
 const PULSE_EVENTS: PulseEvent[] = [
   {
     id: 'evt-1',
-    trade: 'Electrical',
-    icon: '⚡',
-    location: 'Royal Oak, MI',
-    action: 'AI Copilot scanned 4 panel photos via OCR → Drafted 200A upgrade quote',
-    highlight: 'Quote e-signed & deposit paid',
-    value: '$3,850',
+    trade: 'Roofing',
+    icon: '🏠',
+    location: 'Austin, TX',
+    trigger: 'Homeowner uploaded 3 photos for instant estimate',
+    outcome: 'Ballpark range ($9,400–$13,200) calculated & scope logged',
+    value: '$11,200 Quote',
     timeAgo: 'Just now',
-    featureHref: '#smart-intake',
+    featureHref: '/features/website-builder',
   },
   {
     id: 'evt-2',
-    trade: 'HVAC',
-    icon: '❄️',
-    location: 'Austin, TX',
-    action: '24/7 AI Voice Receptionist answered emergency hotline',
-    highlight: 'Condenser issue qualified & routed',
-    value: '$1,420',
-    timeAgo: '3m ago',
-    featureHref: '#breakthroughs',
+    trade: 'Electrical',
+    icon: '⚡',
+    location: 'Royal Oak, MI',
+    trigger: 'AI Copilot scanned panel photo & extracted 200A specs',
+    outcome: '1-Click proposal approved & deposit collected',
+    value: '$3,850 Paid',
+    timeAgo: '2m ago',
+    featureHref: '/features/ai-vision',
   },
   {
     id: 'evt-3',
-    trade: 'Remodeling',
-    icon: '🔨',
+    trade: 'HVAC',
+    icon: '❄️',
     location: 'Denver, CO',
-    action: 'AI Copilot sent morning dispatch with tool checklist & gate code',
-    highlight: '4-man crew on site',
-    value: '3 jobs active',
+    trigger: '24/7 AI Voice Receptionist answered hotline in 2 rings',
+    outcome: 'Condenser issue diagnosed & tech dispatched',
+    value: 'Dispatched in 45s',
     timeAgo: '5m ago',
-    featureHref: '#scheduling',
+    featureHref: '/features/ai-intake',
   },
   {
     id: 'evt-4',
     trade: 'Plumbing',
     icon: '🚰',
     location: 'Tampa, FL',
-    action: 'AI Copilot matched Quick Stop on return route (+0.6 mi detour)',
-    highlight: 'Same-day visit fee collected',
-    value: '+$165',
+    trigger: '1-Click SMS estimate delivered to homeowner phone',
+    outcome: '$2,500 Deposit paid via Apple Pay & crew booked',
+    value: '$2,500 Deposit',
     timeAgo: '7m ago',
-    featureHref: '#quick-stops',
+    featureHref: '/features/quotes',
   },
   {
     id: 'evt-5',
-    trade: 'Roofing',
-    icon: '🏠',
-    location: 'Phoenix, AZ',
-    action: 'AI Copilot logged texted change order from ladder → Quote upgraded',
-    highlight: 'Customer selected Premium Shingles',
-    value: '$11,200',
-    timeAgo: '10m ago',
-    featureHref: '#quotes',
-  },
-  {
-    id: 'evt-6',
     trade: 'Landscaping',
-    icon: '🌱',
+    icon: '📍',
     location: 'Charlotte, NC',
-    action: 'AI Copilot generated 1-click trade website with local SEO & instant estimate',
-    highlight: 'Published to custom domain',
-    value: 'Live in 2 min',
-    timeAgo: '12m ago',
-    featureHref: '#website-builder',
+    trigger: 'Route engine matched nearby neighbor within 1.2 miles',
+    outcome: 'Quick-Stop slot booked (+0.6 mi detour) with 0 added drive time',
+    value: '+$185 Quick-Stop',
+    timeAgo: '10m ago',
+    featureHref: '/features/quick-stops',
   },
 ];
 
@@ -92,7 +81,7 @@ export default function LiveFieldPulse() {
     if (isPaused) return;
     const interval = setInterval(() => {
       setActiveIndex((prev) => (prev + 1) % PULSE_EVENTS.length);
-    }, 4200);
+    }, 4500);
     return () => clearInterval(interval);
   }, [isPaused]);
 
@@ -101,15 +90,15 @@ export default function LiveFieldPulse() {
   return (
     <aside
       className={styles.pulseContainer}
-      aria-label="Live platform activity and simulated field updates"
+      aria-label="Real-time contractor field automations"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       <div className={styles.pulseInner}>
         <div className={styles.pulseStatusBadge}>
           <span className={styles.pulseLiveDot} aria-hidden="true" />
-          <span className={styles.pulseStatusText}>⚡ LIVE SPARKY FIELD PULSE</span>
-          <span className={styles.pulseStatusSub}>Simulated Real-Time Activity</span>
+          <span className={styles.pulseStatusText}>✦ REAL-TIME FIELD AUTOMATIONS</span>
+          <span className={styles.pulseStatusSub}>Live Action Stream</span>
         </div>
 
         <div className={styles.pulseEventWrapper}>
@@ -117,7 +106,7 @@ export default function LiveFieldPulse() {
             href={current.featureHref}
             className={styles.pulseEventCard}
             key={current.id}
-            title="Click to view related feature"
+            title="Click to explore related feature"
           >
             <div className={styles.pulseEventIconWrap}>
               <span className={styles.pulseEventIcon} aria-hidden="true">{current.icon}</span>
@@ -131,7 +120,9 @@ export default function LiveFieldPulse() {
                 <span className={styles.pulseEventTime}>{current.timeAgo}</span>
               </div>
               <p className={styles.pulseEventAction}>
-                {current.action} &mdash; <strong className={styles.pulseEventHighlight}>{current.highlight}</strong>
+                <span>{current.trigger}</span>
+                <span className={styles.pulseArrowDivider} aria-hidden="true"> ──► </span>
+                <strong className={styles.pulseEventHighlight}>{current.outcome}</strong>
               </p>
             </div>
             <div className={styles.pulseEventValueBadge}>

@@ -29,7 +29,7 @@ describe('features companion and live interactivity with sparky', () => {
   });
 
   it('streams realistic multi-trade events in LiveFieldPulse with AI Copilot', () => {
-    expect(PULSE).toContain('⚡ LIVE SPARKY FIELD PULSE');
+    expect(PULSE).toContain('REAL-TIME FIELD AUTOMATIONS');
     expect(PULSE).toContain('Royal Oak, MI');
     expect(PULSE).toContain('Austin, TX');
     expect(PULSE).toContain('Denver, CO');
