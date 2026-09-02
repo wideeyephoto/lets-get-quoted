@@ -199,12 +199,10 @@ describe('every tool card goes somewhere', () => {
   });
 });
 
-describe('the section around it', () => {
-  it('replaced only the capability bands', () => {
-    expect(PAGE).toContain('<JobRecordStages />');
-    expect(PAGE).toContain('EVERYTHING BEHIND THE WEBSITE');
-    expect(PAGE).toContain('One job record.');
-    expect(PAGE).toContain('Core workflow on every plan · Included capacity varies');
+describe('the page layout structure', () => {
+  it('connects the hero, energy flow, and interactive showcases cleanly', () => {
+    expect(PAGE).toContain('<FeaturesEnergyFlowHero />');
+    expect(PAGE).toContain('<FeaturesCatalogExplorer />');
     expect(PAGE).not.toContain('capability-band');
   });
 
@@ -214,7 +212,7 @@ describe('the section around it', () => {
     // workflow, and a copy change is not what this test is for — the thing it
     // guards is that swapping the capability bands for the job record did not
     // take a section of the page with it.
-    for (const kept of ['flagship-index', 'index-hero', '<PageCTA', '<SiteFooter />']) {
+    for (const kept of ['index-hero', '<PageCTA', '<SiteFooter />']) {
       expect(PAGE).toContain(kept);
     }
     // The hero still opens with an eyebrow, a headline and a lede.

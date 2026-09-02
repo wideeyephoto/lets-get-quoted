@@ -6,6 +6,7 @@ import { formatPhoneDashes } from '@/lib/phone';
 import { listJobTasks, taskProgress } from '@/lib/job-tasks';
 import SaveButton from '@/components/save-button';
 import FieldHeader from '../../FieldHeader';
+import FieldFooter from '../../FieldFooter';
 import { setFieldJobStatusAction, postFieldUpdateAction, logFieldTimeAction, logFieldMaterialAction, toggleFieldTaskAction, addFieldTaskAction, sendArrivalFieldAction, setArrivalStatusFieldAction, updateArrivalPositionAction, clockInFieldAction, clockOutFieldAction } from './actions';
 import { raiseFieldChangeOrderAction } from './change-order-actions';
 import { addFieldMilestonePhotoAction } from './milestone-actions';
@@ -45,7 +46,7 @@ function formatTime(value: string): string {
 export default async function FieldJobPage({ params: paramsPromise, searchParams: searchParamsPromise }: { params: Promise<{ id: string }>; searchParams: Promise<{ logged?: string; clocked?: string; clock?: string; hours?: string; arrival?: string; sms?: string }> }) {
   const params = await paramsPromise;
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId, crew, businessName, timeClockMode, businesses } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName, timeClockMode, businesses, logoUrl, navLogoTop } = await requireCrewContext();
 
   if (!(await isJobAssignedToCrew(supabase, accountId, params.id, crew.id))) {
     redirect('/field');
@@ -157,7 +158,14 @@ export default async function FieldJobPage({ params: paramsPromise, searchParams
 
   return (
     <>
-      <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" switchable={businesses.length > 1} />
+      <FieldHeader
+        businessName={businessName}
+        crewName={crew.name}
+        backHref="/field"
+        switchable={businesses.length > 1}
+        logoUrl={logoUrl}
+        navLogoTop={navLogoTop}
+      />
       <main className="field-main">
         {arrivalFlash ? <div className={`field-flash${arrivalFlash.error ? ' is-error' : ''}`}>{arrivalFlash.text}</div> : null}
         {loggedFlash ? <div className={`field-flash${loggedFlashError ? ' is-error' : ''}`}>{loggedFlash}</div> : null}
@@ -539,6 +547,7 @@ export default async function FieldJobPage({ params: paramsPromise, searchParams
           </section>
         ) : null}
       </main>
+      <FieldFooter navLogoTop={navLogoTop} />
     </>
   );
 }

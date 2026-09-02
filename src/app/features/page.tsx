@@ -20,7 +20,6 @@ import { cspNonce } from '@/lib/csp-nonce';
 import { FEATURE_COUNT } from '@/lib/features';
 import { TRADES } from '@/lib/trades';
 import styles from '@/components/flagship/flagship.module.css';
-import JobRecordStages from './job-record-stages';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
@@ -38,7 +37,6 @@ const FEATURES_DESCRIPTION =
   'One connected system for contractors: free website, AI intake, quotes, scheduling, crews, and Stripe payments. Plans start at $0/month.';
 const FEATURE_SIGNUP_URL = buildSignupUrl({ source: 'feature_page' });
 const LOWEST_FEE_PLAN = PLAN_PRICE_OPTIONS[PLAN_PRICE_OPTIONS.length - 1];
-const AI_INTAKE_WORKFLOW = BRAND_POSITIONING.workflowSteps[1];
 
 /**
  * The Product page, in the standalone site's visual language.
@@ -169,97 +167,6 @@ const jsonLd = {
   ],
 };
 
-/**
- * THE `id` IS PART OF THE CONTRACT, NOT DECORATION.
- *
- * The homepage's four-cell strip under the hero links straight at these cards
- * — /features#website-builder and so on — so a visitor who reads "Website
- * included · One-click AI builder" lands on the card that expands it, with the
- * other four in view. The ids match the deep-page slugs where there is one; the
- * two that differ (smart-intake, whose page is /features/ai-intake) do so
- * because the homepage names the feature "Smart Intake".
- *
- * Renaming an id here breaks a homepage link silently. There is a test that
- * asserts every homepage anchor resolves to an id on this page.
- */
-type WorkflowFeature = {
-  number: string;
-  id: string;
-  title: string;
-  body: string;
-  href: string;
-  kicker: string;
-  produces: readonly [string, string, string];
-  actionLabel: string;
-};
-
-/* THE 5 WORKFLOW STAGES: FROM FRONT DOOR TO FINAL PAYMENT */
-const WORKFLOW_FEATURES: WorkflowFeature[] = [
-  {
-    number: '01',
-    id: 'website-builder',
-    title: 'One-click contractor website',
-    body: 'Tell us your business name, trade, and service area. LGQ generates your full website with instant estimates in minutes.',
-    href: '/features/website-builder',
-    kicker: 'BUILD THE FRONT DOOR',
-    produces: [
-      'Generated trade & local pages',
-      'Mobile-ready on your own domain',
-      'Instant estimate connected to jobs',
-    ],
-    actionLabel: 'Explore Website Builder',
-  },
-  {
-    number: '02',
-    id: 'smart-intake',
-    title: AI_INTAKE_WORKFLOW.title,
-    body: AI_INTAKE_WORKFLOW.description,
-    href: AI_INTAKE_WORKFLOW.href,
-    kicker: AI_INTAKE_WORKFLOW.kicker,
-    produces: AI_INTAKE_WORKFLOW.produces,
-    actionLabel: 'Explore AI Intake',
-  },
-  {
-    number: '03',
-    id: 'quotes',
-    title: 'Quotes and approvals',
-    body: 'Send an itemized quote with optional add-ons, take the signature on a phone, and collect the deposit before the truck moves.',
-    href: '/features/quotes',
-    kicker: 'PRICE IT AND GET IT SIGNED',
-    produces: ['Itemized quote with add-ons', 'E-signature on a phone', 'Deposit before scheduling'],
-    actionLabel: 'Explore Quotes',
-  },
-  {
-    number: '04',
-    id: 'scheduling',
-    title: 'Scheduling and crew',
-    body: 'Turn an approved quote into a booked day, assign who is going, and plan the route without retyping the job.',
-    href: '/features/scheduling',
-    kicker: 'PUT IT ON THE CALENDAR',
-    produces: ['Approved quote → booked day', 'Crew assigned and tracked', 'Today’s route, planned'],
-    actionLabel: 'Explore Scheduling',
-  },
-  {
-    number: '05',
-    id: 'client-portal',
-    title: 'Customer texts and payments',
-    body: 'Two-way texting, on-my-way alerts, and one link where the homeowner approves, follows and pays.',
-    href: '/features/client-portal',
-    kicker: 'KEEP THEM INFORMED AND GET PAID',
-    produces: ['Two-way texting', 'On-my-way alerts', 'Deposits, balances and plans'],
-    actionLabel: 'Explore Customer Portal',
-  },
-];
-
-/* THE OPERATIONAL TOOLS MOVED INTO A COMPONENT.
- *
- * They were four stacked bands here — number, heading, sentence, two or three
- * tool cards, four times. The copy is unchanged and so are the four ids the
- * homepage links to; what changed is that they are now four stages of one job
- * record rather than four sections about four subjects. The data lives beside
- * the component that draws it, in ./job-record-stages.
- */
-
 export default async function FeaturesPage() {
   return (
     <>
@@ -300,8 +207,8 @@ export default async function FeaturesPage() {
               <a className="button primary" href={FEATURE_SIGNUP_URL}>
                 Build my free site <span aria-hidden="true">→</span>
               </a>
-              <a className="button secondary" href="#flagship-index">
-                Explore platform
+              <a className="button secondary" href="#catalog-explorer">
+                Explore all features
               </a>
             </div>
 
@@ -331,49 +238,7 @@ export default async function FeaturesPage() {
         ))}
       </section>
 
-      <section className="flagship-index" id="flagship-index">
-        <div className="index-heading">
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> FROM FRONT DOOR TO FINAL PAYMENT
-          </p>
-          <h2>
-            Start with the website.
-            <br />
-            <em>Run every job behind it.</em>
-          </h2>
-          <p className="index-subheading">
-            Attract the homeowner, qualify the work, send the quote, schedule the crew, and collect payment without rebuilding the job.
-          </p>
-        </div>
-
-        {/* FIVE WORKFLOW STAGES */}
-        <div className="feature-link-grid workflow-feature-grid">
-          {WORKFLOW_FEATURES.map(({ number, id, title, body, href, kicker, produces, actionLabel }) => (
-            <Link href={href} key={id} id={id}>
-              <span>{number}</span>
-              <small>{kicker}</small>
-              <h3>{title}</h3>
-              <p>{body}</p>
-              <ul className="feature-produces" aria-label={`What ${title} gives you`}>
-                {produces.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              <b>
-                {actionLabel} <span aria-hidden="true">→</span>
-              </b>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      {/* QUICK STOPS, ON ITS OWN, BECAUSE IT IS A DIFFERENT KIND OF THING.
-          It used to be card 03 of five, between intake and the client portal —
-          in the middle of a sequence describing one job moving from a click to
-          a payment, on a page whose heading promises quoting. But a Quick Stop
-          is not a stage of a job; it is a second, smaller job sold into the gap
-          between two others. Below the sequence it reads as the extra it is,
-          and the id stays so an old /features#quick-stops link still lands. */}
+      {/* QUICK STOPS: Priority visit detour sold into route gaps */}
       <section className="route-band" id="quick-stops" aria-labelledby="route-title">
         <div className="route-copy">
           <p className="eyebrow">
@@ -419,44 +284,12 @@ export default async function FeaturesPage() {
       {/* 56-FEATURE COMPLETE CATALOG EXPLORER */}
       <FeaturesCatalogExplorer />
 
-      {/* The light chapter. This is the break the page was missing: it reads as
-          a separate chapter on cream instead of as one more dark band.
-
-          It used to be four stacked bands — number, heading, sentence, two or
-          three tool cards, four times. Every band was true and none of them
-          showed what the section is actually claiming, which is that these are
-          not four products but four stages of ONE record. So the record stays
-          on screen and the stages move it; see job-record-stages.tsx. */}
-      <section className="everything-index" aria-labelledby="everything-title">
-        <div className="index-heading">
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> EVERYTHING BEHIND THE WEBSITE
-          </p>
-          <h2 id="everything-title">
-            One job record.<br />Every operational tool included.
-          </h2>
-          <p>
-            Approve the quote once. The schedule, crew, customer updates, payment and follow-up move
-            with it.
-          </p>
-          {/* The claim the old lede made in two sentences, in the place a
-              reader is most likely to be doing the sums. */}
-          <p className="everything-note">
-            <span aria-hidden="true">✓</span> Core workflow on every plan · Included capacity varies
-          </p>
-        </div>
-
-        <JobRecordStages />
-
-        <p className="everything-more" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap' }}>
-          <Link href="/features/back-office">
-            See everything the back office runs <span aria-hidden="true">→</span>
-          </Link>
-          <span aria-hidden="true" style={{ opacity: 0.35 }}>·</span>
-          <AllFeaturesModal triggerLabel="Browse the full feature catalog" triggerVariant="text" />
-        </p>
-
-      </section>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '1.25rem', flexWrap: 'wrap', margin: '32px auto 48px' }}>
+        <Link href="/features/back-office" className="button secondary">
+          See everything the back office runs <span aria-hidden="true">→</span>
+        </Link>
+        <AllFeaturesModal triggerLabel="Browse the full feature catalog" triggerVariant="secondary" />
+      </div>
 
       <PageCTA
         title="Start with the website. Grow into the whole system."

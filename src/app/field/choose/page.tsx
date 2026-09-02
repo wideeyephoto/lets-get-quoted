@@ -37,14 +37,25 @@ export default async function ChooseBusinessPage({ searchParams }: { searchParam
       ) : null}
 
       <div className="field-choose-list">
-        {session.businesses.map((business) => (
-          <form key={business.accountId} action={chooseFieldBusinessAction.bind(null, business.accountId)}>
-            <button type="submit" className="field-choose-option" aria-current={business.accountId === current || undefined}>
-              <span className="field-choose-name">{business.name}</span>
-              <span aria-hidden="true">›</span>
-            </button>
-          </form>
-        ))}
+        {session.businesses.map((business) => {
+          const initials = (business.name || 'HQ').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase() || 'HQ';
+          return (
+            <form key={business.accountId} action={chooseFieldBusinessAction.bind(null, business.accountId)}>
+              <button type="submit" className="field-choose-option" aria-current={business.accountId === current || undefined}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  {business.logoUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={business.logoUrl} alt="" className="field-choose-logo" />
+                  ) : (
+                    <span className="field-choose-monogram">{initials}</span>
+                  )}
+                  <span className="field-choose-name">{business.name}</span>
+                </div>
+                <span aria-hidden="true">›</span>
+              </button>
+            </form>
+          );
+        })}
       </div>
 
       <form action="/auth/signout" method="post" className="field-choose-out">

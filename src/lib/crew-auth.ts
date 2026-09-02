@@ -222,7 +222,7 @@ export async function linkCrewUserByEmail(userId: string, email: string): Promis
   return eligibleRows.map((row) => row.account_id as string);
 }
 
-export type FieldBusiness = { accountId: string; crewId: string; name: string };
+export type FieldBusiness = { accountId: string; crewId: string; name: string; logoUrl?: string | null };
 
 export type CrewContext = {
   supabase: Awaited<ReturnType<typeof createSupabaseServerClient>>;
@@ -230,6 +230,8 @@ export type CrewContext = {
   accountId: string;
   crew: CrewMember;
   businessName: string;
+  logoUrl: string | null;
+  navLogoTop: boolean;
   /**
    * The account's time clock setting, resolved ADMIN-SIDE.
    *
@@ -252,22 +254,23 @@ export type CrewContext = {
  * the account's business name, and the "My Business" placeholder treated as
  * absent wherever it appears.
  */
-async function loadBusinessNames(admin: SupabaseClient, accountIds: string[]): Promise<Map<string, string>> {
-  const names = new Map<string, string>();
+async function loadBusinessNames(admin: SupabaseClient, accountIds: string[]): Promise<Map<string, { name: string; logoUrl: string | null }>> {
+  const names = new Map<string, { name: string; logoUrl: string | null }>();
   if (accountIds.length === 0) return names;
 
   const [{ data: sites }, { data: accounts }] = await Promise.all([
-    admin.from('sites').select('account_id, company_name').in('account_id', accountIds),
+    admin.from('sites').select('account_id, company_name, logo_url').in('account_id', accountIds),
     admin.from('accounts').select('id, business_name').in('id', accountIds),
   ]);
 
   const siteByAccount = new Map((sites ?? []).map((row) => [row.account_id as string, row]));
   const accountById = new Map((accounts ?? []).map((row) => [row.id as string, row]));
   for (const accountId of accountIds) {
-    names.set(
-      accountId,
-      pickBusinessName(siteByAccount.get(accountId) ?? null, accountById.get(accountId) ?? null, 'My crew'),
-    );
+    const site = siteByAccount.get(accountId) ?? null;
+    names.set(accountId, {
+      name: pickBusinessName(site, accountById.get(accountId) ?? null, 'My crew'),
+      logoUrl: (site?.logo_url as string | null) ?? null,
+    });
   }
   return names;
 }
@@ -332,7 +335,7 @@ export async function loadCrewContext(): Promise<CrewContextResult> {
   const [{ data: site }, accountRow] = await Promise.all([
     // limit(1): a stray duplicate sites row must not hard-fail every field page
     // (maybeSingle throws on >1) now that this read is on the crew-critical path.
-    admin.from('sites').select('company_name').eq('account_id', crew.account_id).limit(1).maybeSingle(),
+    admin.from('sites').select('company_name, logo_url, content').eq('account_id', crew.account_id).limit(1).maybeSingle(),
     loadFieldAccountRow(admin, crew.account_id),
   ]);
 
@@ -344,17 +347,23 @@ export async function loadCrewContext(): Promise<CrewContextResult> {
   // seeded to the "My Business" placeholder, so preferring the site is not
   // enough — the placeholder has to be treated as absent wherever it appears.
   const businessName = pickBusinessName(site, accountRow, 'My crew');
+  const logoUrl = (site?.logo_url as string | null) ?? null;
+  const navLogoTop = Boolean((site?.content as Record<string, unknown> | null)?.navLogoTop);
 
   // Only paid for when there is actually a choice to describe.
   const businesses: FieldBusiness[] =
     rosters.length === 1
-      ? [{ accountId: crew.account_id, crewId: crew.id, name: businessName }]
+      ? [{ accountId: crew.account_id, crewId: crew.id, name: businessName, logoUrl }]
       : await loadBusinessNames(admin, rosters.map((member) => member.account_id)).then((names) =>
-          rosters.map((member) => ({
-            accountId: member.account_id,
-            crewId: member.id,
-            name: names.get(member.account_id) ?? 'My crew',
-          })),
+          rosters.map((member) => {
+            const entry = names.get(member.account_id);
+            return {
+              accountId: member.account_id,
+              crewId: member.id,
+              name: entry?.name ?? 'My crew',
+              logoUrl: entry?.logoUrl ?? null,
+            };
+          }),
         );
 
   return {
@@ -365,6 +374,8 @@ export async function loadCrewContext(): Promise<CrewContextResult> {
       accountId: crew.account_id,
       crew,
       businessName,
+      logoUrl,
+      navLogoTop,
       timeClockMode: normalizeTimeClockMode(accountRow?.time_clock_mode),
       businesses,
     },
@@ -416,10 +427,14 @@ export async function listFieldBusinesses(): Promise<{ userId: string; businesse
   const names = await loadBusinessNames(admin, eligibleRosters.map((member) => member.account_id));
   return {
     userId: user.id,
-    businesses: eligibleRosters.map((member) => ({
-      accountId: member.account_id,
-      crewId: member.id,
-      name: names.get(member.account_id) ?? 'My crew',
-    })),
+    businesses: eligibleRosters.map((member) => {
+      const entry = names.get(member.account_id);
+      return {
+        accountId: member.account_id,
+        crewId: member.id,
+        name: entry?.name ?? 'My crew',
+        logoUrl: entry?.logoUrl ?? null,
+      };
+    }),
   };
 }

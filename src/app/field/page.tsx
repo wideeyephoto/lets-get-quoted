@@ -11,6 +11,7 @@ import { getSharedFieldPhoneNumber } from '@/lib/sms';
 import { displayPhone } from '@/lib/phone';
 import NavigateButton from '@/components/navigate-button';
 import FieldHeader from './FieldHeader';
+import FieldFooter from './FieldFooter';
 import FieldPwa from './FieldPwa';
 import FieldOfflineWarm from './FieldOfflineWarm';
 
@@ -157,7 +158,7 @@ function RouteErrand({
 }
 
 export default async function FieldHomePage() {
-  const { supabase, accountId, crew, businessName, businesses } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName, businesses, logoUrl, navLogoTop } = await requireCrewContext();
 
   const jobIds = await listJobIdsForCrew(supabase, accountId, crew.id);
   let jobs: FieldJob[] = [];
@@ -233,7 +234,13 @@ export default async function FieldHomePage() {
 
   return (
     <>
-      <FieldHeader businessName={businessName} crewName={crew.name} switchable={businesses.length > 1} />
+      <FieldHeader
+        businessName={businessName}
+        crewName={crew.name}
+        switchable={businesses.length > 1}
+        logoUrl={logoUrl}
+        navLogoTop={navLogoTop}
+      />
       <main className="field-main">
         <h1 className="field-greeting">Hi {firstName} 👋</h1>
         <FieldPwa />
@@ -353,6 +360,7 @@ export default async function FieldHomePage() {
           </>
         )}
       </main>
+      <FieldFooter navLogoTop={navLogoTop} />
     </>
   );
 }

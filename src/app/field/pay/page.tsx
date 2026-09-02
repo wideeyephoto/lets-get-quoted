@@ -6,6 +6,7 @@ import { loadMyPay } from '@/lib/my-pay-data';
 import { checkSentence, hoursLabel, methodLabel, money, type MyPayLine } from '@/lib/my-pay';
 import { getOpenShift } from '@/lib/time-clock-data';
 import FieldHeader from '../FieldHeader';
+import FieldFooter from '../FieldFooter';
 
 // What a crew member has coming, and whether it's right.
 //
@@ -44,7 +45,7 @@ function EntryRow({ line, note, showMoney }: { line: MyPayLine; note?: string; s
 }
 
 export default async function MyPayPage() {
-  const { supabase, accountId, crew, businessName, businesses } = await requireCrewContext();
+  const { supabase, accountId, crew, businessName, businesses, logoUrl, navLogoTop } = await requireCrewContext();
   const admin = createAdminClient();
 
   const [view, openShift] = await Promise.all([
@@ -70,7 +71,14 @@ export default async function MyPayPage() {
 
   return (
     <>
-      <FieldHeader businessName={businessName} crewName={crew.name} backHref="/field" switchable={businesses.length > 1} />
+      <FieldHeader
+        businessName={businessName}
+        crewName={crew.name}
+        backHref="/field"
+        switchable={businesses.length > 1}
+        logoUrl={logoUrl}
+        navLogoTop={navLogoTop}
+      />
       <main className="field-main">
         <h1 className="field-greeting">My pay</h1>
 
@@ -211,6 +219,7 @@ export default async function MyPayPage() {
 
         <Link href="/field" className="mypay-back">‹ Back to my jobs</Link>
       </main>
+      <FieldFooter navLogoTop={navLogoTop} />
     </>
   );
 }

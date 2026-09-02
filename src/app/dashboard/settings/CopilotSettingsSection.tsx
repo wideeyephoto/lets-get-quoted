@@ -3,8 +3,19 @@
 import React from 'react';
 import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
+import NavBrandingCustomization from './NavBrandingCustomization';
 
-export default function CopilotSettingsSection() {
+interface CopilotSettingsSectionProps {
+  initialLogoUrl?: string | null;
+  businessName?: string | null;
+  initialNavLogoTop?: boolean;
+}
+
+export default function CopilotSettingsSection({
+  initialLogoUrl,
+  businessName,
+  initialNavLogoTop = false,
+}: CopilotSettingsSectionProps) {
   const {
     companionId,
     companionTrade,
@@ -16,56 +27,23 @@ export default function CopilotSettingsSection() {
 
   return (
     <section className="panel workspace-section-card" id="copilot">
-      <div className="section-heading workspace-section-heading compact-heading">
-        <p className="eyebrow">AI Sidekick &amp; Copilot</p>
-        <h2>AI Copilot &amp; Screen Assistant</h2>
+      <div className="section-heading workspace-section-heading compact-heading" id="customization">
+        <p className="eyebrow">Customization &amp; Copilot</p>
+        <h2>Avatar, Navigation &amp; Copilot Customization</h2>
       </div>
       <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1.1rem' }}>
-        Your customizable AI assistant ({companion.name}) can draft quotes, analyze job photos and receipts, look up schedule openings, and answer questions with live screen awareness.
+        Personalize your workspace: customize your navigation bar branding, your AI assistant avatar ({companion.name}), and live screen copilot controls.
       </p>
 
       <div style={{ display: 'grid', gap: '1.25rem' }}>
-        {/* Floating Screen Widget On/Off Switch */}
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          padding: '1rem 1.15rem',
-          borderRadius: '10px',
-          border: '1px solid var(--edge-t14)',
-          background: 'rgba(var(--tint), 0.035)',
-        }}>
-          <div>
-            <strong style={{ display: 'block', fontSize: '0.92rem', marginBottom: '0.2rem', color: 'var(--text)' }}>
-              Floating Copilot screen button
-            </strong>
-            <span style={{ fontSize: '0.8rem', color: 'var(--muted-2)', lineHeight: 1.4 }}>
-              Show the floating {companion.name} avatar in the bottom-right corner of your dashboard screens.
-            </span>
-          </div>
+        {/* Navigation Branding Customization Card */}
+        <NavBrandingCustomization
+          initialLogoUrl={initialLogoUrl}
+          businessName={businessName}
+          initialNavLogoTop={initialNavLogoTop}
+        />
 
-          <div className="automation-switch-wrap">
-            <button
-              type="button"
-              className={`automation-switch${isFloatingEnabled ? ' on' : ''}`}
-              onClick={() => setFloatingEnabled(!isFloatingEnabled)}
-              aria-checked={isFloatingEnabled}
-              role="switch"
-              aria-label="Toggle floating AI Copilot button"
-            >
-              <span className="automation-switch-track">
-                <span className="automation-switch-knob" />
-              </span>
-              <span className="automation-switch-text">
-                {isFloatingEnabled ? 'On' : 'Off'}
-              </span>
-            </button>
-          </div>
-        </div>
-
-        {/* Companion Avatar & Persona Card */}
+        {/* Companion Avatar & Persona Card (Avatar Selector) */}
         <div style={{
           display: 'flex',
           alignItems: 'center',
@@ -117,6 +95,46 @@ export default function CopilotSettingsSection() {
             <span>✦</span>
             <span>Switch Avatar &amp; Uniform</span>
           </button>
+        </div>
+
+        {/* Floating Screen Widget On/Off Switch */}
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          flexWrap: 'wrap',
+          gap: '1rem',
+          padding: '1rem 1.15rem',
+          borderRadius: '10px',
+          border: '1px solid var(--edge-t14)',
+          background: 'rgba(var(--tint), 0.035)',
+        }}>
+          <div>
+            <strong style={{ display: 'block', fontSize: '0.92rem', marginBottom: '0.2rem', color: 'var(--text)' }}>
+              Floating Copilot screen button
+            </strong>
+            <span style={{ fontSize: '0.8rem', color: 'var(--muted-2)', lineHeight: 1.4 }}>
+              Show the floating {companion.name} avatar in the bottom-right corner of your dashboard screens.
+            </span>
+          </div>
+
+          <div className="automation-switch-wrap">
+            <button
+              type="button"
+              className={`automation-switch${isFloatingEnabled ? ' on' : ''}`}
+              onClick={() => setFloatingEnabled(!isFloatingEnabled)}
+              aria-checked={isFloatingEnabled}
+              role="switch"
+              aria-label="Toggle floating AI Copilot button"
+            >
+              <span className="automation-switch-track">
+                <span className="automation-switch-knob" />
+              </span>
+              <span className="automation-switch-text">
+                {isFloatingEnabled ? 'On' : 'Off'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Keyboard Shortcut Hint */}

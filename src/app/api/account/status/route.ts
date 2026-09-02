@@ -28,13 +28,13 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
   }
 
   const admin = createAdminClient();
@@ -49,7 +49,7 @@ export async function GET() {
       .maybeSingle(),
     admin
       .from('sites')
-      .select('published, subdomain, custom_domain, custom_domain_verified_at, company_name')
+      .select('published, subdomain, custom_domain, custom_domain_verified_at, company_name, logo_url, content')
       .eq('account_id', membership.accountId)
       .maybeSingle(),
     // WHY THIS IS STILL ROWS AND NOT `head: true`.
@@ -221,6 +221,8 @@ export async function GET() {
     // different fields. '' as the fallback because the rail renders nothing at
     // all rather than a stand-in name.
     businessName: pickBusinessName(site, account, '') || null,
+    logoUrl: (site?.logo_url as string | null) ?? null,
+    navLogoTop: Boolean((site?.content as Record<string, unknown> | null)?.navLogoTop),
     newQuoteRequestCount,
     jobsNeedingAttentionCount,
     unscheduledJobCount,

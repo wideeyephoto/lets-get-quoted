@@ -489,7 +489,7 @@ export default async function SettingsPage({
           {
             id: 'account',
             label: 'Login & security',
-            anchors: ['appearance', 'copilot', 'support', 'danger-zone', 'account'],
+            anchors: ['appearance', 'customization', 'branding', 'nav-branding', 'copilot', 'support', 'danger-zone', 'account'],
             content: (
               <>
                 <section className="panel workspace-section-card">
@@ -524,7 +524,11 @@ export default async function SettingsPage({
                   <ThemeToggle />
                 </section>
 
-                <CopilotSettingsSection />
+                <CopilotSettingsSection
+                  initialLogoUrl={site?.logo_url ?? null}
+                  businessName={businessName}
+                  initialNavLogoTop={Boolean((site?.content as Record<string, unknown> | null)?.navLogoTop)}
+                />
 
                 <section className="panel workspace-section-card" id="support">
                   <div className="section-heading workspace-section-heading compact-heading">

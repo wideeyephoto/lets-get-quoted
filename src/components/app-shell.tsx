@@ -15,6 +15,7 @@ import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
 import PublicGridBackground from '@/components/marketing/PublicGridBackground';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 import { attentionBadgeLabel } from '@/lib/lead-queue';
+import { useNavCustomization } from '@/lib/nav-customization';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
 // see the status route), so it is the only one whose digits can run away from
@@ -163,6 +164,8 @@ type AccountStatus = {
   sitePublished: boolean;
   siteUrl: string | null;
   businessName: string | null;
+  logoUrl?: string | null;
+  navLogoTop?: boolean;
   newQuoteRequestCount: number;
   jobsNeedingAttentionCount: number;
   unreadMessageCount: number;
@@ -308,11 +311,13 @@ function getPrimaryAction(isLoggedIn = false, pathname: string | null = null) {
 export function AppShell({ children, forceStandaloneSite = false }: { children: ReactNode; forceStandaloneSite?: boolean }) {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
+  const { contractorLogoTop } = useNavCustomization();
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
+  const [contractorLogoUrl, setContractorLogoUrl] = useState<string | null>(null);
   // WHICH trigger is open, not merely whether one is. Both the rail and the
   // mobile bar render a "+ New", and both are in the DOM at once (the rail is a
   // drawer on a phone, not an unmounted branch). A shared boolean would open
@@ -657,6 +662,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setLowCreditAlert(false);
       setSiteUrl(null);
       setBusinessName(null);
+      setContractorLogoUrl(null);
       return;
     }
     let cancelled = false;
@@ -669,6 +675,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setSitePublished(Boolean(data.sitePublished));
             setSiteUrl(data.siteUrl ?? null);
             setBusinessName(data.businessName ?? null);
+            setContractorLogoUrl(data.logoUrl ?? null);
             setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
             setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
             setJobsNeedingAttentionCount(Number(data.jobsNeedingAttentionCount ?? 0));
@@ -913,12 +920,34 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       );
     };
 
+    const contractorInitials = (businessName || 'HQ').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
+
     return (
       <div className="chrome-shell chrome-shell-sidenav">
         <header className="sidenav-mobilebar" ref={mobileBarRef}>
-          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
-            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
-          </Link>
+          {contractorLogoTop ? (
+            <Link
+              href="/dashboard"
+              className="sidenav-brand sidenav-brand--contractor-mobile"
+              aria-label={businessName ? `${businessName} dashboard` : 'Dashboard'}
+            >
+              {contractorLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={contractorLogoUrl} alt="" className="mobilebar-contractor-logo" />
+              ) : (
+                <span className="mobilebar-contractor-mark" aria-hidden="true">
+                  <span className="mobilebar-contractor-monogram">{contractorInitials}</span>
+                </span>
+              )}
+              <span className="mobilebar-contractor-bizname" title={businessName ?? undefined}>
+                {businessName || 'My Business'}
+              </span>
+            </Link>
+          ) : (
+            <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
+              <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
+            </Link>
+          )}
           {/* The two things a contractor starts the day with were both behind
               the Menu button on a phone — the one device they actually start the
               day on. Plan Day is icon-only here because its meaning survives
@@ -972,12 +1001,32 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
         <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
-          <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
-            <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
-          </Link>
+          {contractorLogoTop ? (
+            <Link
+              href="/dashboard"
+              className="sidenav-brand sidenav-brand--contractor"
+              aria-label={businessName ? `${businessName} dashboard` : 'Dashboard'}
+            >
+              {contractorLogoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={contractorLogoUrl} alt="" className="sidenav-contractor-logo" />
+              ) : (
+                <span className="sidenav-contractor-mark" aria-hidden="true">
+                  <span className="sidenav-contractor-monogram">{contractorInitials}</span>
+                </span>
+              )}
+              <span className="sidenav-contractor-bizname" title={businessName ?? undefined}>
+                {businessName || 'My Business'}
+              </span>
+            </Link>
+          ) : (
+            <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
+              <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
+            </Link>
+          )}
 
           <div className="sidenav-lead">
-            {businessName ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
+            {businessName && !contractorLogoTop ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
             <SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />
             {/* The two things a contractor starts the day with, on one row.
                 Plan Day is the wider of the two because it carries three
@@ -1129,6 +1178,22 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 {stripeOnboarded === null ? 'Checking…' : stripeOnboarded ? 'Stripe' : 'Connect Stripe'}
               </span>
             </Link>
+
+            {contractorLogoTop ? (
+              <div className="sidenav-foot-brand-wrap">
+                <Link
+                  href={brandHref}
+                  className="sidenav-foot-brand"
+                  aria-label="Let&apos;s Get Quoted home"
+                  title="Powered by Let&apos;s Get Quoted"
+                >
+                  <BrandLogo size={18} className="sidenav-foot-brand-logo" />
+                  <span className="sidenav-foot-brand-text">
+                    Powered by <strong>Let&apos;s Get Quoted</strong>
+                  </span>
+                </Link>
+              </div>
+            ) : null}
           </div>
         </aside>
 

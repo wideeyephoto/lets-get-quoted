@@ -29,7 +29,7 @@ export const PUBLIC_ROUTE_MANIFEST: PublicRouteDefinition[] = [
   {
     path: '/features',
     expectedH1Pattern: /website lead to paid job/i,
-    requiredAnchorIds: ['flagship-index', 'quick-stops', 'faq'],
+    requiredAnchorIds: ['quick-stops'],
     requiresAuth: false,
     category: 'marketing',
   },

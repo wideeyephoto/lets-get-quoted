@@ -1227,3 +1227,67 @@ export async function syncGoogleLsaAction() {
   redirect(`/dashboard/settings?google_lsa=${summary.busy ? 'busy' : summary.ok ? 'synced' : 'sync-failed'}#google-local-services`);
 }
 
+export async function updateNavBrandingAction(contractorLogoTop: boolean) {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const { data: site } = await supabase
+    .from('sites')
+    .select('id, content')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) throw new Error('No site found for your account.');
+
+  const existingContent = (site.content as Record<string, unknown> | null) || {};
+  const nextContent = { ...existingContent, navLogoTop: Boolean(contractorLogoTop) };
+
+  const { error } = await supabase
+    .from('sites')
+    .update({ content: nextContent })
+    .eq('id', site.id);
+
+  if (error) throw new Error('Could not update navigation branding.');
+
+  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard/settings');
+  return { ok: true, navLogoTop: Boolean(contractorLogoTop) };
+}
+
+export async function uploadContractorLogoAction(formData: FormData) {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const file = formData.get('logo') as File | null;
+  if (!file || !(file instanceof File) || file.size === 0) {
+    throw new Error('Please select an image file to upload.');
+  }
+
+  const { uploadSiteImage } = await import('@/lib/site-image-storage');
+  const uploaded = await uploadSiteImage(accountId, file);
+
+  const { error } = await supabase
+    .from('sites')
+    .update({ logo_url: uploaded.url })
+    .eq('account_id', accountId);
+
+  if (error) throw new Error('Could not save logo to your account.');
+
+  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
+  return { ok: true, logoUrl: uploaded.url };
+}
+
+export async function removeContractorLogoAction() {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const { error } = await supabase
+    .from('sites')
+    .update({ logo_url: null })
+    .eq('account_id', accountId);
+
+  if (error) throw new Error('Could not remove logo.');
+
+  revalidatePath('/dashboard', 'layout');
+  revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/sites');
+  return { ok: true };
+}
+
+

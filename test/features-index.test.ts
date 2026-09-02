@@ -96,43 +96,21 @@ describe('the proof strip proves things we can actually show', () => {
   });
 });
 
-describe('the features section leads with the website and connects the workflow stages', () => {
-  const WORKFLOW = CODE.slice(CODE.indexOf('const WORKFLOW_FEATURES'), CODE.indexOf('export default'));
-  const workflowIds = [...WORKFLOW.matchAll(/id: '([a-z-]+)'/g)].map((m) => m[1]);
-
-  it('runs website → intake → quotes → scheduling → customer portal', () => {
-    expect(workflowIds).toEqual(['website-builder', 'smart-intake', 'quotes', 'scheduling', 'client-portal']);
+describe('the features section leads with the hero flow and connects the workflow stages', () => {
+  it('connects the hero flow and secret weapons to deep feature routes', () => {
+    expect(CODE).toContain('<FeaturesEnergyFlowHero />');
+    expect(CODE).toContain('<ContractorSecretWeapons />');
   });
 
-  it('moves the previous homepage AI promise into the intake workflow card', () => {
-    expect(CODE).toContain('const AI_INTAKE_WORKFLOW = BRAND_POSITIONING.workflowSteps[1]');
-    expect(WORKFLOW).toContain('title: AI_INTAKE_WORKFLOW.title');
-    expect(WORKFLOW).toContain('body: AI_INTAKE_WORKFLOW.description');
-    expect(WORKFLOW).toContain('produces: AI_INTAKE_WORKFLOW.produces');
-  });
-
-  it('renders all 5 workflow cards inside the workflow features grid', () => {
-    expect(CODE).toContain('className="feature-link-grid workflow-feature-grid"');
-    expect(WORKFLOW).toContain("id: 'website-builder'");
-    expect(WORKFLOW).toContain("href: '/features/website-builder'");
-  });
-
-  it('gives quoting a card, which the heading has always promised', () => {
-    expect(WORKFLOW).toContain("title: 'Quotes and approvals'");
-    expect(WORKFLOW).toContain("href: '/features/quotes'");
-  });
-
-  it('takes Quick Stops out of the sequence and gives it a band', () => {
-    expect(WORKFLOW).not.toContain("id: 'quick-stops'");
+  it('connects the proof strip into the route band and interactive showcases', () => {
     expect(CODE).toContain('<section className="route-band" id="quick-stops"');
     expect(CODE).toContain("href=\"/features/quick-stops\"");
-    // Below the flagship index, not above it.
-    expect(CODE.indexOf('className="flagship-index"')).toBeLessThan(CODE.indexOf('className="route-band"'));
+    expect(CODE.indexOf('className="index-proof"')).toBeLessThan(CODE.indexOf('className="route-band"'));
   });
 
-  it('still reaches the back office, which lost its card to the cream band', () => {
+  it('still reaches the back office and full catalog modal', () => {
     expect(CODE).toContain('href="/features/back-office"');
-    expect(CODE.indexOf('everything-index')).toBeLessThan(CODE.indexOf('/features/back-office'));
+    expect(CODE).toContain('<AllFeaturesModal');
   });
 });
 
@@ -294,9 +272,9 @@ describe('the quote builder is shown, not drawn', () => {
  * pay 2.4MB for a section they may never reach; removing any part of that
  * mechanism looks identical on a desktop with a fast connection.
  */
-describe('the page flow into the flagship index', () => {
-  it('connects the proof strip into the flagship index', () => {
-    expect(CODE.indexOf('className="index-proof"')).toBeLessThan(CODE.indexOf('className="flagship-index"'));
+describe('the page flow into the route band', () => {
+  it('connects the proof strip into the route band', () => {
+    expect(CODE.indexOf('className="index-proof"')).toBeLessThan(CODE.indexOf('className="route-band"'));
   });
 });
 
@@ -320,12 +298,6 @@ describe('the website feature preview and accessibility', () => {
     expect(PREVIEW_SRC).toContain('<figure');
     expect(PREVIEW_SRC).not.toContain('aria-hidden="true"');
     expect(PREVIEW_SRC).toContain('<figcaption className="sr-only">');
-  });
-
-  it('has clean accessible anchor links for each workflow stage card', () => {
-    const gridBlock = CODE.slice(CODE.indexOf('workflow-feature-grid'), CODE.indexOf('className="route-band"'));
-    expect(gridBlock).not.toMatch(/<Link\b[^>]*>(?:(?!<\/Link>)[\s\S])*?<Link\b/);
-    expect(gridBlock).not.toMatch(/<a\b[^>]*>(?:(?!<\/a>)[\s\S])*?<a\b/);
   });
 });
 
