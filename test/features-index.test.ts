@@ -147,7 +147,7 @@ describe('the features section leads with the website and connects the four work
   });
 });
 
-describe('the objections are answered on the page that raises them', () => {
+describe('the objections data model', () => {
   const FAQ = CODE.slice(CODE.indexOf('const FAQ'), CODE.indexOf('export default'));
 
   it('covers all six', () => {
@@ -161,14 +161,6 @@ describe('the objections are answered on the page that raises them', () => {
     // balance. This is the claim most expensive to get wrong.
     expect(FAQ).toMatch(/your own connected account/i);
     expect(FAQ).toMatch(/never see card numbers/i);
-  });
-
-  it('is rendered visibly, not just written', () => {
-    expect(CODE).toContain('{FAQ.map(');
-    expect(CODE).toContain('<summary>{item.q}</summary>');
-    // No `name`: an exclusive accordion closes what you were reading and hides
-    // every other answer from the browser's own find-in-page.
-    expect(CODE).not.toMatch(/<details[^>]*\sname=/);
   });
 });
 

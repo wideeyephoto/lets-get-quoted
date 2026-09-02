@@ -521,32 +521,6 @@ export default async function FeaturesPage() {
 
       </section>
 
-      {/* THE OBJECTIONS, ANSWERED WHERE THEY ARE RAISED.
-          The page's own argument raises all six: "no monthly subscription"
-          raises the fee, "your own domain" raises the one you already own,
-          "in minutes" raises how long it really takes, and a system that holds
-          your customers and takes your money raises who owns what. Reuses the
-          homepage's <details> pattern, which works before hydration and is in
-          the tab order for free. */}
-      <section className="home-faq home-faq-dark" id="faq" aria-labelledby="features-faq-title">
-        <div className="home-faq-head">
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> BEFORE YOU START
-          </p>
-          <h2 id="features-faq-title">The questions worth asking first.</h2>
-        </div>
-        {/* No `name` on the details: an exclusive accordion closes the answer
-            you were reading and hides every other one from find-in-page. */}
-        <div className="home-faq-list">
-          {FAQ.map((item) => (
-            <details key={item.q}>
-              <summary>{item.q}</summary>
-              <p>{item.a}</p>
-            </details>
-          ))}
-        </div>
-      </section>
-
       <PageCTA
         title="Start with the website. Grow into the whole system."
         body={`${PUBLIC_PRICING_SUMMARY} See /pricing for included capacity, add-ons, and fee terms.`}
