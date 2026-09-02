@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
@@ -35,17 +35,17 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
     name: "Website & Google Ads",
     shortName: "Website & Ads",
     tag: "✦ Free Site & Ads",
-    sub: "High-Converting Website & LSAs",
-    replacesTool: "Replaces Squarespace / Wix & Ad Agencies",
+    sub: "Get Found on Google",
+    replacesTool: "Replaces: Squarespace, Wix & pricey ad agencies",
     squircleClass: styles.squircle_website,
     capability:
-      "Instant trade-specific website with built-in quoting, synchronized with high-intent Google Search & Local Services Ads.",
+      "A fast, modern website built for your trade with built-in instant quoting, connected directly to Google Search & Local Services Ads.",
     problemSolves:
-      "Eliminates slow agencies and dry spells by capturing local homeowners looking for your exact trade.",
+      "No more paying $2,000/mo to slow ad agencies. You get a clean site that puts you at the top of Google and brings in real local calls.",
     specs: [
-      "Custom domain with instant SSL & mobile optimization",
-      "Direct Google Map Pack & Local Services Ads sync",
-      "$0 monthly builder cost — free to publish",
+      "Works on every phone with your own custom web address",
+      "Shows up on Google Maps so local homeowners call you first",
+      "$0 monthly website fee — free to build and launch",
     ],
     exploreHref: "/features/website-builder",
     exploreLabel: "Explore Website Builder",
@@ -80,17 +80,17 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
     name: "24/7 AI Intake & Voice",
     shortName: "AI Intake & Voice",
     tag: "⚡ 2-Ring Pickup",
-    sub: "24/7 Voice Calls & Photo Scope",
-    replacesTool: "Replaces CallRail & Answering Services",
+    sub: "Never Miss a Call",
+    replacesTool: "Replaces: CallRail, answering services & missed voicemails",
     squircleClass: styles.squircle_voice,
     capability:
-      "Answers phone calls in 2 rings with natural voice, conducts interactive photo intake, and sizes scope automatically.",
+      "Answers phone calls in 2 rings with a friendly voice, gathers job details, and collects customer photos so you know what's needed.",
     problemSolves:
-      "Eliminates lost jobs from missed calls and eliminates driving to sites just to take basic measurements.",
+      "You can't answer the phone while driving or on a ladder. AI catches the caller in seconds so they don't call your competitor next.",
     specs: [
-      "2-ring instant pickup with audio transcript logging",
-      "Multimodal photo intake with equipment rating OCR",
-      "Hands-free field dictation for crews on-site",
+      "Answers in 2 rings and logs clean notes so you can read them fast",
+      "Reads equipment model numbers and serials directly from customer photos",
+      "Talk into your phone to dictate job notes hands-free without typing",
     ],
     exploreHref: "/features/ai-intake",
     exploreLabel: "Explore AI Intake & Voice",
@@ -126,17 +126,17 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
     name: "SMS & Customer Updates",
     shortName: "Customer Updates",
     tag: "⚡ 2s Auto-Reply",
-    sub: "2-Way SMS & Status Tracking",
-    replacesTool: "Replaces Podium & Manual Phone Tag",
+    sub: "Instant Texts & Alerts",
+    replacesTool: "Replaces: Podium, phone tag & texting from personal cell",
     squircleClass: styles.squircle_updates,
     capability:
-      "2-second automated text replies, 2-way homeowner texting, appointment reminders, and automated milestone updates.",
+      "2-second automated text replies, 2-way homeowner texting, appointment reminders, and automated on-the-way arrival alerts.",
     problemSolves:
-      "Cuts response times to under 60 seconds, winning the customer before competitors even listen to voicemail.",
+      "The first contractor to reply wins the job. Customers get instant answers, and you never have to give out your personal cell number.",
     specs: [
-      "Sub-60s speed-to-lead automated text responses",
-      "Dedicated 2-way business texting from your company number",
-      "Automated appointment arrival window notifications",
+      "Auto-texts new leads in under 60 seconds before they look elsewhere",
+      "Send texts directly from your business number with full message history",
+      "Sends automatic appointment reminders and 30-minute arrival alerts",
     ],
     exploreHref: "/features/text-to-job",
     exploreLabel: "Explore Customer Updates",
@@ -171,18 +171,18 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
     number: "04",
     name: "Custom Quotes & E-Sign",
     shortName: "Custom Quotes",
-    tag: "● Margin Lock",
-    sub: "Line-Item Bids & 1-Tap E-Sign",
-    replacesTool: "Replaces PandaDoc, DocuSign & Late-Night Bidding",
+    tag: "● Profit Lock",
+    sub: "Quotes Signed on Phones",
+    replacesTool: "Replaces: PandaDoc, DocuSign & late-night bidding",
     squircleClass: styles.squircle_quotes,
     capability:
-      "Trade-specific line presets, gross margin lock, 1-click ballpark conversions, and instant mobile e-signature.",
+      "Trade-specific line presets, built-in profit margin protection, 1-click price lookups, and instant mobile signatures.",
     problemSolves:
-      "Stops late-night paperwork and guarantees you never underquote labor or materials.",
+      "Stop sitting at the kitchen table at 9 PM doing paperwork. Quotes look sharp, protect your profit margin, and get approved fast.",
     specs: [
-      "1-tap mobile e-signature with deposit collection",
-      "Live material margin benchmark and labor burden protection",
-      "Deterministic 1-page printable PDF exports",
+      "1-tap mobile signature on the homeowner's phone with deposit payment",
+      "Automatic profit margin protection so you never undercharge for a job",
+      "Clean 1-page PDF bids you can print or text in one click",
     ],
     exploreHref: "/features/quotes",
     exploreLabel: "Explore Custom Quotes",
@@ -201,7 +201,7 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
           <span className={styles.quotePrice}>$3,850.00</span>
         </div>
         <div className={styles.quoteFooter}>
-          <span className={styles.quoteMarginBadge}>● Gross Margin: 44% (Locked)</span>
+          <span className={styles.quoteMarginBadge}>● Profit Margin: 44% (Locked)</span>
           <span className={styles.quoteSignBadge}>✓ 1-Tap E-Signed</span>
         </div>
       </div>
@@ -220,24 +220,24 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
     name: "Scheduling & Crew Dispatch",
     shortName: "Scheduling & Crew",
     tag: "🚚 Live Dispatch",
-    sub: "Calendar, Loadouts & Routes",
-    replacesTool: "Replaces Jobber Scheduling & Paper Loadout Lists",
+    sub: "Jobs, Loadouts & Maps",
+    replacesTool: "Replaces: Jobber, whiteboards & forgotten tools",
     squircleClass: styles.squircle_scheduling,
     capability:
-      "Visual calendar dispatch, morning crew briefings, truck loadout checklists, turn-by-turn routes, and stage tracking.",
+      "Visual calendar dispatch, morning truck loadout checklists, gate codes, driving routes, and live job status tracking.",
     problemSolves:
-      "Keeps office, field crews, and homeowners in sync with zero miscommunication or missing parts.",
+      "No more forgotten parts, wrong addresses, or morning confusion. Your crew knows exactly where to go and what parts to put on the truck.",
     specs: [
-      "Visual dispatch board with automated crew assignment",
-      "Morning truck loadout checklists & gate code alerts",
-      "Real-time milestone progression from dispatch to complete",
+      "Drag-and-drop calendar to schedule jobs and assign trucks in seconds",
+      "Morning truck loadout checklists and gate codes sent right to crew phones",
+      "Live job status tracking from 'On The Way' to 'Job Done'",
     ],
     exploreHref: "/features/dispatch",
     exploreLabel: "Explore Scheduling & Crew",
     icon: (
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#eab308" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
         <rect x="1" y="3" width="15" height="13" rx="2" />
-        <polygon points="16 8 20 8 23 11 23 16 16 16 16 8" />
+        <polygon points="16 8 20 8 23 11 23 16 16 16 8" />
         <circle cx="5.5" cy="18.5" r="2.5" />
         <circle cx="18.5" cy="18.5" r="2.5" />
       </svg>
@@ -267,17 +267,17 @@ export const FEATURE_PILLARS: FeaturePillarItem[] = [
     name: "Instant Payments & Invoicing",
     shortName: "Payments & Invoicing",
     tag: "💳 Paid Job",
-    sub: "Stripe Deposits & QuickBooks Sync",
-    replacesTool: "Replaces Stripe Invoicing & Chasing Paper Checks",
+    sub: "Get Paid & Sync QuickBooks",
+    replacesTool: "Replaces: Stripe Invoicing, chasing checks & late bookkeeping",
     squircleClass: styles.squircle_payments,
     capability:
-      "Automatic upfront deposit collection upon e-sign, 1-tap Apple Pay/Card invoices, zero-fee ACH, and real-time QuickBooks reconciliation.",
+      "Automatic upfront deposit collection upon e-sign, 1-tap Apple Pay and card invoices on site, and automatic QuickBooks sync.",
     problemSolves:
-      "Eliminates chasing unpaid invoices, bad checks, and late-night bookkeeping entry.",
+      "Stop waiting 30 days for paper checks or tracking down unpaid invoices. Get paid on the spot and keep your cash flow healthy.",
     specs: [
-      "Upfront deposit lock at quote approval (Stripe / Apple Pay)",
-      "Flex starts at 1.25% platform fee (or 0.10% on Scale) — free to quote",
-      "Instant QuickBooks / Xero accounting sync",
+      "Collect upfront deposits automatically the second the quote is signed",
+      "Take credit cards, Apple Pay, or bank transfers right from your phone",
+      "Syncs every paid invoice automatically with QuickBooks so your books are done",
     ],
     exploreHref: "/features/payments",
     exploreLabel: "Explore Payments & Invoicing",
@@ -564,7 +564,7 @@ export default function FeaturesEnergyFlowHero() {
           </div>
         </div>
 
-        {/* Right Column: Interactive Feature Intelligence Card / Journey Story Card */}
+        {/* Right Column: Interactive Feature Intelligence Card */}
         <div className={styles.cardContainer} aria-live="polite">
           <div key={activePillar.id} className={styles.intelligenceCard}>
             <div className={styles.cardHeaderRow}>
@@ -579,16 +579,16 @@ export default function FeaturesEnergyFlowHero() {
             </div>
 
             <div className={styles.cardSectionBox}>
-              <span className={styles.cardSectionLabel}>Core Capability</span>
+              <span className={styles.cardSectionLabel}>What It Does</span>
               <p className={styles.cardSectionText}>{activePillar.capability}</p>
             </div>
 
             <div className={styles.cardProblemBox}>
-              <span className={styles.cardProblemLabel}>The Problem It Solves</span>
+              <span className={styles.cardProblemLabel}>Why You Need It</span>
               <p className={styles.cardProblemText}>{activePillar.problemSolves}</p>
             </div>
 
-            <ul className={styles.cardSpecsList} aria-label="Key Deliverables">
+            <ul className={styles.cardSpecsList} aria-label="What You Get">
               {activePillar.specs.map((spec, sIdx) => (
                 <li key={sIdx} className={styles.cardSpecItem}>
                   <span className={styles.cardSpecIcon} aria-hidden="true">✓</span>
