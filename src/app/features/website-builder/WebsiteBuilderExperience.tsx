@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useState } from 'react';
 import HeroThemeCycler from './HeroThemeCycler';
 import WebsiteMediaStudioShowcase from '@/components/marketing/WebsiteMediaStudioShowcase';
 import WebsiteCapabilityMatrix from '@/components/marketing/WebsiteCapabilityMatrix';
@@ -41,6 +42,24 @@ const JOURNEY_STEPS = [
     badge: '📍 Fairview Roofing · Local SEO',
     badgeTone: 'blue',
     body: 'Trade-tailored SEO town pages bring local homeowners directly to your site.',
+    headline: 'Rank #1 on Google Maps for every town in your service area.',
+    oldWay: 'Bland 1-page template · Invisible on Google Maps · $0 organic visits',
+    newWay: '18 Auto-generated town pages · Rich contractor schema · Instant local rankings',
+    bullets: [
+      'Automatic landing pages for every suburb and neighborhood you service',
+      'Structured local schema for instant Google Maps Pack placement',
+      'High-intent homeowners land directly on your trade estimator',
+    ],
+    mockup: {
+      tag: '✦ SEO Town Engine',
+      service: '📍 Fairview Roofing · #1 Rated Roofs in Fairview, NJ',
+      status: '● Map Pack #1',
+      chips: ['📍 18 Nearby Town Pages', '📈 +240% Search Visibility', '⚡ Schema Verified'],
+      label: 'Target Search Traffic:',
+      highlight: '#1 in Local Pack (380+ monthly visits)',
+      btnPrimary: '📍 View Town Pages (18)',
+      btnSecondary: '⚡ Auto-Rank Radius',
+    },
   },
   {
     n: '02',
@@ -48,6 +67,24 @@ const JOURNEY_STEPS = [
     badge: '📋 2,400 sqft · 3 Photos Attached',
     badgeTone: 'yellow',
     body: 'Smart intake asks trade-specific questions and collects project photos upfront.',
+    headline: 'Turn vague emails into complete, photo-verified job tickets.',
+    oldWay: 'Dead-end "Contact Us" message · 0 photos · 0 scope · $0 budget context',
+    newWay: 'Interactive scope selector · 3 Photos attached · Verified sqft dimensions',
+    bullets: [
+      'Trade-specific questionnaires collect square footage, materials & pitch',
+      'Homeowners snap and upload high-res job photos directly from mobile',
+      'Replaces blind phone tag with actionable, ready-to-quote job tickets',
+    ],
+    mockup: {
+      tag: '✦ Direct-to-Quote',
+      service: '🏠 Full Roof Replacement (Architectural)',
+      status: '● Ready to Quote',
+      chips: ['📐 2,400 sq ft', '📸 3 Photos Attached', '📍 Fairview, NJ (Zone A)'],
+      label: 'Material & Pitch:',
+      highlight: '30-Yr GAF Timberline HDZ · 6/12 Pitch',
+      btnPrimary: '⚡ 1-Click Quote',
+      btnSecondary: '📸 View Photos (3)',
+    },
   },
   {
     n: '03',
@@ -55,6 +92,24 @@ const JOURNEY_STEPS = [
     badge: '💰 Instant Range: $9.4k–$13.2k',
     badgeTone: 'mint',
     body: 'Homeowners see an instant ballpark price range while interest and urgency peak.',
+    headline: 'Lock in homeowner commitment with instant ballpark pricing.',
+    oldWay: '"We\'ll call you in 48 hours" · Homeowner leaves and books a competitor',
+    newWay: 'Instant $9.4k–$13.2k ballpark · 45s confirmation · Pre-qualified budget',
+    bullets: [
+      'Automated ballpark price brackets calculated using your trade formulas',
+      'Homeowners confirm budget alignment before you spend time driving on-site',
+      'You retain 100% pricing control and final quote approval from your phone',
+    ],
+    mockup: {
+      tag: '✦ Smart Pricing',
+      service: '💰 Instant Estimated Price Bracket',
+      status: '● Homeowner Confirmed',
+      chips: ['Range: $9,400 – $13,200', '45s Budget Alignment', 'Tear-off Included'],
+      label: 'Calculated Ballpark:',
+      highlight: '$9,400 – $13,200',
+      btnPrimary: '⚡ 1-Click Proposal',
+      btnSecondary: 'Adjust Margin (20%)',
+    },
   },
   {
     n: '04',
@@ -62,6 +117,24 @@ const JOURNEY_STEPS = [
     badge: '⚡ 1-Click Proposal & SMS',
     badgeTone: 'orange',
     body: 'Quote, schedule, text, and collect deposit payment from one connected record.',
+    headline: 'Send proposals in 1 tap, collect Stripe deposits, and auto-book crews.',
+    oldWay: 'Paper quotes · Mailed checks · Copying notes across 4 separate apps',
+    newWay: '1-Tap SMS quote · Instant $2,500 Stripe deposit · Auto-synced dispatch',
+    bullets: [
+      'Send professional SMS proposals directly from your couch in seconds',
+      'Homeowners approve and pay deposit via Apple Pay / credit card',
+      'Automatically syncs to your dispatch calendar, SMS thread & QuickBooks',
+    ],
+    mockup: {
+      tag: '✦ Win & Dispatch',
+      service: '💳 $2,500.00 Deposit Received',
+      status: '● Paid via Stripe',
+      chips: ['📅 Tuesday 8:00 AM Crew A', '⚡ QuickBooks Synced', '📱 SMS Link Sent'],
+      label: 'Deposit Status:',
+      highlight: '$2,500.00 Received (Tuesday 8 AM Booked)',
+      btnPrimary: '📅 View in Calendar',
+      btnSecondary: '💬 Text Customer',
+    },
   },
 ];
 
@@ -93,6 +166,8 @@ const FAQ_ITEMS = [
 ];
 
 export default function WebsiteBuilderExperience() {
+  const [activeStep, setActiveStep] = useState<number>(0);
+
   return (
     <div className={styles.wrapper}>
       <div className={styles.siteShell}>
@@ -108,7 +183,7 @@ export default function WebsiteBuilderExperience() {
           <section className={styles.hero} aria-labelledby="hero-title">
             <div className={styles.heroContent}>
               <div className={styles.eyebrowChip}>
-                <span>✦</span> AI Website Builder for Contractors
+                <span>✦</span> AI Website Builder Built Specifically for Contractors
               </div>
 
               <h1 id="hero-title" className={styles.heroTitle}>
@@ -196,71 +271,138 @@ export default function WebsiteBuilderExperience() {
               </p>
             </div>
 
-            <div className={styles.journeyPipeline}>
-              {JOURNEY_STEPS.map((step) => {
-                const toneClass =
-                  step.badgeTone === 'blue'
-                    ? styles.microBadgeBlue
-                    : step.badgeTone === 'yellow'
-                    ? styles.microBadgeYellow
-                    : step.badgeTone === 'mint'
-                    ? styles.microBadgeMint
-                    : styles.microBadgeOrange;
+            {/* Linear-Style Unified Interactive Stage (Zero Sprawl) */}
+            {(() => {
+              const currentStep = JOURNEY_STEPS[activeStep] || JOURNEY_STEPS[0];
+              const toneClass =
+                currentStep.badgeTone === 'blue'
+                  ? styles.microBadgeBlue
+                  : currentStep.badgeTone === 'yellow'
+                  ? styles.microBadgeYellow
+                  : currentStep.badgeTone === 'mint'
+                  ? styles.microBadgeMint
+                  : styles.microBadgeOrange;
 
-                return (
-                  <div key={step.n} className={styles.journeyStepCard}>
-                    <div className={styles.stepHeaderRow}>
-                      <div className={styles.stepNumber}>{step.n}</div>
-                      <span className={`${styles.microBadge} ${toneClass}`}>{step.badge}</span>
-                    </div>
-                    <h3 className={styles.stepTitle}>{step.title}</h3>
-                    <p className={styles.stepBody}>{step.body}</p>
+              return (
+                <div className={styles.linearStageContainer}>
+                  <div className={styles.linearStageGlow} aria-hidden="true" />
+
+                  {/* Top 4-Step Connected Progress Stepper Track */}
+                  <div className={styles.linearStepperTrack} role="tablist" aria-label="Journey Stages">
+                    {JOURNEY_STEPS.map((step, idx) => {
+                      const isSelected = activeStep === idx;
+                      return (
+                        <button
+                          key={step.n}
+                          type="button"
+                          className={`${styles.linearStepBtn} ${isSelected ? styles.linearStepBtnActive : ''}`}
+                          onClick={() => setActiveStep(idx)}
+                          role="tab"
+                          aria-selected={isSelected}
+                          aria-label={`Step ${step.n}: ${step.title}`}
+                        >
+                          <div className={styles.stepHeaderRow} style={{ marginBottom: 2, width: '100%' }}>
+                            <span className={styles.linearStepNumber}>{step.n}</span>
+                            <span className={styles.linearStepTitle}>{step.title}</span>
+                          </div>
+                          <span className={styles.linearStepBadge}>{step.badge}</span>
+                        </button>
+                      );
+                    })}
                   </div>
-                );
-              })}
-            </div>
 
-            <div className={styles.compareRow}>
-              <div className={styles.compareBad}>
-                <span className={styles.compareTagBad}>Generic Website Builders</span>
-                <h4 className={styles.compareTitleBad}>Dead-end &ldquo;Contact Us&rdquo; Forms</h4>
-                <ul className={styles.compareListBad}>
-                  <li>
-                    <span className={styles.compareCross}>✕</span> Unvetted email with zero scope or specs
-                  </li>
-                  <li>
-                    <span className={styles.compareCross}>✕</span> No photos, measurements, or budget context
-                  </li>
-                  <li>
-                    <span className={styles.compareCross}>✕</span> Endless phone tag chasing lukewarm leads
-                  </li>
-                  <li>
-                    <span className={styles.compareCross}>✕</span> Disconnected from schedule, texting &amp; invoices
-                  </li>
-                </ul>
-              </div>
+                  {/* 2-Column Stage Body */}
+                  <div className={styles.linearStageBody}>
+                    {/* Left Column: Story & Contrast */}
+                    <div className={styles.linearStoryCol}>
+                      <div className={styles.linearEyebrowRow}>
+                        <span className={`${styles.microBadge} ${toneClass}`}>{currentStep.badge}</span>
+                      </div>
 
-              <div className={styles.compareArrow}>&rarr;</div>
+                      <h3 className={styles.linearHeadline}>{currentStep.headline}</h3>
 
-              <div className={styles.compareGood}>
-                <span className={styles.compareTagGood}>Let&rsquo;s Get Quoted AI Builder</span>
-                <h4 className={styles.compareTitleGood}>Direct-to-Quote Job Intake</h4>
-                <ul className={styles.compareListGood}>
-                  <li>
-                    <span className={styles.compareCheck}>✓</span> Trade-specific intake questions with photo uploads
-                  </li>
-                  <li>
-                    <span className={styles.compareCheck}>✓</span> Instant calculated price range bracket on the spot
-                  </li>
-                  <li>
-                    <span className={styles.compareCheck}>✓</span> Pre-qualified scope ready for 1-click proposal
-                  </li>
-                  <li>
-                    <span className={styles.compareCheck}>✓</span> Direct sync to dispatch calendar, SMS, &amp; Stripe
-                  </li>
-                </ul>
-              </div>
-            </div>
+                      <ul className={styles.linearBulletsList}>
+                        {currentStep.bullets.map((bullet, bIdx) => (
+                          <li key={bIdx}>
+                            <span className={styles.linearCheckIcon}>✓</span>
+                            <span>{bullet}</span>
+                          </li>
+                        ))}
+                      </ul>
+
+                      {/* Compact Contrast Box */}
+                      <div className={styles.linearContrastBox}>
+                        <div className={styles.linearContrastRowBad}>
+                          <span>⚠️</span>
+                          <span><strong>Old Way:</strong> {currentStep.oldWay}</span>
+                        </div>
+                        <div className={styles.linearContrastRowGood}>
+                          <span>⚡</span>
+                          <span><strong>With Let&rsquo;s Get Quoted:</strong> {currentStep.newWay}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Right Column: High-Craft Interactive Mockup Card */}
+                    <div className={styles.linearMockupCol}>
+                      <div className={styles.linearMockupCard} key={activeStep}>
+                        <div className={styles.ticketTopRow}>
+                          <span className={styles.ticketService}>{currentStep.mockup.service}</span>
+                          <span className={styles.ticketStatusPill}>{currentStep.mockup.status}</span>
+                        </div>
+
+                        <div className={styles.ticketSpecsGrid}>
+                          {currentStep.mockup.chips.map((chip, cIdx) => (
+                            <div key={cIdx} className={styles.specChip}>{chip}</div>
+                          ))}
+                        </div>
+
+                        <div className={styles.ticketEstimateRow}>
+                          <span className={styles.ticketEstimateLabel}>{currentStep.mockup.label}</span>
+                          <span className={styles.ticketEstimatePrice}>{currentStep.mockup.highlight}</span>
+                        </div>
+
+                        <div className={styles.ticketActionRow}>
+                          <button type="button" className={styles.ticketBtnPrimary}>
+                            {currentStep.mockup.btnPrimary}
+                          </button>
+                          <button type="button" className={styles.ticketBtnSecondary}>
+                            {currentStep.mockup.btnSecondary}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bottom Proof Strip */}
+                  <div className={styles.linearProofStrip}>
+                    <div className={styles.linearProofItem}>
+                      <span className={styles.linearProofIcon}>⚡</span>
+                      <div className={styles.linearProofText}>
+                        <strong>3.8× Higher Conversion</strong>
+                        <span>vs standard contact forms</span>
+                      </div>
+                    </div>
+                    <div className={styles.linearProofDivider} />
+                    <div className={styles.linearProofItem}>
+                      <span className={styles.linearProofIcon}>⏱️</span>
+                      <div className={styles.linearProofText}>
+                        <strong>0 Hours Wasted</strong>
+                        <span>chasing unqualified leads</span>
+                      </div>
+                    </div>
+                    <div className={styles.linearProofDivider} />
+                    <div className={styles.linearProofItem}>
+                      <span className={styles.linearProofIcon}>📱</span>
+                      <div className={styles.linearProofText}>
+                        <strong>100% Phone Friendly</strong>
+                        <span>quote &amp; close from your couch</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </section>
 
