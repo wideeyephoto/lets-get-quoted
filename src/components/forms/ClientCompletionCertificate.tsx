@@ -64,13 +64,13 @@ export default function ClientCompletionCertificate({
   }
 
   return (
-    <section className="panel workspace-section-card client-completion-certificate" style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem', marginTop: '1.5rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}>
+    <section className="panel workspace-section-card client-completion-certificate" style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.5rem', marginTop: '1.5rem', boxShadow: '0 4px 20px -8px rgba(0,0,0,0.3)' }}>
       {/* Section Header */}
-      <div className="section-heading workspace-section-heading compact-heading" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
-        <p className="eyebrow" style={{ color: '#0284c7', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 700, margin: '0 0 0.25rem' }}>
+      <div className="section-heading workspace-section-heading compact-heading" style={{ borderBottom: '1px solid var(--line)', paddingBottom: '1rem', marginBottom: '1.25rem' }}>
+        <p className="eyebrow" style={{ color: 'var(--ink-sky-1, #0284c7)', textTransform: 'uppercase', fontSize: '0.75rem', fontWeight: 700, margin: '0 0 0.25rem' }}>
           Quality Assurance &amp; Handover
         </p>
-        <h2 style={{ margin: 0, fontSize: '1.3rem', color: '#0f172a', fontWeight: 700 }}>
+        <h2 style={{ margin: 0, fontSize: '1.3rem', color: 'var(--text)', fontWeight: 700 }}>
           📜 Certificate of Completion &amp; Inspection Sign-off
         </h2>
       </div>
@@ -95,17 +95,17 @@ export default function ClientCompletionCertificate({
       )}
 
       {/* Certificate Main Card */}
-      <div style={{ border: '2px solid #0284c7', borderRadius: '10px', padding: '1.5rem', background: '#f8fafc', position: 'relative' }}>
+      <div style={{ border: '2px solid var(--accent, #0284c7)', borderRadius: '10px', padding: '1.5rem', background: 'var(--bg-elevated)', position: 'relative', boxShadow: '0 8px 24px -6px rgba(0,0,0,0.3)' }}>
         {/* Official Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid #cbd5e1', paddingBottom: '1rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', borderBottom: '1px solid var(--line)', paddingBottom: '1rem', marginBottom: '1rem' }}>
           <div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0369a1', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--ink-sky-1, #0284c7)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
               Official Inspection Record
             </span>
-            <h3 style={{ margin: '0.2rem 0', fontSize: '1.2rem', color: '#0c4a6e', fontWeight: 700 }}>
+            <h3 style={{ margin: '0.2rem 0', fontSize: '1.2rem', color: 'var(--text)', fontWeight: 700 }}>
               {template.title}
             </h3>
-            <p style={{ margin: 0, fontSize: '0.85rem', color: '#475569' }}>
+            <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--muted)' }}>
               {template.description}
             </p>
           </div>
@@ -114,15 +114,15 @@ export default function ClientCompletionCertificate({
             <span className={`${styles.badge} ${isSigned ? styles.badgePassed : styles.badgeAwaitingSig}`}>
               {isSigned ? '✓ Officially Signed & Accepted' : '⏳ Awaiting Homeowner Sign-off'}
             </span>
-            <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: '#64748b' }}>
-              QA Score: <strong style={{ color: '#16a34a' }}>{currentSub.summary.compliancePct}% Passed</strong>
+            <div style={{ marginTop: '0.35rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+              QA Score: <strong style={{ color: 'var(--good, #16a34a)' }}>{currentSub.summary.compliancePct}% Passed</strong>
             </div>
           </div>
         </div>
 
         {/* Inspection Verification Highlights */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', marginBottom: '1.25rem' }}>
-          <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#0f172a', fontWeight: 700 }}>
+          <h4 style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text)', fontWeight: 700 }}>
             Inspected Scope &amp; Quality Checklist
           </h4>
 
@@ -130,9 +130,9 @@ export default function ClientCompletionCertificate({
             {template.sections.flatMap((s) => s.fields).slice(0, 8).map((field) => {
               const val = currentSub.values[field.id];
               return (
-                <div key={field.id} style={{ background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem 0.75rem', fontSize: '0.82rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ color: '#334155', marginRight: '0.5rem' }}>{field.label}</span>
-                  <span style={{ fontWeight: 700, color: val === 'pass' ? '#16a34a' : val === 'fail' ? '#dc2626' : '#0f172a' }}>
+                <div key={field.id} style={{ background: 'rgba(var(--tint), 0.03)', border: '1px solid var(--line)', borderRadius: '6px', padding: '0.5rem 0.75rem', fontSize: '0.82rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'var(--text)', marginRight: '0.5rem' }}>{field.label}</span>
+                  <span style={{ fontWeight: 700, color: val === 'pass' ? 'var(--good, #16a34a)' : val === 'fail' ? 'var(--bad, #dc2626)' : 'var(--text)' }}>
                     {val === 'pass' ? '✓ Pass' : val === 'fail' ? '✕ Fail' : val ? `${val} ${field.unit || ''}` : '✓ Verified'}
                   </span>
                 </div>
@@ -144,7 +144,7 @@ export default function ClientCompletionCertificate({
         {/* Photo Proof Grid if available */}
         {currentSub.photos && currentSub.photos.length > 0 && (
           <div style={{ marginBottom: '1.25rem' }}>
-            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: '#0f172a', fontWeight: 700 }}>
+            <h4 style={{ margin: '0 0 0.5rem', fontSize: '0.9rem', color: 'var(--text)', fontWeight: 700 }}>
               Verified Work Proof Photos ({currentSub.photos.length})
             </h4>
             <div className={styles.photoThumbGrid}>
@@ -158,15 +158,15 @@ export default function ClientCompletionCertificate({
         )}
 
         {/* Dual Signatures Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '1rem', background: 'var(--bg-elevated)', border: '1px solid var(--line)', borderRadius: '8px', padding: '1rem' }}>
           {/* Technician Verification */}
           <div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
               Lead Technician Verification
             </span>
-            <div style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>
+            <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: 'var(--text)' }}>
               <strong>{currentSub.techSignature?.name || 'Authorized Field Specialist'}</strong>
-              <div style={{ fontSize: '0.78rem', color: '#16a34a', fontWeight: 600 }}>
+              <div style={{ fontSize: '0.78rem', color: 'var(--good, #16a34a)', fontWeight: 600 }}>
                 ✓ Certified on {currentSub.techSignature?.signedAt ? new Date(currentSub.techSignature.signedAt).toLocaleDateString() : 'Site Inspection'}
               </div>
             </div>
@@ -174,24 +174,24 @@ export default function ClientCompletionCertificate({
 
           {/* Customer Sign-off Status / Pad */}
           <div>
-            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase' }}>
               Homeowner / Client Acceptance
             </span>
 
             {isSigned ? (
-              <div style={{ marginTop: '0.35rem', fontSize: '0.85rem' }}>
-                <strong style={{ color: '#166534' }}>✓ Signed by {currentSub.customerSignature?.name}</strong>
-                <div style={{ fontSize: '0.78rem', color: '#64748b' }}>
+              <div style={{ marginTop: '0.35rem', fontSize: '0.85rem', color: 'var(--text)' }}>
+                <strong style={{ color: 'var(--good, #16a34a)' }}>✓ Signed by {currentSub.customerSignature?.name}</strong>
+                <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
                   Recorded on {new Date(currentSub.customerSignature!.signedAt).toLocaleString()}
                 </div>
               </div>
             ) : (
               <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                <p style={{ margin: 0, fontSize: '0.8rem', color: '#15803d', fontStyle: 'italic' }}>
+                <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--good, #16a34a)', fontStyle: 'italic' }}>
                   &quot;{template.customerSignatureDisclaimer || 'I certify that the work described in the contract has been completed to my satisfaction.'}&quot;
                 </p>
 
-                <label style={{ fontSize: '0.82rem', fontWeight: 600 }}>
+                <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--text)' }}>
                   Printed Name:
                   <input
                     type="text"
@@ -202,20 +202,20 @@ export default function ClientCompletionCertificate({
                 </label>
 
                 <div className={styles.sigPadWrapper}>
-                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#334155' }}>
+                  <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text)' }}>
                     Sign with your finger or mouse:
                   </span>
                   <SignaturePad onChange={setSignaturePath} label="Homeowner Signature" />
                 </div>
 
                 {error && (
-                  <div style={{ color: '#b91c1c', fontSize: '0.8rem', fontWeight: 600 }}>
+                  <div style={{ color: 'var(--bad, #b91c1c)', fontSize: '0.8rem', fontWeight: 600 }}>
                     {error}
                   </div>
                 )}
 
                 {success && (
-                  <div style={{ color: '#15803d', fontSize: '0.85rem', fontWeight: 700 }}>
+                  <div style={{ color: 'var(--good, #15803d)', fontSize: '0.85rem', fontWeight: 700 }}>
                     ✓ Certificate successfully signed and recorded!
                   </div>
                 )}

@@ -52,18 +52,11 @@ export default function FormsHubClient({
   const customCount = initialTemplates.filter((t) => !t.isPreset).length;
 
   return (
-    <div className={styles.container}>
-      <div style={{ marginBottom: '1rem' }}>
+    <main className={`wide-shell workspace-shell ${styles.container}`}>
+      <div className={styles.backLinkRow}>
         <Link
           href="/dashboard/settings#forms"
-          style={{
-            fontSize: '0.85rem',
-            color: 'var(--mute-t55, #64748b)',
-            textDecoration: 'none',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: '0.35rem',
-          }}
+          className={styles.backLink}
         >
           &larr; Back to Business settings
         </Link>
@@ -72,10 +65,11 @@ export default function FormsHubClient({
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.headerInfo}>
+          <p className="eyebrow" style={{ margin: '0 0 0.35rem' }}>Field Operations &amp; Quality</p>
           <h1>
-            <span>📋</span> Field Forms, QA & Completion Certificates
+            <span>📋</span> Field Forms, QA &amp; Completion Certificates
           </h1>
-          <p>
+          <p className={styles.headerDesc}>
             Build conditional field forms for diagnostics, equipment commissioning, safety audits, and customer completion certificates with digital signatures.
           </p>
         </div>
@@ -88,18 +82,18 @@ export default function FormsHubClient({
       </div>
 
       {/* Stats Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-        <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-          <span style={{ fontSize: '0.75rem', color: '#64748b', textTransform: 'uppercase', fontWeight: 600 }}>Total Library</span>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '1.4rem', fontWeight: 700, color: '#0f172a' }}>{initialTemplates.length} Templates</p>
+      <div className={styles.statsGrid}>
+        <div className={styles.statCard}>
+          <span className={styles.statLabel}>Total Library</span>
+          <p className={styles.statValue}>{initialTemplates.length} Templates</p>
         </div>
-        <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-          <span style={{ fontSize: '0.75rem', color: '#0369a1', textTransform: 'uppercase', fontWeight: 600 }}>Trade Presets</span>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '1.4rem', fontWeight: 700, color: '#0284c7' }}>{presetCount} Ready to Use</p>
+        <div className={styles.statCard}>
+          <span className={`${styles.statLabel} ${styles.statLabelPreset}`}>Trade Presets</span>
+          <p className={`${styles.statValue} ${styles.statValuePreset}`}>{presetCount} Ready to Use</p>
         </div>
-        <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-          <span style={{ fontSize: '0.75rem', color: '#7e22ce', textTransform: 'uppercase', fontWeight: 600 }}>Customized Forms</span>
-          <p style={{ margin: '0.25rem 0 0', fontSize: '1.4rem', fontWeight: 700, color: '#9333ea' }}>{customCount} Active</p>
+        <div className={styles.statCard}>
+          <span className={`${styles.statLabel} ${styles.statLabelCustom}`}>Customized Forms</span>
+          <p className={`${styles.statValue} ${styles.statValueCustom}`}>{customCount} Active</p>
         </div>
       </div>
 
@@ -113,17 +107,16 @@ export default function FormsHubClient({
               className={`${styles.pill} ${selectedCategory === tab.id ? styles.pillActive : ''}`}
               onClick={() => setSelectedCategory(tab.id)}
             >
-              {tab.icon} {tab.label}
+              <span>{tab.icon}</span> <span>{tab.label}</span>
             </button>
           ))}
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className={styles.filterControls}>
           <input
             type="text"
             placeholder="Search forms..."
-            className="input"
-            style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem', width: '180px' }}
+            className={styles.searchInput}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
@@ -221,7 +214,7 @@ export default function FormsHubClient({
                     <button
                       type="button"
                       className="btn secondary"
-                      style={{ color: '#ef4444', fontSize: '0.82rem' }}
+                      style={{ color: 'var(--bad, #ef4444)', fontSize: '0.82rem' }}
                       title="Archive Template"
                       onClick={() => {
                         if (confirm(`Are you sure you want to archive "${template.title}"?`)) {
@@ -240,7 +233,12 @@ export default function FormsHubClient({
             </div>
           );
         })}
+        {filteredTemplates.length === 0 && (
+          <div className={styles.emptyState}>
+            <p>No form templates match your current filter.</p>
+          </div>
+        )}
       </div>
-    </div>
+    </main>
   );
 }

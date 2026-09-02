@@ -277,14 +277,15 @@ export default function FormBuilderWorkspace({
   }
 
   return (
-    <div className={styles.container}>
+    <main className={`wide-shell workspace-shell ${styles.container}`}>
       {/* Top Header */}
       <div className={styles.header}>
         <div className={styles.headerInfo}>
+          <p className="eyebrow" style={{ margin: '0 0 0.35rem' }}>Visual Form Architecture</p>
           <h1>
             <span>📋</span> Conditional Field-Form Builder
           </h1>
-          <p>
+          <p className={styles.headerDesc}>
             Build trade-specific inspections, commissioning logs, QA checklists, and customer completion certificates with reactive conditional logic.
           </p>
         </div>
@@ -296,14 +297,14 @@ export default function FormBuilderWorkspace({
               className={`${styles.pill} ${activeTab === 'editor' ? styles.pillActive : ''}`}
               onClick={() => setActiveTab('editor')}
             >
-              🛠️ Form Schema Editor
+              <span>🛠️</span> <span>Form Schema Editor</span>
             </button>
             <button
               type="button"
               className={`${styles.pill} ${activeTab === 'preview' ? styles.pillActive : ''}`}
               onClick={() => setActiveTab('preview')}
             >
-              ⚡ Live Reactive Simulator
+              <span>⚡</span> <span>Live Reactive Simulator</span>
             </button>
           </div>
 
@@ -320,13 +321,13 @@ export default function FormBuilderWorkspace({
       </div>
 
       {saveSuccess && (
-        <div style={{ background: '#dcfce7', color: '#15803d', padding: '0.75rem 1rem', borderRadius: '8px', fontWeight: 600 }}>
+        <div style={{ background: 'rgba(74, 222, 128, 0.15)', color: 'var(--ink-green-1, #15803d)', border: '1px solid rgba(74, 222, 128, 0.25)', padding: '0.75rem 1rem', borderRadius: '8px', fontWeight: 600 }}>
           ✓ Form template successfully saved and ready for field deployment!
         </div>
       )}
 
       {saveError && (
-        <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '0.75rem 1rem', borderRadius: '8px', fontWeight: 600 }}>
+        <div style={{ background: 'rgba(248, 113, 113, 0.15)', color: 'var(--ink-red-1, #b91c1c)', border: '1px solid rgba(248, 113, 113, 0.25)', padding: '0.75rem 1rem', borderRadius: '8px', fontWeight: 600 }}>
           ✗ Error: {saveError}
         </div>
       )}
@@ -337,7 +338,7 @@ export default function FormBuilderWorkspace({
         <div className={styles.builderPanel}>
           <h2 className={styles.panelTitle}>
             <span>1. Template Settings</span>
-            <span className={styles.badge} style={{ background: '#f1f5f9' }}>
+            <span className={`${styles.badge} ${styles.badgeCategory}`}>
               {template.sections.reduce((acc, s) => acc + s.fields.length, 0)} Total Fields
             </span>
           </h2>
@@ -401,8 +402,8 @@ export default function FormBuilderWorkspace({
           </div>
 
           {/* Signatures Requirements */}
-          <div style={{ background: '#f8fafc', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a' }}>✍️ Signatures & Legal Handover</span>
+          <div style={{ background: 'rgba(var(--tint), 0.03)', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text)' }}>✍️ Signatures &amp; Legal Handover</span>
             <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.82rem', cursor: 'pointer' }}>
                 <input
@@ -538,9 +539,9 @@ export default function FormBuilderWorkspace({
 
                       {/* Rule Editor Drawer if selected */}
                       {selectedFieldForRules?.id === field.id && (
-                        <div style={{ background: '#fefce8', border: '1px solid #fef08a', borderRadius: '6px', padding: '0.65rem', marginTop: '0.35rem' }}>
+                        <div style={{ background: 'rgba(251, 191, 36, 0.12)', border: '1px solid rgba(251, 191, 36, 0.28)', borderRadius: '6px', padding: '0.65rem', marginTop: '0.35rem' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: '#854d0e' }}>
+                            <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--ink-amber-1, #b45309)' }}>
                               ⚡ Conditional Logic for &quot;{field.label}&quot;
                             </span>
                             <button
@@ -554,13 +555,13 @@ export default function FormBuilderWorkspace({
                           </div>
 
                           {(!field.conditionalRules || field.conditionalRules.length === 0) ? (
-                            <p style={{ margin: 0, fontSize: '0.75rem', color: '#a16207' }}>
+                            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--ink-amber-1, #b45309)' }}>
                               No rules configured. Add a rule to show/hide fields, require notes, or trigger critical safety flags based on this field&apos;s value.
                             </p>
                           ) : (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                               {field.conditionalRules.map((rule) => (
-                                <div key={rule.id} style={{ background: '#ffffff', border: '1px solid #fde047', borderRadius: '4px', padding: '0.45rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.75rem' }}>
+                                <div key={rule.id} style={{ background: 'var(--bg-elevated)', border: '1px solid rgba(251, 191, 36, 0.35)', borderRadius: '4px', padding: '0.45rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', fontSize: '0.75rem', color: 'var(--text)' }}>
                                   <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <span style={{ fontWeight: 600 }}>WHEN this field</span>
                                     <select
@@ -694,10 +695,10 @@ export default function FormBuilderWorkspace({
         <div className={styles.simulatorBox}>
           <div className={styles.simHeader}>
             <div>
-              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#0369a1', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--ink-sky-1, #0284c7)', fontWeight: 700 }}>
                 ⚡ Live Reactive Preview
               </span>
-              <h3 style={{ margin: '0.1rem 0 0 0', fontSize: '1.1rem', color: '#0c4a6e' }}>
+              <h3 style={{ margin: '0.1rem 0 0 0', fontSize: '1.1rem', color: 'var(--text)' }}>
                 {template.title}
               </h3>
             </div>
@@ -714,17 +715,17 @@ export default function FormBuilderWorkspace({
           {/* Compliance & Scorecard */}
           <div className={styles.scorecard}>
             <div className={styles.scoreItem}>
-              <strong style={{ color: simCompliance.compliancePct >= 90 ? '#16a34a' : '#ea580c' }}>
+              <strong style={{ color: simCompliance.compliancePct >= 90 ? 'var(--good, #16a34a)' : 'var(--warn, #ea580c)' }}>
                 {simCompliance.compliancePct}%
               </strong>
               <span>Pass Score</span>
             </div>
             <div className={styles.scoreItem}>
-              <strong style={{ color: '#16a34a' }}>{simCompliance.passedItems}</strong>
+              <strong style={{ color: 'var(--good, #16a34a)' }}>{simCompliance.passedItems}</strong>
               <span>Passed</span>
             </div>
             <div className={styles.scoreItem}>
-              <strong style={{ color: simCompliance.failedItems > 0 ? '#dc2626' : '#64748b' }}>
+              <strong style={{ color: simCompliance.failedItems > 0 ? 'var(--bad, #dc2626)' : 'var(--muted-2, #64748b)' }}>
                 {simCompliance.failedItems}
               </strong>
               <span>Failed</span>
@@ -738,7 +739,7 @@ export default function FormBuilderWorkspace({
           {/* Critical Warnings */}
           {simCompliance.criticalIssues.length > 0 && (
             <div className={styles.criticalAlert}>
-              <strong>⚠️ Active Critical Safety & QA Warnings:</strong>
+              <strong>⚠️ Active Critical Safety &amp; QA Warnings:</strong>
               {simCompliance.criticalIssues.map((issue, idx) => (
                 <div key={idx}>• {issue}</div>
               ))}
@@ -752,8 +753,8 @@ export default function FormBuilderWorkspace({
               if (visibleFields.length === 0) return null;
 
               return (
-                <div key={sec.id} style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: '#0f172a', fontWeight: 700 }}>
+                <div key={sec.id} style={{ background: 'rgba(var(--tint), 0.03)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--line)' }}>
+                  <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.95rem', color: 'var(--text)', fontWeight: 700 }}>
                     {sec.title}
                   </h4>
 
@@ -764,11 +765,11 @@ export default function FormBuilderWorkspace({
 
                       return (
                         <div key={field.id} style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
-                          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#334155', display: 'flex', justifyContent: 'space-between' }}>
+                          <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text)', display: 'flex', justifyContent: 'space-between' }}>
                             <span>
-                              {field.label} {isRequired && <span style={{ color: '#ef4444' }}>*</span>}
+                              {field.label} {isRequired && <span style={{ color: 'var(--bad, #ef4444)' }}>*</span>}
                             </span>
-                            {field.unit && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Unit: {field.unit}</span>}
+                            {field.unit && <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Unit: {field.unit}</span>}
                           </label>
 
                           {/* Pass/Fail/NA */}
@@ -810,7 +811,7 @@ export default function FormBuilderWorkspace({
                                 value={currentVal ?? ''}
                                 onChange={(e) => setSimValues((prev) => ({ ...prev, [field.id]: e.target.value }))}
                               />
-                              {field.unit && <span style={{ fontWeight: 600, color: '#475569', fontSize: '0.85rem' }}>{field.unit}</span>}
+                              {field.unit && <span style={{ fontWeight: 600, color: 'var(--muted)', fontSize: '0.85rem' }}>{field.unit}</span>}
                             </div>
                           )}
 
@@ -873,7 +874,7 @@ export default function FormBuilderWorkspace({
                           {field.type === 'photo' && (
                             <div className={styles.photoUploadBox}>
                               <span style={{ fontSize: '1.2rem' }}>📷</span>
-                              <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                              <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
                                 Camera Photo Evidence Capture Active ({field.minPhotos || 1} required)
                               </p>
                             </div>
@@ -890,8 +891,9 @@ export default function FormBuilderWorkspace({
                                   style={{
                                     fontSize: '1rem',
                                     padding: '0.3rem 0.6rem',
-                                    background: (currentVal || 5) >= star ? '#fef08a' : '#f1f5f9',
-                                    color: (currentVal || 5) >= star ? '#854d0e' : '#94a3b8',
+                                    background: (currentVal || 5) >= star ? 'rgba(251, 191, 36, 0.2)' : 'rgba(var(--tint), 0.04)',
+                                    color: (currentVal || 5) >= star ? 'var(--ink-amber-1, #b45309)' : 'var(--muted)',
+                                    border: '1px solid ' + ((currentVal || 5) >= star ? 'rgba(251, 191, 36, 0.35)' : 'var(--line)'),
                                   }}
                                   onClick={() => setSimValues((prev) => ({ ...prev, [field.id]: star }))}
                                 >
@@ -910,14 +912,14 @@ export default function FormBuilderWorkspace({
 
             {/* Customer Sign-off preview */}
             {template.requireCustomerSignature && (
-              <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '8px', padding: '1rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#166534' }}>
+              <div style={{ background: 'rgba(74, 222, 128, 0.12)', border: '1px solid rgba(74, 222, 128, 0.25)', borderRadius: '8px', padding: '1rem' }}>
+                <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--ink-green-1, #15803d)' }}>
                   ✍️ Customer Completion Certificate Sign-Off
                 </span>
-                <p style={{ margin: '0.35rem 0 0.75rem', fontSize: '0.78rem', color: '#15803d', fontStyle: 'italic' }}>
+                <p style={{ margin: '0.35rem 0 0.75rem', fontSize: '0.78rem', color: 'var(--ink-green-1, #15803d)', fontStyle: 'italic' }}>
                   &quot;{template.customerSignatureDisclaimer}&quot;
                 </p>
-                <div style={{ border: '2px dashed #86efac', borderRadius: '6px', height: '65px', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#16a34a', fontSize: '0.85rem', fontWeight: 600 }}>
+                <div style={{ border: '2px dashed rgba(74, 222, 128, 0.4)', borderRadius: '6px', height: '65px', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--ink-green-1, #15803d)', fontSize: '0.85rem', fontWeight: 600 }}>
                   Customer Digital Signature Pad
                 </div>
               </div>
@@ -925,6 +927,6 @@ export default function FormBuilderWorkspace({
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

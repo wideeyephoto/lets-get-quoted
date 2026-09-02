@@ -125,18 +125,18 @@ export default function FieldFormRunner({
   }
 
   return (
-    <div style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}>
+    <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line)', borderRadius: '12px', padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1.25rem', boxShadow: '0 8px 32px rgba(0,0,0,0.35)' }}>
       {/* Runner Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid var(--line)', paddingBottom: '1rem' }}>
         <div>
           <span className={`${styles.badge} ${styles.badgeCategory}`}>
             {template.trade !== 'all' ? `${template.trade.toUpperCase()} · ` : ''}
             {template.category.replace('_', ' ')}
           </span>
-          <h2 style={{ margin: '0.35rem 0 0.15rem', fontSize: '1.2rem', color: '#0f172a', fontWeight: 700 }}>
+          <h2 style={{ margin: '0.35rem 0 0.15rem', fontSize: '1.2rem', color: 'var(--text)', fontWeight: 700 }}>
             {template.title}
           </h2>
-          <p style={{ margin: 0, fontSize: '0.82rem', color: '#64748b' }}>
+          <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted)' }}>
             {template.description}
           </p>
         </div>
@@ -151,17 +151,17 @@ export default function FieldFormRunner({
       {/* Compliance Bar */}
       <div className={styles.scorecard}>
         <div className={styles.scoreItem}>
-          <strong style={{ color: compliance.compliancePct >= 90 ? '#16a34a' : '#ea580c' }}>
+          <strong style={{ color: compliance.compliancePct >= 90 ? 'var(--good, #16a34a)' : 'var(--warn, #ea580c)' }}>
             {compliance.compliancePct}%
           </strong>
           <span>Score</span>
         </div>
         <div className={styles.scoreItem}>
-          <strong style={{ color: '#16a34a' }}>{compliance.passedItems}</strong>
+          <strong style={{ color: 'var(--good, #16a34a)' }}>{compliance.passedItems}</strong>
           <span>Passed</span>
         </div>
         <div className={styles.scoreItem}>
-          <strong style={{ color: compliance.failedItems > 0 ? '#dc2626' : '#64748b' }}>
+          <strong style={{ color: compliance.failedItems > 0 ? 'var(--bad, #dc2626)' : 'var(--muted-2, #64748b)' }}>
             {compliance.failedItems}
           </strong>
           <span>Failed</span>
@@ -175,7 +175,7 @@ export default function FieldFormRunner({
       {/* Critical Warnings */}
       {compliance.criticalIssues.length > 0 && (
         <div className={styles.criticalAlert}>
-          <strong>⚠️ Active Safety & QA Flags:</strong>
+          <strong>⚠️ Active Safety &amp; QA Flags:</strong>
           {compliance.criticalIssues.map((issue, idx) => (
             <div key={idx}>• {issue}</div>
           ))}
@@ -189,12 +189,12 @@ export default function FieldFormRunner({
           if (visibleFields.length === 0) return null;
 
           return (
-            <div key={sec.id} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '1rem' }}>
-              <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', color: '#0f172a', fontWeight: 700 }}>
+            <div key={sec.id} style={{ background: 'rgba(var(--tint), 0.03)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
+              <h3 style={{ margin: '0 0 0.25rem', fontSize: '1rem', color: 'var(--text)', fontWeight: 700 }}>
                 {sec.title}
               </h3>
               {sec.description && (
-                <p style={{ margin: '0 0 0.85rem', fontSize: '0.8rem', color: '#64748b' }}>
+                <p style={{ margin: '0 0 0.85rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
                   {sec.description}
                 </p>
               )}
@@ -206,16 +206,16 @@ export default function FieldFormRunner({
                   const fieldPhotos = photos.filter((p) => p.fieldId === field.id);
 
                   return (
-                    <div key={field.id} style={{ background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px', padding: '0.85rem' }}>
-                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', fontWeight: 600, color: '#1e293b', marginBottom: '0.45rem' }}>
+                    <div key={field.id} style={{ background: 'var(--bg-elevated)', border: '1px solid var(--line)', borderRadius: '8px', padding: '0.85rem' }}>
+                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.9rem', fontWeight: 600, color: 'var(--text)', marginBottom: '0.45rem' }}>
                         <span>
-                          {field.label} {isRequired && <span style={{ color: '#ef4444' }}>*</span>}
+                          {field.label} {isRequired && <span style={{ color: 'var(--bad, #ef4444)' }}>*</span>}
                         </span>
-                        {field.unit && <span style={{ fontSize: '0.75rem', color: '#64748b' }}>Unit: {field.unit}</span>}
+                        {field.unit && <span style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>Unit: {field.unit}</span>}
                       </label>
 
                       {field.helpText && (
-                        <p style={{ margin: '0 0 0.45rem', fontSize: '0.78rem', color: '#64748b' }}>
+                        <p style={{ margin: '0 0 0.45rem', fontSize: '0.78rem', color: 'var(--muted)' }}>
                           {field.helpText}
                         </p>
                       )}
@@ -263,7 +263,7 @@ export default function FieldFormRunner({
                             onChange={(e) => handleFieldValueChange(field.id, e.target.value)}
                           />
                           {field.unit && (
-                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#334155', minWidth: '40px' }}>
+                            <span style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text)', minWidth: '40px' }}>
                               {field.unit}
                             </span>
                           )}
@@ -365,8 +365,9 @@ export default function FieldFormRunner({
                                 flex: 1,
                                 padding: '0.5rem 0',
                                 fontSize: '1rem',
-                                background: (currentVal || 5) >= star ? '#fef08a' : '#f1f5f9',
-                                color: (currentVal || 5) >= star ? '#854d0e' : '#94a3b8',
+                                background: (currentVal || 5) >= star ? 'rgba(251, 191, 36, 0.2)' : 'rgba(var(--tint), 0.04)',
+                                color: (currentVal || 5) >= star ? 'var(--ink-amber-1, #b45309)' : 'var(--muted)',
+                                border: '1px solid ' + ((currentVal || 5) >= star ? 'rgba(251, 191, 36, 0.35)' : 'var(--line)'),
                               }}
                               onClick={() => handleFieldValueChange(field.id, star)}
                             >
@@ -386,11 +387,11 @@ export default function FieldFormRunner({
 
       {/* Technician Digital Sign-off */}
       {template.requireTechSignature && (
-        <div style={{ background: '#f8fafc', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: '#0f172a', fontWeight: 700 }}>
+        <div style={{ background: 'rgba(var(--tint), 0.03)', border: '1px solid var(--line)', borderRadius: '10px', padding: '1rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: 'var(--text)', fontWeight: 700 }}>
             👷 Lead Technician Sign-off
           </h3>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: '#64748b' }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
             I certify that I have conducted and inspected all items in this report.
           </p>
 
@@ -406,7 +407,7 @@ export default function FieldFormRunner({
             </label>
 
             <div className={styles.sigPadWrapper}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#475569' }}>Draw Technician Signature:</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--muted)' }}>Draw Technician Signature:</span>
               <SignaturePad onChange={setTechSignPath} label="Technician Signature" />
             </div>
           </div>
@@ -415,16 +416,16 @@ export default function FieldFormRunner({
 
       {/* On-Site Customer Handover E-Sign */}
       {template.requireCustomerSignature && (
-        <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '10px', padding: '1rem' }}>
-          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: '#166534', fontWeight: 700 }}>
-            ✍️ On-Site Customer Sign-off & Completion Acceptance
+        <div style={{ background: 'rgba(74, 222, 128, 0.12)', border: '1px solid rgba(74, 222, 128, 0.25)', borderRadius: '10px', padding: '1rem' }}>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1rem', color: 'var(--ink-green-1, #15803d)', fontWeight: 700 }}>
+            ✍️ On-Site Customer Sign-off &amp; Completion Acceptance
           </h3>
-          <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: '#15803d', fontStyle: 'italic' }}>
+          <p style={{ margin: '0 0 0.75rem', fontSize: '0.82rem', color: 'var(--ink-green-1, #15803d)', fontStyle: 'italic' }}>
             &quot;{template.customerSignatureDisclaimer}&quot;
           </p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: '#166534' }}>
+            <label style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--ink-green-1, #15803d)' }}>
               Homeowner / Client Printed Name:
               <input
                 type="text"
@@ -436,7 +437,7 @@ export default function FieldFormRunner({
             </label>
 
             <div className={styles.sigPadWrapper}>
-              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: '#166534' }}>Customer Digital Signature:</span>
+              <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--ink-green-1, #15803d)' }}>Customer Digital Signature:</span>
               <SignaturePad onChange={setCustomerSignPath} label="Customer Signature" />
             </div>
           </div>
@@ -445,13 +446,13 @@ export default function FieldFormRunner({
 
       {/* Error & Success notifications */}
       {errorMessage && (
-        <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}>
+        <div style={{ background: 'rgba(248, 113, 113, 0.15)', color: 'var(--ink-red-1, #b91c1c)', border: '1px solid rgba(248, 113, 113, 0.25)', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}>
           {errorMessage}
         </div>
       )}
 
       {successMessage && (
-        <div style={{ background: '#dcfce7', color: '#15803d', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}>
+        <div style={{ background: 'rgba(74, 222, 128, 0.15)', color: 'var(--ink-green-1, #15803d)', border: '1px solid rgba(74, 222, 128, 0.25)', padding: '0.75rem', borderRadius: '8px', fontWeight: 600, fontSize: '0.85rem' }}>
           {successMessage}
         </div>
       )}
