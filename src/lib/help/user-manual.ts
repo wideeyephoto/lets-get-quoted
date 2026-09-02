@@ -311,18 +311,18 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     chapterId: 'start',
     order: 6,
     title: 'Use the AI Contractor Copilot and customize your companion',
-    summary: 'Leverage the in-app AI assistant with screen context, voice commands, and personalized companion personas like Sparky.',
+    summary: 'Leverage the in-app AI assistant with screen context, voice commands, and personalized companion avatars like Sparky, Diesel, Echo, and Energy Orbit.',
     outcome: 'You will work faster across estimating, dispatching, and customer replies with an AI copilot that understands your active screen.',
     audiences: ['Owner', 'Office staff', 'Crew'],
     readMinutes: 5,
     routes: [{ label: 'Dashboard', href: '/dashboard' }],
     prerequisites: ['Active workspace account'],
-    keywords: ['ai copilot', 'sparky', 'companion', 'mascot', 'ai assistant', 'screen awareness', 'voice commands', 'sidekick'],
+    keywords: ['ai copilot', 'avatars', 'sparky', 'diesel', 'echo', 'companion', 'mascot', 'ai assistant', 'screen awareness', 'voice commands', 'sidekick'],
     sections: [
       {
         title: 'Activate the AI Assistant on any screen',
         steps: [
-          'Click the Sparky mascot avatar in the bottom navigation or click the AI Copilot button in any record view.',
+          'Click the AI Copilot avatar in the bottom navigation or click the AI Copilot button in any record view.',
           'The copilot automatically captures your active screen context (such as the open quote draft, customer message thread, or crew calendar).',
           'Ask questions or request actions in plain English without re-typing customer names, job locations, or line item numbers.',
         ],
@@ -347,7 +347,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       {
         title: 'Customize companion personas and style',
         paragraphs: [
-          'Open the Companion Picker to select your preferred assistant persona (such as Sparky the Electrician, Chief Estimator, or Dispatch Pro) to tailor response tone and detail level to your workflow.',
+          'Open the Companion Picker to select your preferred assistant persona and avatar (such as Sparky with trade uniforms, Diesel the Foreman, Echo the Safety Inspector, or Energy Orbit) to tailor response tone and detail level to your workflow.',
         ],
       },
     ],

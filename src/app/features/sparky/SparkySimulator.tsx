@@ -1,15 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
+import Image from 'next/image';
 import styles from './sparky.module.css';
+import { COMPANIONS, SPARKY_TRADE_OPTIONS, getCompanion } from '@/lib/ai-assistant/companions';
 
 type Scenario = {
   id: string;
   tabLabel: string;
   contextLabel: string;
   userPrompt: string;
-  sparkyThought: string;
-  sparkyResponse: string;
+  thought: string;
+  replies: Record<string, string>;
   cardTitle: string;
   cardBadge: string;
   items?: { name: string; cost: string }[];
@@ -29,8 +31,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '🚶 Walk-Up Estimate Brain Dump',
     contextLabel: 'Context: Estimate Walkthrough · On-Site Voice Intake',
     userPrompt: "🎙️ [Walking the job site]: \"Starting an estimate for Miller at 84 Pine St. He wants a 12x16 paver patio, 4 inches of crushed gravel base, polymeric sand, plus ask if he wants low-voltage pathway lighting for $450. Labor is 2 days with 2 guys.\"",
-    sparkyThought: "Listening to on-site brain dump -> Calculating materials (192 sq ft pavers, 3 tons gravel base, sand) -> Calculating labor (32 man-hours @ $65/hr) -> Structuring $450 lighting upsell...",
-    sparkyResponse: "I sorted it all out for you! Created Quote #1049 for Miller at 84 Pine St. Itemized by Paver & Base Materials ($1,380), Masonry Labor ($2,080), and an optional $450 Low-Voltage Pathway Lighting Add-on. Total base quote: $3,460.00.",
+    thought: "Listening to on-site brain dump -> Calculating materials (192 sq ft pavers, 3 tons gravel base, sand) -> Calculating labor (32 man-hours @ $65/hr) -> Structuring $450 lighting upsell...",
+    replies: {
+      sparky: "I sorted it all out for you! Created Quote #1049 for Miller at 84 Pine St. Itemized by Paver & Base Materials ($1,380), Masonry Labor ($2,080), and an optional $450 Low-Voltage Pathway Lighting Add-on. Total base quote: $3,460.00.",
+      diesel: "Got it logged boss. Quote #1049 is locked in for Miller at 84 Pine St. Calculated 32 man-hours of crew labor ($2,080) plus $1,380 base materials and the $450 lighting upsell. Base total sits at $3,460.00.",
+      echo: "Scope verified for 84 Pine St. Drafted Quote #1049 with precise material allowances ($1,380), excavation & masonry labor ($2,080), and the $450 pathway lighting add-on. Total base: $3,460.00.",
+      assistant: "Quote #1049 generated for Miller at 84 Pine St. Line items structured for base materials ($1,380), labor ($2,080), and optional lighting ($450). Total base estimate: $3,460.00.",
+    },
     cardTitle: "Quote #1049 · Miller (84 Pine St)",
     cardBadge: "Send-Ready Quote",
     items: [
@@ -47,8 +54,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '📸 Text Photos & Remind Me',
     contextLabel: 'Context: Inbound Text-to-Job from Truck',
     userPrompt: "📱 [Sent 2 Photos + Voice Memo]: \"At 142 Elm St, subfloor rot extends 6 feet past the tub. Remind me to quote 2 sheets of 3/4 plywood tomorrow at 7:30 AM.\"",
-    sparkyThought: "Inbound MMS received -> Match address '142 Elm St' to Job #1039 -> Attaching 2 photos to job file -> Scheduling dashboard alert for tomorrow 7:30 AM...",
-    sparkyResponse: "Sorted! I attached the 2 subfloor photos directly to Job #1039 (142 Elm St), logged the damage notes, and scheduled an alert for tomorrow at 7:30 AM to draft the plywood quote.",
+    thought: "Inbound MMS received -> Match address '142 Elm St' to Job #1039 -> Attaching 2 photos to job file -> Scheduling dashboard alert for tomorrow 7:30 AM...",
+    replies: {
+      sparky: "Sorted! I attached the 2 subfloor photos directly to Job #1039 (142 Elm St), logged the damage notes, and scheduled an alert for tomorrow at 7:30 AM to draft the plywood quote.",
+      diesel: "Filed to Job #1039. Both subfloor damage photos are attached to the job folder and I've set a reminder alert for 7:30 AM tomorrow so you don't miss the plywood quote.",
+      echo: "Documented structural rot photos under Job #1039 (142 Elm St). Inspection notes recorded and automated alert set for 7:30 AM tomorrow for plywood replacement scope.",
+      assistant: "2 photos indexed to Job #1039 (142 Elm St). Change order reminder scheduled for tomorrow at 7:30 AM.",
+    },
     cardTitle: "Job #1039 · 2 Photos & Reminder Logged",
     cardBadge: "Auto-Sorted & Scheduled",
     photos: [
@@ -66,8 +78,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '📝 Draft a Quote',
     contextLabel: 'Context: New Quote Intent',
     userPrompt: "Draft a $2,400 composite deck board replacement for Sarah Jenkins with a $450 solar post-cap lighting add-on.",
-    sparkyThought: "Executing create_quote_or_job() -> Calculating line items, tax, and add-on structure...",
-    sparkyResponse: "Done! I drafted Quote #1048 for Sarah Jenkins. It includes the base $2,400 deck repair plus an optional $450 solar post-cap lighting upsell.",
+    thought: "Executing create_quote_or_job() -> Calculating line items, tax, and add-on structure...",
+    replies: {
+      sparky: "Done! I drafted Quote #1048 for Sarah Jenkins. It includes the base $2,400 deck repair plus an optional $450 solar post-cap lighting upsell.",
+      diesel: "Quote #1048 drafted for Sarah Jenkins. $2,400 deck board replacement with the $450 solar lighting option. Ready for your review.",
+      echo: "Generated Quote #1048 for Sarah Jenkins. Specifications verified for $2,400 composite deck repair and $450 solar post-cap fixtures.",
+      assistant: "Quote #1048 created for Sarah Jenkins. Total with add-on: $2,850.00.",
+    },
     cardTitle: "Quote #1048 · Sarah Jenkins",
     cardBadge: "Draft Ready",
     items: [
@@ -85,8 +102,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '🔄 Update Active Job',
     contextLabel: 'Context: Job #1042 (Apex Roofing)',
     userPrompt: "Reschedule this active job to Friday at 9:00 AM and add an estimated 3 hours for chimney flashing prep.",
-    sparkyThought: "Executing modify_active_job(id: 'job-1042', scheduledFor: '2026-09-04', scheduledTime: '09:00', estimatedHours: 8.5)...",
-    sparkyResponse: "Updated Job #1042! The calendar slot has moved to Friday, Sep 4 at 9:00 AM, and total estimated duration is adjusted to 8.5 hours. Your crew calendar is updated.",
+    thought: "Executing modify_active_job(id: 'job-1042', scheduledFor: '2026-09-04', scheduledTime: '09:00', estimatedHours: 8.5)...",
+    replies: {
+      sparky: "Updated Job #1042! The calendar slot has moved to Friday, Sep 4 at 9:00 AM, and total estimated duration is adjusted to 8.5 hours. Your crew calendar is updated.",
+      diesel: "Moved Job #1042 to Friday 9:00 AM. Bumped crew duration to 8.5 hours for flashing work. Mike & Dave's dispatch board is refreshed.",
+      echo: "Job #1042 schedule updated to Friday 9:00 AM. Duration calibrated to 8.5 hours including chimney flashing inspection requirements.",
+      assistant: "Job #1042 rescheduled to Friday, Sep 4 @ 9:00 AM (8.5 hrs duration).",
+    },
     cardTitle: "Job #1042 · Roof Replacement & Flashing",
     cardBadge: "Rescheduled · Fri 9:00 AM",
     items: [
@@ -102,8 +124,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '✅ Add Punch List Tasks',
     contextLabel: 'Context: Job #1039 (Master Bath Tile)',
     userPrompt: "Add checklist tasks: Pick up Schluter waterproofing membrane from depot and test drain slope.",
-    sparkyThought: "Executing add_job_task(jobId: 'job-1039', tasks: ['Pick up Schluter membrane...', 'Test drain slope'])...",
-    sparkyResponse: "Added 2 tasks to Job #1039’s punch list. Your crew can check these off directly from their mobile field link.",
+    thought: "Executing add_job_task(jobId: 'job-1039', tasks: ['Pick up Schluter membrane...', 'Test drain slope'])...",
+    replies: {
+      sparky: "Added 2 tasks to Job #1039’s punch list. Your crew can check these off directly from their mobile field link.",
+      diesel: "Punch list updated for Job #1039. Schluter pickup and drain slope test added to crew checklist.",
+      echo: "Added critical waterproofing tasks to Job #1039 punch list: Schluter membrane verification and drain slope slope test.",
+      assistant: "2 tasks appended to Job #1039 punch list.",
+    },
     cardTitle: "Job #1039 Punch List",
     cardBadge: "2 New Tasks Added",
     tasks: [
@@ -118,8 +145,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '💰 Check Unpaid Invoices',
     contextLabel: 'Context: Dashboard · Cash Flow & Revenue',
     userPrompt: "Who owes us overdue invoices right now?",
-    sparkyThought: "Executing get_unpaid_invoices_and_payments() -> Scanning outstanding ledger balances...",
-    sparkyResponse: "You have 2 overdue invoices totaling $3,450.00. Both clients received the initial invoice by SMS and have active cards on file.",
+    thought: "Executing get_unpaid_invoices_and_payments() -> Scanning outstanding ledger balances...",
+    replies: {
+      sparky: "You have 2 overdue invoices totaling $3,450.00. Both clients received the initial invoice by SMS and have active cards on file.",
+      diesel: "Tracking 2 overdue balances totaling $3,450.00: David Miller ($2,200) and Oakwood Dental ($1,250). Ready to trigger payment reminders.",
+      echo: "Outstanding receivables audit: 2 accounts past due amounting to $3,450.00 total. SMS reminder workflows prepared.",
+      assistant: "2 overdue invoices identified ($3,450.00 total).",
+    },
     cardTitle: "Unpaid Invoice Ledger",
     cardBadge: "$3,450.00 Total Overdue",
     invoices: [
@@ -133,8 +165,13 @@ const SCENARIOS: Scenario[] = [
     tabLabel: '🔍 Look Up Client History',
     contextLabel: 'Context: Clients Directory',
     userPrompt: "What’s Marcus Vance’s phone number, gate code, and past job history?",
-    sparkyThought: "Executing search_clients(query: 'Marcus Vance') -> Retrieving profile & job records...",
-    sparkyResponse: "Here’s Marcus Vance’s profile! He’s a repeat customer with 2 completed jobs ($5,050 total lifetime value).",
+    thought: "Executing search_clients(query: 'Marcus Vance') -> Retrieving profile & job records...",
+    replies: {
+      sparky: "Here’s Marcus Vance’s profile! He’s a repeat customer with 2 completed jobs ($5,050 total lifetime value).",
+      diesel: "Pulled Marcus Vance's file. 2 completed jobs on record, gate code is #4921.",
+      echo: "Profile retrieved for Marcus Vance. Verified gate access code #4921 and 2 past completed projects ($5,050 LTV).",
+      assistant: "Client record retrieved: Marcus Vance (2 jobs, $5,050 LTV).",
+    },
     cardTitle: "Client Profile · Marcus Vance",
     cardBadge: "VIP Repeat Client",
     clientDetails: {
@@ -194,6 +231,8 @@ function playSparkySound(type: 'click' | 'toggle' | 'switch', enabled: boolean) 
 
 export default function SparkySimulator() {
   const [selectedId, setSelectedId] = useState<string>('walkup_estimate');
+  const [selectedCompanionId, setSelectedCompanionId] = useState<string>('sparky');
+  const [selectedTrade, setSelectedTrade] = useState<string>('electrician');
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [taskState, setTaskState] = useState<Record<string, boolean>>({
     t1: true,
@@ -203,6 +242,18 @@ export default function SparkySimulator() {
   const [copiedPrompt, setCopiedPrompt] = useState<boolean>(false);
 
   const activeScenario = SCENARIOS.find((s) => s.id === selectedId) || SCENARIOS[0];
+  const activeCompanion = getCompanion(selectedCompanionId, selectedTrade);
+  const botReply = activeScenario.replies[selectedCompanionId] || activeScenario.replies.sparky;
+
+  function handleSelectCompanion(id: string) {
+    setSelectedCompanionId(id);
+    playSparkySound('switch', soundEnabled);
+  }
+
+  function handleSelectTrade(tradeId: string) {
+    setSelectedTrade(tradeId);
+    playSparkySound('toggle', soundEnabled);
+  }
 
   function handleSelectScenario(id: string) {
     setSelectedId(id);
@@ -231,11 +282,48 @@ export default function SparkySimulator() {
       {/* Header */}
       <div className={styles.simHeader}>
         <div className={styles.botMeta}>
-          <div className={styles.sparkyAvatar}>⚡</div>
+          <div
+            className={styles.avatarContainer}
+            style={{
+              boxShadow: `0 0 16px ${activeCompanion.accentColor}80`,
+              background: `linear-gradient(135deg, ${activeCompanion.accentColor} 0%, #1e1b4b 100%)`,
+            }}
+          >
+            <Image
+              src={activeCompanion.avatarSrc}
+              alt={activeCompanion.name}
+              width={44}
+              height={44}
+              className={styles.avatarImage}
+            />
+            <span className={styles.avatarBadgeEmoji}>
+              {selectedCompanionId === 'sparky'
+                ? SPARKY_TRADE_OPTIONS.find((t) => t.id === selectedTrade)?.emoji || '⚡'
+                : selectedCompanionId === 'diesel'
+                ? '🔨'
+                : selectedCompanionId === 'echo'
+                ? '🦉'
+                : '💡'}
+            </span>
+          </div>
           <div>
             <div className={styles.botTitle}>
-              <span>AI Copilot</span>
-              <span className={styles.botBadge}>24/7 Field Sidekick</span>
+              <span>AI Copilot · {activeCompanion.name}</span>
+              <span
+                className={styles.botBadge}
+                style={{
+                  background: `${activeCompanion.accentColor}25`,
+                  color: activeCompanion.accentColor === '#6366f1' ? '#c084fc' : '#ffffff',
+                  borderColor: `${activeCompanion.accentColor}60`,
+                }}
+              >
+                {selectedCompanionId === 'sparky'
+                  ? `${SPARKY_TRADE_OPTIONS.find((t) => t.id === selectedTrade)?.name || 'Sidekick'}`
+                  : activeCompanion.badgeLabel}
+              </span>
+            </div>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '2px' }}>
+              {activeCompanion.tagline}
             </div>
           </div>
         </div>
@@ -267,6 +355,70 @@ export default function SparkySimulator() {
             <span>{activeScenario.contextLabel}</span>
           </div>
         </div>
+      </div>
+
+      {/* Interactive Avatar Switcher */}
+      <div className={styles.avatarSelectorBar}>
+        <div className={styles.avatarSelectorLabel}>
+          <span>Choose Your AI Copilot Avatar:</span>
+        </div>
+        <div className={styles.avatarPillRow} role="tablist" aria-label="Select AI Copilot Companion">
+          {COMPANIONS.map((comp) => {
+            const isActive = comp.id === selectedCompanionId;
+            return (
+              <button
+                key={comp.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                onClick={() => handleSelectCompanion(comp.id)}
+                className={`${styles.avatarPill} ${isActive ? styles.avatarPillActive : ''}`}
+                style={
+                  isActive
+                    ? {
+                        borderColor: comp.accentColor,
+                        background: `${comp.accentColor}25`,
+                        boxShadow: `0 0 12px ${comp.accentColor}40`,
+                      }
+                    : undefined
+                }
+              >
+                <Image
+                  src={comp.avatarSrc}
+                  alt={comp.name}
+                  width={22}
+                  height={22}
+                  className={styles.avatarPillImg}
+                />
+                <span>{comp.name}</span>
+                <span style={{ fontSize: '10px', opacity: 0.8 }}>({comp.role.split(' ')[0]})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* If Sparky is selected, show Trade Outfits */}
+        {selectedCompanionId === 'sparky' && (
+          <div className={styles.tradePickerRow}>
+            <span style={{ fontSize: '10.5px', color: '#94a3b8', fontWeight: 600, marginRight: '4px' }}>
+              Trade Uniform:
+            </span>
+            {SPARKY_TRADE_OPTIONS.map((trade) => {
+              const isTradeActive = selectedTrade === trade.id;
+              return (
+                <button
+                  key={trade.id}
+                  type="button"
+                  onClick={() => handleSelectTrade(trade.id)}
+                  className={`${styles.tradePill} ${isTradeActive ? styles.tradePillActive : ''}`}
+                >
+                  <span>{trade.emoji}</span>
+                  <span>{trade.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Preset Tab Selectors */}
@@ -315,14 +467,14 @@ export default function SparkySimulator() {
           </div>
         </div>
 
-        {/* Sparky Bot Response */}
+        {/* Bot Response */}
         <div className={`${styles.messageRow} ${styles.botRow}`}>
           <div className={styles.botBubble}>
             <div className={styles.executingBanner}>
               <span className={styles.spinner} />
-              <span>{activeScenario.sparkyThought}</span>
+              <span>{activeScenario.thought}</span>
             </div>
-            <p style={{ marginTop: '10px', marginBottom: '4px' }}>{activeScenario.sparkyResponse}</p>
+            <p style={{ marginTop: '10px', marginBottom: '4px' }}>{botReply}</p>
 
             {/* Render Contextual Action Card */}
             <div className={styles.actionCard}>
@@ -529,3 +681,5 @@ export default function SparkySimulator() {
     </div>
   );
 }
+
+

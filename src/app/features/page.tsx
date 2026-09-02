@@ -521,15 +521,15 @@ export default async function FeaturesPage() {
 
           <Link href="/features/sparky" id="sparky-spotlight">
             <span style={{ fontSize: '1.25rem', color: '#f59e0b' }}>⚡</span>
-            <small>AI CONTRACTOR SIDEKICK &amp; COPILOT</small>
-            <h3>AI Copilot &amp; Companions</h3>
-            <p>Run your business by simply texting, sending photos, or talking to your AI Copilot. Choose from trade companions like Sparky, Diesel, and Echo.</p>
-            <ul className="feature-produces" aria-label="What AI Copilot gives you">
+            <small>AI CONTRACTOR SIDEKICK &amp; TRADE AVATARS</small>
+            <h3>AI Copilot with Avatars</h3>
+            <p>Run your business by texting, calling, or talking on site with customizable trade avatars (Sparky, Diesel, Echo, Energy Orbit).</p>
+            <ul className="feature-produces" aria-label="What AI Copilot with Avatars gives you">
+              <li>Customizable Trade Avatars &amp; Outfits</li>
               <li>SMS &amp; iMessage job management</li>
-              <li>Texted photos &amp; OCR auto-sorting</li>
               <li>Walk-up estimate brain dumps</li>
             </ul>
-            <b>Explore AI Copilot <span aria-hidden="true">→</span></b>
+            <b>Explore AI Copilot with Avatars <span aria-hidden="true">→</span></b>
           </Link>
 
           <Link href="/features/ai-voice" id="ai-voice-spotlight">

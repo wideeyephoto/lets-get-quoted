@@ -30,7 +30,7 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     title: 'Text your AI Copilot change orders, quote tweaks & reminders.',
     blurb:
       'Text your AI Copilot from Apple iMessage or Android Messages—it calculates line items, updates customer invoices, matches active job files, and texts back instant confirmation.',
-    primaryCtaText: 'Meet Your AI Copilot & Text-to-Job',
+    primaryCtaText: 'Explore AI Copilot with Avatars',
     primaryHref: '/features/sparky',
     secondaryCtaText: 'Explore Text-to-Job Docs →',
     secondaryHref: '/features/text-to-job',

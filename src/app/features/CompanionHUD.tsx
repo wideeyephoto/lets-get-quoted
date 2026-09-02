@@ -91,10 +91,10 @@ const SECTION_CONTEXTS: SectionContext[] = [
   {
     id: 'breakthroughs',
     selector: '#breakthroughs',
-    name: 'Meet Sparky & AI Suite',
-    badge: '⚡ MEET SPARKY TECH',
-    speech: '24/7 AI call answering in 2 rings, photo OCR estimating, and hands-free voice dictation designed for dirty hands on site.',
-    actionLabel: 'Meet Sparky & Text-to-Job →',
+    name: 'AI Copilot with Avatars',
+    badge: '⚡ AI COPILOT & AVATARS',
+    speech: '24/7 AI call answering, photo OCR estimating, hands-free voice dictation, and customizable trade avatars designed for dirty hands on site.',
+    actionLabel: 'Explore AI Copilot with Avatars →',
     actionHref: '/features/sparky',
   },
   {
@@ -137,10 +137,10 @@ const SECTION_CONTEXTS: SectionContext[] = [
 
 const PRESET_QUESTIONS = [
   {
-    q: 'How do I run my business with Sparky without opening an app?',
-    a: 'You can run your entire day by simply texting or calling Sparky at your dedicated platform number. Text change orders from the ladder, speak voice memos while driving, text job site photos for instant OCR extraction, or call Sparky to check your schedule—he calculates the math, updates your database, and texts you instant confirmation.',
+    q: 'How do I run my business with my AI Copilot without opening an app?',
+    a: 'You can run your entire day by simply texting or calling your AI Copilot at your dedicated platform number. Text change orders from the ladder, speak voice memos while driving, text job site photos, or call your Copilot to check your schedule—it calculates the math, updates your database, and texts you instant confirmation.',
     href: '/features/sparky',
-    btn: 'Meet Sparky Details',
+    btn: 'Explore AI Copilot with Avatars',
   },
   {
     q: 'How does the "Walk-Up Estimate Brain Dump" work?',
