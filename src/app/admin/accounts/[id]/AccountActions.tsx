@@ -16,6 +16,7 @@ import {
   signOutAllSessionsAction,
   setAccountSyntheticAction,
   deleteAccountAction,
+  setFlexPlatformFeeAction,
 } from './actions';
 
 function ConfirmSubmit({ phrase, label, danger = false }: { phrase: string; label: string; danger?: boolean }) {
@@ -40,6 +41,8 @@ export default function AccountActions({
   payoutsRestricted,
   synthetic,
   role,
+  planCode,
+  platformFeeBps,
 }: {
   accountId: string;
   suspended: boolean;
@@ -48,6 +51,8 @@ export default function AccountActions({
   payoutsRestricted: boolean;
   synthetic: boolean;
   role: StaffRole;
+  planCode?: string | null;
+  platformFeeBps?: number | null;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
@@ -153,6 +158,29 @@ export default function AccountActions({
         )) : null}
 
         <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+
+        {planCode === 'flex' && can('money.plan') ? (
+          <>
+            <form action={setFlexPlatformFeeAction.bind(null, accountId)} className={styles.formStack}>
+              <p className={styles.formLabel}>
+                <strong>Flex Platform Fee:</strong> Currently {platformFeeBps === 75 ? '0.75% (VIP Founder Rate)' : '1.25% (Standard Rate)'}
+              </p>
+              <input type="hidden" name="fee_bps" value={platformFeeBps === 75 ? '125' : '75'} />
+              <input
+                id="flex-fee-reason"
+                className={styles.input}
+                name="reason"
+                required
+                minLength={4}
+                placeholder="Reason (e.g. Approved for Friends & Family discount)"
+              />
+              <button type="submit" className="btn secondary">
+                {platformFeeBps === 75 ? 'Revert to Standard 1.25% (125 bps)' : 'Apply VIP Founder 0.75% (75 bps)'}
+              </button>
+            </form>
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1rem 0' }} />
+          </>
+        ) : null}
 
         {can('account.support') ? (
         <form action={resendOnboardingAction.bind(null, accountId)} className={styles.formStack}>

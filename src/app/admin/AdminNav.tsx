@@ -13,6 +13,7 @@ const ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: '/admin', label: 'Command Center' },
   { href: '/admin/search', label: 'Search' },
   { href: '/admin/accounts', label: 'Accounts' },
+  { href: '/admin/discounts', label: 'Discounts & Perks' },
   { href: '/admin/cases', label: 'Cases' },
   { href: '/admin/quick-stops', label: 'Quick Stops' },
   { href: '/admin/risk', label: 'Review queue' },

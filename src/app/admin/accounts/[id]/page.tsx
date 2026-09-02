@@ -530,6 +530,8 @@ export default async function AdminAccountDetailPage({
             businessName={displayName}
             payoutsRestricted={payoutsRestricted}
             synthetic={Boolean(a.test_marker)}
+            planCode={entitlement.kind === 'ready' ? entitlement.snapshot.planCode : null}
+            platformFeeBps={entitlement.kind === 'ready' ? entitlement.snapshot.platformFeeBps : null}
           />
 
           <section className={styles.panel}>
@@ -576,6 +578,7 @@ const DONE_MESSAGES: Record<string, string> = {
   refunded: 'Refund issued.',
   marked_synthetic: 'Account marked synthetic and removed from production reporting.',
   marked_production: 'Account returned to production reporting.',
+  fee_updated: 'Platform fee rate updated and recorded in the audit log.',
 };
 const ERROR_MESSAGES: Record<string, string> = {
   flag: 'That is not a setting this console can change.',
@@ -591,6 +594,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   reason_required: 'Enter a reason of at least four characters.',
   update_failed: 'The account could not be updated. Try again.',
   partial_signout: 'Some account members were blocked, but at least one update failed. Review the audit entry before retrying.',
+  invalid_fee_bps: 'Invalid fee basis points. Flex must be 75 bps (0.75%) or 125 bps (1.25%).',
+  flex_only: 'Only Flex accounts can have their take rate adjusted with this action.',
   // The delete used to fire without reading its error and redirect deleted=1,
   // so a GDPR erasure was reported as done while every row of personal data
   // remained. These two say what actually happened.

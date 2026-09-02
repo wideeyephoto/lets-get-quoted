@@ -438,3 +438,47 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
 
   redirect('/admin/accounts?deleted=1');
 }
+
+export async function setFlexPlatformFeeAction(accountId: string, formData: FormData) {
+  const ctx = await requirePermission('money.plan');
+  const { admin } = ctx;
+  const targetBps = Number(formData.get('fee_bps'));
+  if (targetBps !== 75 && targetBps !== 125) {
+    backTo(accountId, 'error=invalid_fee_bps');
+  }
+  const reason = actionReason(accountId, formData);
+
+  const { data: was, error: readError } = await admin
+    .from('workspace_entitlements')
+    .select('plan_code, platform_fee_bps, entitlement_state')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (readError || !was || was.plan_code !== 'flex') {
+    backTo(accountId, 'error=flex_only');
+  }
+
+  const { error: updateError } = await admin
+    .from('workspace_entitlements')
+    .update({ platform_fee_bps: targetBps })
+    .eq('account_id', accountId);
+
+  if (updateError) {
+    console.error('setFlexPlatformFeeAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
+
+  await logAdminAction(admin, ctx, {
+    action: 'account_update_platform_fee',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    reason,
+    before: { platform_fee_bps: was.platform_fee_bps },
+    after: { platform_fee_bps: targetBps },
+  });
+
+  revalidatePath(`/admin/accounts/${accountId}`);
+  backTo(accountId, 'done=fee_updated');
+}
+
