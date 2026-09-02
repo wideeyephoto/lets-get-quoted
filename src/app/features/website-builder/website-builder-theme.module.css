@@ -410,19 +410,66 @@
   box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35), 0 0 24px rgba(255, 113, 55, 0.1);
 }
 
+.stepHeaderRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
 .stepNumber {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 10px;
   background: rgba(255, 113, 55, 0.12);
   border: 1px solid rgba(255, 113, 55, 0.3);
   color: var(--orange);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
-  margin-bottom: 14px;
+  flex-shrink: 0;
+}
+
+.microBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.microBadgeBlue {
+  background: rgba(103, 183, 255, 0.12);
+  border: 1px solid rgba(103, 183, 255, 0.3);
+  color: #93c5fd;
+}
+
+.microBadgeYellow {
+  background: rgba(255, 196, 77, 0.12);
+  border: 1px solid rgba(255, 196, 77, 0.3);
+  color: #fde047;
+}
+
+.microBadgeMint {
+  background: rgba(78, 224, 188, 0.12);
+  border: 1px solid rgba(78, 224, 188, 0.3);
+  color: #6ee7b7;
+}
+
+.microBadgeOrange {
+  background: rgba(255, 113, 55, 0.14);
+  border: 1px solid rgba(255, 113, 55, 0.35);
+  color: #ff9869;
 }
 
 .stepTitle {
@@ -443,7 +490,7 @@
 .compareRow {
   display: grid;
   grid-template-columns: 1fr auto 1fr;
-  gap: 24px;
+  gap: 32px;
   align-items: center;
   background: rgba(8, 23, 42, 0.7);
   border: 1px solid var(--line-strong);
@@ -471,9 +518,61 @@
   color: #cbd5e1;
 }
 
-.compareDescBad {
-  font-size: 14px;
-  color: #8c97a5;
+.compareListBad,
+.compareListGood {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.compareListBad li,
+.compareListGood li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.compareListBad li {
+  color: #94a3b8;
+}
+
+.compareListGood li {
+  color: #e2e8f0;
+}
+
+.compareCross {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.compareCheck {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: rgba(78, 224, 188, 0.18);
+  color: #4ee0bc;
+  font-size: 11px;
+  font-weight: 800;
+  flex-shrink: 0;
+  margin-top: 1px;
 }
 
 .compareArrow {
@@ -499,11 +598,6 @@
   font-size: 20px;
   font-weight: 800;
   color: #fff;
-}
-
-.compareDescGood {
-  font-size: 14px;
-  color: var(--muted);
 }
 
 /* =========================================================================
@@ -851,3 +945,58 @@
     flex-direction: column;
   }
 }
+
+/* =========================================================================
+   THEME CONTRAST & ACCESSIBILITY LOCKS ACROSS ALL MODES
+   ========================================================================= */
+.wrapper,
+:root[data-theme='light'] .wrapper,
+:root[data-theme='sunlight'] .wrapper,
+:root[data-theme='dim'] .wrapper,
+:root[data-theme='dark'] .wrapper,
+:root[data-theme='clarity'] .wrapper,
+:root[data-theme='parchment'] .wrapper {
+  color-scheme: dark !important;
+  background: var(--night, #090e17) !important;
+  color: var(--ink, #f7f7f4) !important;
+}
+
+.wrapper :global(h1),
+.wrapper :global(h2),
+.wrapper :global(h3),
+.wrapper :global(h4),
+:root[data-theme='light'] .wrapper :global(h1),
+:root[data-theme='light'] .wrapper :global(h2),
+:root[data-theme='light'] .wrapper :global(h3),
+:root[data-theme='light'] .wrapper :global(h4),
+:root[data-theme='sunlight'] .wrapper :global(h1),
+:root[data-theme='sunlight'] .wrapper :global(h2),
+:root[data-theme='sunlight'] .wrapper :global(h3),
+:root[data-theme='sunlight'] .wrapper :global(h4) {
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .heroLede,
+:root[data-theme='sunlight'] .heroLede,
+:root[data-theme='light'] .sectionSubtitle,
+:root[data-theme='sunlight'] .sectionSubtitle,
+:root[data-theme='light'] .proofDesc,
+:root[data-theme='sunlight'] .proofDesc,
+:root[data-theme='light'] .stepBody,
+:root[data-theme='sunlight'] .stepBody,
+:root[data-theme='light'] .faqAnswer,
+:root[data-theme='sunlight'] .faqAnswer,
+:root[data-theme='light'] .ctaSubtitle,
+:root[data-theme='sunlight'] .ctaSubtitle,
+:root[data-theme='light'] .compareListBad li,
+:root[data-theme='sunlight'] .compareListBad li,
+:root[data-theme='light'] .compareListGood li,
+:root[data-theme='sunlight'] .compareListGood li {
+  color: #cbd5e1 !important;
+}
+
+/* In-Page Anchor Scroll Margins */
+.wrapper :global([id]) {
+  scroll-margin-top: 104px !important;
+}
+

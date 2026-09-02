@@ -285,7 +285,7 @@
   max-width: 100% !important;
   margin: 0 auto;
   min-height: calc(100vh - 84px);
-  padding: clamp(32px, 4vh, 64px) clamp(24px, 4vw, 64px);
+  padding: clamp(124px, 14vh, 156px) clamp(24px, 4vw, 64px) clamp(44px, 5vh, 64px) !important;
   grid-template-columns: minmax(360px, 520px) 1fr !important;
   grid-template-rows: auto auto auto auto auto;
   align-items: center;
@@ -1696,7 +1696,7 @@
   .featuresTheme :global(.index-hero) {
     min-height: auto !important;
     display: block !important;
-    padding: clamp(56px, 8vw, 80px) 20px 40px !important;
+    padding: clamp(116px, 14vw, 140px) 20px 40px !important;
   }
   .featuresTheme :global(.index-hero.index-hero-beside) {
     grid-template-columns: 1fr;
@@ -1756,7 +1756,7 @@
 
 @media (max-width: 768px) {
   .featuresTheme :global(.index-hero) {
-    padding: 48px 20px 36px;
+    padding: 104px 20px 36px !important;
     min-height: auto !important;
   }
   .featuresTheme :global(.index-hero.index-hero-beside) {
@@ -1800,7 +1800,7 @@
 
 @media (max-width: 480px) {
   .featuresTheme :global(.index-hero) {
-    padding: 40px 16px 28px;
+    padding: 96px 16px 28px !important;
   }
   .featuresTheme :global(.index-hero.index-hero-beside) {
     padding-left: 0;
@@ -4296,6 +4296,18 @@
 :root[data-theme='sunlight'] .featuresTheme :global(footer > span) {
   color: #94a3b8 !important;
 }
+
+/* In-Page Anchor Scroll Margins (clears 82px fixed site header) */
+.featuresTheme :global([id]) {
+  scroll-margin-top: 104px !important;
+}
+
+.featuresTheme :global(#tour),
+.featuresTheme :global(.tour-band),
+.featuresTheme :global(.tour-section) {
+  scroll-margin-top: 104px !important;
+}
+
 
 
 

@@ -38,22 +38,30 @@ const JOURNEY_STEPS = [
   {
     n: '01',
     title: 'Visit',
-    body: 'Service and local town pages built around the exact trade and services you sell in your area.',
+    badge: '📍 Fairview Roofing · Local SEO',
+    badgeTone: 'blue',
+    body: 'Trade-tailored SEO town pages bring local homeowners directly to your site.',
   },
   {
     n: '02',
     title: 'Qualify',
-    body: 'Smart Intake asks the follow-up questions your trade needs before booking or quoting.',
+    badge: '📋 2,400 sqft · 3 Photos Attached',
+    badgeTone: 'yellow',
+    body: 'Smart intake asks trade-specific questions and collects project photos upfront.',
   },
   {
     n: '03',
     title: 'Estimate',
-    body: 'Give the homeowner a useful instant price range while interest and urgency are highest.',
+    badge: '💰 Instant Range: $9.4k–$13.2k',
+    badgeTone: 'mint',
+    body: 'Homeowners see an instant ballpark price range while interest and urgency peak.',
   },
   {
     n: '04',
     title: 'Win the job',
-    body: 'Quote, schedule, text, and collect deposit payment from the exact same connected job record.',
+    badge: '⚡ 1-Click Proposal & SMS',
+    badgeTone: 'orange',
+    body: 'Quote, schedule, text, and collect deposit payment from one connected record.',
   },
 ];
 
@@ -148,6 +156,15 @@ export default function WebsiteBuilderExperience() {
         </div>
 
         {/* -------------------------------------------------------------
+            BUILT-IN VIDEO STUDIO: 6 VIDEO LAYOUTS
+            ------------------------------------------------------------- */}
+        <section id="video-studio" className={styles.sectionBlock} aria-labelledby="video-studio-title">
+          <div className={styles.container}>
+            <WebsiteMediaStudioShowcase />
+          </div>
+        </section>
+
+        {/* -------------------------------------------------------------
             PROOF METRICS STRIP
             ------------------------------------------------------------- */}
         <div className={styles.container}>
@@ -172,30 +189,55 @@ export default function WebsiteBuilderExperience() {
                 <span>✦</span> The Connected Contractor Engine
               </div>
               <h2 id="journey-title" className={styles.sectionTitle}>
-                Other builders end at a contact form. <em>This one hands you a job you can quote.</em>
+                Other builders end at a contact form. <em>This one hands you a job you can quote from your couch.</em>
               </h2>
               <p className={styles.sectionSubtitle}>
-                A standard template sits isolated from your business. Let&rsquo;s Get Quoted connects your website directly to your estimate ranges, dispatch schedule, client texting, and payment processing.
+                Turn website visitors into pre-qualified, priced, and ready-to-close jobs without playing phone tag.
               </p>
             </div>
 
             <div className={styles.journeyPipeline}>
-              {JOURNEY_STEPS.map((step) => (
-                <div key={step.n} className={styles.journeyStepCard}>
-                  <div className={styles.stepNumber}>{step.n}</div>
-                  <h3 className={styles.stepTitle}>{step.title}</h3>
-                  <p className={styles.stepBody}>{step.body}</p>
-                </div>
-              ))}
+              {JOURNEY_STEPS.map((step) => {
+                const toneClass =
+                  step.badgeTone === 'blue'
+                    ? styles.microBadgeBlue
+                    : step.badgeTone === 'yellow'
+                    ? styles.microBadgeYellow
+                    : step.badgeTone === 'mint'
+                    ? styles.microBadgeMint
+                    : styles.microBadgeOrange;
+
+                return (
+                  <div key={step.n} className={styles.journeyStepCard}>
+                    <div className={styles.stepHeaderRow}>
+                      <div className={styles.stepNumber}>{step.n}</div>
+                      <span className={`${styles.microBadge} ${toneClass}`}>{step.badge}</span>
+                    </div>
+                    <h3 className={styles.stepTitle}>{step.title}</h3>
+                    <p className={styles.stepBody}>{step.body}</p>
+                  </div>
+                );
+              })}
             </div>
 
             <div className={styles.compareRow}>
               <div className={styles.compareBad}>
                 <span className={styles.compareTagBad}>Generic Website Builders</span>
                 <h4 className={styles.compareTitleBad}>Dead-end &ldquo;Contact Us&rdquo; Forms</h4>
-                <p className={styles.compareDescBad}>
-                  You get an unvetted email with no project scope, no photos, no budget expectations, and no connection to your schedule or invoicing.
-                </p>
+                <ul className={styles.compareListBad}>
+                  <li>
+                    <span className={styles.compareCross}>✕</span> Unvetted email with zero scope or specs
+                  </li>
+                  <li>
+                    <span className={styles.compareCross}>✕</span> No photos, measurements, or budget context
+                  </li>
+                  <li>
+                    <span className={styles.compareCross}>✕</span> Endless phone tag chasing lukewarm leads
+                  </li>
+                  <li>
+                    <span className={styles.compareCross}>✕</span> Disconnected from schedule, texting &amp; invoices
+                  </li>
+                </ul>
               </div>
 
               <div className={styles.compareArrow}>&rarr;</div>
@@ -203,115 +245,22 @@ export default function WebsiteBuilderExperience() {
               <div className={styles.compareGood}>
                 <span className={styles.compareTagGood}>Let&rsquo;s Get Quoted AI Builder</span>
                 <h4 className={styles.compareTitleGood}>Direct-to-Quote Job Intake</h4>
-                <p className={styles.compareDescGood}>
-                  Homeowners complete trade-specific intake questions, view an instant price bracket, and land in your system ready for instant proposal and e-signature.
-                </p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* -------------------------------------------------------------
-            TWO-PANEL VERIFICATION: DOMAIN + FIRST LEAD INTAKE
-            ------------------------------------------------------------- */}
-        <section className={styles.sectionBlock} aria-labelledby="verification-title">
-          <div className={styles.container}>
-            <div className={styles.sectionHead}>
-              <div className={styles.sectionEyebrow}>
-                <span>✦</span> Instant Publishing &amp; Live Intake
-              </div>
-              <h2 id="verification-title" className={styles.sectionTitle}>
-                Connect your domain. <em>Watch real estimate requests arrive.</em>
-              </h2>
-              <p className={styles.sectionSubtitle}>
-                Point your existing domain in 60 seconds or use your free included subdomain. Every intake submission arrives organized with trade specs and estimated pricing.
-              </p>
-            </div>
-
-            <div className={styles.publishGrid}>
-              {/* Panel 1: Domain Setup */}
-              <div className={styles.panelGlassCard}>
-                <div className={styles.panelHeader}>
-                  <div className={styles.panelTitle}>
-                    <span>🌐</span> Custom Domain &amp; SSL Routing
-                  </div>
-                  <span className={styles.statusPillLive}>● Connected &amp; Secure</span>
-                </div>
-
-                <p style={{ fontSize: '0.88rem', color: '#94a3b8', margin: '0 0 16px', lineHeight: 1.5 }}>
-                  Add your custom CNAME record to point your domain. We handle automatic SSL certificate renewal and edge caching worldwide.
-                </p>
-
-                <div className={styles.dnsTargetBox}>
-                  <span>CNAME Record Target</span>
-                  <strong>domains.letsgetquoted.com</strong>
-                </div>
-
-                <ul className={styles.addrList}>
-                  <li className={styles.addrItem}>
-                    <span className={styles.addrDomain}>cedarcreekroofing.com</span>
-                    <span className={styles.addrStatus}>Primary Domain (Live)</span>
+                <ul className={styles.compareListGood}>
+                  <li>
+                    <span className={styles.compareCheck}>✓</span> Trade-specific intake questions with photo uploads
                   </li>
-                  <li className={styles.addrItem}>
-                    <span className={styles.addrDomain}>cedarcreekroofing.letsgetquoted.com</span>
-                    <span className={styles.addrStatus}>Included Subdomain</span>
+                  <li>
+                    <span className={styles.compareCheck}>✓</span> Instant calculated price range bracket on the spot
+                  </li>
+                  <li>
+                    <span className={styles.compareCheck}>✓</span> Pre-qualified scope ready for 1-click proposal
+                  </li>
+                  <li>
+                    <span className={styles.compareCheck}>✓</span> Direct sync to dispatch calendar, SMS, &amp; Stripe
                   </li>
                 </ul>
-
-                <p style={{ fontSize: '0.82rem', color: '#64748b', margin: 0 }}>
-                  Need help? DNS instructions for GoDaddy, Namecheap, Google Domains, and Cloudflare are generated automatically.
-                </p>
-              </div>
-
-              {/* Panel 2: Live Intake Landing */}
-              <div className={styles.panelGlassCard}>
-                <div className={styles.panelHeader}>
-                  <div className={styles.panelTitle}>
-                    <span>📥</span> New Job Request from Website
-                  </div>
-                  <span className={styles.statusPillUnread}>New Lead &middot; 4m ago</span>
-                </div>
-
-                <div className={styles.requestQuoteText}>
-                  &ldquo;Need architectural shingles replaced after recent wind damage. 2,400 sq ft two-story home in Fairview.&rdquo;
-                </div>
-
-                <div className={styles.requestDataGrid}>
-                  <span className={styles.dataLabel}>Customer</span>
-                  <span className={styles.dataValue}>David &amp; Sarah Miller</span>
-
-                  <span className={styles.dataLabel}>Location</span>
-                  <span className={styles.dataValue}>Fairview, Northgate (Zone A)</span>
-
-                  <span className={styles.dataLabel}>Selected Service</span>
-                  <span className={styles.dataValue}>Full Roof Replacement (Architectural)</span>
-
-                  <span className={styles.dataLabel}>Calculated Estimate</span>
-                  <span className={styles.dataMoney}>$9,400 &ndash; $13,200</span>
-                </div>
-
-                <div className={styles.btnActionRow}>
-                  <button type="button" className={`${styles.btnSmall} ${styles.btnSmallPrimary}`}>
-                    Generate Quote &rarr;
-                  </button>
-                  <button type="button" className={styles.btnSmall}>
-                    Schedule On-Site Inspection
-                  </button>
-                  <button type="button" className={styles.btnSmall}>
-                    Send Text
-                  </button>
-                </div>
               </div>
             </div>
-          </div>
-        </section>
-
-        {/* -------------------------------------------------------------
-            BUILT-IN VIDEO STUDIO: 6 VIDEO LAYOUTS
-            ------------------------------------------------------------- */}
-        <section id="video-studio" className={styles.sectionBlock} aria-labelledby="video-studio-title">
-          <div className={styles.container}>
-            <WebsiteMediaStudioShowcase />
           </div>
         </section>
 

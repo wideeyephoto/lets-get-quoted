@@ -762,3 +762,100 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* =========================================================================
+   LIGHT THEME CONTRAST OVERRIDES
+   ========================================================================= */
+:root[data-theme='light'] .studioCard,
+:root[data-theme='sunlight'] .studioCard,
+:root[data-theme='clarity'] .studioCard,
+:root[data-theme='parchment'] .studioCard,
+:root[data-theme='light'] .baCard,
+:root[data-theme='sunlight'] .baCard,
+:root[data-theme='clarity'] .baCard,
+:root[data-theme='parchment'] .baCard {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+:root[data-theme='light'] .studioHeader,
+:root[data-theme='sunlight'] .studioHeader {
+  border-bottom-color: #e2e8f0;
+}
+
+:root[data-theme='light'] .studioTitle,
+:root[data-theme='sunlight'] .studioTitle,
+:root[data-theme='light'] .baTitle,
+:root[data-theme='sunlight'] .baTitle,
+:root[data-theme='light'] .detailsTitle,
+:root[data-theme='sunlight'] .detailsTitle {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .studioSubtitle,
+:root[data-theme='sunlight'] .studioSubtitle,
+:root[data-theme='light'] .baSubtitle,
+:root[data-theme='sunlight'] .baSubtitle,
+:root[data-theme='light'] .detailsDesc,
+:root[data-theme='sunlight'] .detailsDesc {
+  color: #334155;
+}
+
+:root[data-theme='light'] .layoutNav,
+:root[data-theme='sunlight'] .layoutNav {
+  background: #f8fafc;
+  border-bottom-color: #e2e8f0;
+}
+
+:root[data-theme='light'] .layoutTab,
+:root[data-theme='sunlight'] .layoutTab {
+  color: #334155;
+}
+
+:root[data-theme='light'] .layoutTab:hover,
+:root[data-theme='sunlight'] .layoutTab:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .layoutTabActive,
+:root[data-theme='sunlight'] .layoutTabActive {
+  background: rgba(255, 122, 33, 0.15) !important;
+  border-color: #ea580c !important;
+  color: #c2410c !important;
+}
+
+:root[data-theme='light'] .layoutTabSub,
+:root[data-theme='sunlight'] .layoutTabSub {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .featureItem,
+:root[data-theme='sunlight'] .featureItem {
+  color: #0f172a;
+  font-weight: 550;
+}
+
+:root[data-theme='light'] .featureCheck,
+:root[data-theme='sunlight'] .featureCheck {
+  color: #059669;
+  font-weight: 900;
+}
+
+:root[data-theme='light'] .guardrailBox,
+:root[data-theme='sunlight'] .guardrailBox {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+:root[data-theme='light'] .guardrailTitle,
+:root[data-theme='sunlight'] .guardrailTitle {
+  color: #0284c7;
+}
+
+:root[data-theme='light'] .guardrailText,
+:root[data-theme='sunlight'] .guardrailText {
+  color: #0369a1;
+}
+

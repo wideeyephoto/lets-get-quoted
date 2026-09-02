@@ -168,7 +168,7 @@ export default function ProductTour() {
   return (
     <section className="tour-band" id="tour" aria-labelledby="tour-title" ref={sectionRef}>
       <h2 className="sr-only" id="tour-title">
-        A recording of the dashboard
+        A walkthrough of the full customer and contractor journey
       </h2>
       <div className="tour-frame">
         <video
@@ -177,7 +177,7 @@ export default function ProductTour() {
           poster={`${BASE}-poster.jpg`}
           width={WIDTH}
           height={HEIGHT}
-          aria-label="A screen recording of the Let’s Get Quoted dashboard: the work that needs attention, the next seven days, and how the business is doing."
+          aria-label="A screen recording of the full Let’s Get Quoted journey: a homeowner submits an emergency plumbing leak with an attached photo, AI analyzes the scope, the contractor prepares and sends a quote, the customer approves and pays online, the job is completed, and revenue insights update."
           muted
           loop
           playsInline
@@ -197,11 +197,11 @@ export default function ProductTour() {
         <button type="button" className="tour-play" onClick={toggle}>
           <span aria-hidden="true" data-icon={playing ? 'pause' : 'play'} />
           {playing ? 'Pause' : 'Play'}
-          <span className="sr-only"> the dashboard recording</span>
+          <span className="sr-only"> the full tour recording</span>
         </button>
       </div>
       <p className="tour-note">
-        The dashboard, recorded as it is. The business on it is a demo account — the numbers are
+        The full customer and job journey, recorded as it is. The business on it is a demo account (Broke Pipes Plumbing) — the numbers are
         invented and the software around them is not.
       </p>
     </section>
