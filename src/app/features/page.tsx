@@ -26,7 +26,6 @@ import WebsiteFeaturePreview from './WebsiteFeaturePreview';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
-import FeaturesToolSprawlCalculator from './FeaturesToolSprawlCalculator';
 import FeaturesCatalogExplorer from './FeaturesCatalogExplorer';
 import LiveFieldPulse from './LiveFieldPulse';
 import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
@@ -485,9 +484,6 @@ export default async function FeaturesPage() {
         {/* Interactive Companion Quick Stops Route Detour Demo */}
         <CompanionRouteDemo />
       </section>
-
-      {/* 5-APP SOFTWARE SPRAWL & ROI SAVINGS CALCULATOR */}
-      <FeaturesToolSprawlCalculator />
 
       {/* 2026 NEXT-GEN HIGH-TECH & AI INNOVATIONS SHOWCASE */}
       <HighTechShowcase />
