@@ -2377,9 +2377,15 @@ const TWEAKS = `
   box-shadow: 0 4px 14px rgba(18, 38, 48, 0.08) !important;
 }
 .root :global(.suite-tabs button.is-on) {
-  border-color: var(--orange);
-  background: rgba(255, 106, 36, 0.12);
-  color: #a3511b;
+  border-color: var(--orange) !important;
+  background: rgba(255, 106, 36, 0.12) !important;
+  color: #8c3b0d !important;
+}
+.root :global(.suite-tabs button.is-on:hover) {
+  background: rgba(255, 106, 36, 0.18) !important;
+  border-color: #f2550c !important;
+  color: #782f05 !important;
+  box-shadow: 0 4px 14px rgba(255, 106, 36, 0.15) !important;
 }
 .root :global(.suite-tabs button:focus-visible) { outline: 2px solid var(--orange); outline-offset: 2px; }
 
@@ -6873,11 +6879,15 @@ const TWEAKS = `
 }
 
 .root :global(.suite-grid article:hover .suite-card-link) {
-  color: #ff9e58 !important;
+  color: #ffaa5e !important;
 }
 
 .root :global(.suite-grid article p) {
   color: #cbd5e1 !important;
+}
+
+.root :global(.suite-grid article:hover p) {
+  color: #e2e8f0 !important;
 }
 
 .root :global(.suite-grid article > span) {
@@ -6900,6 +6910,7 @@ const TWEAKS = `
 }
 
 .root :global(.suite-grid article:hover) {
+  background: linear-gradient(150deg, rgba(20, 44, 59, 0.98), rgba(9, 23, 35, 0.99)) !important;
   border-color: rgba(255, 106, 36, 0.55);
   box-shadow:
     0 18px 45px rgba(0, 0, 0, 0.45),
@@ -7776,11 +7787,80 @@ const TWEAKS = `
   color: #f1f5f9;
 }
 
+/* Secondary button hover state */
+.root :global(.button.secondary:hover) {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.35);
+  color: #ffffff;
+}
+
 /* The outer app themes redefine --paper and --ink. The skip link is painted
    above every flagship surface, so keep its own high-contrast pair invariant. */
 .root :global(.skip-link) {
   background: #fffdf8;
   color: #07131d;
+}
+
+/* ---- 14. Homepage Invariant Light Surface Contrast Protection ----
+   The .included section ("One system from quote to review") sits on an invariant
+   warm cream light surface across all themes (dark, dim, light, sunlight, etc.).
+   Interactive elements inside it must never bind to theme-inverting variables
+   (like --paper or --ink) which turn dark in dim mode or white in light mode. */
+.root :global(.suite-tabs button) {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.65);
+  border-color: rgba(150, 138, 122, 0.55);
+}
+
+.root :global(.suite-tabs button:hover) {
+  background: #ffffff !important;
+  color: #07131d !important;
+  border-color: rgba(130, 115, 96, 0.75) !important;
+  box-shadow: 0 4px 14px rgba(18, 38, 48, 0.08) !important;
+}
+
+.root :global(.suite-tabs button.is-on) {
+  border-color: var(--orange) !important;
+  background: rgba(255, 106, 36, 0.12) !important;
+  color: #8c3b0d !important;
+}
+
+.root :global(.suite-tabs button.is-on:hover) {
+  background: rgba(255, 106, 36, 0.18) !important;
+  border-color: #f2550c !important;
+  color: #782f05 !important;
+  box-shadow: 0 4px 14px rgba(255, 106, 36, 0.15) !important;
+}
+
+.root :global(.suite-grid article) {
+  background: linear-gradient(150deg, rgba(16, 36, 48, 0.9), rgba(7, 19, 29, 0.97)) !important;
+}
+
+.root :global(.suite-grid article:hover) {
+  background: linear-gradient(150deg, rgba(20, 44, 59, 0.98), rgba(9, 23, 35, 0.99)) !important;
+  border-color: rgba(255, 106, 36, 0.55) !important;
+}
+
+.root :global(.suite-grid article:hover .suite-card-link) {
+  color: #ffaa5e !important;
+}
+
+.root :global(.suite-grid article:hover p) {
+  color: #e2e8f0 !important;
+}
+
+.root :global(.suite-grid article:hover .suite-card-go) {
+  color: #ffaa5e !important;
+}
+
+.root :global(.included-head a) {
+  color: #b8430f;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.root :global(.included-head a:hover) {
+  color: #8a3009;
 }
 `;
 
