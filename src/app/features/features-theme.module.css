@@ -274,15 +274,15 @@
 
 .featuresTheme :global(.index-hero.index-hero-beside) {
   display: grid !important;
-  width: 100%;
-  max-width: 1480px;
+  width: 100% !important;
+  max-width: 100% !important;
   margin: 0 auto;
   min-height: calc(100vh - 84px);
   padding: clamp(32px, 4vh, 64px) clamp(24px, 4vw, 64px);
-  grid-template-columns: minmax(0, 1fr) minmax(520px, 1.22fr);
+  grid-template-columns: minmax(360px, 520px) 1fr !important;
   grid-template-rows: auto auto auto auto auto;
   align-items: center;
-  column-gap: clamp(40px, 5vw, 84px);
+  column-gap: clamp(32px, 4vw, 64px);
   row-gap: 0 !important;
   box-sizing: border-box;
   position: relative;
@@ -505,8 +505,8 @@
   grid-row: 1 / span 5;
   align-self: center;
   justify-self: stretch;
-  width: 100%;
-  max-width: 660px;
+  width: 100% !important;
+  max-width: 100% !important;
 }
 
 /* Proof Strip */
