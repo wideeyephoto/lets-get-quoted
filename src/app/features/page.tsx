@@ -482,61 +482,6 @@ export default async function FeaturesPage() {
       {/* 56-FEATURE COMPLETE CATALOG EXPLORER */}
       <FeaturesCatalogExplorer />
 
-      {/* INTERACTIVE FREE CONTRACTOR TOOLS SHOWCASE */}
-      <section className="tools-showcase-band" id="contractor-tools" aria-labelledby="tools-showcase-title">
-        <div className="index-heading">
-          <p className="eyebrow">
-            <span aria-hidden="true">✦</span> FREE CONTRACTOR TOOLS &amp; CALCULATORS
-          </p>
-          <h2 id="tools-showcase-title">
-            Try our instant estimating and <em>margin calculators live.</em>
-          </h2>
-          <p>
-            Deterministic 1-page PDF exports, hourly rate modeling, and profit leak diagnostics — free to use right now.
-          </p>
-        </div>
-        <div className="feature-link-grid">
-          <Link href="/tools/estimate-generator">
-            <span style={{ fontSize: '1.25rem', color: '#2563eb' }}>📄</span>
-            <small>INSTANT ESTIMATE BUILDER</small>
-            <h3>1-Page PDF Estimate Generator</h3>
-            <p>Create trade-specific, itemized estimates with 1-click presets and export clean, printable 1-page PDFs.</p>
-            <ul className="feature-produces" aria-label="What Estimate Generator provides">
-              <li>Clean 1-page printable PDF</li>
-              <li>Trade-specific line presets</li>
-              <li>Instant customer pricing view</li>
-            </ul>
-            <b>Open Estimate Generator <span aria-hidden="true">→</span></b>
-          </Link>
-
-          <Link href="/tools/hourly-rate-calculator">
-            <span style={{ fontSize: '1.25rem', color: '#059669' }}>🧮</span>
-            <small>PROFITABILITY MODELING</small>
-            <h3>Hourly Rate &amp; Margin Calculator</h3>
-            <p>Calculate your true billable hourly rate based on overhead, labor burden, and target gross margin.</p>
-            <ul className="feature-produces" aria-label="What Hourly Rate Calculator provides">
-              <li>Overhead &amp; burden rollup</li>
-              <li>Target gross margin slider</li>
-              <li>Minimum billable rate benchmark</li>
-            </ul>
-            <b>Open Rate Calculator <span aria-hidden="true">→</span></b>
-          </Link>
-
-          <Link href="/tools/leakage-calculator">
-            <span style={{ fontSize: '1.25rem', color: '#d97706' }}>🔍</span>
-            <small>PROFIT DIAGNOSTIC</small>
-            <h3>Profit Leakage Calculator</h3>
-            <p>Diagnose where your contracting business loses margin between intake, uncollected change orders, and unpaid travel.</p>
-            <ul className="feature-produces" aria-label="What Leakage Calculator provides">
-              <li>Unbilled change order leaks</li>
-              <li>Drive time margin recovery</li>
-              <li>Estimated annual revenue lift</li>
-            </ul>
-            <b>Open Leakage Calculator <span aria-hidden="true">→</span></b>
-          </Link>
-        </div>
-      </section>
-
       {/* The light chapter. This is the break the page was missing: it reads as
           a separate chapter on cream instead of as one more dark band.
 
