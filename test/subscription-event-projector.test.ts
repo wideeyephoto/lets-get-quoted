@@ -248,6 +248,24 @@ describe('dark Stripe Billing subscription event projector', () => {
     expect(projection.feature_limits).toMatchObject({ office_users: 2, crew_users: 2 });
   });
 
+  it('accepts and matches a discounted checkout session in buildProjection', async () => {
+    // 60% off annual ($420.00 / 42,000 cents -> 60% off = 25,200 cents off = 16,800 cents total)
+    const discountedCheckout = checkout({
+      amount_subtotal: 42_000,
+      amount_total: 16_800,
+      total_details: {
+        amount_discount: 25_200,
+      },
+    });
+    const provider = resolver({ checkout: discountedCheckout });
+    const context = await provider.value.loadProviderContext(claim());
+    const projection = await provider.value.buildProjection(context, binding());
+
+    expect(projection.checkout_session_id).toBe(SESSION_ID);
+    expect(projection.payment_evidence_kind).toBe('checkout_session_paid');
+    expect(projection.unit_amount_cents).toBe(42_000);
+  });
+
   it('binds the exact consent version, text digest, and acceptance identity', async () => {
     const wrongHash = resolver({
       subscription: subscription({

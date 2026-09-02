@@ -77,6 +77,11 @@ export type BasePlanSubscriptionMetadata = Readonly<{
   lgq_recurring_consent_acceptance_id: string;
 }>;
 
+export type SubscriptionCheckoutDiscount = Readonly<{
+  coupon?: string;
+  promotion_code?: string;
+}>;
+
 export type SubscriptionCheckoutBuildInput = Readonly<{
   workspaceId: string;
   /** Stable business identity. It must be reused for a retry of the same intent. */
@@ -93,6 +98,10 @@ export type SubscriptionCheckoutBuildInput = Readonly<{
   checkoutExpiresAt: number;
   /** Authenticated owner acceptance recorded before this operation is claimed. */
   recurringConsentAcceptanceId: string;
+  /** Optional pre-applied discounts (e.g. Friends & Family coupon). */
+  discounts?: ReadonlyArray<SubscriptionCheckoutDiscount>;
+  /** Optional self-serve promotion code entry on the Stripe Checkout page. */
+  allowPromotionCodes?: boolean;
 }>;
 
 export type PlatformSubscriptionCheckoutRequestOptions = Readonly<{
@@ -122,6 +131,8 @@ export type PlatformSubscriptionCheckoutCall = Readonly<{
     recurringConsentVersion: typeof BASE_PLAN_RECURRING_CONSENT_VERSION;
     recurringConsentTextSha256: typeof BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256;
     recurringConsentAcceptanceId: string;
+    discounts?: ReadonlyArray<SubscriptionCheckoutDiscount> | null;
+    allowPromotionCodes?: boolean | null;
   }>;
 }>;
 
@@ -373,6 +384,12 @@ export function buildBasePlanSubscriptionCheckoutCall(
     metadata,
     subscription_data: subscriptionData,
     ...(providerCustomerId ? { customer: providerCustomerId } : {}),
+    ...(input.discounts && input.discounts.length > 0
+      ? { discounts: input.discounts.map((d) => ({ ...d })) }
+      : {}),
+    ...(typeof input.allowPromotionCodes === 'boolean'
+      ? { allow_promotion_codes: input.allowPromotionCodes }
+      : {}),
   });
 
   const contract = Object.freeze({
@@ -393,6 +410,8 @@ export function buildBasePlanSubscriptionCheckoutCall(
     recurringConsentVersion: BASE_PLAN_RECURRING_CONSENT_VERSION,
     recurringConsentTextSha256: BASE_PLAN_RECURRING_CONSENT_TEXT_SHA256,
     recurringConsentAcceptanceId,
+    ...(input.discounts ? { discounts: Object.freeze(input.discounts.map((d) => Object.freeze({ ...d }))) } : {}),
+    ...(typeof input.allowPromotionCodes === 'boolean' ? { allowPromotionCodes: input.allowPromotionCodes } : {}),
   });
   const options = Object.freeze({
     idempotencyKey: buildBasePlanSubscriptionCheckoutIdempotencyKey({
@@ -489,6 +508,12 @@ function assertPlatformSubscriptionCheckoutCreateCall(
     || optionKeys[0] !== 'idempotencyKey'
     || call.options.idempotencyKey !== expectedIdempotencyKey
     || call.requestFingerprint !== expectedFingerprint
+    || (call.contract.discounts
+      ? JSON.stringify(call.params.discounts) !== JSON.stringify(call.contract.discounts)
+      : 'discounts' in call.params)
+    || (call.contract.allowPromotionCodes !== null && call.contract.allowPromotionCodes !== undefined
+      ? call.params.allow_promotion_codes !== call.contract.allowPromotionCodes
+      : 'allow_promotion_codes' in call.params)
     || 'payment_intent_data' in call.params
     || 'application_fee_percent' in (subscriptionData ?? {})
     || 'on_behalf_of' in (subscriptionData ?? {})
@@ -506,6 +531,12 @@ export function assertSubscriptionCheckoutSession(
   call: PlatformSubscriptionCheckoutCall,
 ): void {
   const expectedPrefix = call.contract.livemode ? 'cs_live_' : 'cs_test_';
+  const rawDiscount = session.total_details?.amount_discount;
+  const discountCents = typeof rawDiscount === 'number' && Number.isSafeInteger(rawDiscount) && rawDiscount >= 0
+    ? rawDiscount
+    : 0;
+  const expectedTotal = call.contract.unitAmountCents - discountCents;
+
   if (
     !session
     || session.object !== 'checkout.session'
@@ -516,7 +547,8 @@ export function assertSubscriptionCheckoutSession(
     || session.currency !== SUBSCRIPTION_CHECKOUT_CURRENCY
     || session.client_reference_id !== call.contract.workspaceId
     || session.amount_subtotal !== call.contract.unitAmountCents
-    || session.amount_total !== call.contract.unitAmountCents
+    || session.amount_total !== expectedTotal
+    || session.amount_total < 0
     || session.expires_at !== call.contract.checkoutExpiresAt
     || session.automatic_tax?.enabled !== false
     || !providerCustomerMatches(session.customer, call.contract.providerCustomerId)

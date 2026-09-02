@@ -382,6 +382,60 @@ describe('platform Stripe Billing subscription Checkout adapter', () => {
         .toThrow(/outside the claimed subscription contract/i);
     }
   });
+
+  it('accepts a valid discounted Checkout Session and rejects mismatched discount math', () => {
+    // Solo monthly ($39.00 / 3,900 cents) with 60% Friends & Family discount ($23.40 / 2,340 cents off = $15.60 / 1,560 cents total)
+    const call = callFor(operationInput('solo', 'monthly'), {
+      discounts: [{ coupon: 'ff_vip_60_lifetime' }],
+    });
+
+    const validDiscountedSession = sessionFor(call, {
+      amount_subtotal: 3_900,
+      amount_total: 1_560,
+      total_details: {
+        amount_discount: 2_340,
+        amount_shipping: 0,
+        amount_tax: 0,
+      } as Stripe.Checkout.Session.TotalDetails,
+    });
+
+    // Should pass without error
+    expect(() => assertSubscriptionCheckoutSession(validDiscountedSession, call)).not.toThrow();
+
+    // Mismatched discount math (amount_total doesn't equal subtotal - discount)
+    const invalidMathSession = sessionFor(call, {
+      amount_subtotal: 3_900,
+      amount_total: 1_561,
+      total_details: {
+        amount_discount: 2_340,
+        amount_shipping: 0,
+        amount_tax: 0,
+      } as Stripe.Checkout.Session.TotalDetails,
+    });
+
+    expect(() => assertSubscriptionCheckoutSession(invalidMathSession, call))
+      .toThrow(/outside the claimed subscription contract/i);
+  });
+
+  it('binds pre-applied discounts and allowPromotionCodes to params, contract, and fingerprint', () => {
+    const withDiscount = callFor(operationInput(), {
+      discounts: [{ coupon: 'ff_vip_60_lifetime' }],
+      allowPromotionCodes: true,
+    });
+
+    expect(withDiscount.params.discounts).toEqual([{ coupon: 'ff_vip_60_lifetime' }]);
+    expect(withDiscount.params.allow_promotion_codes).toBe(true);
+    expect(withDiscount.contract.discounts).toEqual([{ coupon: 'ff_vip_60_lifetime' }]);
+    expect(withDiscount.contract.allowPromotionCodes).toBe(true);
+    expect(withDiscount.requestFingerprint).toMatch(/^[0-9a-f]{64}$/);
+
+    const standard = callFor(operationInput());
+    expect(standard.params).not.toHaveProperty('discounts');
+    expect(standard.params).not.toHaveProperty('allow_promotion_codes');
+    expect(standard.contract).not.toHaveProperty('discounts');
+    expect(standard.contract).not.toHaveProperty('allowPromotionCodes');
+    expect(withDiscount.requestFingerprint).not.toBe(standard.requestFingerprint);
+  });
 });
 
 describe('durable subscription Checkout orchestration', () => {

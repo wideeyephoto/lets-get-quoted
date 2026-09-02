@@ -409,6 +409,13 @@ function sessionMatches(
   const session = record(rawSession);
   const expectedPrefix = binding.livemode ? 'cs_live_' : 'cs_test_';
   const expiresAt = positiveSafeInteger(session?.expires_at);
+  const totalDetails = record(session?.total_details);
+  const rawDiscount = totalDetails?.amount_discount;
+  const discountCents = typeof rawDiscount === 'number' && Number.isSafeInteger(rawDiscount) && rawDiscount >= 0
+    ? rawDiscount
+    : 0;
+  const expectedTotal = binding.unitAmountCents - discountCents;
+
   return Boolean(
     session
     && session.object === 'checkout.session'
@@ -420,7 +427,8 @@ function sessionMatches(
     && session.currency === 'usd'
     && session.client_reference_id === binding.workspaceId
     && session.amount_subtotal === binding.unitAmountCents
-    && session.amount_total === binding.unitAmountCents
+    && session.amount_total === expectedTotal
+    && expectedTotal >= 0
     && expiresAt !== null
     && new Date(expiresAt * 1_000).toISOString() === binding.checkoutExpiresAt
     && record(session.automatic_tax)?.enabled === false

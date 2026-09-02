@@ -63,8 +63,14 @@ export type PaymentFeeRate = Readonly<{
 /** No entitlement row is not an error, and Flex is what an unclassified workspace is on. */
 const DEFAULT_PLAN: BillingPlanId = 'flex';
 
-function rateFor(planCode: BillingPlanId, source: WorkspaceFeeRate['source']): WorkspaceFeeRate {
-  const feeRateBps = BILLING_PLANS[planCode].platformFeeBps;
+export const FLEX_F_AND_F_DISCOUNT_FEE_BPS = 75 as const;
+
+function rateFor(
+  planCode: BillingPlanId,
+  source: WorkspaceFeeRate['source'],
+  customBps?: number,
+): WorkspaceFeeRate {
+  const feeRateBps = customBps ?? BILLING_PLANS[planCode].platformFeeBps;
   return Object.freeze({ planCode, feeRateBps, feeRate: feeRateBps / 10_000, source });
 }
 
@@ -106,14 +112,16 @@ export async function getWorkspaceFeeRate(accountId: string): Promise<WorkspaceF
 
   const expectedBps = BILLING_PLANS[planCode].platformFeeBps;
   const storedBps = data.platform_fee_bps;
-  if (typeof storedBps === 'number' && storedBps !== expectedBps) {
+  const isAllowedFlexDiscount = planCode === 'flex' && storedBps === FLEX_F_AND_F_DISCOUNT_FEE_BPS;
+
+  if (typeof storedBps === 'number' && storedBps !== expectedBps && !isAllowedFlexDiscount) {
     throw new Error(
       `Stored platform_fee_bps (${storedBps}) disagrees with the ${planCode} catalog rate (${expectedBps}). `
       + 'Refusing to charge either until the entitlement is reconciled.',
     );
   }
 
-  return rateFor(planCode, 'entitlement');
+  return rateFor(planCode, 'entitlement', isAllowedFlexDiscount ? storedBps : undefined);
 }
 
 /**

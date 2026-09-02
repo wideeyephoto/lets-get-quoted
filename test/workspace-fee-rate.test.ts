@@ -79,6 +79,20 @@ describe('the rate a workspace is actually charged', () => {
     expect(feeRate).toBeLessThan(0.0065);
   });
 
+  it('gives a discounted Friends & Family Flex workspace 0.75% (75 bps)', async () => {
+    state.row = { plan_code: 'flex', platform_fee_bps: 75 };
+    const result = await getWorkspaceFeeRate('acct_1');
+    expect(result.planCode).toBe('flex');
+    expect(result.feeRateBps).toBe(75);
+    expect(result.feeRate).toBe(0.0075);
+    expect(result.source).toBe('entitlement');
+  });
+
+  it('refuses an unauthorized platform_fee_bps on Flex', async () => {
+    state.row = { plan_code: 'flex', platform_fee_bps: 100 };
+    await expect(getWorkspaceFeeRate('acct_1')).rejects.toThrow(/disagrees with the flex catalog rate/i);
+  });
+
   it('falls back to Flex when a workspace has no entitlement row', async () => {
     // Not an error: nothing guarantees every account has one. Flex is both the
     // correct default and numerically identical to what the old table charged at
