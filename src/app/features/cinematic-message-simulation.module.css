@@ -41,13 +41,16 @@
   width: 100%;
   max-width: 480px;
   margin-bottom: 22px;
-  padding: 4px;
-  border-radius: 14px;
-  background: rgba(8, 20, 36, 0.85);
-  border: 1px solid rgba(0, 245, 255, 0.22);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.4), 0 0 20px rgba(0, 245, 255, 0.1);
+  padding: 5px;
+  border-radius: 16px;
+  background: rgba(8, 20, 36, 0.9);
+  border: 1px solid rgba(0, 245, 255, 0.3);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 10px 30px rgba(0, 0, 0, 0.5),
+    0 0 25px rgba(0, 245, 255, 0.15),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
   position: relative;
   z-index: 4;
 }
@@ -58,8 +61,8 @@
   align-items: center;
   justify-content: center;
   gap: 4px;
-  padding: 6px 8px;
-  border-radius: 9px;
+  padding: 7px 9px;
+  border-radius: 10px;
   border: 1px solid transparent;
   background: transparent;
   color: #94a3b8;
@@ -74,15 +77,15 @@
 
 .sim .tradeTab:hover {
   color: #ffffff;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.08);
   transform: translateY(-1px);
 }
 
 .sim .tradeTabActive {
   color: #ffffff;
-  background: linear-gradient(180deg, rgba(0, 245, 255, 0.22) 0%, rgba(14, 165, 233, 0.16) 100%);
-  border-color: rgba(0, 245, 255, 0.5);
-  box-shadow: 0 0 16px rgba(0, 245, 255, 0.3);
+  background: linear-gradient(180deg, rgba(0, 245, 255, 0.26) 0%, rgba(14, 165, 233, 0.2) 100%);
+  border-color: rgba(0, 245, 255, 0.65);
+  box-shadow: 0 0 20px rgba(0, 245, 255, 0.45);
 }
 
 .sim .tradeTabIcon {
@@ -97,12 +100,12 @@
 .sim .tradeActiveGlow {
   position: absolute;
   bottom: -4px;
-  left: 20%;
-  right: 20%;
-  height: 2px;
+  left: 15%;
+  right: 15%;
+  height: 2.5px;
   border-radius: 2px;
   background: #00f5ff;
-  box-shadow: 0 0 10px #00f5ff;
+  box-shadow: 0 0 12px 2px #00f5ff, 0 0 20px #00f5ff;
 }
 
 /* ---- Stage Container ---------------------------------------------------- */
@@ -110,7 +113,7 @@
 .sim .stage {
   position: relative;
   width: 100%;
-  max-width: 460px;
+  max-width: 470px;
   perspective: 1200px;
 }
 
@@ -121,37 +124,37 @@
   inset: -14% -16% -10%;
   border-radius: 50%;
   background: radial-gradient(
-    circle at 50% 40%,
-    rgba(0, 245, 255, 0.2) 0%,
-    rgba(255, 113, 55, 0.16) 45%,
-    rgba(78, 224, 188, 0.1) 70%,
+    circle at 50% 35%,
+    rgba(0, 245, 255, 0.26) 0%,
+    rgba(78, 224, 188, 0.18) 40%,
+    rgba(255, 113, 55, 0.14) 65%,
     transparent 80%
   );
-  filter: blur(44px);
+  filter: blur(48px);
   pointer-events: none;
-  animation: glowBreathe 8s ease-in-out infinite alternate;
+  animation: glowBreathe 7s ease-in-out infinite alternate;
 }
 
 .sim .glowSecondary {
   position: absolute;
   z-index: 0;
-  width: 240px;
-  height: 240px;
+  width: 260px;
+  height: 260px;
   bottom: -15%;
   right: -12%;
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(78, 224, 188, 0.2) 0%, transparent 70%);
-  filter: blur(40px);
+  background: radial-gradient(circle, rgba(78, 224, 188, 0.24) 0%, transparent 70%);
+  filter: blur(44px);
   pointer-events: none;
 }
 
 @keyframes glowBreathe {
   0% {
-    transform: scale(0.96) translate(0, 0);
-    opacity: 0.85;
+    transform: scale(0.95) translate(0, 0);
+    opacity: 0.8;
   }
   100% {
-    transform: scale(1.06) translate(4px, -6px);
+    transform: scale(1.08) translate(5px, -8px);
     opacity: 1;
   }
 }
@@ -169,11 +172,11 @@
   background: rgba(8, 20, 36, 0.94);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(0, 245, 255, 0.35);
+  border: 1px solid rgba(0, 245, 255, 0.4);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.1) inset,
-    0 16px 36px rgba(0, 0, 0, 0.6),
-    0 0 20px rgba(0, 245, 255, 0.2);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 18px 40px rgba(0, 0, 0, 0.65),
+    0 0 24px rgba(0, 245, 255, 0.28);
   pointer-events: none;
   animation: floatDrift 5s ease-in-out infinite alternate;
 }
@@ -200,11 +203,11 @@
 }
 
 .sim .floatingPill[data-tone='mint'] {
-  border-color: rgba(78, 224, 188, 0.5);
+  border-color: rgba(78, 224, 188, 0.6);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.1) inset,
-    0 16px 36px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(78, 224, 188, 0.25);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 18px 40px rgba(0, 0, 0, 0.65),
+    0 0 28px rgba(78, 224, 188, 0.35);
 }
 
 .sim .floatingPill[data-tone='mint'] strong {
@@ -212,11 +215,11 @@
 }
 
 .sim .floatingPill[data-tone='orange'] {
-  border-color: rgba(255, 113, 55, 0.5);
+  border-color: rgba(255, 113, 55, 0.6);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.1) inset,
-    0 16px 36px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(255, 113, 55, 0.25);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 18px 40px rgba(0, 0, 0, 0.65),
+    0 0 28px rgba(255, 113, 55, 0.35);
 }
 
 .sim .floatingPill[data-tone='orange'] strong {
@@ -224,11 +227,11 @@
 }
 
 .sim .floatingPill[data-tone='cyan'] {
-  border-color: rgba(0, 245, 255, 0.5);
+  border-color: rgba(0, 245, 255, 0.6);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.1) inset,
-    0 16px 36px rgba(0, 0, 0, 0.55),
-    0 0 24px rgba(0, 245, 255, 0.25);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 18px 40px rgba(0, 0, 0, 0.65),
+    0 0 28px rgba(0, 245, 255, 0.35);
 }
 
 .sim .floatingPill[data-tone='cyan'] strong {
@@ -268,30 +271,49 @@
   flex-direction: column;
   gap: 12px;
   width: 100%;
-  padding: 20px 22px 18px;
-  border: 1px solid rgba(0, 245, 255, 0.32);
+  padding: 22px 24px 20px;
+  border: 1px solid rgba(0, 245, 255, 0.38);
   border-radius: 24px;
   background:
-    radial-gradient(circle at 10% 5%, rgba(0, 245, 255, 0.12) 0%, transparent 40%),
-    radial-gradient(circle at 90% 95%, rgba(255, 113, 55, 0.1) 0%, transparent 40%),
-    linear-gradient(170deg, rgba(12, 28, 48, 0.98) 0%, rgba(6, 16, 28, 0.99) 100%);
+    radial-gradient(circle at 12% 8%, rgba(0, 245, 255, 0.15) 0%, transparent 45%),
+    radial-gradient(circle at 88% 92%, rgba(255, 113, 55, 0.12) 0%, transparent 45%),
+    linear-gradient(175deg, rgba(12, 28, 48, 0.98) 0%, rgba(6, 16, 28, 0.99) 100%);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.12) inset,
-    0 28px 72px -12px rgba(0, 0, 0, 0.7),
-    0 0 50px -10px rgba(0, 245, 255, 0.2);
+    0 1px 0 rgba(255, 255, 255, 0.16) inset,
+    0 0 24px rgba(0, 245, 255, 0.04) inset,
+    0 32px 85px -15px rgba(0, 0, 0, 0.85),
+    0 0 55px -10px rgba(0, 245, 255, 0.26),
+    0 0 25px -5px rgba(78, 224, 188, 0.18);
   transform: perspective(1200px) rotateY(-1.8deg) rotateX(0.8deg);
   transform-origin: center;
   transition: transform 400ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 400ms ease;
+  animation: cardFloatDrift 8s ease-in-out infinite alternate;
+}
+
+@keyframes cardFloatDrift {
+  0% {
+    transform: perspective(1200px) rotateY(-1.8deg) rotateX(0.8deg) translateY(0);
+  }
+  100% {
+    transform: perspective(1200px) rotateY(-0.6deg) rotateX(-0.4deg) translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sim .jobCard {
+    animation: none;
+  }
 }
 
 .sim .jobCard:hover {
-  transform: perspective(1200px) rotateY(-0.3deg) rotateX(0deg) translateY(-3px);
+  transform: perspective(1200px) rotateY(-0.2deg) rotateX(0deg) translateY(-4px);
   box-shadow:
-    0 1px 0 rgba(255, 255, 255, 0.15) inset,
-    0 34px 84px -10px rgba(0, 0, 0, 0.75),
-    0 0 65px -8px rgba(0, 245, 255, 0.3);
+    0 1px 0 rgba(255, 255, 255, 0.2) inset,
+    0 38px 95px -12px rgba(0, 0, 0, 0.85),
+    0 0 70px -6px rgba(0, 245, 255, 0.38),
+    0 0 32px -4px rgba(78, 224, 188, 0.25);
 }
 
 /* ---- Card Header -------------------------------------------------------- */
@@ -508,14 +530,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
   margin-top: 1px;
   border-radius: 50%;
-  border: 1.5px solid rgba(0, 245, 255, 0.3);
-  background: #09151f;
+  border: 1.5px solid rgba(0, 245, 255, 0.35);
+  background: #091726;
   color: #64748b;
-  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   flex-shrink: 0;
 }
 
@@ -523,19 +546,19 @@
 .sim .stepItem:not(:last-child) .node::after {
   content: '';
   position: absolute;
-  top: 20px;
+  top: 22px;
   left: 50%;
   transform: translateX(-50%);
-  width: 1.5px;
-  height: calc(100% + 2px);
+  width: 2px;
+  height: calc(100% + 4px);
   min-height: 14px;
-  background: rgba(255, 255, 255, 0.1);
-  transition: background 0.3s ease;
+  background: rgba(255, 255, 255, 0.12);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
 }
 
 .sim .nodeDot {
-  width: 5px;
-  height: 5px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
   background: currentColor;
 }
@@ -543,14 +566,16 @@
 /* Completed Stage */
 .sim .stepItem[data-state='completed'] .node {
   border-color: #4ee0bc;
-  background: rgba(78, 224, 188, 0.22);
+  background: rgba(78, 224, 188, 0.25);
   color: #4ee0bc;
-  box-shadow: 0 0 12px rgba(78, 224, 188, 0.45);
+  box-shadow:
+    0 0 16px rgba(78, 224, 188, 0.55),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .sim .stepItem[data-state='completed']:not(:last-child) .node::after {
-  background: linear-gradient(180deg, #4ee0bc 0%, #0ea5e9 100%);
-  box-shadow: 0 0 8px rgba(78, 224, 188, 0.4);
+  background: linear-gradient(180deg, #4ee0bc 0%, #00f5ff 100%);
+  box-shadow: 0 0 10px rgba(78, 224, 188, 0.5);
 }
 
 .sim .stepItem[data-state='completed'] .stepLabel {
@@ -565,7 +590,7 @@
 /* Active Stage */
 .sim .stepItem[data-state='active'] .node {
   border-color: #00f5ff;
-  background: rgba(0, 245, 255, 0.25);
+  background: rgba(0, 245, 255, 0.3);
   color: #00f5ff;
   animation: pulseNode 1.6s infinite ease-in-out;
 }
@@ -573,17 +598,18 @@
 @keyframes pulseNode {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.5);
+    box-shadow: 0 0 0 0 rgba(0, 245, 255, 0.6), 0 0 14px rgba(0, 245, 255, 0.4);
   }
   50% {
-    transform: scale(1.12);
-    box-shadow: 0 0 0 6px rgba(0, 245, 255, 0);
+    transform: scale(1.14);
+    box-shadow: 0 0 0 8px rgba(0, 245, 255, 0), 0 0 22px rgba(0, 245, 255, 0.7);
   }
 }
 
 .sim .stepItem[data-state='active'] .stepLabel {
   color: #38bdf8;
   font-weight: 800;
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.5);
 }
 
 .sim .stepItem[data-state='pending'] {
@@ -592,13 +618,14 @@
 
 .sim .interactiveStep {
   cursor: pointer;
-  border-radius: 10px;
-  padding: 3px 6px;
-  transition: all 0.18s ease;
+  border-radius: 12px;
+  padding: 4px 8px;
+  transition: all 0.2s ease;
 }
 
 .sim .interactiveStep:hover {
-  background: rgba(0, 245, 255, 0.08);
+  background: rgba(0, 245, 255, 0.1);
+  transform: translateX(2px);
 }
 
 .sim .interactiveStep:focus-visible {
