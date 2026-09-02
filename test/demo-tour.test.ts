@@ -66,14 +66,14 @@ describe('5-Minute Evaluation Demo Journey', () => {
     });
 
     it('maintains consistent customer, contractor and financial data across the canonical story', () => {
-      expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Evergreen Lawn & Landscape');
-      expect(DEMO_TOUR_CONTRACTOR.name).toBe('Evergreen Lawn & Landscape');
-      expect(DEMO_TOUR_CUSTOMER.name).toBe('Taylor Brooks');
+      expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Broke Pipes Plumbing');
+      expect(DEMO_TOUR_CONTRACTOR.name).toBe('Broke Pipes Plumbing');
+      expect(DEMO_TOUR_CUSTOMER.name).toBe('Alex Morgan');
       expect(DEMO_TOUR_CUSTOMER.city).toBe('Royal Oak');
-      expect(DEMO_TOUR_JOB.baseTotal).toBe(15250);
-      expect(DEMO_TOUR_JOB.upgradeTotal).toBe(750);
-      expect(DEMO_TOUR_JOB.totalWithUpgrade).toBe(16000);
-      expect(DEMO_TOUR_JOB.requiredDeposit).toBe(1600);
+      expect(DEMO_TOUR_JOB.baseTotal).toBe(1450);
+      expect(DEMO_TOUR_JOB.upgradeTotal).toBe(320);
+      expect(DEMO_TOUR_JOB.totalWithUpgrade).toBe(1770);
+      expect(DEMO_TOUR_JOB.requiredDeposit).toBe(725);
     });
   });
 

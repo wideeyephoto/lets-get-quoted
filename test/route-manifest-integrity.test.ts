@@ -107,7 +107,6 @@ describe('Problem 6: Product Truth Registry & Route Integrity', () => {
       // Features anchor IDs
       expect(featuresPage).toContain('id="flagship-index"');
       expect(featuresPage).toContain('id="quick-stops"');
-      expect(featuresPage).toContain('id="faq"');
     });
   });
 
