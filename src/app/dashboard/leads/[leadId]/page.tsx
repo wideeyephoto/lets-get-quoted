@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { requireOfficeContext } from '@/lib/auth';
 import PhotoGallery from '@/components/photo-gallery';
 import LeadRadiusMap from '@/components/lead-radius-map';
+import AddressAutocomplete from '@/components/address-autocomplete';
 import { createLeadPhotoLinks } from '@/lib/lead-photo-storage';
 import { expireStaleLeads, formatElapsedTime, formatLeadAttribution, formatLeadSource, getLead, getLeadTriage, isLeadSnoozed, LEAD_FLAG_LABELS, leadOverdueLabel, LEAD_LAYOUT_COOKIE, listLeads, type Lead, type LeadQuoteVisit } from '@/lib/leads';
 import { expandScheduledJobs, formatJobSchedule, formatJobTime, listJobs, type Job, type QuoteItem, type ScheduledJobOccurrence } from '@/lib/jobs';
@@ -13,6 +14,8 @@ import { resolveClientChannel } from '@/lib/client-channel';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitAction, sendLeadQuoteVisitOptionsAction, sendQuoteAction, setLeadLayoutAction, submitGoogleLsaFeedbackAction, undoConvertLeadAction, updateLeadDetailsAction, updateLeadStatusAction } from '../actions';
 import DepositField from './DepositField';
+import LeadAddressCard from './LeadAddressCard';
+import LeadContactCard from './LeadContactCard';
 import QuoteSendGate from './QuoteSendGate';
 import { quoteShape } from './quote-shape';
 import LeadActionDeck from './LeadActionDeck';
@@ -335,48 +338,13 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
             setLayoutAction={setLeadLayoutAction}
           />
           <div className={styles.heroContactSummary}>
-            <div className={styles.heroContactItem}>
-              <span>Contact</span>
-              {/* The bright pill goes to the channel they asked for.
-                  This lead said "text me, don't call" and the page answered
-                  with a filled green Call button and a small grey line asking
-                  the contractor to please not press it. The warning was doing
-                  all the work and the styling was undoing it. Calling stays
-                  available — sometimes you have to — it is just no longer the
-                  loudest thing in the box. */}
-              {lead.phone ? (
-                triage.contactPreference === 'text_only' ? (
-                  <>
-                    <a href={`sms:${lead.phone}`} className={styles.heroPhoneLink} aria-label={`Text ${lead.phone}`}>
-                      <span aria-hidden="true">💬</span> Text {formatPhoneDashes(lead.phone)}
-                    </a>
-                    <a href={`tel:${lead.phone}`} className={styles.heroPhoneLinkQuiet} aria-label={`Call ${lead.phone} anyway — they asked not to be called`}>
-                      <span aria-hidden="true">📞</span> Call anyway
-                    </a>
-                  </>
-                ) : (
-                  <a href={`tel:${lead.phone}`} className={styles.heroPhoneLink} aria-label={`Call ${lead.phone}`}>
-                    <span aria-hidden="true">📞</span> {formatPhoneDashes(lead.phone)}
-                  </a>
-                )
-              ) : (
-                <strong>No phone provided</strong>
-              )}
-              {lead.phone && triage.contactPreference === 'text_only' ? <small className={styles.contactWarn}>They asked for texts only.</small> : null}
-              {lead.email ? (
-                <a href={`mailto:${lead.email}`} className={styles.heroContactEmail} aria-label={`Email ${lead.email}`}>
-                  <span aria-hidden="true">📧</span> {lead.email}
-                </a>
-              ) : (
-                <strong>No email provided</strong>
-              )}
-              {!lead.phone && lead.email ? <small className={styles.contactWarn}>Email-only — text tools won&apos;t reach this lead.</small> : null}
-            </div>
-            <div className={styles.heroContactItem}>
-              <span>Project address</span>
-              <strong>{lead.address || 'Not provided'}</strong>
-              <LeadRadiusMap address={lead.address} radiusMiles={10} size="mini" />
-            </div>
+            <LeadContactCard
+              leadId={lead.id}
+              initialPhone={lead.phone}
+              initialEmail={lead.email}
+              contactPreference={triage.contactPreference}
+            />
+            <LeadAddressCard leadId={lead.id} initialAddress={lead.address} radiusMiles={10} />
             {attribution && (
               <div className={styles.heroContactItem}>
                 <span>Campaign attribution</span>
@@ -482,7 +450,7 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
               </div>
               <div className="field">
                 <label htmlFor="leadAddress">Project address</label>
-                <input id="leadAddress" name="address" defaultValue={lead.address ?? ''} />
+                <AddressAutocomplete id="leadAddress" name="address" defaultValue={lead.address ?? ''} placeholder="1418 Maplewood Ave, Royal Oak, MI" />
               </div>
               <div className="field">
                 <label htmlFor="leadProjectType">Project type</label>

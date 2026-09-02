@@ -157,9 +157,16 @@
 .editModalCard { display: grid; gap: 1rem; width: min(760px, 100%); max-height: min(86vh, 820px); overflow: auto; padding: 1rem; border: 1px solid var(--cedge-amber-12); border-radius: 14px; background: var(--bg-3); box-shadow: 0 24px 80px rgba(var(--shade), .45); }
 .editModalHeader { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding-bottom: .8rem; border-bottom: 1px solid var(--rule-t08); }
 .editModalHeader h2 { margin: .15rem 0 0; color: var(--text); }
-.modalCloseButton { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid var(--edge-t12); border-radius: 999px; background: rgba(var(--tint), .05); color: var(--gold-ink); font-weight: 900; text-decoration: none; }
+.modalCloseButton { display: inline-grid; flex: 0 0 auto; place-items: center; width: 34px; height: 34px; border: 1px solid var(--edge-t12); border-radius: 999px; background: rgba(var(--tint), .05); color: var(--gold-ink); font-weight: 900; text-decoration: none; cursor: pointer; }
 .modalCloseButton:hover, .modalCloseButton:focus-visible { border-color: var(--cedge-amber-49); background: rgba(255,209,102,.1); outline: none; }
 .editModalActions { display: flex !important; justify-content: flex-end; gap: .55rem; }
+.heroAddressHead { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.heroAddressHead > span { color: var(--mute-t48); font-size: .66rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+.heroAddressEditBtn { display: inline-flex; align-items: center; gap: .25rem; background: transparent; border: 1px solid var(--edge-t10); border-radius: 6px; padding: .15rem .45rem; color: var(--gold-ink); font-size: .68rem; font-weight: 700; cursor: pointer; line-height: 1.2; transition: background .15s ease, border-color .15s ease, color .15s ease; }
+.heroAddressEditBtn:hover, .heroAddressEditBtn:focus-visible { background: rgba(255, 209, 102, .12); border-color: var(--cedge-amber-45); color: var(--text); outline: none; }
+.quickAddressModal { display: grid; gap: 1rem; width: min(520px, 100%); max-height: min(86vh, 600px); overflow: auto; padding: 1.25rem; border: 1px solid var(--cedge-amber-12); border-radius: 14px; background: var(--bg-3); box-shadow: 0 24px 80px rgba(var(--shade), .45); }
+.quickAddressForm { display: grid; gap: 1rem; }
+.quickAddressError { margin: 0; color: var(--bad); font-size: .78rem; font-weight: 600; }
 
 /* ---- What you are about to put in your diary, before it goes in ----
    One click on a calendar square used to be a confirmed visit: duration

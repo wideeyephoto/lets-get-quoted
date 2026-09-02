@@ -217,6 +217,39 @@ export async function updateLeadDetailsAction(leadId: string, formData: FormData
   revalidatePath('/dashboard/leads');
 }
 
+export async function updateLeadAddressAction(leadId: string, address: string | null) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const normalizedAddress = address ? address.trim() || null : null;
+  const { error } = await supabase
+    .from('leads')
+    .update({ address: normalizedAddress, updated_at: new Date().toISOString() })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
+export async function updateLeadContactAction(leadId: string, phone: string | null, email: string | null) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const normalizedPhone = phone ? phone.trim() || null : null;
+  const normalizedEmail = email ? email.trim().toLowerCase() || null : null;
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      phone: normalizedPhone,
+      email: normalizedEmail,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
 export async function scheduleLeadQuoteVisitAction(leadId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const lead = await getLead(supabase, accountId, leadId);
