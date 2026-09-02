@@ -4,8 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { listServices } from '@/lib/services';
 import { getSiteContent } from '@/lib/site-content';
 import { getAvailableBookingDays } from '@/lib/booking';
-import { normalizeUsPhone } from '@/lib/phone';
-import { isCrewPhoneVerified } from '@/lib/crew-verification';
+import { displayPhone, formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 
 export type VoiceGroundingContext = {
   companyName: string;
@@ -59,35 +58,35 @@ export async function loadVoiceGroundingContext(
   ] = await Promise.all([
     admin
       .from('accounts')
-      .select('company_name, trade, city, state, zip')
+      .select('id, business_name, alert_phone, call_forward_number, timezone')
       .eq('id', accountId)
       .maybeSingle(),
     listServices(admin, accountId).catch(() => []),
     admin
       .from('sites')
-      .select('content, license')
+      .select('company_name, phone, license, service_area, content')
       .eq('account_id', accountId)
       .maybeSingle(),
     getAvailableBookingDays(admin, accountId).catch(() => []),
     admin
       .from('voice_settings')
-      .select('voice_tone, transfer_number, alert_phone')
+      .select('voice_tone, transfer_number, emergency_transfer_number')
       .eq('account_id', accountId)
       .maybeSingle(),
   ]);
 
-  const companyName = account?.company_name?.trim() || 'our company';
-  const trade = account?.trade?.trim() || 'home services contractor';
+  const siteContent = site?.content ? getSiteContent(site.content as Record<string, unknown>) : null;
+  const companyName = site?.company_name?.trim() || account?.business_name?.trim() || 'our company';
+  const trade = (siteContent?.trade as string | undefined)?.trim() || 'home services contractor';
   const activeServices = services.filter((s) => s.active).map((s) => s.name);
   const voiceTone = (voiceSettings?.voice_tone as VoiceGroundingContext['voiceTone']) || 'professional';
   const forwardPhoneOffice = voiceSettings?.transfer_number || null;
-  const forwardPhoneEmergency = voiceSettings?.alert_phone || null;
+  const forwardPhoneEmergency = voiceSettings?.emergency_transfer_number || account?.alert_phone || null;
 
-  // Determine service area from site content or account location
-  const siteContent = site?.content ? getSiteContent(site.content as Record<string, unknown>) : null;
+  // Determine service area from site content or site record
   const serviceAreas = (siteContent?.serviceAreas?.cities && siteContent.serviceAreas.cities.length > 0)
     ? siteContent.serviceAreas.cities.join(', ')
-    : (account?.city ? `${account.city}${account.state ? `, ${account.state}` : ''}` : 'the local area');
+    : (site?.service_area?.trim() || 'the local area');
 
   // Compute realistic booking windows from genuine capacity
   let availableSlots: string[] = [];
@@ -118,44 +117,104 @@ export async function loadVoiceGroundingContext(
   if (callerPhone) {
     const normalized = normalizeUsPhone(callerPhone);
     if (normalized) {
-      const [{ data: crewMember }, { data: accountRow }, { data: job }, { data: lead }] = await Promise.all([
-        admin
-          .from('crew')
-          .select('id, name, phone, active, user_id, last_signed_in_at, phone_verified_at, phone_verified')
-          .eq('account_id', accountId)
-          .eq('phone', normalized)
-          .eq('active', true)
-          .maybeSingle(),
-        admin
-          .from('accounts')
-          .select('owner_phone, call_forward_number, full_name, company_name')
-          .eq('id', accountId)
-          .maybeSingle(),
-        admin
-          .from('jobs')
-          .select('ref, client_name, address, scope, scheduled_for, scheduled_time')
-          .eq('account_id', accountId)
-          .eq('client_phone', normalized)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-        admin
-          .from('leads')
-          .select('name, address, project_type')
-          .eq('account_id', accountId)
-          .eq('phone', normalized)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
+      const digits = normalized.replace(/\D/g, '');
+      const tenDigits = digits.length === 11 && digits.startsWith('1') ? digits.slice(1) : digits;
+      const candidatePhones = Array.from(new Set([
+        normalized,
+        digits,
+        tenDigits,
+        `+${digits}`,
+        formatPhoneDashes(tenDigits),
+        displayPhone(normalized),
+        callerPhone.trim(),
+      ].filter(Boolean))) as string[];
+
+      // Check owner numbers on account and site
+      const isOwnerAccountPhone = Boolean(
+        (account?.alert_phone && normalizeUsPhone(account.alert_phone) === normalized) ||
+        (account?.call_forward_number && normalizeUsPhone(account.call_forward_number) === normalized) ||
+        (voiceSettings?.transfer_number && normalizeUsPhone(voiceSettings.transfer_number) === normalized) ||
+        (site?.phone && normalizeUsPhone(site.phone) === normalized),
+      );
+
+      const staffLookupPromise = admin
+        .from('memberships')
+        .select('user_id, role')
+        .eq('account_id', accountId)
+        .in('role', ['owner', 'office'])
+        .order('created_at', { ascending: true })
+        .limit(5)
+        .then(async ({ data: members }) => {
+          if (!Array.isArray(members) || members.length === 0) return [];
+          const users = await Promise.all(
+            members.map(async (m) => {
+              try {
+                const { data: userData } = await admin.auth.admin.getUserById(m.user_id);
+                const user = userData?.user;
+                const meta = user?.user_metadata;
+                const name = (meta?.full_name || meta?.name || meta?.first_name || '').trim() || null;
+                const authPhone = user?.phone ? normalizeUsPhone(user.phone) : null;
+                return { name, authPhone, role: m.role as 'owner' | 'office' };
+              } catch {
+                return null;
+              }
+            }),
+          );
+          return users.filter(Boolean) as Array<{ name: string | null; authPhone: string | null; role: 'owner' | 'office' }>;
+        });
+
+      const crewPromise = admin
+        .from('crew')
+        .select('id, name, phone, active, user_id, last_signed_in_at, phone_verified_at, phone_verified, role_label')
+        .eq('account_id', accountId)
+        .eq('active', true)
+        .then(({ data }) => (Array.isArray(data) ? data : []));
+
+      const jobPromise = admin
+        .from('jobs')
+        .select('ref, client_name, address, scope, scheduled_for, scheduled_time')
+        .eq('account_id', accountId)
+        .in('client_phone', candidatePhones)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => data ?? null);
+
+      const leadPromise = admin
+        .from('leads')
+        .select('name, address, project_type')
+        .eq('account_id', accountId)
+        .in('phone', candidatePhones)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+        .then(({ data }) => data ?? null);
+
+      const [staffUsers, activeCrew, job, lead] = await Promise.all([
+        staffLookupPromise,
+        crewPromise,
+        jobPromise,
+        leadPromise,
       ]);
 
-      if (crewMember && isCrewPhoneVerified(crewMember)) {
-        contractorStaffCaller = { name: crewMember.name || 'Team Member', role: 'crew' };
-      } else if (accountRow && (accountRow.owner_phone === normalized || accountRow.call_forward_number === normalized)) {
-        contractorStaffCaller = { name: accountRow.full_name || 'Owner', role: 'owner' };
-      }
+      const matchedStaffUser = staffUsers.find((u) => u.authPhone && u.authPhone === normalized);
+      const ownerRecord = staffUsers.find((u) => u.role === 'owner');
+      const matchedCrewMember = activeCrew.find(
+        (c) => c.phone && normalizeUsPhone(c.phone) === normalized,
+      );
 
-      if (job || lead) {
+      if (isOwnerAccountPhone) {
+        const ownerName = ownerRecord?.name || account?.business_name || site?.company_name || 'Owner';
+        contractorStaffCaller = { name: ownerName, role: 'owner' };
+      } else if (matchedStaffUser) {
+        const staffName = matchedStaffUser.name || (matchedStaffUser.role === 'owner' ? 'Owner' : 'Office Staff');
+        contractorStaffCaller = { name: staffName, role: matchedStaffUser.role };
+      } else if (matchedCrewMember) {
+        contractorStaffCaller = {
+          name: matchedCrewMember.name || 'Team Member',
+          role: 'crew',
+        };
+      } else if (job || lead) {
         recognizedCaller = {
           clientName: job?.client_name || lead?.name || null,
           serviceAddress: job?.address || lead?.address || null,
@@ -193,11 +252,13 @@ export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
   // If the caller is the business owner or crew member, switch to Contractor Voice Assistant mode
   if (context.contractorStaffCaller) {
     const staff = context.contractorStaffCaller;
+    const rawFirst = staff.name ? staff.name.trim().split(/\s+/)[0] : '';
+    const greetingName = rawFirst && rawFirst !== 'Owner' ? rawFirst : 'there';
     return [
       `[ROLE & IDENTITY - CONTRACTOR VOICE ASSISTANT]`,
       `You are the dedicated AI Field Assistant for "${context.companyName}", speaking directly with ${staff.name} (${staff.role === 'owner' ? 'Business Owner' : 'Field Crew'}).`,
       `Tone & Demeanor: Efficient, capable, smart, and direct. The contractor is calling while driving, between jobs, or on-site to add/update jobs, create leads, and log work.`,
-      `The greeting and opening disclosure have already been played. Greet them by name: "Hey ${staff.name}, what job or lead are you updating today?"`,
+      `The greeting and opening disclosure have already been played. Greet them by name: "Hey ${greetingName}, what job or lead are you updating today?"`,
       ``,
       `[AVAILABLE CONTRACTOR TOOLS]`,
       `1. update_job_details: Update job scope, quote line items, schedule date/time, tasks, or status (e.g. "We finished the rough-in on Miller's job, add 4 recessed lights for $650, schedule final for Tuesday").`,

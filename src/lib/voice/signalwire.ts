@@ -395,6 +395,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
           web_hook_auth_password: plan.receiptAuthorization.password,
         });
 
+      if (plan.swaigUrl && plan.contractorMode) {
         swaigFunctions.push({
           function: 'append_job_caution_or_note',
           purpose: 'Add an internal note, safety warning, gate code, pet caution, or special request to a job or client record.',
@@ -420,6 +421,143 @@ export const signalwireVoiceProvider: VoiceProvider = {
           web_hook_auth_user: plan.receiptAuthorization.username,
           web_hook_auth_password: plan.receiptAuthorization.password,
         });
+
+        swaigFunctions.push({
+          function: 'update_job_details',
+          purpose: 'Update active job details, quote line items, schedule date/time, or status.',
+          argument: {
+            type: 'object',
+            properties: {
+              job_ref_or_client: {
+                type: 'string',
+                description: 'Customer name or job reference ID (e.g. Miller, JOB-102).',
+              },
+              scope: {
+                type: 'string',
+                description: 'New or additional scope of work completed or requested.',
+              },
+              status: {
+                type: 'string',
+                description: 'Updated status (new_lead, in_progress, complete).',
+              },
+              scheduled_date: {
+                type: 'string',
+                description: 'Target or rescheduled date in YYYY-MM-DD format.',
+              },
+              scheduled_time: {
+                type: 'string',
+                description: 'Arrival time (e.g. 08:00, 14:00).',
+              },
+              line_item_label: {
+                type: 'string',
+                description: 'Name of added quote item or fixture (e.g. 4 Recessed Lights).',
+              },
+              line_item_price: {
+                type: 'number',
+                description: 'Dollar amount for the added line item (e.g. 650).',
+              },
+            },
+            required: ['job_ref_or_client'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'create_or_update_lead',
+          purpose: 'Create a new customer lead or log an incoming prospect.',
+          argument: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Full name of the new lead/customer.',
+              },
+              phone: {
+                type: 'string',
+                description: 'Contact mobile phone number.',
+              },
+              address: {
+                type: 'string',
+                description: 'Street address and city.',
+              },
+              project_type: {
+                type: 'string',
+                description: 'Work requested or trade category.',
+              },
+              notes: {
+                type: 'string',
+                description: 'Description of the customer issue or details.',
+              },
+              requested_date: {
+                type: 'string',
+                description: 'Requested estimate visit date in YYYY-MM-DD.',
+              },
+            },
+            required: ['name'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'log_crew_time_and_materials',
+          purpose: 'Log labor hours worked and material costs purchased for a job.',
+          argument: {
+            type: 'object',
+            properties: {
+              job_ref_or_client: {
+                type: 'string',
+                description: 'Customer name or job ID.',
+              },
+              hours: {
+                type: 'number',
+                description: 'Labor hours worked.',
+              },
+              materials: {
+                type: 'string',
+                description: 'Description of materials used or receipts.',
+              },
+              material_cost: {
+                type: 'number',
+                description: 'Total dollar amount of materials.',
+              },
+            },
+            required: ['job_ref_or_client'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'create_job_change_order',
+          purpose: 'Record unforeseen extra work or changes requiring an official change order.',
+          argument: {
+            type: 'object',
+            properties: {
+              job_ref_or_client: {
+                type: 'string',
+                description: 'Customer name or job ID.',
+              },
+              title: {
+                type: 'string',
+                description: 'Brief title for the change order.',
+              },
+              description: {
+                type: 'string',
+                description: 'Explanation of extra scope and necessity.',
+              },
+            },
+            required: ['job_ref_or_client'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+        }
       }
 
       mainSection.push({

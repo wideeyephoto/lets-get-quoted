@@ -10,6 +10,8 @@ import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
 import { createLead, scheduleLeadQuoteVisit } from '@/lib/leads';
+import { normalizeUsPhone } from '@/lib/phone';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -30,6 +32,57 @@ function verifySwaigAuth(request: Request): boolean {
   const pass = decoded.slice(colonIndex + 1);
 
   return user === expected.username && pass === expected.password;
+}
+
+async function isAuthorizedStaffCaller(
+  admin: SupabaseClient,
+  accountId: string,
+  callerPhone?: string | null,
+): Promise<boolean> {
+  if (!callerPhone) return false;
+  const normalized = normalizeUsPhone(callerPhone);
+  if (!normalized) return false;
+
+  const [
+    { data: account },
+    { data: activeCrew },
+    { data: members },
+  ] = await Promise.all([
+    admin
+      .from('accounts')
+      .select('alert_phone, call_forward_number')
+      .eq('id', accountId)
+      .maybeSingle(),
+    admin
+      .from('crew')
+      .select('phone')
+      .eq('account_id', accountId)
+      .eq('active', true),
+    admin
+      .from('memberships')
+      .select('user_id')
+      .eq('account_id', accountId)
+      .in('role', ['owner', 'office'])
+      .limit(5),
+  ]);
+
+  if (account?.alert_phone && normalizeUsPhone(account.alert_phone) === normalized) return true;
+  if (account?.call_forward_number && normalizeUsPhone(account.call_forward_number) === normalized) return true;
+
+  if (Array.isArray(activeCrew) && activeCrew.some((c) => c.phone && normalizeUsPhone(c.phone) === normalized)) {
+    return true;
+  }
+
+  if (Array.isArray(members) && members.length > 0) {
+    const userLookups = await Promise.all(
+      members.map((m) => admin.auth.admin.getUserById(m.user_id).catch(() => ({ data: null }))),
+    );
+    if (userLookups.some((u) => u.data?.user?.phone && normalizeUsPhone(u.data.user.phone) === normalized)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 export async function POST(request: Request) {
@@ -461,6 +514,24 @@ export async function POST(request: Request) {
   }
 
   // --- CONTRACTOR AI VOICE ASSISTANT TOOLS ---
+  const CONTRACTOR_TOOLS = new Set([
+    'update_job_details',
+    'update_job_scope',
+    'create_or_update_lead',
+    'log_crew_time_and_materials',
+    'create_job_change_order',
+    'append_job_caution_or_note',
+    'add_caution_note',
+  ]);
+
+  if (CONTRACTOR_TOOLS.has(fnName)) {
+    const isAuthorized = await isAuthorizedStaffCaller(admin, accountId, verifiedCallerPhone);
+    if (!isAuthorized) {
+      return NextResponse.json({
+        response: 'Job updates and internal commands by phone are restricted to authorized team members. Would you like me to connect you with the office?',
+      });
+    }
+  }
 
   if (fnName === 'update_job_details' || fnName === 'update_job_scope') {
     const jobRefOrClient = String(args.job_ref_or_client || args.client_name || args.job_id || '').trim();
@@ -476,12 +547,13 @@ export async function POST(request: Request) {
     }
 
     try {
-      // Find matching job
+      // Find matching job (sanitizing PostgREST filter characters)
+      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
       const { data: jobs } = await admin
         .from('jobs')
         .select('id, ref, client_name, scope, quote_items, scheduled_for, scheduled_time')
         .eq('account_id', accountId)
-        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
         .order('created_at', { ascending: false })
         .limit(1);
 
@@ -600,11 +672,12 @@ export async function POST(request: Request) {
     }
 
     try {
+      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
       const { data: jobs } = await admin
         .from('jobs')
         .select('id, ref, client_name')
         .eq('account_id', accountId)
-        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
         .limit(1);
 
       const targetJob = jobs?.[0];
@@ -654,11 +727,12 @@ export async function POST(request: Request) {
     const description = String(args.description || args.note || '').trim();
 
     try {
+      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
       const { data: jobs } = await admin
         .from('jobs')
         .select('id, ref, client_name')
         .eq('account_id', accountId)
-        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
         .limit(1);
 
       const targetJob = jobs?.[0];
@@ -704,11 +778,12 @@ export async function POST(request: Request) {
     }
 
     try {
+      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
       const { data: jobs } = await admin
         .from('jobs')
         .select('id, ref, client_name, client_id')
         .eq('account_id', accountId)
-        .or(`ref.ilike.%${jobRefOrClient}%,client_name.ilike.%${jobRefOrClient}%`)
+        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
         .order('created_at', { ascending: false })
         .limit(1);
 

@@ -109,6 +109,8 @@ export type VoiceAnswerPlan =
     recordingStatusUrl?: string;
     /** Secure SWAIG webhook URL for real-time tool calling during live calls. */
     swaigUrl?: string;
+    /** Whether the caller is authenticated contractor staff (enables internal contractor SWAIG tools). */
+    contractorMode?: boolean;
   }>
   | Readonly<{
     kind: 'forward';

@@ -326,7 +326,10 @@ export async function planInboundCall(
     startedAt: (options.now ?? (() => new Date()))().toISOString(),
   }).catch(() => null);
 
-  const grounding = await loadVoiceGroundingContext(admin, workspace.accountId, call.fromNumber).catch(() => null);
+  const grounding = await loadVoiceGroundingContext(admin, workspace.accountId, call.fromNumber).catch((err) => {
+    console.error('Failed to load voice grounding context:', err);
+    return null;
+  });
   const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;
   const postPrompt = grounding ? buildVoicePostPrompt() : undefined;
 
@@ -337,7 +340,11 @@ export async function planInboundCall(
       kind: 'ai_agent' as const,
       receiptUrl: options.receiptUrl,
       receiptAuthorization: options.receiptAuthorization,
-      greeting: greetingWithAiDisclosure(settings.greeting?.trim() || DEFAULT_GREETING),
+      greeting: greetingWithAiDisclosure(
+        grounding?.contractorStaffCaller
+          ? 'Connecting to field dispatch.'
+          : (settings.greeting?.trim() || DEFAULT_GREETING)
+      ),
       systemPrompt,
       postPrompt,
       capMinutes: VOICE_CALL_CAP_MINUTES,
@@ -350,6 +357,7 @@ export async function planInboundCall(
             callerPhone: call.fromNumber,
           })
         : undefined,
+      contractorMode: Boolean(grounding?.contractorStaffCaller),
     }),
   });
 }
