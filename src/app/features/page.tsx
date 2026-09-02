@@ -493,7 +493,7 @@ export default async function FeaturesPage() {
       <HighTechShowcase />
 
       {/* AI BREAKTHROUGHS & FIELD DISPATCH SUITE */}
-      <section className="breakthroughs-band" id="breakthroughs" aria-labelledby="breakthroughs-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <section className="breakthroughs-band" id="breakthroughs" aria-labelledby="breakthroughs-title">
         <div className="index-heading">
           <p className="eyebrow">
             <span aria-hidden="true">✦</span> NEW FIELD &amp; AI BREAKTHROUGHS
@@ -505,7 +505,7 @@ export default async function FeaturesPage() {
             24/7 call answering, photo-grounded estimating, and automated morning crew briefings.
           </p>
         </div>
-        <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', marginTop: '2rem' }}>
+        <div className="feature-link-grid">
           <Link href="/features/ai-ads" id="ai-ads-spotlight">
             <span style={{ fontSize: '1.25rem', color: '#f97316' }}>🚀</span>
             <small>GOOGLE &amp; META ADS AUTOPILOT</small>
@@ -580,7 +580,7 @@ export default async function FeaturesPage() {
       <FeaturesCatalogExplorer />
 
       {/* INTERACTIVE FREE CONTRACTOR TOOLS SHOWCASE */}
-      <section className="tools-showcase-band" id="contractor-tools" aria-labelledby="tools-showcase-title" style={{ padding: '4rem 1.5rem', maxWidth: '1200px', margin: '0 auto' }}>
+      <section className="tools-showcase-band" id="contractor-tools" aria-labelledby="tools-showcase-title">
         <div className="index-heading">
           <p className="eyebrow">
             <span aria-hidden="true">✦</span> FREE CONTRACTOR TOOLS &amp; CALCULATORS
@@ -592,7 +592,7 @@ export default async function FeaturesPage() {
             Deterministic 1-page PDF exports, hourly rate modeling, and profit leak diagnostics — free to use right now.
           </p>
         </div>
-        <div className="feature-link-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', marginTop: '2rem' }}>
+        <div className="feature-link-grid">
           <Link href="/tools/estimate-generator">
             <span style={{ fontSize: '1.25rem', color: '#2563eb' }}>📄</span>
             <small>INSTANT ESTIMATE BUILDER</small>

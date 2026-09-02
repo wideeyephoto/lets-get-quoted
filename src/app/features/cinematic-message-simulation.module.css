@@ -40,7 +40,7 @@
   gap: 4px;
   width: 100%;
   max-width: 480px;
-  margin-bottom: 14px;
+  margin-bottom: 22px;
   padding: 4px;
   border-radius: 14px;
   background: rgba(8, 20, 36, 0.85);
@@ -179,14 +179,14 @@
 }
 
 .sim .floatingPillTop {
-  top: -16px;
-  right: -18px;
+  top: -10px;
+  right: -10px;
   animation-delay: 0s;
 }
 
 .sim .floatingPillBottom {
-  bottom: -14px;
-  left: -20px;
+  bottom: -10px;
+  left: -12px;
   animation-delay: -2.5s;
 }
 
