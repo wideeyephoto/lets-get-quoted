@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
+const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
 
 describe('homepage theme contrast isolation', () => {
   const flagship = read('src', 'components', 'flagship', 'flagship.module.css');
@@ -43,9 +43,9 @@ describe('homepage theme contrast isolation', () => {
 
   it('provides readable Workbench pricing text colors', () => {
     for (const css of [flagship, generator]) {
-      expect(css).toContain(".root :global(.pricing-copy > .eyebrow) {\n  color: #c9430a;");
-      expect(css).toContain(".root :global(.pricing-fineprint) {\n  color: #475569;");
-      expect(css).toContain(".root :global(.pricing-fineprint b) {\n  color: #334155;");
+      expect(css).toContain(":root[data-theme='light'] .root :global(.pricing-copy > .eyebrow) {\n  color: #c9430a;");
+      expect(css).toContain(":root[data-theme='light'] .root :global(.pricing-fineprint) {\n  color: #475569;");
+      expect(css).toContain(":root[data-theme='light'] .root :global(.pricing-fineprint b) {\n  color: #334155;");
     }
   });
 

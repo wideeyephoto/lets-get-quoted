@@ -94,20 +94,20 @@ export default function ReceivablesAgingBoard({
           flexWrap: 'wrap',
           gap: '0.75rem',
           padding: '0.85rem 1rem',
-          background: summary.overdueCount > 0 ? 'rgba(239, 68, 68, 0.06)' : 'var(--panel-subtle, rgba(0,0,0,0.02))',
-          border: `1px solid ${summary.overdueCount > 0 ? 'rgba(239, 68, 68, 0.2)' : 'var(--border-subtle, #e2e8f0)'}`,
+          background: summary.overdueCount > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(var(--tint), 0.03)',
+          border: `1px solid ${summary.overdueCount > 0 ? 'rgba(239, 68, 68, 0.3)' : 'var(--line)'}`,
           borderRadius: '8px',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
           <span style={{ fontSize: '1.25rem' }}>{summary.overdueCount > 0 ? '⚠️' : '✓'}</span>
           <div>
-            <strong style={{ fontSize: '0.92rem' }}>
+            <strong style={{ fontSize: '0.92rem', color: 'var(--text)' }}>
               {summary.overdueCount > 0
                 ? `${summary.overdueCount} Overdue ${summary.overdueCount === 1 ? 'Invoice' : 'Invoices'} (${formatUsd(summary.totalOverdue)})`
                 : 'All Accounts Current'}
             </strong>
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            <div style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
               Total Outstanding: <strong>{formatUsd(summary.totalOutstanding)}</strong> across {summary.totalReceivablesCount} active invoices
             </div>
           </div>
@@ -191,9 +191,9 @@ export default function ReceivablesAgingBoard({
             <div
               key={col.key}
               style={{
-                background: 'var(--panel-subtle, rgba(0,0,0,0.02))',
+                background: 'rgba(var(--tint), 0.03)',
                 borderRadius: '8px',
-                border: '1px solid var(--border-subtle, #e2e8f0)',
+                border: '1px solid var(--line)',
                 padding: '0.75rem',
                 display: 'flex',
                 flexDirection: 'column',
@@ -208,8 +208,8 @@ export default function ReceivablesAgingBoard({
                   <span
                     style={{
                       fontSize: '0.72rem',
-                      background: col.items.length > 0 ? col.color : 'rgba(0,0,0,0.05)',
-                      color: col.items.length > 0 ? '#fff' : 'inherit',
+                      background: col.items.length > 0 ? col.color : 'rgba(var(--tint), 0.08)',
+                      color: col.items.length > 0 ? '#fff' : 'var(--muted)',
                       padding: '0.1rem 0.4rem',
                       borderRadius: '999px',
                       fontWeight: 600,
@@ -218,7 +218,7 @@ export default function ReceivablesAgingBoard({
                     {col.items.length}
                   </span>
                 </div>
-                <div style={{ fontSize: '0.88rem', fontWeight: 700, marginTop: '0.2rem' }}>
+                <div style={{ fontSize: '0.88rem', fontWeight: 700, marginTop: '0.2rem', color: 'var(--text)' }}>
                   {formatUsd(colTotal)}
                 </div>
               </div>
@@ -226,7 +226,7 @@ export default function ReceivablesAgingBoard({
               {/* Column Cards */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                 {col.items.length === 0 ? (
-                  <div style={{ padding: '1.5rem 0.5rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.78rem' }}>
+                  <div style={{ padding: '1.5rem 0.5rem', textAlign: 'center', color: 'var(--muted)', fontSize: '0.78rem' }}>
                     No receivables in this bucket.
                   </div>
                 ) : (
@@ -239,14 +239,14 @@ export default function ReceivablesAgingBoard({
                       <div
                         key={item.id}
                         style={{
-                          background: '#fff',
-                          border: '1px solid var(--border-subtle, #e2e8f0)',
+                          background: 'var(--bg-2)',
+                          border: '1px solid var(--line)',
                           borderRadius: '6px',
                           padding: '0.65rem',
                           display: 'flex',
                           flexDirection: 'column',
                           gap: '0.4rem',
-                          boxShadow: '0 1px 3px rgba(0,0,0,0.03)',
+                          boxShadow: 'var(--shadow-soft)',
                           transition: 'transform 0.15s ease, box-shadow 0.15s ease',
                         }}
                         onMouseEnter={(e) => {
@@ -255,7 +255,7 @@ export default function ReceivablesAgingBoard({
                         }}
                         onMouseLeave={(e) => {
                           e.currentTarget.style.transform = 'translateY(0)';
-                          e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.03)';
+                          e.currentTarget.style.boxShadow = 'var(--shadow-soft)';
                         }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
@@ -271,41 +271,41 @@ export default function ReceivablesAgingBoard({
                                 fontWeight: 700,
                                 display: 'flex',
                                 alignItems: 'center',
-                                justifySelf: 'center',
+                                justifyContent: 'center',
                                 flexShrink: 0,
                               }}
                             >
                               {initials}
                             </div>
                             <div>
-                              <strong style={{ fontSize: '0.82rem', display: 'block' }}>{item.clientName}</strong>
-                              <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>{item.jobRef}</span>
+                              <strong style={{ fontSize: '0.82rem', display: 'block', color: 'var(--text)' }}>{item.clientName}</strong>
+                              <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>{item.jobRef}</span>
                             </div>
                           </div>
-                          <strong style={{ fontSize: '0.88rem', color: 'var(--text-color)' }}>
+                          <strong style={{ fontSize: '0.88rem', color: 'var(--text)' }}>
                             {formatUsd(item.amountDue)}
                           </strong>
                         </div>
 
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem', flexWrap: 'wrap', gap: '0.2rem' }}>
-                          <span style={{ color: item.daysOverdue > 0 ? col.color : 'var(--text-muted)', fontWeight: item.daysOverdue > 0 ? 600 : 400 }}>
+                          <span style={{ color: item.daysOverdue > 0 ? col.color : 'var(--muted)', fontWeight: item.daysOverdue > 0 ? 600 : 400 }}>
                             {item.daysOverdue > 0 ? `${item.daysOverdue}d overdue` : 'Due on receipt'}
                           </span>
-                          <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: item.reliabilityTier === 'A' ? 'rgba(16, 185, 129, 0.1)' : item.reliabilityTier === 'B' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: item.reliabilityTier === 'A' ? '#059669' : item.reliabilityTier === 'B' ? '#d97706' : '#dc2626', fontWeight: 600 }}>
+                          <span style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', borderRadius: '4px', background: item.reliabilityTier === 'A' ? 'rgba(16, 185, 129, 0.1)' : item.reliabilityTier === 'B' ? 'rgba(245, 158, 11, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: item.reliabilityTier === 'A' ? 'var(--good, #047857)' : item.reliabilityTier === 'B' ? 'var(--warn, #b45309)' : 'var(--bad, #dc2626)', fontWeight: 600 }}>
                             Tier {item.reliabilityTier || 'A'}
                           </span>
                         </div>
 
                         {/* Promise to Pay Badge */}
                         {hasPromiseDate && (
-                          <div style={{ fontSize: '0.72rem', padding: '0.2rem 0.4rem', background: 'rgba(59, 130, 246, 0.08)', color: '#2563eb', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <div style={{ fontSize: '0.72rem', padding: '0.2rem 0.4rem', background: 'rgba(59, 130, 246, 0.12)', color: 'var(--info, #2563eb)', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                             <span>📅 Promised:</span>
                             <strong>{new Date(item.dueDate!).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</strong>
                           </div>
                         )}
 
                         {/* Streamlined Card Quick Actions */}
-                        <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.1rem', paddingTop: '0.35rem', borderTop: '1px solid var(--border-subtle, #f1f5f9)', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.1rem', paddingTop: '0.35rem', borderTop: '1px solid var(--line)', alignItems: 'center' }}>
                           <button
                             type="button"
                             className="btn primary"
@@ -327,7 +327,7 @@ export default function ReceivablesAgingBoard({
                           <button
                             type="button"
                             className="btn secondary"
-                            style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: 'var(--text-muted)' }}
+                            style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: 'var(--muted)' }}
                             title="Copy payment link"
                             onClick={() => handleCopyPayLink(item.id)}
                           >
@@ -337,7 +337,7 @@ export default function ReceivablesAgingBoard({
                             <button
                               type="button"
                               className="btn secondary"
-                              style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: '#059669' }}
+                              style={{ padding: '0.2rem 0.35rem', fontSize: '0.7rem', color: 'var(--good, #047857)' }}
                               title="Generate Statutory Lien Waiver"
                               onClick={() => onOpenLienWaiver({ id: item.id, clientName: item.clientName, amount: item.amountDue, jobId: item.jobId })}
                             >

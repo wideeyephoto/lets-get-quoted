@@ -34,12 +34,12 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ fontSize: '1.4rem' }}>{disputedPayments.length > 0 ? '🛡️' : '✨'}</span>
           <div>
-            <strong style={{ fontSize: '0.95rem', color: disputedPayments.length > 0 ? '#dc2626' : '#059669' }}>
+            <strong style={{ fontSize: '0.95rem', color: disputedPayments.length > 0 ? 'var(--bad, #dc2626)' : 'var(--good, #047857)' }}>
               {disputedPayments.length > 0
                 ? `${disputedPayments.length} Active Dispute Action Required (${formatUsd(totalDisputed)})`
                 : '100% Clean Chargeback Record — Zero Open Disputes'}
             </strong>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
               {disputedPayments.length > 0
                 ? 'Generate comprehensive audit counter-evidence packages from signed agreements, photos, and client SMS.'
                 : 'Your merchant account has 0 chargebacks. Defense tools stand ready if a dispute is ever initiated.'}
@@ -53,9 +53,9 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
           style={{
             padding: '3rem 1.5rem',
             textAlign: 'center',
-            background: 'var(--panel-subtle, rgba(0,0,0,0.02))',
+            background: 'rgba(var(--tint), 0.03)',
             borderRadius: '8px',
-            border: '1px solid var(--border-subtle, #e2e8f0)',
+            border: '1px solid var(--line)',
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
@@ -63,8 +63,8 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
           }}
         >
           <div style={{ fontSize: '2.5rem' }}>🏆</div>
-          <strong style={{ fontSize: '1.1rem', color: 'var(--text-color, #0f172a)' }}>Dispute Defense Studio Standing By</strong>
-          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)', maxWidth: '460px' }}>
+          <strong style={{ fontSize: '1.1rem', color: 'var(--text)' }}>Dispute Defense Studio Standing By</strong>
+          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', maxWidth: '460px' }}>
             When a credit card issuer opens a dispute, our automated counter-evidence compiler will instantly assemble contract signatures, photo evidence, and timestamped SMS records to submit directly to Stripe.
           </p>
         </div>
@@ -82,8 +82,8 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
                   justifyContent: 'space-between',
                   alignItems: 'center',
                   padding: '1rem',
-                  background: '#fff',
-                  border: '1px solid rgba(239, 68, 68, 0.3)',
+                  background: 'var(--bg-2)',
+                  border: '1px solid rgba(239, 68, 68, 0.35)',
                   borderRadius: '8px',
                   flexWrap: 'wrap',
                   gap: '0.75rem',
@@ -110,17 +110,17 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
                   </div>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <strong style={{ fontSize: '0.95rem' }}>{p.clientName}</strong>
-                      <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>({p.jobRef})</span>
+                      <strong style={{ fontSize: '0.95rem', color: 'var(--text)' }}>{p.clientName}</strong>
+                      <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>({p.jobRef})</span>
                     </div>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                    <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
                       Dispute initiated on {p.disputedAt ? new Date(p.disputedAt).toLocaleDateString() : 'recently'}
                     </span>
                   </div>
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <strong style={{ fontSize: '1.15rem', color: '#dc2626' }}>{formatUsd(p.amount)}</strong>
+                  <strong style={{ fontSize: '1.15rem', color: 'var(--bad, #dc2626)' }}>{formatUsd(p.amount)}</strong>
                   <button
                     type="button"
                     className="btn primary"

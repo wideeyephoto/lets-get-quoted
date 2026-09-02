@@ -2,13 +2,13 @@
  * Deterministic color palette for customer monogram avatars
  */
 const PALETTES = [
-  { bg: 'rgba(59, 130, 246, 0.15)', color: '#2563eb' }, // Blue
-  { bg: 'rgba(16, 185, 129, 0.15)', color: '#059669' }, // Emerald
-  { bg: 'rgba(139, 92, 246, 0.15)', color: '#7c3aed' }, // Purple
-  { bg: 'rgba(245, 158, 11, 0.15)', color: '#d97706' }, // Amber
-  { bg: 'rgba(236, 72, 153, 0.15)', color: '#db2777' }, // Pink
-  { bg: 'rgba(14, 165, 233, 0.15)', color: '#0284c7' }, // Sky
-  { bg: 'rgba(20, 184, 166, 0.15)', color: '#0d9488' }, // Teal
+  { bg: 'rgba(59, 130, 246, 0.15)', color: '#1d4ed8' }, // Blue
+  { bg: 'rgba(16, 185, 129, 0.15)', color: '#047857' }, // Emerald
+  { bg: 'rgba(139, 92, 246, 0.15)', color: '#6d28d9' }, // Purple
+  { bg: 'rgba(245, 158, 11, 0.15)', color: '#b45309' }, // Amber
+  { bg: 'rgba(236, 72, 153, 0.15)', color: '#be185d' }, // Pink
+  { bg: 'rgba(14, 165, 233, 0.15)', color: '#0369a1' }, // Sky
+  { bg: 'rgba(20, 184, 166, 0.15)', color: '#0f766e' }, // Teal
 ];
 
 export function getClientInitials(name: string): string {

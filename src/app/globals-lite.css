@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 2194eb3570d36aa3
+   source-sha256: dfd543df39c7164c
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -105,6 +105,14 @@
   --chrome: rgba(5, 7, 12, 0.86);
   --chrome-soft: rgba(5, 7, 12, 0.76);
   --chrome-solid: rgba(5, 7, 12, 0.92);
+  /* Theme compatibility aliases */
+  --card-bg: var(--bg-2);
+  --panel-bg: var(--bg-2);
+  --border-subtle: var(--line);
+  --text-muted: var(--muted);
+  --text-primary: var(--text);
+  --text-color: var(--text);
+  --panel-subtle: rgba(var(--tint), 0.04);
   background: var(--bg);
   color: var(--text);
 }
@@ -13672,6 +13680,15 @@ a.metric-card-link:hover {
   font-size: clamp(1.2rem, 2.4vw, 1.7rem);
 }
 
+.toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+
 .status-tabs,
 .tabs {
   display: flex;
@@ -13708,6 +13725,36 @@ a.metric-card-link:hover {
 :root[data-theme='light'] .tab.active {
   background: #16202b;
   color: #ffffff;
+}
+
+:root[data-theme='sunlight'] .status-tab.active,
+:root[data-theme='sunlight'] .tabnav-item.active,
+:root[data-theme='sunlight'] .tab.active {
+  background: #ffffff !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+  border: 1.5px solid #090d16 !important;
+  box-shadow: 0 1px 4px rgba(9, 13, 22, 0.14) !important;
+}
+
+:root[data-theme='sunlight'] .tab.active span,
+:root[data-theme='sunlight'] .tab.active svg {
+  color: #090d16 !important;
+}
+
+:root[data-theme='clarity'] .status-tab.active,
+:root[data-theme='clarity'] .tabnav-item.active,
+:root[data-theme='clarity'] .tab.active {
+  background: #ffffff !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+  border: 2px solid #090d16 !important;
+  box-shadow: 0 1px 4px rgba(9, 13, 22, 0.14) !important;
+}
+
+:root[data-theme='clarity'] .tab.active span,
+:root[data-theme='clarity'] .tab.active svg {
+  color: #090d16 !important;
 }
 
 .job-row {
@@ -21356,16 +21403,17 @@ button.plan-badge.warn.is-action:focus-visible {
    .btn.primary is also the button on a contractor's public surfaces, and that
    is their brand, not ours. */
 :root[data-theme='light'] .workspace-shell .btn.primary {
-  background: rgba(28, 86, 168, 0.08);
-  color: #1c56a8;
-  border-color: rgba(28, 86, 168, 0.42);
-  box-shadow: none;
+  background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%);
+  color: #ffffff;
+  border-color: #9a3412;
+  box-shadow: 0 2px 8px rgba(234, 88, 12, 0.35);
 }
 
 :root[data-theme='light'] .workspace-shell .btn.primary:hover {
-  background: rgba(28, 86, 168, 0.15);
-  border-color: rgba(28, 86, 168, 0.6);
-  box-shadow: none;
+  background: linear-gradient(180deg, #f97316 0%, #ea580c 100%);
+  color: #ffffff;
+  border-color: #c2410c;
+  box-shadow: 0 4px 14px rgba(234, 88, 12, 0.45);
 }
 
 @media (prefers-reduced-motion: reduce) {

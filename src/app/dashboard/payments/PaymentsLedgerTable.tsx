@@ -43,8 +43,8 @@ function StatusGlowPill({ status }: { status: string }) {
             fontSize: '0.75rem',
             fontWeight: 600,
             background: 'rgba(16, 185, 129, 0.12)',
-            color: '#059669',
-            border: '1px solid rgba(16, 185, 129, 0.25)',
+            color: 'var(--good, #047857)',
+            border: '1px solid rgba(16, 185, 129, 0.3)',
             boxShadow: '0 0 10px -2px rgba(16, 185, 129, 0.2)',
           }}
         >
@@ -64,8 +64,8 @@ function StatusGlowPill({ status }: { status: string }) {
             fontSize: '0.75rem',
             fontWeight: 600,
             background: 'rgba(245, 158, 11, 0.12)',
-            color: '#d97706',
-            border: '1px solid rgba(245, 158, 11, 0.25)',
+            color: 'var(--warn, #b45309)',
+            border: '1px solid rgba(245, 158, 11, 0.3)',
           }}
         >
           <span style={{ fontSize: '0.7rem' }}>⏳</span> Pending
@@ -83,8 +83,8 @@ function StatusGlowPill({ status }: { status: string }) {
             fontSize: '0.75rem',
             fontWeight: 600,
             background: 'rgba(239, 68, 68, 0.12)',
-            color: '#dc2626',
-            border: '1px solid rgba(239, 68, 68, 0.25)',
+            color: 'var(--bad, #dc2626)',
+            border: '1px solid rgba(239, 68, 68, 0.3)',
           }}
         >
           <span style={{ fontSize: '0.7rem' }}>✕</span> Failed
@@ -102,8 +102,8 @@ function StatusGlowPill({ status }: { status: string }) {
             fontSize: '0.75rem',
             fontWeight: 600,
             background: 'rgba(100, 116, 139, 0.12)',
-            color: '#475569',
-            border: '1px solid rgba(100, 116, 139, 0.25)',
+            color: 'var(--muted, #475569)',
+            border: '1px solid rgba(100, 116, 139, 0.3)',
           }}
         >
           <span style={{ fontSize: '0.7rem' }}>↩</span> Refunded
@@ -121,8 +121,8 @@ function StatusGlowPill({ status }: { status: string }) {
             fontSize: '0.75rem',
             fontWeight: 600,
             background: 'rgba(220, 38, 38, 0.12)',
-            color: '#dc2626',
-            border: '1px solid rgba(220, 38, 38, 0.3)',
+            color: 'var(--bad, #dc2626)',
+            border: '1px solid rgba(220, 38, 38, 0.35)',
             boxShadow: '0 0 10px -2px rgba(220, 38, 38, 0.25)',
           }}
         >
@@ -322,15 +322,15 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
       </div>
 
       {/* Filter Stats & Method Chips */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span>
             Showing <strong>{filteredAndSortedRows.length}</strong> of {initialRows.length} transactions
           </span>
-          <span style={{ color: 'var(--border-subtle, #cbd5e1)' }}>•</span>
+          <span style={{ color: 'var(--muted-2, #94a3b8)' }}>•</span>
           <span>Filtered Gross: <strong>{formatUsd(filteredGross)}</strong></span>
-          <span style={{ color: 'var(--border-subtle, #cbd5e1)' }}>•</span>
-          <span style={{ color: '#059669', fontWeight: 600 }}>Net Cash: <strong>{formatUsd(filteredNet)}</strong></span>
+          <span style={{ color: 'var(--muted-2, #94a3b8)' }}>•</span>
+          <span style={{ color: 'var(--good, #047857)', fontWeight: 600 }}>Net Cash: <strong>{formatUsd(filteredNet)}</strong></span>
         </div>
 
         {/* Quick Filter Chips */}
@@ -351,9 +351,9 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                 fontSize: '0.74rem',
                 padding: '0.15rem 0.5rem',
                 borderRadius: '999px',
-                border: methodFilter === chip.key ? '1px solid var(--primary, #3b82f6)' : '1px solid var(--border-subtle, #e2e8f0)',
-                background: methodFilter === chip.key ? 'rgba(59, 130, 246, 0.1)' : 'transparent',
-                color: methodFilter === chip.key ? 'var(--primary, #3b82f6)' : 'var(--text-muted)',
+                border: methodFilter === chip.key ? '1px solid var(--accent)' : '1px solid var(--line)',
+                background: methodFilter === chip.key ? 'rgba(var(--tint), 0.1)' : 'transparent',
+                color: methodFilter === chip.key ? 'var(--text)' : 'var(--muted)',
                 fontWeight: methodFilter === chip.key ? 700 : 500,
                 cursor: 'pointer',
               }}
@@ -413,10 +413,10 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
       )}
 
       {/* Streamlined Transactions Table */}
-      <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px' }}>
+      <div className="table-responsive" style={{ overflowX: 'auto', border: '1px solid var(--line)', borderRadius: '8px' }}>
         <table className="data-table" style={{ width: '100%', fontSize: '0.84rem', borderCollapse: 'collapse' }}>
           <thead>
-            <tr style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.02))' }}>
+            <tr style={{ background: 'rgba(var(--tint), 0.03)' }}>
               <th style={{ padding: '0.65rem 0.5rem', width: '32px', textAlign: 'center' }}>
                 <input
                   type="checkbox"
@@ -446,7 +446,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
           <tbody>
             {filteredAndSortedRows.length === 0 ? (
               <tr>
-                <td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--text-muted)' }}>
+                <td colSpan={8} style={{ textAlign: 'center', padding: '2.5rem 1rem', color: 'var(--muted)' }}>
                   <div style={{ fontSize: '1.75rem', marginBottom: '0.4rem' }}>🔍</div>
                   <strong>No transactions match your filter</strong>
                   <p style={{ margin: '0.25rem 0 0', fontSize: '0.8rem' }}>Try clearing filters or search query.</p>
@@ -466,12 +466,12 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                   <tr
                     key={p.id}
                     style={{
-                      borderTop: '1px solid var(--border-subtle, #e2e8f0)',
-                      background: isSelected ? 'rgba(59, 130, 246, 0.05)' : 'transparent',
+                      borderTop: '1px solid var(--line)',
+                      background: isSelected ? 'rgba(var(--tint), 0.08)' : 'transparent',
                       transition: 'background 0.15s ease',
                     }}
                     onMouseEnter={(e) => {
-                      if (!isSelected) e.currentTarget.style.background = 'rgba(59, 130, 246, 0.03)';
+                      if (!isSelected) e.currentTarget.style.background = 'rgba(var(--tint), 0.04)';
                     }}
                     onMouseLeave={(e) => {
                       if (!isSelected) e.currentTarget.style.background = 'transparent';
@@ -489,7 +489,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                     </td>
 
                     {/* Date */}
-                    <td style={{ padding: '0.6rem 0.8rem', whiteSpace: 'nowrap', color: 'var(--text-muted)' }}>
+                    <td style={{ padding: '0.6rem 0.8rem', whiteSpace: 'nowrap', color: 'var(--muted)' }}>
                       {dateStr}
                     </td>
 
@@ -514,17 +514,17 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                           {initials}
                         </div>
                         <div>
-                          <strong style={{ fontSize: '0.86rem', display: 'block' }}>{p.clientName}</strong>
-                          <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{p.jobRef}</span>
+                          <strong style={{ fontSize: '0.86rem', display: 'block', color: 'var(--text)' }}>{p.clientName}</strong>
+                          <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>{p.jobRef}</span>
                         </div>
                       </div>
                     </td>
 
                     {/* Description */}
                     <td style={{ padding: '0.6rem 0.8rem' }}>
-                      <span style={{ fontSize: '0.84rem' }}>{p.label}</span>
+                      <span style={{ fontSize: '0.84rem', color: 'var(--text)' }}>{p.label}</span>
                       {p.invoiceRef && (
-                        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                        <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)' }}>
                           Inv #{p.invoiceRef}
                         </span>
                       )}
@@ -532,17 +532,17 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
 
                     {/* Method */}
                     <td style={{ padding: '0.6rem 0.8rem', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '0.8rem' }}>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--text)' }}>
                         {getMethodIcon(p.paymentMethod)} {p.paymentMethod}
                       </span>
                     </td>
 
                     {/* Streamlined Amount with Net Cash & Fee Breakdown */}
                     <td style={{ padding: '0.6rem 0.8rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                      <strong style={{ fontSize: '0.9rem', display: 'block', color: 'var(--text-color, #0f172a)' }}>
+                      <strong style={{ fontSize: '0.9rem', display: 'block', color: 'var(--text)' }}>
                         {formatUsd(p.amount)}
                       </strong>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
                         Net {formatUsd(p.netAmount)} {p.platformFee > 0 ? `· Fee -${formatUsd(p.platformFee)}` : '· $0 Fee'}
                       </span>
                     </td>
@@ -559,7 +559,7 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                           <button
                             type="button"
                             className="btn secondary"
-                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, color: '#059669' }}
+                            style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem', fontWeight: 600, color: 'var(--good, #047857)' }}
                             title="View & Print Official Receipt"
                             onClick={() => onOpenModal('payment_receipt', p)}
                           >
@@ -602,10 +602,10 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                                 right: 0,
                                 top: '100%',
                                 marginTop: '4px',
-                                background: '#ffffff',
-                                border: '1px solid var(--border-subtle, #e2e8f0)',
+                                background: 'var(--bg-2)',
+                                border: '1px solid var(--line)',
                                 borderRadius: '8px',
-                                boxShadow: '0 10px 25px rgba(0,0,0,0.12)',
+                                boxShadow: 'var(--shadow-strong)',
                                 zIndex: 100,
                                 minWidth: '150px',
                                 padding: '0.3rem 0',
@@ -624,9 +624,9 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                                   textAlign: 'left',
                                   fontSize: '0.78rem',
                                   cursor: 'pointer',
-                                  color: 'var(--text-color)',
+                                  color: 'var(--text)',
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(var(--tint), 0.08)')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
                                 onClick={() => {
                                   setOpenMenuId(null);
@@ -647,9 +647,9 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                                   textAlign: 'left',
                                   fontSize: '0.78rem',
                                   cursor: 'pointer',
-                                  color: 'var(--text-color)',
+                                  color: 'var(--text)',
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(var(--tint), 0.08)')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
                                 onClick={() => {
                                   setOpenMenuId(null);
@@ -670,10 +670,10 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                                   textAlign: 'left',
                                   fontSize: '0.78rem',
                                   cursor: 'pointer',
-                                  color: '#059669',
+                                  color: 'var(--good, #047857)',
                                   fontWeight: 600,
                                 }}
-                                onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(var(--tint), 0.08)')}
                                 onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
                                 onClick={() => {
                                   setOpenMenuId(null);
@@ -695,9 +695,9 @@ export default function PaymentsLedgerTable({ initialRows, summary: _summary, on
                                     textAlign: 'left',
                                     fontSize: '0.78rem',
                                     cursor: 'pointer',
-                                    color: '#dc2626',
+                                    color: 'var(--bad, #dc2626)',
                                   }}
-                                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--panel-subtle, #f8fafc)')}
+                                  onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(var(--tint), 0.08)')}
                                   onMouseLeave={(e) => (e.currentTarget.style.background = 'none')}
                                   onClick={() => {
                                     setOpenMenuId(null);

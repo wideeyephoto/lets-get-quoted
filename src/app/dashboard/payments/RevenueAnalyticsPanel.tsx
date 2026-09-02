@@ -47,9 +47,9 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       {/* Top Insights Row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1rem' }}>
-        <div style={{ padding: '1.25rem', background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
+        <div style={{ padding: '1.25rem', background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+            <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>
               Total 12-Month Gross
             </span>
             {momGrowthPct !== 0 && (
@@ -58,8 +58,8 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
                   fontSize: '0.74rem',
                   padding: '0.1rem 0.4rem',
                   borderRadius: '999px',
-                  background: momGrowthPct > 0 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                  color: momGrowthPct > 0 ? '#059669' : '#dc2626',
+                  background: momGrowthPct > 0 ? 'rgba(16, 185, 129, 0.12)' : 'rgba(239, 68, 68, 0.12)',
+                  color: momGrowthPct > 0 ? 'var(--good, #047857)' : 'var(--bad, #dc2626)',
                   fontWeight: 700,
                 }}
               >
@@ -67,45 +67,45 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
               </span>
             )}
           </div>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700, marginTop: '0.3rem', color: 'var(--text)' }}>
             {formatUsd(analytics.totalGross)}
           </div>
-          <div style={{ fontSize: '0.8rem', color: 'var(--primary, #10b981)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: '0.8rem', color: 'var(--good, #047857)', marginTop: '0.2rem' }}>
             Net Reconciled: <strong>{formatUsd(analytics.totalNet)}</strong>
           </div>
         </div>
 
-        <div style={{ padding: '1.25rem', background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+        <div style={{ padding: '1.25rem', background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>
             ACH Optimization Savings
           </span>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: '#10b981', marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700, color: 'var(--good, #047857)', marginTop: '0.3rem' }}>
             +{formatUsd(analytics.achSavings)}
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.2rem' }}>
             Saved by routing invoices &ge;$500 through $5 capped ACH
           </div>
         </div>
 
-        <div style={{ padding: '1.25rem', background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
-          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>
+        <div style={{ padding: '1.25rem', background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+          <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>
             Effective Fee Rate
           </span>
-          <div style={{ fontSize: '1.6rem', fontWeight: 700, marginTop: '0.3rem' }}>
+          <div style={{ fontSize: '1.6rem', fontWeight: 700, marginTop: '0.3rem', color: 'var(--text)' }}>
             {analytics.totalGross > 0 ? ((analytics.totalFees / analytics.totalGross) * 100).toFixed(2) : '0.00'}%
           </div>
-          <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+          <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.2rem' }}>
             Blended rate across Card, ACH, and Manual receipts
           </div>
         </div>
       </div>
 
       {/* Trajectory Bar Chart with Interactive Hover */}
-      <div style={{ background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', padding: '1.5rem' }}>
+      <div style={{ background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)', padding: '1.5rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem', flexWrap: 'wrap', gap: '0.5rem' }}>
           <div>
-            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600 }}>Revenue Trajectory &amp; Volume</h3>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 600, color: 'var(--text)' }}>Revenue Trajectory &amp; Volume</h3>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8rem', color: 'var(--muted)' }}>
               {hoveredPoint
                 ? `${hoveredPoint.label}: ${formatUsd(hoveredPoint.gross)} gross (${hoveredPoint.count} payments)`
                 : 'Hover bars to inspect monthly/daily revenue breakdowns'}
@@ -131,11 +131,11 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
         </div>
 
         {trendData.length === 0 ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--muted)' }}>
             No revenue recorded for this period.
           </div>
         ) : (
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.65rem', height: '220px', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-subtle, #e2e8f0)' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: '0.65rem', height: '220px', paddingBottom: '1.5rem', borderBottom: '1px solid var(--line)' }}>
             {trendData.map((point) => {
               const heightPct = Math.max(6, Math.round((point.gross / maxGross) * 100));
               const isHovered = hoveredPoint?.label === point.label;
@@ -169,7 +169,7 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
                       boxShadow: isHovered ? '0 0 12px rgba(16, 185, 129, 0.4)' : 'none',
                     }}
                   />
-                  <span style={{ fontSize: '0.72rem', color: isHovered ? 'var(--text-color)' : 'var(--text-muted)', fontWeight: isHovered ? 700 : 400, marginTop: '0.4rem', whiteSpace: 'nowrap' }}>
+                  <span style={{ fontSize: '0.72rem', color: isHovered ? 'var(--text)' : 'var(--muted)', fontWeight: isHovered ? 700 : 400, marginTop: '0.4rem', whiteSpace: 'nowrap' }}>
                     {point.label}
                   </span>
                 </div>
@@ -195,20 +195,20 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '1.25rem' }}>⚡</span>
             <div>
-              <strong style={{ fontSize: '0.95rem' }}>Interactive ACH Fee Leakage Simulator</strong>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--text)' }}>Interactive ACH Fee Leakage Simulator</strong>
+              <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
                 Slide to simulate migrating card invoices to $5 capped ACH bank transfers
               </div>
             </div>
           </div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#059669' }}>
+          <div style={{ fontSize: '1.15rem', fontWeight: 800, color: 'var(--good, #047857)' }}>
             +{formatUsd(projectedAnnualSavings)}/yr Potential Margin Gain
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '1rem', alignItems: 'center' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem' }}>
+            <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.3rem', color: 'var(--text)' }}>
               Target ACH Adoption: {achTargetPct}% of credit card volume
             </label>
             <input
@@ -222,13 +222,13 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
             />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', fontSize: '0.82rem' }}>
-            <div style={{ padding: '0.4rem 0.6rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', textAlign: 'center' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', display: 'block' }}>Monthly Savings</span>
-              <strong style={{ color: '#059669' }}>+{formatUsd(projectedMonthlySavings)}/mo</strong>
+            <div style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+              <span style={{ color: 'var(--muted)', fontSize: '0.72rem', display: 'block' }}>Monthly Savings</span>
+              <strong style={{ color: 'var(--good, #047857)' }}>+{formatUsd(projectedMonthlySavings)}/mo</strong>
             </div>
-            <div style={{ padding: '0.4rem 0.6rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', textAlign: 'center' }}>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', display: 'block' }}>Annual Savings</span>
-              <strong style={{ color: '#059669' }}>+{formatUsd(projectedAnnualSavings)}/yr</strong>
+            <div style={{ padding: '0.4rem 0.6rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+              <span style={{ color: 'var(--muted)', fontSize: '0.72rem', display: 'block' }}>Annual Savings</span>
+              <strong style={{ color: 'var(--good, #047857)' }}>+{formatUsd(projectedAnnualSavings)}/yr</strong>
             </div>
           </div>
         </div>
@@ -250,37 +250,37 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <span style={{ fontSize: '1.2rem' }}>🔮</span>
             <div>
-              <strong style={{ fontSize: '0.95rem' }}>30-Day Predictive Cash Velocity Inflow</strong>
-              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              <strong style={{ fontSize: '0.95rem', color: 'var(--text)' }}>30-Day Predictive Cash Velocity Inflow</strong>
+              <div style={{ fontSize: '0.8rem', color: 'var(--muted)' }}>
                 Forecasted cash arrival based on customer payment velocity and open milestones
               </div>
             </div>
           </div>
-          <div style={{ fontSize: '1.15rem', fontWeight: 700, color: '#10b981' }}>
+          <div style={{ fontSize: '1.15rem', fontWeight: 700, color: 'var(--good, #047857)' }}>
             +{formatUsd(projectedWeek1 + projectedWeek2 + projectedWeek3 + projectedWeek4)} Expected
           </div>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.6rem', marginTop: '0.25rem' }}>
-          <div style={{ padding: '0.6rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Days 1–7</span>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#10b981' }}>{formatUsd(projectedWeek1)}</div>
-            <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>High Confidence</small>
+          <div style={{ padding: '0.6rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase' }}>Days 1–7</span>
+            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--good, #047857)' }}>{formatUsd(projectedWeek1)}</div>
+            <small style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>High Confidence</small>
           </div>
-          <div style={{ padding: '0.6rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Days 8–14</span>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{formatUsd(projectedWeek2)}</div>
-            <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Milestone Draws</small>
+          <div style={{ padding: '0.6rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase' }}>Days 8–14</span>
+            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>{formatUsd(projectedWeek2)}</div>
+            <small style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Milestone Draws</small>
           </div>
-          <div style={{ padding: '0.6rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Days 15–21</span>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{formatUsd(projectedWeek3)}</div>
-            <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Scheduled Finals</small>
+          <div style={{ padding: '0.6rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase' }}>Days 15–21</span>
+            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>{formatUsd(projectedWeek3)}</div>
+            <small style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Scheduled Finals</small>
           </div>
-          <div style={{ padding: '0.6rem', background: '#fff', borderRadius: '6px', border: '1px solid var(--border-subtle, #e2e8f0)', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Days 22–30</span>
-            <div style={{ fontSize: '1.05rem', fontWeight: 700 }}>{formatUsd(projectedWeek4)}</div>
-            <small style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Net-30 Terms</small>
+          <div style={{ padding: '0.6rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.72rem', color: 'var(--muted)', textTransform: 'uppercase' }}>Days 22–30</span>
+            <div style={{ fontSize: '1.05rem', fontWeight: 700, color: 'var(--text)' }}>{formatUsd(projectedWeek4)}</div>
+            <small style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>Net-30 Terms</small>
           </div>
         </div>
       </div>
@@ -288,23 +288,23 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
       {/* Revenue Streams & Payment Methods Breakdown */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '1.25rem' }}>
         {/* Revenue Streams */}
-        <div style={{ background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', padding: '1.25rem' }}>
-          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Revenue by Payment Stage</h3>
+        <div style={{ background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)', padding: '1.25rem' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Revenue by Payment Stage</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             {analytics.streams.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No payment breakdown available.</p>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>No payment breakdown available.</p>
             ) : (
               analytics.streams.map((stream) => (
                 <div key={stream.key}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                    <span>
+                    <span style={{ color: 'var(--text)' }}>
                       <strong style={{ color: stream.color }}>●</strong> {stream.name} ({stream.count})
                     </span>
-                    <span>
+                    <span style={{ color: 'var(--text)' }}>
                       <strong>{formatUsd(stream.amount)}</strong> ({stream.percentage}%)
                     </span>
                   </div>
-                  <div style={{ height: '6px', background: 'var(--panel-subtle, rgba(0,0,0,0.06))', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ height: '6px', background: 'rgba(var(--tint), 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
                     <div style={{ width: `${stream.percentage}%`, height: '100%', background: stream.color, borderRadius: '999px' }} />
                   </div>
                 </div>
@@ -314,21 +314,21 @@ export default function RevenueAnalyticsPanel({ analytics }: Props) {
         </div>
 
         {/* Payment Methods */}
-        <div style={{ background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)', padding: '1.25rem' }}>
-          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600 }}>Payment Method Distribution</h3>
+        <div style={{ background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)', padding: '1.25rem' }}>
+          <h3 style={{ margin: '0 0 1rem', fontSize: '1rem', fontWeight: 600, color: 'var(--text)' }}>Payment Method Distribution</h3>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
             {analytics.methods.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>No method breakdown available.</p>
+              <p style={{ color: 'var(--muted)', fontSize: '0.85rem' }}>No method breakdown available.</p>
             ) : (
               analytics.methods.map((method) => (
                 <div key={method.method}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', marginBottom: '0.25rem' }}>
-                    <span>{method.label} ({method.count})</span>
-                    <span>
+                    <span style={{ color: 'var(--text)' }}>{method.label} ({method.count})</span>
+                    <span style={{ color: 'var(--text)' }}>
                       <strong>{formatUsd(method.amount)}</strong> ({method.percentage}%)
                     </span>
                   </div>
-                  <div style={{ height: '6px', background: 'var(--panel-subtle, rgba(0,0,0,0.06))', borderRadius: '999px', overflow: 'hidden' }}>
+                  <div style={{ height: '6px', background: 'rgba(var(--tint), 0.08)', borderRadius: '999px', overflow: 'hidden' }}>
                     <div style={{ width: `${method.percentage}%`, height: '100%', background: 'var(--primary, #3b82f6)', borderRadius: '999px' }} />
                   </div>
                 </div>

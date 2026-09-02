@@ -130,27 +130,27 @@ function ControlledModal({
     >
       <div
         style={{
-          background: 'var(--panel-bg, #ffffff)',
-          color: 'var(--text-color, #0f172a)',
+          background: 'var(--bg-2)',
+          color: 'var(--text)',
           borderRadius: '12px',
-          boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          boxShadow: 'var(--shadow-strong)',
           width: '100%',
           maxWidth,
           maxHeight: '90vh',
           overflowY: 'auto',
-          border: '1px solid var(--border-subtle, #e2e8f0)',
+          border: '1px solid var(--line)',
         }}
       >
         <div
           style={{
             padding: '1.2rem 1.5rem',
-            borderBottom: '1px solid var(--border-subtle, #e2e8f0)',
+            borderBottom: '1px solid var(--line)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
-          <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{title}</h2>
+          <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600, color: 'var(--text)' }}>{title}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -160,7 +160,7 @@ function ControlledModal({
               fontSize: '1.4rem',
               lineHeight: 1,
               cursor: 'pointer',
-              color: 'var(--text-muted, #64748b)',
+              color: 'var(--muted)',
               padding: '0.2rem 0.4rem',
             }}
             aria-label="Close dialog"
