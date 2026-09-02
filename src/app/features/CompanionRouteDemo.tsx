@@ -16,7 +16,7 @@ export default function CompanionRouteDemo() {
   };
 
   return (
-    <div className={styles.routeDemoBox} aria-label="Interactive Quick Stop route simulator">
+    <div className={styles.routeDemoBox} style={{ gridColumn: '1 / -1' }} aria-label="Interactive Quick Stop route simulator">
       <div className={styles.routeDemoHeader}>
         <div className={styles.routeDemoStatus}>
           <span className={styles.routePulseDot} aria-hidden="true" />

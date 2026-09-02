@@ -880,10 +880,12 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.12) !important;
   backdrop-filter: blur(20px) !important;
   box-sizing: border-box !important;
+  scroll-margin-top: 104px !important;
 }
 
 .featuresTheme :global(.route-band > .features-theme_routeDemoBox__GtTiL),
-.featuresTheme :global(.route-band > [class*="routeDemoBox"]) {
+.featuresTheme :global(.route-band > [class*="routeDemoBox"]),
+.featuresTheme :global(.route-band > div:last-child) {
   grid-column: 1 / -1 !important;
   width: 100% !important;
   margin: 1.5rem 0 0 !important;

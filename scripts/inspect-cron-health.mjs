@@ -223,6 +223,7 @@ export async function runCronInspection({
       client = new Client({
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false },
+        connectionTimeoutMillis: 5000,
       });
       await client.connect();
     } catch (connErr) {
@@ -272,8 +273,11 @@ export async function runCronInspection({
     } else if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
       const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
       const cutoff = new Date(Date.now() - windowMinutes * 60000).toISOString();
-      const { data: allRecent } = await supabase.from('cron_runs').select('job, ok, started_at, error').gte('started_at', cutoff);
-      const { data: allEver } = await supabase.from('cron_runs').select('job, ok, started_at, error').order('started_at', { ascending: false }).limit(1000);
+      const { data: allRecent } = await supabase
+        .from('cron_runs')
+        .select('job, ok, started_at, error')
+        .gte('started_at', cutoff)
+        .limit(5000);
 
       const recentByJob = new Map();
       for (const r of allRecent || []) {
@@ -287,16 +291,54 @@ export async function runCronInspection({
       }
       rows = Array.from(recentByJob.values());
 
+      // Query the latest run for each declared job concurrently so daily and weekly crons
+      // are never crowded out by high-frequency sweep workers in a global limit
+      const everPromises = declared.map(async ({ job }) => {
+        const { data } = await supabase
+          .from('cron_runs')
+          .select('job, ok, started_at, error')
+          .eq('job', job)
+          .order('started_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        return data;
+      });
+      const everItems = (await Promise.all(everPromises)).filter(Boolean);
+
       const everMap = new Map();
       const successMapRaw = new Map();
-      for (const r of allEver || []) {
-        if (!everMap.has(r.job)) {
-          everMap.set(r.job, { job: r.job, last_run: r.started_at, latest_ok: r.ok, last_error: r.error });
-        }
-        if (r.ok && !successMapRaw.has(r.job)) {
-          successMapRaw.set(r.job, r.started_at);
+      for (const item of everItems) {
+        everMap.set(item.job, {
+          job: item.job,
+          last_run: item.started_at,
+          latest_ok: item.ok,
+          last_error: item.error,
+        });
+        if (item.ok) {
+          successMapRaw.set(item.job, item.started_at);
         }
       }
+
+      // If any job's latest run was failing, fetch its most recent successful run
+      const failingJobs = everItems.filter((item) => !item.ok).map((item) => item.job);
+      if (failingJobs.length > 0) {
+        const successPromises = failingJobs.map(async (job) => {
+          const { data } = await supabase
+            .from('cron_runs')
+            .select('job, started_at')
+            .eq('job', job)
+            .eq('ok', true)
+            .order('started_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          return data;
+        });
+        const successItems = (await Promise.all(successPromises)).filter(Boolean);
+        for (const item of successItems) {
+          successMapRaw.set(item.job, item.started_at);
+        }
+      }
+
       everRows = Array.from(everMap.values());
       successRows = Array.from(successMapRaw.entries()).map(([job, last_success]) => ({ job, last_success }));
     } else if (strict) {
