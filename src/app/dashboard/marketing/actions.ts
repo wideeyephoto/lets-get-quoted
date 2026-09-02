@@ -44,6 +44,7 @@ export async function updateEmailThemeAction(formData: FormData) {
 
   revalidatePath('/dashboard/marketing');
   revalidatePath('/dashboard/marketing/email-theme');
+  revalidatePath('/dashboard/marketing/campaigns');
 }
 
 /** Sends a real test email with the selected theme and preview scenario to the signed-in contractor. */

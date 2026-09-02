@@ -57,7 +57,7 @@ export default async function CampaignsPage({
     loadListHealth(supabase, accountId),
     loadDedicatedMessagingReadiness(accountId),
     supabase.from('accounts').select('business_name, mailing_address, reply_to_email').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name, published, subdomain, content, service_area').eq('account_id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name, published, subdomain, content, service_area, email_theme, accent_override, logo_url, template').eq('account_id', accountId).maybeSingle(),
     supabase.from('services').select('id, name, created_at, active').eq('account_id', accountId).eq('active', true),
     loadSentBeats(supabase, accountId),
     supabase.from('workspace_usage_credit_balances').select('resource_code, available_units').eq('account_id', accountId),
@@ -155,6 +155,11 @@ export default async function CampaignsPage({
     draft = { channel: searchParams.channel, audience: 'past', subject: '', body: '' };
   }
 
+  const emailTheme = (siteRow?.email_theme as string | null) ?? 'studio';
+  const websiteTemplate = (siteRow?.template as string | null) ?? null;
+  const accent = (siteRow?.accent_override as string | null) ?? null;
+  const logoUrl = (siteRow?.logo_url as string | null) ?? null;
+
   return (
     <CampaignsScreen
       campaigns={campaigns}
@@ -171,6 +176,11 @@ export default async function CampaignsPage({
       availableSmsCredits={availableSmsCredits}
       draft={draft}
       searchParams={searchParams}
+      emailTheme={emailTheme}
+      websiteTemplate={websiteTemplate}
+      accent={accent}
+      logoUrl={logoUrl}
+      businessName={businessName}
     />
   );
 }

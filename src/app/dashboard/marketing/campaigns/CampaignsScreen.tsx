@@ -1,7 +1,12 @@
+'use client';
+
+import { useState } from 'react';
 import { AUDIENCE_DEFS, type CampaignAudience, type Reach } from '@/lib/campaigns';
 import type { CalendarView } from '@/lib/marketing-calendar-data';
+import { EMAIL_THEMES, normalizeEmailTheme, type EmailThemeId } from '@/emails/brand';
 import MarketingNav from '../MarketingNav';
 import CampaignWorkspace from './CampaignWorkspace';
+import EmailTemplatePickerModal from './EmailTemplatePickerModal';
 
 /**
  * The Campaigns screen, given its data.
@@ -41,6 +46,11 @@ type Props = {
   basePath?: string;
   /** See MarketingNav — the demo lists only the sections it has built. */
   navOnly?: string[];
+  emailTheme?: string | null;
+  websiteTemplate?: string | null;
+  businessName?: string;
+  accent?: string | null;
+  logoUrl?: string | null;
 };
 
 export default function CampaignsScreen({
@@ -60,7 +70,17 @@ export default function CampaignsScreen({
   searchParams,
   basePath = '/dashboard',
   navOnly,
+  emailTheme: initialEmailTheme,
+  websiteTemplate,
+  businessName,
+  accent,
+  logoUrl,
 }: Props) {
+  const [currentEmailTheme, setCurrentEmailTheme] = useState<EmailThemeId>(() =>
+    normalizeEmailTheme(initialEmailTheme)
+  );
+  const [isEmailTemplateModalOpen, setIsEmailTemplateModalOpen] = useState(false);
+
   const emailSent = searchParams.emailSent ? Number(searchParams.emailSent) : 0;
   const smsQueued = searchParams.smsQueued ? Number(searchParams.smsQueued) : 0;
   const hasOutcome = searchParams.emailSent !== undefined || searchParams.smsQueued !== undefined;
@@ -76,8 +96,34 @@ export default function CampaignsScreen({
       </section>
 
       {searchParams.test === '1' ? (
-        <section className="panel workspace-section-card flash-banner flash-info">
-          <p>Test email sent to your inbox. Take a look, then send the real thing when it&apos;s ready.</p>
+        <section
+          className="panel workspace-section-card flash-banner flash-info"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '0.75rem',
+          }}
+        >
+          <p style={{ margin: 0 }}>Test email sent to your inbox. Take a look, then send the real thing when it&apos;s ready.</p>
+          <button
+            type="button"
+            className="btn ghost"
+            style={{
+              fontSize: '0.82rem',
+              padding: '0.35rem 0.75rem',
+              background: 'rgba(255, 255, 255, 0.08)',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+            }}
+            onClick={() => setIsEmailTemplateModalOpen(true)}
+          >
+            <span>🎨</span>
+            <span>Change email template ({EMAIL_THEMES.find((t) => t.id === currentEmailTheme)?.name || 'Studio'})</span>
+          </button>
         </section>
       ) : null}
 
@@ -100,6 +146,12 @@ export default function CampaignsScreen({
         recommendations={recommendations}
         view={view}
         initialTab={searchParams.tab as any}
+        emailTheme={currentEmailTheme}
+        websiteTemplate={websiteTemplate}
+        businessName={businessName}
+        accent={accent}
+        logoUrl={logoUrl}
+        onOpenEmailTemplateModal={() => setIsEmailTemplateModalOpen(true)}
         composer={{
           audiences: AUDIENCE_DEFS,
           reach,
@@ -112,6 +164,17 @@ export default function CampaignsScreen({
           availableEmailCredits,
           availableSmsCredits,
         }}
+      />
+
+      <EmailTemplatePickerModal
+        isOpen={isEmailTemplateModalOpen}
+        onClose={() => setIsEmailTemplateModalOpen(false)}
+        currentTheme={currentEmailTheme}
+        websiteTemplate={websiteTemplate}
+        businessName={businessName}
+        accent={accent}
+        logoUrl={logoUrl}
+        onThemeSaved={(newTheme) => setCurrentEmailTheme(newTheme)}
       />
     </main>
   );

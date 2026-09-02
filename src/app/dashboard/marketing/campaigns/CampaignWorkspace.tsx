@@ -42,6 +42,12 @@ export default function CampaignWorkspace({
   recommendations,
   view,
   initialTab,
+  emailTheme,
+  websiteTemplate,
+  businessName,
+  accent,
+  logoUrl,
+  onOpenEmailTemplateModal,
 }: {
   composer: Omit<ComposerProps, 'initial'> & { initial?: ComposerProps['initial'] };
   campaigns: Campaign[];
@@ -51,6 +57,12 @@ export default function CampaignWorkspace({
   recommendations: CampaignRecommendations | null;
   view: CalendarView;
   initialTab?: CampaignTab;
+  emailTheme?: string | null;
+  websiteTemplate?: string | null;
+  businessName?: string;
+  accent?: string | null;
+  logoUrl?: string | null;
+  onOpenEmailTemplateModal?: () => void;
 }) {
   const normalizeTab = (tab?: string | null): CampaignTab => {
     if (tab === 'calendar' || tab === 'seasonal') return 'calendar';
@@ -212,7 +224,20 @@ export default function CampaignWorkspace({
               </div>
             </div>
             {hasRecipients ? (
-              <CampaignComposer key={fill} {...composer} initial={initial} onDirtyChange={setDirty} />
+              <CampaignComposer
+                key={fill}
+                {...composer}
+                initial={initial}
+                onDirtyChange={setDirty}
+                emailTheme={emailTheme}
+                websiteTemplate={websiteTemplate}
+                businessName={businessName}
+                accent={accent}
+                logoUrl={logoUrl}
+                onOpenEmailTemplateModal={onOpenEmailTemplateModal}
+                allTemplates={recommendations?.all ?? []}
+                onSelectDraft={applyDraft}
+              />
             ) : (
               <p className="empty-state">
                 No clients yet. Once you&apos;ve created jobs or taken leads, your customers show up here and you can

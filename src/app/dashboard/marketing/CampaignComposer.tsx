@@ -11,6 +11,11 @@ import {
   smsSegments,
 } from '@/lib/campaign-guard';
 import { AiSparkleButton, AiRefineChips } from '@/components/ai';
+import { EMAIL_THEMES, normalizeEmailTheme, type EmailThemeId } from '@/emails/brand';
+import type { TemplateCard } from '@/lib/campaign-recommendations';
+import type { CampaignDraft } from '@/lib/marketing-draft-data';
+import EmailTemplatePickerModal from './campaigns/EmailTemplatePickerModal';
+import CampaignStarterPickerModal from './campaigns/CampaignStarterPickerModal';
 import {
   draftMarketingCampaignAction,
   previewCampaignEmailAction,
@@ -57,6 +62,14 @@ type Props = {
   availableSmsCredits?: number | null;
   /** Reports whether there's unsaved text in the box, so a caller can confirm before replacing it. */
   onDirtyChange?: (dirty: boolean) => void;
+  emailTheme?: string | null;
+  websiteTemplate?: string | null;
+  businessName?: string;
+  accent?: string | null;
+  logoUrl?: string | null;
+  onOpenEmailTemplateModal?: () => void;
+  allTemplates?: TemplateCard[];
+  onSelectDraft?: (draft: CampaignDraft) => void;
 };
 
 const CHANNELS = [
@@ -89,6 +102,14 @@ export default function CampaignComposer({
   availableEmailCredits,
   availableSmsCredits,
   onDirtyChange,
+  emailTheme,
+  websiteTemplate,
+  businessName,
+  accent,
+  logoUrl,
+  onOpenEmailTemplateModal,
+  allTemplates,
+  onSelectDraft,
 }: Props) {
   const initialChannel = (!customerTextingReady && initial?.channel && initial.channel !== 'email')
     ? 'email'
@@ -103,6 +124,26 @@ export default function CampaignComposer({
   const [previewing, startPreviewing] = useTransition();
   const [generatedOptions, setGeneratedOptions] = useState<string[]>([]);
   const [draftingAi, startDraftingAi] = useTransition();
+  const [activeTheme, setActiveTheme] = useState<EmailThemeId>(() => normalizeEmailTheme(emailTheme));
+  const [isLocalThemeModalOpen, setIsLocalThemeModalOpen] = useState(false);
+  const [isStarterModalOpen, setIsStarterModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (emailTheme) {
+      setActiveTheme(normalizeEmailTheme(emailTheme));
+    }
+  }, [emailTheme]);
+
+  const openEmailThemeModal = onOpenEmailTemplateModal || (() => setIsLocalThemeModalOpen(true));
+
+  const handleThemeSaved = (newTheme: EmailThemeId) => {
+    setActiveTheme(newTheme);
+    if (preview) {
+      startPreviewing(async () => {
+        setPreview(await previewCampaignEmailAction(subject, body));
+      });
+    }
+  };
 
   const subjectOptions = (generatedOptions.length > 0 ? generatedOptions : initial?.subjectOptions) ?? [];
 
@@ -236,10 +277,22 @@ export default function CampaignComposer({
       {initial?.beatId ? <input type="hidden" name="beatId" value={initial.beatId} /> : null}
 
       {initial?.templateName ? (
-        <div className="campaign-template-banner">
-          <strong>{initial.templateName}</strong>
-          {initial.templateExplanation ? <p>{initial.templateExplanation}</p> : null}
-          {initial.sendTimeHint ? <p className="campaign-template-banner-hint">{initial.sendTimeHint}</p> : null}
+        <div className="campaign-template-banner" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <div>
+            <strong>{initial.templateName}</strong>
+            {initial.templateExplanation ? <p>{initial.templateExplanation}</p> : null}
+            {initial.sendTimeHint ? <p className="campaign-template-banner-hint">{initial.sendTimeHint}</p> : null}
+          </div>
+          {allTemplates && allTemplates.length > 0 && onSelectDraft ? (
+            <button
+              type="button"
+              className="btn ghost"
+              style={{ fontSize: '0.78rem', padding: '0.25rem 0.65rem', alignSelf: 'center', background: 'rgba(255, 255, 255, 0.06)' }}
+              onClick={() => setIsStarterModalOpen(true)}
+            >
+              📋 Change starter template
+            </button>
+          ) : null}
         </div>
       ) : null}
 
@@ -340,13 +393,25 @@ export default function CampaignComposer({
               Pick a seasonal topic to generate tailored subject lines and high-converting copy.
             </p>
           </div>
-          <AiSparkleButton
-            onClick={() => generateWithAi()}
-            loading={draftingAi}
-            loadingLabel="Drafting campaign..."
-          >
-            Draft Campaign
-          </AiSparkleButton>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            {allTemplates && allTemplates.length > 0 && onSelectDraft ? (
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}
+                onClick={() => setIsStarterModalOpen(true)}
+              >
+                📋 Browse templates
+              </button>
+            ) : null}
+            <AiSparkleButton
+              onClick={() => generateWithAi()}
+              loading={draftingAi}
+              loadingLabel="Drafting campaign..."
+            >
+              Draft Campaign
+            </AiSparkleButton>
+          </div>
         </div>
         <AiRefineChips
           options={CAMPAIGN_PRESET_TOPICS}
@@ -497,6 +562,18 @@ export default function CampaignComposer({
         </div>
         <div className="campaign-actions">
           {wantEmail ? (
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={openEmailThemeModal}
+              title="Change email design template"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              <span>🎨</span>
+              <span>Template: <strong>{EMAIL_THEMES.find((t) => t.id === activeTheme)?.name || 'Studio'}</strong> ▾</span>
+            </button>
+          ) : null}
+          {wantEmail ? (
             <button type="button" className="btn ghost" onClick={runPreview} disabled={previewing || !body.trim()}>
               {previewing ? 'Rendering…' : 'Preview the email'}
             </button>
@@ -533,7 +610,17 @@ export default function CampaignComposer({
       {preview ? (
         <div className="campaign-preview">
           <div className="campaign-preview-head">
-            <strong>This is the email</strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+              <strong>This is the email</strong>
+              <button
+                type="button"
+                className="btn ghost"
+                style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
+                onClick={openEmailThemeModal}
+              >
+                🎨 Change template ({EMAIL_THEMES.find((t) => t.id === activeTheme)?.name || 'Studio'})
+              </button>
+            </div>
             <button type="button" className="btn ghost" onClick={() => setPreview(null)}>Close</button>
           </div>
           <iframe title="Email preview" className="campaign-preview-frame" sandbox="" srcDoc={preview} />
@@ -542,6 +629,31 @@ export default function CampaignComposer({
             what makes it lawful to send.
           </p>
         </div>
+      ) : null}
+
+      {allTemplates && allTemplates.length > 0 && onSelectDraft ? (
+        <CampaignStarterPickerModal
+          isOpen={isStarterModalOpen}
+          onClose={() => setIsStarterModalOpen(false)}
+          templates={allTemplates}
+          onSelect={(draft) => {
+            onSelectDraft(draft);
+            setIsStarterModalOpen(false);
+          }}
+        />
+      ) : null}
+
+      {!onOpenEmailTemplateModal ? (
+        <EmailTemplatePickerModal
+          isOpen={isLocalThemeModalOpen}
+          onClose={() => setIsLocalThemeModalOpen(false)}
+          currentTheme={activeTheme}
+          websiteTemplate={websiteTemplate}
+          businessName={businessName}
+          accent={accent}
+          logoUrl={logoUrl}
+          onThemeSaved={handleThemeSaved}
+        />
       ) : null}
     </form>
   );

@@ -344,7 +344,9 @@ describe('createCrewAction and updateCrewAction server validation and execution'
 
     const res = await createCrewAction({ status: 'idle' }, validForm);
     expect(res.status).toBe('added');
-    expect(res.name).toBe('John Builder');
+    if (res.status === 'added') {
+      expect(res.name).toBe('John Builder');
+    }
   });
 
   it('succeeds on updateCrewAction with valid consent and disclosure version when phone changes', async () => {
