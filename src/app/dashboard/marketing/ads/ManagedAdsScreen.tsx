@@ -1506,33 +1506,18 @@ export default function ManagedAdsScreen({
             <span style={{ fontSize: '1.35rem' }}>🤖</span>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <strong style={{ fontSize: '0.88rem', color: 'var(--foreground)' }}>
+                <strong className={styles.strategyBriefingTitle}>
                   AI Growth Strategy for {trade} in {city.split(',')[0]}
                 </strong>
                 <span
-                  className={styles.seasonalDemandBadge}
-                  style={{
-                    background:
-                      seasonalDemand.demandPosture === 'peak'
-                        ? 'rgba(239, 68, 68, 0.15)'
-                        : seasonalDemand.demandPosture === 'shoulder'
-                          ? 'rgba(249, 115, 22, 0.15)'
-                          : 'rgba(59, 130, 246, 0.15)',
-                    color:
-                      seasonalDemand.demandPosture === 'peak'
-                        ? '#ef4444'
-                        : seasonalDemand.demandPosture === 'shoulder'
-                          ? '#f97316'
-                          : '#38bdf8',
-                    border: `1px solid ${
-                      seasonalDemand.demandPosture === 'peak'
-                        ? 'rgba(239, 68, 68, 0.35)'
-                        : seasonalDemand.demandPosture === 'shoulder'
-                          ? 'rgba(249, 115, 22, 0.35)'
-                          : 'rgba(59, 130, 246, 0.35)'
-                    }`,
-                    marginBottom: 0,
-                  }}
+                  className={`${styles.seasonalDemandBadge} ${
+                    seasonalDemand.demandPosture === 'peak'
+                      ? styles.demandPeak
+                      : seasonalDemand.demandPosture === 'shoulder'
+                        ? styles.demandShoulder
+                        : styles.demandOffPeak
+                  }`}
+                  style={{ marginBottom: 0 }}
                 >
                   {seasonalDemand.demandPosture === 'peak'
                     ? `🔥 Peak Demand Season (${seasonalDemand.seasonalMultiplier.toFixed(2)}x Multiplier)`
@@ -1541,12 +1526,12 @@ export default function ManagedAdsScreen({
                       : `❄️ Off-Peak Season (${seasonalDemand.seasonalMultiplier.toFixed(2)}x Multiplier)`}
                 </span>
               </div>
-              <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--muted)', marginTop: '0.1rem' }}>
+              <span className={styles.strategyBriefingSub}>
                 Pre-configured Google Search &amp; Retargeting with 3 AI Safety Shields.
               </span>
             </div>
           </div>
-          <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--accent, #f97316)' }}>
+          <span className={styles.strategyBriefingAction}>
             {showAiBriefing ? 'Hide Briefing ▲' : 'Read Briefing ▼'}
           </span>
         </div>
@@ -1556,7 +1541,7 @@ export default function ManagedAdsScreen({
               We pre-built your Google Search and Social Retargeting campaigns with verified local buyer keywords in {city}. All safety shields (Weather Surge Radar, Fully-Booked Capacity Pause, and Competitor Waste Scrubbing) are configured. Choose your plan below to launch.
             </p>
             <div className={styles.seasonalDemandCard}>
-              <strong style={{ fontSize: '0.78rem', color: 'var(--foreground)', display: 'block', marginBottom: '0.2rem' }}>
+              <strong className={styles.seasonalDemandGuidance}>
                 💡 Trade Seasonal Pricing &amp; Bidding Directive:
               </strong>
               <span style={{ fontSize: '0.76rem', color: 'var(--muted)', lineHeight: 1.4, display: 'block' }}>
@@ -2729,10 +2714,10 @@ export default function ManagedAdsScreen({
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
                     <span style={{ fontSize: '1.25rem' }}>🎯</span>
                     <div>
-                      <strong style={{ fontSize: '0.86rem', color: 'var(--foreground)' }}>
+                      <strong className={styles.qualityScoreTitle}>
                         Google Ads Quality Score Readiness
                       </strong>
-                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--muted)' }}>
+                      <span className={styles.qualityScoreSub}>
                         Tripartite auction health rating
                       </span>
                     </div>
@@ -2744,59 +2729,59 @@ export default function ManagedAdsScreen({
 
                 <div className={styles.qualityScoreGrid}>
                   <div className={styles.qualityScoreItem}>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--muted)', display: 'block' }}>Expected CTR</span>
-                    <strong style={{ fontSize: '0.78rem', color: '#10b981', display: 'block', marginTop: '0.15rem' }}>
+                    <span className={styles.qualityScoreItemLabel}>Expected CTR</span>
+                    <strong className={styles.qualityScoreItemValue}>
                       🟢 Above Average
                     </strong>
-                    <span style={{ fontSize: '0.66rem', color: 'var(--muted)' }}>Exact-intent matching</span>
+                    <span className={styles.qualityScoreItemSub}>Exact-intent matching</span>
                   </div>
 
                   <div className={styles.qualityScoreItem}>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--muted)', display: 'block' }}>Ad Relevance</span>
-                    <strong style={{ fontSize: '0.78rem', color: '#10b981', display: 'block', marginTop: '0.15rem' }}>
+                    <span className={styles.qualityScoreItemLabel}>Ad Relevance</span>
+                    <strong className={styles.qualityScoreItemValue}>
                       🟢 Above Average
                     </strong>
-                    <span style={{ fontSize: '0.66rem', color: 'var(--muted)' }}>15 Responsive Headlines</span>
+                    <span className={styles.qualityScoreItemSub}>15 Responsive Headlines</span>
                   </div>
 
                   <div className={styles.qualityScoreItem}>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--muted)', display: 'block' }}>Landing Page Experience</span>
-                    <strong style={{ fontSize: '0.78rem', color: '#10b981', display: 'block', marginTop: '0.15rem' }}>
+                    <span className={styles.qualityScoreItemLabel}>Landing Page Experience</span>
+                    <strong className={styles.qualityScoreItemValue}>
                       🟢 Above Average
                     </strong>
-                    <span style={{ fontSize: '0.66rem', color: 'var(--muted)' }}>Sub-1s mobile speed</span>
+                    <span className={styles.qualityScoreItemSub}>Sub-1s mobile speed</span>
                   </div>
                 </div>
 
                 {/* 100% Message-Match Flow Chain */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 700 }}>
+                <div className={styles.messageMatchChainHeader}>
+                  <span className={styles.messageMatchChainTitle}>
                     🔗 100% Message-Match Verification Chain:
                   </span>
-                  <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 600 }}>
+                  <span className={styles.messageMatchChainSavings}>
                     Cuts CPC by up to 50%
                   </span>
                 </div>
 
                 <div className={styles.messageMatchChain}>
                   <div className={styles.messageMatchNode}>
-                    <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.62rem' }}>1. Search Query</span>
-                    <strong>{selectedServices[0] || trade} in {city.split(',')[0]}</strong>
+                    <span className={styles.messageMatchNodeLabel}>1. Search Query</span>
+                    <strong className={styles.messageMatchNodeValue}>{selectedServices[0] || trade} in {city.split(',')[0]}</strong>
                   </div>
                   <span className={styles.messageMatchArrow}>➔</span>
                   <div className={styles.messageMatchNode}>
-                    <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.62rem' }}>2. Ad Headline</span>
-                    <strong>{rsa.headlines[0] || `Top-Rated ${trade}`}</strong>
+                    <span className={styles.messageMatchNodeLabel}>2. Ad Headline</span>
+                    <strong className={styles.messageMatchNodeValue}>{rsa.headlines[0] || `Top-Rated ${trade}`}</strong>
                   </div>
                   <span className={styles.messageMatchArrow}>➔</span>
                   <div className={styles.messageMatchNode}>
-                    <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.62rem' }}>3. Landing Page</span>
-                    <strong>Fast {selectedServices[0] || trade} in {city.split(',')[0]}</strong>
+                    <span className={styles.messageMatchNodeLabel}>3. Landing Page</span>
+                    <strong className={styles.messageMatchNodeValue}>Fast {selectedServices[0] || trade} in {city.split(',')[0]}</strong>
                   </div>
                   <span className={styles.messageMatchArrow}>➔</span>
                   <div className={styles.messageMatchNode}>
-                    <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.62rem' }}>4. Intake CTA</span>
-                    <strong>Get My Instant Quote</strong>
+                    <span className={styles.messageMatchNodeLabel}>4. Intake CTA</span>
+                    <strong className={styles.messageMatchNodeValue}>Get My Instant Quote</strong>
                   </div>
                 </div>
               </div>
@@ -2936,20 +2921,20 @@ export default function ManagedAdsScreen({
               {/* Speed-to-Lead Response Time Benchmark Comparison */}
               <div className={styles.speedToLeadBenchmarkBox}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                  <span style={{ fontSize: '0.74rem', fontWeight: 700, color: 'var(--foreground)' }}>
+                  <span className={styles.benchmarkBoxTitle}>
                     ⚡ Speed-to-Lead Conversion Velocity Benchmark
                   </span>
-                  <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700 }}>
+                  <span className={styles.benchmarkAdvantageBadge}>
                     +391% Close Rate Advantage
                   </span>
                 </div>
 
                 <div className={styles.benchmarkRow}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem' }}>
-                    <span style={{ color: '#10b981', fontWeight: 700 }}>
+                    <span className={styles.benchmarkFastLabel}>
                       ⚡ Let&apos;s Get Quoted AI Autopilot (12 Seconds)
                     </span>
-                    <strong style={{ color: '#10b981' }}>78% Lead-to-Appointment Rate</strong>
+                    <strong className={styles.benchmarkFastRate}>78% Lead-to-Appointment Rate</strong>
                   </div>
                   <div className={styles.benchmarkBar}>
                     <div className={styles.benchmarkBarFillFast} />
@@ -2958,17 +2943,17 @@ export default function ManagedAdsScreen({
 
                 <div className={styles.benchmarkRow}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem' }}>
-                    <span style={{ color: 'var(--muted)' }}>
+                    <span className={styles.benchmarkSlowLabel}>
                       🐢 Industry Average Contractor (42 Minutes)
                     </span>
-                    <span style={{ color: 'var(--muted)' }}>&lt;15% Lead-to-Appointment Rate</span>
+                    <span className={styles.benchmarkSlowRate}>&lt;15% Lead-to-Appointment Rate</span>
                   </div>
                   <div className={styles.benchmarkBar}>
                     <div className={styles.benchmarkBarFillSlow} />
                   </div>
                 </div>
 
-                <p style={{ margin: '0.45rem 0 0', fontSize: '0.68rem', color: 'var(--muted)', lineHeight: 1.35 }}>
+                <p className={styles.benchmarkFootnote}>
                   *Source: Lead Response Management Study. Homeowners contacted within 60 seconds are 391% more likely to book an in-person estimate than those contacted after 30 minutes.
                 </p>
               </div>
@@ -2983,7 +2968,7 @@ export default function ManagedAdsScreen({
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
                     <span>🛡️</span>
-                    <strong style={{ fontSize: '0.8rem', color: '#f87171' }}>
+                    <strong className={styles.negativeWasteTitle}>
                       100+ Negative Search Queries Scrubbed 24/7
                     </strong>
                   </div>
@@ -3000,14 +2985,14 @@ export default function ManagedAdsScreen({
                   <span className={styles.wasteCategoryPill}>🚫 Cheap / Free Search</span>
                 </div>
 
-                <p style={{ margin: 0, fontSize: '0.7rem', color: 'var(--muted)', lineHeight: 1.35 }}>
+                <p className={styles.negativeWasteText}>
                   Every search query is screened through our Master Negative List before bidding, preventing zero-intent clicks from eating your ad budget.
                 </p>
               </div>
 
               <div style={{ marginBottom: '0.6rem' }}>
-                <strong style={{ fontSize: '0.88rem' }}>High-Intent Targeting vs. Negative Shield</strong>
-                <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: 'var(--muted)' }}>
+                <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>High-Intent Targeting vs. Negative Shield</strong>
+                <p style={{ margin: '0.15rem 0 0', fontSize: '0.75rem', color: '#94a3b8' }}>
                   Our AI bids exclusively on verified buyer searches and blocks non-revenue terms.
                 </p>
               </div>
@@ -3044,7 +3029,7 @@ export default function ManagedAdsScreen({
           <div id="campaign-launch-deck" className={styles.launchSummaryCard}>
             <div className={styles.launchSummaryHeader}>
               <span className={styles.launchSummaryTitle}>⚡ Campaign Launch Blueprint</span>
-              <span style={{ fontSize: '0.68rem', color: '#10b981', fontWeight: 700 }}>
+              <span className={styles.launchSummaryStatus}>
                 ● Configured &amp; Ready
               </span>
             </div>
@@ -3075,7 +3060,7 @@ export default function ManagedAdsScreen({
 
               <div className={styles.launchSummaryPill}>
                 <span className={styles.launchSummaryPillLabel}>Projected Pipeline</span>
-                <strong className={styles.launchSummaryPillValue} style={{ color: '#10b981' }}>
+                <strong className={`${styles.launchSummaryPillValue} ${styles.launchSummaryPipeline}`}>
                   📈 ~{roiMetrics.effectiveLeads} Leads ({roiMetrics.roas}x ROAS)
                 </strong>
               </div>
