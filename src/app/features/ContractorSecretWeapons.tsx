@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import styles from './features-theme.module.css';
 
 const SECRET_WEAPONS = [
@@ -65,7 +65,12 @@ export default function ContractorSecretWeapons() {
 
       <div className={styles.secretWeaponsGrid}>
         {SECRET_WEAPONS.map((item) => (
-          <div key={item.id} className={styles.secretWeaponCard}>
+          <Link
+            key={item.id}
+            href={item.href}
+            className={styles.secretWeaponCard}
+            aria-label={`${item.title} - ${item.cta}`}
+          >
             <div className={styles.secretWeaponTopRow}>
               <div className={styles.secretWeaponIconSquircle}>{item.icon}</div>
               <span className={`${styles.secretWeaponBadge} ${styles[`badge_${item.badgeTone}`]}`}>
@@ -82,11 +87,11 @@ export default function ContractorSecretWeapons() {
             </div>
 
             <div className={styles.secretWeaponActionRow}>
-              <Link href={item.href} className={styles.secretWeaponCta}>
-                {item.cta} <span aria-hidden="true">→</span>
-              </Link>
+              <span className={styles.secretWeaponCta}>
+                {item.cta} <span aria-hidden="true" className={styles.secretWeaponArrow}>→</span>
+              </span>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
     </section>

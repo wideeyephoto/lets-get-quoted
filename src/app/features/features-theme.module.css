@@ -1,4 +1,4 @@
-/* Features Hub - Dark Luxury & Blueprint Design System */
+﻿/* Features Hub - Dark Luxury & Blueprint Design System */
 
 .featuresTheme {
   color-scheme: dark;
@@ -707,7 +707,7 @@
 }
 
 .featuresTheme :global(.website-capabilities li::before) {
-  content: 'âœ“';
+  content: 'Ã¢Å“â€œ';
   position: absolute;
   left: 0;
   top: 2px;
@@ -838,7 +838,7 @@
 }
 
 .featuresTheme :global(.workflow-feature-grid .feature-produces li::before) {
-  content: 'âœ¦';
+  content: 'Ã¢Å“Â¦';
   position: absolute;
   left: 0;
   top: 0;
@@ -1076,7 +1076,7 @@
 
 .featuresTheme :global(.breakthroughs-band .feature-produces li::before),
 .featuresTheme :global(.tools-showcase-band .feature-produces li::before) {
-  content: 'âœ¦';
+  content: 'Ã¢Å“Â¦';
   position: absolute;
   left: 0;
   top: 0;
@@ -1740,7 +1740,7 @@
 }
 
 .featuresTheme :global(.home-faq-list details[open] summary::after) {
-  content: 'âˆ’';
+  content: 'Ã¢Ë†â€™';
   transform: rotate(180deg);
 }
 
@@ -4710,130 +4710,115 @@
   margin: 0;
 }
 
-.secretWeaponsGrid {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 20px;
+.featuresTheme,
+:root[data-theme='light'] .featuresTheme,
+:root[data-theme='sunlight'] .featuresTheme,
+:root[data-theme='dim'] .featuresTheme,
+:root[data-theme='dark'] .featuresTheme {
+  color-scheme: dark !important;
+  background: var(--night, #090e17) !important;
+  color: var(--ink, #f7f7f4) !important;
 }
 
-.secretWeaponCard {
-  background: linear-gradient(165deg, rgba(14, 28, 48, 0.75) 0%, rgba(6, 18, 30, 0.9) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 18px;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  backdrop-filter: blur(16px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
-  position: relative;
+/* Headings in all themes */
+.featuresTheme :global(h1),
+.featuresTheme :global(h2),
+.featuresTheme :global(h3),
+.featuresTheme :global(h4),
+.featuresTheme :global(h5),
+.featuresTheme :global(h6),
+:root[data-theme='light'] .featuresTheme :global(h1),
+:root[data-theme='light'] .featuresTheme :global(h2),
+:root[data-theme='light'] .featuresTheme :global(h3),
+:root[data-theme='light'] .featuresTheme :global(h4),
+:root[data-theme='sunlight'] .featuresTheme :global(h1),
+:root[data-theme='sunlight'] .featuresTheme :global(h2),
+:root[data-theme='sunlight'] .featuresTheme :global(h3),
+:root[data-theme='sunlight'] .featuresTheme :global(h4) {
+  color: #ffffff !important;
 }
 
-.secretWeaponCard:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 113, 55, 0.45);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 24px rgba(255, 113, 55, 0.12);
+/* Body & Explanatory copy in all themes */
+.featuresTheme :global(p:not(.eyebrow):not(.button):not(.index-hero-fee):not(.everything-note)),
+:root[data-theme='light'] .featuresTheme :global(p:not(.eyebrow):not(.button):not(.index-hero-fee):not(.everything-note)),
+:root[data-theme='sunlight'] .featuresTheme :global(p:not(.eyebrow):not(.button):not(.index-hero-fee):not(.everything-note)) {
+  color: #cbd5e1 !important;
 }
 
-.secretWeaponTopRow {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 16px;
+/* Tour note */
+.featuresTheme :global(.tour-note),
+:root[data-theme='light'] .featuresTheme :global(.tour-note),
+:root[data-theme='sunlight'] .featuresTheme :global(.tour-note) {
+  color: #cbd5e1 !important;
 }
 
-.secretWeaponIconSquircle {
-  width: 42px;
-  height: 42px;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  flex-shrink: 0;
+/* Eyebrows in all themes */
+.featuresTheme :global(.eyebrow),
+:root[data-theme='light'] .featuresTheme :global(.eyebrow),
+:root[data-theme='sunlight'] .featuresTheme :global(.eyebrow) {
+  color: var(--yellow, #ffc44d) !important;
+  background: rgba(255, 113, 55, 0.14) !important;
+  border-color: rgba(255, 113, 55, 0.38) !important;
 }
 
-.secretWeaponBadge {
-  font-size: 11.5px;
-  font-weight: 750;
-  padding: 3px 9px;
-  border-radius: 999px;
-  white-space: nowrap;
+.featuresTheme :global(.eyebrow span),
+:root[data-theme='light'] .featuresTheme :global(.eyebrow span),
+:root[data-theme='sunlight'] .featuresTheme :global(.eyebrow span) {
+  color: var(--yellow, #ffc44d) !important;
 }
 
-.badge_mint {
-  background: rgba(78, 224, 188, 0.14);
-  border: 1px solid rgba(78, 224, 188, 0.35);
-  color: #4ee0bc;
+/* Hero Fee Text */
+.featuresTheme :global(.index-hero-fee),
+:root[data-theme='light'] .featuresTheme :global(.index-hero-fee),
+:root[data-theme='sunlight'] .featuresTheme :global(.index-hero-fee) {
+  color: #cbd5e1 !important;
 }
 
-.badge_yellow {
-  background: rgba(255, 196, 77, 0.14);
-  border: 1px solid rgba(255, 196, 77, 0.35);
-  color: #ffc44d;
+.featuresTheme :global(.index-hero-fee a),
+:root[data-theme='light'] .featuresTheme :global(.index-hero-fee a),
+:root[data-theme='sunlight'] .featuresTheme :global(.index-hero-fee a) {
+  color: #ffc44d !important;
+  text-decoration: underline !important;
 }
 
-.badge_orange {
-  background: rgba(255, 113, 55, 0.14);
-  border: 1px solid rgba(255, 113, 55, 0.35);
-  color: #ff9869;
+/* Footer in all themes */
+.featuresTheme :global(footer),
+:root[data-theme='light'] .featuresTheme :global(footer),
+:root[data-theme='sunlight'] .featuresTheme :global(footer),
+:root[data-theme='dim'] .featuresTheme :global(footer) {
+  background: radial-gradient(circle at 15% 0, rgba(255, 106, 36, 0.07), transparent 28%), #06121b !important;
+  color: #cbd5e1 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.1) !important;
 }
 
-.badge_blue {
-  background: rgba(103, 183, 255, 0.14);
-  border: 1px solid rgba(103, 183, 255, 0.35);
-  color: #93c5fd;
+.featuresTheme :global(footer a),
+.featuresTheme :global(.footer-links a),
+.featuresTheme :global(.footer-legal a),
+:root[data-theme='light'] .featuresTheme :global(footer a),
+:root[data-theme='light'] .featuresTheme :global(.footer-links a),
+:root[data-theme='light'] .featuresTheme :global(.footer-legal a),
+:root[data-theme='sunlight'] .featuresTheme :global(footer a),
+:root[data-theme='sunlight'] .featuresTheme :global(.footer-links a),
+:root[data-theme='sunlight'] .featuresTheme :global(.footer-legal a) {
+  color: #cbd5e1 !important;
+  transition: color 0.2s ease !important;
 }
 
-.secretWeaponCardTitle {
-  font-size: 17px;
-  font-weight: 800;
-  color: #ffffff;
-  margin: 0 0 8px;
-  line-height: 1.3;
+.featuresTheme :global(footer a:hover),
+.featuresTheme :global(.footer-links a:hover),
+.featuresTheme :global(.footer-legal a:hover),
+:root[data-theme='light'] .featuresTheme :global(footer a:hover),
+:root[data-theme='light'] .featuresTheme :global(.footer-links a:hover),
+:root[data-theme='light'] .featuresTheme :global(.footer-legal a:hover),
+:root[data-theme='sunlight'] .featuresTheme :global(footer a:hover),
+:root[data-theme='sunlight'] .featuresTheme :global(.footer-links a:hover),
+:root[data-theme='sunlight'] .featuresTheme :global(.footer-legal a:hover) {
+  color: #ffffff !important;
 }
 
-.secretWeaponCardDesc {
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: #94a3b8;
-  margin: 0 0 16px;
-  flex-grow: 1;
-}
-
-.secretWeaponMetricPill {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  font-size: 12px;
-  font-weight: 700;
-  color: #cbd5e1;
-  margin-bottom: 16px;
-}
-
-.secretWeaponMetricIcon {
-  color: #ffc44d;
-}
-
-.secretWeaponActionRow {
-  margin-top: auto;
-}
-
-.secretWeaponCta {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 13.5px;
-  font-weight: 750;
-  color: var(--orange);
-  text-decoration: none;
+.featuresTheme :global(.footer-slogan),
+:root[data-theme='light'] .featuresTheme :global(.footer-slogan),
+:root[data-theme='sunlight'] .featuresTheme :global(.footer-slogan) {
   color: #cbd5e1 !important;
 }
 
@@ -4912,22 +4897,54 @@
 }
 
 .secretWeaponCard {
-  background: linear-gradient(165deg, rgba(14, 28, 48, 0.75) 0%, rgba(6, 18, 30, 0.9) 100%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
-  border-radius: 18px;
+  background: linear-gradient(165deg, rgba(16, 32, 54, 0.82) 0%, rgba(8, 20, 34, 0.94) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.24);
+  border-radius: 20px;
   padding: 24px 20px;
   display: flex;
   flex-direction: column;
   backdrop-filter: blur(16px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
-  transition: transform 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+  -webkit-backdrop-filter: blur(16px);
+  text-decoration: none !important;
+  color: inherit !important;
+  cursor: pointer;
+  box-shadow:
+    0 8px 0 rgba(4, 10, 18, 0.95),
+    0 16px 32px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 160ms ease,
+              box-shadow 160ms cubic-bezier(0.16, 1, 0.3, 1),
+              background 160ms ease;
   position: relative;
+  overflow: hidden;
+  user-select: none;
 }
 
 .secretWeaponCard:hover {
-  transform: translateY(-4px);
-  border-color: rgba(255, 113, 55, 0.45);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45), 0 0 24px rgba(255, 113, 55, 0.12);
+  transform: translateY(-5px);
+  border-color: rgba(255, 113, 55, 0.55);
+  border-top-color: rgba(255, 196, 77, 0.9);
+  background: linear-gradient(165deg, rgba(22, 44, 74, 0.92) 0%, rgba(12, 26, 46, 0.98) 100%);
+  box-shadow:
+    0 13px 0 rgba(4, 10, 18, 0.95),
+    0 22px 42px rgba(0, 0, 0, 0.6),
+    0 0 24px rgba(255, 113, 55, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.secretWeaponCard:active {
+  transform: translateY(3px);
+  box-shadow:
+    0 3px 0 rgba(4, 10, 18, 0.95),
+    0 6px 14px rgba(0, 0, 0, 0.55),
+    inset 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.secretWeaponCard:focus-visible {
+  outline: 2px solid #ff7137;
+  outline-offset: 3px;
 }
 
 .secretWeaponTopRow {
@@ -5029,12 +5046,20 @@
   font-weight: 750;
   color: var(--orange);
   text-decoration: none;
-  transition: color 150ms ease, transform 150ms ease;
+  transition: color 150ms ease;
 }
 
-.secretWeaponCta:hover {
+.secretWeaponArrow {
+  display: inline-block;
+  transition: transform 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.secretWeaponCard:hover .secretWeaponArrow {
+  transform: translateX(4px);
+}
+
+.secretWeaponCard:hover .secretWeaponCta {
   color: #ff9869;
-  transform: translateX(2px);
 }
 
 @media (max-width: 1040px) {
