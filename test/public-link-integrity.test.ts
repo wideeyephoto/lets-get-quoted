@@ -29,6 +29,14 @@ describe('Public Link and Destination Integrity Suite', () => {
       expect(sparkySource).toContain('https://app.letsgetquoted.com/start?goal=feature&source=feature_page');
     });
 
+    it('AI Vision inspection photos exist and are embedded in VisionInspectorSimulator', () => {
+      const visionSource = readFileSync('src/app/features/ai-vision/page.tsx', 'utf8');
+      expect(visionSource).toContain('/images/ai-vision/furnace-rating-plate.jpg');
+      expect(visionSource).toContain('/images/ai-vision/secondary-coil-rust.jpg');
+      expect(existsSync('public/images/ai-vision/furnace-rating-plate.jpg')).toBe(true);
+      expect(existsSync('public/images/ai-vision/secondary-coil-rust.jpg')).toBe(true);
+    });
+
     it('CompanionHUD and HighTechShowcase use valid section anchors', () => {
       const hudSource = readFileSync('src/app/features/CompanionHUD.tsx', 'utf8');
       expect(hudSource).toContain('href="#software-sprawl-calculator"');

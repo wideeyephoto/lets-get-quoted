@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
 import ExampleFrame from '@/components/marketing/example-frame';
 import { TRADES } from '@/lib/trades';
@@ -42,13 +43,21 @@ function VisionInspectorSimulator() {
         {/* Photo Box 1: Equipment Model OCR */}
         <div className={styles.photoBox}>
           <div className={styles.photoPlaceholder}>
-            <div className={styles.cameraHudCornerTopLeft}></div>
-            <div className={styles.cameraHudCornerTopRight}></div>
-            <div className={styles.cameraHudCornerBottomLeft}></div>
-            <div className={styles.cameraHudCornerBottomRight}></div>
-            <span className={styles.scanTargetIcon}>🎯</span>
+            <Image
+              src="/images/ai-vision/furnace-rating-plate.jpg"
+              alt="Carrier gas furnace rating plate OCR inspection showing model 59TP6B and 80,000 BTU input"
+              fill
+              sizes="(max-width: 640px) 100vw, 400px"
+              className={styles.photoImg}
+              priority
+            />
+            <div className={styles.photoScanOverlay} aria-hidden="true" />
+            <div className={styles.cameraHudCornerTopLeft} />
+            <div className={styles.cameraHudCornerTopRight} />
+            <div className={styles.cameraHudCornerBottomLeft} />
+            <div className={styles.cameraHudCornerBottomRight} />
             <span className={styles.photoLabel}>furnace-rating-plate.jpg</span>
-            <div className={styles.detectionBox} style={{ top: '22%', left: '16%', width: '68%', height: '52%' }}>
+            <div className={styles.detectionBox} style={{ top: '16%', left: '14%', width: '54%', height: '68%' }}>
               <span className={styles.detectionLabel}>OCR: Carrier 59TP6B · Gas 80k BTU</span>
             </div>
           </div>
@@ -64,13 +73,21 @@ function VisionInspectorSimulator() {
         {/* Photo Box 2: Defect / Corrosion Diagnostic */}
         <div className={styles.photoBox}>
           <div className={styles.photoPlaceholder}>
-            <div className={styles.cameraHudCornerTopLeft}></div>
-            <div className={styles.cameraHudCornerTopRight}></div>
-            <div className={styles.cameraHudCornerBottomLeft}></div>
-            <div className={styles.cameraHudCornerBottomRight}></div>
-            <span className={styles.scanTargetIcon}>🔍</span>
+            <Image
+              src="/images/ai-vision/secondary-coil-rust.jpg"
+              alt="Close-up inspection photo of secondary coil showing severe flame rollout rust and corrosion breach"
+              fill
+              sizes="(max-width: 640px) 100vw, 400px"
+              className={styles.photoImg}
+              priority
+            />
+            <div className={styles.photoScanOverlay} aria-hidden="true" />
+            <div className={styles.cameraHudCornerTopLeft} />
+            <div className={styles.cameraHudCornerTopRight} />
+            <div className={styles.cameraHudCornerBottomLeft} />
+            <div className={styles.cameraHudCornerBottomRight} />
             <span className={styles.photoLabel}>secondary-coil-rust.jpg</span>
-            <div className={styles.detectionBoxDefect} style={{ top: '30%', left: '24%', width: '52%', height: '48%' }}>
+            <div className={styles.detectionBoxDefect} style={{ top: '20%', left: '8%', width: '60%', height: '62%' }}>
               <span className={styles.detectionLabelDefect}>Hazard: Severe Flame Rollout Corrosion</span>
             </div>
           </div>
