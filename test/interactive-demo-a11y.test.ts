@@ -7,6 +7,7 @@ describe('Interactive Demonstration Accessibility & Performance Architecture', (
   const flagshipSource = readFileSync('src/components/flagship/flagship-home.tsx', 'utf8').replace(/\r\n/g, '\n');
   const homePageSource = readFileSync('src/app/page.tsx', 'utf8').replace(/\r\n/g, '\n');
   const rootLayoutSource = readFileSync('src/app/layout.tsx', 'utf8').replace(/\r\n/g, '\n');
+  const quotesPageSource = readFileSync('src/app/features/quotes/page.tsx', 'utf8').replace(/\r\n/g, '\n');
 
   describe('InteractiveQuoteUpsellDemo Accessibility', () => {
     it('has valid WAI-ARIA tablist and tabpanel semantics for trade scenario switcher', () => {
@@ -65,8 +66,11 @@ describe('Interactive Demonstration Accessibility & Performance Architecture', (
   describe('Performance & Cellular Optimization', () => {
     it('defers below-the-fold interactive components via client-side dynamic imports', () => {
       expect(flagshipSource).toContain("const HighTechShowcase = dynamic(() => import('@/components/marketing/HighTechShowcase'), {\n  ssr: false,");
-      expect(flagshipSource).toContain("const InteractiveQuoteUpsellDemo = dynamic(() => import('@/components/marketing/InteractiveQuoteUpsellDemo'), {\n  ssr: false,");
       expect(flagshipSource).toContain("const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: false });");
+    });
+
+    it('renders the interactive quote demo on the quotes feature page', () => {
+      expect(quotesPageSource).toContain('<InteractiveQuoteUpsellDemo />');
     });
 
     it('defers initial scroll measurement to idle time to avoid main-thread blocking', () => {

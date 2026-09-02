@@ -10,6 +10,7 @@ import SuiteFeaturePage, {
 } from '@/components/marketing/suite-feature-page';
 import { FEATURE_PRICING_NOTE, STRIPE_PROCESSING_NOTE } from '@/lib/pricing';
 import ShotVideo from './ShotVideo';
+import InteractiveQuoteUpsellDemo from '@/components/marketing/InteractiveQuoteUpsellDemo';
 import styles from './quotes.module.css';
 
 const SHOTS = '/media/quotes';
@@ -182,58 +183,61 @@ export default function QuotesFeaturePage() {
         },
       ]}
       afterBenefits={
-        <section className="section-block" id="the-screens" aria-labelledby="screens-title">
-          <div className={styles.shotsHead}>
-            <p className="eyebrow">The quote builder, as it ships</p>
-            <h2 id="screens-title">This is the screen, not a drawing of it.</h2>
-            <p>
-              A demo account belonging to an invented landscaping business, captured as it is
-              today. The numbers are made up; everything around them is the product.
+        <>
+          <InteractiveQuoteUpsellDemo />
+          <section className="section-block" id="the-screens" aria-labelledby="screens-title">
+            <div className={styles.shotsHead}>
+              <p className="eyebrow">The quote builder, as it ships</p>
+              <h2 id="screens-title">This is the screen, not a drawing of it.</h2>
+              <p>
+                A demo account belonging to an invented landscaping business, captured as it is
+                today. The numbers are made up; everything around them is the product.
+              </p>
+            </div>
+
+            <ol className={styles.shots}>
+              {QUOTE_FLOW.map((shot) => (
+                <li className={styles.shot} key={shot.step}>
+                  <div className={styles.shotCopy}>
+                    <span className={styles.shotStep}>{shot.step}</span>
+                    <h3 className={styles.shotTitle}>{shot.title}</h3>
+                    <p className={styles.shotBody}>{shot.body}</p>
+                  </div>
+                  <div className={styles.shotMedia}>
+                    {shot.media.kind === 'image' ? (
+                      <img
+                        src={shot.media.src}
+                        alt={shot.media.alt}
+                        width={shot.media.width}
+                        height={shot.media.height}
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ) : (
+                      /* Plays on its own and loops, but only once the section is
+                         actually on screen — the 400KB is not spent on visitors
+                         who never scroll this far, and it stays still for anyone
+                         who asked for no motion. See ShotVideo. */
+                      <ShotVideo
+                        src={shot.media.src}
+                        poster={shot.media.poster}
+                        width={shot.media.width}
+                        height={shot.media.height}
+                        label={shot.media.label}
+                      />
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ol>
+
+            <p className={styles.shotNote}>
+              Every amount above is invented. What is real is the shape: included work and optional
+              add-ons on one total, a preview of the homeowner’s copy before anything sends, and a
+              plan they authorize date by date.
             </p>
-          </div>
-
-          <ol className={styles.shots}>
-            {QUOTE_FLOW.map((shot) => (
-              <li className={styles.shot} key={shot.step}>
-                <div className={styles.shotCopy}>
-                  <span className={styles.shotStep}>{shot.step}</span>
-                  <h3 className={styles.shotTitle}>{shot.title}</h3>
-                  <p className={styles.shotBody}>{shot.body}</p>
-                </div>
-                <div className={styles.shotMedia}>
-                  {shot.media.kind === 'image' ? (
-                    <img
-                      src={shot.media.src}
-                      alt={shot.media.alt}
-                      width={shot.media.width}
-                      height={shot.media.height}
-                      loading="lazy"
-                      decoding="async"
-                    />
-                  ) : (
-                    /* Plays on its own and loops, but only once the section is
-                       actually on screen — the 400KB is not spent on visitors
-                       who never scroll this far, and it stays still for anyone
-                       who asked for no motion. See ShotVideo. */
-                    <ShotVideo
-                      src={shot.media.src}
-                      poster={shot.media.poster}
-                      width={shot.media.width}
-                      height={shot.media.height}
-                      label={shot.media.label}
-                    />
-                  )}
-                </div>
-              </li>
-            ))}
-          </ol>
-
-          <p className={styles.shotNote}>
-            Every amount above is invented. What is real is the shape: included work and optional
-            add-ons on one total, a preview of the homeowner’s copy before anything sends, and a
-            plan they authorize date by date.
-          </p>
-        </section>
+          </section>
+        </>
       }
       stepsEyebrow="From request to signature"
       /* THE FOUR STEPS ARE GONE, because they were the three benefits again.
