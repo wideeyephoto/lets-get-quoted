@@ -81,6 +81,26 @@ describe('Edit Crew Member Form Consent UI', () => {
   });
 });
 
+describe('AddCrewDrawer & CrewRoster UI and Form Contract', () => {
+  it('renders the hidden crewSmsDisclosureVersion input with the exact static version string', () => {
+    expect(DRAWER_CODE).toContain('name="crewSmsDisclosureVersion"');
+    expect(DRAWER_CODE).toContain('value={CREW_SMS_DISCLOSURE_VERSION}');
+    expect(ROSTER_CODE).toContain('name="crewSmsDisclosureVersion"');
+    expect(ROSTER_CODE).toContain('value={CREW_SMS_DISCLOSURE_VERSION}');
+  });
+
+  it('populates FormData with the exact disclosure version string', () => {
+    const formData = new FormData();
+    formData.set('name', 'Alex Worker');
+    formData.set('phone', '(248) 555-0199');
+    formData.set('crewSmsConsent', 'on');
+    formData.set('crewSmsDisclosureVersion', CREW_SMS_DISCLOSURE_VERSION);
+
+    expect(formData.get('crewSmsDisclosureVersion')).toBe('2026-09-01-crew-sms-v1');
+    expect(formData.get('crewSmsDisclosureVersion')).toBe(CREW_SMS_DISCLOSURE_VERSION);
+  });
+});
+
 describe('createCrewAction & updateCrewAction Server Enforcement', () => {
   it('rejects createCrewAction when SMS consent is missing', async () => {
     const { createCrewAction } = await import('@/app/dashboard/crew/actions');
@@ -96,7 +116,22 @@ describe('createCrewAction & updateCrewAction Server Enforcement', () => {
     });
   });
 
-  it('rejects createCrewAction when disclosure version is outdated', async () => {
+  it('rejects createCrewAction when disclosure version is missing', async () => {
+    const { createCrewAction } = await import('@/app/dashboard/crew/actions');
+    const formData = new FormData();
+    formData.set('name', 'Alex Worker');
+    formData.set('phone', '(248) 555-0199');
+    formData.set('crewSmsConsent', 'on');
+    // crewSmsDisclosureVersion missing
+
+    const result = await createCrewAction({ status: 'idle' }, formData);
+    expect(result).toEqual({
+      status: 'error',
+      message: 'The SMS consent wording has changed. Review it and try again.',
+    });
+  });
+
+  it('rejects createCrewAction when disclosure version is outdated or incorrect', async () => {
     const { createCrewAction } = await import('@/app/dashboard/crew/actions');
     const formData = new FormData();
     formData.set('name', 'Alex Worker');
@@ -110,6 +145,8 @@ describe('createCrewAction & updateCrewAction Server Enforcement', () => {
       message: 'The SMS consent wording has changed. Review it and try again.',
     });
   });
+
+
 
   it('no longer calls ensureSmsConsentBaseline on create or update', () => {
     const actionsSrc = read('src', 'app', 'dashboard', 'crew', 'actions.ts');

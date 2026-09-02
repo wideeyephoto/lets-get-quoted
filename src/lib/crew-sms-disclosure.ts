@@ -8,7 +8,7 @@
  * and a test can all read it without breaking browser Webpack bundles.
  */
 
-export const CREW_SMS_DISCLOSURE_VERSION = '2026-09-01-crew-sms-v1';
+export const CREW_SMS_DISCLOSURE_VERSION = '2026-09-01-crew-sms-v1' as const;
 
 export const CREW_SMS_CONSENT_LABEL =
   'I confirm that this crew member gave permission to enter their mobile number and receive recurring SMS messages from Let’s Get Quoted about crew assignments, job opportunities, and schedule updates.';
