@@ -49,7 +49,7 @@ export default function CrewPeriodBar({
         >
           ← Prev
         </Link>
-        <span className={styles.periodLabel}>
+        <span className={styles.sharedPeriodLabel}>
           <strong>{period.rangeLabel}</strong>
           {period.offset === 0 ? <span className={styles.currentTag}>Current</span> : null}
         </span>
@@ -72,7 +72,7 @@ export default function CrewPeriodBar({
         ) : null}
       </div>
 
-      <div className={styles.periodModes}>
+      <div className={styles.periodModesTrack}>
         <span className="sr-only">Period mode</span>
         {PERIOD_MODES.map((mode) => (
           <Link

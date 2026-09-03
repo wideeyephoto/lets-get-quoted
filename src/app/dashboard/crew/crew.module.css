@@ -230,9 +230,11 @@
   font-weight: 700;
   letter-spacing: 0.09em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.95);
+  color: rgba(var(--grey-4), 0.95);
 }
-.filter select {
+.filter select,
+.filter input[type='date'],
+.filter input {
   padding: 0.4rem 0.6rem;
   border: 1px solid var(--edge-g24);
   border-radius: 9px;
@@ -241,6 +243,12 @@
   font: inherit;
   font-size: 0.84rem;
   max-width: 14rem;
+  color-scheme: dark;
+}
+.filter select:focus,
+.filter input:focus {
+  outline: 2px solid rgba(255, 122, 41, 0.75);
+  outline-offset: -1px;
 }
 /* Native option lists take the platform's white popup background but inherit
    the select's light text, which renders white-on-white. */
@@ -665,7 +673,7 @@
 
 .periodLabel { display: grid; gap: 0.05rem; min-width: 9rem; text-align: center; }
 .periodLabel strong { font-size: 0.95rem; font-weight: 750; }
-.periodLabel small { font-size: 0.74rem; color: rgba(var(--grey-5), 0.95); }
+.periodLabel small { font-size: 0.74rem; color: rgba(var(--grey-4), 0.95); }
 
 .periodModes { display: flex; align-items: center; gap: 0.3rem; flex-wrap: wrap; }
 
@@ -690,10 +698,20 @@
   border: 1px solid var(--edge-g26);
   border-radius: 8px;
   background: rgba(var(--tint), 0.04);
-  color: var(--muted);
+  color: rgba(var(--grey-4), 0.95);
   font: inherit;
   font-size: 0.76rem;
   color-scheme: dark;
+}
+.customRange input:focus {
+  outline: 2px solid rgba(255, 122, 41, 0.75);
+  outline-offset: -1px;
+  border-color: transparent;
+}
+.customRange span {
+  color: var(--muted);
+  font-size: 0.8rem;
+  line-height: 1;
 }
 
 .quickRow { display: flex; flex-wrap: wrap; gap: 0.35rem; margin: 0.6rem 0 0.9rem; }
@@ -913,7 +931,7 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.95);
+  color: rgba(var(--grey-4), 0.95);
   text-align: left;
   white-space: nowrap;
 }
@@ -942,11 +960,11 @@
 }
 .expandBtn > span:last-child { display: grid; gap: 0.05rem; }
 .expandBtn strong { font-size: 0.9rem; font-weight: 700; }
-.expandBtn small { font-size: 0.72rem; color: rgba(var(--grey-5), 0.9); }
+.expandBtn small { font-size: 0.72rem; color: rgba(var(--grey-4), 0.9); }
 
 .otCell { color: var(--warn); font-weight: 700; }
 .payCell { font-weight: 750; }
-.payCell small { display: block; font-size: 0.68rem; font-weight: 600; color: rgba(var(--grey-5), 0.9); }
+.payCell small { display: block; font-size: 0.68rem; font-weight: 600; color: rgba(var(--grey-4), 0.9); }
 .crewCell { font-size: 0.82rem; color: rgba(var(--grey-4), 0.9); }
 
 .varianceOver { color: var(--bad); font-weight: 750; }
@@ -1158,26 +1176,7 @@
 }
 
 /* --- Shared Period Bar --- */
-.periodBar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.6rem 0.85rem;
-  background: var(--surface-g2);
-  border: 1px solid var(--edge-g28);
-  border-radius: 10px;
-  margin: 0.85rem 0 1.25rem;
-}
-
-.periodNav {
-  display: flex;
-  align-items: center;
-  gap: 0.6rem;
-}
-
-.periodLabel {
+.sharedPeriodLabel {
   font-size: 0.92rem;
   display: inline-flex;
   align-items: center;
@@ -1185,42 +1184,55 @@
 }
 
 .currentTag {
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.68rem;
+  font-weight: 700;
   text-transform: uppercase;
-  background: var(--surface-g6, #e2e8f0);
-  padding: 2px 6px;
-  border-radius: 4px;
+  letter-spacing: 0.04em;
+  background: rgba(var(--tint), 0.09);
+  border: 1px solid var(--edge-g28);
+  color: var(--text);
+  padding: 2px 7px;
+  border-radius: 6px;
 }
 
-.periodModes {
+.periodModesTrack,
+.periodModes:has(.modeBtn) {
   display: flex;
   align-items: center;
   gap: 0.25rem;
-  background: var(--surface-g4, #f1f5f9);
-  padding: 2px;
-  border-radius: 8px;
+  background: rgba(var(--tint), 0.05);
+  border: 1px solid var(--edge-g22);
+  padding: 3px;
+  border-radius: 999px;
 }
 
 .modeBtn {
   font-size: 0.78rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 6px;
-  color: var(--text-g80);
+  padding: 0.32rem 0.7rem;
+  border-radius: 999px;
+  color: var(--muted);
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 650;
   transition: all 0.15s ease;
+  border: 1px solid transparent;
 }
 
 .modeBtn:hover {
-  background: rgba(0, 0, 0, 0.05);
+  color: var(--text);
+  background: rgba(var(--tint), 0.08);
 }
 
 .modeBtnActive {
-  background: var(--surface-card, #ffffff);
-  color: var(--text);
-  font-weight: 600;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  background: rgba(var(--tint), 0.12);
+  color: var(--accent-ink);
+  border: 1px solid var(--line);
+  font-weight: 750;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+:root:not([data-theme='clarity']):not([data-theme='monochrome']) .modeBtnActive {
+  background: rgba(255, 122, 33, 0.2);
+  border-color: var(--cedge-orange-14);
 }
 
 .customPeriodForm {
@@ -1228,13 +1240,23 @@
   align-items: center;
   gap: 0.4rem;
   font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .customPeriodForm input {
   font-size: 0.78rem;
-  padding: 0.25rem 0.4rem;
-  border: 1px solid var(--edge-g28);
-  border-radius: 6px;
+  padding: 0.32rem 0.55rem;
+  border: 1px solid var(--edge-g26);
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+  font: inherit;
+  color-scheme: dark;
+}
+
+.customPeriodForm input:focus {
+  outline: 2px solid rgba(255, 122, 41, 0.75);
+  outline-offset: -1px;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1272,7 +1294,7 @@
   font-weight: 700;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.95);
+  color: rgba(var(--grey-4), 0.95);
 }
 .periodCardHead strong { font-size: 1.05rem; font-weight: 780; letter-spacing: -0.01em; }
 
@@ -1289,7 +1311,7 @@
   border-radius: 999px;
   background: linear-gradient(90deg, #ff5a1f, var(--accent-ink));
 }
-.periodProgress small { font-size: 0.74rem; color: rgba(var(--grey-5), 0.95); }
+.periodProgress small { font-size: 0.74rem; color: rgba(var(--grey-4), 0.95); }
 
 /* Every figure is a filter — a count you can't act on is trivia. */
 .periodStats {
@@ -1319,10 +1341,10 @@
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.95);
+  color: rgba(var(--grey-4), 0.95);
 }
 .periodStat strong { font-size: 1.15rem; font-weight: 780; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.periodStat em { font-style: normal; font-size: 0.68rem; color: rgba(var(--grey-5), 0.9); }
+.periodStat em { font-style: normal; font-size: 0.68rem; color: rgba(var(--grey-4), 0.9); }
 
 .periodStat[data-tone='pay'] { border-color: var(--cedge-orange-7); background: rgba(255, 122, 33, 0.07); }
 .periodStat[data-tone='pay'] strong { color: var(--accent-ink); }
@@ -1704,16 +1726,16 @@
 .clockOption:has(input:checked) { border-color: var(--cedge-sky-24); background: rgba(169, 200, 255, 0.08); }
 .clockOption span { display: grid; gap: 0.15rem; }
 .clockOption strong { font-size: 0.88rem; color: var(--text); }
-.clockOption em { font-style: normal; font-size: 0.79rem; line-height: 1.5; color: var(--mute-t50); }
+.clockOption em { font-style: normal; font-size: 0.79rem; line-height: 1.5; color: var(--muted); }
 .clockForm fieldset:disabled .clockOption { opacity: 0.55; cursor: not-allowed; }
 
 .clockNotes { display: grid; gap: 0.4rem; }
-.clockNotes p { margin: 0; font-size: 0.79rem; line-height: 1.55; color: var(--mute-t50); max-width: 66ch; }
+.clockNotes p { margin: 0; font-size: 0.79rem; line-height: 1.55; color: var(--muted); max-width: 66ch; }
 .clockNotes a { color: var(--accent-ink); }
 
 /* The empty state on Hours & pay stopped being a dead end: it now carries the
    settings the rail would have carried, because the rail is what it replaces. */
-.emptyNote { margin: 0.9rem 0 0; font-size: 0.79rem; line-height: 1.55; color: var(--mute-t50); }
+.emptyNote { margin: 0.9rem 0 0; font-size: 0.79rem; line-height: 1.55; color: var(--muted); }
 .emptyNote a, .emptyNote .linklike { color: var(--accent-ink); }
 
 /* --- toast --- */
@@ -3020,7 +3042,7 @@ button.goAction.goAction:disabled {
 .payDue[data-tone='ok'] strong { color: var(--muted); }
 .payDue[data-tone='warn'] strong { color: var(--warn); }
 .payDue[data-tone='alert'] strong { color: var(--bad); }
-.payDue[data-tone='muted'] { color: var(--mute-g580); }
+.payDue[data-tone='muted'] { color: var(--muted); }
 .payDue button { font-size: 0.78rem; }
 
 /* Being caught up should be visible, not remembered. */
@@ -3700,10 +3722,13 @@ button.goAction.goAction:disabled {
 }
 
 :root[data-theme='light'] .filter select,
+:root[data-theme='light'] .filter input,
 :root[data-theme='light'] .mobileSort select,
 :root[data-theme='sunlight'] .filter select,
+:root[data-theme='sunlight'] .filter input,
 :root[data-theme='sunlight'] .mobileSort select,
 :root[data-theme='parchment'] .filter select,
+:root[data-theme='parchment'] .filter input,
 :root[data-theme='parchment'] .mobileSort select {
   background: #ffffff !important;
   border: 1.5px solid #94a3b8 !important;
@@ -3712,10 +3737,13 @@ button.goAction.goAction:disabled {
 }
 
 :root[data-theme='light'] .filter select:focus,
+:root[data-theme='light'] .filter input:focus,
 :root[data-theme='light'] .mobileSort select:focus,
 :root[data-theme='sunlight'] .filter select:focus,
+:root[data-theme='sunlight'] .filter input:focus,
 :root[data-theme='sunlight'] .mobileSort select:focus,
 :root[data-theme='parchment'] .filter select:focus,
+:root[data-theme='parchment'] .filter input:focus,
 :root[data-theme='parchment'] .mobileSort select:focus {
   border-color: #ea580c !important;
   outline: 2px solid rgba(234, 88, 12, 0.25) !important;
@@ -4012,6 +4040,27 @@ button.goAction.goAction:disabled {
   font-weight: 750 !important;
 }
 
+:root[data-theme='light'] .periodLabel small,
+:root[data-theme='sunlight'] .periodLabel small,
+:root[data-theme='parchment'] .periodLabel small {
+  color: #475569 !important;
+}
+
+:root[data-theme='light'] .periodArrow,
+:root[data-theme='sunlight'] .periodArrow,
+:root[data-theme='parchment'] .periodArrow {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .periodArrow:hover,
+:root[data-theme='sunlight'] .periodArrow:hover,
+:root[data-theme='parchment'] .periodArrow:hover {
+  background: #f1f5f9 !important;
+  color: #000000 !important;
+}
+
 :root[data-theme='light'] .periodMode,
 :root[data-theme='light'] .quick,
 :root[data-theme='sunlight'] .periodMode,
@@ -4034,6 +4083,86 @@ button.goAction.goAction:disabled {
   border: 1.5px solid #ea580c !important;
   color: #9a3412 !important;
   font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .sharedPeriodLabel,
+:root[data-theme='sunlight'] .sharedPeriodLabel,
+:root[data-theme='parchment'] .sharedPeriodLabel {
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .periodModesTrack,
+:root[data-theme='light'] .periodModes:has(.modeBtn),
+:root[data-theme='sunlight'] .periodModesTrack,
+:root[data-theme='sunlight'] .periodModes:has(.modeBtn),
+:root[data-theme='parchment'] .periodModesTrack,
+:root[data-theme='parchment'] .periodModes:has(.modeBtn) {
+  background: #f1f5f9 !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .modeBtn,
+:root[data-theme='sunlight'] .modeBtn,
+:root[data-theme='parchment'] .modeBtn {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .modeBtn:hover,
+:root[data-theme='sunlight'] .modeBtn:hover,
+:root[data-theme='parchment'] .modeBtn:hover {
+  color: #090d16 !important;
+  background: rgba(0, 0, 0, 0.06) !important;
+}
+
+:root[data-theme='light'] .modeBtnActive,
+:root[data-theme='sunlight'] .modeBtnActive,
+:root[data-theme='parchment'] .modeBtnActive {
+  background: #ffffff !important;
+  border: 1.5px solid #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 850 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1) !important;
+}
+
+:root[data-theme='light'] .currentTag,
+:root[data-theme='sunlight'] .currentTag,
+:root[data-theme='parchment'] .currentTag {
+  background: #e2e8f0 !important;
+  border: 1px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .customPeriodForm input,
+:root[data-theme='light'] .customRange input,
+:root[data-theme='sunlight'] .customPeriodForm input,
+:root[data-theme='sunlight'] .customRange input,
+:root[data-theme='parchment'] .customPeriodForm input,
+:root[data-theme='parchment'] .customRange input {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 600 !important;
+  color-scheme: light !important;
+}
+
+:root[data-theme='light'] .customRange span,
+:root[data-theme='sunlight'] .customRange span,
+:root[data-theme='parchment'] .customRange span {
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .filter input,
+:root[data-theme='sunlight'] .filter input,
+:root[data-theme='parchment'] .filter input {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 600 !important;
+  color-scheme: light !important;
 }
 
 :root[data-theme='light'] .addLabor,
