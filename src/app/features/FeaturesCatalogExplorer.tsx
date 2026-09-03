@@ -21,6 +21,7 @@ const CATEGORY_MAP_TO_SLUG: Record<string, string> = {
 };
 
 const FEATURE_DEEP_LINKS: Record<string, string> = {
+  'ai-copilot': '/features/ai-copilot',
   'sparky-ai': '/features/sparky',
   'text-to-job': '/features/text-to-job',
   'ai-smart-intake': '/features/ai-intake',

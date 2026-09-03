@@ -72,10 +72,10 @@ const FAQ = [
   },
 ];
 
-export default function AiCopilotWithAvatarsPage() {
+export default function AiCopilotWithAvatarsPage({ path = '/features/sparky' }: { path?: string } = {}) {
   return (
     <FeatureDetailLayout
-      breadcrumb={{ name: 'AI Copilot with Avatars', path: '/features/sparky' }}
+      breadcrumb={{ name: 'AI Copilot with Avatars', path }}
       eyebrow="✦ 24/7 AI COPILOT WITH AVATARS · IN-APP &amp; SMS CONTRACTOR SIDEKICK"
       title={
         <>

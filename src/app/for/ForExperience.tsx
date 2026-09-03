@@ -160,16 +160,10 @@ export default function ForExperience() {
             <h1 id="hero-title">Your trade website, estimator, and quotes—<em>ready in minutes.</em></h1>
             <p className={styles.heroDescription}>Choose your trade and get editable services, smart intake questions, and highly customizable Smart Quotes—ready for the work you do.</p>
             <div className={styles.tradeFinder}>
-              <div className={styles.finderHeader}>
-                <label htmlFor="hero-trade-search" className={styles.finderLabel}>
-                  What kind of work do you do?
-                </label>
-                <span className={styles.finderBadge}>
-                  <span className={styles.badgePulse} aria-hidden="true" />
-                  {TRADES.length}+ Trades Prebuilt
-                </span>
-              </div>
               <form onSubmit={handleFindSetup} className={styles.finderForm} role="search">
+                <label htmlFor="hero-trade-search" className={styles.srOnly}>
+                  Search your trade
+                </label>
                 <div className={styles.finderInputRow}>
                   <svg className={styles.searchIcon} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                     <circle cx="11" cy="11" r="8" />
@@ -180,7 +174,7 @@ export default function ForExperience() {
                     type="text"
                     value={heroQuery}
                     onChange={(event) => setHeroQuery(event.target.value)}
-                    placeholder="Try “painter,” “plumber,” or “roofing”…"
+                    placeholder="Search your trade (e.g., plumber, roofing, painter)..."
                     autoComplete="off"
                     aria-label="Trade search input"
                   />
@@ -202,64 +196,62 @@ export default function ForExperience() {
                     </svg>
                   </button>
                 </div>
+                {heroQuery && heroQuery.toLowerCase() !== selectedTrade.name.toLowerCase() && (
+                  <div className={styles.heroSuggestions} role="listbox" aria-label="Matching trades">
+                    {heroMatches.length ? (
+                      heroMatches.map((trade) => (
+                        <button
+                          key={trade.slug}
+                          type="button"
+                          role="option"
+                          aria-selected={selectedTrade.slug === trade.slug}
+                          onClick={() => {
+                            chooseTrade(trade);
+                            router.push(`/for/${trade.slug}`);
+                          }}
+                        >
+                          <span>
+                            <b>{trade.name}</b>
+                            <small>{trade.services.slice(0, 3).join(' · ')}</small>
+                          </span>
+                          <i>→</i>
+                        </button>
+                      ))
+                    ) : (
+                      <div className={styles.noMatchSuggestion}>
+                        <p>Start with a custom specialty—we’ll tailor it from there.</p>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            window.location.href = `${APP_SIGNUP_URL}&source=for_trade_custom&custom=${encodeURIComponent(heroQuery.trim())}`;
+                          }}
+                        >
+                          Build custom trade setup →
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </form>
-              {heroQuery && heroQuery.toLowerCase() !== selectedTrade.name.toLowerCase() && (
-                <div className={styles.heroSuggestions} role="listbox" aria-label="Matching trades">
-                  {heroMatches.length ? (
-                    heroMatches.map((trade) => (
+              <div className={styles.popularRow} aria-label="Popular trades">
+                <span className={styles.popularLabel}>Popular:</span>
+                <div className={styles.tradeChips}>
+                  {FEATURED_TRADES.map((trade) => {
+                    const isSelected = selectedTrade.slug === trade.slug;
+                    return (
                       <button
+                        type="button"
                         key={trade.slug}
-                        type="button"
-                        role="option"
-                        aria-selected={selectedTrade.slug === trade.slug}
-                        onClick={() => {
-                          chooseTrade(trade);
-                          router.push(`/for/${trade.slug}`);
-                        }}
+                        className={isSelected ? styles.chipActive : styles.chip}
+                        onClick={() => chooseTrade(trade)}
+                        aria-selected={isSelected}
                       >
-                        <span>
-                          <b>{trade.name}</b>
-                          <small>{trade.services.slice(0, 3).join(' · ')}</small>
-                        </span>
-                        <i>→</i>
+                        {trade.name}
                       </button>
-                    ))
-                  ) : (
-                    <div className={styles.noMatchSuggestion}>
-                      <p>Start with a custom specialty—we’ll tailor it from there.</p>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          window.location.href = `${APP_SIGNUP_URL}&source=for_trade_custom&custom=${encodeURIComponent(heroQuery.trim())}`;
-                        }}
-                      >
-                        Build custom trade setup →
-                      </button>
-                    </div>
-                  )}
+                    );
+                  })}
                 </div>
-              )}
-              <div className={styles.tradeChips} aria-label="Trade shortcuts">
-                {FEATURED_TRADES.map((trade) => {
-                  const isSelected = selectedTrade.slug === trade.slug;
-                  return (
-                    <button
-                      type="button"
-                      key={trade.slug}
-                      className={isSelected ? styles.chipActive : styles.chip}
-                      onClick={() => chooseTrade(trade)}
-                      aria-selected={isSelected}
-                    >
-                      {isSelected && <span className={styles.chipCheck} aria-hidden="true">✓</span>}
-                      {trade.name}
-                    </button>
-                  );
-                })}
               </div>
-              <p className={styles.finePrint}>
-                <span className={styles.finePrintDot} aria-hidden="true" />
-                Type a trade to auto-fill your starting setup · No card required
-              </p>
             </div>
           </div>
           <HeroVisual selectedTrade={selectedTrade} />

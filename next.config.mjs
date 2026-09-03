@@ -91,6 +91,11 @@ const nextConfig = {
       // Convenience shortcuts for quick-stops feature page.
       { source: '/quickstops', destination: '/features/quick-stops', permanent: true },
       { source: '/quick-stops', destination: '/features/quick-stops', permanent: true },
+      // Convenience shortcuts for AI Copilot / Sparky feature page.
+      { source: '/sparky', destination: '/features/sparky', permanent: true },
+      { source: '/ai-copilot', destination: '/features/ai-copilot', permanent: true },
+      { source: '/copilot', destination: '/features/ai-copilot', permanent: true },
+      { source: '/aicopilot', destination: '/features/ai-copilot', permanent: true },
       // The campaign composer moved onto the seasonal-calendar page when the two
       // became one destination. Here rather than as a redirect() in a page
       // component: that renders, and by the time the redirect throws Next has
