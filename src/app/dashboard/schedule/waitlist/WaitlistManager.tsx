@@ -24,6 +24,7 @@ import {
   sendWaitlistOfferAction,
   triggerWaitlistSweepAction,
 } from './actions';
+import styles from './WaitlistManager.module.css';
 
 interface WaitlistManagerProps {
   entries: WaitlistEntry[];
@@ -250,61 +251,35 @@ export default function WaitlistManager({
   };
 
   return (
-    <div style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 16px' }}>
+    <div className={styles.waitlistShell}>
       {/* Header & Breadcrumb */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+      <div className={styles.headerRow}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, color: '#6b7280', marginBottom: 4 }}>
-            <Link href="/dashboard/schedule" style={{ color: '#4f46e5', textDecoration: 'none' }}>
+          <div className={styles.breadcrumb}>
+            <Link href="/dashboard/schedule" className={styles.breadcrumbLink}>
               ← Back to Schedule
             </Link>
-            <span>/</span>
-            <span>Cancellation Waitlist</span>
+            <span className={styles.breadcrumbSep}>/</span>
+            <span className={styles.breadcrumbCurrent}>Cancellation Waitlist</span>
           </div>
-          <h1 style={{ fontSize: 24, fontWeight: 700, color: '#111827', margin: 0 }}>
+          <h1 className={styles.pageTitle}>
             Cancellation Waitlist & Priority Offerings
           </h1>
-          <p style={{ margin: '4px 0 0', fontSize: 14, color: '#4b5563' }}>
+          <p className={styles.pageSubtitle}>
             Automatically offer newly opened windows to qualified customers in priority order.
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 10 }}>
+        <div className={styles.headerActions}>
           <button
             onClick={() => setShowFillSlotModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: '#059669',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 16px',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
+            className={styles.fillWindowBtn}
           >
-            <span style={{ fontSize: 16 }}>⚡</span> Fill Opened Window
+            <span>⚡</span> Fill Opened Window
           </button>
           <button
             onClick={() => setShowAddModal(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 6,
-              background: '#4f46e5',
-              color: '#ffffff',
-              border: 'none',
-              borderRadius: 8,
-              padding: '10px 16px',
-              fontSize: 14,
-              fontWeight: 600,
-              cursor: 'pointer',
-              boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-            }}
+            className={styles.addWaitlistBtn}
           >
             <span>+</span> Add to Waitlist
           </button>
@@ -313,25 +288,12 @@ export default function WaitlistManager({
 
       {/* Action notification banner */}
       {actionMessage && (
-        <div
-          style={{
-            background: '#ecfdf5',
-            color: '#065f46',
-            border: '1px solid #a7f3d0',
-            borderRadius: 8,
-            padding: '12px 16px',
-            marginBottom: 20,
-            fontSize: 14,
-            fontWeight: 500,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-          }}
-        >
+        <div className={styles.actionBanner}>
           <span>✓ {actionMessage}</span>
           <button
             onClick={() => setActionMessage(null)}
-            style={{ background: 'transparent', border: 'none', color: '#065f46', cursor: 'pointer', fontSize: 16 }}
+            className={styles.actionBannerDismiss}
+            aria-label="Dismiss message"
           >
             ×
           </button>
@@ -339,152 +301,105 @@ export default function WaitlistManager({
       )}
 
       {/* Metrics Row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 16, marginBottom: 24 }}>
-        <div style={{ background: '#ffffff', padding: 18, borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+      <div className={styles.metricsGrid}>
+        <div className={styles.metricCard}>
+          <div className={styles.metricLabel}>
             Active in Queue
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#111827', marginTop: 4 }}>
+          <div className={styles.metricValue}>
             {entries.filter((e) => e.status === 'active').length}
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Ready for opening matches</div>
+          <div className={styles.metricSubtext}>Ready for opening matches</div>
         </div>
 
-        <div style={{ background: '#ffffff', padding: 18, borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#059669', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricLabel} ${styles.metricLabelPending}`}>
             Live Pending Holds
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: activePendingOffers.length > 0 ? '#059669' : '#111827', marginTop: 4 }}>
+          <div className={`${styles.metricValue} ${activePendingOffers.length > 0 ? styles.metricValuePending : ''}`}>
             {activePendingOffers.length}
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Awaiting client reply</div>
+          <div className={styles.metricSubtext}>Awaiting client reply</div>
         </div>
 
-        <div style={{ background: '#ffffff', padding: 18, borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#4f46e5', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricLabel} ${styles.metricLabelFulfilled}`}>
             Fulfilled Slots
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#4f46e5', marginTop: 4 }}>
+          <div className={`${styles.metricValue} ${styles.metricValueFulfilled}`}>
             {entries.filter((e) => e.status === 'fulfilled').length}
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Successfully backfilled</div>
+          <div className={styles.metricSubtext}>Successfully backfilled</div>
         </div>
 
-        <div style={{ background: '#ffffff', padding: 18, borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-          <div style={{ fontSize: 12, fontWeight: 600, color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+        <div className={styles.metricCard}>
+          <div className={`${styles.metricLabel} ${styles.metricLabelEmergency}`}>
             High / Emergency
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#d97706', marginTop: 4 }}>
+          <div className={`${styles.metricValue} ${styles.metricValueEmergency}`}>
             {entries.filter((e) => e.status === 'active' && (e.urgency === 'emergency' || e.urgency === 'high')).length}
           </div>
-          <div style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>Priority fast-track</div>
+          <div className={styles.metricSubtext}>Priority fast-track</div>
         </div>
       </div>
 
       {/* Active Pending Offers Section (If any) */}
       {activePendingOffers.length > 0 && (
-        <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: 12, padding: 18, marginBottom: 24 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', background: '#16a34a', animation: 'pulse 1.5s infinite' }} />
-              <h2 style={{ fontSize: 16, fontWeight: 700, color: '#166534', margin: 0 }}>
+        <div className={styles.activeHoldsSection}>
+          <div className={styles.activeHoldsHeader}>
+            <div className={styles.activeHoldsTitleBox}>
+              <span className={styles.pulseDot} />
+              <h2 className={styles.activeHoldsTitle}>
                 Active Slot Holds in Progress ({activePendingOffers.length})
               </h2>
             </div>
-            <span style={{ fontSize: 12, color: '#166534' }}>Auto-cascades to next candidate if not confirmed</span>
+            <span className={styles.activeHoldsSubtext}>Auto-cascades to next candidate if not confirmed</span>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: 12 }}>
+          <div className={styles.activeHoldsGrid}>
             {activePendingOffers.map((offer) => {
               const expiresTime = new Date(offer.hold_expires_at).getTime();
               const minsLeft = Math.max(0, Math.round((expiresTime - Date.now()) / 60000));
               const entry = entries.find((e) => e.id === offer.waitlist_entry_id);
 
               return (
-                <div
-                  key={offer.id}
-                  style={{
-                    background: '#ffffff',
-                    border: '1px solid #86efac',
-                    borderRadius: 8,
-                    padding: 14,
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                  }}
-                >
+                <div key={offer.id} className={styles.holdCard}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                     <div>
-                      <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>
+                      <div className={styles.holdCardClient}>
                         {entry?.client_name || 'Customer'}
                       </div>
-                      <div style={{ fontSize: 13, color: '#4b5563' }}>{offer.phone}</div>
+                      <div className={styles.holdCardPhone}>{offer.phone}</div>
                     </div>
-                    <span
-                      style={{
-                        background: minsLeft < 10 ? '#fee2e2' : '#fef3c7',
-                        color: minsLeft < 10 ? '#991b1b' : '#92400e',
-                        padding: '3px 8px',
-                        borderRadius: 999,
-                        fontSize: 12,
-                        fontWeight: 700,
-                      }}
-                    >
+                    <span className={minsLeft < 10 ? styles.holdTimerPillUrgent : styles.holdTimerPillNormal}>
                       ⏱ {minsLeft}m left
                     </span>
                   </div>
 
-                  <div style={{ marginTop: 10, fontSize: 13, color: '#374151', background: '#f9fafb', padding: 8, borderRadius: 6 }}>
+                  <div className={styles.holdSlotDetail}>
                     <div><strong>Slot:</strong> {offer.opened_slot_date} ({formatWaitlistWindowLabel(offer.window_start, offer.window_end)})</div>
                     <div><strong>Rank:</strong> #{offer.priority_rank} (Score: {offer.priority_score})</div>
                   </div>
 
-                  <div style={{ display: 'flex', gap: 6, marginTop: 12 }}>
+                  <div className={styles.holdActions}>
                     <button
                       onClick={() => handleManualAccept(offer.id)}
                       disabled={isPending}
-                      style={{
-                        flex: 1,
-                        background: '#16a34a',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
+                      className={styles.acceptBtn}
                     >
                       ✓ Customer Said YES
                     </button>
                     <button
                       onClick={() => handleManualDecline(offer.id)}
                       disabled={isPending}
-                      style={{
-                        flex: 1,
-                        background: '#dc2626',
-                        color: '#fff',
-                        border: 'none',
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
+                      className={styles.declineBtn}
                     >
                       Decline & Cascade
                     </button>
                     <button
                       onClick={() => handleCancelOffer(offer.id)}
                       disabled={isPending}
-                      style={{
-                        background: '#f3f4f6',
-                        color: '#4b5563',
-                        border: '1px solid #d1d5db',
-                        borderRadius: 6,
-                        padding: '6px 10px',
-                        fontSize: 12,
-                        fontWeight: 500,
-                        cursor: 'pointer',
-                      }}
+                      className={styles.withdrawBtn}
                     >
                       Withdraw
                     </button>
@@ -497,26 +412,16 @@ export default function WaitlistManager({
       )}
 
       {/* Main Waitlist Table & Filter Bar */}
-      <div style={{ background: '#ffffff', borderRadius: 12, border: '1px solid #e5e7eb', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+      <div className={styles.tableContainer}>
         {/* Controls header */}
-        <div style={{ padding: '16px 20px', borderBottom: '1px solid #e5e7eb', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+        <div className={styles.tableControls}>
           {/* Status Tabs */}
-          <div style={{ display: 'flex', gap: 4, background: '#f3f4f6', padding: 3, borderRadius: 8 }}>
+          <div className={styles.tabsNav}>
             {(['active', 'offered', 'fulfilled', 'all'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                style={{
-                  background: activeTab === tab ? '#ffffff' : 'transparent',
-                  color: activeTab === tab ? '#111827' : '#6b7280',
-                  border: 'none',
-                  borderRadius: 6,
-                  padding: '6px 12px',
-                  fontSize: 13,
-                  fontWeight: activeTab === tab ? 600 : 500,
-                  cursor: 'pointer',
-                  boxShadow: activeTab === tab ? '0 1px 2px rgba(0,0,0,0.05)' : 'none',
-                }}
+                className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
               >
                 {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
@@ -524,19 +429,12 @@ export default function WaitlistManager({
           </div>
 
           {/* Search & Urgency filter */}
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div className={styles.searchFilters}>
             <select
               aria-label="Filter by urgency"
               value={urgencyFilter}
               onChange={(e) => setUrgencyFilter(e.target.value)}
-              style={{
-                fontSize: 13,
-                padding: '6px 10px',
-                borderRadius: 6,
-                border: '1px solid #d1d5db',
-                background: '#ffffff',
-                color: '#374151',
-              }}
+              className={styles.filterSelect}
             >
               <option value="all">All Urgencies</option>
               <option value="emergency">Emergency</option>
@@ -550,48 +448,33 @@ export default function WaitlistManager({
               placeholder="Search name, phone, address..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              style={{
-                fontSize: 13,
-                padding: '6px 12px',
-                borderRadius: 6,
-                border: '1px solid #d1d5db',
-                width: 200,
-              }}
+              className={styles.searchInput}
             />
           </div>
         </div>
 
         {/* Entries Table */}
         {filteredEntries.length === 0 ? (
-          <div style={{ padding: '48px 24px', textAlign: 'center', color: '#6b7280' }}>
-            <div style={{ fontSize: 32, marginBottom: 8 }}>📋</div>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#374151' }}>No waitlist entries found</div>
-            <p style={{ fontSize: 14, margin: '4px 0 16px' }}>
+          <div className={styles.emptyState}>
+            <div className={styles.emptyStateIcon}>📋</div>
+            <div className={styles.emptyStateTitle}>No waitlist entries found</div>
+            <p className={styles.emptyStateDesc}>
               {activeTab === 'active'
                 ? 'There are no active customers waiting for an earlier window.'
                 : 'No records matching your search criteria.'}
             </p>
             <button
               onClick={() => setShowAddModal(true)}
-              style={{
-                background: '#4f46e5',
-                color: '#ffffff',
-                border: 'none',
-                borderRadius: 6,
-                padding: '8px 16px',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
+              className={styles.addWaitlistBtn}
             >
               + Add Customer to Waitlist
             </button>
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
+          <div className={styles.tableWrap}>
+            <table className={styles.waitlistTable}>
               <thead>
-                <tr style={{ background: '#f9fafb', borderBottom: '1px solid #e5e7eb', color: '#6b7280', fontWeight: 600 }}>
+                <tr className={styles.tableHeadRow}>
                   <th style={{ padding: '12px 16px' }}>Customer & Service</th>
                   <th style={{ padding: '12px 16px' }}>Availability Preferences</th>
                   <th style={{ padding: '12px 16px' }}>Scope & Value</th>
@@ -608,15 +491,15 @@ export default function WaitlistManager({
                   );
 
                   return (
-                    <tr key={entry.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <tr key={entry.id} className={styles.tableRow}>
                       <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
-                        <div style={{ fontWeight: 600, color: '#111827' }}>{entry.client_name}</div>
-                        <div style={{ color: '#4b5563', fontSize: 12 }}>{entry.client_phone}</div>
+                        <div className={styles.clientName}>{entry.client_name}</div>
+                        <div className={styles.clientPhone}>{entry.client_phone}</div>
                         {entry.address && (
-                          <div style={{ color: '#6b7280', fontSize: 11, marginTop: 2 }}>📍 {entry.address}</div>
+                          <div className={styles.clientAddress}>📍 {entry.address}</div>
                         )}
                         {entry.service_name && (
-                          <div style={{ color: '#4f46e5', fontSize: 12, fontWeight: 500, marginTop: 4 }}>
+                          <div className={styles.serviceName}>
                             {entry.service_name}
                           </div>
                         )}
@@ -624,28 +507,19 @@ export default function WaitlistManager({
 
                       <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
                         <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 4 }}>
-                          <span
-                            style={{
-                              background: '#e0e7ff',
-                              color: '#3730a3',
-                              padding: '2px 6px',
-                              borderRadius: 4,
-                              fontSize: 11,
-                              fontWeight: 600,
-                            }}
-                          >
+                          <span className={styles.windowPill}>
                             Window: {entry.preferred_window.toUpperCase()}
                           </span>
                         </div>
                         {entry.preferred_days && entry.preferred_days.length > 0 ? (
-                          <div style={{ fontSize: 11, color: '#4b5563' }}>
+                          <div className={styles.metaText}>
                             Days: {entry.preferred_days.map((d) => WEEKDAY_NAMES[d]).join(', ')}
                           </div>
                         ) : (
-                          <div style={{ fontSize: 11, color: '#6b7280' }}>Any day of week</div>
+                          <div className={styles.subMetaText}>Any day of week</div>
                         )}
                         {(entry.earliest_date || entry.latest_date) && (
-                          <div style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                          <div className={styles.subMetaText}>
                             Between {entry.earliest_date || 'now'} and {entry.latest_date || 'anytime'}
                           </div>
                         )}
@@ -654,42 +528,28 @@ export default function WaitlistManager({
                       <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
                         <div>{entry.estimated_hours} hrs estimated</div>
                         {entry.estimated_value ? (
-                          <div style={{ fontWeight: 600, color: '#059669', fontSize: 12 }}>
+                          <div className={styles.valueText}>
                             ${entry.estimated_value.toLocaleString()}
                           </div>
                         ) : (
-                          <div style={{ color: '#9ca3af', fontSize: 11 }}>No budget set</div>
+                          <div className={styles.noBudgetText}>No budget set</div>
                         )}
-                        <div style={{ color: '#9ca3af', fontSize: 11, marginTop: 2 }}>
+                        <div className={styles.subMetaText}>
                           Waiting {daysWaiting === 0 ? 'today' : `${daysWaiting}d`}
                         </div>
                       </td>
 
                       <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
                         <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '3px 8px',
-                            borderRadius: 999,
-                            fontSize: 11,
-                            fontWeight: 700,
-                            background:
-                              entry.urgency === 'emergency'
-                                ? '#fee2e2'
-                                : entry.urgency === 'high'
-                                ? '#ffedd5'
-                                : entry.urgency === 'medium'
-                                ? '#e0f2fe'
-                                : '#f3f4f6',
-                            color:
-                              entry.urgency === 'emergency'
-                                ? '#991b1b'
-                                : entry.urgency === 'high'
-                                ? '#9a3412'
-                                : entry.urgency === 'medium'
-                                ? '#075985'
-                                : '#374151',
-                          }}
+                          className={
+                            entry.urgency === 'emergency'
+                              ? styles.badgeEmergency
+                              : entry.urgency === 'high'
+                              ? styles.badgeHigh
+                              : entry.urgency === 'medium'
+                              ? styles.badgeMedium
+                              : styles.badgeFlexible
+                          }
                         >
                           {WAITLIST_URGENCY_LABELS[entry.urgency]}
                         </span>
@@ -697,29 +557,15 @@ export default function WaitlistManager({
 
                       <td style={{ padding: '12px 16px', verticalAlign: 'top' }}>
                         <span
-                          style={{
-                            display: 'inline-block',
-                            padding: '3px 8px',
-                            borderRadius: 6,
-                            fontSize: 11,
-                            fontWeight: 600,
-                            background:
-                              entry.status === 'active'
-                                ? '#ecfdf5'
-                                : entry.status === 'offered'
-                                ? '#fef3c7'
-                                : entry.status === 'fulfilled'
-                                ? '#e0e7ff'
-                                : '#f3f4f6',
-                            color:
-                              entry.status === 'active'
-                                ? '#065f46'
-                                : entry.status === 'offered'
-                                ? '#92400e'
-                                : entry.status === 'fulfilled'
-                                ? '#3730a3'
-                                : '#6b7280',
-                          }}
+                          className={
+                            entry.status === 'active'
+                              ? styles.statusActive
+                              : entry.status === 'offered'
+                              ? styles.statusOffered
+                              : entry.status === 'fulfilled'
+                              ? styles.statusFulfilled
+                              : styles.badgeFlexible
+                          }
                         >
                           {WAITLIST_STATUS_LABELS[entry.status]}
                         </span>
@@ -732,16 +578,7 @@ export default function WaitlistManager({
                               onClick={() => {
                                 setShowFillSlotModal(true);
                               }}
-                              style={{
-                                background: '#059669',
-                                color: '#ffffff',
-                                border: 'none',
-                                borderRadius: 6,
-                                padding: '4px 10px',
-                                fontSize: 12,
-                                fontWeight: 600,
-                                cursor: 'pointer',
-                              }}
+                              className={styles.offerSlotBtn}
                             >
                               Offer Slot
                             </button>
@@ -749,14 +586,7 @@ export default function WaitlistManager({
                           <button
                             onClick={() => handleRemove(entry.id, entry.client_name)}
                             disabled={isPending}
-                            style={{
-                              background: 'transparent',
-                              color: '#9ca3af',
-                              border: 'none',
-                              fontSize: 14,
-                              cursor: 'pointer',
-                              padding: '4px 6px',
-                            }}
+                            className={styles.removeRowBtn}
                             title="Remove from waitlist"
                           >
                             🗑
@@ -774,42 +604,21 @@ export default function WaitlistManager({
 
       {/* Modal 1: Fill Opened Window Assistant */}
       {showFillSlotModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: 14,
-              width: '100%',
-              maxWidth: 720,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)',
-              padding: 24,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+        <div className={styles.modalBackdrop}>
+          <div className={styles.modalBox}>
+            <div className={styles.modalHead}>
               <div>
-                <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
+                <h2 className={styles.modalTitle}>
                   ⚡ Fill Newly Opened Window
                 </h2>
-                <p style={{ fontSize: 13, color: '#6b7280', margin: '2px 0 0' }}>
+                <p className={styles.modalSubtitle}>
                   Matches and ranks all qualified waitlist customers in priority order.
                 </p>
               </div>
               <button
                 onClick={() => setShowFillSlotModal(false)}
-                style={{ background: 'transparent', border: 'none', fontSize: 20, color: '#9ca3af', cursor: 'pointer' }}
+                className={styles.modalCloseBtn}
+                aria-label="Close modal"
               >
                 ×
               </button>
@@ -817,11 +626,8 @@ export default function WaitlistManager({
 
             {/* Slot definition controls */}
             <div
+              className={styles.innerWell}
               style={{
-                background: '#f9fafb',
-                border: '1px solid #e5e7eb',
-                borderRadius: 10,
-                padding: 16,
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
                 gap: 12,
@@ -829,43 +635,43 @@ export default function WaitlistManager({
               }}
             >
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Date of Opening
                 </label>
                 <input
                   type="date"
                   value={slotDate}
                   onChange={(e) => setSlotDate(e.target.value)}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                  className={styles.formInput}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Window Start
                 </label>
                 <input
                   type="time"
                   value={windowStart}
                   onChange={(e) => setWindowStart(e.target.value)}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                  className={styles.formInput}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Window End
                 </label>
                 <input
                   type="time"
                   value={windowEnd}
                   onChange={(e) => setWindowEnd(e.target.value)}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                  className={styles.formInput}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Available Hours
                 </label>
                 <input
@@ -873,7 +679,7 @@ export default function WaitlistManager({
                   step="0.5"
                   value={slotDuration}
                   onChange={(e) => setSlotDuration(e.target.value)}
-                  style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                  className={styles.formInput}
                 />
               </div>
             </div>
@@ -881,14 +687,14 @@ export default function WaitlistManager({
             {/* Candidates ranking section */}
             <div style={{ marginBottom: 20 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <span style={{ fontSize: 14, fontWeight: 700, color: '#111827' }}>
+                <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--text)' }}>
                   Qualified Candidates ({rankedCandidates.length})
                 </span>
-                {isLoadingCandidates && <span style={{ fontSize: 12, color: '#6b7280' }}>Calculating matches...</span>}
+                {isLoadingCandidates && <span style={{ fontSize: 12, color: 'var(--muted)' }}>Calculating matches...</span>}
               </div>
 
               {rankedCandidates.length === 0 ? (
-                <div style={{ padding: 24, textAlign: 'center', background: '#f9fafb', borderRadius: 8, color: '#6b7280', fontSize: 13 }}>
+                <div className={styles.innerWell} style={{ padding: 24, textAlign: 'center', color: 'var(--muted)', fontSize: 13 }}>
                   No active waitlist customers match this specific date, time window, or duration.
                 </div>
               ) : (
@@ -900,39 +706,19 @@ export default function WaitlistManager({
                       <div
                         key={candidate.entry.id}
                         onClick={() => setSelectedCandidate(candidate)}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'space-between',
-                          padding: '10px 14px',
-                          borderRadius: 8,
-                          border: isSelected ? '2px solid #059669' : '1px solid #e5e7eb',
-                          background: isSelected ? '#f0fdf4' : '#ffffff',
-                          cursor: 'pointer',
-                        }}
+                        className={`${styles.candidateItem} ${isSelected ? styles.candidateItemSelected : ''}`}
                       >
                         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                           <span
-                            style={{
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              width: 26,
-                              height: 26,
-                              borderRadius: '50%',
-                              background: candidate.rank === 1 ? '#059669' : '#e5e7eb',
-                              color: candidate.rank === 1 ? '#ffffff' : '#374151',
-                              fontWeight: 700,
-                              fontSize: 12,
-                            }}
+                            className={`${styles.candidateRank} ${candidate.rank === 1 ? styles.candidateRankFirst : ''}`}
                           >
                             #{candidate.rank}
                           </span>
                           <div>
-                            <div style={{ fontWeight: 600, fontSize: 14, color: '#111827' }}>
+                            <div className={styles.candidateName}>
                               {candidate.entry.client_name}
                             </div>
-                            <div style={{ fontSize: 12, color: '#4b5563' }}>
+                            <div className={styles.candidateSub}>
                               {candidate.entry.service_name || 'General Service'} • {candidate.entry.estimated_hours}h required
                               {candidate.score.distanceMiles !== null && ` • ${candidate.score.distanceMiles} mi from route`}
                             </div>
@@ -940,10 +726,10 @@ export default function WaitlistManager({
                         </div>
 
                         <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: 14, fontWeight: 700, color: '#059669' }}>
+                          <div className={styles.candidateScoreText}>
                             Score: {candidate.score.totalScore}/100
                           </div>
-                          <div style={{ fontSize: 11, color: '#6b7280' }}>
+                          <div className={styles.candidateScoreSub}>
                             {candidate.score.daysWaiting}d waiting • {candidate.entry.urgency}
                           </div>
                         </div>
@@ -956,44 +742,44 @@ export default function WaitlistManager({
 
             {/* Selected candidate score & offer settings */}
             {selectedCandidate && (
-              <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: 10, padding: 16, marginBottom: 20 }}>
-                <div style={{ fontSize: 13, fontWeight: 700, color: '#334155', marginBottom: 8 }}>
+              <div className={styles.scoreBreakdownBox}>
+                <div className={styles.scoreBreakdownTitle}>
                   Score Breakdown for {selectedCandidate.entry.client_name} (Priority Rank #{selectedCandidate.rank})
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(110px, 1fr))', gap: 8, fontSize: 12, marginBottom: 12 }}>
-                  <div style={{ background: '#ffffff', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                    <div style={{ color: '#64748b' }}>Proximity</div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{selectedCandidate.score.proximityScore}/35 pts</div>
+                  <div className={styles.scoreStatCard}>
+                    <div className={styles.scoreStatLabel}>Proximity</div>
+                    <div className={styles.scoreStatValue}>{selectedCandidate.score.proximityScore}/35 pts</div>
                   </div>
-                  <div style={{ background: '#ffffff', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                    <div style={{ color: '#64748b' }}>Wait Duration</div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{selectedCandidate.score.waitTimeScore}/25 pts</div>
+                  <div className={styles.scoreStatCard}>
+                    <div className={styles.scoreStatLabel}>Wait Duration</div>
+                    <div className={styles.scoreStatValue}>{selectedCandidate.score.waitTimeScore}/25 pts</div>
                   </div>
-                  <div style={{ background: '#ffffff', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                    <div style={{ color: '#64748b' }}>Urgency</div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{selectedCandidate.score.urgencyScore}/20 pts</div>
+                  <div className={styles.scoreStatCard}>
+                    <div className={styles.scoreStatLabel}>Urgency</div>
+                    <div className={styles.scoreStatValue}>{selectedCandidate.score.urgencyScore}/20 pts</div>
                   </div>
-                  <div style={{ background: '#ffffff', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                    <div style={{ color: '#64748b' }}>Window Fit</div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{selectedCandidate.score.windowFitScore}/10 pts</div>
+                  <div className={styles.scoreStatCard}>
+                    <div className={styles.scoreStatLabel}>Window Fit</div>
+                    <div className={styles.scoreStatValue}>{selectedCandidate.score.windowFitScore}/10 pts</div>
                   </div>
-                  <div style={{ background: '#ffffff', padding: 8, borderRadius: 6, border: '1px solid #cbd5e1' }}>
-                    <div style={{ color: '#64748b' }}>Job Value</div>
-                    <div style={{ fontWeight: 700, color: '#0f172a' }}>{selectedCandidate.score.valueScore}/10 pts</div>
+                  <div className={styles.scoreStatCard}>
+                    <div className={styles.scoreStatLabel}>Job Value</div>
+                    <div className={styles.scoreStatValue}>{selectedCandidate.score.valueScore}/10 pts</div>
                   </div>
                 </div>
 
                 {/* Offer Parameters */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
                   <div>
-                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#334155', marginBottom: 4 }}>
+                    <label className={styles.formLabel}>
                       Hold Reservation Timer
                     </label>
                     <select
                       aria-label="Hold reservation timer"
                       value={holdMinutes}
                       onChange={(e) => setHoldMinutes(Number(e.target.value))}
-                      style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #cbd5e1' }}
+                      className={styles.formSelect}
                     >
                       <option value={15}>15 Minutes Hold</option>
                       <option value={30}>30 Minutes Hold (Standard)</option>
@@ -1009,7 +795,7 @@ export default function WaitlistManager({
                       checked={autoCascade}
                       onChange={(e) => setAutoCascade(e.target.checked)}
                     />
-                    <label htmlFor="autoCascade" style={{ fontSize: 12, fontWeight: 600, color: '#334155', cursor: 'pointer' }}>
+                    <label htmlFor="autoCascade" className={styles.autoCascadeLabel}>
                       Auto-cascade to next candidate on expiry/decline
                     </label>
                   </div>
@@ -1018,35 +804,17 @@ export default function WaitlistManager({
             )}
 
             {/* Action Footer */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+            <div className={styles.modalFooter}>
               <button
                 onClick={() => setShowFillSlotModal(false)}
-                style={{
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  border: '1px solid #d1d5db',
-                  borderRadius: 8,
-                  padding: '10px 16px',
-                  fontSize: 14,
-                  fontWeight: 500,
-                  cursor: 'pointer',
-                }}
+                className={styles.modalCancelBtn}
               >
                 Cancel
               </button>
               <button
                 onClick={handleSendOffer}
                 disabled={!selectedCandidate || isPending}
-                style={{
-                  background: selectedCandidate ? '#059669' : '#9ca3af',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: 8,
-                  padding: '10px 18px',
-                  fontSize: 14,
-                  fontWeight: 600,
-                  cursor: selectedCandidate ? 'pointer' : 'not-allowed',
-                }}
+                className={styles.modalSendOfferBtn}
               >
                 {isPending ? 'Sending...' : `Send Offer to ${selectedCandidate?.entry.client_name || 'Candidate'}`}
               </button>
@@ -1057,37 +825,16 @@ export default function WaitlistManager({
 
       {/* Modal 2: Add Customer to Waitlist */}
       {showAddModal && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0,0,0,0.5)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 1000,
-            padding: 16,
-          }}
-        >
-          <div
-            style={{
-              background: '#ffffff',
-              borderRadius: 14,
-              width: '100%',
-              maxWidth: 580,
-              maxHeight: '90vh',
-              overflowY: 'auto',
-              boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
-              padding: 24,
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#111827', margin: 0 }}>
+        <div className={styles.modalBackdrop}>
+          <div className={`${styles.modalBox} ${styles.modalBoxAdd}`}>
+            <div className={styles.modalHead}>
+              <h2 className={styles.modalTitle}>
                 + Add Customer to Cancellation Waitlist
               </h2>
               <button
                 onClick={() => setShowAddModal(false)}
-                style={{ background: 'transparent', border: 'none', fontSize: 20, color: '#9ca3af', cursor: 'pointer' }}
+                className={styles.modalCloseBtn}
+                aria-label="Close modal"
               >
                 ×
               </button>
@@ -1096,7 +843,7 @@ export default function WaitlistManager({
             <form onSubmit={handleAddSubmit}>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Client Name *
                   </label>
                   <input
@@ -1105,11 +852,11 @@ export default function WaitlistManager({
                     placeholder="e.g. Sarah Connor"
                     value={formName}
                     onChange={(e) => setFormName(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Mobile Phone *
                   </label>
                   <input
@@ -1118,13 +865,13 @@ export default function WaitlistManager({
                     placeholder="e.g. (555) 234-5678"
                     value={formPhone}
                     onChange={(e) => setFormPhone(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
               </div>
 
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Street Address
                 </label>
                 <input
@@ -1132,13 +879,13 @@ export default function WaitlistManager({
                   placeholder="e.g. 742 Evergreen Terrace, Springfield"
                   value={formAddress}
                   onChange={(e) => setFormAddress(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                  className={styles.formInput}
                 />
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Service / Trade
                   </label>
                   <input
@@ -1146,11 +893,11 @@ export default function WaitlistManager({
                     placeholder="e.g. Water Heater Repair"
                     value={formService}
                     onChange={(e) => setFormService(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Est. Hours
                   </label>
                   <input
@@ -1158,11 +905,11 @@ export default function WaitlistManager({
                     step="0.5"
                     value={formHours}
                     onChange={(e) => setFormHours(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Est. Value ($)
                   </label>
                   <input
@@ -1170,21 +917,21 @@ export default function WaitlistManager({
                     placeholder="e.g. 450"
                     value={formValue}
                     onChange={(e) => setFormValue(e.target.value)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Urgency Level
                   </label>
                   <select
                     aria-label="Urgency level"
                     value={formUrgency}
                     onChange={(e) => setFormUrgency(e.target.value as WaitlistUrgency)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formSelect}
                   >
                     <option value="emergency">Emergency (Urgent)</option>
                     <option value="high">High Priority</option>
@@ -1193,14 +940,14 @@ export default function WaitlistManager({
                   </select>
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Preferred Time Window
                   </label>
                   <select
                     aria-label="Preferred time window"
                     value={formWindow}
                     onChange={(e) => setFormWindow(e.target.value as WaitlistWindow)}
-                    style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formSelect}
                   >
                     <option value="any">Any Time of Day</option>
                     <option value="morning">Morning (8 AM – 12 PM)</option>
@@ -1212,7 +959,7 @@ export default function WaitlistManager({
 
               {/* Preferred Weekdays */}
               <div style={{ marginBottom: 12 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Available Days of Week
                 </label>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
@@ -1226,16 +973,7 @@ export default function WaitlistManager({
                           if (isSelected) setFormDays(formDays.filter((d) => d !== index));
                           else setFormDays([...formDays, index]);
                         }}
-                        style={{
-                          padding: '4px 10px',
-                          borderRadius: 6,
-                          fontSize: 12,
-                          fontWeight: isSelected ? 700 : 500,
-                          background: isSelected ? '#4f46e5' : '#f3f4f6',
-                          color: isSelected ? '#ffffff' : '#374151',
-                          border: isSelected ? '1px solid #4f46e5' : '1px solid #d1d5db',
-                          cursor: 'pointer',
-                        }}
+                        className={`${styles.weekdayBtn} ${isSelected ? styles.weekdayBtnSelected : ''}`}
                       >
                         {name}
                       </button>
@@ -1246,31 +984,31 @@ export default function WaitlistManager({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Earliest Acceptable Date
                   </label>
                   <input
                     type="date"
                     value={formEarliest}
                     onChange={(e) => setFormEarliest(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                  <label className={styles.formLabel}>
                     Latest Acceptable Date
                   </label>
                   <input
                     type="date"
                     value={formLatest}
                     onChange={(e) => setFormLatest(e.target.value)}
-                    style={{ width: '100%', padding: '6px 8px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                    className={styles.formInput}
                   />
                 </div>
               </div>
 
               <div style={{ marginBottom: 18 }}>
-                <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: '#374151', marginBottom: 4 }}>
+                <label className={styles.formLabel}>
                   Notes / Context
                 </label>
                 <textarea
@@ -1278,40 +1016,22 @@ export default function WaitlistManager({
                   placeholder="e.g. Existing customer with flexible schedule on Thursdays"
                   value={formNotes}
                   onChange={(e) => setFormNotes(e.target.value)}
-                  style={{ width: '100%', padding: '8px 10px', fontSize: 13, borderRadius: 6, border: '1px solid #d1d5db' }}
+                  className={styles.formTextarea}
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
+              <div className={styles.modalFooter}>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  style={{
-                    background: '#f3f4f6',
-                    color: '#374151',
-                    border: '1px solid #d1d5db',
-                    borderRadius: 8,
-                    padding: '10px 16px',
-                    fontSize: 14,
-                    fontWeight: 500,
-                    cursor: 'pointer',
-                  }}
+                  className={styles.modalCancelBtn}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isPending}
-                  style={{
-                    background: '#4f46e5',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: 8,
-                    padding: '10px 18px',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
+                  className={styles.modalSubmitBtn}
                 >
                   {isPending ? 'Saving...' : 'Add to Waitlist'}
                 </button>
