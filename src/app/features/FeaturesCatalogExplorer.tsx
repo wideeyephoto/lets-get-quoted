@@ -32,6 +32,7 @@ const FEATURE_DEEP_LINKS: Record<string, string> = {
   'message-match-hero': '/features/ai-ads',
   'weather-ad-surge': '/features/ai-ads',
   'closed-loop-conversions': '/features/ai-ads',
+  'neighborhood-halo': '/features/neighborhood-halo',
 };
 
 export default function FeaturesCatalogExplorer() {

@@ -61,7 +61,11 @@ export function buildHaloCreativeBundle(input: GenerateHaloCopyInput): HaloAdCre
     weatherSurge,
   } = input;
 
-  const isStormSurge = Boolean(weatherSurge?.surgeActive);
+  const isStormSurge = Boolean(
+    weatherSurge?.surgeActive &&
+    (weatherSurge.recommendedAngle === 'storm_seasonal' ||
+      (trade && (trade.toLowerCase().includes('roof') || trade.toLowerCase().includes('gutter') || trade.toLowerCase().includes('restoration') || trade.toLowerCase().includes('tree'))))
+  );
 
   const baseCopy = generateDeterministicHaloCopy({
     trade,

@@ -20,6 +20,7 @@ import {
 import { processSmsInboundActionReceipt } from '@/lib/sms-inbound-action-worker';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { normalizeUsPhone } from '@/lib/phone';
+import { handleWeatherRescheduleInboundReply } from '@/lib/weather-inbound';
 
 export const runtime = 'nodejs';
 
@@ -332,6 +333,23 @@ export async function POST(request: Request) {
       return await minimumComplianceKeywordTwiml(
         admin, ingress.receiptId, 'help', brand, ingress.accountId, ingress.senderPurpose,
       );
+    }
+
+    // Check if this inbound text is an affirmative reply to an active weather reschedule proposal
+    if (ingress.accountId && inbound.fromNumber && inbound.body) {
+      try {
+        const weatherConfirm = await handleWeatherRescheduleInboundReply(admin, {
+          accountId: ingress.accountId,
+          fromPhone: inbound.fromNumber,
+          body: inbound.body,
+        });
+        if (weatherConfirm.handled) {
+          // Weather reschedule confirmed, calendar updated, and customer notified via SMS
+          return emptyTwiml();
+        }
+      } catch (weatherErr) {
+        console.error('Weather reschedule reply processing error:', weatherErr);
+      }
     }
 
     // Unbound or unrouted on a platform lane: still answer. This is the ordinary

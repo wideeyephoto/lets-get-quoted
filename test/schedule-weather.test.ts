@@ -156,3 +156,118 @@ describe('turning the forecast on', () => {
     expect(PANEL).toContain('Reading the forecast for every day you have work booked.');
   });
 });
+
+describe('interactive weather reschedule and SMS flow', () => {
+  const SMS = read('src', 'lib', 'sms.ts');
+  const ACTIONS = read('src', 'app', 'dashboard', 'schedule', 'weather-actions.ts');
+  const PANEL = read('src', 'app', 'dashboard', 'schedule', 'WeatherPanel.tsx');
+  const GLOBALS = read('src', 'app', 'globals.css');
+  const DATA = read('src', 'lib', 'weather-data.ts');
+
+  it('queries client_phone for weather jobs to enable SMS outreach', () => {
+    expect(DATA).toContain("select('id, ref, client_name, client_phone, scheduled_for, lat, lng, weather_sensitive')");
+  });
+
+  it('exports weather reschedule SMS helper in sms.ts', () => {
+    expect(SMS).toContain('export async function sendWeatherRescheduleSms(');
+    expect(SMS).toContain("messageKind: 'weather-reschedule'");
+    expect(SMS).toContain("category: 'customer_message'");
+  });
+
+  it('provides dedicated server actions for SMS dispatch, direct moves, and batching', () => {
+    expect(ACTIONS).toContain('export async function sendWeatherRescheduleSmsAction(');
+    expect(ACTIONS).toContain('export async function moveJobToWeatherDateAction(');
+    expect(ACTIONS).toContain('export async function batchSendWeatherRescheduleSmsAction(');
+  });
+
+  it('logs weather reschedule events to job_feed and account_events', () => {
+    expect(ACTIONS).toContain("kind: 'weather_reschedule_sent'");
+    expect(ACTIONS).toContain("kind: 'job_rescheduled'");
+    expect(ACTIONS).toContain('createJobFeedEvent(');
+    expect(ACTIONS).toContain('recordAccountEvent(');
+  });
+
+  it('renders interactive alternative chips, SMS send, direct move, and batch options in WeatherPanel', () => {
+    expect(PANEL).toContain('weather-alt-selector');
+    expect(PANEL).toContain('weather-alt-pill');
+    expect(PANEL).toContain('weather-batch-bar');
+    expect(PANEL).toContain('handleSendSms');
+    expect(PANEL).toContain('handleMoveJob');
+    expect(PANEL).toContain('handleBatchSend');
+  });
+
+  it('defines visual styling for pills, actions, and badges in globals.css', () => {
+    expect(GLOBALS).toContain('.weather-alt-pill.is-active');
+    expect(GLOBALS).toContain('.weather-sent-badge');
+    expect(GLOBALS).toContain('.weather-batch-bar');
+    expect(GLOBALS).toContain('.weather-logged-badge');
+  });
+
+  it('supports logging weather advisory notes to job timeline', () => {
+    expect(ACTIONS).toContain('export async function logWeatherRiskToTimelineAction(');
+    expect(ACTIONS).toContain("kind: 'weather_risk_flagged'");
+    expect(PANEL).toContain('handleLogTimeline');
+    expect(PANEL).toContain('Log to Timeline');
+  });
+
+  it('records weather events into immutable tenant audit ledger', () => {
+    expect(ACTIONS).toContain('recordTenantAuditEvent(');
+    expect(ACTIONS).toContain("action: 'weather_reschedule_notified'");
+    expect(ACTIONS).toContain("action: 'weather_job_rescheduled'");
+  });
+
+  it('provides rich feed labels, display titles, and icons for weather events', () => {
+    const LABELS = read('src', 'lib', 'job-detail-labels.ts');
+    expect(LABELS).toContain("weather_reschedule_sent: '⛈️'");
+    expect(LABELS).toContain("job_rescheduled: '📅'");
+    expect(LABELS).toContain("weather_risk_flagged: '⚠'");
+    expect(LABELS).toContain("weather_reschedule_sent: 'Weather reschedule'");
+    expect(LABELS).toContain("if (event.kind === 'weather_reschedule_sent')");
+  });
+
+  it('surfaces weather reschedules in automation activity and health dashboards', () => {
+    const AUTO = read('src', 'lib', 'automation-activity.ts');
+    const HEALTH = read('src', 'app', 'dashboard', 'home', 'AutomationHealth.tsx');
+    expect(AUTO).toContain('weatherRescheduleCount: number;');
+    expect(AUTO).toContain("'weather_reschedule_sent'");
+    expect(AUTO).toContain("'Weather reschedule outreach'");
+    expect(HEALTH).toContain("item.kind === 'weather_reschedule'");
+    expect(HEALTH).toContain('Weather reschedules');
+  });
+
+  it('enforces TCPA / Mini-TCPA quiet hours and supports delayed morning delivery', () => {
+    expect(SMS).toContain('availableAt?: Date | string | null;');
+    expect(SMS).toContain('availableAt: input.availableAt,');
+    expect(ACTIONS).toContain('getTcpaCompliantSendTime(');
+    expect(ACTIONS).toContain('resolveRecipientTimeZone(');
+    expect(ACTIONS).toContain('getJurisdictionTcpaRules(');
+    expect(ACTIONS).toContain('availableAt: quietCheck.isDelayed ? quietCheck.sendAt : null,');
+    expect(PANEL).toContain('sentInfo.isDelayed ?');
+    expect(PANEL).toContain('🌙 Queued for');
+  });
+
+  it('uses deterministic idempotency keys to protect against duplicate send clicks', () => {
+    expect(ACTIONS).toContain('const idempotencyKey = `weather-resched:${job.id}:${origDay}:${targetDay}`;');
+  });
+
+  it('tracks offers sent within 24 hours to prevent duplicate blasting and offers re-send', () => {
+    expect(ACTIONS).toContain('alreadySentToday: boolean;');
+    expect(ACTIONS).toContain('lastSentAt: string | null;');
+    expect(ACTIONS).toContain("eq('kind', 'weather_reschedule_sent')");
+    expect(PANEL).toContain('risk.alreadySentToday ?');
+    expect(PANEL).toContain('Offer sent today');
+    expect(PANEL).toContain('Re-send SMS');
+  });
+
+  it('integrates automated affirmative inbound reply handling in webhook ingress', () => {
+    const INBOUND_ROUTE = read('src', 'app', 'api', 'sms', 'inbound', 'route.ts');
+    const INBOUND_LIB = read('src', 'lib', 'weather-inbound.ts');
+    expect(INBOUND_ROUTE).toContain('handleWeatherRescheduleInboundReply(');
+    expect(INBOUND_LIB).toContain('export async function handleWeatherRescheduleInboundReply(');
+    expect(INBOUND_LIB).toContain('export function isAffirmativeReply(');
+    expect(INBOUND_LIB).toContain("kind: 'job_rescheduled'");
+    expect(INBOUND_LIB).toContain('appointment_confirmed_at: nowIso');
+  });
+});
+
+

@@ -25,6 +25,7 @@ const FEATURE_SLUGS = [
   'client-portal',
   'crew',
   'dispatch',
+  'neighborhood-halo',
   'payments',
   'quick-stops',
   'quotes',

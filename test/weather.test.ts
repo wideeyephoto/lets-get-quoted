@@ -160,6 +160,21 @@ describe('draftCustomerMessage', () => {
     });
     expect(message).toContain('call you');
   });
+
+  it('drafts a targeted single-day proposal when targetAlternativeDay is chosen', () => {
+    const message = draftCustomerMessage({
+      businessName: 'Apex Roofing',
+      customerName: 'Sarah Connor',
+      day: '2026-08-05',
+      assessment,
+      sensitivity: roofing,
+      alternatives: assessDays([day({ day: '2026-08-07', precipChance: 5 })], roofing),
+      targetAlternativeDay: '2026-08-07',
+    });
+    expect(message).toContain('Hi Sarah');
+    expect(message).toContain('move your visit to Friday, Aug 7 instead');
+    expect(message).toContain('Reply YES to confirm');
+  });
 });
 
 describe('parseWindMph', () => {

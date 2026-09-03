@@ -70,6 +70,9 @@ export default function ActivityLedgerClient({ initialEvents }: ActivityLedgerCl
     if (action.includes('updated') || action.includes('modified')) {
       return 'bg-blue-500/10 text-blue-400 border-blue-500/20';
     }
+    if (action.includes('weather')) {
+      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    }
     return 'bg-slate-800 text-slate-300 border-slate-700';
   };
 

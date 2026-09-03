@@ -133,4 +133,30 @@ describe('Dynamic Storm Surge Halo Coordination', () => {
     expect(bundle.googleAd.headlines.some((h) => h.includes('Storm Damage'))).toBe(true);
     expect(bundle.showcaseStory.title).toContain('Storm Damage Restoration on Maple Ave');
   });
+
+  it('keeps standard Halo creative bundle for outdoor painters during storms without storm surge copy', () => {
+    const weatherCondition = {
+      hasStorm: true,
+      hasHighWind: true,
+      alertHeadline: 'Severe Thunderstorm Warning',
+    };
+
+    const surge = detectWeatherSurgeOpportunity('Exterior Painting', 'Rochester', weatherCondition);
+    expect(surge.surgeActive).toBe(false);
+    expect(surge.budgetProtected).toBe(true);
+
+    const bundle = buildHaloCreativeBundle({
+      trade: 'Exterior Painting',
+      businessName: 'Precision Finish Painters',
+      streetName: 'Elm Street',
+      neighborhoodName: 'Highland Park',
+      city: 'Rochester',
+      weatherSurge: surge,
+    });
+
+    expect(bundle.stormSurgeActive).toBeFalsy();
+    expect(bundle.metaAd.headline).not.toContain('Storm Damage');
+    expect(bundle.metaAd.primaryText).not.toContain('Drone Roof');
+    expect(bundle.metaAd.callToAction).toBe('Claim Offer');
+  });
 });

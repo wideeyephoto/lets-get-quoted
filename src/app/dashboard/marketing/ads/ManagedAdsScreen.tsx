@@ -394,12 +394,11 @@ export default function ManagedAdsScreen({
 
   // Weather Surge Opportunity Detection
   const weatherSurge = useMemo(() => {
-    const isStormTrade =
-      (trade || '').toLowerCase().includes('roof') || (trade || '').toLowerCase().includes('gutter');
     return detectWeatherSurgeOpportunity(trade, city, {
-      hasStorm: isStormTrade || weatherSurgeSim,
+      hasStorm: weatherSurgeSim,
+      hasHighWind: weatherSurgeSim,
       temperatureF: weatherSurgeSim ? 92 : 78,
-      alertHeadline: isStormTrade || weatherSurgeSim ? 'Severe Weather / High Demand Watch' : undefined,
+      alertHeadline: weatherSurgeSim ? 'Severe Storm & High Demand Watch' : undefined,
     });
   }, [trade, city, weatherSurgeSim]);
 
@@ -496,7 +495,10 @@ export default function ManagedAdsScreen({
   // ROI Calculator Calculations
   const roiMetrics = useMemo(() => {
     const baseLeads = Math.round((currentBundle.leadMin + currentBundle.leadMax) / 2);
-    const effectiveLeads = weatherSurgeSim || weatherSurge.surgeActive ? Math.round(baseLeads * 1.25) : baseLeads;
+    const boostMultiplier = weatherSurge.surgeActive
+      ? 1 + (weatherSurge.recommendedBudgetBoostPct || 25) / 100
+      : 1.0;
+    const effectiveLeads = Math.round(baseLeads * boostMultiplier);
     const wonJobs = Math.max(1, Math.round(effectiveLeads * (closeRatePct / 100)));
     const grossRevenue = wonJobs * avgTicketDollars;
     const roas = Math.round((grossRevenue / currentBundle.totalMonthlyDollars) * 10) / 10;
@@ -511,7 +513,7 @@ export default function ManagedAdsScreen({
       cac,
       netReturn,
     };
-  }, [currentBundle, weatherSurgeSim, weatherSurge.surgeActive, closeRatePct, avgTicketDollars]);
+  }, [currentBundle, weatherSurge.surgeActive, weatherSurge.recommendedBudgetBoostPct, closeRatePct, avgTicketDollars]);
 
   const handleLaunchAutopilot = async () => {
     if (!MANAGED_ADS_CHECKOUT_ENABLED) {
@@ -2508,9 +2510,19 @@ export default function ManagedAdsScreen({
                     type="button"
                     className={styles.weatherToggleBtn}
                     onClick={() => setWeatherSurgeSim(!weatherSurgeSim)}
-                    title="Simulate high-demand weather surge"
+                    title={
+                      weatherSurge.budgetProtected
+                        ? 'Bad Weather Budget Guard: Outdoor pacing protected during rain/storms'
+                        : 'Simulate local weather conditions'
+                    }
                   >
-                    {weatherSurgeSim ? '⛈️ Weather Surge (+25%)' : '☀️ Normal Weather'}
+                    {!weatherSurgeSim
+                      ? '☀️ Normal Weather'
+                      : weatherSurge.surgeActive
+                      ? `⛈️ Weather Surge (+${weatherSurge.recommendedBudgetBoostPct || 25}%)`
+                      : weatherSurge.budgetProtected
+                      ? '🛡️ Storm Delay (Budget Shield Active)'
+                      : '☀️ Baseline Pacing'}
                   </button>
                 </div>
 
@@ -3665,7 +3677,7 @@ export default function ManagedAdsScreen({
                 <div className={styles.shieldIconLarge}>🌦️</div>
                 <h3 className={styles.shieldTitle}>Weather Surge Radar</h3>
                 <p className={styles.shieldText}>
-                  Continuously monitors local radar for storms, high winds, and freezes in {city.split(',')[0]}. Automatically surges search bidding +25% during peak emergency demand when homeowner search volume explodes.
+                  Continuously monitors local radar for storms, high winds, and freezes in {city.split(',')[0]}. Automatically surges search bidding +25% for emergency-repair trades during peak demand, while shielding outdoor trades (painting, landscaping, concrete) with bad-weather budget preservation so ad spend is never wasted during rain delays.
                 </p>
               </div>
 

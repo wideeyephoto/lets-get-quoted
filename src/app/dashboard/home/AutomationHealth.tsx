@@ -115,13 +115,33 @@ export default function AutomationHealth({
                 <p className="workspace-metric-note">{formatMoney(automation.depositTotal)} asked on approval.</p>
               ) : null}
             </article>
+            {automation.weatherRescheduleCount > 0 ? (
+              <article className="workspace-metric-card">
+                <span className="workspace-metric-label">
+                  Weather reschedules
+                  <InfoTip label="More information about weather reschedules">
+                    Outreach and schedule moves protecting jobs from adverse weather.
+                  </InfoTip>
+                </span>
+                <strong className="workspace-metric-value">{automation.weatherRescheduleCount}</strong>
+              </article>
+            ) : null}
           </div>
           {automation.recent.length > 0 ? (
             <details className="dash-activity">
               <summary>Recent automation activity ({automation.recent.length})</summary>
               <div className="cost-list" style={{ marginTop: '0.85rem' }}>
                 {automation.recent.map((item, index) => {
-                  const icon = item.kind === 'review_requested' ? '⭐' : item.kind === 'quote_followup' ? '↻' : item.kind === 'appointment_reminder' ? '🔔' : '$';
+                  const icon =
+                    item.kind === 'review_requested'
+                      ? '⭐'
+                      : item.kind === 'quote_followup'
+                        ? '↻'
+                        : item.kind === 'appointment_reminder'
+                          ? '🔔'
+                          : item.kind === 'weather_reschedule'
+                            ? '⛈️'
+                            : '$';
                   const when = new Date(item.at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                   const inner = (
                     <>

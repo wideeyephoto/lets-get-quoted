@@ -9,6 +9,11 @@
 
 import { createHash } from 'node:crypto';
 import { generateResponsiveSearchAd, generateTradeKeywords } from './google-ads-generator';
+import {
+  detectWeatherSurgeOpportunity,
+  isOutdoorWeatherSensitiveTrade,
+  type WeatherSurgeCondition,
+} from './weather-ad-surge';
 
 export const GOOGLE_ADS_API_VERSION = process.env.GOOGLE_ADS_API_VERSION || 'v25';
 export const GOOGLE_ADS_API_BASE_URL = `https://googleads.googleapis.com/${GOOGLE_ADS_API_VERSION}`;
@@ -1105,17 +1110,51 @@ export async function toggleCampaignStatus(
   };
 }
 
+/**
+ * Synchronizes Google Ads campaign mobile bid modifier for weather surge events.
+ * Safeguards outdoor and ineligible contractor trades during storms/bad weather by
+ * enforcing baseline pacing (1.0x) so ads do not surge when work is delayed.
+ */
 export async function syncWeatherSurgeBidModifier(
   campaignId: string,
-  surgeActive: boolean
-): Promise<{ success: boolean; modifierApplied: number }> {
-  const multiplier = surgeActive ? 1.35 : 1.0;
+  surgeActive: boolean,
+  trade?: string,
+  condition?: WeatherSurgeCondition
+): Promise<{ success: boolean; modifierApplied: number; reason?: string }> {
+  let effectiveSurge = surgeActive;
+  let reason: string | undefined;
+
+  if (trade) {
+    if (isOutdoorWeatherSensitiveTrade(trade)) {
+      effectiveSurge = false;
+      reason = `Trade '${trade}' is outdoor weather-sensitive. Bad Weather Budget Guard held modifier at 1.0x.`;
+    } else if (condition) {
+      const opp = detectWeatherSurgeOpportunity(trade, '', condition);
+      effectiveSurge = opp.surgeActive;
+      if (!effectiveSurge) {
+        reason = `Weather conditions do not qualify trade '${trade}' for surge. Modifier held at 1.0x.`;
+      }
+    }
+  }
+
+  const multiplier = effectiveSurge ? 1.35 : 1.0;
   const result = await updateCampaignBidModifier({
     campaignId,
     bidModifier: multiplier,
     deviceType: 'MOBILE',
   });
-  return { success: result.success, modifierApplied: multiplier };
+  return { success: result.success, modifierApplied: multiplier, reason };
+}
+
+/**
+ * Evaluates the appropriate Google Ads mobile bid modifier based on trade and weather conditions.
+ */
+export function evaluateWeatherSurgeBidModifier(
+  trade: string,
+  condition: WeatherSurgeCondition
+): number {
+  const opportunity = detectWeatherSurgeOpportunity(trade, '', condition);
+  return opportunity.surgeActive ? 1.35 : 1.0;
 }
 
 export async function syncCapacityGuardStatus(

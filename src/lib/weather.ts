@@ -230,6 +230,7 @@ export function draftCustomerMessage(input: {
   assessment: Assessment;
   sensitivity: Sensitivity;
   alternatives: Assessment[];
+  targetAlternativeDay?: string | null;
 }): string {
   const first = (input.customerName ?? '').trim().split(/\s+/)[0];
   const greeting = first ? `Hi ${first}, ` : '';
@@ -240,11 +241,21 @@ export function draftCustomerMessage(input: {
     day: 'numeric',
   });
   const why = input.assessment.reasons.length > 0 ? ` (${input.assessment.reasons.join(', ')})` : '';
-  const options = input.alternatives.length
-    ? ` We could do ${input.alternatives
-        .map((a) => new Date(`${a.day}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long' }))
-        .join(' or ')} instead — which suits you?`
-    : ' We’ll call you to find another day.';
+  
+  let options = ' We’ll call you to find another day.';
+  if (input.targetAlternativeDay) {
+    const targetWhen = new Date(`${input.targetAlternativeDay}T12:00:00Z`).toLocaleDateString('en-US', {
+      timeZone: 'UTC',
+      weekday: 'long',
+      month: 'short',
+      day: 'numeric',
+    });
+    options = ` We can move your visit to ${targetWhen} instead — does that work for you? Reply YES to confirm.`;
+  } else if (input.alternatives.length > 0) {
+    options = ` We could do ${input.alternatives
+      .map((a) => new Date(`${a.day}T12:00:00Z`).toLocaleDateString('en-US', { timeZone: 'UTC', weekday: 'long' }))
+      .join(' or ')} instead — which suits you?`;
+  }
 
   return `${greeting}${input.businessName} here. The forecast for ${when}${why} isn’t going to work for your job. ${input.sensitivity.reasonNote}${options}`;
 }

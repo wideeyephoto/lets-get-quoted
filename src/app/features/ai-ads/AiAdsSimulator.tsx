@@ -3,6 +3,7 @@
 import { useState, useMemo } from 'react';
 import { SMART_BUNDLES, getSmartBundle, type SmartBundleId } from '@/lib/multi-channel-ads';
 import { generateTradeKeywords } from '@/lib/google-ads-generator';
+import { detectWeatherSurgeOpportunity } from '@/lib/weather-ad-surge';
 import styles from './ai-ads.module.css';
 
 const DEMO_TRADES = ['Roofing', 'Plumbing', 'HVAC', 'Electrical', 'Landscaping', 'Painting'];
@@ -21,11 +22,24 @@ export default function AiAdsSimulator() {
 
   const bundle = getSmartBundle(selectedBundleId);
 
-  // Dynamic calculations
+  // Trade-aware weather opportunity evaluation
+  const simulatedWeatherOpportunity = useMemo(() => {
+    return detectWeatherSurgeOpportunity(trade, city, {
+      hasStorm: weatherSurgeActive,
+      hasHighWind: weatherSurgeActive,
+      temperatureF: weatherSurgeActive ? 92 : 75,
+      alertHeadline: weatherSurgeActive ? 'Severe Weather / High Demand Watch' : undefined,
+    });
+  }, [trade, city, weatherSurgeActive]);
+
+  // Dynamic calculations: only surge leads if the contractor trade qualifies for surge
   const projectedLeads = useMemo(() => {
     const base = (selectedBundleId === 'starter' || selectedBundleId === 'launch') ? 14 : selectedBundleId === 'growth' ? 20 : 38;
-    return weatherSurgeActive ? Math.round(base * 1.25) : base;
-  }, [selectedBundleId, weatherSurgeActive]);
+    const boostMultiplier = simulatedWeatherOpportunity.surgeActive
+      ? 1 + (simulatedWeatherOpportunity.recommendedBudgetBoostPct || 25) / 100
+      : 1.0;
+    return Math.round(base * boostMultiplier);
+  }, [selectedBundleId, simulatedWeatherOpportunity]);
 
   const projectedWonJobs = Math.max(1, Math.round(projectedLeads * (closeRatePct / 100)));
   const projectedRevenueDollars = projectedWonJobs * avgTicketDollars;
@@ -84,9 +98,21 @@ export default function AiAdsSimulator() {
               type="button"
               onClick={() => setWeatherSurgeActive(!weatherSurgeActive)}
               style={{
-                background: weatherSurgeActive ? 'rgba(59, 130, 246, 0.25)' : 'rgba(15, 23, 42, 0.8)',
-                border: weatherSurgeActive ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.15)',
-                color: weatherSurgeActive ? '#38bdf8' : '#cbd5e1',
+                background: weatherSurgeActive
+                  ? simulatedWeatherOpportunity.budgetProtected
+                    ? 'rgba(234, 179, 8, 0.25)'
+                    : 'rgba(59, 130, 246, 0.25)'
+                  : 'rgba(15, 23, 42, 0.8)',
+                border: weatherSurgeActive
+                  ? simulatedWeatherOpportunity.budgetProtected
+                    ? '1px solid #eab308'
+                    : '1px solid #38bdf8'
+                  : '1px solid rgba(255, 255, 255, 0.15)',
+                color: weatherSurgeActive
+                  ? simulatedWeatherOpportunity.budgetProtected
+                    ? '#facc15'
+                    : '#38bdf8'
+                  : '#cbd5e1',
                 padding: '0.5rem 0.85rem',
                 borderRadius: '8px',
                 fontSize: '0.85rem',
@@ -94,7 +120,13 @@ export default function AiAdsSimulator() {
                 fontWeight: 600,
               }}
             >
-              {weatherSurgeActive ? '⛈️ Weather Surge (+25%)' : '☀️ Normal Weather'}
+              {!weatherSurgeActive
+                ? '☀️ Normal Weather'
+                : simulatedWeatherOpportunity.surgeActive
+                ? `⛈️ Weather Surge (+${simulatedWeatherOpportunity.recommendedBudgetBoostPct || 25}%)`
+                : simulatedWeatherOpportunity.budgetProtected
+                ? '🛡️ Storm Delay (Budget Protected)'
+                : '☀️ Baseline Pacing'}
             </button>
           </label>
         </div>
@@ -395,7 +427,16 @@ export default function AiAdsSimulator() {
       <div className={styles.smartShieldBand}>
         <div className={styles.shieldItem}>
           <span className={styles.shieldDot} />
-          <span><strong>Weather Surge:</strong> {weatherSurgeActive ? 'Active (+25% Boost)' : 'Monitoring Weather'}</span>
+          <span>
+            <strong>Weather Surge:</strong>{' '}
+            {!weatherSurgeActive
+              ? 'Monitoring Weather'
+              : simulatedWeatherOpportunity.surgeActive
+              ? `Surge Active (+${simulatedWeatherOpportunity.recommendedBudgetBoostPct || 25}% Boost)`
+              : simulatedWeatherOpportunity.budgetProtected
+              ? 'Budget Protected (Outdoor Storm Delay)'
+              : 'Baseline Pacing'}
+          </span>
         </div>
         <div className={styles.shieldItem}>
           <span className={styles.shieldDot} />

@@ -6,6 +6,7 @@ import {
   uploadOfflineConversion,
   updateCampaignBidModifier,
   syncWeatherSurgeBidModifier,
+  evaluateWeatherSurgeBidModifier,
   syncCapacityGuardStatus,
 } from '@/lib/google-ads-api';
 import {
@@ -60,6 +61,36 @@ describe('Google Ads Campaign Effectiveness Suite', () => {
       const calmRes = await syncWeatherSurgeBidModifier('camp_12345', false);
       expect(calmRes.success).toBe(true);
       expect(calmRes.modifierApplied).toBe(1.0);
+    });
+
+    it('shields outdoor contractors from surging bids during storms (Bad Weather Budget Guard)', async () => {
+      // Outdoor painting contractor during storm: modifier must remain 1.0 (baseline) even if surge was flagged
+      const paintRes = await syncWeatherSurgeBidModifier('camp_paint', true, 'Exterior Painting', {
+        hasStorm: true,
+        hasHighWind: true,
+      });
+      expect(paintRes.success).toBe(true);
+      expect(paintRes.modifierApplied).toBe(1.0);
+      expect(paintRes.reason).toContain('outdoor weather-sensitive');
+
+      // Landscaping contractor during storm: modifier must remain 1.0
+      const landscapeRes = await syncWeatherSurgeBidModifier('camp_land', true, 'Landscaping', {
+        hasStorm: true,
+      });
+      expect(landscapeRes.success).toBe(true);
+      expect(landscapeRes.modifierApplied).toBe(1.0);
+
+      // Roofing contractor during storm: should receive the 1.35 modifier
+      const roofRes = await syncWeatherSurgeBidModifier('camp_roof', true, 'Roofing', {
+        hasStorm: true,
+      });
+      expect(roofRes.success).toBe(true);
+      expect(roofRes.modifierApplied).toBe(1.35);
+
+      // Evaluate helper directly
+      expect(evaluateWeatherSurgeBidModifier('Roofing', { hasStorm: true })).toBe(1.35);
+      expect(evaluateWeatherSurgeBidModifier('Exterior Painting', { hasStorm: true })).toBe(1.0);
+      expect(evaluateWeatherSurgeBidModifier('Concrete & Masonry', { hasStorm: true })).toBe(1.0);
     });
 
     it('pauses and resumes campaigns when Capacity Guard triggers', async () => {

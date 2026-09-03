@@ -81,6 +81,9 @@ export const FEED_KIND_LABEL: Record<string, string> = {
   quote_followup: 'Quote follow-up',
   field_sms_update: 'Field text note',
   field_voice_note: 'Field voice memo',
+  weather_reschedule_sent: 'Weather reschedule',
+  job_rescheduled: 'Rescheduled',
+  weather_risk_flagged: 'Weather risk',
 };
 
 export const FEED_KIND_ICON: Record<string, string> = {
@@ -110,6 +113,9 @@ export const FEED_KIND_ICON: Record<string, string> = {
   quote_followup: '↻',
   field_sms_update: '💬',
   field_voice_note: '🎙️',
+  weather_reschedule_sent: '⛈️',
+  job_rescheduled: '📅',
+  weather_risk_flagged: '⚠',
 };
 
 export function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margin-bad' {
@@ -320,6 +326,9 @@ export function getFeedDisplayTitle(event: Pick<JobFeedEvent, 'kind' | 'title'>)
   if (event.kind === 'job_created') return 'Quote sent';
   if (event.kind === 'client_link_created') return 'Client view link created';
   if (event.kind === 'client_link_revoked') return 'Client view links revoked';
+  if (event.kind === 'weather_reschedule_sent') return event.title || 'Weather reschedule offer sent';
+  if (event.kind === 'job_rescheduled') return event.title || 'Rescheduled for weather';
+  if (event.kind === 'weather_risk_flagged') return event.title || 'Weather risk flagged';
   return event.title || event.kind;
 }
 

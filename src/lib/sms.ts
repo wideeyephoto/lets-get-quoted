@@ -482,6 +482,28 @@ export async function sendEstimateOfferSms(input: {
   });
 }
 
+/**
+ * Weather-driven reschedule outreach sent to the homeowner when severe weather
+ * threatens an outdoor job. Categorized as customer_message and recorded with consent.
+ */
+export async function sendWeatherRescheduleSms(input: {
+  accountId: string;
+  toPhone: string;
+  message: string;
+  idempotencyKey?: string;
+  availableAt?: Date | string | null;
+}): Promise<string> {
+  return queueAccountSms({
+    accountId: input.accountId,
+    phone: input.toPhone,
+    body: input.message,
+    messageKind: 'weather-reschedule',
+    category: 'customer_message',
+    idempotencyKey: input.idempotencyKey,
+    availableAt: input.availableAt,
+  });
+}
+
 // Booking confirmed / declined by the contractor → customer.
 //
 // Transactional and expected: this person chose a slot on the booking page and

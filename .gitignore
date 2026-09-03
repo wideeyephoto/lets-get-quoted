@@ -53,3 +53,4 @@ scripts/tmp-*.mjs
 artifacts/
 test-results/
 .audit-tmp/
+supabase/.temp/

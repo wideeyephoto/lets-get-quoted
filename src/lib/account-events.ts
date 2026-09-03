@@ -61,7 +61,10 @@ export type AccountEventKind =
   | 'subscription_guarantee_refund_requested'
   | 'subscription_guarantee_refund_issued'
   // Automated contractor onboarding & lifecycle drip email delivered by the platform
-  | 'contractor_lifecycle_email_sent';
+  | 'contractor_lifecycle_email_sent'
+  // Weather schedule notifications and job moves
+  | 'weather_reschedule_notified'
+  | 'weather_job_rescheduled';
 
 export async function recordAccountEvent(input: {
   accountId: string;

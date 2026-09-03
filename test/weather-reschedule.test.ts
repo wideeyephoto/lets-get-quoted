@@ -67,3 +67,27 @@ describe('Weather Reschedule Engine', () => {
     expect(risk.severity).toBe('low');
   });
 });
+
+describe('Weather Reschedule Inbound Reply Recognition', () => {
+  it('correctly matches affirmative customer SMS replies', async () => {
+    const { isAffirmativeReply } = await import('../src/lib/weather-inbound');
+    expect(isAffirmativeReply('YES')).toBe(true);
+    expect(isAffirmativeReply('yes please!')).toBe(true);
+    expect(isAffirmativeReply('Confirm')).toBe(true);
+    expect(isAffirmativeReply('that works')).toBe(true);
+    expect(isAffirmativeReply('Sounds good to me')).toBe(true);
+    expect(isAffirmativeReply('ok')).toBe(true);
+    expect(isAffirmativeReply('Okay, thanks.')).toBe(true);
+    expect(isAffirmativeReply('Sure thing')).toBe(true);
+    expect(isAffirmativeReply('Y')).toBe(true);
+  });
+
+  it('rejects negative or ambiguous replies', async () => {
+    const { isAffirmativeReply } = await import('../src/lib/weather-inbound');
+    expect(isAffirmativeReply('No, that date does not work')).toBe(false);
+    expect(isAffirmativeReply('Can we do next week instead?')).toBe(false);
+    expect(isAffirmativeReply('Who is this?')).toBe(false);
+    expect(isAffirmativeReply('')).toBe(false);
+  });
+});
+

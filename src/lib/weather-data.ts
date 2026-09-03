@@ -52,6 +52,7 @@ export type WeatherJob = {
   id: string;
   ref: string | null;
   clientName: string;
+  clientPhone: string | null;
   scheduledFor: string;
   lat: number;
   lng: number;
@@ -109,7 +110,7 @@ export async function jobsAtRisk(
 
   const { data: rows } = await supabase
     .from('jobs')
-    .select('id, ref, client_name, scheduled_for, lat, lng, weather_sensitive')
+    .select('id, ref, client_name, client_phone, scheduled_for, lat, lng, weather_sensitive')
     .eq('account_id', accountId)
     .not('scheduled_for', 'is', null)
     .gte('scheduled_for', from)
@@ -151,6 +152,7 @@ export async function jobsAtRisk(
         id: row.id as string,
         ref: (row.ref as string | null) ?? null,
         clientName: (row.client_name as string) ?? 'Customer',
+        clientPhone: (row.client_phone as string | null) ?? null,
         scheduledFor: day,
         lat,
         lng,

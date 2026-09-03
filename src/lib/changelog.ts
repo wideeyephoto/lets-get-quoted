@@ -145,7 +145,7 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
     ],
     primaryAction: {
       label: 'Explore Neighborhood Halo',
-      href: '/features/ai-ads',
+      href: '/features/neighborhood-halo',
     },
     secondaryAction: {
       label: 'View Ads Dashboard',

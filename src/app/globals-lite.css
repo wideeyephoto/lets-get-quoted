@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: f84fd8699109bc9d
+   source-sha256: 16e29bea2a20b20c
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16878,6 +16878,14 @@ a.ropsrow-fact:hover {
   color: var(--ink-orange-1);
 }
 
+.weather-alt-pill.is-active {
+  background: var(--ink-amber-3, #f59e0b);
+  color: #111;
+  border-color: var(--ink-amber-3, #f59e0b);
+  font-weight: 600;
+}
+
+
 /* Client portal — the homeowner's own way back in.
    Rendered on the CONTRACTOR's white site shell (SitePortalPage), not in the
    workspace, so these are literal light-page colours rather than the dashboard
@@ -27329,8 +27337,9 @@ select optgroup {
 }
 
 .sched-queue-bar.is-clear .sched-queue-bar-line {
-  display: grid;
-  gap: 0.1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 /* Collapsed: the list goes, the toggle stays. The panel is also marked `inert`
@@ -27338,6 +27347,12 @@ select optgroup {
    worse than one that is simply there. */
 .sched-queue.is-collapsed .sched-queue-panel {
   display: none;
+}
+
+.sched-queue.is-collapsed[data-count]:not([data-count='0']) .sched-queue-collapse {
+  border-color: var(--cedge-amber-7, rgba(255, 176, 32, 0.4));
+  background: rgba(255, 176, 32, 0.08);
+  color: var(--text);
 }
 
 @media (min-width: 1024px) {

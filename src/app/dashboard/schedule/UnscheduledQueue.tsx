@@ -115,6 +115,7 @@ export default function UnscheduledQueue({
       // landing on the first row would be landing on the wrong task.
       const wanted = (event as CustomEvent<{ focusJobId?: string }>).detail?.focusJobId;
       setOpen(true);
+      setCollapsed(false);
       // After paint: on a tablet the panel has only just been un-inerted, and
       // focus cannot land inside an inert subtree.
       requestAnimationFrame(() => {

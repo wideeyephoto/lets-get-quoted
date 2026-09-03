@@ -52,6 +52,7 @@ import {
 // string and not a retyped one.
 import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatch';
 import { generateSpeedToLeadSms, generateContractorAdLeadAlert } from '@/lib/ad-speed-to-lead';
+import { draftCustomerMessage } from '@/lib/weather';
 
 /**
  * Every text message this app can send, in one list, with the real words.
@@ -780,6 +781,29 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       renewalDateStr: 'Sep 5',
     }),
   },
+  {
+    id: 'weather-reschedule',
+    title: 'Weather reschedule offer',
+    trigger: 'Sent to customer when severe weather threatens scheduled outdoor work and an alternative clear day is proposed',
+    audience: 'customer',
+    control: always('Triggered by contractor from the weather schedule panel'),
+    body: withOptOut(
+      draftCustomerMessage({
+        businessName: SAMPLE.business,
+        customerName: SAMPLE.client,
+        day: '2026-09-04',
+        assessment: {
+          day: '2026-09-04',
+          level: 'risky',
+          reasons: ['85% chance of rain', '1.2in total precipitation'],
+          summary: 'Heavy rain and wind expected throughout the day.',
+        },
+        sensitivity: { label: 'Standard exterior', reasonNote: 'Heavy rain affects exterior work' },
+        alternatives: [{ day: '2026-09-05', level: 'clear', reasons: [], summary: 'Sunny and clear, 72°F' }],
+        targetAlternativeDay: '2026-09-05',
+      }),
+    ),
+  },
 ];
 
 /** Every sender this catalogue claims to cover, checked against lib/sms by test. */
@@ -834,6 +858,7 @@ export const CATALOGUE_SENDERS = [
   'sendSelectionRequestSms',
   'sendUpcomingAdPaymentSms',
   'sendVerificationCodeSms',
+  'sendWeatherRescheduleSms',
 ] as const;
 
 export const AUDIENCE_LABEL: Record<SmsAudience, string> = {
