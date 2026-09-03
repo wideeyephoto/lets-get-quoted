@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import AiCopilotWithAvatarsScreen from './AiCopilotWithAvatarsScreen';
 
+export const SPARKY_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=feature&source=feature_page';
+
 export const metadata: Metadata = {
   title: 'AI Copilot with Avatars · 24/7 Field Sidekick & Trade Companions | Let’s Get Quoted',
   description:
