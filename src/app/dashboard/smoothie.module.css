@@ -389,25 +389,31 @@
 }
 .callQuiet:hover { color: var(--text); background: rgba(var(--tint), 0.06); }
 
-.lifecycle { padding: 0.75rem 1.15rem; }
+.lifecycle {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.35rem 1.15rem;
+}
 .lifecycleLabel {
-  display: block;
-  margin-bottom: 0.4rem;
+  display: inline-block;
+  margin-bottom: 0;
   font-size: 0.68rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mute-i56);
+  white-space: nowrap;
 }
-.lifecycleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.45rem; }
+.lifecycleRow { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem; }
 .quietBtn {
-  min-height: 44px;
-  padding: 0 0.75rem;
+  min-height: 32px;
+  padding: 0 0.65rem;
   border: 1px solid var(--edge-t14);
-  border-radius: 10px;
+  border-radius: 6px;
   background: rgba(var(--tint), 0.03);
   color: var(--muted);
   font: inherit;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   cursor: pointer;
 }
 .quietBtn:hover { color: var(--text); border-color: var(--edge-t22); }
@@ -633,6 +639,18 @@
    and the name is part of why Leads went without a cover for as long as it did
    — the shape looked like it belonged to Jobs. */
 .recordHeadLayout { display: flex; align-items: flex-start; gap: 0.85rem; }
+.recordHeadLayout :global(figure) {
+  width: 4.5rem !important;
+  min-height: 4.5rem !important;
+  height: 4.5rem !important;
+  aspect-ratio: 1 !important;
+  border-width: 2px !important;
+  border-radius: 12px !important;
+}
+.recordHeadLayout :global(svg) {
+  width: 2rem !important;
+  height: 2rem !important;
+}
 .recordHeadCopy { min-width: 0; flex: 1; }
 
 @media (max-width: 560px) {

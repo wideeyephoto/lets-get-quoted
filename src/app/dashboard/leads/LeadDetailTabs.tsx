@@ -98,19 +98,20 @@ export default function LeadDetailTabs({
 
     return (
       <div className={styles.grid}>
-        {/* 1. Customer Request & Message (Front & Center) */}
+        {/* 1. Customer Request & Site Scope (One Cohesive Card) */}
         <section
           className={styles.card}
           style={{
             gridColumn: '1 / -1',
-            background: 'linear-gradient(180deg, rgba(255, 122, 33, 0.07), rgba(var(--tint), 0.02) 65%)',
-            borderColor: 'var(--cedge-orange-66, rgba(255, 122, 33, 0.4))',
+            background: 'linear-gradient(180deg, rgba(255, 122, 33, 0.06), rgba(var(--tint), 0.015) 80%)',
+            borderColor: 'var(--cedge-orange-66, rgba(255, 122, 33, 0.35))',
+            padding: '0.95rem 1.15rem 0.85rem',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-            <Head level={H}>💬 Customer Request &amp; Scope</Head>
+            <Head level={H}>💬 Customer Request</Head>
             <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
-              <span className={leadStyles.flagChip} style={{ background: 'rgba(255, 122, 33, 0.18)', color: 'var(--accent-ink, #ff7a21)', fontWeight: 750 }}>
+              <span className={leadStyles.flagChip} style={{ background: 'rgba(255, 122, 33, 0.16)', color: 'var(--accent-ink, #ff7a21)', fontWeight: 750 }}>
                 {detail.projectType || 'General Service'}
               </span>
               {detail.sourceLabel && (
@@ -120,11 +121,12 @@ export default function LeadDetailTabs({
               )}
             </div>
           </div>
+
           {detail.message ? (
             <blockquote
               className={styles.quote}
               style={{
-                margin: '0.4rem 0 0.6rem',
+                margin: '0.4rem 0 0.65rem',
                 fontSize: '0.94rem',
                 lineHeight: '1.5',
                 color: 'var(--text)',
@@ -135,42 +137,15 @@ export default function LeadDetailTabs({
               &ldquo;{detail.message}&rdquo;
             </blockquote>
           ) : (
-            <p className={styles.muted} style={{ margin: '0.35rem 0 0.6rem', fontStyle: 'italic' }}>
+            <p className={styles.muted} style={{ margin: '0.3rem 0 0.5rem', fontStyle: 'italic' }}>
               No written message left during intake.
             </p>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--muted)', marginTop: '0.2rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-            <span>Received: <strong style={{ color: 'var(--text)' }}>{detail.createdAtLabel}</strong></span>
-            {onSelectTab && (
-              <button
-                type="button"
-                onClick={() => onSelectTab('request')}
-                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
-              >
-                View full intake details →
-              </button>
-            )}
-          </div>
-        </section>
 
-        {/* 2. Photo Evidence Strip & Visual AI Preview */}
-        {detail.photos.length > 0 ? (
-          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-              <Head level={H}>📸 Project Photos &amp; Visual Evidence ({detail.photoCount})</Head>
-              {onSelectTab && (
-                <button
-                  type="button"
-                  onClick={() => onSelectTab('photos')}
-                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
-                >
-                  Open photo gallery ({detail.photoCount}) →
-                </button>
-              )}
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', overflowX: 'auto', paddingBottom: '0.3rem' }}>
-              {detail.photos.slice(0, 5).map((photo, idx) => {
+          {/* Inline Photo Strip if photos exist */}
+          {detail.photos.length > 0 && (
+            <div style={{ margin: '0.5rem 0 0.4rem', display: 'flex', gap: '0.5rem', alignItems: 'center', overflowX: 'auto' }}>
+              {detail.photos.slice(0, 4).map((photo, idx) => {
                 const isVideo = photo.path.endsWith('.mp4') || photo.path.endsWith('.mov') || photo.path.endsWith('.webm') || photo.url.includes('video/');
                 return (
                   <div
@@ -178,84 +153,89 @@ export default function LeadDetailTabs({
                     onClick={() => onSelectTab?.('photos')}
                     style={{
                       position: 'relative',
-                      width: '84px',
-                      height: '84px',
-                      borderRadius: '8px',
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '6px',
                       overflow: 'hidden',
                       flexShrink: 0,
                       cursor: 'pointer',
                       border: '1px solid var(--edge-t14)',
                       background: '#05080d',
                     }}
-                    title="Click to open photo gallery"
+                    title="Click to view in Photos tab"
                   >
                     {isVideo ? (
-                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '1.4rem' }}>
-                        ▶
-                      </div>
+                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '1.1rem' }}>▶</div>
                     ) : (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={photo.url} alt={`Evidence ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
                     )}
-                    {idx === 4 && detail.photoCount > 5 && (
-                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.68)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 750, fontSize: '0.85rem' }}>
-                        +{detail.photoCount - 4}
+                    {idx === 3 && detail.photoCount > 4 && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.65)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 700, fontSize: '0.8rem' }}>
+                        +{detail.photoCount - 3}
                       </div>
                     )}
                   </div>
                 );
               })}
-              {detail.visualAnalysis && (
-                <div style={{ flex: 1, minWidth: '220px', padding: '0.2rem 0.65rem', borderLeft: '2px solid var(--edge-t14)', fontSize: '0.82rem', color: 'var(--mute-t75)' }}>
-                  <strong style={{ color: 'var(--text)', display: 'block', fontSize: '0.78rem', marginBottom: '0.2rem' }}>AI Visual Inspection:</strong>
-                  <p style={{ margin: 0, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                    {detail.visualAnalysis.summary}
-                  </p>
-                  {detail.visualAnalysis.detectedEquipment.length > 0 && (
-                    <div className={styles.chips} style={{ marginTop: '0.3rem' }}>
-                      {detail.visualAnalysis.detectedEquipment.slice(0, 2).map((eq, i) => (
-                        <span className={leadStyles.flagChip} key={i} style={{ background: 'rgba(96,165,250,.15)', color: 'var(--ink-sky-5)', fontSize: '0.7rem' }}>
-                          🏷️ {[eq.brand, eq.type].filter(Boolean).join(' ')}
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('photos')}
+                  style={{ background: 'none', border: 'none', padding: '0 0.4rem', color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                >
+                  View all {detail.photoCount} photos →
+                </button>
               )}
             </div>
-          </section>
-        ) : (
-          <section
-            className={styles.card}
+          )}
+
+          {/* Clean metadata footer */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--muted)', marginTop: '0.35rem', flexWrap: 'wrap', gap: '0.5rem', borderTop: '1px solid var(--edge-t08, rgba(var(--tint), 0.05))', paddingTop: '0.45rem' }}>
+            <span>Received: <strong style={{ color: 'var(--text)' }}>{detail.createdAtLabel}</strong></span>
+            <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+              {detail.photos.length === 0 && (
+                <span>
+                  📷 No photos · <Link href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`} style={{ color: 'var(--ink-orange-8, #ff7a21)', textDecoration: 'none', fontWeight: 600 }}>+ Add photos</Link>
+                </span>
+              )}
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('request')}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
+                >
+                  View full intake details →
+                </button>
+              )}
+            </div>
+          </div>
+        </section>
+
+        {/* 2. Unified Operational Briefing Box (Property, Activity, Quote & Visit in 1 clean bar) */}
+        <section
+          className={styles.card}
+          style={{
+            gridColumn: '1 / -1',
+            padding: '0.9rem 1.15rem',
+            background: 'rgba(var(--tint), 0.02)',
+            border: '1px solid var(--edge-t14)',
+            borderRadius: '12px',
+          }}
+        >
+          <div
             style={{
-              gridColumn: '1 / -1',
-              padding: '0.65rem 0.9rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.5rem',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '1.25rem',
             }}
           >
-            <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-              📷 <strong>No homeowner photos attached.</strong> Photos help scope the work before driving out.
-            </span>
-            <Link
-              href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`}
-              className={styles.cardLink}
-              style={{ marginTop: 0, fontSize: '0.78rem' }}
-            >
-              + Add site photos
-            </Link>
-          </section>
-        )}
-
-        {/* 3. Property & Municipal Permit Feasibility Snapshot */}
-        {detail.address ? (
-          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-              <Head level={H}>🏛️ Property Intel &amp; Permit Feasibility</Head>
-              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            {/* Column 1: Property & Municipal Permits */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 800, color: 'var(--muted)' }}>
+                  🏛️ Property &amp; Permits
+                </span>
                 <button
                   type="button"
                   className={quickEditStyles.quickEditBtn}
@@ -264,160 +244,99 @@ export default function LeadDetailTabs({
                 >
                   Edit address
                 </button>
-                {onSelectTab && (
-                  <button
-                    type="button"
-                    onClick={() => onSelectTab('property')}
-                    style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
-                  >
-                    Open 3D Property Intel &amp; Satellite →
-                  </button>
-                )}
               </div>
-            </div>
-            <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: 'var(--muted)' }}>
-              Site location: <strong style={{ color: 'var(--text)' }}>{detail.address}</strong>
-            </p>
-            <PermitFeasibilityCard address={detail.address} isLead={true} />
-          </section>
-        ) : (
-          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
-              <Head level={H}>🏛️ Property Intel &amp; Address</Head>
-              <button
-                type="button"
-                className={quickEditStyles.quickEditBtn}
-                onClick={() => setIsEditingAddress(true)}
-                aria-label="Add project address"
-              >
-                Edit address
-              </button>
-            </div>
-            <p className={styles.muted} style={{ margin: 0 }}>
-              No project address on file yet. Add an address to unlock property intel, aerial imagery, and permit checks.
-            </p>
-          </section>
-        )}
-
-        {/* 4. Latest Touchpoint & Activity */}
-        <section className={styles.card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
-            <Head level={H}>Recent Activity</Head>
-            {detail.contactCount > 0 && (
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '999px', background: 'rgba(var(--tint), 0.1)', color: 'var(--text)' }}>
-                {detail.contactCount} logged
-              </span>
-            )}
-          </div>
-          {detail.contactLog.length > 0 ? (
-            <div>
-              <div style={{ fontSize: '0.86rem', fontWeight: 650, color: 'var(--text)' }}>
-                {detail.contactLog[0].label}
+              <div style={{ fontSize: '0.84rem', fontWeight: 650, color: 'var(--text)', lineHeight: 1.35 }}>
+                {detail.address || detail.location || 'No address on file'}
               </div>
-              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '0.15rem' }}>
-                {detail.contactLog[0].at}
-              </div>
-              {detail.contactLog[0].note && (
-                <p style={{ fontSize: '0.8rem', color: 'var(--mute-t75)', margin: '0.35rem 0 0', lineHeight: 1.4, fontStyle: 'italic' }}>
-                  &ldquo;{detail.contactLog[0].note}&rdquo;
-                </p>
+              {detail.address ? (
+                <PermitFeasibilityCard address={detail.address} isLead={true} compact={true} />
+              ) : null}
+              {onSelectTab && detail.address && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('property')}
+                  style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer', marginTop: '0.25rem' }}
+                >
+                  Open 3D Property Intel →
+                </button>
               )}
             </div>
-          ) : (
-            <p className={styles.muted}>No touchpoints logged yet — reach out to customer.</p>
-          )}
-          <div style={{ marginTop: '0.65rem' }}>
-            {onSelectTab && detail.contactLog.length > 0 ? (
-              <button
-                type="button"
-                onClick={() => onSelectTab('activity')}
-                className={styles.cardLink}
-                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
-              >
-                View all touchpoints ({detail.contactCount}) →
-              </button>
-            ) : null}
-          </div>
-        </section>
 
-        {/* 5. Estimate Visit & Quote Status */}
-        <section className={styles.card}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
-            <Head level={H}>Quote &amp; Estimate Visit</Head>
-            {detail.convertedJob ? (
-              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: '999px', background: 'rgba(74, 222, 128, 0.18)', color: 'var(--good, #22c55e)' }}>
-                Job Converted
-              </span>
-            ) : (
-              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--muted)' }}>
-                {detail.quoteVisit ? 'Visit Booked' : 'Unscheduled'}
-              </span>
-            )}
-          </div>
-          {detail.quoteVisit ? (
-            <dl className={styles.defs} style={{ gap: '0.3rem' }}>
-              <div><dt>Visit</dt><dd>{detail.quoteVisit.whenLabel} ({detail.quoteVisit.durationLabel})</dd></div>
-              <div><dt>Confirmed</dt><dd>{detail.quoteVisit.confirmedLabel ? `Texted ${detail.quoteVisit.confirmedLabel}` : 'Not texted yet'}</dd></div>
-            </dl>
-          ) : (
-            <p className={styles.muted}>No estimate visit booked on calendar.</p>
-          )}
-          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
-            <Link className={styles.cardLink} href={`${base}/leads/${detail.id}#availability-snapshot`} style={{ marginTop: 0 }}>
-              {detail.quoteVisit ? 'Change visit →' : 'Book a visit →'}
-            </Link>
-            <Link
-              className={styles.cardLink}
-              href={detail.convertedJob ? `${base}/jobs/${detail.convertedJob.id}` : `${base}/leads/${detail.id}#lead-estimate`}
-              style={{ marginTop: 0 }}
-            >
-              {detail.convertedJob ? `Job ${detail.convertedJob.ref} →` : 'Create quote →'}
-            </Link>
-          </div>
-        </section>
-
-        {/* 6. Client Contact & Relationship History */}
-        <section className={styles.card}>
-          <div className={quickEditStyles.cardHeadRow}>
-            <Head level={H}>Client &amp; Contact</Head>
-            <button
-              type="button"
-              className={quickEditStyles.quickEditBtn}
-              onClick={() => setIsEditingContact(true)}
-              aria-label="Edit contact details"
-            >
-              Edit contact
-            </button>
-          </div>
-          <dl className={styles.defs}>
-            <div>
-              <dt>Phone</dt>
-              <dd>
-                {contactablePhone ? (
-                  <a href={`tel:${detail.phoneDigits}`}>{detail.phone}</a>
-                ) : detail.phone ? (
-                  <>{detail.phone} <Link href={`${base}/leads/${detail.id}?edit=client#lead-edit-modal`}>Fix phone</Link></>
-                ) : 'Not on file'}
-              </dd>
-            </div>
-            <div>
-              <dt>Email</dt>
-              <dd>{detail.email ? <a href={`mailto:${detail.email}`}>{detail.email}</a> : 'Not on file'}</dd>
-            </div>
-            <div>
-              <dt>History</dt>
-              <dd>
-                {detail.history && (detail.history.jobs > 0 || detail.history.leads > 0) ? (
-                  <span style={{ color: 'var(--gold-ink)', fontWeight: 700 }}>
-                    Repeat ({detail.history.jobs} jobs, {detail.history.leads} leads)
+            {/* Column 2: Recent Activity & Touchpoints */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: '1px solid var(--edge-t08)', paddingLeft: '1.15rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 800, color: 'var(--muted)' }}>
+                  📞 Recent Activity
+                </span>
+                {detail.contactCount > 0 && (
+                  <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.08rem 0.4rem', borderRadius: '999px', background: 'rgba(var(--tint), 0.1)', color: 'var(--text)' }}>
+                    {detail.contactCount} logged
                   </span>
-                ) : (
-                  <span className={styles.muted}>First-time customer</span>
                 )}
-              </dd>
+              </div>
+              {detail.contactLog.length > 0 ? (
+                <div>
+                  <span style={{ fontSize: '0.84rem', fontWeight: 650, color: 'var(--text)' }}>
+                    {detail.contactLog[0].label}
+                  </span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted)', marginLeft: '0.4rem' }}>
+                    {detail.contactLog[0].at}
+                  </span>
+                  {detail.contactLog[0].note && (
+                    <p style={{ fontSize: '0.78rem', color: 'var(--mute-t75)', margin: '0.2rem 0 0', fontStyle: 'italic', lineHeight: 1.3 }}>
+                      &ldquo;{detail.contactLog[0].note}&rdquo;
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
+                  No touchpoints logged yet.
+                </div>
+              )}
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('activity')}
+                  style={{ background: 'none', border: 'none', padding: 0, textAlign: 'left', color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer', marginTop: '0.25rem' }}
+                >
+                  {detail.contactCount > 0 ? `View history (${detail.contactCount}) →` : '+ Log touchpoint →'}
+                </button>
+              )}
             </div>
-          </dl>
-          {detail.textOnly && <p className={styles.muted} style={{ marginTop: '0.4rem', color: 'var(--ink-orange-3)' }}>💬 Customer requested text messages first.</p>}
+
+            {/* Column 3: Estimate Visit & Quote Status */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: '1px solid var(--edge-t08)', paddingLeft: '1.15rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 800, color: 'var(--muted)' }}>
+                  📅 Quote &amp; Visit
+                </span>
+                <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.08rem 0.45rem', borderRadius: '999px', background: detail.convertedJob ? 'rgba(74, 222, 128, 0.18)' : 'rgba(var(--tint), 0.08)', color: detail.convertedJob ? 'var(--good, #22c55e)' : 'var(--muted)' }}>
+                  {detail.convertedJob ? 'Job Converted' : detail.quoteVisit ? 'Visit Booked' : 'Unscheduled'}
+                </span>
+              </div>
+              {detail.quoteVisit ? (
+                <div style={{ fontSize: '0.82rem', color: 'var(--text)' }}>
+                  <strong>{detail.quoteVisit.whenLabel}</strong> ({detail.quoteVisit.durationLabel})
+                </div>
+              ) : (
+                <div style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
+                  No estimate visit booked on calendar.
+                </div>
+              )}
+              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.25rem', flexWrap: 'wrap' }}>
+                <Link className={styles.cardLink} href={`${base}/leads/${detail.id}#availability-snapshot`} style={{ marginTop: 0, fontSize: '0.76rem' }}>
+                  {detail.quoteVisit ? 'Change visit →' : 'Book visit →'}
+                </Link>
+                <Link
+                  className={styles.cardLink}
+                  href={detail.convertedJob ? `${base}/jobs/${detail.convertedJob.id}` : `${base}/leads/${detail.id}#lead-estimate`}
+                  style={{ marginTop: 0, fontSize: '0.76rem' }}
+                >
+                  {detail.convertedJob ? `Job ${detail.convertedJob.ref} →` : 'Create quote →'}
+                </Link>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* 7. Visual AI Analysis & Supply House Materials (if available) */}
