@@ -281,8 +281,8 @@ export default function ClientSmoothieView({
                 <span className={styles.queueCount}>
                   {shown.length === clients.length ? `${clients.length}` : `${shown.length} of ${clients.length}`}
                 </span>
-                {duplicateButton}
               </div>
+              {duplicateButton}
             </div>
 
             <div className={styles.queueHeadActions}>

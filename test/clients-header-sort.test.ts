@@ -60,5 +60,21 @@ describe('Clients Screen Header + Add Customer Button Layout', () => {
     expect(css).toContain('.addCustomerBtn');
     expect(css).toContain('border-radius: 999px;');
   });
+
+  it('verifies duplicateButton is positioned on the right side of queueHeadTop', () => {
+    const smoothieSrc = readFileSync('src/app/dashboard/clients/ClientSmoothieView.tsx', 'utf8').replace(/\r\n/g, '\n');
+    expect(smoothieSrc).toContain(
+      '<div className={styles.queueHeadTop}>\n' +
+      '              <div className={styles.queueHeadLeft}>\n' +
+      '                <h2 className={styles.queueTitle}>Customers</h2>\n' +
+      '                <span className={styles.queueCount}>\n' +
+      '                  {shown.length === clients.length ? `${clients.length}` : `${shown.length} of ${clients.length}`}\n' +
+      '                </span>\n' +
+      '              </div>\n' +
+      '              {duplicateButton}\n' +
+      '            </div>'
+    );
+  });
 });
+
 
