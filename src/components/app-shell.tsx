@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase';
 import { isOwnChromeRoute } from '@/lib/marketing-chrome';
 import { APP_LOGIN_URL, APP_SIGNUP_URL } from '@/components/marketing/links';
 import PublicGridBackground from '@/components/marketing/PublicGridBackground';
+import SparkyCopilot from '@/components/marketing/SparkyCopilot';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 import { attentionBadgeLabel } from '@/lib/lead-queue';
 import { useNavCustomization } from '@/lib/nav-customization';
@@ -757,21 +758,18 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       <>
         <PublicGridBackground />
         {children}
+        <SparkyCopilot />
       </>
     );
   }
 
-  // /features (+ its five sub-pages), /how-it-works and /founder each render a
-  // full marketing header and SiteFooter of their own. Unconditional, like
-  // /demo above: this is the same page for a prospect and for a signed-in
-  // owner, and the alternative — letting `showAppRail` win below — would wrap
-  // an indexed marketing page in the dashboard rail, live lead counts and all,
-  // underneath the header the page already drew.
+  // /features (+ its five sub-pages), /how-it-works, /pricing, /compare, etc.
   if (isOwnChromeMarketing) {
     return (
       <>
         <PublicGridBackground />
         {children}
+        <SparkyCopilot />
       </>
     );
   }
@@ -1478,6 +1476,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         <div id="app-main" tabIndex={-1} className={`app-main app-main-public${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>
           <ThemeFab />
           {children}
+          {!pathname.startsWith('/login') && <SparkyCopilot />}
         </div>
       </div>
     );
