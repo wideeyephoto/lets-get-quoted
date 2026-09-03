@@ -7,6 +7,8 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
+  width: 100%;
+  max-width: none !important;
   margin-bottom: 1rem;
   position: relative;
   z-index: 30;
@@ -122,6 +124,7 @@
   align-items: center;
   gap: 0.55rem;
   flex: none;
+  margin-left: auto;
   position: relative;
   z-index: 31;
 }
