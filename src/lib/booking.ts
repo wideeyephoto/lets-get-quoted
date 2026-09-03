@@ -385,14 +385,14 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
   const message = `📅 Online booking request for ${requested}.\n${altLine}${serviceLine}${input.description ? `\n${input.description}` : ''}${noteLine}`.trimEnd();
 
   const lead = await createLead(admin, accountId, {
-    source: 'website_form',
+    source: input.sourceVoiceProviderCallId ? 'ai_voice' : 'website_form',
     name: input.name,
     phone: input.phone,
     email: input.email,
     address: input.address,
     projectType: input.serviceName || 'Online booking',
     message,
-      sourcePage: '/book',
+      sourcePage: input.sourceVoiceProviderCallId ? '/call' : '/book',
       sourceVoiceProviderCallId: input.sourceVoiceProviderCallId,
     triage: {
       score: 'warm',
@@ -449,7 +449,7 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
           quotedAmount: 0,
           sourceVoiceProviderCallId: input.sourceVoiceProviderCallId,
         });
-      await admin
+      const { error: bookingWindowError } = await admin
         .from('jobs')
         .update({
           booking_requested_date: input.dateKey,
@@ -458,6 +458,13 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
           booking_note: input.note,
         })
         .eq('id', job.id);
+      // A provider-bound voice retry can recover this exact job, so surface a
+      // failed primary-window write and let the durable call retry instead of
+      // telling the caller their requested date was saved when it was not.
+      // Preserve the website form's historic best-effort behavior.
+      if (bookingWindowError && input.sourceVoiceProviderCallId) {
+        throw bookingWindowError;
+      }
       // The backup goes in an update OF ITS OWN, and that is the whole reason
       // it is a second round-trip. Folded into the write above, a database that
       // has not had the second-choice migration run against it would reject the

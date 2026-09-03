@@ -27944,18 +27944,30 @@ drop index if exists public.leads_voice_provider_call_uidx;
 drop index if exists public.jobs_voice_provider_call_uidx;
 do $constraints$
 begin
-  alter table public.leads
-    add constraint leads_voice_provider_call_unique
-    unique (account_id, source_voice_provider_call_id);
-exception when duplicate_object then null;
+  if not exists (
+    select 1
+      from pg_catalog.pg_constraint c
+     where c.conrelid = 'public.leads'::pg_catalog.regclass
+       and c.conname = 'leads_voice_provider_call_unique'
+  ) then
+    alter table public.leads
+      add constraint leads_voice_provider_call_unique
+      unique (account_id, source_voice_provider_call_id);
+  end if;
 end
 $constraints$;
 do $constraints$
 begin
-  alter table public.jobs
-    add constraint jobs_voice_provider_call_unique
-    unique (account_id, source_voice_provider_call_id);
-exception when duplicate_object then null;
+  if not exists (
+    select 1
+      from pg_catalog.pg_constraint c
+     where c.conrelid = 'public.jobs'::pg_catalog.regclass
+       and c.conname = 'jobs_voice_provider_call_unique'
+  ) then
+    alter table public.jobs
+      add constraint jobs_voice_provider_call_unique
+      unique (account_id, source_voice_provider_call_id);
+  end if;
 end
 $constraints$;
 
@@ -28471,7 +28483,7 @@ begin
     update public.jobs j
        set scope = case when v_scope is null then j.scope
                     when j.scope is null or pg_catalog.btrim(j.scope) = '' then v_scope
-                    when pg_catalog.position(pg_catalog.lower(v_scope) in pg_catalog.lower(j.scope)) > 0 then j.scope
+                    when pg_catalog.strpos(pg_catalog.lower(j.scope), pg_catalog.lower(v_scope)) > 0 then j.scope
                     else j.scope || E'\n\n' || v_scope end,
            status = case when v_status is null then j.status else v_status::public.job_status end,
            scheduled_for = case when v_date is null then j.scheduled_for else v_date::date end,
@@ -28705,7 +28717,7 @@ begin
        where c.id = v_job.client_id
          and c.account_id = p_account_id
        for update;
-      if found and pg_catalog.position(pg_catalog.lower(v_note) in pg_catalog.lower(coalesce(v_client_notes, ''))) = 0 then
+      if found and pg_catalog.strpos(pg_catalog.lower(coalesce(v_client_notes, '')), pg_catalog.lower(v_note)) = 0 then
         update public.clients c
            set notes = case when coalesce(pg_catalog.btrim(c.notes), '') = '' then '• ' || v_note
                             else c.notes || E'\n• ' || v_note end,

@@ -125,6 +125,18 @@ describe('settling a call', () => {
     await settleVoiceReceipt(admin, receipt({ summary: null }));
     expect(createLead.mock.calls[0][2].message).toContain('No summary was returned');
   });
+
+  it('settles a verified staff call without inventing a customer lead', async () => {
+    admissionRow = admitted({ caller_kind: 'owner' });
+
+    const result = await settleVoiceReceipt(admin, receipt());
+
+    expect(result).toMatchObject({ minutes: 1, billed: true, leadId: null });
+    expect(createLead).not.toHaveBeenCalled();
+    expect(history).toHaveBeenCalledWith(expect.objectContaining({
+      lead_id: null,
+    }));
+  });
 });
 
 describe('the caller id, which is not always a phone number', () => {
