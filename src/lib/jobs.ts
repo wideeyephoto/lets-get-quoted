@@ -84,6 +84,8 @@ export type Job = {
    * calendar date would miss it and create a duplicate.
    */
   recurring_visit_date?: string | null;
+  /** Stable signed AI Voice call identity for replay-safe in-call booking. */
+  source_voice_provider_call_id?: string | null;
   created_at: string;
 };
 
@@ -146,6 +148,8 @@ export type JobInput = {
   estimatedHours?: number | null;
   quotedAmount?: number;
   photoPaths?: string[];
+  /** Stable signed AI Voice call identity for replay-safe in-call booking. */
+  sourceVoiceProviderCallId?: string | null;
 };
 
 export type ListJobsOptions = {
@@ -670,6 +674,17 @@ export async function saveQuoteItems(
 }
 
 export async function createJob(supabase: SupabaseClient, accountId: string, input: JobInput): Promise<Job> {
+  if (input.sourceVoiceProviderCallId) {
+    const { data: existing, error: existingError } = await supabase
+      .from('jobs')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('source_voice_provider_call_id', input.sourceVoiceProviderCallId)
+      .maybeSingle();
+    if (existingError) throw existingError;
+    if (existing) return existing as Job;
+  }
+
   // Retry on a duplicate-ref unique violation (23505): two near-simultaneous
   // creates can compute the same next ref; regenerating picks up the just-taken
   // one. Rethrow any other error immediately.
@@ -692,6 +707,9 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
         estimated_hours: input.estimatedHours ?? null,
         quoted_amount: input.quotedAmount ?? 0,
         photo_paths: input.photoPaths ?? [],
+        ...(input.sourceVoiceProviderCallId
+          ? { source_voice_provider_call_id: input.sourceVoiceProviderCallId }
+          : {}),
       })
       .select('*')
       .single();
@@ -733,6 +751,16 @@ export async function createJob(supabase: SupabaseClient, accountId: string, inp
       return job;
     }
     if (error?.code !== '23505') throw error ?? new Error('Unable to create job');
+    if (input.sourceVoiceProviderCallId) {
+      const { data: replay, error: replayError } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('source_voice_provider_call_id', input.sourceVoiceProviderCallId)
+        .maybeSingle();
+      if (replayError) throw replayError;
+      if (replay) return replay as Job;
+    }
   }
 
   throw new Error('Unable to create job: could not allocate a unique job number. Please try again.');

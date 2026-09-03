@@ -121,6 +121,10 @@ export type VoiceAdmissionInput = Readonly<{
   providerCallId: string;
   /** Exact active dedicated number reached by this call. Rechecked in SQL. */
   dialedNumber: string;
+  /** Normalized caller from the signed inbound webhook, never from the receipt. */
+  callerNumber?: string | null;
+  /** Lifecycle-aware identity snapshot that controls tools and settlement. */
+  callerKind?: 'customer' | 'owner' | 'office' | 'crew' | 'staff_ambiguous' | 'unknown';
 }>;
 
 /**
@@ -345,11 +349,13 @@ async function claimAdmissionSlot(
     return Object.freeze({ outcome: 'unavailable' as const });
   }
   try {
-    const { data, error } = await admin.rpc('claim_voice_call_admission', {
+    const { data, error } = await admin.rpc('claim_voice_call_admission_v2', {
       p_account_id: input.accountId,
       p_provider_call_id: input.providerCallId,
       p_dialed_number: input.dialedNumber,
       p_concurrency_limit: concurrencyLimit,
+      p_caller_number: input.callerNumber ?? null,
+      p_caller_kind: input.callerKind ?? 'unknown',
     });
     if (error) {
       console.error('voice admission slot claim failed:', error);

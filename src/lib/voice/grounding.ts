@@ -5,6 +5,10 @@ import { listServices } from '@/lib/services';
 import { getSiteContent } from '@/lib/site-content';
 import { getAvailableBookingDays } from '@/lib/booking';
 import { displayPhone, formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
+import {
+  resolveVoiceCallerIdentity,
+  type VoiceCallerIdentity,
+} from '@/lib/voice/caller-identity';
 
 export type VoiceGroundingContext = {
   companyName: string;
@@ -48,6 +52,7 @@ export async function loadVoiceGroundingContext(
   admin: SupabaseClient,
   accountId: string,
   callerPhone?: string | null,
+  resolvedIdentity?: VoiceCallerIdentity,
 ): Promise<VoiceGroundingContext> {
   const [
     { data: account },
@@ -129,92 +134,38 @@ export async function loadVoiceGroundingContext(
         callerPhone.trim(),
       ].filter(Boolean))) as string[];
 
-      // Check owner numbers on account and site
-      const isOwnerAccountPhone = Boolean(
-        (account?.alert_phone && normalizeUsPhone(account.alert_phone) === normalized) ||
-        (account?.call_forward_number && normalizeUsPhone(account.call_forward_number) === normalized) ||
-        (voiceSettings?.transfer_number && normalizeUsPhone(voiceSettings.transfer_number) === normalized) ||
-        (site?.phone && normalizeUsPhone(site.phone) === normalized),
-      );
+      const identity = resolvedIdentity
+        ?? await resolveVoiceCallerIdentity(admin, accountId, callerPhone);
 
-      const staffLookupPromise = admin
-        .from('memberships')
-        .select('user_id, role')
-        .eq('account_id', accountId)
-        .in('role', ['owner', 'office'])
-        .order('created_at', { ascending: true })
-        .limit(5)
-        .then(async ({ data: members }) => {
-          if (!Array.isArray(members) || members.length === 0) return [];
-          const users = await Promise.all(
-            members.map(async (m) => {
-              try {
-                const { data: userData } = await admin.auth.admin.getUserById(m.user_id);
-                const user = userData?.user;
-                const meta = user?.user_metadata;
-                const name = (meta?.full_name || meta?.name || meta?.first_name || '').trim() || null;
-                const authPhone = user?.phone ? normalizeUsPhone(user.phone) : null;
-                return { name, authPhone, role: m.role as 'owner' | 'office' };
-              } catch {
-                return null;
-              }
-            }),
-          );
-          return users.filter(Boolean) as Array<{ name: string | null; authPhone: string | null; role: 'owner' | 'office' }>;
-        });
-
-      const crewPromise = admin
-        .from('crew')
-        .select('id, name, phone, active, user_id, last_signed_in_at, phone_verified_at, phone_verified, role_label')
-        .eq('account_id', accountId)
-        .eq('active', true)
-        .then(({ data }) => (Array.isArray(data) ? data : []));
-
-      const jobPromise = admin
-        .from('jobs')
-        .select('ref, client_name, address, scope, scheduled_for, scheduled_time')
-        .eq('account_id', accountId)
-        .in('client_phone', candidatePhones)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => data ?? null);
-
-      const leadPromise = admin
-        .from('leads')
-        .select('name, address, project_type')
-        .eq('account_id', accountId)
-        .in('phone', candidatePhones)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-        .then(({ data }) => data ?? null);
-
-      const [staffUsers, activeCrew, job, lead] = await Promise.all([
-        staffLookupPromise,
-        crewPromise,
-        jobPromise,
-        leadPromise,
-      ]);
-
-      const matchedStaffUser = staffUsers.find((u) => u.authPhone && u.authPhone === normalized);
-      const ownerRecord = staffUsers.find((u) => u.role === 'owner');
-      const matchedCrewMember = activeCrew.find(
-        (c) => c.phone && normalizeUsPhone(c.phone) === normalized,
-      );
-
-      if (isOwnerAccountPhone) {
-        const ownerName = ownerRecord?.name || account?.business_name || site?.company_name || 'Owner';
-        contractorStaffCaller = { name: ownerName, role: 'owner' };
-      } else if (matchedStaffUser) {
-        const staffName = matchedStaffUser.name || (matchedStaffUser.role === 'owner' ? 'Owner' : 'Office Staff');
-        contractorStaffCaller = { name: staffName, role: matchedStaffUser.role };
-      } else if (matchedCrewMember) {
+      if (identity.status === 'staff') {
         contractorStaffCaller = {
-          name: matchedCrewMember.name || 'Team Member',
-          role: 'crew',
+          name: identity.caller.name,
+          role: identity.caller.role,
         };
-      } else if (job || lead) {
+      } else if (identity.status === 'customer') {
+        const [jobResult, leadResult] = await Promise.all([
+          admin
+            .from('jobs')
+            .select('ref, client_name, address, scope, scheduled_for, scheduled_time')
+            .eq('account_id', accountId)
+            .in('client_phone', candidatePhones)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          admin
+            .from('leads')
+            .select('name, address, project_type')
+            .eq('account_id', accountId)
+            .in('phone', candidatePhones)
+            .is('deleted_at', null)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+        const job = jobResult.error ? null : jobResult.data;
+        const lead = leadResult.error ? null : leadResult.data;
+        if (job || lead) {
         recognizedCaller = {
           clientName: job?.client_name || lead?.name || null,
           serviceAddress: job?.address || lead?.address || null,
@@ -224,6 +175,7 @@ export async function loadVoiceGroundingContext(
             ? `${job.scheduled_for}${job.scheduled_time ? ` at ${job.scheduled_time}` : ''}`
             : null,
         };
+        }
       }
     }
   }

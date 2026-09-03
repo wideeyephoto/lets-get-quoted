@@ -11,6 +11,7 @@ import type { VoiceReceiptAuthorization } from '@/lib/voice/auth';
 import { isWithinBusinessHours, type BusinessHours } from '@/lib/voice/business-hours';
 import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
 import { loadSignalWireVoiceNumberReadiness } from '@/lib/voice/number-readiness';
+import { normalizeUsPhone } from '@/lib/phone';
 import {
   greetingWithAiDisclosure,
   type InboundCall,
@@ -22,6 +23,7 @@ import {
   loadVoiceGroundingContext,
 } from '@/lib/voice/grounding';
 import { recordProvisionalVoiceCall } from '@/lib/voice/settlement';
+import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
 
 /**
  * Deciding what happens to an inbound call, with no HTTP anywhere in it.
@@ -225,7 +227,8 @@ export type VoiceCallPlan = Readonly<{
   declineReason:
   | 'no_workspace' | 'product_off' | 'not_configured' | 'paused' | 'within_business_hours'
   | 'no_entitlement' | 'receipt_auth_unavailable' | 'no_seat' | 'at_capacity'
-  | 'no_allowance' | 'number_not_ready' | 'admission_unavailable' | null;
+  | 'no_allowance' | 'number_not_ready' | 'admission_unavailable'
+  | 'caller_identity_unavailable' | null;
 }>;
 
 export type PlanInboundOptions = Readonly<{
@@ -301,6 +304,21 @@ export async function planInboundCall(
 
   if (workspace.concurrentCallLimit < 1) return fallback(workspace, 'no_seat');
 
+  const callerIdentity = await resolveVoiceCallerIdentity(
+    admin,
+    workspace.accountId,
+    call.fromNumber,
+  ).catch(() => ({ status: 'unavailable' as const }));
+  if (callerIdentity.status === 'unavailable' || callerIdentity.status === 'ambiguous') {
+    return fallback(workspace, 'caller_identity_unavailable');
+  }
+  const callerKind = callerIdentity.status === 'staff'
+    ? callerIdentity.caller.role
+    : 'customer';
+  const callerNumber = callerIdentity.status === 'staff'
+    ? callerIdentity.caller.normalizedPhone
+    : normalizeUsPhone(call.fromNumber || '');
+
   const open = await countOpenAiCalls(
     admin, workspace.accountId, workspace.concurrentCallLimit,
     (options.now ?? (() => new Date()))(),
@@ -311,6 +329,8 @@ export async function planInboundCall(
     accountId: workspace.accountId,
     providerCallId: call.providerCallId,
     dialedNumber: workspace.voiceNumber,
+    callerNumber,
+    callerKind,
   }, {
     mode: voiceMinuteMode(),
     concurrencyLimit: workspace.concurrentCallLimit,
@@ -326,7 +346,12 @@ export async function planInboundCall(
     startedAt: (options.now ?? (() => new Date()))().toISOString(),
   }).catch(() => null);
 
-  const grounding = await loadVoiceGroundingContext(admin, workspace.accountId, call.fromNumber).catch((err) => {
+  const grounding = await loadVoiceGroundingContext(
+    admin,
+    workspace.accountId,
+    call.fromNumber,
+    callerIdentity,
+  ).catch((err) => {
     console.error('Failed to load voice grounding context:', err);
     return null;
   });

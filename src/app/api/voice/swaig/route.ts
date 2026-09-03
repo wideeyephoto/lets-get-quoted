@@ -7,11 +7,9 @@ import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolve
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib/rebates/clean-energy-rebate-engine';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
-import { createJobFeedEvent } from '@/lib/job-feed';
-import { parseQuoteItems, saveQuoteItems, type QuoteItem } from '@/lib/jobs';
-import { createLead, scheduleLeadQuoteVisit } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { handleContractorVoiceAction, resolveVoiceJob } from '@/lib/voice/contractor-actions';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -32,57 +30,6 @@ function verifySwaigAuth(request: Request): boolean {
   const pass = decoded.slice(colonIndex + 1);
 
   return user === expected.username && pass === expected.password;
-}
-
-async function isAuthorizedStaffCaller(
-  admin: SupabaseClient,
-  accountId: string,
-  callerPhone?: string | null,
-): Promise<boolean> {
-  if (!callerPhone) return false;
-  const normalized = normalizeUsPhone(callerPhone);
-  if (!normalized) return false;
-
-  const [
-    { data: account },
-    { data: activeCrew },
-    { data: members },
-  ] = await Promise.all([
-    admin
-      .from('accounts')
-      .select('alert_phone, call_forward_number')
-      .eq('id', accountId)
-      .maybeSingle(),
-    admin
-      .from('crew')
-      .select('phone')
-      .eq('account_id', accountId)
-      .eq('active', true),
-    admin
-      .from('memberships')
-      .select('user_id')
-      .eq('account_id', accountId)
-      .in('role', ['owner', 'office'])
-      .limit(5),
-  ]);
-
-  if (account?.alert_phone && normalizeUsPhone(account.alert_phone) === normalized) return true;
-  if (account?.call_forward_number && normalizeUsPhone(account.call_forward_number) === normalized) return true;
-
-  if (Array.isArray(activeCrew) && activeCrew.some((c) => c.phone && normalizeUsPhone(c.phone) === normalized)) {
-    return true;
-  }
-
-  if (Array.isArray(members) && members.length > 0) {
-    const userLookups = await Promise.all(
-      members.map((m) => admin.auth.admin.getUserById(m.user_id).catch(() => ({ data: null }))),
-    );
-    if (userLookups.some((u) => u.data?.user?.phone && normalizeUsPhone(u.data.user.phone) === normalized)) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 export async function POST(request: Request) {
@@ -229,7 +176,8 @@ export async function POST(request: Request) {
 
   if (fnName === 'book_appointment_slot') {
     const callerName = String(args.caller_name || '').trim();
-    const callerPhone = verifiedCallerPhone || String(args.caller_phone || body.caller_id_number || '').trim();
+    const suppliedPhone = verifiedCallerPhone || String(args.caller_phone || '').trim();
+    const callerPhone = suppliedPhone ? normalizeUsPhone(suppliedPhone) : null;
     const serviceAddress = String(args.service_address || '').trim() || null;
     const requestedDateRaw = String(args.requested_date || '').trim();
     const requestedTimeRaw = String(args.requested_time || '').trim().toLowerCase();
@@ -242,9 +190,21 @@ export async function POST(request: Request) {
       });
     }
 
+    if (!callerPhone) {
+      return NextResponse.json({
+        response: 'What mobile number should I use for the appointment and confirmation text?',
+      });
+    }
+
     if (!requestedDateRaw) {
       return NextResponse.json({
         response: 'Which date would you like to schedule the appointment for?',
+      });
+    }
+
+    if (!requestedTimeRaw) {
+      return NextResponse.json({
+        response: 'Which available time window would you like on that date?',
       });
     }
 
@@ -268,35 +228,57 @@ export async function POST(request: Request) {
     }
 
     if (!matchedDay) {
-      matchedDay = bookingDays[0]; // fallback to first available
+      return NextResponse.json({
+        response: `That date is not currently available. I can offer ${bookingDays.slice(0, 3).map((day) => day.dayLabel).join(', ')}. Which date would you like?`,
+      });
     }
 
     // Match slot on that day
-    let matchedSlot = matchedDay.slots.find((s) =>
+    const matchingSlots = matchedDay.slots.filter((s) =>
       s.time.startsWith(requestedTimeRaw)
       || s.label.toLowerCase().includes(requestedTimeRaw)
       || (requestedTimeRaw.includes('morning') && s.time < '12:00')
       || (requestedTimeRaw.includes('afternoon') && s.time >= '12:00'),
     );
 
-    if (!matchedSlot && matchedDay.slots.length > 0) {
-      matchedSlot = matchedDay.slots[0];
-    }
+    const matchedSlot = matchingSlots.length === 1 ? matchingSlots[0] : null;
 
     if (!matchedSlot) {
       return NextResponse.json({
-        response: `I see that ${matchedDay.dayLabel} is currently fully booked. Would you like to check our next available date instead?`,
+        response: matchingSlots.length > 1
+          ? `There is more than one ${requestedTimeRaw} window on ${matchedDay.dayLabel}: ${matchingSlots.map((slot) => slot.label).join(' or ')}. Which exact window would you like?`
+          : `That time is not open on ${matchedDay.dayLabel}. The available windows are ${matchedDay.slots.map((slot) => slot.label).join(' or ') || 'currently full'}.`,
       });
     }
 
-    // Claim provisional hold to prevent race conditions
-    await claimBookingHold(admin, accountId, matchedDay.dateKey, matchedSlot.time);
+    const { data: existingVoiceLead, error: existingVoiceLeadError } = await admin
+      .from('leads')
+      .select('id')
+      .eq('account_id', accountId)
+      .eq('source_voice_provider_call_id', verifiedProviderCallId)
+      .maybeSingle();
+    if (existingVoiceLeadError) {
+      return NextResponse.json({
+        response: 'I could not safely verify whether this call already booked, so I did not create another request. Please try again.',
+      });
+    }
+
+    // A retry resumes its provider-bound booking. A first attempt must win an
+    // exclusive slot hold; a conflict is never silently treated as success.
+    if (!existingVoiceLead) {
+      const held = await claimBookingHold(admin, accountId, matchedDay.dateKey, matchedSlot.time);
+      if (!held) {
+        return NextResponse.json({
+          response: `That ${matchedSlot.label} window was just taken. Please choose another available time.`,
+        });
+      }
+    }
 
     // Create the booking lead and pending job in database
     try {
       await createBooking(admin, accountId, {
         name: callerName,
-        phone: callerPhone || null,
+        phone: callerPhone,
         email: null,
         address: serviceAddress,
         description: serviceDesc || 'Booked via AI Voice receptionist',
@@ -307,27 +289,24 @@ export async function POST(request: Request) {
         endTime: matchedSlot.endTime,
         timeLabel: matchedSlot.label,
         note: notes ? `Voice call note: ${notes}` : 'Scheduled by AI phone receptionist',
+        sourceVoiceProviderCallId: verifiedProviderCallId,
       });
 
-      // Send SMS confirmation to mobile phone if phone is present
-      const callId = verifiedProviderCallId || (typeof body.call_id === 'string' ? body.call_id : undefined);
-      if (callerPhone) {
-        await sendCallerVoiceBookingConfirmationSms({
-          accountId,
-          callerPhone,
-          whenLabel: `${matchedDay.dayLabel} (${matchedSlot.label})`,
-          serviceAddress,
-          idempotencyKey: callId ? `voice-booking-sms:${accountId}:${callId}` : undefined,
-        });
-      }
+      const confirmation = await sendCallerVoiceBookingConfirmationSms({
+        accountId,
+        callerPhone,
+        whenLabel: `${matchedDay.dayLabel} (${matchedSlot.label})`,
+        serviceAddress,
+        idempotencyKey: `voice-booking-sms:${accountId}:${verifiedProviderCallId}`,
+      });
 
       return NextResponse.json({
-        response: `I have reserved ${matchedDay.dayLabel} for ${matchedSlot.label} for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}. I also texted a confirmation to your mobile phone. Our team will review the request and see you then!`,
+        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' I also texted a confirmation to your mobile phone.' : ' The request is saved, but the confirmation text could not be delivered.'} Our team will review and confirm the appointment.`,
       });
     } catch (err) {
       console.error('Error creating in-call booking:', err);
       return NextResponse.json({
-        response: `I have recorded your request for ${matchedDay.dayLabel} for ${matchedSlot.label}. Our dispatch team will confirm all details with you directly.`,
+        response: 'I could not safely save that appointment request, so I am not going to claim it is booked. Please try another time or ask me to connect you with the office.',
       });
     }
   }
@@ -384,7 +363,7 @@ export async function POST(request: Request) {
       : '';
 
     const spokenResponse = isReq
-      ? `In ${jurisdiction.authorityName}, a building and trade permit is required for ${projectDesc}.${feeText} Our licensed contractor team pulls the permit and coordinates all required city inspections with ${jurisdiction.agencyName}.`
+      ? `In ${jurisdiction.authorityName}, a building and trade permit is required for ${projectDesc}.${feeText} Our team can coordinate the permit and required city inspections with ${jurisdiction.agencyName}.`
       : requirement.decision === 'not_required'
       ? `In ${jurisdiction.authorityName}, a permit is typically not required for minor repairs under ${projectDesc}. Our team ensures all work strictly complies with Michigan building codes.`
       : `In ${jurisdiction.authorityName}, we recommend verifying with ${jurisdiction.agencyName} based on your exact project scope. Our office manages the full municipal permit and inspection process for you.`;
@@ -403,22 +382,50 @@ export async function POST(request: Request) {
     }
 
     try {
-      const { data: job } = await admin
-        .from('jobs')
-        .select('id, ref, client_name, property_street, property_city')
-        .eq('account_id', accountId)
-        .or(`client_name.ilike.%${query}%,property_street.ilike.%${query}%`)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (!job) {
+      const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
+      if (identity.status === 'unavailable' || identity.status === 'ambiguous') {
         return NextResponse.json({
-          response: `I wasn't able to locate an active record matching '${query}' right now, but I have noted your inquiry for our office staff to follow up with you promptly.`,
+          response: 'I could not safely verify who is asking for that project status, so I did not disclose it. Please contact the office.',
+        });
+      }
+      const allowedCallerPhone = identity.status === 'customer'
+        ? normalizeUsPhone(verifiedCallerPhone || '')
+        : null;
+      if (identity.status === 'customer' && !allowedCallerPhone) {
+        return NextResponse.json({
+          response: 'I need a verified callback number on this call before I can disclose project status. Please contact the office.',
         });
       }
 
-      const [{ data: permitCase }, { data: inspections }] = await Promise.all([
+      const resolution = await resolveVoiceJob(admin, accountId, query, { allowedCallerPhone });
+      if (resolution.status === 'ambiguous') {
+        return NextResponse.json({
+          response: 'I found more than one matching project. Please give me the exact job reference; I will not guess.',
+        });
+      }
+      if (resolution.status !== 'resolved') {
+        return NextResponse.json({
+          response: resolution.status === 'unavailable'
+            ? 'I could not safely check project records right now. Please contact the office.'
+            : 'I could not find a project tied to this verified caller and that exact reference.',
+        });
+      }
+
+      const { data: job, error: jobError } = await admin
+        .from('jobs')
+        .select('id, ref, client_name, property_street, property_city, address')
+        .eq('account_id', accountId)
+        .eq('id', resolution.job.id)
+        .is('deleted_at', null)
+        .maybeSingle();
+
+      if (jobError || !job) {
+        return NextResponse.json({
+          response: 'I could not safely load that active project record. Please contact the office.',
+        });
+      }
+
+      const [permitResult, inspectionResult] = await Promise.all([
         admin
           .from('job_permit_cases')
           .select('application_status, external_permit_number, notes')
@@ -432,8 +439,15 @@ export async function POST(request: Request) {
           .eq('job_id', job.id)
           .order('scheduled_date', { ascending: true }),
       ]);
+      if (permitResult.error || inspectionResult.error) {
+        return NextResponse.json({
+          response: 'I could not safely load the current permit and inspection records. Please contact the office.',
+        });
+      }
+      const permitCase = permitResult.data;
+      const inspections = inspectionResult.data;
 
-      const propertyRef = job.property_street || job.client_name;
+      const propertyRef = job.property_street || job.address || job.client_name;
 
       if (!permitCase) {
         return NextResponse.json({
@@ -471,7 +485,7 @@ export async function POST(request: Request) {
     } catch (err) {
       console.error('Error in check_inspection_status SWAIG tool:', err);
       return NextResponse.json({
-        response: "I've flagged your permit status question for our project manager to follow up with you.",
+        response: 'I could not safely check that permit status. Please contact the office.',
       });
     }
   }
@@ -513,329 +527,30 @@ export async function POST(request: Request) {
     }
   }
 
-  // --- CONTRACTOR AI VOICE ASSISTANT TOOLS ---
-  const CONTRACTOR_TOOLS = new Set([
-    'update_job_details',
-    'update_job_scope',
-    'create_or_update_lead',
-    'log_crew_time_and_materials',
-    'create_job_change_order',
-    'append_job_caution_or_note',
-    'add_caution_note',
-  ]);
-
-  if (CONTRACTOR_TOOLS.has(fnName)) {
-    const isAuthorized = await isAuthorizedStaffCaller(admin, accountId, verifiedCallerPhone);
-    if (!isAuthorized) {
-      return NextResponse.json({
-        response: 'Job updates and internal commands by phone are restricted to authorized team members. Would you like me to connect you with the office?',
-      });
-    }
-  }
-
-  if (fnName === 'update_job_details' || fnName === 'update_job_scope') {
-    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || args.job_id || '').trim();
-    const newScope = String(args.scope || args.scope_addition || '').trim();
-    const status = String(args.status || '').trim();
-    const scheduledDate = String(args.scheduled_date || args.scheduled_for || '').trim();
-    const scheduledTime = String(args.scheduled_time || '').trim();
-    const lineItemLabel = String(args.line_item_label || args.item_name || '').trim();
-    const lineItemPrice = Number(args.line_item_price || args.price || 0);
-
-    if (!jobRefOrClient) {
-      return NextResponse.json({ response: 'Which customer or job reference number would you like me to update?' });
-    }
-
-    try {
-      // Find matching job (sanitizing PostgREST filter characters)
-      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
-      const { data: jobs } = await admin
-        .from('jobs')
-        .select('id, ref, client_name, scope, quote_items, scheduled_for, scheduled_time')
-        .eq('account_id', accountId)
-        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      const targetJob = jobs?.[0];
-      if (!targetJob) {
-        return NextResponse.json({
-          response: `I couldn't find an active job matching "${jobRefOrClient}". Could you clarify the customer name or job ID?`,
-        });
-      }
-
-      const updates: Record<string, unknown> = {
-        updated_at: new Date().toISOString(),
-      };
-
-      if (newScope) {
-        updates.scope = targetJob.scope ? `${targetJob.scope}\n• ${newScope}` : newScope;
-      }
-      if (scheduledDate) {
-        updates.scheduled_for = scheduledDate;
-        if (scheduledTime) updates.scheduled_time = scheduledTime;
-      }
-      if (status && ['new_lead', 'in_progress', 'complete'].includes(status)) {
-        updates.status = status;
-      }
-
-      await admin.from('jobs').update(updates).eq('id', targetJob.id);
-
-      // If a quote item was provided
-      if (lineItemLabel && lineItemPrice > 0) {
-        const existingItems = parseQuoteItems(targetJob.quote_items);
-        const updatedItems: QuoteItem[] = [
-          ...existingItems,
-          {
-            id: `voice-${Date.now()}`,
-            label: lineItemLabel,
-            amount: lineItemPrice,
-            kind: 'base',
-            selected: true,
-            recommended: false,
-          },
-        ];
-        await saveQuoteItems(admin, accountId, targetJob.id, updatedItems);
-      }
-
-      // Add feed event
-      await createJobFeedEvent(admin, accountId, targetJob.id, {
-        kind: 'job_update',
-        title: 'Voice Call Update',
-        body: `Updated over phone: ${[newScope, scheduledDate ? `Scheduled for ${scheduledDate}` : '', lineItemLabel ? `Added "${lineItemLabel}" ($${lineItemPrice})` : ''].filter(Boolean).join(' · ')}`,
-        visibility: 'internal',
-      });
-
-      return NextResponse.json({
-        response: `Got it! I've updated the ${targetJob.ref} job for ${targetJob.client_name}.${scheduledDate ? ` Scheduled for ${scheduledDate}.` : ''} Is there anything else on this job?`,
-      });
-    } catch (err) {
-      console.error('Error in update_job_details SWAIG tool:', err);
-      return NextResponse.json({ response: 'I encountered an issue saving that job update. Could you repeat the changes?' });
-    }
-  }
-
-  if (fnName === 'create_or_update_lead') {
-    const name = String(args.name || args.caller_name || '').trim();
-    const phone = String(args.phone || args.caller_phone || '').trim();
-    const address = String(args.address || args.service_address || '').trim() || null;
-    const projectType = String(args.project_type || args.scope || '').trim() || 'Phone Lead';
-    const notes = String(args.notes || args.message || '').trim() || null;
-    const requestedDate = String(args.requested_date || '').trim();
-
-    if (!name) {
-      return NextResponse.json({ response: 'What is the customer\'s name for the new lead?' });
-    }
-
-    try {
-      const lead = await createLead(admin, accountId, {
-        source: 'ai_voice',
-        name,
-        phone: phone || null,
-        address,
-        projectType,
-        message: notes,
-        triage: {
-          score: 'hot',
-          flags: ['contractor_voice_phone'],
-          contactPreference: 'any',
-        },
-      });
-
-      if (requestedDate) {
-        await scheduleLeadQuoteVisit(admin, accountId, lead.id, {
-          scheduledFor: requestedDate,
-          scheduledTime: '09:00',
-          durationMinutes: 60,
-          notes: null,
-          confirmationTextSentAt: null,
-        });
-      }
-
-      return NextResponse.json({
-        response: `I've created a new lead for ${name}${address ? ` at ${address}` : ''}.${requestedDate ? ` Quote visit set for ${requestedDate}.` : ''}`,
-      });
-    } catch (err) {
-      console.error('Error in create_or_update_lead SWAIG tool:', err);
-      return NextResponse.json({ response: 'Could not create that lead right now. Please try again.' });
-    }
-  }
-
-  if (fnName === 'log_crew_time_and_materials') {
-    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || '').trim();
-    const hours = Number(args.hours || 0);
-    const materialDesc = String(args.materials || args.material_description || '').trim();
-    const materialAmount = Number(args.material_cost || args.amount || 0);
-
-    if (!jobRefOrClient) {
-      return NextResponse.json({ response: 'Which job are you logging time or materials for?' });
-    }
-
-    try {
-      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
-      const { data: jobs } = await admin
-        .from('jobs')
-        .select('id, ref, client_name')
-        .eq('account_id', accountId)
-        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
-        .limit(1);
-
-      const targetJob = jobs?.[0];
-      if (!targetJob) {
-        return NextResponse.json({ response: `Could not find a job matching "${jobRefOrClient}".` });
-      }
-
-      if (hours > 0) {
-        await admin.from('costs').insert({
-          account_id: accountId,
-          job_id: targetJob.id,
-          type: 'labor',
-          description: 'Voice logged labor',
-          hours,
-        });
-      }
-
-      if (materialAmount > 0 || materialDesc) {
-        await admin.from('costs').insert({
-          account_id: accountId,
-          job_id: targetJob.id,
-          type: 'material',
-          description: materialDesc || 'Voice logged materials',
-          amount: materialAmount || null,
-        });
-      }
-
-      await createJobFeedEvent(admin, accountId, targetJob.id, {
-        kind: 'job_update',
-        title: 'Logged Time & Materials',
-        body: `Logged by phone: ${hours > 0 ? `${hours} hrs` : ''} ${materialAmount > 0 ? `$${materialAmount} materials (${materialDesc})` : ''}`,
-        visibility: 'internal',
-      });
-
-      return NextResponse.json({
-        response: `Logged ${hours > 0 ? `${hours} hours` : ''} ${materialAmount > 0 ? `and $${materialAmount} in materials` : ''} on the ${targetJob.client_name} job.`,
-      });
-    } catch (err) {
-      console.error('Error in log_crew_time_and_materials SWAIG tool:', err);
-      return NextResponse.json({ response: 'Failed to log those costs. Please try again.' });
-    }
-  }
-
-  if (fnName === 'create_job_change_order') {
-    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || '').trim();
-    const title = String(args.title || 'Extra Work Found').trim();
-    const description = String(args.description || args.note || '').trim();
-
-    try {
-      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
-      const { data: jobs } = await admin
-        .from('jobs')
-        .select('id, ref, client_name')
-        .eq('account_id', accountId)
-        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
-        .limit(1);
-
-      const targetJob = jobs?.[0];
-      if (!targetJob) {
-        return NextResponse.json({ response: `Could not find a job matching "${jobRefOrClient}".` });
-      }
-
-      await admin.from('change_orders').insert({
-        account_id: accountId,
-        job_id: targetJob.id,
-        title,
-        description: description || null,
-        status: 'draft',
-      });
-
-      await createJobFeedEvent(admin, accountId, targetJob.id, {
-        kind: 'job_update',
-        title: `Change Order Raised: ${title}`,
-        body: description || 'Extra work recorded via voice call.',
-        visibility: 'internal',
-      });
-
-      return NextResponse.json({
-        response: `I've created a draft change order "${title}" on ${targetJob.client_name}'s job for office review.`,
-      });
-    } catch (err) {
-      console.error('Error in create_job_change_order SWAIG tool:', err);
-      return NextResponse.json({ response: 'Failed to create the change order. Please try again.' });
-    }
-  }
-
-  if (fnName === 'append_job_caution_or_note' || fnName === 'add_caution_note') {
-    const jobRefOrClient = String(args.job_ref_or_client || args.client_name || args.job_id || '').trim();
-    const noteText = String(args.note || args.caution || args.message || '').trim();
-    const isCaution = Boolean(args.is_caution || noteText.toLowerCase().includes('caution') || noteText.toLowerCase().includes('warning') || noteText.toLowerCase().includes('dog') || noteText.toLowerCase().includes('gate'));
-
-    if (!jobRefOrClient) {
-      return NextResponse.json({ response: 'Which customer or job would you like to add this note or caution to?' });
-    }
-
-    if (!noteText) {
-      return NextResponse.json({ response: 'What is the note or caution you would like me to record?' });
-    }
-
-    try {
-      const safeJobQuery = jobRefOrClient.replace(/[,()]/g, ' ').trim();
-      const { data: jobs } = await admin
-        .from('jobs')
-        .select('id, ref, client_name, client_id')
-        .eq('account_id', accountId)
-        .or(`ref.ilike.%${safeJobQuery}%,client_name.ilike.%${safeJobQuery}%`)
-        .order('created_at', { ascending: false })
-        .limit(1);
-
-      const targetJob = jobs?.[0];
-      if (!targetJob) {
-        return NextResponse.json({ response: `Could not find an active job matching "${jobRefOrClient}".` });
-      }
-
-      // Log internal caution or field note to job_feed
-      await createJobFeedEvent(admin, accountId, targetJob.id, {
-        kind: isCaution ? 'field_caution' : 'field_note',
-        title: isCaution ? 'Site Caution' : 'Internal Note',
-        body: noteText,
-        visibility: 'internal',
-        author: 'Contractor (Voice Assistant)',
-        meta: {
-          voiceLogged: true,
-          isCaution,
-        },
-      });
-
-      // If linked to a client, also append to persistent client notes
-      if (targetJob.client_id) {
-        const { data: client } = await admin
-          .from('clients')
-          .select('notes')
-          .eq('account_id', accountId)
-          .eq('id', targetJob.client_id)
-          .maybeSingle();
-
-        const currentNotes = (client?.notes as string | undefined) || '';
-        const updatedNotes = currentNotes
-          ? `${currentNotes}\n• ${noteText}`
-          : `• ${noteText}`;
-
-        await admin
-          .from('clients')
-          .update({ notes: updatedNotes, updated_at: new Date().toISOString() })
-          .eq('id', targetJob.client_id);
-      }
-
-      const label = isCaution ? 'caution note' : 'note';
-      return NextResponse.json({
-        response: `Got it, I added that ${label} to the ${targetJob.client_name} job. Our field crew will receive it in their arrival briefing.`,
-      });
-    } catch (err) {
-      console.error('Error in append_job_caution_or_note SWAIG tool:', err);
-      return NextResponse.json({ response: 'I could not save that note right now. Please try again.' });
-    }
+  const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
+  if (identity.status === 'staff') {
+    const action = await handleContractorVoiceAction({
+      admin,
+      accountId,
+      providerCallId: verifiedProviderCallId,
+      caller: identity.caller,
+      functionName: fnName,
+      args,
+    });
+    if (action.handled) return NextResponse.json({ response: action.response });
+  } else if (
+    ['update_job_details', 'update_job_scope', 'create_or_update_lead',
+      'log_crew_time_and_materials', 'create_job_change_order',
+      'append_job_caution_or_note', 'add_caution_note'].includes(fnName)
+  ) {
+    return NextResponse.json({
+      response: identity.status === 'customer'
+        ? 'Job updates and internal commands are restricted to verified team members.'
+        : 'I could not safely verify this staff caller, so I did not save anything.',
+    });
   }
 
   return NextResponse.json({
-    response: "I've noted that for our team.",
-  });
+    response: 'That function is not supported, so I did not change anything.',
+  }, { status: 400 });
 }

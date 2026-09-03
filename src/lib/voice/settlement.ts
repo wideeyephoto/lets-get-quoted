@@ -9,6 +9,7 @@ import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceReceipt } from '@/lib/voice/provider';
 import { detectCallEmergency, notifyEmergencyCall } from '@/lib/voice/triage';
 import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
+import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
 
 const MICROS_PER_SECOND = 1_000_000;
 
@@ -46,6 +47,8 @@ type AdmissionRow = {
   reserved_minutes: number | null;
   /** Set only when the call was admitted on overage rather than on allowance. */
   overage_key: string | null;
+  caller_number: string | null;
+  caller_kind: 'customer' | 'owner' | 'office' | 'crew' | 'staff_ambiguous' | 'unknown' | null;
 };
 
 function summaryLine(receipt: VoiceReceipt): string {
@@ -75,7 +78,7 @@ export async function settleVoiceReceipt(
 ): Promise<VoiceSettlement> {
   const { data: admission, error: admissionError } = await admin
     .from('voice_call_admissions')
-    .select('account_id, reservation_id, reserved_minutes, overage_key')
+    .select('account_id, reservation_id, reserved_minutes, overage_key, caller_number, caller_kind')
     .eq('provider', receipt.provider)
     .eq('provider_call_id', receipt.providerCallId)
     .maybeSingle();
@@ -141,16 +144,74 @@ export async function settleVoiceReceipt(
   // unmetered, on purpose. There is nothing to settle and nothing wrong; the
   // receipt is still the evidence that makes it reconcilable later.
 
+  let authoritativeCallerNumber = row.caller_number;
+  let callerKind = row.caller_kind;
+  if (!callerKind || callerKind === 'unknown') {
+    if (!authoritativeCallerNumber) {
+      const { data: provisional, error: provisionalError } = await admin
+        .from('voice_calls')
+        .select('caller_number')
+        .eq('account_id', row.account_id)
+        .eq('provider', receipt.provider)
+        .eq('provider_call_id', receipt.providerCallId)
+        .maybeSingle();
+      if (provisionalError) {
+        const code = typeof provisionalError.code === 'string' ? provisionalError.code : 'unknown';
+        throw new Error(`Voice caller identity lookup failed (${code}).`);
+      }
+      authoritativeCallerNumber = normalizeUsPhone(provisional?.caller_number || '')
+        || callerPhone(receipt);
+    }
+    const identity = await resolveVoiceCallerIdentity(
+      admin,
+      row.account_id,
+      authoritativeCallerNumber,
+    );
+    if (identity.status === 'unavailable') {
+      throw new Error('Voice caller identity lookup failed (unavailable).');
+    }
+    callerKind = identity.status === 'staff'
+      ? identity.caller.role
+      : identity.status === 'ambiguous' ? 'staff_ambiguous' : 'customer';
+  }
+  const staffCaller = callerKind === 'owner' || callerKind === 'office'
+    || callerKind === 'crew' || callerKind === 'staff_ambiguous';
+
   // The lead is why the contractor bought this. It is attempted whatever
   // happened above. Its event-scoped insert is idempotent, so a transient error
   // must escape and make the whole receipt retry instead of completing without
   // the customer inquiry.
   let leadId: string | null = null;
-  try {
+  if (!staffCaller) try {
+    const { data: inCallLead, error: inCallLeadError } = await admin
+      .from('leads')
+      .select('id, source_voice_event_id')
+      .eq('account_id', row.account_id)
+      .eq('source_voice_provider_call_id', receipt.providerCallId)
+      .maybeSingle();
+    if (inCallLeadError) {
+      const code = typeof inCallLeadError.code === 'string' ? inCallLeadError.code : 'unknown';
+      throw new Error(`In-call voice lead lookup failed (${code}).`);
+    }
+    if (inCallLead?.id) {
+      if (options.voiceEventId && inCallLead.source_voice_event_id !== options.voiceEventId) {
+        const { error: bindError } = await admin
+          .from('leads')
+          .update({ source_voice_event_id: options.voiceEventId })
+          .eq('account_id', row.account_id)
+          .eq('id', inCallLead.id);
+        if (bindError) {
+          const code = typeof bindError.code === 'string' ? bindError.code : 'unknown';
+          throw new Error(`In-call voice lead binding failed (${code}).`);
+        }
+      }
+      leadId = inCallLead.id;
+    }
+
     const structured = receipt.structuredPostPrompt;
-    const phone = (structured?.caller_phone && typeof structured.caller_phone === 'string' && structured.caller_phone.trim())
-      ? structured.caller_phone.trim()
-      : callerPhone(receipt);
+    // The model-produced structured phone is useful transcript data, not
+    // identity authority. Admission-bound caller ID wins for CRM attribution.
+    const phone = authoritativeCallerNumber || callerPhone(receipt);
 
     const summary = summaryLine(receipt);
     const emergency = detectCallEmergency(summary);
@@ -175,7 +236,7 @@ export async function settleVoiceReceipt(
       ? structured.requested_slot.trim()
       : undefined;
 
-    const lead = await createLead(admin, row.account_id, {
+    const lead = leadId ? null : await createLead(admin, row.account_id, {
       source: 'ai_voice',
       name: callerName,
       phone,
@@ -191,7 +252,7 @@ export async function settleVoiceReceipt(
         contactPreference: 'any',
       },
     });
-    leadId = lead.id;
+    if (lead) leadId = lead.id;
   } catch (error) {
     console.error('AI voice lead creation failed:', error);
     throw error;
@@ -217,6 +278,8 @@ export async function settleVoiceReceipt(
     unbillable: minutes === null,
     leadId,
     voiceEventId: options.voiceEventId ?? null,
+    staffCaller,
+    callerNumber: authoritativeCallerNumber,
   });
 
   return Object.freeze({
@@ -343,6 +406,8 @@ export async function recordCallHistory(
     unbillable: boolean;
     leadId: string | null;
     voiceEventId: string | null;
+    staffCaller?: boolean;
+    callerNumber?: string | null;
   }>,
 ): Promise<void> {
   const seconds = receipt.aiStartMicros !== null && receipt.aiEndMicros !== null
@@ -363,7 +428,7 @@ export async function recordCallHistory(
     provider: receipt.provider,
     provider_call_id: receipt.providerCallId,
     voice_event_id: facts.voiceEventId,
-    caller_number: callerPhone(receipt),
+    caller_number: facts.callerNumber ?? callerPhone(receipt),
     started_at: instant(receipt.callStartMicros),
     answered_at: instant(receipt.callAnswerMicros),
     ended_at: instant(receipt.callEndMicros),
@@ -413,7 +478,7 @@ export async function recordCallHistory(
         urgency,
       }, { onConflict: 'call_id' });
 
-      if (isEmergency) {
+      if (isEmergency && !facts.staffCaller) {
         await notifyEmergencyCall(
           admin,
           facts.accountId,
@@ -425,7 +490,7 @@ export async function recordCallHistory(
       }
 
       const cPhone = callerPhone(receipt);
-      if (cPhone && outcome !== 'caller_abandoned') {
+      if (cPhone && outcome !== 'caller_abandoned' && !facts.staffCaller) {
         const callerName = typeof structured?.caller_name === 'string' ? structured.caller_name : null;
         const issueSummary = typeof structured?.issue_summary === 'string'
           ? structured.issue_summary

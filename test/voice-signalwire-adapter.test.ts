@@ -198,6 +198,62 @@ describe('rendering an answer', () => {
     expect(ai.params.max_duration).toBe(3600);
   });
 
+  it('plays both disclosures before it starts call recording', () => {
+    const answer = provider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Thanks for calling.', capMinutes: 60, transferTo: null,
+      recordCall: true, recordingStatusUrl: 'https://x.test/recording',
+    });
+    const main = JSON.parse(answer.body).sections.main;
+    const playIndex = main.findIndex((section: Record<string, unknown>) => 'play' in section);
+    const recordIndex = main.findIndex((section: Record<string, unknown>) => 'record_call' in section);
+
+    expect(playIndex).toBeGreaterThan(-1);
+    expect(recordIndex).toBeGreaterThan(playIndex);
+    expect(main[playIndex].play.url).toContain('You are speaking with an AI assistant.');
+    expect(main[playIndex].play.url).toContain('This call may be recorded for quality and training purposes.');
+  });
+
+  it('renders conservative contractor mutation tool contracts', () => {
+    const answer = provider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Hi', capMinutes: 60, transferTo: null,
+      swaigUrl: 'https://x.test/swaig', contractorMode: true,
+    });
+    const ai = JSON.parse(answer.body).sections.main
+      .find((section: Record<string, unknown>) => 'ai' in section).ai;
+    const functions = ai.SWAIG.functions;
+    const tool = (name: string) => functions.find((candidate: { function: string }) => candidate.function === name);
+
+    for (const name of [
+      'append_job_caution_or_note',
+      'update_job_details',
+      'log_crew_time_and_materials',
+      'create_job_change_order',
+    ]) {
+      const description = tool(name).argument.properties.job_ref_or_client.description;
+      expect(description).toMatch(/exact job reference or job UUID/i);
+      expect(description).toMatch(/ask a clarifying question/i);
+      expect(description).toMatch(/never guess/i);
+    }
+
+    const lead = tool('create_or_update_lead');
+    expect(lead.purpose).toMatch(/create a new customer lead only/i);
+    expect(lead.purpose).toMatch(/do not use this tool to update or implicitly match/i);
+    expect(lead.purpose).toMatch(/exact lead ID/i);
+    expect(lead.argument.properties.intent.enum).toEqual(['create']);
+    expect(lead.argument.required).toEqual(expect.arrayContaining(['intent', 'name']));
+
+    const timeAndMaterials = tool('log_crew_time_and_materials');
+    expect(timeAndMaterials.argument.properties.crew_name.description).toMatch(/whenever hours are included/i);
+    expect(timeAndMaterials.argument.properties.hours.description).toMatch(/positive, finite/i);
+    expect(timeAndMaterials.argument.properties.materials.description).toMatch(/required whenever material_cost/i);
+    expect(timeAndMaterials.argument.properties.material_cost.description).toMatch(/never submit.*without materials/i);
+
+    expect(tool('create_job_change_order').argument.required)
+      .toEqual(expect.arrayContaining(['job_ref_or_client', 'title', 'description']));
+  });
+
   it('omits the transfer function entirely when there is nowhere to transfer', () => {
     const answer = provider.renderAnswer({
       kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,

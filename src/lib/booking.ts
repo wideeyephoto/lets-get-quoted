@@ -361,6 +361,8 @@ export type BookingInput = {
    * the raw ?ref code never reaches this module.
    */
   referredBy?: string | null;
+  /** Signed AI Voice provider call id; makes lead + pending job retries idempotent. */
+  sourceVoiceProviderCallId?: string | null;
 };
 
 // A self-serve booking becomes a warm, pre-scheduled lead the owner confirms —
@@ -390,7 +392,8 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     address: input.address,
     projectType: input.serviceName || 'Online booking',
     message,
-    sourcePage: '/book',
+      sourcePage: '/book',
+      sourceVoiceProviderCallId: input.sourceVoiceProviderCallId,
     triage: {
       score: 'warm',
       flags: [],
@@ -443,8 +446,9 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
         status: 'new_lead',
         scheduledFor: null,
         scheduledTime: null,
-        quotedAmount: 0,
-      });
+          quotedAmount: 0,
+          sourceVoiceProviderCallId: input.sourceVoiceProviderCallId,
+        });
       await admin
         .from('jobs')
         .update({

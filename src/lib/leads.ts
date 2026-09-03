@@ -300,6 +300,7 @@ export type Lead = {
   photo_paths: string[];
   source_page: string | null;
   source_voice_event_id?: string | null;
+  source_voice_provider_call_id?: string | null;
   /** Immutable Google Local Services lead resource used for replay-safe imports. */
   source_google_lsa_resource?: string | null;
   /** Immutable Marketplace reference identifier used for replay-safe deduplication. */
@@ -335,6 +336,8 @@ export type LeadInput = {
   sourcePage?: string | null;
   /** Stable receipt identity used only by the AI Voice settlement replay. */
   sourceVoiceEventId?: string | null;
+  /** Stable signed provider call identity used by in-call booking retries. */
+  sourceVoiceProviderCallId?: string | null;
   /** Stable provider resource used only by the Google Local Services importer. */
   sourceGoogleLsaResource?: string | null;
   /** Stable marketplace identifier used for replay-safe imports and webhook retries. */
@@ -456,6 +459,9 @@ export async function createLead(
     ...(input.sourceVoiceEventId
       ? { source_voice_event_id: input.sourceVoiceEventId }
       : {}),
+    ...(input.sourceVoiceProviderCallId
+      ? { source_voice_provider_call_id: input.sourceVoiceProviderCallId }
+      : {}),
     ...(input.sourceGoogleLsaResource
       ? { source_google_lsa_resource: input.sourceGoogleLsaResource }
       : {}),
@@ -467,6 +473,8 @@ export async function createLead(
   let lead: Lead;
   const immutableSource = input.sourceVoiceEventId
     ? ({ column: 'source_voice_event_id' as const, value: input.sourceVoiceEventId, onConflict: 'source_voice_event_id' })
+    : input.sourceVoiceProviderCallId
+      ? ({ column: 'source_voice_provider_call_id' as const, value: input.sourceVoiceProviderCallId, onConflict: 'account_id,source_voice_provider_call_id' })
     : input.sourceGoogleLsaResource
       ? ({ column: 'source_google_lsa_resource' as const, value: input.sourceGoogleLsaResource, onConflict: 'account_id,source_google_lsa_resource' })
       : input.sourceMarketplaceRef
@@ -564,7 +572,7 @@ export async function createLead(
 async function recoverExistingProviderLead(
   supabase: SupabaseClient,
   accountId: string,
-  column: 'source_voice_event_id' | 'source_google_lsa_resource' | 'source_marketplace_ref',
+  column: 'source_voice_event_id' | 'source_voice_provider_call_id' | 'source_google_lsa_resource' | 'source_marketplace_ref',
   value: string,
   originalError: unknown,
 ): Promise<Lead> {

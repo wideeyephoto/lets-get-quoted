@@ -116,6 +116,10 @@ function escapeXml(value: string): string {
     .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
+const CONTRACTOR_JOB_TARGET_DESCRIPTION = 'The exact job reference or job UUID. '
+  + 'If the caller does not know it, collect the full client name and service address, '
+  + 'then ask a clarifying question before using this tool whenever more than one job could match. Never guess.';
+
 export function structuredPostPromptFrom(payload: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
   const post = record(payload.post_prompt_data);
   if (!post) return null;
@@ -187,6 +191,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
         recordingEnabled: plan.recordCall,
       });
       const mainSection: Record<string, unknown>[] = [{ answer: {} }];
+      // The deterministic disclosure must finish before recording begins. The
+      // AI instruction that follows cannot substitute for audio the caller has
+      // actually heard.
+      mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
       if (plan.recordCall) {
         mainSection.push({
           record_call: {
@@ -196,7 +204,6 @@ export const signalwireVoiceProvider: VoiceProvider = {
           },
         });
       }
-      mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
       const swaigFunctions: Record<string, unknown>[] = [];
 
       if (plan.transferTo) {
@@ -404,7 +411,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
             properties: {
               job_ref_or_client: {
                 type: 'string',
-                description: 'Customer name or job ID (e.g. Miller, 102, 142 Elm St).',
+                description: CONTRACTOR_JOB_TARGET_DESCRIPTION,
               },
               note: {
                 type: 'string',
@@ -430,7 +437,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
             properties: {
               job_ref_or_client: {
                 type: 'string',
-                description: 'Customer name or job reference ID (e.g. Miller, JOB-102).',
+                description: CONTRACTOR_JOB_TARGET_DESCRIPTION,
               },
               scope: {
                 type: 'string',
@@ -466,13 +473,20 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'create_or_update_lead',
-          purpose: 'Create a new customer lead or log an incoming prospect.',
+          purpose: 'Create a new customer lead only. Do not use this tool to update or implicitly match '
+            + 'an existing lead by name, phone, or address. For an update, ask for the exact lead ID and '
+            + 'use an update-capable workflow or transfer to the office.',
           argument: {
             type: 'object',
             properties: {
+              intent: {
+                type: 'string',
+                enum: ['create'],
+                description: 'Explicit operation intent. This handler supports creation only.',
+              },
               name: {
                 type: 'string',
-                description: 'Full name of the new lead/customer.',
+                description: 'Full name for the new lead. Do not use a name as an existing-record lookup key.',
               },
               phone: {
                 type: 'string',
@@ -495,7 +509,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                 description: 'Requested estimate visit date in YYYY-MM-DD.',
               },
             },
-            required: ['name'],
+            required: ['intent', 'name'],
           },
           web_hook_url: plan.swaigUrl,
           web_hook_auth_user: plan.receiptAuthorization.username,
@@ -504,25 +518,31 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'log_crew_time_and_materials',
-          purpose: 'Log labor hours worked and material costs purchased for a job.',
+          purpose: 'Log labor hours worked and material costs purchased for one unambiguously identified job. '
+            + 'Before calling, confirm at least one positive labor or material entry, collect the crew member name '
+            + 'for labor, and itemize the materials for every material cost.',
           argument: {
             type: 'object',
             properties: {
               job_ref_or_client: {
                 type: 'string',
-                description: 'Customer name or job ID.',
+                description: CONTRACTOR_JOB_TARGET_DESCRIPTION,
+              },
+              crew_name: {
+                type: 'string',
+                description: 'Full name of the crew member whose labor is being logged. Collect this whenever hours are included.',
               },
               hours: {
                 type: 'number',
-                description: 'Labor hours worked.',
+                description: 'A positive, finite number of labor hours worked. Do not send zero or a negative value.',
               },
               materials: {
                 type: 'string',
-                description: 'Description of materials used or receipts.',
+                description: 'Itemized description of materials used or purchased. Required whenever material_cost is included.',
               },
               material_cost: {
                 type: 'number',
-                description: 'Total dollar amount of materials.',
+                description: 'A positive dollar total for the itemized materials. Never submit a material cost without materials.',
               },
             },
             required: ['job_ref_or_client'],
@@ -540,7 +560,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
             properties: {
               job_ref_or_client: {
                 type: 'string',
-                description: 'Customer name or job ID.',
+                description: CONTRACTOR_JOB_TARGET_DESCRIPTION,
               },
               title: {
                 type: 'string',
@@ -551,7 +571,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                 description: 'Explanation of extra scope and necessity.',
               },
             },
-            required: ['job_ref_or_client'],
+            required: ['job_ref_or_client', 'title', 'description'],
           },
           web_hook_url: plan.swaigUrl,
           web_hook_auth_user: plan.receiptAuthorization.username,
