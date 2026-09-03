@@ -16,6 +16,7 @@ import { clearLeadQuoteVisitAction, reopenLeadAction, scheduleLeadQuoteVisitActi
 import DepositField from './DepositField';
 import LeadAddressCard from './LeadAddressCard';
 import LeadContactCard from './LeadContactCard';
+import LeadTitleHeader from './LeadTitleHeader';
 import QuoteSendGate from './QuoteSendGate';
 import { quoteShape } from './quote-shape';
 import LeadActionDeck from './LeadActionDeck';
@@ -288,13 +289,9 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
         <div className={styles.leadHeroMain}>
           <p className="eyebrow">Lead details</p>
           <div className={styles.leadTitleRow}>
-            <h1 className="workspace-title">{lead.name || 'Unnamed lead'}</h1>
-            {/* "(edit)" — of what? It sat under a person's name on three
-                different pages meaning three different things, and on the lead
-                page it sat beside the layout gear as well. Naming the noun is
-                what tells you this opens the LEAD, not the customer's record. */}
+            <LeadTitleHeader leadId={lead.id} initialName={lead.name ?? ''} />
             <Link href={editLeadHref} className="job-title-edit-link">
-              Edit lead
+              Edit all details
             </Link>
           </div>
           <div className={styles.detailBadges}>

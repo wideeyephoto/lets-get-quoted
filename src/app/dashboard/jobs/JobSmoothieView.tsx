@@ -25,6 +25,9 @@ import type { JobViewItem } from './JobsWorkspace';
 import { focusQueueRow, useQueueWindow } from '../use-queue-window';
 import { useJobDetail } from './use-job-detail';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
+import { updateJobClientNameAction } from './actions';
+import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
+import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
 import styles from '../smoothie.module.css';
 
@@ -147,6 +150,8 @@ export default function JobSmoothieView({
 
   // Only the work: scheduled and unscheduled jobs. A lead pin belongs to the
   // leads page and is one legend click away — see PinMap's initialHidden.
+  const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
   const jobPinCount = useMemo(() => scopedPins.filter((pin) => pin.kind !== 'lead').length, [scopedPins]);
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
   const mapCount = visiblePins ?? jobPinCount;
@@ -461,7 +466,17 @@ export default function JobSmoothieView({
                   />
                   <div className={styles.recordHeadCopy}>
                     <p className={focusStyles.heroTag}>Selected job</p>
-                    <h2 className={styles.detailName}>{selected.clientName || 'Untitled job'}</h2>
+                    <div className={quickEditStyles.headerTitleRow}>
+                      <h2 className={styles.detailName}>{selected.clientName || 'Untitled job'}</h2>
+                      <button
+                        type="button"
+                        className={quickEditStyles.quickEditBtn}
+                        onClick={() => setIsEditingName(true)}
+                        aria-label="Edit client name"
+                      >
+                        Edit
+                      </button>
+                    </div>
                     <p className={styles.detailProject}>{selected.scope || 'No description yet'}</p>
 
                     {/* 2 — stage, reference, what the badge says */}
@@ -577,6 +592,17 @@ export default function JobSmoothieView({
                   <strong>{selected.quotedAmount > 0 ? selected.quotedLabel : '—'}</strong>
                 </span>
               </footer>
+              <QuickEditNameModal
+                isOpen={isEditingName}
+                onClose={() => setIsEditingName(false)}
+                title="Edit client name"
+                label="Client name"
+                initialName={selected.clientName}
+                onSave={async (newName) => {
+                  await updateJobClientNameAction(selected.id, newName);
+                  router.refresh();
+                }}
+              />
             </>
           ) : (
             <p className="empty-state">Pick a job from the queue.</p>

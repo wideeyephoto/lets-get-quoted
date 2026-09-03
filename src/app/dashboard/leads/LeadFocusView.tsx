@@ -1,16 +1,18 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { LeadDetailDto } from '@/lib/lead-detail';
 import { leadScoreLabel } from '@/lib/lead-detail-labels';
 import type { LeadViewItem } from './LeadsWorkspace';
 import RecordPhotos from '../RecordPhotos';
-import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction } from './actions';
+import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, updateLeadNameAction } from './actions';
 import { useLeadDetail } from './use-lead-detail';
 import { nextTabIndex } from '@/lib/tab-strip';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
 import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
+import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -84,6 +86,8 @@ export default function LeadFocusView({
     tabRefs.current[id]?.focus();
   }
 
+  const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
   const selected = useMemo(() => leads.find((l) => l.id === selectedId) ?? null, [leads, selectedId]);
 
   const { detail, loading, error, armPrefetch, cancelPrefetch } = useLeadDetail({ selectedId, leads, details });
@@ -191,10 +195,20 @@ export default function LeadFocusView({
                         leads called Brennan on one screen are told apart by
                         where they are, and it's also what decides which one is
                         worth driving to first. */}
-                    <h2>
-                      {selected.name}
-                      {selected.city ? <span className={styles.heroCity}> ({selected.city})</span> : null}
-                    </h2>
+                    <div className={quickEditStyles.headerTitleRow}>
+                      <h2>
+                        {selected.name}
+                        {selected.city ? <span className={styles.heroCity}> ({selected.city})</span> : null}
+                      </h2>
+                      <button
+                        type="button"
+                        className={quickEditStyles.quickEditBtn}
+                        onClick={() => setIsEditingName(true)}
+                        aria-label="Edit lead name"
+                      >
+                        Edit
+                      </button>
+                    </div>
                   </div>
 
                   <div className={styles.chips}>
@@ -340,7 +354,7 @@ export default function LeadFocusView({
               ) : loading || !fresh ? (
                 <LeadDetailSkeleton />
               ) : (
-                <LeadDetailTabs tab={tab} detail={fresh} lead={selected} base={base} />
+                <LeadDetailTabs tab={tab} detail={fresh} lead={selected} base={base} onSelectTab={setTab} />
               )}
             </div>
 
@@ -366,6 +380,17 @@ export default function LeadFocusView({
                 <strong className={selected.isUrgent ? styles.waiting : undefined}>{selected.ageLabel}</strong>
               </span>
             </footer>
+            <QuickEditNameModal
+              isOpen={isEditingName}
+              onClose={() => setIsEditingName(false)}
+              title="Edit lead name"
+              label="Client name"
+              initialName={selected.name}
+              onSave={async (newName) => {
+                await updateLeadNameAction(selected.id, newName);
+                router.refresh();
+              }}
+            />
           </>
         ) : (
           <p className="empty-state">Pick a lead from the list.</p>

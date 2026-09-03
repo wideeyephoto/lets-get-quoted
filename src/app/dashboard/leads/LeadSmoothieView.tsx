@@ -25,9 +25,11 @@ import {
 } from '@/lib/lead-queue';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { focusQueueRow, useQueueWindow } from '../use-queue-window';
-import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction } from './actions';
+import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, updateLeadNameAction } from './actions';
 import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
+import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
+import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 import styles from '../smoothie.module.css';
@@ -168,6 +170,8 @@ export default function LeadSmoothieView({
 
   const { detail, loading, error, armPrefetch, cancelPrefetch } = useLeadDetail({ selectedId, leads, details });
 
+  const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
   const openPinCount = scopedPins.length;
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
   const mapCount = pane === 'map' ? (visiblePins ?? openPinCount) : openPinCount;
@@ -569,10 +573,20 @@ export default function LeadSmoothieView({
                   />
                   <div className={styles.recordHeadCopy}>
                     <p className={focusStyles.heroTag}>Selected lead</p>
-                    <h2 className={styles.detailName}>
-                      {selected.name}
-                      {selected.city ? <span className={styles.detailCity}> ({selected.city})</span> : null}
-                    </h2>
+                    <div className={quickEditStyles.headerTitleRow}>
+                      <h2 className={styles.detailName}>
+                        {selected.name}
+                        {selected.city ? <span className={styles.detailCity}> ({selected.city})</span> : null}
+                      </h2>
+                      <button
+                        type="button"
+                        className={quickEditStyles.quickEditBtn}
+                        onClick={() => setIsEditingName(true)}
+                        aria-label="Edit lead name"
+                      >
+                        Edit
+                      </button>
+                    </div>
                     <p className={styles.detailProject}>{selected.detail}</p>
                   </div>
                 </div>
@@ -734,9 +748,20 @@ export default function LeadSmoothieView({
                 ) : loading || !fresh ? (
                   <LeadDetailSkeleton />
                 ) : (
-                  <LeadDetailTabs tab={tab} detail={fresh} lead={selected} base={base} headingLevel={3} />
+                  <LeadDetailTabs tab={tab} detail={fresh} lead={selected} base={base} headingLevel={3} onSelectTab={setTab} />
                 )}
               </div>
+              <QuickEditNameModal
+                isOpen={isEditingName}
+                onClose={() => setIsEditingName(false)}
+                title="Edit lead name"
+                label="Client name"
+                initialName={selected.name}
+                onSave={async (newName) => {
+                  await updateLeadNameAction(selected.id, newName);
+                  router.refresh();
+                }}
+              />
             </>
           ) : (
             <p className="empty-state">Pick a lead from the queue.</p>

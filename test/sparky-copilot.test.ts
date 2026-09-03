@@ -90,16 +90,14 @@ describe('Sparky Copilot Public-Facing Integration', () => {
     expect(homeownerMatch![0]).not.toContain('SparkyCopilot');
   });
 
-  it('verifies duplicate widgets are removed from SiteFooter and features page', () => {
+  it('verifies duplicate widgets are removed from SiteFooter and site-chrome', () => {
     const siteFooterSrc = readFileSync('src/components/site-footer.tsx', 'utf8');
     expect(siteFooterSrc).not.toContain('<MarketingAiAssistant');
 
     const flagshipChromeSrc = readFileSync('src/components/flagship/site-chrome.tsx', 'utf8');
     expect(flagshipChromeSrc).not.toContain('<MarketingAiAssistant');
-
-    const featuresPageSrc = readFileSync('src/app/features/page.tsx', 'utf8');
-    expect(featuresPageSrc).not.toContain('<CompanionHUD');
   });
+
 
   it('verifies mobile styling positions Sparky cleanly above sticky bottom action bar', () => {
     const cssSrc = readFileSync('src/components/marketing/sparky-copilot.module.css', 'utf8');

@@ -398,11 +398,11 @@ export function RoomScanViewer({
 
       // 4. Fixtures & Objects
       activeScan.objects.forEach((obj) => {
-        const oX = (obj.position.xInches - wall1Len / 2) * scale;
-        const oZ = (obj.position.zInches - wall2Len / 2) * scale;
-        const oW = (obj.dimensions.widthInches / 2) * scale;
-        const oD = (obj.dimensions.depthInches / 2) * scale;
-        const oH = viewMode === '3d' ? obj.dimensions.heightInches * scale : 0;
+        const oX = (obj.position.x - wall1Len / 2) * scale;
+        const oZ = (obj.position.z - wall2Len / 2) * scale;
+        const oW = (obj.dimensionsInches.width / 2) * scale;
+        const oD = (obj.dimensionsInches.depth / 2) * scale;
+        const oH = viewMode === '3d' ? obj.dimensionsInches.height * scale : 0;
 
         const p1 = project(oX - oW, 0, oZ - oD);
         const p2 = project(oX + oW, 0, oZ - oD);
@@ -448,13 +448,26 @@ export function RoomScanViewer({
         ctx.fillStyle = '#94a3b8';
         ctx.font = '10px Inter, sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText(obj.name, center.px, center.py - 4);
+        ctx.fillText(obj.label, center.px, center.py - 4);
       });
 
       // 5. Openings (Doors & Windows)
       activeScan.openings.forEach((op) => {
-        const opX = (op.position.xInches - wall1Len / 2) * scale;
-        const opZ = (op.position.zInches - wall2Len / 2) * scale;
+        let opX = 0;
+        let opZ = 0;
+        if (op.wallIndex === 0) {
+          opX = (-wall1Len / 2 + op.offsetInches) * scale;
+          opZ = (wall2Len / 2) * scale;
+        } else if (op.wallIndex === 1) {
+          opX = (wall1Len / 2) * scale;
+          opZ = (wall2Len / 2 - op.offsetInches) * scale;
+        } else if (op.wallIndex === 2) {
+          opX = (wall1Len / 2 - op.offsetInches) * scale;
+          opZ = (-wall2Len / 2) * scale;
+        } else {
+          opX = (-wall1Len / 2) * scale;
+          opZ = (-wall2Len / 2 + op.offsetInches) * scale;
+        }
         const opW = (op.widthInches / 2) * scale;
 
         const pA = project(opX - opW, 0, opZ);
@@ -867,7 +880,7 @@ export function RoomScanViewer({
           <div className={styles.fixtureDrawer}>
             <div className={styles.fixtureHeader}>
               <span className={styles.fixtureTitle}>
-                📦 {selectedObject.name}
+                📦 {selectedObject.label}
               </span>
               <button
                 type="button"
@@ -881,7 +894,7 @@ export function RoomScanViewer({
               </button>
             </div>
             <div className={styles.fixtureDims}>
-              {selectedObject.dimensions.widthInches}&quot; W × {selectedObject.dimensions.depthInches}&quot; D × {selectedObject.dimensions.heightInches}&quot; H
+              {selectedObject.dimensionsInches.width}&quot; W × {selectedObject.dimensionsInches.depth}&quot; D × {selectedObject.dimensionsInches.height}&quot; H
             </div>
           </div>
         )}

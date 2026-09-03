@@ -250,6 +250,24 @@ export async function updateLeadContactAction(leadId: string, phone: string | nu
   revalidatePath('/dashboard/leads');
 }
 
+export async function updateLeadNameAction(leadId: string, name: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const normalizedName = name.trim();
+  if (!normalizedName) throw new Error('Lead name cannot be blank.');
+  const { error } = await supabase
+    .from('leads')
+    .update({
+      name: normalizedName,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('account_id', accountId)
+    .eq('id', leadId);
+
+  if (error) throw error;
+  revalidatePath(`/dashboard/leads/${leadId}`);
+  revalidatePath('/dashboard/leads');
+}
+
 export async function scheduleLeadQuoteVisitAction(leadId: string, formData: FormData) {
   const { supabase, accountId } = await requireOwnerContext();
   const lead = await getLead(supabase, accountId, leadId);

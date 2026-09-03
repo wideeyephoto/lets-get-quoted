@@ -105,6 +105,9 @@ import QuoteDeliveryBanner from './QuoteDeliveryBanner';
 import CopyLinkButton from './CopyLinkButton';
 import RequestReviewButton from './RequestReviewButton';
 import QuoteBuilder from './QuoteBuilder';
+import JobClientNameHeader from './JobClientNameHeader';
+import JobAddressHeader from './JobAddressHeader';
+import JobContactHeader from './JobContactHeader';
 // Shared with the pipeline's Focus pane so the two can't describe the same
 // event differently — see src/lib/job-detail-labels.ts.
 import {
@@ -553,7 +556,7 @@ export default async function JobDetailPage({
             ) : null}
           </div>
           <p className="job-hero-who">
-            {job.client_name}
+            <JobClientNameHeader jobId={job.id} clientName={job.client_name} />
             {' · '}
             {/* The stage, from the one ladder. The badge below still carries the
                 finer-grained "payment issue" / "client signed" states — this
@@ -564,7 +567,7 @@ export default async function JobDetailPage({
           </p>
           <div className="workspace-inline-row">
             <span className={`status-badge status-${heroStatus.tone}`} title={heroStatus.title}>{heroStatus.label}</span>
-            <span className="workspace-inline-note">{job.address || 'No address on file yet'}</span>
+            <JobAddressHeader jobId={job.id} address={job.address} />
           </div>
 
           {/* THE MONEY, SUBTRACTED, and always on screen. A $99.94 quote with
@@ -582,33 +585,22 @@ export default async function JobDetailPage({
               change order so the customer approves the difference, or cancel a request below.
             </p>
           ) : null}
-          {job.client_phone || job.client_email ? (
-            <div className="job-hero-contact">
-              {job.client_phone ? (
-                <a href={`tel:${job.client_phone}`} className="hero-phone-link" aria-label={`Call ${job.client_phone}`}>
-                  <span aria-hidden="true">📞</span> {formatPhoneDashes(job.client_phone)}
-                </a>
-              ) : null}
-              {job.client_email ? (
-                <a href={`mailto:${job.client_email}`} className="hero-email-link" aria-label={`Email ${job.client_email}`}>
-                  <span aria-hidden="true">📧</span> {job.client_email}
-                </a>
-              ) : null}
-              {/* Only when there is something to say. clientChannelChip returns
-                  null for the ordinary case — a customer we text, with a mobile,
-                  who has not replied STOP — because a badge on every job saying
-                  "nothing unusual here" trains people to stop reading badges. */}
-              {clientChannelNote ? (
-                <Link
-                  href={`/dashboard/jobs/${job.id}?edit=client#job-details`}
-                  className={`job-channel-chip tone-${clientChannelNote.tone}`}
-                  title="How automatic messages reach this customer — change it in Job details"
-                >
-                  {clientChannelNote.label}
-                </Link>
-              ) : null}
-            </div>
-          ) : null}
+          <div className="job-hero-contact">
+            <JobContactHeader jobId={job.id} clientPhone={job.client_phone} clientEmail={job.client_email} />
+            {/* Only when there is something to say. clientChannelChip returns
+                null for the ordinary case — a customer we text, with a mobile,
+                who has not replied STOP — because a badge on every job saying
+                "nothing unusual here" trains people to stop reading badges. */}
+            {clientChannelNote ? (
+              <Link
+                href={`/dashboard/jobs/${job.id}?edit=client#job-details`}
+                className={`job-channel-chip tone-${clientChannelNote.tone}`}
+                title="How automatic messages reach this customer — change it in Job details"
+              >
+                {clientChannelNote.label}
+              </Link>
+            ) : null}
+          </div>
           {/* TO THE CENT, because the money panel below is. This header said
               "$100 quoted" over an Approved and a Remaining of $99.94 — the
               same number twice, rounded in one place and not the other, which

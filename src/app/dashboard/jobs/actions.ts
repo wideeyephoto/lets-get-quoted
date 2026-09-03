@@ -32,6 +32,7 @@ import {
   formatJobSchedule,
   formatMoneyExact,
   parseQuoteItems,
+  patchJob,
   saveQuoteItems,
   updateJob,
   updateJobSchedule,
@@ -277,6 +278,75 @@ export async function updateJobAction(jobId: string, formData: FormData) {
 
   revalidatePath('/dashboard/jobs');
   revalidatePath(`/dashboard/jobs/${jobId}`);
+}
+
+export async function updateJobClientNameAction(jobId: string, clientName: string) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const trimmed = clientName.trim();
+  if (!trimmed) throw new Error('Client name cannot be blank.');
+
+  const updated = await patchJob(supabase, accountId, jobId, {
+    client_name: trimmed,
+    updated_at: new Date().toISOString(),
+  });
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_update',
+    title: 'Client name updated',
+    body: `Client name was updated to ${trimmed}.`,
+    visibility: 'internal',
+    meta: { client_name: trimmed },
+  });
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return updated;
+}
+
+export async function updateJobContactAction(jobId: string, clientPhone: string | null, clientEmail: string | null) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const phone = clientPhone ? clientPhone.trim() || null : null;
+  const email = clientEmail ? clientEmail.trim().toLowerCase() || null : null;
+
+  const updated = await patchJob(supabase, accountId, jobId, {
+    client_phone: phone,
+    client_email: email,
+    updated_at: new Date().toISOString(),
+  });
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_update',
+    title: 'Contact details updated',
+    body: `Contact details for ${updated.client_name} were updated.`,
+    visibility: 'internal',
+    meta: { client_phone: phone, client_email: email },
+  });
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return updated;
+}
+
+export async function updateJobAddressAction(jobId: string, address: string | null) {
+  const { supabase, accountId } = await requireOwnerContext();
+  const normalized = address ? address.trim() || null : null;
+
+  const updated = await patchJob(supabase, accountId, jobId, {
+    address: normalized,
+    updated_at: new Date().toISOString(),
+  });
+
+  await createJobFeedEvent(supabase, accountId, jobId, {
+    kind: 'job_update',
+    title: 'Address updated',
+    body: `Address for ${updated.client_name} was updated to ${normalized || 'none'}.`,
+    visibility: 'internal',
+    meta: { address: normalized },
+  });
+
+  revalidatePath('/dashboard/jobs');
+  revalidatePath(`/dashboard/jobs/${jobId}`);
+  return updated;
 }
 
 /**

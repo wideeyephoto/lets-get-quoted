@@ -898,7 +898,7 @@ export async function importJobs(
  * break saving a job at all, not just its end date. So an undefined-column
  * error retries once without it.
  */
-async function patchJob(
+export async function patchJob(
   supabase: SupabaseClient,
   accountId: string,
   jobId: string,

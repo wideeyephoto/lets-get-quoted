@@ -171,7 +171,8 @@ export default function ForExperience() {
                   </svg>
                   <input
                     id="hero-trade-search"
-                    type="text"
+                    type="search"
+                    className={styles.searchInput}
                     value={heroQuery}
                     onChange={(event) => setHeroQuery(event.target.value)}
                     placeholder="Search your trade (e.g., plumber, roofing, painter)..."

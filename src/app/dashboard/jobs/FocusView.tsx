@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
 import RecordPhotos from '../RecordPhotos';
@@ -9,6 +10,8 @@ import ActionIcon from '@/components/action-icon';
 import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
 import { useJobDetail } from './use-job-detail';
+import { updateJobClientNameAction } from './actions';
+import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
 import { nextTabIndex } from '@/lib/tab-strip';
 import styles from '../focus.module.css';
 
@@ -77,6 +80,9 @@ export default function FocusView({
     setTab(id);
     tabRefs.current[id]?.focus();
   }
+
+  const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
 
   /**
    * THE FILTER MOVES AND THE SELECTION HAS TO MOVE WITH IT.
@@ -208,7 +214,17 @@ export default function FocusView({
               <div className={styles.heroCopy}>
               <p className={styles.heroTag}>Selected job</p>
               <div className={styles.heroTop}>
-                <h2>{selected.clientName || 'Untitled job'}</h2>
+                <div className={quickEditStyles.headerTitleRow}>
+                  <h2>{selected.clientName || 'Untitled job'}</h2>
+                  <button
+                    type="button"
+                    className={quickEditStyles.quickEditBtn}
+                    onClick={() => setIsEditingName(true)}
+                    aria-label="Edit client name"
+                  >
+                    Edit
+                  </button>
+                </div>
                 <StatusBadge job={selected} />
               </div>
               <dl className={styles.heroMeta}>
@@ -336,6 +352,17 @@ export default function FocusView({
                 <strong>{selected.quotedAmount > 0 ? selected.quotedLabel : '—'}</strong>
               </span>
             </footer>
+            <QuickEditNameModal
+              isOpen={isEditingName}
+              onClose={() => setIsEditingName(false)}
+              title="Edit client name"
+              label="Client name"
+              initialName={selected.clientName}
+              onSave={async (newName) => {
+                await updateJobClientNameAction(selected.id, newName);
+                router.refresh();
+              }}
+            />
           </>
         ) : (
           <p className="empty-state">Pick a job from the list.</p>

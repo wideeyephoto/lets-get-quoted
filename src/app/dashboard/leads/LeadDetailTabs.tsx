@@ -10,6 +10,9 @@ import { PropertyDossierCard } from '@/components/property-intel/PropertyDossier
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
 import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
 import { shouldDisplayRoomSpatialScan } from '@/lib/property-intel/profile';
+import { useRouter } from 'next/navigation';
+import { updateLeadAddressAction, updateLeadContactAction } from './actions';
+import { QuickEditAddressModal, QuickEditContactModal, quickEditStyles } from '@/components/quick-edit';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 
@@ -56,15 +59,20 @@ export default function LeadDetailTabs({
   lead,
   base,
   headingLevel = 4,
+  onSelectTab,
 }: {
   tab: LeadTabId;
   detail: LeadDetailDto;
   lead: LeadViewItem;
   base: string;
   headingLevel?: 3 | 4;
+  onSelectTab?: (tab: LeadTabId) => void;
 }) {
   const H = headingLevel;
+  const router = useRouter();
   const [copiedPickList, setCopiedPickList] = useState(false);
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   function copyPickListToClipboard(analysis: LeadVisualAnalysis) {
     const lines = [
@@ -86,10 +94,301 @@ export default function LeadDetailTabs({
 
   if (tab === 'overview') {
     const contactablePhone = isContactablePhone(detail.phoneDigits);
+    const leadScope = [detail.projectType, detail.message].filter(Boolean).join(' ');
+
     return (
       <div className={styles.grid}>
+        {/* 1. Customer Request & Message (Front & Center) */}
+        <section
+          className={styles.card}
+          style={{
+            gridColumn: '1 / -1',
+            background: 'linear-gradient(180deg, rgba(255, 122, 33, 0.07), rgba(var(--tint), 0.02) 65%)',
+            borderColor: 'var(--cedge-orange-66, rgba(255, 122, 33, 0.4))',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+            <Head level={H}>💬 Customer Request &amp; Scope</Head>
+            <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              <span className={leadStyles.flagChip} style={{ background: 'rgba(255, 122, 33, 0.18)', color: 'var(--accent-ink, #ff7a21)', fontWeight: 750 }}>
+                {detail.projectType || 'General Service'}
+              </span>
+              {detail.sourceLabel && (
+                <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
+                  via {detail.sourceLabel}{detail.sourcePage ? ` (${detail.sourcePage})` : ''}
+                </span>
+              )}
+            </div>
+          </div>
+          {detail.message ? (
+            <blockquote
+              className={styles.quote}
+              style={{
+                margin: '0.4rem 0 0.6rem',
+                fontSize: '0.94rem',
+                lineHeight: '1.5',
+                color: 'var(--text)',
+                borderLeft: '3px solid var(--accent, #ff7a21)',
+                paddingLeft: '0.85rem',
+              }}
+            >
+              &ldquo;{detail.message}&rdquo;
+            </blockquote>
+          ) : (
+            <p className={styles.muted} style={{ margin: '0.35rem 0 0.6rem', fontStyle: 'italic' }}>
+              No written message left during intake.
+            </p>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '0.74rem', color: 'var(--muted)', marginTop: '0.2rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+            <span>Received: <strong style={{ color: 'var(--text)' }}>{detail.createdAtLabel}</strong></span>
+            {onSelectTab && (
+              <button
+                type="button"
+                onClick={() => onSelectTab('request')}
+                style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
+              >
+                View full intake details →
+              </button>
+            )}
+          </div>
+        </section>
+
+        {/* 2. Photo Evidence Strip & Visual AI Preview */}
+        {detail.photos.length > 0 ? (
+          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <Head level={H}>📸 Project Photos &amp; Visual Evidence ({detail.photoCount})</Head>
+              {onSelectTab && (
+                <button
+                  type="button"
+                  onClick={() => onSelectTab('photos')}
+                  style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
+                >
+                  Open photo gallery ({detail.photoCount}) →
+                </button>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.65rem', alignItems: 'center', overflowX: 'auto', paddingBottom: '0.3rem' }}>
+              {detail.photos.slice(0, 5).map((photo, idx) => {
+                const isVideo = photo.path.endsWith('.mp4') || photo.path.endsWith('.mov') || photo.path.endsWith('.webm') || photo.url.includes('video/');
+                return (
+                  <div
+                    key={photo.path || idx}
+                    onClick={() => onSelectTab?.('photos')}
+                    style={{
+                      position: 'relative',
+                      width: '84px',
+                      height: '84px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      flexShrink: 0,
+                      cursor: 'pointer',
+                      border: '1px solid var(--edge-t14)',
+                      background: '#05080d',
+                    }}
+                    title="Click to open photo gallery"
+                  >
+                    {isVideo ? (
+                      <div style={{ width: '100%', height: '100%', display: 'grid', placeItems: 'center', color: '#fff', fontSize: '1.4rem' }}>
+                        ▶
+                      </div>
+                    ) : (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photo.url} alt={`Evidence ${idx + 1}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
+                    )}
+                    {idx === 4 && detail.photoCount > 5 && (
+                      <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.68)', display: 'grid', placeItems: 'center', color: '#fff', fontWeight: 750, fontSize: '0.85rem' }}>
+                        +{detail.photoCount - 4}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {detail.visualAnalysis && (
+                <div style={{ flex: 1, minWidth: '220px', padding: '0.2rem 0.65rem', borderLeft: '2px solid var(--edge-t14)', fontSize: '0.82rem', color: 'var(--mute-t75)' }}>
+                  <strong style={{ color: 'var(--text)', display: 'block', fontSize: '0.78rem', marginBottom: '0.2rem' }}>AI Visual Inspection:</strong>
+                  <p style={{ margin: 0, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {detail.visualAnalysis.summary}
+                  </p>
+                  {detail.visualAnalysis.detectedEquipment.length > 0 && (
+                    <div className={styles.chips} style={{ marginTop: '0.3rem' }}>
+                      {detail.visualAnalysis.detectedEquipment.slice(0, 2).map((eq, i) => (
+                        <span className={leadStyles.flagChip} key={i} style={{ background: 'rgba(96,165,250,.15)', color: 'var(--ink-sky-5)', fontSize: '0.7rem' }}>
+                          🏷️ {[eq.brand, eq.type].filter(Boolean).join(' ')}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        ) : (
+          <section
+            className={styles.card}
+            style={{
+              gridColumn: '1 / -1',
+              padding: '0.65rem 0.9rem',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '0.5rem',
+            }}
+          >
+            <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
+              📷 <strong>No homeowner photos attached.</strong> Photos help scope the work before driving out.
+            </span>
+            <Link
+              href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`}
+              className={styles.cardLink}
+              style={{ marginTop: 0, fontSize: '0.78rem' }}
+            >
+              + Add site photos
+            </Link>
+          </section>
+        )}
+
+        {/* 3. Property & Municipal Permit Feasibility Snapshot */}
+        {detail.address ? (
+          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <Head level={H}>🏛️ Property Intel &amp; Permit Feasibility</Head>
+              <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  className={quickEditStyles.quickEditBtn}
+                  onClick={() => setIsEditingAddress(true)}
+                  aria-label="Edit project address"
+                >
+                  Edit address
+                </button>
+                {onSelectTab && (
+                  <button
+                    type="button"
+                    onClick={() => onSelectTab('property')}
+                    style={{ background: 'none', border: 'none', padding: 0, color: 'var(--ink-orange-8, #ff7a21)', fontSize: '0.76rem', fontWeight: 650, cursor: 'pointer' }}
+                  >
+                    Open 3D Property Intel &amp; Satellite →
+                  </button>
+                )}
+              </div>
+            </div>
+            <p style={{ margin: '0 0 0.5rem', fontSize: '0.82rem', color: 'var(--muted)' }}>
+              Site location: <strong style={{ color: 'var(--text)' }}>{detail.address}</strong>
+            </p>
+            <PermitFeasibilityCard address={detail.address} isLead={true} />
+          </section>
+        ) : (
+          <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem', flexWrap: 'wrap', gap: '0.4rem' }}>
+              <Head level={H}>🏛️ Property Intel &amp; Address</Head>
+              <button
+                type="button"
+                className={quickEditStyles.quickEditBtn}
+                onClick={() => setIsEditingAddress(true)}
+                aria-label="Add project address"
+              >
+                Edit address
+              </button>
+            </div>
+            <p className={styles.muted} style={{ margin: 0 }}>
+              No project address on file yet. Add an address to unlock property intel, aerial imagery, and permit checks.
+            </p>
+          </section>
+        )}
+
+        {/* 4. Latest Touchpoint & Activity */}
         <section className={styles.card}>
-          <Head level={H}>Contact</Head>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
+            <Head level={H}>Recent Activity</Head>
+            {detail.contactCount > 0 && (
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.1rem 0.4rem', borderRadius: '999px', background: 'rgba(var(--tint), 0.1)', color: 'var(--text)' }}>
+                {detail.contactCount} logged
+              </span>
+            )}
+          </div>
+          {detail.contactLog.length > 0 ? (
+            <div>
+              <div style={{ fontSize: '0.86rem', fontWeight: 650, color: 'var(--text)' }}>
+                {detail.contactLog[0].label}
+              </div>
+              <div style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: '0.15rem' }}>
+                {detail.contactLog[0].at}
+              </div>
+              {detail.contactLog[0].note && (
+                <p style={{ fontSize: '0.8rem', color: 'var(--mute-t75)', margin: '0.35rem 0 0', lineHeight: 1.4, fontStyle: 'italic' }}>
+                  &ldquo;{detail.contactLog[0].note}&rdquo;
+                </p>
+              )}
+            </div>
+          ) : (
+            <p className={styles.muted}>No touchpoints logged yet — reach out to customer.</p>
+          )}
+          <div style={{ marginTop: '0.65rem' }}>
+            {onSelectTab && detail.contactLog.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => onSelectTab('activity')}
+                className={styles.cardLink}
+                style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+              >
+                View all touchpoints ({detail.contactCount}) →
+              </button>
+            ) : null}
+          </div>
+        </section>
+
+        {/* 5. Estimate Visit & Quote Status */}
+        <section className={styles.card}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.45rem' }}>
+            <Head level={H}>Quote &amp; Estimate Visit</Head>
+            {detail.convertedJob ? (
+              <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: '999px', background: 'rgba(74, 222, 128, 0.18)', color: 'var(--good, #22c55e)' }}>
+                Job Converted
+              </span>
+            ) : (
+              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--muted)' }}>
+                {detail.quoteVisit ? 'Visit Booked' : 'Unscheduled'}
+              </span>
+            )}
+          </div>
+          {detail.quoteVisit ? (
+            <dl className={styles.defs} style={{ gap: '0.3rem' }}>
+              <div><dt>Visit</dt><dd>{detail.quoteVisit.whenLabel} ({detail.quoteVisit.durationLabel})</dd></div>
+              <div><dt>Confirmed</dt><dd>{detail.quoteVisit.confirmedLabel ? `Texted ${detail.quoteVisit.confirmedLabel}` : 'Not texted yet'}</dd></div>
+            </dl>
+          ) : (
+            <p className={styles.muted}>No estimate visit booked on calendar.</p>
+          )}
+          <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.65rem', flexWrap: 'wrap' }}>
+            <Link className={styles.cardLink} href={`${base}/leads/${detail.id}#availability-snapshot`} style={{ marginTop: 0 }}>
+              {detail.quoteVisit ? 'Change visit →' : 'Book a visit →'}
+            </Link>
+            <Link
+              className={styles.cardLink}
+              href={detail.convertedJob ? `${base}/jobs/${detail.convertedJob.id}` : `${base}/leads/${detail.id}#lead-estimate`}
+              style={{ marginTop: 0 }}
+            >
+              {detail.convertedJob ? `Job ${detail.convertedJob.ref} →` : 'Create quote →'}
+            </Link>
+          </div>
+        </section>
+
+        {/* 6. Client Contact & Relationship History */}
+        <section className={styles.card}>
+          <div className={quickEditStyles.cardHeadRow}>
+            <Head level={H}>Client &amp; Contact</Head>
+            <button
+              type="button"
+              className={quickEditStyles.quickEditBtn}
+              onClick={() => setIsEditingContact(true)}
+              aria-label="Edit contact details"
+            >
+              Edit contact
+            </button>
+          </div>
           <dl className={styles.defs}>
             <div>
               <dt>Phone</dt>
@@ -105,44 +404,23 @@ export default function LeadDetailTabs({
               <dt>Email</dt>
               <dd>{detail.email ? <a href={`mailto:${detail.email}`}>{detail.email}</a> : 'Not on file'}</dd>
             </div>
-            <div><dt>Address</dt><dd>{detail.address || detail.location || 'Not on file'}</dd></div>
-            <div><dt>Received</dt><dd>{detail.createdAtLabel}</dd></div>
-          </dl>
-          {detail.textOnly && <p className={styles.muted}>They asked not to be called — text first.</p>}
-        </section>
-
-        <section className={styles.card}>
-          <Head level={H}>What the AI read</Head>
-          <dl className={styles.defs}>
-            <div><dt>Score</dt><dd>{detail.hasTriage ? detail.scoreLabel : 'Unscored'}</dd></div>
-            <div><dt>Est. value</dt><dd>{detail.estimateLabel ?? 'No number given'}</dd></div>
-            <div><dt>Timeline</dt><dd>{detail.timeline || 'Not said'}</dd></div>
-            <div><dt>Est. labor</dt><dd>{detail.estimatedHours ? `${detail.estimatedHours} hrs` : 'Not set'}</dd></div>
-          </dl>
-          {detail.flags.length > 0 && (
-            <div className={styles.chips}>
-              {detail.flags.map((flag) => <span className={leadStyles.flagChip} key={flag.key}>{flag.label}</span>)}
+            <div>
+              <dt>History</dt>
+              <dd>
+                {detail.history && (detail.history.jobs > 0 || detail.history.leads > 0) ? (
+                  <span style={{ color: 'var(--gold-ink)', fontWeight: 700 }}>
+                    Repeat ({detail.history.jobs} jobs, {detail.history.leads} leads)
+                  </span>
+                ) : (
+                  <span className={styles.muted}>First-time customer</span>
+                )}
+              </dd>
             </div>
-          )}
+          </dl>
+          {detail.textOnly && <p className={styles.muted} style={{ marginTop: '0.4rem', color: 'var(--ink-orange-3)' }}>💬 Customer requested text messages first.</p>}
         </section>
 
-        <section className={styles.card}>
-          <Head level={H}>History</Head>
-          {detail.history && (detail.history.jobs > 0 || detail.history.leads > 0) ? (
-            <>
-              <span className={styles.repeat}>Repeat customer</span>
-              <dl className={styles.defs} style={{ marginTop: '0.6rem' }}>
-                <div><dt>Past jobs</dt><dd>{detail.history.jobs}</dd></div>
-                <div><dt>Other requests</dt><dd>{detail.history.leads}</dd></div>
-              </dl>
-            </>
-          ) : (
-            <p className={styles.muted}>
-              {detail.history ? 'First time this customer has been in touch.' : 'Not linked to a client profile yet.'}
-            </p>
-          )}
-        </section>
-
+        {/* 7. Visual AI Analysis & Supply House Materials (if available) */}
         {detail.visualAnalysis && (
           <section className={styles.card} style={{ gridColumn: '1 / -1' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.4rem', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -217,6 +495,30 @@ export default function LeadDetailTabs({
             )}
           </section>
         )}
+
+        <QuickEditContactModal
+          isOpen={isEditingContact}
+          onClose={() => setIsEditingContact(false)}
+          title="Edit contact details"
+          initialPhone={detail.phone}
+          initialEmail={detail.email}
+          onSave={async (phone, email) => {
+            await updateLeadContactAction(detail.id, phone, email);
+            router.refresh();
+          }}
+        />
+
+        <QuickEditAddressModal
+          isOpen={isEditingAddress}
+          onClose={() => setIsEditingAddress(false)}
+          title="Edit project address"
+          label="Project address"
+          initialAddress={detail.address || detail.location}
+          onSave={async (address) => {
+            await updateLeadAddressAction(detail.id, address);
+            router.refresh();
+          }}
+        />
       </div>
     );
   }

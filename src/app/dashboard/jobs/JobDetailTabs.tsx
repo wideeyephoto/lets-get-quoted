@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 import type { JobDetailDto } from '@/lib/job-detail';
 import type { JobViewItem } from './JobsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
@@ -8,6 +10,8 @@ import { PermitWorkspace } from '@/components/permits/PermitWorkspace';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
 import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
 import { shouldDisplayRoomSpatialScan } from '@/lib/property-intel/profile';
+import { updateJobAddressAction, updateJobClientNameAction, updateJobContactAction } from './actions';
+import { QuickEditAddressModal, QuickEditContactModal, QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
 import styles from '../focus.module.css';
 
 /**
@@ -59,12 +63,44 @@ export default function JobDetailTabs({
   headingLevel?: 3 | 4;
 }) {
   const H = (headingLevel === 3 ? 'h3' : 'h4') as 'h3' | 'h4';
+  const router = useRouter();
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingContact, setIsEditingContact] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   if (tab === 'overview') {
     return (
       <div className={styles.grid}>
         <section className={styles.card}>
-          <H>Details</H>
+          <div className={quickEditStyles.cardHeadRow}>
+            <H>Details</H>
+            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                className={quickEditStyles.quickEditBtn}
+                onClick={() => setIsEditingName(true)}
+                aria-label="Edit client name"
+              >
+                Edit name
+              </button>
+              <button
+                type="button"
+                className={quickEditStyles.quickEditBtn}
+                onClick={() => setIsEditingContact(true)}
+                aria-label="Edit contact details"
+              >
+                Edit contact
+              </button>
+              <button
+                type="button"
+                className={quickEditStyles.quickEditBtn}
+                onClick={() => setIsEditingAddress(true)}
+                aria-label="Edit job address"
+              >
+                Edit address
+              </button>
+            </div>
+          </div>
           <dl className={styles.defs}>
             <div><dt>Client</dt><dd>{detail.clientName}</dd></div>
             <div><dt>Phone</dt><dd>{detail.clientPhone || 'Not on file'}</dd></div>
@@ -76,6 +112,42 @@ export default function JobDetailTabs({
               <dd>{detail.crew.length > 0 ? detail.crew.map((c) => c.name).join(', ') : 'None assigned'}</dd>
             </div>
           </dl>
+
+          <QuickEditNameModal
+            isOpen={isEditingName}
+            onClose={() => setIsEditingName(false)}
+            title="Edit client name"
+            label="Client name"
+            initialName={detail.clientName}
+            onSave={async (newName) => {
+              await updateJobClientNameAction(detail.id, newName);
+              router.refresh();
+            }}
+          />
+
+          <QuickEditContactModal
+            isOpen={isEditingContact}
+            onClose={() => setIsEditingContact(false)}
+            title="Edit contact details"
+            initialPhone={detail.clientPhone}
+            initialEmail={detail.clientEmail}
+            onSave={async (phone, email) => {
+              await updateJobContactAction(detail.id, phone, email);
+              router.refresh();
+            }}
+          />
+
+          <QuickEditAddressModal
+            isOpen={isEditingAddress}
+            onClose={() => setIsEditingAddress(false)}
+            title="Edit job address"
+            label="Job address"
+            initialAddress={detail.address}
+            onSave={async (address) => {
+              await updateJobAddressAction(detail.id, address);
+              router.refresh();
+            }}
+          />
         </section>
 
         {/* There is no notes feature in this product — no job_notes table and no
