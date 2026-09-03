@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { MessageSquare, PhoneCall, Copy, Check, IdCard, ArrowRight, Mic } from 'lucide-react';
+import { MessageSquare, PhoneCall, Copy, Check, IdCard, ArrowRight } from 'lucide-react';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
@@ -896,50 +896,99 @@ export default function TextToJobWorkspace({
             triggerLabel={<>📱 Connect Cell Phone <span aria-hidden="true">&rarr;</span></>}
           />
         </div>
-      ) : (
-        <div className="msg-setup-copilot-card">
-          <div className="msg-setup-copilot-head">
-            <div className="msg-setup-copilot-badge-group">
-              <span className="msg-setup-copilot-live-dot" aria-hidden="true" />
-              <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
-              <span className="msg-setup-copilot-sparky-tag">✦ {companion.name} Active</span>
-            </div>
-            <div className="msg-setup-copilot-phone-box">
-              <span className="msg-setup-copilot-phone-label">Hotline</span>
-              <a
-                href={`tel:${rawCallableNumber.replace(/[^\d+]/g, '')}`}
-                className="msg-setup-copilot-num"
-                title="Click to call hotline"
-              >
-                {fieldPhoneNumber}
-              </a>
-              <button
-                type="button"
-                onClick={handleCopyNumber}
-                className={`msg-setup-copilot-copy-btn ${copiedNumber ? 'copied' : ''}`}
-                title="Copy phone number"
-                aria-label="Copy phone number"
-              >
-                {copiedNumber ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
-                <span>{copiedNumber ? 'Copied' : 'Copy'}</span>
-              </button>
-            </div>
-          </div>
-          <p className="msg-setup-copilot-text">
-            Text notes, material receipts, gate codes, or punch lists to <b>{fieldPhoneNumber}</b> from your verified mobile{' '}
-            <span className="msg-setup-verified-tag">{alertPhone}</span>. Your AI Copilot (<b>{companion.name}</b>) organizes and updates job records automatically.
-          </p>
-          <div className="msg-setup-copilot-voice-tip">
-            <div className="msg-setup-voice-icon-wrap" aria-hidden="true">
-              <Mic size={14} />
-            </div>
-            <div className="msg-setup-voice-content">
-              <span className="msg-setup-voice-title">Hands-Free Dictation (Truck Mode):</span>
-              <span className="msg-setup-voice-desc">
-                Call this number directly from your truck to dictate updates hands-free using your Voice credits.
-              </span>
+      ) : null}
+
+      {/* 1. Unified Hero Header / AI Copilot Field Line Card */}
+      <div className={isQualified ? `msg-setup-copilot-card ${styles.headerUnifiedCard}` : styles.header}>
+        <div className={styles.headerMainRow}>
+          <div className={styles.sparkyHeaderRow}>
+            <SparkyAvatar
+              companionId={companionId}
+              trade={companionTrade || account?.trade || 'general'}
+              size="lg"
+              status="online"
+            />
+            <div className={styles.headerTitleCol}>
+              <div className={styles.sparkyBadgeRow}>
+                {isQualified ? (
+                  <>
+                    <span className="msg-setup-copilot-live-dot" aria-hidden="true" />
+                    <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
+                    <span className="msg-setup-copilot-sparky-tag">✦ {companion.name} Active</span>
+                  </>
+                ) : (
+                  <span className={styles.badge}>
+                    ✦ Your AI Copilot (Currently: {companion.name}) · {companion.badgeLabel}
+                  </span>
+                )}
+              </div>
+              <div className={styles.headerTitleRow}>
+                <h1 className={styles.title}>Text-to-Job Dashboard</h1>
+              </div>
             </div>
           </div>
+
+          {isQualified ? (
+            <div className={styles.hotlineCol}>
+              <div className="msg-setup-copilot-phone-box">
+                <span className="msg-setup-copilot-phone-label">Hotline</span>
+                <a
+                  href={`tel:${rawCallableNumber.replace(/[^\d+]/g, '')}`}
+                  className="msg-setup-copilot-num"
+                  title="Click to call hotline"
+                >
+                  {fieldPhoneNumber}
+                </a>
+                <button
+                  type="button"
+                  onClick={handleCopyNumber}
+                  className={`msg-setup-copilot-copy-btn ${copiedNumber ? 'copied' : ''}`}
+                  title="Copy phone number"
+                  aria-label="Copy phone number"
+                >
+                  {copiedNumber ? <Check size={12} aria-hidden="true" /> : <Copy size={12} aria-hidden="true" />}
+                  <span>{copiedNumber ? 'Copied' : 'Copy'}</span>
+                </button>
+              </div>
+              {account?.alert_phone && (
+                <span className="msg-setup-verified-tag" title="Inbound updates accepted from this verified mobile">
+                  From: {alertPhone}
+                </span>
+              )}
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowPrintModal(true)}
+              className={styles.headerQuickGuideBtn}
+              title="Open Printable Visor Card & Quick Commands Guide"
+            >
+              🪪 Quick Commands / Visor Card
+            </button>
+          )}
+        </div>
+
+        <p className={styles.subtitle}>
+          {!isQualified && !qualificationUnavailable ? (
+            <>
+              Text, send voice memos, or call{' '}
+              <OwnerPhoneSetupModal
+                setup={ownerPhoneSetup}
+                sharedPhoneNumber={sharedPhoneNumber}
+                triggerClassName={styles.inlinePhoneSetupBtn}
+                triggerLabel="Setup Alert Phone to Unlock"
+              />{' '}
+              hands-free (using Voice credits)—your AI Copilot (Currently: {companion.name}) updates quotes,
+              punch lists, and schedules instantly.
+            </>
+          ) : (
+            <>
+              Text notes, material receipts, gate codes, or punch lists to update job records automatically—your AI Copilot (Currently: {companion.name}) organizes records instantly. Call directly from your truck to dictate updates hands-free using your Voice credits.
+            </>
+          )}
+        </p>
+
+        {isQualified && (
           <div className="msg-setup-copilot-actions">
             <SaveFieldContactButton size="small" label="Save Contact Card (.vcf)" />
             <a
@@ -965,58 +1014,6 @@ export default function TextToJobWorkspace({
               <IdCard size={14} aria-hidden="true" />
               <span>Quick Commands / Visor Card</span>
               <ArrowRight size={13} aria-hidden="true" />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* 1. Clean Hero Header */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <div className={styles.sparkyHeaderRow}>
-            <SparkyAvatar
-              companionId={companionId}
-              trade={companionTrade || account?.trade || 'general'}
-              size="lg"
-              status="online"
-            />
-            <div>
-              <div className={styles.sparkyBadgeRow}>
-                <span className={styles.badge}>✦ Your AI Copilot (Currently: {companion.name}) · {companion.badgeLabel}</span>
-              </div>
-              <div className={styles.headerTitleRow}>
-                <h1 className={styles.title}>Text-to-Job Dashboard</h1>
-                <button
-                  type="button"
-                  onClick={() => setShowPrintModal(true)}
-                  className={styles.headerQuickGuideBtn}
-                  title="Open Printable Visor Card & Quick Commands Guide"
-                >
-                  🪪 Quick Commands / Visor Card
-                </button>
-              </div>
-              <p className={styles.subtitle}>
-                Text, send voice memos, or call{' '}
-                {!isQualified && !qualificationUnavailable ? (
-                  <OwnerPhoneSetupModal
-                    setup={ownerPhoneSetup}
-                    sharedPhoneNumber={sharedPhoneNumber}
-                    triggerClassName={styles.inlinePhoneSetupBtn}
-                    triggerLabel="Setup Alert Phone to Unlock"
-                  />
-                ) : (
-                  fieldPhoneNumber
-                )}{' '}
-                hands-free (using Voice credits)—your AI Copilot (Currently: {companion.name}) updates quotes,
-                punch lists, and schedules instantly.
-              </p>
-            </div>
-          </div>
-        </div>
-        {isQualified && (
-          <div className={styles.headerActions}>
-            <button type="button" onClick={handleCopyNumber} className={styles.copyBtn}>
-              {copiedNumber ? '✓ Copied Number' : `📋 Copy ${fieldPhoneNumber}`}
             </button>
           </div>
         )}

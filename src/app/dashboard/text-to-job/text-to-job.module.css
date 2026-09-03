@@ -135,6 +135,45 @@
   padding-bottom: 4px;
 }
 
+.headerUnifiedCard {
+  margin-top: 0 !important;
+  margin-bottom: 0.25rem !important;
+  padding: 1.25rem 1.45rem !important;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.headerMainRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.headerTitleCol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hotlineCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+  .hotlineCol {
+    align-items: flex-start;
+    width: 100%;
+  }
+}
+
 .headerLeft {
   display: flex;
   flex-direction: column;
