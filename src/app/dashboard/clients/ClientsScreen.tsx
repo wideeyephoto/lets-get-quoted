@@ -71,23 +71,6 @@ export default function ClientsScreen({
 
   return (
     <main className={`wide-shell workspace-shell ${pageStyles.screen}`}>
-      <section className={`panel ${pageStyles.hero}`} aria-labelledby="clients-title">
-        <div className={pageStyles.heroCopy}>
-          <p className={`eyebrow ${pageStyles.eyebrow}`}>Clients</p>
-          <div className={pageStyles.titleRow}>
-            <h1 id="clients-title" className={pageStyles.title}>Customers</h1>
-            {readOnly ? null : <ClientHeaderActions basePath={basePath} />}
-          </div>
-          <p className={pageStyles.lead}>Find a customer, see what is next, and take action without leaving the list.</p>
-        </div>
-
-        {readOnly ? null : (
-          <div className={pageStyles.heroActions} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <FieldIntakeHint page="clients" />
-          </div>
-        )}
-      </section>
-
       {showExistingFlash ? (
         <p className="flash flash-info">That phone or email is already on a customer — here they are, rather than a second copy.</p>
       ) : null}
@@ -99,7 +82,7 @@ export default function ClientsScreen({
         </p>
       ) : null}
 
-      {/* When opened, the duplicate resolution panel expands below the hero.
+      {/* When opened, the duplicate resolution panel expands above the workspace card.
           When closed, no card occupies space here. */}
       {duplicateGroups.length > 0 && dupesOpen ? (
         <div id="duplicate-clients-panel">
@@ -113,7 +96,22 @@ export default function ClientsScreen({
         </div>
       ) : null}
 
-      <section className={`panel workspace-section-card ${pageStyles.workspaceCard}`}>
+      <section className={`panel workspace-section-card ${pageStyles.workspaceCard}`} aria-labelledby="clients-title">
+        <div className={`section-heading workspace-section-heading ${pageStyles.workspaceHeading}`}>
+          <div className={pageStyles.headingCopy}>
+            <p className={`eyebrow ${pageStyles.eyebrow}`}>Clients</p>
+            <div className={pageStyles.titleRow}>
+              <h1 id="clients-title" className={pageStyles.title}>Customers</h1>
+              {readOnly ? null : <ClientHeaderActions basePath={basePath} />}
+            </div>
+          </div>
+
+          {readOnly ? null : (
+            <div className={pageStyles.heroActions}>
+              <FieldIntakeHint page="clients" />
+            </div>
+          )}
+        </div>
         {rows.length === 0 ? (
           <p className="empty-state">
             No clients yet. Add your first customer above, or{' '}
