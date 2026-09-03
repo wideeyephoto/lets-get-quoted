@@ -324,6 +324,7 @@ export default function JobSmoothieView({
                   className={styles.sortToggleBtn}
                   onClick={() => setSortOpen((prev) => !prev)}
                   aria-expanded={sortOpen}
+                  aria-controls="job-sort-menu"
                   aria-haspopup="menu"
                   title="Sort jobs"
                 >
@@ -348,7 +349,7 @@ export default function JobSmoothieView({
                 </button>
 
                 {sortOpen && (
-                  <div className={styles.sortMenu} role="menu">
+                  <div id="job-sort-menu" className={styles.sortMenu} role="menu">
                     <div className={styles.sortMenuTitle}>Sort jobs</div>
                     {JOB_SORTS.map((option) => (
                       <button

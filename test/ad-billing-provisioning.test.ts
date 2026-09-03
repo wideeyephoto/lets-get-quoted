@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   handleAdBudgetWebhookEvent,
   executeWalletRefillCharge,
@@ -34,6 +34,20 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
+  const originalEnv = process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+
+  beforeEach(() => {
+    process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = 'true';
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+    } else {
+      process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = originalEnv;
+    }
+  });
+
   it('synchronously awaits provisioning and resolves landing page from sites table on checkout completed', async () => {
     let updatedContent: Record<string, unknown> | null = null;
 

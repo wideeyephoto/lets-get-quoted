@@ -443,6 +443,7 @@ export default function LeadSmoothieView({
                     setSortOpen(false);
                   }}
                   aria-expanded={channelOpen}
+                  aria-controls="lead-channel-menu"
                   aria-haspopup="menu"
                   title="Filter leads by source"
                 >
@@ -473,7 +474,7 @@ export default function LeadSmoothieView({
                 </button>
 
                 {channelOpen && (
-                  <div className={`${styles.sortMenu} ${styles.sortMenuLeft}`} role="menu">
+                  <div id="lead-channel-menu" className={`${styles.sortMenu} ${styles.sortMenuLeft}`} role="menu">
                     <div className={styles.sortMenuTitle}>Source</div>
                     {LEAD_CHANNELS.map((option) => (
                       <button
@@ -507,6 +508,7 @@ export default function LeadSmoothieView({
                     setChannelOpen(false);
                   }}
                   aria-expanded={sortOpen}
+                  aria-controls="lead-sort-menu"
                   aria-haspopup="menu"
                   title="Sort leads"
                 >
@@ -531,7 +533,7 @@ export default function LeadSmoothieView({
                 </button>
 
                 {sortOpen && (
-                  <div className={styles.sortMenu} role="menu">
+                  <div id="lead-sort-menu" className={styles.sortMenu} role="menu">
                     <div className={styles.sortMenuTitle}>Sort leads</div>
                     {QUEUE_SORTS.map((option) => (
                       <button

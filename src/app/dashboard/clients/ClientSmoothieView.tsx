@@ -292,6 +292,7 @@ export default function ClientSmoothieView({
                   className={styles.sortToggleBtn}
                   onClick={() => setSortOpen((prev) => !prev)}
                   aria-expanded={sortOpen}
+                  aria-controls="client-sort-menu"
                   aria-haspopup="menu"
                   title="Sort customers"
                 >
@@ -316,7 +317,7 @@ export default function ClientSmoothieView({
                 </button>
 
                 {sortOpen && (
-                  <div className={styles.sortMenu} role="menu">
+                  <div id="client-sort-menu" className={styles.sortMenu} role="menu">
                     <div className={styles.sortMenuTitle}>Sort customers</div>
                     {CLIENT_SORTS.map((option) => (
                       <button

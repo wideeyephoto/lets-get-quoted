@@ -1,4 +1,4 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   createAdBudgetCheckoutSession,
   handleAdBudgetWebhookEvent,
@@ -245,6 +245,20 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
   });
 
   describe('2. Strict Price Tier Binding & Client Tampering Resistance', () => {
+    const originalEnv = process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+
+    beforeEach(() => {
+      process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = 'true';
+    });
+
+    afterEach(() => {
+      if (originalEnv === undefined) {
+        delete process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+      } else {
+        process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = originalEnv;
+      }
+    });
+
     it('enforces server-owned weekly tier constants regardless of client-submitted fees', async () => {
       const { getStripeClient } = await import('@/lib/stripe');
       const stripe = getStripeClient();

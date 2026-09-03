@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   DEFAULT_AD_WALLET_STATE,
   DEFAULT_AUTO_REFILL_CONFIG,
@@ -31,6 +31,34 @@ vi.mock('@/lib/auth', () => ({
 
 
 describe('Ad Billing Module', () => {
+  const originalEnv = process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+
+  beforeEach(() => {
+    process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = 'true';
+  });
+
+  afterEach(() => {
+    if (originalEnv === undefined) {
+      delete process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+    } else {
+      process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = originalEnv;
+    }
+  });
+
+  it('rejects checkout creation when FEATURE_MANAGED_ADS_CHECKOUT_ENABLED is disabled', async () => {
+    process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = 'false';
+    await expect(
+      createAdBudgetCheckoutSession({
+        accountId: 'acc_123',
+        monthlyBudgetDollars: 300,
+        businessName: 'Apex Roofing',
+        trade: 'Roofing',
+        city: 'Austin, TX',
+        returnUrl: '/dashboard/marketing/ads',
+      })
+    ).rejects.toThrow('Managed Ads checkout is currently disabled pending live advertiser account setup.');
+  });
+
   it('calculates 5% platform management fee breakdown correctly', () => {
     expect(AD_PLATFORM_FEE_RATE).toBe(0.05);
 
