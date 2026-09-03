@@ -270,6 +270,108 @@
 .rowWait { font-size: 0.73rem; color: var(--mute-t55); }
 .rowValue { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 
+/* Logistical Badges in Lead Rows */
+.rowHalo {
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(74, 222, 128, 0.15);
+  border: 1px solid rgba(74, 222, 128, 0.3);
+  color: var(--good, #22c55e);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.rowEnRoute {
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.rowTier1 {
+  padding: 0.06rem 0.42rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.18);
+  border: 1px solid var(--cedge-orange-30, rgba(255, 122, 33, 0.35));
+  color: var(--accent-ink, #ff7a21);
+  font-size: 0.7rem;
+  font-weight: 800;
+}
+
+/* --- logistical filter bar & badges -------------------------------------- */
+
+.logisticalBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+  margin-top: -0.25rem;
+  margin-bottom: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.02);
+  border: 1px solid var(--edge-t08, rgba(255, 255, 255, 0.06));
+}
+
+.logisticalLabel {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-right: 0.2rem;
+}
+
+.logisticalChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--edge-t12, rgba(255, 255, 255, 0.1));
+  background: rgba(var(--tint), 0.04);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.76rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.logisticalChip:hover {
+  background: rgba(var(--tint), 0.08);
+  color: var(--text);
+  border-color: var(--edge-t22, rgba(255, 255, 255, 0.22));
+}
+
+.logisticalChip[data-active='true'] {
+  background: rgba(255, 122, 33, 0.15);
+  border-color: var(--cedge-orange-82, rgba(255, 122, 33, 0.6));
+  color: var(--accent-ink, #ff7a21);
+  font-weight: 750;
+}
+
+.logisticalIcon {
+  font-size: 0.85rem;
+  line-height: 1;
+}
+
+.logisticalBadge {
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.1);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
+.logisticalChip[data-active='true'] .logisticalBadge {
+  background: rgba(255, 122, 33, 0.25);
+  color: var(--accent-ink, #ff7a21);
+}
+
 /* --- the end of the queue -------------------------------------------------
    The list has an end rather than a scrollbar — @/lib/queue-window has the
    reasoning. This is that end: what you are looking at, and the two ways to ask

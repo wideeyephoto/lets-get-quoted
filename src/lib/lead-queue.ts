@@ -59,6 +59,19 @@ export const QUEUE_STAGES: { id: QueueStatus; label: string; short: string }[] =
  */
 export type StageFilter = QueueStatus | 'open' | 'closed' | 'all';
 
+/**
+ * Logistical & spatial queue presets for route-driven triage.
+ */
+export type LogisticalPreset = 'all' | 'en_route' | 'halo' | 'best_opportunities' | 'gap_fits';
+
+export const LOGISTICAL_PRESETS: { id: LogisticalPreset; label: string; icon: string }[] = [
+  { id: 'all', label: 'All', icon: '' },
+  { id: 'en_route', label: 'En Route', icon: '🚗' },
+  { id: 'halo', label: 'Jobsite Halo', icon: '🏡' },
+  { id: 'best_opportunities', label: 'Best Value', icon: '⭐' },
+  { id: 'gap_fits', label: 'Gap Fits', icon: '⏱️' },
+];
+
 const STAGE_LABEL: Record<StageFilter, string> = {
   new: 'Needs response',
   contacted: 'Contacted',

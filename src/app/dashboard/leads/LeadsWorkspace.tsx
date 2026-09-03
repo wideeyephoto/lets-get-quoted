@@ -19,6 +19,8 @@ import LeadPriorityView from './LeadPriorityView';
 import LeadBoardView from './LeadBoardView';
 import LeadTableView from './LeadTableView';
 import QuickAddLeadModal from './QuickAddLeadModal';
+import AiLeadAdvisor from '@/components/leads/AiLeadAdvisor';
+import type { LogisticalPreset, StageFilter } from '@/lib/lead-queue';
 import { supabase } from '@/lib/supabase';
 import styles from './leads.module.css';
 
@@ -209,11 +211,15 @@ export default function LeadsWorkspace({
   // clicking the same pin twice count twice, so re-clicking the lead you're
   // already on still brings its details back into view.
   const [pinRequest, setPinRequest] = useState<{ id: string; nonce: number } | null>(null);
-  // Which lead the Focus pane has open, so the map can center on it.
-  const [focusLeadId, setFocusLeadId] = useState<string | null>(null);
-  // Stable identity: LeadFocusView calls this from an effect, so a new function
-  // every render would re-fire it on every render.
+  // Which lead the Focus/Smoothie pane has open, so the map tracks it.
+  const [focusLeadId, setFocusLeadId] = useState<string | null>(initialLeadId ?? leads[0]?.id ?? null);
+  // Stable identity: LeadFocusView and LeadSmoothieView call this from an effect.
   const onFocusSelect = useCallback((id: string | null) => setFocusLeadId(id), []);
+
+  // Action requests from the overall pipeline advisor
+  const [stageRequest, setStageRequest] = useState<{ stage: StageFilter; nonce: number } | null>(null);
+  const [paneRequest, setPaneRequest] = useState<{ pane: 'leads' | 'map'; nonce: number } | null>(null);
+  const [logisticalRequest, setLogisticalRequest] = useState<{ preset: LogisticalPreset; nonce: number } | null>(null);
   const [pending, startTransition] = useTransition();
   const router = useRouter();
   // Local map color, so the demo's picker works with no cookie behind it.
@@ -379,14 +385,41 @@ export default function LeadsWorkspace({
     />
   );
 
+  const advisorBanner = (
+    <div className={styles.topAdvisorWrap}>
+      <AiLeadAdvisor
+        leads={leads}
+        mapPins={leadPins}
+        base={basePath}
+        onFilterStage={(targetStage) => {
+          setStageRequest((prev) => ({ stage: targetStage, nonce: (prev?.nonce ?? 0) + 1 }));
+        }}
+        onFilterLogistical={(targetPreset) => {
+          setLogisticalRequest((prev) => ({ preset: targetPreset, nonce: (prev?.nonce ?? 0) + 1 }));
+        }}
+        onSwitchPane={(targetPane) => {
+          if (smoothie) {
+            setPaneRequest((prev) => ({ pane: targetPane, nonce: (prev?.nonce ?? 0) + 1 }));
+          } else if (targetPane === 'map') {
+            setMapOpen(true);
+          }
+        }}
+      />
+    </div>
+  );
+
   if (smoothie) {
     return (
       <div className={pending ? styles.workspaceBusy : undefined}>
+        {advisorBanner}
         <LeadSmoothieView
           leads={leads}
           run={run}
           onSelect={onFocusSelect}
           openRequest={pinRequest}
+          requestedStage={stageRequest}
+          requestedPane={paneRequest}
+          requestedLogistical={logisticalRequest}
           details={details}
           initialLeadId={initialLeadId}
           basePath={basePath}
@@ -403,6 +436,7 @@ export default function LeadsWorkspace({
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
+      {advisorBanner}
       {/* One toolbar for every view: which layout, channel filter, and whether the map is on.
           Two independent choices that used to be one control. */}
       <div className={styles.viewBar}>

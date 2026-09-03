@@ -119,3 +119,47 @@ describe('Simplified LiDAR Studio (No Hardcoded Clutter or Fake Examples)', () =
     expect(ROOM_SCAN_VIEWER_TSX).toContain('⚡ Sync to AI Quote Draft');
   });
 });
+
+describe('LiDAR Studio Canvas Crash & Freeze Prevention', () => {
+  it('guards against unmeasured or zero canvas dimensions during modal mount', () => {
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height))');
+  });
+
+  it('uses bounded step iterations for point cloud dots to prevent zero-increment infinite loops', () => {
+    expect(ROOM_SCAN_VIEWER_TSX).not.toContain('const ptStep = wX / 4');
+    expect(ROOM_SCAN_VIEWER_TSX).not.toContain('for (let px = -wX * 0.9; px <= wX * 0.9; px += ptStep)');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('const ptSteps = 4;');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('for (let ix = -ptSteps; ix <= ptSteps; ix++)');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('for (let iz = -ptSteps; iz <= ptSteps; iz++)');
+  });
+
+  it('binds isStudioOpen and mode to the rendering effect and stops render when closed', () => {
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('if (mode === \'popup\' && !isStudioOpen) return;');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('[isStudioOpen, mode, isCollapsed, activeScan, viewMode');
+  });
+
+  it('safely handles divide-by-zero bounds in perspective projection and camera zoom', () => {
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('const denom = fov + z2;');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('const pScale = fov / (denom > 1 ? denom : 1);');
+  });
+});
+
+describe('LiDAR Studio Download Progress Overlay over Rendering', () => {
+  it('displays a visible loading percentage overlay directly over the 3D rendering canvas when downloading', () => {
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('loadingOverlay');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('loadingPercentCenter');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('{downloadProgress}%');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('Downloading 3D LiDAR Scan');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('loadingProgressBar');
+    expect(ROOM_SCAN_VIEWER_TSX).toContain('loadingProgressFill');
+  });
+
+  it('includes comprehensive CSS styles for the centered loading spinner and progress bar', () => {
+    expect(ROOM_SCAN_VIEWER_CSS).toContain('.loadingOverlay');
+    expect(ROOM_SCAN_VIEWER_CSS).toContain('.loadingSpinnerWrap');
+    expect(ROOM_SCAN_VIEWER_CSS).toContain('.loadingPercentCenter');
+    expect(ROOM_SCAN_VIEWER_CSS).toContain('.loadingProgressBar');
+    expect(ROOM_SCAN_VIEWER_CSS).toContain('.loadingProgressFill');
+  });
+});
+

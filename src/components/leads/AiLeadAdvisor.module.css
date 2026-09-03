@@ -1,6 +1,6 @@
-﻿.advisorCard {
+.advisorCard {
   position: relative;
-  margin: 0.6rem 0;
+  margin: 0.4rem 0 0.6rem;
   padding: 0.85rem 1.1rem;
   border-radius: 10px;
   background: linear-gradient(180deg, rgba(255, 122, 33, 0.08) 0%, rgba(var(--tint), 0.02) 100%);
@@ -10,6 +10,92 @@
   flex-direction: column;
   gap: 0.55rem;
   animation: fadeIn 0.2s ease;
+}
+
+/* 1-Line Compact View */
+.advisorCompact {
+  position: relative;
+  margin: 0.35rem 0 0.55rem;
+  padding: 0.42rem 0.8rem;
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(255, 122, 33, 0.09) 0%, rgba(var(--tint), 0.02) 100%);
+  border: 1px solid var(--cedge-orange-66, rgba(255, 122, 33, 0.35));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+  animation: fadeIn 0.2s ease;
+}
+
+.compactLeft {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  min-width: 0;
+  overflow: hidden;
+  flex: 1;
+}
+
+.compactHeadline {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.compactRight {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.expandBtn {
+  background: rgba(var(--tint), 0.05);
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.14));
+  color: var(--text);
+  border-radius: 5px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.expandBtn:hover {
+  background: rgba(var(--tint), 0.12);
+  border-color: var(--edge-t25, rgba(255, 255, 255, 0.28));
+}
+
+.compactActionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.22rem 0.65rem;
+  border-radius: 5px;
+  background: var(--accent, #ff7a21);
+  color: #fff;
+  font-size: 0.76rem;
+  font-weight: 750;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 5px rgba(255, 122, 33, 0.25);
+  transition: transform 0.12s ease, background 0.12s ease;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.compactActionBtn:hover {
+  background: #ea6510;
+  transform: translateY(-1px);
 }
 
 @keyframes fadeIn {
@@ -43,6 +129,12 @@
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.04em;
+}
+
+.leadTarget {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--muted);
 }
 
 .headline {

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useState, type ReactNode } from 'react';
 import type { LeadDetailDto } from '@/lib/lead-detail';
 import { isContactablePhone } from '@/lib/lead-queue';
@@ -8,13 +9,31 @@ import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
-import { RoomScanViewer } from '@/components/property-intel/RoomScanViewer';
-import { shouldDisplayRoomSpatialScan } from '@/lib/property-intel/profile';
 import { useRouter } from 'next/navigation';
 import { updateLeadAddressAction, updateLeadContactAction } from './actions';
 import { QuickEditAddressModal, QuickEditContactModal, quickEditStyles } from '@/components/quick-edit';
 import styles from '../focus.module.css';
 import leadStyles from './leads.module.css';
+
+const RoomScanViewer = dynamic(
+  () => import('@/components/property-intel/RoomScanViewer').then((mod) => mod.RoomScanViewer),
+  {
+    ssr: false,
+    loading: () => (
+      <div
+        style={{
+          height: '88px',
+          borderRadius: '14px',
+          background: 'rgba(255, 255, 255, 0.03)',
+          border: '1px solid rgba(255, 255, 255, 0.08)',
+          marginTop: '1rem',
+          marginBottom: '1.25rem',
+        }}
+        aria-hidden="true"
+      />
+    ),
+  }
+);
 
 /**
  * The six detail panels behind a lead — Overview, Property & Roof, Request, Activity, Photos,
@@ -444,9 +463,6 @@ export default function LeadDetailTabs({
 
   if (tab === 'property') {
     const leadScope = [detail.projectType, detail.message].filter(Boolean).join(' ');
-    const displayConfig = shouldDisplayRoomSpatialScan({
-      scope: leadScope,
-    });
 
     return (
       <div style={{ maxWidth: '720px' }}>

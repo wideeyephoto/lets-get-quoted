@@ -1,53 +1,64 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
+import { useEffect, useMemo, useState, useId } from 'react';
 import type { LeadViewItem } from '@/app/dashboard/leads/LeadsWorkspace';
 import type { MapPin } from '@/components/pin-map';
+import type { LogisticalPreset, StageFilter } from '@/lib/lead-queue';
 import {
-  clearAdvisorState,
-  generateLeadAdvisorRecommendation,
-  getAdvisorState,
-  setAdvisorDismissed,
-  setAdvisorSnoozed,
+  clearOverallAdvisorState,
+  generateOverallLeadsAdvisorRecommendation,
+  getOverallAdvisorState,
+  setOverallAdvisorDismissed,
+  setOverallAdvisorSnoozed,
   type AdvisorState,
 } from '@/lib/ai-lead-advisor';
 import styles from './AiLeadAdvisor.module.css';
 
 export interface AiLeadAdvisorProps {
-  lead: LeadViewItem;
+  leads: LeadViewItem[];
   mapPins?: MapPin[];
   base?: string;
-  onOpenTextModal?: (prefilledMessage: string) => void;
+  onFilterStage?: (stage: StageFilter) => void;
+  onFilterLogistical?: (preset: LogisticalPreset) => void;
+  onSwitchPane?: (pane: 'leads' | 'map') => void;
 }
 
-export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard', onOpenTextModal }: AiLeadAdvisorProps) {
+export default function AiLeadAdvisor({
+  leads,
+  mapPins = [],
+  base = '/dashboard',
+  onFilterStage,
+  onFilterLogistical,
+  onSwitchPane,
+}: AiLeadAdvisorProps) {
+  const panelId = useId();
   const [advisorState, setAdvisorState] = useState<AdvisorState>('visible');
+  const [isExpanded, setIsExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
-    const initial = getAdvisorState(lead.id);
+    const initial = getOverallAdvisorState();
     setAdvisorState(initial.state);
-  }, [lead.id]);
+  }, []);
 
   const rec = useMemo(
-    () => generateLeadAdvisorRecommendation(lead, mapPins, base),
-    [lead, mapPins, base],
+    () => generateOverallLeadsAdvisorRecommendation(leads, mapPins, base),
+    [leads, mapPins, base],
   );
 
   const handleDismiss = () => {
-    setAdvisorDismissed(lead.id);
+    setOverallAdvisorDismissed();
     setAdvisorState('dismissed');
   };
 
   const handleSnooze = () => {
-    setAdvisorSnoozed(lead.id, 24);
+    setOverallAdvisorSnoozed(24);
     setAdvisorState('snoozed');
   };
 
   const handleRestore = () => {
-    clearAdvisorState(lead.id);
+    clearOverallAdvisorState();
     setAdvisorState('visible');
   };
 
@@ -60,9 +71,9 @@ export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard',
           type="button"
           className={styles.restorePill}
           onClick={handleRestore}
-          title="Click to restore AI Advisor recommendation"
+          title="Click to restore AI Pipeline Advisor"
         >
-          ⚡ AI Advisor (dismissed) · <u>Restore</u>
+          ⚡ AI Pipeline Advisor · dismissed · <u>Restore</u>
         </button>
       </div>
     );
@@ -77,20 +88,95 @@ export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard',
           onClick={handleRestore}
           title="Click to un-snooze and view recommendations"
         >
-          ⚡ AI Advisor (snoozed 24h) · <u>Restore</u>
+          ⚡ AI Pipeline Advisor · snoozed 24h · <u>Restore</u>
         </button>
       </div>
     );
   }
 
+  const executeAction = () => {
+    if (rec.action?.targetLogisticalPreset && onFilterLogistical) {
+      onFilterLogistical(rec.action.targetLogisticalPreset);
+    }
+    if (rec.action?.targetStage && onFilterStage) {
+      onFilterStage(rec.action.targetStage);
+    }
+    if (rec.action?.targetPane && onSwitchPane) {
+      onSwitchPane(rec.action.targetPane);
+    }
+  };
+
+  // 1-Line Compact View (Default)
+  if (!isExpanded) {
+    return (
+      <section className={styles.advisorCompact} aria-label="AI Pipeline Advisor Summary">
+        <div className={styles.compactLeft}>
+          <span className={styles.advisorBadge}>⚡ AI Pipeline Advisor</span>
+          <h4 className={styles.compactHeadline} title={rec.headline}>
+            {rec.headline}
+          </h4>
+        </div>
+        <div className={styles.compactRight}>
+          {rec.action && (
+            <button
+              type="button"
+              className={styles.compactActionBtn}
+              onClick={executeAction}
+            >
+              {rec.action.label} →
+            </button>
+          )}
+          <button
+            type="button"
+            className={styles.expandBtn}
+            onClick={() => setIsExpanded(true)}
+            title="Expand full pipeline details and metrics"
+            aria-expanded="false"
+            aria-controls={panelId}
+          >
+            Expand ▾
+          </button>
+          <button
+            type="button"
+            className={styles.controlBtn}
+            onClick={handleSnooze}
+            title="Snooze recommendations for 24 hours"
+          >
+            ⏰ Snooze 24h
+          </button>
+          <button
+            type="button"
+            className={styles.dismissBtn}
+            onClick={handleDismiss}
+            aria-label="Dismiss recommendation"
+            title="Dismiss"
+          >
+            ✕
+          </button>
+        </div>
+      </section>
+    );
+  }
+
+  // Full Expanded View
   return (
-    <section className={styles.advisorCard} aria-label="AI Lead Advisor Recommendation">
+    <section id={panelId} className={styles.advisorCard} aria-label="AI Pipeline Advisor Details">
       <div className={styles.header}>
         <div className={styles.titleGroup}>
-          <span className={styles.advisorBadge}>⚡ AI Advisor</span>
+          <span className={styles.advisorBadge}>⚡ AI Pipeline Advisor</span>
           <h4 className={styles.headline}>{rec.headline}</h4>
         </div>
         <div className={styles.controls}>
+          <button
+            type="button"
+            className={styles.expandBtn}
+            onClick={() => setIsExpanded(false)}
+            title="Collapse to compact 1-line view"
+            aria-expanded="true"
+            aria-controls={panelId}
+          >
+            Collapse ▴
+          </button>
           <button
             type="button"
             className={styles.controlBtn}
@@ -124,31 +210,17 @@ export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard',
         </div>
       )}
 
-      <div className={styles.actionFooter}>
-        {rec.action.type === 'sms' && onOpenTextModal ? (
+      {rec.action && (
+        <div className={styles.actionFooter}>
           <button
             type="button"
             className={styles.actionBtn}
-            onClick={() => onOpenTextModal(rec.action.suggestedBody || '')}
+            onClick={executeAction}
           >
             {rec.action.label} →
           </button>
-        ) : rec.action.href.startsWith('http') || rec.action.href.startsWith('/') ? (
-          <Link href={rec.action.href} className={styles.actionBtn}>
-            {rec.action.label} →
-          </Link>
-        ) : (
-          <a href={rec.action.href} className={styles.actionBtn}>
-            {rec.action.label} →
-          </a>
-        )}
-
-        {rec.action.suggestedBody && (
-          <span className={styles.previewQuote} title={rec.action.suggestedBody}>
-            &ldquo;{rec.action.suggestedBody}&rdquo;
-          </span>
-        )}
-      </div>
+        </div>
+      )}
     </section>
   );
 }

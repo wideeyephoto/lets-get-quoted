@@ -216,6 +216,91 @@
   display: block;
 }
 
+/* Loading & Download Progress Overlay on top of 3D Canvas */
+.loadingOverlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 25;
+  padding: 1.5rem;
+  transition: opacity 0.25s ease;
+  pointer-events: auto;
+}
+
+.loadingSpinnerWrap {
+  position: relative;
+  width: 68px;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 1rem;
+}
+
+.loadingSpinnerRing {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 3px solid rgba(56, 189, 248, 0.15);
+  border-top-color: #38bdf8;
+  animation: loadingSpin 0.9s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+@keyframes loadingSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.loadingPercentCenter {
+  font-size: 0.92rem;
+  font-weight: 800;
+  font-family: monospace;
+  color: #38bdf8;
+  letter-spacing: -0.02em;
+}
+
+.loadingTitle {
+  font-size: 0.94rem;
+  font-weight: 700;
+  color: #f8fafc;
+  margin-bottom: 0.4rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.loadingProgressBar {
+  width: min(260px, 80%);
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.loadingProgressFill {
+  height: 100%;
+  background: linear-gradient(90deg, #38bdf8, #818cf8);
+  border-radius: 9999px;
+  transition: width 0.12s ease-out;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
+}
+
+.loadingSubtext {
+  font-size: 0.74rem;
+  color: var(--muted, #94a3b8);
+  font-family: monospace;
+  letter-spacing: 0.02em;
+}
+
 /* HUD Overlay on top of 3D Canvas */
 .hudOverlay {
   position: absolute;

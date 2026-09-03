@@ -13,6 +13,7 @@ import RecordPhotos from '../RecordPhotos';
 import {
   QUEUE_SORTS,
   QUEUE_STAGES,
+  LOGISTICAL_PRESETS,
   contactPlan,
   isContactablePhone,
   matchesStage,
@@ -20,16 +21,17 @@ import {
   queueStageLabel,
   sortQueue,
   stageCounts,
+  type LogisticalPreset,
   type QueueSort,
   type StageFilter,
 } from '@/lib/lead-queue';
+import { analyzePipelineLogistics } from '@/lib/ai-lead-advisor';
 import type { LeadViewItem } from './LeadsWorkspace';
 import { focusQueueRow, useQueueWindow } from '../use-queue-window';
 import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, updateLeadNameAction } from './actions';
 import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
 import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
-import AiLeadAdvisor from '@/components/leads/AiLeadAdvisor';
 import TextCustomerModal from '@/components/leads/TextCustomerModal';
 import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
@@ -78,11 +80,17 @@ export default function LeadSmoothieView({
   mapTheme = 'dark',
   gear,
   onOpenQuickAdd,
+  requestedStage,
+  requestedPane,
+  requestedLogistical,
 }: {
   leads: LeadViewItem[];
   run: (fn: () => Promise<unknown>) => void;
   onSelect?: (leadId: string | null) => void;
   openRequest?: { id: string; nonce: number } | null;
+  requestedStage?: { stage: StageFilter; nonce: number } | null;
+  requestedPane?: { pane: 'leads' | 'map'; nonce: number } | null;
+  requestedLogistical?: { preset: LogisticalPreset; nonce: number } | null;
   basePath?: string;
   initialLeadId?: string;
   details?: Record<string, LeadDetailDto>;
@@ -98,6 +106,7 @@ export default function LeadSmoothieView({
   const initialLead = initialLeadId ? leads.find((lead) => lead.id === initialLeadId) : null;
   const initialStage: StageFilter = initialLead && (initialLead.status === 'won' || initialLead.status === 'lost') ? 'closed' : 'open';
   const [stage, setStage] = useState<StageFilter>(initialStage);
+  const [logisticalPreset, setLogisticalPreset] = useState<LogisticalPreset>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QueueSort>('priority');
   const [pane, setPane] = useState<'leads' | 'map'>('leads');
@@ -124,15 +133,46 @@ export default function LeadSmoothieView({
     [leads, channel],
   );
 
+  // Compute spatial & corridor logistics for every lead
+  const logisticsMap = useMemo(
+    () => analyzePipelineLogistics(leads, mapPins),
+    [leads, mapPins],
+  );
+
+  // Compute counts for the logistical presets across open leads
+  const logisticalCounts = useMemo(() => {
+    let en_route = 0;
+    let halo = 0;
+    let best_opportunities = 0;
+    let gap_fits = 0;
+    for (const lead of leads) {
+      if (lead.status === 'won' || lead.status === 'lost') continue;
+      const meta = logisticsMap.get(lead.id);
+      if (!meta) continue;
+      if (meta.isEnRoute) en_route++;
+      if (meta.isHalo) halo++;
+      if (meta.isTier1Opportunity) best_opportunities++;
+      if (meta.fitsScheduleGap) gap_fits++;
+    }
+    return { en_route, halo, best_opportunities, gap_fits };
+  }, [leads, logisticsMap]);
+
   const shown = useMemo(() => {
-    const filtered = leads.filter(
-      (lead) =>
-        matchesStage(lead, stage) &&
-        matchesQuery(lead, query) &&
-        (channel === 'all' || (lead.attributionChannel || 'direct') === channel),
-    );
+    const filtered = leads.filter((lead) => {
+      if (!matchesStage(lead, stage)) return false;
+      if (!matchesQuery(lead, query)) return false;
+      if (channel !== 'all' && (lead.attributionChannel || 'direct') !== channel) return false;
+      if (logisticalPreset !== 'all') {
+        const meta = logisticsMap.get(lead.id);
+        if (logisticalPreset === 'en_route' && !meta?.isEnRoute) return false;
+        if (logisticalPreset === 'halo' && !meta?.isHalo) return false;
+        if (logisticalPreset === 'best_opportunities' && !meta?.isTier1Opportunity) return false;
+        if (logisticalPreset === 'gap_fits' && !meta?.fitsScheduleGap) return false;
+      }
+      return true;
+    });
     return sortQueue(filtered, sort);
-  }, [leads, stage, query, sort, channel]);
+  }, [leads, stage, query, sort, channel, logisticalPreset, logisticsMap]);
 
   // This is the geographic version of the queue, so it always receives the
   // currently shown lead IDs and never the jobs carried by the shared query.
@@ -165,7 +205,7 @@ export default function LeadSmoothieView({
   const win = useQueueWindow({
     total: shown.length,
     selectedIndex,
-    resetKey: `${stage}|${sort}|${query}`,
+    resetKey: `${stage}|${sort}|${query}|${logisticalPreset}`,
     plural: 'leads',
     pageSize: 10,
   });
@@ -207,6 +247,24 @@ export default function LeadSmoothieView({
     selectRef.current(openRequest.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [openRequest?.nonce]);
+
+  // Overall pipeline advisor asked to change the stage filter
+  useEffect(() => {
+    if (!requestedStage) return;
+    setStage(requestedStage.stage);
+  }, [requestedStage?.nonce]);
+
+  // Overall pipeline advisor asked to switch pane (leads vs map)
+  useEffect(() => {
+    if (!requestedPane) return;
+    setPane(requestedPane.pane);
+  }, [requestedPane?.nonce]);
+
+  // Overall pipeline advisor asked to set a logistical preset filter
+  useEffect(() => {
+    if (!requestedLogistical) return;
+    setLogisticalPreset(requestedLogistical.preset);
+  }, [requestedLogistical?.nonce]);
 
   function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     const next = nextTabIndex(event.key, LEAD_TABS.findIndex((t) => t.id === tab), LEAD_TABS.length);
@@ -278,6 +336,32 @@ export default function LeadSmoothieView({
           />
         ))}
         <StageChip id="closed" label="Closed" count={counts.closed} active={stage === 'closed'} onPick={setStage} />
+      </div>
+
+      {/* --- logistical route & proximity presets --- */}
+      <div className={styles.logisticalBar} role="group" aria-label="Filter by route and jobsite proximity">
+        <span className={styles.logisticalLabel}>Logistics:</span>
+        {LOGISTICAL_PRESETS.map((preset) => {
+          const count =
+            preset.id === 'all'
+              ? null
+              : logisticalCounts[preset.id as keyof typeof logisticalCounts];
+          if (preset.id !== 'all' && (count ?? 0) === 0) return null;
+          const isActive = logisticalPreset === preset.id;
+          return (
+            <button
+              key={preset.id}
+              type="button"
+              className={styles.logisticalChip}
+              data-active={isActive}
+              onClick={() => setLogisticalPreset(preset.id)}
+            >
+              {preset.icon && <span className={styles.logisticalIcon}>{preset.icon}</span>}
+              <span>{preset.label}</span>
+              {count !== null && <span className={styles.logisticalBadge}>{count}</span>}
+            </button>
+          );
+        })}
       </div>
 
       {/* --- search / sort / pane switch --- */}
@@ -464,6 +548,27 @@ export default function LeadSmoothieView({
                         <span className={styles.rowDetail}>{lead.detail}</span>
                         <span className={styles.rowMeta}>
                           <span className={styles.rowStage} data-stage={lead.status}>{queueStageLabel(lead.status)}</span>
+                          {/* Logistical Badges: Halo, En Route, Tier-1 */}
+                          {logisticsMap.get(lead.id)?.isHalo ? (
+                            <span
+                              className={styles.rowHalo}
+                              title={`Within 0.75 mi of ${logisticsMap.get(lead.id)?.haloJobTitle || 'active crew stop'}`}
+                            >
+                              🏡 Halo
+                            </span>
+                          ) : logisticsMap.get(lead.id)?.isEnRoute ? (
+                            <span
+                              className={styles.rowEnRoute}
+                              title={`${logisticsMap.get(lead.id)?.enRouteDetourMinutes}m detour between scheduled stops`}
+                            >
+                              🚗 {logisticsMap.get(lead.id)?.enRouteDetourMinutes}m detour
+                            </span>
+                          ) : null}
+                          {logisticsMap.get(lead.id)?.isTier1Opportunity ? (
+                            <span className={styles.rowTier1} title="Tier-1 high value opportunity">
+                              ⭐ Tier 1
+                            </span>
+                          ) : null}
                           {/* Nothing at all on a won or lost lead. The clock ran
                               from created_at and never stopped, so a closed lead
                               sat in the queue reading "12m waiting" beside its
@@ -640,16 +745,6 @@ export default function LeadSmoothieView({
                   </div>
                 </dl>
               </header>
-
-              <AiLeadAdvisor
-                lead={selected}
-                mapPins={mapPins}
-                base={base}
-                onOpenTextModal={(msg) => {
-                  setTextInitialMessage(msg);
-                  setIsTextingCustomer(true);
-                }}
-              />
 
               {/* 4 — communication, ordered by how they asked to be contacted */}
               <div className={styles.comms}>

@@ -113,6 +113,55 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Quiet-Hours Delivery Contract (Completed 2026-09-01)**: atomic delayed delivery implemented across speed-to-lead and intake confirmation via `getTcpaCompliantSendTime` and `availableAt`, backed by migration `20260831190000_atomic_delayed_sms_delivery.sql`. Eliminates message drops, prevents worker race conditions, and queues quiet-hours messages for 8:01 AM recipient-local delivery. Verified via `test/ad-speed-to-lead.test.ts` and `test/intake-confirmation-sms.test.ts` (17/17 passing).
 - [ ] **Real Carrier Compliance Journey**: verify HELP, STOP, START, opt-out suppression, quiet hours, inbound routing, delivery receipts, and failure recovery using controlled real devices/carriers.
 
+### Messaging & Voice Route Coverage Ledger (Audited 2026-09-03)
+
+- [x] **Focused regression gate**: 55 targeted messaging, SMS-producer, and voice spec files passed with 849 tests and 0 failures. Provider calls were mocked or outbound sockets were blocked, so this is code-level evidence rather than proof of carrier delivery. In the tables below, **handler** means the exported Next.js route was invoked; **supporting** means worker, library, or source-contract coverage only; **live** means production traffic and durable backend records were observed.
+- [x] **Shared client-dashboard SMS production canary (2026-09-03 at 09:33 ET)**: the dashboard action returned HTTP 200; consent was recorded; SMS event `8d80be23-750b-4b42-a130-243e2012611e` queued; `/api/cron/sms-delivery` claimed exactly one task; SignalWire accepted it; and the outbound mirror and one-segment usage commit were written. Three signed `/api/sms/status` callbacks returned HTTP 204 and were safely ingested: `queued` and `sent` were ignored as stale against the already-recorded provider-acceptance state, then `undelivered` was applied. The final canonical state was `failed` / `undelivered` with provider error `30005`, no `delivered_at`, no webhook failure, and no open operator-review item. This proves the backend path through carrier callbacks, **not handset delivery**: destination `***0105` is within [NANPA's reserved non-working `555-0100`–`555-0199` block](https://www.nationalnanpa.com/reports/2020_NANPA_Annual_Report.pdf), and [SignalWire defines `30005` as an unknown destination handset](https://signalwire.com/docs/compatibility-api/rest/error-codes).
+- [ ] **Complete the shared-link canary on a controlled, opted-in real handset**: require the final `delivered` callback, receipt on the device, a working homeowner portal link, correct reply routing, and consistent UI/contact-log status before marking carrier delivery complete.
+
+| Core route surface | Automated evidence | Production evidence | Remaining proof |
+| --- | --- | --- | --- |
+| `GET /api/cron/sms-delivery` | Supporting: cron and worker suites | **Live**: claimed/completed the 09:33 canary with one usage commit | Invoke wrapper auth/dark-state branches directly; complete a real-handset `delivered` journey |
+| `GET /api/cron/sms-inbound-actions` | Supporting: cron and worker suites | None | Direct wrapper tests plus a live ordinary inbound action/retry |
+| `GET /api/cron/voice-allowance` | Supporting: worker tests and route-source guard | None; AI voice is not a live sold lane | Direct wrapper test and eventual live allowance reset |
+| `GET /api/cron/voice-retention` | Supporting: retention worker and route-source contract | None | Direct wrapper test and time-bounded live purge proof |
+| `POST /api/sms/inbound` | **Handler — partial**: HELP/STOP/START and shared-number branches | None | Invoke the ordinary two-way reply branch and then exercise it from a real handset |
+| `POST /api/sms/status` | Supporting: signature, parser, ingress, and status-transition contracts | **Live**: signed `queued`, `sent`, and `undelivered` callbacks returned 204 | Add direct handler cases for invalid signature, duplicate, out-of-order, and terminal callbacks |
+| `POST /api/sms/registry-status/[token]` | **Handler**: token, signature, redaction, replay, and status cases | Primary 10DLC campaign is active; no controlled callback canary captured | Controlled provider callback plus malformed/auth-failure observability proof |
+| `POST /api/sms/voice` | Supporting: signature/provider/source contracts | None | Direct handler test and live answered/no-answer tracking-number call |
+| `POST /api/sms/voice/status` | **Handler**: missed-call status and idempotency branches | None | Live no-answer callback, lead creation, and caller text-back |
+| `POST /api/twilio/inbound`; `POST /api/twilio/status`; `POST /api/twilio/voice`; `POST /api/twilio/voice/status` | Supporting: permanent alias, re-export, and runtime contract | None | Request-level alias tests; provider canary if any installed number still uses an alias |
+| `POST /api/voice/ai` | Supporting: webhook auth, admission, entitlement, and SignalWire adapter contracts | None; feature gate/top-ups remain withheld | Direct handler test and dedicated-number live admission canary |
+| `POST /api/voice/ai/status` | Supporting: signature and fallback source contracts | None | Direct handler test plus answered and unanswered forward callbacks |
+| `POST /api/voice/receipt` | Supporting: Basic-auth, replay, receipt processing, and settlement contracts | None | Direct handler test plus a real post-call receipt and idempotent replay |
+| `POST /api/voice/recording-status`; `GET /api/voice/recordings/[recordingId]` | **Handler**: authenticated ingest, media-host validation, tenancy, and playback | None | Real recording-ready callback, authorized playback, and cross-tenant denial |
+| `POST /api/voice/swaig` | **Handler — selected tools**: booking and permit tools, signed token/auth paths | None | Live booking link, confirmation, lead/quote tools, and failure behavior during a call |
+| `POST /api/voice/simulate` | **Handler**: authenticated scenarios and triage | None | Authenticated production smoke test for standard, returning, rebate, and emergency cases |
+| `GET /api/voice/health` | **Handler**: readiness/status projection | None | Authenticated production result tied to the dedicated number before voice activation |
+| `POST /api/voice/contractor-parse`; `GET /api/voice/export` | Supporting: parser, workspace, and authorization libraries | None | Focused handler tests for auth, tenancy, validation, escaping, and failure responses |
+
+| Message-producing route surface | Automated evidence | Remaining proof |
+| --- | --- | --- |
+| `GET /api/cron/direct-payment-settlement` | **Handler** plus settlement-worker tests | Live paid/failed/refunded message transitions on the intended payment rail |
+| `POST /api/jobs/[id]/permits/notify`; `POST /api/permits/inspections/[id]/remind` | **Handler** tests | Live opted-in delivery, suppression, and duplicate protection |
+| `POST /api/stripe/webhook` payment-message transitions | **Handler** tests for signature, replay, rail guards, failure, and refund outcomes | Controlled live/test-mode webhook-to-SMS correlation without charging a customer unexpectedly |
+| `POST /api/public/leads`; `POST /api/public/leads/verify-phone` | Supporting: verification, intake, speed-to-lead, owner-alert, ordering, and durable-queue contracts | Direct route tests and a clean-slate lead/verification journey on a controlled handset |
+| `GET /api/cron/ad-spend-sync`; `GET /api/cron/quote-followups` | Supporting: producer/cadence/template contracts | Direct runner/wrapper tests and controlled live sends at the due boundary |
+| `GET /api/account/status`; `GET /api/contacts/field-vcard` | Supporting: unread-count source and vCard/helper contracts | Focused route tests and authenticated download/count verification |
+
+- [x] **Outbound message-function inventory documented**:
+  - Lead/intake: phone verification, intake confirmation, speed-to-lead, contractor/high-value alerts, lead decline, visit/options, shared client-dashboard link, and dedicated private text.
+  - Inbox/manual: reply, new conversation, owner OTP, and crew OTP.
+  - Job/crew/schedule: portal/job links, quote update/follow-up, scheduling options and decisions, job update, arrival/window changes, appointment/choice reminders, crew welcome/assignment/scheduled/morning briefing, subcontractor lifecycle, and estimate/reschedule offers.
+  - Money/marketing: requested/paid/failed/refunded payment texts, reminders, card setup/update, lien waiver, Quick Stop offer/confirm/status/ETA, review/rebook/campaign, and ad-refill/upcoming-payment notices.
+  - Voice-triggered SMS: emergency owner alert, caller booking link, booking confirmation, and post-call follow-up.
+- [ ] **Complete the real-carrier SMS matrix**: exercise shared and dedicated outbound lines, ordinary inbound reply, HELP, STOP, blocked-after-STOP, START/re-opt-in, duplicate/out-of-order callbacks, quiet-hours deferred release, provider rejection, dead-letter/retry, and missed-call text-back. Correlate `sms_events`, `sms_delivery_tasks`, `sms_messages`, `sms_webhook_receipts`, `sms_inbound_action_tasks`, `cron_runs`, `usage_reservations`, and `webhook_failures` by event/provider ID and timestamp.
+- [ ] **Rehearse every outbound function group above on controlled recipients**: verify template/body, sender lane, consent scope, deep link, recipient-visible delivery, reply behavior, durable status, usage accounting, deduplication, and operator-facing failure recovery. Never use seeded `555-01xx` data as evidence of handset delivery.
+- [ ] **Complete the live voice canary only after the feature is deliberately enabled and entitled**: dedicated number → `/api/voice/ai` → SWAIG tools → `/api/voice/receipt` → recording callback/playback; prove AI/recording disclosures, answered/unanswered fallback, emergency and post-call SMS, booking, allowance settlement, retention purge, observability, and rollback.
+- [ ] **Resolve the dashboard-link destination mismatch exposed by the canary**: the modal previews a job-specific `/client/jobs/...` link, while an unconverted lead currently falls back to `/portal`. Reproduce and fix the likely formatted-phone versus E.164 exact-prefilter mismatch so that the generic portal can resolve the intended client before repeating the real-handset test.
+- [ ] **Make delivery state truthful across the UI and ledgers**: the action currently reports success and marks the lead “contacted/Sent” immediately after enqueueing, while provider acceptance and final delivery happen later. Distinguish queued, provider-accepted, delivered, and failed; reconcile later failure in the lead timeline/inbox; and ensure the outbound `sms_messages` mirror does not imply delivery when the canonical event failed.
+- [ ] **Harden duplicate-send and billing semantics**: replace the timestamp-based dashboard action idempotency key with a stable user-intent key, prevent double-click duplicate events, and document/test whether a provider-accepted but ultimately undelivered segment consumes the customer's text allowance.
+
 ---
 
 ## 4. Transactional Email & Deliverability (Resend)

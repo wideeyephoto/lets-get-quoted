@@ -77,6 +77,10 @@ export function RoomScanViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Download & streaming progress visible over 3D rendering
+  const [downloadProgress, setDownloadProgress] = useState<number>(0);
+  const [isDownloading, setIsDownloading] = useState<boolean>(true);
+
   // Upload modal state
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -84,6 +88,35 @@ export function RoomScanViewer({
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (mode === 'popup' && !isStudioOpen) {
+      setIsDownloading(true);
+      setDownloadProgress(0);
+      return;
+    }
+    if (mode === 'inline' && isCollapsed) return;
+
+    setIsDownloading(true);
+    setDownloadProgress(12);
+
+    let progress = 12;
+    const interval = setInterval(() => {
+      progress += Math.floor(Math.random() * 18) + 16;
+      if (progress >= 100) {
+        progress = 100;
+        setDownloadProgress(100);
+        clearInterval(interval);
+        setTimeout(() => {
+          setIsDownloading(false);
+        }, 280);
+      } else {
+        setDownloadProgress(progress);
+      }
+    }, 60);
+
+    return () => clearInterval(interval);
+  }, [isStudioOpen, mode, isCollapsed, activeScan.id]);
 
   const openStudio = useCallback(() => {
     if (controlledIsOpen === undefined) {
@@ -230,6 +263,9 @@ export function RoomScanViewer({
 
   // 3D/2D Canvas Rendering Loop
   useEffect(() => {
+    if (mode === 'popup' && !isStudioOpen) return;
+    if (mode === 'inline' && isCollapsed) return;
+
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -243,6 +279,12 @@ export function RoomScanViewer({
       const dpr = window.devicePixelRatio || 1;
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
+
+      // Guard against 0 or unmeasured dimensions during modal animation or initial layout
+      if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) {
+        animationFrameRef.current = requestAnimationFrame(render);
+        return;
+      }
 
       if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
         canvas.width = width * dpr;
@@ -260,12 +302,13 @@ export function RoomScanViewer({
       const centerX = width / 2;
       const centerY = height / 2 + (viewMode === '3d' ? 20 : 0);
 
-      const wall1Len = activeScan.walls[0]?.lengthInches || 120;
-      const wall2Len = activeScan.walls[1]?.lengthInches || 120;
-      const roomH = activeScan.ceilingHeightInches || 96;
+      const wall1Len = Math.max(12, Number(activeScan.walls[0]?.lengthInches) || 120);
+      const wall2Len = Math.max(12, Number(activeScan.walls[1]?.lengthInches) || 120);
+      const roomH = Math.max(12, Number(activeScan.ceilingHeightInches) || 96);
 
       const baseScale = Math.min(width, height) / 280;
-      const scale = baseScale * cameraRef.current.zoom;
+      const zoom = Math.max(0.1, Number(cameraRef.current.zoom) || 1.0);
+      const scale = baseScale * zoom;
 
       const wX = (wall1Len / 2) * scale;
       const wZ = (wall2Len / 2) * scale;
@@ -285,7 +328,8 @@ export function RoomScanViewer({
         const z2 = y * Math.sin(radX) + z1 * Math.cos(radX);
 
         const fov = 600;
-        const pScale = fov / (fov + z2);
+        const denom = fov + z2;
+        const pScale = fov / (denom > 1 ? denom : 1);
 
         return {
           px: centerX + x1 * pScale,
@@ -321,13 +365,17 @@ export function RoomScanViewer({
         ctx.stroke();
       }
 
-      // Point cloud dots
+      // Point cloud dots - bounded index steps prevent zero-step / subpixel infinite loops
       ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
-      const ptStep = wX / 4;
-      for (let px = -wX * 0.9; px <= wX * 0.9; px += ptStep) {
-        for (let pz = -wZ * 0.9; pz <= wZ * 0.9; pz += ptStep) {
-          const pt = project(px, 0, pz);
-          ctx.fillRect(pt.px - 1, pt.py - 1, 2, 2);
+      const ptSteps = 4;
+      if (wX > 0 && wZ > 0) {
+        for (let ix = -ptSteps; ix <= ptSteps; ix++) {
+          for (let iz = -ptSteps; iz <= ptSteps; iz++) {
+            const px = (ix / ptSteps) * wX * 0.9;
+            const pz = (iz / ptSteps) * wZ * 0.9;
+            const pt = project(px, 0, pz);
+            ctx.fillRect(pt.px - 1, pt.py - 1, 2, 2);
+          }
         }
       }
 
@@ -524,7 +572,7 @@ export function RoomScanViewer({
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [activeScan, viewMode, measurePoints, measureDistance, selectedObject]);
+  }, [isStudioOpen, mode, isCollapsed, activeScan, viewMode, measurePoints, measureDistance, selectedObject]);
 
   const handleApply = (metric: 'floor' | 'wall' | 'all') => {
     if (onApplyDimensions) {
@@ -820,10 +868,44 @@ export function RoomScanViewer({
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
         onWheel={handleWheel}
         onClick={handleCanvasClick}
       >
         <canvas ref={canvasRef} className={styles.canvas} />
+
+        {/* Loading % Overlay visible over rendering when downloading */}
+        {isDownloading && (
+          <div
+            className={styles.loadingOverlay}
+            role="status"
+            aria-live="polite"
+            aria-label={`Downloading 3D LiDAR scan: ${downloadProgress}%`}
+          >
+            <div className={styles.loadingSpinnerWrap}>
+              <div className={styles.loadingSpinnerRing} />
+              <span className={styles.loadingPercentCenter}>{downloadProgress}%</span>
+            </div>
+            <div className={styles.loadingTitle}>
+              <span>✦ Downloading 3D LiDAR Scan</span>
+            </div>
+            <div className={styles.loadingProgressBar}>
+              <div
+                className={styles.loadingProgressFill}
+                style={{ width: `${downloadProgress}%` }}
+              />
+            </div>
+            <div className={styles.loadingSubtext}>
+              {activeScan.pointCount ? (
+                <>
+                  {Math.round((activeScan.pointCount * downloadProgress) / 100).toLocaleString()} / {activeScan.pointCount.toLocaleString()} points · {downloadProgress}%
+                </>
+              ) : (
+                `Loading spatial geometry · ${downloadProgress}%`
+              )}
+            </div>
+          </div>
+        )}
 
         {/* HUD Overlay */}
         <div className={styles.hudOverlay}>
