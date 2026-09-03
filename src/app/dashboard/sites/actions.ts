@@ -130,7 +130,21 @@ export async function updateSiteAction(updates: SiteEditableInput) {
     ...(domainChanged ? { custom_domain_verified_at: null } : {}),
   });
 
+  if (editableUpdates.company_name?.trim()) {
+    const nextBusinessName = editableUpdates.company_name.trim();
+    const admin = createAdminClient();
+    const { error: accountError } = await admin
+      .from('accounts')
+      .update({ business_name: nextBusinessName })
+      .eq('id', accountId);
+
+    if (accountError) {
+      console.error('Failed to sync accounts.business_name from website update:', accountError.message);
+    }
+  }
+
   revalidatePath('/dashboard/sites');
+  revalidatePath('/dashboard/settings');
 
   return site;
 }
