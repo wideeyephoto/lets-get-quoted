@@ -42,6 +42,49 @@ describe('SignalWire dedicated-number REST adapter', () => {
     expect(new Headers(init?.headers).get('Authorization')).toBe(`Basic ${Buffer.from(`${PROJECT}:server-only-test-token`).toString('base64')}`);
   });
 
+  it('parses the live search shape while keeping messaging inventory SMS-capable', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ data: [
+      {
+        e164: '+12485550140',
+        national_number_formatted: '(248) 555-0140',
+        rate_center: 'ROYAL OAK',
+        region: 'MI',
+        country_code: 'US',
+        capabilities: ['voice', 'SMS', 'mms'],
+      },
+      {
+        e164: '+12485550141',
+        national_number_formatted: '(248) 555-0141',
+        rate_center: 'SOUTHFIELD',
+        region: 'MI',
+        country_code: 'US',
+        capabilities: ['voice', 'fax'],
+      },
+    ] }));
+
+    await expect(client(fetchMock).searchAvailableNumbers({ areaCode: '248', region: 'MI' }))
+      .resolves.toEqual([{
+        number: '+12485550140',
+        region: 'MI',
+        city: 'ROYAL OAK',
+        capabilities: { voice: true, sms: true, mms: true, fax: false },
+      }]);
+  });
+
+  it('does not offer a live voice-only search result to the messaging purchase flow', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ data: [{
+      e164: '+12485550140',
+      national_number_formatted: '(248) 555-0140',
+      rate_center: 'ROYAL OAK',
+      region: 'MI',
+      country_code: 'US',
+      capabilities: ['voice', 'fax'],
+    }] }));
+
+    await expect(client(fetchMock).searchAvailableNumbers({ areaCode: '248', region: 'MI' }))
+      .resolves.toEqual([]);
+  });
+
   it('uses the documented purchase, update, assignment, order, and individual-status contracts', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (raw, init) => {
       const url = String(raw);

@@ -133,6 +133,29 @@ function record(value: unknown, label: string): Record<string, unknown> {
   return value as Record<string, unknown>;
 }
 
+function candidateCapabilities(value: unknown): SignalWireNumberCandidate['capabilities'] {
+  if (Array.isArray(value)) {
+    if (value.some((capability) => typeof capability !== 'string')) {
+      throw malformed('Candidate capabilities array contains a non-string value.');
+    }
+    const capabilities = new Set(value.map((capability) => capability.trim().toLowerCase()));
+    return {
+      voice: capabilities.has('voice'),
+      sms: capabilities.has('sms'),
+      mms: capabilities.has('mms'),
+      fax: capabilities.has('fax'),
+    };
+  }
+
+  const capabilities = record(value ?? {}, 'Candidate capabilities');
+  return {
+    voice: capabilities.voice === true,
+    sms: capabilities.sms === true,
+    mms: capabilities.mms === true,
+    fax: capabilities.fax === true,
+  };
+}
+
 function malformed(message: string): SignalWireProvisioningError {
   return new SignalWireProvisioningError(message, {
     status: null,
@@ -324,19 +347,18 @@ export class SignalWireNumberProvisioningClient {
     if (!Array.isArray(body.data)) throw malformed('SignalWire search response has no data array.');
     return body.data.map((value) => {
       const row = record(value, 'SignalWire number candidate');
-      const number = requireText(row.number, 'Candidate number');
+      const legacyNumber = optionalText(row.number);
+      const e164Number = optionalText(row.e164);
+      if (legacyNumber && e164Number && legacyNumber !== e164Number) {
+        throw malformed('Candidate number identifiers do not match.');
+      }
+      const number = requireText(legacyNumber ?? e164Number, 'Candidate number');
       if (!E164.test(number)) throw malformed('Candidate number is not E.164.');
-      const capabilities = record(row.capabilities ?? {}, 'Candidate capabilities');
       return {
         number,
         region: optionalText(row.region),
-        city: optionalText(row.city),
-        capabilities: {
-          voice: capabilities.voice === true,
-          sms: capabilities.sms === true,
-          mms: capabilities.mms === true,
-          fax: capabilities.fax === true,
-        },
+        city: optionalText(row.city) ?? optionalText(row.rate_center),
+        capabilities: candidateCapabilities(row.capabilities),
       };
     }).filter((candidate) => candidate.capabilities.sms);
   }
