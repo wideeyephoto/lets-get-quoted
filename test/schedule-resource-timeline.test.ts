@@ -35,4 +35,40 @@ describe('Resource Timeline views registration', () => {
   it('exports dispatchJobScheduleAction server action', () => {
     expect(typeof dispatchJobScheduleAction).toBe('function');
   });
+
+  it('uses theme variables and avoids undefined tokens in ScheduleResourceTimeline.module.css', () => {
+    const css = read('src', 'app', 'dashboard', 'schedule', 'ScheduleResourceTimeline.module.css');
+    // Ensure legacy broken tokens are gone
+    expect(css).not.toContain('--bg-1');
+    expect(css).not.toContain('--text-1');
+    expect(css).not.toContain('--text-2');
+    expect(css).not.toContain('--text-3');
+    expect(css).not.toContain('--border-1');
+    expect(css).not.toContain('--border-2');
+
+    // Ensure theme design tokens are properly used
+    expect(css).toContain('var(--bg-2)');
+    expect(css).toContain('var(--bg-3)');
+    expect(css).toContain('var(--text)');
+    expect(css).toContain('var(--muted)');
+    expect(css).toContain('var(--tint)');
+  });
+
+  it('uses WCAG compliant contrast colors for all job card variants', () => {
+    const css = read('src', 'app', 'dashboard', 'schedule', 'ScheduleResourceTimeline.module.css');
+    // Verify high-contrast jewel tone values
+    expect(css).toContain('background: #475569'); // cardSlate
+    expect(css).toContain('background: #6d28d9'); // cardPurple
+    expect(css).toContain('background: #1d4ed8'); // cardBlue
+    expect(css).toContain('background: #c2410c'); // cardOrange
+    expect(css).toContain('background: #9f1239'); // cardRose
+    expect(css).toContain('background: #047857'); // cardEmerald
+    expect(css).toContain('background: #b45309'); // cardAmber
+  });
+
+  it('renders STATUS_MARK accessibility glyphs in ScheduleResourceTimeline.tsx', () => {
+    const tsx = read('src', 'app', 'dashboard', 'schedule', 'ScheduleResourceTimeline.tsx');
+    expect(tsx).toContain("import { STATUS_MARK } from './CalendarLegend';");
+    expect(tsx).toContain('STATUS_MARK[job.status]');
+  });
 });

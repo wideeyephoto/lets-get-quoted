@@ -11,6 +11,7 @@ import {
 } from '@/lib/schedule-timeline';
 import { longDateLabel, weekdayShort, dayOfMonth } from '@/lib/schedule-agenda';
 import { dispatchJobScheduleAction } from '../jobs/actions';
+import { STATUS_MARK } from './CalendarLegend';
 import type { CalendarJob, CrewOption } from './schedule-calendar';
 
 const UNASSIGNED_ID = '__unassigned__';
@@ -31,13 +32,14 @@ function snapMinutes(minutes: number, step = SNAP_MINUTES): number {
 
 function getCardColorClass(job: CalendarJob, isUnassigned: boolean): string {
   if (isUnassigned) return styles.cardSlate;
-  if (job.status === 'new_lead') return styles.cardPurple;
+  if (job.status === 'new_lead') return styles.cardAmber;
   if (job.status === 'complete') return styles.cardEmerald;
+  if (job.status === 'archived') return styles.cardSlate;
   const hash = Math.abs(job.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0)) % 4;
   if (hash === 0) return styles.cardBlue;
   if (hash === 1) return styles.cardOrange;
   if (hash === 2) return styles.cardRose;
-  return styles.cardAmber;
+  return styles.cardPurple;
 }
 
 function crewInitials(name: string): string {
@@ -530,6 +532,9 @@ export default function ScheduleResourceTimeline({
         title={`${job.client_name} (${formatClockMinutes(jobStartMinutes)} - ${formatClockMinutes(jobStartMinutes + durationMinutes)})`}
       >
         <div className={styles.cardTitleRow}>
+          <span className={styles.statusMark} aria-hidden="true">
+            {STATUS_MARK[job.status] ?? '◆'}
+          </span>
           <span className={styles.cardTitle}>
             {job.ref ? `Job #${job.ref}` : `Job #${job.id.slice(0, 4)}`}
           </span>
@@ -611,7 +616,13 @@ export default function ScheduleResourceTimeline({
               ))
             ) : (
               weekDayKeys.map((wkDateKey) => (
-                <div key={wkDateKey} className={styles.axisSlot}>
+                <div
+                  key={wkDateKey}
+                  className={[
+                    styles.axisSlot,
+                    wkDateKey === todayKey ? styles.todaySlot : '',
+                  ].filter(Boolean).join(' ')}
+                >
                   <strong>{weekdayShort(wkDateKey)}</strong>&nbsp;{dayOfMonth(wkDateKey)}
                 </div>
               ))
