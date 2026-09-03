@@ -8,8 +8,10 @@ on:
 
 jobs:
   build:
+    if: github.repository == 'wideeyephoto/lets-get-quoted'
     runs-on: ubuntu-latest
     env:
+      NODE_OPTIONS: --max-old-space-size=4096
       NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
       NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder
       SUPABASE_SERVICE_ROLE_KEY: placeholder
@@ -19,9 +21,9 @@ jobs:
       NEXT_PUBLIC_APP_URL: http://localhost:3010
       NEXT_PUBLIC_ROOT_DOMAIN: letsgetquoted.com
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
