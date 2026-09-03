@@ -1,3 +1,6 @@
+'use client';
+
+import { useState } from 'react';
 import Link from 'next/link';
 import ClientsWorkspace, { type ClientRow } from './ClientsWorkspace';
 import DuplicateClients from './DuplicateClients';
@@ -51,7 +54,20 @@ export default function ClientsScreen({
   basePath?: string;
   readOnly?: boolean;
 }) {
-  const clientLabel = `${rows.length} customer${rows.length === 1 ? '' : 's'}`;
+  const [dupesOpen, setDupesOpen] = useState(dismissError);
+
+  const duplicateButton = duplicateGroups.length > 0 ? (
+    <button
+      type="button"
+      className={`btn dupe-badge ${dupesOpen ? 'is-active' : ''}`}
+      onClick={() => setDupesOpen((open) => !open)}
+      aria-expanded={dupesOpen}
+      aria-controls="duplicate-clients-panel"
+      title={dupesOpen ? 'Hide duplicate suggestions' : 'Review duplicate suggestions'}
+    >
+      Possible duplicates · {duplicateGroups.length}
+    </button>
+  ) : null;
 
   return (
     <main className={`wide-shell workspace-shell ${pageStyles.screen}`}>
@@ -60,8 +76,7 @@ export default function ClientsScreen({
           <p className={`eyebrow ${pageStyles.eyebrow}`}>Clients</p>
           <div className={pageStyles.titleRow}>
             <h1 id="clients-title" className={pageStyles.title}>Customers</h1>
-            <span className={pageStyles.customerCount}>{clientLabel}</span>
-            {repeatCount > 0 ? <span className={pageStyles.repeatCount}>{repeatCount} repeat</span> : null}
+            {readOnly ? null : <ClientHeaderActions basePath={basePath} />}
           </div>
           <p className={pageStyles.lead}>Find a customer, see what is next, and take action without leaving the list.</p>
         </div>
@@ -69,7 +84,6 @@ export default function ClientsScreen({
         {readOnly ? null : (
           <div className={pageStyles.heroActions} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <FieldIntakeHint page="clients" />
-            <ClientHeaderActions basePath={basePath} />
           </div>
         )}
       </section>
@@ -85,15 +99,19 @@ export default function ClientsScreen({
         </p>
       ) : null}
 
-      {/* Above the book, because it is about the book rather than about any one
-          customer in it — and collapsed, because it is a suggestion. Renders
-          nothing when there is nothing to suggest. */}
-      <DuplicateClients
-        groups={duplicateGroups}
-        action={readOnly ? undefined : mergeAction}
-        dismissAction={readOnly ? undefined : dismissDuplicateAction}
-        dismissError={dismissError}
-      />
+      {/* When opened, the duplicate resolution panel expands below the hero.
+          When closed, no card occupies space here. */}
+      {duplicateGroups.length > 0 && dupesOpen ? (
+        <div id="duplicate-clients-panel">
+          <DuplicateClients
+            groups={duplicateGroups}
+            action={readOnly ? undefined : mergeAction}
+            dismissAction={readOnly ? undefined : dismissDuplicateAction}
+            dismissError={dismissError}
+            onClose={() => setDupesOpen(false)}
+          />
+        </div>
+      ) : null}
 
       <section className={`panel workspace-section-card ${pageStyles.workspaceCard}`}>
         {rows.length === 0 ? (
@@ -113,6 +131,7 @@ export default function ClientsScreen({
           openAdd={openAdd}
           basePath={basePath}
           readOnly={readOnly}
+          duplicateButton={duplicateButton}
         />
       </section>
 

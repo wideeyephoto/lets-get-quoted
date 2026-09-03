@@ -1,20 +1,17 @@
 'use client';
 
-import Link from 'next/link';
+import pageStyles from './clients-page.module.css';
 
 export const OPEN_ADD_CLIENT_EVENT = 'lgq:open-add-client';
 
-export default function ClientHeaderActions({ basePath }: { basePath: string }) {
+export default function ClientHeaderActions({ basePath: _basePath }: { basePath?: string }) {
   return (
-    <>
-      <Link href={`${basePath}/clients/import`} className="btn secondary">Import</Link>
-      <button
-        type="button"
-        className="btn primary"
-        onClick={() => window.dispatchEvent(new Event(OPEN_ADD_CLIENT_EVENT))}
-      >
-        + Add customer
-      </button>
-    </>
+    <button
+      type="button"
+      className={pageStyles.addCustomerBtn}
+      onClick={() => window.dispatchEvent(new Event(OPEN_ADD_CLIENT_EVENT))}
+    >
+      + Add customer
+    </button>
   );
 }

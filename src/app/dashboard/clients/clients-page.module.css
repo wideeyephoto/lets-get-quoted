@@ -23,8 +23,8 @@
 
 .titleRow {
   display: flex;
-  align-items: baseline;
-  gap: 0.55rem 0.7rem;
+  align-items: center;
+  gap: 0.75rem;
   flex-wrap: wrap;
 }
 
@@ -34,6 +34,44 @@
   font-size: clamp(1.75rem, 3vw, 2.35rem);
   line-height: 1.05;
   letter-spacing: -0.025em;
+}
+
+.addCustomerBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0 1rem;
+  border: 1.5px solid var(--accent, #ff7a21);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--accent-ink, #ff7a21);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  user-select: none;
+  line-height: 1.2;
+}
+
+.addCustomerBtn:hover {
+  background: rgba(255, 122, 33, 0.24);
+  border-color: var(--accent, #ff7a21);
+  color: var(--accent-ink, #ff7a21);
+  transform: translateY(-1px);
+}
+
+.addCustomerBtn:active {
+  transform: translateY(0);
+}
+
+.addCustomerBtn:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21);
+  outline-offset: 2px;
 }
 
 .customerCount,
@@ -133,23 +171,31 @@
   gap: 0.75rem;
 }
 
-.queue,
-.detail {
+.queue {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 138, 61, 0.34) transparent;
 }
 
-.queue::-webkit-scrollbar,
-.detail::-webkit-scrollbar {
+.queue::-webkit-scrollbar {
   width: 9px;
 }
 
-.queue::-webkit-scrollbar-thumb,
-.detail::-webkit-scrollbar-thumb {
+.queue::-webkit-scrollbar-thumb {
   border: 2px solid transparent;
   border-radius: 999px;
   background: rgba(255, 138, 61, 0.3);
   background-clip: content-box;
+}
+
+.detail {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.detail::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
 }
 
 .recordHeadLayout :global(figure) {
@@ -160,15 +206,28 @@
 
 @media (min-width: 921px) {
   .body {
-    height: clamp(34rem, calc(100vh - 19rem), 46rem);
+    height: clamp(38rem, calc(100vh - 17rem), 52rem);
     align-items: stretch;
   }
 
-  .body .queue,
+  .body .queue {
+    height: 100%;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .body .detail {
     height: 100%;
     overflow-y: auto;
     overscroll-behavior: contain;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .body .detail::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
   }
 
   .comms {
@@ -237,6 +296,12 @@
 
   .title {
     font-size: 1.55rem;
+  }
+
+  .addCustomerBtn {
+    min-height: 32px;
+    padding: 0 0.75rem;
+    font-size: 0.8rem;
   }
 
   .customerCount,

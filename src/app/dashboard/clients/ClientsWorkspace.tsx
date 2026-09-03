@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import ViewGear, { type ViewOption } from '@/components/view-gear';
 import AddressAutocomplete from '@/components/address-autocomplete';
@@ -71,6 +71,7 @@ export default function ClientsWorkspace({
   openAdd = false,
   basePath = '/dashboard',
   readOnly = false,
+  duplicateButton,
 }: {
   clients: ClientRow[];
   /** Where customer links point. '/demo' keeps the demo's links in the demo. */
@@ -101,6 +102,7 @@ export default function ClientsWorkspace({
    * instant it was used.
    */
   openAdd?: boolean;
+  duplicateButton?: ReactNode;
 }) {
   const [view, setView] = useState<ClientsView>(initialView);
   const [query, setQuery] = useState('');
@@ -217,6 +219,7 @@ export default function ClientsWorkspace({
           basePath={basePath}
           gear={viewGear}
           readOnly={readOnly}
+          duplicateButton={duplicateButton}
         />
         {adding ? <AddClientDialog onClose={() => setAdding(false)} /> : null}
       </>

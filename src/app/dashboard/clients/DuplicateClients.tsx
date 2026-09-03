@@ -19,6 +19,7 @@ export default function DuplicateClients({
   action,
   dismissAction,
   dismissError = false,
+  onClose,
 }: {
   groups: DuplicateGroup<DuplicateMember>[];
   action?: (formData: FormData) => Promise<void>;
@@ -30,44 +31,56 @@ export default function DuplicateClients({
    * wrong — see dismissDuplicateGroupAction.
    */
   dismissAction?: (formData: FormData) => Promise<void>;
+  onClose?: () => void;
 }) {
   if (groups.length === 0) return null;
 
   const total = groups.reduce((sum, group) => sum + group.members.length, 0);
 
   return (
-    <section className="panel workspace-section-card dupe-panel">
-      <details className="workspace-details">
-        <summary className="workspace-details-summary">
-          <span className="btn secondary">Possible duplicates · {groups.length}</span>
-          <span className="workspace-details-copy">
+    <section className="panel workspace-section-card dupe-panel" aria-label="Possible duplicate customers">
+      <div className="dupe-panel-head">
+        <div className="dupe-panel-title-wrap">
+          <span className="btn dupe-badge is-active">Possible duplicates · {groups.length}</span>
+          <p className="dupe-panel-copy">
             {total} records look like {groups.length} customer{groups.length === 1 ? '' : 's'}. Nothing
             merges until you say so, and anything that isn&rsquo;t a duplicate can be dismissed.
-          </span>
-        </summary>
-
-        {dismissError ? (
-          <p className="dupe-dismiss-error">
-            <strong>That dismissal wasn&rsquo;t saved.</strong> The table it lives in hasn&rsquo;t been created yet — apply{' '}
-            <code>migrations/2026-08-16-duplicate-dismissals.sql</code> and try again. Both records are untouched.
           </p>
-        ) : null}
-
-        <div className="dupe-groups">
-          {groups.map((group) => (
-            <DuplicateGroupForm
-              key={group.key}
-              members={group.members}
-              suggestedId={suggestSurvivor(group.members).id}
-              reasonLabel={DUPLICATE_REASON_LABEL[group.reason]}
-              sharedValue={group.sharedValue}
-              reason={group.reason}
-              action={action}
-              dismissAction={dismissAction}
-            />
-          ))}
         </div>
-      </details>
+        {onClose ? (
+          <button
+            type="button"
+            className="dupe-panel-close"
+            onClick={onClose}
+            aria-label="Close duplicate suggestions"
+            title="Close duplicate suggestions"
+          >
+            &times;
+          </button>
+        ) : null}
+      </div>
+
+      {dismissError ? (
+        <p className="dupe-dismiss-error">
+          <strong>That dismissal wasn&rsquo;t saved.</strong> The table it lives in hasn&rsquo;t been created yet — apply{' '}
+          <code>migrations/2026-08-16-duplicate-dismissals.sql</code> and try again. Both records are untouched.
+        </p>
+      ) : null}
+
+      <div className="dupe-groups">
+        {groups.map((group) => (
+          <DuplicateGroupForm
+            key={group.key}
+            members={group.members}
+            suggestedId={suggestSurvivor(group.members).id}
+            reasonLabel={DUPLICATE_REASON_LABEL[group.reason]}
+            sharedValue={group.sharedValue}
+            reason={group.reason}
+            action={action}
+            dismissAction={dismissAction}
+          />
+        ))}
+      </div>
     </section>
   );
 }

@@ -38,3 +38,27 @@ describe('Customer Queue Header Sort Popup Toggle', () => {
     expect(css).toContain('.sortMenuItem');
   });
 });
+
+describe('Clients Screen Header + Add Customer Button Layout', () => {
+  it('verifies ClientsScreen renders ClientHeaderActions next to Customers header', () => {
+    const screenSrc = readFileSync('src/app/dashboard/clients/ClientsScreen.tsx', 'utf8');
+    expect(screenSrc).toContain('pageStyles.titleRow');
+    expect(screenSrc).toContain('<h1 id="clients-title" className={pageStyles.title}>Customers</h1>');
+    expect(screenSrc).toContain('{readOnly ? null : <ClientHeaderActions basePath={basePath} />}');
+  });
+
+  it('verifies ClientHeaderActions styles + Add customer as a pill button', () => {
+    const actionsSrc = readFileSync('src/app/dashboard/clients/ClientHeaderActions.tsx', 'utf8');
+    expect(actionsSrc).toContain('pageStyles.addCustomerBtn');
+    expect(actionsSrc).toContain('+ Add customer');
+  });
+
+  it('verifies clients-page.module.css styles addCustomerBtn and centers titleRow', () => {
+    const css = readFileSync('src/app/dashboard/clients/clients-page.module.css', 'utf8');
+    expect(css).toContain('.titleRow');
+    expect(css).toContain('align-items: center;');
+    expect(css).toContain('.addCustomerBtn');
+    expect(css).toContain('border-radius: 999px;');
+  });
+});
+

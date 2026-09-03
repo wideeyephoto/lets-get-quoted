@@ -189,17 +189,23 @@
   align-items: start;
 }
 
-.queue,
-.detail {
+.queue {
   min-width: 0;
   border: 1px solid var(--rule-g16);
   border-radius: 18px;
   background: rgba(var(--panel-rgb), 0.92);
-  overflow: hidden;
+  overflow: visible;
+  position: relative;
+  z-index: 20;
 }
 
-/* The selected-lead pane wears the orange edge Focus gives its open record. */
-.detail { border: 2px solid var(--cedge-orange-82); }
+.detail {
+  min-width: 0;
+  border: 2px solid var(--cedge-orange-82);
+  border-radius: 18px;
+  background: rgba(var(--panel-rgb), 0.92);
+  overflow: hidden;
+}
 
 .queueHead {
   display: flex;
@@ -208,14 +214,69 @@
   gap: 0.6rem;
   padding: 0.65rem 1rem 0.65rem;
   border-bottom: 1px solid var(--rule-g16);
+  border-top-left-radius: 17px;
+  border-top-right-radius: 17px;
 }
 .queueHeadLeft {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   gap: 0.55rem;
+  flex-wrap: wrap;
 }
 .queueTitle { margin: 0; font-size: 0.95rem; font-weight: 700; }
 .queueCount { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+.queueHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.queueHeadTwoRows {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.55rem;
+  padding: 0.65rem 1rem 0.65rem;
+}
+
+.queueHeadTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.queueHeadTwoRows .queueHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.queueHeadTwoRows .sortPopupWrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.queueHeadTwoRows .sortToggleBtn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.32rem 0.65rem;
+}
+
+.sortToggleLabelGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Sort popup toggle in queue header */
 .sortPopupWrap {
@@ -290,6 +351,11 @@
   background: var(--bg-3, #0f172a);
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
   animation: popoverFadeIn 0.12s ease-out;
+}
+
+.sortMenuLeft {
+  left: 0;
+  right: auto;
 }
 
 .sortMenuTitle {

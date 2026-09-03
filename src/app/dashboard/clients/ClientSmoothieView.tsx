@@ -52,6 +52,7 @@ export default function ClientSmoothieView({
   basePath = '/dashboard',
   gear,
   readOnly = false,
+  duplicateButton,
 }: {
   clients: ClientRow[];
   pins?: ClientMapPin[];
@@ -63,6 +64,7 @@ export default function ClientSmoothieView({
   basePath?: string;
   gear?: ReactNode;
   readOnly?: boolean;
+  duplicateButton?: ReactNode;
 }) {
   const base = basePath;
 
@@ -271,62 +273,69 @@ export default function ClientSmoothieView({
       <div className={`${styles.body} ${pageStyles.body}`}>
         {/* --- the queue --- */}
         <section className={`${styles.queue} ${pageStyles.queue}`} aria-label="Customer queue">
-          <div className={styles.queueHead}>
-            <div className={styles.queueHeadLeft}>
-              <h2 className={styles.queueTitle}>Customers</h2>
-              <span className={styles.queueCount}>
-                {shown.length === clients.length ? `${clients.length}` : `${shown.length} of ${clients.length}`}
-              </span>
+          <div className={`${styles.queueHead} ${styles.queueHeadTwoRows}`}>
+            <div className={styles.queueHeadTop}>
+              <div className={styles.queueHeadLeft}>
+                <h2 className={styles.queueTitle}>Customers</h2>
+                <span className={styles.queueCount}>
+                  {shown.length === clients.length ? `${clients.length}` : `${shown.length} of ${clients.length}`}
+                </span>
+                {duplicateButton}
+              </div>
             </div>
 
-            <div className={styles.sortPopupWrap} ref={sortRef}>
-              <button
-                type="button"
-                className={styles.sortToggleBtn}
-                onClick={() => setSortOpen((prev) => !prev)}
-                aria-expanded={sortOpen}
-                aria-haspopup="menu"
-                title="Sort customers"
-              >
-                <svg
-                  className={styles.filterIcon}
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+            <div className={styles.queueHeadActions}>
+              <div className={styles.sortPopupWrap} ref={sortRef}>
+                <button
+                  type="button"
+                  className={styles.sortToggleBtn}
+                  onClick={() => setSortOpen((prev) => !prev)}
+                  aria-expanded={sortOpen}
+                  aria-haspopup="menu"
+                  title="Sort customers"
                 >
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
-                <span className={styles.sortCurrentLabel}>{currentSort.label}</span>
-                <span className={styles.sortChevron} aria-hidden="true">▾</span>
-              </button>
-
-              {sortOpen && (
-                <div className={styles.sortMenu} role="menu">
-                  <div className={styles.sortMenuTitle}>Sort customers</div>
-                  {CLIENT_SORTS.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={sort === option.id}
-                      className={`${styles.sortMenuItem}${sort === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
-                      onClick={() => {
-                        setSort(option.id as QueueSort);
-                        setSortOpen(false);
-                      }}
+                  <span className={styles.sortToggleLabelGroup}>
+                    <svg
+                      className={styles.filterIcon}
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
                     >
-                      <span>{option.label}</span>
-                      {sort === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                    </svg>
+                    <span className={styles.sortCurrentLabel}>{currentSort.label}</span>
+                  </span>
+                  <span className={styles.sortChevron} aria-hidden="true">▾</span>
+                </button>
+
+                {sortOpen && (
+                  <div className={styles.sortMenu} role="menu">
+                    <div className={styles.sortMenuTitle}>Sort customers</div>
+                    {CLIENT_SORTS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={sort === option.id}
+                        className={`${styles.sortMenuItem}${sort === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
+                        onClick={() => {
+                          setSort(option.id as QueueSort);
+                          setSortOpen(false);
+                        }}
+                      >
+                        <span>{option.label}</span>
+                        {sort === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
