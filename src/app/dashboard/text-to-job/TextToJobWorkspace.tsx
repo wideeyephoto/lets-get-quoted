@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { MessageSquare, PhoneCall, Copy, Check, IdCard, ArrowRight } from 'lucide-react';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
@@ -41,6 +41,274 @@ export function getMessageVerdict(msg: InboundMessage): FieldConfidenceVerdict {
     extractedItemsCount: msg.extractedItems?.length,
     isLead: msg.extractedItems?.some((i) => i.pillar === 'leads'),
   });
+}
+
+export function parseFieldNoteToItems(
+  text: string,
+  currentCompanionName: string
+): {
+  matchedRef: string;
+  items: ExtractedItem[];
+  isLead: boolean;
+} {
+  const clean = text.trim();
+  const lower = clean.toLowerCase();
+  const items: ExtractedItem[] = [];
+  const idPrefix = `sim-${Date.now()}`;
+
+  // 1. Detect Job Reference or Client Name
+  let matchedRef = 'Job J-104 (Miller)';
+  const jobMatch = clean.match(/\b(?:job\s*(?:#|j-)?(\d+)|([A-Z][a-z]+)\s+(?:job|remodel|roof|residence|addition|project))\b/i);
+  const clientNameMatch = clean.match(/\b(Miller|Johnson|Smith|Davis|Wilson|Taylor|Clark|Jenkins|Perez|Morgan|Anderson|Martinez)\b/i);
+  const addressMatch = clean.match(/\b(\d{2,5}\s+[A-Z][a-zA-Z]+(?:\s+(?:St|Street|Ave|Avenue|Rd|Road|Ln|Lane|Dr|Drive|Way|Blvd))?)\b/i);
+  const leadKeywordMatch = clean.match(/\b(?:new\s+lead|lead)\s*[:\-]?\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+
+  if (leadKeywordMatch) {
+    matchedRef = `New Lead: ${leadKeywordMatch[1]}`;
+  } else if (clean.toLowerCase().includes('sarah jenkins')) {
+    matchedRef = 'New Lead: Sarah Jenkins';
+  } else if (clean.toLowerCase().includes('dave miller')) {
+    matchedRef = 'New Lead: Dave Miller';
+  } else if (clean.toLowerCase().includes('lead') && clientNameMatch) {
+    matchedRef = `New Lead: ${clientNameMatch[1]}`;
+  } else if (jobMatch) {
+    if (jobMatch[1]) matchedRef = `Job J-${jobMatch[1]}`;
+    else if (jobMatch[2]) matchedRef = `Job (${jobMatch[2]})`;
+  } else if (clientNameMatch && addressMatch) {
+    matchedRef = `Job (${clientNameMatch[1]} · ${addressMatch[1]})`;
+  } else if (clientNameMatch) {
+    matchedRef = `Job (${clientNameMatch[1]})`;
+  } else if (addressMatch) {
+    matchedRef = `Site (${addressMatch[1]})`;
+  }
+
+  const isLead =
+    lower.includes('lead') ||
+    lower.includes('new customer') ||
+    lower.includes('prospect') ||
+    matchedRef.startsWith('New Lead:');
+
+  // 2. Financials / Dollar Amount Extraction
+  const dollarMatch = clean.match(/\$\s*(\d+(?:,\d{3})*(?:\.\d{2})?)|\b(\d+)\s*(?:dollars|bucks)\b/i);
+  if (dollarMatch) {
+    const rawVal = dollarMatch[1] || dollarMatch[2];
+    const num = parseFloat(rawVal.replace(/,/g, ''));
+    const formatted = `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    let lineDesc = 'Scope adjustment and required materials';
+    if (lower.includes('pex') || lower.includes('plumb')) {
+      lineDesc = 'Extra 3/4" PEX lines and rough-in fittings added';
+    } else if (lower.includes('plywood') || lower.includes('rot') || lower.includes('decking')) {
+      lineDesc = 'CDX 1/2" exterior subdecking replacement and fasteners';
+    } else if (lower.includes('capacitor') || lower.includes('freon') || lower.includes('refrigerant')) {
+      lineDesc = 'Dual run capacitor & R-410A refrigerant itemization';
+    } else if (lower.includes('romex') || lower.includes('outlet') || lower.includes('gfci')) {
+      lineDesc = 'Dedicated circuit, 12/2 Romex & GFCI outlet';
+    } else if (lower.includes('drywall') || lower.includes('paint')) {
+      lineDesc = 'Additional drywall patching and primer labor';
+    }
+
+    items.push({
+      id: `${idPrefix}-quote`,
+      pillar: 'jobs',
+      title: `+${formatted} Quote Change Order`,
+      detail: lineDesc,
+      targetTable: 'quote_line_items',
+      mutation: `Quote Math: +${formatted} Added`,
+      enabled: true,
+    });
+  }
+
+  // 3. Lead & Contact Profile Extraction
+  const phoneMatch = clean.match(/(?:\+?1[-. ]?)?\(?([2-9][0-9]{2})\)?[-. ]?([2-9][0-9]{2})[-. ]?([0-9]{4})/);
+  if (isLead || phoneMatch) {
+    const phoneDisplay = phoneMatch ? `(${phoneMatch[1]}) ${phoneMatch[2]}-${phoneMatch[3]}` : '(248) 555-0991';
+    let leadName = 'Prospective Customer';
+    if (leadKeywordMatch) leadName = leadKeywordMatch[1];
+    else if (clientNameMatch) leadName = clientNameMatch[1];
+    if (clean.toLowerCase().includes('sarah jenkins')) leadName = 'Sarah Jenkins';
+    else if (clean.toLowerCase().includes('dave miller')) leadName = 'Dave Miller';
+
+    let service = 'Inbound Trade Inquiry';
+    if (lower.includes('drain') || lower.includes('backup') || lower.includes('clog')) {
+      service = 'Emergency Drain Clearing';
+    } else if (lower.includes('tankless') || lower.includes('water heater')) {
+      service = 'Tankless Water Heater Replacement';
+    } else if (lower.includes('roof') || lower.includes('leak')) {
+      service = 'Roof Leak Inspection & Repair';
+    } else if (lower.includes('ac') || lower.includes('cool') || lower.includes('heat')) {
+      service = 'HVAC Diagnostic & Repair';
+    } else if (lower.includes('tree') || lower.includes('limb')) {
+      service = 'Tree Branch Removal';
+    }
+
+    items.push({
+      id: `${idPrefix}-lead`,
+      pillar: 'leads',
+      title: `New Lead: ${leadName}`,
+      detail: `Phone: ${phoneDisplay} · Service: ${service}`,
+      targetTable: 'leads',
+      mutation: 'Lead Created · High Urgency',
+      enabled: true,
+    });
+  }
+
+  // 4. Scheduling & Arrival Slots
+  const hasScheduleContext =
+    lower.includes('schedule') ||
+    lower.includes('arrival') ||
+    lower.includes('appointment') ||
+    lower.includes('estimate') ||
+    lower.includes('window') ||
+    /\b\d{1,2}(?::\d{2})?\s*(?:am|pm)\b/i.test(clean);
+
+  const scheduleMatch = hasScheduleContext
+    ? clean.match(
+        /\b(today|tomorrow|tonight|monday|tuesday|wednesday|thursday|friday|saturday|sunday)(?:\s+(?:at\s+)?(\d{1,2}(?::\d{2})?\s*(?:am|pm)?|morning|afternoon))?\b|\b(\d{1,2}(?::\d{2})?\s*(?:am|pm))\b/i
+      )
+    : null;
+
+  if (scheduleMatch) {
+    const day = scheduleMatch[1]
+      ? scheduleMatch[1].charAt(0).toUpperCase() + scheduleMatch[1].slice(1).toLowerCase()
+      : 'Today';
+    let time = scheduleMatch[2] || scheduleMatch[3] || 'Morning';
+    if (time.toLowerCase() === '8am' || time.toLowerCase() === '8 am') time = '8:00 AM';
+    else if (time.toLowerCase() === '9am' || time.toLowerCase() === '9 am') time = '9:00 AM';
+    else if (time.toLowerCase() === '10am' || time.toLowerCase() === '10 am') time = '10:00 AM';
+    else if (time.toLowerCase() === '11am' || time.toLowerCase() === '11 am') time = '11:00 AM';
+    else if (time.toLowerCase() === '2pm' || time.toLowerCase() === '2 pm') time = '2:00 PM';
+
+    items.push({
+      id: `${idPrefix}-sched`,
+      pillar: 'schedule',
+      title: `Schedule Arrival: ${day} ${time}`,
+      detail: 'Dispatch slot reserved on calendar without booking collisions',
+      targetTable: 'schedule_occurrences',
+      mutation: `Slot: ${day} ${time}`,
+      enabled: true,
+    });
+  }
+
+  // 5. Punch Lists & Crew Delegation
+  const punchListMatches = [...clean.matchAll(/(?:^|\s)(\d+)[.)]\s*([^\d\n]+?)(?=(?:\s+\d+[.)]|$))/g)];
+  if (punchListMatches.length > 0) {
+    punchListMatches.forEach((m, idx) => {
+      const taskText = m[2].trim().replace(/[.,;]+$/, '');
+      items.push({
+        id: `${idPrefix}-task-${idx + 1}`,
+        pillar: 'crew',
+        title: `Punch List #${idx + 1}: ${taskText.charAt(0).toUpperCase() + taskText.slice(1)}`,
+        detail: `Itemized field task assigned to crew checklist`,
+        targetTable: 'crew_tasks',
+        mutation: 'Status: Pending',
+        enabled: true,
+      });
+    });
+  } else if (
+    lower.includes('punch list') ||
+    lower.includes('touch up') ||
+    lower.includes('latch') ||
+    lower.includes('caulk')
+  ) {
+    items.push({
+      id: `${idPrefix}-task-1`,
+      pillar: 'crew',
+      title: 'Task Done: Touch-up and Punch List',
+      detail: 'Sign-off required for customer walkthrough',
+      targetTable: 'crew_tasks',
+      mutation: 'Status: Completed',
+      enabled: true,
+    });
+  }
+
+  // 6. Crew Assignment
+  const assignMatch = clean.match(/\b(?:assign\s+([A-Z][a-z]+)|ask\s+([A-Z][a-z]+)|need\s+([A-Z][a-z]+))\b/i);
+  if (assignMatch && !punchListMatches.length) {
+    const worker = assignMatch[1] || assignMatch[2] || assignMatch[3];
+    items.push({
+      id: `${idPrefix}-crew`,
+      pillar: 'crew',
+      title: `Assign Crew: ${worker}`,
+      detail: `Push alert dispatched with site credentials`,
+      targetTable: 'crew_assignments',
+      mutation: `Assigned: ${worker}`,
+      enabled: true,
+    });
+  }
+
+  // 7. Milestones & Inspections
+  if (lower.includes('inspection') || lower.includes('passed') || lower.includes('clearance')) {
+    items.push({
+      id: `${idPrefix}-milestone`,
+      pillar: 'jobs',
+      title: 'Milestone: Inspection Sign-Off Logged',
+      detail: 'Timestamped inspection clearance verified in job activity feed',
+      targetTable: 'job_activity_feed',
+      mutation: 'Inspection Logged',
+      enabled: true,
+    });
+  } else if (lower.includes('photo') || lower.includes('pic') || lower.includes('receipt')) {
+    items.push({
+      id: `${idPrefix}-media`,
+      pillar: 'jobs',
+      title: 'Attached Photo Proof to Job Timeline',
+      detail: 'Timestamped jobsite photo archived to timeline',
+      targetTable: 'job_activity_feed',
+      mutation: '1 Photo Stored',
+      enabled: true,
+    });
+  } else if (lower.includes('walkthrough')) {
+    items.push({
+      id: `${idPrefix}-stage`,
+      pillar: 'jobs',
+      title: 'Stage: Final Walkthrough Ready',
+      detail: 'Customer walkthrough notification ready for release',
+      targetTable: 'jobs',
+      mutation: 'Walkthrough Ready',
+      enabled: true,
+    });
+  } else if (
+    lower.includes('site') ||
+    lower.includes('gate') ||
+    lower.includes('key') ||
+    lower.includes('finished') ||
+    lower.includes('locked')
+  ) {
+    items.push({
+      id: `${idPrefix}-activity`,
+      pillar: 'jobs',
+      title: 'Jobsite Progress & Access Note Logged',
+      detail: clean,
+      targetTable: 'job_activity_feed',
+      mutation: 'History Stored',
+      enabled: true,
+    });
+  }
+
+  // Fallback if no specific items matched
+  if (items.length === 0) {
+    items.push({
+      id: `${idPrefix}-note-1`,
+      pillar: 'jobs',
+      title: 'Field Update Logged to Job Timeline',
+      detail: clean,
+      targetTable: 'job_activity_feed',
+      mutation: 'History Stored',
+      enabled: true,
+    });
+    items.push({
+      id: `${idPrefix}-note-2`,
+      pillar: 'crew',
+      title: 'Action Item Logged on Site',
+      detail: `Technician field update recorded by ${currentCompanionName}`,
+      targetTable: 'crew_tasks',
+      mutation: 'Status: Logged',
+      enabled: true,
+    });
+  }
+
+  return { matchedRef, items, isLead };
 }
 
 export type CrewRow = {
@@ -562,10 +830,23 @@ export default function TextToJobWorkspace({
     setTimeout(() => setNotification(null), 3500);
   }
 
-  // Simulator State
-  const [simText, setSimText] = useState(
-    'Replace 45/5 capacitor on Carrier AC for Smith. Added 2 lbs R-410A refrigerant. Quote $285 total invoice ready.'
-  );
+  // Field Note Composer & Dictation State
+  const [simText, setSimText] = useState('');
+  const [isListening, setIsListening] = useState(false);
+  const [isVoiceUsed, setIsVoiceUsed] = useState(false);
+  const composerInputRef = useRef<HTMLTextAreaElement | null>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Clean up speech recognition on unmount
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+    };
+  }, []);
 
   const filteredMessages = messages.filter((m) => {
     if (feedFilter === 'voice' && m.type !== 'voice') return false;
@@ -715,126 +996,89 @@ export default function TextToJobWorkspace({
     }
   }
 
-  function handleSimulate() {
-    if (!simText.trim()) return;
-
-    const lower = simText.toLowerCase();
-    const isLead = lower.includes('lead') || lower.includes('new customer') || lower.includes('prospect');
-    const isRoof = lower.includes('roof') || lower.includes('plywood') || lower.includes('shingle');
-    const isPunch = lower.includes('punch') || lower.includes('list') || lower.includes('touch up');
-
-    let newExtractedItems: ExtractedItem[] = [];
-    let matchedRef = 'Job J-88 (Smith)';
-
-    if (isLead) {
-      matchedRef = 'New Lead: Sarah Jenkins';
-      newExtractedItems = [
-        {
-          id: `sim-lead-1`,
-          pillar: 'leads',
-          title: 'New Lead: Sarah Jenkins',
-          detail: 'Phone: (248) 555-0991 · Service: Main Drain Backup',
-          targetTable: 'leads',
-          mutation: 'Lead Created · Emergency Priority',
-          enabled: true,
-        },
-        {
-          id: `sim-lead-2`,
-          pillar: 'schedule',
-          title: 'Emergency Priority Dispatch Slot',
-          detail: 'Auto-clustered within 4 miles of Van #1',
-          targetTable: 'calendar_slots',
-          mutation: 'Scheduled: Today 11:30 AM',
-          enabled: true,
-        },
-      ];
-    } else if (isRoof) {
-      matchedRef = 'Job J-105 (Johnson Roof)';
-      newExtractedItems = [
-        {
-          id: `sim-roof-1`,
-          pillar: 'jobs',
-          title: '+$550.00 Change Order: Plywood Rot Repair',
-          detail: 'CDX 1/2" exterior subdecking replacement and fasteners',
-          targetTable: 'quote_line_items',
-          mutation: 'Total: $8,400 → $8,950',
-          enabled: true,
-        },
-        {
-          id: `sim-roof-2`,
-          pillar: 'jobs',
-          title: 'Attached Photo Proof to Job Timeline',
-          detail: 'Timestamped sub-fascia water damage photo filed',
-          targetTable: 'job_activity_feed',
-          mutation: '1 Photo Stored',
-          enabled: true,
-        },
-      ];
-    } else if (isPunch) {
-      matchedRef = 'Job J-94 (Smith Remodel)';
-      newExtractedItems = [
-        {
-          id: `sim-punch-1`,
-          pillar: 'crew',
-          title: 'Task Done: Touch Up Kitchen Paint',
-          detail: 'Carlos M. sign-off',
-          targetTable: 'crew_tasks',
-          mutation: 'Status: Completed',
-          enabled: true,
-        },
-        {
-          id: `sim-punch-2`,
-          pillar: 'crew',
-          title: 'Task Done: Fix Loose Door Latch',
-          detail: 'Carlos M. sign-off',
-          targetTable: 'crew_tasks',
-          mutation: 'Status: Completed',
-          enabled: true,
-        },
-        {
-          id: `sim-punch-3`,
-          pillar: 'jobs',
-          title: 'Stage: Final Walkthrough Ready',
-          detail: 'Customer notification ready for release',
-          targetTable: 'jobs',
-          mutation: 'Walkthrough Ready',
-          enabled: true,
-        },
-      ];
-    } else {
-      newExtractedItems = [
-        {
-          id: `sim-hvac-1`,
-          pillar: 'jobs',
-          title: '+$285.00 Repair Line Items Added',
-          detail: '45/5 Dual Capacitor + 2 lbs R-410A Refrigerant itemization',
-          targetTable: 'quote_line_items',
-          mutation: 'Invoice Ready: $285.00',
-          enabled: true,
-        },
-        {
-          id: `sim-hvac-2`,
-          pillar: 'jobs',
-          title: 'Carrier Outdoor Unit Serial #CR-4409 Logged',
-          detail: 'Updated equipment maintenance history',
-          targetTable: 'job_activity_feed',
-          mutation: 'History Stored',
-          enabled: true,
-        },
-        {
-          id: `sim-hvac-3`,
-          pillar: 'crew',
-          title: 'Work Completed on Site',
-          detail: 'Technician service ticket signed off',
-          targetTable: 'crew_tasks',
-          mutation: 'Status: Completed',
-          enabled: true,
-        },
-      ];
+  function startVoiceDictation() {
+    if (typeof window === 'undefined') return;
+    const win = window as any;
+    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setNotification('🎙️ Speech recognition is not supported in this browser. You can type on the keypad.');
+      setTimeout(() => setNotification(null), 4000);
+      return;
     }
 
-    const simVerdict = evaluateFieldNoteConfidence(simText, {
-      type: 'sms',
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
+      setIsListening(false);
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        setIsVoiceUsed(true);
+        setNotification('🎙️ Listening... speak your field note');
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript + ' ';
+        }
+        if (transcript.trim()) {
+          setSimText(transcript.trim());
+        }
+      };
+
+      recognition.onerror = (event: any) => {
+        setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setNotification('⚠️ Microphone access denied. Allow mic permissions to dictate.');
+        } else if (event.error !== 'no-speech') {
+          setNotification(`Microphone notice: ${event.error}`);
+        }
+        setTimeout(() => setNotification(null), 4000);
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (err) {
+      setIsListening(false);
+      setNotification('Could not start microphone dictation.');
+      setTimeout(() => setNotification(null), 3000);
+    }
+  }
+
+  function handleSimulate() {
+    const textToParse = simText.trim();
+    if (!textToParse) return;
+
+    if (isListening && recognitionRef.current) {
+      try {
+        recognitionRef.current.stop();
+      } catch {}
+      setIsListening(false);
+    }
+
+    const { matchedRef, items: newExtractedItems, isLead } = parseFieldNoteToItems(
+      textToParse,
+      companion.name
+    );
+
+    const simVerdict = evaluateFieldNoteConfidence(textToParse, {
+      type: isVoiceUsed ? 'voice' : 'sms',
       matchedJobRef: matchedRef,
       extractedItemsCount: newExtractedItems.length,
       isLead,
@@ -843,9 +1087,10 @@ export default function TextToJobWorkspace({
     const newSimMsg: InboundMessage = {
       id: `sim-${Date.now()}`,
       sender: `Alert Phone (${alertPhone})`,
-      type: 'sms',
-      time: 'Just now (Simulator)',
-      rawText: `“${simText}”`,
+      type: isVoiceUsed ? 'voice' : 'sms',
+      time: 'Just now',
+      rawText: `“${textToParse}”`,
+      audioDuration: isVoiceUsed ? '0:08' : undefined,
       confidence: simVerdict.score,
       qualityVerdict: simVerdict,
       matchedJobRef: matchedRef,
@@ -855,10 +1100,11 @@ export default function TextToJobWorkspace({
     setMessages([newSimMsg, ...messages]);
     setSelectedMsgId(newSimMsg.id);
     setShowSimModal(false);
+    setIsVoiceUsed(false);
     setNotification(
       `⚡ Field note parsed (${simVerdict.score}% quality · ${simVerdict.label})! Created ${newExtractedItems.length} updates.`
     );
-    setTimeout(() => setNotification(null), 4000);
+    setTimeout(() => setNotification(null), 4500);
   }
 
   return (
@@ -1021,6 +1267,159 @@ export default function TextToJobWorkspace({
 
       {/* Notification Toast */}
       {notification && <div className={styles.notificationToast}>{notification}</div>}
+
+      {/* Field Note Composer: Voice Dictation & Keypad Input */}
+      <div className={styles.composerCard} id="field-note-composer">
+        <div className={styles.composerHeader}>
+          <div className={styles.composerTitleGroup}>
+            <div className={styles.composerTitleRow}>
+              <span className={styles.composerIcon} aria-hidden="true">⚡</span>
+              <h2 className={styles.composerTitle}>Direct Field Note &amp; Voice Dictation</h2>
+              <span className={styles.composerLiveTag}>✦ Live AI Intake</span>
+            </div>
+            <p className={styles.composerSubtitle}>
+              Type on your keypad or tap the microphone to dictate hands-free. Copilot will extract change orders, new leads, punch lists, and schedule slots instantly.
+            </p>
+          </div>
+          {isListening && (
+            <div className={styles.composerListeningBadge}>
+              <span className={styles.composerPulseDot} aria-hidden="true" />
+              <span>Listening to voice dictation…</span>
+            </div>
+          )}
+        </div>
+
+        <div className={styles.composerInputWrap}>
+          <textarea
+            ref={composerInputRef}
+            id="field-note-input"
+            value={simText}
+            onChange={(e) => setSimText(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                handleSimulate();
+              }
+            }}
+            placeholder="Type or dictate a field note... e.g. 'Add $450 to Miller job at 124 Main for extra romex, schedule inspection Thursday 9am'"
+            className={`${styles.composerTextarea} ${isListening ? styles.composerTextareaListening : ''}`}
+            rows={3}
+            aria-label="Field message text input"
+          />
+
+          <div className={styles.composerActionBar}>
+            <div className={styles.composerLeftActions}>
+              <button
+                type="button"
+                onClick={startVoiceDictation}
+                className={`${styles.composerVoiceBtn} ${isListening ? styles.composerVoiceBtnActive : ''}`}
+                aria-label={isListening ? 'Stop microphone dictation' : 'Start voice-to-text dictation'}
+                title={isListening ? 'Click to stop listening' : 'Click to dictate via microphone'}
+              >
+                {isListening ? (
+                  <>
+                    <span className={styles.composerWaveform} aria-hidden="true">
+                      <span className={styles.composerWaveBar} />
+                      <span className={styles.composerWaveBar} />
+                      <span className={styles.composerWaveBar} />
+                      <span className={styles.composerWaveBar} />
+                    </span>
+                    <span>Stop Dictating</span>
+                  </>
+                ) : (
+                  <>
+                    <span aria-hidden="true">🎙️</span>
+                    <span>Voice to Text</span>
+                  </>
+                )}
+              </button>
+
+              {simText.trim() && (
+                <button
+                  type="button"
+                  onClick={() => setSimText('')}
+                  className={styles.composerClearBtn}
+                  title="Clear text field"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            <div className={styles.composerRightActions}>
+              <span className={styles.composerKeyHint}>
+                <span>Keypad / Enter</span> or <kbd>Ctrl</kbd>+<kbd>Enter</kbd>
+              </span>
+              <button
+                type="button"
+                onClick={handleSimulate}
+                disabled={!simText.trim()}
+                className={`${styles.composerSubmitBtn} ${!simText.trim() ? styles.composerSubmitBtnDisabled : ''}`}
+              >
+                <span>⚡ Turn into Parsed Data</span>
+                <ArrowRight size={14} aria-hidden="true" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Presets for Contractors */}
+        <div className={styles.composerPresets}>
+          <span className={styles.composerPresetsLabel}>Try a realistic field example:</span>
+          <div className={styles.composerPresetsList}>
+            <button
+              type="button"
+              onClick={() => {
+                setSimText('Add $450 to Miller job at 124 Main for extra romex and schedule inspection Thursday 9am.');
+                composerInputRef.current?.focus();
+              }}
+              className={styles.composerPresetChip}
+            >
+              💰 Change Order (+$450)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSimText('New lead: Sarah Jenkins 248-555-0991 emergency main drain backup needs estimate Friday 9am.');
+                composerInputRef.current?.focus();
+              }}
+              className={styles.composerPresetChip}
+            >
+              👤 New Lead (Sarah Jenkins)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSimText('Johnson punch list: 1) caulked exterior trim 2) painted hallway baseboards 3) fix loose door latch.');
+                composerInputRef.current?.focus();
+              }}
+              className={styles.composerPresetChip}
+            >
+              📋 Remodel Punch List
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSimText('Add $550 change order for 4 sheets plywood rot repair on Johnson roof.');
+                composerInputRef.current?.focus();
+              }}
+              className={styles.composerPresetChip}
+            >
+              🏠 Roofing Rot Repair ($550)
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setSimText('Replace 45/5 capacitor on Carrier AC for Smith. Added 2 lbs R-410A refrigerant. Quote $285 total.');
+                composerInputRef.current?.focus();
+              }}
+              className={styles.composerPresetChip}
+            >
+              ⚡ HVAC Repair ($285)
+            </button>
+          </div>
+        </div>
+      </div>
 
       {/* Primary Workspace: Inbound Messages Stream & Receipt-Style Inspector */}
       <div className={styles.workspaceGrid}>
@@ -1673,8 +2072,15 @@ export default function TextToJobWorkspace({
         </div>
 
         <div className={styles.unifiedBarRight}>
-          <button type="button" onClick={() => setShowSimModal(true)} className={styles.unifiedActionBtnPrimary}>
-            ⚡ Test a Note
+          <button
+            type="button"
+            onClick={() => {
+              composerInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              composerInputRef.current?.focus();
+            }}
+            className={styles.unifiedActionBtnPrimary}
+          >
+            ⚡ Dictate or Type a Note
           </button>
         </div>
       </div>
