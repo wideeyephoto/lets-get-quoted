@@ -165,6 +165,7 @@ export default function LeadSmoothieView({
     selectedIndex,
     resetKey: `${stage}|${sort}|${query}`,
     plural: 'leads',
+    pageSize: 10,
   });
   const visible = useMemo(() => shown.slice(0, win.end), [shown, win.end]);
 
