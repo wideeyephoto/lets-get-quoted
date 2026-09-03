@@ -29,6 +29,7 @@ import { archiveLeadAction, snoozeLeadAction, updateLeadStatusAction, updateLead
 import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
 import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
+import AiLeadAdvisor from '@/components/leads/AiLeadAdvisor';
 import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
 import leadStyles from './leads.module.css';
@@ -636,6 +637,8 @@ export default function LeadSmoothieView({
                   </div>
                 </dl>
               </header>
+
+              <AiLeadAdvisor lead={selected} mapPins={mapPins} base={base} />
 
               {/* 4 — communication, ordered by how they asked to be contacted */}
               <div className={styles.comms}>

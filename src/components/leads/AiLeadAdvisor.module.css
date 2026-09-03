@@ -1,0 +1,208 @@
+﻿.advisorCard {
+  position: relative;
+  margin: 0.6rem 0;
+  padding: 0.85rem 1.1rem;
+  border-radius: 10px;
+  background: linear-gradient(180deg, rgba(255, 122, 33, 0.08) 0%, rgba(var(--tint), 0.02) 100%);
+  border: 1px solid var(--cedge-orange-66, rgba(255, 122, 33, 0.35));
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.titleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.advisorBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.2);
+  color: var(--accent-ink, #ff7a21);
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.headline {
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: var(--text);
+  margin: 0;
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.controlBtn {
+  background: none;
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.12));
+  color: var(--muted);
+  border-radius: 5px;
+  padding: 0.2rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  transition: all 0.15s ease;
+}
+
+.controlBtn:hover {
+  background: rgba(var(--tint), 0.06);
+  color: var(--text);
+  border-color: var(--edge-t25, rgba(255, 255, 255, 0.25));
+}
+
+.dismissBtn {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font-size: 1rem;
+  line-height: 1;
+  padding: 0.2rem 0.35rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dismissBtn:hover {
+  color: var(--text);
+  background: rgba(var(--tint), 0.1);
+}
+
+.summary {
+  font-size: 0.85rem;
+  color: var(--mute-t85, var(--text));
+  line-height: 1.45;
+  margin: 0;
+}
+
+.metricsRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  align-items: center;
+}
+
+.metricChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.28rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.74rem;
+  font-weight: 650;
+  background: rgba(var(--tint), 0.05);
+  border: 1px solid var(--edge-t10, rgba(255, 255, 255, 0.08));
+  color: var(--text);
+}
+
+.metricChip[data-tone='accent'] {
+  background: rgba(255, 122, 33, 0.12);
+  border-color: var(--cedge-orange-25, rgba(255, 122, 33, 0.25));
+  color: var(--accent-ink, #ff7a21);
+}
+
+.metricChip[data-tone='good'] {
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.25);
+  color: var(--good, #22c55e);
+}
+
+.metricChip[data-tone='warn'] {
+  background: rgba(255, 196, 80, 0.12);
+  border-color: var(--cedge-orange-75, rgba(255, 196, 80, 0.25));
+  color: var(--warn, #f59e0b);
+}
+
+.actionFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-top: 1px solid var(--edge-t08, rgba(var(--tint), 0.06));
+  padding-top: 0.55rem;
+  margin-top: 0.15rem;
+}
+
+.actionBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  background: var(--accent, #ff7a21);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 750;
+  text-decoration: none;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 2px 6px rgba(255, 122, 33, 0.3);
+  transition: transform 0.12s ease, background 0.12s ease;
+  cursor: pointer;
+}
+
+.actionBtn:hover {
+  background: #ea6510;
+  transform: translateY(-1px);
+}
+
+.previewQuote {
+  font-size: 0.78rem;
+  color: var(--muted);
+  font-style: italic;
+  max-width: 480px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Collapsed Restore Pill */
+.restorePill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.22rem 0.65rem;
+  margin: 0.4rem 0;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px dashed var(--edge-t20, rgba(255, 255, 255, 0.18));
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.restorePill:hover {
+  background: rgba(255, 122, 33, 0.08);
+  border-color: var(--accent, #ff7a21);
+  color: var(--accent-ink, #ff7a21);
+}
