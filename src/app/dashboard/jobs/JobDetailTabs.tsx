@@ -127,20 +127,12 @@ export default function JobDetailTabs({
               scope={detail.scope}
             />
             <PermitFeasibilityCard address={detail.address} />
-            <RoomScanViewer
-              scope={detail.scope}
-              collapsible={!displayConfig.isPromoted}
-              defaultCollapsed={!displayConfig.isPromoted}
-            />
+            <RoomScanViewer scope={detail.scope} />
           </>
         ) : (
           <>
             <p className={styles.muted}>No address on file for this job to fetch exterior property intelligence.</p>
-            <RoomScanViewer
-              scope={detail.scope}
-              collapsible={!displayConfig.isPromoted}
-              defaultCollapsed={!displayConfig.isPromoted}
-            />
+            <RoomScanViewer scope={detail.scope} />
           </>
         )}
       </div>

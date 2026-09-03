@@ -236,20 +236,12 @@ export default function LeadDetailTabs({
               scope={leadScope}
             />
             <PermitFeasibilityCard address={detail.address} isLead={true} />
-            <RoomScanViewer
-              scope={leadScope}
-              collapsible={!displayConfig.isPromoted}
-              defaultCollapsed={!displayConfig.isPromoted}
-            />
+            <RoomScanViewer scope={leadScope} />
           </>
         ) : (
           <>
             <p className={styles.muted}>No address on file for this lead to fetch exterior property intelligence.</p>
-            <RoomScanViewer
-              scope={leadScope}
-              collapsible={!displayConfig.isPromoted}
-              defaultCollapsed={!displayConfig.isPromoted}
-            />
+            <RoomScanViewer scope={leadScope} />
           </>
         )}
       </div>
