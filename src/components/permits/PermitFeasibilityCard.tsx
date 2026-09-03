@@ -8,12 +8,14 @@ export type PermitFeasibilityCardProps = {
   address: string | null | undefined;
   onOpenPermitsTab?: () => void;
   isLead?: boolean;
+  compact?: boolean;
 };
 
 export function PermitFeasibilityCard({
   address,
   onOpenPermitsTab,
   isLead = false,
+  compact = false,
 }: PermitFeasibilityCardProps) {
   const [intel, setIntel] = useState<PermitWorkspaceDto | null>(null);
   const [loading, setLoading] = useState<boolean>(Boolean(address));
@@ -69,6 +71,24 @@ export function PermitFeasibilityCard({
       : styles.pillVerify;
 
   const primaryCode = codes[0] ? `${codes[0].codeFamily} (${codes[0].editionYear})` : 'Standard Model Codes';
+
+  if (compact) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.35rem' }}>
+        <span className={`${styles.pill} ${pillClass}`} style={{ fontSize: '0.68rem', padding: '0.12rem 0.45rem' }}>
+          {summary.verdict === 'required' && 'Permit Required'}
+          {summary.verdict === 'not_required' && 'No Permit Needed'}
+          {summary.verdict === 'verify' && 'Verify Permit'}
+        </span>
+        <span style={{ fontSize: '0.78rem', color: 'var(--text)', fontWeight: 650 }}>{authority.name}</span>
+        {requirement.estimatedGovernmentFee && (
+          <span style={{ fontSize: '0.74rem', color: 'var(--muted)' }}>
+            (Est. fee: ${requirement.estimatedGovernmentFee.estimatedTotal.toFixed(0)})
+          </span>
+        )}
+      </div>
+    );
+  }
 
   return (
     <section className={styles.card}>

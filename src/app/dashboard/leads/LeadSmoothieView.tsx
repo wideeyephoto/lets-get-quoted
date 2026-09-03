@@ -667,6 +667,18 @@ export default function LeadSmoothieView({
                   >
                     {plan.primary === 'none' ? 'Create quote' : 'Send quote'}
                   </Link>
+                  <Link
+                    className="btn secondary"
+                    href={`${base}/leads/${selected.id}`}
+                    style={{
+                      border: '1.5px solid var(--cedge-orange-82, #ff7a21)',
+                      background: 'rgba(255, 122, 33, 0.14)',
+                      color: 'var(--accent-ink, #ff7a21)',
+                      fontWeight: 800,
+                    }}
+                  >
+                    Open full lead →
+                  </Link>
                   {selectedHasPhone && plan.primary !== 'call' ? (
                     <a className={styles.callQuiet} href={`tel:${selected.phone}`}>
                       📞 {plan.callLabel}
@@ -706,9 +718,6 @@ export default function LeadSmoothieView({
                   >
                     Archive
                   </button>
-                  <Link className={styles.quietLink} href={`${base}/leads/${selected.id}`}>
-                    Open full lead →
-                  </Link>
                 </div>
               </div>
 
