@@ -108,6 +108,46 @@ export async function hydrateActiveRecordContext(
     }
   }
 
+  // Match /dashboard/leads or providedRecord?.type === 'leads'
+  if (path.startsWith('/dashboard/leads') || providedRecord?.type === 'leads') {
+    try {
+      const { data: rawLeads } = await supabase
+        .from('leads')
+        .select('id, name, phone, email, city, address, notes, status, priority, estimated_value, created_at')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: false });
+
+      const leads = rawLeads ?? [];
+      const openLeads = leads.filter((l) => l.status !== 'won' && l.status !== 'lost');
+      const urgentLeads = openLeads.filter((l) => {
+        const ageHours = (Date.now() - new Date(l.created_at).getTime()) / (1000 * 60 * 60);
+        return ageHours <= 24 || l.priority === 'hot' || l.status === 'new';
+      });
+
+      const totalValue = openLeads.reduce((sum, l) => sum + (Number(l.estimated_value) || 0), 0);
+
+      return {
+        type: 'leads',
+        id: 'leads-workspace',
+        title: 'Leads Pipeline & Route Logistics',
+        details: {
+          totalOpenLeads: openLeads.length,
+          urgentLeadsCount: urgentLeads.length,
+          totalPipelineEstimatedValue: Math.round(totalValue),
+          urgentSample: urgentLeads.slice(0, 5).map((l) => ({
+            name: l.name,
+            city: l.city,
+            detail: l.notes,
+            estimatedValue: l.estimated_value,
+            status: l.status,
+          })),
+        },
+      };
+    } catch (e) {
+      console.error('Error pre-hydrating leads context:', e);
+    }
+  }
+
   return providedRecord;
 }
 
@@ -160,6 +200,17 @@ Your Capabilities & Tools:
 11. "get_schedule": Look up scheduled work for today, tomorrow, or upcoming windows.
 12. "get_business_summary": Provide high-level stats (active jobs, pending quotes, uncollected cash).
 13. "navigate_to": Direct the user to specific pages (jobs, schedule, clients, expenses, settings, cash flow, sites, automations, marketing, ads).
+14. "get_leads_pipeline_analysis": Retrieve deep intelligence on incoming leads, urgent speed-to-lead inquiries, active jobsite halo opportunities (<0.75 mi of crew stops), en-route transit corridor stops (<10 min detour), schedule gap fits, and Tier-1 high-value contracts.
+
+Leads Pipeline & Route Logistics Intelligence:
+- When the user asks about leads, route opportunities, or is on "/dashboard/leads", analyze both pipeline volume/urgency AND geographical routing logistics.
+- The 5 Logistical Dimensions to surface:
+  1. Urgent Speed-to-Lead: Inquiries waiting for a response; speed to lead is critical (converting 8x higher in first 15 mins).
+  2. Active Jobsite Halo: Inquiries within 0.75 mi of where crews are currently working. Perfect for sending a tech or estimator to knock on doors or drop off cards while already in the neighborhood.
+  3. En-Route Transit Corridors: Inquiries located directly along the driving corridor between two consecutive scheduled stops (detour <= 5 miles / <= 10 minutes).
+  4. Schedule Gap Fits: Inquiries near a scheduled stop when there is >= 45 minutes of slack buffer between appointments.
+  5. Tier-1 Best Value Opportunities: High-ticket projects ($3,500+) with high urgency.
+- Always provide clear, direct advice on who to call or visit next, and include actionable next steps.
 
 Google Ads & Managed Advertising Knowledge:
 - Google Ads Cockpit Location: Direct the contractor to "/dashboard/marketing/ads" using the "navigate_to" tool (destination: "ads").

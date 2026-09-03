@@ -266,4 +266,116 @@ describe('AI Assistant File & Multimodal Uploads', () => {
       if (origGoogleKey) process.env.GOOGLE_API_KEY = origGoogleKey;
     }
   });
+
+  it('declares and executes get_leads_pipeline_analysis tool', async () => {
+    const tool = ASSISTANT_TOOLS_DECLARATION.find((t) => t.name === 'get_leads_pipeline_analysis');
+    expect(tool).toBeDefined();
+    expect(tool?.description).toContain('incoming leads pipeline');
+
+    const mockSupabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'leads') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 'lead-1',
+                      name: 'Sarah Connor',
+                      status: 'new',
+                      priority: 'hot',
+                      estimated_value: 4500,
+                      created_at: new Date().toISOString(),
+                    },
+                    {
+                      id: 'lead-2',
+                      name: 'John Connor',
+                      status: 'quoted',
+                      priority: 'warm',
+                      estimated_value: 2000,
+                      created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
+                    },
+                  ],
+                }),
+              }),
+            }),
+          };
+        }
+        if (table === 'jobs') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                in: vi.fn().mockReturnValue({
+                  order: vi.fn().mockResolvedValue({
+                    data: [],
+                  }),
+                }),
+              }),
+            }),
+          };
+        }
+        return {};
+      }),
+    };
+
+    const mockToolCtx: ToolExecutionContext = {
+      supabase: mockSupabase as any,
+      accountId: 'acc-test',
+      userId: 'usr-test',
+      role: 'owner',
+    };
+
+    const result = await executeAssistantTool('get_leads_pipeline_analysis', {}, mockToolCtx);
+    expect(result.data).toBeDefined();
+    const data = result.data as any;
+    expect(data.totalOpenLeads).toBe(2);
+    expect(data.urgentLeadsCount).toBe(1);
+    expect(data.totalPipelineEstimatedValue).toBe(6500);
+    expect(result.actionCard).toBeDefined();
+    expect(result.actionCard?.linkUrl).toBe('/dashboard/leads');
+  });
+
+  it('hydrates leads context when active screen is /dashboard/leads', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'leads') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({
+                  data: [
+                    {
+                      id: 'lead-urgent',
+                      name: 'Kyle Reese',
+                      status: 'new',
+                      priority: 'hot',
+                      estimated_value: 5000,
+                      created_at: new Date().toISOString(),
+                      notes: 'Need whole house re-wire ASAP',
+                    },
+                  ],
+                }),
+              }),
+            }),
+          };
+        }
+        return {};
+      }),
+    };
+
+    const mockToolCtx: ToolExecutionContext = {
+      supabase: mockSupabase as any,
+      accountId: 'acc-test',
+      userId: 'usr-test',
+      role: 'owner',
+    };
+
+    const hydrated = await hydrateActiveRecordContext('/dashboard/leads', undefined, mockToolCtx);
+    expect(hydrated).toBeDefined();
+    expect(hydrated?.type).toBe('leads');
+    expect(hydrated?.title).toBe('Leads Pipeline & Route Logistics');
+    expect(hydrated?.details?.totalOpenLeads).toBe(1);
+    expect(hydrated?.details?.urgentLeadsCount).toBe(1);
+  });
 });

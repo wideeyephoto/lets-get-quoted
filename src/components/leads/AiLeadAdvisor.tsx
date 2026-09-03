@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useId } from 'react';
 import type { LeadViewItem } from '@/app/dashboard/leads/LeadsWorkspace';
 import type { MapPin } from '@/components/pin-map';
 import type { LogisticalPreset, StageFilter } from '@/lib/lead-queue';
+import { useAssistant } from '@/components/ai-assistant/AssistantProvider';
 import {
   clearOverallAdvisorState,
   generateOverallLeadsAdvisorRecommendation,
@@ -35,6 +36,14 @@ export default function AiLeadAdvisor({
   const [advisorState, setAdvisorState] = useState<AdvisorState>('visible');
   const [isExpanded, setIsExpanded] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  let assistant: ReturnType<typeof useAssistant> | null = null;
+  try {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    assistant = useAssistant();
+  } catch {
+    // Fallback if rendered outside AssistantProvider
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -106,11 +115,33 @@ export default function AiLeadAdvisor({
     }
   };
 
+  const handleOpenInCopilot = () => {
+    if (assistant?.openAssistant) {
+      assistant.openAssistant(
+        `Brief me on our leads pipeline and route logistics today: ${rec.headline}. What urgent leads need follow-up, which ones are en-route or near active jobsites, and what are our top opportunities?`
+      );
+    } else {
+      setIsExpanded((prev) => !prev);
+    }
+  };
+
   // 1-Line Compact View (Default)
   if (!isExpanded) {
     return (
       <section className={styles.advisorCompact} aria-label="AI Pipeline Advisor Summary">
-        <div className={styles.compactLeft}>
+        <div
+          className={styles.compactLeft}
+          onClick={handleOpenInCopilot}
+          role="button"
+          tabIndex={0}
+          title="Click to open full leads intelligence briefing in AI Copilot"
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleOpenInCopilot();
+            }
+          }}
+        >
           <span className={styles.advisorBadge}>⚡ AI Pipeline Advisor</span>
           <h4 className={styles.compactHeadline} title={rec.headline}>
             {rec.headline}
@@ -128,13 +159,13 @@ export default function AiLeadAdvisor({
           )}
           <button
             type="button"
-            className={styles.expandBtn}
-            onClick={() => setIsExpanded(true)}
-            title="Expand full pipeline details and metrics"
-            aria-expanded="false"
-            aria-controls={panelId}
+            className={styles.copilotBtn}
+            onClick={handleOpenInCopilot}
+            title="Open pipeline intelligence and suggestions in AI Copilot"
+            aria-label="Open in AI Copilot"
           >
-            Expand ▾
+            <span>💬</span>
+            <span>Ask Copilot</span>
           </button>
           <button
             type="button"
@@ -167,6 +198,14 @@ export default function AiLeadAdvisor({
           <h4 className={styles.headline}>{rec.headline}</h4>
         </div>
         <div className={styles.controls}>
+          <button
+            type="button"
+            className={styles.copilotBtn}
+            onClick={handleOpenInCopilot}
+            title="Open interactive assistance in AI Copilot"
+          >
+            💬 Ask Copilot
+          </button>
           <button
             type="button"
             className={styles.expandBtn}

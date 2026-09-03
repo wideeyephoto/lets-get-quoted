@@ -23,6 +23,9 @@ import {
   normalizeCostSource,
 } from '@/lib/cost-truth';
 import { evaluateAndTriggerMarginAlert } from '@/lib/margin-alerts';
+import { analyzePipelineLogistics } from '@/lib/ai-lead-advisor';
+import type { MapPin } from '@/components/pin-map';
+import type { LeadViewItem } from '@/app/dashboard/leads/LeadsWorkspace';
 import type { ActionCard, ActiveRecordContext } from './types';
 
 export interface ToolExecutionContext {
@@ -286,6 +289,19 @@ export const ASSISTANT_TOOLS_DECLARATION: AssistantFunctionDeclaration[] = [
     parameters: {
       type: Type.OBJECT,
       properties: {},
+    },
+  },
+  {
+    name: 'get_leads_pipeline_analysis',
+    description: 'Analyzes the incoming leads pipeline, calculating urgent inquiries needing first response, active jobsite halo opportunities (leads near where crews are working), en-route transit corridor stops, schedule gap fits, and Tier-1 high-value opportunities.',
+    parameters: {
+      type: Type.OBJECT,
+      properties: {
+        preset: {
+          type: Type.STRING,
+          description: 'Optional filter or focus: "all", "urgent", "en_route", "halo", "best_opportunities", or "gap_fits"',
+        },
+      },
     },
   },
   {
@@ -929,6 +945,132 @@ export async function executeAssistantTool(
           unpaidInvoicesCount: unpaid.count,
           unpaidInvoicesTotalValue: unpaid.total,
           totalClients: clientCount ?? 0,
+        },
+        actionCard,
+      };
+    }
+
+    case 'get_leads_pipeline_analysis': {
+      const [leadsRes, jobsRes] = await Promise.all([
+        supabase
+          .from('leads')
+          .select('id, name, phone, email, city, address, notes, status, priority, estimated_value, created_at, lat, lng')
+          .eq('account_id', accountId)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('jobs')
+          .select('id, ref, client_name, address, lat, lng, scheduled_for, scheduled_time, status')
+          .eq('account_id', accountId)
+          .in('status', ['in_progress', 'scheduled'])
+          .order('scheduled_for', { ascending: true }),
+      ]);
+
+      const leads = (leadsRes.data ?? []) as any[];
+      const scheduledJobs = (jobsRes.data ?? []) as any[];
+
+      const openLeads = leads.filter((l) => l.status !== 'won' && l.status !== 'lost');
+      const urgentLeads = openLeads.filter((l) => {
+        const ageHours = (Date.now() - new Date(l.created_at).getTime()) / (1000 * 60 * 60);
+        return ageHours <= 24 || l.priority === 'hot' || l.status === 'new';
+      });
+
+      const totalPipelineValue = openLeads.reduce((sum, l) => sum + (Number(l.estimated_value) || 0), 0);
+
+      // Construct map pins format for analyzePipelineLogistics
+      const mapPins: MapPin[] = scheduledJobs
+        .filter((j) => typeof j.lat === 'number' && typeof j.lng === 'number')
+        .map((j) => ({
+          id: j.id,
+          kind: 'scheduled' as const,
+          label: `Job ${j.ref || ''} - ${j.client_name || ''}`,
+          href: `/dashboard/jobs/${j.id}`,
+          lat: j.lat,
+          lng: j.lng,
+          rows: j.scheduled_for
+            ? [{ label: 'Scheduled', value: `${j.scheduled_for}${j.scheduled_time ? ` · ${j.scheduled_time}` : ''}` }]
+            : undefined,
+        }));
+
+      // Map leads to LeadViewItem-compatible shape
+      const leadItems = openLeads.map((l) => ({
+        id: l.id,
+        name: l.name,
+        phone: l.phone,
+        email: l.email,
+        city: l.city,
+        address: l.address,
+        detail: l.notes || 'Inbound inquiry',
+        status: l.status,
+        score: (l.priority === 'hot' ? 'hot' : l.priority === 'warm' ? 'warm' : 'low') as 'hot' | 'warm' | 'low',
+        estimatedValue: l.estimated_value ? Number(l.estimated_value) : null,
+        estimateLabel: l.estimated_value ? `$${Number(l.estimated_value).toLocaleString()}` : null,
+        createdDate: l.created_at,
+        waitingShort: l.created_at ? 'Recently' : '',
+        lat: typeof l.lat === 'number' ? l.lat : undefined,
+        lng: typeof l.lng === 'number' ? l.lng : undefined,
+      }));
+
+      const logistics = analyzePipelineLogistics(leadItems as unknown as LeadViewItem[], mapPins);
+
+      let haloCount = 0;
+      let enRouteCount = 0;
+      let tier1Count = 0;
+      let gapFitCount = 0;
+
+      const enRouteItems: { id: string; name: string; detourMinutes: number; leg: string }[] = [];
+      const haloItems: { id: string; name: string; jobTitle: string; dist: number }[] = [];
+      const tier1Items: { id: string; name: string; value?: number; score: number }[] = [];
+
+      for (const item of leadItems) {
+        const meta = logistics.get(item.id);
+        if (!meta) continue;
+        if (meta.isHalo) {
+          haloCount++;
+          haloItems.push({ id: item.id, name: item.name, jobTitle: meta.haloJobTitle || 'active job', dist: meta.haloDistanceMiles || 0 });
+        }
+        if (meta.isEnRoute) {
+          enRouteCount++;
+          const legDesc = meta.enRouteBetween ? `between ${meta.enRouteBetween[0]} and ${meta.enRouteBetween[1]}` : 'between stops';
+          enRouteItems.push({ id: item.id, name: item.name, detourMinutes: meta.enRouteDetourMinutes || 0, leg: legDesc });
+        }
+        if (meta.isTier1Opportunity) {
+          tier1Count++;
+          tier1Items.push({ id: item.id, name: item.name, value: item.estimatedValue ?? undefined, score: meta.opportunityScore });
+        }
+        if (meta.fitsScheduleGap) {
+          gapFitCount++;
+        }
+      }
+
+      const actionCard: ActionCard = {
+        type: 'leads_pipeline',
+        title: 'Leads Pipeline & Logistics',
+        description: `${openLeads.length} open leads ($${Math.round(totalPipelineValue).toLocaleString()}) · ${urgentLeads.length} urgent · ${haloCount} near jobs · ${enRouteCount} en-route`,
+        linkUrl: '/dashboard/leads',
+        linkLabel: 'Open Leads Workspace',
+        badge: `${openLeads.length} Leads`,
+        data: {
+          totalOpen: openLeads.length,
+          urgentCount: urgentLeads.length,
+          haloCount,
+          enRouteCount,
+          tier1Count,
+          gapFitCount,
+        },
+      };
+
+      return {
+        data: {
+          totalOpenLeads: openLeads.length,
+          urgentLeadsCount: urgentLeads.length,
+          totalPipelineEstimatedValue: Math.round(totalPipelineValue),
+          jobsiteHaloCount: haloCount,
+          haloOpportunities: haloItems.slice(0, 5),
+          enRouteCount,
+          enRouteOpportunities: enRouteItems.slice(0, 5),
+          tier1OpportunitiesCount: tier1Count,
+          topTier1Leads: tier1Items.slice(0, 5),
+          scheduleGapFitCount: gapFitCount,
         },
         actionCard,
       };

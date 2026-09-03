@@ -252,18 +252,21 @@ export default function LeadSmoothieView({
   useEffect(() => {
     if (!requestedStage) return;
     setStage(requestedStage.stage);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedStage?.nonce]);
 
   // Overall pipeline advisor asked to switch pane (leads vs map)
   useEffect(() => {
     if (!requestedPane) return;
     setPane(requestedPane.pane);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedPane?.nonce]);
 
   // Overall pipeline advisor asked to set a logistical preset filter
   useEffect(() => {
     if (!requestedLogistical) return;
     setLogisticalPreset(requestedLogistical.preset);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [requestedLogistical?.nonce]);
 
   function onTabKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {

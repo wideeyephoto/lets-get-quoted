@@ -37,6 +37,18 @@
   flex: 1;
 }
 
+.compactLeft[role="button"] {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 0.1rem 0.3rem;
+  transition: opacity 0.15s ease, background 0.15s ease;
+}
+
+.compactLeft[role="button"]:hover {
+  opacity: 0.92;
+  background: rgba(var(--tint), 0.04);
+}
+
 .compactHeadline {
   font-size: 0.86rem;
   font-weight: 700;
@@ -52,6 +64,28 @@
   align-items: center;
   gap: 0.4rem;
   flex-shrink: 0;
+}
+
+.copilotBtn {
+  background: rgba(var(--tint), 0.07);
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.14));
+  color: var(--text);
+  border-radius: 5px;
+  padding: 0.22rem 0.55rem;
+  font-size: 0.74rem;
+  font-weight: 650;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.copilotBtn:hover {
+  background: rgba(255, 122, 33, 0.15);
+  border-color: var(--cedge-orange-82, rgba(255, 122, 33, 0.5));
+  color: var(--accent-ink, #ff7a21);
 }
 
 .expandBtn {

@@ -515,7 +515,7 @@ export function analyzePipelineLogistics(
 export function generateOverallLeadsAdvisorRecommendation(
   leads: LeadViewItem[],
   mapPins: MapPin[] = [],
-  base = '/dashboard',
+  _base = '/dashboard',
 ): OverallLeadsAdvisorRecommendation {
   const openLeads = leads.filter((l) => l.status !== 'won' && l.status !== 'lost');
   const newLeads = openLeads.filter((l) => l.status === 'new');

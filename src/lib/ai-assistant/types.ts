@@ -12,6 +12,7 @@ export type ActionCardType =
   | 'unpaid_invoices'
   | 'schedule'
   | 'business_summary'
+  | 'leads_pipeline'
   | 'navigation';
 
 export interface ActionCard {
@@ -61,7 +62,7 @@ export interface AssistantMessage {
 }
 
 export interface ActiveRecordContext {
-  type: 'job' | 'client' | 'invoice' | 'schedule' | 'dashboard' | 'other';
+  type: 'job' | 'client' | 'invoice' | 'schedule' | 'dashboard' | 'leads' | 'other';
   id?: string;
   ref?: string;
   title?: string;

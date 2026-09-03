@@ -4,13 +4,13 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAssistant } from './AssistantProvider';
-import type { AssistantMessage, AssistantMessageImage, AssistantMessageFile } from '@/lib/ai-assistant/types';
+import type { AssistantMessage, AssistantMessageFile } from '@/lib/ai-assistant/types';
 import SparkyAvatar from '@/components/mascot/SparkyAvatar';
 import CompanionPickerModal from './CompanionPickerModal';
 import styles from './assistant.module.css';
 
 interface ContextInfo {
-  type: 'job' | 'client' | 'cash_flow' | 'schedule' | 'general';
+  type: 'job' | 'client' | 'cash_flow' | 'schedule' | 'leads' | 'general';
   id?: string;
   label: string;
   prompts: string[];
@@ -82,6 +82,20 @@ export default function AssistantWidget() {
           'Which invoices are currently unpaid?',
           'How much revenue was collected this month?',
           'Show me overdue customer balances',
+        ],
+      };
+    }
+
+    if (pathname.startsWith('/dashboard/leads')) {
+      return {
+        type: 'leads',
+        id: 'leads-workspace',
+        label: 'Leads Pipeline & Logistics',
+        prompts: [
+          'Brief me on our leads pipeline today',
+          'Which leads are en-route to today’s jobs?',
+          'Any open leads near where my crew is working?',
+          'What are our top Tier-1 high-value leads?',
         ],
       };
     }
