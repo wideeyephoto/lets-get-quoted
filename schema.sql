@@ -21,7 +21,7 @@ create extension if not exists "pgcrypto";  -- for gen_random_uuid()
 do $$
 begin
   if not exists (select 1 from pg_type where typname = 'member_role') then
-    create type member_role as enum ('owner', 'crew');
+    create type member_role as enum ('owner', 'crew', 'office');
   end if;
 
   if not exists (select 1 from pg_type where typname = 'job_status') then
@@ -1623,6 +1623,13 @@ create unique index if not exists email_suppression_account_email_idx on email_s
 -- It's retained only as a building block; do NOT reach for it in a new policy
 -- (that would silently re-open crew access to whatever table it gates). Use
 -- is_owner() for owner-only tables and the crew helpers for crew-scoped ones.
+-- The suspension-aware helper bodies must be creatable in a fresh database.
+-- The account-admin section repeats these IF NOT EXISTS alters later alongside
+-- their full product documentation, but that section comes after these helpers.
+alter table accounts add column if not exists suspended_at timestamptz;
+alter table accounts add column if not exists suspended_reason text;
+alter table accounts add column if not exists suspended_by text;
+
 create or replace function is_member(acc uuid)
 returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
   select exists (
@@ -1640,6 +1647,31 @@ returns boolean language sql stable security definer set search_path = pg_catalo
     where m.account_id = acc and m.user_id = auth.uid() and m.role = 'owner' and a.suspended_at is null and m.deactivated_at is null
   );
 $$;
+
+create or replace function public.is_office(acc uuid)
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
+  select exists (
+    select 1 from public.memberships m
+    join public.accounts a on a.id = m.account_id
+    where m.account_id = acc and m.user_id = auth.uid() and m.role = 'office' and a.suspended_at is null and m.deactivated_at is null
+  );
+$$;
+
+create or replace function public.has_office_access(acc uuid)
+returns boolean language sql stable security definer set search_path = pg_catalog, pg_temp as $$
+  select exists (
+    select 1 from public.memberships m
+    join public.accounts a on a.id = m.account_id
+    where m.account_id = acc
+      and m.user_id = auth.uid()
+      and (m.role = 'owner' or m.role = 'office')
+      and a.suspended_at is null
+      and m.deactivated_at is null
+  );
+$$;
+
+grant execute on function public.is_office(uuid) to authenticated;
+grant execute on function public.has_office_access(uuid) to authenticated;
 
 -- Role-aware helpers for CREW scoping. Everything sensitive is gated on
 -- is_owner(); crew get a NARROW predicate: only their assigned jobs and their
@@ -1710,6 +1742,115 @@ end;
 $$;
 revoke execute on function public.job_account_id(uuid) from public, anon;
 grant execute on function public.job_account_id(uuid) to authenticated, service_role;
+
+-- ----------------------------------------------------------------------------
+-- OFFICE CAPABILITIES & RBAC FOUNDATION
+-- ----------------------------------------------------------------------------
+
+create table if not exists public.office_capabilities (
+  capability text primary key check (capability ~ '^[a-z][a-z_]*\.[a-z][a-z_]*$'),
+  enabled boolean not null default false,
+  grants text not null,
+  band text not null check (band in ('work', 'money_visible', 'money_moving', 'people', 'account')),
+  updated_at timestamptz not null default pg_catalog.now(),
+  updated_by uuid references auth.users(id) on delete set null
+);
+
+alter table public.office_capabilities enable row level security;
+
+drop policy if exists office_capabilities_read on public.office_capabilities;
+create policy office_capabilities_read
+  on public.office_capabilities
+  for select
+  to authenticated
+  using (true);
+
+revoke all on table public.office_capabilities from public, anon, authenticated;
+grant select on table public.office_capabilities to authenticated;
+
+insert into public.office_capabilities (capability, enabled, band, grants) values
+  ('leads.read', true, 'work', 'Every enquiry that came in, including the customer''s name, phone number and address.'),
+  ('leads.write', true, 'work', 'Reply to enquiries, change their status, and mark them won or lost.'),
+  ('clients.read', true, 'work', 'The full customer list with contact details and job history.'),
+  ('clients.write', true, 'work', 'Add customers and change their details, including where work happens.'),
+  ('jobs.read', true, 'work', 'Every job, its schedule, its notes and its photos.'),
+  ('jobs.write', true, 'work', 'Create and reschedule jobs, and change what is on them.'),
+  ('schedule.write', true, 'work', 'Book, move and cancel appointments the crew will turn up to.'),
+  ('messages.read', true, 'work', 'Text conversations with customers, including anything already sent.'),
+  ('messages.send', true, 'work', 'Text customers from the business number. Recipients cannot tell who typed it.'),
+  ('quotes.read', true, 'money_visible', 'Every quote and its prices, including ones never sent.'),
+  ('invoices.read', true, 'money_visible', 'What has been billed, what is outstanding, and who is late paying.'),
+  ('payments.read', true, 'money_visible', 'Every payment taken, and the platform and processing fees on each.'),
+  ('reports.read', false, 'money_visible', 'Revenue, margin and job costing across the whole business.'),
+  ('quotes.write', false, 'money_moving', 'Set prices and send quotes a customer can accept and be charged for.'),
+  ('invoices.write', false, 'money_moving', 'Create and send invoices, and change amounts owed.'),
+  ('payments.collect', false, 'money_moving', 'Charge a customer''s card and request payment. This moves real money.'),
+  ('payments.refund', false, 'money_moving', 'Send money back to a customer. Irreversible once it leaves.'),
+  ('crew.read', true, 'people', 'Who is on the roster and their contact details. Not their pay.'),
+  ('crew.write', false, 'people', 'Add and remove crew, and change who is assigned to what.'),
+  ('crew_pay.read', false, 'people', 'Hourly rates, salaries, day rates and every payroll figure for every person.'),
+  ('crew_pay.write', false, 'people', 'Change pay rates and approve payroll runs.'),
+  ('settings.write', false, 'account', 'The public site, booking rules, automations and the business number.'),
+  ('team.manage', false, 'account', 'Give other people this same access, and take it away.'),
+  ('billing.read', false, 'account', 'The plan, what LGQ charges for it, and every top-up bought.'),
+  ('billing.manage', false, 'account', 'Upgrade, downgrade, buy add-ons and cancel. Can end the business''s access.')
+on conflict (capability) do update
+  set band = excluded.band, grants = excluded.grants, enabled = excluded.enabled;
+
+create table if not exists public.office_member_capabilities (
+  account_id uuid not null references public.accounts(id) on delete cascade,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  capability text not null references public.office_capabilities(capability) on delete cascade,
+  granted_at timestamptz not null default pg_catalog.now(),
+  granted_by uuid references auth.users(id) on delete set null,
+  primary key (account_id, user_id, capability)
+);
+
+alter table public.office_member_capabilities enable row level security;
+
+drop policy if exists office_member_capabilities_owner_all on public.office_member_capabilities;
+create policy office_member_capabilities_owner_all
+  on public.office_member_capabilities
+  for all
+  to authenticated
+  using (public.is_owner(account_id))
+  with check (public.is_owner(account_id));
+
+drop policy if exists office_member_capabilities_self_read on public.office_member_capabilities;
+create policy office_member_capabilities_self_read
+  on public.office_member_capabilities
+  for select
+  to authenticated
+  using (user_id = auth.uid());
+
+revoke all on table public.office_member_capabilities from public, anon;
+grant select, insert, update, delete on table public.office_member_capabilities to authenticated;
+
+create or replace function public.office_can(acc uuid, p_capability text)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $can$
+  select
+    public.is_owner(acc)
+    or (
+      public.is_office(acc)
+      and exists (
+        select 1 from public.office_capabilities c
+        where c.capability = p_capability and c.enabled
+      )
+      and exists (
+        select 1 from public.office_member_capabilities omc
+        where omc.account_id = acc
+          and omc.user_id = auth.uid()
+          and omc.capability = p_capability
+      )
+    );
+$can$;
+
+grant execute on function public.office_can(uuid, text) to authenticated;
 
 
 -- Column-level guard for crew job UPDATEs, kept as defence in depth now that
