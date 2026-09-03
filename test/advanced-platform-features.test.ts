@@ -4,7 +4,7 @@ import { describe, it, expect } from 'vitest';
 import { generateContractorCallBridgeTwiml, initiateSpeedToLeadCallBridge } from '@/lib/voice-call-bridge';
 
 // 2. Google Ads Offline Conversions
-import { uploadGoogleAdsOfflineConversion, GOOGLE_ADS_CONVERSION_ACTIONS } from '@/lib/google-ads-offline-conversions';
+import { uploadOfflineConversion } from '@/lib/google-ads-api';
 
 // 3. Ad Wallet Depletion Predictor
 import { predictAdWalletDepletion } from '@/lib/ad-wallet-predictor';
@@ -104,16 +104,15 @@ describe('20 Advanced Platform Features Suite', () => {
 
   // 2. Google Ads Offline Conversions
   it('2. uploads offline conversions with conversion value mapping', async () => {
-    expect(GOOGLE_ADS_CONVERSION_ACTIONS.quote_approved).toBeDefined();
-    const result = await uploadGoogleAdsOfflineConversion({
+    const result = await uploadOfflineConversion({
       gclid: 'gclid_test_sample_123',
-      conversionAction: 'deposit_paid',
-      conversionDateTime: '2026-09-01T12:00:00Z',
-      conversionValue: 1250,
+      conversionActionName: 'deposit_paid',
+      conversionDateTime: '2026-09-01 12:00:00+00:00',
+      conversionValueDollars: 1250,
       orderId: 'quote_999',
     });
     expect(result.success).toBe(true);
-    expect(result.value).toBe(1250);
+    expect(result.conversionValueDollars).toBe(1250);
   });
 
   // 3. Ad Wallet Predictor

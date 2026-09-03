@@ -43,7 +43,7 @@ Purpose: provision the five server-side Google Ads credentials required by the p
 - A read-only Google Ads API v25 `customers:listAccessibleCustomers` request returned HTTP 200.
 - Both the linked manager account and advertiser account were present in the accessible-account response; their IDs were not printed or recorded here.
 - The deployed application does not expose a dedicated read-only endpoint for the exact five-variable predicate. Verification therefore paired the exact predicate in `src/lib/google-ads-api.ts` with the five Production-only secret entries and the Ready redeployment.
-- Separate compatibility finding: the primary Google Ads client in `src/lib/google-ads-api.ts` is pinned to API `v20`. That endpoint returned HTTP 404 during verification, while `v25` succeeded. The credentials are valid, but primary campaign operations should be upgraded to a supported API version before relying on them.
+- Compatibility status: The primary Google Ads client in `src/lib/google-ads-api.ts` has been upgraded to API `v25` by default (retiring legacy v17 offline conversions and pruning redundant v20 LSA endpoints). Before unflagging Managed Ads checkout in production, execute a live paused-campaign creation and status toggle against the linked test advertiser account.
 
 ## Separate public acquisition tracking
 

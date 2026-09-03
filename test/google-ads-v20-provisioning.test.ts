@@ -14,11 +14,11 @@ import {
 import { parseAttribution } from '@/lib/attribution';
 import { buildGoogleAdsOfflineConversion } from '@/lib/ad-closed-loop-sync';
 
-describe('Google Ads v22 Lead Engine & Closed-Loop Suite', () => {
+describe('Google Ads v25 Lead Engine & Closed-Loop Suite', () => {
   describe('1. API Version & Protocol Conformance', () => {
-    it('targets Google Ads API v22 base URL', () => {
-      expect(GOOGLE_ADS_API_VERSION).toBe('v22');
-      expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v22');
+    it('targets Google Ads API v25 base URL', () => {
+      expect(GOOGLE_ADS_API_VERSION).toBe('v25');
+      expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v25');
     });
 
     it('formats headers with unhyphenated login-customer-id', () => {
@@ -67,7 +67,7 @@ describe('Google Ads v22 Lead Engine & Closed-Loop Suite', () => {
       expect(result.descriptionsCount).toBeGreaterThanOrEqual(2);
       expect(result.keywordsCount).toBeGreaterThan(0);
       expect(result.negativeKeywordsCount).toBeGreaterThan(15);
-      expect(result.message).toContain('v22');
+      expect(result.message).toContain('v25');
     });
   });
 

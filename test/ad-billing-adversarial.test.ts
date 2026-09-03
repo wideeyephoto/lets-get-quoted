@@ -63,8 +63,13 @@ vi.mock('@/lib/billing/subscription-cancellation', () => ({
 }));
 
 describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks();
+    const { getStripeClient } = await import('@/lib/stripe');
+    const stripe = getStripeClient();
+    vi.spyOn(stripe.billingPortal.sessions, 'create').mockResolvedValue({
+      url: 'https://billing.stripe.com/p/session/mock',
+    } as any);
   });
 
   describe('1. Exact Fail-Closed Payment Status Checks', () => {
