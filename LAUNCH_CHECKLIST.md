@@ -253,13 +253,13 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 ## 7. Master Production Environment Variable Checklist
 
-This table is an inventory, not proof of a deployed value. `.env.example` contains 140 unique variable names while this list covers only the launch-critical core; each active or intentionally withheld integration needs an owner, environments, validation method, and rotation procedure.
+This table is an inventory, not proof of a deployed value. `.env.example` contains 178 unique variable names while this list covers only the launch-critical core; each active or intentionally withheld integration needs an owner, environments, validation method, and rotation procedure.
 
 - [x] **Complete Direct Vercel Parity Audit (Completed 2026-09-01)**: Audited all launch-critical production environment variables in `.env.example`, verified client/server prefix isolation (`NEXT_PUBLIC_` never exposing secrets), and verified 6-tier Stripe plan price ID documentation via `test/environment-variable-parity.test.ts` (4/4 passing).
 - [x] **Complete Secret-Rotation Drill (Completed 2026-09-01)**: Codified zero-downtime key rotation protocols, emergency revocation playbooks, and rolling secret migration in `docs/runbooks/secret-rotation-drill.md`. Verified AES-256 dual-key re-encryption, webhook signing secret rotation, and cron fail-closed mechanisms via `test/secret-rotation-resilience.test.ts` (3/3 passing).; prove old credentials fail.
 - [x] **Google Ads Production Credentials (Completed 2026-09-01)**: Provisioned all five required `GOOGLE_ADS_*` credentials as encrypted, Production-only Vercel variables; linked the manager and advertiser accounts, issued an Explorer Access developer token, completed the OAuth refresh flow, redeployed Production to READY, and verified OAuth refresh plus Google Ads API v25 access returned HTTP 200. Secret-free setup record: `docs/google-ads-production-credential-setup.md`.
 - [x] **Google Ads Sign-Up Attribution (Completed 2026-09-01)**: Configured the paired public `NEXT_PUBLIC_GOOGLE_TAG_ID` and `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID` values for Vercel Production and deployed the corrected first-run trigger plus CSP allowlist in READY release `97761d26`. Production browser verification proved `gtag.js` HTTP 200 on approved marketing routes, no tag or data layer on a token-bearing route, zero conversion on page arrival, one labeled conversion command with a Google HTTP 204 response, and no Google CSP violation. The server action now emits only after a persisted initial onboarding, excludes failed/returning Terms acceptance, and supplies a stable opaque transaction ID for deduplication; focused regression coverage passed.
-- [ ] **Upgrade Google Ads API Compatibility to v25**: `src/lib/google-ads-api.ts` still targets retired API v20 (HTTP 404). Upgrade it to supported v25 and rerun primary campaign-operation smoke tests before relying on managed-ads production flows.
+- [ ] **Upgrade Google Ads API Compatibility to v25**: `src/lib/google-ads-api.ts` now defaults `GOOGLE_ADS_API_VERSION` to v22 (updated from v20 on 2026-09-03), while the credential verification in this section succeeded against v25. Upgrade the default to supported v25 and rerun primary campaign-operation smoke tests before relying on managed-ads production flows.
 
 | Environment Variable | Production Value / Note |
 | :--- | :--- |
@@ -515,3 +515,68 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Verified via `test/voice-and-gps-disclosures.test.ts` (6/6 passing).
 
 
+
+---
+
+## 14. Gaps Found in the 2026-09-03 Coverage Sweep (Not Tracked Above)
+
+Method: compared `src/app/api`, `vercel.json`, `.env.example`, `.github/workflows`, and the 2026-08-30/08-31 audit docs against Sections 0–13. Each item below has no owning line elsewhere in this file. Ordered by how directly it touches a stranger's money, data, or ability to log in.
+
+### 14.1 Workers that exist but never run
+
+- [ ] **Schedule `purge-expired` or retract the 30-day deletion promise**: `src/app/privacy/page.tsx` promises a 30-day soft-delete grace period followed by permanent deletion, and `runPurgeWorker` is the only code that performs the purge, but its sole caller `/api/cron/purge-expired` is absent from `vercel.json`. Nothing hard-deletes expired recoverable deletions or finalized closure jobs today. Add a daily schedule, run it once with `--dry-run`-equivalent logging against production, and record the first successful purge count.
+- [ ] **Disposition for the other six unscheduled cron routes**: `activation-autopilot`, `db-guard`, `operator-briefing`, `smart-dunning`, `webhook-heal`, and `waitlist-sweep` all exist under `src/app/api/cron` with no `vercel.json` entry. The AI-operator four have never been audited (see `docs/unrun-prelaunch-audits-2026-08-31.md`); `waitlist-sweep` expires cancellation-waitlist holds that otherwise never expire. Decide schedule vs. intentionally dark for each, and add the dark ones to `KNOWN_DARK_JOBS` in `scripts/inspect-cron-health.mjs`, which today only knows one.
+- [ ] **Make unscheduled routes visible to the health monitor**: `inspect-cron-health.mjs` reads `vercel.json` only, so a route that was never declared can never be reported silent. Add a test asserting every `src/app/api/cron/*` directory is either declared in `vercel.json` or listed as intentionally dark.
+- [ ] **Vercel cron capacity**: 37 crons are declared and the Vercel Pro project limit is 40. Confirm the project plan and its cron cap before scheduling the routes above; consolidate workers if the cap would be exceeded.
+
+### 14.2 Login, abuse surfaces, and cost ceilings
+
+- [ ] **Move phone-OTP login server-side and rate-limit it**: `src/app/login/page.tsx` calls `supabase.auth.signInWithOtp({ phone })` from the browser, so the per-identity/per-IP `checkRateLimitStrict` that protects the email path in `src/app/login/actions.ts` is not in the SMS path. Each request bills Twilio via Supabase Auth. Mirror the email server action and add a verify-attempt counter.
+- [ ] **Supabase Auth configuration audit**: nothing above covers the Auth dashboard. Verify custom SMTP for magic-link mail (the built-in sender is shared-domain and rate-limited to a handful per hour), the redirect-URL allowlist (apex, `app`, wildcard tenant hosts, custom-domain callbacks), OTP length and expiry, session lifetime, SMS rate caps, and enable leaked-password protection, which the Security Advisor snapshot in Section 11 reports as disabled.
+- [ ] **A2P registration for the Supabase Auth Twilio number**: Section 3 proves SignalWire 10DLC only. Login codes ride Supabase Auth's Twilio phone provider on a different number. Record that number, its 10DLC or toll-free verification status, and the Twilio account's spend alert.
+- [ ] **Rate-limit allowlist with a gate that bites**: about 20 files import `src/lib/rate-limit.ts` against 142 route handlers and server actions, and `checkRateLimit` fails open by design. Check in a manifest mapping every route and action file to either a `{bucket, limit, window}` or an `{exempt: reason}`, fail the test on unmapped files, and confirm every money or toll surface uses the strict variant.
+- [ ] **Worst-case 24-hour bill per metered provider**: only SignalWire number spend has a ceiling variable. Compute per-call cost × limiter-permitted rate for Supabase Auth SMS, SignalWire outbound, Gemini (including the AI operator's direct `new GoogleGenAI` client in `src/lib/ai-operator/engine.ts`, which bypasses the metered path), OpenAI image generation, Maps/Places/Solar, Resend, and PDF rendering; then set a hard budget or alert in each console and record it in `docs/cost-ceiling.md`.
+
+### 14.3 Stripe surfaces Section 2 does not list
+
+- [ ] **Register and verify the two other live webhook receivers**: `/api/stripe/connected-payments/webhook` and `/api/stripe/top-ups/webhook` exist alongside the two endpoints audited in Section 2. For each, confirm the Stripe Live endpoint, subscribed events, the Production secret (`STRIPE_CONNECTED_PAYMENT_WEBHOOK_SECRET`, `STRIPE_TOP_UP_WEBHOOK_SECRET`), the enable flag (`LGQ_STRIPE_CONNECTED_PAYMENT_WEBHOOK_ENABLED`, `LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED`), and the matching projection-worker flags. An absent flag is silently off: a top-up purchase would charge the card and never grant credits, with no dead letter to notice it by.
+- [ ] **Full production feature-flag reconciliation**: roughly 64 `LGQ_*` flags are read as `env[FLAG] === '1'`; the Section 7 table lists 12. Produce the complete present-with-value or intentionally-absent list from `vercel env ls production`, and confirm the newest Production deployment's `createdAt` postdates every variable, since Vercel bakes env at build.
+- [ ] **Stripe platform account settings**: statement descriptor, Connect platform profile and branding, connected-account payout schedule, Radar rules, dispute notification routing, whether Stripe email receipts are on (avoid double receipts with Resend), and the tax posture the pricing page implies. None of these are recorded anywhere in this file.
+
+### 14.4 Secrets and environment inventory
+
+- [ ] **Add the required secrets the Section 7 table omits**: `SIGNALWIRE_SIGNING_KEY` (README: required, must differ from the API token), `LGQ_LEAD_VERIFICATION_SECRET`, `ESTIMATE_TOKEN_SECRET`, `LGQ_REFERRAL_SECRET`, `OPERATOR_APPROVAL_SECRET`, `TAX_VAULT_ENCRYPTION_KEY`, `WEBHOOK_VAULT_ENCRYPTION_KEY`, `PERMIT_VAULT_ENCRYPTION_KEY`, `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` for field web push, `VERCEL_TOKEN`/`VERCEL_PROJECT_ID`/`VERCEL_TEAM_ID` for custom-domain provisioning, and the alert-routing set (`FOUNDER_ALERT_EMAIL`, `ADMIN_ALERT_EMAIL`, `ONCALL_*`, ops webhook URLs). Each needs owner, environments, validation, and rotation, as the section preamble already requires.
+- [ ] **Turnstile is optional by accident**: `src/app/contact/actions.ts` skips captcha verification entirely when the secret is unset and accepts either `TURNSTILE_SECRET` or `TURNSTILE_SECRET_KEY`. Pick one name, set it in Production, and make the contact and public lead forms fail closed when it is missing.
+- [ ] **Correct the inventory count**: the Section 7 preamble says `.env.example` holds 140 unique names; it holds 178 as of 2026-09-03.
+
+### 14.5 Third-party approvals with lead time
+
+- [ ] **QuickBooks production keys**: `src/lib/quickbooks/oauth.ts` defaults to sandbox unless `QUICKBOOKS_ENVIRONMENT=production`. Intuit requires an app assessment before production keys are issued. Record submission date, approval, and the production redirect URI.
+- [ ] **Meta Lead Ads app review**: `/api/webhooks/meta-leads` needs a Facebook app in Live mode with `leads_retrieval` and page permissions approved through App Review. Record app ID, review status, and the verify token.
+- [ ] **Google OAuth consent screen and Ads token access level**: the Local Services Ads OAuth flow under `/api/google-lsa/*` needs a published, verified consent screen. The Google Ads developer token recorded in Section 7 is Explorer access; confirm that level permits the live customer accounts and daily operation volume managed ads will need.
+- [ ] **Marketplace, permit, and supplier integrations**: `/api/webhooks/marketplace/[provider]` (Angi, Thumbtack), `/api/webhooks/permits/[provider]`, and the supplier, RentCast, Pexels, and Solar keys in `.env.example` are not mentioned anywhere above. For each: keyed in Production, or its UI hidden and its webhook rejecting cleanly.
+
+### 14.6 Public API and field PWA
+
+- [ ] **Public API v1 launch posture**: `/api/v1/*` with an OpenAPI document, API keys, and outbound webhook subscriptions and deliveries has no checklist line. Verify key issuance and rotation, per-key rate limits, HMAC signing of outbound deliveries, retry and dead-letter behavior, tenant scoping tests, and whether the surface is publicly documented or hidden at launch.
+- [ ] **Field PWA release discipline**: `public/sw.js` pins cache version `field-v2`; if it is not bumped per release, installed crews keep a stale shell. Add a build-time version, verify web push end to end with Production VAPID keys, and test offline queue replay on real devices.
+
+### 14.7 Error handling and observability
+
+- [ ] **Add root error boundaries**: only `src/app/dashboard/error.tsx` exists. A render error on the marketing site, `/pay/[id]`, `/portal`, `/field`, or a tenant site falls through to the unbranded Next.js default screen. Add `src/app/error.tsx` and `src/app/global-error.tsx` and make them report.
+- [ ] **Real exception tracking**: `SENTRY_DSN` is read only to label the APM summary in `src/lib/apm-telemetry.ts`; no error-tracking SDK is installed, so unhandled exceptions ship nowhere. Choose and wire a provider, add a Vercel log drain with a stated retention, confirm `BETTER_STACK_HEARTBEAT_URL` is actually pinged rather than only reported as configured in `src/lib/uptime-monitoring.ts`, and stand up an external uptime check plus a status page.
+- [ ] **Kill-switch card**: Section 12 rehearses rollback but no single page lists per-rail switches (`LGQ_DISABLE_OUTBOUND_SMS`, the Stripe webhook and checkout flags, `FEATURE_MANAGED_ADS_CHECKOUT_ENABLED`, `NEXT_PUBLIC_LAUNCH_BANNER`, cron pause), who holds Vercel access to flip them, and how long a flip takes to propagate given env is baked at build.
+
+### 14.8 Repository and platform controls
+
+- [ ] **Gate production deploys on CI**: on 2026-09-03 three consecutive pushes to `main` (`3be810e`, `6c5cbf2`, `a18225b`) failed CI, and Vercel builds from `main` on push regardless. Require CI via branch protection with a required status check, or make Vercel's Ignored Build Step wait for the check, so a red commit cannot become the production deployment.
+- [ ] **Repository hygiene controls**: branch protection on `main`, secret scanning with push protection, and Dependabot or Renovate are not recorded as enabled. Verify each in GitHub settings and note the date.
+- [ ] **Stop tracking generated output**: `test-results.json` (3.8 MB) is committed and not ignored (`.gitignore` covers only `test-results/`). Remove it from the tree and ignore it.
+- [ ] **Vercel project settings**: production branch, Preview Deployment Protection so previews are not indexable or usable with Production env, function region co-located with Supabase `us-west-2`, spend management cap, and the plan's cron and function-duration limits (21 cron routes export `maxDuration = 300`).
+- [ ] **Supabase plan and add-ons**: the PITR drill in Section 11 assumes point-in-time recovery, which is a paid add-on. Record the plan tier, compute size, PITR retention window, pooler mode and pool size, and confirm the project cannot be paused for inactivity.
+
+### 14.9 Data hygiene and customer-facing checks
+
+- [ ] **Inventory and quarantine synthetic accounts in production**: Section 6 attributes appointment-reminder failures to synthetic accounts, so test tenants exist in the live database. List them, exclude them from lifecycle emails, digests, the operator MRR briefing, ad-conversion signals, and the owner-isolation sample, then delete or flag them before launch.
+- [ ] **Consent and CCPA posture for the marketing tag**: `gtag.js` loads on marketing routes with Consent Mode plumbing in `src/lib/google-tag.ts` but no banner. Decide explicitly whether US-only launch needs one, and whether a "Do Not Sell or Share" link is required once ad tags share data.
+- [ ] **Core Web Vitals budget**: no performance gate exists. Record mobile Lighthouse or field CWV for `/`, `/pricing`, `/login`, and `/pay/[id]` on the release SHA and set thresholds that block regressions.
