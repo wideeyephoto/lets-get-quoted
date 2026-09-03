@@ -117,12 +117,12 @@ export default function PhotoScopeEstimator() {
   return (
     <div className={styles.wrapper}>
       <div className={styles.headerRow}>
-        <span className={styles.badge}>📸 Gemini Vision Photo-to-Scope AI Estimator</span>
+        <span className={styles.badge}>📸 AI Copilot Photo-to-Scope Estimator</span>
         <h3 className={styles.title}>
-          Snap a photo of site damage. Gemini drafts the material takeoff &amp; change order.
+          Snap a photo of site damage. AI Copilot drafts the material takeoff &amp; change order.
         </h3>
         <p className={styles.subtitle}>
-          Contractors text photos from the field. Multimodal Gemini Vision detects damaged components, measures surface area, and calculates change order pricing in seconds.
+          Contractors text photos from the field. Multimodal AI Copilot detects damaged components, measures surface area, and calculates change order pricing in seconds.
         </p>
       </div>
 

@@ -231,7 +231,7 @@ export default function TextToJobPage() {
             <TextToJobDataBeams />
           </section>
 
-          {/* Gemini Vision Photo-to-Scope AI Estimator */}
+          {/* AI Copilot Photo-to-Scope Estimator */}
           <section className={styles.customSection}>
             <PhotoScopeEstimator />
           </section>

@@ -200,7 +200,7 @@ export default function TextToJobDataBeams() {
             One 10-second text routes cleanly to 4 core database systems.
           </h3>
           <p className={styles.subtitle}>
-            Select a field scenario to watch Gemini AI isolate intent, match project context, and
+            Select a field scenario to watch your AI Copilot isolate intent, match project context, and
             power 4 atomic database mutations in parallel.
           </p>
         </div>
@@ -243,7 +243,7 @@ export default function TextToJobDataBeams() {
           </div>
         </div>
 
-        {/* Center: Gemini Neural Prism */}
+        {/* Center: AI Copilot Neural Prism */}
         <div className={styles.prismCol}>
           <div
             className={styles.prismOrb}
@@ -254,7 +254,7 @@ export default function TextToJobDataBeams() {
           >
             ⚡
           </div>
-          <span className={styles.prismLabel}>Gemini AI 1.4s</span>
+          <span className={styles.prismLabel}>AI Copilot 1.4s</span>
         </div>
 
         {/* Right: 4 Pillar Laser Targets */}

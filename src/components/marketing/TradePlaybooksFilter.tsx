@@ -126,7 +126,7 @@ export default function TradePlaybooksFilter() {
         <span className={styles.eyebrow}>Trade-Specific Field Ingestion</span>
         <h3 className={styles.title}>Built for the real vocabulary of your job site.</h3>
         <p className={styles.subtitle}>
-          Whether you speak in 200-amp panels, PEX-A fittings, SEER ratings, or CDX decking, Gemini AI extracts exact trade context without manual translation.
+          Whether you speak in 200-amp panels, PEX-A fittings, SEER ratings, or CDX decking, your AI Copilot extracts exact trade context without manual translation.
         </p>
       </div>
 
