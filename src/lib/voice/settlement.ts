@@ -482,14 +482,14 @@ export async function recordCallHistory(
         await notifyEmergencyCall(
           admin,
           facts.accountId,
-          callerPhone(receipt),
+          facts.callerNumber ?? callerPhone(receipt),
           summaryLine(receipt) || emergency.reason,
           emergency,
           callRow.id,
         );
       }
 
-      const cPhone = callerPhone(receipt);
+      const cPhone = facts.callerNumber ?? callerPhone(receipt);
       if (cPhone && outcome !== 'caller_abandoned' && !facts.staffCaller) {
         const callerName = typeof structured?.caller_name === 'string' ? structured.caller_name : null;
         const issueSummary = typeof structured?.issue_summary === 'string'

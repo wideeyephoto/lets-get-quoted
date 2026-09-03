@@ -56,7 +56,7 @@ beforeEach(() => {
     const scripted = rpcScript[name]?.shift();
     if (scripted instanceof Error) throw scripted;
     if (scripted) return scripted;
-    if (name === 'claim_voice_call_admission') {
+    if (name === 'claim_voice_call_admission_v2') {
       return { data: [{ claim_status: 'claimed', admission_id: 'adm-1' }], error: null };
     }
     if (name === 'finalize_voice_call_admission'
@@ -141,19 +141,21 @@ describe('admission', () => {
     setRpc('reserve_usage_credits', { data: 'res-1', error: null });
     await admitVoiceCall(admin, input, { mode: 'measure', concurrencyLimit: 3 });
     expect(rpc.mock.calls.slice(0, 2).map((call) => call[0])).toEqual([
-      'claim_voice_call_admission',
+      'claim_voice_call_admission_v2',
       'reserve_usage_credits',
     ]);
-    expect(rpc).toHaveBeenCalledWith('claim_voice_call_admission', {
+    expect(rpc).toHaveBeenCalledWith('claim_voice_call_admission_v2', {
       p_account_id: ACCOUNT,
       p_provider_call_id: CALL,
       p_dialed_number: '+12485550199',
       p_concurrency_limit: 3,
+      p_caller_number: null,
+      p_caller_kind: 'unknown',
     });
   });
 
   it('honours the atomic capacity answer without reserving minutes', async () => {
-    setRpc('claim_voice_call_admission', {
+    setRpc('claim_voice_call_admission_v2', {
       data: [{ claim_status: 'at_capacity', admission_id: null }], error: null,
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce', concurrencyLimit: 1 }))
@@ -162,7 +164,7 @@ describe('admission', () => {
   });
 
   it('honours a final database-boundary sender suspension without touching the ledger', async () => {
-    setRpc('claim_voice_call_admission', {
+    setRpc('claim_voice_call_admission_v2', {
       data: [{ claim_status: 'number_not_ready', admission_id: null }], error: null,
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce', concurrencyLimit: 1 }))
@@ -171,7 +173,7 @@ describe('admission', () => {
   });
 
   it('replays an already-finalized call without buying a second hold', async () => {
-    setRpc('claim_voice_call_admission', {
+    setRpc('claim_voice_call_admission_v2', {
       data: [{ claim_status: 'existing', admission_id: 'adm-1' }], error: null,
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
@@ -180,13 +182,13 @@ describe('admission', () => {
   });
 
   it('fails to the normal line for a busy or unreadable admission claim', async () => {
-    setRpc('claim_voice_call_admission', {
+    setRpc('claim_voice_call_admission_v2', {
       data: [{ claim_status: 'busy', admission_id: 'adm-1' }], error: null,
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
       .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
 
-    setRpc('claim_voice_call_admission', {
+    setRpc('claim_voice_call_admission_v2', {
       data: null, error: { code: '08006', message: 'database unavailable' },
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))

@@ -73,7 +73,7 @@ export async function POST(request: Request) {
   const admin = createAdminClient();
 
   if (fnName === 'send_booking_link') {
-    const callerPhone = verifiedCallerPhone || String(args.caller_phone || body.caller_id_number || '').trim();
+    const callerPhone = verifiedCallerPhone || String(args.caller_phone || '').trim();
     if (!callerPhone) {
       return NextResponse.json({
         response: 'I could not detect a mobile phone number to text. Could you please tell me your cell phone number?',
@@ -96,12 +96,11 @@ export async function POST(request: Request) {
       bookingUrl = `https://${site.subdomain}.letsgetquoted.com/quote`;
     }
 
-    const callId = verifiedProviderCallId || (typeof body.call_id === 'string' ? body.call_id : undefined);
     const sendResult = await sendCallerVoiceBookingLinkSms({
       accountId,
       callerPhone,
       bookingUrl,
-      idempotencyKey: callId ? `swaig-booking:${accountId}:${callId}` : undefined,
+      idempotencyKey: `swaig-booking:${accountId}:${verifiedProviderCallId}`,
     });
 
     if (!sendResult.ok) {

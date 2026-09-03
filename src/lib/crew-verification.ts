@@ -1,3 +1,5 @@
+import { randomInt } from 'node:crypto';
+
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { isLeadVerificationValid, leadVerificationToken } from '@/lib/lead-verification';
@@ -25,7 +27,7 @@ export function isCrewPhoneVerified(crew: {
   // 1. Explicit phone verification timestamp or flag
   if (crew.phone_verified_at || crew.phone_verified === true) return true;
   // 2. Active field app user who has authenticated with their account
-  if (crew.user_id || crew.last_signed_in_at) return true;
+  if (crew.user_id && crew.last_signed_in_at) return true;
   return false;
 }
 
@@ -42,7 +44,7 @@ export function resolveCrewPhoneVerification(crew: {
   if (crew.phone_verified_at) {
     return { isVerified: true, verifiedAt: crew.phone_verified_at, reason: 'verified_sms' };
   }
-  if (crew.user_id || crew.last_signed_in_at) {
+  if (crew.user_id && crew.last_signed_in_at) {
     return { isVerified: true, verifiedAt: crew.last_signed_in_at ?? null, reason: 'signed_in' };
   }
   if (crew.phone_verified === true) {
@@ -60,7 +62,7 @@ export function createCrewPhoneOtp(phone: string): {
   expiresAt: number;
 } {
   const normalized = normalizeUsPhone(phone) || phone;
-  const code = Math.floor(100000 + Math.random() * 900000).toString();
+  const code = randomInt(100000, 1_000_000).toString();
   const expiresAt = Date.now() + 15 * 60 * 1000; // 15 minutes
   const token = leadVerificationToken(normalized, code, expiresAt);
   return { code, token, expiresAt };
