@@ -228,7 +228,7 @@ export function draftCustomerMessage(input: {
   customerName: string | null;
   day: string;
   assessment: Assessment;
-  sensitivity: Sensitivity;
+  sensitivity: Sensitivity | { label?: string; reasonNote: string };
   alternatives: Assessment[];
   targetAlternativeDay?: string | null;
 }): string {
