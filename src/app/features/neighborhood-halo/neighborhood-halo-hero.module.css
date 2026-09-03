@@ -1,0 +1,402 @@
+/* =========================================================================
+   Interactive "Halo Dome" Hero Visual
+   Full-width hero column fill, high-contrast, large legible typography
+   ========================================================================= */
+
+.heroContainer {
+  position: relative;
+  width: 100%;
+  max-width: 100%; /* Fill entire hero column */
+  border-radius: 24px;
+  background: linear-gradient(150deg, #091724 0%, #06111a 60%, #030a10 100%);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  box-shadow: 
+    0 36px 85px -16px rgba(0, 0, 0, 0.8),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset,
+    0 0 60px -15px rgba(56, 189, 248, 0.2);
+  overflow: hidden;
+  color: #f8fafc;
+  box-sizing: border-box;
+}
+
+/* ---------------- Top Command Bar ---------------- */
+.topBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.75rem;
+  background: rgba(3, 9, 15, 0.88);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.95rem;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.topBarLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.liveBeaconDot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 12px #34d399;
+  animation: beaconPulse 2s infinite ease-in-out;
+}
+
+@keyframes beaconPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.85); opacity: 0.45; }
+}
+
+.topBarTitle {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #cbd5e1;
+}
+
+.topBarTitle strong {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.topBarPills {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tradeSelectBar {
+  display: flex;
+  gap: 6px;
+}
+
+.tradePillBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #cbd5e1;
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tradePillBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.tradePillBtnActive {
+  background: var(--accent, #f97316) !important;
+  border-color: var(--accent, #f97316) !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 10px rgba(249, 115, 22, 0.4);
+}
+
+.budgetPill {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  padding: 4px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+
+/* ---------------- Main Stage (Grid: Map + Phone) ---------------- */
+.stageGrid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1.15fr) minmax(360px, 0.85fr);
+  gap: 1.75rem;
+  padding: 1.75rem;
+  align-items: center;
+}
+
+@media (max-width: 900px) {
+  .stageGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------- Tactical Map Canvas ---------------- */
+.mapCanvasWrapper {
+  position: relative;
+  background: #040e17;
+  border: 1px solid rgba(56, 189, 248, 0.22);
+  border-radius: 18px;
+  padding: 1rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5) inset;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.mapSvg {
+  width: 100%;
+  max-width: 480px;
+  height: auto;
+  aspect-ratio: 1 / 1;
+  filter: drop-shadow(0 6px 20px rgba(0, 0, 0, 0.65));
+}
+
+.haloBeamPulse {
+  animation: beamPulse 3s infinite ease-in-out;
+  transform-origin: center;
+}
+
+@keyframes beamPulse {
+  0% { r: 120; opacity: 0.9; }
+  50% { r: 220; opacity: 0.35; }
+  100% { r: 220; opacity: 0; }
+}
+
+.radarSweepSector {
+  transform-origin: 250px 250px;
+  animation: sweepRotate 4.5s linear infinite;
+}
+
+@keyframes sweepRotate {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.interactivePin {
+  cursor: pointer;
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.interactivePin:hover {
+  transform: scale(1.15);
+}
+
+.interactivePinActive circle {
+  stroke: #34d399 !important;
+  stroke-width: 3px !important;
+}
+
+.mapLegend {
+  display: flex;
+  gap: 1.25rem;
+  font-size: 0.82rem;
+  color: #cbd5e1;
+  margin-top: 0.85rem;
+  background: rgba(2, 6, 23, 0.75);
+  padding: 6px 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.legendItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------------- Floating Smartphone Ad Frame ---------------- */
+.phoneCardWrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
+.phoneFrame {
+  background: #000000;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 36px;
+  padding: 1.15rem;
+  box-shadow: 
+    0 25px 60px -10px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(56, 189, 248, 0.35);
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 380px; /* Generous flagship phone width */
+  box-sizing: border-box;
+}
+
+.phoneHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+  margin-bottom: 0.75rem;
+  padding: 0 8px;
+}
+
+.dynamicIsland {
+  width: 85px;
+  height: 18px;
+  background: #18181b;
+  border-radius: 12px;
+}
+
+/* Ad Screen Content */
+.adCard {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 16px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.adHeader {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent, #f97316), #ea580c);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.15rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+  flex-shrink: 0;
+}
+
+.adBodyText {
+  font-size: 0.92rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+  margin: 0;
+}
+
+.adBodyText strong {
+  color: #38bdf8;
+  font-weight: 700;
+}
+
+.craftVisualBox {
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  border-radius: 10px;
+  padding: 0.85rem;
+  text-align: center;
+}
+
+.photoToggle {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.photoBtn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.photoBtnActive {
+  background: rgba(56, 189, 248, 0.25);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+.craftTitle {
+  font-size: 0.95rem;
+  color: #f8fafc;
+  font-weight: 700;
+  display: block;
+}
+
+.craftSub {
+  font-size: 0.78rem;
+  color: #38bdf8;
+  margin-top: 3px;
+  display: block;
+}
+
+.adFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(2, 6, 23, 0.7);
+  padding: 0.65rem 0.85rem;
+  border-radius: 8px;
+  gap: 0.5rem;
+}
+
+.adCtaBtn {
+  background: var(--accent, #f97316);
+  color: #ffffff;
+  border: none;
+  font-weight: 800;
+  font-size: 0.84rem;
+  padding: 8px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: transform 0.15s ease;
+  white-space: nowrap;
+}
+
+.adCtaBtn:hover {
+  transform: scale(1.03);
+}
+
+.phoneNotificationTag {
+  margin-top: 0.75rem;
+  background: rgba(16, 185, 129, 0.18);
+  border: 1px solid rgba(16, 185, 129, 0.4);
+  border-radius: 8px;
+  padding: 7px 10px;
+  font-size: 0.8rem;
+  color: #6ee7b7;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* ---------------- Bottom Telemetry Bar ---------------- */
+.bottomTelemetryBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.75rem;
+  background: rgba(3, 9, 15, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  font-size: 0.92rem;
+  color: #cbd5e1;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.telemetryCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.telemetryCell strong {
+  color: #ffffff;
+  font-weight: 800;
+}

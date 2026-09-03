@@ -24,14 +24,19 @@ describe('Neighborhood Halo Public Feature Page (/features/neighborhood-halo)', 
 
   it('renders FeatureDetailLayout with simulator, privacy visualizer, proof points, and FAQs', () => {
     expect(PAGE_SRC).toContain('<FeatureDetailLayout');
+    expect(PAGE_SRC).toContain('<NeighborhoodHaloHeroVisual');
     expect(PAGE_SRC).toContain('<NeighborhoodHaloSimulator');
     expect(PAGE_SRC).toContain('<HaloPrivacyVisualizer');
     expect(PAGE_SRC).toContain('<HaloJourneySequence');
     expect(PAGE_SRC).toContain('<HaloRoiCalculator');
-    expect(PAGE_SRC).toContain('1-Mile Geofence Precision');
-    expect(PAGE_SRC).toContain('Address Privacy Shield');
-    expect(PAGE_SRC).toContain('$25 / 5-Day Micro-Budgets');
-    expect(PAGE_SRC).toContain('Sub-60s Speed-to-Lead SMS');
+    expect(PAGE_SRC).toContain('<HaloYardSignComparison');
+    expect(PAGE_SRC).toContain('<HaloNeverDoes');
+    expect(PAGE_SRC).toContain('<HaloContractorQuote');
+    expect(PAGE_SRC).toContain('<HaloRouteDiagram');
+    expect(PAGE_SRC).toContain('1.0-Mile Radius Precision');
+    expect(PAGE_SRC).toContain('100% Privacy Sanitization');
+    expect(PAGE_SRC).toContain('$25 Fixed Micro-Budgets');
+    expect(PAGE_SRC).toContain('<60s Speed-to-Lead SMS');
     expect(PAGE_SRC).toContain('Frequently asked questions about Neighborhood Halo ads');
     expect(PAGE_SRC).toContain('THE ROUTE DENSITY MULTIPLIER');
   });
@@ -42,12 +47,15 @@ describe('Neighborhood Halo Public Feature Page (/features/neighborhood-halo)', 
     expect(SIMULATOR_SRC).toContain('<HaloRadarMap');
     expect(RADAR_SRC).toContain('1.0 MILE GEOFENCE BOUNDARY');
     expect(RADAR_SRC).toContain('LIVE GEOFENCE RADAR');
+    expect(RADAR_SRC).toContain('sweepGroup');
     expect(SIMULATOR_SRC).toContain('Meta Ad');
     expect(SIMULATOR_SRC).toContain('Google Ads');
     expect(SIMULATOR_SRC).toContain('Street Cluster');
     expect(SIMULATOR_SRC).toContain('Speed-to-Lead');
     expect(SIMULATOR_SRC).toContain('72-Hour Auto-Kill Rule');
     expect(SIMULATOR_SRC).toContain('Storm Surge (+30%)');
+    expect(SIMULATOR_SRC).toContain('Simulate Neighbor Inbound Lead Click');
+    expect(SIMULATOR_SRC).toContain('Quick Demo Locations');
   });
 
   it('demonstrates privacy protection in HaloPrivacyVisualizer', () => {

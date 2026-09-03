@@ -1,232 +1,356 @@
 /* =========================================================================
    Neighborhood Halo Design System — Blueprint & Micro-Targeting Precision
-   Flagship-aligned, WCAG AA compliant, tightly proportioned for Hero display.
+   Flagship-aligned, WCAG AA compliant, 640px command center layout.
    ========================================================================= */
 
 /* ---------------- Hero Simulator Container ---------------- */
 .simulatorContainer {
-  background: var(--surface, #0f1d2a);
-  border: 1px solid rgba(56, 189, 248, 0.2);
+  background: linear-gradient(145deg, #091724 0%, #060f18 100%);
+  border: 1px solid rgba(56, 189, 248, 0.24);
   border-radius: 16px;
-  padding: 1.15rem 1.25rem;
   box-shadow: 
-    0 20px 40px -10px rgba(0, 0, 0, 0.55),
+    0 24px 50px -12px rgba(0, 0, 0, 0.65),
     0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   color: var(--foreground, #f8fafc);
-  max-width: 480px;
+  max-width: 680px;
   width: 100%;
-  margin-inline: auto;
+  margin-inline: 0 auto;
   position: relative;
   overflow: hidden;
 }
 
-.simulatorContainer::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 3px;
-  background: linear-gradient(90deg, #38bdf8, var(--accent, #f97316), #34d399);
-  opacity: 0.9;
+@media (max-width: 992px) {
+  .simulatorContainer {
+    margin-inline: auto;
+    max-width: 100%;
+  }
 }
 
-/* ---------------- Controls Bar ---------------- */
-.controlsBar {
+@media (max-width: 640px) {
+  .windowHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
+  }
+  .commandStrip {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .detourComparisonMeter {
+    grid-template-columns: 1fr;
+  }
+  .clusterTierGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------------- Window Header (macOS / Command Style) ---------------- */
+.windowHeader {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.65rem;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
-  margin-bottom: 0.75rem;
-  padding-bottom: 0.65rem;
+  padding: 0.75rem 1.1rem;
+  background: rgba(4, 10, 17, 0.85);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.8rem;
+  gap: 0.75rem;
+}
+
+.trafficDots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dotClose,
+.dotMin,
+.dotMax {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dotClose { background: #ef4444; opacity: 0.85; }
+.dotMin { background: #f59e0b; opacity: 0.85; }
+.dotMax { background: #10b981; opacity: 0.85; }
+
+.windowTitle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.windowTitle strong {
+  color: #f8fafc;
+  font-weight: 700;
+}
+
+.liveBeaconDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 6px #34d399;
+  animation: beaconPulse 2s infinite;
+}
+
+@keyframes beaconPulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.8); opacity: 0.5; }
+}
+
+.windowBadge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 2px 8px;
+  border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* ---------------- Command Strip ---------------- */
+.commandStrip {
+  display: flex;
+  gap: 0.75rem;
+  align-items: flex-end;
+  padding: 0.85rem 1.15rem;
+  background: rgba(15, 23, 42, 0.5);
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
-.inputGroup {
-  display: flex;
-  gap: 0.5rem;
-  flex-wrap: wrap;
-  align-items: flex-end;
-}
-
-.controlField {
+.commandField {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
 
-.controlLabel {
+.commandLabel {
   font-size: 0.68rem;
+  font-weight: 800;
   color: #94a3b8;
-  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
 
-.customSelect,
-.textInput {
-  background: rgba(15, 23, 42, 0.9);
+.commandSelect,
+.commandInput {
+  background: rgba(15, 23, 42, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 8px;
   color: #f8fafc;
-  padding: 0.4rem 0.65rem;
-  font-size: 0.8rem;
+  padding: 0.45rem 0.75rem;
+  font-size: 0.84rem;
   outline: none;
   transition: all 0.2s ease;
 }
 
-.customSelect:focus,
-.textInput:focus {
+.commandSelect:focus,
+.commandInput:focus {
   border-color: var(--accent, #f97316);
   box-shadow: 0 0 0 2px rgba(249, 115, 22, 0.25);
 }
 
-.textInput {
-  min-width: 170px;
-}
-
-.surgeToggleBtn {
-  padding: 0.4rem 0.65rem;
+.commandSurgeBtn {
+  padding: 0.45rem 0.85rem;
   border-radius: 8px;
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
 
-.surgeToggleBtn:hover {
+.commandSurgeBtn:hover {
   transform: translateY(-1px);
-}
-
-/* ---------------- Compact Geofence Live Strip ---------------- */
-.geofenceHud {
-  background: rgba(2, 6, 23, 0.65);
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  border-radius: 8px;
-  padding: 0.45rem 0.75rem;
-  margin-bottom: 0.75rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-}
-
-.hudLeft {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.radarPulse {
-  font-size: 1rem;
-  animation: pulseBeacon 2.2s infinite ease-out;
-}
-
-.hudTitle {
-  margin: 0;
-  font-size: 0.8rem;
-  font-weight: 800;
-  color: #f1f5f9;
-}
-
-.hudSubtitle {
-  margin: 1px 0 0;
-  font-size: 0.7rem;
-  color: #94a3b8;
-}
-
-.hudPills {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.hudPill {
-  font-size: 0.65rem;
-  font-weight: 700;
-  color: #cbd5e1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 2px 6px;
-  border-radius: 4px;
-}
-
-.hudPillHighlight {
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.12);
-  border-color: rgba(52, 211, 153, 0.25);
 }
 
 /* ---------------- Preview Tabs Navigation ---------------- */
 .previewTabs {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.4rem;
+  padding: 0.65rem 1.15rem;
+  background: rgba(4, 10, 17, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   overflow-x: auto;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  padding-bottom: 0.5rem;
-  margin-bottom: 0.75rem;
+  scrollbar-width: none; /* Hide scrollbar on Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar on IE/Edge */
+}
+
+.previewTabs::-webkit-scrollbar {
+  display: none; /* Hide scrollbar on Chrome/Safari */
 }
 
 .tabBtn {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: transparent;
+  border: 1px solid transparent;
   color: #94a3b8;
-  padding: 0.35rem 0.65rem;
+  padding: 0.4rem 0.8rem;
   border-radius: 6px;
-  font-size: 0.74rem;
+  font-size: 0.8rem;
   font-weight: 700;
   cursor: pointer;
   white-space: nowrap;
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
 }
 
 .tabBtn:hover {
   color: #f8fafc;
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .tabBtnActive {
   background: var(--accent, #f97316) !important;
   border-color: var(--accent, #f97316) !important;
   color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
 }
 
-/* ---------------- Compact Radar Map Display ---------------- */
+/* ---------------- View Content Wrapper ---------------- */
+.viewContainer {
+  padding: 1.15rem;
+}
+
+/* ---------------- View 1: Meta Ad Preview ---------------- */
+.socialMockup {
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  padding: 1.1rem;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
+}
+
+.socialHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.socialAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent, #f97316), #ea580c);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
+}
+
+.socialBody {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #e2e8f0;
+  margin-bottom: 0.85rem;
+}
+
+.mediaCraftFrame {
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  padding: 0.75rem;
+  margin-bottom: 0.85rem;
+}
+
+.photoToggleBar {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.65rem;
+}
+
+.photoToggleBtn {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 5px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.photoToggleBtnActive {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #f8fafc;
+}
+
+.craftsmanshipCard {
+  text-align: center;
+  padding: 1rem 0.75rem;
+  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
+  border-radius: 8px;
+  border: 1px dashed rgba(56, 189, 248, 0.3);
+}
+
+.socialFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem;
+  background: rgba(2, 6, 23, 0.65);
+  padding: 0.75rem 0.85rem;
+  border-radius: 8px;
+}
+
+.socialCtaBtn {
+  background: var(--accent, #f97316);
+  color: #ffffff;
+  border: none;
+  font-weight: 800;
+  font-size: 0.8rem;
+  padding: 7px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+/* ---------------- View 2: Radar Map Display ---------------- */
 .radarContainer {
-  background: linear-gradient(135deg, rgba(8, 23, 36, 0.95), rgba(4, 14, 23, 0.98));
+  background: #0f172a;
   border: 1px solid rgba(56, 189, 248, 0.2);
   border-radius: 12px;
-  padding: 0.75rem 0.85rem;
+  padding: 1rem 1.15rem;
   margin: 0 auto;
-  max-width: 440px;
 }
 
 .radarHeader {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 0.5rem;
-  margin-bottom: 0.4rem;
-  padding-bottom: 0.4rem;
+  gap: 0.75rem;
+  margin-bottom: 0.65rem;
+  padding-bottom: 0.65rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .radarLiveBadge {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  font-size: 0.65rem;
+  gap: 5px;
+  font-size: 0.68rem;
   font-weight: 800;
   letter-spacing: 0.06em;
   color: #38bdf8;
   text-transform: uppercase;
   background: rgba(56, 189, 248, 0.12);
-  padding: 2px 6px;
+  padding: 2px 8px;
   border-radius: 4px;
 }
 
@@ -245,14 +369,14 @@
 
 .radarHeading {
   margin: 0;
-  font-size: 0.8rem;
+  font-size: 0.88rem;
   font-weight: 800;
   color: #f1f5f9;
 }
 
 .radarStats {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.85rem;
 }
 
 .radarStatCell {
@@ -261,13 +385,13 @@
 }
 
 .radarStatLabel {
-  font-size: 0.58rem;
+  font-size: 0.62rem;
   color: #94a3b8;
   font-weight: 700;
 }
 
 .radarStatVal {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   color: #f8fafc;
   font-weight: 700;
 }
@@ -276,22 +400,22 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.65rem;
   position: relative;
-  width: 220px;
-  height: 220px;
-  max-width: 220px;
-  max-height: 220px;
-  margin: 0.25rem auto 0.5rem;
+  width: 250px;
+  height: 250px;
+  max-width: 250px;
+  max-height: 250px;
+  margin: 0.35rem auto 0.65rem;
 }
 
 .radarSvg {
-  width: 220px;
-  height: 220px;
-  max-width: 220px;
-  max-height: 220px;
+  width: 250px;
+  height: 250px;
+  max-width: 250px;
+  max-height: 250px;
   border-radius: 10px;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.55));
 }
 
 .pulseRing {
@@ -307,13 +431,13 @@
 
 .radarLegend {
   display: flex;
-  gap: 0.65rem;
+  gap: 0.85rem;
   flex-wrap: wrap;
   justify-content: center;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: #cbd5e1;
-  background: rgba(15, 23, 42, 0.7);
-  padding: 4px 10px;
+  background: rgba(15, 23, 42, 0.85);
+  padding: 4px 12px;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
@@ -321,218 +445,112 @@
 .legendItem {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
 }
 
 .legendDotJobsite {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--accent, #f97316);
   box-shadow: 0 0 5px var(--accent, #f97316);
 }
 
 .legendDotUnlocked {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #34d399;
   box-shadow: 0 0 5px #34d399;
 }
 
 .legendDotOuter {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: #64748b;
 }
 
-/* ---------------- View 1: Meta Ad Preview ---------------- */
-.socialMockup {
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 12px;
-  padding: 0.95rem;
-  max-width: 450px;
-  margin: 0 auto;
-  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.4);
-}
-
-.socialHeader {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  margin-bottom: 0.65rem;
-}
-
-.socialAvatar {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--accent, #f97316), #ea580c);
-  color: #fff;
-  font-weight: 800;
-  font-size: 1rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 8px rgba(249, 115, 22, 0.35);
-}
-
-.socialBody {
-  font-size: 0.82rem;
-  line-height: 1.45;
-  color: #e2e8f0;
-  margin-bottom: 0.65rem;
-}
-
-.mediaCraftFrame {
-  background: rgba(2, 6, 23, 0.8);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 10px;
-  padding: 0.65rem;
-  margin-bottom: 0.65rem;
-}
-
-.photoToggleBar {
-  display: flex;
-  gap: 0.4rem;
-  margin-bottom: 0.5rem;
-}
-
-.photoToggleBtn {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #94a3b8;
-  font-size: 0.72rem;
-  font-weight: 700;
-  padding: 4px 6px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.photoToggleBtnActive {
-  background: rgba(56, 189, 248, 0.2);
-  border-color: #38bdf8;
-  color: #f8fafc;
-}
-
-.craftsmanshipCard {
-  text-align: center;
-  padding: 0.65rem 0.5rem;
-  background: linear-gradient(135deg, rgba(30, 41, 59, 0.6), rgba(15, 23, 42, 0.8));
-  border-radius: 8px;
-  border: 1px dashed rgba(56, 189, 248, 0.3);
-}
-
-.socialFooter {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  background: rgba(2, 6, 23, 0.6);
-  padding: 0.65rem 0.75rem;
-  border-radius: 8px;
-}
-
-.socialCtaBtn {
-  background: var(--accent, #f97316);
-  color: #ffffff;
-  border: none;
-  font-weight: 800;
-  font-size: 0.76rem;
-  padding: 6px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-/* ---------------- View 2: Google Local Search ---------------- */
+/* ---------------- View 3: Google Local Search ---------------- */
 .serpPreview {
   background: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 0.95rem;
-  max-width: 450px;
-  margin: 0 auto;
+  padding: 1.1rem;
 }
 
 .serpUrl {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.72rem;
+  font-size: 0.74rem;
   color: #94a3b8;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .adPill {
   font-weight: 800;
   color: #f8fafc;
   background: rgba(255, 255, 255, 0.14);
-  padding: 1px 5px;
+  padding: 2px 6px;
   border-radius: 4px;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
 }
 
 .serpTitle {
-  font-size: 0.95rem;
+  font-size: 1.02rem;
   font-weight: 700;
   color: #38bdf8;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 5px;
 }
 
 .serpSnippet {
-  font-size: 0.78rem;
+  font-size: 0.82rem;
   color: #cbd5e1;
-  line-height: 1.45;
-  margin: 0 0 0.65rem;
+  line-height: 1.5;
+  margin: 0 0 0.85rem;
 }
 
 .serpSitelinks {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
-  gap: 0.5rem;
+  gap: 0.65rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
-  padding-top: 0.5rem;
+  padding-top: 0.75rem;
 }
 
 .sitelinkTitle {
-  font-size: 0.76rem;
+  font-size: 0.8rem;
   font-weight: 700;
   color: #38bdf8;
 }
 
 .sitelinkDesc {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: #94a3b8;
 }
 
-/* ---------------- View 3: Street Cluster Group Pricing ---------------- */
+/* ---------------- View 4: Street Cluster Group Pricing ---------------- */
 .clusterContainer {
   background: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 0.95rem;
-  max-width: 450px;
-  margin: 0 auto;
+  padding: 1.1rem;
 }
 
 .clusterTierGrid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  gap: 0.4rem;
-  margin-bottom: 0.75rem;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
 }
 
 .clusterCard {
   background: rgba(15, 23, 42, 0.8);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  padding: 0.65rem 0.4rem;
+  padding: 0.75rem 0.5rem;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -541,28 +559,28 @@
 .clusterCardActive {
   background: rgba(249, 115, 22, 0.15);
   border-color: var(--accent, #f97316);
-  box-shadow: 0 0 10px rgba(249, 115, 22, 0.3);
+  box-shadow: 0 0 12px rgba(249, 115, 22, 0.3);
 }
 
 .clusterDiscount {
-  font-size: 1.15rem;
+  font-size: 1.25rem;
   font-weight: 800;
   color: #34d399;
-  margin: 2px 0;
+  margin: 3px 0;
 }
 
 .routeStreetFrame {
   background: rgba(2, 6, 23, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 8px;
-  padding: 0.65rem;
-  margin-bottom: 0.65rem;
+  padding: 0.75rem;
+  margin-bottom: 0.75rem;
 }
 
 .streetHouseStrip {
   display: flex;
-  gap: 0.35rem;
-  margin: 0.4rem 0;
+  gap: 0.4rem;
+  margin: 0.5rem 0;
 }
 
 .houseBlock {
@@ -570,9 +588,9 @@
   background: rgba(30, 41, 59, 0.6);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  padding: 0.4rem 0.2rem;
+  padding: 0.45rem 0.25rem;
   text-align: center;
-  font-size: 0.65rem;
+  font-size: 0.7rem;
 }
 
 .houseBlockCompleted {
@@ -589,26 +607,26 @@
 
 .viralLinkBox {
   background: rgba(2, 6, 23, 0.6);
-  padding: 0.5rem 0.65rem;
+  padding: 0.6rem 0.75rem;
   border-radius: 6px;
-  margin-top: 0.65rem;
+  margin-top: 0.75rem;
 }
 
 .viralLinkCode {
   font-family: monospace;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   color: #38bdf8;
   word-break: break-all;
   margin-top: 2px;
 }
 
-/* ---------------- View 4: Smartphone SMS Preview ---------------- */
+/* ---------------- View 5: Smartphone SMS Preview ---------------- */
 .phoneChrome {
   background: #000000;
   border: 2px solid rgba(255, 255, 255, 0.2);
   border-radius: 20px;
-  padding: 0.75rem;
-  max-width: 320px;
+  padding: 0.85rem;
+  max-width: 340px;
   margin: 0 auto;
   box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
 }
@@ -617,15 +635,15 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 0.65rem;
+  font-size: 0.68rem;
   color: #94a3b8;
-  margin-bottom: 0.5rem;
-  padding: 0 4px;
+  margin-bottom: 0.6rem;
+  padding: 0 6px;
 }
 
 .dynamicIsland {
-  width: 60px;
-  height: 12px;
+  width: 65px;
+  height: 14px;
   background: #111;
   border-radius: 12px;
 }
@@ -634,23 +652,23 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-bottom: 0.45rem;
-  margin-bottom: 0.5rem;
+  padding-bottom: 0.5rem;
+  margin-bottom: 0.6rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .smsBubbleStream {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
 .smsBubbleIn,
 .smsBubbleOut {
-  padding: 0.45rem 0.65rem;
+  padding: 0.5rem 0.75rem;
   border-radius: 10px;
-  font-size: 0.74rem;
-  line-height: 1.4;
+  font-size: 0.78rem;
+  line-height: 1.45;
   max-width: 90%;
 }
 
@@ -669,32 +687,30 @@
 }
 
 .smsTimeTag {
-  font-size: 0.6rem;
+  font-size: 0.62rem;
   opacity: 0.75;
   display: block;
   margin-top: 3px;
 }
 
-/* ---------------- View 5: Budget Pacing Card ---------------- */
+/* ---------------- View 6: Budget Pacing Card ---------------- */
 .budgetCard {
   background: #0f172a;
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 12px;
-  padding: 0.95rem;
-  max-width: 450px;
-  margin: 0 auto;
+  padding: 1.1rem;
 }
 
 .budgetTimeline {
   display: flex;
   justify-content: space-between;
   position: relative;
-  margin: 1rem 0;
+  margin: 1.25rem 0;
 }
 
 .timelineConnector {
   position: absolute;
-  top: 14px;
+  top: 15px;
   left: 10%;
   right: 10%;
   height: 2px;
@@ -709,13 +725,13 @@
 }
 
 .timelineStepDot {
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   border-radius: 50%;
   background: #1e293b;
   border: 2px solid #38bdf8;
   color: #38bdf8;
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 800;
   display: flex;
   align-items: center;
@@ -725,13 +741,13 @@
 
 .autoKillCallout {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   background: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.25);
   border-radius: 8px;
-  padding: 0.65rem 0.75rem;
-  font-size: 0.74rem;
-  line-height: 1.4;
+  padding: 0.75rem 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
 }
 
 /* ---------------- Privacy Visualizer Section ---------------- */
@@ -856,6 +872,11 @@
   padding-bottom: 0.5rem;
   margin-bottom: 1.25rem;
   justify-content: flex-start;
+  scrollbar-width: none;
+}
+
+.journeyPillBar::-webkit-scrollbar {
+  display: none;
 }
 
 .journeyPillBtn {
@@ -1152,3 +1173,520 @@
   margin: 0;
   line-height: 1.35;
 }
+
+/* ---------------- Lead Notification Banner ---------------- */
+.leadNotificationBanner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(14, 116, 144, 0.95);
+  border: 1px solid #38bdf8;
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 1.15rem 0;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-10px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.leadNotificationIcon {
+  font-size: 1.3rem;
+  line-height: 1;
+}
+
+.leadNotificationTop {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.74rem;
+  color: #e0f2fe;
+  margin-bottom: 2px;
+}
+
+.leadNotificationTop strong {
+  color: #ffffff;
+  font-weight: 800;
+}
+
+.leadNotificationText {
+  font-size: 0.8rem;
+  color: #f0fdfa;
+  line-height: 1.4;
+  margin: 2px 0 6px;
+}
+
+.leadNotificationAction {
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-block;
+  transition: all 0.15s ease;
+}
+
+.leadNotificationAction:hover {
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.leadNotificationClose {
+  background: none;
+  border: none;
+  color: #cbd5e1;
+  font-size: 1rem;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+/* ---------------- Preset Chips Row ---------------- */
+.presetChipsRow {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  padding: 0.45rem 1.15rem;
+  background: rgba(2, 6, 23, 0.4);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.presetChipsLabel {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.presetChipBtn {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.presetChipBtn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+}
+
+.presetChipBtnActive {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+/* ---------------- Storm Alert Banner ---------------- */
+.stormAlertBanner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(234, 179, 8, 0.15);
+  border-bottom: 1px solid rgba(234, 179, 8, 0.3);
+  padding: 0.5rem 1.15rem;
+  line-height: 1.4;
+}
+
+/* ---------------- Social Engagement Row & Trigger ---------------- */
+.metaDotsMenu {
+  margin-left: auto;
+  color: #64748b;
+  font-size: 1.1rem;
+  cursor: pointer;
+  letter-spacing: 2px;
+}
+
+.verifiedCraftBadge {
+  font-size: 0.65rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  text-transform: uppercase;
+  background: rgba(56, 189, 248, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.socialEngagementRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.72rem;
+  color: #94a3b8;
+  padding: 0.6rem 0.25rem 0.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-top: 0.4rem;
+}
+
+.simulateLeadTriggerBtn {
+  width: 100%;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px dashed rgba(56, 189, 248, 0.4);
+  color: #38bdf8;
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 0.65rem;
+  transition: all 0.15s ease;
+}
+
+.simulateLeadTriggerBtn:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+}
+
+/* ---------------- Detour Comparison Meter ---------------- */
+.detourComparisonMeter {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+  margin-bottom: 0.85rem;
+}
+
+.detourCellBad {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+}
+
+.detourCellGood {
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 8px;
+  padding: 0.65rem 0.75rem;
+}
+
+.detourLabel {
+  font-size: 0.62rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: block;
+}
+
+.detourCellBad .detourLabel { color: #f87171; }
+.detourCellGood .detourLabel { color: #34d399; }
+
+.detourValBad {
+  font-size: 0.88rem;
+  color: #fecaca;
+  display: block;
+  margin: 2px 0;
+}
+
+.detourValGood {
+  font-size: 0.88rem;
+  color: #a7f3d0;
+  display: block;
+  margin: 2px 0;
+}
+
+.detourSub {
+  font-size: 0.68rem;
+  color: #94a3b8;
+  display: block;
+  line-height: 1.35;
+}
+
+/* ---------------- Sweep Animation in Radar ---------------- */
+.sweepGroup {
+  transform-origin: 200px 200px;
+  animation: radarSweep 4s linear infinite;
+}
+
+/* ---------------- Digital Yard Sign Comparison Table ---------------- */
+.comparisonTableContainer {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  overflow-x: auto;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+}
+
+.comparisonTable {
+  width: 100%;
+  min-width: 600px;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.88rem;
+}
+
+.comparisonTable th {
+  background: rgba(2, 6, 23, 0.6);
+  padding: 0.95rem 1.25rem;
+  color: #94a3b8;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.comparisonTable td {
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  vertical-align: middle;
+}
+
+.tableHighlightRow {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.tableHighlightRow td {
+  border-bottom: none;
+}
+
+.tableWarning {
+  color: #f87171;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.tableSuccess {
+  color: #34d399;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+/* ---------------- Never Does Grid ---------------- */
+.neverGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.25rem;
+}
+
+.neverCard {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 14px;
+  padding: 1.35rem 1.25rem;
+  transition: all 0.2s ease;
+}
+
+.neverCard:hover {
+  border-color: rgba(239, 68, 68, 0.45);
+  transform: translateY(-2px);
+}
+
+.neverIcon {
+  font-size: 1.6rem;
+  margin-bottom: 0.65rem;
+}
+
+.neverTitle {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #f8fafc;
+  margin: 0 0 0.4rem;
+}
+
+.neverDesc {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ---------------- Trust Signals Strip in Hero Left ---------------- */
+.trustSignalsRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 1.25rem;
+  font-size: 0.82rem;
+  color: #94a3b8;
+}
+
+.trustSignalItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.trustSignalDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #34d399;
+}
+
+/* ---------------- Verified Contractor Quote Card ---------------- */
+.quoteCardContainer {
+  background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(8, 17, 28, 0.95));
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 16px;
+  padding: 1.75rem 2rem;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+.quoteCardBadge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  padding: 3px 8px;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+}
+
+.quoteText {
+  font-size: 1.15rem;
+  line-height: 1.6;
+  color: #f1f5f9;
+  font-style: italic;
+  margin: 0 0 1.5rem;
+}
+
+.quoteAuthorRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.quoteAuthorInfo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.quoteAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7, #0369a1);
+  color: #ffffff;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.quoteMetricsRow {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.quoteMetricPill {
+  display: flex;
+  flex-direction: column;
+  background: rgba(2, 6, 23, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 6px 12px;
+  border-radius: 8px;
+}
+
+/* ---------------- Visual Route Density Diagram ---------------- */
+.storyDiagramRow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+  margin-top: 1.5rem;
+}
+
+.storyDiagramBoxBad,
+.storyDiagramBoxGood {
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.storyDiagramBoxBad {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+}
+
+.storyDiagramBoxGood {
+  background: rgba(52, 211, 153, 0.08);
+  border: 1px solid rgba(52, 211, 153, 0.25);
+}
+
+.storyDiagramHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.storyBadgeBad {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #f87171;
+  letter-spacing: 0.05em;
+}
+
+.storyBadgeGood {
+  font-size: 0.65rem;
+  font-weight: 800;
+  color: #34d399;
+  letter-spacing: 0.05em;
+}
+
+.routeVisualStripBad,
+.routeVisualStripGood {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0.85rem 0;
+  flex-wrap: wrap;
+}
+
+.routePointBad,
+.routePointGood {
+  font-size: 0.76rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.routePointBad {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.routePointGood {
+  background: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+  border: 1px solid rgba(52, 211, 153, 0.3);
+}
+
+.storyDiagramFooterBad,
+.storyDiagramFooterGood {
+  display: flex;
+  gap: 10px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.storyDiagramFooterBad { color: #f87171; }
+.storyDiagramFooterGood { color: #34d399; }

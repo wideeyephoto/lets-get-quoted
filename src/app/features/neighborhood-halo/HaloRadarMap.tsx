@@ -107,6 +107,12 @@ export default function HaloRadarMap({ streetName, trade, activeClusterTier }: H
           <line x1="20" y1="200" x2="380" y2="200" stroke="rgba(56, 189, 248, 0.12)" strokeWidth="1" />
           <line x1="200" y1="20" x2="200" y2="380" stroke="rgba(56, 189, 248, 0.12)" strokeWidth="1" />
 
+          {/* Animated Radar Sweep Beam */}
+          <g className={styles.sweepGroup}>
+            <line x1="200" y1="200" x2="200" y2="20" stroke="rgba(56, 189, 248, 0.8)" strokeWidth="1.5" />
+            <polygon points="200,200 170,20 200,20" fill="rgba(56, 189, 248, 0.15)" />
+          </g>
+
           {/* Simulated Street Grid Lines */}
           <path
             d="M 60 140 Q 200 200 340 260"

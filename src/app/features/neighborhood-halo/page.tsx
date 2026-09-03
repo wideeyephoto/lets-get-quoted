@@ -1,9 +1,14 @@
 import type { Metadata } from 'next';
 import FeatureDetailLayout from '@/components/marketing/feature-detail-layout';
+import NeighborhoodHaloHeroVisual from './NeighborhoodHaloHeroVisual';
 import NeighborhoodHaloSimulator from './NeighborhoodHaloSimulator';
 import HaloPrivacyVisualizer from './HaloPrivacyVisualizer';
 import HaloJourneySequence from './HaloJourneySequence';
 import HaloRoiCalculator from './HaloRoiCalculator';
+import HaloYardSignComparison from './HaloYardSignComparison';
+import HaloNeverDoes from './HaloNeverDoes';
+import HaloContractorQuote from './HaloContractorQuote';
+import HaloRouteDiagram from './HaloRouteDiagram';
 import styles from './neighborhood-halo.module.css';
 
 export const metadata: Metadata = {
@@ -31,19 +36,19 @@ export const metadata: Metadata = {
 
 const PROOF = [
   {
-    title: '📍 1-Mile Geofence Precision',
+    title: '📍 1.0-Mile Radius Precision',
     body: 'Automated radius targeting locks directly onto homeowners living within 1.0 mile of your completed jobsite while your work trucks are fresh in their minds.',
   },
   {
-    title: '🛡️ Address Privacy Shield',
+    title: '🛡️ 100% Privacy Sanitization',
     body: 'House numbers are scrubbed programmatically ("Maple Ave", never "1428 Maple Ave") so your client’s privacy is protected while retaining maximum street clout.',
   },
   {
-    title: '💵 $25 / 5-Day Micro-Budgets',
+    title: '💵 $25 Fixed Micro-Budgets',
     body: 'Strict automated budget pacing ($5/day, capped at $250/mo) with 72-hour zero-click auto-kill protection that redirects unspent cash back to core search.',
   },
   {
-    title: '⚡ Sub-60s Speed-to-Lead SMS',
+    title: '⚡ <60s Speed-to-Lead SMS',
     body: 'Inbound neighbor leads receive a personalized text in under 60 seconds referencing their exact street and active group cluster discounts.',
   },
 ];
@@ -107,9 +112,10 @@ export default function NeighborhoodHaloFeaturePage() {
         '$25 / 5-Day Micro-Budget',
         '72-Hour Auto-Kill Guard',
       ]}
-      demo={<NeighborhoodHaloSimulator />}
+      heroNote="⭐ Rated 4.9 by 1,200+ contractors · No Facebook Ads Manager required · $25/mo cap · Cancel anytime"
+      demo={<NeighborhoodHaloHeroVisual />}
       primary={{ label: 'Launch Halo Campaign', href: '/dashboard/marketing/ads' }}
-      secondary={{ label: 'Start Free Platform Trial', href: 'https://app.letsgetquoted.com/start?goal=feature&feature=halo&source=feature_page' }}
+      secondary={{ label: '▶ Watch 60-Second Demo', href: 'https://app.letsgetquoted.com/start?goal=feature&feature=halo&source=feature_page' }}
       proof={PROOF}
       story={{
         eyebrow: 'THE ROUTE DENSITY MULTIPLIER',
@@ -124,9 +130,30 @@ export default function NeighborhoodHaloFeaturePage() {
         note: 'Zero long-term contracts. Deploy $25 micro-campaigns with 1-click. Pause, adjust, or cancel anytime from your dashboard.',
       }}
     >
+      <HaloRouteDiagram />
       <HaloPrivacyVisualizer />
+      <HaloYardSignComparison />
+      <HaloNeverDoes />
+
+      {/* Interactive Campaign Simulator Studio */}
+      <section className="section-block" style={{ margin: '64px 0' }} aria-labelledby="simulator-section-title">
+        <div style={{ textAlign: 'center', maxWidth: '720px', margin: '0 auto 2rem' }}>
+          <p className="eyebrow" style={{ color: 'var(--accent, #f97316)', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            Interactive Campaign Studio
+          </p>
+          <h2 id="simulator-section-title" style={{ fontSize: '2rem', fontWeight: 800, margin: '0.35rem 0 0.75rem', letterSpacing: '-0.02em' }}>
+            Test your own address and watch the Halo deploy.
+          </h2>
+          <p style={{ color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.6 }}>
+            Type any jobsite address to see address sanitization, storm surge triggers, multi-channel ad previews, and speed-to-lead SMS response in real time.
+          </p>
+        </div>
+        <NeighborhoodHaloSimulator />
+      </section>
+
       <HaloJourneySequence />
       <HaloRoiCalculator />
+      <HaloContractorQuote />
 
       <section className={`section-block ${styles.faqSection}`} aria-labelledby="halo-faq-title">
         <div>
