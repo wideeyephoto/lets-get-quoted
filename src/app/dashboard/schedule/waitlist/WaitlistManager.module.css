@@ -1171,3 +1171,159 @@
   color: var(--muted-2);
   cursor: not-allowed;
 }
+
+/* Smart Search & Auto-fill */
+.smartSearchWrapper {
+  position: relative;
+  width: 100%;
+}
+
+.smartSearchStatus {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.35);
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 10px;
+  font-size: 12px;
+  color: #34d399;
+}
+
+:global([data-theme='sunlight']) .smartSearchStatus,
+:global([data-theme='parchment']) .smartSearchStatus {
+  background: #f0fdf4;
+  border-color: #86efac;
+  color: #166534;
+}
+
+.smartSearchClearBtn {
+  background: transparent;
+  border: none;
+  font-size: 12px;
+  color: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0 4px;
+}
+
+.smartDropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 70;
+  margin-top: 4px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+:global([data-theme='sunlight']) .smartDropdown,
+:global([data-theme='parchment']) .smartDropdown {
+  background: #ffffff;
+  border-color: #e2e8f0;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+}
+
+.smartDropdownHead {
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-3);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.smartDropdownItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  transition: background 0.12s ease;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+}
+
+.smartDropdownItem:last-child {
+  border-bottom: none;
+}
+
+.smartDropdownItem:hover,
+.smartDropdownItem:focus {
+  background: rgba(var(--tint), 0.15);
+}
+
+:global([data-theme='sunlight']) .smartDropdownItem:hover,
+:global([data-theme='parchment']) .smartDropdownItem:hover {
+  background: #f1f5f9;
+}
+
+.smartMatchName {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.smartBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+}
+
+.smartBadgeClient {
+  background: rgba(16, 185, 129, 0.18);
+  color: #34d399;
+}
+
+:global([data-theme='sunlight']) .smartBadgeClient,
+:global([data-theme='parchment']) .smartBadgeClient {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.smartBadgeLead {
+  background: rgba(59, 130, 246, 0.18);
+  color: #60a5fa;
+}
+
+:global([data-theme='sunlight']) .smartBadgeLead,
+:global([data-theme='parchment']) .smartBadgeLead {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.smartMatchSub {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+.smartDropdownEmpty {
+  padding: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+}

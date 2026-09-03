@@ -24,6 +24,8 @@ import {
   sendWaitlistOfferAction,
   triggerWaitlistSweepAction,
   toggleWaitlistAction,
+  searchExistingContactsAction,
+  type ExistingContactMatch,
 } from './actions';
 import styles from './WaitlistManager.module.css';
 
@@ -81,6 +83,51 @@ export default function WaitlistManager({
   const [formEarliest, setFormEarliest] = useState('');
   const [formLatest, setFormLatest] = useState('');
   const [formNotes, setFormNotes] = useState('');
+  const [formClientId, setFormClientId] = useState<string | null>(null);
+  const [formLeadId, setFormLeadId] = useState<string | null>(null);
+  const [formLat, setFormLat] = useState<number | null>(null);
+  const [formLng, setFormLng] = useState<number | null>(null);
+  const [smartMatches, setSmartMatches] = useState<ExistingContactMatch[]>([]);
+  const [isSearchingContacts, setIsSearchingContacts] = useState(false);
+  const [showSmartDropdown, setShowSmartDropdown] = useState(false);
+  const [linkedContact, setLinkedContact] = useState<ExistingContactMatch | null>(null);
+
+  // Smart Autosearch for existing clients/leads as user types name or phone
+  useEffect(() => {
+    if (!showAddModal || linkedContact) {
+      setSmartMatches([]);
+      setShowSmartDropdown(false);
+      return;
+    }
+
+    const query = formName.trim() || formPhone.trim();
+    if (query.length < 2) {
+      setSmartMatches([]);
+      setShowSmartDropdown(false);
+      return;
+    }
+
+    let active = true;
+    setIsSearchingContacts(true);
+
+    const timer = setTimeout(async () => {
+      try {
+        const matches = await searchExistingContactsAction(query);
+        if (!active) return;
+        setSmartMatches(matches);
+        setShowSmartDropdown(matches.length > 0);
+      } catch (err) {
+        console.error('Smart autosearch error:', err);
+      } finally {
+        if (active) setIsSearchingContacts(false);
+      }
+    }, 180);
+
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
+  }, [formName, formPhone, showAddModal, linkedContact]);
 
   // Fetch candidates whenever slot parameters change in Fill Slot Modal
   useEffect(() => {
@@ -154,6 +201,10 @@ export default function WaitlistManager({
     startTransition(async () => {
       try {
         await addWaitlistEntryAction({
+          clientId: formClientId || null,
+          leadId: formLeadId || null,
+          lat: formLat ?? null,
+          lng: formLng ?? null,
           clientName: formName,
           clientPhone: formPhone,
           clientEmail: formEmail || null,
@@ -178,6 +229,28 @@ export default function WaitlistManager({
     });
   };
 
+  const handleSelectMatch = (match: ExistingContactMatch) => {
+    setFormName(match.name);
+    setFormPhone(match.phone);
+    if (match.email) setFormEmail(match.email);
+    if (match.address) setFormAddress(match.address);
+    if (match.lat) setFormLat(match.lat);
+    if (match.lng) setFormLng(match.lng);
+    if (match.serviceName && !formService) setFormService(match.serviceName);
+    if (match.notes && !formNotes) setFormNotes(match.notes);
+    setFormClientId(match.clientId);
+    setFormLeadId(match.leadId);
+    setLinkedContact(match);
+    setShowSmartDropdown(false);
+    setSmartMatches([]);
+  };
+
+  const handleUnlinkContact = () => {
+    setLinkedContact(null);
+    setFormClientId(null);
+    setFormLeadId(null);
+  };
+
   const resetForm = () => {
     setFormName('');
     setFormPhone('');
@@ -192,6 +265,13 @@ export default function WaitlistManager({
     setFormEarliest('');
     setFormLatest('');
     setFormNotes('');
+    setFormClientId(null);
+    setFormLeadId(null);
+    setFormLat(null);
+    setFormLng(null);
+    setLinkedContact(null);
+    setSmartMatches([]);
+    setShowSmartDropdown(false);
   };
 
   const handleSendOffer = () => {
@@ -858,20 +938,99 @@ export default function WaitlistManager({
             </div>
 
             <form onSubmit={handleAddSubmit}>
+              {/* Linked Contact Smart-fill Status Banner */}
+              {linkedContact && (
+                <div className={styles.smartSearchStatus}>
+                  <span>
+                    ✓ Smart-filled from existing {linkedContact.source}: <strong>{linkedContact.name}</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleUnlinkContact}
+                    className={styles.smartSearchClearBtn}
+                  >
+                    Unlink
+                  </button>
+                </div>
+              )}
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-                <div>
-                  <label className={styles.formLabel}>
-                    Client Name *
-                  </label>
+                <div className={styles.smartSearchWrapper}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className={styles.formLabel}>
+                      Client Name *
+                    </label>
+                    {isSearchingContacts && (
+                      <span style={{ fontSize: 11, color: 'var(--muted)' }}>Searching...</span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     required
                     placeholder="e.g. Sarah Connor"
                     value={formName}
-                    onChange={(e) => setFormName(e.target.value)}
+                    onChange={(e) => {
+                      setFormName(e.target.value);
+                      if (linkedContact && e.target.value !== linkedContact.name) {
+                        setLinkedContact(null);
+                        setFormClientId(null);
+                        setFormLeadId(null);
+                      }
+                    }}
+                    onFocus={() => {
+                      if (smartMatches.length > 0) setShowSmartDropdown(true);
+                    }}
+                    onBlur={() => {
+                      // Slight delay to allow clicks to register
+                      setTimeout(() => setShowSmartDropdown(false), 200);
+                    }}
                     className={styles.formInput}
+                    autoComplete="off"
                   />
+
+                  {/* Smart Matches Autocomplete Popover */}
+                  {showSmartDropdown && smartMatches.length > 0 && (
+                    <div className={styles.smartDropdown} role="listbox">
+                      <div className={styles.smartDropdownHead}>
+                        <span>Existing Contacts ({smartMatches.length})</span>
+                        <span>Click to auto-fill</span>
+                      </div>
+                      {smartMatches.map((match) => (
+                        <button
+                          key={`${match.source}-${match.id}`}
+                          type="button"
+                          className={styles.smartDropdownItem}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            handleSelectMatch(match);
+                          }}
+                        >
+                          <div>
+                            <div className={styles.smartMatchName}>
+                              <span>👤</span>
+                              <span>{match.name}</span>
+                              <span
+                                className={`${styles.smartBadge} ${match.source === 'client' ? styles.smartBadgeClient : styles.smartBadgeLead}`}
+                              >
+                                {match.source === 'client' ? 'Client' : 'Lead'}
+                              </span>
+                            </div>
+                            <div className={styles.smartMatchSub}>
+                              {match.phone && <span>{match.phone}</span>}
+                              {match.phone && match.address && <span> • </span>}
+                              {match.address && <span>{match.address}</span>}
+                              {match.serviceName && <span> ({match.serviceName})</span>}
+                            </div>
+                          </div>
+                          <span style={{ fontSize: 12, color: 'var(--accent)', fontWeight: 600 }}>
+                            Auto-fill ↗
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <label className={styles.formLabel}>
                     Mobile Phone *
