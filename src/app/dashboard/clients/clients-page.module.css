@@ -109,21 +109,16 @@
 
 .toolbar {
   display: grid;
-  grid-template-columns: minmax(14rem, 1fr) auto auto auto;
+  grid-template-columns: minmax(14rem, 1fr) auto auto;
   gap: 0.5rem;
   align-items: center;
   margin-bottom: 0.7rem;
 }
 
 .searchWrap,
-.sortWrap,
 .paneSwitch,
 .gearSlot {
   min-width: 0;
-}
-
-.sortWrap {
-  white-space: nowrap;
 }
 
 .paneSwitch {
@@ -202,8 +197,7 @@
     grid-template-columns: minmax(0, 1fr) auto;
   }
 
-  .searchWrap,
-  .sortWrap {
+  .searchWrap {
     grid-column: 1 / -1;
     width: 100%;
   }
