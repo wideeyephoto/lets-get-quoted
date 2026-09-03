@@ -26,6 +26,7 @@ import AllFeaturesModal from '@/components/marketing/AllFeaturesModal';
 import FeaturesCatalogExplorer from './FeaturesCatalogExplorer';
 import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
 import CompanionRouteDemo from './CompanionRouteDemo';
+import CompanionHUD from './CompanionHUD';
 import HighTechShowcase from '@/components/marketing/HighTechShowcase';
 import FeaturesEnergyFlowHero from './FeaturesEnergyFlowHero';
 import ContractorSecretWeapons from './ContractorSecretWeapons';
@@ -296,6 +297,9 @@ export default async function FeaturesPage() {
         href={FEATURE_SIGNUP_URL}
       />
       </main>
+
+      {/* 24/7 Interactive AI Contractor Field Companion */}
+      <CompanionHUD />
 
       <SiteFooter />
       </div>
