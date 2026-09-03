@@ -2,6 +2,7 @@ import { requireOfficeContext } from '@/lib/auth';
 import { bookingAvailabilityFromAccount, TIMEZONE_OPTIONS } from '@/lib/booking-availability';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import { getAvailableBookingDays } from '@/lib/booking';
+import { loadOwnerAlerts } from '@/lib/owner-sms';
 import { todayIn } from '@/lib/quote-options';
 import BookingSetup from './BookingSetup';
 
@@ -15,15 +16,25 @@ export const metadata = { title: 'Booking requests' };
 export default async function BookingSetupPage() {
   const { supabase, accountId } = await requireOfficeContext('schedule.write');
 
-  const [{ data: account }, { data: site }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: dedicatedSender }, ownerAlerts] = await Promise.all([
     supabase
       .from('accounts')
       .select(
-        'timezone, booking_enabled, booking_weekdays, booking_windows, booking_window_minutes, booking_max_per_day, booking_lead_days, workday_start, workday_end, schedule_day_hours, job_buffer_minutes, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time',
+        'timezone, booking_enabled, booking_weekdays, booking_windows, booking_window_minutes, booking_max_per_day, booking_lead_days, workday_start, workday_end, schedule_day_hours, job_buffer_minutes, instant_book_enabled, instant_book_min_amount, instant_book_radius_miles, instant_book_geo_mode, instant_book_drive_time, alert_phone',
       )
       .eq('id', accountId)
       .maybeSingle(),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
+    supabase
+      .from('sms_sender_numbers')
+      .select('e164_number')
+      .eq('account_id', accountId)
+      .eq('purpose', 'contractor_dedicated')
+      .eq('provisioning_status', 'active')
+      .is('suspended_at', null)
+      .limit(1)
+      .maybeSingle(),
+    loadOwnerAlerts(accountId),
   ]);
 
   const availability = bookingAvailabilityFromAccount(
@@ -72,6 +83,9 @@ export default async function BookingSetupPage() {
       bookableDays={bookableDays}
       timezoneOptions={TIMEZONE_OPTIONS}
       todayKey={todayKey}
+      ownerAlerts={ownerAlerts.kind === 'ok' ? ownerAlerts : null}
+      alertPhone={account?.alert_phone ?? null}
+      dedicatedPhone={dedicatedSender?.e164_number ?? null}
     />
   );
 }

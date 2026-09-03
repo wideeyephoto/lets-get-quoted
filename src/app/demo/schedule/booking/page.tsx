@@ -44,12 +44,12 @@ export default function DemoBookingPage() {
         </Link>
       </header>
 
-      <section className="bset-master">
+      <section className="bset-master compact">
         <span className="bset-master-switch">
           <input type="checkbox" role="switch" checked readOnly aria-label="Booking requests are on" />
           <span className="bset-switch-track" aria-hidden="true"><span /></span>
           <span className="bset-master-copy">
-            <strong>Booking requests</strong>
+            <strong>Booking requests <em className="on">Active</em></strong>
             <small>Customers can request a preferred window online.</small>
           </span>
         </span>
@@ -64,7 +64,7 @@ export default function DemoBookingPage() {
       </section>
 
       <div className="bset-summary" aria-label="Booking request summary">
-        <div className="bset-summary-item is-static">
+        <div className="bset-summary-item is-static is-active">
           <span className="bset-summary-icon tone-days"><Icon name="calendar" /></span>
           <span className="bset-summary-copy">
             <small>Availability</small>
@@ -76,7 +76,7 @@ export default function DemoBookingPage() {
         <div className="bset-summary-item is-static">
           <span className="bset-summary-icon tone-time"><Icon name="clock" /></span>
           <span className="bset-summary-copy">
-            <small>Limits</small>
+            <small>Limits &amp; Rules</small>
             <strong>Up to {DEMO_BOOKING.maxPerDay} jobs a day</strong>
             <span>{DEMO_BOOKING.leadDays} day of notice</span>
           </span>

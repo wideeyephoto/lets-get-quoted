@@ -251,7 +251,8 @@ describe('the customer confirmation is capped per recipient', () => {
    */
   it('never suppresses the owner notification, only the stranger-addressed one', () => {
     expect(created.indexOf('sendLeadNotificationEmail(')).toBeLessThan(created.indexOf('checkRateLimitStrict('));
-    expect(created.match(/checkRateLimitStrict\(/g) ?? []).toHaveLength(1);
+    // Stranger-addressed caps: one for customer email, one for customer SMS
+    expect(created.match(/checkRateLimitStrict\(/g) ?? []).toHaveLength(2);
   });
 
   it('and a suppressed confirmation still leaves the booking written', () => {

@@ -40776,7 +40776,7 @@ button.plan-badge.warn.is-action:focus-visible {
      needs the deep one (see the light block above). */
   --bset-accent-ink: #ff7a29;
   display: grid;
-  gap: 1.5rem;
+  gap: 1rem;
   align-content: start;
   padding-bottom: 6rem;
   /* room for the sticky save bar */
@@ -40866,15 +40866,34 @@ button.plan-badge.warn.is-action:focus-visible {
 .bset-master {
   display: flex;
   align-items: center;
-  gap: 1.25rem;
+  gap: 1rem;
   flex-wrap: wrap;
-  padding: 1.15rem 1.35rem;
+  padding: 0.85rem 1.15rem;
   border: 1.5px solid var(--bset-line-strong);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--bset-card);
-  box-shadow: 0 18px 50px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(var(--tint), 0.12);
+  box-shadow: 0 12px 36px -12px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(var(--tint), 0.12);
   -webkit-backdrop-filter: blur(24px);
   backdrop-filter: blur(24px);
+}
+
+.bset-master.compact {
+  padding: 0.65rem 1rem;
+  gap: 0.85rem;
+  border-radius: 14px;
+}
+
+.bset-master.compact .bset-master-copy strong {
+  font-size: 0.95rem;
+}
+
+.bset-master.compact .bset-master-copy small {
+  font-size: 0.76rem;
+}
+
+.bset-master.compact .bset-master-save-note {
+  font-size: 0.72rem;
+  margin-top: 0.15rem;
 }
 
 .bset-master-switch {
@@ -41245,28 +41264,39 @@ button.plan-badge.warn.is-action:focus-visible {
 .bset-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 0.75rem;
+  gap: 0.55rem;
 }
 
 .bset-summary-item {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.6rem;
   min-width: 0;
-  padding: 0.8rem 0.9rem;
-  border: 1px solid var(--bset-line);
-  border-radius: 14px;
+  padding: 0.55rem 0.75rem;
+  border: 1.5px solid var(--bset-line);
+  border-radius: 12px;
   background: var(--bset-card);
   color: inherit;
   font: inherit;
   text-align: left;
   cursor: pointer;
-  transition: border-color 0.16s ease, transform 0.16s ease;
+  transition: border-color 0.16s ease, transform 0.16s ease, background 0.16s ease;
 }
 
 .bset-summary-item:hover {
   border-color: var(--bset-line-strong);
   transform: translateY(-1px);
+}
+
+.bset-summary-item.is-active {
+  border-color: var(--bset-accent-ink);
+  background: rgba(255, 122, 41, 0.08);
+  box-shadow: 0 4px 14px -3px rgba(255, 122, 41, 0.2), inset 0 2px 0 var(--bset-accent);
+}
+
+.bset-summary-item.is-active .bset-summary-chevron {
+  color: var(--bset-accent-ink);
+  transform: rotate(90deg);
 }
 
 .bset-summary-item:focus-visible {
@@ -41292,15 +41322,15 @@ button.plan-badge.warn.is-action:focus-visible {
   flex: none;
   display: grid;
   place-items: center;
-  width: 2.15rem;
-  height: 2.15rem;
-  border-radius: 10px;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
 }
 
 .bset-summary-icon svg,
 .bset-section-icon svg {
-  width: 1.05rem;
-  height: 1.05rem;
+  width: 0.95rem;
+  height: 0.95rem;
 }
 
 .bset-summary-icon.tone-days,
@@ -41510,6 +41540,16 @@ button.plan-badge.warn.is-action:focus-visible {
      header carries the radius itself so the corners still look right. */
 }
 
+.bset-tab-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--bset-line);
+  background: var(--bset-inner);
+  border-radius: 16px 16px 0 0;
+}
+
 .bset-section-head[aria-expanded='false'] {
   border-radius: 16px;
 }
@@ -41616,12 +41656,15 @@ button.plan-badge.warn.is-action:focus-visible {
 }
 
 .bset-section-body {
-  padding: 0.25rem 1.25rem 1.3rem;
-  border-top: 1px solid var(--bset-line);
+  padding: 0.9rem 1.1rem 1.15rem;
 }
 
 .bset-field-group {
-  padding-top: 1.05rem;
+  padding-top: 0.75rem;
+}
+
+.bset-field-group:first-child {
+  padding-top: 0;
 }
 
 .bset-group-title {
@@ -41631,15 +41674,325 @@ button.plan-badge.warn.is-action:focus-visible {
 }
 
 .bset-group-hint {
-  margin: 0.15rem 0 0.75rem;
-  font-size: 0.82rem;
+  margin: 0.12rem 0 0.6rem;
+  font-size: 0.8rem;
   color: var(--muted, var(--muted-2));
+}
+
+.bset-group-splithead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.5rem;
+}
+
+.bset-group-splithead .bset-group-title {
+  margin: 0;
+}
+
+.bset-group-splithead .bset-group-hint {
+  margin: 0.1rem 0 0;
+}
+
+.bset-workhours-compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.28rem 0.65rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 999px;
+  background: var(--bset-inner);
+  font-size: 0.76rem;
+  color: var(--muted, var(--muted-2));
+}
+
+.bset-workhours-compact strong {
+  color: var(--text, #e8eef6);
+}
+
+.bset-workhours-compact a {
+  color: var(--bset-accent-ink);
+  font-weight: 650;
+  text-decoration: none;
+  font-size: 0.76rem;
+}
+
+.bset-workhours-compact a:hover {
+  text-decoration: underline;
 }
 
 .bset-divider {
   height: 1px;
-  margin: 1.25rem 0 0;
+  margin: 0.9rem 0 0;
   background: var(--bset-line);
+}
+
+/* --- booking notification routing cards --- */
+.bset-notif-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.bset-notif-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.8rem 0.9rem;
+  border-radius: 12px;
+  background: var(--bset-inner);
+  border: 1px solid var(--bset-line);
+}
+
+.bset-notif-icon {
+  width: 1.9rem;
+  height: 1.9rem;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+}
+
+.bset-notif-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.bset-notif-icon.tone-owner {
+  background: rgba(59, 130, 246, 0.15);
+  color: #60a5fa;
+}
+
+.bset-notif-icon.tone-customer {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+}
+
+.bset-notif-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.bset-notif-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.bset-notif-title strong {
+  font-size: 0.84rem;
+  font-weight: 650;
+  color: var(--text, #e8eef6);
+}
+
+.bset-notif-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.12rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.bset-notif-tag.shared {
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.25);
+}
+
+.bset-notif-tag.dedicated {
+  background: rgba(16, 185, 129, 0.12);
+  color: #6ee7b7;
+  border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.bset-notif-tag.pending {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.bset-notif-content p {
+  margin: 0;
+  font-size: 0.77rem;
+  line-height: 1.35;
+  color: var(--muted, var(--muted-2));
+}
+
+.bset-notif-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+  padding-top: 0.35rem;
+  border-top: 1px dashed var(--bset-line);
+  font-size: 0.73rem;
+  color: var(--muted, var(--muted-2));
+}
+
+.bset-notif-meta strong {
+  color: var(--text, #e8eef6);
+}
+
+.bset-notif-link {
+  color: var(--bset-accent-ink);
+  font-weight: 600;
+  text-decoration: none;
+  font-size: 0.73rem;
+}
+
+.bset-notif-link:hover {
+  text-decoration: underline;
+}
+
+/* --- booking notification phone box & verification badges --- */
+.bset-notif-phone-box {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.45rem 0.65rem;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--bset-line);
+  border-radius: 8px;
+  margin: 0.35rem 0;
+}
+
+.bset-notif-phone-box.is-verified {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.bset-notif-phone-box.is-warning {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.bset-notif-phone-box.is-error {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.bset-notif-phone-main {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.bset-phone-label {
+  display: block;
+  font-size: 0.68rem;
+  color: var(--muted, var(--muted-2));
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+}
+
+.bset-phone-number {
+  display: block;
+  font-size: 0.92rem;
+  font-weight: 750;
+  color: var(--text, #e8eef6);
+  letter-spacing: -0.01em;
+}
+
+.bset-phone-number.is-empty {
+  color: var(--muted, var(--muted-2));
+  font-weight: 550;
+  font-style: italic;
+}
+
+.bset-badge-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.18rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+
+.bset-badge-status svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+.bset-badge-status.is-verified {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.bset-badge-status.is-unverified {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.bset-badge-status.is-opted-out {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.bset-badge-status.is-neutral {
+  background: rgba(var(--tint), 0.08);
+  color: var(--muted, var(--muted-2));
+  border: 1px solid var(--bset-line);
+}
+
+.bset-notif-warning {
+  margin: 0.35rem 0;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  font-size: 0.78rem;
+  color: #fcd34d;
+  line-height: 1.35;
+}
+
+.bset-notif-warning.is-error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.bset-notif-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  background: var(--bset-accent-ink, #ff7a21);
+  color: #1a0a00;
+  text-decoration: none;
+  margin-top: 0.3rem;
+  margin-bottom: 0.3rem;
+  align-self: flex-start;
+  transition: opacity 0.15s ease;
+}
+
+.bset-notif-action-btn:hover {
+  opacity: 0.9;
+  text-decoration: none;
 }
 
 /* --- booking days --- */
@@ -41649,6 +42002,10 @@ button.plan-badge.warn.is-action:focus-visible {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
   gap: 0.5rem;
+}
+
+.bset-daygrid.compact {
+  gap: 0.35rem;
 }
 
 .bset-day {
@@ -41667,6 +42024,13 @@ button.plan-badge.warn.is-action:focus-visible {
   letter-spacing: 0.06em;
   cursor: pointer;
   transition: border-color 0.16s ease, background 0.16s ease, color 0.16s ease;
+}
+
+.bset-daygrid.compact .bset-day {
+  padding: 0.45rem 0.25rem;
+  font-size: 0.76rem;
+  border-radius: 10px;
+  gap: 0.35rem;
 }
 
 .bset-day:hover {
@@ -41692,6 +42056,11 @@ button.plan-badge.warn.is-action:focus-visible {
   height: 1.05rem;
   border-radius: 4px;
   border: 1px solid var(--edge-g40);
+}
+
+.bset-daygrid.compact .bset-day-check {
+  width: 0.9rem;
+  height: 0.9rem;
 }
 
 .bset-day.on .bset-day-check {
@@ -41841,17 +42210,69 @@ button.plan-badge.warn.is-action:focus-visible {
    "1 hour" and "4 hours" are the same click and very different promises. */
 .bset-lengths {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
-  gap: 0.55rem;
+  grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+  gap: 0.45rem;
+}
+
+.bset-lengths.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.25rem;
+  border-radius: 12px;
+  background: var(--bset-inner);
+  border: 1px solid var(--bset-line);
+}
+
+.bset-lengths.segmented .bset-length-pill {
+  flex: 1 1 5.5rem;
+  padding: 0.42rem 0.6rem;
+  border-radius: 8px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted, var(--muted-2));
+  font-size: 0.82rem;
+  font-weight: 650;
+  text-align: center;
+  justify-content: center;
+  align-items: center;
+  display: inline-flex;
+  flex-direction: row;
+  gap: 0.35rem;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.bset-lengths.segmented .bset-length-pill small {
+  display: none;
+}
+
+.bset-lengths.segmented .bset-length-pill strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.82rem;
+}
+
+.bset-lengths.segmented .bset-length-pill:hover {
+  background: rgba(var(--tint), 0.04);
+  color: var(--text);
+}
+
+.bset-lengths.segmented .bset-length-pill.on {
+  background: var(--bset-card);
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  border-color: var(--bset-accent-ink);
 }
 
 .bset-length {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  padding: 0.65rem 0.8rem;
+  gap: 0.15rem;
+  padding: 0.55rem 0.75rem;
   border: 1px solid var(--bset-line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--bset-inner);
   text-align: left;
   cursor: pointer;
@@ -41893,8 +42314,8 @@ button.plan-badge.warn.is-action:focus-visible {
   display: flex;
   align-items: flex-start;
   gap: 0.4rem;
-  margin: 0.6rem 0 0;
-  font-size: 0.8rem;
+  margin: 0.5rem 0 0;
+  font-size: 0.78rem;
   line-height: 1.45;
   color: var(--ink-amber-1, var(--mute-t55));
 }
@@ -41906,13 +42327,19 @@ button.plan-badge.warn.is-action:focus-visible {
   margin-top: 0.08rem;
 }
 
+.bset-windows {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11.5rem, 1fr));
+  gap: 0.45rem;
+}
+
 .bset-window {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
-  padding: 0.7rem 0.8rem;
+  gap: 0.55rem;
+  padding: 0.52rem 0.65rem;
   border: 1px solid var(--bset-line);
-  border-radius: 14px;
+  border-radius: 12px;
   background: var(--bset-inner);
   text-align: left;
   cursor: pointer;
@@ -42060,8 +42487,34 @@ button.plan-badge.warn.is-action:focus-visible {
   line-height: 1.45;
 }
 
+.bset-window-fix.compact {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  margin: 0 0 0.75rem;
+  padding: 0.45rem 0.75rem;
+}
+
+.bset-window-fix.compact>div {
+  margin-top: 0;
+}
+
 .bset-window-fix p {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
   margin: 0;
+  color: var(--text, #e8eef6);
+  font-weight: 600;
+}
+
+.bset-window-fix svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  color: var(--ink-amber-1, #f59e0b);
 }
 
 .bset-window-fix>div {

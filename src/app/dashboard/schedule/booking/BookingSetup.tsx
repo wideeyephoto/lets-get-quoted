@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
-import { flushSync } from 'react-dom';
+import { useEffect, useMemo, useState, useTransition } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import InfoTip from '@/components/info-tip';
@@ -41,6 +40,7 @@ import {
   setBookingEnabledAction,
 } from '../actions';
 import { Icon } from './icons';
+import { formatPhoneDashes } from '@/lib/phone';
 
 type InstantBook = {
   enabled: boolean;
@@ -50,10 +50,9 @@ type InstantBook = {
   driveTime: boolean;
 };
 
-// The four settings drawers, in the order they appear. A union rather than
-// `string` so a typo in a toggleSection/jumpTo call is a build error instead of
-// a section that silently never opens.
-type SectionKey = 'days' | 'limits' | 'advanced' | 'timeoff';
+// The settings tabs. A union rather than `string` so a typo in jumpTo is
+// a build error instead of a tab that silently never opens.
+type SectionKey = 'days' | 'limits' | 'timeoff';
 
 const FULL_WEEKDAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -106,6 +105,9 @@ export default function BookingSetup({
   bookableDays,
   timezoneOptions,
   todayKey,
+  ownerAlerts,
+  alertPhone,
+  dedicatedPhone,
 }: {
   availability: BookingAvailability;
   instantBook: InstantBook;
@@ -116,9 +118,30 @@ export default function BookingSetup({
   bookableDays: { dateKey: string; dayLabel: string; times: string[] }[];
   timezoneOptions: { value: string; label: string }[];
   todayKey: string;
+  ownerAlerts?: {
+    phone: string | null;
+    enabled: boolean;
+    consent: 'opted_in' | 'opted_out' | 'none';
+    consentedAt: string | null;
+  } | null;
+  alertPhone?: string | null;
+  dedicatedPhone?: string | null;
 }) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
+
+  const ownerPhone = ownerAlerts?.phone ?? alertPhone;
+  const isOwnerVerified = Boolean(
+    ownerPhone && ownerAlerts?.consent === 'opted_in' && ownerAlerts.enabled,
+  );
+  const isOwnerOptedOut = ownerAlerts?.consent === 'opted_out';
+  const isOwnerUnverified = Boolean(
+    ownerPhone && (!ownerAlerts || ownerAlerts.consent !== 'opted_in') && !isOwnerOptedOut,
+  );
+  const isOwnerDisabled = Boolean(
+    ownerPhone && ownerAlerts?.consent === 'opted_in' && !ownerAlerts.enabled,
+  );
+  const hasNoAlertPhone = !ownerPhone;
 
   // The master switch applies on click rather than waiting for the save bar:
   // "stop taking bookings" is something you do in a hurry, and hiding it behind
@@ -133,13 +156,9 @@ export default function BookingSetup({
   const [timezone, setTimezone] = useState(availability.timezone);
   const [instant, setInstant] = useState(instantBook);
 
-  // ONE SECTION OPEN AT A TIME. Three of these four were expanded on arrival and
-  // the page opened as a wall of controls — every heading pushed off screen by
-  // the body above it, so there was nothing to skim to decide where to go. As an
-  // accordion the four headings stay together as a contents page. null is a
-  // legitimate state: clicking the open one closes it and shows all four.
-  const [openSection, setOpenSection] = useState<SectionKey | null>('days');
-  const isOpen = (key: SectionKey) => openSection === key;
+  // Tabbed navigation keeps the page stable at a predictable height without
+  // accordion lurches or duplicate jump cards.
+  const [activeTab, setActiveTab] = useState<SectionKey>('days');
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<number | null>(null);
@@ -147,7 +166,6 @@ export default function BookingSetup({
   const [qrOpen, setQrOpen] = useState(false);
   const [quickHoursOpen, setQuickHoursOpen] = useState(false);
   const [quickHoursError, setQuickHoursError] = useState<string | null>(null);
-  const sectionRefs = useRef<Partial<Record<SectionKey, HTMLElement | null>>>({});
 
   function copyBookingLink() {
     if (!bookingUrl) return;
@@ -187,30 +205,8 @@ export default function BookingSetup({
     return () => window.removeEventListener('beforeunload', warn);
   }, [dirty]);
 
-  // Opening one section closes whichever was open, which means everything below
-  // the heading you clicked moves. Without pinning it, clicking section 4 while
-  // section 1 is open yanks the heading up by the height of section 1's body and
-  // you end up somewhere else on the page — the classic accordion lurch.
-  //
-  // flushSync commits the collapse synchronously, so we can measure where the
-  // heading actually landed and put it back before the browser paints. Doing
-  // this in an effect instead would show one frame in the wrong place.
-  function toggleSection(key: SectionKey) {
-    const before = sectionRefs.current[key]?.getBoundingClientRect().top;
-    flushSync(() => setOpenSection((current) => (current === key ? null : key)));
-    const after = sectionRefs.current[key]?.getBoundingClientRect().top;
-    if (before !== undefined && after !== undefined && Math.abs(after - before) > 1) {
-      window.scrollBy(0, after - before);
-    }
-  }
-
-  // From the summary cards at the top, where the point IS to travel — so this
-  // one scrolls to the section rather than holding position.
   function jumpTo(key: SectionKey) {
-    setOpenSection(key);
-    requestAnimationFrame(() => {
-      sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    });
+    setActiveTab(key);
   }
 
   function toggleWeekday(day: number) {
@@ -427,7 +423,7 @@ export default function BookingSetup({
 
       {/* The switch says what the owner chose; the status says whether those
           settings produce a real customer-facing offer. */}
-      <section className="bset-master">
+      <section className="bset-master compact">
         <label className="bset-master-switch">
           <input
             type="checkbox"
@@ -438,7 +434,7 @@ export default function BookingSetup({
           />
           <span className="bset-switch-track" aria-hidden="true"><span /></span>
           <span className="bset-master-copy">
-            <strong>Booking requests</strong>
+            <strong>Booking requests {enabled ? <em className="on">Active</em> : <em className="off">Paused</em>}</strong>
             <small>{enabled ? 'Customers can request a preferred window online.' : 'Your website is not accepting time requests.'}</small>
             <span className="bset-master-save-note">
               <Icon name="checkCircle" /> This switch applies immediately. Other changes wait for Save schedule.
@@ -477,8 +473,14 @@ export default function BookingSetup({
         </div>
       </section>
 
-      <div className="bset-summary" aria-label="Booking request summary">
-        <button type="button" className={`bset-summary-item${availabilityAlert ? ' has-warning' : ''}`} onClick={() => jumpTo('days')}>
+      <div className="bset-summary" role="tablist" aria-label="Booking request sections">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'days'}
+          className={`bset-summary-item${activeTab === 'days' ? ' is-active' : ''}${availabilityAlert ? ' has-warning' : ''}`}
+          onClick={() => jumpTo('days')}
+        >
           <span className="bset-summary-icon tone-days"><Icon name="calendar" /></span>
           <span className="bset-summary-copy">
             <small>Availability</small>
@@ -488,17 +490,39 @@ export default function BookingSetup({
           <Icon name="chevronRight" className="bset-summary-chevron" />
         </button>
 
-        <button type="button" className="bset-summary-item" onClick={() => jumpTo('limits')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'limits'}
+          className={`bset-summary-item${activeTab === 'limits' ? ' is-active' : ''}`}
+          onClick={() => jumpTo('limits')}
+        >
           <span className="bset-summary-icon tone-time"><Icon name="clock" /></span>
           <span className="bset-summary-copy">
-            <small>Limits</small>
+            <small>Limits &amp; Rules</small>
             <strong>Up to {maxPerDay} jobs a day</strong>
-            <span>{leadLabel}</span>
+            <span>
+              {leadLabel}
+              {instant.enabled ? ' · Qualified' : ''}
+              {isOwnerVerified
+                ? ' · Verified alerts'
+                : isOwnerUnverified
+                ? ' · ⚠️ Unverified'
+                : isOwnerOptedOut
+                ? ' · 🛑 Alerts stopped'
+                : ''}
+            </span>
           </span>
           <Icon name="chevronRight" className="bset-summary-chevron" />
         </button>
 
-        <button type="button" className="bset-summary-item" onClick={() => jumpTo('timeoff')}>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'timeoff'}
+          className={`bset-summary-item${activeTab === 'timeoff' ? ' is-active' : ''}`}
+          onClick={() => jumpTo('timeoff')}
+        >
           <span className="bset-summary-icon tone-off"><Icon name="briefcase" /></span>
           <span className="bset-summary-copy">
             <small>Time off</small>
@@ -516,22 +540,22 @@ export default function BookingSetup({
       <details className={`bset-mobile-summary${availabilityAlert ? ' has-warning' : ''}`}>
         <summary>
           <span>
-            <small>Current setup</small>
-            <strong>{dayNames} · {windowNames}</strong>
+            <small>Current view</small>
+            <strong>{activeTab === 'days' ? `${dayNames} · ${windowNames}` : activeTab === 'limits' ? `Up to ${maxPerDay} a day · ${leadLabel}` : `${blocks.length} blocked`}</strong>
           </span>
           {availabilityAlert ? <em>{availabilityAlert}</em> : null}
           <Icon name="chevronDown" />
         </summary>
         <div className="bset-mobile-summary-actions">
-          <button type="button" onClick={() => jumpTo('days')}>
+          <button type="button" onClick={() => jumpTo('days')} className={activeTab === 'days' ? 'is-active' : ''}>
             <span>Availability</span>
             <strong>{availabilityAlert ?? windowNames}</strong>
           </button>
-          <button type="button" onClick={() => jumpTo('limits')}>
-            <span>Limits</span>
+          <button type="button" onClick={() => jumpTo('limits')} className={activeTab === 'limits' ? 'is-active' : ''}>
+            <span>Limits &amp; Rules</span>
             <strong>Up to {maxPerDay} a day · {leadLabel}</strong>
           </button>
-          <button type="button" onClick={() => jumpTo('timeoff')}>
+          <button type="button" onClick={() => jumpTo('timeoff')} className={activeTab === 'timeoff' ? 'is-active' : ''}>
             <span>Time off</span>
             <strong>{blocks.length === 0 ? 'No days blocked' : `${blocks.length} upcoming`}</strong>
           </button>
@@ -540,58 +564,40 @@ export default function BookingSetup({
 
       <div className="bset-body">
         <div className="bset-main">
-          {/* Availability */}
-          <section
-            className="bset-section"
-            ref={(el) => { sectionRefs.current.days = el; }}
-          >
-            <button
-              type="button"
-              className="bset-section-head"
-              onClick={() => toggleSection('days')}
-              aria-expanded={isOpen('days')}
-              aria-controls={isOpen('days') ? 'booking-section-days' : undefined}
-            >
-              <span className="bset-section-icon tone-days"><Icon name="calendar" /></span>
-              <span className="bset-section-copy">
-                <strong>Availability</strong>
-                <small>{dayNames} · {windowNames}</small>
-              </span>
-              {availabilityAlert ? <span className="bset-section-badge">{availabilityAlert}</span> : null}
-              <Icon name="chevronDown" className={`bset-chev${isOpen('days') ? ' open' : ''}`} />
-            </button>
-
-            {isOpen('days') && (
-              <div id="booking-section-days" className="bset-section-body">
-                <div className="bset-field-group">
-                  <p className="bset-group-title">Booking days</p>
-                  <p className="bset-group-hint">Customers can request these days.</p>
-                  <div className="bset-daygrid" role="group" aria-label="Booking days">
-                    {WEEKDAY_LABELS.map((label, day) => {
-                      const on = weekdays.includes(day);
-                      return (
-                        <button
-                          type="button"
-                          key={day}
-                          className={`bset-day${on ? ' on' : ''}`}
-                          aria-pressed={on}
-                          aria-label={FULL_WEEKDAY[day]}
-                          onClick={() => toggleWeekday(day)}
-                        >
-                          <span className="bset-day-check" aria-hidden="true">{on ? <Icon name="check" /> : null}</span>
-                          {label.toUpperCase()}
-                        </button>
-                      );
-                    })}
+          {activeTab === 'days' && (
+            <section className="bset-section" id="booking-section-days">
+              <div className="bset-section-body">
+                {outside.length > 0 ? (
+                  <div className="bset-window-fix compact">
+                    <p>
+                      <Icon name="alert" />
+                      <span>
+                        {outside.length === 1 ? 'One selected window is' : `${outside.length} selected windows are`} hidden from customers.
+                      </span>
+                    </p>
+                    <div className="bset-window-fix-actions">
+                      <button
+                        type="button"
+                        onClick={() => setWindowTimes((times) => times.filter((time) => !outside.includes(time)))}
+                      >
+                        Deselect hidden {outside.length === 1 ? 'window' : 'windows'}
+                      </button>
+                      <span>·</span>
+                      <Link href="/dashboard/schedule/settings">Edit working hours</Link>
+                    </div>
                   </div>
-                  <div className="bset-workhours">
-                    <span className="bset-workhours-icon"><Icon name="clock" /></span>
-                    <span>
-                      <small>Working hours</small>
-                      <strong>{formatWindowClock(workdayStart)} – {formatWindowClock(workdayEnd)}</strong>
-                      <em>Arrival windows must fit inside these hours.</em>
-                    </span>
-                    <div className="bset-workhours-actions">
+                ) : null}
+
+                <div className="bset-field-group">
+                  <div className="bset-group-splithead">
+                    <div>
+                      <p className="bset-group-title">Booking days</p>
+                      <p className="bset-group-hint">Customers can request these days.</p>
+                    </div>
+                    <div className="bset-workhours-compact">
+                      <span>
+                        Hours: <strong>{formatWindowClock(workdayStart)} – {formatWindowClock(workdayEnd)}</strong>
+                      </span>
                       <button
                         type="button"
                         className="bset-workhours-quickedit"
@@ -602,6 +608,7 @@ export default function BookingSetup({
                       <Link href="/dashboard/schedule/settings">Edit working hours</Link>
                     </div>
                   </div>
+
                   {quickHoursOpen && (
                     <form
                       className="bset-workhours-form"
@@ -637,24 +644,48 @@ export default function BookingSetup({
                       {quickHoursError && <p className="bset-error">{quickHoursError}</p>}
                     </form>
                   )}
+
+                  <div className="bset-daygrid compact" role="group" aria-label="Booking days">
+                    {WEEKDAY_LABELS.map((label, day) => {
+                      const on = weekdays.includes(day);
+                      return (
+                        <button
+                          type="button"
+                          key={day}
+                          className={`bset-day${on ? ' on' : ''}`}
+                          aria-pressed={on}
+                          aria-label={FULL_WEEKDAY[day]}
+                          onClick={() => toggleWeekday(day)}
+                        >
+                          <span className="bset-day-check" aria-hidden="true">{on ? <Icon name="check" /> : null}</span>
+                          {label.toUpperCase()}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 <div className="bset-divider" />
 
                 <div className="bset-field-group">
-                  <p className="bset-group-title">How long a window runs</p>
-                  <p className="bset-group-hint">
-                    Customers are shown a span, not a time. Promising &ldquo;8:00 AM&rdquo; makes you late the first
-                    morning a job runs over.
-                  </p>
-                  <div className="bset-lengths" role="radiogroup" aria-label="Arrival window length">
+                  <div className="bset-group-splithead">
+                    <div>
+                      <p className="bset-group-title">How long a window runs</p>
+                      <p className="bset-group-hint">
+                        Customers are shown a span, not a time. Promising &ldquo;8:00 AM&rdquo; makes you late the first
+                        morning a job runs over.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="bset-lengths segmented" role="radiogroup" aria-label="Arrival window length">
                     {WINDOW_LENGTHS.map((option) => (
                       <button
                         type="button"
                         key={option.minutes}
                         role="radio"
                         aria-checked={windowMinutes === option.minutes}
-                        className={`bset-length${windowMinutes === option.minutes ? ' on' : ''}`}
+                        className={`bset-length bset-length-pill${windowMinutes === option.minutes ? ' on' : ''}`}
                         onClick={() => setWindowMinutes(option.minutes)}
                       >
                         <strong>
@@ -706,15 +737,6 @@ export default function BookingSetup({
                       window at this length. Customers will see two options covering the same hours.
                     </p>
                   ) : null}
-                  {/* A window outside the working day is NOT offered — the
-                      public page used to offer "3:00 – 7:00 PM" against a day
-                      ending at 6:00 PM, which promises a homeowner an arrival
-                      window an hour after work stops. It is dropped rather than
-                      shortened, so this says which one and why: a window that
-                      silently stops appearing reads as the booking page being
-                      broken. Split by which end it falls off, because the fix
-                      differs — an early window moves later or the day starts
-                      earlier; a late one shortens or the day runs longer. */}
                   {startsEarly.length > 0 ? (
                     <p className="bset-window-warn">
                       <Icon name="alert" /> {startsEarly.map((t) => windowPartName(t)).join(' and ')}{' '}
@@ -740,22 +762,6 @@ export default function BookingSetup({
                       Shorten the window length, move the start earlier, or extend your working hours.
                     </p>
                   ) : null}
-                  {outside.length > 0 ? (
-                    <div className="bset-window-fix">
-                      <p>
-                        {outside.length === 1 ? 'One selected window is' : `${outside.length} selected windows are`} hidden from customers.
-                      </p>
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setWindowTimes((times) => times.filter((time) => !outside.includes(time)))}
-                        >
-                          Deselect hidden {outside.length === 1 ? 'window' : 'windows'}
-                        </button>
-                        <Link href="/dashboard/schedule/settings">Edit working hours</Link>
-                      </div>
-                    </div>
-                  ) : null}
                   <AddWindow
                     disabled={windowTimes.length >= MAX_BOOKING_WINDOWS}
                     existing={[...new Set([...BOOKING_WINDOW_PRESET_TIMES, ...windowTimes])]}
@@ -765,201 +771,359 @@ export default function BookingSetup({
                     <p className="bset-inline-tip"><Icon name="bulb" /> Add another arrival window to give customers a useful backup choice.</p>
                   ) : null}
                 </div>
-
-                {/* The settings above, read back as a sentence — from what is
-                    actually offered, so a window named in the warning above
-                    cannot also be listed here as something a customer can
-                    choose. */}
-                <div className={`bset-live${weekdays.length === 0 || offeredTimes.length === 0 ? ' warn' : ''}`}>
-                  <Icon name={weekdays.length === 0 || offeredTimes.length === 0 ? 'alert' : 'checkCircle'} />
-                  <div>
-                    <strong>
-                      {weekdays.length === 0 || offeredTimes.length === 0
-                        ? 'Customers can’t choose anything yet:'
-                        : 'Customers can currently choose:'}
-                    </strong>
-                    <p>
-                      <span>{dayNames}</span>
-                      <span>{windowNames}</span>
-                      <span>{leadLabel}</span>
-                    </p>
-                  </div>
-                </div>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
-          {/* Booking limits */}
-          <section className="bset-section" ref={(el) => { sectionRefs.current.limits = el; }}>
-            <button
-              type="button"
-              className="bset-section-head"
-              onClick={() => toggleSection('limits')}
-              aria-expanded={isOpen('limits')}
-              aria-controls={isOpen('limits') ? 'booking-section-limits' : undefined}
-            >
-              <span className="bset-section-icon tone-time"><Icon name="clock" /></span>
-              <span className="bset-section-copy">
-                <strong>Booking limits</strong>
-                <small>Up to {maxPerDay} jobs a day · {leadLabel}</small>
-              </span>
-              <Icon name="chevronDown" className={`bset-chev${isOpen('limits') ? ' open' : ''}`} />
-            </button>
-
-            {isOpen('limits') && (
-              <div id="booking-section-limits" className="bset-section-body">
-                <div className="bset-grid">
-                  <label className="bset-field">
-                    <span>Maximum jobs per day <Tip text="Once a day reaches this many scheduled jobs or held requests, it stops offering windows." /></span>
-                    <select value={maxPerDay} onChange={(e) => setMaxPerDay(Number(e.target.value))}>
-                      {[1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="bset-field">
-                    <span>Earliest request <Tip text="How soon a customer can request a time. Gives you lead time to plan your route." /></span>
-                    <select value={leadDays} onChange={(e) => setLeadDays(Number(e.target.value))}>
-                      {LEAD_OPTIONS.map((o) => (
-                        <option key={o.value} value={o.value}>{o.label}</option>
-                      ))}
-                    </select>
-                  </label>
-
-                  <label className="bset-field bset-field-wide">
-                    <span>Timezone <Tip text="So booking days line up with your local calendar, not the server's." /></span>
-                    <select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
-                      {timezoneOptions.map((t) => (
-                        <option key={t.value} value={t.value}>{t.label}</option>
-                      ))}
-                    </select>
-                  </label>
-                </div>
-                {leadDays >= 3 ? (
-                  <p className="bset-inline-tip"><Icon name="bulb" /> A shorter lead time can capture urgent work. “From tomorrow” is a good starting point.</p>
-                ) : null}
-              </div>
-            )}
-          </section>
-
-          {/* Automatic qualification, folded by default */}
-          <section className="bset-section bset-section-quiet" ref={(el) => { sectionRefs.current.advanced = el; }}>
-            <button
-              type="button"
-              className="bset-section-head"
-              onClick={() => toggleSection('advanced')}
-              aria-expanded={isOpen('advanced')}
-              aria-controls={isOpen('advanced') ? 'booking-section-advanced' : undefined}
-            >
-              <span className="bset-section-icon tone-link"><Icon name="checkCircle" /></span>
-              <span className="bset-section-copy">
-                <strong>Automatic qualification</strong>
-                <small>{instant.enabled ? 'Estimate and route-fit rules are on' : 'All customers can request a time'}</small>
-              </span>
-              <Icon name="chevronDown" className={`bset-chev${isOpen('advanced') ? ' open' : ''}`} />
-            </button>
-
-            {isOpen('advanced') && (
-              <div id="booking-section-advanced" className="bset-section-body">
-                <label className="bset-check">
-                  <input
-                    type="checkbox"
-                    role="switch"
-                    checked={instant.enabled}
-                    onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })}
-                  />
-                  <span className="bset-switch-track small" aria-hidden="true"><span /></span>
-                  <span className="bset-check-copy">
-                    <strong>Qualify jobs before showing available times</strong>
-                    <small>Customers answer a few questions and get an estimate first. Jobs that do not fit these rules can request a callback instead.</small>
-                  </span>
-                </label>
-
-                {/* Dependent fields stay hidden until the gate is on — they do
-                    nothing while it's off, and reading them suggests otherwise. */}
-                {instant.enabled && (
-                  <div className="bset-dependent">
-                    <div className="bset-grid">
-                      <label className="bset-field">
-                        <span>Minimum estimated job value <Tip text="Jobs estimating below this amount can request a callback instead of a time. Leave blank or enter 0 for no minimum." /></span>
-                        <MoneyInput value={instant.minAmount} onChange={(n) => setInstant({ ...instant, minAmount: n })} />
-                      </label>
-                      <label className="bset-field">
-                        <span>Distance from an existing job (miles) <Tip text="How close a scheduled job must be for that day to count as already on your route." /></span>
-                        <input
-                          type="number"
-                          min="1"
-                          max="100"
-                          step="1"
-                          inputMode="numeric"
-                          value={instant.radiusMiles}
-                          onChange={(e) => setInstant({ ...instant, radiusMiles: Number(e.target.value) || 1 })}
-                        />
-                      </label>
-                      <label className="bset-field bset-field-wide">
-                        <span>Route-fit days <Tip text="Prefer shows nearby days first. Restrict only shows days when your route is already nearby." /></span>
-                        <select value={instant.geoMode} onChange={(e) => setInstant({ ...instant, geoMode: e.target.value })}>
-                          <option value="prefer">Prefer nearby days first</option>
-                          <option value="restrict">Only show nearby days</option>
-                        </select>
-                      </label>
-                    </div>
-
-                    <label className="bset-check">
-                      <input
-                        type="checkbox"
-                        role="switch"
-                        checked={instant.driveTime}
-                        onChange={(e) => setInstant({ ...instant, driveTime: e.target.checked })}
-                      />
-                      <span className="bset-switch-track small" aria-hidden="true"><span /></span>
-                      <span className="bset-check-copy">
-                        <strong>Use road travel time</strong>
-                        <small>Ranks nearby days using the estimated drive instead of straight-line distance.</small>
-                      </span>
+          {activeTab === 'limits' && (
+            <section className="bset-section" id="booking-section-limits">
+              <div className="bset-section-body">
+                <div className="bset-field-group">
+                  <p className="bset-group-title">Daily capacity &amp; notice</p>
+                  <p className="bset-group-hint">Set how many jobs you take each day and how much advance notice you require.</p>
+                  <div className="bset-grid">
+                    <label className="bset-field">
+                      <span>Maximum jobs per day <Tip text="Once a day reaches this many scheduled jobs or held requests, it stops offering windows." /></span>
+                      <select value={maxPerDay} onChange={(e) => setMaxPerDay(Number(e.target.value))}>
+                        {[1, 2, 3, 4, 5, 6, 8, 10, 12, 16, 20].map((n) => (
+                          <option key={n} value={n}>{n}</option>
+                        ))}
+                      </select>
                     </label>
 
-                    <div className="bset-rule-summary">
-                      <Icon name="checkCircle" />
-                      <div>
-                        <strong>Who can request a time</strong>
+                    <label className="bset-field">
+                      <span>Earliest request <Tip text="How soon a customer can request a time. Gives you lead time to plan your route." /></span>
+                      <select value={leadDays} onChange={(e) => setLeadDays(Number(e.target.value))}>
+                        {LEAD_OPTIONS.map((o) => (
+                          <option key={o.value} value={o.value}>{o.label}</option>
+                        ))}
+                      </select>
+                    </label>
+
+                    <label className="bset-field bset-field-wide">
+                      <span>Timezone <Tip text="So booking days line up with your local calendar, not the server's." /></span>
+                      <select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+                        {timezoneOptions.map((t) => (
+                          <option key={t.value} value={t.value}>{t.label}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  {leadDays >= 3 ? (
+                    <p className="bset-inline-tip"><Icon name="bulb" /> A shorter lead time can capture urgent work. “From tomorrow” is a good starting point.</p>
+                  ) : null}
+                </div>
+
+                <div className="bset-divider" />
+
+                <div className="bset-field-group">
+                  <p className="bset-group-title">Automatic qualification</p>
+                  <p className="bset-group-hint">Filter requests by job value and route fit before offering available times.</p>
+                  <label className="bset-check">
+                    <input
+                      type="checkbox"
+                      role="switch"
+                      checked={instant.enabled}
+                      onChange={(e) => setInstant({ ...instant, enabled: e.target.checked })}
+                    />
+                    <span className="bset-switch-track small" aria-hidden="true"><span /></span>
+                    <span className="bset-check-copy">
+                      <strong>Qualify jobs before showing available times</strong>
+                      <small>Customers answer a few questions and get an estimate first. Jobs that do not fit these rules can request a callback instead.</small>
+                    </span>
+                  </label>
+
+                  {instant.enabled && (
+                    <div className="bset-dependent">
+                      <div className="bset-grid">
+                        <label className="bset-field">
+                          <span>Minimum estimated job value <Tip text="Jobs estimating below this amount can request a callback instead of a time. Leave blank or enter 0 for no minimum." /></span>
+                          <MoneyInput value={instant.minAmount} onChange={(n) => setInstant({ ...instant, minAmount: n })} />
+                        </label>
+                        <label className="bset-field">
+                          <span>Distance from an existing job (miles) <Tip text="How close a scheduled job must be for that day to count as already on your route." /></span>
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            inputMode="numeric"
+                            value={instant.radiusMiles}
+                            onChange={(e) => setInstant({ ...instant, radiusMiles: Number(e.target.value) || 1 })}
+                          />
+                        </label>
+                        <label className="bset-field bset-field-wide">
+                          <span>Route-fit days <Tip text="Prefer shows nearby days first. Restrict only shows days when your route is already nearby." /></span>
+                          <select value={instant.geoMode} onChange={(e) => setInstant({ ...instant, geoMode: e.target.value })}>
+                            <option value="prefer">Prefer nearby days first</option>
+                            <option value="restrict">Only show nearby days</option>
+                          </select>
+                        </label>
+                      </div>
+
+                      <label className="bset-check">
+                        <input
+                          type="checkbox"
+                          role="switch"
+                          checked={instant.driveTime}
+                          onChange={(e) => setInstant({ ...instant, driveTime: e.target.checked })}
+                        />
+                        <span className="bset-switch-track small" aria-hidden="true"><span /></span>
+                        <span className="bset-check-copy">
+                          <strong>Use road travel time</strong>
+                          <small>Ranks nearby days using the estimated drive instead of straight-line distance.</small>
+                        </span>
+                      </label>
+
+                      <div className="bset-rule-summary">
+                        <Icon name="checkCircle" />
+                        <div>
+                          <strong>Who can request a time</strong>
+                          <p>
+                            Jobs estimated at {instant.minAmount > 0 ? `$${instant.minAmount.toLocaleString('en-US')} or more` : 'any value'}.
+                            A day is route-fit when an existing scheduled job is within {instant.radiusMiles} miles.{' '}
+                            {instant.geoMode === 'restrict' ? 'Only route-fit days are shown.' : 'Route-fit days are shown first.'}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bset-divider" />
+
+                <div className="bset-field-group">
+                  <div className="bset-group-splithead">
+                    <div>
+                      <p className="bset-group-title">Booking notifications &amp; text routing</p>
+                      <p className="bset-group-hint">How you and your customer are alerted when an arrival window is requested.</p>
+                    </div>
+                    <div className="bset-workhours-compact">
+                      <Link href="/dashboard/messages">Manage texting</Link>
+                    </div>
+                  </div>
+
+                  <div className="bset-notif-grid">
+                    <div className="bset-notif-card">
+                      <div className="bset-notif-icon tone-owner">
+                        <Icon name="bell" />
+                      </div>
+                      <div className="bset-notif-content">
+                        <div className="bset-notif-title">
+                          <strong>Instant owner alert</strong>
+                          <span className="bset-notif-tag shared">LGQ Shared Alert line</span>
+                        </div>
+
+                        <div
+                          className={`bset-notif-phone-box${
+                            isOwnerVerified
+                              ? ' is-verified'
+                              : isOwnerUnverified
+                              ? ' is-warning'
+                              : isOwnerOptedOut
+                              ? ' is-error'
+                              : ''
+                          }`}
+                        >
+                          <div className="bset-notif-phone-main">
+                            <div>
+                              <span className="bset-phone-label">Notified mobile phone:</span>
+                              <span
+                                className={`bset-phone-number${
+                                  hasNoAlertPhone ? ' is-empty' : ''
+                                }`}
+                              >
+                                {ownerPhone
+                                  ? formatPhoneDashes(ownerPhone)
+                                  : 'No mobile number configured'}
+                              </span>
+                            </div>
+                          </div>
+                          {isOwnerVerified && (
+                            <span className="bset-badge-status is-verified">
+                              <Icon name="checkCircle" /> Verified &amp; active
+                            </span>
+                          )}
+                          {isOwnerUnverified && (
+                            <span className="bset-badge-status is-unverified">
+                              <Icon name="alert" /> Unverified
+                            </span>
+                          )}
+                          {isOwnerOptedOut && (
+                            <span className="bset-badge-status is-opted-out">
+                              <Icon name="alert" /> Opted out (STOP)
+                            </span>
+                          )}
+                          {isOwnerDisabled && (
+                            <span className="bset-badge-status is-unverified">
+                              <Icon name="pause" /> Alerts paused
+                            </span>
+                          )}
+                          {hasNoAlertPhone && (
+                            <span className="bset-badge-status is-unverified">
+                              <Icon name="alert" /> Missing phone
+                            </span>
+                          )}
+                        </div>
+
+                        {isOwnerVerified && (
+                          <p>
+                            Instant booking requests text this verified mobile phone with customer
+                            details and a 1-tap link to confirm or reschedule.
+                          </p>
+                        )}
+
+                        {isOwnerUnverified && (
+                          <>
+                            <div className="bset-notif-warning">
+                              <strong>⚠️ Action required:</strong> This phone number has not been
+                              verified with a 6-digit text code. Instant booking texts are paused
+                              until verified.
+                            </div>
+                            <Link
+                              href="/dashboard/messages?setup=1"
+                              className="bset-notif-action-btn"
+                            >
+                              Verify {formatPhoneDashes(ownerPhone)} with 6-digit code →
+                            </Link>
+                          </>
+                        )}
+
+                        {isOwnerOptedOut && (
+                          <div className="bset-notif-warning is-error">
+                            <strong>🛑 Alerts stopped:</strong> This number replied STOP. Text{' '}
+                            <strong>START</strong> to your LGQ alert number to resume notifications.
+                          </div>
+                        )}
+
+                        {isOwnerDisabled && (
+                          <div className="bset-notif-warning">
+                            Alerts are switched off in your message settings.{' '}
+                            <Link href="/dashboard/messages?setup=1">Turn on alerts →</Link>
+                          </div>
+                        )}
+
+                        {hasNoAlertPhone && (
+                          <>
+                            <p>
+                              You do not have a mobile phone configured to receive instant alerts. You
+                              will only receive email notifications.
+                            </p>
+                            <Link
+                              href="/dashboard/messages?setup=1"
+                              className="bset-notif-action-btn"
+                            >
+                              Add &amp; verify mobile phone →
+                            </Link>
+                          </>
+                        )}
+
+                        <div className="bset-notif-meta">
+                          <span>
+                            {isOwnerVerified
+                              ? 'Verified recipient for instant bookings'
+                              : 'Alert verification status'}
+                          </span>
+                          {ownerPhone ? (
+                            <Link
+                              href="/dashboard/messages?setup=1"
+                              className="bset-notif-link"
+                            >
+                              Change mobile number
+                            </Link>
+                          ) : null}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bset-notif-card">
+                      <div className="bset-notif-icon tone-customer">
+                        <Icon name="message" />
+                      </div>
+                      <div className="bset-notif-content">
+                        <div className="bset-notif-title">
+                          <strong>Customer receipt &amp; confirm</strong>
+                          <span
+                            className={`bset-notif-tag ${
+                              dedicatedPhone ? 'dedicated' : 'pending'
+                            }`}
+                          >
+                            {dedicatedPhone ? 'Dedicated 2-Way line' : 'Standard rail'}
+                          </span>
+                        </div>
+
+                        <div
+                          className={`bset-notif-phone-box${
+                            dedicatedPhone ? ' is-verified' : ''
+                          }`}
+                        >
+                          <div className="bset-notif-phone-main">
+                            <div>
+                              <span className="bset-phone-label">Customer sees sender:</span>
+                              <span className="bset-phone-number">
+                                {dedicatedPhone
+                                  ? formatPhoneDashes(dedicatedPhone)
+                                  : 'LGQ Shared Delivery Line'}
+                              </span>
+                            </div>
+                          </div>
+                          <span
+                            className={`bset-badge-status ${
+                              dedicatedPhone ? 'is-verified' : 'is-neutral'
+                            }`}
+                          >
+                            {dedicatedPhone ? (
+                              <>
+                                <Icon name="checkCircle" /> Dedicated 10DLC
+                              </>
+                            ) : (
+                              'Shared sender'
+                            )}
+                          </span>
+                        </div>
+
                         <p>
-                          Jobs estimated at {instant.minAmount > 0 ? `$${instant.minAmount.toLocaleString('en-US')} or more` : 'any value'}.
-                          A day is route-fit when an existing scheduled job is within {instant.radiusMiles} miles.{' '}
-                          {instant.geoMode === 'restrict' ? 'Only route-fit days are shown.' : 'Route-fit days are shown first.'}
+                          Homeowners get an instant receipt text on submission, plus a confirmation
+                          text once you approve the booking window.
                         </p>
+
+                        <div className="bset-notif-meta">
+                          <span>
+                            Sender:{' '}
+                            <strong>
+                              {dedicatedPhone
+                                ? formatPhoneDashes(dedicatedPhone)
+                                : 'Shared notification rail'}
+                            </strong>
+                          </span>
+                          {!dedicatedPhone ? (
+                            <Link
+                              href="/dashboard/messages/dedicated-number"
+                              className="bset-notif-link"
+                            >
+                              Get dedicated 2-way number →
+                            </Link>
+                          ) : (
+                            <Link href="/dashboard/messages" className="bset-notif-link">
+                              View messages inbox →
+                            </Link>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
-          {/* Time off */}
-          <section className="bset-section" ref={(el) => { sectionRefs.current.timeoff = el; }}>
-            <button
-              type="button"
-              className="bset-section-head"
-              onClick={() => toggleSection('timeoff')}
-              aria-expanded={isOpen('timeoff')}
-              aria-controls={isOpen('timeoff') ? 'booking-section-timeoff' : undefined}
-            >
-              <span className="bset-section-icon tone-off"><Icon name="briefcase" /></span>
-              <span className="bset-section-copy">
-                <strong>Time off &amp; blocked dates</strong>
-                <small>{blocks.length === 0 ? 'No upcoming blocked dates' : `${blocks.length} upcoming block${blocks.length === 1 ? '' : 's'}`}</small>
-              </span>
-              <Icon name="chevronDown" className={`bset-chev${isOpen('timeoff') ? ' open' : ''}`} />
-            </button>
-
-            {isOpen('timeoff') && (
-              <div id="booking-section-timeoff" className="bset-section-body">
+          {activeTab === 'timeoff' && (
+            <section className="bset-section" id="booking-section-timeoff">
+              <div className="bset-section-body">
                 <TimeOff blocks={blocks} todayKey={todayKey} />
               </div>
-            )}
-          </section>
+            </section>
+          )}
         </div>
 
         <aside className="bset-rail">

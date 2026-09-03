@@ -11,6 +11,7 @@ import {
   adWalletRefillText,
   appointmentReminderText,
   arrivalTimeChangedText,
+  bookingRequestCustomerConfirmationText,
   campaignText,
   cardSetupText,
   cardUpdateText,
@@ -27,6 +28,7 @@ import {
   leadQuoteVisitOptionsText,
   leadQuoteVisitText,
   missedCallTextBack,
+  ownerBookingRequestAlertText,
   ownerHighValueLeadText,
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
@@ -512,6 +514,104 @@ export async function sendBookingDecisionSms(input: {
   }
 }
 
+/**
+ * Instant SMS confirmation sent to the homeowner upon submitting an arrival window request on /book.
+ * Metered under 'customer_message'.
+ */
+export async function sendBookingRequestCustomerConfirmationSms(params: {
+  accountId: string;
+  phone: string;
+  businessName: string;
+  customerName?: string | null;
+  whenLabel: string;
+  serviceName?: string | null;
+  address?: string | null;
+  accountTimeZone?: string | null;
+  idempotencyKey?: string;
+}): Promise<boolean> {
+  try {
+    const to = normalizeUsPhone(params.phone);
+    if (!to) return false;
+    if (await isPhoneOptedOut(params.accountId, to)) return false;
+
+    const recipientTz = resolveRecipientTimeZone({
+      phone: to,
+      address: params.address,
+      accountTimeZone: params.accountTimeZone,
+    });
+    const quietHoursCheck = getTcpaCompliantSendTime(new Date(), recipientTz);
+
+    const body = bookingRequestCustomerConfirmationText({
+      businessName: params.businessName,
+      customerName: params.customerName,
+      whenLabel: params.whenLabel,
+      serviceName: params.serviceName,
+    });
+
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body,
+      messageKind: 'booking-request-confirmation',
+      category: 'customer_message',
+      context: 'customer',
+      idempotencyKey: params.idempotencyKey,
+      availableAt: quietHoursCheck.isDelayed ? quietHoursCheck.sendAt : null,
+    });
+    return true;
+  } catch (error) {
+    console.error('Booking request confirmation SMS failed:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+/**
+ * Instant SMS alert sent to the contractor owner whenever a customer submits a booking request.
+ * Best-effort: never throws.
+ */
+export async function sendOwnerBookingRequestAlertSms(params: {
+  accountId: string;
+  alertPhone: string;
+  businessName: string;
+  customerName: string;
+  whenLabel: string;
+  serviceName?: string | null;
+  dashboardUrl: string;
+  idempotencyKey: string;
+}): Promise<boolean> {
+  try {
+    const to = normalizeUsPhone(params.alertPhone);
+    if (!to) return false;
+    if (await isPhoneOptedOut(params.accountId, to)) return false;
+    if (!(await isOwnerPhoneVerified(params.accountId, to))) {
+      console.warn(`[SMS] Owner alert phone ${to} is unverified for account ${params.accountId}; skipping booking alert.`);
+      return false;
+    }
+
+    const body = ownerBookingRequestAlertText({
+      businessName: params.businessName,
+      customerName: params.customerName,
+      whenLabel: params.whenLabel,
+      serviceName: params.serviceName,
+      dashboardUrl: params.dashboardUrl,
+    });
+
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body,
+      messageKind: 'owner-booking-request-alert',
+      category: 'owner_alert',
+      context: 'owner',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return true;
+  } catch (error) {
+    console.error('Owner booking request alert SMS failed:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
 // The customer's own portal link, texted, because they asked for it by number.
 //
 // TRANSACTIONAL AND SOLICITED IN THE STRICTEST SENSE: this is sent only in
@@ -746,6 +846,26 @@ export async function isPhoneOptedOut(accountId: string, phone: string): Promise
     return true;
   }
   return data?.status === 'opted_out';
+}
+
+/**
+ * Checks whether an owner's alert phone has affirmative, verified opt-in consent
+ * in the sms_consent ledger (via the 6-digit OTP verification flow).
+ * Fails closed: returns false if not found or unreadable.
+ */
+export async function isOwnerPhoneVerified(accountId: string, phone: string): Promise<boolean> {
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return false;
+  const admin = createAdminClient();
+  const { data, error } = await admin
+    .from('sms_consent')
+    .select('status')
+    .eq('account_id', accountId)
+    .eq('phone_number', normalized)
+    .maybeSingle();
+
+  if (error || !data) return false;
+  return data.status === 'opted_in';
 }
 
 // Manual compose is different from replying to an inbound message: the app

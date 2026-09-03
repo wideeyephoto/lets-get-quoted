@@ -313,6 +313,7 @@ export async function saveOwnerAlertsAction(
     revalidatePath('/dashboard/messages');
     revalidatePath('/dashboard/automations');
     revalidatePath('/dashboard/text-to-job');
+    revalidatePath('/dashboard/schedule/booking');
     return {
       status: 'saved',
       message: enabled && normalized

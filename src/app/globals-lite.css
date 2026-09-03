@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: db1d1b1a3bb45d2a
+   source-sha256: f84fd8699109bc9d
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -21621,6 +21621,11 @@ button.plan-badge.warn.is-action:focus-visible {
   height: 1.25rem;
 }
 
+.bset-card-icon.tone-link {
+  color: var(--ink-green-7);
+  background: rgba(52, 199, 123, 0.13);
+}
+
 .bset-card-label {
   font-size: 0.8rem;
   color: var(--muted, var(--muted-2));
@@ -21655,6 +21660,17 @@ button.plan-badge.warn.is-action:focus-visible {
   height: 0.85rem;
 }
 
+.bset-summary-item.is-active {
+  border-color: var(--bset-accent-ink);
+  background: rgba(255, 122, 41, 0.08);
+  box-shadow: 0 4px 14px -3px rgba(255, 122, 41, 0.2), inset 0 2px 0 var(--bset-accent);
+}
+
+.bset-summary-item.is-active .bset-summary-chevron {
+  color: var(--bset-accent-ink);
+  transform: rotate(90deg);
+}
+
 .bset-summary-item.is-static {
   cursor: default;
 }
@@ -21664,14 +21680,245 @@ button.plan-badge.warn.is-action:focus-visible {
   transform: none;
 }
 
+.bset-summary-icon,
+.bset-section-icon {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 1.85rem;
+  height: 1.85rem;
+  border-radius: 8px;
+}
+
+.bset-summary-icon svg,
+.bset-section-icon svg {
+  width: 0.95rem;
+  height: 0.95rem;
+}
+
+.bset-summary-icon.tone-link,
+.bset-section-icon.tone-link {
+  color: var(--ink-green-7);
+  background: rgba(52, 199, 123, 0.13);
+}
+
 .bset-summary-copy>span.is-warning {
   color: var(--ink-amber-1);
   font-weight: 700;
 }
 
+.bset-tab-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.85rem 1.25rem;
+  border-bottom: 1px solid var(--bset-line);
+  background: var(--bset-inner);
+  border-radius: 16px 16px 0 0;
+}
+
+.bset-section-quiet {
+  border-width: 1px;
+  border-color: var(--bset-line);
+}
+
+.bset-section-badge {
+  flex: none;
+  padding: 0.22rem 0.55rem;
+  border: 1px solid var(--cedge-amber-11);
+  border-radius: 999px;
+  background: rgba(255, 209, 102, 0.1);
+  color: var(--gold-ink);
+  font-size: 0.68rem;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.bset-notif-phone-box.is-verified {
+  border-color: rgba(16, 185, 129, 0.3);
+  background: rgba(16, 185, 129, 0.05);
+}
+
+.bset-notif-phone-box.is-warning {
+  border-color: rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.06);
+}
+
+.bset-notif-phone-box.is-error {
+  border-color: rgba(239, 68, 68, 0.35);
+  background: rgba(239, 68, 68, 0.06);
+}
+
+.bset-phone-number.is-empty {
+  color: var(--muted, var(--muted-2));
+  font-weight: 550;
+  font-style: italic;
+}
+
+.bset-badge-status.is-verified {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.bset-badge-status.is-unverified {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fcd34d;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.bset-badge-status.is-opted-out {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.bset-badge-status.is-neutral {
+  background: rgba(var(--tint), 0.08);
+  color: var(--muted, var(--muted-2));
+  border: 1px solid var(--bset-line);
+}
+
+.bset-notif-warning.is-error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.bset-workhours {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  margin-top: 0.75rem;
+  padding: 0.7rem 0.8rem;
+  border: 1px solid var(--bset-line);
+  border-radius: 12px;
+  background: var(--bset-inner);
+}
+
+.bset-workhours-icon {
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  flex: none;
+  border-radius: 9px;
+  background: rgba(255, 176, 32, 0.1);
+  color: var(--ink-amber-1);
+}
+
+.bset-workhours-icon svg {
+  width: 1rem;
+  height: 1rem;
+}
+
+.bset-workhours>span:not(.bset-workhours-icon) {
+  display: grid;
+  gap: 0.05rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.bset-workhours small {
+  font-size: 0.7rem;
+  color: var(--muted, var(--muted-2));
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.bset-workhours strong {
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.bset-workhours em {
+  font-size: 0.76rem;
+  font-style: normal;
+  color: var(--muted, var(--muted-2));
+}
+
+.bset-workhours-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+}
+
+.bset-workhours a {
+  flex: none;
+  color: var(--bset-accent-ink);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.bset-workhours a:hover {
+  text-decoration: underline;
+}
+
 .bset-window-copy strong em.is-warning {
   border-color: var(--cedge-amber-11);
   color: var(--gold-ink);
+}
+
+/* --- live summary --- */
+.bset-live {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.65rem;
+  margin-top: 1.15rem;
+  padding: 0.8rem 0.95rem;
+  border: 1px solid var(--cedge-green-34);
+  border-radius: 12px;
+  background: rgba(52, 199, 123, 0.07);
+}
+
+.bset-live>svg {
+  width: 1.1rem;
+  height: 1.1rem;
+  flex: none;
+  color: var(--ink-green-7);
+  margin-top: 0.05rem;
+}
+
+.bset-live strong {
+  font-size: 0.85rem;
+  font-weight: 650;
+  color: var(--ink-green-2);
+}
+
+.bset-live p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem 0.85rem;
+  margin: 0.25rem 0 0;
+  font-size: 0.86rem;
+}
+
+.bset-live p span {
+  position: relative;
+}
+
+.bset-live p span+span::before {
+  content: '•';
+  position: absolute;
+  left: -0.55rem;
+  color: var(--muted, var(--muted-2));
+}
+
+.bset-live.warn {
+  border-color: var(--cedge-orange-53);
+  background: rgba(255, 176, 32, 0.08);
+}
+
+.bset-live.warn>svg {
+  color: var(--ink-amber-1);
+}
+
+.bset-live.warn strong {
+  color: var(--ink-amber-1);
 }
 
 .bset-cal-cell.is-today {
@@ -21755,6 +22002,70 @@ button.plan-badge.warn.is-action:focus-visible {
 .bset-recurring-link svg {
   width: 0.85rem;
   height: 0.85rem;
+}
+
+@media (max-width: 640px) {
+  .bset-summary {
+    display: none;
+  }
+
+  .bset-mobile-summary {
+    display: block;
+  }
+
+  .bset-daygrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .bset-master {
+    gap: 0.9rem;
+  }
+
+  .bset-master-status {
+    padding-left: 0;
+    border-left: 0;
+    border-top: 1px solid var(--bset-line);
+    padding-top: 0.75rem;
+  }
+
+  .bset-section-head {
+    padding: 0.9rem 1rem;
+  }
+
+  .bset-section-badge {
+    padding: 0.18rem 0.4rem;
+    font-size: 0.6rem;
+  }
+
+  .bset-section-body {
+    padding: 0.25rem 1rem 1.1rem;
+  }
+
+  .bset-workhours {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .bset-workhours a {
+    flex-basis: 100%;
+    padding-left: 2.7rem;
+  }
+
+  .bset-savebar {
+    position: fixed;
+    left: 0.75rem;
+    right: 0.75rem;
+    bottom: 0.75rem;
+  }
+
+  .bset-savebar>div {
+    flex: 1 1 100%;
+  }
+
+  .bset-savebar>div .btn {
+    flex: 1;
+    justify-content: center;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

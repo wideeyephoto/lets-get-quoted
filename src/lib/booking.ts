@@ -13,6 +13,7 @@ import {
 import { loadBusinessName } from '@/lib/business-name';
 import { createLead, type Lead, type LeadAttribution } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
+import { sendBookingRequestCustomerConfirmationSms, sendOwnerBookingRequestAlertSms } from '@/lib/sms';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { bookingAvailabilityFromAccount, windowsForTimes, outsideWorkdayWindowTimes, type BookingAvailability } from '@/lib/booking-availability';
 
@@ -480,7 +481,16 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
 
   const businessName = await loadBusinessName(admin, accountId);
 
-  // Owner: notified like any website lead.
+  // Read account settings for owner alert phone and timezone
+  const { data: accountSettings } = await admin
+    .from('accounts')
+    .select('alert_phone, timezone')
+    .eq('id', accountId)
+    .maybeSingle();
+  const alertPhone = (accountSettings?.alert_phone as string | null) || null;
+  const accountTimeZone = (accountSettings?.timezone as string | null) || null;
+
+  // Owner: notified like any website lead (email + urgent SMS alert)
   try {
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
@@ -494,6 +504,23 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     }
   } catch (error) {
     console.error(`Booking owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+  }
+
+  if (alertPhone) {
+    try {
+      await sendOwnerBookingRequestAlertSms({
+        accountId,
+        alertPhone,
+        businessName,
+        customerName: input.name,
+        whenLabel: requested,
+        serviceName: input.serviceName,
+        dashboardUrl: `${APP_ORIGIN}/dashboard/schedule`,
+        idempotencyKey: `owner-booking-alert:${lead.id}`,
+      });
+    } catch (error) {
+      console.error(`Booking owner SMS failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+    }
   }
 
   /**
@@ -542,6 +569,27 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     }
   }
 
+  if (input.phone) {
+    try {
+      const withinSmsCap = await checkRateLimitStrict(admin, `bookconfirm:sms:${input.phone}`, 3, 3600);
+      if (withinSmsCap) {
+        await sendBookingRequestCustomerConfirmationSms({
+          accountId,
+          phone: input.phone,
+          businessName,
+          customerName: input.name,
+          whenLabel: requested,
+          serviceName: input.serviceName,
+          address: input.address,
+          accountTimeZone,
+          idempotencyKey: `customer-booking-confirm:${lead.id}`,
+        });
+      }
+    } catch (error) {
+      console.error(`Booking confirmation SMS failed for account ${accountId}:`, error instanceof Error ? error.message : error);
+    }
+  }
+
   return lead;
 }
 
@@ -579,15 +627,52 @@ export async function createBookingRequestLead(
   });
 
   try {
+    const businessName = await loadBusinessName(admin, accountId);
+    const { data: accountSettings } = await admin
+      .from('accounts')
+      .select('alert_phone, timezone')
+      .eq('id', accountId)
+      .maybeSingle();
+    const alertPhone = (accountSettings?.alert_phone as string | null) || null;
+    const accountTimeZone = (accountSettings?.timezone as string | null) || null;
+
     const ownerEmail = await getAccountOwnerEmail(admin, accountId);
     if (ownerEmail) {
       await sendLeadNotificationEmail({
         accountId,
         recipientEmail: ownerEmail,
-        businessName: await loadBusinessName(admin, accountId),
+        businessName,
         lead,
         dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
       });
+    }
+
+    if (alertPhone) {
+      await sendOwnerBookingRequestAlertSms({
+        accountId,
+        alertPhone,
+        businessName,
+        customerName: input.name,
+        whenLabel: 'Needs scheduling',
+        dashboardUrl: `${APP_ORIGIN}/dashboard/leads/${lead.id}`,
+        idempotencyKey: `owner-booking-request-lead:${lead.id}`,
+      });
+    }
+
+    if (input.phone) {
+      const withinSmsCap = await checkRateLimitStrict(admin, `bookconfirm:sms:${input.phone}`, 3, 3600);
+      if (withinSmsCap) {
+        await sendBookingRequestCustomerConfirmationSms({
+          accountId,
+          phone: input.phone,
+          businessName,
+          customerName: input.name,
+          whenLabel: 'your requested time',
+          address: input.address,
+          accountTimeZone,
+          idempotencyKey: `customer-booking-request-lead:${lead.id}`,
+        });
+      }
     }
   } catch (error) {
     console.error(`Booking request owner notification failed for account ${accountId}:`, error instanceof Error ? error.message : error);

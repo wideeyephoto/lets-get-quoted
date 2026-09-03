@@ -98,6 +98,30 @@ export function callerVoiceBookingConfirmationText(input: {
   return `Thanks for calling ${input.businessName}! Your appointment request for ${input.whenLabel}${atAddress} has been received. Our team will follow up shortly to confirm details. Reply STOP to opt out.`;
 }
 
+export function bookingRequestCustomerConfirmationText(input: {
+  businessName: string;
+  customerName?: string | null;
+  whenLabel: string;
+  serviceName?: string | null;
+}): string {
+  const firstName = (input.customerName || '').trim().split(' ')[0] || 'there';
+  const service = input.serviceName ? ` for ${input.serviceName}` : '';
+  return withOptOut(
+    `Hi ${firstName}, thanks for choosing ${input.businessName}! We received your booking request${service} for ${input.whenLabel}. We'll review our schedule and confirm shortly.`
+  );
+}
+
+export function ownerBookingRequestAlertText(input: {
+  businessName: string;
+  customerName: string;
+  whenLabel: string;
+  serviceName?: string | null;
+  dashboardUrl: string;
+}): string {
+  const service = input.serviceName ? ` (${input.serviceName})` : '';
+  return `📅 New booking request for ${input.businessName}: ${input.customerName || 'Customer'} requested ${input.whenLabel}${service}. Confirm in dashboard: ${input.dashboardUrl} — Reply STOP to opt out.`;
+}
+
 
 // -- Quick Stop --------------------------------------------------------------
 
