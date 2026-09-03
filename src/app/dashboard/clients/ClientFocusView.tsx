@@ -555,20 +555,20 @@ function TabPanel({ tab, detail, base }: { tab: TabId; detail: ClientDetailDto; 
       <div className={styles.grid}>
         <section className={styles.card}>
           <h4>Payments</h4>
-          <dl className={styles.defs}>
+          <ul className={styles.paymentList}>
             {detail.payments.map((payment) => (
-              <div key={payment.id}>
-                <dt>
-                  {payment.label}
-                  <span className={styles.muted}> · {payment.jobRef}</span>
-                </dt>
-                <dd>
-                  {payment.amountLabel}
+              <li key={payment.id} className={styles.paymentRow}>
+                <span className={styles.paymentHead}>
+                  <span>{payment.label}</span>
+                  {payment.jobRef ? <span className={styles.muted}> · {payment.jobRef}</span> : null}
+                </span>
+                <span className={styles.paymentMeta}>
+                  <strong className={styles.paymentAmount}>{payment.amountLabel}</strong>
                   <span className={styles.muted}> · {payment.status} · {payment.dateLabel}</span>
-                </dd>
-              </div>
+                </span>
+              </li>
             ))}
-          </dl>
+          </ul>
         </section>
       </div>
     );

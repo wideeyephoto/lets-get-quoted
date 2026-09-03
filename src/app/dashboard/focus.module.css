@@ -404,6 +404,44 @@
 .defs dt { font-size: 0.76rem; color: rgba(var(--grey-5), 0.9); white-space: nowrap; }
 .defs dd { margin: 0; font-size: 0.87rem; font-weight: 600; min-width: 0; overflow-wrap: break-word; word-break: break-word; }
 
+.paymentList {
+  display: grid;
+  gap: 0.65rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.paymentRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid var(--rule-g16);
+  font-size: 0.86rem;
+  flex-wrap: wrap;
+}
+.paymentRow:last-child {
+  border-bottom: none;
+}
+.paymentHead {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-weight: 600;
+  color: var(--text);
+}
+.paymentMeta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.84rem;
+}
+.paymentAmount {
+  font-weight: 700;
+  color: var(--text);
+}
+
 .scope { margin: 0; font-size: 0.87rem; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 .muted { margin: 0; font-size: 0.85rem; color: rgba(var(--grey-5), 0.9); line-height: 1.5; }
 .muted a { color: var(--ink-orange-8); text-decoration: none; }

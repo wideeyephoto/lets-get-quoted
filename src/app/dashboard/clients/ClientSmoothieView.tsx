@@ -510,7 +510,6 @@ export default function ClientSmoothieView({
 
               {/* 4 — how you reach them */}
               <div className={`${styles.comms} ${pageStyles.comms}`}>
-                <p className={styles.commsNote}>{selected.contactLine || 'No phone or email on file.'}</p>
                 <div className={styles.commsRow}>
                   {readOnly ? null : <Link className="btn primary" href="/dashboard/jobs?new=1#new-job">+ New job</Link>}
                   {selected.phone ? <a className="btn secondary" href={`tel:${selected.phone}`}>📞 Call</a> : null}
