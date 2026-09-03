@@ -1,4 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
 
 const runSmsInboundActionBatch = vi.fn();
 vi.mock('@/lib/sms-inbound-action-worker', () => ({ runSmsInboundActionBatch }));
@@ -25,7 +26,7 @@ describe('inbound SMS action recovery cron', () => {
     });
     const { runSmsInboundActionCronBatch } = await import('@/lib/sms-inbound-action-cron');
     await expect(runSmsInboundActionCronBatch()).resolves.toEqual({
-      requested: 20,
+      requested: 5,
       claimed: 4,
       completed: 3,
       failed: 1,
@@ -37,11 +38,19 @@ describe('inbound SMS action recovery cron', () => {
     runSmsInboundActionBatch.mockRejectedValueOnce(new Error('recipient +12485550111 failed'));
     const { runSmsInboundActionCronBatch } = await import('@/lib/sms-inbound-action-cron');
     await expect(runSmsInboundActionCronBatch()).resolves.toEqual({
-      requested: 20,
+      requested: 5,
       claimed: 0,
       completed: 0,
       failed: 0,
       failures: 1,
     });
+  });
+
+  it('allows enough route time for bounded AI and media processing', () => {
+    const route = readFileSync(
+      new URL('../src/app/api/cron/sms-inbound-actions/route.ts', import.meta.url),
+      'utf8',
+    );
+    expect(route).toContain('export const maxDuration = 300');
   });
 });

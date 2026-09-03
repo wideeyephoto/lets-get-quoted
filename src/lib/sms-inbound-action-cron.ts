@@ -2,7 +2,9 @@ import 'server-only';
 
 import { runSmsInboundActionBatch } from '@/lib/sms-inbound-action-worker';
 
-const BATCH_SIZE = 20;
+// Claims have a two-minute lease and field intake can include model/media work.
+// Keep the concurrently processed batch deliberately modest.
+const BATCH_SIZE = 5;
 
 export function smsInboundActionWorkerEnabled(): boolean {
   return process.env.LGQ_SMS_INBOUND_ACTION_WORKER_ENABLED === '1';

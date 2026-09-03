@@ -17,6 +17,10 @@ import type { SmsInboundActionClaim } from '@/lib/sms-inbound-action-worker';
 
 // Mock GoogleGenAI
 const mockGenerateContent = vi.fn();
+const { mockBeginFieldUsage, mockCommitFieldUsage } = vi.hoisted(() => ({
+  mockBeginFieldUsage: vi.fn(),
+  mockCommitFieldUsage: vi.fn(),
+}));
 
 vi.mock('@google/genai', async () => {
   const actual = await vi.importActual<typeof import('@google/genai')>('@google/genai');
@@ -29,6 +33,11 @@ vi.mock('@google/genai', async () => {
     })),
   };
 });
+
+vi.mock('@/lib/sms-field-intake-usage', () => ({
+  beginSmsFieldIntakeUsage: mockBeginFieldUsage,
+  commitSmsFieldIntakeUsage: mockCommitFieldUsage,
+}));
 
 describe('Crew GSM-7 Confirmation Templates', () => {
   it('formats deterministic ASCII confirmation strings for crew actions under 160 chars', () => {
@@ -60,16 +69,57 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env = { ...originalEnv, GEMINI_API_KEY: 'test-gemini-key' };
+    mockBeginFieldUsage.mockResolvedValue({
+      kind: 'allowed',
+      lease: {
+        reservationId: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+        finalizationKey: 'field-intake-ai-commit-test',
+        needsCommit: true,
+      },
+    });
+    mockCommitFieldUsage.mockResolvedValue(true);
   });
 
   function createMockQueryBuilder(resolvedData: unknown = []) {
     const builder: Record<string, unknown> = {};
     builder.select = vi.fn().mockReturnValue(builder);
     builder.eq = vi.fn().mockReturnValue(builder);
+    builder.is = vi.fn().mockReturnValue(builder);
     builder.order = vi.fn().mockReturnValue(builder);
     builder.limit = vi.fn().mockResolvedValue({ data: resolvedData, error: null });
     builder.maybeSingle = vi.fn().mockResolvedValue({ data: resolvedData, error: null });
     return builder;
+  }
+
+  const smsMessageId = '99999999-9999-4999-8999-999999999999';
+  const smsReceiptId = '88888888-8888-4888-8888-888888888888';
+
+  function fieldMessageQuery(table: string, body: string) {
+    if (table === 'sms_inbound_action_tasks') {
+      return createMockQueryBuilder({
+        webhook_receipt_id: smsReceiptId,
+        sms_message_id: smsMessageId,
+      });
+    }
+    if (table === 'sms_webhook_receipts') {
+      return createMockQueryBuilder({ id: smsReceiptId, to_number: '+12485550141' });
+    }
+    if (table === 'sms_messages') {
+      return createMockQueryBuilder({ id: smsMessageId, body, media_urls: [] });
+    }
+    return null;
+  }
+
+  function createFieldRpcMock(applyResult: { data: unknown; error: null }) {
+    return vi.fn(async (functionName: string) => {
+      if (functionName === 'extend_sms_inbound_action_field_lease') {
+        return { data: true, error: null };
+      }
+      if (functionName === 'apply_authorized_sms_field_action') {
+        return applyResult;
+      }
+      return { data: null, error: null };
+    });
   }
 
   it('provides crew-specific tools and restricts owner administrative functions', () => {
@@ -80,7 +130,7 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
     expect(crewTools).toContain('append_internal_note');
     expect(crewTools).toContain('log_cost');
     expect(crewTools).toContain('add_job_task');
-    expect(crewTools).toContain('complete_job_task');
+    expect(crewTools).not.toContain('complete_job_task');
     expect(crewTools).toContain('report_ambiguity');
     expect(crewTools).toContain('no_action');
 
@@ -90,14 +140,16 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
     expect(crewTools).not.toContain('assign_crew');
     expect(crewTools).not.toContain('update_client');
 
-    // Owner has all tools
+    // Owner gains lead capture, but neither role is offered SQL-unsupported tools.
     expect(ownerTools).toContain('create_lead');
-    expect(ownerTools).toContain('reschedule_job');
-    expect(ownerTools).toContain('assign_crew');
-    expect(ownerTools).toContain('update_client');
+    expect(ownerTools).not.toContain('reschedule_job');
+    expect(ownerTools).not.toContain('assign_crew');
+    expect(ownerTools).not.toContain('update_client');
+    expect(ownerTools).not.toContain('add_quote_line_item');
+    expect(ownerTools).not.toContain('send_client_quote_link');
   });
 
-  it('detects a registered crew member sender and formats crew confirmation with attribution', async () => {
+  it('keeps a shared-number crew sender out of account context and Gemini', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const taskId = '22222222-2222-4222-8222-222222222222';
     const claimToken = '33333333-3333-4333-8333-333333333333';
@@ -113,6 +165,7 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
       senderNumberId: '55555555-5555-4555-8555-555555555555',
       senderPurpose: 'lgq_shared',
       fromNumber: '+15559876543', // Crew member's phone
+      effectApplied: false,
     };
 
     mockGenerateContent.mockResolvedValueOnce({
@@ -128,29 +181,26 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
       ],
     });
 
-    const mockRpc = vi.fn().mockResolvedValue({
+    const mockRpc = createFieldRpcMock({
       data: { target_id: jobId, intent: 'append_internal_note' },
       error: null,
     });
 
+    const crewQuery = createMockQueryBuilder([
+      { id: crewId, name: 'Mike Davis', phone: '+15559876543', role_label: 'Lead Carpenter' },
+    ]);
+
     const mockAdmin = {
       rpc: mockRpc,
       from: vi.fn((table: string) => {
-        if (table === 'sms_webhook_receipts') {
-          return createMockQueryBuilder({
-            id: taskId,
-            provider: 'signalwire',
-            account_id: accountId,
-            from_number: '+15559876543',
-            message_body: 'Finished the drywall on Smith job on Main St',
-            media_urls: [],
-          });
-        }
+        const messageQuery = fieldMessageQuery(table, 'Finished the drywall on Smith job on Main St');
+        if (messageQuery) return messageQuery;
         if (table === 'accounts') {
           return createMockQueryBuilder({
             id: accountId,
             business_name: 'Apex Construction',
             alert_phone: '+15551112233', // Owner phone differs from crew phone
+            high_value_sms_enabled: true,
           });
         }
         if (table === 'jobs') {
@@ -159,9 +209,7 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
           ]);
         }
         if (table === 'crew') {
-          return createMockQueryBuilder([
-            { id: crewId, name: 'Mike Davis', phone: '+15559876543', role_label: 'Lead Carpenter' },
-          ]);
+          return crewQuery;
         }
         return createMockQueryBuilder([]);
       }),
@@ -169,23 +217,32 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
 
     const result = await processFieldIntakeClaim(claim, mockAdmin);
 
-    expect(result.handled).toBe(true);
-    expect(result.outcome).toBe('completed');
-    expect(result.intent).toBe('append_internal_note');
-    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged field note from Mike Davis.');
-    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
-
-    expect(mockRpc).toHaveBeenCalledWith('apply_owner_field_action', {
+    expect(result).toMatchObject({
+      handled: true,
+      outcome: 'no_action',
+      intent: 'no_action',
+      confirmationText: expect.stringMatching(/temporarily unavailable by text/i),
+    });
+    expect(mockRpc).toHaveBeenNthCalledWith(1, 'extend_sms_inbound_action_field_lease', {
       p_task_id: taskId,
       p_claim_token: claimToken,
-      p_intent: 'append_internal_note',
-      p_params: { jobId, note: 'Finished drywall, ready for paint inspection' },
+    });
+    expect(mockAdmin.from).not.toHaveBeenCalledWith('jobs');
+    expect(mockAdmin.from).not.toHaveBeenCalledWith('clients');
+    expect(mockAdmin.from).not.toHaveBeenCalledWith('crew');
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(mockBeginFieldUsage).not.toHaveBeenCalled();
+    expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', {
+      p_task_id: taskId,
+      p_claim_token: claimToken,
+      p_intent: 'no_action',
+      p_params: { reason: 'crew_field_intake_not_supported' },
       p_transcript: 'Finished the drywall on Smith job on Main St',
-      p_confirmation_text: expect.stringContaining(`/field/intake/${taskId}`),
+      p_confirmation_text: expect.stringMatching(/temporarily unavailable by text/i),
     });
   });
 
-  it('processes crew logging a material cost correctly', async () => {
+  it('does not let a crew-like sender reach a field mutation', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const taskId = '22222222-2222-4222-8222-222222222222';
     const claimToken = '33333333-3333-4333-8333-333333333333';
@@ -201,6 +258,7 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
       senderNumberId: '55555555-5555-4555-8555-555555555555',
       senderPurpose: 'lgq_shared',
       fromNumber: '+15559876543',
+      effectApplied: false,
     };
 
     mockGenerateContent.mockResolvedValueOnce({
@@ -218,7 +276,7 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
       ],
     });
 
-    const mockRpc = vi.fn().mockResolvedValue({
+    const mockRpc = createFieldRpcMock({
       data: { target_id: jobId, intent: 'log_cost' },
       error: null,
     });
@@ -226,21 +284,14 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
     const mockAdmin = {
       rpc: mockRpc,
       from: vi.fn((table: string) => {
-        if (table === 'sms_webhook_receipts') {
-          return createMockQueryBuilder({
-            id: taskId,
-            provider: 'signalwire',
-            account_id: accountId,
-            from_number: '+15559876543',
-            message_body: 'Bought $85 of copper pipe for Smith job',
-            media_urls: [],
-          });
-        }
+        const messageQuery = fieldMessageQuery(table, 'Bought $85 of copper pipe for Smith job');
+        if (messageQuery) return messageQuery;
         if (table === 'accounts') {
           return createMockQueryBuilder({
             id: accountId,
             business_name: 'Apex Construction',
             alert_phone: '+15551112233',
+            high_value_sms_enabled: true,
           });
         }
         if (table === 'jobs') {
@@ -259,11 +310,20 @@ describe('Crew Field Intake Worker & Caller Detection', () => {
 
     const result = await processFieldIntakeClaim(claim, mockAdmin);
 
-    expect(result.handled).toBe(true);
-    expect(result.outcome).toBe('completed');
-    expect(result.intent).toBe('log_cost');
-    expect(result.confirmationText).toContain('[LGQ] J-101 (John Smith): Logged $85.00 Copper pipe cost from Mike Davis.');
-    expect(result.confirmationText).toContain(`/field/intake/${taskId}`);
+    expect(result).toMatchObject({
+      handled: true,
+      outcome: 'no_action',
+      intent: 'no_action',
+    });
+    expect(mockGenerateContent).not.toHaveBeenCalled();
+    expect(mockBeginFieldUsage).not.toHaveBeenCalled();
+    expect(mockAdmin.from).not.toHaveBeenCalledWith('jobs');
+    expect(mockAdmin.from).not.toHaveBeenCalledWith('clients');
+    expect(mockAdmin.from).not.toHaveBeenCalledWith('crew');
+    expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', expect.objectContaining({
+      p_intent: 'no_action',
+      p_params: { reason: 'crew_field_intake_not_supported' },
+    }));
   });
 });
 

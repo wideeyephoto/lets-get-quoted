@@ -23,6 +23,7 @@ import { APP_ORIGIN } from '@/lib/app-origin';
 import { getMemberBenefitsSummary, type MemberBenefitsSummary, DEFAULT_BENEFITS } from '@/lib/membership-tiers';
 import { listPropertyPassports } from '@/lib/property-passport-data';
 import type { PropertyPassport } from '@/lib/property-passport';
+import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
 
 /**
  * Find the one client this email belongs to.
@@ -437,13 +438,15 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
   const messages: PortalMessage[] = [];
   const [{ data: smsRows }, { data: feedRows }] = await Promise.all([
     clientPhone
-      ? admin
-          .from('sms_messages')
-          .select('id, direction, body, media_urls, created_at')
-          .eq('account_id', accountId)
-          .eq('phone_number', clientPhone)
-          .order('created_at', { ascending: false })
-          .limit(50)
+      ? runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+          let query = admin
+            .from('sms_messages')
+            .select('id, direction, body, media_urls, created_at')
+            .eq('account_id', accountId)
+            .eq('phone_number', clientPhone);
+          if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+          return query.order('created_at', { ascending: false }).limit(50);
+        })
       : Promise.resolve({ data: [] }),
     jobIds.length
       ? admin

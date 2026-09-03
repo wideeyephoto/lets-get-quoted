@@ -61,7 +61,14 @@ function callback() {
 }
 
 /** An admin client whose notice claim returns `claimed`. */
-function admin(claimed: boolean, error: { message?: string } | null = null) {
+function admin(
+  claimed: boolean,
+  error: { message?: string } | null = null,
+  preference: { status: string; opted_out_at: string | null } | null = null,
+  preferenceError: { message?: string } | null = null,
+  consent: { status: string; opted_out_at: string | null } | null = null,
+  consentError: { message?: string } | null = null,
+) {
   const rpc = vi.fn().mockResolvedValue({ data: claimed, error });
   const maybeSingle = vi.fn().mockResolvedValue({
     data: { business_name: 'BrokePipes' },
@@ -69,7 +76,34 @@ function admin(claimed: boolean, error: { message?: string } | null = null) {
   });
   const eq = vi.fn().mockReturnValue({ maybeSingle });
   const select = vi.fn().mockReturnValue({ eq });
-  return { rpc, from: vi.fn().mockReturnValue({ select }) };
+  const preferenceMaybeSingle = vi.fn().mockResolvedValue({
+    data: preference,
+    error: preferenceError,
+  });
+  const preferenceBuilder: Record<string, unknown> = {};
+  const preferenceEq = vi.fn().mockReturnValue(preferenceBuilder);
+  preferenceBuilder.select = vi.fn().mockReturnValue(preferenceBuilder);
+  preferenceBuilder.eq = preferenceEq;
+  preferenceBuilder.maybeSingle = preferenceMaybeSingle;
+  const consentMaybeSingle = vi.fn().mockResolvedValue({
+    data: consent,
+    error: consentError,
+  });
+  const consentBuilder: Record<string, unknown> = {};
+  const consentEq = vi.fn().mockReturnValue(consentBuilder);
+  consentBuilder.select = vi.fn().mockReturnValue(consentBuilder);
+  consentBuilder.eq = consentEq;
+  consentBuilder.maybeSingle = consentMaybeSingle;
+  return {
+    rpc,
+    from: vi.fn((table: string) => {
+      if (table === 'sms_sender_keyword_preferences') return preferenceBuilder;
+      if (table === 'sms_consent') return consentBuilder;
+      return { select };
+    }),
+    preferenceEq,
+    consentEq,
+  };
 }
 
 const ingress = (over: Record<string, unknown> = {}) => ({
@@ -112,7 +146,7 @@ describe('the shared number answers a reply', () => {
   it('returns the notice, branded, with the dashboard link', async () => {
     const client = admin(true);
     mocks.createAdminClient.mockReturnValue(client);
-    mocks.ingestInboundWebhook.mockResolvedValue(ingress());
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
 
     const response = await post();
     const body = await response.text();
@@ -128,8 +162,7 @@ describe('the shared number answers a reply', () => {
     }));
   });
 
-  it('answers an UNROUTABLE reply too, which is the case with no other answer', async () => {
-    // A stranger texting the number is exactly who gets silence otherwise.
+  it('fails closed when an UNROUTABLE reply has no exact sender binding', async () => {
     const client = admin(true);
     mocks.createAdminClient.mockReturnValue(client);
     mocks.ingestInboundWebhook.mockResolvedValue(
@@ -137,17 +170,39 @@ describe('the shared number answers a reply', () => {
     );
 
     const response = await post();
-    expect(await response.text()).toContain('<Message>');
+    expect(await response.text()).toBe(EMPTY_TWIML);
+    expect(client.rpc).toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.objectContaining({
+      p_egress_result: 'suppressed',
+    }));
     expect(mocks.processSmsInboundActionReceipt).not.toHaveBeenCalled();
   });
 
-  it('answers a routed reply only AFTER the action worker has run', async () => {
+  it('leaves routed lgq_shared field intake pending for the async worker', async () => {
     const client = admin(true);
     mocks.createAdminClient.mockReturnValue(client);
     mocks.ingestInboundWebhook.mockResolvedValue(ingress());
 
-    await post();
-    expect(mocks.processSmsInboundActionReceipt).toHaveBeenCalledWith(RECEIPT_ID, client);
+    const response = await post();
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(EMPTY_TWIML);
+    expect(mocks.processSmsInboundActionReceipt).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.anything());
+  });
+
+  it('keeps a routed lgq_shared duplicate off the synchronous AI path too', async () => {
+    const client = admin(true);
+    mocks.createAdminClient.mockReturnValue(client);
+    mocks.loadInboundReceiptDisposition.mockResolvedValue('routed');
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ disposition: 'duplicate' }));
+
+    const response = await post();
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(EMPTY_TWIML);
+    expect(mocks.loadInboundReceiptDisposition).toHaveBeenCalledWith(client, RECEIPT_ID);
+    expect(mocks.processSmsInboundActionReceipt).not.toHaveBeenCalled();
+    expect(client.rpc).not.toHaveBeenCalled();
   });
 });
 
@@ -180,7 +235,7 @@ describe('the shared number stays silent when it must', () => {
     mocks.outboundSmsLaneSuppression.mockReturnValue('kill-switch');
     const client = admin(true);
     mocks.createAdminClient.mockReturnValue(client);
-    mocks.ingestInboundWebhook.mockResolvedValue(ingress());
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
 
     const response = await post();
 
@@ -190,11 +245,69 @@ describe('the shared number stays silent when it must', () => {
     }));
   });
 
+  it('suppresses a review/courtesy reply after STOP for the exact sender and recipient', async () => {
+    const client = admin(true, null, {
+      status: 'opted_out',
+      opted_out_at: '2026-09-03T18:00:00.000Z',
+    });
+    mocks.createAdminClient.mockReturnValue(client);
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({
+      disposition: 'review',
+      senderPurpose: 'lgq_dispatch',
+    }));
+
+    const response = await post();
+
+    expect(response.status).toBe(200);
+    expect(await response.text()).toBe(EMPTY_TWIML);
+    expect(client.preferenceEq).toHaveBeenNthCalledWith(1, 'sender_number_id', 'sender-1');
+    expect(client.preferenceEq).toHaveBeenNthCalledWith(2, 'phone_number', '+12485550101');
+    expect(client.rpc).toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.objectContaining({
+      p_webhook_receipt_id: RECEIPT_ID,
+      p_egress_result: 'suppressed',
+    }));
+    expect(mocks.processSmsInboundActionReceipt).not.toHaveBeenCalled();
+  });
+
+  it('fails closed when the exact sender preference cannot be read', async () => {
+    const client = admin(true, null, null, { message: 'preference unavailable' });
+    mocks.createAdminClient.mockReturnValue(client);
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
+
+    const response = await post();
+
+    expect(await response.text()).toBe(EMPTY_TWIML);
+    expect(client.rpc).toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.objectContaining({
+      p_egress_result: 'suppressed',
+    }));
+  });
+
+  it('suppresses courtesy egress for an account-wide opted-out recipient', async () => {
+    const client = admin(
+      true,
+      null,
+      { status: 'opted_in', opted_out_at: null },
+      null,
+      { status: 'opted_out', opted_out_at: '2026-09-03T18:00:00.000Z' },
+    );
+    mocks.createAdminClient.mockReturnValue(client);
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
+
+    const response = await post();
+
+    expect(await response.text()).toBe(EMPTY_TWIML);
+    expect(client.consentEq).toHaveBeenNthCalledWith(1, 'account_id', ACCOUNT_ID);
+    expect(client.consentEq).toHaveBeenNthCalledWith(2, 'phone_number', '+12485550101');
+    expect(client.rpc).toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.objectContaining({
+      p_egress_result: 'suppressed',
+    }));
+  });
+
   it('does not text twice when the provider retries the same receipt', async () => {
     // The claim is atomic; the loser answers empty.
     const client = admin(false);
     mocks.createAdminClient.mockReturnValue(client);
-    mocks.ingestInboundWebhook.mockResolvedValue(ingress());
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
 
     const response = await post();
     expect(await response.text()).toBe(EMPTY_TWIML);
@@ -219,7 +332,7 @@ describe('the shared number stays silent when it must', () => {
     mocks.processSmsInboundActionReceipt.mockResolvedValue('busy');
     const client = admin(true);
     mocks.createAdminClient.mockReturnValue(client);
-    mocks.ingestInboundWebhook.mockResolvedValue(ingress());
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
 
     const response = await post();
 
@@ -233,7 +346,7 @@ describe('the shared number stays silent when it must', () => {
     // message we have stored, to re-send a courtesy we owe nobody.
     const client = admin(true, { message: 'deadlock detected' });
     mocks.createAdminClient.mockReturnValue(client);
-    mocks.ingestInboundWebhook.mockResolvedValue(ingress());
+    mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
 
     const response = await post();
 

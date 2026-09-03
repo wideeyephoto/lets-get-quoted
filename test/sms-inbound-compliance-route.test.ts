@@ -229,7 +229,12 @@ describe('the compliance acknowledgements a carrier would audit', () => {
     const { POST } = await import('@/app/api/sms/inbound/route');
     const body = await (await POST(callback())).text();
     // The message the carrier would actually transmit, not the XML around it.
-    return { body, message: (body.match(/<Message>([\s\S]*?)<\/Message>/) || [])[1] ?? null, rpc };
+    return {
+      body,
+      message: (body.match(/<Message>([\s\S]*?)<\/Message>/) || [])[1] ?? null,
+      rpc,
+      from,
+    };
   }
 
   it('confirms the unsubscribe on STOP and says how to come back', async () => {
@@ -248,6 +253,14 @@ describe('the compliance acknowledgements a carrier would audit', () => {
     expect(message).toContain('@');
     expect(message).toMatch(/reply stop/i);
     expect(message).toMatch(/rates may apply/i);
+  });
+
+  it('keeps START and HELP on their compliance acknowledgement path', async () => {
+    for (const keyword of ['start', 'help'] as const) {
+      const { message, from } = await acknowledge(keyword);
+      expect(message).not.toBeNull();
+      expect(from).not.toHaveBeenCalledWith('sms_sender_keyword_preferences');
+    }
   });
 
   it('never sends a STOP reply that reads like an opt-IN', async () => {

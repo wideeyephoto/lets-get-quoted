@@ -23,6 +23,7 @@ import { loadOwnerAlerts, validateOwnerAlerts } from '@/lib/owner-sms';
 import { OWNER_SMS_DISCLOSURE_VERSION } from '@/lib/owner-sms-disclosure';
 import type { OwnerAlertsState } from '@/lib/owner-sms-state';
 import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
+import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
 
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -449,13 +450,15 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { ok: false, message: 'AI generation is not configured.' };
 
-  const { data: messages } = await supabase
-    .from('sms_messages')
-    .select('direction, body, created_at')
-    .eq('account_id', accountId)
-    .eq('phone_number', normalized)
-    .order('created_at', { ascending: false })
-    .limit(5);
+  const { data: messages } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+    let query = supabase
+      .from('sms_messages')
+      .select('direction, body, created_at')
+      .eq('account_id', accountId)
+      .eq('phone_number', normalized);
+    if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+    return query.order('created_at', { ascending: false }).limit(5);
+  });
 
   if (!messages || messages.length === 0) {
     return {

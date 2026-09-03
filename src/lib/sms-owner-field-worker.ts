@@ -1,29 +1,33 @@
 import 'server-only';
 
-import { GoogleGenAI, Type, type FunctionDeclaration, type Part } from '@google/genai';
+import {
+  FunctionCallingConfigMode,
+  GoogleGenAI,
+  Type,
+  type FunctionDeclaration,
+  type Part,
+} from '@google/genai';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import {
-  formatCrewCostConfirmation,
-  formatCrewNoteConfirmation,
-  formatCrewReceiptConfirmation,
-  formatCrewTaskConfirmation,
   formatFieldAmbiguityClarification,
-  formatFieldClientConfirmation,
   formatFieldCostConfirmation,
-  formatFieldCrewConfirmation,
   formatFieldLeadConfirmation,
   formatFieldNoteConfirmation,
-  formatFieldQuoteSentConfirmation,
-  formatFieldQuoteWithSendPrompt,
   formatFieldReceiptConfirmation,
-  formatFieldScheduleConfirmation,
-  formatFieldTaskCompletedConfirmation,
   formatFieldTaskConfirmation,
   sanitizeGsm7Text,
 } from '@/lib/sms-field-templates';
 import type { SmsInboundActionClaim } from '@/lib/sms-inbound-action-worker';
 import { normalizeUsPhone } from '@/lib/phone';
+import {
+  beginSmsFieldIntakeUsage,
+  commitSmsFieldIntakeUsage,
+} from '@/lib/sms-field-intake-usage';
+import {
+  buildAuthenticatedSmsMediaRequest,
+  type SmsProviderId,
+} from '@/lib/sms-provider';
 
 export interface OwnerFieldActionResult {
   handled: boolean;
@@ -35,6 +39,55 @@ export interface OwnerFieldActionResult {
 }
 
 export type FieldIntakeActionResult = OwnerFieldActionResult;
+
+function snakeCaseFieldKey(key: string): string {
+  return key.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+}
+
+function normalizeFieldValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(normalizeFieldValue);
+  if (!value || typeof value !== 'object') return value;
+  return Object.fromEntries(
+    Object.entries(value as Record<string, unknown>).map(([key, nested]) => [
+      snakeCaseFieldKey(key),
+      normalizeFieldValue(nested),
+    ]),
+  );
+}
+
+/**
+ * Gemini tool declarations use ergonomic camelCase names, while the atomic
+ * Postgres field-action contract consumes snake_case JSON keys. Keep that
+ * translation at the worker/RPC boundary so every current and future tool is
+ * covered consistently.
+ */
+export function normalizeFieldActionParams(
+  args: Record<string, unknown>,
+): Record<string, unknown> {
+  return normalizeFieldValue(args) as Record<string, unknown>;
+}
+
+const FIELD_COST_TYPES = new Set(['material', 'labor', 'sub', 'receipt', 'other']);
+
+export function fieldCostValidationError(
+  params: Record<string, unknown>,
+): string | null {
+  const amount = params.amount;
+  if (
+    typeof amount !== 'number'
+    || !Number.isFinite(amount)
+    || amount <= 0
+    || amount > 1_000_000
+  ) {
+    return 'Field intake cost amount must be a positive number no greater than 1000000';
+  }
+  const costType = typeof params.cost_type === 'string'
+    ? params.cost_type.trim()
+    : 'material';
+  if (!FIELD_COST_TYPES.has(costType)) return 'Field intake cost type is invalid';
+  params.cost_type = costType;
+  return null;
+}
 
 type AssistantFunctionDeclaration = Omit<FunctionDeclaration, 'parameters'> & {
   parameters: NonNullable<FunctionDeclaration['parameters']>;
@@ -113,24 +166,6 @@ const COMMON_FIELD_TOOLS: AssistantFunctionDeclaration[] = [
     },
   },
   {
-    name: 'complete_job_task',
-    description: 'Marks an existing checklist / punch list task completed on the job.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        jobId: {
-          type: Type.STRING,
-          description: 'The exact ID of the target job.',
-        },
-        title: {
-          type: Type.STRING,
-          description: 'The title or keywords of the completed task (e.g. "Rough-in plumbing", "Framing").',
-        },
-      },
-      required: ['jobId', 'title'],
-    },
-  },
-  {
     name: 'report_ambiguity',
     description: 'Call when multiple records could match the reference, asking the sender to clarify.',
     parameters: {
@@ -164,78 +199,8 @@ const COMMON_FIELD_TOOLS: AssistantFunctionDeclaration[] = [
 // Owner-only administrative tools
 const OWNER_ONLY_TOOLS: AssistantFunctionDeclaration[] = [
   {
-    name: 'reschedule_job',
-    description: 'Reschedules a job or estimate visit to a new date and optional time.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        jobId: {
-          type: Type.STRING,
-          description: 'The exact ID of the target job.',
-        },
-        scheduled_for: {
-          type: Type.STRING,
-          description: 'New scheduled date in YYYY-MM-DD format.',
-        },
-        scheduled_time: {
-          type: Type.STRING,
-          description: 'New arrival time in HH:MM format (optional).',
-        },
-      },
-      required: ['jobId', 'scheduled_for'],
-    },
-  },
-  {
-    name: 'update_client',
-    description: 'Updates client contact information (phone, email, address) or adds notes to their client profile.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        client_id: {
-          type: Type.STRING,
-          description: 'The exact ID of the client.',
-        },
-        phone: {
-          type: Type.STRING,
-          description: 'Updated phone number (optional).',
-        },
-        email: {
-          type: Type.STRING,
-          description: 'Updated email address (optional).',
-        },
-        address: {
-          type: Type.STRING,
-          description: 'Updated address (optional).',
-        },
-        notes: {
-          type: Type.STRING,
-          description: 'Notes to append to client profile (optional).',
-        },
-      },
-      required: ['client_id'],
-    },
-  },
-  {
-    name: 'assign_crew',
-    description: 'Assigns a crew member to a specific job.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        jobId: {
-          type: Type.STRING,
-          description: 'The exact ID of the target job.',
-        },
-        crew_id: {
-          type: Type.STRING,
-          description: 'The exact ID of the crew member to assign.',
-        },
-      },
-      required: ['jobId', 'crew_id'],
-    },
-  },
-  {
     name: 'create_lead',
-    description: 'Captures a new prospect or client inquiry dictated from the road into the leads pipeline.',
+    description: 'Captures a new prospect or client inquiry in the leads pipeline. Also use this when the owner says to create a new job or estimate for a person who has no existing job: stage the request as a lead for review; do not claim that a job or quote was created.',
     parameters: {
       type: Type.OBJECT,
       properties: {
@@ -253,46 +218,10 @@ const OWNER_ONLY_TOOLS: AssistantFunctionDeclaration[] = [
         },
         notes: {
           type: Type.STRING,
-          description: 'Description of work requested or conversation summary.',
+          description: 'Required complete intake summary. Preserve every dictated detail, especially work scope, address/location, and any dollar estimate or quoted amount, even when also present in another field.',
         },
       },
-      required: ['clientName'],
-    },
-  },
-  {
-    name: 'add_quote_line_item',
-    description: 'Adds an extra line item or change order to an existing job quote and recalculates total.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        jobId: {
-          type: Type.STRING,
-          description: 'The exact ID of the target job.',
-        },
-        amount: {
-          type: Type.NUMBER,
-          description: 'Dollar amount of the line item (e.g. 450 for $450.00).',
-        },
-        description: {
-          type: Type.STRING,
-          description: 'Description of the additional work or change order.',
-        },
-      },
-      required: ['jobId', 'amount', 'description'],
-    },
-  },
-  {
-    name: 'send_client_quote_link',
-    description: 'Sends an SMS to the customer with their updated quote approval link (triggered when owner replies "SEND", "YES", "SEND IT", "TEXT CLIENT").',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        jobId: {
-          type: Type.STRING,
-          description: 'The exact ID of the target job.',
-        },
-      },
-      required: ['jobId'],
+      required: ['clientName', 'notes'],
     },
   },
 ];
@@ -334,27 +263,79 @@ interface CrewSummaryContext {
   roleLabel: string | null;
 }
 
+const MAX_FIELD_MEDIA_ATTACHMENTS = 10;
+const MAX_FIELD_MEDIA_RAW_BYTES = 15 * 1024 * 1024;
+const FIELD_MEDIA_DOWNLOAD_CONCURRENCY = 2;
+const FIELD_MEDIA_TIMEOUT_MS = 10_000;
+
+interface FieldMediaByteBudget {
+  remainingBytes: number;
+}
+
+async function cancelBody(body: ReadableStream<Uint8Array> | null): Promise<void> {
+  try {
+    await body?.cancel();
+  } catch {
+    // Cancellation is best-effort after rejecting an unneeded response body.
+  }
+}
+
+async function readMediaBodyWithinBudget(
+  response: Response,
+  budget: FieldMediaByteBudget,
+): Promise<Buffer | null> {
+  const rawContentLength = response.headers.get('content-length');
+  if (rawContentLength && /^\d+$/.test(rawContentLength)) {
+    const contentLength = Number(rawContentLength);
+    if (!Number.isSafeInteger(contentLength) || contentLength > budget.remainingBytes) {
+      await cancelBody(response.body);
+      return null;
+    }
+  }
+
+  const reader = response.body?.getReader();
+  if (!reader) return null;
+
+  const chunks: Uint8Array[] = [];
+  let totalBytes = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (!value?.byteLength) continue;
+    if (value.byteLength > budget.remainingBytes) {
+      try {
+        await reader.cancel();
+      } catch {
+        // The byte cap has already failed closed; cancellation is best-effort.
+      }
+      return null;
+    }
+    budget.remainingBytes -= value.byteLength;
+    totalBytes += value.byteLength;
+    chunks.push(value);
+  }
+
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), totalBytes);
+}
+
 async function fetchAuthenticatedMediaPart(
   url: string,
-  provider: string,
+  provider: SmsProviderId,
+  budget: FieldMediaByteBudget,
 ): Promise<{ mimeType: string; data: string; kind: 'audio' | 'image' } | null> {
   try {
-    const headers: Record<string, string> = {};
+    const request = buildAuthenticatedSmsMediaRequest(url, provider);
+    if (!request || budget.remainingBytes <= 0) return null;
 
-    if (provider === 'twilio' && process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN) {
-      const basicAuth = Buffer.from(
-        `${process.env.TWILIO_ACCOUNT_SID}:${process.env.TWILIO_AUTH_TOKEN}`,
-      ).toString('base64');
-      headers.Authorization = `Basic ${basicAuth}`;
-    } else if (provider === 'signalwire' && process.env.SIGNALWIRE_PROJECT_ID && process.env.SIGNALWIRE_API_TOKEN) {
-      const basicAuth = Buffer.from(
-        `${process.env.SIGNALWIRE_PROJECT_ID}:${process.env.SIGNALWIRE_API_TOKEN}`,
-      ).toString('base64');
-      headers.Authorization = `Basic ${basicAuth}`;
+    const res = await fetch(request.url, {
+      headers: request.headers,
+      redirect: 'manual',
+      signal: AbortSignal.timeout(FIELD_MEDIA_TIMEOUT_MS),
+    });
+    if (!res.ok) {
+      await cancelBody(res.body);
+      return null;
     }
-
-    const res = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
-    if (!res.ok) return null;
 
     let contentType = (res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
 
@@ -365,24 +346,17 @@ async function fetchAuthenticatedMediaPart(
       else if (url.match(/\.webp(\?.*)?$/i)) contentType = 'image/webp';
       else if (url.match(/\.heic(\?.*)?$/i)) contentType = 'image/heic';
       else if (url.match(/\.(mp3|m4a|wav|aac|ogg|amr|webm)(\?.*)?$/i)) contentType = 'audio/mp4';
-      else contentType = 'image/jpeg'; // MMS default
     }
 
-    const arrayBuffer = await res.arrayBuffer();
-
-    // Enforce 20MB limit for inline Gemini multimodal payload
-    if (arrayBuffer.byteLength > 20 * 1024 * 1024) {
-      console.warn('Media attachment exceeds 20MB limit, skipping.');
-      return null;
-    }
-
-    const buffer = Buffer.from(arrayBuffer);
     const isImage = contentType.startsWith('image/');
     const isAudio = contentType.startsWith('audio/');
-
     if (!isImage && !isAudio) {
+      await cancelBody(res.body);
       return null;
     }
+
+    const buffer = await readMediaBodyWithinBudget(res, budget);
+    if (!buffer) return null;
 
     return {
       mimeType: contentType,
@@ -395,6 +369,39 @@ async function fetchAuthenticatedMediaPart(
   }
 }
 
+async function fetchAuthenticatedMediaParts(
+  urls: string[],
+  provider: SmsProviderId,
+): Promise<Array<{ mimeType: string; data: string; kind: 'audio' | 'image' } | null>> {
+  const limitedUrls = urls.slice(0, MAX_FIELD_MEDIA_ATTACHMENTS);
+  const results = new Array<Awaited<ReturnType<typeof fetchAuthenticatedMediaPart>>>(
+    limitedUrls.length,
+  ).fill(null);
+  const budget: FieldMediaByteBudget = { remainingBytes: MAX_FIELD_MEDIA_RAW_BYTES };
+  let nextIndex = 0;
+
+  async function downloadNext(): Promise<void> {
+    while (budget.remainingBytes > 0) {
+      const index = nextIndex;
+      nextIndex += 1;
+      if (index >= limitedUrls.length) return;
+      results[index] = await fetchAuthenticatedMediaPart(
+        limitedUrls[index]!,
+        provider,
+        budget,
+      );
+    }
+  }
+
+  await Promise.all(
+    Array.from(
+      { length: Math.min(FIELD_MEDIA_DOWNLOAD_CONCURRENCY, limitedUrls.length) },
+      () => downloadNext(),
+    ),
+  );
+  return results;
+}
+
 /**
  * Asynchronously processes an inbound field intake task (Owner or Crew) claimed from the queue.
  */
@@ -402,48 +409,243 @@ export async function processOwnerFieldClaim(
   claim: SmsInboundActionClaim,
   admin: SupabaseClient,
 ): Promise<OwnerFieldActionResult> {
-  const { data: receipt } = await admin
-    .from('sms_webhook_receipts')
-    .select('id, provider, provider_event_id, account_id, from_number, message_body, media_urls')
-    .eq('id', claim.providerEventId ? claim.taskId : '')
+  if (claim.senderPurpose !== 'lgq_shared') {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: 'Owner field intake requires the LGQ shared sender',
+    };
+  }
+
+  try {
+    const { data: leaseExtended, error: leaseError } = await admin.rpc(
+      'extend_sms_inbound_action_field_lease',
+      {
+        p_task_id: claim.taskId,
+        p_claim_token: claim.claimToken,
+      },
+    );
+
+    if (leaseError || leaseExtended !== true) {
+      return {
+        handled: false,
+        outcome: 'error',
+        errorMessage: leaseError?.message
+          ? `Unable to extend field intake lease: ${leaseError.message}`
+          : 'Field intake lease is no longer active',
+      };
+    }
+  } catch (err) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: `Unable to extend field intake lease: ${err instanceof Error ? err.message : String(err)}`,
+    };
+  }
+
+  // The receipt stores routing/provenance only. The durable action task owns
+  // the exact sms_messages FK that carries the inbound body and attachments.
+  const { data: task, error: taskError } = await admin
+    .from('sms_inbound_action_tasks')
+    .select('webhook_receipt_id, sms_message_id, account_id, sender_number_id')
+    .eq('id', claim.taskId)
+    .eq('account_id', claim.accountId)
+    .eq('sender_number_id', claim.senderNumberId)
     .maybeSingle();
 
-  // Fallback to claim context if receipt table query differs in test mocks
-  const rawReceipt = receipt ?? {
-    id: claim.taskId,
-    account_id: claim.accountId,
-    from_number: claim.fromNumber,
-    message_body: '',
-    media_urls: [],
-  };
+  if (taskError || !task?.webhook_receipt_id || !task.sms_message_id) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: taskError?.message || 'Inbound action task has no linked SMS message',
+    };
+  }
+
+  const { data: receipt, error: receiptError } = await admin
+    .from('sms_webhook_receipts')
+    .select('id, to_number')
+    .eq('id', task.webhook_receipt_id)
+    .eq('provider', claim.provider)
+    .eq('webhook_kind', 'inbound')
+    .eq('provider_event_id', claim.providerEventId)
+    .eq('processing_state', 'processed')
+    .eq('disposition', 'routed')
+    .eq('account_id', claim.accountId)
+    .eq('sender_number_id', claim.senderNumberId)
+    .eq('sms_message_id', task.sms_message_id)
+    .eq('from_number', claim.fromNumber)
+    .maybeSingle();
+
+  if (receiptError || !receipt?.to_number) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: receiptError?.message || 'Inbound action receipt binding is invalid',
+    };
+  }
+
+  const { data: message, error: messageError } = await admin
+    .from('sms_messages')
+    .select('id, body, media_urls, account_id, sender_number_id, provider, provider_id, phone_number, direction')
+    .eq('id', task.sms_message_id)
+    .eq('account_id', claim.accountId)
+    .eq('sender_number_id', claim.senderNumberId)
+    .eq('provider', claim.provider)
+    .eq('provider_id', claim.providerEventId)
+    .eq('phone_number', claim.fromNumber)
+    .eq('direction', 'inbound')
+    .maybeSingle();
+
+  if (messageError || !message) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: messageError?.message || 'Linked inbound SMS message was not found',
+    };
+  }
 
   const accountId = claim.accountId;
-  const rawBody = (rawReceipt.message_body || '').trim();
-  const mediaUrls = Array.isArray(rawReceipt.media_urls) ? (rawReceipt.media_urls as string[]) : [];
+  const rawBody = typeof message.body === 'string' ? message.body.trim() : '';
+  const mediaUrls = Array.isArray(message.media_urls) ? (message.media_urls as string[]) : [];
+
+  // Establish immutable sender/receipt provenance before any account-wide
+  // context read. The atomic RPC repeats these checks under locks immediately
+  // before either an owner mutation or the crew unsupported-action response.
+  const senderNormalized = normalizeUsPhone(claim.fromNumber);
+  if (!senderNormalized) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: 'Field intake sender is not the currently authorized account owner',
+    };
+  }
+
+  const { data: sender, error: senderError } = await admin
+    .from('sms_sender_numbers')
+    .select('id')
+    .eq('id', claim.senderNumberId)
+    .eq('provider', claim.provider)
+    .eq('e164_number', receipt.to_number)
+    .eq('purpose', 'lgq_shared')
+    .eq('provisioning_status', 'active')
+    .eq('assignment_state', 'assigned')
+    .eq('inbound_ready', true)
+    .is('account_id', null)
+    .is('suspended_at', null)
+    .maybeSingle();
+
+  if (senderError || !sender) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: senderError?.message || 'LGQ shared sender is no longer active',
+    };
+  }
+
+  const { data: stoppedSenderRows, error: senderPreferenceError } = await admin
+    .from('sms_sender_keyword_preferences')
+    .select('sender_number_id')
+    .eq('sender_number_id', claim.senderNumberId)
+    .eq('phone_number', senderNormalized)
+    .eq('status', 'opted_out')
+    .limit(1);
+
+  if (senderPreferenceError || (stoppedSenderRows?.length ?? 0) > 0) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: senderPreferenceError?.message || 'Field intake sender has opted out',
+    };
+  }
+
+  const { data: account, error: accountError } = await admin
+    .from('accounts')
+    .select('id, business_name, alert_phone, high_value_sms_enabled, suspended_at')
+    .eq('id', accountId)
+    .is('suspended_at', null)
+    .maybeSingle();
+
+  if (accountError || !account) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: accountError?.message || 'Field intake account was not found',
+    };
+  }
+
+  const ownerAlertNormalized = account.alert_phone ? normalizeUsPhone(account.alert_phone) : null;
+  const isOwner = account.high_value_sms_enabled === true
+    && !!ownerAlertNormalized
+    && senderNormalized === ownerAlertNormalized;
+
+  if (!isOwner) {
+    const reason = 'Crew field commands are temporarily unavailable by text';
+    const confirmationText = sanitizeGsm7Text(
+      '[LGQ] Crew field commands are temporarily unavailable by text. Ask the account owner to make this update.',
+    );
+    const { data: rpcOutcome, error: rpcError } = await admin.rpc(
+      'apply_authorized_sms_field_action',
+      {
+        p_task_id: claim.taskId,
+        p_claim_token: claim.claimToken,
+        p_intent: 'no_action',
+        p_params: { reason: 'crew_field_intake_not_supported' },
+        p_transcript: rawBody,
+        p_confirmation_text: confirmationText,
+      },
+    );
+    if (rpcError) {
+      return {
+        handled: false,
+        outcome: 'error',
+        errorMessage: `Crew field intake authorization failed: ${rpcError.message}`,
+      };
+    }
+    return {
+      handled: true,
+      outcome: 'no_action',
+      intent: 'no_action',
+      targetId: (rpcOutcome as Record<string, unknown>)?.target_id as string | null,
+      confirmationText,
+      errorMessage: reason,
+    };
+  }
+
+  const { data: ownerConsent, error: ownerConsentError } = await admin
+    .from('sms_consent')
+    .select('id, sms_consent_scopes!inner(consent_scope)')
+    .eq('account_id', accountId)
+    .eq('phone_number', senderNormalized)
+    .eq('status', 'opted_in')
+    .is('opted_out_at', null)
+    .eq('sms_consent_scopes.consent_scope', 'owner')
+    .maybeSingle();
+
+  if (ownerConsentError || !ownerConsent) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: ownerConsentError?.message || 'Owner field intake consent is missing or revoked',
+    };
+  }
 
   const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
   if (!apiKey) {
-    return { handled: false, outcome: 'no_action', errorMessage: 'GEMINI_API_KEY is not configured' };
+    return { handled: false, outcome: 'error', errorMessage: 'GEMINI_API_KEY is not configured' };
   }
-
-  // Determine sender role: Alert Phone (Owner) vs Crew Member
-  const { data: account } = await admin
-    .from('accounts')
-    .select('id, business_name, alert_phone, owner_name')
-    .eq('id', accountId)
-    .maybeSingle();
 
   const businessName = account?.business_name && account.business_name !== 'My Business'
     ? account.business_name
     : "Let's Get Quoted";
 
-  // Load active contractor jobs, clients, and crew for fuzzy matching and role determination
-  const [rawJobs, rawClients, rawCrew] = await Promise.all([
+  // Do not load the crew roster into model context. The live shared-number AI
+  // rail remains owner-only until crew job context is assignment-scoped.
+  const [rawJobs, rawClients] = await Promise.all([
     admin
       .from('jobs')
       .select('id, ref, client_name, client_phone, address, scope, status, quoted_amount, scheduled_for, scheduled_time')
       .eq('account_id', accountId)
-      .order('updated_at', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(25),
     admin
       .from('clients')
@@ -451,13 +653,16 @@ export async function processOwnerFieldClaim(
       .eq('account_id', accountId)
       .order('updated_at', { ascending: false })
       .limit(25),
-    admin
-      .from('crew')
-      .select('id, name, phone, role_label')
-      .eq('account_id', accountId)
-      .eq('active', true)
-      .limit(25),
   ]);
+
+  const contextError = rawJobs.error || rawClients.error;
+  if (contextError) {
+    return {
+      handled: false,
+      outcome: 'error',
+      errorMessage: contextError.message || 'Field intake context could not be loaded',
+    };
+  }
 
   const activeJobs: JobSummaryContext[] = (rawJobs.data ?? []).map((j) => ({
     id: j.id,
@@ -480,31 +685,17 @@ export async function processOwnerFieldClaim(
     address: c.address ?? null,
   }));
 
-  const activeCrew: CrewSummaryContext[] = (rawCrew.data ?? []).map((cr) => ({
-    id: cr.id,
-    name: cr.name ?? '',
-    phone: cr.phone ?? null,
-    roleLabel: cr.role_label ?? null,
-  }));
-
-  const senderNormalized = normalizeUsPhone(claim.fromNumber);
-  const ownerAlertNormalized = account?.alert_phone ? normalizeUsPhone(account.alert_phone) : null;
-  const isOwner = !!(ownerAlertNormalized && senderNormalized === ownerAlertNormalized);
-
-  const matchedCrew = !isOwner
-    ? activeCrew.find((c) => c.phone && normalizeUsPhone(c.phone) === senderNormalized)
-    : null;
-  const isCrew = !!matchedCrew;
-  const callerName = isOwner ? (account?.owner_name || 'Owner') : (matchedCrew?.name || 'Field Crew');
+  const callerName = 'Owner';
 
   const ai = new GoogleGenAI({ apiKey });
   const todayStr = new Date().toISOString().slice(0, 10);
 
-  const availableTools = isOwner ? OWNER_FIELD_TOOLS_DECLARATION : CREW_FIELD_TOOLS_DECLARATION;
+  const availableTools = OWNER_FIELD_TOOLS_DECLARATION;
+  const allowedFunctionNames = availableTools
+    .map((tool) => tool.name)
+    .filter((name): name is string => typeof name === 'string');
 
-  const roleInstruction = isOwner
-    ? `You are an AI assistant for the business owner of "${businessName}". You have full authority to append notes, log costs, add tasks, complete tasks, reschedule jobs, update client profiles, assign crew, or create new leads.`
-    : `You are an AI assistant for field crew member "${callerName}" at "${businessName}". You can append internal job notes, log material/labor expenses, add punch list tasks, and mark assigned tasks complete.`;
+  const roleInstruction = `You are an AI assistant for the business owner of "${businessName}". You may append internal job notes, log job costs, add job tasks, and capture new leads.`;
 
   const systemInstruction = `You are Let's Get Quoted's autonomous AI field intake worker for "${businessName}".
 CURRENT DATE: ${todayStr}
@@ -518,11 +709,10 @@ ${JSON.stringify(activeJobs, null, 2)}
 ACTIVE CLIENTS:
 ${JSON.stringify(activeClients, null, 2)}
 
-ACTIVE CREW:
-${JSON.stringify(activeCrew, null, 2)}
-
 INSTRUCTIONS:
 1. Accurately identify the target job or client record from the message context (name, street address, job reference, or today's schedule).
+   - OWNER NEW-RECORD RULE: if the owner says "create a new job" or "create an estimate" for a person who has no existing job in the supplied context, invoke create_lead. This rail stages the request in Leads for review; it does not create a job or send a quote.
+   - For create_lead, notes are mandatory. Preserve the complete request, including every stated address/location, work scope, and dollar estimate/amount. Never turn a new-person request into no_action merely because the owner called it a job.
 2. RECEIPT & EXPENSE OCR RULES:
    - When an image attachment is provided (store receipt, supply invoice, dump/gas slip):
      a) OCR the store/vendor name (e.g. Home Depot, Lowe's, Ferguson, ABC Supply), total dollar amount (including tax), and concise item summary.
@@ -536,8 +726,9 @@ INSTRUCTIONS:
   let isVoiceMemo = false;
   let hasImage = false;
 
-  for (const url of mediaUrls) {
-    const mediaPart = await fetchAuthenticatedMediaPart(url, claim.provider);
+  const mediaParts = await fetchAuthenticatedMediaParts(mediaUrls, claim.provider);
+
+  for (const mediaPart of mediaParts) {
     if (mediaPart) {
       parts.push({
         inlineData: {
@@ -561,90 +752,143 @@ INSTRUCTIONS:
   }
 
   if (parts.length === 0) {
-    return { handled: false, outcome: 'no_action', errorMessage: 'No text, image, or audio content' };
+    return { handled: false, outcome: 'error', errorMessage: 'No text, image, or audio content' };
   }
 
   try {
+    const usage = await beginSmsFieldIntakeUsage(admin, {
+      accountId: claim.accountId,
+      taskId: claim.taskId,
+    });
+    if (usage.kind === 'unavailable') {
+      throw new Error('AI intake usage ledger is unavailable');
+    }
+    if (usage.kind === 'no_credits') {
+      const reason = 'No AI Intake credits are available';
+      const confirmationText = sanitizeGsm7Text(
+        '[LGQ] No AI Intake credits remain, so no change was made. Add credits in the dashboard, then resend this field message.',
+      );
+      const { data: rpcOutcome, error: rpcError } = await admin.rpc('apply_authorized_sms_field_action', {
+        p_task_id: claim.taskId,
+        p_claim_token: claim.claimToken,
+        p_intent: 'no_action',
+        p_params: { reason },
+        p_transcript: rawBody,
+        p_confirmation_text: confirmationText,
+      });
+      if (rpcError) {
+        throw new Error(`apply_authorized_sms_field_action RPC failed: ${rpcError.message}`);
+      }
+      return {
+        handled: true,
+        outcome: 'no_action',
+        intent: 'no_action',
+        targetId: (rpcOutcome as Record<string, unknown>)?.target_id as string | null,
+        confirmationText,
+        errorMessage: reason,
+      };
+    }
+
     const response = await ai.models.generateContent({
       model: 'gemini-3.7-flash',
       contents: [{ role: 'user', parts }],
       config: {
         systemInstruction,
         tools: [{ functionDeclarations: availableTools }],
+        toolConfig: {
+          functionCallingConfig: {
+            mode: FunctionCallingConfigMode.ANY,
+            allowedFunctionNames,
+          },
+        },
         temperature: 0.1,
       },
     });
 
-    const transcript = response.text || rawBody;
-    const functionCalls = response.functionCalls;
-
-    if (!functionCalls || functionCalls.length === 0) {
-      return { handled: false, outcome: 'no_action' };
+    // A credit is spent only after the provider answered, but before any
+    // domain mutation. A failed/indeterminate commit leaves the task retryable
+    // and can never produce an applied-but-unmetered field action.
+    if (!(await commitSmsFieldIntakeUsage(admin, usage.lease))) {
+      throw new Error('AI intake usage reservation could not be committed');
     }
 
-    const call = functionCalls[0];
+    const transcript = response.text || rawBody;
+    const functionCalls = response.functionCalls;
+    const missingFunctionCall = !functionCalls || functionCalls.length === 0;
+    const call = functionCalls?.[0] ?? {
+      name: 'no_action',
+      args: { reason: 'Field intake model returned no function call' },
+    };
     const toolName = call.name;
     const args = (call.args ?? {}) as Record<string, unknown>;
+    const actionParams = normalizeFieldActionParams(args);
 
-    if (toolName === 'no_action') {
-      return { handled: false, outcome: 'no_action', errorMessage: String(args.reason ?? '') };
+    if (!toolName || !availableTools.some((tool) => tool.name === toolName)) {
+      return {
+        handled: false,
+        outcome: 'error',
+        errorMessage: `Field intake model selected unsupported action: ${toolName || 'unknown'}`,
+      };
+    }
+
+    if (toolName === 'log_cost') {
+      const validationError = fieldCostValidationError(actionParams);
+      if (validationError) {
+        return {
+          handled: false,
+          outcome: 'error',
+          errorMessage: validationError,
+        };
+      }
+    }
+
+    if (toolName === 'create_lead') {
+      const modelNotes = String(actionParams.notes ?? '').trim();
+      const originalMessage = rawBody.trim();
+      // Function-call schemas are strong guidance, not a data-retention boundary.
+      // Keep the original owner text alongside the model summary so an address,
+      // scope detail, or dollar amount can never disappear during extraction.
+      actionParams.notes = originalMessage && !modelNotes.includes(originalMessage)
+        ? `${modelNotes}\n\nOriginal owner message: ${originalMessage}`.trim()
+        : (modelNotes || originalMessage);
+
+      if (!String(actionParams.notes ?? '').trim()) {
+        return {
+          handled: false,
+          outcome: 'error',
+          errorMessage: 'New lead intake requires notes preserving the owner request',
+        };
+      }
     }
 
     let confirmationText = '';
-    const targetJob = activeJobs.find((j) => j.id === args.jobId);
+    const targetJob = activeJobs.find((j) => j.id === actionParams.job_id);
     const ref = targetJob?.ref ?? 'Job';
     const clientName = targetJob?.clientName ?? 'Client';
     const reviewUrl = `${APP_ORIGIN}/field/intake/${claim.taskId}`;
 
     if (toolName === 'append_internal_note') {
-      confirmationText = isCrew
-        ? formatCrewNoteConfirmation(ref, clientName, callerName, reviewUrl)
-        : formatFieldNoteConfirmation(ref, clientName, reviewUrl);
+      confirmationText = formatFieldNoteConfirmation(ref, clientName, reviewUrl);
     } else if (toolName === 'log_cost') {
-      const amount = Number(args.amount ?? 0);
-      const label = String(args.label ?? 'material');
-      const vendor = args.vendor ? String(args.vendor) : undefined;
-      const itemsSummary = args.itemsSummary ? String(args.itemsSummary) : undefined;
+      const amount = Number(actionParams.amount ?? 0);
+      const label = String(actionParams.label ?? 'material');
+      const vendor = actionParams.vendor ? String(actionParams.vendor) : undefined;
+      const itemsSummary = actionParams.items_summary ? String(actionParams.items_summary) : undefined;
       if (vendor) {
-        confirmationText = isCrew
-          ? formatCrewReceiptConfirmation(ref, clientName, amount, vendor, callerName, reviewUrl)
-          : formatFieldReceiptConfirmation(ref, clientName, amount, vendor, itemsSummary, reviewUrl);
+        confirmationText = formatFieldReceiptConfirmation(ref, clientName, amount, vendor, itemsSummary, reviewUrl);
       } else {
-        confirmationText = isCrew
-          ? formatCrewCostConfirmation(ref, clientName, amount, label, callerName, reviewUrl)
-          : formatFieldCostConfirmation(ref, clientName, amount, label, reviewUrl);
+        confirmationText = formatFieldCostConfirmation(ref, clientName, amount, label, reviewUrl);
       }
     } else if (toolName === 'add_job_task') {
-      const title = String(args.title ?? 'Task');
-      confirmationText = isCrew
-        ? formatCrewTaskConfirmation(ref, clientName, title, callerName, reviewUrl)
-        : formatFieldTaskConfirmation(ref, clientName, title, reviewUrl);
-    } else if (toolName === 'complete_job_task') {
-      const title = String(args.title ?? 'Task');
-      confirmationText = formatFieldTaskCompletedConfirmation(ref, clientName, title, isCrew ? callerName : undefined, reviewUrl);
-    } else if (toolName === 'reschedule_job') {
-      const when = String(args.scheduled_for ?? 'scheduled date');
-      confirmationText = formatFieldScheduleConfirmation(ref, clientName, when, reviewUrl);
-    } else if (toolName === 'update_client') {
-      const targetClient = activeClients.find((c) => c.id === args.client_id);
-      const cName = targetClient?.name ?? 'Client';
-      confirmationText = formatFieldClientConfirmation(cName, reviewUrl);
-    } else if (toolName === 'assign_crew') {
-      const targetCrew = activeCrew.find((cr) => cr.id === args.crew_id);
-      const crewName = targetCrew?.name ?? 'Crew member';
-      confirmationText = formatFieldCrewConfirmation(ref, clientName, crewName, reviewUrl);
+      const title = String(actionParams.title ?? 'Task');
+      confirmationText = formatFieldTaskConfirmation(ref, clientName, title, reviewUrl);
     } else if (toolName === 'create_lead') {
-      const leadName = String(args.clientName ?? 'New Prospect');
+      const leadName = String(actionParams.client_name ?? 'New Prospect');
       confirmationText = formatFieldLeadConfirmation(leadName, reviewUrl);
-    } else if (toolName === 'add_quote_line_item') {
-      const amount = Number(args.amount ?? 0);
-      const currentQuoted = targetJob?.quotedAmount ?? 0;
-      const totalAmount = currentQuoted + amount;
-      confirmationText = formatFieldQuoteWithSendPrompt(ref, clientName, amount, totalAmount);
-    } else if (toolName === 'send_client_quote_link') {
-      confirmationText = formatFieldQuoteSentConfirmation(ref, clientName, targetJob?.clientPhone);
     } else if (toolName === 'report_ambiguity') {
-      const candidateIds = Array.isArray(args.candidateJobIds) ? (args.candidateJobIds as string[]) : [];
+      const candidateIds = Array.isArray(actionParams.candidate_job_ids)
+        ? (actionParams.candidate_job_ids as string[])
+        : [];
       const candidates = activeJobs
         .filter((j) => candidateIds.includes(j.id))
         .map((j) => ({ ref: j.ref, address: j.address }));
@@ -655,46 +899,45 @@ INSTRUCTIONS:
     confirmationText = sanitizeGsm7Text(confirmationText);
 
     // Call atomic execution RPC
-    const { data: rpcOutcome, error: rpcError } = await admin.rpc('apply_owner_field_action', {
+    const { data: rpcOutcome, error: rpcError } = await admin.rpc('apply_authorized_sms_field_action', {
       p_task_id: claim.taskId,
       p_claim_token: claim.claimToken,
       p_intent: toolName,
-      p_params: args,
+      p_params: actionParams,
       p_transcript: transcript,
       p_confirmation_text: confirmationText,
     });
 
     if (rpcError) {
-      throw new Error(`apply_owner_field_action RPC failed: ${rpcError.message}`);
+      throw new Error(`apply_authorized_sms_field_action RPC failed: ${rpcError.message}`);
     }
 
-    // Meter 1 AI intake credit for the account
-    try {
-      const { data: resId } = await admin.rpc('reserve_usage_credits', {
-        p_account_id: claim.accountId,
-        p_resource_code: 'ai_intake_threads',
-        p_units: 1,
-        p_idempotency_key: `field-intake-ai-${claim.taskId}`,
-        p_operation_type: 'ai_intake',
-        p_expires_at: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-        p_metadata: { source: 'text_to_job_field_intake', taskId: claim.taskId },
-      });
-      if (resId && typeof resId === 'string') {
-        await admin.rpc('commit_usage_reservation', {
-          p_reservation_id: resId,
-          p_finalization_key: `field-intake-ai-commit-${claim.taskId}`,
-        });
-      }
-    } catch (billingErr) {
-      console.warn('AI credit metering warning (non-blocking):', billingErr);
+    // A forced function call can still be absent if the provider returns an
+    // anomalous response. Finalize that claim durably as no_action so it is not
+    // retried or dead-lettered. The provider answered, so the task's AI credit
+    // was committed above even though no domain record changed.
+    if (missingFunctionCall) {
+      return {
+        handled: true,
+        outcome: 'no_action',
+        intent: 'no_action',
+        targetId: (rpcOutcome as Record<string, unknown>)?.target_id as string | null,
+        confirmationText,
+        errorMessage: String(actionParams.reason ?? ''),
+      };
     }
 
     return {
       handled: true,
-      outcome: toolName === 'report_ambiguity' ? 'ambiguity' : 'completed',
+      outcome: toolName === 'report_ambiguity'
+        ? 'ambiguity'
+        : toolName === 'no_action'
+          ? 'no_action'
+          : 'completed',
       intent: toolName,
       targetId: (rpcOutcome as Record<string, unknown>)?.target_id as string | null,
       confirmationText,
+      errorMessage: toolName === 'no_action' ? String(actionParams.reason ?? '') : undefined,
     };
   } catch (err) {
     console.error('Field intake processing error:', err);

@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { ready, unavailable, type Loadable, type SystemAlert, type SystemAlertsSummary } from '@/lib/dashboard-types';
+import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
 
 export async function loadSystemStatus(
   supabase: SupabaseClient,
@@ -27,13 +28,15 @@ export async function loadSystemStatus(
         .eq('status', 'failed')
         .order('created_at', { ascending: false })
         .limit(3),
-      supabase
-        .from('sms_messages')
-        .select('id, delivery_status, created_at')
-        .eq('account_id', accountId)
-        .eq('delivery_status', 'failed')
-        .order('created_at', { ascending: false })
-        .limit(3),
+      runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+        let query = supabase
+          .from('sms_messages')
+          .select('id, delivery_status, created_at')
+          .eq('account_id', accountId)
+          .eq('delivery_status', 'failed');
+        if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+        return query.order('created_at', { ascending: false }).limit(3);
+      }),
     ]);
 
     // 1. Stripe payouts disabled

@@ -168,6 +168,111 @@ export function normalizeSignalWireSpaceOrigin(raw: string): string | null {
   }
 }
 
+export type AuthenticatedSmsMediaRequest = Readonly<{
+  url: string;
+  headers: Record<string, string>;
+}>;
+
+function safeProviderPathSegment(segment: string): string | null {
+  try {
+    const decoded = decodeURIComponent(segment);
+    return /^[A-Za-z0-9._~-]{1,256}$/.test(decoded) ? decoded : null;
+  } catch {
+    return null;
+  }
+}
+
+function matchesCompatibilityMediaPath(
+  pathname: string,
+  expectedAccount: string,
+  signalWire: boolean,
+): boolean {
+  const segments = pathname.split('/');
+  const fixed = signalWire
+    ? ['', 'api', 'laml', '2010-04-01', 'Accounts']
+    : ['', '2010-04-01', 'Accounts'];
+  const accountIndex = fixed.length;
+  const expectedLength = signalWire ? 10 : 8;
+
+  if (segments.length !== expectedLength) return false;
+  if (!fixed.every((segment, index) => segments[index] === segment)) return false;
+  if (safeProviderPathSegment(segments[accountIndex] ?? '') !== expectedAccount) return false;
+  if (segments[accountIndex + 1] !== 'Messages') return false;
+  if (!safeProviderPathSegment(segments[accountIndex + 2] ?? '')) return false;
+  if (segments[accountIndex + 3] !== 'Media') return false;
+  return !!safeProviderPathSegment(segments[accountIndex + 4] ?? '');
+}
+
+/**
+ * Build the authenticated download request for one provider-hosted MMS part.
+ *
+ * Provider media URLs arrive inside an untrusted webhook, so credentials are
+ * attached only after the URL proves all of the following: HTTPS with no
+ * embedded credentials/query/fragment, the configured provider origin, the
+ * configured account/project path segment, and the exact compatibility-media
+ * resource shape. Redirects remain the caller's responsibility and must stay
+ * disabled so credentials can never follow a response to another origin.
+ */
+export function buildAuthenticatedSmsMediaRequest(
+  rawUrl: string,
+  provider: SmsProviderId,
+): AuthenticatedSmsMediaRequest | null {
+  try {
+    const parsed = new URL(rawUrl);
+    if (
+      parsed.protocol !== 'https:'
+      || parsed.username
+      || parsed.password
+      || parsed.search
+      || parsed.hash
+    ) {
+      return null;
+    }
+
+    let username: string | undefined;
+    let password: string | undefined;
+
+    if (provider === 'twilio') {
+      username = process.env.TWILIO_ACCOUNT_SID?.trim();
+      password = process.env.TWILIO_AUTH_TOKEN;
+      if (
+        parsed.origin !== 'https://api.twilio.com'
+        || !username
+        || !password
+        || !matchesCompatibilityMediaPath(parsed.pathname, username, false)
+      ) {
+        return null;
+      }
+    } else if (provider === 'signalwire') {
+      const spaceOrigin = normalizeSignalWireSpaceOrigin(
+        process.env.SIGNALWIRE_SPACE_URL ?? '',
+      );
+      username = process.env.SIGNALWIRE_PROJECT_ID?.trim();
+      password = process.env.SIGNALWIRE_API_TOKEN;
+      if (
+        !spaceOrigin
+        || parsed.origin !== spaceOrigin
+        || !username
+        || !password
+        || !matchesCompatibilityMediaPath(parsed.pathname, username, true)
+      ) {
+        return null;
+      }
+    } else {
+      return null;
+    }
+
+    return {
+      url: parsed.href,
+      headers: {
+        Authorization: `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
 // ABOUT THE `.json` SUFFIX ON BOTH URLs BELOW.
 //
 // Twilio's 2010-04-01 API returns XML unless the resource path ends in `.json`,

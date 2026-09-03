@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cityFromAddress, streetFromAddress } from '@/lib/lead-detail-labels';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
+import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
 
 export type SmsDirection = 'inbound' | 'outbound';
 
@@ -31,6 +32,8 @@ export type SmsMessage = {
   created_at: string;
   /** Null means unread. Only ever set on inbound — our own copy is not mail. */
   read_at?: string | null;
+  /** False for platform/field-command traffic that is retained outside the customer inbox. */
+  inbox_visible?: boolean;
   /** Twilio-hosted MMS attachments. See the migration on why they are not copied. */
   media_urls?: string[] | null;
 };
@@ -473,16 +476,16 @@ export async function loadConversations(
   // Filtered in the QUERY, not afterwards in JS: the slice is capped at 500, so
   // post-filtering would let platform notifications push real customer threads
   // out of the window entirely.
-  const rows = async (columns: string) =>
-    excludePlatformLanes(
-      supabase
-        .from('sms_messages')
-        .select(columns)
-        .eq('account_id', accountId),
-      platformIds,
-    )
+  const rows = async (columns: string) => runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+    let query = supabase
+      .from('sms_messages')
+      .select(columns)
+      .eq('account_id', accountId);
+    if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+    return excludePlatformLanes(query, platformIds)
       .order('created_at', { ascending: false })
       .limit(500);
+  });
 
   const full = await rows('id, account_id, phone_number, body, direction, provider_id, provider, sender_number_id, sms_event_id, created_at, read_at, media_urls');
   // Whether this database HAS the unread column, as opposed to having no unread
@@ -548,15 +551,16 @@ export async function countUnreadMessages(supabase: SupabaseClient, accountId: s
     // Same exclusion as the thread list, or the badge counts messages the list
     // will not show and the two contradict each other.
     const platformIds = await platformLaneSenderIds(supabase);
-    const { count, error } = await excludePlatformLanes(
-      supabase
+    const { count, error } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+      let query = supabase
         .from('sms_messages')
         .select('id', { head: true, count: 'exact' })
         .eq('account_id', accountId)
         .eq('direction', 'inbound')
-        .is('read_at', null),
-      platformIds,
-    );
+        .is('read_at', null);
+      if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+      return excludePlatformLanes(query, platformIds);
+    });
     if (error) return 0;
     return count ?? 0;
   } catch {
@@ -580,17 +584,21 @@ export async function markThreadRead(
   readThrough?: string,
 ): Promise<boolean> {
   try {
-    let query = supabase
-      .from('sms_messages')
-      .update({ read_at: new Date().toISOString() })
-      .eq('account_id', accountId)
-      .eq('phone_number', phone)
-      .eq('direction', 'inbound')
-      .is('read_at', null);
-    if (readThrough) query = query.lte('created_at', readThrough);
-    // Ask for the touched IDs so a policy/schema mismatch that silently updates
-    // zero rows does not make the client refresh the same unread state forever.
-    const { data, error } = await query.select('id');
+    const readAt = new Date().toISOString();
+    const { data, error } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+      let query = supabase
+        .from('sms_messages')
+        .update({ read_at: readAt })
+        .eq('account_id', accountId)
+        .eq('phone_number', phone)
+        .eq('direction', 'inbound')
+        .is('read_at', null);
+      if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+      if (readThrough) query = query.lte('created_at', readThrough);
+      // Ask for the touched IDs so a policy/schema mismatch that silently updates
+      // zero rows does not make the client refresh the same unread state forever.
+      return query.select('id');
+    });
     return !error && (data?.length ?? 0) > 0;
   } catch {
     // Pre-migration. The thread still opens; it just cannot be marked.
@@ -608,14 +616,16 @@ export async function loadConversationMessages(
   // the number most likely to appear in both.
   const platformIds = await platformLaneSenderIds(supabase);
   const [messages, events] = await Promise.all([
-    excludePlatformLanes(
-      supabase
+    runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+      let query = supabase
         .from('sms_messages')
         .select('*')
         .eq('account_id', accountId)
-        .eq('phone_number', phone),
-      platformIds,
-    ).order('created_at', { ascending: true }),
+        .eq('phone_number', phone);
+      if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
+      return excludePlatformLanes(query, platformIds)
+        .order('created_at', { ascending: true });
+    }),
     loadManualSmsEvents(supabase, accountId, phone),
   ]);
   if (messages.error || events.kind === 'unavailable') {

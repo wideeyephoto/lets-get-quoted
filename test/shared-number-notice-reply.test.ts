@@ -59,6 +59,14 @@ describe('shared-number notice wiring', () => {
     join(process.cwd(), 'src', 'app', 'api', 'sms', 'inbound', 'route.ts'),
     'utf8',
   );
+  const stopSuppressionMigration = readFileSync(
+    join(
+      process.cwd(),
+      'migrations',
+      '20260903190000_sms_shared_notice_stop_suppression.sql',
+    ),
+    'utf8',
+  );
 
   it('answers to the same suppression gates as the durable worker', () => {
     // A carrier Message verb IS an outbound text. Without this a "dark"
@@ -67,11 +75,40 @@ describe('shared-number notice wiring', () => {
     expect(fn).toContain('outboundSmsLaneSuppression');
   });
 
+  it('checks the exact sender-specific STOP ledger before courtesy egress', () => {
+    const fn = route.slice(route.indexOf('async function sharedNoticeRecipientOptedOut'));
+    expect(fn).toContain(".from('sms_sender_keyword_preferences')");
+    expect(fn).toContain(".eq('sender_number_id', ingress.senderNumberId)");
+    expect(fn).toContain(".eq('phone_number', normalizedPhone)");
+    expect(fn).toContain("data?.status === 'opted_out'");
+    expect(fn).toContain('data?.opted_out_at != null');
+    expect(fn).toContain(".from('sms_consent')");
+    expect(fn).toContain(".eq('account_id', ingress.accountId)");
+    expect(fn).toContain("consent?.status === 'opted_out'");
+    expect(fn).toContain('consent?.opted_out_at != null');
+  });
+
   it('claims atomically before returning a Message verb', () => {
     // Otherwise a provider retry of the same receipt texts the sender twice.
     const fn = route.slice(route.indexOf('async function sharedNoticeTwiml'));
     expect(fn).toContain('record_sms_shared_notice_reply');
     expect(fn).toMatch(/if \(!claimed \|\| suppressed\) return emptyTwiml\(\);/);
+  });
+
+  it('makes STOP suppression part of the immutable database claim', () => {
+    const fn = stopSuppressionMigration.slice(
+      stopSuppressionMigration.indexOf(
+        'create or replace function public.record_sms_shared_notice_reply',
+      ),
+      stopSuppressionMigration.indexOf('revoke all on function'),
+    );
+    expect(fn).toContain("'sms-sender-consent:' || v_sender.id::text || ':' || v_receipt.from_number");
+    expect(fn).toContain('public.sms_inbound_recipient_lock_key(');
+    expect(fn).toContain('from public.sms_sender_keyword_preferences preference');
+    expect(fn).toContain('from public.sms_consent consent');
+    expect(fn).toContain("v_effective_egress_result := 'suppressed'");
+    expect(fn).toContain('f94774d9eace296b75aeb622792d92dd74b7873a3b10ade1f415c0d399cfac07');
+    expect(fn).toMatch(/return v_result\.webhook_receipt_id is not null\s+and v_effective_egress_result = 'twiml';/);
   });
 
   it('never answers a contractor-dedicated number', () => {

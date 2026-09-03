@@ -2,6 +2,8 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   processSmsInboundActionReceipt,
+  runSmsInboundActionBatch,
+  SupabaseSmsInboundActionStore,
   SmsInboundActionRpcError,
   type SmsInboundActionClaim,
   type SmsInboundActionOutcome,
@@ -18,6 +20,11 @@ const CLAIM: SmsInboundActionClaim = Object.freeze({
   senderNumberId: '55555555-5555-4555-8555-555555555555',
   senderPurpose: 'contractor_dedicated',
   fromNumber: '+12485550111',
+  effectApplied: false,
+});
+const SHARED_CLAIM: SmsInboundActionClaim = Object.freeze({
+  ...CLAIM,
+  senderPurpose: 'lgq_shared',
 });
 const CUSTOMER_EVENT = '66666666-6666-4666-8666-666666666666';
 const OWNER_EVENT = '77777777-7777-4777-8777-777777777777';
@@ -30,6 +37,10 @@ const OUTCOME: SmsInboundActionOutcome = Object.freeze({
   ownerAlertPhone: '+12485550199',
   ownerAlertBody: 'Jamie accepted.',
 });
+const APPLIED_SHARED_CLAIM: SmsInboundActionClaim = Object.freeze({
+  ...SHARED_CLAIM,
+  effectApplied: true,
+});
 
 function admin(options: { failFirstEnqueue?: boolean } = {}) {
   let enqueueCalls = 0;
@@ -41,7 +52,9 @@ function admin(options: { failFirstEnqueue?: boolean } = {}) {
     }
     return {
       data: [{
-        sms_event_id: args.p_billing_category === 'owner_alert' ? OWNER_EVENT : CUSTOMER_EVENT,
+        sms_event_id: args.p_event_type === 'inbound_action_owner_alert'
+          ? OWNER_EVENT
+          : CUSTOMER_EVENT,
         task_state: 'queued',
         created: enqueueCalls <= 2,
       }],
@@ -64,6 +77,178 @@ function store(overrides: Partial<SmsInboundActionStore> = {}) {
 }
 
 describe('durable inbound SMS action worker', () => {
+  it('strictly parses and preserves the applied-effect claim flag', async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{
+        claim_status: 'claimed',
+        task_id: CLAIM.taskId,
+        work_claim_token: CLAIM.claimToken,
+        provider: CLAIM.provider,
+        provider_event_id: CLAIM.providerEventId,
+        account_id: CLAIM.accountId,
+        sender_number_id: CLAIM.senderNumberId,
+        sender_purpose: 'lgq_shared',
+        from_number: CLAIM.fromNumber,
+        effect_applied: true,
+        stored_outcome: {
+          action_kind: OUTCOME.actionKind,
+          target_id: OUTCOME.targetId,
+          decision: OUTCOME.decision,
+          reply_kind: OUTCOME.replyKind,
+          reply_body: OUTCOME.replyBody,
+          owner_alert_phone: OUTCOME.ownerAlertPhone,
+          owner_alert_body: OUTCOME.ownerAlertBody,
+        },
+      }],
+      error: null,
+    }));
+    const actions = new SupabaseSmsInboundActionStore({ rpc } as never);
+
+    await expect(actions.claimReceipt(RECEIPT)).resolves.toMatchObject({
+      status: 'claimed',
+      claim: { effectApplied: true },
+    });
+  });
+
+  it('rejects a non-boolean applied-effect claim flag', async () => {
+    const rpc = vi.fn(async () => ({
+      data: [{
+        claim_status: 'claimed',
+        task_id: CLAIM.taskId,
+        work_claim_token: CLAIM.claimToken,
+        provider: CLAIM.provider,
+        provider_event_id: CLAIM.providerEventId,
+        account_id: CLAIM.accountId,
+        sender_number_id: CLAIM.senderNumberId,
+        sender_purpose: CLAIM.senderPurpose,
+        from_number: CLAIM.fromNumber,
+        effect_applied: 'false',
+        stored_outcome: null,
+      }],
+      error: null,
+    }));
+    const actions = new SupabaseSmsInboundActionStore({ rpc } as never);
+
+    await expect(actions.claimReceipt(RECEIPT)).rejects.toThrow('effect applied is invalid');
+  });
+
+  it('dispatches shared-number work to field intake without double-completing its atomic RPC', async () => {
+    const db = admin();
+    const actions = store({
+      claimReceipt: vi.fn(async () => ({ status: 'claimed' as const, claim: SHARED_CLAIM })),
+    });
+    const fieldIntake = vi.fn(async () => ({
+      handled: true,
+      outcome: 'no_action' as const,
+      intent: 'no_action',
+    }));
+
+    await expect(
+      processSmsInboundActionReceipt(RECEIPT, db.client, actions, fieldIntake),
+    ).resolves.toBe('completed');
+
+    expect(fieldIntake).toHaveBeenCalledWith(SHARED_CLAIM, db.client);
+    expect(actions.apply).not.toHaveBeenCalled();
+    expect(actions.complete).not.toHaveBeenCalled();
+    expect(actions.fail).not.toHaveBeenCalled();
+    expect(db.rpc).not.toHaveBeenCalled();
+  });
+
+  it('resumes an already-applied shared claim through the legacy generic path', async () => {
+    const db = admin();
+    const actions = store({
+      claimReceipt: vi.fn(async () => ({
+        status: 'claimed' as const,
+        claim: APPLIED_SHARED_CLAIM,
+      })),
+    });
+    const fieldIntake = vi.fn();
+
+    await expect(
+      processSmsInboundActionReceipt(RECEIPT, db.client, actions, fieldIntake),
+    ).resolves.toBe('completed');
+
+    expect(fieldIntake).not.toHaveBeenCalled();
+    expect(actions.apply).toHaveBeenCalledWith(APPLIED_SHARED_CLAIM);
+    expect(db.rpc).toHaveBeenCalledTimes(2);
+    expect(actions.complete).toHaveBeenCalledWith(
+      APPLIED_SHARED_CLAIM,
+      CUSTOMER_EVENT,
+      OWNER_EVENT,
+    );
+    expect(actions.fail).not.toHaveBeenCalled();
+  });
+
+  it('fails rather than counting an uncompleted shared field task as completed', async () => {
+    const db = admin();
+    const actions = store({
+      claimBatch: vi.fn(async () => [SHARED_CLAIM]),
+    });
+    const fieldIntake = vi.fn(async () => ({
+      handled: false,
+      outcome: 'error' as const,
+      errorMessage: 'GEMINI_API_KEY is not configured',
+    }));
+
+    await expect(runSmsInboundActionBatch(10, db.client, actions, fieldIntake)).resolves.toEqual({
+      claimedCount: 1,
+      completedCount: 0,
+      failedCount: 1,
+    });
+    expect(actions.fail).toHaveBeenCalledWith(SHARED_CLAIM, 'inbound_action_internal');
+    expect(actions.apply).not.toHaveBeenCalled();
+    expect(actions.complete).not.toHaveBeenCalled();
+  });
+
+  it('counts a field no_action as completed only after its field RPC reports handled', async () => {
+    const db = admin();
+    const actions = store({
+      claimBatch: vi.fn(async () => [SHARED_CLAIM]),
+    });
+    const fieldIntake = vi.fn(async () => ({
+      handled: true,
+      outcome: 'no_action' as const,
+      intent: 'no_action',
+    }));
+
+    await expect(runSmsInboundActionBatch(5, db.client, actions, fieldIntake)).resolves.toEqual({
+      claimedCount: 1,
+      completedCount: 1,
+      failedCount: 0,
+    });
+    expect(actions.fail).not.toHaveBeenCalled();
+    expect(actions.complete).not.toHaveBeenCalled();
+  });
+
+  it('starts every claimed field task without serially consuming later leases', async () => {
+    const secondClaim: SmsInboundActionClaim = Object.freeze({
+      ...SHARED_CLAIM,
+      taskId: '99999999-9999-4999-8999-999999999999',
+      claimToken: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
+      providerEventId: 'provider-message-2',
+    });
+    const db = admin();
+    const actions = store({
+      claimBatch: vi.fn(async () => [SHARED_CLAIM, secondClaim]),
+    });
+    let started = 0;
+    let releaseBoth!: () => void;
+    const bothStarted = new Promise<void>((resolve) => { releaseBoth = resolve; });
+    const fieldIntake = vi.fn(async () => {
+      started += 1;
+      if (started === 2) releaseBoth();
+      await bothStarted;
+      return { handled: true, outcome: 'completed' as const };
+    });
+
+    await expect(runSmsInboundActionBatch(5, db.client, actions, fieldIntake)).resolves.toEqual({
+      claimedCount: 2,
+      completedCount: 2,
+      failedCount: 0,
+    });
+    expect(fieldIntake).toHaveBeenCalledTimes(2);
+  });
+
   it('queues the stored reply and owner alert before completing the task', async () => {
     const db = admin();
     const actions = store();

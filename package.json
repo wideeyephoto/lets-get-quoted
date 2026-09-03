@@ -44,6 +44,7 @@
     "test:pg17:sms-delivery": "node scripts/verify-sms-delivery-foundation.mjs",
     "test:pg17:sms-webhooks": "node scripts/verify-sms-webhook-safety.mjs",
     "test:pg17:sms-inbound-actions": "node scripts/verify-sms-inbound-actions.mjs",
+    "test:pg17:owner-field-routing": "node scripts/verify-owner-shared-field-command-routing.mjs",
     "test:pg17:number-provisioning": "node scripts/verify-messaging-number-provisioning.mjs",
     "test:pg17:messaging-schema": "node scripts/verify-messaging-schema.mjs",
     "check:schema:messaging": "node scripts/sync-messaging-schema.mjs --check",

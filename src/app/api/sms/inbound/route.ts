@@ -19,6 +19,7 @@ import {
 } from '@/lib/sms-webhook-ingress';
 import { processSmsInboundActionReceipt } from '@/lib/sms-inbound-action-worker';
 import { logWebhookFailure } from '@/lib/webhook-failures';
+import { normalizeUsPhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -121,6 +122,46 @@ function sharedNoticeText(brand: string): string {
   return `${brand}: Alerts only, replies not monitored. View your client portal: ${APP_ORIGIN}/portal Reply STOP to opt out.`;
 }
 
+async function sharedNoticeRecipientOptedOut(
+  admin: SupabaseClient,
+  ingress: InboundIngressResult,
+  recipientPhone: string,
+): Promise<boolean> {
+  if (!ingress.senderNumberId) return true;
+  const normalizedPhone = normalizeUsPhone(recipientPhone);
+  // Once the sender is known, an invalid recipient cannot be checked against
+  // the sender-scoped STOP ledger. Courtesy egress is optional, so fail closed.
+  if (!normalizedPhone) return true;
+
+  try {
+    const { data, error } = await admin
+      .from('sms_sender_keyword_preferences')
+      .select('status, opted_out_at')
+      .eq('sender_number_id', ingress.senderNumberId)
+      .eq('phone_number', normalizedPhone)
+      .maybeSingle();
+    if (error) return true;
+    if (data?.status === 'opted_out' || data?.opted_out_at != null) return true;
+
+    if (ingress.accountId) {
+      const { data: consent, error: consentError } = await admin
+        .from('sms_consent')
+        .select('status, opted_out_at')
+        .eq('account_id', ingress.accountId)
+        .eq('phone_number', normalizedPhone)
+        .maybeSingle();
+      if (consentError) return true;
+      if (consent?.status === 'opted_out' || consent?.opted_out_at != null) return true;
+    }
+
+    return false;
+  } catch {
+    // A courtesy response is never important enough to guess through an
+    // unavailable compliance ledger.
+    return true;
+  }
+}
+
 /**
  * Answer with the notice, or empty TwiML if anything says no.
  *
@@ -134,6 +175,7 @@ async function sharedNoticeTwiml(
   admin: SupabaseClient,
   ingress: InboundIngressResult,
   brand: string,
+  recipientPhone: string,
 ): Promise<NextResponse> {
   if (!ingress.senderPurpose || !SHARED_NOTICE_LANES.has(ingress.senderPurpose)) {
     return emptyTwiml();
@@ -142,7 +184,8 @@ async function sharedNoticeTwiml(
   // A carrier Message verb is an outbound text. It answers to the same kill
   // switch, canary allow-list and lane gates as the durable worker -- otherwise
   // a "dark" deployment would still be texting people.
-  const suppressed = outboundSmsLaneSuppression(ingress.accountId, ingress.senderPurpose) !== null;
+  const suppressed = outboundSmsLaneSuppression(ingress.accountId, ingress.senderPurpose) !== null
+    || await sharedNoticeRecipientOptedOut(admin, ingress, recipientPhone);
   const responseBody = suppressed ? EMPTY_TWIML : twiml;
 
   let claimed = false;
@@ -259,7 +302,12 @@ export async function POST(request: Request) {
     // is precisely the unroutable-reply case, the one with no other answer. The
     // notice is the only thing that changes; nothing is routed or applied.
     if (ingress.disposition === 'review') {
-      return await sharedNoticeTwiml(admin, ingress, await senderName(admin, ingress.accountId));
+      return await sharedNoticeTwiml(
+        admin,
+        ingress,
+        await senderName(admin, ingress.accountId),
+        inbound.fromNumber,
+      );
     }
     const effectiveDisposition = ingress.disposition === 'duplicate'
       ? await loadInboundReceiptDisposition(admin, ingress.receiptId)
@@ -289,7 +337,16 @@ export async function POST(request: Request) {
     // Unbound or unrouted on a platform lane: still answer. This is the ordinary
     // "someone replied to an alert" path.
     if (!binding || effectiveDisposition !== 'routed') {
-      return await sharedNoticeTwiml(admin, ingress, brand);
+      return await sharedNoticeTwiml(admin, ingress, brand, inbound.fromNumber);
+    }
+
+    if (binding.senderPurpose === 'lgq_shared') {
+      // Owner/crew field intake can call Gemini and may fetch authenticated MMS
+      // media. Keep that work off the carrier callback: ingest has already
+      // committed the receipt, message and pending durable task, and the cron
+      // worker will claim it. Empty 200 TwiML also avoids the obsolete
+      // "replies not monitored" courtesy notice on this monitored lane.
+      return emptyTwiml();
     }
 
     const actionStatus = await processSmsInboundActionReceipt(ingress.receiptId, admin);
@@ -306,7 +363,7 @@ export async function POST(request: Request) {
 
     // Routed and applied. The action ran; the notice tells the sender where the
     // result actually lives, because this number will not carry a conversation.
-    return await sharedNoticeTwiml(admin, ingress, brand);
+    return await sharedNoticeTwiml(admin, ingress, brand, inbound.fromNumber);
   } catch (error) {
     console.error('Inbound SMS webhook handler threw:', error);
     await logWebhookFailure({

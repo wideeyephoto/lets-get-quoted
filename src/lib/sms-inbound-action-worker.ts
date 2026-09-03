@@ -4,6 +4,10 @@ import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
+import {
+  processFieldIntakeClaim,
+  type FieldIntakeActionResult,
+} from '@/lib/sms-owner-field-worker';
 import { enqueueSmsDelivery, type SmsSenderPurpose } from '@/lib/sms-delivery';
 import {
   enqueueInboundReply,
@@ -29,6 +33,7 @@ export type SmsInboundActionClaim = Readonly<{
   senderNumberId: string;
   senderPurpose: SmsSenderPurpose;
   fromNumber: string;
+  effectApplied: boolean;
 }>;
 
 export type SmsInboundActionOutcome = Readonly<{
@@ -57,6 +62,11 @@ export interface SmsInboundActionStore {
   ): Promise<void>;
   fail(claim: SmsInboundActionClaim, errorCode: string): Promise<void>;
 }
+
+export type SmsFieldIntakeProcessor = (
+  claim: SmsInboundActionClaim,
+  admin: SupabaseClient,
+) => Promise<FieldIntakeActionResult>;
 
 type RpcError = Readonly<{ code?: string; message?: string }>;
 
@@ -93,6 +103,11 @@ function uuid(value: unknown, label: string): string {
   return text(value, label, UUID).toLowerCase();
 }
 
+function strictBoolean(value: unknown, label: string): boolean {
+  if (typeof value !== 'boolean') throw new Error(`${label} is invalid.`);
+  return value;
+}
+
 function parseClaim(value: unknown): SmsInboundActionClaim {
   const candidate = row(value, 'Inbound action claim');
   const provider = text(candidate.provider, 'provider') as SmsProviderId;
@@ -109,6 +124,7 @@ function parseClaim(value: unknown): SmsInboundActionClaim {
     senderNumberId: uuid(candidate.sender_number_id, 'sender number ID'),
     senderPurpose,
     fromNumber: text(candidate.from_number, 'from number', PHONE),
+    effectApplied: strictBoolean(candidate.effect_applied, 'effect applied'),
   });
 }
 
@@ -228,8 +244,24 @@ async function processClaim(
   claim: SmsInboundActionClaim,
   store: SmsInboundActionStore,
   admin: SupabaseClient,
+  fieldIntakeProcessor: SmsFieldIntakeProcessor,
 ): Promise<void> {
   try {
+    if (claim.senderPurpose === 'lgq_shared' && !claim.effectApplied) {
+      const fieldResult = await fieldIntakeProcessor(claim, admin);
+      if (!fieldResult.handled) {
+        throw new Error(fieldResult.errorMessage || 'Field intake task was not completed.');
+      }
+      // apply_owner_field_action owns both the domain mutation/confirmation and
+      // the durable task completion atomically. Calling the generic completion
+      // RPC here would use a claim token that the field RPC has already cleared.
+      return;
+    }
+
+    // Claims whose legacy generic effect already committed must resume its
+    // replay-safe apply/enqueue/complete path. In particular, routing an
+    // applied lgq_shared claim into field intake would leave it processing:
+    // the field RPC returns the stored legacy outcome without completing it.
     const outcome = await store.apply(claim);
     let customerReplyEventId: string | null = null;
     let ownerAlertEventId: string | null = null;
@@ -285,10 +317,11 @@ export async function processSmsInboundActionReceipt(
   webhookReceiptId: string,
   admin: SupabaseClient = createAdminClient(),
   store: SmsInboundActionStore = new SupabaseSmsInboundActionStore(admin),
+  fieldIntakeProcessor: SmsFieldIntakeProcessor = processFieldIntakeClaim,
 ): Promise<SmsInboundActionClaimResult['status']> {
   const result = await store.claimReceipt(webhookReceiptId);
   if (!result.claim) return result.status;
-  await processClaim(result.claim, store, admin);
+  await processClaim(result.claim, store, admin, fieldIntakeProcessor);
   return 'completed';
 }
 
@@ -302,17 +335,21 @@ export async function runSmsInboundActionBatch(
   batchSize = 10,
   admin: SupabaseClient = createAdminClient(),
   store: SmsInboundActionStore = new SupabaseSmsInboundActionStore(admin),
+  fieldIntakeProcessor: SmsFieldIntakeProcessor = processFieldIntakeClaim,
 ): Promise<SmsInboundActionBatchResult> {
   const claims = await store.claimBatch(batchSize);
-  let completedCount = 0;
-  let failedCount = 0;
-  for (const claim of claims) {
+  // Field intake may include a model call plus authenticated media downloads.
+  // Start the modest claimed batch together so later claims do not spend most
+  // of their two-minute lease waiting behind earlier AI work.
+  const results = await Promise.all(claims.map(async (claim) => {
     try {
-      await processClaim(claim, store, admin);
-      completedCount += 1;
+      await processClaim(claim, store, admin, fieldIntakeProcessor);
+      return true;
     } catch {
-      failedCount += 1;
+      return false;
     }
-  }
+  }));
+  const completedCount = results.filter(Boolean).length;
+  const failedCount = results.length - completedCount;
   return Object.freeze({ claimedCount: claims.length, completedCount, failedCount });
 }

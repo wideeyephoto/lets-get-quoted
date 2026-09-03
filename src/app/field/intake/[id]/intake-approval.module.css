@@ -162,10 +162,7 @@
   transform: scale(0.98);
 }
 
-.approvedState {
-  background: #ecfdf5;
-  border: 1px solid #10b981;
-  color: #065f46;
+.resultState {
   border-radius: 12px;
   padding: 1rem;
   text-align: center;
@@ -174,6 +171,24 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
+}
+
+.resultApplied {
+  background: #ecfdf5;
+  border: 1px solid #10b981;
+  color: #065f46;
+}
+
+.resultPending {
+  background: #fffbeb;
+  border: 1px solid #f59e0b;
+  color: #92400e;
+}
+
+.resultNotApplied {
+  background: #f8fafc;
+  border: 1px solid #94a3b8;
+  color: #475569;
 }
 
 .backLink {
