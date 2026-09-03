@@ -175,7 +175,7 @@ export default async function ServicesPage({
                     <span>{cat.icon}</span>
                     <strong>{cat.name}</strong>
                   </div>
-                  <small style={{ color: 'var(--text-muted, #64748b)' }}>{cat.items.length} items</small>
+                  <small style={{ color: 'var(--muted)' }}>{cat.items.length} items</small>
                 </div>
                 <form action={loadTradeStarterCatalogAction}>
                   <input type="hidden" name="tradeId" value={cat.id} />

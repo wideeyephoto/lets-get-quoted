@@ -593,6 +593,37 @@
   transform: translateY(-1px);
 }
 
+:root[data-theme='light'] .statusTitle,
+:root[data-theme='sunlight'] .statusTitle {
+  color: #090d16;
+}
+
+:root[data-theme='light'] .statusSub,
+:root[data-theme='sunlight'] .statusSub {
+  color: #475569;
+}
+
+:root[data-theme='light'] .configActionBtn,
+:root[data-theme='sunlight'] .configActionBtn {
+  background: #c2410c;
+  border-color: #9a3412;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .configActionBtn:hover,
+:root[data-theme='sunlight'] .configActionBtn:hover {
+  background: #9a3412;
+}
+
+:root[data-theme='light'] .dateFilterActive,
+:root[data-theme='sunlight'] .dateFilterActive {
+  background: #c2410c;
+  border-color: #9a3412;
+  color: #ffffff;
+  font-weight: 750;
+}
+
 .controlsSection {
   display: flex;
   flex-direction: column;

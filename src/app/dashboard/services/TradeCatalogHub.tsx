@@ -88,7 +88,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Pre-Configured Trade Price Books</h3>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
                 1-tap load industry rates, labor allowances, and profit margins into your live price book.
               </p>
             </div>
@@ -133,7 +133,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
                     <span style={{ fontSize: '1.4rem' }}>{cat.icon}</span>
                     <strong style={{ fontSize: '1rem' }}>{cat.name}</strong>
                   </div>
-                  <p style={{ fontSize: '0.825rem', color: 'var(--text-muted, #64748b)', margin: 0, lineHeight: 1.4 }}>
+                  <p style={{ fontSize: '0.825rem', color: 'var(--muted)', margin: 0, lineHeight: 1.4 }}>
                     {cat.description}
                   </p>
                   <div style={{ marginTop: '0.6rem', fontSize: '0.75rem', color: '#475569', background: '#fff', padding: '0.4rem 0.6rem', borderRadius: '4px', border: '1px solid #e2e8f0' }}>
@@ -158,7 +158,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
         <section className="panel" style={{ padding: '1.25rem' }}>
           <div style={{ marginBottom: '1.25rem' }}>
             <h3 style={{ margin: 0, fontSize: '1.2rem' }}>Dynamic Multi-Tier Proposal Generator</h3>
-            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
+            <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
               Enter dimensions and job specs to instantly compute 3-tiered customer quote options with exact margins and scope language.
             </p>
           </div>
@@ -359,7 +359,7 @@ export default function TradeCatalogHub({ onLoadStarterPack }: TradeCatalogHubPr
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.75rem' }}>
             <div>
               <h3 style={{ margin: 0, fontSize: '1.15rem' }}>Master Supply Chain SKU Cross-Reference</h3>
-              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
+              <p style={{ margin: '0.25rem 0 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
                 Pre-mapped distributor part numbers for direct API PO dispatch to ABC Supply, Beacon, Ferguson, and Home Depot Pro.
               </p>
             </div>

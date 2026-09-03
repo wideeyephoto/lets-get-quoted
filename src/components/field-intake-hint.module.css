@@ -27,6 +27,21 @@
   transform: translateY(-1px);
 }
 
+:root[data-theme='light'] .hintPill,
+:root[data-theme='sunlight'] .hintPill {
+  color: #6d28d9;
+  border-color: rgba(109, 40, 217, 0.35);
+  background: rgba(147, 51, 234, 0.08);
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .hintPill:hover,
+:root[data-theme='sunlight'] .hintPill:hover {
+  color: #4c1d95;
+  background: rgba(147, 51, 234, 0.16);
+  border-color: rgba(109, 40, 217, 0.55);
+}
+
 .hintPill:focus-visible {
   outline: 2px solid #7e22ce;
   outline-offset: 2px;

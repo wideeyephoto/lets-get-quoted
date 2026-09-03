@@ -227,9 +227,17 @@
 }
 
 :root[data-theme='light'] .quickEditBtn {
-  background: rgba(253, 186, 116, 0.1);
-  border-color: rgba(253, 186, 116, 0.45);
-  color: #fdba74;
+  background: rgba(234, 88, 12, 0.08);
+  border-color: #ea580c;
+  color: #9a3412;
+  font-weight: 750;
+}
+
+:root[data-theme='light'] .quickEditBtn:hover,
+:root[data-theme='light'] .quickEditBtn:focus-visible {
+  background: #c2410c;
+  color: #ffffff;
+  border-color: #c2410c;
 }
 
 :root[data-theme='sunlight'] .quickEditBtn {

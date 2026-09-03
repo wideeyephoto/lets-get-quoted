@@ -75,7 +75,7 @@
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
-.stageChip[aria-pressed='true'] .stageCount { background: rgba(255, 122, 33, 0.24); color: var(--ink-orange-3); }
+.stageChip[aria-pressed='true'] .stageCount { background: rgba(255, 122, 33, 0.18); color: var(--ink-orange-1); }
 
 /* --- search / sort / pane switch ----------------------------------------- */
 
@@ -152,6 +152,7 @@
   padding: 0.02rem 0.38rem;
   border-radius: 999px;
   background: rgba(var(--tint), 0.12);
+  color: var(--text);
   font-size: 0.74rem;
   font-variant-numeric: tabular-nums;
 }
@@ -264,7 +265,7 @@
   font-size: 0.7rem;
   font-weight: 700;
 }
-.rowStage[data-stage='new'] { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-3); }
+.rowStage[data-stage='new'] { background: rgba(255, 122, 33, 0.16); color: var(--ink-orange-1); }
 .rowStage[data-stage='won'] { background: rgba(74, 222, 128, 0.14); color: var(--ink-green-1); }
 .rowWait { font-size: 0.73rem; color: var(--mute-t55); }
 .rowValue { font-size: 0.85rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }

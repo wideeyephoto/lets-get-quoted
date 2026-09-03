@@ -333,12 +333,12 @@ export default function MarketingOverviewScreen({
           {/* Email & Text */}
           <Link href={at('/dashboard/marketing/campaigns')} className="panel mkt-tile" style={{ textDecoration: 'none', transition: 'all 0.15s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>✉️ Email &amp; Text</span>
-              <span style={{ fontSize: '0.7rem', color: '#10b981', background: 'rgba(16, 185, 129, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>✉️ Email &amp; Text</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--ink-green-1, #10b981)', background: 'rgba(16, 185, 129, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
                 {summary.audience.value} Clients
               </span>
             </div>
-            <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)', display: 'block', margin: '0.2rem 0' }}>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
               {campaigns.length} Sent
             </strong>
             <span className="mkt-tile-note">
@@ -349,12 +349,12 @@ export default function MarketingOverviewScreen({
           {/* Paid Ads */}
           <Link href={at('/dashboard/marketing/ads')} className="panel mkt-tile" style={{ textDecoration: 'none', transition: 'all 0.15s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>🚀 Paid Ads</span>
-              <span style={{ fontSize: '0.7rem', color: '#f97316', background: 'rgba(249, 115, 22, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>🚀 Paid Ads</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--ink-orange-7, #ea580c)', background: 'rgba(249, 115, 22, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
                 Google + Meta
               </span>
             </div>
-            <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)', display: 'block', margin: '0.2rem 0' }}>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
               {hasAdSpend ? `${roasMultiplier}x ROAS` : 'Autopilot Ready'}
             </strong>
             <span className="mkt-tile-note">
@@ -365,12 +365,12 @@ export default function MarketingOverviewScreen({
           {/* Blog & SEO */}
           <Link href={at('/dashboard/marketing/blog')} className="panel mkt-tile" style={{ textDecoration: 'none', transition: 'all 0.15s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>✍️ Blog &amp; SEO</span>
-              <span style={{ fontSize: '0.7rem', color: '#38bdf8', background: 'rgba(56, 189, 248, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>✍️ Blog &amp; SEO</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--ink-blue, #0284c7)', background: 'rgba(56, 189, 248, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
                 {counts.published} Live
               </span>
             </div>
-            <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)', display: 'block', margin: '0.2rem 0' }}>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
               {summary.published.value} Published
             </strong>
             <span className="mkt-tile-note">
@@ -381,12 +381,12 @@ export default function MarketingOverviewScreen({
           {/* Tracking */}
           <Link href={at('/dashboard/marketing/links')} className="panel mkt-tile" style={{ textDecoration: 'none', transition: 'all 0.15s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--foreground)' }}>🎯 Tracking</span>
-              <span style={{ fontSize: '0.7rem', color: '#a855f7', background: 'rgba(168, 85, 247, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>🎯 Tracking</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--ink-violet-5, #7e22ce)', background: 'rgba(168, 85, 247, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
                 Links &amp; QR
               </span>
             </div>
-            <strong style={{ fontSize: '1.15rem', color: 'var(--foreground)', display: 'block', margin: '0.2rem 0' }}>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
               {marketingLeads} Leads
             </strong>
             <span className="mkt-tile-note">
@@ -502,7 +502,7 @@ export default function MarketingOverviewScreen({
                   <strong style={{ fontSize: '0.85rem', color: '#10b981' }}>🎯 Search &amp; Social Ads</strong>
                   <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700 }}>Top Channel</span>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--foreground)', marginTop: '0.35rem' }}>
+                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--text)', marginTop: '0.35rem' }}>
                   <span>{marketingLeads} Leads</span>
                   <span>{wonJobs} Won Jobs</span>
                   <span style={{ fontWeight: 700 }}>${attributedRevenue.toLocaleString()}</span>
