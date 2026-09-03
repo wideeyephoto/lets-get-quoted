@@ -150,19 +150,23 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
       const firstName = nameParts[0] || undefined;
       const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
 
-      syncLeadWonConversion({
-        accountId,
-        leadId,
-        wonValueDollars: wonValue,
-        currencyCode: 'USD',
-        gclid: attr?.clickIdType === 'gclid' ? attr.clickId : undefined,
-        gbraid: attr?.clickIdType === 'gbraid' ? attr.clickId : undefined,
-        wbraid: attr?.clickIdType === 'wbraid' ? attr.clickId : undefined,
-        email: lead.email,
-        phone: lead.phone,
-        firstName,
-        lastName,
-      }).catch((err) => console.warn('Offline conversion sync on mark won logged warning:', err));
+      try {
+        await syncLeadWonConversion({
+          accountId,
+          leadId,
+          wonValueDollars: wonValue,
+          currencyCode: 'USD',
+          gclid: attr?.clickIdType === 'gclid' ? attr.clickId : undefined,
+          gbraid: attr?.clickIdType === 'gbraid' ? attr.clickId : undefined,
+          wbraid: attr?.clickIdType === 'wbraid' ? attr.clickId : undefined,
+          email: lead.email,
+          phone: lead.phone,
+          firstName,
+          lastName,
+        });
+      } catch (err) {
+        console.warn('Offline conversion sync on mark won logged warning:', err);
+      }
     }
   }
 

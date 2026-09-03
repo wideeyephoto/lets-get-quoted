@@ -209,4 +209,47 @@ describe('Problem 4: Preserving Signup Intent & Continuity', () => {
       expect(PRICING_EXPERIENCE).toContain("source: 'pricing'");
     });
   });
+
+  describe('Ad Click & UTM Attribution Preservation', () => {
+    it('preserves gclid, gbraid, wbraid, _gl, and UTM parameters across intent parsing and serialization', () => {
+      const incomingQuery = new URLSearchParams({
+        goal: 'build_site',
+        trade: 'electrician',
+        city: 'Miami, FL',
+        gclid: 'Cj0KCQjwmOm3BhDhARIsAPg_vS123fakegclid',
+        gbraid: '01ABCDEF456gbraid',
+        wbraid: '01XYZ789wbraid',
+        _gl: '1*1abcde*_ga*MTIzNDU2*_ga_ABC*MTIzNDU2',
+        utm_source: 'google',
+        utm_medium: 'cpc',
+        utm_campaign: 'commercial_electrical_south_fl',
+        utm_content: 'ad_variant_3',
+        utm_term: 'emergency commercial electrician',
+      });
+
+      const intent = parseSignupIntent(incomingQuery);
+      expect(intent.gclid).toBe('Cj0KCQjwmOm3BhDhARIsAPg_vS123fakegclid');
+      expect(intent.gbraid).toBe('01ABCDEF456gbraid');
+      expect(intent.wbraid).toBe('01XYZ789wbraid');
+      expect(intent._gl).toBe('1*1abcde*_ga*MTIzNDU2*_ga_ABC*MTIzNDU2');
+      expect(intent.utmSource).toBe('google');
+      expect(intent.utmMedium).toBe('cpc');
+      expect(intent.utmCampaign).toBe('commercial_electrical_south_fl');
+      expect(intent.utmContent).toBe('ad_variant_3');
+      expect(intent.utmTerm).toBe('emergency commercial electrician');
+
+      const serialized = serializeSignupIntent(intent);
+      expect(serialized.get('gclid')).toBe('Cj0KCQjwmOm3BhDhARIsAPg_vS123fakegclid');
+      expect(serialized.get('gbraid')).toBe('01ABCDEF456gbraid');
+      expect(serialized.get('wbraid')).toBe('01XYZ789wbraid');
+      expect(serialized.get('_gl')).toBe('1*1abcde*_ga*MTIzNDU2*_ga_ABC*MTIzNDU2');
+      expect(serialized.get('utm_source')).toBe('google');
+      expect(serialized.get('utm_medium')).toBe('cpc');
+      expect(serialized.get('utm_campaign')).toBe('commercial_electrical_south_fl');
+      expect(serialized.get('utm_content')).toBe('ad_variant_3');
+      expect(serialized.get('utm_term')).toBe('emergency commercial electrician');
+      expect(serialized.get('trade')).toBe('electrician');
+      expect(serialized.get('city')).toBe('Miami, FL');
+    });
+  });
 });

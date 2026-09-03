@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import {
   CONSENT_STORAGE_KEY, consentWording, hasAnalytics, normalizeGa4Id, normalizeGoogleAdsId,
-  normalizeMetaPixelId, normalizeTiktokPixelId, readConsent, shouldMeasure,
+  normalizeMetaPixelId, normalizeTiktokPixelId, parseGoogleAdsTarget, readConsent, shouldMeasure,
   type AnalyticsConfig, type ConsentDecision,
 } from '@/lib/analytics';
 import { getOrCaptureAttribution } from '@/lib/attribution';
@@ -46,11 +46,12 @@ function loadTags(config: AnalyticsConfig) {
   tagsLoaded = true;
 
   const ga4 = normalizeGa4Id(config.ga4);
-  const googleAds = normalizeGoogleAdsId(config.googleAdsId ?? '');
+  const googleAdsTarget = parseGoogleAdsTarget(config.googleAdsId ?? '', config.googleAdsConversionLabel);
+  const googleAdsTagId = googleAdsTarget?.tagId ?? '';
   const pixel = normalizeMetaPixelId(config.metaPixel);
   const tiktok = normalizeTiktokPixelId(config.tiktokPixel ?? '');
 
-  if (ga4 || googleAds) {
+  if (ga4 || googleAdsTagId) {
     window.dataLayer = window.dataLayer || [];
     // `arguments`, not rest parameters, and the lint rule is suppressed rather
     // than satisfied. gtag.js inspects what it finds on dataLayer and expects
@@ -61,12 +62,15 @@ function loadTags(config: AnalyticsConfig) {
     window.gtag('js', new Date());
 
     if (ga4) window.gtag('config', ga4);
-    if (googleAds) window.gtag('config', googleAds);
+    if (googleAdsTagId) {
+      window.gtag('config', googleAdsTagId);
+      (window as unknown as { __lgq_google_ads_send_to?: string }).__lgq_google_ads_send_to = googleAdsTarget?.sendTo;
+    }
 
     // Injected by this script, which the CSP nonce already trusts, so
     // 'strict-dynamic' extends that trust here — no host allowlist needed for
     // script-src. The endpoints it then talks to DO need connect-src (lib/csp).
-    const primaryId = ga4 || googleAds;
+    const primaryId = ga4 || googleAdsTagId;
     const s = document.createElement('script');
     s.async = true;
     s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryId)}`;

@@ -53,6 +53,15 @@ export type SignupIntent = {
   billing?: SignupBilling | null;
   source?: SignupSource | null;
   next?: string | null;
+  gclid?: string | null;
+  gbraid?: string | null;
+  wbraid?: string | null;
+  _gl?: string | null;
+  utmSource?: string | null;
+  utmMedium?: string | null;
+  utmCampaign?: string | null;
+  utmContent?: string | null;
+  utmTerm?: string | null;
 };
 
 const VALID_GOALS = new Set<SignupGoal>(['build_site', 'choose_plan', 'feature', 'explore']);
@@ -106,6 +115,17 @@ export function parseSignupIntent(
   const source = (get('source')?.trim() as SignupSource) || null;
   const next = get('next')?.trim() || null;
 
+  // Acquisition and Click Attribution (Google Ads, Meta, UTMs, and Linkers)
+  const gclid = get('gclid')?.trim() || null;
+  const gbraid = get('gbraid')?.trim() || null;
+  const wbraid = get('wbraid')?.trim() || null;
+  const _gl = get('_gl')?.trim() || null;
+  const utmSource = get('utm_source')?.trim() || null;
+  const utmMedium = get('utm_medium')?.trim() || null;
+  const utmCampaign = get('utm_campaign')?.trim() || null;
+  const utmContent = get('utm_content')?.trim() || null;
+  const utmTerm = get('utm_term')?.trim() || null;
+
   return {
     goal,
     feature,
@@ -116,6 +136,15 @@ export function parseSignupIntent(
     billing: plan ? billing : null,
     source,
     next,
+    gclid,
+    gbraid,
+    wbraid,
+    _gl,
+    utmSource,
+    utmMedium,
+    utmCampaign,
+    utmContent,
+    utmTerm,
   };
 }
 
@@ -139,6 +168,17 @@ export function serializeSignupIntent(intent: Partial<SignupIntent>): URLSearchP
   if (intent.plan && intent.billing) params.set('billing', intent.billing);
   if (intent.source) params.set('source', intent.source);
   if (intent.next) params.set('next', intent.next);
+
+  // Preserve Click Attribution and UTMs across redirects and navigations
+  if (intent.gclid) params.set('gclid', intent.gclid);
+  if (intent.gbraid) params.set('gbraid', intent.gbraid);
+  if (intent.wbraid) params.set('wbraid', intent.wbraid);
+  if (intent._gl) params.set('_gl', intent._gl);
+  if (intent.utmSource) params.set('utm_source', intent.utmSource);
+  if (intent.utmMedium) params.set('utm_medium', intent.utmMedium);
+  if (intent.utmCampaign) params.set('utm_campaign', intent.utmCampaign);
+  if (intent.utmContent) params.set('utm_content', intent.utmContent);
+  if (intent.utmTerm) params.set('utm_term', intent.utmTerm);
 
   return params;
 }

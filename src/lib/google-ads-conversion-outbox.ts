@@ -217,7 +217,10 @@ export async function syncLeadWonConversion(params: {
     firstName,
     lastName,
     postalCode,
-    conversionActionName = process.env.GOOGLE_ADS_CONVERSION_ACTION_WON_JOB || 'Job Won',
+    conversionActionName = params.conversionActionName
+      || process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB
+      || process.env.GOOGLE_ADS_CONVERSION_ACTION_WON_JOB
+      || 'Job Won',
     clientCustomerId,
   } = params;
 

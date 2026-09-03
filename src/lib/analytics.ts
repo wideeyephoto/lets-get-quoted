@@ -22,8 +22,10 @@ export type AnalyticsConfig = {
   ga4: string;
   /** Meta (Facebook) pixel id — digits only. Empty = off. */
   metaPixel: string;
-  /** Google Ads conversion id, e.g. AW-123456789. Empty = off. */
+  /** Google Ads conversion id, e.g. AW-123456789 or AW-123456789/AbCdEf123. Empty = off. */
   googleAdsId?: string;
+  /** Optional Google Ads conversion action label, e.g. AbCdEf123. */
+  googleAdsConversionLabel?: string;
   /** TikTok pixel id — alphanumeric, e.g. C1234567890ABCDEF. Empty = off. */
   tiktokPixel?: string;
 };
@@ -36,18 +38,70 @@ const GOOGLE_ADS_PATTERN = /^AW-\d{6,15}$/;
 const META_PIXEL_PATTERN = /^\d{6,20}$/;
 const TIKTOK_PIXEL_PATTERN = /^[A-Z0-9]{12,24}$/i;
 
+export type GoogleAdsTarget = {
+  tagId: string;
+  sendTo: string;
+  conversionLabel?: string;
+};
+
+/**
+ * Parses a Google Ads identifier and optional conversion label into a structured target.
+ * Accepts formats:
+ * - 'AW-123456789'
+ * - '123456789'
+ * - 'AW-123456789/AbCd-123'
+ * - '123456789/AbCd-123'
+ */
+export function parseGoogleAdsTarget(
+  googleAdsId?: string | null,
+  conversionLabel?: string | null
+): GoogleAdsTarget | null {
+  if (!googleAdsId || !googleAdsId.trim()) return null;
+  const raw = googleAdsId.trim();
+
+  // Pattern 1: Combined AW-123456789/LABEL or 123456789/LABEL
+  const slashMatch = /^(?:AW-)?(\d{6,15})\/([A-Za-z0-9_-]+)$/i.exec(raw);
+  if (slashMatch) {
+    const tagId = `AW-${slashMatch[1]}`;
+    const label = slashMatch[2];
+    return {
+      tagId,
+      sendTo: `${tagId}/${label}`,
+      conversionLabel: label,
+    };
+  }
+
+  // Pattern 2: Pure AW-123456789 or 123456789
+  const tagMatch = /^(?:AW-)?(\d{6,15})$/i.exec(raw);
+  if (tagMatch) {
+    const tagId = `AW-${tagMatch[1]}`;
+    const cleanLabel = conversionLabel?.trim();
+    if (cleanLabel && /^[A-Za-z0-9_-]+$/.test(cleanLabel)) {
+      return {
+        tagId,
+        sendTo: `${tagId}/${cleanLabel}`,
+        conversionLabel: cleanLabel,
+      };
+    }
+    return {
+      tagId,
+      sendTo: tagId,
+    };
+  }
+
+  return null;
+}
+
 /** Uppercased and trimmed, or '' if it isn't a measurement id. */
 export function normalizeGa4Id(input: string): string {
   const value = String(input ?? '').trim().toUpperCase();
   return GA4_PATTERN.test(value) ? value : '';
 }
 
-/** Normalized Google Ads ID, e.g. AW-123456789. */
+/** Normalized Google Ads ID, e.g. AW-123456789 or AW-123456789/LABEL. */
 export function normalizeGoogleAdsId(input: string): string {
-  const raw = String(input ?? '').trim().toUpperCase();
-  if (GOOGLE_ADS_PATTERN.test(raw)) return raw;
-  if (/^\d{6,15}$/.test(raw)) return `AW-${raw}`;
-  return '';
+  const target = parseGoogleAdsTarget(input);
+  return target ? target.sendTo : '';
 }
 
 /**
@@ -92,7 +146,7 @@ export function analyticsIdProblem(kind: 'ga4' | 'metaPixel' | 'googleAds' | 'ti
   }
   if (kind === 'googleAds') {
     if (normalizeGoogleAdsId(raw)) return '';
-    return 'A Google Ads ID looks like AW-123456789. Find it in Google Ads under Tools & Settings → Conversions.';
+    return 'A Google Ads ID looks like AW-123456789 (or AW-123456789/Label). Find it in Google Ads under Tools & Settings → Conversions.';
   }
   if (kind === 'metaPixel') {
     if (normalizeMetaPixelId(raw)) return '';
@@ -203,6 +257,7 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
     gtag?: (...args: unknown[]) => void;
     fbq?: (...args: unknown[]) => void;
     ttq?: { track: (event: string, params?: Record<string, unknown>) => void };
+    __lgq_google_ads_send_to?: string;
   };
 
   if (typeof win.gtag === 'function') {
@@ -217,11 +272,14 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
       });
 
       if (payload.step === 'contact_submitted') {
-        win.gtag('event', 'conversion', {
-          send_to: 'default',
-          event_category: 'quote_intake',
-          event_label: payload.formStyle,
-        });
+        const sendTo = win.__lgq_google_ads_send_to;
+        if (sendTo) {
+          win.gtag('event', 'conversion', {
+            send_to: sendTo,
+            event_category: 'quote_intake',
+            event_label: payload.formStyle,
+          });
+        }
       }
     } catch {
       // ignore

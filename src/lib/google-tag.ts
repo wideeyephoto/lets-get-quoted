@@ -91,11 +91,46 @@ export function trackGoogleAdsConversion(payload?: Partial<GoogleAdsConversionPa
 }
 
 /**
+ * Updates Google Consent Mode state (e.g. after user agrees to terms or completes signup).
+ */
+export function updateGoogleConsent(granted = true): void {
+  if (typeof window === 'undefined') return;
+  const state = granted ? 'granted' : 'denied';
+
+  if (typeof window.gtag === 'function') {
+    try {
+      window.gtag('consent', 'update', {
+        ad_storage: state,
+        ad_user_data: state,
+        ad_personalization: state,
+        analytics_storage: state,
+      });
+    } catch (err) {
+      console.warn('Google consent update failed:', err);
+    }
+  } else if (Array.isArray(window.dataLayer)) {
+    window.dataLayer.push([
+      'consent',
+      'update',
+      {
+        ad_storage: state,
+        ad_user_data: state,
+        ad_personalization: state,
+        analytics_storage: state,
+      },
+    ]);
+  }
+}
+
+/**
  * Fires the sign-up conversion event once per session / activation.
  */
 export function trackSignupConversion(transactionId?: string): boolean {
   if (typeof window === 'undefined') return false;
   if (window.__lgq_signup_converted) return false;
+
+  // Ensure consent is updated to granted on explicit signup completion
+  updateGoogleConsent(true);
 
   const tracked = trackGoogleAdsConversion(transactionId ? { transaction_id: transactionId } : undefined);
   if (tracked) {

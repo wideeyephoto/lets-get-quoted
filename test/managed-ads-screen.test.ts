@@ -184,11 +184,11 @@ describe('Enhanced Managed Ads Dashboard Screen (/dashboard/marketing/ads)', () 
     expect(CSS_SRC).toContain('.seasonalDemandCard');
   });
 
-  it('renders Closed-Loop Offline Revenue Synchronization telemetry connected to Google Ads API v20', () => {
+  it('renders Closed-Loop Offline Revenue Synchronization telemetry connected to Google Ads API v22', () => {
     expect(SCREEN_SRC).toContain('offlineSyncCard');
     expect(SCREEN_SRC).toContain('Closed-Loop Offline Revenue Synchronization');
     expect(SCREEN_SRC).toContain('offlineSyncBadge');
-    expect(SCREEN_SRC).toContain('Active &amp; Synced with Google Ads API v20');
+    expect(SCREEN_SRC).toContain('Active &amp; Synced with Google Ads API v22');
     expect(SCREEN_SRC).toContain('Enhanced Offline Conversions');
     expect(SCREEN_SRC).toContain('Max Value / Target ROAS');
 

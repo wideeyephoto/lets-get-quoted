@@ -1606,9 +1606,13 @@ export async function pauseAdCampaign(
   if (adState.googleCampaignId) {
     try {
       const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
-      await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+      const gResult = await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+      if (!gResult.success) {
+        return { success: false, message: `Could not pause Google Ads campaign: ${gResult.message || 'API error'}` };
+      }
     } catch (err) {
       console.warn('Could not pause Google Ads campaign:', err);
+      return { success: false, message: `Could not pause Google Ads campaign: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
@@ -1643,9 +1647,13 @@ export async function resumeAdCampaign(
   if (adState.googleCampaignId) {
     try {
       const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
-      await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'ENABLED');
+      const gResult = await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'ENABLED');
+      if (!gResult.success) {
+        return { success: false, message: `Could not resume Google Ads campaign: ${gResult.message || 'API error'}` };
+      }
     } catch (err) {
       console.warn('Could not resume Google Ads campaign:', err);
+      return { success: false, message: `Could not resume Google Ads campaign: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
@@ -1690,9 +1698,14 @@ export async function cancelAdCampaign(
   if (adState.googleCampaignId) {
     try {
       const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
-      await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+      const gResult = await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+      if (!gResult.success) {
+        console.error('Google Ads campaign pause on cancel failed:', gResult.message);
+        return { success: false, message: `Could not pause Google Ads campaign during cancellation: ${gResult.message || 'API error'}` };
+      }
     } catch (err) {
       console.warn('Could not pause Google Ads campaign:', err);
+      return { success: false, message: `Could not pause Google Ads campaign during cancellation: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 

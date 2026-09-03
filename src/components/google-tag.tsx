@@ -70,6 +70,8 @@ gtag('consent', 'default', {
   'ad_personalization': 'denied',
   'analytics_storage': 'denied'
 });
+gtag('set', 'url_passthrough', true);
+gtag('set', 'ads_data_redaction', true);
 gtag('js', new Date());
 gtag('config', '${tagId}');`;
 

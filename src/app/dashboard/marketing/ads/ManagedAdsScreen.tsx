@@ -1127,7 +1127,7 @@ export default function ManagedAdsScreen({
                     </div>
                   </div>
                   <span className={styles.offlineSyncBadge}>
-                    <span>●</span> Active &amp; Synced with Google Ads API v20
+                    <span>●</span> Active &amp; Synced with Google Ads API v22
                   </span>
                 </div>
 

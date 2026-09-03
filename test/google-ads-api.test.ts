@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   isGoogleAdsConfigured,
   provisionManagedSearchCampaign,
@@ -7,6 +7,7 @@ import {
   GOOGLE_ADS_API_VERSION,
   GOOGLE_ADS_API_BASE_URL,
   buildGoogleAdsHeaders,
+  resolveServingCustomerId,
   normalizeLsaTradeCategory,
   fetchLocalServicesLeads,
   fetchLocalServicesLeadConversations,
@@ -16,6 +17,12 @@ import {
   transformLsaLeadToCrm,
   ingestLocalServicesLeads,
 } from '@/lib/google-ads-api';
+import {
+  parseGoogleAdsTarget,
+  normalizeGoogleAdsId,
+  trackQuoteFunnelStep,
+} from '@/lib/analytics';
+import { updateGoogleConsent, trackSignupConversion } from '@/lib/google-tag';
 
 describe('Google Ads API Module', () => {
   it('detects unconfigured environment gracefully', () => {
@@ -80,9 +87,9 @@ describe('Google Ads API Module', () => {
     expect(gbraidResult.conversionValueDollars).toBe(4500);
   });
 
-  it('uses Google Ads API v20 and constructs login-customer-id header', () => {
-    expect(GOOGLE_ADS_API_VERSION).toBe('v20');
-    expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v20');
+  it('uses Google Ads API v22 and constructs login-customer-id header', () => {
+    expect(GOOGLE_ADS_API_VERSION).toBe('v22');
+    expect(GOOGLE_ADS_API_BASE_URL).toBe('https://googleads.googleapis.com/v22');
 
     const headers = buildGoogleAdsHeaders(
       {
@@ -253,6 +260,177 @@ describe('Google Ads API Module', () => {
       expect(ingestionResult.leads.length).toBe(ingestionResult.ingestedCount);
       expect(ingestionResult.leads[0].source).toBe('google_lsa');
       expect(ingestionResult.leads[0].trade).toBeTruthy();
+    });
+  });
+
+  describe('Serving Customer ID Isolation', () => {
+    it('resolves valid operating client customer ID without hyphens', () => {
+      const config = {
+        developerToken: 'token',
+        mccCustomerId: '111-222-3333',
+        clientCustomerId: '444-555-6666',
+      };
+      expect(resolveServingCustomerId('777-888-9999', config)).toBe('7778889999');
+      expect(resolveServingCustomerId(undefined, config)).toBe('4445556666');
+    });
+
+    it('rejects falling back to MCC manager account as serving target', () => {
+      const config = {
+        developerToken: 'token',
+        mccCustomerId: '111-222-3333',
+      };
+      expect(resolveServingCustomerId(undefined, config)).toBeNull();
+      expect(resolveServingCustomerId('111-222-3333', config)).toBeNull();
+    });
+  });
+
+  describe('Contractor Site Google Ads Target & Conversion Routing', () => {
+    it('parses Google Ads target formats correctly', () => {
+      const t1 = parseGoogleAdsTarget('AW-123456789/AbCd_123');
+      expect(t1).toEqual({
+        tagId: 'AW-123456789',
+        sendTo: 'AW-123456789/AbCd_123',
+        conversionLabel: 'AbCd_123',
+      });
+
+      const t2 = parseGoogleAdsTarget('123456789', 'XyZ-999');
+      expect(t2).toEqual({
+        tagId: 'AW-123456789',
+        sendTo: 'AW-123456789/XyZ-999',
+        conversionLabel: 'XyZ-999',
+      });
+
+      const t3 = parseGoogleAdsTarget('AW-123456789');
+      expect(t3).toEqual({
+        tagId: 'AW-123456789',
+        sendTo: 'AW-123456789',
+      });
+
+      expect(parseGoogleAdsTarget('G-ABCD1234')).toBeNull();
+      expect(parseGoogleAdsTarget('')).toBeNull();
+    });
+
+    it('normalizes Google Ads target to sendTo destination', () => {
+      expect(normalizeGoogleAdsId('AW-123456789/LeadTag')).toBe('AW-123456789/LeadTag');
+      expect(normalizeGoogleAdsId('123456789')).toBe('AW-123456789');
+    });
+
+    it('routes conversion to __lgq_google_ads_send_to and NEVER uses send_to: default', () => {
+      const gtagMock = vi.fn();
+      const mockWin = {
+        gtag: gtagMock,
+        __lgq_google_ads_send_to: 'AW-123456789/QuoteLead',
+        dispatchEvent: vi.fn(),
+      };
+      vi.stubGlobal('window', mockWin);
+
+      trackQuoteFunnelStep({
+        step: 'contact_submitted',
+        formStyle: 'multi_step',
+        template: 'classic',
+        device: 'desktop',
+      });
+
+      expect(gtagMock).toHaveBeenCalledWith('event', 'quote_contact_submitted', expect.any(Object));
+
+      expect(gtagMock).toHaveBeenCalledWith('event', 'conversion', {
+        send_to: 'AW-123456789/QuoteLead',
+        event_category: 'quote_intake',
+        event_label: 'multi_step',
+      });
+
+      for (const call of gtagMock.mock.calls) {
+        if (call[0] === 'event' && call[1] === 'conversion') {
+          expect(call[2]?.send_to).not.toBe('default');
+        }
+      }
+
+      vi.unstubAllGlobals();
+    });
+
+    it('skips conversion event when no Google Ads target is configured', () => {
+      const gtagMock = vi.fn();
+      const mockWin = {
+        gtag: gtagMock,
+        __lgq_google_ads_send_to: undefined,
+        dispatchEvent: vi.fn(),
+      };
+      vi.stubGlobal('window', mockWin);
+
+      trackQuoteFunnelStep({
+        step: 'contact_submitted',
+        formStyle: 'simple',
+        template: 'modern',
+        device: 'mobile',
+      });
+
+      expect(gtagMock).toHaveBeenCalledWith('event', 'quote_contact_submitted', expect.any(Object));
+
+      const conversionCalls = gtagMock.mock.calls.filter((c: unknown[]) => c[1] === 'conversion');
+      expect(conversionCalls.length).toBe(0);
+
+      vi.unstubAllGlobals();
+    });
+  });
+
+  describe('Google Consent Mode Updates', () => {
+    it('dispatches consent update to gtag when granted', () => {
+      const gtagMock = vi.fn();
+      vi.stubGlobal('window', { gtag: gtagMock });
+
+      updateGoogleConsent(true);
+
+      expect(gtagMock).toHaveBeenCalledWith('consent', 'update', {
+        ad_storage: 'granted',
+        ad_user_data: 'granted',
+        ad_personalization: 'granted',
+        analytics_storage: 'granted',
+      });
+
+      vi.unstubAllGlobals();
+    });
+
+    it('dispatches consent update to gtag when denied', () => {
+      const gtagMock = vi.fn();
+      vi.stubGlobal('window', { gtag: gtagMock });
+
+      updateGoogleConsent(false);
+
+      expect(gtagMock).toHaveBeenCalledWith('consent', 'update', {
+        ad_storage: 'denied',
+        ad_user_data: 'denied',
+        ad_personalization: 'denied',
+        analytics_storage: 'denied',
+      });
+
+      vi.unstubAllGlobals();
+    });
+
+    it('trackSignupConversion triggers updateGoogleConsent(true) and conversion event', () => {
+      const gtagMock = vi.fn();
+      vi.stubGlobal('window', { gtag: gtagMock, __lgq_signup_converted: false });
+      process.env.NEXT_PUBLIC_GOOGLE_TAG_ID = 'AW-987654321';
+      process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID = 'AW-987654321/SignupComplete';
+
+      trackSignupConversion('tx_test_456');
+
+      expect(gtagMock).toHaveBeenCalledWith('consent', 'update', {
+        ad_storage: 'granted',
+        ad_user_data: 'granted',
+        ad_personalization: 'granted',
+        analytics_storage: 'granted',
+      });
+
+      expect(gtagMock).toHaveBeenCalledWith('event', 'conversion', expect.objectContaining({
+        send_to: 'AW-987654321/SignupComplete',
+        transaction_id: 'tx_test_456',
+        value: 1,
+        currency: 'USD',
+      }));
+
+      delete process.env.NEXT_PUBLIC_GOOGLE_TAG_ID;
+      delete process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID;
+      vi.unstubAllGlobals();
     });
   });
 });

@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { completeFirstRunAction } from './actions';
 import { seedSiteFromFirstRunAction } from './seed-actions';
-import { trackSignupConversion } from '@/lib/google-tag';
+import { trackSignupConversion, updateGoogleConsent } from '@/lib/google-tag';
 
 type TradeOption = { slug: string; name: string };
 
@@ -78,6 +78,9 @@ export default function WelcomeForm({
         setError(result.error);
         return;
       }
+
+      // Explicit user action accepting terms & completing setup updates consent
+      updateGoogleConsent(true);
 
       if (result.signupConversionTransactionId) {
         trackSignupConversion(result.signupConversionTransactionId);
