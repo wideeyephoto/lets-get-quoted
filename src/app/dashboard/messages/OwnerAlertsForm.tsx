@@ -352,7 +352,7 @@ export default function OwnerAlertsForm({
             <div className="msg-setup-copilot-head">
               <div className="msg-setup-copilot-badge-group">
                 <span className="msg-setup-copilot-live-dot" aria-hidden="true" />
-                <span className="msg-setup-copilot-badge">AI Copilot Field Line Ready</span>
+                <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
                 <span className="msg-setup-copilot-sparky-tag">✦ {companionName} Active</span>
               </div>
               <div className="msg-setup-copilot-phone-box">

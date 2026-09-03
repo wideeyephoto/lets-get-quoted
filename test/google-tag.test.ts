@@ -249,10 +249,18 @@ describe('trackGoogleAdsConversion and trackSignupConversion', () => {
     (globalThis as any).window.gtag = gtagMock;
 
     expect(trackSignupConversion('tx_1')).toBe(true);
-    expect(gtagMock).toHaveBeenCalledTimes(1);
+    expect(gtagMock).toHaveBeenCalledTimes(2);
+    expect(gtagMock).toHaveBeenNthCalledWith(1, 'consent', 'update', expect.objectContaining({
+      ad_storage: 'granted',
+      analytics_storage: 'granted',
+    }));
+    expect(gtagMock).toHaveBeenNthCalledWith(2, 'event', 'conversion', expect.objectContaining({
+      send_to: 'AW-999999999/customLabel',
+      transaction_id: 'tx_1',
+    }));
 
     // Second invocation within same window lifecycle is blocked
     expect(trackSignupConversion('tx_2')).toBe(false);
-    expect(gtagMock).toHaveBeenCalledTimes(1);
+    expect(gtagMock).toHaveBeenCalledTimes(2);
   });
 });

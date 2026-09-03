@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 81dd8eb2677e1b1b
+   source-sha256: db1d1b1a3bb45d2a
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -32903,5 +32903,76 @@ select optgroup {
   .public-grid-background {
     animation: none;
     opacity: 0.22;
+  }
+}
+
+@keyframes copilot-pulse {
+  0% { transform: scale(0.95); opacity: 0.8; }
+  50% { transform: scale(1.45); opacity: 0.1; }
+  100% { transform: scale(0.95); opacity: 0.8; }
+}
+
+.msg-setup-copilot-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  padding: 0.35rem 0.7rem;
+  border-radius: 7px;
+}
+
+.save-field-contact-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-family: inherit;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.12);
+  border: 1px solid rgba(56, 189, 248, 0.32);
+  border-radius: 7px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.25;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.save-field-contact-btn:hover:not(:disabled) {
+  background: rgba(56, 189, 248, 0.22);
+  color: #ffffff;
+  border-color: rgba(56, 189, 248, 0.55);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+  transform: translateY(-1px);
+}
+
+.save-field-contact-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.save-field-contact-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.save-field-contact-btn.sm {
+  font-size: 0.76rem;
+  padding: 0.32rem 0.65rem;
+}
+
+.spin-icon {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
   }
 }
