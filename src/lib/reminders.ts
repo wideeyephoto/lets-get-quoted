@@ -10,6 +10,7 @@ import { zonedNowParts } from '@/lib/quick-stop';
 import { pickBusinessName } from '@/lib/business-name';
 import { resolveClientChannel } from '@/lib/client-channel';
 import { jobMessageChannel } from '@/lib/client-channel-data';
+import { looksLikeTestRecord } from '@/lib/test-data-markers';
 import {
   isReminderHourNow,
   normalizeReminderHour,
@@ -54,14 +55,41 @@ export type RemindableJob = {
   address: string | null;
   scheduled_for: string | null;
   scheduled_time: string | null;
+  test_marker?: string | null;
 };
 
 export type ReminderSendResult = {
   sent: boolean;
   channel?: 'sms' | 'email';
   /** Why nothing was sent — shown to an owner who pressed a button expecting one. */
-  reason?: 'already-reminded' | 'no-channel';
+  reason?: 'already-reminded' | 'no-channel' | 'test-record';
 };
+
+/**
+ * Quarantine synthetic / test jobs so reminders never send to fake accounts,
+ * dummy 555 numbers, or @example.com addresses.
+ */
+export function isTestJob(job: RemindableJob): boolean {
+  if (job.test_marker != null) return true;
+  const rawEmail = (job.client_email || '').trim().toLowerCase();
+  if (
+    rawEmail.endsWith('@example.com') ||
+    rawEmail.endsWith('@example.org') ||
+    rawEmail.endsWith('@example.net')
+  ) {
+    return true;
+  }
+  const ref = (job.ref || '').trim().toUpperCase();
+  if (ref.startsWith('J-DEMO-') || ref.startsWith('J-CLEAN-') || ref.startsWith('J-TEST-')) {
+    return true;
+  }
+  return looksLikeTestRecord({
+    name: job.client_name,
+    email: rawEmail,
+    phone: job.client_phone,
+    ref: job.ref,
+  });
+}
 
 /**
  * Remind one customer that their appointment is coming up.
@@ -81,6 +109,10 @@ export async function sendJobAppointmentReminder(
   job: RemindableJob,
   options: { force?: boolean } = {},
 ): Promise<ReminderSendResult> {
+  if (isTestJob(job)) {
+    return { sent: false, reason: 'test-record' };
+  }
+
   if (!options.force) {
     const { data: priorReminders } = await admin
       .from('job_feed')
@@ -246,7 +278,7 @@ export async function runAppointmentReminders(now = new Date()): Promise<Reminde
     // deterministically and invisibly.
     const { data: rows } = await admin
       .from('jobs')
-      .select('id, account_id, ref, client_name, client_phone, client_email, address, scheduled_for, scheduled_time, status')
+      .select('id, account_id, ref, client_name, client_phone, client_email, address, scheduled_for, scheduled_time, status, test_marker')
       .gte('scheduled_for', from)
       .lte('scheduled_for', to)
       .in('status', ['new_lead', 'in_progress'])

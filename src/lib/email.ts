@@ -768,6 +768,16 @@ export async function sendAppointmentReminderEmail(input: {
     throw new Error('Email provider is not configured.');
   }
 
+  const email = (input.recipientEmail || '').trim().toLowerCase();
+  if (
+    email.endsWith('@example.com') ||
+    email.endsWith('@example.org') ||
+    email.endsWith('@example.net')
+  ) {
+    console.warn(`[email] Skipping appointment reminder email to placeholder address: ${input.recipientEmail}`);
+    return;
+  }
+
   const brand = await brandFor(input);
   const html = renderAppointmentReminderEmailHtml({ ...input, brand });
 

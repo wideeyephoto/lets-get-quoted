@@ -15,6 +15,7 @@ import {
   reminderWindow,
   timeZoneAbbreviation,
 } from '@/lib/appointment-reminders';
+import { isTestJob } from '@/lib/reminders';
 import { zonedNowParts } from '@/lib/quick-stop';
 
 // These decide when a real text lands on a customer's phone. The old behaviour
@@ -291,5 +292,50 @@ describe('appointmentReminderText', () => {
     expect(appointmentReminderText({ ...base, address: '12 Elm St' })).toContain('at 12 Elm St');
     expect(appointmentReminderText({ ...base, address: null })).not.toContain(' at null');
     expect(appointmentReminderText(base)).not.toContain('undefined');
+  });
+});
+
+describe('isTestJob', () => {
+  const baseJob = {
+    id: 'job-1',
+    account_id: 'acc-1',
+    ref: 'J-1001',
+    client_name: 'Sarah Jenkins',
+    client_phone: '(248) 555-0199',
+    client_email: 'sarah@jenkins.com',
+    address: '123 Main St',
+    scheduled_for: '2026-09-04',
+    scheduled_time: '10:00:00',
+  };
+
+  it('identifies demo job references', () => {
+    expect(isTestJob({ ...baseJob, ref: 'J-DEMO-1076' })).toBe(true);
+    expect(isTestJob({ ...baseJob, ref: 'J-CLEAN-1069' })).toBe(true);
+    expect(isTestJob({ ...baseJob, ref: 'J-TEST-1001' })).toBe(true);
+  });
+
+  it('identifies example/placeholder email domains', () => {
+    expect(isTestJob({ ...baseJob, client_email: 'elias.holbrook141@example.com' })).toBe(true);
+    expect(isTestJob({ ...baseJob, client_email: 'test@example.org' })).toBe(true);
+    expect(isTestJob({ ...baseJob, client_email: 'user@example.net' })).toBe(true);
+  });
+
+  it('identifies 555 exchange phone numbers as test data', () => {
+    // 555-0100 through 555-0199 are reserved North American fictitious numbers
+    expect(isTestJob({ ...baseJob, client_phone: '(248) 555-0142' })).toBe(true);
+  });
+
+  it('identifies records marked with test_marker', () => {
+    expect(isTestJob({ ...baseJob, client_phone: '(248) 678-1234', test_marker: 'seed-demo' })).toBe(true);
+  });
+
+  it('allows real customer jobs through', () => {
+    expect(isTestJob({
+      ...baseJob,
+      ref: 'J-1001',
+      client_name: 'Michael Davis',
+      client_phone: '(248) 840-2345',
+      client_email: 'michael.davis@gmail.com',
+    })).toBe(false);
   });
 });
