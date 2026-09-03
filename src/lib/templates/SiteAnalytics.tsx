@@ -64,7 +64,9 @@ function loadTags(config: AnalyticsConfig) {
     if (ga4) window.gtag('config', ga4);
     if (googleAdsTagId) {
       window.gtag('config', googleAdsTagId);
-      (window as unknown as { __lgq_google_ads_send_to?: string }).__lgq_google_ads_send_to = googleAdsTarget?.sendTo;
+      if (googleAdsTarget?.hasConversionLabel && googleAdsTarget.sendTo) {
+        (window as unknown as { __lgq_google_ads_send_to?: string }).__lgq_google_ads_send_to = googleAdsTarget.sendTo;
+      }
     }
 
     // Injected by this script, which the CSP nonce already trusts, so

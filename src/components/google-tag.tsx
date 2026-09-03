@@ -70,6 +70,17 @@ gtag('consent', 'default', {
   'ad_personalization': 'denied',
   'analytics_storage': 'denied'
 });
+try {
+  var savedConsent = localStorage.getItem('lgq_google_consent_state');
+  if (savedConsent === 'granted') {
+    gtag('consent', 'update', {
+      'ad_storage': 'granted',
+      'ad_user_data': 'granted',
+      'ad_personalization': 'granted',
+      'analytics_storage': 'granted'
+    });
+  }
+} catch(e){}
 gtag('set', 'url_passthrough', true);
 gtag('set', 'ads_data_redaction', true);
 gtag('js', new Date());

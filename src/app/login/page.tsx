@@ -97,8 +97,12 @@ function LoginInner() {
     ? welcomePathWithPlanIntent(planIntent)
     : `/welcome${welcomeQuery ? `?${welcomeQuery}` : ''}`;
 
+  const isSignupFlow = isSignup || Boolean(planIntent || tradeParam || cityParam || intent.gclid || intent.utmSource || intent.goal);
+  const rawNext = searchParams.get('next');
   const nextPath = safeNextPath(
-    searchParams.get('next') ?? (isSignup || planIntent || tradeParam || cityParam ? defaultWelcomeDestination : null),
+    isSignupFlow && (!rawNext || rawNext.startsWith('/dashboard'))
+      ? defaultWelcomeDestination
+      : (rawNext ?? (isSignupFlow ? defaultWelcomeDestination : null)),
   );
 
   const buildToggleUrl = (targetMode: 'signin' | 'signup') => {
@@ -131,6 +135,27 @@ function LoginInner() {
       active = false;
     };
   }, [nextPath]);
+
+  // Persist advertising click IDs and UTMs in sessionStorage for resilient attribution across auth redirects
+  useEffect(() => {
+    if (intent.gclid || intent.utmSource || intent.gbraid || intent.wbraid) {
+      try {
+        sessionStorage.setItem('lgq_signup_attribution', JSON.stringify({
+          gclid: intent.gclid,
+          gbraid: intent.gbraid,
+          wbraid: intent.wbraid,
+          utmSource: intent.utmSource,
+          utmMedium: intent.utmMedium,
+          utmCampaign: intent.utmCampaign,
+          utmContent: intent.utmContent,
+          utmTerm: intent.utmTerm,
+          trade: intent.trade,
+          city: intent.city,
+          goal: intent.goal,
+        }));
+      } catch {}
+    }
+  }, [intent]);
 
   async function sendEmailLink(value: string) {
     try {

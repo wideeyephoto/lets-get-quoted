@@ -8,6 +8,16 @@ export type AdCampaignBillingStatus =
 
 export const AD_PLATFORM_FEE_RATE = 0.05; // 5% Platform Management Fee
 
+/**
+ * Managed Ads direct checkout gate. Disabled by default until live serving advertiser
+ * accounts and automated provisioning workers are configured and verified.
+ */
+export const MANAGED_ADS_CHECKOUT_ENABLED = process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED === 'true';
+
+export function isManagedAdsCheckoutAllowed(): boolean {
+  return process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED === 'true';
+}
+
 export type AdWeeklyTierId = 'launch' | 'growth' | 'scale';
 
 export type AdWeeklyTier = {

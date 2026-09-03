@@ -82,7 +82,7 @@ describe('google-tag defaults and configuration', () => {
     const successGuard = WELCOME_FORM_CODE.indexOf('if (!result.ok)');
     const eligibilityGuard = WELCOME_FORM_CODE.indexOf('if (result.signupConversionTransactionId)');
     const conversionCall = WELCOME_FORM_CODE.indexOf(
-      'trackSignupConversion(result.signupConversionTransactionId)',
+      'trackSignupConversion(result.signupConversionTransactionId',
     );
 
     expect(successGuard).toBeGreaterThan(-1);
@@ -248,7 +248,7 @@ describe('trackGoogleAdsConversion and trackSignupConversion', () => {
     const gtagMock = vi.fn();
     (globalThis as any).window.gtag = gtagMock;
 
-    expect(trackSignupConversion('tx_1')).toBe(true);
+    expect(trackSignupConversion('tx_1', true)).toBe(true);
     expect(gtagMock).toHaveBeenCalledTimes(2);
     expect(gtagMock).toHaveBeenNthCalledWith(1, 'consent', 'update', expect.objectContaining({
       ad_storage: 'granted',

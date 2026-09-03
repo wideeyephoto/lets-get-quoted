@@ -90,12 +90,33 @@ export function trackGoogleAdsConversion(payload?: Partial<GoogleAdsConversionPa
   return false;
 }
 
+export const GOOGLE_CONSENT_STORAGE_KEY = 'lgq_google_consent_state';
+
 /**
- * Updates Google Consent Mode state (e.g. after user agrees to terms or completes signup).
+ * Reads persisted user consent preference from localStorage.
  */
-export function updateGoogleConsent(granted = true): void {
+export function getPersistedGoogleConsent(): 'granted' | 'denied' | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const val = localStorage.getItem(GOOGLE_CONSENT_STORAGE_KEY);
+    if (val === 'granted' || val === 'denied') return val;
+  } catch {}
+  return null;
+}
+
+/**
+ * Updates and persists Google Consent Mode state based on explicit user choice.
+ */
+export function updateGoogleConsent(granted = true, persist = true): void {
   if (typeof window === 'undefined') return;
   const state = granted ? 'granted' : 'denied';
+
+  if (persist) {
+    try {
+      localStorage.setItem(GOOGLE_CONSENT_STORAGE_KEY, state);
+      document.cookie = `${GOOGLE_CONSENT_STORAGE_KEY}=${state}; path=/; max-age=31536000; SameSite=Lax`;
+    } catch {}
+  }
 
   if (typeof window.gtag === 'function') {
     try {
@@ -125,12 +146,13 @@ export function updateGoogleConsent(granted = true): void {
 /**
  * Fires the sign-up conversion event once per session / activation.
  */
-export function trackSignupConversion(transactionId?: string): boolean {
+export function trackSignupConversion(transactionId?: string, grantExplicitConsent?: boolean): boolean {
   if (typeof window === 'undefined') return false;
   if (window.__lgq_signup_converted) return false;
 
-  // Ensure consent is updated to granted on explicit signup completion
-  updateGoogleConsent(true);
+  if (grantExplicitConsent) {
+    updateGoogleConsent(true, true);
+  }
 
   const tracked = trackGoogleAdsConversion(transactionId ? { transaction_id: transactionId } : undefined);
   if (tracked) {

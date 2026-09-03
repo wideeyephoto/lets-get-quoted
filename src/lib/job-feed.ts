@@ -643,6 +643,13 @@ export async function applyQuoteAcceptance(
   if (lead && lead.status !== 'won') {
     await updateLeadStatus(admin, accountId, lead.id, 'won');
     leadWon = true;
+
+    try {
+      const { triggerWonLeadOfflineConversion } = await import('@/lib/google-ads-conversion-outbox');
+      await triggerWonLeadOfflineConversion(admin, accountId, { ...lead, status: 'won' }, amount);
+    } catch (convErr) {
+      console.warn('[OfflineConversion] Non-blocking dispatch error in applyQuoteAcceptance:', convErr);
+    }
   }
 
   return { recorded: true, promoted, leadWon };

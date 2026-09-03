@@ -54,20 +54,20 @@ export default function AnalyticsField({
       </label>
 
       <label className={styles.formField}>
-        <span>Google Ads conversion ID</span>
+        <span>Google Ads conversion ID &amp; label</span>
         <input
           value={analytics.googleAdsId ?? ''}
-          maxLength={30}
+          maxLength={50}
           spellCheck={false}
           autoComplete="off"
-          placeholder="AW-123456789"
+          placeholder="AW-123456789/AbCd-EfG"
           aria-invalid={Boolean(googleAdsProblem)}
           onChange={(event) => onChange({ ...analytics, googleAdsId: event.target.value })}
         />
         {googleAdsProblem
           ? <small className={styles.socialFieldError}>{googleAdsProblem}</small>
           : <small className={styles.fieldHint}>
-              Fires conversion events when someone sends an estimate request from Google Search ads.
+              Requires your conversion tag ID and label (e.g. AW-123456789/AbCd-EfG) to attribute estimate requests to your ads.
             </small>}
       </label>
 

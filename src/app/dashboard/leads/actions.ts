@@ -11,7 +11,7 @@ import { computeQuoteTotal, formatJobQuoteSummary, parseQuoteItems, saveQuoteIte
 import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadQuoteDraft, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
-import { syncLeadWonConversion } from '@/lib/google-ads-conversion-outbox';
+import { syncLeadWonConversion, triggerWonLeadOfflineConversion } from '@/lib/google-ads-conversion-outbox';
 import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -146,24 +146,8 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
 
     if (isGoogleClick || lead.email || lead.phone) {
       const wonValue = triage?.estimate?.max || 0;
-      const nameParts = (lead.name || '').trim().split(/\s+/);
-      const firstName = nameParts[0] || undefined;
-      const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
-
       try {
-        await syncLeadWonConversion({
-          accountId,
-          leadId,
-          wonValueDollars: wonValue,
-          currencyCode: 'USD',
-          gclid: attr?.clickIdType === 'gclid' ? attr.clickId : undefined,
-          gbraid: attr?.clickIdType === 'gbraid' ? attr.clickId : undefined,
-          wbraid: attr?.clickIdType === 'wbraid' ? attr.clickId : undefined,
-          email: lead.email,
-          phone: lead.phone,
-          firstName,
-          lastName,
-        });
+        await triggerWonLeadOfflineConversion(createAdminClient(), accountId, lead, wonValue);
       } catch (err) {
         console.warn('Offline conversion sync on mark won logged warning:', err);
       }

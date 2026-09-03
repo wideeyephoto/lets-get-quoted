@@ -40,16 +40,17 @@ const TIKTOK_PIXEL_PATTERN = /^[A-Z0-9]{12,24}$/i;
 
 export type GoogleAdsTarget = {
   tagId: string;
-  sendTo: string;
+  sendTo?: string;
   conversionLabel?: string;
+  hasConversionLabel: boolean;
 };
 
 /**
  * Parses a Google Ads identifier and optional conversion label into a structured target.
  * Accepts formats:
- * - 'AW-123456789'
+ * - 'AW-123456789' (bare tag, no conversion action)
  * - '123456789'
- * - 'AW-123456789/AbCd-123'
+ * - 'AW-123456789/AbCd-123' (conversion action)
  * - '123456789/AbCd-123'
  */
 export function parseGoogleAdsTarget(
@@ -68,6 +69,7 @@ export function parseGoogleAdsTarget(
       tagId,
       sendTo: `${tagId}/${label}`,
       conversionLabel: label,
+      hasConversionLabel: true,
     };
   }
 
@@ -81,11 +83,12 @@ export function parseGoogleAdsTarget(
         tagId,
         sendTo: `${tagId}/${cleanLabel}`,
         conversionLabel: cleanLabel,
+        hasConversionLabel: true,
       };
     }
     return {
       tagId,
-      sendTo: tagId,
+      hasConversionLabel: false,
     };
   }
 
@@ -101,7 +104,7 @@ export function normalizeGa4Id(input: string): string {
 /** Normalized Google Ads ID, e.g. AW-123456789 or AW-123456789/LABEL. */
 export function normalizeGoogleAdsId(input: string): string {
   const target = parseGoogleAdsTarget(input);
-  return target ? target.sendTo : '';
+  return target ? (target.sendTo || target.tagId) : '';
 }
 
 /**
@@ -145,8 +148,14 @@ export function analyticsIdProblem(kind: 'ga4' | 'metaPixel' | 'googleAds' | 'ti
     return 'A Measurement ID looks like G-ABCD1234. Find it in Analytics under Admin → Data streams.';
   }
   if (kind === 'googleAds') {
-    if (normalizeGoogleAdsId(raw)) return '';
-    return 'A Google Ads ID looks like AW-123456789 (or AW-123456789/Label). Find it in Google Ads under Tools & Settings → Conversions.';
+    const target = parseGoogleAdsTarget(raw);
+    if (!target) {
+      return 'A Google Ads ID looks like AW-123456789 (or AW-123456789/Label). Find it in Google Ads under Tools & Settings → Conversions.';
+    }
+    if (!target.hasConversionLabel) {
+      return 'Google Ads conversion tracking requires both your conversion ID and label (e.g. AW-123456789/AbCd-EfG). Find it in Google Ads under Tools & Settings → Conversions.';
+    }
+    return '';
   }
   if (kind === 'metaPixel') {
     if (normalizeMetaPixelId(raw)) return '';

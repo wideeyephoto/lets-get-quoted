@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import {
   isGoogleAdsConfigured,
   provisionManagedSearchCampaign,
@@ -21,6 +23,7 @@ import {
   parseGoogleAdsTarget,
   normalizeGoogleAdsId,
   trackQuoteFunnelStep,
+  analyticsIdProblem,
 } from '@/lib/analytics';
 import { updateGoogleConsent, trackSignupConversion } from '@/lib/google-tag';
 
@@ -291,6 +294,7 @@ describe('Google Ads API Module', () => {
         tagId: 'AW-123456789',
         sendTo: 'AW-123456789/AbCd_123',
         conversionLabel: 'AbCd_123',
+        hasConversionLabel: true,
       });
 
       const t2 = parseGoogleAdsTarget('123456789', 'XyZ-999');
@@ -298,12 +302,13 @@ describe('Google Ads API Module', () => {
         tagId: 'AW-123456789',
         sendTo: 'AW-123456789/XyZ-999',
         conversionLabel: 'XyZ-999',
+        hasConversionLabel: true,
       });
 
       const t3 = parseGoogleAdsTarget('AW-123456789');
       expect(t3).toEqual({
         tagId: 'AW-123456789',
-        sendTo: 'AW-123456789',
+        hasConversionLabel: false,
       });
 
       expect(parseGoogleAdsTarget('G-ABCD1234')).toBeNull();
@@ -412,7 +417,7 @@ describe('Google Ads API Module', () => {
       process.env.NEXT_PUBLIC_GOOGLE_TAG_ID = 'AW-987654321';
       process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID = 'AW-987654321/SignupComplete';
 
-      trackSignupConversion('tx_test_456');
+      trackSignupConversion('tx_test_456', true);
 
       expect(gtagMock).toHaveBeenCalledWith('consent', 'update', {
         ad_storage: 'granted',
@@ -431,6 +436,62 @@ describe('Google Ads API Module', () => {
       delete process.env.NEXT_PUBLIC_GOOGLE_TAG_ID;
       delete process.env.NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID;
       vi.unstubAllGlobals();
+    });
+  });
+
+  describe('Google Ads API v22 Schema & Spend Protection Verification', () => {
+    const apiCode = readFileSync(join(process.cwd(), 'src/lib/google-ads-api.ts'), 'utf8');
+
+    it('omits output-only biddingStrategyType and includes maximizeConversions and EU political ads declaration', () => {
+      expect(apiCode).toContain("maximizeConversions: {}");
+      expect(apiCode).toContain("containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'");
+      expect(apiCode).not.toContain("biddingStrategyType: 'MAXIMIZE_CONVERSIONS'");
+    });
+
+    it('creates campaign in PAUSED status and gates ENABLED status to the final activation step', () => {
+      // Step 2 creates campaign PAUSED
+      expect(apiCode).toMatch(/create:\s*\{[\s\S]*?name:\s*campaignName,[\s\S]*?status:\s*'PAUSED'/);
+      // Step 9 final activation
+      expect(apiCode).toMatch(/update:\s*\{[\s\S]*?resourceName:\s*campaignResourceName,[\s\S]*?status:\s*'ENABLED'/);
+    });
+
+    it('fails closed and keeps campaign PAUSED if negative keywords, geo-fencing, or schedule fail', () => {
+      expect(apiCode).toContain('Campaign negative keyword shields failed to deploy (campaign left PAUSED)');
+      expect(apiCode).toContain('Campaign geo-fencing failed to deploy (campaign left PAUSED)');
+      expect(apiCode).toContain('Campaign ad schedule failed to deploy (campaign left PAUSED)');
+    });
+
+    it('isGoogleAdsConfigured refuses MCC alone without serving client customer ID', () => {
+      const configWithMccOnly: GoogleAdsConfig = {
+        clientId: 'cid',
+        clientSecret: 'csec',
+        developerToken: 'devtok',
+        refreshToken: 'rtok',
+        mccCustomerId: '123-456-7890',
+        clientCustomerId: '',
+      };
+      expect(resolveServingCustomerId(undefined, configWithMccOnly)).toBeNull();
+    });
+  });
+
+  describe('Managed Ads Checkout Gating', () => {
+    it('isManagedAdsCheckoutAllowed defaults to false', async () => {
+      const { isManagedAdsCheckoutAllowed, MANAGED_ADS_CHECKOUT_ENABLED } = await import('@/lib/ad-billing-shared');
+      expect(isManagedAdsCheckoutAllowed()).toBe(false);
+      expect(MANAGED_ADS_CHECKOUT_ENABLED).toBe(false);
+    });
+  });
+
+  describe('Contractor Site Conversion Label Enforcement', () => {
+    it('flags bare AW ID as missing conversion label in analyticsIdProblem', () => {
+      const problem = analyticsIdProblem('googleAds', 'AW-123456789');
+      expect(problem).toContain('conversion ID and label');
+      expect(problem).toContain('AW-123456789/AbCd-EfG');
+    });
+
+    it('accepts complete AW ID with conversion label', () => {
+      const problem = analyticsIdProblem('googleAds', 'AW-123456789/AbCd-EfG');
+      expect(problem).toBe('');
     });
   });
 });

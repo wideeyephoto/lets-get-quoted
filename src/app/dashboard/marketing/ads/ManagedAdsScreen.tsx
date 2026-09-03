@@ -13,7 +13,7 @@ import {
   type SeasonalAdAngle,
   type AdDayOfWeek,
 } from '@/lib/google-ads-generator';
-import { AD_PLATFORM_FEE_RATE, type AdBudgetWalletState } from '@/lib/ad-billing-shared';
+import { AD_PLATFORM_FEE_RATE, MANAGED_ADS_CHECKOUT_ENABLED, type AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import {
   SMART_BUNDLES,
   getSmartBundle,
@@ -514,6 +514,11 @@ export default function ManagedAdsScreen({
   }, [currentBundle, weatherSurgeSim, weatherSurge.surgeActive, closeRatePct, avgTicketDollars]);
 
   const handleLaunchAutopilot = async () => {
+    if (!MANAGED_ADS_CHECKOUT_ENABLED) {
+      alert('Managed Ads Checkout is temporarily in private preview. Automated campaign activation and self-service ad purchases are paused.');
+      return;
+    }
+
     if (smsAlertsEnabled && smsAlertPhone.trim() && !isPhoneVerified) {
       alert('Please complete 2FA phone verification for your SMS billing alert number before proceeding to launch.');
       if (sms2faStatus === 'idle') {
@@ -1941,7 +1946,7 @@ export default function ManagedAdsScreen({
                         <strong>${walletDepositDollars}.00</strong>
                       </div>
                       <div className={styles.breakdownRow}>
-                        <span>AI Platform Management &amp; Smart Bidding (10%)</span>
+                        <span>AI Platform Management &amp; Smart Bidding ({Math.round(AD_PLATFORM_FEE_RATE * 100)}%)</span>
                         <span>${walletFeeDollars}.00</span>
                       </div>
                       <div className={styles.breakdownTotal}>
@@ -3229,18 +3234,44 @@ export default function ManagedAdsScreen({
             )}
           </div>
 
+          {!MANAGED_ADS_CHECKOUT_ENABLED && (
+            <div
+              style={{
+                background: 'rgba(245, 158, 11, 0.1)',
+                border: '1px solid rgba(245, 158, 11, 0.3)',
+                borderRadius: '8px',
+                padding: '0.75rem 1rem',
+                marginBottom: '0.85rem',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.6rem',
+                fontSize: '0.8rem',
+                color: '#f59e0b',
+                lineHeight: 1.4,
+              }}
+            >
+              <span>⚠️</span>
+              <span>
+                <strong>Managed Ads Checkout Paused:</strong> Self-service ad purchases are temporarily in private preview pending live advertiser account setup. Direct billing is currently inactive.
+              </span>
+            </div>
+          )}
+
           {/* Primary 1-Click Launch Button */}
           <button
             type="button"
             className={styles.launchButton}
             onClick={handleLaunchAutopilot}
-            disabled={checkoutLoading}
+            disabled={checkoutLoading || !MANAGED_ADS_CHECKOUT_ENABLED}
+            style={!MANAGED_ADS_CHECKOUT_ENABLED ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}
           >
             {checkoutLoading
               ? 'Connecting to Stripe...'
-              : fundingModel === 'auto_refill_wallet'
-                ? `🚀 Fund Ad Wallet on Stripe ($${walletTotalDepositDollars} Initial Deposit)`
-                : `🚀 Launch Campaign on Stripe ($${currentBundle.weeklyAmountDollars}/wk)`}
+              : !MANAGED_ADS_CHECKOUT_ENABLED
+                ? '⏸️ Managed Ads Checkout Paused (Private Preview)'
+                : fundingModel === 'auto_refill_wallet'
+                  ? `🚀 Fund Ad Wallet on Stripe ($${walletTotalDepositDollars} Initial Deposit)`
+                  : `🚀 Launch Campaign on Stripe ($${currentBundle.weeklyAmountDollars}/wk)`}
           </button>
 
           <p style={{ fontSize: '0.74rem', color: 'var(--muted)', textAlign: 'center', margin: '0 0 0.5rem' }}>

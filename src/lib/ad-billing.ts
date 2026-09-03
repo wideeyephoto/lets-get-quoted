@@ -175,6 +175,11 @@ export async function createAdBudgetCheckoutSession(params: {
     idempotencyKey,
   } = params;
 
+  const { isManagedAdsCheckoutAllowed } = await import('@/lib/ad-billing-shared');
+  if (!isManagedAdsCheckoutAllowed()) {
+    throw new Error('Managed Ads checkout is currently disabled pending live advertiser account setup.');
+  }
+
   if (process.env.VERCEL_ENV === 'production' && !isGoogleAdsConfigured()) {
     throw new Error('Google Ads automated provisioning is currently undergoing configuration in this environment. Please contact support.');
   }

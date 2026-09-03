@@ -71,6 +71,28 @@ export async function POST(request: Request) {
     }
 
 
+    const { isManagedAdsCheckoutAllowed } = await import('@/lib/ad-billing-shared');
+    const { resolveServingCustomerId, isGoogleAdsConfigured } = await import('@/lib/google-ads-api');
+
+    if (!isManagedAdsCheckoutAllowed()) {
+      return NextResponse.json(
+        {
+          error: 'Managed Ads checkout is currently in private preview and self-service ad purchase is paused.',
+        },
+        { status: 403 }
+      );
+    }
+
+    const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+    if (isProduction && (!isGoogleAdsConfigured() || !resolveServingCustomerId())) {
+      return NextResponse.json(
+        {
+          error: 'Managed Ads checkout is temporarily unavailable pending live advertiser account provisioning credentials.',
+        },
+        { status: 503 }
+      );
+    }
+
     const { data: account } = await supabase
       .from('accounts')
       .select('business_name')

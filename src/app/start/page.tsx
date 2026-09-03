@@ -74,10 +74,9 @@ export default async function StartPage({
   const serialized = serializeSignupIntent(intent);
   serialized.set('intent', 'signup');
 
-  // Pre-calculate target next path for after authentication
-  const nextTarget = intent.next || (intent.goal === 'build_site' ? '/dashboard/sites' : resolveDestination(intent, 'active'));
-  if (!serialized.has('next') && nextTarget) {
-    serialized.set('next', nextTarget);
+  // If a specific next destination was explicitly requested, preserve it for post-welcome routing
+  if (intent.next) {
+    serialized.set('next', intent.next);
   }
 
   redirect(`/login?${serialized.toString()}`);

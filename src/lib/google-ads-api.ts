@@ -40,7 +40,7 @@ export function isGoogleAdsConfigured(): boolean {
     config.clientSecret &&
     config.developerToken &&
     config.refreshToken &&
-    (config.mccCustomerId || config.clientCustomerId)
+    resolveServingCustomerId(undefined, config)
   );
 }
 
@@ -236,7 +236,7 @@ export async function provisionManagedSearchCampaign(
               {
                 create: {
                   name: campaignName,
-                  status: 'ENABLED',
+                  status: 'PAUSED',
                   advertisingChannelType: 'SEARCH',
                   campaignBudget: budgetResourceName,
                   networkSettings: {
@@ -245,7 +245,8 @@ export async function provisionManagedSearchCampaign(
                     targetContentNetwork: false,
                     targetPartnerSearchNetwork: false,
                   },
-                  biddingStrategyType: 'MAXIMIZE_CONVERSIONS',
+                  maximizeConversions: {},
+                  containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
                   geoTargetTypeSetting: {
                     positiveGeoTargetType: 'PRESENCE',
                     negativeGeoTargetType: 'PRESENCE',
@@ -410,9 +411,23 @@ export async function provisionManagedSearchCampaign(
           return null;
         });
 
-        if (negRes && !negRes.ok) {
-          const errData = await negRes.json().catch(() => ({}));
-          console.warn('Google Ads negative criteria warning:', errData.error?.message || `HTTP ${negRes.status}`);
+        if (!negRes || !negRes.ok) {
+          const errData = negRes ? await negRes.json().catch(() => ({})) : {};
+          const errMsg = errData.error?.message || (negRes ? `HTTP ${negRes.status}` : 'network error');
+          console.warn('Google Ads negative criteria failed:', errMsg);
+          return {
+            success: false,
+            campaignId,
+            campaignResourceName,
+            adGroupId,
+            status: 'failed',
+            dailyBudgetDollars,
+            headlinesCount: rsa.headlines.length,
+            descriptionsCount: rsa.descriptions.length,
+            keywordsCount: allKeywords.length,
+            negativeKeywordsCount: 0,
+            message: `Campaign negative keyword shields failed to deploy (campaign left PAUSED): ${errMsg}`,
+          };
         }
       }
 
@@ -459,8 +474,8 @@ export async function provisionManagedSearchCampaign(
             headlinesCount: 0,
             descriptionsCount: 0,
             keywordsCount: allKeywords.length,
-            negativeKeywordsCount: 0,
-            message: `Google Ads ad copy deployment failed: ${errMsg}`,
+            negativeKeywordsCount: negativeKeywords.length,
+            message: `Google Ads ad copy deployment failed (campaign left PAUSED): ${errMsg}`,
           };
         }
       }
@@ -493,9 +508,23 @@ export async function provisionManagedSearchCampaign(
           return null;
         });
 
-        if (proxRes && !proxRes.ok) {
-          const errData = await proxRes.json().catch(() => ({}));
-          console.warn('Google Ads proximity criteria warning:', errData.error?.message || `HTTP ${proxRes.status}`);
+        if (!proxRes || !proxRes.ok) {
+          const errData = proxRes ? await proxRes.json().catch(() => ({})) : {};
+          const errMsg = errData.error?.message || (proxRes ? `HTTP ${proxRes.status}` : 'network error');
+          console.warn('Google Ads proximity criteria failed:', errMsg);
+          return {
+            success: false,
+            campaignId,
+            campaignResourceName,
+            adGroupId,
+            status: 'failed',
+            dailyBudgetDollars,
+            headlinesCount: rsa.headlines.length,
+            descriptionsCount: rsa.descriptions.length,
+            keywordsCount: allKeywords.length,
+            negativeKeywordsCount: negativeKeywords.length,
+            message: `Campaign geo-fencing failed to deploy (campaign left PAUSED): ${errMsg}`,
+          };
         }
       }
 
@@ -530,9 +559,70 @@ export async function provisionManagedSearchCampaign(
         return null;
       });
 
-      if (schedRes && !schedRes.ok) {
-        const errData = await schedRes.json().catch(() => ({}));
-        console.warn('Google Ads schedule criteria warning:', errData.error?.message || `HTTP ${schedRes.status}`);
+      if (!schedRes || !schedRes.ok) {
+        const errData = schedRes ? await schedRes.json().catch(() => ({})) : {};
+        const errMsg = errData.error?.message || (schedRes ? `HTTP ${schedRes.status}` : 'network error');
+        console.warn('Google Ads schedule criteria failed:', errMsg);
+        return {
+          success: false,
+          campaignId,
+          campaignResourceName,
+          adGroupId,
+          status: 'failed',
+          dailyBudgetDollars,
+          headlinesCount: rsa.headlines.length,
+          descriptionsCount: rsa.descriptions.length,
+          keywordsCount: allKeywords.length,
+          negativeKeywordsCount: negativeKeywords.length,
+          scheduleDaysCount: 0,
+          geoRadiusMiles: radiusMiles,
+          message: `Campaign ad schedule failed to deploy (campaign left PAUSED): ${errMsg}`,
+        };
+      }
+
+      // 9. Final Activation Gate: Enable campaign only after ALL targeting and criteria succeeded
+      const activateRes = await fetch(
+        `${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`,
+        {
+          method: 'POST',
+          headers,
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({
+            operations: [
+              {
+                update: {
+                  resourceName: campaignResourceName,
+                  status: 'ENABLED',
+                },
+                updateMask: 'status',
+              },
+            ],
+          }),
+        }
+      ).catch((e) => {
+        console.warn('Campaign activation mutate warning:', e);
+        return null;
+      });
+
+      if (!activateRes || !activateRes.ok) {
+        const errData = activateRes ? await activateRes.json().catch(() => ({})) : {};
+        const errMsg = errData.error?.message || (activateRes ? `HTTP ${activateRes.status}` : 'network error');
+        console.warn('Google Ads campaign activation failed:', errMsg);
+        return {
+          success: false,
+          campaignId,
+          campaignResourceName,
+          adGroupId,
+          status: 'failed',
+          dailyBudgetDollars,
+          headlinesCount: rsa.headlines.length,
+          descriptionsCount: rsa.descriptions.length,
+          keywordsCount: allKeywords.length,
+          negativeKeywordsCount: negativeKeywords.length,
+          scheduleDaysCount: targetDays.length,
+          geoRadiusMiles: radiusMiles,
+          message: `Campaign criteria deployed but final activation failed (campaign left PAUSED for spend protection): ${errMsg}`,
+        };
       }
 
       return {
@@ -806,7 +896,10 @@ export async function uploadOfflineConversion(
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        const errMsg = errData.error?.message || `Google Ads conversion upload failed with HTTP ${res.status}`;
+        let errMsg = errData.error?.message || `Google Ads conversion upload failed with HTTP ${res.status}`;
+        if (JSON.stringify(errData).includes('CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE')) {
+          errMsg = 'Google Ads API offline conversion upload restricted: Developer token requires migration to Google Data Manager API (ConversionUploadService is restricted for new developer tokens since 2026).';
+        }
         console.warn('Google Ads conversion upload error:', errMsg);
         return {
           success: false,

@@ -36,6 +36,7 @@ export default function WelcomeForm({
   const [trade, setTrade] = useState(initialTrade || '');
   const [postalCode, setPostalCode] = useState(initialPostalCode);
   const [accepted, setAccepted] = useState(false);
+  const [allowMeasurementCookies, setAllowMeasurementCookies] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [pending, startTransition] = useTransition();
@@ -79,11 +80,11 @@ export default function WelcomeForm({
         return;
       }
 
-      // Explicit user action accepting terms & completing setup updates consent
-      updateGoogleConsent(true);
+      // Explicit user preference for measurement cookies (persisted to storage)
+      updateGoogleConsent(allowMeasurementCookies, true);
 
       if (result.signupConversionTransactionId) {
-        trackSignupConversion(result.signupConversionTransactionId);
+        trackSignupConversion(result.signupConversionTransactionId, allowMeasurementCookies);
       }
       setBuilding(true);
       const seeded = await seedSiteFromFirstRunAction();
@@ -159,6 +160,19 @@ export default function WelcomeForm({
         <span>
           I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and the{' '}
           <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+        </span>
+      </label>
+
+      <label className="welcome-accept" htmlFor="wf-consent" style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+        <input
+          id="wf-consent"
+          name="consent"
+          type="checkbox"
+          checked={allowMeasurementCookies}
+          onChange={(event) => setAllowMeasurementCookies(event.target.checked)}
+        />
+        <span>
+          Allow anonymous measurement and ad performance cookies to help us improve service (optional).
         </span>
       </label>
 

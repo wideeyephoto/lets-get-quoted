@@ -6,6 +6,8 @@
  */
 
 import { randomUUID } from 'node:crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Lead } from './leads';
 import { uploadOfflineConversion, type OfflineConversionParams, type OfflineConversionResult } from './google-ads-api';
 
 export type OfflineConversionQueueItem = {
@@ -244,4 +246,152 @@ export async function syncLeadWonConversion(params: {
   });
 
   return await processOfflineConversionItem(item);
+}
+
+/**
+ * Durably triggers offline conversion synchronization for a lead that was won.
+ * Persists status directly on the lead's triage JSONB column in Supabase.
+ */
+export async function triggerWonLeadOfflineConversion(
+  admin: SupabaseClient,
+  accountId: string,
+  lead: Lead,
+  wonValueDollars = 500
+): Promise<{ triggered: boolean; status: 'uploaded' | 'pending' | 'skipped' | 'failed'; message?: string }> {
+  const triage = (lead.triage as Record<string, unknown>) || {};
+  const existingConv = (triage.offlineConversion as Record<string, unknown>) || {};
+
+  // Idempotency: if already uploaded, do not re-upload
+  if (existingConv.status === 'uploaded') {
+    return { triggered: false, status: 'uploaded', message: 'Already uploaded.' };
+  }
+
+  // Extract attribution click ID if present
+  const attribution = (triage.attribution as Record<string, unknown>) || {};
+  const clickId = (attribution.clickId as string) || (attribution.gclid as string) || undefined;
+  const clickIdType = (attribution.clickIdType as string) || (clickId ? 'gclid' : undefined);
+
+  const gclid = clickIdType === 'gclid' ? clickId : undefined;
+  const gbraid = clickIdType === 'gbraid' ? clickId : (attribution.gbraid as string) || undefined;
+  const wbraid = clickIdType === 'wbraid' ? clickId : (attribution.wbraid as string) || undefined;
+
+  const email = lead.email || null;
+  const phone = lead.phone || null;
+
+  // If there is neither click ID nor customer match data, skip
+  if (!gclid && !gbraid && !wbraid && !email && !phone) {
+    return { triggered: false, status: 'skipped', message: 'No click ID or customer data to match.' };
+  }
+
+  // Parse name into first and last
+  let firstName: string | null = null;
+  let lastName: string | null = null;
+  if (lead.name) {
+    const parts = lead.name.trim().split(/\s+/);
+    firstName = parts[0] || null;
+    lastName = parts.slice(1).join(' ') || null;
+  }
+
+  // Extract postal code from address if available
+  let postalCode: string | null = null;
+  if (lead.address) {
+    const zipMatch = /\b\d{5}(?:-\d{4})?\b/.exec(lead.address);
+    if (zipMatch) postalCode = zipMatch[0];
+  }
+
+  // Record pending status durably in database before attempting dispatch
+  const currentAttempts = ((existingConv.attempts as number) || 0) + 1;
+  const pendingRecord = {
+    status: 'pending',
+    attempts: currentAttempts,
+    lastAttemptAt: new Date().toISOString(),
+    gclid,
+    gbraid,
+    wbraid,
+    wonValueDollars,
+  };
+
+  await admin
+    .from('leads')
+    .update({
+      triage: {
+        ...triage,
+        offlineConversion: pendingRecord,
+      },
+    })
+    .eq('id', lead.id);
+
+  // Dispatch upload
+  const result = await syncLeadWonConversion({
+    accountId,
+    leadId: lead.id,
+    wonValueDollars,
+    gclid,
+    gbraid,
+    wbraid,
+    email,
+    phone,
+    firstName,
+    lastName,
+    postalCode,
+  });
+
+  // Update lead with durable result
+  const finalStatus = result.success ? 'uploaded' : (currentAttempts >= 3 ? 'failed' : 'pending');
+  await admin
+    .from('leads')
+    .update({
+      triage: {
+        ...triage,
+        offlineConversion: {
+          ...pendingRecord,
+          status: finalStatus,
+          uploadedAt: result.success ? result.uploadedAt : undefined,
+          lastError: result.success ? undefined : result.message,
+        },
+      },
+    })
+    .eq('id', lead.id);
+
+  return {
+    triggered: true,
+    status: finalStatus,
+    message: result.message,
+  };
+}
+
+/**
+ * Retries all pending offline conversions recorded on leads.
+ * Called by scheduled cron jobs (e.g. ad-spend-sync).
+ */
+export async function retryPendingOfflineConversions(
+  admin: SupabaseClient,
+  limit = 20
+): Promise<{ processed: number; succeeded: number; failed: number }> {
+  // Query leads with pending offline conversions
+  const { data: leads, error } = await admin
+    .from('leads')
+    .select('*')
+    .eq('status', 'won')
+    .eq('triage->offlineConversion->>status', 'pending')
+    .limit(limit);
+
+  if (error || !leads || leads.length === 0) {
+    return { processed: 0, succeeded: 0, failed: 0 };
+  }
+
+  let succeeded = 0;
+  let failed = 0;
+
+  for (const lead of leads as Lead[]) {
+    try {
+      const res = await triggerWonLeadOfflineConversion(admin, lead.account_id, lead);
+      if (res.status === 'uploaded') succeeded++;
+      else failed++;
+    } catch {
+      failed++;
+    }
+  }
+
+  return { processed: leads.length, succeeded, failed };
 }
