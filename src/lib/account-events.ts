@@ -64,7 +64,8 @@ export type AccountEventKind =
   | 'contractor_lifecycle_email_sent'
   // Weather schedule notifications and job moves
   | 'weather_reschedule_notified'
-  | 'weather_job_rescheduled';
+  | 'weather_job_rescheduled'
+  | 'weather_morning_alert';
 
 export async function recordAccountEvent(input: {
   accountId: string;

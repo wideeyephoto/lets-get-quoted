@@ -25,6 +25,10 @@
       "schedule": "0 12 * * *"
     },
     {
+      "path": "/api/cron/weather-morning-alert",
+      "schedule": "*/15 * * * *"
+    },
+    {
       "path": "/api/cron/dunning",
       "schedule": "0 15 * * *"
     },

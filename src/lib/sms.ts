@@ -504,6 +504,26 @@ export async function sendWeatherRescheduleSms(input: {
   });
 }
 
+/**
+ * 6:45 AM automated weather warning sent to the contractor/owner when severe
+ * weather threatens jobs scheduled for today. Categorized as owner_alert (internal business alert, exempt from TCPA curfew).
+ */
+export async function sendWeatherMorningAlertSms(input: {
+  accountId: string;
+  alertPhone: string;
+  message: string;
+  idempotencyKey: string;
+}): Promise<string> {
+  return queueAccountSms({
+    accountId: input.accountId,
+    phone: input.alertPhone,
+    body: input.message,
+    messageKind: 'weather-morning-alert',
+    category: 'owner_alert',
+    idempotencyKey: input.idempotencyKey,
+  });
+}
+
 // Booking confirmed / declined by the contractor → customer.
 //
 // Transactional and expected: this person chose a slot on the booking page and

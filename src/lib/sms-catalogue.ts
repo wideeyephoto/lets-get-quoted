@@ -53,6 +53,7 @@ import {
 import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatch';
 import { generateSpeedToLeadSms, generateContractorAdLeadAlert } from '@/lib/ad-speed-to-lead';
 import { draftCustomerMessage } from '@/lib/weather';
+import { buildMorningWeatherAlertText } from '@/lib/weather-morning-alert';
 
 /**
  * Every text message this app can send, in one list, with the real words.
@@ -804,6 +805,20 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       }),
     ),
   },
+  {
+    id: 'weather-morning-alert',
+    title: 'Contractor 6:45 AM morning weather alert',
+    trigger: 'Sent to contractor at 6:45 AM local time when adverse weather threatens jobs scheduled for today',
+    audience: 'owner',
+    control: always('Triggered at 6:45 AM local time by automated weather morning sweep'),
+    body: buildMorningWeatherAlertText({
+      businessName: SAMPLE.business,
+      jobCount: 2,
+      clientNames: ['Karen Whitfield', 'David Miller'],
+      reasons: ['85% chance of rain', '1.2in precipitation'],
+      scheduleUrl: 'https://app.letsgetquoted.com/dashboard/schedule?weather=check',
+    }),
+  },
 ];
 
 /** Every sender this catalogue claims to cover, checked against lib/sms by test. */
@@ -858,6 +873,7 @@ export const CATALOGUE_SENDERS = [
   'sendSelectionRequestSms',
   'sendUpcomingAdPaymentSms',
   'sendVerificationCodeSms',
+  'sendWeatherMorningAlertSms',
   'sendWeatherRescheduleSms',
 ] as const;
 
