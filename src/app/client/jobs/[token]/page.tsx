@@ -46,6 +46,7 @@ import Selections from './Selections';
 import { loadClientSelections, toSignedClientSelections } from '@/lib/selections-data';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import ClientCompletionCertificate from '@/components/forms/ClientCompletionCertificate';
+import ClientNextActionBanner from '@/components/client/ClientNextActionBanner';
 import { signClientFormAction } from './form-actions';
 import { listJobFormSubmissions } from '@/lib/forms/forms-data';
 
@@ -708,6 +709,14 @@ export default async function ClientJobDashboardPage({
               {flash.text}
             </p>
           ) : null}
+
+          <ClientNextActionBanner
+            copy={nextStep}
+            href={nextHref}
+            label={nextLabel}
+            businessName={dashboard.businessName}
+            jobRef={dashboard.job.ref}
+          />
 
           {/* --- the hero -------------------------------------------------------
               Who it is from, who it is for, what the work is, where it is, and

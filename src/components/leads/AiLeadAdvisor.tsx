@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -18,9 +18,10 @@ export interface AiLeadAdvisorProps {
   lead: LeadViewItem;
   mapPins?: MapPin[];
   base?: string;
+  onOpenTextModal?: (prefilledMessage: string) => void;
 }
 
-export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard' }: AiLeadAdvisorProps) {
+export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard', onOpenTextModal }: AiLeadAdvisorProps) {
   const [advisorState, setAdvisorState] = useState<AdvisorState>('visible');
   const [mounted, setMounted] = useState(false);
 
@@ -124,7 +125,15 @@ export default function AiLeadAdvisor({ lead, mapPins = [], base = '/dashboard' 
       )}
 
       <div className={styles.actionFooter}>
-        {rec.action.href.startsWith('http') || rec.action.href.startsWith('/') ? (
+        {rec.action.type === 'sms' && onOpenTextModal ? (
+          <button
+            type="button"
+            className={styles.actionBtn}
+            onClick={() => onOpenTextModal(rec.action.suggestedBody || '')}
+          >
+            {rec.action.label} →
+          </button>
+        ) : rec.action.href.startsWith('http') || rec.action.href.startsWith('/') ? (
           <Link href={rec.action.href} className={styles.actionBtn}>
             {rec.action.label} →
           </Link>

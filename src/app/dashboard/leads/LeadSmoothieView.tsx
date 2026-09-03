@@ -30,6 +30,7 @@ import { useLeadDetail } from './use-lead-detail';
 import LeadDetailTabs, { LEAD_TABS, LeadDetailSkeleton, type LeadTabId } from './LeadDetailTabs';
 import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
 import AiLeadAdvisor from '@/components/leads/AiLeadAdvisor';
+import TextCustomerModal from '@/components/leads/TextCustomerModal';
 import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
 import leadStyles from './leads.module.css';
@@ -174,6 +175,8 @@ export default function LeadSmoothieView({
 
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isTextingCustomer, setIsTextingCustomer] = useState(false);
+  const [textInitialMessage, setTextInitialMessage] = useState('');
   const openPinCount = scopedPins.length;
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
   const mapCount = pane === 'map' ? (visiblePins ?? openPinCount) : openPinCount;
@@ -638,7 +641,15 @@ export default function LeadSmoothieView({
                 </dl>
               </header>
 
-              <AiLeadAdvisor lead={selected} mapPins={mapPins} base={base} />
+              <AiLeadAdvisor
+                lead={selected}
+                mapPins={mapPins}
+                base={base}
+                onOpenTextModal={(msg) => {
+                  setTextInitialMessage(msg);
+                  setIsTextingCustomer(true);
+                }}
+              />
 
               {/* 4 — communication, ordered by how they asked to be contacted */}
               <div className={styles.comms}>
@@ -650,9 +661,16 @@ export default function LeadSmoothieView({
                     </a>
                   ) : null}
                   {selectedHasPhone ? (
-                    <a className={`btn ${plan.primary === 'text' ? 'primary' : 'secondary'}`} href={`sms:${selected.phone}`}>
+                    <button
+                      type="button"
+                      className={`btn ${plan.primary === 'text' ? 'primary' : 'secondary'}`}
+                      onClick={() => {
+                        setTextInitialMessage('');
+                        setIsTextingCustomer(true);
+                      }}
+                    >
                       💬 Text customer
-                    </a>
+                    </button>
                   ) : null}
                   {selected.email && plan.primary === 'email' ? (
                     <a className="btn primary" href={`mailto:${selected.email}`}>✉️ Email customer</a>
@@ -775,6 +793,16 @@ export default function LeadSmoothieView({
                   router.refresh();
                 }}
               />
+              {selected.phone ? (
+                <TextCustomerModal
+                  isOpen={isTextingCustomer}
+                  onClose={() => setIsTextingCustomer(false)}
+                  leadId={selected.id}
+                  customerName={selected.name}
+                  phone={selected.phone}
+                  initialMessage={textInitialMessage}
+                />
+              ) : null}
             </>
           ) : (
             <p className="empty-state">Pick a lead from the queue.</p>
