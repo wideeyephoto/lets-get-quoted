@@ -24,6 +24,9 @@ export const metadata: Metadata = {
   },
 };
 
+const SPARKY_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=feature&source=feature_page';
+
 export default function SparkyFeaturePage() {
-  return <AiCopilotWithAvatarsScreen path="/features/sparky" />;
+  return <AiCopilotWithAvatarsScreen path="/features/sparky" signupUrl={SPARKY_SIGNUP_URL} />;
 }
+

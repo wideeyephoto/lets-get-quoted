@@ -56,7 +56,13 @@ const FAQ = [
   },
 ];
 
-export default function AiCopilotWithAvatarsScreen({ path = '/features/sparky' }: { path?: string } = {}) {
+export default function AiCopilotWithAvatarsScreen({
+  path = '/features/sparky',
+  signupUrl = 'https://app.letsgetquoted.com/start?goal=feature&source=feature_page',
+}: {
+  path?: string;
+  signupUrl?: string;
+} = {}) {
   return (
     <FeatureDetailLayout
       breadcrumb={{ name: 'AI Copilot with Avatars', path }}
@@ -75,7 +81,8 @@ export default function AiCopilotWithAvatarsScreen({ path = '/features/sparky' }
         '🚶 Walk-Up Estimate Brain Dump',
         '🎨 Custom Outfits for 8+ Contractor Trades',
       ]}
-      primary={{ label: 'Start Free Platform Trial', href: 'https://app.letsgetquoted.com/start?goal=feature&source=feature_page' }}
+      primary={{ label: 'Start Free Platform Trial', href: signupUrl }}
+
       secondary={{ label: 'See all features', href: '/features' }}
       demo={
         <ExampleFrame
