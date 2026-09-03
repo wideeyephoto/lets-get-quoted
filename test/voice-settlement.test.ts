@@ -22,6 +22,16 @@ const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
 const EVENT = '22222222-2222-4222-8222-222222222222';
 
+const admitted = (overrides: Record<string, unknown> = {}) => ({
+  account_id: ACCOUNT,
+  reservation_id: 'res-1',
+  reserved_minutes: 60,
+  overage_key: null,
+  caller_number: '+15559876543',
+  caller_kind: 'customer',
+  ...overrides,
+});
+
 let admissionRow: unknown;
 let admissionError: { code?: string; message?: string } | null;
 let historyError: { code?: string; message?: string } | null;
@@ -73,7 +83,7 @@ beforeEach(() => {
   createLead.mockResolvedValue({ id: 'lead-1' });
   history.mockReset();
   vi.spyOn(console, 'error').mockImplementation(() => {});
-  admissionRow = { account_id: ACCOUNT, reservation_id: 'res-1', reserved_minutes: 60 };
+  admissionRow = admitted();
   admissionError = null;
   historyError = null;
 });
@@ -122,6 +132,7 @@ describe('the caller id, which is not always a phone number', () => {
     // The measured test call came from a browser and its caller_id_number was
     // `sip:...@example.call.signalwire.com`. A lead carrying that looks callable
     // and is not, which is worse than a lead with no number.
+    admissionRow = admitted({ caller_number: null });
     await settleVoiceReceipt(admin, receipt({
       callerNumber: 'sip:0d96cff8@2687f308.call.signalwire.com;context=guest',
     }));
@@ -166,7 +177,7 @@ describe('when the two halves disagree', () => {
   });
 
   it('settles nothing for a call admitted unmetered, and calls that fine', async () => {
-    admissionRow = { account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0 };
+    admissionRow = admitted({ reservation_id: null, reserved_minutes: 0 });
     const result = await settleVoiceReceipt(admin, receipt());
     expect(result).toMatchObject({ minutes: null, billed: false, reconcile: null });
     expect(settleVoiceCall).not.toHaveBeenCalled();
@@ -237,7 +248,7 @@ describe('the row the contractor will read', () => {
   });
 
   it('marks an unmetered call as answered-not-billed, not as free', async () => {
-    admissionRow = { account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0 };
+    admissionRow = admitted({ reservation_id: null, reserved_minutes: 0 });
     await settleVoiceReceipt(admin, receipt());
     expect(history.mock.calls[0][0]).toMatchObject({ settlement: 'unmetered', billed_minutes: null });
   });
@@ -247,10 +258,10 @@ describe('the row the contractor will read', () => {
     // rendered as "at your overage rate" -- and nothing ever wrote it. Every
     // settled call, including one charged well above the allowance, was
     // recorded as 'allowance'.
-    admissionRow = {
-      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+    admissionRow = admitted({
+      reservation_id: null,
       overage_key: 'ai-voice:v1:call_x:overage',
-    };
+    });
     await settleVoiceReceipt(admin, receipt());
     expect(history.mock.calls[0][0]).toMatchObject({
       settlement: 'overage', billed_minutes: 1,
@@ -262,19 +273,19 @@ describe('the row the contractor will read', () => {
     // alone told a contractor who had just paid the overage rate that the call
     // was "Answered -- not billed", and left its minutes out of the billed
     // total on the same card.
-    admissionRow = {
-      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+    admissionRow = admitted({
+      reservation_id: null,
       overage_key: 'ai-voice:v1:call_x:overage',
-    };
+    });
     await settleVoiceReceipt(admin, receipt());
     expect(history.mock.calls[0][0].settlement).not.toBe('unmetered');
   });
 
   it('trues the overage down to the minutes actually used', async () => {
-    admissionRow = {
-      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+    admissionRow = admitted({
+      reservation_id: null,
       overage_key: 'ai-voice:v1:call_x:overage',
-    };
+    });
     await settleVoiceReceipt(admin, receipt());
     // 33 seconds of AI time bills one minute, against a 60-minute hold.
     expect(settleUsageOverage).toHaveBeenCalledWith(admin, {
@@ -286,10 +297,10 @@ describe('the row the contractor will read', () => {
   });
 
   it('never reports more overage minutes than the admission reserved', async () => {
-    admissionRow = {
-      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+    admissionRow = admitted({
+      reservation_id: null,
       overage_key: 'ai-voice:v1:call_x:overage',
-    };
+    });
     const start = 1_000_000_000;
     const result = await settleVoiceReceipt(admin, receipt({
       aiStartMicros: start,
@@ -307,18 +318,16 @@ describe('the row the contractor will read', () => {
 
   it('reports a failed overage settlement rather than claiming success', async () => {
     settleUsageOverage.mockResolvedValue({ settled: false, refundedMillicents: 0 });
-    admissionRow = {
-      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 60,
+    admissionRow = admitted({
+      reservation_id: null,
       overage_key: 'ai-voice:v1:call_x:overage',
-    };
+    });
     const result = await settleVoiceReceipt(admin, receipt());
     expect(result.reconcile).toBe('settlement_failed');
   });
 
   it('still treats a call with neither a reservation nor an overage as unmetered', async () => {
-    admissionRow = {
-      account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0, overage_key: null,
-    };
+    admissionRow = admitted({ reservation_id: null, reserved_minutes: 0 });
     await settleVoiceReceipt(admin, receipt());
     expect(history.mock.calls[0][0]).toMatchObject({ settlement: 'unmetered', billed_minutes: null });
   });
@@ -343,7 +352,7 @@ describe('the row the contractor will read', () => {
   });
 
   it('populates structured caller name, address, urgency, and timeline from structured post-prompt', async () => {
-    admissionRow = { account_id: ACCOUNT, reservation_id: null, reserved_minutes: 0, overage_key: null };
+    admissionRow = admitted({ reservation_id: null, reserved_minutes: 0 });
     createLead.mockResolvedValue({ id: 'lead-structured-123' });
 
     const structuredReceipt = receipt({
@@ -366,7 +375,9 @@ describe('the row the contractor will read', () => {
 
     expect(createLead).toHaveBeenCalledWith(admin, ACCOUNT, expect.objectContaining({
       name: 'Elena Rostova',
-      phone: '+12485559988',
+      // Admission-bound caller ID is identity authority; model output cannot
+      // redirect the CRM record to a different number.
+      phone: '+15559876543',
       address: '777 Woodward Ave, Detroit, MI',
       projectType: 'Main water line burst in basement',
       triage: expect.objectContaining({

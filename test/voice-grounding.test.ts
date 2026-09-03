@@ -190,6 +190,7 @@ describe('loadVoiceGroundingContext', () => {
             return chain;
           },
           eq: () => chain,
+          is: () => chain,
           in: (col: string, vals: unknown[]) => {
             inColumn = col;
             inValues = vals;
@@ -260,15 +261,16 @@ describe('loadVoiceGroundingContext', () => {
     const context = await loadVoiceGroundingContext(mockAdmin, ACCOUNT_ID, '+12485550117');
 
     expect(context.contractorStaffCaller).toEqual({
-      name: 'Brett Smith',
+      name: 'Apex Plumbing',
       role: 'owner',
     });
     expect(context.recognizedCaller).toBeNull();
 
-    // Verify system prompt addresses the owner by name without asking for their name
+    // A direct workspace owner-number match uses the live business identity and
+    // never depends on a separate auth lookup to grant privileged mode.
     const prompt = buildVoiceSystemPrompt(context);
     expect(prompt).toContain('[ROLE & IDENTITY - CONTRACTOR VOICE ASSISTANT]');
-    expect(prompt).toContain('Hey Brett, what job or lead are you updating today?');
+    expect(prompt).toContain('Hey Apex, what job or lead are you updating today?');
     expect(prompt).not.toContain('Warmly collect or verify the caller\'s intake details');
 
     // Verify accounts query never queried non-existent columns (e.g. owner_phone, full_name, company_name)
@@ -295,7 +297,7 @@ describe('loadVoiceGroundingContext', () => {
     const context = await loadVoiceGroundingContext(mockAdmin, ACCOUNT_ID, '+12485550199');
 
     expect(context.contractorStaffCaller).toEqual({
-      name: 'Brett Smith',
+      name: 'Apex Plumbing',
       role: 'owner',
     });
   });
@@ -310,8 +312,28 @@ describe('loadVoiceGroundingContext', () => {
         alert_phone: '248-555-0117',
       },
       crew: [
-        { id: 'c-1', name: 'Dave Miller', phone: '(248) 555-7788', active: true },
-        { id: 'c-2', name: 'Inactive Bob', phone: '248-555-9999', active: false },
+        {
+          id: 'c-1',
+          name: 'Dave Miller',
+          phone: '(248) 555-7788',
+          active: true,
+          user_id: 'user-crew-1',
+          last_signed_in_at: '2026-09-01T14:00:00Z',
+          phone_verified_at: null,
+          phone_verified: false,
+          hourly_rate: 35,
+          burden_pct: 18,
+        },
+        {
+          id: 'c-2',
+          name: 'Inactive Bob',
+          phone: '248-555-9999',
+          active: false,
+          user_id: null,
+          last_signed_in_at: null,
+          phone_verified_at: null,
+          phone_verified: false,
+        },
       ],
     });
 
@@ -324,6 +346,38 @@ describe('loadVoiceGroundingContext', () => {
 
     const prompt = buildVoiceSystemPrompt(context);
     expect(prompt).toContain('Hey Dave, what job or lead are you updating today?');
+  });
+
+  it('does not grant contractor mode or customer recognition to an unverified crew phone', async () => {
+    const { loadVoiceGroundingContext } = await import('@/lib/voice/grounding');
+
+    const mockAdmin = createMockSupabase({
+      accounts: { id: ACCOUNT_ID, business_name: 'Apex Plumbing' },
+      crew: [{
+        id: 'c-unverified',
+        name: 'Unverified Crew',
+        phone: '(248) 555-7788',
+        active: true,
+        user_id: null,
+        last_signed_in_at: null,
+        phone_verified_at: null,
+        phone_verified: false,
+      }],
+      jobs: [{
+        ref: 'JOB-UNSAFE',
+        client_name: 'Should Not Leak',
+        client_phone: '(248) 555-7788',
+        address: '123 Private St',
+        scope: 'Private scope',
+      }],
+    });
+
+    const context = await loadVoiceGroundingContext(mockAdmin, ACCOUNT_ID, '+12485557788');
+
+    expect(context.contractorStaffCaller).toBeNull();
+    expect(context.recognizedCaller).toBeNull();
+    expect(buildVoiceSystemPrompt(context)).not.toContain('[ROLE & IDENTITY - CONTRACTOR VOICE ASSISTANT]');
+    expect(buildVoiceSystemPrompt(context)).not.toContain('Should Not Leak');
   });
 
   it('recognizes returning customer with formatted client_phone on a job', async () => {

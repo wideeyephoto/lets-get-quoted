@@ -64,6 +64,7 @@ const MIGRATIONS = Object.freeze([
   'migrations/20260903190000_sms_shared_notice_stop_suppression.sql',
   'migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql',
   'migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql',
+  'migrations/20260903215831_voice_contractor_dispatch_hardening.sql',
 ]);
 const START = '-- BEGIN GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME';
 const END = '-- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME';

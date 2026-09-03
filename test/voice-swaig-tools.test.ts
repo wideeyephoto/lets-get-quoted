@@ -5,13 +5,13 @@ import { callerVoiceBookingLinkText, callerVoiceBookingConfirmationText } from '
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: vi.fn().mockReturnValue({
-    from: () => ({
-      select: () => ({
-        eq: () => ({
-          maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-        }),
-      }),
-    }),
+    from: () => {
+      const chain: Record<string, unknown> = {};
+      chain.select = () => chain;
+      chain.eq = () => chain;
+      chain.maybeSingle = vi.fn().mockResolvedValue({ data: null, error: null });
+      return chain;
+    },
   }),
 }));
 

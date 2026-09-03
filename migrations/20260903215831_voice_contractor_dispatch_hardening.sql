@@ -141,6 +141,7 @@ begin
      or p_concurrency_limit < 1
      or p_concurrency_limit > 100
      or (p_caller_number is not null and p_caller_number !~ '^\+1[2-9][0-9]{9}$')
+     or p_caller_kind is null
      or p_caller_kind not in ('customer', 'owner', 'office', 'crew', 'staff_ambiguous', 'unknown') then
     raise exception 'voice admission claim arguments are invalid'
       using errcode = '22023';
@@ -273,8 +274,10 @@ create index if not exists voice_tool_actions_call_idx
 
 alter table public.voice_tool_actions enable row level security;
 alter table public.voice_tool_actions force row level security;
-revoke all on table public.voice_tool_actions from public, anon, authenticated;
-grant select, insert, update on table public.voice_tool_actions to service_role;
+-- The action table is an internal state machine. Even service-role callers use
+-- the single transactional RPC so no other backend path can forge an applied
+-- result or skip replay checks.
+revoke all on table public.voice_tool_actions from public, anon, authenticated, service_role;
 
 alter table public.leads
   add column if not exists source_voice_action_id uuid
@@ -306,6 +309,7 @@ declare
   v_job public.jobs%rowtype;
   v_lead public.leads%rowtype;
   v_crew public.crew%rowtype;
+  v_caller_crew public.crew%rowtype;
   v_function text;
   v_hash text;
   v_action_id uuid;
@@ -348,6 +352,7 @@ begin
      or pg_catalog.length(pg_catalog.btrim(p_provider_call_id)) not between 1 and 255
      or p_caller_number is null
      or p_caller_number !~ '^\+1[2-9][0-9]{9}$'
+     or v_function is null
      or v_function not in (
        'update_job_details', 'create_or_update_lead',
        'log_crew_time_and_materials', 'create_job_change_order',
@@ -359,7 +364,7 @@ begin
   end if;
 
   v_hash := pg_catalog.encode(
-    public.digest(
+    extensions.digest(
       pg_catalog.convert_to(
         v_function || ':' || coalesce(p_target_job_id::text, '') || ':'
         || coalesce(p_target_lead_id::text, '') || ':' || p_payload::text,
@@ -382,6 +387,7 @@ begin
    where a.account_id = p_account_id
      and a.provider = 'signalwire'
      and a.provider_call_id = p_provider_call_id
+     and a.caller_number = p_caller_number
      and a.function_name = v_function
      and a.request_hash = v_hash
    for update;
@@ -449,7 +455,7 @@ begin
        and m.deactivated_at is null
        and public.voice_normalize_us_phone(u.phone) = p_caller_number;
   else
-    select pg_catalog.count(*) into v_staff_matches
+    select c.* into v_caller_crew
       from public.crew c
      where c.account_id = p_account_id
        and c.active
@@ -460,7 +466,11 @@ begin
          c.phone_verified_at is not null
          or c.phone_verified
          or (c.user_id is not null and c.last_signed_in_at is not null)
-       );
+       )
+     for share;
+    if found then
+      v_staff_matches := 1;
+    end if;
   end if;
 
   if v_staff_matches <> 1 then
@@ -479,6 +489,16 @@ begin
      for update;
     if not found then
       raise exception 'voice contractor job is unavailable' using errcode = 'P0002';
+    end if;
+    if v_admission.caller_kind = 'crew' then
+      perform 1
+        from public.crew_assignments ca
+       where ca.account_id = p_account_id
+         and ca.job_id = v_job.id
+         and ca.crew_id = v_caller_crew.id;
+      if not found then
+        raise exception 'voice crew caller is not assigned to this job' using errcode = '42501';
+      end if;
     end if;
   elsif p_target_job_id is not null then
     raise exception 'lead action cannot target a job' using errcode = '22023';
@@ -587,9 +607,25 @@ begin
     v_address := nullif(pg_catalog.btrim(p_payload->>'address'), '');
     v_project_type := nullif(pg_catalog.btrim(p_payload->>'project_type'), '');
     v_message := nullif(pg_catalog.btrim(p_payload->>'message'), '');
-    v_quote_visit := case when p_payload ? 'quote_visit' then p_payload->'quote_visit' else null end;
+    -- The caller supplies only the stable scheduling fields. Stamp the mutable
+    -- audit time after the action fingerprint is claimed so an HTTP retry made
+    -- seconds later hashes identically and replays instead of creating a
+    -- second lead.
+    if p_payload ? 'quote_visit' then
+      if pg_catalog.jsonb_typeof(p_payload->'quote_visit') <> 'object'
+         or (p_payload->'quote_visit') ? 'scheduledAt' then
+        raise exception 'voice quote visit payload is invalid' using errcode = '22023';
+      end if;
+      v_quote_visit := (p_payload->'quote_visit')
+        || pg_catalog.jsonb_build_object('scheduledAt', v_now);
+    else
+      v_quote_visit := null;
+    end if;
 
     if v_operation = 'create' then
+      if p_target_lead_id is not null then
+        raise exception 'voice lead creation cannot target an existing lead' using errcode = '22023';
+      end if;
       if v_name is null or (v_phone is null and v_email is null and v_address is null
                             and v_project_type is null and v_message is null) then
         raise exception 'voice lead creation needs a name and substantive detail' using errcode = '22023';
@@ -686,6 +722,9 @@ begin
       if not found or v_crew.hourly_rate <= 0 then
         raise exception 'voice labor crew member is unavailable' using errcode = 'P0002';
       end if;
+      if v_admission.caller_kind = 'crew' and v_crew.id is distinct from v_caller_crew.id then
+        raise exception 'voice crew caller cannot log labor for a coworker' using errcode = '42501';
+      end if;
       v_labor_amount := pg_catalog.round(v_hours * v_crew.hourly_rate, 2);
       v_burden_amount := pg_catalog.round(
         v_labor_amount * coalesce(v_crew.burden_pct, v_account.default_burden_pct, 0) / 100,
@@ -727,12 +766,26 @@ begin
        or pg_catalog.length(v_title) > 200 or pg_catalog.length(v_description) > 8000 then
       raise exception 'voice change order content is invalid' using errcode = '22023';
     end if;
+    if nullif(pg_catalog.btrim(p_payload->>'crew_id'), '') is not null then
+      select c.* into v_crew
+        from public.crew c
+       where c.id = (p_payload->>'crew_id')::uuid
+         and c.account_id = p_account_id
+         and c.active
+         and c.deleted_at is null
+         and c.access_revoked_at is null
+       for share;
+      if not found then
+        raise exception 'voice change order crew member is unavailable' using errcode = 'P0002';
+      end if;
+      if v_admission.caller_kind = 'crew' and v_crew.id is distinct from v_caller_crew.id then
+        raise exception 'voice crew caller cannot author a change order for a coworker' using errcode = '42501';
+      end if;
+    end if;
     insert into public.change_orders (
       id, account_id, job_id, crew_id, crew_name, status, title, field_note, scope
     ) values (
-      v_action_id, p_account_id, v_job.id,
-      case when p_payload->>'crew_id' is null then null else (p_payload->>'crew_id')::uuid end,
-      nullif(pg_catalog.btrim(p_payload->>'crew_name'), ''),
+      v_action_id, p_account_id, v_job.id, v_crew.id, v_crew.name,
       'draft', v_title, v_description, v_description
     );
     v_outcome := pg_catalog.jsonb_build_object(
@@ -838,7 +891,7 @@ begin
     from information_schema.role_table_grants
    where table_schema = 'public'
      and table_name = 'voice_tool_actions'
-     and grantee in ('anon', 'authenticated');
+     and grantee in ('PUBLIC', 'anon', 'authenticated');
   if v_bad is not null then
     raise exception 'voice_tool_actions browser grants remain: %', v_bad;
   end if;

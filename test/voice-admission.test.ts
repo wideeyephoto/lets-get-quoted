@@ -14,6 +14,11 @@ vi.mock('@/lib/billing/voice-minute-usage', async (importOriginal) => ({
   voiceMinuteMode: () => 'enforce',
 }));
 
+const resolveVoiceCallerIdentity = vi.fn();
+vi.mock('@/lib/voice/caller-identity', () => ({
+  resolveVoiceCallerIdentity: (...a: unknown[]) => resolveVoiceCallerIdentity(...a),
+}));
+
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
 const TO = '+15551230000';
@@ -112,6 +117,8 @@ const workspace = (
 beforeEach(() => {
   admitVoiceCall.mockReset();
   admitVoiceCall.mockResolvedValue({ outcome: 'admitted', lease: {} });
+  resolveVoiceCallerIdentity.mockReset();
+  resolveVoiceCallerIdentity.mockResolvedValue({ status: 'customer' });
   purchasedVoiceUnits = 0;
   vi.spyOn(console, 'error').mockImplementation(() => {});
   workspace({ voice_concurrent_calls: 1 });
@@ -138,10 +145,64 @@ describe('what a caller gets', () => {
     expect(result.plan.greeting).toContain('AI assistant');
     expect(admitVoiceCall).toHaveBeenCalledWith(
       admin,
-      { accountId: ACCOUNT, providerCallId: CALL, dialedNumber: TO },
+      {
+        accountId: ACCOUNT,
+        providerCallId: CALL,
+        dialedNumber: TO,
+        callerNumber: '+15559876543',
+        callerKind: 'customer',
+      },
       { mode: 'enforce', concurrencyLimit: 1 },
     );
   });
+
+  it('persists the shared resolver\'s staff identity in the atomic admission claim', async () => {
+    resolveVoiceCallerIdentity.mockResolvedValue({
+      status: 'staff',
+      caller: {
+        name: 'Dave Miller',
+        role: 'crew',
+        normalizedPhone: '+15559876543',
+        crewId: 'crew-1',
+        hourlyRate: 35,
+        burdenPct: 20,
+      },
+    });
+
+    const result = await planInboundCall(admin, call, options);
+
+    expect(result.plan.kind).toBe('ai_agent');
+    expect(admitVoiceCall).toHaveBeenCalledWith(
+      admin,
+      expect.objectContaining({
+        accountId: ACCOUNT,
+        providerCallId: CALL,
+        callerNumber: '+15559876543',
+        callerKind: 'crew',
+      }),
+      { mode: 'enforce', concurrencyLimit: 1 },
+    );
+  });
+
+  it.each([
+    ['unavailable', 'an identity dependency is unavailable'],
+    ['ambiguous', 'the signed caller matches more than one staff identity'],
+  ] as const)(
+    'forwards without reserving a paid call when %s: %s',
+    async (status, _reason) => {
+      resolveVoiceCallerIdentity.mockResolvedValue({ status });
+
+      const result = await planInboundCall(admin, call, options);
+
+      expect(resolveVoiceCallerIdentity).toHaveBeenCalledWith(admin, ACCOUNT, call.fromNumber);
+      expect(result).toMatchObject({
+        accountId: ACCOUNT,
+        declineReason: 'caller_identity_unavailable',
+      });
+      expect(result.plan.kind).toBe('forward');
+      expect(admitVoiceCall).not.toHaveBeenCalled();
+    },
+  );
 
   it('falls through to the contractor\'s own line, never to an error', async () => {
     // Every decline below is a caller who still reaches the business. The

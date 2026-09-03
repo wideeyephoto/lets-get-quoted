@@ -270,6 +270,14 @@ export async function handleContractorVoiceAction(
     return { handled: true, response: 'This call is missing its signed dispatch identity, so I did not save anything.' };
   }
 
+  if (context.caller.role === 'crew'
+      && (fn === 'update_job_details' || fn === 'create_or_update_lead')) {
+    return {
+      handled: true,
+      response: 'That action requires owner or office authorization, so I did not change anything.',
+    };
+  }
+
   if (fn === 'create_or_update_lead') {
     const operation = (text(args.operation ?? args.intent, 20) ?? '').toLowerCase();
     if (operation !== 'create' && operation !== 'update') {
@@ -321,7 +329,6 @@ export async function handleContractorVoiceAction(
         durationMinutes: 60,
         notes: message,
         confirmationTextSentAt: null,
-        scheduledAt: new Date().toISOString(),
       };
     }
 
