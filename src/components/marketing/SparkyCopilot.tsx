@@ -224,10 +224,11 @@ const PAGE_QUESTIONS: Record<string, PageContextInfo> = {
       {
         id: 'support-contact-human',
         q: 'How do I speak with a human support specialist?',
-        a: 'You can create a support ticket directly right here in Sparky Copilot, or email hello@letsgetquoted.com. Our team replies promptly with zero bots.',
+        a: 'You can create a support ticket directly right here in Sparky Copilot, or reach out through our contact page. Our team replies promptly with zero bots.',
         actionLabel: 'Visit Contact Page →',
         actionHref: '/contact',
       },
+
     ],
   },
   default_home: {
