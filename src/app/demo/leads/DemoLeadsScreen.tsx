@@ -54,11 +54,10 @@ export default async function DemoLeadsScreen({ initialLeadId }: { initialLeadId
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Pipeline</p>
-          <h2>Work pipeline</h2>
-        </div>
         <LeadsWorkspace
+          headingTitle="Work pipeline"
+          headingTag="h2"
+          eyebrow="Pipeline"
           leads={demoLeadViews()}
           details={demoLeadDetails()}
           initialView="smoothie"

@@ -47,11 +47,10 @@ export default async function DemoJobsPage() {
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Pipeline</p>
-          <h2>Current jobs</h2>
-        </div>
         <JobsWorkspace
+          headingTitle="Current jobs"
+          headingTag="h2"
+          eyebrow="Pipeline"
           jobs={demoJobViews()}
           details={demoJobDetails()}
           initialView="smoothie"

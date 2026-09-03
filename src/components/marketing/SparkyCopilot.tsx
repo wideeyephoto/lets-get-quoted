@@ -298,8 +298,7 @@ function getPageContext(pathname: string): PageContextInfo {
   return PAGE_QUESTIONS.default_home;
 }
 
-export default function SparkyCopilot() {
-  const pathname = usePathname();
+function SparkyCopilotInner({ pathname }: { pathname: string | null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeQuestion, setActiveQuestion] = useState<QuickQuestion | null>(null);
   const [isTyping, setIsTyping] = useState(false);
@@ -401,7 +400,7 @@ export default function SparkyCopilot() {
       email: ticketEmail,
       phone: ticketPhone,
       message: ticketMessage,
-      pageUrl: typeof window !== 'undefined' ? window.location.href : pathname,
+      pageUrl: typeof window !== 'undefined' ? window.location.href : (pathname ?? undefined),
       questionContext: activeQuestion ? activeQuestion.q : searchAnswer ? searchAnswer.query : undefined,
       company: ticketHoneypot,
     });
@@ -785,4 +784,11 @@ export default function SparkyCopilot() {
       </div>
     </>
   );
+}
+
+export default function SparkyCopilot() {
+  const pathname = usePathname();
+  if (pathname?.startsWith('/dashboard')) return null;
+
+  return <SparkyCopilotInner pathname={pathname} />;
 }

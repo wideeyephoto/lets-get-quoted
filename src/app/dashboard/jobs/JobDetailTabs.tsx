@@ -108,12 +108,20 @@ export default function JobDetailTabs({
             </div>
             <div>
               <dt>Email</dt>
-              <dd>
+              <dd className={quickEditStyles.defRow}>
                 {detail.clientEmail ? (
                   <a href={`mailto:${detail.clientEmail}`}>{detail.clientEmail}</a>
                 ) : (
-                  'Not on file'
+                  <span>Not on file</span>
                 )}
+                <button
+                  type="button"
+                  className={quickEditStyles.quickEditBtn}
+                  onClick={() => setIsEditingContact(true)}
+                  aria-label="Edit contact details"
+                >
+                  Edit
+                </button>
               </dd>
             </div>
             <div>

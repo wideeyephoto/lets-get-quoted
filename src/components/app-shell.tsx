@@ -1476,7 +1476,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         <div id="app-main" tabIndex={-1} className={`app-main app-main-public${showQuoteRequestAlert ? " app-main-alerted" : ""}`}>
           <ThemeFab />
           {children}
-          {!pathname.startsWith('/login') && <SparkyCopilot />}
+          {!pathname.startsWith('/login') && !pathname.startsWith('/dashboard') && <SparkyCopilot />}
         </div>
       </div>
     );

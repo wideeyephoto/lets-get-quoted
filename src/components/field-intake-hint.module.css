@@ -28,18 +28,20 @@
 }
 
 :root[data-theme='light'] .hintPill,
-:root[data-theme='sunlight'] .hintPill {
-  color: #6d28d9;
-  border-color: rgba(109, 40, 217, 0.35);
-  background: rgba(147, 51, 234, 0.08);
-  font-weight: 700;
+:root[data-theme='sunlight'] .hintPill,
+:root[data-theme='parchment'] .hintPill {
+  color: #581c87;
+  border: 1.5px solid #a855f7;
+  background: #f5f3ff;
+  font-weight: 750;
 }
 
 :root[data-theme='light'] .hintPill:hover,
-:root[data-theme='sunlight'] .hintPill:hover {
-  color: #4c1d95;
-  background: rgba(147, 51, 234, 0.16);
-  border-color: rgba(109, 40, 217, 0.55);
+:root[data-theme='sunlight'] .hintPill:hover,
+:root[data-theme='parchment'] .hintPill:hover {
+  color: #3b0764;
+  background: #ede9fe;
+  border-color: #7c3aed;
 }
 
 .hintPill:focus-visible {

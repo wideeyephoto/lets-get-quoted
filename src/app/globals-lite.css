@@ -31271,50 +31271,141 @@ select optgroup {
   box-shadow: 0 0 0 1.5px #ea580c;
 }
 
-/* WORKBENCH THEME CREW & LABOR STYLES */
+/* LIGHT THEMES (WORKBENCH, SUNLIGHT, PARCHMENT) CREW & LABOR STYLES */
 :root[data-theme='light'] [class*='crewPanel'],
-:root[data-theme='light'] .crewPanel {
+:root[data-theme='light'] .crewPanel,
+:root[data-theme='sunlight'] [class*='crewPanel'],
+:root[data-theme='sunlight'] .crewPanel,
+:root[data-theme='parchment'] [class*='crewPanel'],
+:root[data-theme='parchment'] .crewPanel {
   background: #ffffff !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] [class*='crewPanel'] .eyebrow,
+:root[data-theme='sunlight'] [class*='crewPanel'] .eyebrow,
+:root[data-theme='parchment'] [class*='crewPanel'] .eyebrow {
+  color: #9a3412 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.18em !important;
 }
 
 :root[data-theme='light'] [class*='crewPanel'] select,
 :root[data-theme='light'] [class*='crewPanel'] input,
-:root[data-theme='light'] [class*='crewSearch'],
+:root[data-theme='light'] [class*='crewPanel'] [class*='search'],
 :root[data-theme='light'] [class*='filter'] select,
-:root[data-theme='light'] [class*='mobileSort'] select {
+:root[data-theme='light'] [class*='mobileSort'] select,
+:root[data-theme='sunlight'] [class*='crewPanel'] select,
+:root[data-theme='sunlight'] [class*='crewPanel'] input,
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='search'],
+:root[data-theme='sunlight'] [class*='filter'] select,
+:root[data-theme='sunlight'] [class*='mobileSort'] select,
+:root[data-theme='parchment'] [class*='crewPanel'] select,
+:root[data-theme='parchment'] [class*='crewPanel'] input,
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='search'],
+:root[data-theme='parchment'] [class*='filter'] select,
+:root[data-theme='parchment'] [class*='mobileSort'] select {
   background: #ffffff !important;
-  border: 1.5px solid #cbd5e1 !important;
+  border: 1.5px solid #94a3b8 !important;
   color: #090d16 !important;
-  font-weight: 600 !important;
+  font-weight: 650 !important;
   box-shadow: none !important;
 }
 
-:root[data-theme='light'] [class*='crewSearch'] input {
+:root[data-theme='light'] [class*='crewPanel'] [class*='search'] input,
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='search'] input,
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='search'] input {
   background: transparent !important;
   border: none !important;
   color: #090d16 !important;
   box-shadow: none !important;
 }
 
-:root[data-theme='light'] [class*='filter'] > span {
+:root[data-theme='light'] [class*='crewPanel'] [class*='search'] input::placeholder,
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='search'] input::placeholder,
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='search'] input::placeholder {
   color: #475569 !important;
-  font-weight: 800 !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
 }
 
-:root[data-theme='light'] [class*='rosterSummary'] button {
+:root[data-theme='light'] [class*='filter'] > span,
+:root[data-theme='sunlight'] [class*='filter'] > span,
+:root[data-theme='parchment'] [class*='filter'] > span {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.08em !important;
+}
+
+:root[data-theme='light'] [class*='tabs'],
+:root[data-theme='sunlight'] [class*='tabs'],
+:root[data-theme='parchment'] [class*='tabs'] {
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] [class*='crewPanel'] [class*='tab'],
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='tab'],
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='tab'] {
   background: #f8fafc !important;
   border: 1.5px solid #cbd5e1 !important;
+  border-bottom: none !important;
   color: #334155 !important;
   font-weight: 750 !important;
 }
 
-:root[data-theme='light'] [class*='rosterSummary'] button:hover {
+:root[data-theme='light'] [class*='crewPanel'] [class*='tab']:hover,
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='tab']:hover,
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='tab']:hover {
   background: #f1f5f9 !important;
   border-color: #94a3b8 !important;
   color: #090d16 !important;
 }
 
-:root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] {
+:root[data-theme='light'] [class*='crewPanel'] [class*='tabOn'],
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='tabOn'],
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='tabOn'] {
+  background: #fff7ed !important;
+  border-color: #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 850 !important;
+  box-shadow: inset 0 -3px 0 #c2410c !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button,
+:root[data-theme='parchment'] [class*='rosterSummary'] button {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #0f172a !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button strong,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button strong,
+:root[data-theme='parchment'] [class*='rosterSummary'] button strong {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button span,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button span,
+:root[data-theme='parchment'] [class*='rosterSummary'] button span {
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button:hover,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button:hover,
+:root[data-theme='parchment'] [class*='rosterSummary'] button:hover {
+  background: #f1f5f9 !important;
+  border-color: #475569 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'],
+:root[data-theme='sunlight'] [class*='rosterSummary'] button[aria-pressed='true'],
+:root[data-theme='parchment'] [class*='rosterSummary'] button[aria-pressed='true'] {
   background: #c2410c !important;
   border-color: #9a3412 !important;
   color: #ffffff !important;
@@ -31323,25 +31414,135 @@ select optgroup {
 }
 
 :root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] strong,
-:root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] span {
+:root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] span,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button[aria-pressed='true'] strong,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button[aria-pressed='true'] span,
+:root[data-theme='parchment'] [class*='rosterSummary'] button[aria-pressed='true'] strong,
+:root[data-theme='parchment'] [class*='rosterSummary'] button[aria-pressed='true'] span {
   color: #ffffff !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button:disabled,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button:disabled,
+:root[data-theme='parchment'] [class*='rosterSummary'] button:disabled {
+  opacity: 1 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  cursor: default !important;
+}
+
+:root[data-theme='light'] [class*='rosterSummary'] button:disabled strong,
+:root[data-theme='light'] [class*='rosterSummary'] button:disabled span,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button:disabled strong,
+:root[data-theme='sunlight'] [class*='rosterSummary'] button:disabled span,
+:root[data-theme='parchment'] [class*='rosterSummary'] button:disabled strong,
+:root[data-theme='parchment'] [class*='rosterSummary'] button:disabled span {
+  color: #64748b !important;
+  font-weight: 700 !important;
 }
 
 :root[data-theme='light'] [class*='pageHeadActions'] a.btn,
 :root[data-theme='light'] [class*='pageHeadActions'] button.btn,
-:root[data-theme='light'] [class*='pageHeadActions'] .btn {
-  background: #f8fafc !important;
-  border: 1.5px solid #cbd5e1 !important;
+:root[data-theme='light'] [class*='pageHeadActions'] .btn,
+:root[data-theme='sunlight'] [class*='pageHeadActions'] a.btn,
+:root[data-theme='sunlight'] [class*='pageHeadActions'] button.btn,
+:root[data-theme='sunlight'] [class*='pageHeadActions'] .btn,
+:root[data-theme='parchment'] [class*='pageHeadActions'] a.btn,
+:root[data-theme='parchment'] [class*='pageHeadActions'] button.btn,
+:root[data-theme='parchment'] [class*='pageHeadActions'] .btn {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
   color: #090d16 !important;
   font-weight: 750 !important;
 }
 
+:root[data-theme='light'] [class*='pageHeadActions'] a.btn:hover,
+:root[data-theme='light'] [class*='pageHeadActions'] button.btn:hover,
+:root[data-theme='sunlight'] [class*='pageHeadActions'] a.btn:hover,
+:root[data-theme='sunlight'] [class*='pageHeadActions'] button.btn:hover,
+:root[data-theme='parchment'] [class*='pageHeadActions'] a.btn:hover,
+:root[data-theme='parchment'] [class*='pageHeadActions'] button.btn:hover {
+  background: #f1f5f9 !important;
+  border-color: #475569 !important;
+  color: #090d16 !important;
+}
+
 :root[data-theme='light'] [class*='pageHeadActions'] .btn.primary,
-:root[data-theme='light'] [class*='pageHeadActions'] a.btn[href*='add'] {
+:root[data-theme='light'] [class*='pageHeadActions'] a.btn[href*='add'],
+:root[data-theme='sunlight'] [class*='pageHeadActions'] .btn.primary,
+:root[data-theme='sunlight'] [class*='pageHeadActions'] a.btn[href*='add'],
+:root[data-theme='parchment'] [class*='pageHeadActions'] .btn.primary,
+:root[data-theme='parchment'] [class*='pageHeadActions'] a.btn[href*='add'] {
   background: linear-gradient(180deg, #ea580c 0%, #c2410c 100%) !important;
   color: #ffffff !important;
   border: 1.5px solid #9a3412 !important;
   font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='voiceHotlineBanner'],
+:root[data-theme='sunlight'] [class*='voiceHotlineBanner'],
+:root[data-theme='parchment'] [class*='voiceHotlineBanner'] {
+  background: #f5f3ff !important;
+  border: 1.5px solid #a855f7 !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.12) !important;
+}
+
+:root[data-theme='light'] [class*='voiceHotlineTitle'],
+:root[data-theme='sunlight'] [class*='voiceHotlineTitle'],
+:root[data-theme='parchment'] [class*='voiceHotlineTitle'] {
+  color: #3b0764 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='voiceHotlineBadge'],
+:root[data-theme='sunlight'] [class*='voiceHotlineBadge'],
+:root[data-theme='parchment'] [class*='voiceHotlineBadge'] {
+  background: #ede9fe !important;
+  border: 1px solid #7c3aed !important;
+  color: #581c87 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] [class*='voiceHotlineDesc'],
+:root[data-theme='sunlight'] [class*='voiceHotlineDesc'],
+:root[data-theme='parchment'] [class*='voiceHotlineDesc'] {
+  color: #1e1b4b !important;
+  font-weight: 500 !important;
+}
+
+:root[data-theme='light'] [class*='voiceHotlineLink'],
+:root[data-theme='sunlight'] [class*='voiceHotlineLink'],
+:root[data-theme='parchment'] [class*='voiceHotlineLink'] {
+  color: #6b21a8 !important;
+  font-weight: 850 !important;
+  text-decoration: underline !important;
+}
+
+:root[data-theme='light'] [class*='voiceHotlineLink']:hover,
+:root[data-theme='sunlight'] [class*='voiceHotlineLink']:hover,
+:root[data-theme='parchment'] [class*='voiceHotlineLink']:hover {
+  color: #3b0764 !important;
+}
+
+:root[data-theme='light'] [class*='crewPanel'] [class*='empty'],
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='empty'],
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='empty'] {
+  border: 2px dashed #94a3b8 !important;
+  background: #f8fafc !important;
+}
+
+:root[data-theme='light'] [class*='crewPanel'] [class*='empty'] h3,
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='empty'] h3,
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='empty'] h3 {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='crewPanel'] [class*='empty'] p,
+:root[data-theme='sunlight'] [class*='crewPanel'] [class*='empty'] p,
+:root[data-theme='parchment'] [class*='crewPanel'] [class*='empty'] p {
+  color: #1e293b !important;
+  font-weight: 500 !important;
 }
 
 /* WORKBENCH THEME TEXT-TO-JOB STYLES */

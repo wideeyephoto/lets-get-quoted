@@ -114,4 +114,15 @@ describe('Quick Edit Popups across Leads and Jobs', () => {
     expect(jobFullPage).toContain('JobAddressHeader');
     expect(jobFullPage).toContain('JobContactHeader');
   });
+
+  it('verifies quickEditBtn and defRow prevent vertical text crushing and word breaks', () => {
+    const css = readFileSync(join(root, 'src/components/quick-edit/quick-edit.module.css'), 'utf8');
+    expect(css).toContain('white-space: nowrap;');
+    expect(css).toContain('flex-shrink: 0;');
+    expect(css).toContain('min-width: 0;');
+
+    const focusCss = readFileSync(join(root, 'src/app/dashboard/focus.module.css'), 'utf8');
+    expect(focusCss).toContain('grid-template-columns: 4.8rem minmax(0, 1fr);');
+    expect(focusCss).not.toContain('grid-template-columns: 6.5rem minmax(0, 1fr);');
+  });
 });

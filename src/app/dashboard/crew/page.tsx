@@ -325,29 +325,18 @@ export default async function CrewLaborPage({
 
         {tab === 'team' ? (
           <>
-            <div style={{
-              margin: '0.5rem 0 1.25rem 0',
-              padding: '1rem 1.25rem',
-              background: 'linear-gradient(135deg, rgba(88, 28, 135, 0.25) 0%, rgba(30, 27, 75, 0.45) 100%)',
-              border: '1px solid rgba(168, 85, 247, 0.35)',
-              borderRadius: '0.85rem',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              flexWrap: 'wrap',
-              gap: '0.75rem',
-            }}>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '1.2rem' }}>🎙️</span>
-                  <strong style={{ color: '#f8fafc', fontSize: '0.95rem', fontWeight: 700, letterSpacing: '-0.01em' }}>2-Way Field Voice Hotline Enabled</strong>
-                  <span style={{ fontSize: '0.7rem', padding: '0.2rem 0.55rem', background: 'rgba(168, 85, 247, 0.25)', border: '1px solid rgba(192, 132, 252, 0.45)', color: '#e9d5ff', borderRadius: '0.35rem', textTransform: 'uppercase', fontWeight: 700, letterSpacing: '0.04em' }}>Zero Extra Lines</span>
+            <div className={styles.voiceHotlineBanner}>
+              <div className={styles.voiceHotlineContent}>
+                <div className={styles.voiceHotlineHeader}>
+                  <span className={styles.voiceHotlineIcon}>🎙️</span>
+                  <strong className={styles.voiceHotlineTitle}>2-Way Field Voice Hotline Enabled</strong>
+                  <span className={styles.voiceHotlineBadge}>Zero Extra Lines</span>
                 </div>
-                <p style={{ margin: 0, fontSize: '0.86rem', color: '#cbd5e1', lineHeight: 1.5 }}>
+                <p className={styles.voiceHotlineDesc}>
                   Adding a phone number to any crew member allows them to call your main business number from the road to update job scopes, log materials, and record change orders hands-free.
                 </p>
               </div>
-              <Link href="/dashboard/voice-calls" style={{ fontSize: '0.82rem', color: '#c084fc', textDecoration: 'underline', fontWeight: 700 }}>
+              <Link href="/dashboard/voice-calls" className={styles.voiceHotlineLink}>
                 View Voice Assistant →
               </Link>
             </div>

@@ -240,16 +240,15 @@ export default async function JobsPage({
   return (
     <main className="wide-shell workspace-shell">
       <section className="panel workspace-section-card" data-tour-id="jobs:workspace">
-        <div className="section-heading workspace-section-heading">
-          <p className="eyebrow">Pipeline</p>
-          <h1>Current jobs</h1>
-        </div>
         {/* The map lives inside the workspace so the view gear can sit on its
             legend row (same as leads); the workspace also owns the empty state.
             Quote follow-ups rides along so it sits beside the View gear rather
             than floating under the title on its own line. */}
         <WorkspaceTradeProvider trade={authoritativeTrade}>
           <JobsWorkspace
+            headingTitle="Current jobs"
+            headingTag="h1"
+            eyebrow="Pipeline"
             jobs={jobItems}
             initialView={jobsView}
             initialStatus={initialStageFrom(searchParams.status)}

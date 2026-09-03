@@ -90,6 +90,31 @@ export default function JobSmoothieView({
   const [stage, setStage] = useState<StageFilter>(initialStage);
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QueueSort>(initialSort);
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sortOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (sortRef.current && !sortRef.current.contains(e.target as Node)) {
+        setSortOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSortOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sortOpen]);
+
+  const currentSort = JOB_SORTS.find((s) => s.id === sort) ?? JOB_SORTS[0];
+
   const [pane, setPane] = useState<'jobs' | 'map'>('jobs');
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<JobTabId>('overview');
@@ -256,20 +281,6 @@ export default function JobSmoothieView({
           />
         </div>
 
-        <div className={styles.sortWrap}>
-          <label className={styles.sortLabel} htmlFor="job-smoothie-sort">Sort</label>
-          <select
-            id="job-smoothie-sort"
-            className={styles.sort}
-            value={sort}
-            onChange={(event) => setSort(event.target.value as QueueSort)}
-          >
-            {JOB_SORTS.map((option) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
-        </div>
-
         <div className={styles.paneSwitch} role="group" aria-label="Show jobs or the map">
           <button type="button" className={styles.paneBtn} aria-pressed={pane === 'jobs'} onClick={() => setPane('jobs')}>
             Jobs
@@ -280,24 +291,6 @@ export default function JobSmoothieView({
         </div>
 
         {gear ? <div className={styles.gearSlot}>{gear}</div> : null}
-
-        {/* Reachable on every width without opening the navigation menu. The
-            form is further down the page and already exists; this opens it
-            rather than being a second one. */}
-        <a
-          className={styles.addLead}
-          href="#new-job"
-          onClick={(event) => {
-            const target = document.getElementById('new-job');
-            if (!(target instanceof HTMLDetailsElement)) return;
-            event.preventDefault();
-            target.open = true;
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            target.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
-          }}
-        >
-          + New job
-        </a>
       </div>
 
       {/* Filter results only — the window count moves on every arrow keypress
@@ -311,10 +304,62 @@ export default function JobSmoothieView({
         {/* --- the queue --- */}
         <section className={styles.queue} aria-label="Job queue">
           <div className={styles.queueHead}>
-            <h2 className={styles.queueTitle}>Job queue</h2>
-            <span className={styles.queueCount}>
-              {shown.length === jobs.length ? `${jobs.length}` : `${shown.length} of ${jobs.length}`}
-            </span>
+            <div className={styles.queueHeadLeft}>
+              <h2 className={styles.queueTitle}>Job queue</h2>
+              <span className={styles.queueCount}>
+                {shown.length === jobs.length ? `${jobs.length}` : `${shown.length} of ${jobs.length}`}
+              </span>
+            </div>
+
+            <div className={styles.sortPopupWrap} ref={sortRef}>
+              <button
+                type="button"
+                className={styles.sortToggleBtn}
+                onClick={() => setSortOpen((prev) => !prev)}
+                aria-expanded={sortOpen}
+                aria-haspopup="menu"
+                title="Sort jobs"
+              >
+                <svg
+                  className={styles.filterIcon}
+                  width="13"
+                  height="13"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                <span className={styles.sortCurrentLabel}>{currentSort.label}</span>
+                <span className={styles.sortChevron} aria-hidden="true">▾</span>
+              </button>
+
+              {sortOpen && (
+                <div className={styles.sortMenu} role="menu">
+                  <div className={styles.sortMenuTitle}>Sort jobs</div>
+                  {JOB_SORTS.map((option) => (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="menuitemradio"
+                      aria-checked={sort === option.id}
+                      className={`${styles.sortMenuItem}${sort === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
+                      onClick={() => {
+                        setSort(option.id as QueueSort);
+                        setSortOpen(false);
+                      }}
+                    >
+                      <span>{option.label}</span>
+                      {sort === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
           {shown.length === 0 ? (
@@ -503,7 +548,7 @@ export default function JobSmoothieView({
                   </div>
                   <div>
                     <dt>Where</dt>
-                    <dd style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                    <dd className={quickEditStyles.defRow}>
                       <span>{selected.address || 'No address on file'}</span>
                       <button
                         type="button"

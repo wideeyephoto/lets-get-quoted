@@ -74,6 +74,63 @@
 .toolbarTop { display: grid; gap: 0.5rem; }
 .mobileTools { display: none; }
 
+/* --- voice hotline banner --- */
+.voiceHotlineBanner {
+  margin: 0.5rem 0 1.25rem 0;
+  padding: 1rem 1.25rem;
+  background: linear-gradient(135deg, rgba(88, 28, 135, 0.4) 0%, rgba(30, 27, 75, 0.65) 100%);
+  border: 1px solid rgba(192, 132, 252, 0.4);
+  border-radius: 0.85rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+.voiceHotlineContent { min-width: 0; }
+.voiceHotlineHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+  flex-wrap: wrap;
+}
+.voiceHotlineIcon { font-size: 1.2rem; }
+.voiceHotlineTitle {
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+.voiceHotlineBadge {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.55rem;
+  background: rgba(168, 85, 247, 0.25);
+  border: 1px solid rgba(192, 132, 252, 0.45);
+  color: #e9d5ff;
+  border-radius: 0.35rem;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.voiceHotlineDesc {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #e2e8f0;
+  line-height: 1.5;
+  max-width: 52rem;
+}
+.voiceHotlineLink {
+  font-size: 0.84rem;
+  color: #d8b4fe;
+  text-decoration: underline;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.voiceHotlineLink:hover {
+  color: #ffffff;
+}
+
 .setupBanner {
   display: flex;
   align-items: center;
@@ -3381,3 +3438,826 @@ button.goAction.goAction:disabled {
   border-left: 2px solid var(--skin-accent);
   pointer-events: none;
 }
+
+/* ==========================================================================
+   LIGHT THEMES (Workbench, Sunlight, Parchment) HIGH CONTRAST REFINEMENTS
+   Ensures WCAG AA/AAA compliance across all light-ground modes.
+   ========================================================================== */
+
+:root[data-theme='light'] .crewPanel,
+:root[data-theme='sunlight'] .crewPanel,
+:root[data-theme='parchment'] .crewPanel {
+  background: #ffffff !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .crewPanel :global(.eyebrow),
+:root[data-theme='sunlight'] .crewPanel :global(.eyebrow),
+:root[data-theme='parchment'] .crewPanel :global(.eyebrow) {
+  color: #9a3412 !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.18em !important;
+}
+
+:root[data-theme='light'] .pageTitle,
+:root[data-theme='sunlight'] .pageTitle,
+:root[data-theme='parchment'] .pageTitle {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .pageHeadActions :global(.btn.secondary),
+:root[data-theme='sunlight'] .pageHeadActions :global(.btn.secondary),
+:root[data-theme='parchment'] .pageHeadActions :global(.btn.secondary) {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .pageHeadActions :global(.btn.secondary:hover),
+:root[data-theme='sunlight'] .pageHeadActions :global(.btn.secondary:hover),
+:root[data-theme='parchment'] .pageHeadActions :global(.btn.secondary:hover) {
+  background: #f1f5f9 !important;
+  border-color: #475569 !important;
+  color: #090d16 !important;
+}
+
+/* Tabs */
+:root[data-theme='light'] .tabs,
+:root[data-theme='sunlight'] .tabs,
+:root[data-theme='parchment'] .tabs {
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .tab,
+:root[data-theme='sunlight'] .tab,
+:root[data-theme='parchment'] .tab {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+  border-bottom: none !important;
+  color: #334155 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .tab:hover,
+:root[data-theme='sunlight'] .tab:hover,
+:root[data-theme='parchment'] .tab:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .tabOn,
+:root[data-theme='sunlight'] .tabOn,
+:root[data-theme='parchment'] .tabOn {
+  background: #fff7ed !important;
+  border-color: #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 850 !important;
+  box-shadow: inset 0 -3px 0 #c2410c !important;
+}
+
+/* Voice Hotline Banner */
+:root[data-theme='light'] .voiceHotlineBanner,
+:root[data-theme='sunlight'] .voiceHotlineBanner,
+:root[data-theme='parchment'] .voiceHotlineBanner {
+  background: #f5f3ff !important;
+  border: 1.5px solid #a855f7 !important;
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.12) !important;
+}
+
+:root[data-theme='light'] .voiceHotlineTitle,
+:root[data-theme='sunlight'] .voiceHotlineTitle,
+:root[data-theme='parchment'] .voiceHotlineTitle {
+  color: #3b0764 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .voiceHotlineBadge,
+:root[data-theme='sunlight'] .voiceHotlineBadge,
+:root[data-theme='parchment'] .voiceHotlineBadge {
+  background: #ede9fe !important;
+  border: 1px solid #7c3aed !important;
+  color: #581c87 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .voiceHotlineDesc,
+:root[data-theme='sunlight'] .voiceHotlineDesc,
+:root[data-theme='parchment'] .voiceHotlineDesc {
+  color: #1e1b4b !important;
+  font-weight: 500 !important;
+}
+
+:root[data-theme='light'] .voiceHotlineLink,
+:root[data-theme='sunlight'] .voiceHotlineLink,
+:root[data-theme='parchment'] .voiceHotlineLink {
+  color: #6b21a8 !important;
+  font-weight: 850 !important;
+  text-decoration: underline !important;
+}
+
+:root[data-theme='light'] .voiceHotlineLink:hover,
+:root[data-theme='sunlight'] .voiceHotlineLink:hover,
+:root[data-theme='parchment'] .voiceHotlineLink:hover {
+  color: #3b0764 !important;
+}
+
+/* Setup Banner */
+:root[data-theme='light'] .setupBanner,
+:root[data-theme='sunlight'] .setupBanner,
+:root[data-theme='parchment'] .setupBanner {
+  background: #fffbeb !important;
+  border: 1.5px solid #f59e0b !important;
+}
+
+:root[data-theme='light'] .setupBanner strong,
+:root[data-theme='sunlight'] .setupBanner strong,
+:root[data-theme='parchment'] .setupBanner strong {
+  color: #92400e !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .setupBanner span,
+:root[data-theme='sunlight'] .setupBanner span,
+:root[data-theme='parchment'] .setupBanner span {
+  color: #78350f !important;
+  font-weight: 600 !important;
+}
+
+/* Roster Summary Pills */
+:root[data-theme='light'] .rosterSummary button,
+:root[data-theme='sunlight'] .rosterSummary button,
+:root[data-theme='parchment'] .rosterSummary button {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #0f172a !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .rosterSummary button strong,
+:root[data-theme='sunlight'] .rosterSummary button strong,
+:root[data-theme='parchment'] .rosterSummary button strong {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .rosterSummary button span,
+:root[data-theme='sunlight'] .rosterSummary button span,
+:root[data-theme='parchment'] .rosterSummary button span {
+  color: #1e293b !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .rosterSummary button:hover,
+:root[data-theme='sunlight'] .rosterSummary button:hover,
+:root[data-theme='parchment'] .rosterSummary button:hover {
+  background: #f1f5f9 !important;
+  border-color: #475569 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .rosterSummary button[aria-pressed='true'],
+:root[data-theme='sunlight'] .rosterSummary button[aria-pressed='true'],
+:root[data-theme='parchment'] .rosterSummary button[aria-pressed='true'] {
+  background: #c2410c !important;
+  border-color: #9a3412 !important;
+  color: #ffffff !important;
+  font-weight: 850 !important;
+  box-shadow: 0 2px 6px rgba(194, 65, 12, 0.35) !important;
+}
+
+:root[data-theme='light'] .rosterSummary button[aria-pressed='true'] strong,
+:root[data-theme='light'] .rosterSummary button[aria-pressed='true'] span,
+:root[data-theme='sunlight'] .rosterSummary button[aria-pressed='true'] strong,
+:root[data-theme='sunlight'] .rosterSummary button[aria-pressed='true'] span,
+:root[data-theme='parchment'] .rosterSummary button[aria-pressed='true'] strong,
+:root[data-theme='parchment'] .rosterSummary button[aria-pressed='true'] span {
+  color: #ffffff !important;
+}
+
+:root[data-theme='light'] .rosterSummary button:disabled,
+:root[data-theme='sunlight'] .rosterSummary button:disabled,
+:root[data-theme='parchment'] .rosterSummary button:disabled {
+  opacity: 1 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  cursor: default !important;
+}
+
+:root[data-theme='light'] .rosterSummary button:disabled strong,
+:root[data-theme='light'] .rosterSummary button:disabled span,
+:root[data-theme='sunlight'] .rosterSummary button:disabled strong,
+:root[data-theme='sunlight'] .rosterSummary button:disabled span,
+:root[data-theme='parchment'] .rosterSummary button:disabled strong,
+:root[data-theme='parchment'] .rosterSummary button:disabled span {
+  color: #64748b !important;
+  font-weight: 700 !important;
+}
+
+/* Search Box */
+:root[data-theme='light'] .search,
+:root[data-theme='sunlight'] .search,
+:root[data-theme='parchment'] .search {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+:root[data-theme='light'] .search:focus-within,
+:root[data-theme='sunlight'] .search:focus-within,
+:root[data-theme='parchment'] .search:focus-within {
+  border-color: #ea580c !important;
+  outline: 2px solid rgba(234, 88, 12, 0.25) !important;
+}
+
+:root[data-theme='light'] .search input,
+:root[data-theme='sunlight'] .search input,
+:root[data-theme='parchment'] .search input {
+  background: transparent !important;
+  border: none !important;
+  color: #090d16 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .search input::placeholder,
+:root[data-theme='sunlight'] .search input::placeholder,
+:root[data-theme='parchment'] .search input::placeholder {
+  color: #475569 !important;
+  opacity: 1 !important;
+  font-weight: 500 !important;
+}
+
+/* Filter Controls */
+:root[data-theme='light'] .filter > span,
+:root[data-theme='sunlight'] .filter > span,
+:root[data-theme='parchment'] .filter > span {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.08em !important;
+}
+
+:root[data-theme='light'] .filter select,
+:root[data-theme='light'] .mobileSort select,
+:root[data-theme='sunlight'] .filter select,
+:root[data-theme='sunlight'] .mobileSort select,
+:root[data-theme='parchment'] .filter select,
+:root[data-theme='parchment'] .mobileSort select {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .filter select:focus,
+:root[data-theme='light'] .mobileSort select:focus,
+:root[data-theme='sunlight'] .filter select:focus,
+:root[data-theme='sunlight'] .mobileSort select:focus,
+:root[data-theme='parchment'] .filter select:focus,
+:root[data-theme='parchment'] .mobileSort select:focus {
+  border-color: #ea580c !important;
+  outline: 2px solid rgba(234, 88, 12, 0.25) !important;
+}
+
+:root[data-theme='light'] .filter select option,
+:root[data-theme='light'] .mobileSort select option,
+:root[data-theme='sunlight'] .filter select option,
+:root[data-theme='sunlight'] .mobileSort select option,
+:root[data-theme='parchment'] .filter select option,
+:root[data-theme='parchment'] .mobileSort select option {
+  background: #ffffff !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .filtersToggle,
+:root[data-theme='sunlight'] .filtersToggle,
+:root[data-theme='parchment'] .filtersToggle {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+/* Empty State */
+:root[data-theme='light'] .empty,
+:root[data-theme='sunlight'] .empty,
+:root[data-theme='parchment'] .empty {
+  border: 2px dashed #94a3b8 !important;
+  background: #f8fafc !important;
+  border-radius: 16px !important;
+}
+
+:root[data-theme='light'] .empty h3,
+:root[data-theme='sunlight'] .empty h3,
+:root[data-theme='parchment'] .empty h3 {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .empty p,
+:root[data-theme='sunlight'] .empty p,
+:root[data-theme='parchment'] .empty p {
+  color: #1e293b !important;
+  font-weight: 500 !important;
+  font-size: 0.9rem !important;
+  line-height: 1.55 !important;
+}
+
+:root[data-theme='light'] .emptyActions :global(.btn.secondary),
+:root[data-theme='sunlight'] .emptyActions :global(.btn.secondary),
+:root[data-theme='parchment'] .emptyActions :global(.btn.secondary) {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .emptyActions :global(.btn.secondary:hover),
+:root[data-theme='sunlight'] .emptyActions :global(.btn.secondary:hover),
+:root[data-theme='parchment'] .emptyActions :global(.btn.secondary:hover) {
+  background: #f1f5f9 !important;
+  border-color: #475569 !important;
+  color: #090d16 !important;
+}
+
+/* Roster Rows */
+:root[data-theme='light'] .rowHead,
+:root[data-theme='sunlight'] .rowHead,
+:root[data-theme='parchment'] .rowHead {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .row,
+:root[data-theme='sunlight'] .row,
+:root[data-theme='parchment'] .row {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+}
+
+:root[data-theme='light'] .row:hover,
+:root[data-theme='sunlight'] .row:hover,
+:root[data-theme='parchment'] .row:hover {
+  background: #f8fafc !important;
+  border-color: #94a3b8 !important;
+}
+
+:root[data-theme='light'] .rowNames strong,
+:root[data-theme='sunlight'] .rowNames strong,
+:root[data-theme='parchment'] .rowNames strong {
+  color: #090d16 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .rowNames small,
+:root[data-theme='sunlight'] .rowNames small,
+:root[data-theme='parchment'] .rowNames small {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .rowContact,
+:root[data-theme='sunlight'] .rowContact,
+:root[data-theme='parchment'] .rowContact {
+  color: #1e293b !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .jobRef,
+:root[data-theme='sunlight'] .jobRef,
+:root[data-theme='parchment'] .jobRef {
+  color: #090d16 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .rowJobs small,
+:root[data-theme='sunlight'] .rowJobs small,
+:root[data-theme='parchment'] .rowJobs small {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .rowPeriod strong,
+:root[data-theme='sunlight'] .rowPeriod strong,
+:root[data-theme='parchment'] .rowPeriod strong {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .rowPeriod small,
+:root[data-theme='sunlight'] .rowPeriod small,
+:root[data-theme='parchment'] .rowPeriod small {
+  color: #9a3412 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .dim,
+:root[data-theme='sunlight'] .dim,
+:root[data-theme='parchment'] .dim {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .appChip[data-state='linked'],
+:root[data-theme='sunlight'] .appChip[data-state='linked'],
+:root[data-theme='parchment'] .appChip[data-state='linked'] {
+  background: #dcfce7 !important;
+  color: #14532d !important;
+  border: 1.5px solid #86efac !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .appChip[data-state='invited'],
+:root[data-theme='light'] .appChip[data-state='not-invited'],
+:root[data-theme='sunlight'] .appChip[data-state='invited'],
+:root[data-theme='sunlight'] .appChip[data-state='not-invited'],
+:root[data-theme='parchment'] .appChip[data-state='invited'],
+:root[data-theme='parchment'] .appChip[data-state='not-invited'] {
+  background: #fef3c7 !important;
+  color: #78350f !important;
+  border: 1.5px solid #fde68a !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .appChip[data-state='expired'],
+:root[data-theme='sunlight'] .appChip[data-state='expired'],
+:root[data-theme='parchment'] .appChip[data-state='expired'] {
+  background: #fee2e2 !important;
+  color: #991b1b !important;
+  border: 1.5px solid #fca5a5 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .appChip[data-state='revoked'],
+:root[data-theme='sunlight'] .appChip[data-state='revoked'],
+:root[data-theme='parchment'] .appChip[data-state='revoked'] {
+  background: #f1f5f9 !important;
+  color: #334155 !important;
+  border: 1.5px solid #cbd5e1 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .appDetail,
+:root[data-theme='sunlight'] .appDetail,
+:root[data-theme='parchment'] .appDetail {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .rowBtn,
+:root[data-theme='sunlight'] .rowBtn,
+:root[data-theme='parchment'] .rowBtn {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .rowBtn:hover,
+:root[data-theme='sunlight'] .rowBtn:hover,
+:root[data-theme='parchment'] .rowBtn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .rowBtnPrimary,
+:root[data-theme='sunlight'] .rowBtnPrimary,
+:root[data-theme='parchment'] .rowBtnPrimary {
+  background: #fff7ed !important;
+  border: 1.5px solid #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 800 !important;
+}
+
+/* Tables, Period Bar & Forms */
+:root[data-theme='light'] .tableWrap,
+:root[data-theme='sunlight'] .tableWrap,
+:root[data-theme='parchment'] .tableWrap {
+  border: 1.5px solid #cbd5e1 !important;
+  background: #ffffff !important;
+}
+
+:root[data-theme='light'] .hoursTable thead th,
+:root[data-theme='sunlight'] .hoursTable thead th,
+:root[data-theme='parchment'] .hoursTable thead th {
+  background: #f1f5f9 !important;
+  color: #090d16 !important;
+  font-weight: 800 !important;
+  border-bottom: 2px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .hoursTable td,
+:root[data-theme='sunlight'] .hoursTable td,
+:root[data-theme='parchment'] .hoursTable td {
+  color: #090d16 !important;
+  border-bottom: 1px solid #e2e8f0 !important;
+}
+
+:root[data-theme='light'] .hoursRow:hover,
+:root[data-theme='sunlight'] .hoursRow:hover,
+:root[data-theme='parchment'] .hoursRow:hover {
+  background: #f8fafc !important;
+}
+
+:root[data-theme='light'] .hoursRowOn,
+:root[data-theme='sunlight'] .hoursRowOn,
+:root[data-theme='parchment'] .hoursRowOn {
+  background: #fff7ed !important;
+}
+
+:root[data-theme='light'] .expandBtn strong,
+:root[data-theme='sunlight'] .expandBtn strong,
+:root[data-theme='parchment'] .expandBtn strong {
+  color: #090d16 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .expandBtn small,
+:root[data-theme='sunlight'] .expandBtn small,
+:root[data-theme='parchment'] .expandBtn small {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .otCell,
+:root[data-theme='sunlight'] .otCell,
+:root[data-theme='parchment'] .otCell {
+  color: #9a3412 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .payCell,
+:root[data-theme='sunlight'] .payCell,
+:root[data-theme='parchment'] .payCell {
+  color: #090d16 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .periodBar,
+:root[data-theme='sunlight'] .periodBar,
+:root[data-theme='parchment'] .periodBar {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .periodLabel,
+:root[data-theme='sunlight'] .periodLabel,
+:root[data-theme='parchment'] .periodLabel {
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] .periodMode,
+:root[data-theme='light'] .quick,
+:root[data-theme='sunlight'] .periodMode,
+:root[data-theme='sunlight'] .quick,
+:root[data-theme='parchment'] .periodMode,
+:root[data-theme='parchment'] .quick {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] .periodModeOn,
+:root[data-theme='light'] .quickOn,
+:root[data-theme='sunlight'] .periodModeOn,
+:root[data-theme='sunlight'] .quickOn,
+:root[data-theme='parchment'] .periodModeOn,
+:root[data-theme='parchment'] .quickOn {
+  background: #fff7ed !important;
+  border: 1.5px solid #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .addLabor,
+:root[data-theme='light'] .settings,
+:root[data-theme='sunlight'] .addLabor,
+:root[data-theme='sunlight'] .settings,
+:root[data-theme='parchment'] .addLabor,
+:root[data-theme='parchment'] .settings {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .addLabor span,
+:root[data-theme='light'] .settings label > span,
+:root[data-theme='sunlight'] .addLabor span,
+:root[data-theme='sunlight'] .settings label > span,
+:root[data-theme='parchment'] .addLabor span,
+:root[data-theme='parchment'] .settings label > span {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .addLabor input,
+:root[data-theme='light'] .addLabor select,
+:root[data-theme='light'] .settings input,
+:root[data-theme='light'] .settings select,
+:root[data-theme='sunlight'] .addLabor input,
+:root[data-theme='sunlight'] .addLabor select,
+:root[data-theme='sunlight'] .settings input,
+:root[data-theme='sunlight'] .settings select,
+:root[data-theme='parchment'] .addLabor input,
+:root[data-theme='parchment'] .addLabor select,
+:root[data-theme='parchment'] .settings input,
+:root[data-theme='parchment'] .settings select {
+  background: #ffffff !important;
+  border: 1.5px solid #94a3b8 !important;
+  color: #090d16 !important;
+  font-weight: 600 !important;
+}
+
+/* Time Clock Card */
+:root[data-theme='light'] .clockCard,
+:root[data-theme='sunlight'] .clockCard,
+:root[data-theme='parchment'] .clockCard {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .clockHead h2,
+:root[data-theme='sunlight'] .clockHead h2,
+:root[data-theme='parchment'] .clockHead h2 {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .clockLede,
+:root[data-theme='sunlight'] .clockLede,
+:root[data-theme='parchment'] .clockLede {
+  color: #334155 !important;
+  font-weight: 500 !important;
+}
+
+:root[data-theme='light'] .clockOption,
+:root[data-theme='sunlight'] .clockOption,
+:root[data-theme='parchment'] .clockOption {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .clockOption strong,
+:root[data-theme='sunlight'] .clockOption strong,
+:root[data-theme='parchment'] .clockOption strong {
+  color: #090d16 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .clockOption em,
+:root[data-theme='sunlight'] .clockOption em,
+:root[data-theme='parchment'] .clockOption em {
+  color: #334155 !important;
+  font-weight: 500 !important;
+}
+
+:root[data-theme='light'] .clockOption:has(input:checked),
+:root[data-theme='sunlight'] .clockOption:has(input:checked),
+:root[data-theme='parchment'] .clockOption:has(input:checked) {
+  background: #eff6ff !important;
+  border-color: #2563eb !important;
+}
+
+:root[data-theme='light'] .clockNotes p,
+:root[data-theme='sunlight'] .clockNotes p,
+:root[data-theme='parchment'] .clockNotes p {
+  color: #334155 !important;
+  font-weight: 500 !important;
+}
+
+/* Master-Detail Overview */
+:root[data-theme='light'] .ovRow,
+:root[data-theme='sunlight'] .ovRow,
+:root[data-theme='parchment'] .ovRow {
+  background: #f8fafc !important;
+  border: 1px solid #e2e8f0 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .ovRow:hover,
+:root[data-theme='sunlight'] .ovRow:hover,
+:root[data-theme='parchment'] .ovRow:hover {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .ovRowOn,
+:root[data-theme='sunlight'] .ovRowOn,
+:root[data-theme='parchment'] .ovRowOn {
+  background: #fff7ed !important;
+  border-color: #ea580c !important;
+  box-shadow: 0 1px 4px rgba(234, 88, 12, 0.2) !important;
+}
+
+:root[data-theme='light'] .ovWho strong,
+:root[data-theme='sunlight'] .ovWho strong,
+:root[data-theme='parchment'] .ovWho strong {
+  color: #090d16 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .ovWho small,
+:root[data-theme='sunlight'] .ovWho small,
+:root[data-theme='parchment'] .ovWho small {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] .ovAmount,
+:root[data-theme='sunlight'] .ovAmount,
+:root[data-theme='parchment'] .ovAmount {
+  color: #9a3412 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .ovPane,
+:root[data-theme='sunlight'] .ovPane,
+:root[data-theme='parchment'] .ovPane {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08) !important;
+}
+
+:root[data-theme='light'] .ovHead h3,
+:root[data-theme='sunlight'] .ovHead h3,
+:root[data-theme='parchment'] .ovHead h3 {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .ovHead p,
+:root[data-theme='sunlight'] .ovHead p,
+:root[data-theme='parchment'] .ovHead p {
+  color: #334155 !important;
+  font-weight: 600 !important;
+}
+
+/* Drawers */
+:root[data-theme='light'] .drawer,
+:root[data-theme='sunlight'] .drawer,
+:root[data-theme='parchment'] .drawer {
+  background: #ffffff !important;
+  border-left: 1.5px solid #cbd5e1 !important;
+  color: #090d16 !important;
+  box-shadow: -10px 0 35px rgba(0, 0, 0, 0.15) !important;
+}
+
+:root[data-theme='light'] .drawerHead h2,
+:root[data-theme='light'] .drawerHead h3,
+:root[data-theme='sunlight'] .drawerHead h2,
+:root[data-theme='sunlight'] .drawerHead h3,
+:root[data-theme='parchment'] .drawerHead h2,
+:root[data-theme='parchment'] .drawerHead h3 {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .drawerHead p,
+:root[data-theme='sunlight'] .drawerHead p,
+:root[data-theme='parchment'] .drawerHead p {
+  color: #334155 !important;
+  font-weight: 500 !important;
+}
+
+:root[data-theme='light'] .drawerClose,
+:root[data-theme='sunlight'] .drawerClose,
+:root[data-theme='parchment'] .drawerClose {
+  background: #f1f5f9 !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] .drawerSummary,
+:root[data-theme='sunlight'] .drawerSummary,
+:root[data-theme='parchment'] .drawerSummary {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .drawerSummary small,
+:root[data-theme='sunlight'] .drawerSummary small,
+:root[data-theme='parchment'] .drawerSummary small {
+  color: #475569 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] .drawerSummary strong,
+:root[data-theme='sunlight'] .drawerSummary strong,
+:root[data-theme='parchment'] .drawerSummary strong {
+  color: #090d16 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] .drawerSection summary,
+:root[data-theme='sunlight'] .drawerSection summary,
+:root[data-theme='parchment'] .drawerSection summary {
+  color: #090d16 !important;
+  font-weight: 750 !important;
+}
+

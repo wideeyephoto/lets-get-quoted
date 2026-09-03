@@ -143,6 +143,9 @@ function ScoreLegend() {
 const VIEW_OPTIONS = VIEWS.map((v) => ({ id: v.id, label: v.label, hint: v.hint }));
 
 export default function LeadsWorkspace({
+  headingTitle,
+  headingTag = 'h1',
+  eyebrow,
   leads,
   snoozedLeads = [],
   initialView,
@@ -155,6 +158,9 @@ export default function LeadsWorkspace({
   readOnly = false,
   ownerControls = true,
 }: {
+  headingTitle?: string;
+  headingTag?: 'h1' | 'h2';
+  eyebrow?: string;
   leads: LeadViewItem[];
   /** Open on this lead. The demo gives each lead its own shareable URL. */
   initialLeadId?: string;
@@ -385,33 +391,42 @@ export default function LeadsWorkspace({
     />
   );
 
-  const advisorBanner = (
-    <div className={styles.topAdvisorWrap}>
-      <AiLeadAdvisor
-        leads={leads}
-        mapPins={leadPins}
-        base={basePath}
-        onFilterStage={(targetStage) => {
-          setStageRequest((prev) => ({ stage: targetStage, nonce: (prev?.nonce ?? 0) + 1 }));
-        }}
-        onFilterLogistical={(targetPreset) => {
-          setLogisticalRequest((prev) => ({ preset: targetPreset, nonce: (prev?.nonce ?? 0) + 1 }));
-        }}
-        onSwitchPane={(targetPane) => {
-          if (smoothie) {
-            setPaneRequest((prev) => ({ pane: targetPane, nonce: (prev?.nonce ?? 0) + 1 }));
-          } else if (targetPane === 'map') {
-            setMapOpen(true);
-          }
-        }}
-      />
-    </div>
+  const advisorCompactButton = (
+    <AiLeadAdvisor
+      leads={leads}
+      mapPins={leadPins}
+      base={basePath}
+      onFilterStage={(targetStage) => {
+        setStageRequest((prev) => ({ stage: targetStage, nonce: (prev?.nonce ?? 0) + 1 }));
+      }}
+      onFilterLogistical={(targetPreset) => {
+        setLogisticalRequest((prev) => ({ preset: targetPreset, nonce: (prev?.nonce ?? 0) + 1 }));
+      }}
+      onSwitchPane={(targetPane) => {
+        if (smoothie) {
+          setPaneRequest((prev) => ({ pane: targetPane, nonce: (prev?.nonce ?? 0) + 1 }));
+        } else if (targetPane === 'map') {
+          setMapOpen(true);
+        }
+      }}
+    />
   );
+
+  const HeadingTag = headingTag;
+  const header = headingTitle ? (
+    <div className="section-heading workspace-section-heading">
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <div className={styles.headingTitleRow}>
+        <HeadingTag>{headingTitle}</HeadingTag>
+        {advisorCompactButton}
+      </div>
+    </div>
+  ) : null;
 
   if (smoothie) {
     return (
       <div className={pending ? styles.workspaceBusy : undefined}>
-        {advisorBanner}
+        {header}
         <LeadSmoothieView
           leads={leads}
           run={run}
@@ -436,7 +451,7 @@ export default function LeadsWorkspace({
 
   return (
     <div className={pending ? styles.workspaceBusy : undefined}>
-      {advisorBanner}
+      {header}
       {/* One toolbar for every view: which layout, channel filter, and whether the map is on.
           Two independent choices that used to be one control. */}
       <div className={styles.viewBar}>

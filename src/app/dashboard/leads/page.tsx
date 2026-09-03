@@ -178,10 +178,25 @@ export default async function LeadsPage({ searchParams: searchParamsPromise }: {
             agree with the link you clicked on what it was called. The eyebrow
             keeps the wider sense — this board does carry work past the lead
             stage — without the title contradicting the navigation. */}
-        <div className="section-heading workspace-section-heading"><p className="eyebrow">Work pipeline</p><h1>Leads</h1></div>
-        {leads.length === 0 ? <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p> : (
+        {leads.length === 0 ? (
+          <>
+            <div className="section-heading workspace-section-heading"><p className="eyebrow">Work pipeline</p><h1>Leads</h1></div>
+            <p className="empty-state">No leads yet. Website requests will appear here — or <Link href="/dashboard/leads?add=1#add-lead">add a lead manually</Link>.</p>
+          </>
+        ) : (
           <WorkspaceTradeProvider trade={authoritativeTrade}>
-            <LeadsWorkspace leads={viewLeads} snoozedLeads={snoozedViewLeads} initialView={initialView} mapView={mapView} mapTheme={mapTheme} mapPins={mapPins} ownerControls={role === 'owner'} />
+            <LeadsWorkspace
+              headingTitle="Leads"
+              headingTag="h1"
+              eyebrow="Work pipeline"
+              leads={viewLeads}
+              snoozedLeads={snoozedViewLeads}
+              initialView={initialView}
+              mapView={mapView}
+              mapTheme={mapTheme}
+              mapPins={mapPins}
+              ownerControls={role === 'owner'}
+            />
           </WorkspaceTradeProvider>
         )}
       </section>

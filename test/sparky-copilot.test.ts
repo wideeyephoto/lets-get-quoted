@@ -88,6 +88,11 @@ describe('Sparky Copilot Public-Facing Integration', () => {
     const homeownerMatch = appShellSrc.match(/if \(isHomeownerBranded\) \{[\s\S]*?return <div className="chrome-shell chrome-shell-bare">\{children\}<\/div>;[\s\S]*?\}/);
     expect(homeownerMatch).not.toBeNull();
     expect(homeownerMatch![0]).not.toContain('SparkyCopilot');
+
+    // Dashboard routes exclude SparkyCopilot in public shell fallback
+    expect(appShellSrc).toContain("!pathname.startsWith('/dashboard') && <SparkyCopilot />");
+    const sparkySrc = readFileSync('src/components/marketing/SparkyCopilot.tsx', 'utf8');
+    expect(sparkySrc).toContain("if (pathname?.startsWith('/dashboard')) return null;");
   });
 
   it('verifies duplicate widgets are removed from SiteFooter and site-chrome', () => {

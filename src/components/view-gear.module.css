@@ -14,4 +14,87 @@
 .opt[aria-checked="true"] { background: rgba(255,122,33,.12); border-color: var(--cedge-orange-51); }
 .opt[aria-checked="true"] strong { color: var(--accent-ink); }
 .check { color: var(--accent); font-weight: 900; }
-.sep { height: 1px; margin: 5px 4px; background: rgba(var(--tint), .1); }
+:root[data-theme='light'] .gearBtn,
+:root[data-theme='sunlight'] .gearBtn,
+:root[data-theme='parchment'] .gearBtn {
+  background: #ffffff;
+  border: 1.5px solid #94a3b8;
+  color: #090d16;
+  font-weight: 750;
+}
+
+:root[data-theme='light'] .gearBtn:hover,
+:root[data-theme='sunlight'] .gearBtn:hover,
+:root[data-theme='parchment'] .gearBtn:hover {
+  background: #f1f5f9;
+  border-color: #475569;
+  color: #090d16;
+}
+
+:root[data-theme='light'] .gearBtn[aria-expanded="true"],
+:root[data-theme='sunlight'] .gearBtn[aria-expanded="true"],
+:root[data-theme='parchment'] .gearBtn[aria-expanded="true"] {
+  background: #fff7ed;
+  border-color: #ea580c;
+  color: #9a3412;
+}
+
+:root[data-theme='light'] .pop,
+:root[data-theme='sunlight'] .pop,
+:root[data-theme='parchment'] .pop {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme='light'] .pop > p,
+:root[data-theme='sunlight'] .pop > p,
+:root[data-theme='parchment'] .pop > p {
+  color: #475569;
+  font-weight: 800;
+}
+
+:root[data-theme='light'] .opt,
+:root[data-theme='sunlight'] .opt,
+:root[data-theme='parchment'] .opt {
+  color: #090d16;
+}
+
+:root[data-theme='light'] .opt strong,
+:root[data-theme='sunlight'] .opt strong,
+:root[data-theme='parchment'] .opt strong {
+  color: #090d16;
+  font-weight: 800;
+}
+
+:root[data-theme='light'] .opt small,
+:root[data-theme='sunlight'] .opt small,
+:root[data-theme='parchment'] .opt small {
+  color: #334155;
+  font-weight: 500;
+}
+
+:root[data-theme='light'] .opt:hover,
+:root[data-theme='sunlight'] .opt:hover,
+:root[data-theme='parchment'] .opt:hover {
+  background: #f1f5f9;
+}
+
+:root[data-theme='light'] .opt[aria-checked="true"],
+:root[data-theme='sunlight'] .opt[aria-checked="true"],
+:root[data-theme='parchment'] .opt[aria-checked="true"] {
+  background: #fff7ed;
+  border-color: #ea580c;
+}
+
+:root[data-theme='light'] .opt[aria-checked="true"] strong,
+:root[data-theme='sunlight'] .opt[aria-checked="true"] strong,
+:root[data-theme='parchment'] .opt[aria-checked="true"] strong {
+  color: #9a3412;
+}
+
+:root[data-theme='light'] .sep,
+:root[data-theme='sunlight'] .sep,
+:root[data-theme='parchment'] .sep {
+  background: #e2e8f0;
+}

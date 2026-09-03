@@ -59,3 +59,51 @@
    the layout viewport to 342. */
 .gearRow { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 .gearRow > * { min-width: 0; max-width: 100%; }
+
+/* Header with inline action button */
+.headingTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+}
+
+.headingTitleRow h1,
+.headingTitleRow h2 {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+}
+
+.newJobBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0 1rem;
+  border: 1.5px solid var(--accent, #ff7a21);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--accent-ink, #ff7a21);
+  font-size: 0.86rem;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+  line-height: 1.2;
+}
+
+.newJobBtn:hover {
+  background: rgba(255, 122, 33, 0.24);
+  border-color: var(--accent, #ff7a21);
+  color: var(--accent-ink, #ff7a21);
+  transform: translateY(-1px);
+}
+
+.newJobBtn:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21);
+  outline-offset: 2px;
+}

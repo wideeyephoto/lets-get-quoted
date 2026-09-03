@@ -235,7 +235,7 @@ export default function FocusView({
                 </div>
                 <div>
                   <dt>Address</dt>
-                  <dd style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                  <dd className={quickEditStyles.defRow}>
                     <span>{selected.address || 'No address on file'}</span>
                     <button
                       type="button"

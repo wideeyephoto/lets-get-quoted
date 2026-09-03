@@ -203,14 +203,179 @@
 
 .queueHead {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 0.6rem;
-  padding: 0.85rem 1rem 0.6rem;
+  padding: 0.65rem 1rem 0.65rem;
   border-bottom: 1px solid var(--rule-g16);
+}
+.queueHeadLeft {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
 }
 .queueTitle { margin: 0; font-size: 0.95rem; font-weight: 700; }
 .queueCount { font-size: 0.82rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* Sort popup toggle in queue header */
+.sortPopupWrap {
+  position: relative;
+}
+
+.sortToggleBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.28rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.1));
+  background: rgba(var(--tint, 255, 255, 255), 0.04);
+  color: var(--text, #f1f5f9);
+  font: inherit;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.sortToggleBtn:hover {
+  background: rgba(var(--tint, 255, 255, 255), 0.08);
+  border-color: var(--cedge-orange-72, rgba(255, 122, 33, 0.5));
+}
+
+.sortToggleBtn[aria-expanded="true"] {
+  background: rgba(255, 122, 33, 0.12);
+  border-color: var(--accent, #ff7a21);
+  color: var(--accent-ink, #ff7a21);
+}
+
+.filterIcon {
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+
+.sortToggleBtn[aria-expanded="true"] .filterIcon {
+  opacity: 1;
+  color: var(--accent, #ff7a21);
+}
+
+.sortCurrentLabel {
+  white-space: nowrap;
+}
+
+.sortChevron {
+  font-size: 0.75rem;
+  opacity: 0.6;
+  transition: transform 0.15s ease;
+}
+
+.sortToggleBtn[aria-expanded="true"] .sortChevron {
+  transform: rotate(180deg);
+  opacity: 1;
+}
+
+.sortMenu {
+  position: absolute;
+  top: calc(100% + 5px);
+  right: 0;
+  z-index: 50;
+  min-width: 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 5px;
+  border: 1px solid var(--edge-t12, rgba(255, 255, 255, 0.12));
+  border-radius: 10px;
+  background: var(--bg-3, #0f172a);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  animation: popoverFadeIn 0.12s ease-out;
+}
+
+.sortMenuTitle {
+  margin: 0;
+  padding: 4px 8px 3px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted, #94a3b8);
+}
+
+.sortMenuItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.42rem 0.6rem;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text, #f1f5f9);
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.sortMenuItem:hover {
+  background: rgba(var(--tint, 255, 255, 255), 0.06);
+}
+
+.sortMenuItemActive {
+  background: rgba(255, 122, 33, 0.12);
+  color: var(--accent-ink, #ff7a21);
+  font-weight: 700;
+}
+
+.sortCheck {
+  color: var(--accent, #ff7a21);
+  font-weight: 900;
+  font-size: 0.85rem;
+}
+
+@keyframes popoverFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+:root[data-theme='light'] .sortToggleBtn,
+:root[data-theme='sunlight'] .sortToggleBtn,
+:root[data-theme='parchment'] .sortToggleBtn {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .sortToggleBtn:hover,
+:root[data-theme='sunlight'] .sortToggleBtn:hover,
+:root[data-theme='parchment'] .sortToggleBtn:hover {
+  background: #f8fafc;
+  border-color: #94a3b8;
+}
+
+:root[data-theme='light'] .sortMenu,
+:root[data-theme='sunlight'] .sortMenu,
+:root[data-theme='parchment'] .sortMenu {
+  background: #ffffff;
+  border-color: #cbd5e1;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.12);
+}
+
+:root[data-theme='light'] .sortMenuItem,
+:root[data-theme='sunlight'] .sortMenuItem,
+:root[data-theme='parchment'] .sortMenuItem {
+  color: #0f172a;
+}
 
 .rows { list-style: none; margin: 0; padding: 0.35rem; display: flex; flex-direction: column; gap: 0.2rem; }
 

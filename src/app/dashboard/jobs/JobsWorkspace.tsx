@@ -83,6 +83,9 @@ function StatusBadge({ job }: { job: JobViewItem }) {
 }
 
 export default function JobsWorkspace({
+  headingTitle,
+  headingTag = 'h1',
+  eyebrow,
   jobs,
   initialView,
   mapView,
@@ -96,6 +99,9 @@ export default function JobsWorkspace({
   initialStatus = 'all',
   initialSort = 'soonest',
 }: {
+  headingTitle?: string;
+  headingTag?: 'h1' | 'h2';
+  eyebrow?: string;
   jobs: JobViewItem[];
   /**
    * Pre-loaded job detail, keyed by id. Supplying it makes the Focus and
@@ -274,12 +280,37 @@ export default function JobsWorkspace({
     </div>
   );
 
+  const HeadingTag = headingTag;
+  const header = headingTitle ? (
+    <div className="section-heading workspace-section-heading">
+      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+      <div className={styles.headingTitleRow}>
+        <HeadingTag>{headingTitle}</HeadingTag>
+        <a
+          className={styles.newJobBtn}
+          href="#new-job"
+          onClick={(event) => {
+            const target = document.getElementById('new-job');
+            if (!(target instanceof HTMLDetailsElement)) return;
+            event.preventDefault();
+            target.open = true;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            target.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
+          }}
+        >
+          + New job
+        </a>
+      </div>
+    </div>
+  ) : null;
+
   if (view === 'smoothie') {
     // Smoothie carries the gear in its own toolbar and the map in its own pane,
     // so the band above every other view is not drawn at all. Rendering it as
     // well would put a second map on the page and a second copy of the gear.
     return (
       <div className={pending ? styles.busy : undefined}>
+        {header}
         <JobSmoothieView
           jobs={jobs}
           initialStage={initialStatus}
@@ -299,6 +330,7 @@ export default function JobsWorkspace({
 
   return (
     <div className={pending ? styles.busy : undefined}>
+      {header}
       {/* The map shows in every view, Focus included. It was suppressed here on
           the grounds that getMapPins re-runs listJobs — but that cost is paid
           whenever the map is on in ANY view, so Focus was the wrong place to

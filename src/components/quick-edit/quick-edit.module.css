@@ -197,6 +197,7 @@
 .quickEditBtn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.3rem;
   border-radius: 6px;
   padding: 0.18rem 0.55rem;
@@ -210,6 +211,9 @@
   color: var(--gold-ink, #ffd166);
   transition: all 0.15s ease;
   vertical-align: middle;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: max-content;
 }
 
 .quickEditBtn:hover,
@@ -272,8 +276,24 @@
 
 .defRow {
   display: flex !important;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.5rem;
   width: 100%;
+  min-width: 0;
+}
+
+.defRow > span:first-child,
+.defRow > a:first-child {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  line-height: 1.35;
+}
+
+.defRow .quickEditBtn {
+  margin-top: 0.05rem;
+  flex-shrink: 0;
+  white-space: nowrap;
 }

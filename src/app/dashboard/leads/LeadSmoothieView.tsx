@@ -804,9 +804,6 @@ export default function LeadSmoothieView({
                       📞 {plan.callLabel}
                     </a>
                   ) : null}
-                  {selected.email && plan.primary !== 'email' ? (
-                    <a className={styles.callQuiet} href={`mailto:${selected.email}`}>✉️ Email</a>
-                  ) : null}
                 </div>
               </div>
 
