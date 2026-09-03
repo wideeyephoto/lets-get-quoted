@@ -13,11 +13,10 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function InventoryPage() {
-  const { supabase, accountId } = await requireOfficeContext('jobs.read');
+  const { supabase, accountId, account } = await requireOfficeContext('jobs.read');
   const admin = createAdminClient();
 
-  const [{ data: account }, { data: site }, inventoryPayload, crewList, jobsList] = await Promise.all([
-    admin.from('accounts').select('business_name, company_name').eq('id', accountId).maybeSingle(),
+  const [{ data: site }, inventoryPayload, crewList, jobsList] = await Promise.all([
     admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
     loadInventoryData(supabase, accountId),
     listCrew(supabase, accountId).catch(() => []),

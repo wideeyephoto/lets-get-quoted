@@ -12,12 +12,11 @@ export const metadata = {
 };
 
 export default async function InsuranceClaimsPage() {
-  const { accountId } = await requireOfficeContext('jobs.read');
+  const { accountId, account } = await requireOfficeContext('jobs.read');
   const admin = createAdminClient();
 
-  const [trade, { data: account }, { data: site }] = await Promise.all([
+  const [trade, { data: site }] = await Promise.all([
     getAuthoritativeTrade(admin, accountId),
-    admin.from('accounts').select('business_name, company_name').eq('id', accountId).maybeSingle(),
     admin.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
   ]);
 
