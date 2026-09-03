@@ -106,6 +106,16 @@ export async function addWaitlistEntry(
     throw new Error('Client name is required.');
   }
 
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('cancellation_waitlist_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  if (!account?.cancellation_waitlist_enabled) {
+    throw new Error('Cancellation waitlist is turned off for this account. Turn it on in schedule settings before adding entries.');
+  }
+
   const row = {
     account_id: accountId,
     client_id: input.clientId ?? null,
@@ -271,6 +281,16 @@ export async function createAndSendWaitlistOffer(
     throw new Error('Waitlist entry not found.');
   }
   const entry = entryData as unknown as WaitlistEntry;
+
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('cancellation_waitlist_enabled')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  if (!account?.cancellation_waitlist_enabled) {
+    throw new Error('Cancellation waitlist is turned off for this account. Turn it on in schedule settings before sending offers.');
+  }
 
   const businessName = await loadBusinessName(supabase, accountId);
   const todayKey = input.todayKey ?? now.toISOString().split('T')[0];
@@ -490,6 +510,16 @@ async function cascadeToNextCandidate(
   supabase: SupabaseClient,
   previousOffer: WaitlistOffer,
 ): Promise<WaitlistOffer | null> {
+  const { data: account } = await supabase
+    .from('accounts')
+    .select('cancellation_waitlist_enabled')
+    .eq('id', previousOffer.account_id)
+    .maybeSingle();
+
+  if (!account?.cancellation_waitlist_enabled) {
+    return null;
+  }
+
   const slot: OpenedSlotWindow = {
     dateKey: previousOffer.opened_slot_date,
     windowStart: previousOffer.window_start,

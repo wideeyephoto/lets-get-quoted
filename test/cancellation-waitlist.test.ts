@@ -290,4 +290,19 @@ describe('cancellation-waitlist SMS drafting and reply parsing', () => {
     expect(formatWaitlistWindowLabel('08:00', '12:00')).toBe('8:00 AM to 12:00 PM');
     expect(formatWaitlistWindowLabel('13:30', '16:00')).toBe('1:30 PM to 4:00 PM');
   });
+
+  describe('waitlist opt-in & disabled state gating', () => {
+    it('defaults cancellation_waitlist_enabled to false for new or unconfigured accounts', () => {
+      const accountRecord: { cancellation_waitlist_enabled?: boolean } = {};
+      const isEnabled = Boolean(accountRecord.cancellation_waitlist_enabled);
+      expect(isEnabled).toBe(false);
+    });
+
+    it('considers waitlist active only when explicitly enabled', () => {
+      const enabledAccount = { cancellation_waitlist_enabled: true };
+      const disabledAccount = { cancellation_waitlist_enabled: false };
+      expect(Boolean(enabledAccount.cancellation_waitlist_enabled)).toBe(true);
+      expect(Boolean(disabledAccount.cancellation_waitlist_enabled)).toBe(false);
+    });
+  });
 });

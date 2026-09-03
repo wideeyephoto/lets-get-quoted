@@ -47,7 +47,7 @@ export default async function ScheduleSettingsPage({
     supabase
       .from('accounts')
       .select(
-        'schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, workday_start, workday_end, timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days',
+        'schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, workday_start, workday_end, timezone, booking_enabled, booking_weekdays, booking_windows, booking_max_per_day, booking_lead_days, cancellation_waitlist_enabled',
       )
       .eq('id', accountId)
       .maybeSingle(),
@@ -62,6 +62,7 @@ export default async function ScheduleSettingsPage({
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const jobBufferMinutes = Number((account as { job_buffer_minutes?: number } | null)?.job_buffer_minutes) || 0;
   const remindersOn = Boolean((account as { appointment_reminders_enabled?: boolean } | null)?.appointment_reminders_enabled);
+  const waitlistOn = Boolean((account as { cancellation_waitlist_enabled?: boolean } | null)?.cancellation_waitlist_enabled);
 
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
@@ -118,6 +119,23 @@ export default async function ScheduleSettingsPage({
         <span className={`schedule-setup-pill tone-${bookingTone}`}>{bookingStatus}</span>
         <span className="schedule-setup-go" aria-hidden="true">→</span>
       </Link>
+
+      <Link className="schedule-setup-link" href="/dashboard/schedule/waitlist" id="cancellation-waitlist">
+        <span className="schedule-setup-link-copy">
+          <span className="eyebrow">Automation</span>
+          <strong>Cancellation waitlist</strong>
+          <span>
+            {waitlistOn
+              ? 'Active — newly opened slots can be offered to waiting customers.'
+              : 'Off — turn on to queue waiting customers and backfill cancellations.'}
+          </span>
+        </span>
+        <span className={`schedule-setup-pill tone-${waitlistOn ? 'on' : 'neutral'}`}>
+          {waitlistOn ? 'On' : 'Off'}
+        </span>
+        <span className="schedule-setup-go" aria-hidden="true">→</span>
+      </Link>
+
 
       {/* The four numbers that decide when a day is full. Condensed: the summary
           states them, so checking costs no clicks and only changing opens. */}

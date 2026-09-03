@@ -23,6 +23,7 @@ import {
   removeWaitlistEntryAction,
   sendWaitlistOfferAction,
   triggerWaitlistSweepAction,
+  toggleWaitlistAction,
 } from './actions';
 import styles from './WaitlistManager.module.css';
 
@@ -30,6 +31,7 @@ interface WaitlistManagerProps {
   entries: WaitlistEntry[];
   offers: WaitlistOffer[];
   activePendingOffers: WaitlistOffer[];
+  enabled?: boolean;
 }
 
 const WEEKDAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -271,6 +273,21 @@ export default function WaitlistManager({
         </div>
 
         <div className={styles.headerActions}>
+          <button
+            type="button"
+            onClick={() => {
+              if (window.confirm('Turn off the cancellation waitlist? New entries will not be collected and pending offers will not cascade until turned back on.')) {
+                startTransition(async () => {
+                  await toggleWaitlistAction(false);
+                });
+              }
+            }}
+            disabled={isPending}
+            className={styles.pauseWaitlistBtn}
+            title="Turn off cancellation waitlist"
+          >
+            Turn Off
+          </button>
           <button
             onClick={() => setShowFillSlotModal(true)}
             className={styles.fillWindowBtn}

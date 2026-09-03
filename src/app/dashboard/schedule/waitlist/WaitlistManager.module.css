@@ -121,6 +121,42 @@
   transform: translateY(-1px);
 }
 
+.pauseWaitlistBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--muted);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.15));
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pauseWaitlistBtn:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.12);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.3);
+}
+
+:global([data-theme='sunlight']) .pauseWaitlistBtn,
+:global([data-theme='parchment']) .pauseWaitlistBtn {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #475569;
+}
+
+:global([data-theme='sunlight']) .pauseWaitlistBtn:hover:not(:disabled),
+:global([data-theme='parchment']) .pauseWaitlistBtn:hover:not(:disabled) {
+  background: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
+}
+
+
 /* Action Message Banner */
 .actionBanner {
   background: rgba(16, 185, 129, 0.14);

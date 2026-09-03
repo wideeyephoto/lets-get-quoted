@@ -179,11 +179,12 @@ export default async function SchedulePage({
   const searchParams = { ...rawSearchParams, month, day, date: explicitDate ?? rawSearchParams.date };
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng, cancellation_waitlist_enabled').eq('id', accountId).single(),
     listJobs(supabase, accountId),
     supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
   ]);
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
+  const waitlistEnabled = Boolean((account as { cancellation_waitlist_enabled?: boolean } | null)?.cancellation_waitlist_enabled);
   // The working week, reused from booking: a span guessed from estimated hours
   // shouldn't spill onto days nobody works.
   const workingWeekdays = normalizeBookingWeekdays((account as { booking_weekdays?: unknown } | null)?.booking_weekdays);
@@ -821,6 +822,12 @@ export default async function SchedulePage({
           </div>
 
           <div className="schedule-stats">
+            <ScheduleQueueBar
+              approved={approvedUnscheduled}
+              unapproved={unapprovedUnscheduled}
+              firstUnapprovedId={firstUnapprovedId}
+            />
+
             {/* HOW FULL, WHICH IS THE QUESTION THE PAGE IS FOR.
                 Booked hours against the hours there are to book: working days
                 in the window that are not blocked, times the day's own figure.
@@ -869,7 +876,7 @@ export default async function SchedulePage({
                 <>
                   <strong>{loadFigure}</strong>
                   <small>Booked · {scheduledNext30Days} jobs · 30d</small>
-                  <small className="sched-stat-hours">{load.bookedHours} / {load.capacityHours} hrs</small>
+                  <small className="sched-stat-hours">({load.bookedHours} / {load.capacityHours} hrs)</small>
                   {unmeasuredNext30Days > 0 ? (
                     <small className="sched-stat-unknown">
                       {unmeasuredNext30Days} {unmeasuredNext30Days === 1 ? 'job has' : 'jobs have'} no duration set
@@ -920,27 +927,9 @@ export default async function SchedulePage({
               <strong>{scatter.days}</strong>
               <small>Spread out · 30d</small>
             </Link> : null}
-            {/* NO WEATHER CARD, AND IT IS THE ONE THING ON THE LIST THAT IS
-                MISSING. A forecast is a network call per load, on a page that
-                just gave one up — and the weather panel it would duplicate is on
-                the settings route. It belongs on the day you are looking at
-                rather than in a thirty-day count; see the Day view. */}
           </div>
 
         </header>
-
-        {/* THE ONE THING THIS PAGE IS FOR, SAID ONCE. Replaces the primary
-            button, the attention banner, the summary-line counter and the
-            fourth stat card — four controls, two different numbers, one
-            destination. It renders at every width: the banner used to appear
-            only below 1024 on the theory that the desktop rail said it already,
-            which left the desktop with a button that named a count and no
-            statement of what the count was made of. */}
-        <ScheduleQueueBar
-          approved={approvedUnscheduled}
-          unapproved={unapprovedUnscheduled}
-          firstUnapprovedId={firstUnapprovedId}
-        />
 
         <ScheduleCalendar
           monthNav={
@@ -1017,10 +1006,12 @@ export default async function SchedulePage({
           <p>Select a job to reschedule it, remove it from the schedule, or manage crew.</p>
           <div className="schedule-panel-foot-links">
             {/* Secondary, and phrased as what it does rather than as a slogan. */}
-            <Link href="/dashboard/schedule/waitlist" className="schedule-foot-waitlist" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
-              <span aria-hidden="true">⚡</span>
-              Cancellation waitlist
-            </Link>
+            {waitlistEnabled && (
+              <Link href="/dashboard/schedule/waitlist" className="schedule-foot-waitlist" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
+                <span aria-hidden="true">⚡</span>
+                Cancellation waitlist
+              </Link>
+            )}
             <Link href="/dashboard/schedule/plan" className="schedule-foot-plan">
               <ActionIcon name="plan" />
               Plan today&apos;s route

@@ -99,3 +99,20 @@ export async function triggerWaitlistSweepAction() {
   revalidatePath('/dashboard/schedule/waitlist');
   return { ok: true, ...result };
 }
+
+export async function toggleWaitlistAction(enabled: boolean) {
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const { error } = await supabase
+    .from('accounts')
+    .update({ cancellation_waitlist_enabled: enabled })
+    .eq('id', accountId);
+
+  if (error) {
+    throw new Error(`Failed to update waitlist setting: ${error.message}`);
+  }
+
+  revalidatePath('/dashboard/schedule');
+  revalidatePath('/dashboard/schedule/settings');
+  revalidatePath('/dashboard/schedule/waitlist');
+  return { ok: true, enabled };
+}
