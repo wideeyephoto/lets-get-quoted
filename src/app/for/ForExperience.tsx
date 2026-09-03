@@ -258,11 +258,203 @@ export default function ForExperience() {
         </div>
       </section>
 
-      <section className={styles.proofStrip} aria-label="Platform proof points"><div><b>{TRADES.length}+ trades</b><span>Preconfigured starting points</span></div><div><b>{FLEX_PRICE.monthlyPrice}</b><span>Start on Flex</span></div><div><b>No card</b><span>Explore before committing</span></div><div><b>Direct Stripe</b><span>Payouts to your account</span></div></section>
+      <section className={styles.proofStrip} aria-label="Platform proof points">
+        <div className={styles.proofItem}>
+          <div className={styles.proofIconWrap}>
+            <svg className={styles.proofIconOrange} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
+            </svg>
+          </div>
+          <div>
+            <b>{TRADES.length}+ trades</b>
+            <span>Preconfigured starting points</span>
+          </div>
+        </div>
+        <div className={styles.proofItem}>
+          <div className={styles.proofIconWrap}>
+            <svg className={styles.proofIconMint} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="12" y1="1" x2="12" y2="23" />
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+            </svg>
+          </div>
+          <div>
+            <b>{FLEX_PRICE.monthlyPrice}</b>
+            <span>Start on Flex · Zero monthly fee</span>
+          </div>
+        </div>
+        <div className={styles.proofItem}>
+          <div className={styles.proofIconWrap}>
+            <svg className={styles.proofIconGold} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+              <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+            </svg>
+          </div>
+          <div>
+            <b>No card</b>
+            <span>Explore before committing</span>
+          </div>
+        </div>
+        <div className={styles.proofItem}>
+          <div className={styles.proofIconWrap}>
+            <svg className={styles.proofIconCyan} width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="1" y="4" width="22" height="16" rx="2" ry="2" />
+              <line x1="1" y1="10" x2="23" y2="10" />
+            </svg>
+          </div>
+          <div>
+            <b>Direct Stripe</b>
+            <span>Payouts straight to your bank</span>
+          </div>
+        </div>
+      </section>
 
       <section className={styles.benefitsSection} aria-labelledby="benefits-title">
-        <div className={styles.sectionIntro}><div><p className={styles.sectionKicker}>ONE SETUP. LESS STARTING FROM SCRATCH.</p><h2 id="benefits-title">The useful parts are already shaped around your trade.</h2></div><p>Choose a trade to preload the services, questions, and quote structure you are most likely to need. Then make the setup unmistakably yours.</p></div>
-        <div className={styles.benefitGrid}>{BENEFITS.map(([number, title, copy]) => <article key={number}><span>{number}</span><h3>{title}</h3><p>{copy}</p><a href={signupHref(selectedTrade.slug)}>Build my setup →</a></article>)}</div>
+        <div className={styles.sectionIntro}>
+          <div>
+            <p className={styles.sectionKicker}>ONE SETUP. LESS STARTING FROM SCRATCH.</p>
+            <h2 id="benefits-title">The useful parts are already shaped around your trade.</h2>
+          </div>
+          <p>Choose a trade to preload the services, questions, and quote structure you are most likely to need. Then make the setup unmistakably yours.</p>
+        </div>
+
+        <div className={styles.benefitGrid}>
+          {/* Card 1: Website Shaped for your trade */}
+          <article className={styles.benefitCard}>
+            <div className={styles.benefitHeader}>
+              <span className={styles.benefitNumber}>01</span>
+              <span className={styles.benefitBadge}>PRECONFIGURED WEB</span>
+            </div>
+
+            <div className={styles.miniBrowserVisual} aria-hidden="true">
+              <div className={styles.miniBrowserBar}>
+                <span className={styles.miniBrowserDot} />
+                <span className={styles.miniBrowserDot} />
+                <span className={styles.miniBrowserDot} />
+                <small>yourtrade.contractor.site</small>
+              </div>
+              <div className={styles.miniBrowserBody}>
+                <div className={styles.miniBrowserHero}>
+                  <b>CONTRACTOR PRO</b>
+                  <span className={styles.miniEstPill}>Instant Estimate</span>
+                </div>
+                <div className={styles.miniServiceChips}>
+                  <span className={styles.miniServiceChip}>Emergency Service</span>
+                  <span className={styles.miniServiceChip}>Repairs</span>
+                  <span className={styles.miniServiceChip}>New Installs</span>
+                </div>
+              </div>
+            </div>
+
+            <h3>A website shaped for your trade</h3>
+            <p>Start with relevant service pages, trade language, and a layout built around the work customers are looking for.</p>
+            <a href={signupHref(selectedTrade.slug)} className={styles.benefitLink}>Build my setup →</a>
+          </article>
+
+          {/* Card 2: Intake questions already tuned */}
+          <article className={styles.benefitCard}>
+            <div className={styles.benefitHeader}>
+              <span className={styles.benefitNumber}>02</span>
+              <span className={styles.benefitBadge}>SMART INTAKE</span>
+            </div>
+
+            <div className={styles.miniIntakeVisual} aria-hidden="true">
+              <div className={styles.miniIntakeHeader}>
+                <span className={styles.miniCameraIcon}>📷</span>
+                <span>Photo Qualification</span>
+                <b className={styles.miniUrgencyBadge}>High Priority</b>
+              </div>
+              <div className={styles.miniIntakeCard}>
+                <div className={styles.miniIntakeRow}>
+                  <span className={styles.miniIntakeDot} />
+                  <span>2 Jobsite photos uploaded</span>
+                  <em>Analyzed</em>
+                </div>
+                <div className={styles.miniIntakeRow}>
+                  <span className={styles.miniIntakeDot} />
+                  <span>Scope questions tailored to trade</span>
+                  <em>Ready</em>
+                </div>
+              </div>
+            </div>
+
+            <h3>Intake questions already tuned</h3>
+            <p>Capture the photos, urgency, location, and project details that matter before you spend time following up.</p>
+            <a href={signupHref(selectedTrade.slug)} className={styles.benefitLink}>Build my setup →</a>
+          </article>
+
+          {/* Card 3: Quote templates with a head start */}
+          <article className={styles.benefitCard}>
+            <div className={styles.benefitHeader}>
+              <span className={styles.benefitNumber}>03</span>
+              <span className={styles.benefitBadge}>SMART QUOTES</span>
+            </div>
+
+            <div className={styles.miniQuoteVisual} aria-hidden="true">
+              <div className={styles.miniQuoteHeader}>
+                <small>SMART QUOTE #1048</small>
+                <span>3 TIERS</span>
+              </div>
+              <div className={styles.miniTiersRow}>
+                <div className={styles.miniTier}>
+                  <small>ESSENTIAL</small>
+                  <b>$2,480</b>
+                </div>
+                <div className={`${styles.miniTier} ${styles.miniTierActive}`}>
+                  <i>BEST VALUE</i>
+                  <small>RECOMMENDED</small>
+                  <b>$3,120</b>
+                </div>
+                <div className={styles.miniTier}>
+                  <small>PREMIUM</small>
+                  <b>$4,060</b>
+                </div>
+              </div>
+              <div className={styles.miniQuoteFooter}>
+                <span>✓ Deposit + E-sign enabled</span>
+              </div>
+            </div>
+
+            <h3>Quote templates with a head start</h3>
+            <p>Begin with practical scopes and line items, then change every service, price, and detail to match your business.</p>
+            <a href={signupHref(selectedTrade.slug)} className={styles.benefitLink}>Build my setup →</a>
+          </article>
+
+          {/* Card 4: Your setup, reviewed before launch */}
+          <article className={styles.benefitCard}>
+            <div className={styles.benefitHeader}>
+              <span className={styles.benefitNumber}>04</span>
+              <span className={styles.benefitBadge}>LAUNCH CONTROL</span>
+            </div>
+
+            <div className={styles.miniChecklistVisual} aria-hidden="true">
+              <div className={styles.miniChecklistHeader}>
+                <span>PRE-LAUNCH REVIEW</span>
+                <b className={styles.miniReadyBadge}>100% Editable</b>
+              </div>
+              <div className={styles.miniChecklistList}>
+                <div className={styles.miniCheckItem}>
+                  <span className={styles.miniCheckGlyph}>✓</span>
+                  <span>Service catalog &amp; pricing</span>
+                  <em>Custom</em>
+                </div>
+                <div className={styles.miniCheckItem}>
+                  <span className={styles.miniCheckGlyph}>✓</span>
+                  <span>Intake form &amp; photo questions</span>
+                  <em>Tuned</em>
+                </div>
+                <div className={styles.miniCheckItem}>
+                  <span className={styles.miniCheckGlyph}>✓</span>
+                  <span>Direct Stripe payout connection</span>
+                  <em>Active</em>
+                </div>
+              </div>
+            </div>
+
+            <h3>Your setup, reviewed before launch</h3>
+            <p>Nothing is locked in. Edit the wording, services, service area, and pricing before anything becomes customer-facing.</p>
+            <a href={signupHref(selectedTrade.slug)} className={styles.benefitLink}>Build my setup →</a>
+          </article>
+        </div>
       </section>
 
       <section className={styles.smartQuoteSection} aria-labelledby="smart-quotes-title">

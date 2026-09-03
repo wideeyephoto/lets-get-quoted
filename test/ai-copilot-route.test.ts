@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
-import nextConfig from '../next.config.mjs';
 
 describe('AI Copilot URL and Route Integrity', () => {
   it('verifies /features/ai-copilot route exists and renders AiCopilotWithAvatarsPage', () => {
@@ -17,25 +16,12 @@ describe('AI Copilot URL and Route Integrity', () => {
     expect(source).toContain("alternates: { canonical: 'https://letsgetquoted.com/features/sparky' }");
   });
 
-  it('verifies next.config.mjs provides redirects for both /sparky and /ai-copilot shortcuts', async () => {
-    const redirects = await nextConfig.redirects();
-    const findRedirect = (source: string) => redirects.find((r: { source: string }) => r.source === source);
-
-    const sparky = findRedirect('/sparky');
-    expect(sparky).toBeDefined();
-    expect(sparky?.destination).toBe('/features/sparky');
-
-    const aiCopilot = findRedirect('/ai-copilot');
-    expect(aiCopilot).toBeDefined();
-    expect(aiCopilot?.destination).toBe('/features/ai-copilot');
-
-    const copilot = findRedirect('/copilot');
-    expect(copilot).toBeDefined();
-    expect(copilot?.destination).toBe('/features/ai-copilot');
-
-    const aicopilot = findRedirect('/aicopilot');
-    expect(aicopilot).toBeDefined();
-    expect(aicopilot?.destination).toBe('/features/ai-copilot');
+  it('verifies next.config.mjs provides redirects for both /sparky and /ai-copilot shortcuts', () => {
+    const configSource = readFileSync('next.config.mjs', 'utf8');
+    expect(configSource).toContain("{ source: '/sparky', destination: '/features/sparky', permanent: true }");
+    expect(configSource).toContain("{ source: '/ai-copilot', destination: '/features/ai-copilot', permanent: true }");
+    expect(configSource).toContain("{ source: '/copilot', destination: '/features/ai-copilot', permanent: true }");
+    expect(configSource).toContain("{ source: '/aicopilot', destination: '/features/ai-copilot', permanent: true }");
   });
 
   it('verifies sitemap includes both ai-copilot and sparky feature slugs', () => {
