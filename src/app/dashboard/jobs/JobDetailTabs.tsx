@@ -72,40 +72,64 @@ export default function JobDetailTabs({
     return (
       <div className={styles.grid}>
         <section className={styles.card}>
-          <div className={quickEditStyles.cardHeadRow}>
-            <H>Details</H>
-            <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                className={quickEditStyles.quickEditBtn}
-                onClick={() => setIsEditingName(true)}
-                aria-label="Edit client name"
-              >
-                Edit name
-              </button>
-              <button
-                type="button"
-                className={quickEditStyles.quickEditBtn}
-                onClick={() => setIsEditingContact(true)}
-                aria-label="Edit contact details"
-              >
-                Edit contact
-              </button>
-              <button
-                type="button"
-                className={quickEditStyles.quickEditBtn}
-                onClick={() => setIsEditingAddress(true)}
-                aria-label="Edit job address"
-              >
-                Edit address
-              </button>
-            </div>
-          </div>
+          <H>Details</H>
           <dl className={styles.defs}>
-            <div><dt>Client</dt><dd>{detail.clientName}</dd></div>
-            <div><dt>Phone</dt><dd>{detail.clientPhone || 'Not on file'}</dd></div>
-            <div><dt>Email</dt><dd>{detail.clientEmail || 'Not on file'}</dd></div>
-            <div><dt>Address</dt><dd>{detail.address || 'Not on file'}</dd></div>
+            <div>
+              <dt>Client</dt>
+              <dd className={quickEditStyles.defRow}>
+                <span>{detail.clientName}</span>
+                <button
+                  type="button"
+                  className={quickEditStyles.quickEditBtn}
+                  onClick={() => setIsEditingName(true)}
+                  aria-label="Edit client name"
+                >
+                  Edit
+                </button>
+              </dd>
+            </div>
+            <div>
+              <dt>Phone</dt>
+              <dd className={quickEditStyles.defRow}>
+                {detail.clientPhone ? (
+                  <a href={`tel:${detail.clientPhone}`}>{detail.clientPhone}</a>
+                ) : (
+                  <span>Not on file</span>
+                )}
+                <button
+                  type="button"
+                  className={quickEditStyles.quickEditBtn}
+                  onClick={() => setIsEditingContact(true)}
+                  aria-label="Edit contact details"
+                >
+                  Edit
+                </button>
+              </dd>
+            </div>
+            <div>
+              <dt>Email</dt>
+              <dd>
+                {detail.clientEmail ? (
+                  <a href={`mailto:${detail.clientEmail}`}>{detail.clientEmail}</a>
+                ) : (
+                  'Not on file'
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt>Address</dt>
+              <dd className={quickEditStyles.defRow}>
+                <span>{detail.address || 'Not on file'}</span>
+                <button
+                  type="button"
+                  className={quickEditStyles.quickEditBtn}
+                  onClick={() => setIsEditingAddress(true)}
+                  aria-label="Edit job address"
+                >
+                  Edit
+                </button>
+              </dd>
+            </div>
             <div><dt>Created</dt><dd>{detail.createdAtLabel}</dd></div>
             <div>
               <dt>Crew</dt>

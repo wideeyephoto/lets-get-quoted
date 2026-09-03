@@ -95,14 +95,19 @@ describe('Quick Edit Popups across Leads and Jobs', () => {
     expect(jobDetailTabs).toContain('QuickEditNameModal');
     expect(jobDetailTabs).toContain('QuickEditContactModal');
     expect(jobDetailTabs).toContain('QuickEditAddressModal');
+    expect(jobDetailTabs).toContain('defRow');
 
     const jobSmoothie = readFileSync(join(root, 'src/app/dashboard/jobs/JobSmoothieView.tsx'), 'utf8');
     expect(jobSmoothie).toContain('QuickEditNameModal');
+    expect(jobSmoothie).toContain('QuickEditAddressModal');
     expect(jobSmoothie).toContain('updateJobClientNameAction');
+    expect(jobSmoothie).toContain('updateJobAddressAction');
 
     const jobFocus = readFileSync(join(root, 'src/app/dashboard/jobs/FocusView.tsx'), 'utf8');
     expect(jobFocus).toContain('QuickEditNameModal');
+    expect(jobFocus).toContain('QuickEditAddressModal');
     expect(jobFocus).toContain('updateJobClientNameAction');
+    expect(jobFocus).toContain('updateJobAddressAction');
 
     const jobFullPage = readFileSync(join(root, 'src/app/dashboard/jobs/[id]/page.tsx'), 'utf8');
     expect(jobFullPage).toContain('JobClientNameHeader');

@@ -261,3 +261,11 @@
   gap: 0.5rem;
   margin-bottom: 0.5rem;
 }
+
+.defRow {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+}

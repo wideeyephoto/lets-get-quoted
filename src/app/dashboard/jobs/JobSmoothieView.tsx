@@ -25,8 +25,8 @@ import type { JobViewItem } from './JobsWorkspace';
 import { focusQueueRow, useQueueWindow } from '../use-queue-window';
 import { useJobDetail } from './use-job-detail';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
-import { updateJobClientNameAction } from './actions';
-import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
+import { updateJobAddressAction, updateJobClientNameAction } from './actions';
+import { QuickEditAddressModal, QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
 import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
 import styles from '../smoothie.module.css';
@@ -152,6 +152,7 @@ export default function JobSmoothieView({
   // leads page and is one legend click away — see PinMap's initialHidden.
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
   const jobPinCount = useMemo(() => scopedPins.filter((pin) => pin.kind !== 'lead').length, [scopedPins]);
   const [visiblePins, setVisiblePins] = useState<number | null>(null);
   const mapCount = visiblePins ?? jobPinCount;
@@ -502,7 +503,17 @@ export default function JobSmoothieView({
                   </div>
                   <div>
                     <dt>Where</dt>
-                    <dd>{selected.address || 'No address on file'}</dd>
+                    <dd style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                      <span>{selected.address || 'No address on file'}</span>
+                      <button
+                        type="button"
+                        className={quickEditStyles.quickEditBtn}
+                        onClick={() => setIsEditingAddress(true)}
+                        aria-label="Edit job address"
+                      >
+                        Edit
+                      </button>
+                    </dd>
                   </div>
                   <div>
                     <dt>Quoted</dt>
@@ -600,6 +611,17 @@ export default function JobSmoothieView({
                 initialName={selected.clientName}
                 onSave={async (newName) => {
                   await updateJobClientNameAction(selected.id, newName);
+                  router.refresh();
+                }}
+              />
+              <QuickEditAddressModal
+                isOpen={isEditingAddress}
+                onClose={() => setIsEditingAddress(false)}
+                title="Edit job address"
+                label="Job address"
+                initialAddress={selected.address}
+                onSave={async (newAddress) => {
+                  await updateJobAddressAction(selected.id, newAddress);
                   router.refresh();
                 }}
               />

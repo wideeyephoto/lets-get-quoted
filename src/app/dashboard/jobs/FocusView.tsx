@@ -10,8 +10,8 @@ import ActionIcon from '@/components/action-icon';
 import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 import JobDetailTabs, { JOB_TABS, JobDetailSkeleton, marginClass, type JobTabId } from './JobDetailTabs';
 import { useJobDetail } from './use-job-detail';
-import { updateJobClientNameAction } from './actions';
-import { QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
+import { updateJobAddressAction, updateJobClientNameAction } from './actions';
+import { QuickEditAddressModal, QuickEditNameModal, quickEditStyles } from '@/components/quick-edit';
 import { nextTabIndex } from '@/lib/tab-strip';
 import styles from '../focus.module.css';
 
@@ -83,6 +83,7 @@ export default function FocusView({
 
   const router = useRouter();
   const [isEditingName, setIsEditingName] = useState(false);
+  const [isEditingAddress, setIsEditingAddress] = useState(false);
 
   /**
    * THE FILTER MOVES AND THE SELECTION HAS TO MOVE WITH IT.
@@ -234,7 +235,17 @@ export default function FocusView({
                 </div>
                 <div>
                   <dt>Address</dt>
-                  <dd>{selected.address || 'No address on file'}</dd>
+                  <dd style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.4rem' }}>
+                    <span>{selected.address || 'No address on file'}</span>
+                    <button
+                      type="button"
+                      className={quickEditStyles.quickEditBtn}
+                      onClick={() => setIsEditingAddress(true)}
+                      aria-label="Edit job address"
+                    >
+                      Edit
+                    </button>
+                  </dd>
                 </div>
                 <div>
                   <dt>Scheduled</dt>
@@ -360,6 +371,17 @@ export default function FocusView({
               initialName={selected.clientName}
               onSave={async (newName) => {
                 await updateJobClientNameAction(selected.id, newName);
+                router.refresh();
+              }}
+            />
+            <QuickEditAddressModal
+              isOpen={isEditingAddress}
+              onClose={() => setIsEditingAddress(false)}
+              title="Edit job address"
+              label="Job address"
+              initialAddress={selected.address}
+              onSave={async (newAddress) => {
+                await updateJobAddressAction(selected.id, newAddress);
                 router.refresh();
               }}
             />
