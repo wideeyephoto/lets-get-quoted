@@ -23,6 +23,7 @@ import ClientDetailTabs, { CLIENT_TABS, ClientDetailSkeleton, type ClientTabId }
 import focusStyles from '../focus.module.css';
 import styles from '../smoothie.module.css';
 import pageStyles from './clients-page.module.css';
+import MailIcon from '@/components/MailIcon';
 
 /**
  * Smoothie on Clients — the book led by who needs calling.
@@ -514,7 +515,7 @@ export default function ClientSmoothieView({
                   {readOnly ? null : <Link className="btn primary" href="/dashboard/jobs?new=1#new-job">+ New job</Link>}
                   {selected.phone ? <a className="btn secondary" href={`tel:${selected.phone}`}>📞 Call</a> : null}
                   {selected.phone ? <a className="btn secondary" href={`sms:${selected.phone}`}>💬 Text</a> : null}
-                  {selected.email ? <a className="btn secondary" href={`mailto:${selected.email}`}>✉️ Email</a> : null}
+                  {selected.email ? <a className="btn secondary" href={`mailto:${selected.email}`}><MailIcon /> Email</a> : null}
                   {readOnly ? null : <Link className="btn secondary" href={`${base}/clients/${selected.id}#client-profile`}>Edit</Link>}
                   <Link className={styles.quietLink} href={`${base}/clients/${selected.id}`}>Open full profile →</Link>
                 </div>

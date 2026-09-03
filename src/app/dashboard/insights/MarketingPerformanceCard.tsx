@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { AUDIENCE_DEFS } from '@/lib/campaign-audiences';
 import type { MarketingPerformance } from '@/lib/insights-metrics';
+import MailIcon from '@/components/MailIcon';
 
 // What marketing actually went out — the only marketing facts this product
 // records. For each recent send: the channel, who it targeted, when it went, how
@@ -39,7 +40,7 @@ export default function MarketingPerformanceCard({
   return (
     <section className="panel ins-card ins-mkt-card">
       <p className="ins-card-head">
-        <span className="ins-chip is-mkt" aria-hidden="true">✉</span> Marketing performance
+        <span className="ins-chip is-mkt" aria-hidden="true" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}><MailIcon size={12} /></span> Marketing performance
       </p>
 
       {!hasData ? (

@@ -16,6 +16,7 @@ import {
   sendManualDigestServerAction,
 } from './actions';
 import styles from './OperatorCockpit.module.css';
+import MailIcon from '@/components/MailIcon';
 
 interface OperatorCockpitProps {
   initialBriefing: ExecutiveBriefing;
@@ -330,7 +331,9 @@ export default function OperatorCockpit({
             type="button"
             title="Dispatch email digest to founder"
           >
-            ✉️ Email Digest
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <MailIcon /> Email Digest
+            </span>
           </button>
           <button
             className={styles.cycleBtn}

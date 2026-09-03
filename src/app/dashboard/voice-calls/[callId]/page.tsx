@@ -14,6 +14,7 @@ import VoiceCallWorkflowPanel from './VoiceCallWorkflowPanel';
 import InteractiveTranscriptViewer from './InteractiveTranscriptViewer';
 import QuickSmsFollowupCard from './QuickSmsFollowupCard';
 import styles from './call-detail.module.css';
+import MailIcon from '@/components/MailIcon';
 
 export const metadata = { title: 'Voice Call Details & Transcript' };
 
@@ -193,7 +194,7 @@ export default async function VoiceCallDetailPage({
                     <div className={styles.clientAddress}>📍 {call.contact.client.address}</div>
                   ) : null}
                   {call.contact.client.email ? (
-                    <div className={styles.clientAddress}>✉️ {call.contact.client.email}</div>
+                    <div className={styles.clientAddress} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><MailIcon /> {call.contact.client.email}</div>
                   ) : null}
                 </div>
 

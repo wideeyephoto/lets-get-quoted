@@ -15,6 +15,7 @@ import { stateName } from '@/lib/marketing-calendar';
 import type { OverallRoiSummary } from '@/lib/campaign-roi';
 import type { Campaign } from '@/lib/campaigns';
 import MarketingNav from './MarketingNav';
+import MailIcon from '@/components/MailIcon';
 
 type UpcomingPost = { id: string; title: string; publishAt: string };
 
@@ -220,7 +221,7 @@ export default function MarketingOverviewScreen({
                           style={{ justifyContent: 'flex-start', fontSize: '0.82rem', padding: '0.45rem 0.65rem', textAlign: 'left' }}
                           onClick={() => setCreateMenuOpen(false)}
                         >
-                          ✉️ Email campaign
+                          <MailIcon style={{ marginRight: '0.4rem' }} /> Email campaign
                         </Link>
                         <Link
                           href={at('/dashboard/marketing/campaigns?tab=create&channel=sms')}
@@ -333,7 +334,7 @@ export default function MarketingOverviewScreen({
           {/* Email & Text */}
           <Link href={at('/dashboard/marketing/campaigns')} className="panel mkt-tile" style={{ textDecoration: 'none', transition: 'all 0.15s ease' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>✉️ Email &amp; Text</span>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><MailIcon /> Email &amp; Text</span>
               <span style={{ fontSize: '0.7rem', color: 'var(--ink-green-1, #10b981)', background: 'rgba(16, 185, 129, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
                 {summary.audience.value} Clients
               </span>
@@ -490,7 +491,7 @@ export default function MarketingOverviewScreen({
                   <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>{shortDate(c.created_at)}</span>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
-                  <span>✉️ {c.email_sent || 0} emails</span>
+                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><MailIcon /> {c.email_sent || 0} emails</span>
                   <span>💬 {c.sms_sent || 0} texts</span>
                   <span style={{ color: '#10b981', fontWeight: 600 }}>Active</span>
                 </div>

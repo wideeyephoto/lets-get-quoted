@@ -11,6 +11,7 @@ import {
 import type { ScreeningSummary } from '@/lib/quick-stop-screenings';
 import { quickStopFunnel, quickStopFunnelSentence } from '@/lib/quick-stop-funnel';
 import { buildQuickStopPitch } from '@/lib/quick-stop-pitch';
+import MailIcon from '@/components/MailIcon';
 
 const SHOW = 6;
 
@@ -447,7 +448,7 @@ export default function QuickStopCandidates({
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff9a52' }}>✉️ Email Announcement Template</h4>
+                  <h4 style={{ margin: 0, fontSize: '0.9rem', color: '#ff9a52', display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}><MailIcon /> Email Announcement Template</h4>
                   <button
                     type="button"
                     onClick={() => handleCopy('email')}

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { sendPortalMessageAction } from './actions';
+import MailIcon from '@/components/MailIcon';
 
 type Props = {
   token: string;
@@ -101,7 +102,11 @@ export function PortalMessageForm({ token, businessName, jobs = [] }: Props) {
           className="btn primary"
           style={{ padding: '0.5rem 1.1rem', fontSize: '0.88rem' }}
         >
-          {isPending ? 'Sending...' : `✉️ Send to ${businessName}`}
+          {isPending ? 'Sending...' : (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
+              <MailIcon /> Send to {businessName}
+            </span>
+          )}
         </button>
         {status ? (
           <span

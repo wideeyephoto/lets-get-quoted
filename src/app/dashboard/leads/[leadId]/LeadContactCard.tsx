@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { formatPhoneDashes } from '@/lib/phone';
 import { updateLeadContactAction } from '../actions';
 import { QuickEditContactModal, quickEditStyles } from '@/components/quick-edit';
+import MailIcon from '@/components/MailIcon';
 import styles from '../leads.module.css';
 
 type LeadContactCardProps = {
@@ -73,7 +74,7 @@ export default function LeadContactCard({
 
       {hasEmail ? (
         <a href={`mailto:${email}`} className={styles.heroContactEmail} aria-label={`Email ${email}`}>
-          <span aria-hidden="true">📧</span> {email}
+          <MailIcon /> {email}
         </a>
       ) : (
         <strong>No email provided</strong>

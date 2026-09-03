@@ -9,6 +9,7 @@ import ClientsMap, { type ClientMapPin } from './ClientsMap';
 import { nextTabIndex } from '@/lib/tab-strip';
 import type { ClientRow } from './ClientsWorkspace';
 import styles from '../focus.module.css';
+import MailIcon from '@/components/MailIcon';
 
 // Master-detail for the customer book — the same shape leads and jobs use,
 // sharing their stylesheet, so moving between the three doesn't mean learning a
@@ -328,7 +329,7 @@ export default function ClientFocusView({
                       <a className="btn secondary" href={`sms:${selected.phone}`}>💬 Text</a>
                     ) : null}
                     {selected.email ? (
-                      <a className="btn secondary" href={`mailto:${selected.email}`}>✉️ Email</a>
+                      <a className="btn secondary" href={`mailto:${selected.email}`}><MailIcon /> Email</a>
                     ) : null}
                     <Link className="btn ghost" href={`${base}/clients/${selected.id}`}>
                       Open full profile →

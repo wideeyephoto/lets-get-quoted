@@ -16,6 +16,7 @@ import type { TemplateCard } from '@/lib/campaign-recommendations';
 import type { CampaignDraft } from '@/lib/marketing-draft-data';
 import EmailTemplatePickerModal from './campaigns/EmailTemplatePickerModal';
 import CampaignStarterPickerModal from './campaigns/CampaignStarterPickerModal';
+import MailIcon from '@/components/MailIcon';
 import {
   draftMarketingCampaignAction,
   previewCampaignEmailAction,
@@ -540,8 +541,8 @@ export default function CampaignComposer({
         </ul>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap', marginTop: '0.5rem', marginBottom: '0.5rem' }}>
           {wantEmail && typeof availableEmailCredits === 'number' ? (
-            <span style={{ fontSize: '0.8125rem', color: availableEmailCredits < audienceReach.email ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)' }}>
-              ✉️ <strong>{audienceReach.email}</strong> of {availableEmailCredits.toLocaleString('en-US')} email credits needed
+            <span style={{ fontSize: '0.8125rem', color: availableEmailCredits < audienceReach.email ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+              <MailIcon /> <strong>{audienceReach.email}</strong> of {availableEmailCredits.toLocaleString('en-US')} email credits needed
               {availableEmailCredits < audienceReach.email ? (
                 <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, marginLeft: '0.35rem', textDecoration: 'underline' }}>
                   + Buy credits

@@ -8,6 +8,7 @@ import { updateClientAction } from '../actions';
 import ConfirmActionButton from '../../jobs/[id]/ConfirmActionButton';
 import { listPortalLinks } from '@/lib/client-portal-data';
 import { revokeClientPortalAction } from './portal-actions';
+import MailIcon from '@/components/MailIcon';
 
 export const metadata = { title: 'Client' };
 
@@ -106,7 +107,7 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
               </>
             ) : null}
             {client.email ? (
-              <a className="btn secondary" href={`mailto:${client.email}`}>✉️ Email</a>
+              <a className="btn secondary" href={`mailto:${client.email}`}><MailIcon /> Email</a>
             ) : null}
             <Link href="/dashboard/clients" className="btn secondary">Back to clients</Link>
             {statement && jobs.length > 0 ? <Link href={`/dashboard/clients/${client.id}/statement`} className="btn secondary">View statement →</Link> : null}

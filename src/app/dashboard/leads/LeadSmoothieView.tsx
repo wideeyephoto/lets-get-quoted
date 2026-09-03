@@ -13,7 +13,6 @@ import RecordPhotos from '../RecordPhotos';
 import {
   QUEUE_SORTS,
   QUEUE_STAGES,
-  LOGISTICAL_PRESETS,
   contactPlan,
   isContactablePhone,
   matchesStage,
@@ -37,6 +36,7 @@ import { useRouter } from 'next/navigation';
 import focusStyles from '../focus.module.css';
 import leadStyles from './leads.module.css';
 import styles from '../smoothie.module.css';
+import MailIcon from '@/components/MailIcon';
 
 /**
  * Smoothie — Focus, led by the queue instead of by one lead.
@@ -68,6 +68,17 @@ const HEAT_HELP: Record<LeadViewItem['score'], string> = {
   low: 'Probably not a fit yet',
 };
 
+const LEAD_CHANNELS: { id: string; label: string; icon?: string }[] = [
+  { id: 'all', label: 'All sources' },
+  { id: 'google', label: 'Google Ads', icon: '🎯' },
+  { id: 'meta', label: 'Meta / Instagram', icon: '📱' },
+  { id: 'tiktok', label: 'TikTok Ads', icon: '🎵' },
+  { id: 'local', label: 'Nextdoor & Local', icon: '🏡' },
+  { id: 'print_qr', label: 'Print & QR Signs', icon: '🪧' },
+  { id: 'promo', label: 'Website Promos', icon: '🏷️' },
+  { id: 'direct', label: 'Direct / Organic', icon: '🌐' },
+];
+
 export default function LeadSmoothieView({
   leads,
   run,
@@ -80,6 +91,7 @@ export default function LeadSmoothieView({
   mapTheme = 'dark',
   gear,
   onOpenQuickAdd,
+  advisor,
   requestedStage,
   requestedPane,
   requestedLogistical,
@@ -100,6 +112,7 @@ export default function LeadSmoothieView({
   /** The view/settings gear, so it sits in this view's own toolbar. */
   gear?: ReactNode;
   onOpenQuickAdd?: () => void;
+  advisor?: ReactNode;
 }) {
   const base = basePath;
 
@@ -109,12 +122,46 @@ export default function LeadSmoothieView({
   const [logisticalPreset, setLogisticalPreset] = useState<LogisticalPreset>('all');
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<QueueSort>('priority');
+  const [sortOpen, setSortOpen] = useState(false);
+  const sortRef = useRef<HTMLDivElement>(null);
+
+  const [channel, setChannel] = useState<string>('all');
+  const [channelOpen, setChannelOpen] = useState(false);
+  const channelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!sortOpen && !channelOpen) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (sortRef.current && !sortRef.current.contains(target)) {
+        setSortOpen(false);
+      }
+      if (channelRef.current && !channelRef.current.contains(target)) {
+        setChannelOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setSortOpen(false);
+        setChannelOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [sortOpen, channelOpen]);
+
+  const currentSort = QUEUE_SORTS.find((s) => s.id === sort) ?? QUEUE_SORTS[0];
+  const currentChannel = LEAD_CHANNELS.find((c) => c.id === channel) ?? LEAD_CHANNELS[0];
+
   const [pane, setPane] = useState<'leads' | 'map'>('leads');
   // Phones only: which screen of the lead workflow is showing. Desktop renders
   // both columns and ignores this.
   const [onDetailScreen, setOnDetailScreen] = useState(false);
   const [tab, setTab] = useState<LeadTabId>('overview');
-  const [channel, setChannel] = useState<string>('all');
   // Roving tabindex needs somewhere to send focus when an arrow moves the
   // selection — see nextTabIndex.
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -138,24 +185,6 @@ export default function LeadSmoothieView({
     () => analyzePipelineLogistics(leads, mapPins),
     [leads, mapPins],
   );
-
-  // Compute counts for the logistical presets across open leads
-  const logisticalCounts = useMemo(() => {
-    let en_route = 0;
-    let halo = 0;
-    let best_opportunities = 0;
-    let gap_fits = 0;
-    for (const lead of leads) {
-      if (lead.status === 'won' || lead.status === 'lost') continue;
-      const meta = logisticsMap.get(lead.id);
-      if (!meta) continue;
-      if (meta.isEnRoute) en_route++;
-      if (meta.isHalo) halo++;
-      if (meta.isTier1Opportunity) best_opportunities++;
-      if (meta.fitsScheduleGap) gap_fits++;
-    }
-    return { en_route, halo, best_opportunities, gap_fits };
-  }, [leads, logisticsMap]);
 
   const shown = useMemo(() => {
     const filtered = leads.filter((lead) => {
@@ -341,32 +370,6 @@ export default function LeadSmoothieView({
         <StageChip id="closed" label="Closed" count={counts.closed} active={stage === 'closed'} onPick={setStage} />
       </div>
 
-      {/* --- logistical route & proximity presets --- */}
-      <div className={styles.logisticalBar} role="group" aria-label="Filter by route and jobsite proximity">
-        <span className={styles.logisticalLabel}>Logistics:</span>
-        {LOGISTICAL_PRESETS.map((preset) => {
-          const count =
-            preset.id === 'all'
-              ? null
-              : logisticalCounts[preset.id as keyof typeof logisticalCounts];
-          if (preset.id !== 'all' && (count ?? 0) === 0) return null;
-          const isActive = logisticalPreset === preset.id;
-          return (
-            <button
-              key={preset.id}
-              type="button"
-              className={styles.logisticalChip}
-              data-active={isActive}
-              onClick={() => setLogisticalPreset(preset.id)}
-            >
-              {preset.icon && <span className={styles.logisticalIcon}>{preset.icon}</span>}
-              <span>{preset.label}</span>
-              {count !== null && <span className={styles.logisticalBadge}>{count}</span>}
-            </button>
-          );
-        })}
-      </div>
-
       {/* --- search / sort / pane switch --- */}
       <div className={styles.toolbar}>
         <div className={styles.searchWrap}>
@@ -379,39 +382,6 @@ export default function LeadSmoothieView({
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search leads"
           />
-        </div>
-
-        <div className={styles.sortWrap}>
-          <label className={styles.sortLabel} htmlFor="smoothie-channel">Source</label>
-          <select
-            id="smoothie-channel"
-            className={styles.sort}
-            value={channel}
-            onChange={(event) => setChannel(event.target.value)}
-          >
-            <option value="all">All sources</option>
-            <option value="google">🎯 Google Ads</option>
-            <option value="meta">📱 Meta / Instagram</option>
-            <option value="tiktok">🎵 TikTok Ads</option>
-            <option value="local">🏡 Nextdoor & Local</option>
-            <option value="print_qr">🪧 Print & QR Signs</option>
-            <option value="promo">🏷️ Website Promos</option>
-            <option value="direct">🌐 Direct / Organic</option>
-          </select>
-        </div>
-
-        <div className={styles.sortWrap}>
-          <label className={styles.sortLabel} htmlFor="smoothie-sort">Sort</label>
-          <select
-            id="smoothie-sort"
-            className={styles.sort}
-            value={sort}
-            onChange={(event) => setSort(event.target.value as QueueSort)}
-          >
-            {QUEUE_SORTS.map((option) => (
-              <option key={option.id} value={option.id}>{option.label}</option>
-            ))}
-          </select>
         </div>
 
         <div className={styles.paneSwitch} role="group" aria-label="Show leads or the map">
@@ -435,29 +405,6 @@ export default function LeadSmoothieView({
         </div>
 
         {gear ? <div className={styles.gearSlot}>{gear}</div> : null}
-
-        {/* Reachable without opening the navigation menu, on every width. The
-            form itself is further down the page and already exists; this opens
-            it rather than being a second one. */}
-        <a
-          className={styles.addLead}
-          href="#add-lead"
-          onClick={(event) => {
-            if (onOpenQuickAdd) {
-              event.preventDefault();
-              onOpenQuickAdd();
-              return;
-            }
-            const target = document.getElementById('add-lead');
-            if (!(target instanceof HTMLDetailsElement)) return;
-            event.preventDefault();
-            target.open = true;
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            target.querySelector<HTMLInputElement>('input[name="name"]')?.focus({ preventScroll: true });
-          }}
-        >
-          + Add lead
-        </a>
       </div>
 
       {/* Announced rather than merely displayed: filtering with a screen reader
@@ -475,11 +422,137 @@ export default function LeadSmoothieView({
       <div className={styles.body}>
         {/* --- the queue --- */}
         <section className={styles.queue} aria-label="Lead queue" ref={queueRef}>
-          <div className={styles.queueHead}>
-            <h2 className={styles.queueTitle}>Lead queue</h2>
-            <span className={styles.queueCount}>
-              {shown.length === leads.length ? `${leads.length}` : `${shown.length} of ${leads.length}`}
-            </span>
+          <div className={`${styles.queueHead} ${styles.queueHeadTwoRows}`}>
+            <div className={styles.queueHeadTop}>
+              <div className={styles.queueHeadLeft}>
+                <h2 className={styles.queueTitle}>Lead queue</h2>
+                <span className={styles.queueCount}>
+                  {shown.length === leads.length ? `${leads.length}` : `${shown.length} of ${leads.length}`}
+                </span>
+              </div>
+              {advisor}
+            </div>
+
+            <div className={styles.queueHeadActions}>
+              <div className={styles.sortPopupWrap} ref={channelRef}>
+                <button
+                  type="button"
+                  className={styles.sortToggleBtn}
+                  onClick={() => {
+                    setChannelOpen((prev) => !prev);
+                    setSortOpen(false);
+                  }}
+                  aria-expanded={channelOpen}
+                  aria-haspopup="menu"
+                  title="Filter leads by source"
+                >
+                  <span className={styles.sortToggleLabelGroup}>
+                    {currentChannel.icon ? (
+                      <span aria-hidden="true" style={{ fontSize: '0.85rem', lineHeight: 1 }}>{currentChannel.icon}</span>
+                    ) : (
+                      <svg
+                        className={styles.filterIcon}
+                        width="13"
+                        height="13"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        aria-hidden="true"
+                      >
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="2" y1="12" x2="22" y2="12" />
+                        <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                      </svg>
+                    )}
+                    <span className={styles.sortCurrentLabel}>{currentChannel.label}</span>
+                  </span>
+                  <span className={styles.sortChevron} aria-hidden="true">▾</span>
+                </button>
+
+                {channelOpen && (
+                  <div className={`${styles.sortMenu} ${styles.sortMenuLeft}`} role="menu">
+                    <div className={styles.sortMenuTitle}>Source</div>
+                    {LEAD_CHANNELS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={channel === option.id}
+                        className={`${styles.sortMenuItem}${channel === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
+                        onClick={() => {
+                          setChannel(option.id);
+                          setChannelOpen(false);
+                        }}
+                      >
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem' }}>
+                          {option.icon && <span aria-hidden="true">{option.icon}</span>}
+                          <span>{option.label}</span>
+                        </span>
+                        {channel === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className={styles.sortPopupWrap} ref={sortRef}>
+                <button
+                  type="button"
+                  className={styles.sortToggleBtn}
+                  onClick={() => {
+                    setSortOpen((prev) => !prev);
+                    setChannelOpen(false);
+                  }}
+                  aria-expanded={sortOpen}
+                  aria-haspopup="menu"
+                  title="Sort leads"
+                >
+                  <span className={styles.sortToggleLabelGroup}>
+                    <svg
+                      className={styles.filterIcon}
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                    </svg>
+                    <span className={styles.sortCurrentLabel}>{currentSort.label}</span>
+                  </span>
+                  <span className={styles.sortChevron} aria-hidden="true">▾</span>
+                </button>
+
+                {sortOpen && (
+                  <div className={styles.sortMenu} role="menu">
+                    <div className={styles.sortMenuTitle}>Sort leads</div>
+                    {QUEUE_SORTS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={sort === option.id}
+                        className={`${styles.sortMenuItem}${sort === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
+                        onClick={() => {
+                          setSort(option.id as QueueSort);
+                          setSortOpen(false);
+                        }}
+                      >
+                        <span>{option.label}</span>
+                        {sort === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {shown.length === 0 ? (
@@ -516,7 +589,7 @@ export default function LeadSmoothieView({
                 <p style={{ margin: 0 }}>
                   No leads match that.
                   {' '}
-                  <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('open'); }}>
+                  <button type="button" className={styles.clearBtn} onClick={() => { setQuery(''); setStage('open'); setChannel('all'); }}>
                     Clear the filters
                   </button>
                 </p>
@@ -771,7 +844,7 @@ export default function LeadSmoothieView({
                     </button>
                   ) : null}
                   {selected.email && plan.primary === 'email' ? (
-                    <a className="btn primary" href={`mailto:${selected.email}`}>✉️ Email customer</a>
+                    <a className="btn primary" href={`mailto:${selected.email}`}><MailIcon /> Email customer</a>
                   ) : null}
                   {plan.primary === 'none' ? (
                     <Link

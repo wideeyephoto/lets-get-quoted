@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { reviewRequestText } from '@/lib/review-routing';
 import { setReviewFeedbackPageAction } from './actions';
+import MailIcon from '@/components/MailIcon';
 
 /**
  * Review requests, from the contractor's side.
@@ -214,7 +215,7 @@ export default function ReviewRequestSection({
           <div className="review-tags" aria-label="Automation delivery details">
             <span className="review-tag">⚡ Once per completed job</span>
             <span className="review-tag">📱 SMS to client mobile</span>
-            <span className="review-tag">✉️ Email fallback</span>
+            <span className="review-tag" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}><MailIcon /> Email fallback</span>
           </div>
         </div>
       </div>

@@ -6,6 +6,7 @@ import { formatPhoneDashes } from '@/lib/phone';
 import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
 import { demoSupabase } from '@/lib/demo-rows';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
+import MailIcon from '@/components/MailIcon';
 
 export const metadata = { title: 'Client — Live Demo' };
 
@@ -82,7 +83,7 @@ export default async function DemoClientDetailPage({ params: paramsPromise }: { 
               </>
             ) : null}
             {client.email ? (
-              <a className="btn secondary" href={`mailto:${client.email}`}>✉️ Email</a>
+              <a className="btn secondary" href={`mailto:${client.email}`}><MailIcon /> Email</a>
             ) : null}
             <Link href="/demo/clients" className="btn secondary">← Back to clients</Link>
           </div>

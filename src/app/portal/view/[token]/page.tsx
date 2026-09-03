@@ -11,6 +11,7 @@ import { loadPortal } from '@/lib/client-portal-data';
 import { generateReferralCode, buildReferralShareText } from '@/lib/referrals';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { PortalMessageForm } from './PortalMessageForm';
+import MailIcon from '@/components/MailIcon';
 
 export const dynamic = 'force-dynamic';
 // Never indexed. A live portal link in a search result is somebody's home
@@ -133,7 +134,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
               ) : null}
 
               <a className="btn secondary" href="#portal-message-section">
-                ✉️ Send a message
+                <MailIcon /> Send a message
               </a>
             </div>
           </div>
@@ -303,9 +304,9 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                     <a
                       href="#portal-message-section"
                       className="btn secondary"
-                      style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}
+                      style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
                     >
-                      ✉️ Ask question
+                      <MailIcon /> Ask question
                     </a>
                   </div>
                 </article>
@@ -707,7 +708,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
               className="btn secondary"
               href={`mailto:?subject=${encodeURIComponent(`$50 off with ${portal.businessName}`)}&body=${encodeURIComponent(shareText)}`}
             >
-              ✉️ Email link
+              <MailIcon /> Email link
             </a>
           </div>
         </section>

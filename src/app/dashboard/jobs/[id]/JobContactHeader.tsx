@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { formatPhoneDashes } from '@/lib/phone';
 import { updateJobContactAction } from '../actions';
 import { QuickEditContactModal, quickEditStyles } from '@/components/quick-edit';
+import MailIcon from '@/components/MailIcon';
 
 export default function JobContactHeader({
   jobId,
@@ -27,7 +28,7 @@ export default function JobContactHeader({
       ) : null}
       {clientEmail ? (
         <a href={`mailto:${clientEmail}`} className="hero-email-link" aria-label={`Email ${clientEmail}`}>
-          <span aria-hidden="true">📧</span> {clientEmail}
+          <MailIcon /> {clientEmail}
         </a>
       ) : null}
       {!clientPhone && !clientEmail ? (

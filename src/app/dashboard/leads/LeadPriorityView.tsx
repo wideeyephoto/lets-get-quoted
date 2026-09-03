@@ -8,6 +8,7 @@ import { archiveLeadAction, snoozeLeadAction, unsnoozeLeadAction, updateLeadStat
 import RowMenu from './RowMenu';
 import styles from './priority.module.css';
 import leadStyles from './leads.module.css';
+import MailIcon from '@/components/MailIcon';
 
 /**
  * The Priority inbox — what to do next, in order, and why.
@@ -193,7 +194,7 @@ function PriorityCard({
           </Link>
         ) : (
           <a className={`btn primary ${styles.primaryBtn}`} href={action.href}>
-            {action.kind === 'text' ? '💬 Text' : action.kind === 'email' ? '✉️ Email' : '📞 Call'} {lead.name.split(/\s+/)[0]}
+            {action.kind === 'text' ? '💬 Text' : action.kind === 'email' ? <><MailIcon /> Email</> : '📞 Call'} {lead.name.split(/\s+/)[0]}
           </a>
         )}
 
