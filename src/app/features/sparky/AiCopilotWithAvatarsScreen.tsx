@@ -345,3 +345,4 @@ export default function AiCopilotWithAvatarsScreen({ path = '/features/sparky' }
 }
 
 export const AiCopilotWithAvatarsPage = AiCopilotWithAvatarsScreen;
+export const SPARKY_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=feature&source=feature_page';
