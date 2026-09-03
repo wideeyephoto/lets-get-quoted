@@ -165,6 +165,17 @@ describe('AI Speed-to-Lead SMS Engine', () => {
       sendAtFormatted: '8:01 AM (America/Los_Angeles)',
     });
     expect(quietAlert).toContain('Auto-SMS queued for 8:01 AM (America/Los_Angeles) (quiet hours)');
+
+    const deferredAlert = generateContractorAdLeadAlert({
+      businessName: 'Apex Roofing',
+      leadName: 'Bob Vance',
+      phone: '214-555-0188',
+      projectType: 'AC Replacement',
+      city: 'Dallas',
+      speedToLeadStatus: 'deferred',
+    });
+    expect(deferredAlert).toContain('Auto-SMS deferred (no dedicated sender)');
+    expect(deferredAlert).not.toContain('Auto-SMS sent to homeowner');
   });
 
   it('generates time-bucketed idempotency keys for deduplication', () => {
@@ -242,5 +253,35 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('notifies contractor with deferred status when dedicated sender is unavailable', async () => {
+    const { sendSpeedToLeadSms, sendContractorAdLeadSms } = await import('@/lib/sms');
+    vi.mocked(sendSpeedToLeadSms).mockResolvedValueOnce('event-1234');
+    vi.mocked(sendContractorAdLeadSms).mockClear();
+
+    const result = await dispatchSpeedToLeadSms({
+      admin: {} as any,
+      accountId: '10000000-0000-4000-8000-000000000001',
+      recipientPhone: '+14155550199',
+      businessName: 'Apex Roofing',
+      leadName: 'Alex Smith',
+      city: 'San Francisco, CA',
+      contractorAlertPhone: '+15125550199',
+      hasDedicatedSender: false,
+    });
+
+    expect(result.sent).toBe(false);
+    expect(result.telemetry.deliveryStatus).toBe('deferred');
+    expect(sendContractorAdLeadSms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.stringContaining('Auto-SMS deferred (no dedicated sender)'),
+      }),
+    );
+    expect(sendContractorAdLeadSms).toHaveBeenCalledWith(
+      expect.objectContaining({
+        body: expect.not.stringContaining('Auto-SMS sent to homeowner'),
+      }),
+    );
   });
 });

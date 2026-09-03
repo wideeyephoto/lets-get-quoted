@@ -9,6 +9,8 @@ import {
   type ParsedStatusWebhook,
 } from '@/lib/sms-webhook-ingress';
 import { logWebhookFailure } from '@/lib/webhook-failures';
+import { normalizeUsPhone } from '@/lib/phone';
+import { getLeadTriage } from '@/lib/leads';
 
 export const runtime = 'nodejs';
 
@@ -63,13 +65,67 @@ export async function POST(request: Request) {
   }
 
   try {
-    await applyStatusWebhook(admin, {
+    const ingressResult = await applyStatusWebhook(admin, {
       ...status,
       provider: check.provider,
       rawBody,
       contentType,
       requestUrl: request.url,
     });
+
+    if (ingressResult.smsEventId) {
+      try {
+        const { data: event } = await admin
+          .from('sms_events')
+          .select('account_id, phone_number')
+          .eq('id', ingressResult.smsEventId)
+          .maybeSingle();
+
+        if (event?.account_id && event.phone_number) {
+          const { data: leads } = await admin
+            .from('leads')
+            .select('id, status, triage, phone')
+            .eq('account_id', event.account_id)
+            .order('created_at', { ascending: false })
+            .limit(10);
+
+          const eventPhone = normalizeUsPhone(event.phone_number);
+          const lead = (leads ?? []).find(
+            (l) => l.phone && normalizeUsPhone(l.phone) === eventPhone,
+          );
+
+          if (lead) {
+            const triage = getLeadTriage(lead);
+            if (ingressResult.projectedStatus === 'delivered') {
+              const entry = {
+                at: new Date().toISOString(),
+                label: 'SMS Delivered',
+                note: `Delivered to ${event.phone_number}.`,
+              };
+              const contactLog = [...(triage.contactLog ?? []), entry];
+              const nextStatus = lead.status === 'new' ? 'contacted' : lead.status;
+              await admin
+                .from('leads')
+                .update({ triage: { ...triage, contactLog }, status: nextStatus, updated_at: new Date().toISOString() })
+                .eq('id', lead.id);
+            } else if (ingressResult.projectedStatus === 'failed') {
+              const entry = {
+                at: new Date().toISOString(),
+                label: 'SMS Delivery Failed',
+                note: `Delivery to ${event.phone_number} failed (${status.providerErrorCode || status.providerStatus || 'undelivered'}).`,
+              };
+              const contactLog = [...(triage.contactLog ?? []), entry];
+              await admin
+                .from('leads')
+                .update({ triage: { ...triage, contactLog }, updated_at: new Date().toISOString() })
+                .eq('id', lead.id);
+            }
+          }
+        }
+      } catch (reconErr) {
+        console.warn('Lead delivery status reconciliation skipped:', reconErr);
+      }
+    }
   } catch (error) {
     console.error('SMS status webhook handler threw:', error);
     await logWebhookFailure({

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
-import { getLead, getLeadTriage, type LeadStatus } from '@/lib/leads';
+import { getLead, getLeadTriage } from '@/lib/leads';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
 import {
@@ -19,6 +19,10 @@ import {
 import { enqueueSmsDelivery } from '@/lib/sms-delivery';
 import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-provisioning';
 
+import { createHash } from 'node:crypto';
+import { findOrCreateClientId } from '@/lib/clients';
+import { issuePortalLink } from '@/lib/client-portal-data';
+
 export async function getAccountMessagingCapabilityAction(): Promise<MessagingCapability> {
   const { accountId } = await requireOfficeContext('messages.read');
   return getMessagingCapability(accountId);
@@ -30,6 +34,7 @@ export async function getAccountMessagingCapabilityAction(): Promise<MessagingCa
 export async function sendLeadClientDashboardSmsAction(
   leadId: string,
   rawPhone: string,
+  userIntentKey?: string,
 ): Promise<{ success: boolean; error?: string; message?: string }> {
   const { supabase, accountId } = await requireOfficeContext('leads.write');
   const admin = createAdminClient();
@@ -49,7 +54,7 @@ export async function sendLeadClientDashboardSmsAction(
 
   // Determine client dashboard link:
   // 1. If lead converted to job, use the job's client token link
-  // 2. Otherwise use the customer tracking/portal link
+  // 2. Otherwise ensure client record exists and use direct portal link or generic /portal
   let clientDashboardUrl = `${origin}/portal`;
 
   if (lead.converted_job) {
@@ -63,6 +68,21 @@ export async function sendLeadClientDashboardSmsAction(
     if (job?.client_token) {
       clientDashboardUrl = `${origin}/client/jobs/${job.client_token}`;
     }
+  } else {
+    try {
+      await findOrCreateClientId(admin, accountId, {
+        name: lead.name || 'there',
+        phone,
+        email: lead.email,
+        address: lead.address,
+      });
+      const issued = await issuePortalLink(admin, accountId, { kind: 'sms', value: phone });
+      if (issued) {
+        clientDashboardUrl = `${origin}/portal/view/${issued.token}`;
+      }
+    } catch (e) {
+      console.warn('Lead portal link generation fallback to /portal:', e);
+    }
   }
 
   const messageText = formatClientDashboardSmsText({
@@ -71,6 +91,9 @@ export async function sendLeadClientDashboardSmsAction(
     clientDashboardUrl,
     nextActionPrompt: lead.converted_job ? 'Review Project & Next Steps' : 'Project Portal',
   });
+
+  const bucket15m = Math.floor(Date.now() / (15 * 60 * 1000));
+  const idempotencyKey = userIntentKey || `client-dash-sms:${lead.id}:${phone}:${bucket15m}`;
 
   try {
     await recordSmsConsent(accountId, phone, 'client_job_dashboard');
@@ -82,22 +105,21 @@ export async function sendLeadClientDashboardSmsAction(
       billingCategory: 'customer_message',
       context: 'customer',
       senderPurpose: 'lgq_shared',
-      idempotencyKey: `client-dash-sms:${lead.id}:${Date.now()}`,
+      idempotencyKey,
     }, admin);
 
-    // Log contact in lead triage
+    // Log contact in lead triage as queued, preserving current status until delivery
     const triage = getLeadTriage(lead);
     const entry = {
       at: new Date().toISOString(),
-      label: 'Texted Client Dashboard Link',
-      note: `Sent to ${phone} from shared number.`,
+      label: 'Client Dashboard Link Queued',
+      note: `Queued for delivery to ${phone} from shared number.`,
     };
     const contactLog = [...(triage.contactLog ?? []), entry];
-    const nextStatus: LeadStatus = lead.status === 'new' ? 'contacted' : lead.status;
 
     await supabase
       .from('leads')
-      .update({ triage: { ...triage, contactLog }, status: nextStatus, updated_at: new Date().toISOString() })
+      .update({ triage: { ...triage, contactLog }, updated_at: new Date().toISOString() })
       .eq('account_id', accountId)
       .eq('id', leadId);
 
@@ -106,7 +128,7 @@ export async function sendLeadClientDashboardSmsAction(
 
     return {
       success: true,
-      message: `Client Dashboard link sent to ${phone} via verified shared number.`,
+      message: `Client Dashboard link queued for delivery to ${phone} via verified shared number.`,
     };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to send SMS.';
@@ -122,6 +144,7 @@ export async function sendLeadPrivateSmsAction(
   leadId: string,
   rawPhone: string,
   body: string,
+  userIntentKey?: string,
 ): Promise<{ success: boolean; error?: string; message?: string }> {
   const { supabase, accountId } = await requireOfficeContext('messages.send');
   const admin = createAdminClient();
@@ -144,6 +167,9 @@ export async function sendLeadPrivateSmsAction(
 
   const businessName = await loadBusinessName(supabase, accountId);
   const formattedBody = formatPrivateSmsText({ businessName, body: cleanBody });
+  const bodyHash = createHash('sha256').update(cleanBody).digest('hex').slice(0, 16);
+  const bucket15m = Math.floor(Date.now() / (15 * 60 * 1000));
+  const idempotencyKey = userIntentKey || `lead-private-sms:${leadId}:${phone}:${bodyHash}:${bucket15m}`;
 
   try {
     await sendInboxReplySms({
@@ -151,7 +177,7 @@ export async function sendLeadPrivateSmsAction(
       businessName,
       body: formattedBody,
       accountId,
-      idempotencyKey: `lead-private-sms:${leadId}:${Date.now()}`,
+      idempotencyKey,
       requireExistingThread: false,
     });
 
@@ -160,15 +186,14 @@ export async function sendLeadPrivateSmsAction(
       const triage = getLeadTriage(lead);
       const entry = {
         at: new Date().toISOString(),
-        label: 'Outbound SMS (Private)',
-        note: cleanBody,
+        label: 'Private Text Queued',
+        note: `Queued for delivery to ${phone} from dedicated number.`,
       };
       const contactLog = [...(triage.contactLog ?? []), entry];
-      const nextStatus: LeadStatus = lead.status === 'new' ? 'contacted' : lead.status;
 
       await supabase
         .from('leads')
-        .update({ triage: { ...triage, contactLog }, status: nextStatus, updated_at: new Date().toISOString() })
+        .update({ triage: { ...triage, contactLog }, updated_at: new Date().toISOString() })
         .eq('account_id', accountId)
         .eq('id', leadId);
     }
@@ -178,7 +203,7 @@ export async function sendLeadPrivateSmsAction(
 
     return {
       success: true,
-      message: `Private text sent to ${phone} from your dedicated number.`,
+      message: `Private text queued for delivery to ${phone} from your dedicated number.`,
     };
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Failed to send private SMS.';

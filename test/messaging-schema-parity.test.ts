@@ -56,6 +56,7 @@ const MIGRATIONS = [
   'migrations/20260829120000_sms_owner_field_intake_rpc.sql',
   'migrations/20260830120000_crew_field_intake.sql',
   'migrations/20260831190000_atomic_delayed_sms_delivery.sql',
+  'migrations/20260901070000_crew_sms_consent_evidence.sql',
   'migrations/20260903172223_owner_shared_field_command_routing.sql',
   'migrations/20260903190000_sms_shared_notice_stop_suppression.sql',
   'migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql',

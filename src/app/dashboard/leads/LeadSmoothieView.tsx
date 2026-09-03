@@ -971,6 +971,7 @@ export default function LeadSmoothieView({
                   customerName={selected.name}
                   phone={selected.phone}
                   initialMessage={textInitialMessage}
+                  isConverted={Boolean(selected.convertedJob)}
                 />
               ) : null}
             </>

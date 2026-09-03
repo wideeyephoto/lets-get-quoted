@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -17,6 +17,7 @@ export interface TextCustomerModalProps {
   customerName: string;
   phone: string;
   initialMessage?: string;
+  isConverted?: boolean;
 }
 
 export default function TextCustomerModal({
@@ -26,11 +27,13 @@ export default function TextCustomerModal({
   customerName,
   phone,
   initialMessage = '',
+  isConverted = false,
 }: TextCustomerModalProps) {
   const [capability, setCapability] = useState<MessagingCapability | null>(null);
   const [customText, setCustomText] = useState(initialMessage);
   const [isSending, setIsSending] = useState(false);
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [sessionKey] = useState(() => `modal-intent:${Date.now()}:${Math.random().toString(36).slice(2, 8)}`);
 
   useEffect(() => {
     if (!isOpen) {
@@ -60,7 +63,7 @@ export default function TextCustomerModal({
 
     try {
       if (hasDedicated) {
-        const res = await sendLeadPrivateSmsAction(leadId, phone, customText);
+        const res = await sendLeadPrivateSmsAction(leadId, phone, customText, sessionKey);
         if (res.success) {
           setFeedback({ type: 'success', text: res.message || 'Message sent successfully.' });
           setTimeout(() => onClose(), 1600);
@@ -68,7 +71,7 @@ export default function TextCustomerModal({
           setFeedback({ type: 'error', text: res.error || 'Failed to send message.' });
         }
       } else {
-        const res = await sendLeadClientDashboardSmsAction(leadId, phone);
+        const res = await sendLeadClientDashboardSmsAction(leadId, phone, sessionKey);
         if (res.success) {
           setFeedback({ type: 'success', text: res.message || 'Client Dashboard link sent successfully.' });
           setTimeout(() => onClose(), 1600);
@@ -140,7 +143,11 @@ export default function TextCustomerModal({
             </div>
 
             <div className={styles.previewBox}>
-              &ldquo;[Your Business Name] here &mdash; view your project portal and next steps: https://letsgetquoted.com/client/jobs/&hellip; Reply STOP to opt out.&rdquo;
+              {isConverted ? (
+                <>&ldquo;[Your Business Name] here &mdash; view your project portal and next steps: https://letsgetquoted.com/client/jobs/&hellip; Reply STOP to opt out.&rdquo;</>
+              ) : (
+                <>&ldquo;[Your Business Name] here &mdash; view your project portal and next steps: https://letsgetquoted.com/portal&hellip; Reply STOP to opt out.&rdquo;</>
+              )}
             </div>
 
             <div className={styles.upgradeCallout}>

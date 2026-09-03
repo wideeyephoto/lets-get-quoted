@@ -1,4 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/auth';
+import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
 import { sendSpeedToLeadSms, sendContractorAdLeadSms } from '@/lib/sms';
 import { withOptOut } from '@/lib/sms-templates';
 import {
@@ -195,7 +197,7 @@ export function generateContractorAdLeadAlert(params: {
   phone: string;
   projectType?: string | null;
   city?: string | null;
-  speedToLeadStatus: 'sent' | 'queued_quiet_hours' | 'opted_out' | 'failed';
+  speedToLeadStatus: 'sent' | 'queued_quiet_hours' | 'opted_out' | 'failed' | 'deferred' | 'queued';
   sendAtFormatted?: string | null;
 }): string {
   const { businessName: _businessName, leadName, phone, projectType, city, speedToLeadStatus, sendAtFormatted } = params;
@@ -206,6 +208,10 @@ export function generateContractorAdLeadAlert(params: {
   let statusText = 'Auto-SMS sent to homeowner.';
   if (speedToLeadStatus === 'queued_quiet_hours') {
     statusText = `Auto-SMS queued for ${sendAtFormatted || 'morning delivery'} (quiet hours).`;
+  } else if (speedToLeadStatus === 'deferred') {
+    statusText = 'Auto-SMS deferred (no dedicated sender).';
+  } else if (speedToLeadStatus === 'queued') {
+    statusText = 'Auto-SMS queued for delivery.';
   } else if (speedToLeadStatus === 'opted_out') {
     statusText = 'Homeowner is SMS opted-out.';
   } else if (speedToLeadStatus === 'failed') {
@@ -245,9 +251,22 @@ export type SpeedToLeadTelemetry = {
   idempotencyKey: string;
   dispatchedAt: string;
   dispatchLatencyMs: number;
-  deliveryStatus: 'sent' | 'queued' | 'skipped' | 'failed';
+  deliveryStatus: 'sent' | 'queued' | 'skipped' | 'failed' | 'deferred';
   contractorAlertStatus?: 'sent' | 'skipped' | 'failed';
 };
+
+async function checkDedicatedSenderReady(accountId: string, admin?: SupabaseClient): Promise<boolean> {
+  if (process.env.LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED !== '1') {
+    return false;
+  }
+  try {
+    const client = admin && typeof admin.from === 'function' ? admin : createAdminClient();
+    const readiness = await loadDedicatedMessagingReadiness(accountId, client);
+    return readiness.kind === 'ready';
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Automatically dispatches the speed-to-lead text message when an ad lead arrives.
@@ -272,6 +291,7 @@ export async function dispatchSpeedToLeadSms(params: {
   recipientTimeZone?: string | null;
   accountTimeZone?: string | null;
   contractorAlertPhone?: string | null;
+  hasDedicatedSender?: boolean;
 }): Promise<{
   sent: boolean;
   message: string;
@@ -282,7 +302,7 @@ export async function dispatchSpeedToLeadSms(params: {
 }> {
   const startTime = Date.now();
   const {
-    admin: _admin,
+    admin,
     accountId,
     recipientPhone,
     businessName,
@@ -298,6 +318,7 @@ export async function dispatchSpeedToLeadSms(params: {
     recipientTimeZone,
     accountTimeZone,
     contractorAlertPhone,
+    hasDedicatedSender: explicitHasDedicated,
   } = params;
 
   if (!recipientPhone || recipientPhone.length < 10) {
@@ -419,6 +440,17 @@ export async function dispatchSpeedToLeadSms(params: {
       idempotencyKey,
     });
 
+    const hasDedicatedSender = explicitHasDedicated !== undefined
+      ? explicitHasDedicated
+      : await checkDedicatedSenderReady(accountId, admin);
+
+    const isDeferred = Boolean(eventId && !hasDedicatedSender);
+    const effectiveStatus: 'sent' | 'deferred' | 'failed' = !eventId
+      ? 'failed'
+      : isDeferred
+      ? 'deferred'
+      : 'sent';
+
     if (contractorAlertPhone) {
       try {
         const contractorAlert = generateContractorAdLeadAlert({
@@ -427,7 +459,7 @@ export async function dispatchSpeedToLeadSms(params: {
           phone: recipientPhone,
           projectType,
           city,
-          speedToLeadStatus: eventId ? 'sent' : 'failed',
+          speedToLeadStatus: effectiveStatus,
         });
         await sendContractorAdLeadSms({
           accountId,
@@ -441,11 +473,11 @@ export async function dispatchSpeedToLeadSms(params: {
       }
     }
 
-    baseTelemetry.deliveryStatus = eventId ? 'sent' : 'failed';
+    baseTelemetry.deliveryStatus = effectiveStatus;
     baseTelemetry.dispatchLatencyMs = Date.now() - startTime;
 
     return {
-      sent: Boolean(eventId),
+      sent: effectiveStatus === 'sent',
       message,
       queuedForQuietHours: false,
       resolvedTimeZone,

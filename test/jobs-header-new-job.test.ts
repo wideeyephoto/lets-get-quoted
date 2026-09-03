@@ -48,8 +48,8 @@ describe('Jobs Workspace Header + New Job Button Layout', () => {
 
     const hintSrc = readFileSync('src/components/field-intake-hint.tsx', 'utf8');
     expect(hintSrc).toContain("pillLabel: 'Voice & Text-to-Job'");
-    expect(hintSrc).toContain('update job address, status, site notes');
-    expect(hintSrc).toContain('Update address for Smith job');
+    expect(hintSrc).toContain('append internal job notes, gate codes, site observations');
+    expect(hintSrc).toContain('Gate code for Smith job on Main St is 4821.');
   });
 });
 

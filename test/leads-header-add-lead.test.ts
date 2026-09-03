@@ -43,6 +43,6 @@ describe('Leads Workspace Header + Add Lead Button Layout', () => {
 
     const hintSrc = readFileSync('src/components/field-intake-hint.tsx', 'utf8');
     expect(hintSrc).toContain("pillLabel: 'Voice & Text-to-Lead'");
-    expect(hintSrc).toContain('log new prospects and update lead details');
+    expect(hintSrc).toContain('capture new prospects or stage estimates for review');
   });
 });
