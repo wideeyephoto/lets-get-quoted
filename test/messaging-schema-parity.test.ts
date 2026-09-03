@@ -53,6 +53,10 @@ const MIGRATIONS = [
   'migrations/20260822220000_inbound_action_queue_admin_read.sql',
   'migrations/20260825133000_reconcile_shared_sender_and_registry_matching.sql',
   'migrations/20260825140000_voice_calls_workspace_and_workflows.sql',
+  'migrations/20260829120000_sms_owner_field_intake_rpc.sql',
+  'migrations/20260830120000_crew_field_intake.sql',
+  'migrations/20260903172223_owner_shared_field_command_routing.sql',
+  'migrations/20260903190000_sms_shared_notice_stop_suppression.sql',
 ] as const;
 
 function lf(value: string): string {

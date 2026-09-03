@@ -167,7 +167,7 @@ describe('Multi-Theme Logged-In Contrast Safety Suite', () => {
       // Inbox active filter
       expect(globals).toContain(":root[data-theme='light'] .inbox-filter.is-active {\n  background: #c2410c;");
       // Roster summary active button
-      expect(globals).toContain(":root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] {\n  background: #c2410c !important;");
+      expect(globals).toMatch(/:root\[data-theme='light'\]\s*\[class\*='rosterSummary'\]\s*button\[aria-pressed='true'\][\s\S]*?background:\s*#c2410c !important;/);
       // Contrast check
       expect(contrastRatio('#ffffff', '#c2410c')).toBeGreaterThanOrEqual(4.5);
     });

@@ -1826,6 +1826,12 @@ create policy office_member_capabilities_self_read
 revoke all on table public.office_member_capabilities from public, anon;
 grant select, insert, update, delete on table public.office_member_capabilities to authenticated;
 
+create index if not exists idx_office_capabilities_updated_by on public.office_capabilities (updated_by);
+create index if not exists idx_office_member_capabilities_account_id on public.office_member_capabilities (account_id);
+create index if not exists idx_office_member_capabilities_user_id on public.office_member_capabilities (user_id);
+create index if not exists idx_office_member_capabilities_capability on public.office_member_capabilities (capability);
+create index if not exists idx_office_member_capabilities_granted_by on public.office_member_capabilities (granted_by);
+
 create or replace function public.office_can(acc uuid, p_capability text)
 returns boolean
 language sql

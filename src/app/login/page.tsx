@@ -98,11 +98,10 @@ function LoginInner() {
     : `/welcome${welcomeQuery ? `?${welcomeQuery}` : ''}`;
 
   const isSignupFlow = isSignup || Boolean(planIntent || tradeParam || cityParam || intent.gclid || intent.utmSource || intent.goal);
-  const rawNext = searchParams.get('next');
   const nextPath = safeNextPath(
-    isSignupFlow && (!rawNext || rawNext.startsWith('/dashboard'))
+    searchParams.get('next') && isSignupFlow && searchParams.get('next')!.startsWith('/dashboard')
       ? defaultWelcomeDestination
-      : (rawNext ?? (isSignupFlow ? defaultWelcomeDestination : null)),
+      : (searchParams.get('next') ?? (isSignupFlow ? defaultWelcomeDestination : null)),
   );
 
   const buildToggleUrl = (targetMode: 'signin' | 'signup') => {
