@@ -125,4 +125,23 @@ describe('Quick Edit Popups across Leads and Jobs', () => {
     expect(focusCss).toContain('grid-template-columns: 4.8rem minmax(0, 1fr);');
     expect(focusCss).not.toContain('grid-template-columns: 6.5rem minmax(0, 1fr);');
   });
+
+  it('verifies QuickEditAddressModal does not cut off autofill suggestions', () => {
+    const css = readFileSync(join(root, 'src/components/quick-edit/quick-edit.module.css'), 'utf8');
+    expect(css).toContain('.modal {');
+    expect(css).toContain('overflow: visible;');
+    expect(css).toContain('.addressModal {');
+    expect(css).toContain('min-height: 380px;');
+    expect(css).toContain('.addressForm');
+
+    const addressModalSrc = readFileSync(join(root, 'src/components/quick-edit/QuickEditAddressModal.tsx'), 'utf8');
+    expect(addressModalSrc).toContain('className={styles.addressModal}');
+    expect(addressModalSrc).toContain('styles.addressForm');
+
+    const globalsCss = readFileSync(join(root, 'src/app/globals.css'), 'utf8');
+    expect(globalsCss).toContain('.address-autocomplete-suggestions {');
+    expect(globalsCss).toContain('max-height: min(320px, 60vh);');
+    expect(globalsCss).toContain('overflow-y: auto;');
+    expect(globalsCss).toContain('background: var(--bg-2, #0e1526);');
+  });
 });

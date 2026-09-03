@@ -17,7 +17,7 @@ const CSS = read('src', 'app', 'globals.css');
 /** The label literals out of VIEW_OPTIONS, in order. */
 function viewLabels(): Array<{ id: string; label: string }> {
   const block = CALENDAR.slice(CALENDAR.indexOf('const VIEW_OPTIONS'), CALENDAR.indexOf('];', CALENDAR.indexOf('const VIEW_OPTIONS')));
-  return [...block.matchAll(/\{ id: '([a-z]+)', label: '([^']+)'/g)].map((match) => ({ id: match[1], label: match[2] }));
+  return [...block.matchAll(/\{ id: '([a-z_]+)', label: '([^']+)'/g)].map((match) => ({ id: match[1], label: match[2] }));
 }
 
 /* ===========================================================================
@@ -38,6 +38,8 @@ describe('the view names describe what you get', () => {
       { id: 'day', label: 'Day' },
       { id: 'week', label: 'Week' },
       { id: 'month', label: 'Capacity' },
+      { id: 'resource_timeline', label: 'Timeline' },
+      { id: 'timeline_week', label: 'Timeline week' },
       { id: 'crew', label: 'Dispatch' },
       { id: 'agenda', label: 'Month list' },
       { id: 'timeline', label: 'Project timeline' },
@@ -56,15 +58,15 @@ describe('the view names describe what you get', () => {
    * now called Projects, and `month` of the one called Capacity.
    */
   it('renames the labels without touching the stored ids', () => {
-    expect(CALENDAR_VIEWS).toEqual(['day', 'week', 'month', 'crew', 'agenda', 'timeline', 'year']);
+    expect(CALENDAR_VIEWS).toEqual(['day', 'week', 'month', 'resource_timeline', 'timeline_week', 'crew', 'agenda', 'timeline', 'year']);
     expect(viewLabels().map((option) => option.id)).toEqual(CALENDAR_VIEWS);
     // An old cookie still resolves rather than dumping somebody in the default.
     for (const view of CALENDAR_VIEWS) expect(normalizeCalendarView(view)).toBe(view);
   });
 
-  /** Day, Week and Capacity are the zoom level and get pressed constantly. */
-  it('promotes the three you switch between and leaves four in the menu', () => {
-    expect(CALENDAR_CODE).toContain("const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month']);");
+  /** Day, Week, Capacity, Timeline and Timeline week are in the quick switcher. */
+  it('promotes the quick switcher views and leaves specialist views in the menu', () => {
+    expect(CALENDAR_CODE).toContain("const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month', 'resource_timeline', 'timeline_week']);");
   });
 });
 

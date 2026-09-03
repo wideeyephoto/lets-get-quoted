@@ -60,7 +60,28 @@
 .gearRow { display: flex; align-items: center; gap: 0.55rem; flex-wrap: wrap; justify-content: flex-end; min-width: 0; }
 .gearRow > * { min-width: 0; max-width: 100%; }
 
-/* Header with inline action button */
+/* Header row with inline actions & voice intake hint */
+.workspaceHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  flex-wrap: wrap;
+  max-width: none !important;
+  margin-bottom: 1rem;
+}
+
+.headingCopy {
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
 .headingTitleRow {
   display: flex;
   align-items: center;

@@ -34,6 +34,23 @@ describe('Jobs Workspace Header + New Job Button Layout', () => {
     expect(demoJobs).toContain('headingTitle="Current jobs"');
     expect(demoJobs).toContain('headingTag="h2"');
   });
+
+  it('verifies JobsWorkspace renders the Voice & Text-to-Job button in the header', () => {
+    const src = readFileSync('src/app/dashboard/jobs/JobsWorkspace.tsx', 'utf8');
+    expect(src).toContain("import FieldIntakeHint from '@/components/field-intake-hint'");
+    expect(src).toContain('<FieldIntakeHint page="jobs" />');
+    expect(src).toContain('styles.workspaceHeading');
+    expect(src).toContain('styles.headerActions');
+
+    const css = readFileSync('src/app/dashboard/jobs/jobs.module.css', 'utf8');
+    expect(css).toContain('.workspaceHeading');
+    expect(css).toContain('.headerActions');
+
+    const hintSrc = readFileSync('src/components/field-intake-hint.tsx', 'utf8');
+    expect(hintSrc).toContain("pillLabel: 'Voice & Text-to-Job'");
+    expect(hintSrc).toContain('update job address, status, site notes');
+    expect(hintSrc).toContain('Update address for Smith job');
+  });
 });
 
 describe('Job Queue Header Sort Popup Toggle', () => {

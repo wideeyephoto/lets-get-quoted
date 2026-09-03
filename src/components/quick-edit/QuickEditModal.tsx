@@ -9,6 +9,7 @@ type QuickEditModalProps = {
   onClose: () => void;
   title: string;
   eyebrow?: string;
+  className?: string;
   children: ReactNode;
 };
 
@@ -17,6 +18,7 @@ export default function QuickEditModal({
   onClose,
   title,
   eyebrow = 'Quick update',
+  className,
   children,
 }: QuickEditModalProps) {
   const [mounted, setMounted] = useState(false);
@@ -54,7 +56,7 @@ export default function QuickEditModal({
         }
       }}
     >
-      <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+      <div className={`${styles.modal}${className ? ` ${className}` : ''}`} onClick={(e) => e.stopPropagation()}>
         <div className={styles.header}>
           <div>
             {eyebrow && <p className={styles.eyebrow}>{eyebrow}</p>}

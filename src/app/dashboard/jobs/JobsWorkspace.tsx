@@ -14,6 +14,7 @@ import { scopePinsToFilter } from '@/lib/map-pin-scope';
 import PinMap, { type MapPin } from '@/components/pin-map';
 import FocusView from './FocusView';
 import JobSmoothieView from './JobSmoothieView';
+import FieldIntakeHint from '@/components/field-intake-hint';
 import styles from './jobs.module.css';
 
 // Display-ready job shape, built server-side so this client view never imports
@@ -280,26 +281,45 @@ export default function JobsWorkspace({
     </div>
   );
 
+  const smoothieGear = (
+    <ViewGear
+      views={VIEWS}
+      activeView={view}
+      onPickView={pickView}
+      mapView={effectiveMapView}
+      onSetMapView={setMap}
+      mapTheme={effectiveMapTheme}
+      onSetMapTheme={setTheme}
+      label="View"
+      defaults={{ view: 'smoothie', mapView: 'large', mapTheme: 'dark' }}
+    />
+  );
+
   const HeadingTag = headingTag;
   const header = headingTitle ? (
-    <div className="section-heading workspace-section-heading">
-      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-      <div className={styles.headingTitleRow}>
-        <HeadingTag>{headingTitle}</HeadingTag>
-        <a
-          className={styles.newJobBtn}
-          href="#new-job"
-          onClick={(event) => {
-            const target = document.getElementById('new-job');
-            if (!(target instanceof HTMLDetailsElement)) return;
-            event.preventDefault();
-            target.open = true;
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            target.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
-          }}
-        >
-          + New job
-        </a>
+    <div className={`section-heading workspace-section-heading ${styles.workspaceHeading}`}>
+      <div className={styles.headingCopy}>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <div className={styles.headingTitleRow}>
+          <HeadingTag>{headingTitle}</HeadingTag>
+          <a
+            className={styles.newJobBtn}
+            href="#new-job"
+            onClick={(event) => {
+              const target = document.getElementById('new-job');
+              if (!(target instanceof HTMLDetailsElement)) return;
+              event.preventDefault();
+              target.open = true;
+              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              target.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
+            }}
+          >
+            + New job
+          </a>
+        </div>
+      </div>
+      <div className={styles.headerActions}>
+        <FieldIntakeHint page="jobs" />
       </div>
     </div>
   ) : null;
@@ -318,7 +338,8 @@ export default function JobsWorkspace({
           todayKey={todayKey}
           mapPins={scopedPins}
           mapTheme={effectiveMapTheme}
-          gear={gear}
+          gear={smoothieGear}
+          followupButton={toolbarAccessory}
           onSelect={onFocusSelect}
           openRequest={pinRequest}
           details={details}

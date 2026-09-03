@@ -22,6 +22,7 @@ export interface AiLeadAdvisorProps {
   onFilterStage?: (stage: StageFilter) => void;
   onFilterLogistical?: (preset: LogisticalPreset) => void;
   onSwitchPane?: (pane: 'leads' | 'map') => void;
+  align?: 'left' | 'right';
 }
 
 export default function AiLeadAdvisor({
@@ -31,6 +32,7 @@ export default function AiLeadAdvisor({
   onFilterStage,
   onFilterLogistical,
   onSwitchPane,
+  align = 'left',
 }: AiLeadAdvisorProps) {
   const panelId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -160,7 +162,7 @@ export default function AiLeadAdvisor({
       {isOpen && (
         <section
           id={panelId}
-          className={styles.popoverCard}
+          className={`${styles.popoverCard}${align === 'right' ? ` ${styles.popoverCardRight}` : ''}`}
           aria-label="AI Pipeline Advisor Details"
           role="dialog"
         >

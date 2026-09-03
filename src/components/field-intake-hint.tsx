@@ -5,7 +5,7 @@ import Link from 'next/link';
 import SaveFieldContactButton from '@/components/SaveFieldContactButton';
 import styles from './field-intake-hint.module.css';
 
-export type FieldIntakePage = 'leads' | 'jobs' | 'schedule' | 'clients' | 'crew';
+export type FieldIntakePage = 'leads' | 'jobs' | 'schedule' | 'clients' | 'crew' | 'booking' | 'quick-stops' | 'recurring' | 'voice';
 
 interface FieldIntakeConfig {
   pillLabel: string;
@@ -20,10 +20,11 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Lead',
     title: '🎙️ Voice & Text-to-Lead',
     tag: 'From the road',
-    description: 'Text, send a voice memo, or call your shared field line hands-free (using Voice credits) from your truck to log new prospects without typing forms.',
+    description: 'Text, send a voice memo, or call your shared field line hands-free (using Voice credits) from your truck to log new prospects and update lead details without typing forms.',
     examples: [
-      '"Met Dave at 124 Main St, needs roof replacement, phone 555-0192."',
+      '"Met Dave at 124 Main St, needs roof replacement, phone (248) 555-0192."',
       '"New lead: Sarah Miller on Oak Ave, wants kitchen remodel estimate."',
+      '"Follow up with Dave at 124 Main St tomorrow morning."',
     ],
   },
   jobs: {
@@ -43,10 +44,55 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Schedule',
     title: '🎙️ Voice & Text-to-Schedule',
     tag: 'Calendar dispatch',
-    description: 'Reschedule jobs or customer estimate visits from the road with a quick voice note, text, or hands-free call (using Voice credits).',
+    description: 'Reschedule jobs, book estimate visits, or adjust crew dates from the road with a quick voice note, text, or hands-free call (using Voice credits).',
     examples: [
       '"Move the Smith job to Friday at 10am."',
       '"Reschedule Johnson estimate to next Tuesday morning."',
+      '"Book Friday afternoon for final inspection on J-104."',
+    ],
+  },
+  booking: {
+    pillLabel: 'Voice & Text-to-Book',
+    title: '🎙️ Voice & Text-to-Book',
+    tag: 'Arrival windows',
+    description: 'Hold arrival windows, block off time, or adjust booking availability from the road with a quick voice note, text, or hands-free call (using Voice credits).',
+    examples: [
+      '"Block off this Friday afternoon for truck maintenance."',
+      '"Hold tomorrow morning slot for 142 Elm St estimate."',
+      '"Block out next Monday for doctor appointment."',
+    ],
+  },
+  'quick-stops': {
+    pillLabel: 'Voice & Text-to-Quick-Stop',
+    title: '🎙️ Voice & Text-to-Quick-Stop',
+    tag: 'Same-day route fill',
+    description: 'Review and accept nearby filler stops hands-free while driving. Text or call our shared field line to adjust detour limits or fit emergency repairs into today’s route.',
+    examples: [
+      '"Can we squeeze in a 30-min pipe repair on Elm St this afternoon?"',
+      '"Accept quick stop for 84 Oak Ave between 2pm and 4pm."',
+      '"Turn on quick stops for 10 miles around Royal Oak."',
+    ],
+  },
+  recurring: {
+    pillLabel: 'Voice & Text-to-Recurring',
+    title: '🎙️ Voice & Text-to-Recurring',
+    tag: 'Repeating service',
+    description: 'Skip visits, pause maintenance agreements, or adjust recurring service frequencies hands-free from the truck by texting or calling your field line.',
+    examples: [
+      '"Skip next week\'s lawn service for the Miller property."',
+      '"Change Johnson pool service from biweekly to weekly starting next month."',
+      '"Pause recurring cleaning for 402 Pine St until June."',
+    ],
+  },
+  voice: {
+    pillLabel: 'Voice & Text Field Line',
+    title: '🎙️ Voice & Text Field Line',
+    tag: 'Hands-free copilot',
+    description: 'Call or text your shared field number (using Voice credits) anytime from your truck or job site. Your AI receptionist and copilot logs jobs, leads, notes, and arrival windows instantly.',
+    examples: [
+      '"Met Dave at 124 Main St, needs roof replacement, phone (248) 555-0192."',
+      '"Done framing on Smith job, starting drywall tomorrow."',
+      '"Move Johnson estimate to next Tuesday morning."',
     ],
   },
   clients: {
@@ -63,11 +109,12 @@ const CONFIGS: Record<FieldIntakePage, FieldIntakeConfig> = {
     pillLabel: 'Voice & Text-to-Crew',
     title: '🎙️ Voice & Text-to-Crew',
     tag: 'Field assignments',
-    description: 'Assign crew from the road. Verified crew members can also message or call our shared field number (using Voice credits) to log job site updates and expenses.',
+    description: 'Assign crew from the road and track job labor. Verified crew members can also text or call our shared field number (using Voice credits) to log job site updates, hours, and receipts.',
     examples: [
       '"Assign Mike and Dave to the Smith job tomorrow."',
       '"Put Alex on the Main St roof repair."',
-      'Crew text: "Finished tile prep on J-101"',
+      'Crew text: "Finished tile prep on J-101, starting grout."',
+      'Crew text: "Logged 4 hours on Smith framing today"',
     ],
   },
 };
@@ -136,7 +183,7 @@ export default function FieldIntakeHint({
           </div>
 
           <div className={styles.popoverFooter}>
-            <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" />
+            <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" className={styles.saveContactBtn} />
             <Link href="/features/text-to-job" className={styles.learnMoreLink}>
               How it works →
             </Link>

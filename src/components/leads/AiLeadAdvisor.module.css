@@ -133,9 +133,9 @@
   top: calc(100% + 8px);
   left: 0;
   z-index: 1000;
-  width: max-content;
-  min-width: 360px;
-  max-width: min(500px, calc(100vw - 2rem));
+  width: min(390px, calc(100vw - 2rem));
+  max-width: calc(100vw - 2rem);
+  box-sizing: border-box;
   padding: 0.95rem 1.15rem;
   border-radius: 12px;
   background: var(--surface-flyout, var(--panel, #16181f));
@@ -146,6 +146,11 @@
   gap: 0.6rem;
   animation: popoverFadeIn 0.15s ease-out;
   backdrop-filter: blur(12px);
+}
+
+.popoverCardRight {
+  left: auto;
+  right: 0;
 }
 
 :root[data-theme='light'] .popoverCard,

@@ -20,6 +20,7 @@ import LeadBoardView from './LeadBoardView';
 import LeadTableView from './LeadTableView';
 import QuickAddLeadModal from './QuickAddLeadModal';
 import AiLeadAdvisor from '@/components/leads/AiLeadAdvisor';
+import FieldIntakeHint from '@/components/field-intake-hint';
 import type { LogisticalPreset, StageFilter } from '@/lib/lead-queue';
 import { supabase } from '@/lib/supabase';
 import styles from './leads.module.css';
@@ -396,6 +397,7 @@ export default function LeadsWorkspace({
       leads={leads}
       mapPins={leadPins}
       base={basePath}
+      align="right"
       onFilterStage={(targetStage) => {
         setStageRequest((prev) => ({ stage: targetStage, nonce: (prev?.nonce ?? 0) + 1 }));
       }}
@@ -414,11 +416,25 @@ export default function LeadsWorkspace({
 
   const HeadingTag = headingTag;
   const header = headingTitle ? (
-    <div className="section-heading workspace-section-heading">
-      {eyebrow && <p className="eyebrow">{eyebrow}</p>}
-      <div className={styles.headingTitleRow}>
-        <HeadingTag>{headingTitle}</HeadingTag>
-        {advisorCompactButton}
+    <div className={`section-heading workspace-section-heading ${styles.workspaceHeading}`}>
+      <div className={styles.headingCopy}>
+        {eyebrow && <p className="eyebrow">{eyebrow}</p>}
+        <div className={styles.headingTitleRow}>
+          <HeadingTag>{headingTitle}</HeadingTag>
+          <button
+            type="button"
+            className={styles.addLeadBtn}
+            onClick={() => {
+              setQuickAddOpen(true);
+            }}
+          >
+            + Add lead
+          </button>
+          {!smoothie && advisorCompactButton}
+        </div>
+      </div>
+      <div className={styles.headerActions}>
+        <FieldIntakeHint page="leads" />
       </div>
     </div>
   ) : null;
@@ -442,6 +458,7 @@ export default function LeadsWorkspace({
           mapTheme={effectiveMapTheme}
           gear={gear}
           onOpenQuickAdd={() => setQuickAddOpen(true)}
+          advisor={advisorCompactButton}
         />
         <ScoreLegend />
         <QuickAddLeadModal open={quickAddOpen} onClose={() => setQuickAddOpen(false)} />

@@ -5,6 +5,7 @@ import { flushSync } from 'react-dom';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import InfoTip from '@/components/info-tip';
+import FieldIntakeHint from '@/components/field-intake-hint';
 import {
   BOOKING_WINDOW_PRESET_TIMES,
   MAX_BOOKING_WINDOWS,
@@ -391,6 +392,7 @@ export default function BookingSetup({
           <p>Customers request a preferred arrival window. You confirm the final time.</p>
         </div>
         <div className="bset-head-actions">
+          <FieldIntakeHint page="booking" />
           {bookingUrl ? (
             <>
               <button

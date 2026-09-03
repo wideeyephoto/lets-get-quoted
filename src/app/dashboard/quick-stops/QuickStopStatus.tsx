@@ -4,6 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useId, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import FieldIntakeHint from '@/components/field-intake-hint';
 import { setQuickStopEnabledAction } from '@/app/dashboard/settings/actions';
 import { jumpToHowItWorks } from './quick-stop-jump';
 import {
@@ -415,6 +416,9 @@ export function QuickStopHead() {
           request, choose the arrival window and fee, and accept only when it fits your route. Nothing is booked until
           the customer pays.
         </p>
+      </div>
+      <div className="bset-head-actions">
+        <FieldIntakeHint page="quick-stops" />
       </div>
     </header>
   );

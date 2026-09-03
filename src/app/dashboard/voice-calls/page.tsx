@@ -15,6 +15,7 @@ import VoiceCallsLiveRefresher from './VoiceCallsLiveRefresher';
 import { VoiceStatusBanner, VoiceCapabilitiesGrid, ContractorHotlineShowcase } from './VoiceControlsSection';
 import VoiceSimulatorSandbox from './VoiceSimulatorSandbox';
 import VoiceHealthWidget from './VoiceHealthWidget';
+import FieldIntakeHint from '@/components/field-intake-hint';
 import styles from './voice-calls.module.css';
 
 export const metadata = { title: 'AI Voice Assistant | Receptionist & Call Triage' };
@@ -108,6 +109,7 @@ export default async function VoiceCallsPage({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <FieldIntakeHint page="voice" />
           {hasAiBalance ? (
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.35rem 0.75rem', background: 'var(--bg-card, rgba(255,255,255,0.04))', border: '1px solid var(--rule-t12, rgba(255,255,255,0.08))', borderRadius: '6px', fontSize: '0.8125rem', color: totalAiUnits <= 25 ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)', fontWeight: 500 }}>
               <span>⚡ {totalAiUnits.toLocaleString('en-US')} AI credits available</span>

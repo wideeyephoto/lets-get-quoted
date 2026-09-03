@@ -242,8 +242,8 @@ export default async function JobsPage({
       <section className="panel workspace-section-card" data-tour-id="jobs:workspace">
         {/* The map lives inside the workspace so the view gear can sit on its
             legend row (same as leads); the workspace also owns the empty state.
-            Quote follow-ups rides along so it sits beside the View gear rather
-            than floating under the title on its own line. */}
+            Quote follow-ups sits in the top right of the queue header in Smoothie
+            view, and beside the View gear on other views. */}
         <WorkspaceTradeProvider trade={authoritativeTrade}>
           <JobsWorkspace
             headingTitle="Current jobs"

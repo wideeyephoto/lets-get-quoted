@@ -11,6 +11,7 @@ import ScheduleDaySummary from './ScheduleDaySummary';
 import ScheduleMobileAgenda from './ScheduleMobileAgenda';
 import ScheduleTimeline, { type TimelineDayMeta } from './ScheduleTimeline';
 import ScheduleCrewLanes from './ScheduleCrewLanes';
+import ScheduleResourceTimeline from './ScheduleResourceTimeline';
 import ScheduleMonthCapacity from './ScheduleMonthCapacity';
 import CalendarLegend, { STATUS_MARK, STATUS_WORD } from './CalendarLegend';
 import { occurrenceMinutes } from '@/lib/schedule-timeline';
@@ -26,7 +27,6 @@ import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, togg
 import { useModal } from './use-modal';
 import { addDaysToDateKey, formatJobSchedule, formatJobTime, formatMoney, weekdayOfDateKey } from '@/lib/jobs';
 import { loadOverWindow } from '@/lib/schedule-load';
-import FieldIntakeHint from '@/components/field-intake-hint';
 
 const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -56,6 +56,8 @@ const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon:
   { id: 'day', label: 'Day', hint: 'One day against the clock', icon: 'M6 4.5h12A1.5 1.5 0 0 1 19.5 6v12a1.5 1.5 0 0 1-1.5 1.5H6A1.5 1.5 0 0 1 4.5 18V6A1.5 1.5 0 0 1 6 4.5ZM4.5 9h15M8 12.5h8M8 16h5' },
   { id: 'week', label: 'Week', hint: 'The week against the clock — sized by how long each job takes', icon: 'M3.5 5.5h17v13h-17zM3.5 9h17M8 9v9.5M12.5 9v9.5M17 9v9.5' },
   { id: 'month', label: 'Capacity', hint: 'How full each day of the month is — click a date to open it', icon: 'M4 6.5A1.5 1.5 0 0 1 5.5 5h13A1.5 1.5 0 0 1 20 6.5v12a1.5 1.5 0 0 1-1.5 1.5h-13A1.5 1.5 0 0 1 4 18.5v-12ZM4 10h16M9.5 10v10M14.5 10v10M4 15h16' },
+  { id: 'resource_timeline', label: 'Timeline', hint: 'One day against the clock with drag-and-drop technician dispatch', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
+  { id: 'timeline_week', label: 'Timeline week', hint: 'Weekly technician dispatch board with drag-and-drop', icon: 'M3.5 5.5h17v13h-17zM3.5 9h17M8 9v9.5M12.5 9v9.5M17 9v9.5' },
   { id: 'crew', label: 'Dispatch', hint: 'One lane per crew member for a single day', icon: 'M4 7h16M4 12h16M4 17h16M7.5 5.5v3M13 10.5v3M9.5 15.5v3' },
   { id: 'agenda', label: 'Month list', hint: 'Every job this month as readable rows', icon: 'M4.5 7h2M10 7h9.5M4.5 12h2M10 12h9.5M4.5 17h2M10 17h9.5' },
   { id: 'timeline', label: 'Project timeline', hint: 'Multi-day work as one bar per job', icon: 'M4 7.5h9M7 12h12M5 16.5h7' },
@@ -63,7 +65,7 @@ const VIEW_OPTIONS: Array<{ id: CalendarView; label: string; hint: string; icon:
 ];
 
 /** The views laid out against a clock, which are the ones that step by day. */
-const TIME_VIEWS = new Set<CalendarView>(['day', 'week', 'crew']);
+const TIME_VIEWS = new Set<CalendarView>(['day', 'week', 'crew', 'resource_timeline', 'timeline_week']);
 
 /**
  * The views built out of day COLUMNS — the only ones the weekend toggles can
@@ -72,15 +74,9 @@ const TIME_VIEWS = new Set<CalendarView>(['day', 'week', 'crew']);
 const COLUMN_VIEWS = new Set<CalendarView>(['week', 'month']);
 
 /**
- * The three you actually switch between, promoted out of the menu.
- *
- * Seven views will not fit in a segmented control — that is why the menu exists
- * and the note above still stands. But these three are the zoom level, they get
- * used constantly, and reaching them was two clicks and a read: open the menu,
- * find the row, click it. The other four are destinations you pick occasionally
- * and they stay where they are.
+ * The views promoted to the quick segmented control in the toolbar.
  */
-const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month']);
+const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month', 'resource_timeline', 'timeline_week']);
 const QUICK_VIEW_OPTIONS = VIEW_OPTIONS.filter((option) => QUICK_VIEWS.has(option.id));
 const MENU_VIEW_OPTIONS = VIEW_OPTIONS.filter((option) => !QUICK_VIEWS.has(option.id));
 
@@ -272,12 +268,15 @@ export type CalendarJob = {
   /** What the work IS. Optional because only the mobile agenda has the width to
       print it — a 33px month cell never did. */
   scope_label?: string | null;
+  ref?: string | null;
+  address?: string | null;
 };
 
 export type CrewOption = {
   id: string;
   name: string;
   role_label: string;
+  photo_path?: string | null;
 };
 
 function initials(name: string): string {
@@ -593,7 +592,7 @@ export default function ScheduleCalendar({
    */
   const timelineDayKeys = useMemo(() => {
     if (span === null) return [anchorDayKey];
-    if (effectiveView === 'day' || effectiveView === 'crew') return [anchorDayKey];
+    if (effectiveView === 'day' || effectiveView === 'crew' || effectiveView === 'resource_timeline') return [anchorDayKey];
     if (span === 1) return [anchorDayKey];
     if (span === 3) return [0, 1, 2].map((offset) => shiftDateKey(anchorDayKey, offset));
 
@@ -1147,8 +1146,7 @@ export default function ScheduleCalendar({
         ) : (
           monthNav
         )}
-        <div className="calendar-toolbar-actions" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <FieldIntakeHint page="schedule" compact />
+        <div className="calendar-toolbar-actions">
           <CalendarViewMenu
             value={calendarView}
             onChange={setCalendarView}
@@ -1275,6 +1273,21 @@ export default function ScheduleCalendar({
           workdayStart={workdayStart}
           workdayEnd={workdayEnd}
           onOpenJob={openJobActions}
+        />
+      ) : effectiveView === 'resource_timeline' || effectiveView === 'timeline_week' ? (
+        <ScheduleResourceTimeline
+          mode={effectiveView === 'timeline_week' ? 'week' : 'day'}
+          dayKey={anchorDayKey}
+          weekDayKeys={timelineDayKeys}
+          todayKey={todayKey}
+          jobs={jobs}
+          crew={crew}
+          assignments={assignments}
+          workdayStart={workdayStart}
+          workdayEnd={workdayEnd}
+          onOpenJob={openJobActions}
+          onStepDay={(delta) => setAnchorDayKey((key) => shiftDateKey(key, delta))}
+          onSelectDate={(key) => openDay(key)}
         />
       ) : effectiveView === 'month' ? (
         <ScheduleMonthCapacity

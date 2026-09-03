@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import {
+  type GoogleAdsConfig,
   isGoogleAdsConfigured,
   provisionManagedSearchCampaign,
   uploadOfflineConversion,
@@ -495,4 +496,3 @@ describe('Google Ads API Module', () => {
     });
   });
 });
-

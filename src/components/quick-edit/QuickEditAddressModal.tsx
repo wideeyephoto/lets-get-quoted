@@ -47,8 +47,13 @@ export default function QuickEditAddressModal({
   }
 
   return (
-    <QuickEditModal isOpen={isOpen} onClose={onClose} title={title}>
-      <form onSubmit={handleSubmit} className={styles.form}>
+    <QuickEditModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={title}
+      className={styles.addressModal}
+    >
+      <form onSubmit={handleSubmit} className={`${styles.form} ${styles.addressForm}`}>
         <div>
           <label htmlFor="quick-edit-address-field">{label}</label>
           <AddressAutocomplete

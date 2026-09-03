@@ -48,8 +48,8 @@ export function serializeWeekendDays(days: WeekendDays): string {
 // every time someone clicked the arrow — pick Week, step forward a month, and
 // you are back in Month with no way to tell why.
 export const CALENDAR_VIEW_COOKIE = 'lgq_calendar_view';
-export type CalendarView = 'day' | 'week' | 'month' | 'crew' | 'agenda' | 'timeline' | 'year';
-export const CALENDAR_VIEWS: CalendarView[] = ['day', 'week', 'month', 'crew', 'agenda', 'timeline', 'year'];
+export type CalendarView = 'day' | 'week' | 'month' | 'resource_timeline' | 'timeline_week' | 'crew' | 'agenda' | 'timeline' | 'year';
+export const CALENDAR_VIEWS: CalendarView[] = ['day', 'week', 'month', 'resource_timeline', 'timeline_week', 'crew', 'agenda', 'timeline', 'year'];
 
 /**
  * WEEK IS THE DEFAULT NOW, NOT MONTH.

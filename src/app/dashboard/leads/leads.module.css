@@ -1,3 +1,25 @@
+/* Header row with inline actions & voice intake hint */
+.workspaceHeading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.85rem 1.25rem;
+  flex-wrap: wrap;
+  max-width: none !important;
+  margin-bottom: 1rem;
+}
+
+.headingCopy {
+  min-width: 0;
+}
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
 .headingTitleRow {
   display: flex;
   align-items: center;
@@ -10,6 +32,37 @@
   margin: 0;
   display: inline-flex;
   align-items: center;
+}
+
+.addLeadBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 36px;
+  padding: 0 1rem;
+  border: 1.5px solid var(--accent, #ff7a21);
+  border-radius: 999px;
+  background: rgba(255, 122, 33, 0.14);
+  color: var(--accent-ink, #ff7a21);
+  font-family: inherit;
+  font-size: 0.86rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+.addLeadBtn:hover {
+  background: var(--accent, #ff7a21);
+  color: #ffffff;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(255, 122, 33, 0.35);
+}
+
+.addLeadBtn:active {
+  transform: translateY(0);
 }
 
 .topAdvisorWrap { margin-bottom: 0.75rem; }

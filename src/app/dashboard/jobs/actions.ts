@@ -636,6 +636,48 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
   revalidatePath('/dashboard/schedule');
 }
 
+/**
+ * Fast atomic update for 2D dispatch board / timeline drag-and-drop.
+ * Updates scheduled_for, scheduled_time, estimated_hours, and crew assignment in one pass.
+ */
+export async function dispatchJobScheduleAction(params: {
+  jobId: string;
+  dateKey?: string | null;
+  scheduledTime?: string | null;
+  estimatedHours?: number | null;
+  crewId?: string | null;
+}): Promise<{ ok: boolean; message?: string }> {
+  const { supabase, accountId } = await requireOfficeContext('jobs.write', 'schedule.write');
+
+  const updates: Record<string, unknown> = {};
+  if (params.dateKey !== undefined) updates.scheduled_for = params.dateKey;
+  if (params.scheduledTime !== undefined) updates.scheduled_time = params.scheduledTime;
+  if (params.estimatedHours !== undefined) updates.estimated_hours = params.estimatedHours;
+
+  if (Object.keys(updates).length > 0) {
+    const { error: jobError } = await supabase
+      .from('jobs')
+      .update(updates)
+      .eq('id', params.jobId)
+      .eq('account_id', accountId);
+
+    if (jobError) {
+      console.error('Failed to update job dispatch schedule', jobError);
+      return { ok: false, message: 'Failed to update job schedule.' };
+    }
+  }
+
+  if (params.crewId !== undefined) {
+    const nextCrewIds = params.crewId ? [params.crewId] : [];
+    await setJobCrewAssignments(supabase, accountId, params.jobId, nextCrewIds);
+  }
+
+  revalidatePath('/dashboard/schedule');
+  revalidatePath(`/dashboard/jobs/${params.jobId}`);
+  return { ok: true };
+}
+
+
 export async function removeJobScheduleAction(jobId: string) {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);

@@ -66,6 +66,7 @@ export default function JobSmoothieView({
   mapPins = [],
   mapTheme = 'dark',
   gear,
+  followupButton,
   initialStage = 'all',
   initialSort = 'soonest',
 }: {
@@ -80,6 +81,7 @@ export default function JobSmoothieView({
   mapPins?: MapPin[];
   mapTheme?: 'dark' | 'light';
   gear?: ReactNode;
+  followupButton?: ReactNode;
   /** Where a ?status= / ?owing=1 deep link wants the queue to open. Seeds, not
       controls — the chips and the Sort menu own them from the first render on. */
   initialStage?: StageFilter;
@@ -168,6 +170,7 @@ export default function JobSmoothieView({
     selectedIndex,
     resetKey: `${stage}|${sort}|${query}`,
     plural: 'jobs',
+    pageSize: 10,
   });
   const visible = useMemo(() => shown.slice(0, win.end), [shown, win.end]);
 
@@ -303,62 +306,69 @@ export default function JobSmoothieView({
       <div className={styles.body}>
         {/* --- the queue --- */}
         <section className={styles.queue} aria-label="Job queue">
-          <div className={styles.queueHead}>
-            <div className={styles.queueHeadLeft}>
-              <h2 className={styles.queueTitle}>Job queue</h2>
-              <span className={styles.queueCount}>
-                {shown.length === jobs.length ? `${jobs.length}` : `${shown.length} of ${jobs.length}`}
-              </span>
+          <div className={`${styles.queueHead} ${styles.queueHeadTwoRows}`}>
+            <div className={styles.queueHeadTop}>
+              <div className={styles.queueHeadLeft}>
+                <h2 className={styles.queueTitle}>Job queue</h2>
+                <span className={styles.queueCount}>
+                  {shown.length === jobs.length ? `${jobs.length}` : `${shown.length} of ${jobs.length}`}
+                </span>
+              </div>
+              {followupButton}
             </div>
 
-            <div className={styles.sortPopupWrap} ref={sortRef}>
-              <button
-                type="button"
-                className={styles.sortToggleBtn}
-                onClick={() => setSortOpen((prev) => !prev)}
-                aria-expanded={sortOpen}
-                aria-haspopup="menu"
-                title="Sort jobs"
-              >
-                <svg
-                  className={styles.filterIcon}
-                  width="13"
-                  height="13"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2.2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  aria-hidden="true"
+            <div className={styles.queueHeadActions}>
+              <div className={styles.sortPopupWrap} ref={sortRef}>
+                <button
+                  type="button"
+                  className={styles.sortToggleBtn}
+                  onClick={() => setSortOpen((prev) => !prev)}
+                  aria-expanded={sortOpen}
+                  aria-haspopup="menu"
+                  title="Sort jobs"
                 >
-                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
-                </svg>
-                <span className={styles.sortCurrentLabel}>{currentSort.label}</span>
-                <span className={styles.sortChevron} aria-hidden="true">▾</span>
-              </button>
-
-              {sortOpen && (
-                <div className={styles.sortMenu} role="menu">
-                  <div className={styles.sortMenuTitle}>Sort jobs</div>
-                  {JOB_SORTS.map((option) => (
-                    <button
-                      key={option.id}
-                      type="button"
-                      role="menuitemradio"
-                      aria-checked={sort === option.id}
-                      className={`${styles.sortMenuItem}${sort === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
-                      onClick={() => {
-                        setSort(option.id as QueueSort);
-                        setSortOpen(false);
-                      }}
+                  <span className={styles.sortToggleLabelGroup}>
+                    <svg
+                      className={styles.filterIcon}
+                      width="13"
+                      height="13"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
                     >
-                      <span>{option.label}</span>
-                      {sort === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
-                    </button>
-                  ))}
-                </div>
-              )}
+                      <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                    </svg>
+                    <span className={styles.sortCurrentLabel}>{currentSort.label}</span>
+                  </span>
+                  <span className={styles.sortChevron} aria-hidden="true">▾</span>
+                </button>
+
+                {sortOpen && (
+                  <div className={styles.sortMenu} role="menu">
+                    <div className={styles.sortMenuTitle}>Sort jobs</div>
+                    {JOB_SORTS.map((option) => (
+                      <button
+                        key={option.id}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={sort === option.id}
+                        className={`${styles.sortMenuItem}${sort === option.id ? ` ${styles.sortMenuItemActive}` : ''}`}
+                        onClick={() => {
+                          setSort(option.id as QueueSort);
+                          setSortOpen(false);
+                        }}
+                      >
+                        <span>{option.label}</span>
+                        {sort === option.id && <span className={styles.sortCheck} aria-hidden="true">✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 

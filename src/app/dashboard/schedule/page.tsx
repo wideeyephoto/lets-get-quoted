@@ -29,6 +29,7 @@ import ScheduleDragProvider from './ScheduleDragProvider';
 import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import BookingRequests from './BookingRequests';
 import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
+import FieldIntakeHint from '@/components/field-intake-hint';
 
 export const metadata = { title: 'Schedule' };
 
@@ -518,6 +519,8 @@ export default async function SchedulePage({
       // cell has no room for a sentence, but a full-width card does, and
       // "Dana Whitfield" alone does not tell you what you are turning up to do.
       scope_label: job.scope?.trim() || null,
+      ref: job.ref,
+      address: job.address ?? null,
     };
   });
 
@@ -525,6 +528,7 @@ export default async function SchedulePage({
     id: member.id,
     name: member.name,
     role_label: member.role_label,
+    photo_path: member.photo_path ?? null,
   }));
 
   /* --- what the queue and the scheduling panel need ------------------------
@@ -788,7 +792,10 @@ export default async function SchedulePage({
           {/* No "SCHEDULE" eyebrow: the nav already marks where you are and the
               heading says it again. It cost a line on every screen size. */}
           <div className="schedule-bar-id">
-            <h1 className="workspace-title">Job calendar</h1>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
+              <h1 className="workspace-title">Job calendar</h1>
+              <FieldIntakeHint page="schedule" />
+            </div>
             {/* THE PHONE'S VERSION OF THE FOUR STAT CARDS. Those cards are 4
                 tiles of an icon, a figure and a caption; at 390px they either
                 went two-up at ~168px each — where "Costs logged" truncated — or

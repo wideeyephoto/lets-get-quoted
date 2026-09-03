@@ -13,6 +13,7 @@ import RecurringPlanRow from '@/components/recurring-plan-row';
 import RecurringHowItWorks from '@/components/recurring-how-it-works';
 import RecurringMap from './RecurringMap';
 import RecurringWorkspace, { type BoardModel, type PlanRow } from './RecurringWorkspace';
+import FieldIntakeHint from '@/components/field-intake-hint';
 
 /**
  * Repeating jobs and auto-billing, given the book.
@@ -116,14 +117,20 @@ export default function RecurringScreen({
           eighteen. The map is not dropped — it moves to a tab, where it costs
           nothing until you ask for it. */}
       {ops ? (
-        <div className="rops-pagehead">
-          <p className="eyebrow">Recurring</p>
-          <h1 className="workspace-title">Repeating jobs &amp; auto-billing</h1>
+        <div className="rops-pagehead" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
+          <div>
+            <p className="eyebrow">Recurring</p>
+            <h1 className="workspace-title">Repeating jobs &amp; auto-billing</h1>
+          </div>
+          <FieldIntakeHint page="recurring" />
         </div>
       ) : (
         <section className="workspace-hero panel">
           <div className="workspace-hero-copy">
-            <p className="eyebrow">Recurring</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap', marginBottom: '0.25rem' }}>
+              <p className="eyebrow" style={{ margin: 0 }}>Recurring</p>
+              <FieldIntakeHint page="recurring" />
+            </div>
             <h1 className="workspace-title">Repeating jobs &amp; auto-billing</h1>
             <p className="workspace-lead">
               Set up services that repeat — lawn care, cleaning, pool service — and each visit becomes a scheduled job

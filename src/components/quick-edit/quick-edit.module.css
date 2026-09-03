@@ -8,6 +8,7 @@
   background: rgba(3, 8, 15, 0.82);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+  overflow-y: auto;
 }
 
 :root[data-theme='sunlight'] .backdrop {
@@ -20,13 +21,60 @@
   gap: 1rem;
   width: min(520px, 100%);
   max-height: min(88vh, 620px);
-  overflow: auto;
+  overflow: visible;
   padding: 1.35rem;
   border-radius: 14px;
   background: var(--bg-3, #171b23);
   border: 1px solid rgba(255, 255, 255, 0.18);
   color: var(--text, #eef1f6);
   box-shadow: 0 24px 70px rgba(0, 0, 0, 0.65);
+}
+
+.addressModal {
+  min-height: 380px;
+  display: flex;
+  flex-direction: column;
+}
+
+.addressForm {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  gap: 1.1rem;
+}
+
+.addressForm .actions {
+  margin-top: auto;
+  padding-top: 0.5rem;
+}
+
+.addressModal :global(.address-autocomplete-suggestions) {
+  background: var(--bg-2, #0e1526);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  max-height: min(300px, 50vh);
+  overflow-y: auto;
+}
+
+:root[data-theme='sunlight'] .addressModal :global(.address-autocomplete-suggestions) {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.22);
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .addressModal :global(.address-autocomplete-suggestions button) {
+  border-top-color: rgba(9, 13, 22, 0.1);
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .addressModal :global(.address-autocomplete-suggestions button:hover),
+:root[data-theme='sunlight'] .addressModal :global(.address-autocomplete-suggestions button.active) {
+  background: #f1f5f9;
+}
+
+:root[data-theme='sunlight'] .addressModal :global(.address-autocomplete-suggestions small) {
+  color: #64748b;
 }
 
 :root[data-theme='dim'] .modal {
