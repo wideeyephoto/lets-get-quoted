@@ -5,8 +5,7 @@ import { join } from 'node:path';
 /**
  * /founder, founder letter & interactive experience.
  *
- * Verifies structure, design fidelity, portrait assets, tool sprawl calculator,
- * and SEO metadata.
+ * Verifies structure, design fidelity, portrait assets, and SEO metadata.
  */
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8').replace(/\r\n/g, '\n');
@@ -104,8 +103,9 @@ describe('structured page flow', () => {
     expect(positions).toEqual([...positions].sort((a, b) => a - b));
   });
 
-  it('features the interactive tool sprawl calculator and pledges', () => {
-    expect(PAGE).toContain('SPRAWL_TOOLS');
+  it('features the founder beliefs, broken cards, and pledges without tool sprawl calculator', () => {
+    expect(PAGE).not.toContain('SPRAWL_TOOLS');
+    expect(PAGE).not.toContain('Interactive Tool-Sprawl Cost Calculator');
     expect(PAGE).toContain('FOUNDER_BELIEFS');
     expect(PAGE).toContain('BROKEN_CARDS');
     expect(PAGE).toContain('PLEDGES');

@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import Image from 'next/image';
 import { APP_SIGNUP_URL, CtaLink } from '@/components/marketing/links';
 import { MARKETING_MAIN_ID, MARKETING_PAGE_CLASS } from '@/components/marketing/marketing-page';
@@ -42,44 +41,6 @@ const BROKEN_CARDS = [
   },
 ] as const;
 
-const SPRAWL_TOOLS = [
-  {
-    id: 'hosting',
-    name: 'Website Hosting & WordPress Maintenance',
-    cost: 50,
-    icon: '🌐',
-    sub: 'Hosting servers, domain renewals, SSL & security plugins',
-  },
-  {
-    id: 'crm',
-    name: 'Standalone Quoting & CRM (Jobber / Housecall Pro)',
-    cost: 149,
-    icon: '📋',
-    sub: 'Basic 1-to-2 user tier with restricted custom fields',
-  },
-  {
-    id: 'scheduling',
-    name: 'Scheduling & Dispatch App (Calendly / Acuity)',
-    cost: 79,
-    icon: '📅',
-    sub: 'Online booking slots & team calendar synchronization',
-  },
-  {
-    id: 'intake',
-    name: 'Third-Party Form & Photo Intake (Typeform / Wufoo)',
-    cost: 35,
-    icon: '📸',
-    sub: 'Custom photo uploads & multi-step questionnaires',
-  },
-  {
-    id: 'sms',
-    name: 'Client Texting Service (Twilio / Textline)',
-    cost: 40,
-    icon: '💬',
-    sub: 'Carrier-registered 10DLC messaging software',
-  },
-] as const;
-
 const PRINCIPLES = [
   {
     num: '01',
@@ -110,35 +71,6 @@ const PLEDGES = [
 ] as const;
 
 export default function FounderExperience() {
-  const [selectedTools, setSelectedTools] = useState<string[]>([
-    'hosting',
-    'crm',
-    'scheduling',
-    'intake',
-    'sms',
-  ]);
-
-  const toggleTool = (id: string) => {
-    setSelectedTools((prev) =>
-      prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id]
-    );
-  };
-
-  const selectAllTools = () => {
-    setSelectedTools(SPRAWL_TOOLS.map((t) => t.id));
-  };
-
-  const clearAllTools = () => {
-    setSelectedTools([]);
-  };
-
-  const totalMonthlyTax = SPRAWL_TOOLS.filter((t) =>
-    selectedTools.includes(t.id)
-  ).reduce((sum, t) => sum + t.cost, 0);
-
-  const totalAnnualTax = totalMonthlyTax * 12;
-  const activeCount = selectedTools.length;
-
   return (
     <main className={`${MARKETING_PAGE_CLASS} ${styles.page}`} id={MARKETING_MAIN_ID}>
       <div className={styles.ambientOne} aria-hidden="true" />
@@ -312,132 +244,6 @@ export default function FounderExperience() {
                 <p className={styles.brokenCardBody}>{card.body}</p>
               </article>
             ))}
-          </div>
-
-          {/* Interactive Tool-Sprawl Cost Calculator */}
-          <div className={styles.sprawlCalcContainer} aria-label="Interactive Tool-Sprawl Cost Calculator">
-            <div className={styles.sprawlCalcHeader}>
-              <div className={styles.sprawlHeaderLeft}>
-                <p className={styles.sprawlHeaderKicker}>💸 THE 5-APP SUBSCRIPTION TAX</p>
-                <h3 className={styles.sprawlHeaderTitle}>Interactive Tool-Sprawl Cost Calculator</h3>
-                <p className={styles.sprawlHeaderSub}>
-                  Select the standalone tools your contracting business currently juggles to see what fragmented software actually costs you:
-                </p>
-              </div>
-              <div className={styles.sprawlQuickToggle}>
-                <button type="button" onClick={selectAllTools} className={styles.sprawlToggleBtn}>
-                  Select All
-                </button>
-                <button type="button" onClick={clearAllTools} className={styles.sprawlToggleBtn}>
-                  Clear All
-                </button>
-              </div>
-            </div>
-
-            <div className={styles.sprawlGrid}>
-              {/* Left Column: Tool Checklist */}
-              <div className={styles.sprawlToolList} role="group" aria-label="Tools checklist">
-                {SPRAWL_TOOLS.map((tool) => {
-                  const isSelected = selectedTools.includes(tool.id);
-                  return (
-                    <div
-                      key={tool.id}
-                      onClick={() => toggleTool(tool.id)}
-                      className={`${styles.sprawlToolItem} ${isSelected ? styles.sprawlToolItemSelected : ''}`}
-                      role="checkbox"
-                      aria-checked={isSelected}
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === ' ' || e.key === 'Enter') {
-                          e.preventDefault();
-                          toggleTool(tool.id);
-                        }
-                      }}
-                    >
-                      <div className={`${styles.sprawlCheckbox} ${isSelected ? styles.sprawlCheckboxChecked : ''}`}>
-                        {isSelected ? '✓' : ''}
-                      </div>
-                      <span className={styles.sprawlToolIcon} aria-hidden="true">
-                        {tool.icon}
-                      </span>
-                      <div className={styles.sprawlToolInfo}>
-                        <span className={styles.sprawlToolName}>{tool.name}</span>
-                        <span className={styles.sprawlToolSub}>{tool.sub}</span>
-                      </div>
-                      <span className={styles.sprawlToolCost}>~${tool.cost}/mo</span>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Right Column: Live Calculated Results & LGQ Contrast */}
-              <div className={styles.sprawlResultsCard}>
-                <div>
-                  <div className={styles.sprawlResultsTop}>
-                    <span className={styles.sprawlResultsTag}>
-                      {activeCount > 0 ? `${activeCount} SEPARATE APPS SELECTED` : 'NO APPS SELECTED'}
-                    </span>
-                    <span style={{ color: '#8b9caa', fontFamily: 'monospace', fontSize: '11px' }}>
-                      MONTHLY SOFTWARE BILL
-                    </span>
-                  </div>
-
-                  <div className={styles.sprawlTotalRow}>
-                    <span className={styles.sprawlTotalLabel}>Total Monthly Subscription Tax</span>
-                    <div className={styles.sprawlBigPrice}>
-                      ${totalMonthlyTax}<small>/month</small>
-                    </div>
-                    <span className={styles.sprawlAnnualPill}>
-                      ${totalAnnualTax.toLocaleString()}/year in software bills
-                    </span>
-                  </div>
-
-                  <div className={styles.sprawlRetypeBox}>
-                    ⚠️ <strong>The Hidden Retype Penalty:</strong>{' '}
-                    {activeCount > 0 ? (
-                      <>
-                        You’re paying <strong>${totalMonthlyTax}/mo (${totalAnnualTax.toLocaleString()}/yr)</strong> to retype the same job details 4 times across disconnected tools.
-                      </>
-                    ) : (
-                      <>Check the tools you use on the left to calculate your wasted software spend.</>
-                    )}
-                  </div>
-                </div>
-
-                <div className={styles.sprawlContrastLgq}>
-                  <div className={styles.sprawlContrastHead}>
-                    <span className={styles.sprawlContrastLabel}>LET&apos;S GET QUOTED</span>
-                    <div className={styles.sprawlZeroNumber}>
-                      $0<small>/month base</small>
-                    </div>
-                  </div>
-
-                  <ul className={styles.sprawlBenefitList}>
-                    <li className={styles.sprawlBenefitItem}>
-                      <i aria-hidden="true">✓</i>
-                      <span>Replaces all {activeCount > 0 ? activeCount : 5} tools in one connected system</span>
-                    </li>
-                    <li className={styles.sprawlBenefitItem}>
-                      <i aria-hidden="true">✓</i>
-                      <span>
-                        Save <strong>${totalAnnualTax.toLocaleString()}/yr</strong> with $0 monthly base pricing
-                      </span>
-                    </li>
-                    <li className={styles.sprawlBenefitItem}>
-                      <i aria-hidden="true">✓</i>
-                      <span>Zero retyping · Homeowner request carries straight to payout</span>
-                    </li>
-                  </ul>
-
-                  <a
-                    href={APP_SIGNUP_URL}
-                    className={styles.sprawlCtaBtn}
-                  >
-                    Replace all {activeCount > 0 ? activeCount : 5} with $0/mo Flex Account →
-                  </a>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 
