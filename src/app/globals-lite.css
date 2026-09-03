@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 5f5b16a24456bf72
+   source-sha256: 81dd8eb2677e1b1b
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -14187,11 +14187,12 @@ a.metric-card-link:hover {
   top: calc(100% + 0.35rem);
   left: 0;
   right: 0;
-  overflow: hidden;
+  max-height: min(320px, 60vh);
+  overflow-y: auto;
   border: 1px solid var(--edge-t16);
   border-radius: 12px;
-  background: rgba(16, 28, 43, 0.9);
-  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.35);
+  background: var(--bg-2, #0e1526);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
   color: var(--text);
   pointer-events: auto;
 }
@@ -24858,6 +24859,27 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
 .ins-compare.is-on .ins-compare-thumb {
   transform: translateX(14px);
   background: var(--on-accent);
+}
+
+.btn.dupe-badge:hover,
+:root[data-theme] .btn.dupe-badge:hover,
+.btn.dupe-badge.is-active,
+:root[data-theme] .btn.dupe-badge.is-active {
+  background: rgba(255, 209, 102, 0.18);
+  border-color: rgba(255, 209, 102, 0.85);
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.6), 0 0 4px rgba(255, 209, 102, 0.9);
+  transform: translateY(-1px);
+}
+
+:root[data-theme='light'] .btn.dupe-badge:hover,
+:root[data-theme='sunlight'] .btn.dupe-badge:hover,
+:root[data-theme='parchment'] .btn.dupe-badge:hover,
+:root[data-theme='light'] .btn.dupe-badge.is-active,
+:root[data-theme='sunlight'] .btn.dupe-badge.is-active,
+:root[data-theme='parchment'] .btn.dupe-badge.is-active {
+  background: rgba(245, 158, 11, 0.2) !important;
+  border-color: rgba(180, 83, 9, 0.85) !important;
+  box-shadow: 0 0 18px rgba(245, 158, 11, 0.5) !important;
 }
 
 .ins-kpi-delta.is-good {

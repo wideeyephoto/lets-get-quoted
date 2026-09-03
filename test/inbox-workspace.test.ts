@@ -185,7 +185,7 @@ describe('the inbox is framed by the viewport', () => {
     // flex-basis 0 is the load-bearing part: the thread's content is unbounded,
     // so anything that lets it set the box's size gives back the tall page.
     expect(body).toContain('flex: 1 1 0');
-    expect(body).toContain('min-height: 24rem');
+    expect(body).toContain('min-height: 31.2rem');
   });
 
   it('exactly one thing inside the thread scrolls', () => {
