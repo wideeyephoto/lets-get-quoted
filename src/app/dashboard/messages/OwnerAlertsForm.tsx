@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { MessageSquare, PhoneCall, Mic, ArrowRight } from 'lucide-react';
 import { useActionState, useEffect, useState } from 'react';
 import SaveButton from '@/components/save-button';
 import SaveFieldContactButton from '@/components/SaveFieldContactButton';
@@ -349,23 +350,57 @@ export default function OwnerAlertsForm({
           || (savedStateMatches && state.status === 'saved' && state.ready) ? (
           <div className="msg-setup-copilot-card">
             <div className="msg-setup-copilot-head">
-              <span className="msg-setup-copilot-badge">🎙️ AI Copilot Field Line Ready</span>
-              <span className="msg-setup-copilot-num">{formatUsPhone(sharedPhoneNumber || '+19479412323')}</span>
+              <div className="msg-setup-copilot-badge-group">
+                <span className="msg-setup-copilot-live-dot" aria-hidden="true" />
+                <span className="msg-setup-copilot-badge">AI Copilot Field Line Ready</span>
+                <span className="msg-setup-copilot-sparky-tag">✦ {companionName} Active</span>
+              </div>
+              <div className="msg-setup-copilot-phone-box">
+                <span className="msg-setup-copilot-phone-label">Hotline</span>
+                <a
+                  href={`tel:${(sharedPhoneNumber || '+19479412323').replace(/[^\d+]/g, '')}`}
+                  className="msg-setup-copilot-num"
+                  title="Click to call hotline"
+                >
+                  {formatUsPhone(sharedPhoneNumber || '+19479412323')}
+                </a>
+              </div>
             </div>
             <p className="msg-setup-copilot-text">
-              Text notes, material receipts, gate codes, or punch lists to <b>{formatUsPhone(sharedPhoneNumber || '+19479412323')}</b> from your verified mobile ({formatUsPhone(currentPhone || phone || '')}). Your AI Copilot (Currently: {companionName}) organizes and updates job records automatically.
+              Text notes, material receipts, gate codes, or punch lists to <b>{formatUsPhone(sharedPhoneNumber || '+19479412323')}</b> from your verified mobile{' '}
+              <span className="msg-setup-verified-tag">{formatUsPhone(currentPhone || phone || '')}</span>. Your AI Copilot (<b>{companionName}</b>) organizes and updates job records automatically.
             </p>
-            <p className="msg-setup-copilot-voice-tip">
-              📞 <b>Hands-Free Dictation:</b> You can also call this number directly from your truck to dictate updates hands-free using your Voice credits.
-            </p>
+            <div className="msg-setup-copilot-voice-tip">
+              <div className="msg-setup-voice-icon-wrap" aria-hidden="true">
+                <Mic size={14} />
+              </div>
+              <div className="msg-setup-voice-content">
+                <span className="msg-setup-voice-title">Hands-Free Dictation (Truck Mode):</span>
+                <span className="msg-setup-voice-desc">
+                  Call this number directly from your truck to dictate updates hands-free using your Voice credits.
+                </span>
+              </div>
+            </div>
             <div className="msg-setup-copilot-actions">
               <SaveFieldContactButton size="small" label="Save Contact Card (.vcf)" />
-              <a href={`sms:${(sharedPhoneNumber || '+19479412323').replace(/[^\d+]/g, '')}`} className="btn secondary sm msg-setup-copilot-btn">
-                💬 Text Copilot
+              <a
+                href={`sms:${(sharedPhoneNumber || '+19479412323').replace(/[^\d+]/g, '')}`}
+                className="msg-setup-action-btn"
+              >
+                <MessageSquare size={13} aria-hidden="true" />
+                <span>Text Copilot</span>
+              </a>
+              <a
+                href={`tel:${(sharedPhoneNumber || '+19479412323').replace(/[^\d+]/g, '')}`}
+                className="msg-setup-action-btn"
+              >
+                <PhoneCall size={13} aria-hidden="true" />
+                <span>Call Hotline</span>
               </a>
               {showTextToJobLink ? (
-                <Link href="/dashboard/text-to-job" className="btn quiet sm msg-setup-copilot-link">
-                  Open Text-to-Job →
+                <Link href="/dashboard/text-to-job" className="msg-setup-copilot-link">
+                  <span>Open Text-to-Job</span>
+                  <ArrowRight size={13} aria-hidden="true" />
                 </Link>
               ) : null}
             </div>

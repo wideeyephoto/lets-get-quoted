@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { Download, Loader2, Check } from 'lucide-react';
 
 export default function SaveFieldContactButton({
   className = '',
-  label = 'Save Field Line to Contacts',
+  label = 'Save Contact Card (.vcf)',
   size = 'default',
 }: {
   className?: string;
@@ -12,12 +13,17 @@ export default function SaveFieldContactButton({
   size?: 'small' | 'default';
 }) {
   const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
 
   const handleDownload = () => {
     setDownloading(true);
     // Direct browser navigation to download the vCard
     window.location.href = '/api/contacts/field-vcard';
-    setTimeout(() => setDownloading(false), 2000);
+    setTimeout(() => {
+      setDownloading(false);
+      setDownloaded(true);
+      setTimeout(() => setDownloaded(false), 3000);
+    }, 1200);
   };
 
   const isSmall = size === 'small';
@@ -26,15 +32,19 @@ export default function SaveFieldContactButton({
     <button
       type="button"
       onClick={handleDownload}
-      className={`inline-flex items-center gap-1.5 font-medium rounded-lg transition-colors ${
-        isSmall
-          ? 'text-xs px-2.5 py-1 bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/25'
-          : 'text-sm px-3 py-1.5 bg-blue-600/15 hover:bg-blue-600/25 text-blue-300 border border-blue-500/30'
-      } ${className}`}
+      disabled={downloading}
+      className={`save-field-contact-btn ${isSmall ? 'sm' : ''} ${className}`}
       title="Download .vcf contact card to save your company's field texting line with 1 tap"
     >
-      <span aria-hidden="true">{downloading ? '⏳' : '📱'}</span>
-      <span>{downloading ? 'Saving contact…' : label}</span>
+      {downloading ? (
+        <Loader2 size={13} className="spin-icon" aria-hidden="true" />
+      ) : downloaded ? (
+        <Check size={13} aria-hidden="true" />
+      ) : (
+        <Download size={13} aria-hidden="true" />
+      )}
+      <span>{downloading ? 'Saving contact…' : downloaded ? 'Contact Saved' : label}</span>
     </button>
   );
 }
+
