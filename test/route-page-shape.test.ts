@@ -126,3 +126,18 @@ describe('the demo leads screen that this came from', () => {
     expect(readFileSync('src/app/demo/leads/[leadId]/page.tsx', 'utf8')).toContain("export const dynamic = 'force-dynamic'");
   });
 });
+
+describe('the ai-copilot and sparky screen', () => {
+  it('is a shared screen component both routes render, not a page one of them calls', () => {
+    const screen = readFileSync('src/app/features/sparky/AiCopilotWithAvatarsScreen.tsx', 'utf8');
+    expect(screen).toContain('export default function AiCopilotWithAvatarsScreen');
+
+    const sparky = readFileSync('src/app/features/sparky/page.tsx', 'utf8');
+    const aiCopilot = readFileSync('src/app/features/ai-copilot/page.tsx', 'utf8');
+    expect(sparky).toContain("from './AiCopilotWithAvatarsScreen'");
+    expect(aiCopilot).toContain("from '../sparky/AiCopilotWithAvatarsScreen'");
+    expect(sparky).toContain('path="/features/sparky"');
+    expect(aiCopilot).toContain('path="/features/ai-copilot"');
+  });
+});
+
