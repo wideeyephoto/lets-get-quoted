@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 58e41201e2fdb1a5
+   source-sha256: 5f5b16a24456bf72
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -1773,6 +1773,10 @@
   --bg-3: #eef1f4;
   --bg-elevated: #f7f8fa;
   --text: #162033;
+  --foreground: var(--text);
+  --text-muted: var(--muted);
+  --text-primary: var(--text);
+  --text-color: var(--text);
   --muted: #566274;
   --muted-2: #717d8e;
   --fresh: #0d7a52;
@@ -1788,6 +1792,7 @@
   --cap-over: #a8331f;
   --cap-unknown: #55606e;
   --gold-ink: #7a5200;
+  --accent: #c2410c;
   --accent-ink: #c2410c;
   --accent-paper: #ea580c;
   --on-active: #0f172a;
@@ -31213,8 +31218,14 @@ select optgroup {
   background: #0f1117;
 }
 
+:root[data-theme='light'] .inbox-header .workspace-title,
+:root[data-theme='light'] .inbox-slate .workspace-title {
+  color: #ffffff !important;
+  font-weight: 850 !important;
+}
+
 :root[data-theme='light'] .inbox-filter.is-active {
-  background: #ea580c;
+  background: #c2410c;
   color: #ffffff;
   font-weight: 850;
 }
@@ -31304,11 +31315,11 @@ select optgroup {
 }
 
 :root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] {
-  background: #ea580c !important;
-  border-color: #c2410c !important;
+  background: #c2410c !important;
+  border-color: #9a3412 !important;
   color: #ffffff !important;
   font-weight: 850 !important;
-  box-shadow: 0 2px 6px rgba(234, 88, 12, 0.35) !important;
+  box-shadow: 0 2px 6px rgba(194, 65, 12, 0.35) !important;
 }
 
 :root[data-theme='light'] [class*='rosterSummary'] button[aria-pressed='true'] strong,
@@ -31346,6 +31357,91 @@ select optgroup {
 :root[data-theme='light'] .chrome-shell-sidenav [class*='title'] {
   color: #090d16 !important;
   font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='feedCount'] {
+  color: #475569 !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='light'] [class*='filterBtn'] {
+  background: #f8fafc !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] [class*='filterBtn']:hover {
+  background: #f1f5f9 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] [class*='filterBtnActive'] {
+  background: #fff7ed !important;
+  border: 1.5px solid #ea580c !important;
+  color: #9a3412 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] [class*='searchInput'] {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='light'] [class*='searchInput']::placeholder {
+  color: #64748b !important;
+  opacity: 1 !important;
+}
+
+:root[data-theme='light'] [class*='feedTimeTag'] {
+  color: #475569 !important;
+  font-weight: 600 !important;
+}
+
+:root[data-theme='light'] [class*='receiptBadge'] {
+  color: #9a3412 !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='openJobLink'] {
+  color: #9a3412 !important;
+  font-weight: 750 !important;
+}
+
+:root[data-theme='light'] [class*='receiptConfidencePill'],
+:root[data-theme='light'] [class*='receiptConfidencePillReady'],
+:root[data-theme='light'] [class*='receiptQualityScoreTag'],
+:root[data-theme='light'] [class*='receiptQualityScoreTagReady'] {
+  background: #dcfce7 !important;
+  color: #14532d !important;
+  border: 1px solid #86efac !important;
+  font-weight: 850 !important;
+}
+
+:root[data-theme='light'] [class*='receiptExtractionBox'] span,
+:root[data-theme='light'] [class*='receiptExtractionBox'] li span,
+:root[data-theme='light'] [class*='receiptExtractionHeader'] span,
+:root[data-theme='light'] [class*='itemizedHeader'] span,
+:root[data-theme='light'] [class*='receiptRollbackNotice'],
+:root[data-theme='light'] [class*='receiptRollbackNotice'] span,
+:root[data-theme='light'] [class*='receiptRollbackNotice'] strong {
+  color: #334155 !important;
+}
+
+:root[data-theme='light'] [class*='accordionCard'] {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12) !important;
+}
+
+:root[data-theme='light'] [class*='accordionTitle'] {
+  color: #090d16 !important;
+  font-weight: 800 !important;
+}
+
+:root[data-theme='light'] [class*='accordionSubtitle'] {
+  color: #475569 !important;
+  font-weight: 500 !important;
 }
 
 :root[data-theme='light'] [class*='feedSearchInput'] {

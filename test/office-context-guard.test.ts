@@ -460,6 +460,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/leads/[leadId]/page.tsx',
       'src/app/dashboard/leads/actions.ts',
       'src/app/dashboard/leads/page.tsx',
+      'src/app/dashboard/leads/text-actions.ts',
       'src/app/dashboard/marketing/actions.ts',
       'src/app/dashboard/marketing/ads/page.tsx',
       'src/app/dashboard/marketing/blog/[id]/page.tsx',

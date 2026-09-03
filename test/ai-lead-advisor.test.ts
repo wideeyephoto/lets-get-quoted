@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   haversineDistanceMiles,
   findNearestScheduledJob,
@@ -36,6 +36,9 @@ const mockLead: LeadViewItem = {
   waitingLong: '1 hour waiting',
   waitingShort: '1h waiting',
   lastTouchAt: null,
+  snoozedUntilLabel: null,
+  projectType: 'plumbing',
+  photoCount: 0,
 };
 
 describe('haversineDistanceMiles', () => {

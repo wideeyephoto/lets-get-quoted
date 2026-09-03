@@ -40,7 +40,7 @@ export async function sendLeadClientDashboardSmsAction(
   const phone = normalizeUsPhone(rawPhone);
   if (!phone) return { success: false, error: 'Invalid phone number.' };
 
-  if (await isPhoneOptedOut(accountId, phone, admin)) {
+  if (await isPhoneOptedOut(accountId, phone)) {
     return { success: false, error: 'This customer has opted out of text messages.' };
   }
 
