@@ -45765,10 +45765,27 @@ a.bset-card {
 :root[data-theme='light'] .cash-controls,
 :root[data-theme='light'] .cash-chart-card,
 :root[data-theme='light'] .cash-events-card,
-:root[data-theme='light'] .cash-bills-card {
+:root[data-theme='light'] .cash-bills-card,
+:root[data-theme='sunlight'] .cash-hero,
+:root[data-theme='sunlight'] .cash-controls,
+:root[data-theme='sunlight'] .cash-chart-card,
+:root[data-theme='sunlight'] .cash-events-card,
+:root[data-theme='sunlight'] .cash-bills-card,
+:root[data-theme='parchment'] .cash-hero,
+:root[data-theme='parchment'] .cash-controls,
+:root[data-theme='parchment'] .cash-chart-card,
+:root[data-theme='parchment'] .cash-events-card,
+:root[data-theme='parchment'] .cash-bills-card,
+:root[data-theme='clarity'] .cash-hero,
+:root[data-theme='clarity'] .cash-controls,
+:root[data-theme='clarity'] .cash-chart-card,
+:root[data-theme='clarity'] .cash-events-card,
+:root[data-theme='clarity'] .cash-bills-card {
   --cash-projected: #1a6ea8;
   --cash-confirmed: #0f7a5a;
   --cash-worst: #a8620a;
+  --cash-buffer: #475569;
+  --cash-in: #047857;
   --cash-out: #c0281a;
   --cash-required: #7c3aad;
   --cash-credit: #5b47c4;
@@ -46026,9 +46043,19 @@ a.bset-card {
    white the original lands on rgb(74,79,85) — a slab of mid-grey carrying the
    sheet's near-black hint text at 1.65:1. */
 :root[data-theme='light'] .cash-chart-wrap,
-:root[data-theme='light'] .cash-hero .cash-chart-wrap {
-  background: #f2f5f9;
-  border-color: #28384b;
+:root[data-theme='light'] .cash-hero .cash-chart-wrap,
+:root[data-theme='sunlight'] .cash-chart-wrap,
+:root[data-theme='sunlight'] .cash-hero .cash-chart-wrap,
+:root[data-theme='clarity'] .cash-chart-wrap,
+:root[data-theme='clarity'] .cash-hero .cash-chart-wrap {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root[data-theme='parchment'] .cash-chart-wrap,
+:root[data-theme='parchment'] .cash-hero .cash-chart-wrap {
+  background: #ede7dc !important;
+  border-color: rgba(74, 58, 38, 0.25) !important;
 }
 
 .cash-chart {
@@ -46065,6 +46092,25 @@ a.bset-card {
   font-size: 11px;
   font-family: var(--font-body);
   font-variant-numeric: tabular-nums;
+}
+
+:root[data-theme='light'] .cash-grid text,
+:root[data-theme='light'] .cash-axis-x text,
+:root[data-theme='sunlight'] .cash-grid text,
+:root[data-theme='sunlight'] .cash-axis-x text,
+:root[data-theme='parchment'] .cash-grid text,
+:root[data-theme='parchment'] .cash-axis-x text,
+:root[data-theme='clarity'] .cash-grid text,
+:root[data-theme='clarity'] .cash-axis-x text {
+  fill: #334155;
+  font-weight: 600;
+}
+
+:root[data-theme='light'] .cash-grid line,
+:root[data-theme='sunlight'] .cash-grid line,
+:root[data-theme='parchment'] .cash-grid line,
+:root[data-theme='clarity'] .cash-grid line {
+  stroke: #cbd5e1;
 }
 
 .cash-hover-surface {
@@ -46172,6 +46218,23 @@ a.bset-card {
   font-variant-numeric: tabular-nums;
 }
 
+:root[data-theme='light'] .cash-handle rect,
+:root[data-theme='sunlight'] .cash-handle rect,
+:root[data-theme='parchment'] .cash-handle rect,
+:root[data-theme='clarity'] .cash-handle rect {
+  fill: #ffffff;
+  stroke: #475569;
+  stroke-width: 1.5;
+}
+
+:root[data-theme='light'] .cash-handle text,
+:root[data-theme='sunlight'] .cash-handle text,
+:root[data-theme='parchment'] .cash-handle text,
+:root[data-theme='clarity'] .cash-handle text {
+  fill: #0f172a;
+  font-weight: 750;
+}
+
 .cash-handle-group:hover .cash-handle rect,
 .cash-handle-group:focus-visible .cash-handle rect {
   stroke: #fff;
@@ -46186,6 +46249,14 @@ a.bset-card {
   fill: var(--cash-projected);
   stroke: var(--bg);
   stroke-width: 3;
+}
+
+:root[data-theme='light'] .cash-start-dot,
+:root[data-theme='sunlight'] .cash-start-dot,
+:root[data-theme='parchment'] .cash-start-dot,
+:root[data-theme='clarity'] .cash-start-dot {
+  fill: #1a6ea8;
+  stroke: #ffffff;
 }
 
 .cash-handle-start:hover .cash-start-dot,
@@ -46244,6 +46315,20 @@ a.bset-card {
   fill: #0a1523;
 }
 
+:root[data-theme='light'] .cash-marker.is-estimated .cash-marker-shape,
+:root[data-theme='sunlight'] .cash-marker.is-estimated .cash-marker-shape,
+:root[data-theme='parchment'] .cash-marker.is-estimated .cash-marker-shape,
+:root[data-theme='clarity'] .cash-marker.is-estimated .cash-marker-shape {
+  fill: #ffffff;
+}
+
+:root[data-theme='light'] .cash-marker .cash-marker-shape,
+:root[data-theme='sunlight'] .cash-marker .cash-marker-shape,
+:root[data-theme='parchment'] .cash-marker .cash-marker-shape,
+:root[data-theme='clarity'] .cash-marker .cash-marker-shape {
+  stroke: #ffffff;
+}
+
 .cash-marker.is-estimated.tone-in .cash-marker-shape {
   stroke: var(--cash-in);
 }
@@ -46291,6 +46376,14 @@ a.bset-card {
   color: var(--mute-i60);
 }
 
+:root[data-theme='light'] .cash-chart-hint,
+:root[data-theme='sunlight'] .cash-chart-hint,
+:root[data-theme='parchment'] .cash-chart-hint,
+:root[data-theme='clarity'] .cash-chart-hint {
+  color: #475569;
+  font-weight: 500;
+}
+
 /* --- Legend and line toggles ----------------------------------------------- */
 
 .cash-legend {
@@ -46300,6 +46393,14 @@ a.bset-card {
   margin-top: 0.9rem;
   font-size: 0.8rem;
   color: var(--mute-i62);
+}
+
+:root[data-theme='light'] .cash-legend,
+:root[data-theme='sunlight'] .cash-legend,
+:root[data-theme='parchment'] .cash-legend,
+:root[data-theme='clarity'] .cash-legend {
+  color: #334155;
+  font-weight: 550;
 }
 
 .cash-legend-item {
@@ -46354,6 +46455,14 @@ a.bset-card {
   border: 1.5px solid var(--cash-in);
 }
 
+:root[data-theme='light'] .cash-marker-key.hollow,
+:root[data-theme='sunlight'] .cash-marker-key.hollow,
+:root[data-theme='parchment'] .cash-marker-key.hollow,
+:root[data-theme='clarity'] .cash-marker-key.hollow {
+  background: #ffffff;
+  border: 1.5px solid #0f7a5a;
+}
+
 .cash-line-toggles {
   margin-top: 1rem;
 }
@@ -46364,6 +46473,14 @@ a.bset-card {
   font-weight: 600;
   color: var(--muted);
   list-style: none;
+}
+
+:root[data-theme='light'] .cash-line-toggles>summary,
+:root[data-theme='sunlight'] .cash-line-toggles>summary,
+:root[data-theme='parchment'] .cash-line-toggles>summary,
+:root[data-theme='clarity'] .cash-line-toggles>summary {
+  color: #0284c7;
+  font-weight: 700;
 }
 
 .cash-line-toggles>summary::-webkit-details-marker {
@@ -46416,10 +46533,25 @@ a.bset-card {
   font-weight: 600;
 }
 
+:root[data-theme='light'] .cash-toggle strong,
+:root[data-theme='sunlight'] .cash-toggle strong,
+:root[data-theme='parchment'] .cash-toggle strong,
+:root[data-theme='clarity'] .cash-toggle strong {
+  color: #090d16;
+  font-weight: 700;
+}
+
 .cash-toggle small {
   font-size: 0.78rem;
   line-height: 1.45;
   color: var(--mute-i50);
+}
+
+:root[data-theme='light'] .cash-toggle small,
+:root[data-theme='sunlight'] .cash-toggle small,
+:root[data-theme='parchment'] .cash-toggle small,
+:root[data-theme='clarity'] .cash-toggle small {
+  color: #475569;
 }
 
 /* --- Event list ------------------------------------------------------------ */
@@ -46760,6 +46892,34 @@ a.bset-card {
   color: var(--text);
 }
 
+:root[data-theme='light'] .cash-bill-field input,
+:root[data-theme='light'] .cash-bill-field select,
+:root[data-theme='sunlight'] .cash-bill-field input,
+:root[data-theme='sunlight'] .cash-bill-field select,
+:root[data-theme='parchment'] .cash-bill-field input,
+:root[data-theme='parchment'] .cash-bill-field select,
+:root[data-theme='clarity'] .cash-bill-field input,
+:root[data-theme='clarity'] .cash-bill-field select {
+  background: #ffffff !important;
+  color: #090d16 !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .cash-amount-field,
+:root[data-theme='sunlight'] .cash-amount-field,
+:root[data-theme='parchment'] .cash-amount-field,
+:root[data-theme='clarity'] .cash-amount-field {
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+}
+
+:root[data-theme='light'] .cash-amount-field input,
+:root[data-theme='sunlight'] .cash-amount-field input,
+:root[data-theme='parchment'] .cash-amount-field input,
+:root[data-theme='clarity'] .cash-amount-field input {
+  color: #090d16 !important;
+}
+
 .cash-bill-field input:focus,
 .cash-bill-field select:focus {
   outline: none;
@@ -46943,6 +47103,18 @@ a.bset-card {
    ground of its own or the orange wash bleeds through the overdraft band. */
 .cash-hero .cash-chart-wrap {
   background: rgba(4, 11, 19, 0.72);
+}
+
+:root[data-theme='light'] .cash-hero .cash-chart-wrap,
+:root[data-theme='sunlight'] .cash-hero .cash-chart-wrap,
+:root[data-theme='clarity'] .cash-hero .cash-chart-wrap {
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+}
+
+:root[data-theme='parchment'] .cash-hero .cash-chart-wrap {
+  background: #ede7dc !important;
+  border-color: rgba(74, 58, 38, 0.25) !important;
 }
 
 .cash-hero .insight-window-tabs {
@@ -58073,7 +58245,10 @@ a.mkt-tile:focus-visible {
   pointer-events: none;
 }
 
-:root[data-theme='light'] .cash-marker-ring {
+:root[data-theme='light'] .cash-marker-ring,
+:root[data-theme='sunlight'] .cash-marker-ring,
+:root[data-theme='parchment'] .cash-marker-ring,
+:root[data-theme='clarity'] .cash-marker-ring {
   stroke: rgba(17, 27, 41, 0.75);
 }
 
@@ -58086,8 +58261,11 @@ a.mkt-tile:focus-visible {
   stroke-width: 1.5;
 }
 
-:root[data-theme='light'] .cash-marker-cluster {
-  fill: #1b2534;
+:root[data-theme='light'] .cash-marker-cluster,
+:root[data-theme='sunlight'] .cash-marker-cluster,
+:root[data-theme='parchment'] .cash-marker-cluster,
+:root[data-theme='clarity'] .cash-marker-cluster {
+  fill: #1e293b;
   stroke: #ffffff;
 }
 
@@ -58111,6 +58289,15 @@ a.mkt-tile:focus-visible {
   background: rgba(var(--tint), 0.035);
 }
 
+:root[data-theme='light'] .cash-detail,
+:root[data-theme='sunlight'] .cash-detail,
+:root[data-theme='parchment'] .cash-detail,
+:root[data-theme='clarity'] .cash-detail {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.08);
+}
+
 .cash-detail-head {
   display: flex;
   align-items: baseline;
@@ -58124,6 +58311,14 @@ a.mkt-tile:focus-visible {
   letter-spacing: 0.06em;
   text-transform: uppercase;
   color: var(--mute-i55);
+}
+
+:root[data-theme='light'] .cash-detail-date,
+:root[data-theme='sunlight'] .cash-detail-date,
+:root[data-theme='parchment'] .cash-detail-date,
+:root[data-theme='clarity'] .cash-detail-date {
+  color: #475569;
+  font-weight: 750;
 }
 
 .cash-detail-amount {
@@ -58142,6 +58337,22 @@ a.mkt-tile:focus-visible {
   color: var(--cash-out);
 }
 
+:root[data-theme='light'] .cash-detail-amount.is-in,
+:root[data-theme='sunlight'] .cash-detail-amount.is-in,
+:root[data-theme='parchment'] .cash-detail-amount.is-in,
+:root[data-theme='clarity'] .cash-detail-amount.is-in {
+  color: #047857;
+  font-weight: 850;
+}
+
+:root[data-theme='light'] .cash-detail-amount.is-out,
+:root[data-theme='sunlight'] .cash-detail-amount.is-out,
+:root[data-theme='parchment'] .cash-detail-amount.is-out,
+:root[data-theme='clarity'] .cash-detail-amount.is-out {
+  color: #b91c1c;
+  font-weight: 850;
+}
+
 .cash-detail-name {
   margin: 0.15rem 0 0.3rem;
   font-family: var(--font-display);
@@ -58151,15 +58362,38 @@ a.mkt-tile:focus-visible {
   overflow-wrap: anywhere;
 }
 
+:root[data-theme='light'] .cash-detail-name,
+:root[data-theme='sunlight'] .cash-detail-name,
+:root[data-theme='parchment'] .cash-detail-name,
+:root[data-theme='clarity'] .cash-detail-name {
+  color: #090d16;
+  font-weight: 800;
+}
+
 .cash-detail-after {
   margin: 0;
   font-size: 0.84rem;
   color: rgba(var(--ink-rgb), 0.68);
 }
 
+:root[data-theme='light'] .cash-detail-after,
+:root[data-theme='sunlight'] .cash-detail-after,
+:root[data-theme='parchment'] .cash-detail-after,
+:root[data-theme='clarity'] .cash-detail-after {
+  color: #334155;
+}
+
 .cash-detail-after b {
   color: var(--text);
   font-variant-numeric: tabular-nums;
+}
+
+:root[data-theme='light'] .cash-detail-after b,
+:root[data-theme='sunlight'] .cash-detail-after b,
+:root[data-theme='parchment'] .cash-detail-after b,
+:root[data-theme='clarity'] .cash-detail-after b {
+  color: #090d16;
+  font-weight: 800;
 }
 
 .cash-detail-list {
@@ -58185,6 +58419,13 @@ a.mkt-tile:focus-visible {
   overflow-wrap: anywhere;
 }
 
+:root[data-theme='light'] .cash-detail-item-name,
+:root[data-theme='sunlight'] .cash-detail-item-name,
+:root[data-theme='parchment'] .cash-detail-item-name,
+:root[data-theme='clarity'] .cash-detail-item-name {
+  color: #1e293b;
+}
+
 .cash-detail-item-amount {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -58198,9 +58439,32 @@ a.mkt-tile:focus-visible {
   color: var(--cash-out);
 }
 
+:root[data-theme='light'] .cash-detail-item-amount.is-in,
+:root[data-theme='sunlight'] .cash-detail-item-amount.is-in,
+:root[data-theme='parchment'] .cash-detail-item-amount.is-in,
+:root[data-theme='clarity'] .cash-detail-item-amount.is-in {
+  color: #047857;
+  font-weight: 800;
+}
+
+:root[data-theme='light'] .cash-detail-item-amount.is-out,
+:root[data-theme='sunlight'] .cash-detail-item-amount.is-out,
+:root[data-theme='parchment'] .cash-detail-item-amount.is-out,
+:root[data-theme='clarity'] .cash-detail-item-amount.is-out {
+  color: #b91c1c;
+  font-weight: 800;
+}
+
 .cash-detail-more {
   color: var(--mute-i45);
   font-size: 0.8rem;
+}
+
+:root[data-theme='light'] .cash-detail-more,
+:root[data-theme='sunlight'] .cash-detail-more,
+:root[data-theme='parchment'] .cash-detail-more,
+:root[data-theme='clarity'] .cash-detail-more {
+  color: #64748b;
 }
 
 .cash-detail-alt {
@@ -58209,9 +58473,23 @@ a.mkt-tile:focus-visible {
   color: var(--mute-i45);
 }
 
+:root[data-theme='light'] .cash-detail-alt,
+:root[data-theme='sunlight'] .cash-detail-alt,
+:root[data-theme='parchment'] .cash-detail-alt,
+:root[data-theme='clarity'] .cash-detail-alt {
+  color: #475569;
+}
+
 .cash-detail-alt b {
   color: rgba(var(--ink-rgb), 0.8);
   font-variant-numeric: tabular-nums;
+}
+
+:root[data-theme='light'] .cash-detail-alt b,
+:root[data-theme='sunlight'] .cash-detail-alt b,
+:root[data-theme='parchment'] .cash-detail-alt b,
+:root[data-theme='clarity'] .cash-detail-alt b {
+  color: #090d16;
 }
 
 @media (max-width: 560px) {

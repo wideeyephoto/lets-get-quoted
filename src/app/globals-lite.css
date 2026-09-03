@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: dfd543df39c7164c
+   source-sha256: 58e41201e2fdb1a5
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -22738,10 +22738,27 @@ a.bset-card {
 :root[data-theme='light'] .cash-controls,
 :root[data-theme='light'] .cash-chart-card,
 :root[data-theme='light'] .cash-events-card,
-:root[data-theme='light'] .cash-bills-card {
+:root[data-theme='light'] .cash-bills-card,
+:root[data-theme='sunlight'] .cash-hero,
+:root[data-theme='sunlight'] .cash-controls,
+:root[data-theme='sunlight'] .cash-chart-card,
+:root[data-theme='sunlight'] .cash-events-card,
+:root[data-theme='sunlight'] .cash-bills-card,
+:root[data-theme='parchment'] .cash-hero,
+:root[data-theme='parchment'] .cash-controls,
+:root[data-theme='parchment'] .cash-chart-card,
+:root[data-theme='parchment'] .cash-events-card,
+:root[data-theme='parchment'] .cash-bills-card,
+:root[data-theme='clarity'] .cash-hero,
+:root[data-theme='clarity'] .cash-controls,
+:root[data-theme='clarity'] .cash-chart-card,
+:root[data-theme='clarity'] .cash-events-card,
+:root[data-theme='clarity'] .cash-bills-card {
   --cash-projected: #1a6ea8;
   --cash-confirmed: #0f7a5a;
   --cash-worst: #a8620a;
+  --cash-buffer: #475569;
+  --cash-in: #047857;
   --cash-out: #c0281a;
   --cash-required: #7c3aad;
   --cash-credit: #5b47c4;
@@ -22807,6 +22824,13 @@ a.bset-card {
 /* Hollow means we worked the number out rather than being told it. */
 .cash-marker.is-estimated .cash-marker-shape {
   fill: #0a1523;
+}
+
+:root[data-theme='light'] .cash-marker.is-estimated .cash-marker-shape,
+:root[data-theme='sunlight'] .cash-marker.is-estimated .cash-marker-shape,
+:root[data-theme='parchment'] .cash-marker.is-estimated .cash-marker-shape,
+:root[data-theme='clarity'] .cash-marker.is-estimated .cash-marker-shape {
+  fill: #ffffff;
 }
 
 .cash-marker.is-estimated.tone-in .cash-marker-shape {
@@ -26694,12 +26718,44 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
   color: var(--cash-out);
 }
 
+:root[data-theme='light'] .cash-detail-amount.is-in,
+:root[data-theme='sunlight'] .cash-detail-amount.is-in,
+:root[data-theme='parchment'] .cash-detail-amount.is-in,
+:root[data-theme='clarity'] .cash-detail-amount.is-in {
+  color: #047857;
+  font-weight: 850;
+}
+
+:root[data-theme='light'] .cash-detail-amount.is-out,
+:root[data-theme='sunlight'] .cash-detail-amount.is-out,
+:root[data-theme='parchment'] .cash-detail-amount.is-out,
+:root[data-theme='clarity'] .cash-detail-amount.is-out {
+  color: #b91c1c;
+  font-weight: 850;
+}
+
 .cash-detail-item-amount.is-in {
   color: var(--cash-in);
 }
 
 .cash-detail-item-amount.is-out {
   color: var(--cash-out);
+}
+
+:root[data-theme='light'] .cash-detail-item-amount.is-in,
+:root[data-theme='sunlight'] .cash-detail-item-amount.is-in,
+:root[data-theme='parchment'] .cash-detail-item-amount.is-in,
+:root[data-theme='clarity'] .cash-detail-item-amount.is-in {
+  color: #047857;
+  font-weight: 800;
+}
+
+:root[data-theme='light'] .cash-detail-item-amount.is-out,
+:root[data-theme='sunlight'] .cash-detail-item-amount.is-out,
+:root[data-theme='parchment'] .cash-detail-item-amount.is-out,
+:root[data-theme='clarity'] .cash-detail-item-amount.is-out {
+  color: #b91c1c;
+  font-weight: 800;
 }
 
 /* Hover emphasis, distinct from selection: a hovered marker lifts slightly,
