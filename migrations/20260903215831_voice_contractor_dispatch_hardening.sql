@@ -455,7 +455,7 @@ begin
        and m.deactivated_at is null
        and public.voice_normalize_us_phone(u.phone) = p_caller_number;
   else
-    select c.* into v_caller_crew
+    select pg_catalog.count(*) into v_staff_matches
       from public.crew c
      where c.account_id = p_account_id
        and c.active
@@ -466,15 +466,31 @@ begin
          c.phone_verified_at is not null
          or c.phone_verified
          or (c.user_id is not null and c.last_signed_in_at is not null)
-       )
-     for share;
-    if found then
-      v_staff_matches := 1;
+       );
+    if v_staff_matches = 1 then
+      select c.* into v_caller_crew
+        from public.crew c
+       where c.account_id = p_account_id
+         and c.active
+         and c.deleted_at is null
+         and c.access_revoked_at is null
+         and public.voice_normalize_us_phone(c.phone) = p_caller_number
+         and (
+           c.phone_verified_at is not null
+           or c.phone_verified
+           or (c.user_id is not null and c.last_signed_in_at is not null)
+         )
+       for share;
     end if;
   end if;
 
   if v_staff_matches <> 1 then
     raise exception 'voice contractor caller lifecycle is invalid or ambiguous' using errcode = '42501';
+  end if;
+
+  if v_admission.caller_kind = 'crew'
+     and v_function in ('update_job_details', 'create_or_update_lead') then
+    raise exception 'voice crew caller is not authorized for office records' using errcode = '42501';
   end if;
 
   if v_function <> 'create_or_update_lead' then
@@ -765,6 +781,10 @@ begin
     if v_title is null or v_description is null
        or pg_catalog.length(v_title) > 200 or pg_catalog.length(v_description) > 8000 then
       raise exception 'voice change order content is invalid' using errcode = '22023';
+    end if;
+    if v_admission.caller_kind = 'crew'
+       and nullif(pg_catalog.btrim(p_payload->>'crew_id'), '') is null then
+      raise exception 'voice crew change order must be self-attributed' using errcode = '42501';
     end if;
     if nullif(pg_catalog.btrim(p_payload->>'crew_id'), '') is not null then
       select c.* into v_crew
