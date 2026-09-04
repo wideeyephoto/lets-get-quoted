@@ -2381,6 +2381,23 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       placeholder="Tell us what you need. We’ll ask up to 3 quick questions..."
                     />
                   </label>
+                  <label className={styles.formField} style={{ marginTop: '.4rem' }}>
+                    <span>Project description placeholder</span>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      value={siteContent.quoteFormPlaceholder || ''}
+                      onChange={(event) => updateSiteContent({ quoteFormPlaceholder: event.target.value })}
+                      placeholder={
+                        siteContent.services.items.map((item) => item.title.trim()).filter(Boolean).length >= 2
+                          ? `e.g. ${siteContent.services.items.map((item) => item.title.trim().toLowerCase()).filter(Boolean).slice(0, 3).join(', ')}...`
+                          : siteContent.trade.trim()
+                            ? `Describe your ${siteContent.trade.trim().toLowerCase()} job — what's going on?`
+                            : 'e.g. drain cleaning, leak detection, pipe replacement...'
+                      }
+                    />
+                    <small className={styles.fieldHint}>Replaces the default placeholder inside the project description textarea. Leave blank to automatically use your services list.</small>
+                  </label>
 
                   <hr className={styles.logoDivider} />
                   <div className={styles.contentSubhead}><strong>Features &amp; Trust</strong><small>Reassurance cues and photo attachments.</small></div>

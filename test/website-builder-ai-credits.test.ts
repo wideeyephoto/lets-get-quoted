@@ -25,6 +25,11 @@ describe('Website Builder AI Credits Display', () => {
     expect(ACTIONS_CODE).toContain('ai_writing_drafts');
   });
 
+  it('handles 401 image generation permission and missing scope errors in actions.ts', () => {
+    expect(ACTIONS_CODE).toContain('api.model.images.request');
+    expect(ACTIONS_CODE).toContain('response.status === 401');
+  });
+
   it('displays AI credits at all generate locations in WebsiteBuilder.tsx', () => {
     // Helper & imports
     expect(BUILDER_CODE).toContain('getAvailableAiCreditsAction');

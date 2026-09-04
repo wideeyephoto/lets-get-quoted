@@ -22,6 +22,7 @@ import {
   DEFAULT_QUOTE_FORM_TRUST_ITEMS,
   QUOTE_FORM_TRUST_CUE_KEYS,
   getQuoteFormTrustCues,
+  getQuoteFormPlaceholder,
   getSiteContent,
   mergeSiteContent,
   type QuoteFormStyle,
@@ -277,6 +278,32 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(customCues.map((c) => c.key)).toEqual(['private', 'insured', 'noHiddenFees']);
   });
 
+  it('allows reading and customizing intake form placeholder text', () => {
+    // Default is empty
+    expect(getQuoteFormPlaceholder(null)).toBe('');
+    expect(getQuoteFormPlaceholder({})).toBe('');
+
+    // Custom placeholder via root property
+    const customContent = getSiteContent({ quoteFormPlaceholder: 'e.g. toilet installation, water filter setup...' });
+    expect(customContent.quoteFormPlaceholder).toBe('e.g. toilet installation, water filter setup...');
+    expect(getQuoteFormPlaceholder({ quoteFormPlaceholder: 'e.g. toilet installation, water filter setup...' })).toBe('e.g. toilet installation, water filter setup...');
+
+    // Backwards compatibility with quoteForm.placeholder
+    const nestedContent = getSiteContent({ quoteForm: { placeholder: 'e.g. fixture repair' } });
+    expect(nestedContent.quoteFormPlaceholder).toBe('e.g. fixture repair');
+
+    // Merges correctly
+    const merged = mergeSiteContent({}, { quoteFormPlaceholder: 'e.g. custom repair' });
+    expect(getQuoteFormPlaceholder(merged)).toBe('e.g. custom repair');
+  });
+
+  it('ensures HeroQuickForm wires custom placeholder override to describe textarea', () => {
+    const heroCode = readFileSync(join(process.cwd(), 'src/lib/templates/HeroQuickForm.tsx'), 'utf-8');
+    expect(heroCode).toContain('quoteFormPlaceholder');
+    expect(heroCode).toContain('formPlaceholder.trim() || defaultDescribePlaceholder');
+    expect(heroCode).toContain('placeholder={describePlaceholder}');
+  });
+
   it('ensures WebsiteBuilder exposes complete quote form customization pickers', () => {
     const builderCode = readFileSync(join(process.cwd(), 'src/app/dashboard/sites/WebsiteBuilder.tsx'), 'utf-8');
     expect(builderCode).toContain('QUOTE_FORM_STYLES');
@@ -295,6 +322,7 @@ describe('Instant Quote Form Appearance Styles & Intake Flow', () => {
     expect(builderCode).toContain('quoteFormTrust');
     expect(builderCode).toContain('quoteFormTrustItems');
     expect(builderCode).toContain('quoteFormStep1Photos');
+    expect(builderCode).toContain('quoteFormPlaceholder');
     expect(builderCode).toContain('formStyleBadge');
     expect(builderCode).toContain('formStyleLinkCard');
   });

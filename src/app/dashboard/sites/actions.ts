@@ -996,12 +996,26 @@ export async function generateAiLogoAction(params: {
         requestId,
         code: payload?.error?.code,
         type: payload?.error?.type,
+        message: payload?.error?.message,
       });
       if (payload?.error?.code === 'moderation_blocked') {
         return { ok: false, message: 'That brief could not be generated. Try describing the visual idea in more neutral brand language.' };
       }
       if (response.status === 429) {
         return { ok: false, message: 'The AI studio is at capacity right now. Wait a moment and try again.' };
+      }
+      if (response.status === 401) {
+        const errorDetail = payload?.error?.message;
+        if (errorDetail?.includes('Missing scopes') || errorDetail?.includes('permissions')) {
+          return {
+            ok: false,
+            message: 'Image model request failed (401): The OpenAI API key lacks image generation permissions (missing api.model.images.request scope).',
+          };
+        }
+        return {
+          ok: false,
+          message: 'Image model request failed (401): Authentication failed. Check your OpenAI API key.',
+        };
       }
       throw new Error(`Image model request failed (${response.status}).`);
     }

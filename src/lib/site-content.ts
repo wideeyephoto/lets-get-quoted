@@ -1417,6 +1417,10 @@ export const DEFAULT_QUOTE_FORM_TRUST_ITEMS: readonly QuoteFormTrustCueKey[] = [
 
 export const QUOTE_FORM_TRUST_CUE_KEYS = new Set<string>(QUOTE_FORM_TRUST_CUES.map((c) => c.key));
 
+export function getQuoteFormPlaceholder(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).quoteFormPlaceholder || '';
+}
+
 export function getQuoteFormTrustCues(content: Record<string, unknown> | null | undefined): QuoteFormTrustCueOption[] {
   const site = getSiteContent(content);
   if (site.quoteFormTrust === false) return [];
@@ -1604,6 +1608,8 @@ export type NormalizedSiteContent = {
   quoteFormSubtitle: string;
   // Custom CTA button label override (blank = 'Start my estimate').
   quoteFormButtonText: string;
+  // Custom textarea placeholder override (blank = default service examples).
+  quoteFormPlaceholder: string;
   // Show trust reassurance strip below submit button.
   quoteFormTrust: boolean;
   // Selected trust reassurance items displayed under submit button.
@@ -2355,6 +2361,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     quoteFormWidth: QUOTE_FORM_WIDTH_KEYS.has(toString(root.quoteFormWidth)) ? (toString(root.quoteFormWidth) as QuoteFormWidth) : 'standard',
     quoteFormSubtitle: toString(root.quoteFormSubtitle).slice(0, 200),
     quoteFormButtonText: toString(root.quoteFormButtonText).slice(0, 40),
+    quoteFormPlaceholder: toString(
+      root.quoteFormPlaceholder ?? (isRecord(root.quoteForm) ? root.quoteForm.placeholder : undefined)
+    ).slice(0, 200),
     quoteFormTrust: root.quoteFormTrust !== false,
     quoteFormTrustItems: Array.isArray(root.quoteFormTrustItems)
       ? root.quoteFormTrustItems.filter((k): k is QuoteFormTrustCueKey => typeof k === 'string' && QUOTE_FORM_TRUST_CUE_KEYS.has(k))
@@ -2553,6 +2562,9 @@ export function preserveIntakeSettings(
     formHeading: saved.quoteForm.formHeading,
     emailRequired: saved.quoteForm.emailRequired,
   };
+  if (typeof saved.quoteFormPlaceholder === 'string' && saved.quoteFormPlaceholder) {
+    next.quoteFormPlaceholder = saved.quoteFormPlaceholder;
+  }
   return next;
 }
 

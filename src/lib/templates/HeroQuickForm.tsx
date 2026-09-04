@@ -145,6 +145,7 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   const formWidth = siteContent.quoteFormWidth || 'standard';
   const formSubtitle = siteContent.quoteFormSubtitle || '';
   const formButtonText = siteContent.quoteFormButtonText || '';
+  const formPlaceholder = siteContent.quoteFormPlaceholder || '';
   const trustCues = getQuoteFormTrustCues(siteContent);
   const formStep1Photos = siteContent.quoteFormStep1Photos === true;
   const quoteForm = siteContent.quoteForm;
@@ -184,11 +185,12 @@ export default function HeroQuickForm({ site, demo = false }: HeroQuickFormProps
   // examples ("AC repair, deep clean, fence installation") that read wrong on
   // any single contractor's site.
   const serviceExamples = siteContent.services.items.map((item) => item.title.trim()).filter(Boolean).slice(0, 3);
-  const describePlaceholder = serviceExamples.length >= 2
+  const defaultDescribePlaceholder = serviceExamples.length >= 2
     ? `e.g. ${serviceExamples.map((example) => example.toLowerCase()).join(', ')}...`
     : siteContent.trade.trim()
       ? `Describe your ${siteContent.trade.trim().toLowerCase()} job — what's going on?`
       : 'Tell us what you need done — the more detail, the better the estimate.';
+  const describePlaceholder = formPlaceholder.trim() || defaultDescribePlaceholder;
   const bookedUntil = leadFilters.fullyBooked.until ? new Date(`${leadFilters.fullyBooked.until}T00:00:00`) : null;
   const bookedNote = isFullyBookedActive(leadFilters)
     ? `${leadFilters.fullyBooked.message || DEFAULT_FULLY_BOOKED_MESSAGE}${bookedUntil && !Number.isNaN(bookedUntil.getTime()) ? ` (booked through ${bookedUntil.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })})` : ''}`
