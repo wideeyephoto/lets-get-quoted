@@ -24,6 +24,8 @@ import { getMemberBenefitsSummary, type MemberBenefitsSummary, DEFAULT_BENEFITS 
 import { listPropertyPassports } from '@/lib/property-passport-data';
 import type { PropertyPassport } from '@/lib/property-passport';
 import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
+import { normalizeUsPhone } from '@/lib/phone';
+import { sendOwnerPortalMessageAlertSms } from '@/lib/sms';
 
 /**
  * Find the one client this email belongs to.
@@ -679,17 +681,33 @@ export async function submitPortalMessage(
 
   const [{ data: client }, { data: account }, { data: site }] = await Promise.all([
     admin.from('clients').select('name, phone, email').eq('account_id', input.accountId).eq('id', input.clientId).maybeSingle(),
-    admin.from('accounts').select('business_name').eq('id', input.accountId).maybeSingle(),
+    admin.from('accounts').select('business_name, alert_phone, high_value_sms_enabled').eq('id', input.accountId).maybeSingle(),
     admin.from('sites').select('company_name').eq('account_id', input.accountId).maybeSingle(),
   ]);
 
   const clientName = (client?.name as string) || 'Customer';
   const businessName = (site?.company_name as string) || (account?.business_name as string) || 'Contractor';
+  const normalizedClientPhone = client?.phone ? normalizeUsPhone(client.phone) || client.phone : null;
 
-  // If a job ID is provided, record to job_feed
-  if (input.jobId) {
+  // If a job ID is provided, record to job_feed. If omitted, attach to client's latest job if found.
+  let targetJobId = input.jobId;
+  if (!targetJobId) {
+    const { data: recentJob } = await admin
+      .from('jobs')
+      .select('id')
+      .eq('account_id', input.accountId)
+      .eq('client_id', input.clientId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (recentJob?.id) {
+      targetJobId = recentJob.id;
+    }
+  }
+
+  if (targetJobId) {
     try {
-      await createJobFeedEvent(admin, input.accountId, input.jobId, {
+      await createJobFeedEvent(admin, input.accountId, targetJobId, {
         kind: 'note',
         title: `Portal note from ${clientName}`,
         body,
@@ -702,11 +720,11 @@ export async function submitPortalMessage(
   }
 
   // If client phone exists, log inbound SMS message
-  if (client?.phone) {
+  if (normalizedClientPhone) {
     try {
       await admin.from('sms_messages').insert({
         account_id: input.accountId,
-        phone_number: client.phone,
+        phone_number: normalizedClientPhone,
         direction: 'inbound',
         body,
       });
@@ -737,6 +755,27 @@ export async function submitPortalMessage(
     }
   } catch (err) {
     console.error('Failed to send contractor alert for portal message:', err);
+  }
+
+  // Notify contractor via alert SMS if configured
+  if (account?.alert_phone && account?.high_value_sms_enabled !== false) {
+    try {
+      const dashboardUrl = normalizedClientPhone
+        ? `${APP_ORIGIN}/dashboard/messages?thread=${encodeURIComponent(normalizedClientPhone)}`
+        : `${APP_ORIGIN}/dashboard/messages`;
+
+      await sendOwnerPortalMessageAlertSms({
+        accountId: input.accountId,
+        alertPhone: account.alert_phone,
+        businessName,
+        customerName: clientName,
+        messagePreview: body,
+        dashboardUrl,
+        idempotencyKey: `owner-portal-msg:${input.accountId}:${input.clientId}:${Date.now()}`,
+      });
+    } catch (err) {
+      console.error('Failed to send contractor SMS alert for portal message:', err);
+    }
   }
 
   return { ok: true };

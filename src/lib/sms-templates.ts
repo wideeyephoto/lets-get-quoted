@@ -126,6 +126,19 @@ export function ownerBookingRequestAlertText(input: {
   return `📅 New booking request for ${input.businessName}: ${input.customerName || 'Customer'} requested ${input.whenLabel}${service}. Confirm in dashboard: ${input.dashboardUrl} — Reply STOP to opt out.`;
 }
 
+export function ownerPortalMessageAlertText(input: {
+  businessName: string;
+  customerName: string;
+  messagePreview: string;
+  dashboardUrl: string;
+}): string {
+  const preview = input.messagePreview.length > 80
+    ? `${input.messagePreview.slice(0, 77)}...`
+    : input.messagePreview;
+  return `💬 New message from ${input.customerName || 'Customer'} for ${input.businessName}: "${preview}". View in messages: ${input.dashboardUrl} — Reply STOP to opt out.`;
+}
+
+
 
 // -- Quick Stop --------------------------------------------------------------
 

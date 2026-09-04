@@ -29,6 +29,7 @@ import {
   leadQuoteVisitText,
   missedCallTextBack,
   ownerBookingRequestAlertText,
+  ownerPortalMessageAlertText,
   ownerHighValueLeadText,
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
@@ -650,6 +651,51 @@ export async function sendOwnerBookingRequestAlertSms(params: {
     return true;
   } catch (error) {
     console.error('Owner booking request alert SMS failed:', error instanceof Error ? error.message : error);
+    return false;
+  }
+}
+
+/**
+ * Tells the contractor on their verified alert mobile that a customer sent a message
+ * from their client portal or job dashboard.
+ */
+export async function sendOwnerPortalMessageAlertSms(params: {
+  accountId: string;
+  alertPhone: string;
+  businessName: string;
+  customerName: string;
+  messagePreview: string;
+  dashboardUrl: string;
+  idempotencyKey: string;
+}): Promise<boolean> {
+  try {
+    const to = normalizeUsPhone(params.alertPhone);
+    if (!to) return false;
+    if (await isPhoneOptedOut(params.accountId, to)) return false;
+    if (!(await isOwnerPhoneVerified(params.accountId, to))) {
+      console.warn(`[SMS] Owner alert phone ${to} is unverified for account ${params.accountId}; skipping message alert.`);
+      return false;
+    }
+
+    const body = ownerPortalMessageAlertText({
+      businessName: params.businessName,
+      customerName: params.customerName,
+      messagePreview: params.messagePreview,
+      dashboardUrl: params.dashboardUrl,
+    });
+
+    await queueAccountSms({
+      accountId: params.accountId,
+      phone: to,
+      body,
+      messageKind: 'owner-portal-message-alert',
+      category: 'owner_alert',
+      context: 'owner',
+      idempotencyKey: params.idempotencyKey,
+    });
+    return true;
+  } catch (error) {
+    console.error('Owner portal message alert SMS failed:', error instanceof Error ? error.message : error);
     return false;
   }
 }

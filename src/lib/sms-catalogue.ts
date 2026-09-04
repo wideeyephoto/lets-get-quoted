@@ -24,6 +24,7 @@ import {
   leadQuoteVisitText,
   missedCallTextBack,
   ownerBookingRequestAlertText,
+  ownerPortalMessageAlertText,
   ownerHighValueLeadText,
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
@@ -276,6 +277,20 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       dashboardUrl: `${SAMPLE.link}/dashboard/schedule`,
     }),
   },
+  {
+    id: 'owner-portal-message-alert',
+    title: 'Customer message alert',
+    trigger: 'A customer sends a message from their portal or job dashboard',
+    audience: 'owner',
+    control: always('Alerts the verified business mobile'),
+    body: ownerPortalMessageAlertText({
+      businessName: SAMPLE.business,
+      customerName: SAMPLE.client,
+      messagePreview: 'Can we move our appointment to next Monday morning?',
+      dashboardUrl: `${SAMPLE.link}/dashboard/messages`,
+    }),
+  },
+
   {
     id: 'booking-decision',
     title: 'Booking confirmed or declined',
@@ -864,6 +879,7 @@ export const CATALOGUE_SENDERS = [
   'sendOwnerEstimateAcceptedSms',
   'sendOwnerHighValueLeadSms',
   'sendOwnerPhoneVerificationSms',
+  'sendOwnerPortalMessageAlertSms',
   'sendOwnerVoiceEmergencyAlertSms',
   'sendPaymentSmsEvent',
   'sendQuickStopConfirmedSms',
