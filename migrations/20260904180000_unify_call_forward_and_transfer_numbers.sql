@@ -1,4 +1,4 @@
-﻿-- Migration: 20260904180000_unify_call_forward_and_transfer_numbers.sql
+-- Migration: 20260904180000_unify_call_forward_and_transfer_numbers.sql
 -- Harmonize accounts.call_forward_number and voice_settings.transfer_number.
 --
 -- Prior to this migration, voice_settings.transfer_number held the destination
