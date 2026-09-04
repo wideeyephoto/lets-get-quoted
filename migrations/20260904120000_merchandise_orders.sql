@@ -1,6 +1,8 @@
 -- Migration: 20260904120000_merchandise_orders.sql
 -- Description: Contractor merchandise orders, Printful fulfillment integration, and 10% platform fee revenue ledger
 
+begin;
+
 -- 1. Merchandise Orders Table
 CREATE TABLE IF NOT EXISTS public.merchandise_orders (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -78,3 +80,5 @@ CREATE POLICY "office_users_read_merchandise_revenue"
   USING (
     public.office_can(account_id, 'settings.read')
   );
+
+commit;

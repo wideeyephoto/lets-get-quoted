@@ -11,13 +11,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'Invalid webhook payload' }, { status: 400 });
     }
 
-    const admin = createAdminClient();
     const externalId = data.order?.external_id;
     const printfulOrderId = data.order?.id;
 
     if (!externalId && !printfulOrderId) {
       return NextResponse.json({ ok: true, message: 'Ignored: No order identifier' });
     }
+
+    const admin = createAdminClient();
 
     // Handle package shipped
     if (eventType === 'package_shipped') {

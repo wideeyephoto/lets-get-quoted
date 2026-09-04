@@ -1,6 +1,8 @@
 -- Migration: 20260901040000_multi_location_inventory.sql
 -- Description: Multi-location inventory, fleet equipment tracking, van stock replenishment, and maintenance records
 
+begin;
+
 -- 1. Inventory Locations
 CREATE TABLE IF NOT EXISTS public.inventory_locations (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -283,3 +285,5 @@ CREATE POLICY "office_users_write_inventory_maintenance_records"
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_maintenance_records TO authenticated;
+
+commit;
