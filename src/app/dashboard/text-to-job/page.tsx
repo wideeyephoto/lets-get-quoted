@@ -9,6 +9,7 @@ import { formatUsPhone } from '@/lib/phone';
 import MessagingSetup from '@/app/dashboard/messages/MessagingSetup';
 import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
+export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Text-to-Job Dashboard | SMS & Voice Memo Field Intake',
   description:

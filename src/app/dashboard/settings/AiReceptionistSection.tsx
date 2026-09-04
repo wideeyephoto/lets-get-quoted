@@ -9,6 +9,7 @@ import {
   sendOwnerPhoneVerificationCodeAction,
   verifyOwnerPhoneVerificationCodeAction,
 } from '@/app/dashboard/messages/actions';
+import { toggleWebsitePhoneFunnelAction } from '@/app/dashboard/voice-calls/actions';
 import { updateVoiceSettingsAction } from './voice-actions';
 import styles from './ai-receptionist-settings.module.css';
 
@@ -49,6 +50,20 @@ type Props = {
   activeCalls?: number;
   /** Current billing plan name (e.g. Solo, Growth, Scale). */
   planName?: string;
+  /** Website Lead Funnel: whether phone is publicly published on website */
+  sitePhonePublic?: boolean;
+  /** Current phone number stored on the site record */
+  sitePhone?: string | null;
+  /** Dedicated AI Receptionist phone number */
+  dedicatedNumber?: string | null;
+  /** Site subdomain for preview links */
+  siteSubdomain?: string | null;
+  /** Full site public web URL */
+  siteUrl?: string | null;
+  /** Local preview URL path (e.g. /site/brokepipes) */
+  siteLocalPreviewUrl?: string | null;
+  /** Whether the site is published */
+  sitePublished?: boolean;
 };
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -127,6 +142,52 @@ export default function AiReceptionistSection(props: Props) {
       setVerifiedList(props.verifiedNumbers);
     }
   }, [props.verifiedNumbers]);
+
+  // Website Inbound Lead Funnel state
+  const [funnelMode, setFunnelMode] = useState<'calls' | 'forms'>(
+    props.sitePhonePublic ? 'calls' : 'forms'
+  );
+  const [isFunnelPending, startFunnelTransition] = useTransition();
+  const [funnelFeedback, setFunnelFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const funnelFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setFunnelMode(props.sitePhonePublic ? 'calls' : 'forms');
+  }, [props.sitePhonePublic]);
+
+  function handleSelectFunnel(target: 'calls' | 'forms') {
+    if (controlsDisabled || isFunnelPending) return;
+    if (funnelMode === target) return;
+
+    const willPublishPhone = target === 'calls';
+    setFunnelMode(target);
+
+    startFunnelTransition(async () => {
+      try {
+        await toggleWebsitePhoneFunnelAction(willPublishPhone);
+        if (funnelFeedbackTimer.current) clearTimeout(funnelFeedbackTimer.current);
+        setFunnelFeedback({
+          type: 'success',
+          message: willPublishPhone
+            ? 'Phone Funnel Active: AI Receptionist phone number is now published across your website!'
+            : 'Intake Forms Funnel Active: Phone numbers hidden. Prospective customers are now funnelled 100% to online intake forms!',
+        });
+        funnelFeedbackTimer.current = setTimeout(() => setFunnelFeedback(null), 4000);
+        router.refresh();
+      } catch (err) {
+        setFunnelMode(willPublishPhone ? 'forms' : 'calls');
+        if (funnelFeedbackTimer.current) clearTimeout(funnelFeedbackTimer.current);
+        setFunnelFeedback({
+          type: 'error',
+          message: err instanceof Error ? err.message : 'Could not update website lead funnel.',
+        });
+        funnelFeedbackTimer.current = setTimeout(() => setFunnelFeedback(null), 5000);
+      }
+    });
+  }
+
+  const dedicatedDisplay = props.dedicatedNumber ? formatUsPhone(props.dedicatedNumber) : null;
+  const effectiveSiteUrl = props.siteUrl || props.siteLocalPreviewUrl || null;
 
   // Modal state for adding & verifying a new number
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
@@ -414,6 +475,203 @@ export default function AiReceptionistSection(props: Props) {
           </div>
         </div>
       ) : null}
+
+      {/* WEBSITE INBOUND LEAD FUNNEL MODULE */}
+      <section className={styles.funnelCard} aria-labelledby="website-funnel-heading">
+        <div className={styles.funnelHeader}>
+          <div className={styles.cardTitleGroup}>
+            <div className={styles.funnelCardIcon}>🎯</div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <h2 id="website-funnel-heading" className={styles.cardTitle}>Website Inbound Lead Funnel</h2>
+                <span className={styles.funnelHeaderBadge}>
+                  {funnelMode === 'calls' ? '📞 Calls to AI Receptionist' : '📝 Online Forms Only'}
+                </span>
+              </div>
+              <p className={styles.cardSubtitle}>
+                Control whether prospective customers on your website call your 24/7 AI Receptionist or submit online intake forms
+              </p>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            {effectiveSiteUrl && (
+              <a
+                href={effectiveSiteUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={styles.viewSiteBtn}
+                title="Open your website in a new tab to see your live lead funnel"
+              >
+                <span>View Live Site</span>
+                <span style={{ fontSize: '0.9rem' }}>↗</span>
+              </a>
+            )}
+          </div>
+        </div>
+
+        {funnelFeedback && (
+          <div
+            className={`${styles.alertBox} ${funnelFeedback.type === 'success' ? styles.alertSuccess : styles.alertNotice}`}
+            style={{ padding: '0.75rem 1rem', fontSize: '0.85rem' }}
+            role="status"
+          >
+            <span>{funnelFeedback.type === 'success' ? '✓' : 'ℹ️'}</span>
+            <div><strong>{funnelFeedback.message}</strong></div>
+          </div>
+        )}
+
+        {/* 2 Interactive Funnel Option Tiles */}
+        <div className={styles.funnelGrid} role="radiogroup" aria-label="Website inbound lead funnel choice">
+          {/* OPTION 1: PHONE CALLS FUNNEL */}
+          <button
+            type="button"
+            className={`${styles.funnelTile} ${funnelMode === 'calls' ? styles.funnelTileActiveCalls : ''}`}
+            role="radio"
+            aria-checked={funnelMode === 'calls'}
+            disabled={controlsDisabled || isFunnelPending}
+            onClick={() => handleSelectFunnel('calls')}
+          >
+            <div className={styles.funnelTileHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className={styles.funnelTileIcon}>📞</span>
+                <strong className={styles.funnelTileTitle}>AI Receptionist Phone Funnel</strong>
+              </div>
+              {funnelMode === 'calls' ? (
+                <span className={`${styles.tileBadge} ${styles.badgeGreen}`}>● Active on Website</span>
+              ) : (
+                <span className={styles.tileBadge} style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
+                  Click to Switch
+                </span>
+              )}
+            </div>
+
+            <p className={styles.funnelTileDesc}>
+              Publishes your dedicated AI number{dedicatedDisplay ? <> <strong style={{ color: '#4ade80' }}>{dedicatedDisplay}</strong></> : ''} across website call buttons, header CTAs, and hero forms.
+            </p>
+
+            <div className={styles.funnelPerksList}>
+              <div className={styles.funnelPerkItem}>
+                <span className={styles.funnelPerkCheck}>✓</span>
+                <span><strong>24/7 Live AI Answering:</strong> AI answers immediately and books estimate appointments</span>
+              </div>
+              <div className={styles.funnelPerkItem}>
+                <span className={styles.funnelPerkCheck}>✓</span>
+                <span><strong>Priority Hazard Triage:</strong> Immediate alerts for water leaks, gas, or electrical fires</span>
+              </div>
+              <div className={styles.funnelPerkItem}>
+                <span className={styles.funnelPerkCheck}>✓</span>
+                <span><strong>Higher Calling Conversion:</strong> Best for homeowners needing emergency repairs</span>
+              </div>
+            </div>
+
+            <div className={styles.funnelFooterAction}>
+              {funnelMode === 'calls' ? (
+                <div className={styles.funnelActivePillGreen}>
+                  <span>✓</span> AI Phone Published on Site
+                </div>
+              ) : (
+                <div className={styles.funnelSwitchHint}>
+                  Switch website to AI Phone Calls →
+                </div>
+              )}
+            </div>
+          </button>
+
+          {/* OPTION 2: ONLINE INTAKE FORMS FUNNEL */}
+          <button
+            type="button"
+            className={`${styles.funnelTile} ${funnelMode === 'forms' ? styles.funnelTileActiveForms : ''}`}
+            role="radio"
+            aria-checked={funnelMode === 'forms'}
+            disabled={controlsDisabled || isFunnelPending}
+            onClick={() => handleSelectFunnel('forms')}
+          >
+            <div className={styles.funnelTileHeader}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span className={styles.funnelTileIcon}>📝</span>
+                <strong className={styles.funnelTileTitle}>Online Intake Forms Funnel</strong>
+              </div>
+              {funnelMode === 'forms' ? (
+                <span className={`${styles.tileBadge} ${styles.badgeBlue}`}>● 100% Form Conversion</span>
+              ) : (
+                <span className={styles.tileBadge} style={{ background: 'rgba(255,255,255,0.06)', color: '#94a3b8' }}>
+                  Click to Switch
+                </span>
+              )}
+            </div>
+
+            <p className={styles.funnelTileDesc}>
+              Hides phone numbers and call buttons from your website. Funnels 100% of visitors into your instant estimate and booking intake forms.
+            </p>
+
+            <div className={styles.funnelPerksList}>
+              <div className={styles.funnelPerkItem}>
+                <span className={styles.funnelPerkCheckBlue}>✓</span>
+                <span><strong>Zero Phone Interruptions:</strong> Focus on tools on the jobsite without incoming calls</span>
+              </div>
+              <div className={styles.funnelPerkItem}>
+                <span className={styles.funnelPerkCheckBlue}>✓</span>
+                <span><strong>Rich Structured Lead Data:</strong> Collect photos, service addresses, and project scope</span>
+              </div>
+              <div className={styles.funnelPerkItem}>
+                <span className={styles.funnelPerkCheckBlue}>✓</span>
+                <span><strong>Instant Booking &amp; Estimate Flows:</strong> Homeowners submit requests 24/7 online</span>
+              </div>
+            </div>
+
+            <div className={styles.funnelFooterAction}>
+              {funnelMode === 'forms' ? (
+                <div className={styles.funnelActivePillBlue}>
+                  <span>✓</span> 100% Online Intake Form Funnel Active
+                </div>
+              ) : (
+                <div className={styles.funnelSwitchHint}>
+                  Switch website to Online Intake Forms →
+                </div>
+              )}
+            </div>
+          </button>
+        </div>
+
+        {/* Funnel Status Banner & 1-Click Toggle Strip */}
+        <div className={styles.funnelStatusStrip}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+            <span style={{ fontSize: '1.25rem' }}>
+              {funnelMode === 'calls' ? '🟢' : '📋'}
+            </span>
+            <div>
+              <div style={{ fontSize: '0.86rem', fontWeight: 600, color: '#f1f5f9' }}>
+                {funnelMode === 'calls' ? (
+                  <>Website Call Funnel Active &mdash; Call buttons published ({dedicatedDisplay || 'AI line'})</>
+                ) : (
+                  <>Website Forms Funnel Active &mdash; Phone hidden, 100% visitors guided to intake forms</>
+                )}
+              </div>
+              <div style={{ fontSize: '0.76rem', color: '#94a3b8', marginTop: '0.1rem' }}>
+                {funnelMode === 'calls'
+                  ? 'Homeowners tapping call buttons reach your 24/7 AI Receptionist.'
+                  : 'Call buttons are removed so visitors submit their project info through your estimate form.'}
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            className={styles.funnelQuickSwitchBtn}
+            disabled={controlsDisabled || isFunnelPending}
+            onClick={() => handleSelectFunnel(funnelMode === 'calls' ? 'forms' : 'calls')}
+          >
+            {isFunnelPending ? (
+              <span>Updating website…</span>
+            ) : funnelMode === 'calls' ? (
+              <><span>📝 Switch to Online Forms Only</span></>
+            ) : (
+              <><span>📞 Publish AI Phone on Website</span></>
+            )}
+          </button>
+        </div>
+      </section>
 
       {/* MODULE 1: Availability & Operating Schedule */}
       <section className={styles.card} aria-labelledby="availability-heading">

@@ -22,6 +22,7 @@ import { displayPhone } from '@/lib/phone';
 import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
 import { countOpenAiCalls } from '@/lib/voice/admission';
 import { loadVerifiedPhoneOptions } from '@/lib/verified-phones';
+import { getSiteContent } from '@/lib/site-content';
 import AiReceptionistSection from '../settings/AiReceptionistSection';
 import styles from './voice-calls.module.css';
 
@@ -80,7 +81,7 @@ export default async function VoiceCallsPage({
       .maybeSingle(),
     supabase
       .from('sites')
-      .select('company_name')
+      .select('id, company_name, subdomain, custom_domain, phone, content, published')
       .eq('account_id', accountId)
       .maybeSingle(),
     supabase
@@ -140,6 +141,16 @@ export default async function VoiceCallsPage({
 
   const resolvedBusinessName = site?.company_name || account?.business_name || account?.company_name || null;
   const timezone = (account?.timezone as string) || 'America/New_York';
+
+  const siteContent = site ? getSiteContent(site.content as Record<string, unknown> | null) : null;
+  const sitePhonePublic = siteContent ? siteContent.phonePublic : false;
+  const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
+  const siteUrl = site?.custom_domain
+    ? `https://${site.custom_domain}`
+    : site?.subdomain
+      ? `https://${site.subdomain}.${rootDomain}`
+      : null;
+  const siteLocalPreviewUrl = site?.subdomain ? `/site/${site.subdomain}` : null;
 
   const { counters, items } = queue;
   const handledRate = counters.totalCount > 0
@@ -687,6 +698,13 @@ export default async function VoiceCallsPage({
               concurrentCalls={voiceEntitlement?.concurrentCalls ?? 3}
               activeCalls={liveActiveCalls ?? 0}
               planName={voiceEntitlement?.planCode ? (voiceEntitlement.planCode.charAt(0).toUpperCase() + voiceEntitlement.planCode.slice(1)) : 'Solo'}
+              sitePhonePublic={sitePhonePublic}
+              sitePhone={site?.phone ?? null}
+              dedicatedNumber={dedicatedNumber}
+              siteSubdomain={site?.subdomain ?? null}
+              siteUrl={siteUrl}
+              siteLocalPreviewUrl={siteLocalPreviewUrl}
+              sitePublished={site?.published ?? false}
             />
           </div>
         </div>

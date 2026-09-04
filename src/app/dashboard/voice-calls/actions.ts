@@ -2,6 +2,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { requireOfficeContext } from '@/lib/auth';
+import { getOrCreateSite } from '@/lib/sites';
+import { displayPhone } from '@/lib/phone';
 import { createLead } from '@/lib/leads';
 import { detectCallEmergency } from '@/lib/voice/triage';
 import type { VoiceCallDisposition } from '@/lib/voice/call-workspace';
@@ -214,3 +216,90 @@ export async function convertVoiceCallToQuoteDraftAction(formData: FormData): Pr
   revalidatePath('/dashboard/jobs');
   return { jobId: job.id };
 }
+
+/**
+ * Toggles whether the contractor's website funnels inbound customers to:
+ * 1. AI Receptionist Phone Calls (publishAiNumber = true) — publishes the dedicated
+ *    AI receptionist number on headers, hero CTA, sticky call bar, and footer.
+ * 2. Online Intake Forms Only (publishAiNumber = false) — hides phone numbers from
+ *    the website, funneling 100% of visitors into instant estimates and bookings.
+ */
+export async function toggleWebsitePhoneFunnelAction(publishAiNumber: boolean): Promise<{
+  success: boolean;
+  phonePublic: boolean;
+  phone: string | null;
+}> {
+  const { supabase, accountId } = await requireOfficeContext('settings.write');
+
+  // Retrieve current site row or create default if none exists yet
+  let { data: site } = await supabase
+    .from('sites')
+    .select('id, phone, content, subdomain')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (!site) {
+    const created = await getOrCreateSite(supabase, accountId);
+    site = { id: created.id, phone: created.phone, content: created.content, subdomain: created.subdomain };
+  }
+
+  const existingContent = (site.content as Record<string, unknown> | null) || {};
+  let targetPhone = site.phone;
+
+  if (publishAiNumber) {
+    // If activating phone calls funnel, ensure we have the AI receptionist dedicated number
+    const { data: account } = await supabase
+      .from('accounts')
+      .select('call_tracking_number, alert_phone')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    const dedicatedNumber = account?.call_tracking_number || null;
+    if (dedicatedNumber) {
+      targetPhone = displayPhone(dedicatedNumber);
+    } else if (!targetPhone && account?.alert_phone) {
+      targetPhone = displayPhone(account.alert_phone);
+    }
+  }
+
+  const updatedContent: Record<string, unknown> = {
+    ...existingContent,
+    phonePublic: publishAiNumber,
+  };
+
+  const updatePayload: Record<string, unknown> = {
+    content: updatedContent,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (targetPhone) {
+    updatePayload.phone = targetPhone;
+  }
+
+  const { error: updateError } = await supabase
+    .from('sites')
+    .update(updatePayload)
+    .eq('id', site.id)
+    .eq('account_id', accountId);
+
+  if (updateError) {
+    console.error('Failed to update website lead funnel:', updateError);
+    throw new Error('Failed to update website phone visibility.');
+  }
+
+  revalidatePath('/dashboard/voice-calls');
+  revalidatePath('/dashboard/sites');
+  revalidatePath('/dashboard/settings');
+  if (site.subdomain) {
+    revalidatePath(`/site/${site.subdomain}`);
+    revalidatePath(`/book/${site.subdomain}`);
+  }
+  revalidatePath('/');
+
+  return {
+    success: true,
+    phonePublic: publishAiNumber,
+    phone: publishAiNumber ? targetPhone : null,
+  };
+}
+

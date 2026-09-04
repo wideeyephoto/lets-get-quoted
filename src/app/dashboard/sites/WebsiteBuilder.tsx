@@ -2778,7 +2778,43 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                         )}
                         <small className={styles.fieldHint}>Powers your call buttons and the text/call follow-up on leads.</small>
                       </label>
-                      <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.phonePublic} onChange={(event) => updateSiteContent({ phonePublic: event.target.checked })} /><span><strong>Show phone number</strong><small>This controls whether your phone number and call buttons appear anywhere on your website.</small></span></label>
+                      {/* Customer Inbound Lead Funnel Selector */}
+                      <div className={styles.formField} style={{ marginTop: '0.85rem', marginBottom: '0.85rem' }}>
+                        <span>Customer Inbound Lead Funnel</span>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.65rem', marginTop: '0.35rem' }}>
+                          <button
+                            type="button"
+                            className={`${styles.chatNumberChip} ${siteContent.phonePublic ? styles.chatNumberChipActive : ''}`}
+                            style={{ padding: '0.75rem 0.9rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.25rem', height: 'auto' }}
+                            onClick={() => updateSiteContent({ phonePublic: true })}
+                          >
+                            <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>📞</span> AI Phone Calls Funnel
+                            </span>
+                            <span style={{ fontSize: '0.74rem', opacity: 0.85, lineHeight: 1.3 }}>
+                              Publishes call buttons so website visitors talk directly with your 24/7 AI Receptionist.
+                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            className={`${styles.chatNumberChip} ${!siteContent.phonePublic ? styles.chatNumberChipActive : ''}`}
+                            style={{ padding: '0.75rem 0.9rem', textAlign: 'left', display: 'flex', flexDirection: 'column', gap: '0.25rem', height: 'auto' }}
+                            onClick={() => updateSiteContent({ phonePublic: false })}
+                          >
+                            <span style={{ fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                              <span>📝</span> Online Forms Funnel
+                            </span>
+                            <span style={{ fontSize: '0.74rem', opacity: 0.85, lineHeight: 1.3 }}>
+                              Hides phone &amp; call buttons to funnel 100% of visitors into instant quote &amp; booking intake forms.
+                            </span>
+                          </button>
+                        </div>
+                        <small className={styles.fieldHint}>
+                          {siteContent.phonePublic
+                            ? '● Active Funnel: Call buttons live on website. Homeowners can tap to call your AI Receptionist.'
+                            : '● Active Funnel: Phone hidden. Visitors are guided 100% into your online estimate and booking forms.'}
+                        </small>
+                      </div>
                       {siteContent.quoteForm.enabled && (
                         <label className={styles.formField}><span>What visitors see the form called</span><input type="text" maxLength={40} value={siteContent.quoteForm.formHeading} onChange={(event) => updateQuoteForm({ ...siteContent.quoteForm, formHeading: event.target.value })} placeholder="Request an Estimate" /><small className={styles.fieldHint}>The heading on the hero capture and the button in your header. The classic form replies later rather than pricing on the spot, so avoid wording that promises an instant number.</small></label>
                       )}
