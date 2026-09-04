@@ -310,14 +310,53 @@ export default function InventoryClient({
   const totalStockValue = stock.reduce((sum, s) => sum + s.quantityOnHand * s.unitCost, 0);
   const checkedOutToolsCount = tools.filter((t) => t.status === 'checked_out').length;
 
-  // Distinct locations for filters & dropdowns
-  const availableLocationNames = Array.from(
+  // Categorized & unified locations (auto-syncs registered fleet vehicles into location pool)
+  const facilityLocations = Array.from(
     new Set([
       'Main Shop & Warehouse',
-      ...locations.map((l) => l.name),
-      ...stock.map((s) => s.location),
+      ...locations.filter((l) => l.type !== 'vehicle').map((l) => l.name),
     ].filter(Boolean))
   );
+
+  const vehicleLocations = Array.from(
+    new Set([
+      ...vehicles.map((v) => v.name),
+      ...locations.filter((l) => l.type === 'vehicle').map((l) => l.name),
+    ].filter(Boolean))
+  );
+
+  const otherLocations = Array.from(
+    new Set([
+      ...stock.map((s) => s.location),
+      ...locations.map((l) => l.name),
+    ].filter((name) => Boolean(name) && !facilityLocations.includes(name) && !vehicleLocations.includes(name)))
+  );
+
+  const availableLocationNames = Array.from(
+    new Set([
+      ...facilityLocations,
+      ...vehicleLocations,
+      ...otherLocations,
+    ].filter(Boolean))
+  );
+
+  function isVehicleLocation(locName?: string | null): boolean {
+    if (!locName) return false;
+    if (vehicleLocations.includes(locName)) return true;
+    const lower = locName.toLowerCase();
+    return (
+      lower.includes('van') ||
+      lower.includes('truck') ||
+      lower.includes('trailer') ||
+      lower.includes('fleet') ||
+      lower.includes('ford') ||
+      lower.includes('ram') ||
+      lower.includes('chevy') ||
+      lower.includes('silverado') ||
+      lower.includes('promaster') ||
+      lower.includes('transit')
+    );
+  }
 
   function openToolModal(tool: Partial<ToolAsset> | null = null) {
     setToolModal({ open: true, tool });
@@ -1172,7 +1211,7 @@ export default function InventoryClient({
             <MapPin size={18} />
             <span>Depots &amp; Vans</span>
             <span className={`${styles.tabBadge} ${activeTab === 'locations' ? styles.tabBadgeActive : ''}`}>
-              {locations.length}
+              {locations.length + vehicles.length}
             </span>
           </button>
         </nav>
@@ -1371,12 +1410,27 @@ export default function InventoryClient({
                         </td>
                         <td className={styles.toolsTd}>
                           {isCheckedOut ? (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#ffb580', fontWeight: 600 }}>
-                              <User size={13} /> {tool.assignedCrewName || 'Assigned Tech'}
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#ffb580', fontWeight: 600 }}>
+                                <User size={13} /> {tool.assignedCrewName || 'Assigned Tech'}
+                              </div>
+                              <span style={{ fontSize: '0.72rem', color: '#94a3b8', display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                                {isVehicleLocation(tool.locationName) ? <Truck size={11} /> : <MapPin size={11} />} Base: {tool.locationName || 'Main Shop & Warehouse'}
+                              </span>
                             </div>
                           ) : (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--inv-text-muted)' }}>
-                              <MapPin size={13} /> {tool.locationName || 'Main Shop'}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: '#cbd5e1' }}>
+                              {isVehicleLocation(tool.locationName) ? (
+                                <Truck size={13} style={{ color: '#60a5fa' }} />
+                              ) : (
+                                <MapPin size={13} style={{ color: '#94a3b8' }} />
+                              )}
+                              <span>{tool.locationName || 'Main Shop & Warehouse'}</span>
+                              {isVehicleLocation(tool.locationName) && (
+                                <span className={`${styles.locationTypeTag} ${styles.locationTypeTagVehicle}`} style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem' }}>
+                                  Van
+                                </span>
+                              )}
                             </div>
                           )}
                         </td>
@@ -1518,7 +1572,7 @@ export default function InventoryClient({
                       </div>
 
                       {/* Checked out custody well */}
-                      {isCheckedOut && (
+                      {isCheckedOut ? (
                         <div className={styles.custodyBlock}>
                           <div className={styles.custodyRow}>
                             <span className={styles.custodyLabel}>
@@ -1541,6 +1595,14 @@ export default function InventoryClient({
                               </span>
                             </div>
                           )}
+                          <div className={styles.custodyRow}>
+                            <span className={styles.custodyLabel}>
+                              {isVehicleLocation(tool.locationName) ? <Truck size={13} /> : <MapPin size={13} />} Home Base:
+                            </span>
+                            <span className={styles.custodyValue}>
+                              {tool.locationName || 'Main Shop & Warehouse'}
+                            </span>
+                          </div>
                           {tool.checkedOutAt && (
                             <div className={styles.custodyRow} style={{ color: '#cbd5e1', fontSize: '0.85rem' }}>
                               <span className={styles.custodyLabel}>
@@ -1551,6 +1613,27 @@ export default function InventoryClient({
                               </span>
                             </div>
                           )}
+                        </div>
+                      ) : (
+                        /* Storage Depot for Available / In-Maintenance tools */
+                        <div className={styles.locationBlock}>
+                          <div className={styles.locationRow}>
+                            <span className={styles.locationLabel}>
+                              {isVehicleLocation(tool.locationName) ? <Truck size={13} /> : <MapPin size={13} />} Storage Depot:
+                            </span>
+                            <span className={styles.locationValue}>
+                              <span>{tool.locationName || 'Main Shop & Warehouse'}</span>
+                              <span
+                                className={`${styles.locationTypeTag} ${
+                                  isVehicleLocation(tool.locationName)
+                                    ? styles.locationTypeTagVehicle
+                                    : styles.locationTypeTagFacility
+                                }`}
+                              >
+                                {isVehicleLocation(tool.locationName) ? 'Vehicle' : 'Facility'}
+                              </span>
+                            </span>
+                          </div>
                         </div>
                       )}
 
@@ -2361,6 +2444,67 @@ export default function InventoryClient({
               );
             })}
           </div>
+
+          {/* Registered Fleet Vehicles (Auto-synced as Mobile Depot Locations) */}
+          {vehicles.length > 0 && (
+            <div style={{ marginTop: '0.75rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: '#ffffff', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <Truck size={18} style={{ color: '#60a5fa' }} /> Mobile Fleet Units ({vehicles.length} Synced)
+                </h3>
+                <span style={{ fontSize: '0.82rem', color: '#94a3b8' }}>
+                  Auto-synced from Fleet Vehicles • Available in all tool &amp; stock location pickers
+                </span>
+              </div>
+
+              <div className={styles.cardsGrid}>
+                {vehicles.map((v) => {
+                  const stockCount = stock.filter((s) => s.location === v.name).length;
+                  const toolsCount = tools.filter((t) => t.locationName === v.name).length;
+                  return (
+                    <div key={v.id} className={styles.assetCard}>
+                      <div>
+                        <div className={styles.cardHeader}>
+                          <span className={styles.assetTagBadge}>{v.licensePlate || 'FLEET'}</span>
+                          <span className={`${styles.locationTypeTag} ${styles.locationTypeTagVehicle}`}>
+                            <Truck size={11} /> FLEET UNIT
+                          </span>
+                        </div>
+
+                        <h3 className={styles.cardTitle}>{v.name}</h3>
+                        <p style={{ margin: '0.35rem 0 0', fontSize: '0.92rem', color: '#cbd5e1' }}>
+                          {v.year} {v.make} {v.model} • Driver: <strong style={{ color: '#ffffff' }}>{v.primaryDriverName || 'Unassigned'}</strong>
+                        </p>
+
+                        <div style={{ marginTop: '0.95rem', display: 'flex', gap: '0.65rem' }}>
+                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.85rem' }}>
+                            <span style={{ color: '#cbd5e1' }}>Tools: </span>
+                            <strong style={{ fontFamily: 'monospace', color: '#ffffff' }}>{toolsCount} assigned</strong>
+                          </div>
+                          <div style={{ flex: 1, padding: '0.65rem 0.85rem', borderRadius: '10px', background: 'rgba(255, 255, 255, 0.04)', border: '1px solid rgba(255, 255, 255, 0.1)', fontSize: '0.85rem' }}>
+                            <span style={{ color: '#cbd5e1' }}>Parts: </span>
+                            <strong style={{ fontFamily: 'monospace', color: '#ffffff' }}>{stockCount} stocked</strong>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className={styles.cardFooter}>
+                        <span style={{ fontSize: '0.85rem', color: '#60a5fa', fontWeight: 600 }}>Active Mobile Depot</span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('fleet')}
+                          className={styles.btnGhostIcon}
+                          title="Manage in Fleet Tab"
+                        >
+                          <ArrowRight size={14} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -2789,11 +2933,29 @@ export default function InventoryClient({
                     defaultValue={toolModal.tool?.locationName || availableLocationNames[0]}
                     className={styles.fieldSelect}
                   >
-                    {availableLocationNames.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
+                    <optgroup label="Shop & Facilities">
+                      {facilityLocations.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Fleet Vehicles (Mobile Units)">
+                      {vehicleLocations.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {otherLocations.length > 0 && (
+                      <optgroup label="Other Locations">
+                        {otherLocations.map((l) => (
+                          <option key={l} value={l}>
+                            {l}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
               </div>
@@ -3253,11 +3415,29 @@ export default function InventoryClient({
                     defaultValue={stockModal.item?.location || availableLocationNames[0] || 'Main Shop & Warehouse'}
                     className={styles.fieldSelect}
                   >
-                    {availableLocationNames.map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
+                    <optgroup label="Shop & Facilities">
+                      {facilityLocations.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </optgroup>
+                    <optgroup label="Fleet Vehicles (Mobile Units)">
+                      {vehicleLocations.map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {otherLocations.length > 0 && (
+                      <optgroup label="Other Locations">
+                        {otherLocations.map((l) => (
+                          <option key={l} value={l}>
+                            {l}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 </div>
                 <div className={styles.formField}>
@@ -3378,13 +3558,35 @@ export default function InventoryClient({
                   onChange={(e) => setTransferModal((prev) => ({ ...prev, toLocation: e.target.value }))}
                   className={styles.fieldSelect}
                 >
-                  {availableLocationNames
-                    .filter((l) => l !== transferModal.item?.location)
-                    .map((l) => (
-                      <option key={l} value={l}>
-                        {l}
-                      </option>
-                    ))}
+                  <optgroup label="Shop & Facilities">
+                    {facilityLocations
+                      .filter((l) => l !== transferModal.item?.location)
+                      .map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                  </optgroup>
+                  <optgroup label="Fleet Vehicles (Mobile Units)">
+                    {vehicleLocations
+                      .filter((l) => l !== transferModal.item?.location)
+                      .map((l) => (
+                        <option key={l} value={l}>
+                          {l}
+                        </option>
+                      ))}
+                  </optgroup>
+                  {otherLocations.filter((l) => l !== transferModal.item?.location).length > 0 && (
+                    <optgroup label="Other Locations">
+                      {otherLocations
+                        .filter((l) => l !== transferModal.item?.location)
+                        .map((l) => (
+                          <option key={l} value={l}>
+                            {l}
+                          </option>
+                        ))}
+                    </optgroup>
+                  )}
                 </select>
               </div>
 
