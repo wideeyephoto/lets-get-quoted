@@ -52,6 +52,7 @@ beforeEach(() => {
   vi.stubEnv('LGQ_AI_VOICE_ENABLED', '1');
   upsert.mockReset();
   upsert.mockResolvedValue({ error: null });
+  update.mockReset();
   getUser.mockResolvedValue({ data: { user: { id: 'user-1', email: 'owner@example.com' } } });
   recordAccountEvent.mockReset();
   loadVoiceEntitlement.mockReset();
@@ -91,11 +92,12 @@ describe('what the server does with what the form sends', () => {
     expect(upsert.mock.calls[0][0]).not.toHaveProperty('emergency_transfer_number');
   });
 
-  it('stores a blank transfer number as nothing', async () => {
+  it('clearing transfer number writes null to both voice_settings and accounts', async () => {
     await updateVoiceSettingsAction(input({ transferNumber: '  ' }));
     expect(upsert.mock.calls[0][0]).toMatchObject({
       transfer_number: null,
     });
+    expect(update).toHaveBeenCalledWith({ call_forward_number: null });
   });
 
   it('normalises and updates alertPhone on accounts table', async () => {
@@ -106,6 +108,11 @@ describe('what the server does with what the form sends', () => {
   it('synchronises call_forward_number on accounts table when transferNumber is updated', async () => {
     await updateVoiceSettingsAction(input({ transferNumber: '(248) 555-0100' }));
     expect(update).toHaveBeenCalledWith({ call_forward_number: '+12485550100' });
+  });
+
+  it('nulls call_forward_number on accounts table when transferNumber is blank', async () => {
+    await updateVoiceSettingsAction(input({ transferNumber: '' }));
+    expect(update).toHaveBeenCalledWith({ call_forward_number: null });
   });
 
   it('rejects an invalid nonblank transfer number instead of silently erasing it', async () => {
