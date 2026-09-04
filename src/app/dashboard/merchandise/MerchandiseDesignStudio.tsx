@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useRef } from 'react';
 import Image from 'next/image';
 import {
   MERCHANDISE_PRODUCTS,
@@ -18,6 +18,9 @@ import type {
 } from '@/lib/merchandise/types';
 import { createMerchandiseCheckoutAction, reorderMerchandiseAction } from './actions';
 import { generateLogoSvg } from '@/lib/logo-creator';
+import MarketingNav from '../marketing/MarketingNav';
+import Product3DMockupStage from './Product3DMockupStage';
+import ProductTechnicalSpecsSheet from './ProductTechnicalSpecsSheet';
 
 interface Props {
   initialData: MerchandiseStudioInitialData;
@@ -74,6 +77,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [orders, setOrders] = useState<MerchandiseOrder[]>(initialData.recentOrders);
   const [orderSuccessModal, setOrderSuccessModal] = useState<MerchandiseOrder | null>(null);
   const [proofApproved, setProofApproved] = useState(false);
+  const canvasProofExportRef = useRef<(() => Promise<string>) | null>(null);
 
   // Shipping form state
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
@@ -123,6 +127,40 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Active AI logo
   const activeAiLogo = initialData.aiLogos.find((l) => l.id === selectedAiLogoId) || initialData.aiLogos[0];
+
+  // Active Logo Source for Canvas Casting (URL or SVG data URI)
+  const activeLogoSrc = useMemo(() => {
+    if (logoSource === 'ai' && activeAiLogo) {
+      return activeAiLogo.url;
+    }
+    if (logoSource === 'site' && initialData.currentLogoUrl) {
+      return initialData.currentLogoUrl;
+    }
+
+    // Default Vector SVG
+    const svgCode = generateLogoSvg({
+      businessName,
+      trade: initialData.trade,
+      tagline,
+      establishedYear: '2026',
+      accentColor,
+      secondaryColor,
+      style: 'modern_shield',
+      colorMode: activeColor.darkText ? 'dark' : 'color',
+    });
+
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgCode)}`;
+  }, [
+    logoSource,
+    activeAiLogo,
+    initialData.currentLogoUrl,
+    initialData.trade,
+    businessName,
+    tagline,
+    accentColor,
+    secondaryColor,
+    activeColor.darkText,
+  ]);
 
   // Calculate pricing
   const itemSubtotal = activeTier.totalPrice;
@@ -217,7 +255,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   }
 
   // Download digital proof
-  function handleDownloadProofSheet() {
+  async function handleDownloadProofSheet() {
     const canvas = document.createElement('canvas');
     canvas.width = 1200;
     canvas.height = 800;
@@ -262,13 +300,35 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     ctx.fillText(`Method: ${currentProduct.decorationLabel}`, 60, 450);
     ctx.fillText(`Turnaround: ${currentProduct.turnaroundEstimate}`, 60, 480);
 
-    // Right Canvas preview zone
-    ctx.fillStyle = '#ffffff';
+    // Right Canvas preview zone: Real Embedded 3D Canvas Render
+    ctx.fillStyle = '#0b0f19';
     ctx.fillRect(560, 130, 600, 620);
-    ctx.fillStyle = '#64748b';
-    ctx.font = 'bold 24px sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText('DIGITAL PRINT SPECIFICATION ARCHIVE', 860, 440);
+
+    let renderedSuccessfully = false;
+    if (canvasProofExportRef.current) {
+      try {
+        const renderDataUrl = await canvasProofExportRef.current();
+        const renderImg = new window.Image();
+        renderImg.crossOrigin = 'anonymous';
+        await new Promise<void>((resolve, reject) => {
+          renderImg.onload = () => resolve();
+          renderImg.onerror = reject;
+          renderImg.src = renderDataUrl;
+        });
+        // Center the 1040x1040 square canvas render inside the 600x620 preview box
+        ctx.drawImage(renderImg, 570, 140, 580, 580);
+        renderedSuccessfully = true;
+      } catch (err) {
+        console.warn('Could not embed live canvas render into proof sheet:', err);
+      }
+    }
+
+    if (!renderedSuccessfully) {
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 24px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('DIGITAL PRINT SPECIFICATION ARCHIVE', 860, 440);
+    }
 
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
@@ -327,164 +387,131 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   }
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        height: '100%',
-        minHeight: '88vh',
-        background: '#f8fafc',
-        fontFamily: 'inherit',
-        color: '#0f172a',
-      }}
-    >
-      {/* 1. Header Toolbar */}
-      <div
-        style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
-          padding: '1rem 1.75rem',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '1rem',
-          boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-          <div
-            style={{
-              width: '42px',
-              height: '42px',
-              borderRadius: '11px',
-              background: 'linear-gradient(135deg, #059669, #10b981)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: '#ffffff',
-              fontSize: '1.4rem',
-              boxShadow: '0 4px 14px rgba(16,185,129,0.3)',
-            }}
-          >
-            👕
-          </div>
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-              <h1 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: '#0f172a', letterSpacing: '-0.02em' }}>
-                Merchandise &amp; Swag Design Studio
-              </h1>
-              <span
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  padding: '2px 8px',
-                  borderRadius: '999px',
-                  background: '#ecfdf5',
-                  color: '#047857',
-                  border: '1px solid #a7f3d0',
-                }}
-              >
-                PRO GRADE PRINT
-              </span>
-            </div>
-            <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#64748b' }}>
-              Premium blanks (Richardson 112, Port Authority, 16pt Velvet) with instant volume checkout.
+    <main className="wide-shell workspace-shell" style={{ paddingBottom: '3.5rem' }}>
+      <MarketingNav basePath="/dashboard" />
+
+      {/* 1. Header Hero Banner matching marketing theme */}
+      <section className="workspace-hero panel marketing-hero" style={{ position: 'relative', marginBottom: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', width: '100%' }}>
+          <div className="workspace-hero-copy" style={{ margin: 0 }}>
+            <p className="eyebrow" style={{ color: 'var(--gold-ink)', letterSpacing: '0.12em', margin: 0, textTransform: 'uppercase', fontSize: '0.72rem', fontWeight: 800 }}>
+              Marketing &amp; Brand Studio
+            </p>
+            <h1 className="workspace-title" style={{ fontSize: '1.8rem', marginBottom: '0.35rem', color: 'var(--text)', letterSpacing: '-0.02em' }}>
+              Merchandise &amp; Swag Studio
+            </h1>
+            <p className="workspace-lead" style={{ margin: 0, fontSize: '0.92rem', color: 'var(--muted)' }}>
+              Commercial-grade crew apparel, embroidered hats, velvet cards, and jobsite gear for {businessName}.
             </p>
           </div>
-        </div>
 
-        {/* Right Header Trust Badges & Orders Button */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div
-            style={{
-              display: 'none',
-              alignItems: 'center',
-              gap: '0.85rem',
-              background: '#f1f5f9',
-              padding: '0.45rem 0.9rem',
-              borderRadius: '8px',
-              fontSize: '0.76rem',
-              fontWeight: 700,
-              color: '#334155',
-            }}
-            className="hidden md:flex"
-          >
-            <span>⚡ 3–5 Day Dispatch</span>
-            <span>&bull;</span>
-            <span>🧵 Free Digitizing 6+ Units</span>
-            <span>&bull;</span>
-            <span>📦 Free Shipping $150+</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.75rem',
+                background: 'rgba(var(--tint), 0.04)',
+                padding: '0.5rem 0.95rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--tint), 0.08)',
+                fontSize: '0.78rem',
+                fontWeight: 700,
+                color: 'var(--text)',
+              }}
+              className="hidden md:flex"
+            >
+              <span style={{ color: 'var(--good)' }}>⚡ 3–5 Day Dispatch</span>
+              <span style={{ opacity: 0.3 }}>&bull;</span>
+              <span style={{ color: 'var(--gold-ink)' }}>🧵 Free Digitizing 6+ Units</span>
+              <span style={{ opacity: 0.3 }}>&bull;</span>
+              <span style={{ color: '#60a5fa' }}>📦 Free Shipping $150+</span>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setOrdersDrawerOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.45rem',
+                padding: '0.55rem 0.95rem',
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--tint), 0.14)',
+                background: 'rgba(var(--tint), 0.05)',
+                color: 'var(--text)',
+                fontWeight: 700,
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+              }}
+            >
+              <span>📋 Orders</span>
+              {orders.length > 0 && (
+                <span
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#ffffff',
+                    fontSize: '0.7rem',
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {orders.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setCheckoutOpen(true)}
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                padding: '0.62rem 1.25rem',
+                borderRadius: '9px',
+                border: 'none',
+                background: 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
+                color: '#ffffff',
+                fontWeight: 800,
+                fontSize: '0.88rem',
+                cursor: 'pointer',
+                boxShadow: '0 4px 16px rgba(255,122,33,0.35)',
+              }}
+            >
+              <span>⚡ Instant Checkout ({activeTier.quantity})</span>
+              <span>&bull;</span>
+              <span>${activeTier.totalPrice.toFixed(2)}</span>
+            </button>
           </div>
-
-          <button
-            type="button"
-            onClick={() => setOrdersDrawerOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.4rem',
-              padding: '0.55rem 0.9rem',
-              borderRadius: '8px',
-              border: '1.5px solid #cbd5e1',
-              background: '#ffffff',
-              color: '#334155',
-              fontWeight: 700,
-              fontSize: '0.82rem',
-              cursor: 'pointer',
-            }}
-          >
-            <span>📋 Orders</span>
-            {orders.length > 0 && (
-              <span
-                style={{
-                  background: '#2563eb',
-                  color: '#ffffff',
-                  fontSize: '0.7rem',
-                  padding: '1px 6px',
-                  borderRadius: '999px',
-                  fontWeight: 800,
-                }}
-              >
-                {orders.length}
-              </span>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setCheckoutOpen(true)}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              padding: '0.6rem 1.15rem',
-              borderRadius: '9px',
-              border: 'none',
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
-              color: '#ffffff',
-              fontWeight: 800,
-              fontSize: '0.86rem',
-              cursor: 'pointer',
-              boxShadow: '0 6px 16px rgba(37,99,235,0.28)',
-            }}
-          >
-            <span>⚡ Instant Checkout ({activeTier.quantity})</span>
-            <span>&bull;</span>
-            <span>${activeTier.totalPrice.toFixed(2)}</span>
-          </button>
         </div>
-      </div>
+      </section>
+
+      {/* Main Studio Frame */}
+      <div
+        style={{
+          borderRadius: '16px',
+          border: '1px solid var(--line)',
+          background: 'rgba(var(--panel-rgb), 0.92)',
+          boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.06)',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: '780px',
+        }}
+      >
 
       {/* 2. Category Selector Pills */}
       <div
         style={{
-          background: '#ffffff',
-          borderBottom: '1px solid #e2e8f0',
-          padding: '0.6rem 1.75rem',
+          background: 'rgba(var(--tint), 0.025)',
+          borderBottom: '1px solid var(--line)',
+          padding: '0.75rem 1.5rem',
           display: 'flex',
           alignItems: 'center',
-          gap: '0.5rem',
+          gap: '0.55rem',
           overflowX: 'auto',
         }}
       >
@@ -492,15 +519,17 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           type="button"
           onClick={() => setSelectedCategory('all')}
           style={{
-            padding: '0.4rem 0.85rem',
-            borderRadius: '7px',
-            border: selectedCategory === 'all' ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
-            background: selectedCategory === 'all' ? '#eff6ff' : '#ffffff',
-            color: selectedCategory === 'all' ? '#1d4ed8' : '#64748b',
+            padding: '0.45rem 0.95rem',
+            borderRadius: '8px',
+            border: selectedCategory === 'all' ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
+            background: selectedCategory === 'all' ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
+            color: selectedCategory === 'all' ? '#ffffff' : 'var(--muted)',
             fontWeight: 800,
-            fontSize: '0.8rem',
+            fontSize: '0.82rem',
             cursor: 'pointer',
             whiteSpace: 'nowrap',
+            boxShadow: selectedCategory === 'all' ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
+            transition: 'all 0.15s ease',
           }}
         >
           All Merch ({MERCHANDISE_PRODUCTS.length})
@@ -513,18 +542,20 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               type="button"
               onClick={() => setSelectedCategory(cat.id)}
               style={{
-                padding: '0.4rem 0.85rem',
-                borderRadius: '7px',
-                border: isSelected ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
-                background: isSelected ? '#eff6ff' : '#ffffff',
-                color: isSelected ? '#1d4ed8' : '#64748b',
+                padding: '0.45rem 0.95rem',
+                borderRadius: '8px',
+                border: isSelected ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
+                background: isSelected ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
+                color: isSelected ? '#ffffff' : 'var(--muted)',
                 fontWeight: 800,
-                fontSize: '0.8rem',
+                fontSize: '0.82rem',
                 cursor: 'pointer',
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '0.35rem',
+                gap: '0.4rem',
                 whiteSpace: 'nowrap',
+                boxShadow: isSelected ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
+                transition: 'all 0.15s ease',
               }}
             >
               <span>{cat.icon}</span>
@@ -539,15 +570,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         {/* Left Controls Sidebar */}
         <div
           style={{
-            width: '380px',
-            minWidth: '340px',
-            borderRight: '1px solid #e2e8f0',
-            background: '#ffffff',
+            width: '400px',
+            minWidth: '350px',
+            maxWidth: '430px',
+            borderRight: '1px solid var(--line)',
+            background: 'rgba(var(--panel-rgb), 0.98)',
             overflowY: 'auto',
-            padding: '1.25rem',
+            padding: '1.35rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.25rem',
+            gap: '1.35rem',
           }}
         >
           {/* Product Picker Grid */}
@@ -555,11 +587,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.74rem',
+                fontSize: '0.72rem',
                 fontWeight: 800,
-                color: '#475569',
+                color: 'var(--gold-ink)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.08em',
                 marginBottom: '0.5rem',
               }}
             >
@@ -577,18 +609,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       textAlign: 'left',
                       padding: '0.65rem 0.75rem',
                       borderRadius: '9px',
-                      border: active ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                      background: active ? '#f0f7ff' : '#fafafa',
+                      border: active ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.08)',
+                      background: active ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.18), rgba(255, 122, 33, 0.04))' : 'rgba(var(--tint), 0.035)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
-                      boxShadow: active ? '0 4px 10px rgba(37,99,235,0.12)' : 'none',
+                      boxShadow: active ? '0 4px 14px rgba(255, 122, 33, 0.25)' : 'none',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <strong
                         style={{
                           fontSize: '0.8rem',
-                          color: active ? '#1d4ed8' : '#0f172a',
+                          color: active ? '#ffffff' : 'var(--text)',
                           fontWeight: 800,
                           lineHeight: 1.25,
                         }}
@@ -610,18 +642,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             style={{
               padding: '0.9rem',
               borderRadius: '12px',
-              background: 'linear-gradient(145deg, #f8fafc, #f1f5f9)',
-              border: '1px solid #e2e8f0',
+              background: 'rgba(var(--tint), 0.025)',
+              border: '1px solid rgba(var(--tint), 0.08)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label
                 style={{
-                  fontSize: '0.74rem',
+                  fontSize: '0.72rem',
                   fontWeight: 800,
-                  color: '#334155',
+                  color: 'var(--gold-ink)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.08em',
                   margin: 0,
                 }}
               >
@@ -641,9 +673,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     flex: 1,
                     padding: '0.45rem',
                     borderRadius: '7px',
-                    border: logoSource === 'ai' ? '1.5px solid #7c3aed' : '1px solid #cbd5e1',
-                    background: logoSource === 'ai' ? '#faf5ff' : '#ffffff',
-                    color: logoSource === 'ai' ? '#6d28d9' : '#475569',
+                    border: logoSource === 'ai' ? '1.5px solid #a855f7' : '1px solid rgba(var(--tint), 0.1)',
+                    background: logoSource === 'ai' ? 'rgba(124, 58, 237, 0.22)' : 'rgba(var(--tint), 0.04)',
+                    color: logoSource === 'ai' ? '#f3e8ff' : 'var(--muted)',
                     fontSize: '0.74rem',
                     fontWeight: 800,
                     cursor: 'pointer',
@@ -660,9 +692,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     flex: 1,
                     padding: '0.45rem',
                     borderRadius: '7px',
-                    border: logoSource === 'site' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                    background: logoSource === 'site' ? '#eff6ff' : '#ffffff',
-                    color: logoSource === 'site' ? '#1d4ed8' : '#475569',
+                    border: logoSource === 'site' ? '1.5px solid #3b82f6' : '1px solid rgba(var(--tint), 0.1)',
+                    background: logoSource === 'site' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(var(--tint), 0.04)',
+                    color: logoSource === 'site' ? '#bfdbfe' : 'var(--muted)',
                     fontSize: '0.74rem',
                     fontWeight: 800,
                     cursor: 'pointer',
@@ -703,8 +735,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       width: '64px',
                       height: '52px',
                       borderRadius: '8px',
-                      border: selectedAiLogoId === lg.id ? '2px solid #7c3aed' : '1px solid #cbd5e1',
-                      background: '#ffffff',
+                      border: selectedAiLogoId === lg.id ? '2px solid #a855f7' : '1px solid rgba(var(--tint), 0.12)',
+                      background: '#101520',
                       cursor: 'pointer',
                       padding: '4px',
                       flexShrink: 0,
@@ -722,11 +754,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.74rem',
+                fontSize: '0.72rem',
                 fontWeight: 800,
-                color: '#475569',
+                color: 'var(--gold-ink)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.08em',
                 marginBottom: '0.5rem',
               }}
             >
@@ -743,10 +775,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     width: '100%',
                     padding: '0.45rem 0.65rem',
                     borderRadius: '7px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1px solid rgba(var(--tint), 0.14)',
+                    background: 'rgba(var(--tint), 0.055)',
+                    color: 'var(--text)',
                     fontSize: '0.84rem',
-                    fontWeight: 700,
+                    fontWeight: 600,
                     boxSizing: 'border-box',
+                    outline: 'none',
                   }}
                 />
               </div>
@@ -813,15 +848,15 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     justifyContent: 'space-between',
                     padding: '0.6rem 0.75rem',
                     borderRadius: '8px',
-                    background: '#eff6ff',
-                    border: '1px solid #bfdbfe',
+                    background: 'rgba(59, 130, 246, 0.1)',
+                    border: '1px solid rgba(59, 130, 246, 0.25)',
                   }}
                 >
                   <div>
-                    <strong style={{ display: 'block', fontSize: '0.76rem', color: '#1e40af' }}>
+                    <strong style={{ display: 'block', fontSize: '0.76rem', color: '#93c5fd' }}>
                       Dynamic Booking QR Code
                     </strong>
-                    <span style={{ fontSize: '0.68rem', color: '#3b82f6' }}>
+                    <span style={{ fontSize: '0.68rem', color: '#60a5fa' }}>
                       Sends homeowners straight to your booking page
                     </span>
                   </div>
@@ -841,11 +876,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <label
               style={{
                 display: 'block',
-                fontSize: '0.74rem',
+                fontSize: '0.72rem',
                 fontWeight: 800,
-                color: '#475569',
+                color: 'var(--gold-ink)',
                 textTransform: 'uppercase',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.08em',
                 marginBottom: '0.5rem',
               }}
             >
@@ -889,11 +924,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 htmlFor="smartphoneModel"
                 style={{
                   display: 'block',
-                  fontSize: '0.74rem',
+                  fontSize: '0.72rem',
                   fontWeight: 800,
-                  color: '#475569',
+                  color: 'var(--gold-ink)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
                   marginBottom: '0.4rem',
                 }}
               >
@@ -908,8 +943,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   width: '100%',
                   padding: '0.5rem 0.65rem',
                   borderRadius: '7px',
-                  border: '1.5px solid #cbd5e1',
-                  background: '#ffffff',
+                  border: '1px solid rgba(var(--tint), 0.14)',
+                  background: 'rgba(var(--tint), 0.06)',
+                  color: 'var(--text)',
                   fontSize: '0.84rem',
                   fontWeight: 700,
                 }}
@@ -929,8 +965,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               style={{
                 padding: '0.8rem',
                 borderRadius: '10px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
+                background: 'rgba(var(--tint), 0.025)',
+                border: '1px solid rgba(var(--tint), 0.08)',
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
@@ -956,7 +992,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                         textAlign: 'center',
                         padding: '0.3rem',
                         borderRadius: '6px',
-                        border: '1px solid #cbd5e1',
+                        border: '1px solid rgba(var(--tint), 0.14)',
+                        background: 'rgba(var(--tint), 0.08)',
+                        color: '#ffffff',
                         fontWeight: 800,
                         fontSize: '0.8rem',
                         boxSizing: 'border-box',
@@ -973,11 +1011,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
               <label
                 style={{
-                  fontSize: '0.74rem',
+                  fontSize: '0.72rem',
                   fontWeight: 800,
-                  color: '#475569',
+                  color: 'var(--gold-ink)',
                   textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
+                  letterSpacing: '0.08em',
                   margin: 0,
                 }}
               >
@@ -1002,14 +1040,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       alignItems: 'center',
                       padding: '0.6rem 0.85rem',
                       borderRadius: '8px',
-                      border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
-                      background: isSelected ? '#eff6ff' : '#ffffff',
+                      border: isSelected ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.08)',
+                      background: isSelected ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.18), rgba(255, 122, 33, 0.04))' : 'rgba(var(--tint), 0.035)',
                       cursor: 'pointer',
                       textAlign: 'left',
                     }}
                   >
                     <div>
-                      <strong style={{ fontSize: '0.84rem', color: isSelected ? '#1d4ed8' : '#0f172a' }}>
+                      <strong style={{ fontSize: '0.84rem', color: isSelected ? '#ffffff' : 'var(--text)' }}>
                         {tier.quantity.toLocaleString()} units
                       </strong>
                       <span style={{ fontSize: '0.72rem', color: '#64748b', marginLeft: '0.45rem' }}>
@@ -1018,7 +1056,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     </div>
 
                     <div style={{ textAlign: 'right' }}>
-                      <strong style={{ fontSize: '0.88rem', color: isSelected ? '#1d4ed8' : '#0f172a' }}>
+                      <strong style={{ fontSize: '0.88rem', color: isSelected ? '#ffffff' : 'var(--text)' }}>
                         ${tier.totalPrice.toFixed(2)}
                       </strong>
                       {tier.isPopular && (
@@ -1051,12 +1089,12 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 padding: '0.85rem 1rem',
                 borderRadius: '10px',
                 border: 'none',
-                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                background: 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
                 color: '#ffffff',
                 fontWeight: 900,
                 fontSize: '0.94rem',
                 cursor: 'pointer',
-                boxShadow: '0 8px 20px rgba(37,99,235,0.25)',
+                boxShadow: '0 6px 20px rgba(255,122,33,0.38)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -1075,9 +1113,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 width: '100%',
                 padding: '0.65rem 1rem',
                 borderRadius: '8px',
-                border: '1.5px solid #cbd5e1',
-                background: '#ffffff',
-                color: '#334155',
+                border: '1px solid rgba(var(--tint), 0.14)',
+                background: 'rgba(var(--tint), 0.05)',
+                color: 'var(--text)',
                 fontWeight: 800,
                 fontSize: '0.82rem',
                 cursor: 'pointer',
@@ -1102,809 +1140,47 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             padding: '1.75rem',
             background:
               backdropTheme === 'dark'
-                ? '#0f172a'
+                ? 'radial-gradient(ellipse 90% 70% at 50% 30%, #101520 0%, #080b11 65%, #040508 100%)'
                 : backdropTheme === 'jobsite'
-                ? '#e2e8f0'
-                : 'linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)',
+                ? 'radial-gradient(ellipse 90% 70% at 50% 30%, #1f1b17 0%, #120f0d 65%, #070504 100%)'
+                : 'radial-gradient(ellipse 90% 70% at 50% 30%, #151c2a 0%, #0d121c 65%, #070a10 100%)',
+            backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px)',
+            backgroundSize: '24px 24px',
           }}
         >
-          {/* Canvas Controls Bar */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '1rem',
-              flexWrap: 'wrap',
-              gap: '0.75rem',
+          {/* 3D Photorealistic Interactive Mockup Stage */}
+          <Product3DMockupStage
+            product={currentProduct}
+            activeColor={activeColor}
+            activeTier={activeTier}
+            viewAngle={viewAngle}
+            setViewAngle={setViewAngle}
+            backdropTheme={backdropTheme}
+            setBackdropTheme={setBackdropTheme}
+            includeQrCode={includeQrCode}
+            selectedFinish={selectedFinish}
+            selectedModel={selectedModel}
+            businessName={businessName}
+            tagline={tagline}
+            phone={phone}
+            website={website}
+            license={license}
+            accentColor={accentColor}
+            secondaryColor={secondaryColor}
+            renderBranding={renderMockupBranding}
+            logoSrc={activeLogoSrc}
+            onExportReady={(fn) => {
+              canvasProofExportRef.current = fn;
             }}
-          >
-            {/* View Angle Switcher */}
-            <div style={{ display: 'flex', gap: '0.4rem', background: '#ffffff', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-              {currentProduct.supportedViews.map((vw) => (
-                <button
-                  key={vw}
-                  type="button"
-                  onClick={() => setViewAngle(vw)}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: viewAngle === vw ? '#2563eb' : 'transparent',
-                    color: viewAngle === vw ? '#ffffff' : '#64748b',
-                    fontSize: '0.76rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    textTransform: 'capitalize',
-                  }}
-                >
-                  {vw === 'front' ? 'Front View' : vw === 'back' ? 'Back View' : 'Perspective Angle'}
-                </button>
-              ))}
-            </div>
+          />
 
-            {/* Backdrop Theme Switcher */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>Lighting Environment:</span>
-              <button
-                type="button"
-                onClick={() => setBackdropTheme('clean')}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: '5px',
-                  border: backdropTheme === 'clean' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Studio Clean
-              </button>
-              <button
-                type="button"
-                onClick={() => setBackdropTheme('dark')}
-                style={{
-                  padding: '3px 8px',
-                  borderRadius: '5px',
-                  border: backdropTheme === 'dark' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                  background: '#1e293b',
-                  color: '#ffffff',
-                  fontSize: '0.72rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                }}
-              >
-                Dark Carbon
-              </button>
-            </div>
-          </div>
-
-          {/* Interactive Mockup Stage */}
-          <div
-            style={{
-              flex: 1,
-              minHeight: '480px',
-              borderRadius: '16px',
-              border: '1px solid #e2e8f0',
-              background: '#ffffff',
-              boxShadow: '0 12px 35px rgba(0,0,0,0.06)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '2rem',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            {/* 1. BUSINESS CARDS MOCKUP */}
-            {currentProduct.id === 'biz_cards' && (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '2rem',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  perspective: '1000px',
-                }}
-              >
-                {/* Front Card */}
-                <div
-                  style={{
-                    width: '380px',
-                    height: '220px',
-                    borderRadius: '12px',
-                    background: activeColor.hex,
-                    color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                    boxShadow: '0 20px 40px -10px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.1)',
-                    padding: '1.5rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxSizing: 'border-box',
-                    position: 'relative',
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: accentColor }} />
-                  <div>{renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.85)}</div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
-                    <div>
-                      <strong style={{ fontSize: '0.9rem', display: 'block' }}>{businessName}</strong>
-                      <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>{tagline}</span>
-                    </div>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.05em' }}>{license}</span>
-                  </div>
-                </div>
-
-                {/* Back Card (Contact info + dynamic QR code) */}
-                <div
-                  style={{
-                    width: '380px',
-                    height: '220px',
-                    borderRadius: '12px',
-                    background: '#ffffff',
-                    color: '#0f172a',
-                    boxShadow: '0 20px 40px -10px rgba(0,0,0,0.2), 0 0 0 1px #e2e8f0',
-                    padding: '1.5rem',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    boxSizing: 'border-box',
-                    transform: viewAngle === 'angle' ? 'rotateY(-12deg) rotateX(4deg)' : 'none',
-                    transition: 'transform 0.3s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <strong style={{ fontSize: '1rem', color: '#1e3a8a' }}>{businessName}</strong>
-                    <span style={{ fontSize: '0.72rem', color: '#16a34a', fontWeight: 800 }}>⭐ 5.0 RATED</span>
-                  </div>
-
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: '#334155' }}>
-                      <div>📞 {phone}</div>
-                      <div>🌐 {website}</div>
-                      <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>Fast Quotes • Licensed &amp; Insured</div>
-                    </div>
-
-                    {/* QR Code Graphic */}
-                    {includeQrCode && (
-                      <div
-                        style={{
-                          width: '68px',
-                          height: '68px',
-                          background: '#0f172a',
-                          borderRadius: '6px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: '0.62rem',
-                          fontWeight: 800,
-                          textAlign: 'center',
-                          padding: '4px',
-                        }}
-                      >
-                        <span>📱 SCAN TO</span>
-                        <span>BOOK JOB</span>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ fontSize: '0.68rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '4px' }}>
-                    Residential &amp; Commercial Work • Free Estimate
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* 2. EMBROIDERED POLO MOCKUP */}
-            {currentProduct.id === 'polos' && (
-              <div
-                style={{
-                  width: '100%',
-                  maxWidth: '520px',
-                  height: '420px',
-                  borderRadius: '16px',
-                  background: activeColor.hex,
-                  boxShadow: 'inset 0 0 70px rgba(0,0,0,0.4), 0 20px 40px rgba(0,0,0,0.25)',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '2rem',
-                  boxSizing: 'border-box',
-                  border: '3px solid rgba(255,255,255,0.06)',
-                }}
-              >
-                {/* Polo Ribbed Collar */}
-                <div
-                  style={{
-                    width: '190px',
-                    height: '55px',
-                    background: 'rgba(0,0,0,0.15)',
-                    borderBottom: '3px solid rgba(0,0,0,0.3)',
-                    borderRadius: '0 0 35px 35px',
-                    display: 'flex',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    gap: '8px',
-                  }}
-                >
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffffff', boxShadow: '0 1px 2px rgba(0,0,0,0.5)' }} />
-                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ffffff', boxShadow: '0 1px 2px rgba(0,0,0,0.5)' }} />
-                </div>
-
-                {/* Left Chest Embroidered Badge */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '110px',
-                    left: '80px',
-                    padding: '0.75rem 1.15rem',
-                    borderRadius: '10px',
-                    background: 'rgba(0,0,0,0.18)',
-                    border: `2px dashed ${activeColor.darkText ? '#0f172a' : '#ffffff'}`,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                    maxWidth: '180px',
-                  }}
-                >
-                  {renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.65)}
-                </div>
-
-                {/* Right Sleeve Badge */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '130px',
-                    right: '30px',
-                    fontSize: '0.68rem',
-                    fontWeight: 800,
-                    color: activeColor.darkText ? '#334155' : '#e2e8f0',
-                    letterSpacing: '0.08em',
-                  }}
-                >
-                  🇺🇸 PRO FLEET
-                </div>
-
-                <div
-                  style={{
-                    marginTop: 'auto',
-                    textAlign: 'center',
-                    color: activeColor.darkText ? '#475569' : '#94a3b8',
-                    fontSize: '0.75rem',
-                    fontWeight: 800,
-                    letterSpacing: '0.1em',
-                  }}
-                >
-                  PORT AUTHORITY SILK TOUCH • 10,000+ STITCH EMBROIDERY
-                </div>
-              </div>
-            )}
-
-            {/* 3. T-SHIRT MOCKUP (Front or Back) */}
-            {currentProduct.id === 't_shirts' && (
-              <div
-                style={{
-                  width: '100%',
-                  maxWidth: '520px',
-                  height: '420px',
-                  borderRadius: '16px',
-                  background: activeColor.hex,
-                  color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                  boxShadow: 'inset 0 0 60px rgba(0,0,0,0.45), 0 20px 40px rgba(0,0,0,0.25)',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '2rem',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {/* Crewneck Collar */}
-                <div
-                  style={{
-                    width: '140px',
-                    height: '24px',
-                    borderBottom: `4px solid ${activeColor.darkText ? '#334155' : 'rgba(255,255,255,0.2)'}`,
-                    borderRadius: '0 0 50% 50%',
-                  }}
-                />
-
-                {viewAngle === 'back' ? (
-                  /* Full Back Tradesman Layout */
-                  <div
-                    style={{
-                      marginTop: '1.5rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      gap: '0.75rem',
-                      width: '90%',
-                    }}
-                  >
-                    <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: 900, letterSpacing: '-0.02em' }}>
-                      {businessName.toUpperCase()}
-                    </h2>
-                    <div style={{ maxWidth: '280px' }}>
-                      {renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.85)}
-                    </div>
-                    <span style={{ fontSize: '0.9rem', fontWeight: 800, letterSpacing: '0.05em' }}>{tagline}</span>
-                    <div
-                      style={{
-                        marginTop: '0.5rem',
-                        padding: '0.45rem 1.25rem',
-                        borderRadius: '6px',
-                        background: accentColor,
-                        color: '#ffffff',
-                        fontWeight: 900,
-                        fontSize: '1.15rem',
-                      }}
-                    >
-                      📞 {phone}
-                    </div>
-                    <span style={{ fontSize: '0.72rem', fontWeight: 800, opacity: 0.8 }}>
-                      LICENSED &amp; FULLY INSURED • {license}
-                    </span>
-                  </div>
-                ) : (
-                  /* Front View (Left Chest Logo) */
-                  <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        top: '40px',
-                        left: '40px',
-                        maxWidth: '160px',
-                      }}
-                    >
-                      {renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.75)}
-                      <strong style={{ display: 'block', marginTop: '6px', fontSize: '0.8rem' }}>{businessName}</strong>
-                    </div>
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '10px',
-                        width: '100%',
-                        textAlign: 'center',
-                        fontSize: '0.75rem',
-                        opacity: 0.7,
-                        fontWeight: 700,
-                      }}
-                    >
-                      HEAVYWEIGHT 6.5 OZ RING-SPUN • TOGGLE BACK VIEW TO SEE BILLBOARD
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* 4. RICHARDSON TRUCKER HAT MOCKUP */}
-            {currentProduct.id === 'hats' && (
-              <div
-                style={{
-                  width: '100%',
-                  maxWidth: '460px',
-                  height: '380px',
-                  borderRadius: '24px',
-                  background: 'linear-gradient(145deg, #1e293b, #0f172a)',
-                  boxShadow: '0 25px 50px rgba(0,0,0,0.4)',
-                  position: 'relative',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '2rem',
-                  boxSizing: 'border-box',
-                }}
-              >
-                {/* Curved Cap Visor */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '30px',
-                    width: '320px',
-                    height: '65px',
-                    borderRadius: '0 0 160px 160px',
-                    background: activeColor.hex,
-                    borderTop: '3px solid rgba(255,255,255,0.1)',
-                    boxShadow: '0 10px 20px rgba(0,0,0,0.5)',
-                  }}
-                />
-
-                {/* Structured Crown Front */}
-                <div
-                  style={{
-                    width: '260px',
-                    height: '180px',
-                    borderRadius: '120px 120px 0 0',
-                    background: activeColor.hex,
-                    border: '1px solid rgba(255,255,255,0.15)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    zIndex: 2,
-                  }}
-                >
-                  {/* Leather Patch */}
-                  <div
-                    style={{
-                      width: '140px',
-                      height: '90px',
-                      borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #854d0e, #713f12)',
-                      border: '2px dashed #ca8a04',
-                      boxShadow: '0 6px 15px rgba(0,0,0,0.6)',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fef08a',
-                      padding: '8px',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <span style={{ fontSize: '0.72rem', fontWeight: 900 }}>{businessName.toUpperCase()}</span>
-                    <span style={{ fontSize: '0.58rem', marginTop: '2px' }}>EST. 2026</span>
-                    <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#fde047' }}>PRO CONTRACTOR</span>
-                  </div>
-                </div>
-
-                <span style={{ marginTop: '1.5rem', color: '#94a3b8', fontSize: '0.75rem', fontWeight: 800, zIndex: 3 }}>
-                  AUTHENTIC RICHARDSON 112 SNAPBACK
-                </span>
-              </div>
-            )}
-
-            {/* 5. NOTEPAD & ORDER FORM MOCKUP */}
-            {currentProduct.id === 'notepads' && (
-              <div
-                style={{
-                  width: '360px',
-                  height: '460px',
-                  background: '#ffffff',
-                  borderRadius: '10px',
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.15), 0 0 0 1px #cbd5e1',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  padding: '1.5rem',
-                  boxSizing: 'border-box',
-                  position: 'relative',
-                }}
-              >
-                {/* Pad Binding Tape */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    height: '24px',
-                    background: '#1e3a8a',
-                    borderRadius: '8px 8px 0 0',
-                    color: '#ffffff',
-                    fontSize: '0.65rem',
-                    fontWeight: 800,
-                    textAlign: 'center',
-                    lineHeight: '24px',
-                  }}
-                >
-                  SERIALIZED 2-PART NCR CARBONLESS WORK ORDER
-                </div>
-
-                {/* Form Header */}
-                <div style={{ marginTop: '1.25rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ maxWidth: '180px' }}>{renderMockupBranding('color', 0.65)}</div>
-                  <div style={{ textAlign: 'right' }}>
-                    <strong style={{ fontSize: '0.9rem', color: '#0f172a' }}>JOB ESTIMATE</strong>
-                    <span style={{ display: 'block', fontSize: '0.68rem', color: '#dc2626', fontWeight: 800 }}>#EST-89421</span>
-                  </div>
-                </div>
-
-                {/* Customer fields */}
-                <div style={{ marginTop: '1rem', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '0.5rem', fontSize: '0.72rem' }}>
-                  <div><strong>Customer:</strong> ____________________________ <strong>Date:</strong> _________</div>
-                  <div style={{ marginTop: '4px' }}><strong>Jobsite:</strong> _____________________________ <strong>Phone:</strong> _________</div>
-                </div>
-
-                {/* Line Item Grid */}
-                <div style={{ marginTop: '0.75rem', flex: 1, border: '1px solid #e2e8f0', borderRadius: '6px', overflow: 'hidden' }}>
-                  <div style={{ background: '#f8fafc', padding: '4px 8px', fontSize: '0.68rem', fontWeight: 800, display: 'flex', justifyContent: 'space-between' }}>
-                    <span>DESCRIPTION OF WORK &amp; MATERIALS</span>
-                    <span>AMOUNT</span>
-                  </div>
-                  {[1, 2, 3, 4].map((n) => (
-                    <div key={n} style={{ borderTop: '1px dashed #e2e8f0', height: '24px' }} />
-                  ))}
-                </div>
-
-                {/* Signature box */}
-                <div style={{ marginTop: '0.75rem', display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', color: '#475569' }}>
-                  <span>Customer Authorized Signature: __________________</span>
-                  <span style={{ fontWeight: 800, color: '#16a34a' }}>TOTAL: $_______</span>
-                </div>
-              </div>
-            )}
-
-            {/* 6. EXECUTIVE METAL PEN MOCKUP */}
-            {currentProduct.id === 'pens' && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  gap: '1.5rem',
-                }}
-              >
-                <div
-                  style={{
-                    width: '580px',
-                    height: '38px',
-                    borderRadius: '19px',
-                    background: activeColor.hex,
-                    boxShadow: '0 12px 30px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0 1.5rem',
-                    boxSizing: 'border-box',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    position: 'relative',
-                  }}
-                >
-                  {/* Stylus Tip */}
-                  <div style={{ width: '12px', height: '12px', borderRadius: '50%', background: '#475569' }} />
-
-                  {/* Laser Engraved Imprint */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', color: '#e2e8f0' }}>
-                    <strong style={{ fontSize: '0.85rem', letterSpacing: '0.08em' }}>{businessName.toUpperCase()}</strong>
-                    <span style={{ fontSize: '0.72rem' }}>📞 {phone}</span>
-                    <span style={{ fontSize: '0.68rem', opacity: 0.8 }}>{website}</span>
-                  </div>
-
-                  {/* Chrome Clip */}
-                  <div
-                    style={{
-                      width: '45px',
-                      height: '6px',
-                      borderRadius: '3px',
-                      background: 'linear-gradient(90deg, #94a3b8, #f8fafc, #64748b)',
-                    }}
-                  />
-                </div>
-                <span style={{ color: '#64748b', fontSize: '0.8rem', fontWeight: 700 }}>
-                  SOLID AIRCRAFT ALUMINUM • LASER-ENGRAVED SILVER FINISH
-                </span>
-              </div>
-            )}
-
-            {/* 7. PHONE CASE MOCKUP */}
-            {currentProduct.id === 'phone_cases' && (
-              <div
-                style={{
-                  width: '240px',
-                  height: '460px',
-                  borderRadius: '38px',
-                  background: activeColor.hex,
-                  color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                  boxShadow: '0 25px 50px rgba(0,0,0,0.3), 0 0 0 4px #334155',
-                  padding: '1.5rem',
-                  boxSizing: 'border-box',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  position: 'relative',
-                }}
-              >
-                {/* Camera array cutout */}
-                <div
-                  style={{
-                    alignSelf: 'flex-start',
-                    width: '74px',
-                    height: '74px',
-                    borderRadius: '20px',
-                    background: '#090d16',
-                    border: '2px solid #334155',
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    padding: '8px',
-                    gap: '4px',
-                    boxSizing: 'border-box',
-                  }}
-                >
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1e293b' }} />
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1e293b' }} />
-                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: '#1e293b' }} />
-                </div>
-
-                {/* Center Branding */}
-                <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                  <div style={{ maxWidth: '180px' }}>{renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.8)}</div>
-                  <strong style={{ display: 'block', fontSize: '0.9rem', marginTop: '0.5rem' }}>{businessName}</strong>
-                  <span style={{ fontSize: '0.72rem', opacity: 0.8 }}>{tagline}</span>
-                </div>
-
-                {/* Case Base Specs */}
-                <div style={{ fontSize: '0.62rem', letterSpacing: '0.08em', opacity: 0.7, textAlign: 'center' }}>
-                  MILITARY DROP TESTED 12FT • {selectedModel.toUpperCase()}
-                </div>
-              </div>
-            )}
-
-            {/* 8. YARD SIGNS MOCKUP */}
-            {currentProduct.id === 'yard_signs' && (
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                {/* 18"x24" Yard Sign Panel */}
-                <div
-                  style={{
-                    width: '460px',
-                    height: '320px',
-                    borderRadius: '8px',
-                    background: activeColor.hex,
-                    color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                    border: '3px solid #cbd5e1',
-                    boxShadow: '0 20px 40px rgba(0,0,0,0.15)',
-                    padding: '1.75rem',
-                    boxSizing: 'border-box',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    textAlign: 'center',
-                  }}
-                >
-                  <div style={{ maxWidth: '280px' }}>{renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.85)}</div>
-                  <h2 style={{ margin: 0, fontSize: '1.75rem', fontWeight: 900 }}>{businessName.toUpperCase()}</h2>
-                  <p style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>{tagline}</p>
-                  <div
-                    style={{
-                      background: '#16a34a',
-                      color: '#ffffff',
-                      padding: '0.5rem 1.5rem',
-                      borderRadius: '6px',
-                      fontSize: '1.35rem',
-                      fontWeight: 900,
-                    }}
-                  >
-                    📞 {phone}
-                  </div>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 800 }}>PROUDLY SERVING YOUR NEIGHBORHOOD</span>
-                </div>
-
-                {/* H-Stake graphic */}
-                <div style={{ display: 'flex', gap: '80px', marginTop: '-4px' }}>
-                  <div style={{ width: '6px', height: '110px', background: '#94a3b8' }} />
-                  <div style={{ width: '6px', height: '110px', background: '#94a3b8' }} />
-                </div>
-              </div>
-            )}
-
-            {/* 9. STAINLESS STEEL TUMBLER MOCKUP */}
-            {currentProduct.id === 'tumblers' && (
-              <div
-                style={{
-                  width: '180px',
-                  height: '380px',
-                  borderRadius: '16px 16px 35px 35px',
-                  background: activeColor.hex,
-                  color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                  boxShadow: '0 20px 40px rgba(0,0,0,0.25), inset 0 0 30px rgba(0,0,0,0.3)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'center',
-                  padding: '1.5rem 1rem',
-                  boxSizing: 'border-box',
-                  border: '2px solid rgba(255,255,255,0.15)',
-                  position: 'relative',
-                }}
-              >
-                {/* Clear Acrylic Lid */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '-16px',
-                    width: '160px',
-                    height: '24px',
-                    borderRadius: '8px 8px 0 0',
-                    background: 'rgba(255,255,255,0.6)',
-                    border: '1px solid #cbd5e1',
-                  }}
-                />
-
-                <div style={{ marginTop: '3rem', textAlign: 'center' }}>
-                  <div style={{ maxWidth: '140px' }}>{renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.65)}</div>
-                  <strong style={{ display: 'block', fontSize: '0.82rem', marginTop: '0.5rem' }}>{businessName}</strong>
-                </div>
-
-                <div style={{ marginTop: 'auto', fontSize: '0.68rem', opacity: 0.8, letterSpacing: '0.08em' }}>
-                  20 OZ VACUUM INSULATED
-                </div>
-              </div>
-            )}
-
-            {/* 10. VEHICLE DECALS MOCKUP */}
-            {currentProduct.id === 'decals' && (
-              <div
-                style={{
-                  width: '480px',
-                  height: '240px',
-                  borderRadius: '16px',
-                  background: activeColor.hex,
-                  color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                  border: '3px solid #cbd5e1',
-                  boxShadow: '0 25px 45px rgba(0,0,0,0.2)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  padding: '1.5rem',
-                  boxSizing: 'border-box',
-                  textAlign: 'center',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>COMMERCIAL FLEET MAGNET (PAIR)</span>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800 }}>12&quot; × 24&quot; 30-MIL</span>
-                </div>
-                <div style={{ maxWidth: '280px', margin: '0 auto' }}>
-                  {renderMockupBranding(activeColor.darkText ? 'color' : 'white', 0.85)}
-                </div>
-                <div>
-                  <strong style={{ fontSize: '1.25rem' }}>{businessName}</strong>
-                  <div style={{ fontSize: '0.85rem', fontWeight: 800, marginTop: '2px' }}>📞 {phone} • {website}</div>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Product Specifications & Details Drawer */}
-          <div
-            style={{
-              marginTop: '1.25rem',
-              background: '#ffffff',
-              borderRadius: '12px',
-              border: '1px solid #e2e8f0',
-              padding: '1.25rem',
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-              gap: '1rem',
-            }}
-          >
-            <div>
-              <strong style={{ fontSize: '0.8rem', color: '#0f172a', display: 'block', marginBottom: '4px' }}>
-                Production Specs:
-              </strong>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.5 }}>
-                <div><strong>Dimensions:</strong> {currentProduct.specs.dimensions}</div>
-                <div><strong>Material:</strong> {currentProduct.specs.material}</div>
-                <div><strong>Finish:</strong> {currentProduct.specs.finish}</div>
-              </div>
-            </div>
-
-            <div>
-              <strong style={{ fontSize: '0.8rem', color: '#0f172a', display: 'block', marginBottom: '4px' }}>
-                Imprint &amp; Quality:
-              </strong>
-              <div style={{ fontSize: '0.75rem', color: '#64748b', lineHeight: 1.5 }}>
-                <div><strong>Print Method:</strong> {currentProduct.decorationLabel}</div>
-                <div><strong>Print Live Area:</strong> {currentProduct.specs.printArea}</div>
-                <div><strong>Turnaround:</strong> {currentProduct.turnaroundEstimate}</div>
-              </div>
-            </div>
-
-            <div>
-              <strong style={{ fontSize: '0.8rem', color: '#0f172a', display: 'block', marginBottom: '4px' }}>
-                Trade Contractor Guarantee:
-              </strong>
-              <p style={{ margin: 0, fontSize: '0.75rem', color: '#64748b', lineHeight: 1.45 }}>
-                Free digital proofing on every order. If your print does not match your approved proof, we reprint or refund immediately.
-              </p>
-            </div>
-          </div>
+          {/* Master Craftsmanship & Deep Technical Specifications */}
+          <ProductTechnicalSpecsSheet
+            product={currentProduct}
+            businessName={businessName}
+            activeColorName={activeColor.name}
+            onDownloadProof={handleDownloadProofSheet}
+          />
         </div>
       </div>
 
@@ -1914,8 +1190,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           style={{
             position: 'fixed',
             inset: 0,
-            background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(5px)',
+            background: 'rgba(2, 4, 9, 0.82)',
+            backdropFilter: 'blur(8px)',
             zIndex: 9999,
             display: 'flex',
             alignItems: 'center',
@@ -1926,13 +1202,15 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         >
           <div
             style={{
-              background: '#ffffff',
+              background: '#0e1219',
+              border: '1px solid rgba(255, 255, 255, 0.14)',
+              color: 'var(--text)',
               borderRadius: '16px',
               maxWidth: '680px',
               width: '100%',
               maxHeight: '92vh',
               overflowY: 'auto',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+              boxShadow: '0 25px 70px rgba(0,0,0,0.8)',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -1942,15 +1220,15 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <div
               style={{
                 padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: '#f8fafc',
+                background: '#131924',
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#0f172a' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#ffffff' }}>
                   Instant Purchasing Checkout
                 </h3>
                 <span style={{ fontSize: '0.78rem', color: '#64748b' }}>
@@ -1961,10 +1239,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 type="button"
                 onClick={() => setCheckoutOpen(false)}
                 style={{
-                  background: '#e2e8f0',
+                  background: 'rgba(255, 255, 255, 0.1)',
                   border: 'none',
                   borderRadius: '6px',
                   padding: '4px 8px',
+                  color: '#ffffff',
                   fontWeight: 800,
                   cursor: 'pointer',
                 }}
@@ -2026,14 +1305,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       placeholder="Recipient Full Name"
                       value={shippingAddress.fullName}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="text"
                       placeholder="Company Name (Optional)"
                       value={shippingAddress.companyName || ''}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, companyName: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                   </div>
 
@@ -2042,7 +1321,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     placeholder="Street Address (e.g. 100 Main St)"
                     value={shippingAddress.streetAddress}
                     onChange={(e) => setShippingAddress({ ...shippingAddress, streetAddress: e.target.value })}
-                    style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                    style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                   />
 
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem' }}>
@@ -2051,21 +1330,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       placeholder="City"
                       value={shippingAddress.city}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="text"
                       placeholder="State (e.g. CO)"
                       value={shippingAddress.state}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="text"
                       placeholder="ZIP Code"
                       value={shippingAddress.postalCode}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, postalCode: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                   </div>
 
@@ -2075,14 +1354,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       placeholder="Delivery Phone #"
                       value={shippingAddress.phone}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="email"
                       placeholder="Receipt Email"
                       value={shippingAddress.email}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })}
-                      style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.82rem' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
                     />
                   </div>
                 </div>
@@ -2100,8 +1379,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     style={{
                       padding: '0.65rem',
                       borderRadius: '8px',
-                      border: shippingMethod === 'standard' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                      background: shippingMethod === 'standard' ? '#eff6ff' : '#ffffff',
+                      border: shippingMethod === 'standard' ? '2px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: shippingMethod === 'standard' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                      color: 'var(--text)',
                       textAlign: 'left',
                       cursor: 'pointer',
                     }}
@@ -2118,8 +1398,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     style={{
                       padding: '0.65rem',
                       borderRadius: '8px',
-                      border: shippingMethod === 'rush' ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                      background: shippingMethod === 'rush' ? '#eff6ff' : '#ffffff',
+                      border: shippingMethod === 'rush' ? '2px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
+                      background: shippingMethod === 'rush' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                      color: 'var(--text)',
                       textAlign: 'left',
                       cursor: 'pointer',
                     }}
@@ -2135,8 +1416,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 style={{
                   padding: '0.9rem',
                   borderRadius: '10px',
-                  background: proofApproved ? '#f0fdf4' : '#f8fafc',
-                  border: proofApproved ? '1.5px solid #22c55e' : '1.5px solid #cbd5e1',
+                  background: proofApproved ? 'rgba(34, 197, 94, 0.12)' : 'rgba(255, 255, 255, 0.04)',
+                  border: proofApproved ? '1.5px solid #22c55e' : '1.5px solid rgba(255, 255, 255, 0.14)',
                   transition: 'all 0.2s ease',
                 }}
               >
@@ -2148,7 +1429,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     cursor: 'pointer',
                     fontSize: '0.82rem',
                     fontWeight: 700,
-                    color: '#0f172a',
+                    color: 'var(--text)',
                     lineHeight: 1.45,
                   }}
                 >
@@ -2189,8 +1470,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <div
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid #e2e8f0',
-                background: '#f8fafc',
+                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                background: '#131924',
                 display: 'flex',
                 gap: '0.6rem',
                 justifyContent: 'flex-end',
@@ -2202,8 +1483,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 style={{
                   padding: '0.6rem 1rem',
                   borderRadius: '7px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  color: 'var(--text)',
                   fontWeight: 700,
                   fontSize: '0.82rem',
                   cursor: 'pointer',
@@ -2219,9 +1501,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 style={{
                   padding: '0.6rem 1rem',
                   borderRadius: '7px',
-                  border: '1.5px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: !proofApproved ? '#94a3b8' : '#334155',
+                  border: '1px solid rgba(255, 255, 255, 0.14)',
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: !proofApproved ? '#64748b' : 'var(--text)',
                   fontWeight: 800,
                   fontSize: '0.82rem',
                   cursor: isCheckingOut ? 'wait' : !proofApproved ? 'not-allowed' : 'pointer',
@@ -2239,12 +1521,12 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   padding: '0.6rem 1.25rem',
                   borderRadius: '7px',
                   border: 'none',
-                  background: !proofApproved ? '#94a3b8' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                  background: !proofApproved ? 'rgba(255,255,255,0.1)' : 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
                   color: '#ffffff',
                   fontWeight: 900,
                   fontSize: '0.86rem',
                   cursor: isCheckingOut ? 'wait' : !proofApproved ? 'not-allowed' : 'pointer',
-                  boxShadow: !proofApproved ? 'none' : '0 4px 12px rgba(37,99,235,0.25)',
+                  boxShadow: !proofApproved ? 'none' : '0 4px 16px rgba(255,122,33,0.35)',
                 }}
               >
                 {isCheckingOut ? 'Processing...' : `Pay $${grandTotal.toFixed(2)} & Order`}
@@ -2273,8 +1555,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               width: '100%',
               maxWidth: '520px',
               height: '100%',
-              background: '#ffffff',
-              boxShadow: '-10px 0 30px rgba(0,0,0,0.2)',
+              background: '#0e1219',
+              borderLeft: '1px solid rgba(255, 255, 255, 0.12)',
+              color: 'var(--text)',
+              boxShadow: '-15px 0 40px rgba(0,0,0,0.6)',
               display: 'flex',
               flexDirection: 'column',
               padding: '1.5rem',
@@ -2284,13 +1568,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#ffffff' }}>
                 Merchandise Order History
               </h3>
               <button
                 type="button"
                 onClick={() => setOrdersDrawerOpen(false)}
-                style={{ background: '#f1f5f9', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontWeight: 800 }}
+                style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontWeight: 800 }}
               >
                 ✕
               </button>
@@ -2308,15 +1592,15 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   <div
                     key={ord.id}
                     style={{
-                      border: '1px solid #e2e8f0',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
                       borderRadius: '10px',
                       padding: '1rem',
-                      background: '#ffffff',
+                      background: 'rgba(255, 255, 255, 0.035)',
                       boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
                     }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>{ord.orderNumber}</strong>
+                      <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>{ord.orderNumber}</strong>
                       <span
                         style={{
                           fontSize: '0.7rem',
@@ -2341,10 +1625,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #f1f5f9', paddingTop: '0.5rem', fontSize: '0.74rem' }}>
                       <span style={{ color: '#64748b' }}>
-                        Tracking: <strong style={{ color: '#0f172a' }}>{ord.trackingNumber}</strong>
+                        Tracking: <strong style={{ color: 'var(--gold-ink)' }}>{ord.trackingNumber}</strong>
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>${ord.totalAmount.toFixed(2)}</strong>
+                        <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>${ord.totalAmount.toFixed(2)}</strong>
                         <button
                           type="button"
                           onClick={() => handleReorder(ord.id)}
@@ -2352,9 +1636,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                           style={{
                             padding: '3px 8px',
                             borderRadius: '5px',
-                            border: '1px solid #2563eb',
-                            background: '#eff6ff',
-                            color: '#1d4ed8',
+                            border: '1px solid var(--accent)',
+                            background: 'rgba(255, 122, 33, 0.15)',
+                            color: '#ff9d5c',
                             fontSize: '0.7rem',
                             fontWeight: 800,
                             cursor: isReordering ? 'wait' : 'pointer',
@@ -2390,18 +1674,20 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         >
           <div
             style={{
-              background: '#ffffff',
+              background: '#0e1219',
+              border: '1px solid rgba(255, 255, 255, 0.14)',
+              color: 'var(--text)',
               borderRadius: '16px',
               maxWidth: '480px',
               width: '100%',
               padding: '2rem',
               textAlign: 'center',
-              boxShadow: '0 25px 60px rgba(0,0,0,0.3)',
+              boxShadow: '0 25px 70px rgba(0,0,0,0.8)',
             }}
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🎉</div>
-            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.4rem', fontWeight: 900, color: '#0f172a' }}>
+            <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.4rem', fontWeight: 900, color: '#ffffff' }}>
               Order Confirmed &amp; Dispatched!
             </h3>
             <p style={{ margin: '0 0 1.25rem', color: '#64748b', fontSize: '0.88rem', lineHeight: 1.5 }}>
@@ -2415,7 +1701,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 padding: '0.7rem 1.5rem',
                 borderRadius: '8px',
                 border: 'none',
-                background: '#2563eb',
+                background: 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
                 color: '#ffffff',
                 fontWeight: 800,
                 fontSize: '0.88rem',
@@ -2427,6 +1713,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </main>
   );
 }

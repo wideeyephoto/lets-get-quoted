@@ -38,6 +38,26 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(hat?.name).toContain('Richardson 112');
       expect(hat?.decorationMethod).toBe('leather_patch');
     });
+
+    it('resolves official Printful high-resolution studio photos for apparel and hats', async () => {
+      const { getProductStudioPhoto } = await import('@/lib/merchandise/mockup-assets');
+
+      // T-Shirts: black front & back
+      const tShirtBlack = getProductStudioPhoto('t_shirts', 'black', 'front');
+      expect(tShirtBlack.photoUrl).toContain('files.cdn.printful.com/products/71');
+      expect(tShirtBlack.hasBackPhoto).toBe(true);
+
+      const tShirtBack = getProductStudioPhoto('t_shirts', 'black', 'back');
+      expect(tShirtBack.photoUrl).toContain('files.cdn.printful.com');
+
+      // Polos: black front
+      const poloBlack = getProductStudioPhoto('polos', 'onyx_black', 'front');
+      expect(poloBlack.photoUrl).toContain('files.cdn.printful.com/products/670');
+
+      // Richardson 112: heather black front
+      const hatPhoto = getProductStudioPhoto('hats', 'heather_black', 'front');
+      expect(hatPhoto.photoUrl).toContain('files.cdn.printful.com/products/422');
+    });
   });
 
   describe('Pricing Engine & 10% Platform Cut Calculation', () => {
@@ -146,6 +166,48 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(res.trackingNumber).toContain('1Z999');
       expect(res.carrier).toBe('UPS Ground Commercial');
       expect(res.status).toBe('in_production');
+    });
+  });
+
+  describe('HTML5 Canvas Real-Item Casting Engine', () => {
+    it('verifies all photographic blanks have valid URLs for canvas projection', async () => {
+      const { PRINTFUL_STUDIO_PHOTOS } = await import('@/lib/merchandise/mockup-assets');
+
+      expect(Object.keys(PRINTFUL_STUDIO_PHOTOS)).toContain('t_shirts');
+      expect(Object.keys(PRINTFUL_STUDIO_PHOTOS)).toContain('polos');
+      expect(Object.keys(PRINTFUL_STUDIO_PHOTOS)).toContain('hats');
+      expect(Object.keys(PRINTFUL_STUDIO_PHOTOS)).toContain('tumblers');
+      expect(Object.keys(PRINTFUL_STUDIO_PHOTOS)).toContain('phone_cases');
+
+      for (const [category, colors] of Object.entries(PRINTFUL_STUDIO_PHOTOS)) {
+        for (const [colorKey, photoDef] of Object.entries(colors)) {
+          expect(photoDef.front).toMatch(/^https:\/\/files\.cdn\.printful\.com/);
+        }
+      }
+    });
+
+    it('rejects forbidden hosts in proxy-image validation to prevent SSRF', async () => {
+      const { GET } = await import('@/app/api/merchandise/proxy-image/route');
+      const { NextRequest } = await import('next/server');
+
+      // Test missing URL
+      const reqMissing = new NextRequest('http://localhost:3012/api/merchandise/proxy-image');
+      const resMissing = await GET(reqMissing);
+      expect(resMissing.status).toBe(400);
+
+      // Test malicious internal IP host
+      const reqEvil = new NextRequest(
+        'http://localhost:3012/api/merchandise/proxy-image?url=http://127.0.0.1:8080/secret'
+      );
+      const resEvil = await GET(reqEvil);
+      expect(resEvil.status).toBe(403);
+
+      // Test unwhitelisted public host
+      const reqUnknown = new NextRequest(
+        'http://localhost:3012/api/merchandise/proxy-image?url=https://evil-site.com/exploit.jpg'
+      );
+      const resUnknown = await GET(reqUnknown);
+      expect(resUnknown.status).toBe(403);
     });
   });
 });

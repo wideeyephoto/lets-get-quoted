@@ -119,6 +119,7 @@ const nextConfig = {
     formats: ['image/webp'],
     qualities: [75, 80],
     remotePatterns: [
+      { protocol: 'https', hostname: 'files.cdn.printful.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.pexels.com', pathname: '/**' },
       { protocol: 'https', hostname: supabaseImageHost(), pathname: '/storage/v1/object/public/site-images/**' },

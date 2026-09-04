@@ -9,6 +9,8 @@ import {
   auditLowStockItems,
   describeToolStatus,
   describeVehicleStatus,
+  calculateAssetDepreciation,
+  TAX_GUIDANCE_SCHEDULES,
 } from '@/lib/inventory-tracker';
 
 describe('Tool Check-In and Check-Out Life Cycle', () => {
@@ -168,3 +170,46 @@ describe('describeToolStatus & describeVehicleStatus', () => {
     expect(describeVehicleStatus('in_shop')).toEqual({ label: 'In Shop / Service', tone: 'warn' });
   });
 });
+
+describe('Tax Guidance & Asset Depreciation Engine', () => {
+  it('handles Section 179 full immediate expensing', () => {
+    const result = calculateAssetDepreciation(3850, '2025-04-10', 'section_179');
+    expect(result.originalCost).toBe(3850);
+    expect(result.currentBookValue).toBe(0);
+    expect(result.accumulatedDepreciation).toBe(3850);
+    expect(result.percentDepreciated).toBe(100);
+    expect(result.scheduleBadge).toBe('Sec 179');
+  });
+
+  it('handles De Minimis safe harbor under $2,500', () => {
+    const result = calculateAssetDepreciation(845, '2025-03-12', 'de_minimis');
+    expect(result.originalCost).toBe(845);
+    expect(result.currentBookValue).toBe(0);
+    expect(result.accumulatedDepreciation).toBe(845);
+    expect(result.scheduleBadge).toBe('De Minimis');
+  });
+
+  it('handles Straight-Line 3-Year depreciation over time', () => {
+    const asOf = new Date('2026-01-20');
+    // 12 months elapsed out of 36 months = 1/3 (33%)
+    const result = calculateAssetDepreciation(3000, '2025-01-20', 'straight_line_3', asOf);
+    expect(result.originalCost).toBe(3000);
+    expect(result.accumulatedDepreciation).toBe(1000);
+    expect(result.currentBookValue).toBe(2000);
+    expect(result.percentDepreciated).toBe(33);
+  });
+
+  it('handles assets held at cost basis with no depreciation', () => {
+    const result = calculateAssetDepreciation(5000, '2024-01-01', 'none');
+    expect(result.originalCost).toBe(5000);
+    expect(result.currentBookValue).toBe(5000);
+    expect(result.accumulatedDepreciation).toBe(0);
+  });
+
+  it('provides tax guidance tips for all standard schedules', () => {
+    expect(TAX_GUIDANCE_SCHEDULES.section_179.shortTip).toContain('100%');
+    expect(TAX_GUIDANCE_SCHEDULES.de_minimis.shortTip).toContain('$2,500');
+    expect(TAX_GUIDANCE_SCHEDULES.macrs_5.shortTip).toContain('5-year');
+  });
+});
+

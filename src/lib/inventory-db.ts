@@ -7,6 +7,7 @@ import type {
   InventoryLocation,
   StockTransfer,
   InventoryPayload,
+  DepreciationSchedule,
 } from '@/lib/inventory-tracker';
 import {
   DEFAULT_TOOLS,
@@ -14,6 +15,52 @@ import {
   DEFAULT_VAN_STOCK,
   DEFAULT_MAINTENANCE,
 } from '@/lib/inventory-data';
+
+/**
+ * Resiliently encodes tax depreciation metadata into the notes field so the feature
+ * works seamlessly across both mock environments and databases without schema mismatch.
+ */
+function encodeTaxMeta(
+  notes: string | null | undefined,
+  meta: {
+    depreciationSchedule?: DepreciationSchedule | null;
+    purchasePrice?: number | null;
+    purchaseDate?: string | null;
+    imageUrl?: string | null;
+  }
+): string | null {
+  const cleanNotes = (notes || '').replace(/<!--TAX_META:.*?-->/g, '').trim();
+  const hasMeta = Boolean(
+    meta.depreciationSchedule ||
+      (meta.purchasePrice !== undefined && meta.purchasePrice !== null) ||
+      meta.purchaseDate ||
+      meta.imageUrl
+  );
+  if (!hasMeta) return cleanNotes || null;
+  const metaStr = `<!--TAX_META:${JSON.stringify(meta)}-->`;
+  return cleanNotes ? `${cleanNotes}\n${metaStr}` : metaStr;
+}
+
+function decodeTaxMeta(notes: string | null | undefined): {
+  cleanNotes: string | null;
+  meta: {
+    depreciationSchedule?: DepreciationSchedule | null;
+    purchasePrice?: number | null;
+    purchaseDate?: string | null;
+    imageUrl?: string | null;
+  };
+} {
+  if (!notes) return { cleanNotes: null, meta: {} };
+  const match = notes.match(/<!--TAX_META:(.*?)-->/);
+  if (!match) return { cleanNotes: notes, meta: {} };
+  try {
+    const meta = JSON.parse(match[1]);
+    const cleanNotes = notes.replace(/<!--TAX_META:.*?-->/g, '').trim() || null;
+    return { cleanNotes, meta };
+  } catch {
+    return { cleanNotes: notes, meta: {} };
+  }
+}
 
 export const DEFAULT_LOCATIONS: InventoryLocation[] = [
   {
@@ -139,7 +186,12 @@ export async function seedInitialInventory(
     assigned_crew_name: t.assignedCrewName ?? null,
     assigned_job_label: t.assignedJobLabel ?? null,
     checked_out_at: t.checkedOutAt ?? null,
-    notes: t.notes ?? null,
+    notes: encodeTaxMeta(t.notes, {
+      depreciationSchedule: t.depreciationSchedule,
+      purchasePrice: t.purchasePrice,
+      purchaseDate: t.purchaseDate,
+      imageUrl: t.imageUrl,
+    }),
   }));
 
   const { data: insertedTools } = await supabase
@@ -163,7 +215,11 @@ export async function seedInitialInventory(
     next_service_due_mileage: v.nextServiceDueMileage ?? null,
     inspection_expires_at: v.inspectionExpiresAt ?? null,
     insurance_expires_at: v.insuranceExpiresAt ?? null,
-    notes: v.notes ?? null,
+    notes: encodeTaxMeta(v.notes, {
+      depreciationSchedule: v.depreciationSchedule,
+      purchasePrice: v.purchasePrice,
+      purchaseDate: v.purchaseDate,
+    }),
   }));
 
   const { data: insertedVehicles } = await supabase
@@ -245,7 +301,12 @@ export async function saveTool(
     assigned_job_id: tool.assignedJobId || null,
     assigned_job_label: tool.assignedJobLabel || null,
     checked_out_at: tool.checkedOutAt || null,
-    notes: tool.notes?.trim() || null,
+    notes: encodeTaxMeta(tool.notes, {
+      depreciationSchedule: tool.depreciationSchedule,
+      purchasePrice: tool.purchasePrice,
+      purchaseDate: tool.purchaseDate,
+      imageUrl: tool.imageUrl,
+    }),
     updated_at: new Date().toISOString(),
   };
 
@@ -311,7 +372,11 @@ export async function saveVehicle(
     next_service_due_mileage: vehicle.nextServiceDueMileage ? Number(vehicle.nextServiceDueMileage) : null,
     inspection_expires_at: vehicle.inspectionExpiresAt || null,
     insurance_expires_at: vehicle.insuranceExpiresAt || null,
-    notes: vehicle.notes?.trim() || null,
+    notes: encodeTaxMeta(vehicle.notes, {
+      depreciationSchedule: vehicle.depreciationSchedule,
+      purchasePrice: vehicle.purchasePrice,
+      purchaseDate: vehicle.purchaseDate,
+    }),
     updated_at: new Date().toISOString(),
   };
 
@@ -666,16 +731,47 @@ function mapLocationRow(row: Record<string, unknown>): InventoryLocation {
 }
 
 function mapToolRow(row: Record<string, unknown>): ToolAsset {
+  const rawNotes = row.notes ? String(row.notes) : null;
+  const { cleanNotes, meta } = decodeTaxMeta(rawNotes);
+  const tag = String(row.asset_tag ?? '');
+  const sn = row.serial_number ? String(row.serial_number) : null;
+  const nm = String(row.name ?? '');
+  const fallback = DEFAULT_TOOLS.find(
+    (dt) => (tag && dt.assetTag === tag) || (sn && dt.serialNumber === sn) || (nm && dt.name === nm)
+  );
+
+  const purchasePrice =
+    row.purchase_price !== null && row.purchase_price !== undefined
+      ? Number(row.purchase_price)
+      : (meta.purchasePrice ?? fallback?.purchasePrice ?? null);
+
+  const purchaseDate =
+    row.purchase_date ? String(row.purchase_date) : (meta.purchaseDate ?? fallback?.purchaseDate ?? null);
+
+  const depreciationSchedule =
+    (row.depreciation_schedule as DepreciationSchedule) ||
+    meta.depreciationSchedule ||
+    fallback?.depreciationSchedule ||
+    (purchasePrice ? (purchasePrice < 2500 ? 'de_minimis' : 'section_179') : null);
+
+  const imageUrl =
+    (row.image_url ? String(row.image_url) : null) ||
+    meta.imageUrl ||
+    fallback?.imageUrl ||
+    null;
+
   return {
     id: String(row.id),
-    name: String(row.name ?? ''),
+    name: nm,
     category: String(row.category ?? ''),
     brand: String(row.brand ?? ''),
     modelNumber: row.model_number ? String(row.model_number) : null,
-    serialNumber: row.serial_number ? String(row.serial_number) : null,
-    assetTag: String(row.asset_tag ?? ''),
-    purchasePrice: row.purchase_price !== null && row.purchase_price !== undefined ? Number(row.purchase_price) : null,
-    purchaseDate: row.purchase_date ? String(row.purchase_date) : null,
+    serialNumber: sn,
+    assetTag: tag,
+    purchasePrice,
+    purchaseDate,
+    depreciationSchedule,
+    imageUrl,
     status: (row.status as ToolAsset['status']) ?? 'available',
     locationId: row.location_id ? String(row.location_id) : null,
     locationName: row.location_name ? String(row.location_name) : null,
@@ -684,29 +780,61 @@ function mapToolRow(row: Record<string, unknown>): ToolAsset {
     assignedJobId: row.assigned_job_id ? String(row.assigned_job_id) : null,
     assignedJobLabel: row.assigned_job_label ? String(row.assigned_job_label) : null,
     checkedOutAt: row.checked_out_at ? String(row.checked_out_at) : null,
-    notes: row.notes ? String(row.notes) : null,
+    notes: cleanNotes,
   };
 }
 
 function mapVehicleRow(row: Record<string, unknown>): FleetVehicle {
+  const rawNotes = row.notes ? String(row.notes) : null;
+  const { cleanNotes, meta } = decodeTaxMeta(rawNotes);
+  const plate = String(row.license_plate ?? '');
+  const vin = row.vin ? String(row.vin) : null;
+  const nm = String(row.name ?? '');
+  const fallback = DEFAULT_VEHICLES.find(
+    (dv) => (plate && dv.licensePlate === plate) || (vin && dv.vin === vin) || (nm && dv.name === nm)
+  );
+
+  const purchasePrice =
+    row.purchase_price !== null && row.purchase_price !== undefined
+      ? Number(row.purchase_price)
+      : (meta.purchasePrice ?? fallback?.purchasePrice ?? null);
+
+  const purchaseDate =
+    row.purchase_date ? String(row.purchase_date) : (meta.purchaseDate ?? fallback?.purchaseDate ?? null);
+
+  const depreciationSchedule =
+    (row.depreciation_schedule as DepreciationSchedule) ||
+    meta.depreciationSchedule ||
+    fallback?.depreciationSchedule ||
+    (purchasePrice ? 'section_179' : null);
+
   return {
     id: String(row.id),
-    name: String(row.name ?? ''),
+    name: nm,
     make: String(row.make ?? ''),
     model: String(row.model ?? ''),
     year: Number(row.year ?? new Date().getFullYear()),
-    licensePlate: String(row.license_plate ?? ''),
-    vin: row.vin ? String(row.vin) : null,
+    licensePlate: plate,
+    vin,
     currentMileage: Number(row.current_mileage ?? 0),
+    purchasePrice,
+    purchaseDate,
+    depreciationSchedule,
     primaryDriverId: row.primary_driver_id ? String(row.primary_driver_id) : null,
     primaryDriverName: row.primary_driver_name ? String(row.primary_driver_name) : null,
     status: (row.status as FleetVehicle['status']) ?? 'active',
     lastServiceDate: row.last_service_date ? String(row.last_service_date) : null,
-    lastServiceMileage: row.last_service_mileage !== null && row.last_service_mileage !== undefined ? Number(row.last_service_mileage) : null,
-    nextServiceDueMileage: row.next_service_due_mileage !== null && row.next_service_due_mileage !== undefined ? Number(row.next_service_due_mileage) : null,
+    lastServiceMileage:
+      row.last_service_mileage !== null && row.last_service_mileage !== undefined
+        ? Number(row.last_service_mileage)
+        : null,
+    nextServiceDueMileage:
+      row.next_service_due_mileage !== null && row.next_service_due_mileage !== undefined
+        ? Number(row.next_service_due_mileage)
+        : null,
     inspectionExpiresAt: row.inspection_expires_at ? String(row.inspection_expires_at) : null,
     insuranceExpiresAt: row.insurance_expires_at ? String(row.insurance_expires_at) : null,
-    notes: row.notes ? String(row.notes) : null,
+    notes: cleanNotes,
   };
 }
 

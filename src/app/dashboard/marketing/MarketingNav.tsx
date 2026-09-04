@@ -55,7 +55,7 @@ export default function MarketingNav({
   const root = `${basePath}/marketing`;
   const inDemo = basePath !== '/dashboard';
   const tabs = SECTIONS.filter((section) => (!only || only.includes(section.path)) && !(inDemo && section.demo === false)).map((section) => ({
-    href: `${root}${section.path}`,
+    href: section.path === '/merchandise' ? `${basePath}/merchandise` : `${root}${section.path}`,
     label: section.label,
   }));
 

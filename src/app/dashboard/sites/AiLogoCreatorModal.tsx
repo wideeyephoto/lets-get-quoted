@@ -680,6 +680,12 @@ export default function AiLogoCreatorModal({
 
   const effectivePending = localPending || pendingGeneration;
   const isGenerating = isGeneratingImage || (effectivePending?.status === 'pending');
+  const isAiOfflineOrBroken = Boolean(
+    aiError ||
+    effectivePending?.status === 'failed' ||
+    (typeof aiCredits === 'number' && aiCredits <= 0)
+  );
+  const showEditableVectors = isAiOfflineOrBroken || activeTab === 'concepts';
 
   useEffect(() => {
     if (!isGenerating) {
@@ -846,7 +852,7 @@ export default function AiLogoCreatorModal({
         establishedYear: year || null,
         accentColor: accent,
         secondaryColor: secondary,
-        emblem: selectedGlyphKey,
+        emblem: activeTab === 'concepts' ? selectedGlyphKey : null,
         direction: aiDirection,
         creativeBrief: creativeBrief || null,
       });
@@ -942,7 +948,7 @@ export default function AiLogoCreatorModal({
         establishedYear: year || null,
         accentColor: accent,
         secondaryColor: secondary,
-        emblem: selectedGlyphKey,
+        emblem: activeTab === 'concepts' ? selectedGlyphKey : null,
         direction: target.direction,
         creativeBrief: creativeBrief || null,
         parentLogoId: target.id,
@@ -1264,23 +1270,33 @@ export default function AiLogoCreatorModal({
               >
                 ✦ AI Concept Lab
               </button>
-              <button
-                type="button"
-                onClick={() => setActiveTab('concepts')}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'concepts' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'concepts' ? '#0f172a' : '#64748b',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  boxShadow: activeTab === 'concepts' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                }}
-              >
-                ◇ Editable Vectors
-              </button>
+              {showEditableVectors && (
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('concepts')}
+                  style={{
+                    padding: '0.4rem 0.85rem',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: activeTab === 'concepts' ? '#ffffff' : 'transparent',
+                    color: activeTab === 'concepts' ? '#0f172a' : '#64748b',
+                    fontWeight: 700,
+                    fontSize: '0.8rem',
+                    cursor: 'pointer',
+                    boxShadow: activeTab === 'concepts' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '5px',
+                  }}
+                >
+                  <span>◇ Editable Vectors</span>
+                  {isAiOfflineOrBroken && (
+                    <span style={{ fontSize: '0.65rem', background: '#fef3c7', color: '#92400e', padding: '1px 5px', borderRadius: '4px', fontWeight: 800 }}>
+                      Offline Fallback
+                    </span>
+                  )}
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => setActiveTab('mockups')}
@@ -1526,38 +1542,40 @@ export default function AiLogoCreatorModal({
               </div>
             )}
 
-            {/* Trade Icon Glyph Picker */}
-            <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {activeTab === 'ai' ? 'Emblem Inspiration' : 'Trade Emblem / Icon'}
-              </label>
-              <div
-                onClick={() => setGlyphPickerOpen(true)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.5rem 0.75rem',
-                  background: '#ffffff',
-                  border: '1.5px solid #cbd5e1',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div
-                    style={{ width: '28px', height: '28px', background: '#eff6ff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                    dangerouslySetInnerHTML={{
-                      __html: `<svg width="18" height="18" viewBox="0 0 24 24" fill="${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.mode === 'fill' ? accent : 'none'}" stroke="${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.mode === 'fill' ? 'none' : accent}" stroke-width="2">${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.body ?? ''}</svg>`,
-                    }}
-                  />
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
-                    {selectedGlyphKey}
-                  </span>
+            {/* Trade Icon Glyph Picker - ONLY needed when using editable vectors */}
+            {activeTab === 'concepts' && (
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Trade Emblem / Icon
+                </label>
+                <div
+                  onClick={() => setGlyphPickerOpen(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    padding: '0.5rem 0.75rem',
+                    background: '#ffffff',
+                    border: '1.5px solid #cbd5e1',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <div
+                      style={{ width: '28px', height: '28px', background: '#eff6ff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      dangerouslySetInnerHTML={{
+                        __html: `<svg width="18" height="18" viewBox="0 0 24 24" fill="${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.mode === 'fill' ? accent : 'none'}" stroke="${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.mode === 'fill' ? 'none' : accent}" stroke-width="2">${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.body ?? ''}</svg>`,
+                      }}
+                    />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
+                      {selectedGlyphKey}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 700 }}>Browse 45+ ▾</span>
                 </div>
-                <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 700 }}>Browse 45+ ▾</span>
               </div>
-            </div>
+            )}
 
             {/* Curated Color Themes */}
             <div>
@@ -1787,9 +1805,35 @@ export default function AiLogoCreatorModal({
               {activeTab === 'ai' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {aiError && (
-                    <div role="alert" style={{ padding: '0.75rem 0.9rem', borderRadius: '10px', border: '1px solid #fecaca', background: '#fff1f2', color: '#9f1239', fontSize: '0.82rem', fontWeight: 700, display: 'flex', justifyContent: 'space-between', gap: '1rem' }}>
-                      <span>{aiError}</span>
-                      <button type="button" onClick={() => setAiError(null)} style={{ border: 'none', background: 'transparent', color: '#9f1239', cursor: 'pointer', fontWeight: 900 }}>✕</button>
+                    <div role="alert" style={{ padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #fecaca', background: '#fff1f2', color: '#9f1239', fontSize: '0.82rem', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>⚠️</span>
+                          <span>{aiError}</span>
+                        </div>
+                        <button type="button" onClick={() => setAiError(null)} style={{ border: 'none', background: 'transparent', color: '#9f1239', cursor: 'pointer', fontWeight: 900 }}>✕</button>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.45rem', borderTop: '1px solid #fecaca' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#881337', fontWeight: 600 }}>
+                          AI generator is offline. You can use Editable Vectors to create your brand identity.
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('concepts')}
+                          style={{
+                            padding: '0.35rem 0.75rem',
+                            borderRadius: '6px',
+                            border: '1px solid #f43f5e',
+                            background: '#ffe4e6',
+                            color: '#9f1239',
+                            fontSize: '0.75rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Use Editable Vectors →
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -1949,7 +1993,7 @@ export default function AiLogoCreatorModal({
 
                   {aiConcepts.length > 0 && (
                     <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', border: '1px solid #dbeafe', background: '#eff6ff', color: '#1e40af', fontSize: '0.72rem', lineHeight: 1.5 }}>
-                      AI concepts are high-resolution transparent PNGs. For fully editable shapes and one-color decal exports, use the Editable Vectors tab.
+                      AI concepts are high-resolution transparent PNGs. Use <strong>🎨 Quick Adjust</strong> on any concept to shift colors, convert to a white vinyl decal, or download.
                     </div>
                   )}
                 </div>

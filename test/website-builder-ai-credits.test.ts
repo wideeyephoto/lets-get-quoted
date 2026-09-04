@@ -199,4 +199,16 @@ describe('Website Builder AI Credits Display', () => {
     expect(MODAL_CODE).toContain('Quick Adjust & Decal Studio');
     expect(MODAL_CODE).toContain('Tweak Logo with AI');
   });
+
+  it('hides emblem inspo unless using editable vectors, and restricts editable vectors to when AI is offline or broke', () => {
+    // Emblem inspo only when activeTab === 'concepts'
+    expect(MODAL_CODE).toContain("activeTab === 'concepts' &&");
+    expect(MODAL_CODE).toContain('Trade Emblem / Icon');
+
+    // Editable vectors visibility condition
+    expect(MODAL_CODE).toContain('isAiOfflineOrBroken');
+    expect(MODAL_CODE).toContain('showEditableVectors');
+    expect(MODAL_CODE).toContain('Offline Fallback');
+    expect(MODAL_CODE).toContain('AI generator is offline. You can use Editable Vectors');
+  });
 });

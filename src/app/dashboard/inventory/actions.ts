@@ -176,3 +176,14 @@ export async function deleteLocationAction(locationId: string): Promise<void> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
   return deleteLocation(supabase, accountId, locationId);
 }
+
+export async function autofillToolFromStoreAction(url: string) {
+  const { parseStoreProductUrl } = await import('@/lib/store-autofill');
+  return parseStoreProductUrl(url);
+}
+
+export async function searchStoreCatalogAction(query: string) {
+  const { searchStoreCatalog } = await import('@/lib/store-autofill');
+  return searchStoreCatalog(query);
+}
+

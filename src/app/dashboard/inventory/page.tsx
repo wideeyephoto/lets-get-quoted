@@ -40,7 +40,7 @@ export default async function InventoryPage() {
   }));
 
   return (
-    <main className="min-h-screen bg-stone-50/50 dark:bg-stone-950/50 pb-16 pt-4">
+    <main className="wide-shell workspace-shell">
       <InventoryClient
         businessName={businessName}
         initialPayload={inventoryPayload}
