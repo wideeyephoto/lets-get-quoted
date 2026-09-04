@@ -14,9 +14,12 @@ import {
   median,
   mean,
   DAY_MS,
+  buildInsights,
   type ActionInput,
   type FunnelStage,
 } from '@/lib/insights';
+import { demoSupabase } from '@/lib/demo-rows';
+import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
 
 describe('monthlyRunRate', () => {
   it('normalizes each cadence to a monthly run-rate', () => {
@@ -431,3 +434,46 @@ describe('resolvePeriod', () => {
     expect(p.toMs).toBeLessThanOrEqual(new Date(2026, 7, 5).getTime());
   });
 });
+
+describe('buildInsights with demoSupabase', () => {
+  it('computes insights including the 9 missing features without throwing', async () => {
+    const period = resolvePeriod({ window: '90' });
+    const insights = await buildInsights(demoSupabase, DEMO_ACCOUNT_ID, period, {
+      compareMode: 'prev',
+    });
+
+    expect(insights.summary.revenue).toBeGreaterThan(0);
+    // 1. Cost breakdown
+    expect(insights.summary.materialsCost).toBeDefined();
+    expect(insights.summary.laborCost).toBeDefined();
+    // 2. Profit over time
+    expect(insights.revenueTrend.totalProfit).toBeDefined();
+    expect(insights.revenueTrend.totalCosts).toBeDefined();
+    // 3. Job profitability
+    expect(insights.jobProfitability).toBeDefined();
+    expect(insights.jobProfitability.hasData).toBe(true);
+    // 4. Labor efficiency
+    expect(insights.laborEfficiency).toBeDefined();
+    expect(insights.laborEfficiency.hasData).toBe(true);
+    // 5. Reputation
+    expect(insights.reputation).toBeDefined();
+    expect(insights.reputation.hasData).toBe(true);
+    // 6. Voice SKU
+    expect(insights.voice).toBeDefined();
+    expect(insights.voice.hasVoice).toBe(true);
+    // 7. MRR movement
+    expect(insights.mrrMovement).toBeDefined();
+    expect(insights.mrrMovement.hasData).toBe(true);
+    // 8. Pace forecast
+    expect(insights.paceForecast !== undefined).toBe(true);
+    // 9. Comparison mode
+    expect(insights.compareMode).toBe('prev');
+
+    // YoY comparison
+    const yoyInsights = await buildInsights(demoSupabase, DEMO_ACCOUNT_ID, period, {
+      compareMode: 'yoy',
+    });
+    expect(yoyInsights.compareMode).toBe('yoy');
+  });
+});
+

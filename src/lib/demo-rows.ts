@@ -404,6 +404,96 @@ export const DEMO_RECENT_LABOR_ROWS: DemoRow[] = DEMO_JOBS
     });
   });
 
+// --- Time clock entries -------------------------------------------------------
+export const DEMO_TIME_ENTRY_ROWS: DemoRow[] = DEMO_RECENT_LABOR_ROWS.map((labor, index) => {
+  const clockIn = labor.created_at as string;
+  const hours = Number(labor.hours) || 8;
+  const clockOut = new Date(new Date(clockIn).getTime() + hours * 60 * 60 * 1000).toISOString();
+  return {
+    id: `demo-time-entry-${index + 1}`,
+    account_id: DEMO_ACCOUNT_ID,
+    crew_id: labor.crew_id,
+    job_id: labor.job_id,
+    started_at: clockIn,
+    ended_at: clockOut,
+    clock_in: clockIn,
+    clock_out: clockOut,
+    rate: labor.rate ?? 24,
+    duration_minutes: Math.round(hours * 60),
+    is_billable: true,
+    created_at: clockIn,
+  };
+});
+
+// --- Voice assistant calls ----------------------------------------------------
+export const DEMO_VOICE_CALL_ROWS: DemoRow[] = [
+  {
+    id: 'demo-call-1',
+    account_id: DEMO_ACCOUNT_ID,
+    caller_phone: '(248) 555-0143',
+    caller_name: 'Sarah Jenkins',
+    status: 'completed',
+    outcome: 'completed',
+    duration_seconds: 145,
+    ai_seconds: 145,
+    lead_id: 'demo-lead-1',
+    started_at: daysAgo(2),
+    created_at: daysAgo(2),
+  },
+  {
+    id: 'demo-call-2',
+    account_id: DEMO_ACCOUNT_ID,
+    caller_phone: '(248) 555-0188',
+    caller_name: 'Mark Henderson',
+    status: 'completed',
+    outcome: 'completed',
+    duration_seconds: 210,
+    ai_seconds: 210,
+    lead_id: 'demo-lead-2',
+    started_at: daysAgo(5),
+    created_at: daysAgo(5),
+  },
+  {
+    id: 'demo-call-3',
+    account_id: DEMO_ACCOUNT_ID,
+    caller_phone: '(248) 555-0199',
+    caller_name: 'Unknown Caller',
+    status: 'completed',
+    outcome: 'completed',
+    duration_seconds: 65,
+    ai_seconds: 65,
+    lead_id: null,
+    started_at: daysAgo(8),
+    created_at: daysAgo(8),
+  },
+  {
+    id: 'demo-call-4',
+    account_id: DEMO_ACCOUNT_ID,
+    caller_phone: '(248) 555-0122',
+    caller_name: 'Lisa Ray',
+    status: 'missed',
+    outcome: 'missed',
+    duration_seconds: 0,
+    ai_seconds: 0,
+    lead_id: null,
+    started_at: daysAgo(11),
+    created_at: daysAgo(11),
+  },
+  {
+    id: 'demo-call-5',
+    account_id: DEMO_ACCOUNT_ID,
+    caller_phone: '(248) 555-0165',
+    caller_name: 'David Miller',
+    status: 'completed',
+    outcome: 'completed',
+    duration_seconds: 180,
+    ai_seconds: 180,
+    lead_id: 'demo-lead-3',
+    started_at: daysAgo(14),
+    created_at: daysAgo(14),
+  },
+];
+
 // --- Review invites -----------------------------------------------------------
 // One ask per completed job, with about two thirds answered — which is a good
 // response rate for a trade and still leaves the "N of M asked responded" figure
@@ -596,6 +686,8 @@ export const DEMO_ACCOUNT_ROW: DemoRow = {
   mailing_address: '4820 Coolidge Hwy, Royal Oak, MI 48073',
   arrival_updates_enabled: true,
   booking_enabled: DEMO_BOOKING.enabled,
+  voice_enabled: true,
+  phone_number: '(248) 555-0100',
   timezone: DEMO_BOOKING.timezone,
   booking_weekdays: DEMO_BOOKING.weekdays,
   booking_windows: DEMO_BOOKING.windows,
@@ -643,6 +735,8 @@ export const DEMO_TABLES: DemoTables = {
   crew: DEMO_CREW as unknown as DemoRow[],
   crew_assignments: DEMO_CREW_ASSIGNMENT_ROWS,
   costs: [...(Object.values(DEMO_COSTS).flat() as unknown as DemoRow[]), ...DEMO_RECENT_LABOR_ROWS],
+  time_entries: DEMO_TIME_ENTRY_ROWS,
+  voice_calls: DEMO_VOICE_CALL_ROWS,
   invoices: DEMO_INVOICE_ROWS,
   payments: [...DEMO_PAYMENT_ROWS, ...DEMO_QUICK_STOP_FEE_ROWS],
   job_feed: DEMO_JOB_FEED_ROWS,

@@ -52,11 +52,13 @@ export default async function DemoInsightsPage({
 }) {
   const searchParams = (await searchParamsPromise) || {};
   const period = resolvePeriod(searchParams);
-  const showDelta = searchParams.compare === 'prev';
+  const compareMode = searchParams.compare === 'yoy' ? 'yoy' : searchParams.compare === 'prev' ? 'prev' : null;
+  const showDelta = compareMode !== null;
 
   const insights = await buildInsights(demoSupabase, DEMO_ACCOUNT_ID, period, {
     arrivalUpdatesOn: true,
     hasArrivalData: false,
+    compareMode,
   });
 
   // Drafted exactly as the real page drafts it, so the words a prospect would

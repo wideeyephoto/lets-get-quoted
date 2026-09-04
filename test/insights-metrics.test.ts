@@ -12,7 +12,14 @@ import {
   groupRevenueByService,
   buildMarketingPerformance,
   buildTopOpportunities,
+  computeJobProfitability,
+  computeLaborEfficiency,
+  computeReputationMetrics,
+  computeVoiceMetrics,
+  computeMrrMovement,
+  computePaceForecast,
   type MetricJob,
+  type MetricCost,
   type FeedEvent,
   type MetricPayment,
   type MetricClient,
@@ -646,3 +653,183 @@ describe('buildTopOpportunities', () => {
     ).toEqual([]);
   });
 });
+
+describe('buildRevenueTrend with profit & costs', () => {
+  const period = periodFromMs(Date.parse('2026-06-01T00:00:00Z'), Date.parse('2026-06-30T23:59:59Z'), 30);
+  const paid: MetricPayment[] = [
+    { amount: 1000, refunded_amount: null, status: 'paid', paid_at: '2026-06-10T12:00:00Z', requested_at: null, job_id: 'j1' },
+    { amount: 1500, refunded_amount: null, status: 'paid', paid_at: '2026-06-20T12:00:00Z', requested_at: null, job_id: 'j2' },
+  ];
+  const costs: MetricCost[] = [
+    { amount: 300, type: 'material', created_at: '2026-06-10T14:00:00Z', job_id: 'j1' },
+    { amount: 400, type: 'labor', created_at: '2026-06-20T14:00:00Z', job_id: 'j2' },
+  ];
+
+  it('computes bucket costs and profit alongside revenue', () => {
+    const trend = buildRevenueTrend(paid, period, costs);
+    expect(trend.total).toBe(2500);
+    expect(trend.totalCosts).toBe(700);
+    expect(trend.totalProfit).toBe(1800);
+    const withRevenue = trend.points.filter((p) => p.current > 0);
+    expect(withRevenue.length).toBeGreaterThan(0);
+    expect(withRevenue.some((p) => (p.profit ?? 0) > 0)).toBe(true);
+  });
+});
+
+describe('computeJobProfitability', () => {
+  const period = { fromMs: Date.parse('2026-06-01T00:00:00Z'), toMs: Date.parse('2026-06-30T23:59:59Z') };
+  const jobs: MetricJob[] = [
+    { id: 'j1', ref: 'J-001', client_name: 'Alice', client_id: 'c1', quoted_amount: 1000, status: 'complete', created_at: '2026-06-05T00:00:00Z' },
+    { id: 'j2', ref: 'J-002', client_name: 'Bob', client_id: 'c2', quoted_amount: 2000, status: 'complete', created_at: '2026-06-10T00:00:00Z' },
+    { id: 'j3', ref: 'J-003', client_name: 'Charlie', client_id: 'c3', quoted_amount: 500, status: 'complete', created_at: '2026-06-15T00:00:00Z' },
+  ];
+  const paid: MetricPayment[] = [
+    { amount: 1000, refunded_amount: null, status: 'paid', paid_at: '2026-06-08T00:00:00Z', requested_at: null, job_id: 'j1' },
+    { amount: 2000, refunded_amount: null, status: 'paid', paid_at: '2026-06-12T00:00:00Z', requested_at: null, job_id: 'j2' },
+    { amount: 500, refunded_amount: null, status: 'paid', paid_at: '2026-06-18T00:00:00Z', requested_at: null, job_id: 'j3' },
+  ];
+  const costs: MetricCost[] = [
+    // j1: rev 1000, cost 200 -> profit 800, margin 80% (winner)
+    { amount: 200, type: 'material', created_at: '2026-06-06T00:00:00Z', job_id: 'j1' },
+    // j2: rev 2000, cost 1800 -> profit 200, margin 10% (bleeder)
+    { amount: 1800, type: 'labor', created_at: '2026-06-11T00:00:00Z', job_id: 'j2' },
+    // j3: rev 500, cost 700 -> profit -200, margin -40% (bleeder and overrun vs quote 500)
+    { amount: 700, type: 'sub', created_at: '2026-06-16T00:00:00Z', job_id: 'j3' },
+  ];
+
+  it('identifies top margin winners, bleeders, and cost-to-quote overruns', () => {
+    const prof = computeJobProfitability(jobs, costs, paid, period);
+    expect(prof.hasData).toBe(true);
+    expect(prof.measuredJobs).toBe(3);
+    expect(prof.winners.length).toBeGreaterThan(0);
+    expect(prof.winners[0].jobId).toBe('j1');
+    expect(prof.winners[0].marginPct).toBe(80);
+
+    expect(prof.bleeders.some((b) => b.jobId === 'j3')).toBe(true);
+    expect(prof.overruns.some((o) => o.jobId === 'j3')).toBe(true);
+    expect(prof.overruns.find((o) => o.jobId === 'j3')!.costOverrun).toBe(200); // 700 cost - 500 quote
+  });
+});
+
+describe('computeLaborEfficiency', () => {
+  const period = { fromMs: Date.parse('2026-06-01T00:00:00Z'), toMs: Date.parse('2026-06-30T23:59:59Z') };
+  const crew = [
+    { id: 'crew-1', name: 'Dan Leader' },
+    { id: 'crew-2', name: 'Sam Tech' },
+  ];
+  const timeEntries = [
+    { id: 't1', crew_id: 'crew-1', job_id: 'j1', started_at: '2026-06-05T08:00:00Z', ended_at: '2026-06-05T16:00:00Z', rate: 30 },
+    { id: 't2', crew_id: 'crew-2', job_id: 'j1', started_at: '2026-06-05T08:00:00Z', ended_at: '2026-06-05T14:00:00Z', rate: 25 },
+    { id: 't3', crew_id: 'crew-2', job_id: null, started_at: '2026-06-06T08:00:00Z', ended_at: '2026-06-06T10:00:00Z', rate: 25 },
+  ];
+  const laborCosts: MetricCost[] = [
+    { amount: 240, type: 'labor', created_at: '2026-06-05T00:00:00Z', job_id: 'j1', crew_id: 'crew-1', hours: 8, rate: 30 },
+  ];
+
+  it('calculates total hours, billable utilization, and revenue per crew hour', () => {
+    // 8 + 6 + 2 hrs = 16 hours. Billable: 8 + 6 = 14 hours.
+    const result = computeLaborEfficiency(timeEntries, laborCosts, crew, 3200, period);
+    expect(result.hasData).toBe(true);
+    expect(result.totalHours).toBe(16);
+    expect(result.billableHours).toBe(14);
+    expect(result.billableRatio).toBe(88); // 14/16 = 87.5% -> 88%
+    expect(result.revenuePerCrewHour).toBe(200); // 3200 / 16
+    expect(result.crewBreakdown.length).toBe(2);
+  });
+});
+
+describe('computeReputationMetrics', () => {
+  const period = { fromMs: Date.parse('2026-06-01T00:00:00Z'), toMs: Date.parse('2026-06-30T23:59:59Z') };
+  const invites = [
+    { id: 'r1', rating: 5, routed_to: 'google', google_clicked_at: '2026-06-10T12:00:00Z', responded_at: '2026-06-10T12:00:00Z', created_at: '2026-06-08T12:00:00Z' },
+    { id: 'r2', rating: 4, routed_to: 'google', google_clicked_at: '2026-06-12T12:00:00Z', responded_at: '2026-06-12T12:00:00Z', created_at: '2026-06-10T12:00:00Z' },
+    { id: 'r3', rating: 3, routed_to: 'private', google_clicked_at: null, responded_at: '2026-06-14T12:00:00Z', created_at: '2026-06-12T12:00:00Z' },
+    { id: 'r4', rating: null, routed_to: null, google_clicked_at: null, responded_at: null, created_at: '2026-06-15T12:00:00Z' },
+  ];
+
+  it('aggregates response rate, star ratings, and Google conversion', () => {
+    const rep = computeReputationMetrics(invites, period);
+    expect(rep.hasData).toBe(true);
+    expect(rep.totalInvites).toBe(4);
+    expect(rep.respondedCount).toBe(3);
+    expect(rep.responseRate).toBe(75);
+    expect(rep.averageRating).toBe(4); // (5 + 4 + 3) / 3 = 4.0
+    expect(rep.googleReviewsCount).toBe(2);
+    expect(rep.googleConversionRate).toBe(67); // 2 of 3 responded
+  });
+});
+
+describe('computeVoiceMetrics', () => {
+  const period = { fromMs: Date.parse('2026-06-01T00:00:00Z'), toMs: Date.parse('2026-06-30T23:59:59Z') };
+  const calls = [
+    { id: 'c1', started_at: '2026-06-05T00:00:00Z', ai_seconds: 120, outcome: 'completed', lead_id: 'l1', created_at: '2026-06-05T00:00:00Z' },
+    { id: 'c2', started_at: '2026-06-06T00:00:00Z', ai_seconds: 180, outcome: 'completed', lead_id: 'l2', created_at: '2026-06-06T00:00:00Z' },
+    { id: 'c3', started_at: '2026-06-07T00:00:00Z', ai_seconds: 0, outcome: 'missed', lead_id: null, created_at: '2026-06-07T00:00:00Z' },
+  ];
+
+  it('tracks answered vs missed calls, leads captured, and estimated value', () => {
+    const voice = computeVoiceMetrics(calls, 2000, period);
+    expect(voice.hasVoice).toBe(true);
+    expect(voice.totalCalls).toBe(3);
+    expect(voice.answeredCalls).toBe(2);
+    expect(voice.missedCalls).toBe(1);
+    expect(voice.leadsCreated).toBe(2);
+    expect(voice.estimatedRevenue).toBe(4000); // 2 * 2000
+    expect(voice.totalMinutes).toBe(5); // 300s / 60
+  });
+});
+
+describe('computeMrrMovement', () => {
+  const period = { fromMs: Date.parse('2026-06-01T00:00:00Z'), toMs: Date.parse('2026-06-30T23:59:59Z') };
+  const plans = [
+    // Existing active plan
+    { id: 'p1', amount: 100, frequency: 'monthly', active: true, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+    // New active plan started in June
+    { id: 'p2', amount: 200, frequency: 'monthly', active: true, created_at: '2026-06-10T00:00:00Z', updated_at: '2026-06-10T00:00:00Z' },
+    // Churned plan cancelled in June
+    { id: 'p3', amount: 50, frequency: 'monthly', active: false, created_at: '2026-02-01T00:00:00Z', updated_at: '2026-06-15T00:00:00Z' },
+  ];
+
+  it('computes active MRR, new MRR, churned MRR, and net delta', () => {
+    const movement = computeMrrMovement(plans, period);
+    expect(movement.hasData).toBe(true);
+    expect(movement.activePlans).toBe(2);
+    expect(movement.monthlyRevenue).toBe(300); // 100 + 200
+    expect(movement.newPlans).toBe(1);
+    expect(movement.newMrr).toBe(200);
+    expect(movement.churnedPlans).toBe(1);
+    expect(movement.churnedMrr).toBe(50);
+    expect(movement.netMrrDelta).toBe(150); // 200 - 50
+  });
+});
+
+describe('computePaceForecast', () => {
+  it('projects end-of-period revenue on an active period containing now', () => {
+    const now = Date.parse('2026-06-15T12:00:00Z');
+    const period = {
+      fromMs: Date.parse('2026-06-01T00:00:00Z'),
+      toMs: Date.parse('2026-06-30T23:59:59Z'),
+      days: 30,
+    };
+    // Collected $15,000 in 15 days -> $1,000/day -> Projected $30,000
+    const forecast = computePaceForecast(15000, period, 25000, now);
+    expect(forecast).not.toBeNull();
+    expect(forecast!.isCurrentPeriod).toBe(true);
+    expect(forecast!.daysElapsed).toBe(15);
+    expect(forecast!.dailyRunRate).toBe(1000);
+    expect(forecast!.projectedRevenue).toBe(30000);
+    expect(forecast!.pacePercentage).toBe(120); // 30000 / 25000
+    expect(forecast!.paceNote).toContain('+20%');
+  });
+
+  it('returns null if period is completely in the past', () => {
+    const now = Date.parse('2026-08-01T00:00:00Z');
+    const pastPeriod = {
+      fromMs: Date.parse('2026-06-01T00:00:00Z'),
+      toMs: Date.parse('2026-06-30T23:59:59Z'),
+      days: 30,
+    };
+    expect(computePaceForecast(10000, pastPeriod, undefined, now)).toBeNull();
+  });
+});
+

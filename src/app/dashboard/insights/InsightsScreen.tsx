@@ -16,6 +16,10 @@ import CustomerInsightsCard from './CustomerInsightsCard';
 import TopOpportunities from './TopOpportunities';
 import RevenueByServiceDonut from './RevenueByServiceDonut';
 import MarketingPerformanceCard from './MarketingPerformanceCard';
+import JobProfitabilityCard from './JobProfitabilityCard';
+import LaborEfficiencyCard from './LaborEfficiencyCard';
+import ReputationCard from './ReputationCard';
+import VoiceInsightsCard from './VoiceInsightsCard';
 import ExportInsightsModal from './ExportInsightsModal';
 import { PERIOD_PRESETS } from '@/lib/insights';
 
@@ -333,9 +337,15 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
   // Percentages are OF REVENUE and deliberately uncapped: costs at 210% of what
   // came in is the number, and rounding it down to 100 hides the whole problem.
   const ofRevenue = (value: number) => (revenue > 0 ? `${Math.round((value / revenue) * 100)}%` : '—');
-  const bars = [
+  const bars: Array<{ key: string; label: string; value: number; pct: string; isSub?: boolean }> = [
     { key: 'revenue', label: 'Revenue', value: summary.revenue, pct: revenue > 0 ? '100%' : '—' },
     { key: 'costs', label: 'Costs', value: summary.costs, pct: ofRevenue(summary.costs) },
+    ...(summary.materialsCost > 0 || summary.laborCost > 0
+      ? [
+          { key: 'materials', label: '↳ Materials', value: summary.materialsCost, pct: ofRevenue(summary.materialsCost), isSub: true },
+          { key: 'labor', label: '↳ Labor', value: summary.laborCost, pct: ofRevenue(summary.laborCost), isSub: true },
+        ]
+      : []),
     { key: 'profit', label: 'Profit', value: summary.profit, pct: ofRevenue(summary.profit) },
   ];
 
@@ -354,6 +364,29 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
               : `You kept ${formatMoney(summary.profit)} ${insights.period.sentenceLabel}`}
         </h2>
 
+        {insights.paceForecast ? (
+          <div
+            className="ins-pace-banner"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: 'rgba(56, 189, 248, 0.12)',
+              border: '1px solid rgba(56, 189, 248, 0.3)',
+              color: 'var(--ink-blue-2, #38bdf8)',
+              borderRadius: '6px',
+              padding: '5px 12px',
+              fontSize: '0.8rem',
+              marginBottom: '1rem',
+            }}
+          >
+            <span aria-hidden="true">⏱</span>
+            <span>
+              <strong>Run-rate pace:</strong> On track for <strong>{formatMoney(insights.paceForecast.projectedRevenue)}</strong> ({insights.paceForecast.daysElapsed} of {insights.paceForecast.totalDays} days · {formatMoney(insights.paceForecast.dailyRunRate)}/day)
+            </span>
+          </div>
+        ) : null}
+
         <div className="ins-figures">
           <div className="ins-figure">
             <span className="ins-figure-label">Revenue</span>
@@ -364,6 +397,12 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
             <span className="ins-figure-label">Costs</span>
             <strong className="ins-figure-value">{formatMoney(summary.costs)}</strong>
             <DeltaPill delta={summary.deltas.costs} tone="up-bad" />
+            {(summary.materialsCost > 0 || summary.laborCost > 0) && (
+              <span className="ins-sub" style={{ marginTop: '0.3rem', fontSize: '0.73rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                <span>Materials: <strong>{formatMoney(summary.materialsCost)}</strong></span>
+                <span>Labor: <strong>{formatMoney(summary.laborCost)}</strong></span>
+              </span>
+            )}
           </div>
           <div className="ins-figure">
             <span className="ins-figure-label">Profit</span>
@@ -396,7 +435,11 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
             aria-label={`Of ${formatMoney(summary.revenue)} collected, ${formatMoney(summary.costs)} went on costs, leaving ${formatMoney(summary.profit)}.`}
           >
             {bars.map((bar) => (
-              <div className="ins-split" key={bar.key}>
+              <div
+                className={`ins-split${bar.isSub ? ' is-sub' : ''}`}
+                key={bar.key}
+                style={bar.isSub ? { paddingLeft: '0.85rem', opacity: 0.9, fontSize: '0.74rem' } : undefined}
+              >
                 <span className="ins-split-label"><i className={`ins-dot is-${bar.key}`} /> {bar.label}</span>
                 <div className="ins-split-track">
                   <div
@@ -562,6 +605,12 @@ export default function InsightsScreen({
         <MarketingPerformanceCard marketing={insights.marketingPerformance} basePath={basePath} />
       </div>
 
+      {/* Reputation and Voice Assistant ROI */}
+      <div className={`ins-row ${insights.voice.hasVoice || insights.voice.totalCalls > 0 ? 'ins-row-2' : ''}`}>
+        <ReputationCard reputation={insights.reputation} basePath={basePath} />
+        <VoiceInsightsCard voice={insights.voice} basePath={basePath} />
+      </div>
+
       {/* More detail — the fuller report the mockup cards above summarize, kept
           so nothing the earlier page showed is lost. Hidden on an empty account,
           where the headline cards already read as "nothing yet." */}
@@ -576,26 +625,53 @@ export default function InsightsScreen({
       </div>
 
       <ExecutiveSummary insights={insights} basePath={basePath} />
-        <section className="panel ins-card">
-          <p className="ins-card-head"><span className="ins-chip is-cash" aria-hidden="true">$</span> Cash position</p>
-          <div className="ins-pair">
+
+      <JobProfitabilityCard profitability={insights.jobProfitability} basePath={basePath} />
+
+      <section className="panel ins-card">
+        <p className="ins-card-head"><span className="ins-chip is-cash" aria-hidden="true">$</span> Cash position</p>
+        <div className="ins-pair">
+          <div>
+            <span className="ins-figure-label">Outstanding invoices</span>
+            <strong className="ins-big">{formatMoney(insights.cash.outstanding.total)}</strong>
+            <span className="ins-sub">
+              {insights.cash.outstanding.count === 0
+                ? 'Nothing outstanding'
+                : `${insights.cash.outstanding.count} invoice${insights.cash.outstanding.count === 1 ? '' : 's'} unpaid`}
+            </span>
+          </div>
+          <div>
+            <span className="ins-figure-label">Recurring / mo</span>
+            <strong className="ins-big">{formatMoney(insights.cash.mrr.monthly)}</strong>
+            <span className="ins-sub">
+              {insights.cash.mrr.activePlans === 0 ? 'No active agreements' : `${insights.cash.mrr.activePlans} active agreement${insights.cash.mrr.activePlans === 1 ? '' : 's'}`}
+            </span>
+          </div>
+        </div>
+
+        {insights.mrrMovement.hasData && (
+          <div style={{ marginTop: '0.8rem', paddingTop: '0.8rem', borderTop: '1px solid var(--rule-t09, rgba(255,255,255,0.08))', display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.6rem', fontSize: '0.8rem' }}>
             <div>
-              <span className="ins-figure-label">Outstanding invoices</span>
-              <strong className="ins-big">{formatMoney(insights.cash.outstanding.total)}</strong>
-              <span className="ins-sub">
-                {insights.cash.outstanding.count === 0
-                  ? 'Nothing outstanding'
-                  : `${insights.cash.outstanding.count} invoice${insights.cash.outstanding.count === 1 ? '' : 's'} unpaid`}
-              </span>
+              <span className="ins-figure-label">New MRR</span>
+              <strong style={{ display: 'block', color: 'var(--ink-green-13, #4ade80)' }}>+{formatMoney(insights.mrrMovement.newMrr)}</strong>
+              <span className="ins-sub">{insights.mrrMovement.newPlans} plan{insights.mrrMovement.newPlans === 1 ? '' : 's'} added</span>
             </div>
             <div>
-              <span className="ins-figure-label">Recurring / mo</span>
-              <strong className="ins-big">{formatMoney(insights.cash.mrr.monthly)}</strong>
-              <span className="ins-sub">
-                {insights.cash.mrr.activePlans === 0 ? 'No active agreements' : 'From active agreements'}
-              </span>
+              <span className="ins-figure-label">Churned MRR</span>
+              <strong style={{ display: 'block', color: insights.mrrMovement.churnedMrr > 0 ? 'var(--ink-orange-1, #ff5f4d)' : 'var(--mute-t50, #888)' }}>
+                −{formatMoney(insights.mrrMovement.churnedMrr)}
+              </strong>
+              <span className="ins-sub">{insights.mrrMovement.churnedPlans} plan{insights.mrrMovement.churnedPlans === 1 ? '' : 's'} lost</span>
+            </div>
+            <div>
+              <span className="ins-figure-label">Net Movement</span>
+              <strong style={{ display: 'block', color: insights.mrrMovement.netMrrDelta > 0 ? 'var(--ink-green-13, #4ade80)' : insights.mrrMovement.netMrrDelta < 0 ? 'var(--ink-orange-1, #ff5f4d)' : 'var(--text, inherit)' }}>
+                {insights.mrrMovement.netMrrDelta > 0 ? '+' : ''}{formatMoney(insights.mrrMovement.netMrrDelta)}
+              </strong>
+              <span className="ins-sub">Net MRR growth</span>
             </div>
           </div>
+        )}
 
           {agingTotal > 0 ? (
             <div className="ins-aging">
@@ -743,6 +819,8 @@ export default function InsightsScreen({
           </p>
         </section>
       ) : null}
+
+      <LaborEfficiencyCard labor={insights.laborEfficiency} basePath={basePath} />
 
       <QuickStops insights={insights} basePath={basePath} />
       </section>

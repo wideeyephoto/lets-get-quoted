@@ -55,6 +55,11 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
   const [width, setWidth] = useState(320);
   const [hover, setHover] = useState<number | null>(null);
 
+  const [viewMetric, setViewMetric] = useState<'revenue' | 'profit' | 'both'>('both');
+  const points = trend.points;
+  const hasCostData = (trend.totalCosts ?? 0) > 0 || points.some((p) => (p.costs ?? 0) > 0);
+  const activeMetric = hasCostData ? viewMetric : 'revenue';
+
   useEffect(() => {
     const element = wrapRef.current;
     if (!element) return;
@@ -67,8 +72,6 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
     observer.observe(element);
     return () => observer.disconnect();
   }, []);
-
-  const points = trend.points;
   const maxIndex = Math.max(0, points.length - 1);
   const isPhone = width < MOBILE_MAX;
   const PAD = chartPadding(width);
@@ -81,11 +84,15 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
   const scale = useMemo(() => {
     let peak = 0;
     for (const point of points) {
-      peak = Math.max(peak, point.current);
-      if (showPrevious) peak = Math.max(peak, point.previous);
+      if (activeMetric !== 'profit') peak = Math.max(peak, point.current);
+      if (activeMetric !== 'revenue') peak = Math.max(peak, Math.max(0, point.profit ?? 0));
+      if (showPrevious) {
+        if (activeMetric !== 'profit') peak = Math.max(peak, point.previous);
+        if (activeMetric !== 'revenue') peak = Math.max(peak, Math.max(0, point.previousProfit ?? 0));
+      }
     }
     return niceScale(peak);
-  }, [points, showPrevious]);
+  }, [points, showPrevious, activeMetric]);
 
   const xFor = useCallback(
     (index: number) => PAD.left + INSET + (maxIndex === 0 ? plotW / 2 : (index / maxIndex) * plotW),
@@ -105,9 +112,9 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
   const areaPath = useMemo(() => {
     if (points.length === 0) return '';
     const baseline = yFor(0).toFixed(1);
-    const top = points.map((point, index) => `L${xFor(index).toFixed(1)},${yFor(point.current).toFixed(1)}`).join(' ');
+    const top = points.map((point, index) => `L${xFor(index).toFixed(1)},${yFor(activeMetric === 'profit' ? Math.max(0, point.profit ?? 0) : point.current).toFixed(1)}`).join(' ');
     return `M${xFor(0).toFixed(1)},${baseline} ${top} L${xFor(maxIndex).toFixed(1)},${baseline} Z`;
-  }, [points, xFor, yFor, maxIndex]);
+  }, [points, xFor, yFor, maxIndex, activeMetric]);
 
   const indexAtClientX = (clientX: number): number => {
     const rect = svgRef.current?.getBoundingClientRect();
@@ -135,16 +142,58 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
 
   return (
     <>
-      <div className="ins-revtime-top">
+      <div className="ins-revtime-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.5rem' }}>
         <div>
-          <strong className="ins-big">{formatMoney(trend.total)}</strong>
-          <span className="ins-sub">Collected {windowLabel} · grouped by {noun}</span>
+          <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'baseline' }}>
+            <div>
+              <strong className="ins-big">{formatMoney(trend.total)}</strong>
+              <span className="ins-sub" style={{ display: 'block' }}>Collected {windowLabel} · grouped by {noun}</span>
+            </div>
+            {hasCostData && trend.totalProfit !== undefined ? (
+              <div>
+                <strong className="ins-big" style={{ color: trend.totalProfit < 0 ? '#b91c1c' : '#166534' }}>
+                  {trend.totalProfit < 0 ? `−${formatMoney(Math.abs(trend.totalProfit))}` : formatMoney(trend.totalProfit)}
+                </strong>
+                <span className="ins-sub" style={{ display: 'block' }}>
+                  Profit ({trend.total > 0 ? `${Math.round((trend.totalProfit / trend.total) * 100)}%` : '0%'} margin)
+                </span>
+              </div>
+            ) : null}
+          </div>
         </div>
-        {showPrevious ? (
-          <span className="ins-revtime-prev">
-            Previous <strong>{formatMoney(trend.previousTotal)}</strong>
-          </span>
-        ) : null}
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {hasCostData ? (
+            <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.05)', padding: '2px', borderRadius: '6px', fontSize: '0.78rem' }}>
+              {(['revenue', 'profit', 'both'] as const).map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setViewMetric(m)}
+                  style={{
+                    padding: '3px 8px',
+                    borderRadius: '4px',
+                    border: 'none',
+                    background: activeMetric === m ? '#fff' : 'transparent',
+                    fontWeight: activeMetric === m ? 600 : 400,
+                    color: activeMetric === m ? '#111' : '#666',
+                    cursor: 'pointer',
+                    boxShadow: activeMetric === m ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+                    textTransform: 'capitalize',
+                  }}
+                >
+                  {m}
+                </button>
+              ))}
+            </div>
+          ) : null}
+
+          {showPrevious ? (
+            <span className="ins-revtime-prev">
+              Previous <strong>{formatMoney(activeMetric === 'profit' ? Math.max(0, trend.previousTotalProfit ?? 0) : trend.previousTotal)}</strong>
+            </span>
+          ) : null}
+        </div>
       </div>
 
       <div className="ins-revtime-wrap" ref={wrapRef}>
@@ -172,12 +221,48 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
           </g>
 
           <g clipPath="url(#ins-revtime-plot)">
-            <path className="ins-revtime-area" d={areaPath} />
-            {showPrevious ? <path className="ins-revtime-line is-prev" d={linePath((point) => point.previous)} /> : null}
-            <path className="ins-revtime-line" d={linePath((point) => point.current)} />
-            {points.map((point, index) => (
-              <circle key={point.key} className="ins-revtime-dot" cx={xFor(index)} cy={yFor(point.current)} r={2.6} />
-            ))}
+            {activeMetric !== 'profit' ? (
+              <>
+                <path className="ins-revtime-area" d={areaPath} />
+                {showPrevious ? <path className="ins-revtime-line is-prev" d={linePath((point) => point.previous)} /> : null}
+                <path className="ins-revtime-line" d={linePath((point) => point.current)} />
+                {points.map((point, index) => (
+                  <circle key={point.key} className="ins-revtime-dot" cx={xFor(index)} cy={yFor(point.current)} r={2.6} />
+                ))}
+              </>
+            ) : null}
+
+            {activeMetric !== 'revenue' && hasCostData ? (
+              <>
+                {showPrevious ? (
+                  <path
+                    className="ins-revtime-line is-profit-prev"
+                    d={linePath((point) => Math.max(0, point.previousProfit ?? 0))}
+                    stroke="#86efac"
+                    strokeWidth={1.8}
+                    strokeDasharray="4 4"
+                    fill="none"
+                  />
+                ) : null}
+                <path
+                  className="ins-revtime-line is-profit"
+                  d={linePath((point) => Math.max(0, point.profit ?? 0))}
+                  stroke="#16a34a"
+                  strokeWidth={2.4}
+                  fill="none"
+                />
+                {points.map((point, index) => (
+                  <circle
+                    key={`profit-${point.key}`}
+                    className="ins-revtime-dot is-profit"
+                    cx={xFor(index)}
+                    cy={yFor(Math.max(0, point.profit ?? 0))}
+                    r={2.6}
+                    fill="#16a34a"
+                  />
+                ))}
+              </>
+            ) : null}
           </g>
 
           {/* x axis — which buckets get a label is the cash chart's own spacing. */}
@@ -209,9 +294,10 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
           {active !== null && activePoint
             ? (() => {
                 const cx = xFor(active);
-                const cy = yFor(activePoint.current);
-                const tipW = isPhone ? 116 : 138;
-                const tipH = showPrevious ? 56 : 40;
+                const primaryVal = activeMetric === 'profit' ? Math.max(0, activePoint.profit ?? 0) : activePoint.current;
+                const cy = yFor(primaryVal);
+                const tipW = hasCostData ? (isPhone ? 138 : 160) : (isPhone ? 116 : 138);
+                const tipH = hasCostData ? (showPrevious ? 72 : 56) : (showPrevious ? 56 : 40);
                 const tx = Math.max(PAD.left, Math.min(cx - tipW / 2, PAD.left + innerW - tipW));
                 const ty = cy - tipH - 12 < PAD.top ? cy + 12 : cy - tipH - 12;
                 return (
@@ -222,9 +308,18 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
                     <g transform={`translate(${tx.toFixed(1)}, ${ty.toFixed(1)})`}>
                       <rect className="ins-revtime-tip-box" x={0} y={0} width={tipW} height={tipH} rx={9} />
                       <text className="ins-revtime-tip-label" x={11} y={16}>{activePoint.label}</text>
-                      <text className="ins-revtime-tip-value" x={11} y={showPrevious ? 33 : 31}>{formatMoney(activePoint.current)}</text>
+                      <text className="ins-revtime-tip-value" x={11} y={30}>
+                        {activeMetric === 'profit' ? `Profit: ${formatMoney(activePoint.profit ?? 0)}` : `Rev: ${formatMoney(activePoint.current)}`}
+                      </text>
+                      {hasCostData && activeMetric === 'both' ? (
+                        <text className="ins-revtime-tip-prev" x={11} y={45} fill="#16a34a">
+                          Profit: {formatMoney(activePoint.profit ?? 0)}
+                        </text>
+                      ) : null}
                       {showPrevious ? (
-                        <text className="ins-revtime-tip-prev" x={11} y={49}>prev {formatMoney(activePoint.previous)}</text>
+                        <text className="ins-revtime-tip-prev" x={11} y={hasCostData && activeMetric === 'both' ? 60 : 45}>
+                          prev {formatMoney(activeMetric === 'profit' ? Math.max(0, activePoint.previousProfit ?? 0) : activePoint.previous)}
+                        </text>
                       ) : null}
                     </g>
                   </g>
@@ -234,12 +329,17 @@ export default function RevenueOverTimeChart({ trend, windowLabel, sentenceLabel
         </svg>
       </div>
 
-      {showPrevious ? (
-        <div className="ins-revtime-legend">
-          <span><i className="ins-revtime-key" /> This period</span>
+      <div className="ins-revtime-legend">
+        {activeMetric !== 'profit' ? (
+          <span><i className="ins-revtime-key" /> Revenue</span>
+        ) : null}
+        {hasCostData && activeMetric !== 'revenue' ? (
+          <span><i className="ins-revtime-key" style={{ background: '#16a34a' }} /> Profit</span>
+        ) : null}
+        {showPrevious ? (
           <span><i className="ins-revtime-key is-prev" /> Previous period</span>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
     </>
   );
 }

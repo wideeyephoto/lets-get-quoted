@@ -17,6 +17,18 @@ import {
   groupRevenueByService,
   buildMarketingPerformance,
   buildTopOpportunities,
+  computeJobProfitability,
+  type JobProfitability,
+  computeLaborEfficiency,
+  type LaborEfficiency,
+  computeReputationMetrics,
+  type ReputationMetrics,
+  computeVoiceMetrics,
+  type VoiceMetrics,
+  computeMrrMovement,
+  type MrrMovement,
+  computePaceForecast,
+  type PaceForecast,
   type InsightsKpis,
   type RevenueTrend,
   type SalesActivity,
@@ -232,7 +244,15 @@ type PaidRow = {
   job_id: string | null;
   invoice_id: string | null;
 };
-type CostRow = { type: string; amount: number | string; created_at: string; job_id: string | null };
+type CostRow = {
+  type: string;
+  amount: number | string;
+  created_at: string;
+  job_id: string | null;
+  hours?: number | string | null;
+  rate?: number | string | null;
+  crew_id?: string | null;
+};
 
 type Rowset = {
   leads: LeadRow[];
@@ -659,6 +679,8 @@ export type Insights = {
     marginPct: number;
     quotedRevenue: number;
     approvedRevenue: number;
+    materialsCost: number;
+    laborCost: number;
     deltas: {
       revenue: Delta;
       costs: Delta;
@@ -666,6 +688,8 @@ export type Insights = {
       margin: Delta;
       quotedRevenue: Delta;
       approvedRevenue: Delta;
+      materialsCost: Delta;
+      laborCost: Delta;
     };
   };
   materialsCost: number;
@@ -719,6 +743,13 @@ export type Insights = {
   revenueByService: RevenueByService;
   marketingPerformance: MarketingPerformance;
   topOpportunities: Opportunity[];
+  jobProfitability: JobProfitability;
+  laborEfficiency: LaborEfficiency;
+  reputation: ReputationMetrics;
+  voice: VoiceMetrics;
+  mrrMovement: MrrMovement;
+  paceForecast: PaceForecast | null;
+  compareMode: 'prev' | 'yoy' | null;
 };
 
 const SOURCE_LABELS: Record<string, string> = {
@@ -735,7 +766,7 @@ export async function buildInsights(
   supabase: SupabaseClient,
   accountId: string,
   period: Period,
-  options: { arrivalUpdatesOn?: boolean; hasArrivalData?: boolean } = {},
+  options: { arrivalUpdatesOn?: boolean; hasArrivalData?: boolean; compareMode?: 'prev' | 'yoy' | null } = {},
 ): Promise<Insights> {
   const nowMs = Date.now();
   const now = new Date(nowMs);
@@ -765,6 +796,9 @@ export async function buildInsights(
     { data: blockRows },
     clientsStats,
     { data: campaignRows },
+    { data: timeEntryRows },
+    { data: voiceCallRows },
+    { data: reviewInviteRows },
   ] = await Promise.all([
     supabase.from('leads').select('status, source, created_at, converted_job').eq('account_id', accountId),
     supabase.from('jobs').select('id, ref, client_name, client_id, quoted_amount, status, created_at, scheduled_for, lead_source').eq('account_id', accountId),
@@ -776,10 +810,10 @@ export async function buildInsights(
     // refunds from the same rows; invoice_id and status let a deposit be credited
     // against its own invoice for the outstanding balance.
     supabase.from('payments').select('amount, refunded_amount, status, paid_at, requested_at, job_id, invoice_id').eq('account_id', accountId).eq('status', 'paid'),
-    supabase.from('costs').select('type, amount, created_at, job_id').eq('account_id', accountId),
+    supabase.from('costs').select('type, amount, created_at, job_id, hours, rate, crew_id').eq('account_id', accountId),
     supabase.from('invoices').select('id, total, status, created_at, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
     supabase.from('invoices').select('job_id, status').eq('account_id', accountId),
-    supabase.from('recurring_plans').select('amount, frequency').eq('account_id', accountId).eq('active', true),
+    supabase.from('recurring_plans').select('id, amount, frequency, active, created_at, updated_at').eq('account_id', accountId),
     supabase.from('job_feed').select('amount, job_id, created_at').eq('account_id', accountId).eq('kind', 'quote_approved'),
     // When a quote was actually put in front of the customer.
     supabase.from('job_feed').select('job_id, created_at').eq('account_id', accountId).eq('kind', 'client_link_created'),
@@ -834,6 +868,9 @@ export async function buildInsights(
       .eq('account_id', accountId)
       .order('created_at', { ascending: false })
       .limit(12),
+    supabase.from('time_entries').select('id, crew_id, job_id, started_at, ended_at, rate, created_at').eq('account_id', accountId),
+    supabase.from('voice_calls').select('id, started_at, ai_seconds, outcome, lead_id, created_at').eq('account_id', accountId),
+    supabase.from('review_invites').select('id, rating, routed_to, google_clicked_at, responded_at, created_at').eq('account_id', accountId),
   ]);
 
   const data: Rowset = {
@@ -845,9 +882,11 @@ export async function buildInsights(
   };
 
   const cur = metricsForRange(data, period.fromMs, period.toMs);
-  // The equal-length window immediately before this one.
+  const isYoY = options.compareMode === 'yoy';
   const span = period.toMs - period.fromMs;
-  const prev = metricsForRange(data, period.fromMs - span, period.fromMs);
+  const prevFromMs = isYoY ? period.fromMs - 365 * DAY_MS : period.fromMs - span;
+  const prevToMs = isYoY ? period.toMs - 365 * DAY_MS : period.fromMs;
+  const prev = metricsForRange(data, prevFromMs, prevToMs);
 
   const summary = {
     revenue: cur.collected,
@@ -856,6 +895,8 @@ export async function buildInsights(
     marginPct: cur.marginPct,
     quotedRevenue: cur.quotedRevenue,
     approvedRevenue: cur.approvedRevenue,
+    materialsCost: cur.materialsCost,
+    laborCost: cur.laborCost,
     deltas: {
       revenue: computeDelta(cur.collected, prev.collected),
       // Costs going UP is not good news, but the pill only reports direction —
@@ -865,6 +906,8 @@ export async function buildInsights(
       margin: computePointDelta(cur.marginPct, prev.marginPct),
       quotedRevenue: computeDelta(cur.quotedRevenue, prev.quotedRevenue),
       approvedRevenue: computeDelta(cur.approvedRevenue, prev.approvedRevenue),
+      materialsCost: computeDelta(cur.materialsCost, prev.materialsCost),
+      laborCost: computeDelta(cur.laborCost, prev.laborCost),
     },
   };
 
@@ -884,7 +927,8 @@ export async function buildInsights(
   }, 0);
 
   const paymentGaps = daysToPayment(data.paid);
-  const activePlans = (planRows ?? []) as Array<{ amount: number | string; frequency: string }>;
+  const allPlans = (planRows ?? []) as Array<{ id: string; amount: number | string; frequency: string; active: boolean; created_at: string; updated_at?: string | null }>;
+  const activePlans = allPlans.filter((p) => p.active);
 
   // Open quotes: still at the quote stage, with a price on them.
   const openQuotes: OpenQuote[] = data.jobs
@@ -1004,7 +1048,8 @@ export async function buildInsights(
     now,
   });
 
-  const revenueTrend = buildRevenueTrend(data.paid, period);
+  const spanOffsetMs = isYoY ? 365 * DAY_MS : span;
+  const revenueTrend = buildRevenueTrend(data.paid, period, data.costs, spanOffsetMs);
 
   // Jobs paid in the window — distinct job_id among payments that landed in it,
   // the last of the six sales-activity counts. paid_at is the date the money
@@ -1077,6 +1122,31 @@ export async function buildInsights(
     outstandingCount: outstanding.count,
   });
 
+  const jobProfitability = computeJobProfitability(data.jobs, data.costs, data.paid, { fromMs: period.fromMs, toMs: period.toMs });
+
+  const laborEfficiency = computeLaborEfficiency(
+    (timeEntryRows ?? []) as Parameters<typeof computeLaborEfficiency>[0],
+    data.costs as Parameters<typeof computeLaborEfficiency>[1],
+    (crewRows ?? []) as Parameters<typeof computeLaborEfficiency>[2],
+    cur.collected,
+    { fromMs: period.fromMs, toMs: period.toMs },
+  );
+
+  const reputation = computeReputationMetrics(
+    (reviewInviteRows ?? []) as Parameters<typeof computeReputationMetrics>[0],
+    { fromMs: period.fromMs, toMs: period.toMs },
+  );
+
+  const voice = computeVoiceMetrics(
+    (voiceCallRows ?? []) as Parameters<typeof computeVoiceMetrics>[0],
+    cur.avgQuoteValue,
+    { fromMs: period.fromMs, toMs: period.toMs },
+  );
+
+  const mrrMovement = computeMrrMovement(allPlans, { fromMs: period.fromMs, toMs: period.toMs });
+
+  const paceForecast = computePaceForecast(cur.collected, period, prev.collected, nowMs);
+
   return {
     period,
     windowLabel: period.label,
@@ -1146,5 +1216,12 @@ export async function buildInsights(
     revenueByService,
     marketingPerformance,
     topOpportunities,
+    jobProfitability,
+    laborEfficiency,
+    reputation,
+    voice,
+    mrrMovement,
+    paceForecast,
+    compareMode: options.compareMode ?? null,
   };
 }

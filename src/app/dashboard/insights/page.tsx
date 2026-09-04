@@ -25,7 +25,8 @@ export default async function InsightsPage({
   const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('reports.read');
   const period = resolvePeriod(searchParams);
-  const showDelta = searchParams.compare === 'prev';
+  const compareMode = searchParams.compare === 'yoy' ? 'yoy' : searchParams.compare === 'prev' ? 'prev' : null;
+  const showDelta = compareMode !== null;
 
   // The window/from/to the page is showing, forwarded to the export route so the
   // downloaded file matches exactly this view (compare is display-only).
@@ -49,6 +50,7 @@ export default async function InsightsPage({
   const insights = await buildInsights(supabase, accountId, period, {
     arrivalUpdatesOn: Boolean(account?.arrival_updates_enabled),
     hasArrivalData: arrivals.summary.trips > 0,
+    compareMode,
   });
 
   // The schedule-filler campaign, drafted on the SERVER so the exact words the

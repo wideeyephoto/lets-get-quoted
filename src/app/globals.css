@@ -53208,6 +53208,14 @@ a.ins-export-opt:focus-visible {
   background: var(--accent);
 }
 
+.ins-dot.is-materials {
+  background: #f59e0b;
+}
+
+.ins-dot.is-labor {
+  background: #6366f1;
+}
+
 .ins-dot.is-profit {
   background: #4ade80;
 }
@@ -53306,6 +53314,11 @@ a.ins-export-opt:focus-visible {
 
 .ins-chip.is-source {
   background: rgba(167, 139, 250, 0.16);
+  color: var(--ink-violet-5);
+}
+
+.ins-chip.is-voice {
+  background: rgba(99, 102, 241, 0.16);
   color: var(--ink-violet-5);
 }
 
@@ -53897,6 +53910,14 @@ a.ins-export-opt:focus-visible {
 
 .ins-split-fill.is-costs {
   background: var(--accent);
+}
+
+.ins-split-fill.is-materials {
+  background: #f59e0b;
+}
+
+.ins-split-fill.is-labor {
+  background: #6366f1;
 }
 
 .ins-split-fill.is-profit {

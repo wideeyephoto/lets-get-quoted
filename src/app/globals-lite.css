@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: b4b4d75e1b7b0d66
+   source-sha256: 467a2514447d0c48
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -25178,6 +25178,41 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
   font-weight: 400;
 }
 
+.ins-compare {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--mute-t60);
+}
+
+.ins-compare:hover {
+  color: var(--text);
+}
+
+.ins-compare-track {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t16);
+  background: rgba(var(--tint), 0.12);
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ins-compare-thumb {
+  position: absolute;
+  top: 1px;
+  left: 1px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+
 .ins-compare.is-on {
   color: var(--text);
 }
@@ -25460,6 +25495,14 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
   background: var(--accent);
 }
 
+.ins-dot.is-materials {
+  background: #f59e0b;
+}
+
+.ins-dot.is-labor {
+  background: #6366f1;
+}
+
 .ins-dot.is-profit {
   background: #4ade80;
 }
@@ -25496,6 +25539,11 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
 
 .ins-chip.is-source {
   background: rgba(167, 139, 250, 0.16);
+  color: var(--ink-violet-5);
+}
+
+.ins-chip.is-voice {
+  background: rgba(99, 102, 241, 0.16);
   color: var(--ink-violet-5);
 }
 
@@ -25747,6 +25795,14 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
 
 .ins-split-fill.is-costs {
   background: var(--accent);
+}
+
+.ins-split-fill.is-materials {
+  background: #f59e0b;
+}
+
+.ins-split-fill.is-labor {
+  background: #6366f1;
 }
 
 .ins-split-fill.is-profit {

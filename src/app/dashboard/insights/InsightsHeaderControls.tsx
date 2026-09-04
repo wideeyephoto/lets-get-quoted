@@ -34,7 +34,11 @@ export default function InsightsHeaderControls({
   searchParams: Record<string, string | string[] | undefined>;
   basePath?: string;
 }) {
-  const compareOn = str(searchParams.compare) === 'prev';
+  const compareMode = str(searchParams.compare);
+  const isPrev = compareMode === 'prev';
+  const isYoY = compareMode === 'yoy';
+  const compareOn = isPrev || isYoY;
+
   // Every control here is a link back to THIS page with different params, so it
   // has to know which page it is on. Hardcoded, the demo's period buttons would
   // navigate a logged-out visitor into /dashboard and out to /login.
@@ -62,16 +66,8 @@ export default function InsightsHeaderControls({
     .filter(([key, value]) => value && key !== 'window' && key !== 'from' && key !== 'to');
 
   const presetHref = (key: string) => hrefWith({ window: key, from: null, to: null });
-  const compareHref = compareOn ? hrefWith({ compare: null }) : hrefWith({ compare: 'prev' });
 
-  // Active-filter chips surface the two applied states a glance at the tabs
-  // doesn't already show — a custom date range and the comparison overlay — each
-  // as its own dismiss link. (A non-default preset needs no chip: its tab is lit.)
-  // "Reset all" clears range, comparison and preset back to the default view. The
-  // date/lead-source/job-status filters the mockup sketches are deliberately not
-  // here — leads and jobs are the only tables that carry a source, so a
-  // categorical filter can't re-scope payments, customers, MRR or marketing
-  // without inventing attribution; that omission is called out in the report.
+  // Active-filter chips surface the applied states.
   const chips: Array<{ label: string; href: string; removeLabel: string }> = [];
   if (period.custom) {
     chips.push({
@@ -80,11 +76,17 @@ export default function InsightsHeaderControls({
       removeLabel: 'Clear the custom date range and return to the last 90 days',
     });
   }
-  if (compareOn) {
+  if (isPrev) {
     chips.push({
       label: 'Compared to previous period',
       href: hrefWith({ compare: null }),
-      removeLabel: 'Turn off comparison to the previous period',
+      removeLabel: 'Turn off comparison',
+    });
+  } else if (isYoY) {
+    chips.push({
+      label: 'Compared to same period last year (YoY)',
+      href: hrefWith({ compare: null }),
+      removeLabel: 'Turn off YoY comparison',
     });
   }
 
@@ -126,20 +128,53 @@ export default function InsightsHeaderControls({
         </form>
       </div>
 
-      <Link
-        href={compareHref}
-        className={`ins-compare${compareOn ? ' is-on' : ''}`}
-        aria-label={
-          compareOn
-            ? 'Comparison to the previous period is on. Activate to turn it off.'
-            : 'Compare to the previous period. Activate to turn it on.'
-        }
-      >
-        <span className="ins-compare-track" aria-hidden="true">
-          <span className="ins-compare-thumb" />
-        </span>
-        <span>Compare to previous period</span>
-      </Link>
+      <div className="ins-compare-group" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+        <span className="ins-figure-label" style={{ margin: 0 }}>Compare:</span>
+        <div style={{ display: 'inline-flex', background: 'rgba(0,0,0,0.04)', padding: '2px', borderRadius: '6px', fontSize: '0.82rem' }}>
+          <Link
+            href={hrefWith({ compare: null })}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              background: !compareOn ? '#fff' : 'transparent',
+              fontWeight: !compareOn ? 600 : 400,
+              color: !compareOn ? '#111' : '#666',
+              boxShadow: !compareOn ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+            }}
+          >
+            Off
+          </Link>
+          <Link
+            href={hrefWith({ compare: 'prev' })}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              background: isPrev ? '#fff' : 'transparent',
+              fontWeight: isPrev ? 600 : 400,
+              color: isPrev ? '#111' : '#666',
+              boxShadow: isPrev ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+            }}
+          >
+            Prior period
+          </Link>
+          <Link
+            href={hrefWith({ compare: 'yoy' })}
+            style={{
+              padding: '4px 10px',
+              borderRadius: '4px',
+              textDecoration: 'none',
+              background: isYoY ? '#fff' : 'transparent',
+              fontWeight: isYoY ? 600 : 400,
+              color: isYoY ? '#111' : '#666',
+              boxShadow: isYoY ? '0 1px 2px rgba(0,0,0,0.08)' : 'none',
+            }}
+          >
+            Prior year (YoY)
+          </Link>
+        </div>
+      </div>
 
       {chips.length > 0 ? (
         <div className="ins-active-filters">
