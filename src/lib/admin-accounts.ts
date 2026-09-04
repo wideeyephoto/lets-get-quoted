@@ -37,6 +37,7 @@ type AdminAccountBaseRow = {
   suspended_at: string | null;
   suspended_reason: string | null;
   suspended_by: string | null;
+  legal_hold?: boolean | null;
   created_at: string;
   test_marker: string | null;
 };
@@ -47,7 +48,7 @@ export type AdminAccountRow = AdminAccountBaseRow & {
 };
 
 const ACCOUNT_LIST_COLUMNS =
-  'id, account_number, business_name, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at, test_marker';
+  'id, account_number, business_name, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, legal_hold, created_at, test_marker';
 
 const ADMIN_ENTITLEMENT_COLUMNS =
   'account_id, plan_code, billing_interval, billing_status, entitlement_state, catalog_version, platform_fee_bps, period_start, period_end, version, effective_at, updated_at';

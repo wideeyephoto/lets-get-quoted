@@ -16,6 +16,8 @@ import {
   signOutAllSessionsAction,
   setAccountSyntheticAction,
   closeAndAnonymizeAccountAction,
+  setLegalHoldAction,
+  removeLegalHoldAction,
 } from './actions';
 
 function ConfirmSubmit({ phrase, label, danger = false }: { phrase: string; label: string; danger?: boolean }) {
@@ -50,6 +52,7 @@ export default function AccountActions({
   businessName,
   payoutsRestricted,
   synthetic,
+  legalHold = false,
   role,
 }: {
   accountId: string;
@@ -58,6 +61,7 @@ export default function AccountActions({
   businessName: string;
   payoutsRestricted: boolean;
   synthetic: boolean;
+  legalHold?: boolean;
   role: StaffRole;
 }) {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -117,6 +121,27 @@ export default function AccountActions({
                     <input id="quick-stop-reason" className={styles.input} name="reason" required minLength={4} placeholder="Reason for locking" />
                   </div>
                   <button type="submit" className="btn secondary">Lock Quick Stop</button>
+                </form>
+              )}
+
+              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
+
+              {/* Legal Hold */}
+              {legalHold ? (
+                <form action={removeLegalHoldAction.bind(null, accountId)} className={styles.formStack}>
+                  <label htmlFor="lift-legal-hold-reason" className={styles.formLabel}>
+                    ⚖️ Account is under active Legal Hold (all deletions, purges, and automated closures are blocked)
+                  </label>
+                  <input id="lift-legal-hold-reason" className={styles.input} name="reason" required minLength={4} placeholder="Reason for lifting legal hold" />
+                  <button type="submit" className="btn primary">Lift legal hold</button>
+                </form>
+              ) : (
+                <form action={setLegalHoldAction.bind(null, accountId)} className={styles.formStack}>
+                  <label htmlFor="set-legal-hold-reason" className={styles.formLabel}>
+                    Place account on Legal Hold (blocks data disposal, trash purges, and account closures)
+                  </label>
+                  <input id="set-legal-hold-reason" className={styles.input} name="reason" required minLength={4} placeholder="Reason for legal hold (e.g. pending litigation / audit)" />
+                  <ConfirmSubmit phrase="LEGAL_HOLD" label="Place legal hold" danger />
                 </form>
               )}
             </div>

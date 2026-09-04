@@ -73,4 +73,16 @@ describe('privacy request error handling', () => {
       'Privacy request not found or resolution failed',
     );
   });
+
+  it('computes exact 30-day statutory legal deadlines', async () => {
+    const { STATUTORY_PRIVACY_DEADLINE_DAYS, privacyRequestDeadline } = await import('@/lib/privacy-requests');
+    expect(STATUTORY_PRIVACY_DEADLINE_DAYS).toBe(30);
+
+    const createdAt = '2026-08-01T12:00:00.000Z';
+    const deadline = privacyRequestDeadline(createdAt);
+    const diffMs = new Date(deadline).getTime() - new Date(createdAt).getTime();
+    expect(diffMs).toBe(30 * 24 * 60 * 60 * 1000);
+    expect(deadline).toBe('2026-08-31T12:00:00.000Z');
+  });
 });
+

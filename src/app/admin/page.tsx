@@ -158,6 +158,7 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
     ...data.disputes.map((d) => d.account_id),
     ...data.dunningPayments.map((d) => d.account_id),
     ...data.overdueQuickStops.map((q) => q.account_id),
+    ...data.privacyRequests.map((p) => p.account_id),
   ].filter(Boolean))];
   const nameMap = new Map<string, { business_name: string | null; account_number: number | null }>();
   if (acctIds.length) {
@@ -179,6 +180,22 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
     subtitle: row.description ?? undefined,
     age: relativeAge(row.started_at, now),
   }));
+
+  const privacyRequestItems: AlertItem[] = data.privacyRequests.map((row) => {
+    const severity = severityForDeadline(row.deadline_at, now);
+    return {
+      key: row.id,
+      severity,
+      status: severity === 'bad' ? 'Overdue' : 'Open',
+      title: `${cap(row.kind)} request`,
+      subtitle: row.details ?? undefined,
+      owner: acctName(row.account_id),
+      ownerHref: `/admin/accounts/${row.account_id}`,
+      age: relativeAge(row.deadline_at, now),
+      actionLabel: 'View queue',
+      actionHref: '/admin/privacy-requests',
+    };
+  });
 
   const myCaseItems: AlertItem[] = data.myCases.map((row) => ({
     key: row.id,
@@ -356,6 +373,14 @@ export default async function AdminCommandCenterPage({ searchParams: searchParam
       empty: 'No recent incidents or releases have been recorded.',
       viewAllHref: '/admin/incidents',
       viewAllLabel: 'Releases & incidents',
+    }),
+    boardCard({
+      key: 'privacyRequests',
+      title: 'Privacy requests (DSAR)',
+      items: privacyRequestItems,
+      empty: 'No open privacy requests. 30-day statutory clock active when logged.',
+      viewAllHref: '/admin/privacy-requests',
+      viewAllLabel: 'Privacy requests queue',
     }),
     boardCard({ key: 'myCases', title: 'Assigned to you', items: myCaseItems, empty: 'No cases assigned to you.', quietHref: '/admin/cases' }),
     // The empty message says what the card COVERS, not just that it is empty.

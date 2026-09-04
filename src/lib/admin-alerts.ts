@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isMissingPaymentChargeModelColumnError } from '@/lib/payments';
+import { privacyRequestDeadline, type PrivacyRequest } from '@/lib/privacy-requests';
 
 /**
  * Best-effort queries still need an honest UI state.  Callers that render a
@@ -19,6 +20,7 @@ export type AdminSignalKey =
   | 'failedEmails'
   | 'webhookFailures'
   | 'incidents'
+  | 'privacyRequests'
   | 'casesNearSla'
   | 'myCases';
 
@@ -559,4 +561,30 @@ export async function getMyAssignedCases(admin: SupabaseClient, staffEmail: stri
     return [];
   }
   return (data ?? []) as SupportCaseRow[];
+}
+
+export type OpenPrivacyRequestRow = PrivacyRequest & {
+  deadline_at: string;
+};
+
+export async function getOpenPrivacyRequests(
+  admin: SupabaseClient,
+  opts?: SignalOptions & { limit?: number },
+): Promise<OpenPrivacyRequestRow[]> {
+  const { data, error } = await admin
+    .from('privacy_requests')
+    .select('id, account_id, kind, status, details, created_by, resolved_at, resolved_by, created_at')
+    .eq('status', 'open')
+    .order('created_at', { ascending: true })
+    .limit(opts?.limit ?? 20);
+
+  if (error) {
+    signalFailed(opts?.diagnostics, 'privacyRequests', 'getOpenPrivacyRequests', error);
+    return [];
+  }
+
+  return (data ?? []).map((r) => ({
+    ...(r as PrivacyRequest),
+    deadline_at: privacyRequestDeadline(r.created_at),
+  }));
 }

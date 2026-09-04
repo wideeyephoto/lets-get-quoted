@@ -138,6 +138,78 @@ export async function resetVerificationAction(accountId: string, formData: FormD
   backTo(accountId, 'done=reset_verification');
 }
 
+export async function setLegalHoldAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
+  const { admin } = ctx;
+  const reason = actionReason(accountId, formData);
+  requireConfirmation(accountId, formData, 'LEGAL_HOLD');
+
+  const { error: updateError } = await admin
+    .from('accounts')
+    .update({ legal_hold: true })
+    .eq('id', accountId);
+
+  if (updateError) {
+    console.error('setLegalHoldAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
+
+  // Also prevent trash purge by setting legal_hold on recoverable_deletions
+  const { error: trashError } = await admin
+    .from('recoverable_deletions')
+    .update({ legal_hold: true })
+    .eq('account_id', accountId)
+    .eq('status', 'trashed');
+  if (trashError) {
+    console.warn('setLegalHold recoverable_deletions update failed:', trashError);
+  }
+
+  await logAdminAction(admin, ctx, {
+    action: 'account_legal_hold_set',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    reason,
+  });
+  revalidatePath(`/admin/accounts/${accountId}`);
+  backTo(accountId, 'done=legal_hold_set');
+}
+
+export async function removeLegalHoldAction(accountId: string, formData: FormData) {
+  const ctx = await requireMfaPermission('account.enforce');
+  const { admin } = ctx;
+  const reason = actionReason(accountId, formData);
+
+  const { error: updateError } = await admin
+    .from('accounts')
+    .update({ legal_hold: false })
+    .eq('id', accountId);
+
+  if (updateError) {
+    console.error('removeLegalHoldAction failed:', updateError);
+    backTo(accountId, 'error=update_failed');
+  }
+
+  // Release legal_hold on recoverable_deletions
+  const { error: trashError } = await admin
+    .from('recoverable_deletions')
+    .update({ legal_hold: false })
+    .eq('account_id', accountId);
+  if (trashError) {
+    console.warn('removeLegalHold recoverable_deletions update failed:', trashError);
+  }
+
+  await logAdminAction(admin, ctx, {
+    action: 'account_legal_hold_lift',
+    accountId,
+    targetType: 'account',
+    targetId: accountId,
+    reason,
+  });
+  revalidatePath(`/admin/accounts/${accountId}`);
+  backTo(accountId, 'done=legal_hold_lifted');
+}
+
 export async function restrictPayoutsAction(accountId: string, formData: FormData) {
   const ctx = await requireMfaPermission('money.payouts');
   const { admin } = ctx;

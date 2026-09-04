@@ -59,6 +59,8 @@ const DONE_MESSAGES: Record<string, string> = {
   refunded: 'Refund issued.',
   marked_synthetic: 'Account marked synthetic and removed from production reporting.',
   marked_production: 'Account returned to production reporting.',
+  legal_hold_set: 'Legal hold placed on this account. Automated data purges, closures, and dispositions are blocked.',
+  legal_hold_lifted: 'Legal hold lifted. Account returned to standard data retention and disposal schedules.',
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -186,6 +188,7 @@ export default async function AdminAccountDetailPage({
   });
 
   const suspended = Boolean(a.suspended_at);
+  const legalHold = Boolean(a.legal_hold);
   const lockedUntil =
     a.extra_stop_locked_until && !isNaN(new Date(String(a.extra_stop_locked_until)).getTime()) && new Date(String(a.extra_stop_locked_until)).getTime() > Date.now()
       ? String(a.extra_stop_locked_until)
@@ -1448,6 +1451,12 @@ export default async function AdminAccountDetailPage({
           </div>
         </div>
       )}
+      {legalHold && (
+        <div className={`${styles.banner} ${styles.err}`} style={{ fontWeight: 600, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #ef4444' }}>
+          <span>⚖️ LEGAL HOLD ACTIVE — Automated data purges, closures, and dispositions are blocked for this account.</span>
+          <span style={{ fontSize: '0.85rem', opacity: 0.9 }}>Governed by statutory compliance & audit standards</span>
+        </div>
+      )}
       {irreversibleWork.recoverableDeletions.length > 0 && (
         <div className={`${styles.banner} ${styles.warn}`} style={{ borderLeft: '4px solid #fbbf24' }}>
           <strong>🗑️ {irreversibleWork.recoverableDeletions.length} item(s) in trash bin:</strong>{' '}
@@ -1606,6 +1615,7 @@ export default async function AdminAccountDetailPage({
                 role={role}
                 accountId={params.id}
                 suspended={suspended}
+                legalHold={legalHold}
                 quickStopLockedUntil={lockedUntil}
                 businessName={displayName}
                 payoutsRestricted={payoutsRestricted}
@@ -1642,6 +1652,7 @@ export default async function AdminAccountDetailPage({
                 role={role}
                 accountId={params.id}
                 suspended={suspended}
+                legalHold={legalHold}
                 quickStopLockedUntil={lockedUntil}
                 businessName={displayName}
                 payoutsRestricted={payoutsRestricted}

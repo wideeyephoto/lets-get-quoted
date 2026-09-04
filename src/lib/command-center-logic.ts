@@ -109,6 +109,7 @@ export const CARD_KEYS = [
   // running, because a job that stops running logs nothing.
   'cronTrouble',
   'incidents',
+  'privacyRequests',
   'myCases',
   'casesNearSla',
   'disputes',
@@ -123,13 +124,13 @@ export const CARD_KEYS = [
 ] as const;
 export type CardKey = typeof CARD_KEYS[number];
 
-const SUPER_ADMIN_ORDER: CardKey[] = ['cronTrouble', 'incidents', 'myCases', 'disputes', 'suspendedAccounts', 'overdueQuickStops', 'casesNearSla', 'notOnboarded', 'dunning', 'pausedPayouts', 'failedSms', 'failedEmails', 'webhookFailures'];
+const SUPER_ADMIN_ORDER: CardKey[] = ['cronTrouble', 'incidents', 'privacyRequests', 'myCases', 'disputes', 'suspendedAccounts', 'overdueQuickStops', 'casesNearSla', 'notOnboarded', 'dunning', 'pausedPayouts', 'failedSms', 'failedEmails', 'webhookFailures'];
 // Support sees their own queue first — a broken cron is not theirs to fix, so
 // it sits below the work that is, but above the plumbing cards.
-const SUPPORT_ORDER: CardKey[] = ['myCases', 'casesNearSla', 'overdueQuickStops', 'suspendedAccounts', 'disputes', 'notOnboarded', 'cronTrouble', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'];
+const SUPPORT_ORDER: CardKey[] = ['myCases', 'casesNearSla', 'privacyRequests', 'overdueQuickStops', 'suspendedAccounts', 'disputes', 'notOnboarded', 'cronTrouble', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'];
 // High for finance: three of the jobs collect money, and a stalled dunning or
 // recurring run is a revenue problem before it is an engineering one.
-const FINANCE_ORDER: CardKey[] = ['cronTrouble', 'disputes', 'dunning', 'pausedPayouts', 'suspendedAccounts', 'notOnboarded', 'incidents', 'myCases', 'casesNearSla', 'overdueQuickStops', 'failedSms', 'failedEmails', 'webhookFailures'];
+const FINANCE_ORDER: CardKey[] = ['cronTrouble', 'disputes', 'dunning', 'pausedPayouts', 'suspendedAccounts', 'privacyRequests', 'notOnboarded', 'incidents', 'myCases', 'casesNearSla', 'overdueQuickStops', 'failedSms', 'failedEmails', 'webhookFailures'];
 
 const ROLE_DEFAULT_ORDER: Record<StaffRole, CardKey[]> = {
   super_admin: SUPER_ADMIN_ORDER,
@@ -137,9 +138,9 @@ const ROLE_DEFAULT_ORDER: Record<StaffRole, CardKey[]> = {
   finance: FINANCE_ORDER,
   // Enforcement first: what somebody on risk opens the console to look at is
   // who has been suspended and which Quick Stops went wrong.
-  risk: ['suspendedAccounts', 'overdueQuickStops', 'disputes', 'myCases', 'casesNearSla', 'notOnboarded', 'cronTrouble', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'],
+  risk: ['suspendedAccounts', 'privacyRequests', 'overdueQuickStops', 'disputes', 'myCases', 'casesNearSla', 'notOnboarded', 'cronTrouble', 'incidents', 'failedSms', 'failedEmails', 'dunning', 'pausedPayouts', 'webhookFailures'],
   // The plumbing, then everything else. Ops owns the crons, so it leads.
-  ops: ['cronTrouble', 'incidents', 'webhookFailures', 'failedEmails', 'failedSms', 'dunning', 'pausedPayouts', 'disputes', 'suspendedAccounts', 'overdueQuickStops', 'myCases', 'casesNearSla', 'notOnboarded'],
+  ops: ['cronTrouble', 'incidents', 'webhookFailures', 'failedEmails', 'failedSms', 'dunning', 'pausedPayouts', 'disputes', 'suspendedAccounts', 'privacyRequests', 'overdueQuickStops', 'myCases', 'casesNearSla', 'notOnboarded'],
   read_only: SUPER_ADMIN_ORDER,
 };
 

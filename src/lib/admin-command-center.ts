@@ -15,6 +15,7 @@ import {
   getCasesNearSla,
   getCasesWithoutSlaCount,
   getMyAssignedCases,
+  getOpenPrivacyRequests,
   createAdminSignalDiagnostics,
   type AdminSignalKey,
   type DisputeRow,
@@ -28,6 +29,7 @@ import {
   type WebhookFailureRow,
   type PlatformIncidentRow,
   type SupportCaseRow,
+  type OpenPrivacyRequestRow,
 } from '@/lib/admin-alerts';
 import { rangeWindow, computeTrend, type DateRange } from '@/lib/command-center-logic';
 import { fetchFeeWindow } from '@/lib/platform-fees';
@@ -64,6 +66,7 @@ export type CommandCenterData = {
   failedEmails: FailedEmailEventRow[];
   webhookFailures: WebhookFailureRow[];
   incidents: PlatformIncidentRow[];
+  privacyRequests: OpenPrivacyRequestRow[];
   casesNearSla: SupportCaseRow[];
   /** Open cases the SLA card cannot see, because they have no SLA set. */
   casesWithoutSla: number;
@@ -148,6 +151,7 @@ export async function buildCommandCenterData(
     failedEmails,
     webhookFailures,
     incidents,
+    privacyRequests,
     casesNearSla,
     casesWithoutSla,
     myCases,
@@ -166,6 +170,7 @@ export async function buildCommandCenterData(
     getFailedEmailEvents(admin, withDiagnostics),
     getUnresolvedWebhookFailures(admin, withDiagnostics),
     getRecentIncidents(admin, withDiagnostics),
+    getOpenPrivacyRequests(admin, withDiagnostics),
     getCasesNearSla(admin, { now, ...withDiagnostics }),
     getCasesWithoutSlaCount(admin, withDiagnostics),
     getMyAssignedCases(admin, opts.staffEmail, withDiagnostics),
@@ -183,7 +188,7 @@ export async function buildCommandCenterData(
 
   return {
     range, metrics, disputes, pausedPayouts, suspendedAccounts, notOnboardedCount, notOnboardedAccounts,
-    dunningPayments, overdueQuickStops, failedSms, failedEmails, webhookFailures, incidents, casesNearSla,
+    dunningPayments, overdueQuickStops, failedSms, failedEmails, webhookFailures, incidents, privacyRequests, casesNearSla,
     casesWithoutSla, myCases, cronTrouble, unavailableSignals: diagnostics.failed,
   };
 }
