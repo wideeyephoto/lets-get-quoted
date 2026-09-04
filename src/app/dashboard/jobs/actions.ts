@@ -645,6 +645,7 @@ export async function scheduleJobAction(jobId: string, formData: FormData) {
 export async function dispatchJobScheduleAction(params: {
   jobId: string;
   dateKey?: string | null;
+  scheduledUntil?: string | null;
   scheduledTime?: string | null;
   estimatedHours?: number | null;
   crewId?: string | null;
@@ -653,6 +654,14 @@ export async function dispatchJobScheduleAction(params: {
 
   const updates: Record<string, unknown> = {};
   if (params.dateKey !== undefined) updates.scheduled_for = params.dateKey;
+  if (params.scheduledUntil !== undefined) {
+    const startDate = params.dateKey;
+    if (params.scheduledUntil && startDate && params.scheduledUntil <= startDate) {
+      updates.scheduled_until = null;
+    } else {
+      updates.scheduled_until = params.scheduledUntil;
+    }
+  }
   if (params.scheduledTime !== undefined) updates.scheduled_time = params.scheduledTime;
   if (params.estimatedHours !== undefined) updates.estimated_hours = params.estimatedHours;
 

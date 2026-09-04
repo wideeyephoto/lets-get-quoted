@@ -16739,6 +16739,7 @@ li+li {
    read. The rows grow with them, which a scrolling view can afford — and the
    labels the bars now carry needed the height anyway. */
 .calendar-timeline-bar {
+  position: relative;
   display: flex;
   align-items: center;
   min-width: 0;
@@ -16867,6 +16868,204 @@ li+li {
 .calendar-timeline-bar:focus-visible {
   outline: 2px solid rgba(255, 176, 120, 0.85);
   outline-offset: 2px;
+}
+
+.calendar-timeline-bar.resizing {
+  z-index: 10;
+  box-shadow: 0 0 0 2px var(--accent, #ff7a21), 0 8px 24px rgba(0, 0, 0, 0.45);
+  filter: brightness(1.22);
+  cursor: ew-resize !important;
+}
+
+/* Edge handles for lengthening and shortening jobs */
+.calendar-timeline-edge-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: ew-resize;
+  touch-action: none;
+  z-index: 5;
+  opacity: 0;
+  transition: opacity 0.15s ease, background 0.15s ease;
+  user-select: none;
+}
+
+.calendar-timeline-bar:hover .calendar-timeline-edge-handle,
+.calendar-timeline-edge-handle:focus-visible,
+.calendar-timeline-edge-handle:hover,
+.calendar-timeline-edge-handle.active {
+  opacity: 1;
+}
+
+.calendar-timeline-edge-handle.left {
+  left: 0;
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+
+.calendar-timeline-edge-handle.right {
+  right: 0;
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+
+.calendar-timeline-edge-handle:hover,
+.calendar-timeline-edge-handle.active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.calendar-timeline-edge-grip {
+  width: 4px;
+  height: 18px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.75;
+  pointer-events: none;
+  transition: transform 0.12s ease, opacity 0.12s ease, background 0.12s ease;
+}
+
+.calendar-timeline-edge-handle:hover .calendar-timeline-edge-grip,
+.calendar-timeline-edge-handle.active .calendar-timeline-edge-grip {
+  opacity: 1;
+  background: var(--accent, #ff7a21);
+  transform: scaleY(1.2);
+}
+
+/* Floating quick action buttons for shortening / lengthening */
+.calendar-timeline-edge-actions {
+  position: absolute;
+  bottom: calc(100% + 5px);
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  background: var(--bg-elevated, #1c1c1f);
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.22));
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(4px);
+  transition: opacity 0.14s ease, transform 0.14s ease;
+  white-space: nowrap;
+  z-index: 30;
+}
+
+.calendar-timeline-edge-handle.left .calendar-timeline-edge-actions {
+  left: -2px;
+}
+
+.calendar-timeline-edge-handle.right .calendar-timeline-edge-actions {
+  right: -2px;
+}
+
+.calendar-timeline-edge-handle:hover .calendar-timeline-edge-actions,
+.calendar-timeline-edge-handle:focus-within .calendar-timeline-edge-actions,
+.calendar-timeline-edge-actions.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.calendar-timeline-edge-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  padding: 0 7px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text, #fff);
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.calendar-timeline-edge-btn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.25);
+  color: var(--accent, #ff7a21);
+}
+
+.calendar-timeline-edge-btn:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21);
+  outline-offset: 1px;
+}
+
+.calendar-timeline-edge-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Floating indicator while dragging */
+.calendar-timeline-drag-badge {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-elevated, #18181b);
+  color: #fff;
+  border: 1px solid var(--accent, #ff7a21);
+  border-radius: 7px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  font-weight: 750;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 35;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.calendar-timeline-drag-badge strong {
+  color: var(--accent, #ff7a21);
+}
+
+/* Undo Toast */
+.calendar-timeline-undo-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-elevated, #1c1c1f);
+  color: var(--text, #fff);
+  border: 1px solid var(--edge-t14, rgba(255, 255, 255, 0.18));
+  border-radius: 10px;
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.8125rem;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  z-index: 9999;
+  animation: slideUp 0.18s ease-out;
+}
+
+.calendar-timeline-undo-btn {
+  border: none;
+  border-radius: 6px;
+  background: var(--accent, #ff7a21);
+  color: #fff;
+  padding: 4px 12px;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 750;
+  cursor: pointer;
+  transition: opacity 0.12s ease;
+}
+
+.calendar-timeline-undo-btn:hover {
+  opacity: 0.9;
 }
 
 @media (max-width: 720px) {

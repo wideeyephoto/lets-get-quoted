@@ -21,7 +21,7 @@ import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
 import type { RecurringFrequency } from '@/lib/recurring';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
-import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
+import { dispatchJobScheduleAction, removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
 /* Drag is no longer coordinated here. Each surface that can be a drop target
    — the timeline columns, the capacity cells, the crew lanes — calls
    useScheduleDrag itself, because they are the ones that own a date. */
@@ -740,6 +740,44 @@ export default function ScheduleCalendar({
     return week.length > 0 ? week : monthDays;
   }, [monthDays, timelineZoom, weekDayKeys]);
 
+  const columnByDate = useMemo(
+    () => new Map(timelineDays.map((cell, index) => [cell.dateKey, index])),
+    [timelineDays],
+  );
+
+  // Optimistic date overrides for Project Timeline edges
+  const [timelineOverrides, setTimelineOverrides] = useState<Record<string, {
+    startDateKey: string;
+    endDateKey: string;
+  }>>({});
+
+  // Reset optimistic overrides whenever fresh server data arrives in `jobs`
+  useEffect(() => {
+    setTimelineOverrides({});
+  }, [jobs]);
+
+  // Live drag state during active edge resizing
+  const [resizingJob, setResizingJob] = useState<{
+    jobId: string;
+    edge: 'start' | 'end';
+    first: number;
+    last: number;
+    startDateKey: string;
+    endDateKey: string;
+  } | null>(null);
+
+  // Undo notification state
+  const [timelineUndo, setTimelineUndo] = useState<{
+    jobId: string;
+    jobName: string;
+    previousStartDateKey: string;
+    previousEndDateKey: string;
+    newStartDateKey: string;
+    newEndDateKey: string;
+  } | null>(null);
+
+  const timelineGridRef = useRef<HTMLDivElement>(null);
+
   /**
    * One bar per job, for work that RUNS — not for everything in the month.
    *
@@ -752,8 +790,7 @@ export default function ScheduleCalendar({
    * `spans` is the honest population; `rows` is what gets drawn.
    */
   const timelineRows = useMemo(() => {
-    const columnByDate = new Map(timelineDays.map((cell, index) => [cell.dateKey, index]));
-    const byJob = new Map<string, { job: CalendarJob; first: number; last: number }>();
+    const byJob = new Map<string, { job: CalendarJob; first: number; last: number; startDateKey: string; endDateKey: string }>();
 
     for (const job of jobs) {
       const column = columnByDate.get(job.scheduled_for);
@@ -762,27 +799,218 @@ export default function ScheduleCalendar({
       if (column === undefined) continue;
       const row = byJob.get(job.id);
       if (!row) {
-        byJob.set(job.id, { job, first: column, last: column });
+        byJob.set(job.id, {
+          job,
+          first: column,
+          last: column,
+          startDateKey: job.scheduled_for,
+          endDateKey: job.scheduled_until || job.scheduled_for,
+        });
         continue;
       }
       // Keep the earliest occurrence as the row's representative so its time,
       // and the popover it opens, belong to day one.
       if (column < row.first) {
         row.first = column;
+        row.startDateKey = job.scheduled_for;
         row.job = job;
       }
-      if (column > row.last) row.last = column;
+      if (column > row.last) {
+        row.last = column;
+        if (!job.scheduled_until) {
+          row.endDateKey = job.scheduled_for;
+        }
+      }
+      if (job.scheduled_until) {
+        row.endDateKey = job.scheduled_until;
+      }
     }
 
     return [...byJob.values()]
-      /* Two days on the grid, or an entered end date. The second half matters
-         at a month boundary: a job running Jan 30 – Feb 4 has two columns in
-         January and four in February, and it is one project in both. */
-      .filter(({ first, last, job }) => last > first || Boolean(job.scheduled_until))
+      /* Two days on the grid, or an entered end date, or currently overridden. */
+      .filter(({ first, last, job }) => last > first || Boolean(job.scheduled_until) || Boolean(timelineOverrides[job.id]))
       .sort(
         (a, b) => a.first - b.first || b.last - b.first - (a.last - a.first) || a.job.client_name.localeCompare(b.job.client_name),
       );
-  }, [jobs, timelineDays]);
+  }, [jobs, columnByDate, timelineOverrides]);
+
+  const applyTimelineDateChange = useCallback((
+    job: CalendarJob,
+    newStartDateKey: string,
+    newEndDateKey: string,
+    previousStartDateKey: string,
+    previousEndDateKey: string,
+  ) => {
+    setTimelineOverrides((prev) => ({
+      ...prev,
+      [job.id]: {
+        startDateKey: newStartDateKey,
+        endDateKey: newEndDateKey,
+      },
+    }));
+
+    setTimelineUndo({
+      jobId: job.id,
+      jobName: job.client_name,
+      previousStartDateKey,
+      previousEndDateKey,
+      newStartDateKey,
+      newEndDateKey,
+    });
+
+    if (readOnly) return;
+
+    startTransition(async () => {
+      try {
+        const scheduledUntil = newStartDateKey === newEndDateKey ? null : newEndDateKey;
+        await dispatchJobScheduleAction({
+          jobId: job.id,
+          dateKey: newStartDateKey,
+          scheduledUntil,
+        });
+        router.refresh();
+      } catch (err) {
+        console.error('Failed to update job timeline schedule', err);
+      }
+    });
+  }, [readOnly, router]);
+
+  const handleEdgeResizePointerDown = useCallback((
+    job: CalendarJob,
+    edge: 'start' | 'end',
+    currentFirst: number,
+    currentLast: number,
+    currentStartDateKey: string,
+    currentEndDateKey: string,
+    event: React.PointerEvent<HTMLElement>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const startX = event.clientX;
+    const gridEl = timelineGridRef.current;
+    if (!gridEl) return;
+
+    const headEls = Array.from(gridEl.querySelectorAll<HTMLElement>('.calendar-timeline-head'));
+    if (headEls.length === 0) return;
+
+    const columnRects = headEls.map((el) => el.getBoundingClientRect());
+
+    let activeFirst = currentFirst;
+    let activeLast = currentLast;
+    let activeStartDateKey = currentStartDateKey;
+    let activeEndDateKey = currentEndDateKey;
+    let didMove = false;
+
+    const getColumnIndexAtX = (clientX: number): number => {
+      for (let i = 0; i < columnRects.length; i++) {
+        const rect = columnRects[i];
+        if (clientX >= rect.left && clientX <= rect.right) {
+          return i;
+        }
+      }
+      if (clientX < columnRects[0].left) return 0;
+      return columnRects.length - 1;
+    };
+
+    setResizingJob({
+      jobId: job.id,
+      edge,
+      first: currentFirst,
+      last: currentLast,
+      startDateKey: currentStartDateKey,
+      endDateKey: currentEndDateKey,
+    });
+
+    const onPointerMove = (e: PointerEvent) => {
+      if (Math.abs(e.clientX - startX) > 3) {
+        didMove = true;
+      }
+      const targetCol = getColumnIndexAtX(e.clientX);
+
+      if (edge === 'start') {
+        const nextFirst = Math.min(targetCol, currentLast);
+        activeFirst = nextFirst;
+        activeStartDateKey = timelineDays[nextFirst]?.dateKey ?? currentStartDateKey;
+        setResizingJob((prev) => prev ? {
+          ...prev,
+          first: nextFirst,
+          startDateKey: activeStartDateKey,
+        } : null);
+      } else {
+        const nextLast = Math.max(targetCol, currentFirst);
+        activeLast = nextLast;
+        activeEndDateKey = timelineDays[nextLast]?.dateKey ?? currentEndDateKey;
+        setResizingJob((prev) => prev ? {
+          ...prev,
+          last: nextLast,
+          endDateKey: activeEndDateKey,
+        } : null);
+      }
+    };
+
+    const onPointerUp = () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+
+      setResizingJob(null);
+
+      if (!didMove || (activeFirst === currentFirst && activeLast === currentLast)) {
+        return;
+      }
+
+      applyTimelineDateChange(
+        job,
+        activeStartDateKey,
+        activeEndDateKey,
+        currentStartDateKey,
+        currentEndDateKey
+      );
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  }, [timelineDays, applyTimelineDateChange]);
+
+  const handleStepDate = useCallback((
+    job: CalendarJob,
+    edge: 'start' | 'end',
+    delta: -1 | 1,
+    currentFirst: number,
+    currentLast: number,
+    currentStartDate: string,
+    currentEndDate: string,
+    event?: React.MouseEvent
+  ) => {
+    if (event) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
+
+    if (edge === 'start') {
+      const targetCol = currentFirst + delta;
+      if (delta === 1 && targetCol > currentLast) return;
+      let nextStart: string;
+      if (targetCol >= 0 && targetCol < timelineDays.length) {
+        nextStart = timelineDays[targetCol].dateKey;
+      } else {
+        nextStart = addDaysToDateKey(currentStartDate, delta);
+      }
+      applyTimelineDateChange(job, nextStart, currentEndDate, currentStartDate, currentEndDate);
+    } else {
+      const targetCol = currentLast + delta;
+      if (delta === -1 && targetCol < currentFirst) return;
+      let nextEnd: string;
+      if (targetCol >= 0 && targetCol < timelineDays.length) {
+        nextEnd = timelineDays[targetCol].dateKey;
+      } else {
+        nextEnd = addDaysToDateKey(currentEndDate, delta);
+      }
+      applyTimelineDateChange(job, currentStartDate, nextEnd, currentStartDate, currentEndDate);
+    }
+  }, [timelineDays, applyTimelineDateChange]);
 
   /**
    * Whether there is any multi-day work in the month at all.
@@ -1468,6 +1696,7 @@ export default function ScheduleCalendar({
           <div className="calendar-timeline-scroll">
             <div
               className="calendar-timeline"
+              ref={timelineGridRef}
               style={{
                 /* 34px, not 26. The bars carry their own labels now and a
                    two-day job is the shortest thing on this grid, so the
@@ -1507,8 +1736,32 @@ export default function ScheduleCalendar({
                   </span>
                 );
               })}
-              {timelineRows.map(({ job, first, last }, rowIndex) => {
-                const span = last - first + 1;
+              {timelineRows.map(({ job, first, last, startDateKey, endDateKey }, rowIndex) => {
+                const override = timelineOverrides[job.id];
+                const isResizing = resizingJob?.jobId === job.id;
+
+                const effectiveFirst = isResizing
+                  ? resizingJob.first
+                  : override && columnByDate.has(override.startDateKey)
+                    ? columnByDate.get(override.startDateKey)!
+                    : first;
+
+                const effectiveLast = isResizing
+                  ? resizingJob.last
+                  : override && columnByDate.has(override.endDateKey)
+                    ? columnByDate.get(override.endDateKey)!
+                    : last;
+
+                const effectiveStartDateKey = isResizing
+                  ? resizingJob.startDateKey
+                  : override?.startDateKey ?? startDateKey;
+
+                const effectiveEndDateKey = isResizing
+                  ? resizingJob.endDateKey
+                  : override?.endDateKey ?? (job.scheduled_until || endDateKey);
+
+                const span = Math.max(1, effectiveLast - effectiveFirst + 1);
+
                 return (
                   // Both cells pinned to the same explicit row. Auto-placement
                   // won't do it: the bar has an explicit column, and an
@@ -1519,44 +1772,156 @@ export default function ScheduleCalendar({
                     <span className="calendar-timeline-name" style={{ gridRow: rowIndex + 2, gridColumn: 1 }} title={job.client_name}>
                       {job.client_name}
                     </span>
-                    <button
-                      type="button"
-                      className={`calendar-timeline-bar status-${job.status} ${getBandColorClass(job.id)}`}
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      className={`calendar-timeline-bar status-${job.status} ${getBandColorClass(job.id)}${isResizing ? ' resizing' : ''}`}
                       // +2, not +1: column 1 is the job name.
-                      style={{ gridRow: rowIndex + 2, gridColumn: `${first + 2} / span ${span}` }}
+                      style={{ gridRow: rowIndex + 2, gridColumn: `${effectiveFirst + 2} / span ${span}` }}
                       title={[job.client_name, `${span} day${span === 1 ? '' : 's'}`, job.badge_label, job.value_label, job.hours_label, job.city_label].filter(Boolean).join(' · ')}
-                      onClick={() => openJobActions(job.occurrence_key)}
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('.calendar-timeline-edge-handle')) return;
+                        openJobActions(job.occurrence_key);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          if ((e.target as HTMLElement).closest('.calendar-timeline-edge-handle')) return;
+                          e.preventDefault();
+                          openJobActions(job.occurrence_key);
+                        }
+                      }}
                     >
-                      {/* EVERY BAR SAYS SOMETHING NOW. The old rule was that
-                          below three days a bar was a bare block with its label
-                          in the tooltip — and with one-day jobs on the grid that
-                          was most of them, so the view was a row of unlabeled
-                          rectangles you had to hover one at a time. The shortest
-                          bar here is two days at 68px, which holds "2 days"; the
-                          client's name and the value arrive as there is room for
-                          them. The name is also in column 1, so the bar losing
-                          it is not the same as it being unavailable.
+                      {/* Left edge resize handle */}
+                      <div
+                        role="separator"
+                        tabIndex={0}
+                        aria-orientation="vertical"
+                        aria-label={`Adjust start date for ${job.client_name}. Left arrow lengthens, right arrow shortens`}
+                        className={`calendar-timeline-edge-handle left${isResizing && resizingJob?.edge === 'start' ? ' active' : ''}`}
+                        onPointerDown={(e) => handleEdgeResizePointerDown(job, 'start', effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleStepDate(job, 'start', -1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey);
+                          } else if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleStepDate(job, 'start', 1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey);
+                          }
+                        }}
+                      >
+                        <div className="calendar-timeline-edge-grip" />
+                        <div className="calendar-timeline-edge-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="calendar-timeline-edge-btn"
+                            title="Lengthen: start 1 day earlier"
+                            onClick={(e) => handleStepDate(job, 'start', -1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey, e)}
+                          >
+                            ◀ Lengthen
+                          </button>
+                          <button
+                            type="button"
+                            className="calendar-timeline-edge-btn"
+                            disabled={span <= 1}
+                            title="Shorten: start 1 day later"
+                            onClick={(e) => handleStepDate(job, 'start', 1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey, e)}
+                          >
+                            Shorten ▶
+                          </button>
+                        </div>
+                      </div>
 
-                          WHICH PARTS SHOW IS A CONTAINER QUERY ON THE BAR, not a
-                          day count. A day count was right at one zoom and wrong
-                          at the other: three days is 102px across a month and
-                          286px across a week, and the week's version was hiding
-                          a name it had 190px of room for. The bar knows how wide
-                          it is; nothing else here does. */}
                       <span className="calendar-timeline-bar-label">
-                        {/* Shape before words: this bar's status was in its
-                            fill and nowhere else. */}
                         <span className="calendar-status-mark" aria-hidden="true">{STATUS_MARK[job.status] ?? ''}</span>
-                        <b>{span} days</b>
+                        <b>{span} day{span === 1 ? '' : 's'}</b>
                         <i>{job.short_name}</i>
                         {job.value_label ? <em>{job.value_label}</em> : null}
                       </span>
-                    </button>
+
+                      {/* Live dragging indicator badge */}
+                      {isResizing && (
+                        <div className="calendar-timeline-drag-badge">
+                          <span>{effectiveStartDateKey} – {effectiveEndDateKey}</span>
+                          <strong>{span} day{span === 1 ? '' : 's'}</strong>
+                        </div>
+                      )}
+
+                      {/* Right edge resize handle */}
+                      <div
+                        role="separator"
+                        tabIndex={0}
+                        aria-orientation="vertical"
+                        aria-label={`Adjust end date for ${job.client_name}. Left arrow shortens, right arrow lengthens`}
+                        className={`calendar-timeline-edge-handle right${isResizing && resizingJob?.edge === 'end' ? ' active' : ''}`}
+                        onPointerDown={(e) => handleEdgeResizePointerDown(job, 'end', effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey, e)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleStepDate(job, 'end', -1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey);
+                          } else if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleStepDate(job, 'end', 1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey);
+                          }
+                        }}
+                      >
+                        <div className="calendar-timeline-edge-grip" />
+                        <div className="calendar-timeline-edge-actions" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="calendar-timeline-edge-btn"
+                            disabled={span <= 1}
+                            title="Shorten: end 1 day earlier"
+                            onClick={(e) => handleStepDate(job, 'end', -1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey, e)}
+                          >
+                            ◀ Shorten
+                          </button>
+                          <button
+                            type="button"
+                            className="calendar-timeline-edge-btn"
+                            title="Lengthen: end 1 day later"
+                            onClick={(e) => handleStepDate(job, 'end', 1, effectiveFirst, effectiveLast, effectiveStartDateKey, effectiveEndDateKey, e)}
+                          >
+                            Lengthen ▶
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </Fragment>
                 );
               })}
             </div>
           </div>
+          {timelineUndo && (
+            <div className="calendar-timeline-undo-toast" role="alert">
+              <span>
+                Updated <strong>{timelineUndo.jobName}</strong> ({timelineUndo.newStartDateKey} – {timelineUndo.newEndDateKey})
+              </span>
+              <button
+                type="button"
+                className="calendar-timeline-undo-btn"
+                onClick={() => {
+                  const { jobId, previousStartDateKey, previousEndDateKey } = timelineUndo;
+                  const targetRow = timelineRows.find((r) => r.job.id === jobId);
+                  if (targetRow) {
+                    applyTimelineDateChange(
+                      targetRow.job,
+                      previousStartDateKey,
+                      previousEndDateKey,
+                      timelineUndo.newStartDateKey,
+                      timelineUndo.newEndDateKey
+                    );
+                  }
+                  setTimelineUndo(null);
+                }}
+              >
+                Undo
+              </button>
+            </div>
+          )}
           </>
         )
       ) : effectiveView === 'year' ? (
