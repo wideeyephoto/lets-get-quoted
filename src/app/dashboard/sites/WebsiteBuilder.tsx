@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from 'react';
+import Link from 'next/link';
 import type { Site, TemplateType } from '@/lib/sites';
 import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
@@ -1814,6 +1815,23 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
           <button type="button" className="btn secondary" onClick={undo} disabled={historyRef.current.past.length === 0} title="Undo (Ctrl+Z)" aria-label="Undo last change">↩ Undo</button>
           <button type="button" className="btn secondary" onClick={redo} disabled={historyRef.current.future.length === 0} title="Redo (Ctrl+Shift+Z)" aria-label="Redo change">↪ Redo</button>
           <a href="/dashboard/sites/preview" target="_blank" rel="noopener noreferrer" className="btn secondary">Site Preview</a>
+          <button
+            type="button"
+            className="btn secondary"
+            onClick={() => setShowLogoStudio(true)}
+            title="Open AI Logo & Brand Studio"
+            style={{ borderColor: 'rgba(168, 85, 247, 0.4)', color: '#a855f7', fontWeight: 700 }}
+          >
+            🎨 Brand Studio
+          </button>
+          <Link
+            href="/dashboard/merchandise"
+            className="btn secondary"
+            title="Order matching crew uniforms, business cards & truck signs"
+            style={{ textDecoration: 'none' }}
+          >
+            👕 Merch
+          </Link>
           {/* Only rendered when there is something to save. A disabled primary
               button beside "your live site is up to date" was one state drawn
               twice, and the disabled style only fades it enough to look like a
@@ -1907,6 +1925,110 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                     </div>
                   </div>
                   <small className={styles.fieldHint}>Fills in your whole site — headline, services, FAQs, Google listing, and more — from these two fields. Watch it appear in the preview. Reviews and stats are filled with examples — swap in your real ones before you publish.</small>
+
+                  {/* Brand Identity & Jobsite Gear Quick-Launch Card */}
+                  <div
+                    style={{
+                      marginTop: '1rem',
+                      padding: '1.1rem',
+                      borderRadius: '12px',
+                      background: 'radial-gradient(ellipse at 88% 12%, rgba(168, 85, 247, 0.12), transparent 55%), rgba(var(--tint), 0.03)',
+                      border: '1.5px solid rgba(168, 85, 247, 0.3)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '0.75rem',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                      <div>
+                        <span
+                          style={{
+                            display: 'inline-block',
+                            fontSize: '0.68rem',
+                            fontWeight: 800,
+                            letterSpacing: '0.08em',
+                            textTransform: 'uppercase',
+                            color: '#a855f7',
+                            marginBottom: '0.15rem',
+                          }}
+                        >
+                          ✦ Step 2: Brand Identity &amp; Jobsite Gear
+                        </span>
+                        <h3 style={{ margin: 0, fontSize: '0.98rem', fontWeight: 700, color: 'var(--text)' }}>
+                          {site.logo_url ? 'Your Company Brand & Merch' : 'Give Your Website a Custom Brand Logo'}
+                        </h3>
+                      </div>
+                      {site.logo_url && (
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.5rem',
+                            background: 'rgba(var(--tint), 0.06)',
+                            padding: '0.3rem 0.6rem',
+                            borderRadius: '8px',
+                            border: '1px solid rgba(var(--tint), 0.12)',
+                          }}
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img src={site.logo_url} alt="Active brand logo" style={{ height: '22px', maxWidth: '44px', objectFit: 'contain' }} />
+                          <span style={{ fontSize: '0.72rem', color: 'var(--good)', fontWeight: 700 }}>Active Logo</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted)', lineHeight: 1.45 }}>
+                      {site.logo_url
+                        ? 'Your custom logo is active in your website header. Open Brand Studio to generate new vector variations, or outfit your crew with matching uniforms and truck signs.'
+                        : 'A custom logo replaces the plain text header on your website and establishes your visual identity. Generate bespoke vector concepts in seconds or order matching real-world swag.'}
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowLogoStudio(true)}
+                        style={{
+                          flex: '1 1 180px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.45rem',
+                          padding: '0.55rem 0.9rem',
+                          borderRadius: '8px',
+                          border: '1.5px solid #a855f7',
+                          background: 'linear-gradient(135deg, rgba(168, 85, 247, 0.18), rgba(99, 102, 241, 0.18))',
+                          color: '#c084fc',
+                          fontSize: '0.84rem',
+                          fontWeight: 700,
+                          cursor: 'pointer',
+                        }}
+                      >
+                        🎨 {site.logo_url ? 'Open AI Brand Studio' : '✨ Generate AI Logo Now'}
+                      </button>
+
+                      <Link
+                        href="/dashboard/merchandise"
+                        style={{
+                          flex: '1 1 200px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '0.45rem',
+                          padding: '0.55rem 0.9rem',
+                          borderRadius: '8px',
+                          border: '1px solid rgba(var(--tint), 0.12)',
+                          background: 'rgba(var(--tint), 0.05)',
+                          color: 'var(--text)',
+                          fontSize: '0.84rem',
+                          fontWeight: 700,
+                          textDecoration: 'none',
+                          cursor: 'pointer',
+                        }}
+                      >
+                        👕 Order Uniforms &amp; Merch &rarr;
+                      </Link>
+                    </div>
+                  </div>
                 </SectionCard>
 
                 <SectionCard
