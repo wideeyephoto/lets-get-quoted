@@ -44,6 +44,7 @@ function attentionDigits(href: string, count: number): string {
 const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
   { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
+  { href: '/dashboard/text-to-job', icon: '/dashboard/text-to-job', label: 'Voice / SMS memo' },
   // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
@@ -63,6 +64,8 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
+  { href: '/dashboard/inventory', label: 'Inventory & Fleet', hint: 'Truck tools, equipment & warehouse stock' },
+  { href: '/dashboard/claims', label: 'Insurance Claims', hint: 'Adjuster scopes, supplements & depreciation' },
   { href: '/dashboard/text-to-job', label: 'Text-to-Job', hint: 'SMS & voice memos straight to job files' },
   { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers pay to be fitted in sooner.' },
   { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
@@ -75,6 +78,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/expenses', label: 'Expenses Ledger', hint: 'Cross-job supplier receipts, labor & costs' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
+  { href: '/dashboard/merchandise', label: 'Merch Studio', hint: 'Branded crew uniforms, business cards & promotional swag' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
@@ -125,6 +129,8 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
       '/dashboard/schedule',
       '/dashboard/crew',
       '/dashboard/clients',
+      '/dashboard/inventory',
+      '/dashboard/claims',
     ],
   },
   {
@@ -155,6 +161,7 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
     hrefs: [
       '/dashboard/automations',
       '/dashboard/marketing',
+      '/dashboard/merchandise',
       '/dashboard/reviews',
     ],
   },

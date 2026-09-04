@@ -314,6 +314,9 @@ export default function RevenuePaymentsScreen({
             <Link className="btn secondary" href="/dashboard/expenses" style={{ fontSize: '0.82rem', padding: '0.45rem 0.65rem' }}>
               💳 Expenses
             </Link>
+            <Link className="btn secondary" href="/dashboard/insights" style={{ fontSize: '0.82rem', padding: '0.45rem 0.65rem' }}>
+              📊 Insights
+            </Link>
           </div>
         </div>
       </header>

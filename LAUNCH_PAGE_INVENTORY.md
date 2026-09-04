@@ -4,13 +4,13 @@ Generated: 2026-09-04
 
 ## 14. Full Application Page Inventory & Freshness Audit (Updated 2026-09-04)
 
-This section is the definitive inventory of all **246 App Router page surfaces** across Let's Get Quoted. It records the exact date each page was last updated/touched in version control or active development, tracks staleness metrics, and provides an active triage plan to guarantee **no page is neglected or abandoned** for launch.
+This section is the definitive inventory of all **247 App Router page surfaces** across Let's Get Quoted. It records the exact date each page was last updated/touched in version control or active development, tracks staleness metrics, and provides an active triage plan to guarantee **no page is neglected or abandoned** for launch.
 
 ### Page Freshness Breakdown
 
-- **Total App Router Pages**: **246** distinct `page.tsx` surfaces.
-- 🟢 **Fresh / Recently Touched (Sep 1–4, 2026)**: **111 pages** (45%) — actively validated during final pre-launch hardening, WCAG remediation, voice/SMS contractor dispatch, and insights updates.
-- 🟡 **Stable (Aug 20–31, 2026)**: **120 pages** (49%) — hardened during late August feature sprints (Stripe Connect, schedule waitlists, marketing campaigns, permissions).
+- **Total App Router Pages**: **247** distinct `page.tsx` surfaces.
+- 🟢 **Fresh / Recently Touched (Sep 1–4, 2026)**: **114 pages** (46%) — actively validated during final pre-launch hardening, WCAG remediation, voice/SMS contractor dispatch, and insights updates.
+- 🟡 **Stable (Aug 20–31, 2026)**: **118 pages** (48%) — hardened during late August feature sprints (Stripe Connect, schedule waitlists, marketing campaigns, permissions).
 - 🔴 **Stale / Neglected (>3 Weeks Ago — Prior to Aug 20, 2026)**: **15 pages** (6%) — flagged for explicit verification below.
 
 ### Neglected Page Triage & Disposition Matrix
@@ -37,20 +37,20 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 
 ---
 
-### Authenticated Dashboard (68 pages)
+### Authenticated Dashboard (69 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/dashboard` | `src/app/dashboard/page.tsx` | 2026-09-04 | `89520a762*` | 🟢 Fresh |
+| `/dashboard` | `src/app/dashboard/page.tsx` | 2026-09-04 | `1cfdbde53*` | 🟢 Fresh |
 | `/dashboard/activity` | `src/app/dashboard/activity/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
 | `/dashboard/automations` | `src/app/dashboard/automations/page.tsx` | 2026-09-04 | `dcd42987c` | 🟢 Fresh |
-| `/dashboard/cash-flow` | `src/app/dashboard/cash-flow/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/cash-flow` | `src/app/dashboard/cash-flow/page.tsx` | 2026-09-04 | `288f7f3ad*` | 🟢 Fresh |
 | `/dashboard/claims` | `src/app/dashboard/claims/page.tsx` | 2026-09-03 | `7ca281b47` | 🟢 Fresh |
 | `/dashboard/clients` | `src/app/dashboard/clients/page.tsx` | 2026-09-03 | `a18225bff` | 🟢 Fresh |
 | `/dashboard/clients/[id]` | `src/app/dashboard/clients/[id]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
 | `/dashboard/clients/[id]/statement` | `src/app/dashboard/clients/[id]/statement/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/clients/import` | `src/app/dashboard/clients/import/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
-| `/dashboard/crew` | `src/app/dashboard/crew/page.tsx` | 2026-09-03 | `5bfdd49e5` | 🟢 Fresh |
+| `/dashboard/crew` | `src/app/dashboard/crew/page.tsx` | 2026-09-04 | `5bfdd49e5*` | 🟢 Fresh |
 | `/dashboard/crew/requests/[id]` | `src/app/dashboard/crew/requests/[id]/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
 | `/dashboard/crew/requests/new` | `src/app/dashboard/crew/requests/new/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/expenses` | `src/app/dashboard/expenses/page.tsx` | 2026-09-04 | `89520a762` | 🟢 Fresh |
@@ -59,11 +59,11 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 | `/dashboard/forms/builder` | `src/app/dashboard/forms/builder/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
 | `/dashboard/help` | `src/app/dashboard/help/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/help/[caseId]` | `src/app/dashboard/help/[caseId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/import` | `src/app/dashboard/import/page.tsx` | 2026-08-24 | `7b290d591*` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/import` | `src/app/dashboard/import/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
 | `/dashboard/insights` | `src/app/dashboard/insights/page.tsx` | 2026-09-04 | `0c66cd74b` | 🟢 Fresh |
 | `/dashboard/inventory` | `src/app/dashboard/inventory/page.tsx` | 2026-09-03 | `7ca281b47` | 🟢 Fresh |
-| `/dashboard/jobs` | `src/app/dashboard/jobs/page.tsx` | 2026-09-04 | `89520a762` | 🟢 Fresh |
-| `/dashboard/jobs/[id]` | `src/app/dashboard/jobs/[id]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
+| `/dashboard/jobs` | `src/app/dashboard/jobs/page.tsx` | 2026-09-04 | `89520a762*` | 🟢 Fresh |
+| `/dashboard/jobs/[id]` | `src/app/dashboard/jobs/[id]/page.tsx` | 2026-09-04 | `2e6c7af21*` | 🟢 Fresh |
 | `/dashboard/jobs/[id]/forms/[submissionId]/print` | `src/app/dashboard/jobs/[id]/forms/[submissionId]/print/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
 | `/dashboard/jobs/[id]/invoices/[invoiceId]` | `src/app/dashboard/jobs/[id]/invoices/[invoiceId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/jobs/[id]/quote` | `src/app/dashboard/jobs/[id]/quote/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -71,7 +71,7 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 | `/dashboard/jobs/import-invoices` | `src/app/dashboard/jobs/import-invoices/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
 | `/dashboard/leads` | `src/app/dashboard/leads/page.tsx` | 2026-09-03 | `a06ca21e2` | 🟢 Fresh |
 | `/dashboard/leads/[leadId]` | `src/app/dashboard/leads/[leadId]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/dashboard/marketing` | `src/app/dashboard/marketing/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
+| `/dashboard/marketing` | `src/app/dashboard/marketing/page.tsx` | 2026-09-03 | `77e751f04*` | 🟢 Fresh |
 | `/dashboard/marketing/ads` | `src/app/dashboard/marketing/ads/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
 | `/dashboard/marketing/blog` | `src/app/dashboard/marketing/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/marketing/blog/[id]` | `src/app/dashboard/marketing/blog/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -80,26 +80,27 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 | `/dashboard/marketing/links` | `src/app/dashboard/marketing/links/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
 | `/dashboard/marketing/performance` | `src/app/dashboard/marketing/performance/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
 | `/dashboard/marketing/referrals` | `src/app/dashboard/marketing/referrals/page.tsx` | 2026-08-22 | `9088f7d94` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/merchandise` | `src/app/dashboard/merchandise/page.tsx` | 2026-09-04 | `*` | 🟢 Fresh |
 | `/dashboard/messages` | `src/app/dashboard/messages/page.tsx` | 2026-09-03 | `99b99805e` | 🟢 Fresh |
 | `/dashboard/messages/dedicated-number` | `src/app/dashboard/messages/dedicated-number/page.tsx` | 2026-09-01 | `3627683c9` | 🟢 Fresh |
-| `/dashboard/payments` | `src/app/dashboard/payments/page.tsx` | 2026-09-04 | `e2650432f*` | 🟢 Fresh |
+| `/dashboard/payments` | `src/app/dashboard/payments/page.tsx` | 2026-09-04 | `1cfdbde53*` | 🟢 Fresh |
 | `/dashboard/payroll` | `src/app/dashboard/payroll/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/quick-stops` | `src/app/dashboard/quick-stops/page.tsx` | 2026-09-03 | `6c5cbf20e` | 🟢 Fresh |
 | `/dashboard/rebook` | `src/app/dashboard/rebook/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/recurring` | `src/app/dashboard/recurring/page.tsx` | 2026-09-04 | `2f01d3cbb` | 🟢 Fresh |
+| `/dashboard/recurring` | `src/app/dashboard/recurring/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
 | `/dashboard/reports` | `src/app/dashboard/reports/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/reviews` | `src/app/dashboard/reviews/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/schedule` | `src/app/dashboard/schedule/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
-| `/dashboard/schedule/booking` | `src/app/dashboard/schedule/booking/page.tsx` | 2026-09-03 | `99b99805e` | 🟢 Fresh |
+| `/dashboard/reviews` | `src/app/dashboard/reviews/page.tsx` | 2026-08-31 | `288f7f3ad*` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/schedule` | `src/app/dashboard/schedule/page.tsx` | 2026-09-04 | `1cfdbde53*` | 🟢 Fresh |
+| `/dashboard/schedule/booking` | `src/app/dashboard/schedule/booking/page.tsx` | 2026-09-03 | `99b99805e*` | 🟢 Fresh |
 | `/dashboard/schedule/dispatch` | `src/app/dashboard/schedule/dispatch/page.tsx` | 2026-08-26 | `ead4a91a6` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/schedule/plan` | `src/app/dashboard/schedule/plan/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
 | `/dashboard/schedule/requests` | `src/app/dashboard/schedule/requests/page.tsx` | 2026-08-26 | `ead4a91a6` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/schedule/settings` | `src/app/dashboard/schedule/settings/page.tsx` | 2026-09-03 | `1ced5fca3` | 🟢 Fresh |
 | `/dashboard/schedule/waitlist` | `src/app/dashboard/schedule/waitlist/page.tsx` | 2026-09-03 | `e6e5b9d6d` | 🟢 Fresh |
-| `/dashboard/services` | `src/app/dashboard/services/page.tsx` | 2026-09-04 | `ead3f43a4*` | 🟢 Fresh |
-| `/dashboard/services/import` | `src/app/dashboard/services/import/page.tsx` | 2026-09-04 | `77dcdc675*` | 🟢 Fresh |
+| `/dashboard/services` | `src/app/dashboard/services/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
+| `/dashboard/services/import` | `src/app/dashboard/services/import/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
 | `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/dashboard/sites` | `src/app/dashboard/sites/page.tsx` | 2026-09-04 | `a08202fcb` | 🟢 Fresh |
+| `/dashboard/sites` | `src/app/dashboard/sites/page.tsx` | 2026-09-04 | `a08202fcb*` | 🟢 Fresh |
 | `/dashboard/sites/preview` | `src/app/dashboard/sites/preview/page.tsx` | 2026-08-23 | `333d702a3` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/stripe-merchant/refresh` | `src/app/dashboard/stripe-merchant/refresh/page.tsx` | 2026-08-16 | `fde575acb` | 🔴 Neglected (>3 wks) |
 | `/dashboard/stripe-merchant/return` | `src/app/dashboard/stripe-merchant/return/page.tsx` | 2026-08-16 | `fde575acb` | 🔴 Neglected (>3 wks) |
@@ -118,9 +119,9 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 | `/client/jobs/[token]` | `src/app/client/jobs/[token]/page.tsx` | 2026-09-03 | `5806fd4ca` | 🟢 Fresh |
 | `/invoice/[id]` | `src/app/invoice/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/pay/[id]` | `src/app/pay/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/portal` | `src/app/portal/page.tsx` | 2026-09-04 | `2f01d3cbb` | 🟢 Fresh |
+| `/portal` | `src/app/portal/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
 | `/portal/[subdomain]` | `src/app/portal/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/portal/view/[token]` | `src/app/portal/view/[token]/page.tsx` | 2026-09-04 | `2f01d3cbb` | 🟢 Fresh |
+| `/portal/view/[token]` | `src/app/portal/view/[token]/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
 | `/review/[token]` | `src/app/review/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/track/[token]` | `src/app/track/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/unsubscribe` | `src/app/unsubscribe/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -139,9 +140,9 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/features` | `src/app/features/page.tsx` | 2026-09-03 | `5fad5ce03` | 🟢 Fresh |
+| `/features` | `src/app/features/page.tsx` | 2026-09-03 | `5fad5ce03*` | 🟢 Fresh |
 | `/features-flagship` | `src/app/features-flagship/page.tsx` | 2026-08-26 | `de72f3cf5` | 🟡 Stable (Aug 20-31) |
-| `/features/ai-ads` | `src/app/features/ai-ads/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
+| `/features/ai-ads` | `src/app/features/ai-ads/page.tsx` | 2026-09-03 | `77e751f04*` | 🟢 Fresh |
 | `/features/ai-copilot` | `src/app/features/ai-copilot/page.tsx` | 2026-09-03 | `b6ede0e5b` | 🟢 Fresh |
 | `/features/ai-intake` | `src/app/features/ai-intake/page.tsx` | 2026-09-01 | `1a0c6fd90` | 🟢 Fresh |
 | `/features/ai-vision` | `src/app/features/ai-vision/page.tsx` | 2026-09-03 | `b6f2d990e` | 🟢 Fresh |
@@ -167,7 +168,7 @@ The following **15 pages** have not been touched in over 3 weeks. Each surface h
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/` | `src/app/page.tsx` | 2026-09-04 | `f643bf134*` | 🟢 Fresh |
+| `/` | `src/app/page.tsx` | 2026-09-04 | `1cfdbde53*` | 🟢 Fresh |
 | `/account-suspended` | `src/app/account-suspended/page.tsx` | 2026-08-31 | `33c409ea4` | 🟡 Stable (Aug 20-31) |
 | `/card-saved` | `src/app/card-saved/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/changelog` | `src/app/changelog/page.tsx` | 2026-08-26 | `192ffbce6` | 🟡 Stable (Aug 20-31) |

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
-import { deleteSiteImage, importJobPhotoAsSiteImage, uploadGeneratedSiteImage, uploadSiteImage } from '@/lib/site-image-storage';
+import { deleteSiteImage, importJobPhotoAsSiteImage, uploadGeneratedSiteImage, uploadSiteImage, listUploadedSiteImages } from '@/lib/site-image-storage';
 import { createSignedVideoUpload, deleteSiteVideo, siteVideoStoragePath, type SignedVideoUpload } from '@/lib/site-video-storage';
 import { createJobPhotoUrls } from '@/lib/job-photo-storage';
 import type { Site } from '@/lib/sites';
@@ -953,6 +953,8 @@ export async function generateAiLogoAction(params: {
   emblem?: string | null;
   direction?: string | null;
   creativeBrief?: string | null;
+  parentLogoId?: string | null;
+  revisionInstructions?: string | null;
 }): Promise<{ ok: boolean; image?: GeneratedAiLogo; logos?: GeneratedAiLogo[]; message?: string }> {
   let siteId: string | null = null;
   const admin = createAdminClient();
@@ -965,6 +967,29 @@ export async function generateAiLogoAction(params: {
     const direction: AiLogoDirection = params.direction && isAiLogoDirection(params.direction)
       ? params.direction
       : 'art_director';
+
+    // Record pending generation task in site.content so navigation away is fully supported
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .limit(1)
+      .maybeSingle();
+
+    let parentPrompt: string | null = null;
+    let currentContent: Record<string, unknown> = {};
+
+    if (siteRow) {
+      siteId = siteRow.id;
+      currentContent = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
+      if (params.parentLogoId && Array.isArray(currentContent.ai_logos)) {
+        const found = (currentContent.ai_logos as GeneratedAiLogo[]).find((l) => l.id === params.parentLogoId);
+        if (found?.prompt) {
+          parentPrompt = found.prompt;
+        }
+      }
+    }
+
     const prompt = buildAiLogoPrompt({
       businessName,
       trade: params.trade,
@@ -975,19 +1000,11 @@ export async function generateAiLogoAction(params: {
       emblem: params.emblem,
       direction,
       creativeBrief: params.creativeBrief,
+      parentPrompt,
+      revisionInstructions: params.revisionInstructions,
     });
 
-    // Record pending generation task in site.content so navigation away is fully supported
-    const { data: siteRow } = await admin
-      .from('sites')
-      .select('id, content')
-      .eq('account_id', accountId)
-      .limit(1)
-      .maybeSingle();
-
     if (siteRow) {
-      siteId = siteRow.id;
-      const currentContent = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
       const pendingRecord: PendingAiLogo = {
         id: `pending-${Date.now()}`,
         startedAt: new Date().toISOString(),
@@ -1282,6 +1299,78 @@ export async function dismissAiLogoPendingAction(): Promise<{ ok: boolean }> {
     return { ok: true };
   } catch {
     return { ok: false };
+  }
+}
+
+export async function saveAdjustedAiLogoAction(params: {
+  base64Png: string;
+  originalLogoId: string;
+  businessName?: string;
+  label?: string;
+}): Promise<{ ok: boolean; message?: string; image?: GeneratedAiLogo; logos?: GeneratedAiLogo[] }> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+
+    const rawData = params.base64Png.replace(/^data:image\/png;base64,/, '');
+    const bytes = Buffer.from(rawData, 'base64');
+    if (bytes.byteLength === 0) {
+      return { ok: false, message: 'Invalid image data' };
+    }
+
+    const safeName = (params.businessName || 'brand')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '') || 'brand';
+
+    const labelSuffix = params.label
+      ? `-${params.label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
+      : '-adjusted';
+
+    const stored = await uploadGeneratedSiteImage(accountId, {
+      bytes,
+      mimeType: 'image/png',
+      fileName: `${safeName}${labelSuffix}-ai-logo`,
+      alt: `${params.businessName || 'Business'} AI logo (${params.label || 'Adjusted'})`,
+    });
+
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!siteRow) return { ok: false, message: 'Site not found' };
+
+    const content = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
+    const existingLogos = Array.isArray(content.ai_logos) ? (content.ai_logos as GeneratedAiLogo[]) : [];
+    const parent = existingLogos.find((l) => l.id === params.originalLogoId);
+
+    const newLogo: GeneratedAiLogo = {
+      id: stored.id,
+      url: stored.url,
+      storagePath: stored.storagePath || '',
+      direction: parent?.direction || 'bold_symbol',
+      prompt: parent?.prompt ? `Adjusted from parent logo (${params.label || 'custom'}): ${parent.prompt}` : `Adjusted logo (${params.label || 'custom'})`,
+      createdAt: new Date().toISOString(),
+    };
+
+    const nextLogos = [newLogo, ...existingLogos.filter((l) => l.id !== newLogo.id && l.storagePath !== newLogo.storagePath)];
+
+    await admin.from('sites').update({
+      content: {
+        ...content,
+        ai_logos: nextLogos,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq('id', siteRow.id);
+
+    revalidatePath('/dashboard/sites');
+    return { ok: true, image: newLogo, logos: nextLogos };
+  } catch (err) {
+    console.error('Failed to save adjusted AI logo', err);
+    return { ok: false, message: err instanceof Error ? err.message : 'Could not save adjusted logo.' };
   }
 }
 

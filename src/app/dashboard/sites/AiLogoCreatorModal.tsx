@@ -21,6 +21,7 @@ import {
   getAiLogosAction,
   deleteAiLogoAction,
   dismissAiLogoPendingAction,
+  saveAdjustedAiLogoAction,
   type GeneratedAiLogo,
 } from './actions';
 
@@ -1682,6 +1683,7 @@ export default function AiLogoCreatorModal({
                               </button>
                               <button type="button" onClick={() => void handleDownloadAiLogo(logo)} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>Download PNG</button>
                               <button type="button" onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); setActiveTab('mockups'); }} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#faf5ff', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>See Mockups</button>
+                              <a href="/dashboard/merchandise" style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #10b981', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>👕 Order Merch</a>
                               <button
                                 type="button"
                                 onClick={() => void handleDeleteAiLogo(logo)}
@@ -1898,6 +1900,25 @@ export default function AiLogoCreatorModal({
                         {c.styleLabel}
                       </button>
                     ))}
+                    <a
+                      href="/dashboard/merchandise"
+                      style={{
+                        marginLeft: 'auto',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.35rem',
+                        padding: '0.4rem 0.85rem',
+                        borderRadius: '7px',
+                        background: 'linear-gradient(135deg, #059669, #10b981)',
+                        color: '#ffffff',
+                        fontWeight: 800,
+                        fontSize: '0.78rem',
+                        textDecoration: 'none',
+                        boxShadow: '0 2px 6px rgba(16,185,129,0.3)',
+                      }}
+                    >
+                      <span>👕 Order Real Merch &amp; Swag →</span>
+                    </a>
                   </div>
 
                   {/* Mockup Canvas */}

@@ -500,6 +500,18 @@ export default function CashFlowBoard({
             day, and the first day it falls below its safety buffer.
           </p>
 
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.6rem', marginBottom: '0.85rem' }}>
+            <Link className="btn secondary" href="/dashboard/expenses" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
+              💳 All Expenses Ledger →
+            </Link>
+            <Link className="btn secondary" href="/dashboard/payments" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
+              💰 Revenue &amp; Payments →
+            </Link>
+            <Link className="btn secondary" href="/dashboard/reports" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
+              📑 Tax &amp; P&amp;L Reports →
+            </Link>
+          </div>
+
           {/* THE SETUP WALL IS GONE.
               A callout headed "Preview — starting balance needed", with its own
               paragraph and its own button, stood between the page's title and

@@ -26,7 +26,7 @@ The dominant shape in `schema.sql` is one policy covering everything:
 create policy job_owner on jobs for all using ( is_owner(account_id) );
 ```
 
-Counted against the canonical schema: **45 such policies**, plus 8 `for select`
+Counted against the canonical schema: **44 such policies**, plus 8 `for select`
 and 1 `for update`. Every one of the 45 governs select, insert, update **and** delete
 together.
 

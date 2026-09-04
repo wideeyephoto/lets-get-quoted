@@ -63,14 +63,32 @@ export function monthWindows(now: Date, months: number): Array<{ key: string; la
 
 export type MetricJob = {
   id: string;
+  ref?: string | null;
   client_id: string | null;
+  client_name?: string | null;
   quoted_amount: number | string | null;
   created_at: string;
+  status?: string;
 };
 /** A job_feed row narrowed to what these calculators read. */
 export type FeedEvent = { job_id: string | null; created_at: string };
-export type MetricPayment = { amount: number | string; refunded_amount?: number | string | null; paid_at: string };
-export type MetricCost = { amount: number | string; created_at: string; type?: string; job_id?: string | null; hours?: number | string | null; crew_id?: string | null };
+export type MetricPayment = {
+  amount: number | string;
+  refunded_amount?: number | string | null;
+  paid_at: string;
+  status?: string;
+  requested_at?: string | null;
+  job_id?: string | null;
+};
+export type MetricCost = {
+  amount: number | string;
+  created_at: string;
+  type?: string;
+  job_id?: string | null;
+  hours?: number | string | null;
+  crew_id?: string | null;
+  rate?: number | string | null;
+};
 
 /** Collected net of refunds — the honest "money that stayed" for a window. */
 function netPaidInRange(paid: MetricPayment[], fromMs: number, toMs: number): number {
@@ -991,7 +1009,7 @@ export type JobProfitability = {
 
 export function computeJobProfitability(
   jobs: Array<{ id: string; ref?: string | null; client_name?: string | null; quoted_amount: number | string | null; created_at: string; status?: string }>,
-  costs: Array<{ job_id: string | null; amount: number | string; type?: string; created_at: string }>,
+  costs: Array<{ job_id?: string | null; amount: number | string; type?: string; created_at: string }>,
   paid: Array<{ job_id?: string | null; amount: number | string; refunded_amount?: number | string | null; paid_at: string }>,
   period?: { fromMs: number; toMs: number },
 ): JobProfitability {
@@ -1305,7 +1323,7 @@ export type MrrMovement = {
 };
 
 export function computeMrrMovement(
-  plans: Array<{ id?: string; amount: number | string; frequency: string; active: boolean; created_at?: string; updated_at?: string }>,
+  plans: Array<{ id?: string; amount: number | string; frequency: string; active: boolean; created_at?: string | null; updated_at?: string | null }>,
   period: { fromMs: number; toMs: number },
 ): MrrMovement {
   const activePlans = plans.filter((p) => p.active);

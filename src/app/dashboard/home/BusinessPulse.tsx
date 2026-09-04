@@ -32,9 +32,14 @@ export default function BusinessPulseComponent({
 
   return (
     <section className="panel workspace-section-card">
-      <div className="section-heading workspace-section-heading">
-        <p className="eyebrow">Money</p>
-        <h2>How the business is doing</h2>
+      <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <div>
+          <p className="eyebrow">Money</p>
+          <h2>How the business is doing</h2>
+        </div>
+        <Link href="/dashboard/insights" className="btn secondary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}>
+          📊 View Reports &amp; Insights →
+        </Link>
       </div>
 
       <div className="workspace-metric-grid">

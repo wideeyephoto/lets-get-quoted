@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import styles from './flywheel.module.css';
 
 type ShieldItem = {
@@ -46,6 +47,18 @@ const SHIELDS: ShieldItem[] = [
       'Visual ad copy with urgency hooks',
       'Geo-fenced neighborhood radius',
       'Lead form & message-match routing',
+    ],
+  },
+  {
+    id: 'neighborhood-halo',
+    icon: '📡',
+    badge: 'Hyper-Local Radius',
+    title: 'Neighborhood Halo Geo-Fencing',
+    desc: 'Automatically triggers hyper-targeted radius ads around active jobsites with privacy fuzzing and social proof.',
+    features: [
+      'Automatic jobsite radius triggers',
+      'Privacy-preserving location fuzzing',
+      'Zero agency markup (5% platform fee)',
     ],
   },
   {
@@ -99,6 +112,25 @@ export default function MultiChannelShieldGrid() {
                 </li>
               ))}
             </ul>
+
+            {item.id === 'neighborhood-halo' ? (
+              <div style={{ marginTop: '0.9rem' }}>
+                <Link
+                  href="/features/neighborhood-halo"
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '0.35rem',
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
+                    color: 'var(--accent, #f97316)',
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Explore Neighborhood Halo →
+                </Link>
+              </div>
+            ) : null}
           </div>
         ))}
       </div>

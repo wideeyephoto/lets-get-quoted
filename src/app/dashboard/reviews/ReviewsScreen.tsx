@@ -155,6 +155,9 @@ export default function ReviewsScreen({
                   </button>
                 )}
                 <AutomationLink id="reviews" label="Review automation" on={reviewsOn} />
+                <Link className="btn secondary" href={`${basePath}/insights`}>
+                  📊 Reputation trends →
+                </Link>
               </>
             )}
           </div>

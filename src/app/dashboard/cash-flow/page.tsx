@@ -105,7 +105,7 @@ export default async function CashFlowPage({ searchParams: searchParamsPromise }
             a retry scheduled, and quoted work sitting on the calendar (less anything already collected on it).
           </li>
           <li>
-            <strong>Bills</strong> — only what you add above. Nothing else in here knows your insurance renews.
+            <strong>Bills</strong> — only what you add above. Nothing else in here knows your insurance renews. For historical materials and receipts, check your <Link href="/dashboard/expenses">Expenses Ledger →</Link>
           </li>
           <li>
             <strong>Not counted</strong> — finished work you haven&rsquo;t invoiced, and declined charges that are waiting

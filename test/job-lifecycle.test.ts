@@ -232,7 +232,7 @@ describe('a long record you can get around', () => {
   it('carries a sub-nav whose every link lands on a real section', () => {
     const nav = page.slice(page.indexOf('<nav className="job-subnav"'), page.indexOf('</nav>'));
     const targets = [...nav.matchAll(/href="#([\w-]+)"/g)].map((match) => match[1]);
-    expect(targets).toEqual(['job-top', 'checklist', 'selections', 'quote-breakdown', 'job-feed', 'request-payment', 'job-details']);
+    expect(targets).toEqual(['job-top', 'checklist', 'permits', 'selections', 'quote-breakdown', 'job-feed', 'request-payment', 'job-details']);
     for (const id of targets) {
       expect(page, `#${id} has no section`).toMatch(new RegExp(`id="${id}"`));
     }

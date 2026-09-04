@@ -432,7 +432,8 @@ describe('SignalWire dedicated-number REST adapter', () => {
     const payload = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
     expect(payload).toEqual({
       name: 'LGQ AI Voice',
-      call_handler: 'laml_webhooks',
+      call_handler: 'relay_script',
+      call_relay_script_url: 'https://app.example.com/api/voice/ai',
       call_request_url: 'https://app.example.com/api/voice/ai',
       call_request_method: 'POST',
       call_status_callback_url: 'https://app.example.com/api/voice/provider-status',

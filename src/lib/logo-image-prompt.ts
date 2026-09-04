@@ -48,6 +48,8 @@ export type AiLogoPromptInput = {
   emblem?: string | null;
   direction: AiLogoDirection;
   creativeBrief?: string | null;
+  revisionInstructions?: string | null;
+  parentPrompt?: string | null;
 };
 
 function clean(value: string | null | undefined, maxLength: number) {
@@ -83,6 +85,8 @@ export function buildAiLogoPrompt(input: AiLogoPromptInput) {
   const year = clean(input.establishedYear, 4);
   const emblem = clean(input.emblem, 40);
   const brief = clean(input.creativeBrief, 600);
+  const revision = clean(input.revisionInstructions, 500);
+  const parentPrompt = clean(input.parentPrompt, 400);
   const primary = color(input.accentColor, '#2563EB');
   const secondary = color(input.secondaryColor, '#F59E0B');
   const direction = AI_LOGO_DIRECTIONS.find((item) => item.id === input.direction)
@@ -95,6 +99,8 @@ export function buildAiLogoPrompt(input: AiLogoPromptInput) {
     year ? `A small "EST. ${quoted(year)}" may be used only if it strengthens the composition.` : '',
     emblem ? `The owner selected "${quoted(emblem)}" as a possible emblem cue; reinterpret it inventively rather than drawing a stock icon.` : '',
     brief ? `Owner's creative brief: ${brief}` : '',
+    parentPrompt ? `Reference prior design concept: "${quoted(parentPrompt)}".` : '',
+    revision ? `CREATIVE REVISION INSTRUCTIONS: Maintain the core design silhouette, metaphor, and visual DNA of the referenced concept, but execute these specific revisions: "${quoted(revision)}".` : '',
   ].filter(Boolean);
 
   return [

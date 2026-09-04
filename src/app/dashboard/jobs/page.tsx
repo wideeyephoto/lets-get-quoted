@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { getAuthoritativeTrade } from '@/lib/workspace-trade';
 import { WorkspaceTradeProvider } from '@/app/dashboard/WorkspaceTradeContext';
@@ -257,7 +258,19 @@ export default async function JobsPage({
             mapTheme={mapTheme}
             mapPins={mapPins}
             todayKey={todayKey}
-            toolbarAccessory={<AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />}
+            toolbarAccessory={
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Link
+                  href="/dashboard/text-to-job"
+                  className="btn secondary"
+                  style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
+                  title="Create or update jobs via SMS & voice memo"
+                >
+                  🎙️ Text-to-Job
+                </Link>
+                <AutomationLink id="followups" label="Quote follow-ups" on={followupsOn} />
+              </div>
+            }
           />
         </WorkspaceTradeProvider>
       </section>
@@ -284,6 +297,12 @@ export default async function JobsPage({
         summary="Create a job for approved work."
         defaultOpen={shouldAutoOpenCreate(allJobs.length, searchParams.new)}
       >
+        <div style={{ marginBottom: '1rem', padding: '0.65rem 0.85rem', background: 'var(--bg-2, #f8fafc)', border: '1px solid var(--line, #e2e8f0)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <span style={{ fontSize: '0.86rem' }}>📱 <strong>Text or dictate from the road:</strong> Voice notes &amp; text descriptions automatically attach to job files.</span>
+          <Link href="/dashboard/text-to-job" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem' }}>
+            Open Text-to-Job →
+          </Link>
+        </div>
         <form action={createJobAction} className="form-grid">
           <PastClientsPicker clients={pastClients} />
           <div className="field">

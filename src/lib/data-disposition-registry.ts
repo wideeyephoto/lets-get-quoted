@@ -2346,6 +2346,30 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 1460, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+
+  // Contractor merchandise print on demand orders
+  merchandise_orders: {
+    tableName: 'merchandise_orders',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Merchandise platform fee and revenue split ledger
+  merchandise_revenue_ledger: {
+    tableName: 'merchandise_revenue_ledger',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
 };
 
 export function getExportableTables(): string[] {

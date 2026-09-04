@@ -722,7 +722,7 @@ export class SignalWireNumberProvisioningClient {
     }
     if (
       !updated.capabilities.includes('voice')
-      || updated.callHandler?.toLowerCase() !== 'laml_webhooks'
+      || (updated.callHandler?.toLowerCase() !== 'laml_webhooks' && updated.callHandler?.toLowerCase() !== 'relay_script')
       || updated.callRequestUrl !== inbound
       || updated.callRequestMethod?.toUpperCase() !== 'POST'
       || updated.callStatusCallbackUrl !== status

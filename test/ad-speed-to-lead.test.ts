@@ -259,29 +259,35 @@ describe('AI Speed-to-Lead SMS Engine', () => {
     const { sendSpeedToLeadSms, sendContractorAdLeadSms } = await import('@/lib/sms');
     vi.mocked(sendSpeedToLeadSms).mockResolvedValueOnce('event-1234');
     vi.mocked(sendContractorAdLeadSms).mockClear();
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-09-01T20:00:00.000Z'));
 
-    const result = await dispatchSpeedToLeadSms({
-      admin: {} as any,
-      accountId: '10000000-0000-4000-8000-000000000001',
-      recipientPhone: '+14155550199',
-      businessName: 'Apex Roofing',
-      leadName: 'Alex Smith',
-      city: 'San Francisco, CA',
-      contractorAlertPhone: '+15125550199',
-      hasDedicatedSender: false,
-    });
+    try {
+      const result = await dispatchSpeedToLeadSms({
+        admin: {} as any,
+        accountId: '10000000-0000-4000-8000-000000000001',
+        recipientPhone: '+14155550199',
+        businessName: 'Apex Roofing',
+        leadName: 'Alex Smith',
+        city: 'San Francisco, CA',
+        contractorAlertPhone: '+15125550199',
+        hasDedicatedSender: false,
+      });
 
-    expect(result.sent).toBe(false);
-    expect(result.telemetry.deliveryStatus).toBe('deferred');
-    expect(sendContractorAdLeadSms).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.stringContaining('Auto-SMS deferred (no dedicated sender)'),
-      }),
-    );
-    expect(sendContractorAdLeadSms).toHaveBeenCalledWith(
-      expect.objectContaining({
-        body: expect.not.stringContaining('Auto-SMS sent to homeowner'),
-      }),
-    );
+      expect(result.sent).toBe(false);
+      expect(result.telemetry.deliveryStatus).toBe('deferred');
+      expect(sendContractorAdLeadSms).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.stringContaining('Auto-SMS deferred (no dedicated sender)'),
+        }),
+      );
+      expect(sendContractorAdLeadSms).toHaveBeenCalledWith(
+        expect.objectContaining({
+          body: expect.not.stringContaining('Auto-SMS sent to homeowner'),
+        }),
+      );
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

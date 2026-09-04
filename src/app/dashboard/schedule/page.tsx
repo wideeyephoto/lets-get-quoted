@@ -1006,12 +1006,24 @@ export default async function SchedulePage({
           <p>Select a job to reschedule it, remove it from the schedule, or manage crew.</p>
           <div className="schedule-panel-foot-links">
             {/* Secondary, and phrased as what it does rather than as a slogan. */}
-            {waitlistEnabled && (
-              <Link href="/dashboard/schedule/waitlist" className="schedule-foot-waitlist" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: '#059669', fontWeight: 600 }}>
-                <span aria-hidden="true">⚡</span>
-                Cancellation waitlist
-              </Link>
-            )}
+            <Link
+              href="/dashboard/schedule/waitlist"
+              className="schedule-foot-waitlist"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, color: waitlistEnabled ? '#059669' : 'inherit', fontWeight: 600 }}
+              title={waitlistEnabled ? 'Active cancellation waitlist' : 'Set up automatic backfill waitlist'}
+            >
+              <span aria-hidden="true">⚡</span>
+              {waitlistEnabled ? 'Cancellation waitlist' : 'Waitlist (off)'}
+            </Link>
+            <Link
+              href="/dashboard/quick-stops"
+              className="schedule-foot-waitlist"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600 }}
+              title="Fast fill-in bookings for route gaps"
+            >
+              <span aria-hidden="true">📍</span>
+              Quick Stops
+            </Link>
             <Link href="/dashboard/schedule/plan" className="schedule-foot-plan">
               <ActionIcon name="plan" />
               Plan today&apos;s route

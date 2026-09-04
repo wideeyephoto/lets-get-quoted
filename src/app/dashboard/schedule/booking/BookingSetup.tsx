@@ -382,6 +382,19 @@ export default function BookingSetup({
     <main className="wide-shell workspace-shell bset">
       <header className="bset-head">
         <div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.4rem', fontSize: '0.84rem' }}>
+            <Link href="/dashboard/schedule" style={{ color: 'var(--accent)', textDecoration: 'none', fontWeight: 600 }}>
+              ← Calendar
+            </Link>
+            <span style={{ color: 'var(--muted)' }}>·</span>
+            <Link href="/dashboard/schedule/waitlist" style={{ color: 'var(--muted)', textDecoration: 'none' }}>
+              ⚡ Cancellation Waitlist
+            </Link>
+            <span style={{ color: 'var(--muted)' }}>·</span>
+            <Link href="/dashboard/quick-stops" style={{ color: 'var(--muted)', textDecoration: 'none' }}>
+              📍 Quick Stops
+            </Link>
+          </div>
           <h1>
             Booking requests <Icon name="calendar" />
           </h1>

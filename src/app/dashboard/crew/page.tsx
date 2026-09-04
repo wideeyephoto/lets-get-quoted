@@ -276,6 +276,13 @@ export default async function CrewLaborPage({
               <span>Live Dispatch →</span>
             </Link>
             <Link
+              href="/dashboard/insights"
+              className="btn secondary"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem' }}
+            >
+              <span>📊 Labor Insights →</span>
+            </Link>
+            <Link
               href="/dashboard/settings#office-team"
               className="btn secondary"
               style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.84rem' }}

@@ -35,6 +35,9 @@ import SelectionBoard from './SelectionBoard';
 import JobFormsPanel from '@/components/forms/JobFormsPanel';
 import { attachJobFormAction, requestCustomerSignatureAction } from './form-actions';
 import { listJobFormSubmissions, listFormTemplates } from '@/lib/forms/forms-data';
+import { PermitWorkspace } from '@/components/permits/PermitWorkspace';
+import { PermitFeasibilityCard } from '@/components/permits/PermitFeasibilityCard';
+import { PropertyDossierCard } from '@/components/property-intel/PropertyDossierCard';
 import TaskAddForm from './TaskAddForm';
 import { zonedNowParts } from '@/lib/quick-stop';
 import { lastSelectionSendAt, listSelections, listSelectionTemplates, signSelectionPhotos } from '@/lib/selections-data';
@@ -880,10 +883,18 @@ export default async function JobDetailPage({
 
         const quoteBreakdownBlock = (
           <section id="quote-breakdown" className="panel workspace-section-card">
-            <div className="section-heading workspace-section-heading">
+            <div className="section-heading workspace-section-heading" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
                 <p className="eyebrow">Quote</p>
                 <h2>Quote breakdown</h2>
+              </div>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <Link href="/dashboard/services" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem' }}>
+                  📖 Price Book
+                </Link>
+                <Link href="/dashboard/services/import" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem' }}>
+                  📥 Import Catalog
+                </Link>
               </div>
             </div>
             <p className="workspace-details-copy" style={{ marginTop: '0.4rem', marginBottom: '0.9rem' }}>
@@ -1654,7 +1665,7 @@ export default async function JobDetailPage({
               <span className="workspace-details-copy">Log materials, labor, subcontractors, receipts, and other costs.</span>
             </summary>
 
-            <div className="cost-add-row" style={{ marginBottom: '0.9rem' }}>
+            <div className="cost-add-row" style={{ marginBottom: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <ModalDialog triggerClassName="btn secondary" triggerLabel="+ Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
                 <form action={boundCreateCost} className="cost-form">
                   <JobExpenseFields crew={crew} onReadReceipt={readReceiptAction} />
@@ -1664,6 +1675,9 @@ export default async function JobDetailPage({
                   <CloseOnSuccess />
                 </form>
               </ModalDialog>
+              <Link href="/dashboard/expenses" className="btn secondary" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
+                💳 View all company expenses →
+              </Link>
             </div>
 
             {costs.length === 0 ? (
@@ -1912,6 +1926,29 @@ export default async function JobDetailPage({
           </>
         );
 
+        const permitsBlock = (
+          <section id="permits" className="panel workspace-section-card">
+            <div className="section-heading workspace-section-heading">
+              <p className="eyebrow">Intelligence &amp; Compliance</p>
+              <h2>Permits &amp; Property Intel</h2>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '0.75rem' }}>
+              {job.address ? (
+                <>
+                  <PropertyDossierCard address={job.address} scope={job.scope} />
+                  <PermitFeasibilityCard address={job.address} />
+                </>
+              ) : null}
+              <PermitWorkspace
+                jobId={job.id}
+                address={job.address}
+                headingLevel={3}
+              />
+            </div>
+          </section>
+        );
+
+        const permitsPane = permitsBlock;
         const selectionsPane = selectionsBlock;
 
         const settingsPane = (
@@ -1927,6 +1964,7 @@ export default async function JobDetailPage({
             <nav className="job-subnav" aria-label="Jump to a section">
               <a href="#job-top">Overview</a>
               <a href="#checklist">Work</a>
+              <a href="#permits">Permits</a>
               <a href="#selections">
                 Choices
                 {selectionStatus.waiting > 0 ? (
@@ -1941,6 +1979,7 @@ export default async function JobDetailPage({
             {arrivalBlock}
             {milestonesBlock}
             {formsBlock}
+            {permitsBlock}
             {quoteBreakdownBlock}
             {recurringPlansBlock}
             {punchListBlock}
@@ -1968,6 +2007,7 @@ export default async function JobDetailPage({
             overviewPane={overviewPane}
             financialsPane={financialsPane}
             executionPane={executionPane}
+            permitsPane={permitsPane}
             selectionsPane={selectionsPane}
             settingsPane={settingsPane}
             classicContent={classicContent}

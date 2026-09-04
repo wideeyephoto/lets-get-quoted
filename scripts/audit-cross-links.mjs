@@ -26,10 +26,11 @@ const allFiles = [
   ...getAllTsx('src/lib'),
 ];
 
-// Look for href="..." or href={`...`} or to="..." or redirect('...') or router.push('...')
-const hrefRegex = /(?:href|to)=["'`](\/[^"'`\s?#]*)/g;
-const templateHrefRegex = /(?:href|to)=\{`(\/[^`\s?#$]*)/g;
+// Look for href="..." or href: "..." or url: "..." or redirect('...') or router.push('...')
+const hrefRegex = /(?:href|to|url)(?:=|\s*:)\s*["'`](\/[^"'`\s?#]*)/g;
+const templateHrefRegex = /(?:href|to|url)(?:=|\s*:)\s*\{?`(\/[^`\s?#$]*)/g;
 const redirectRegex = /(?:redirect|router\.push)\(["'`](\/[^"'`\s?#]*)/g;
+const routePatternRegex = /["'](\/(?:dashboard|admin|demo|features|portal|pay|client|field|help)(?:\/[^"'`\s?#]*)?)["']/g;
 
 const foundLinks = new Map(); // target -> Set of source files
 
@@ -41,7 +42,11 @@ for (const file of allFiles) {
     let match;
     while ((match = regex.exec(content)) !== null) {
       let target = match[1];
+      if (target.includes('${')) {
+        target = target.split('${')[0];
+      }
       if (target.length > 1 && target.endsWith('/')) target = target.slice(0, -1);
+      if (!target) continue;
       if (!foundLinks.has(target)) foundLinks.set(target, new Set());
       foundLinks.get(target).add(rel);
     }
@@ -50,6 +55,7 @@ for (const file of allFiles) {
   scan(hrefRegex);
   scan(templateHrefRegex);
   scan(redirectRegex);
+  scan(routePatternRegex);
 }
 
 console.log('Total unique internal destination prefixes found:', foundLinks.size);
@@ -64,6 +70,9 @@ for (const [target, sources] of foundLinks) {
     target.startsWith('/favicon') ||
     target.startsWith('/site-domain') ||
     target.startsWith('/site/') ||
+    target.startsWith('/sms-terms') ||
+    target.startsWith('/privacy') ||
+    target.startsWith('/terms') ||
     target.includes('.') // like .png, .jpg, .svg, .pdf
   ) {
     continue;
@@ -83,6 +92,11 @@ for (const [target, sources] of foundLinks) {
           break;
         }
       }
+      // Check prefix for template literals: e.g. target "/pay" matches valid "/pay/[id]"
+      if (valid.startsWith(target + '/[')) {
+        matches = true;
+        break;
+      }
     }
   }
 
@@ -100,8 +114,9 @@ for (const r of validRoutes) {
     if (r.includes('[')) {
       const regexPattern = '^' + r.replace(/\[\w+\]/g, '[^/]+').replace(/\[\.\.\.\w+\]/g, '.*') + '$';
       const reg = new RegExp(regexPattern);
+      const basePrefix = r.split('/[')[0];
       for (const [target] of foundLinks) {
-        if (reg.test(target)) {
+        if (reg.test(target) || target === basePrefix) {
           hasLink = true;
           break;
         }

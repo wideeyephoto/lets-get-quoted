@@ -394,6 +394,22 @@ export default function MarketingOverviewScreen({
               Closed-loop job tracking
             </span>
           </Link>
+
+          {/* Neighborhood Halo */}
+          <Link href={at('/dashboard/marketing/ads?tab=halo')} className="panel mkt-tile" style={{ textDecoration: 'none', transition: 'all 0.15s ease' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+              <span style={{ fontSize: '0.78rem', fontWeight: 700, color: 'var(--text)' }}>📡 Neighborhood Halo</span>
+              <span style={{ fontSize: '0.7rem', color: 'var(--ink-green-1, #10b981)', background: 'rgba(16, 185, 129, 0.15)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontWeight: 700 }}>
+                Geo-Fencing
+              </span>
+            </div>
+            <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
+              Active Radius
+            </strong>
+            <span className="mkt-tile-note">
+              Target homes around current jobs
+            </span>
+          </Link>
         </div>
       </section>
 

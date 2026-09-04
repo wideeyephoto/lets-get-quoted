@@ -6,7 +6,7 @@ import type { JobDetailLayout } from '@/lib/dashboard-views';
 import { setJobDetailLayoutAction } from '@/app/dashboard/view-actions';
 import VoiceCaptureButton from '@/components/ai/VoiceCaptureButton';
 
-export type JobDetailTab = 'overview' | 'financials' | 'execution' | 'selections' | 'settings';
+export type JobDetailTab = 'overview' | 'financials' | 'execution' | 'permits' | 'selections' | 'settings';
 
 export interface TabBadges {
   feedCount?: number;
@@ -26,6 +26,7 @@ interface JobDetailWorkspaceProps {
   overviewPane: ReactNode;
   financialsPane: ReactNode;
   executionPane: ReactNode;
+  permitsPane?: ReactNode;
   selectionsPane: ReactNode;
   settingsPane: ReactNode;
   classicContent: ReactNode;
@@ -39,6 +40,7 @@ export default function JobDetailWorkspace({
   overviewPane,
   financialsPane,
   executionPane,
+  permitsPane,
   selectionsPane,
   settingsPane,
   classicContent,
@@ -50,7 +52,7 @@ export default function JobDetailWorkspace({
 
   // Determine active tab from search params or deep links if present, else state
   const paramTab = searchParams.get('tab') as JobDetailTab | null;
-  const validTabs: JobDetailTab[] = ['overview', 'financials', 'execution', 'selections', 'settings'];
+  const validTabs: JobDetailTab[] = ['overview', 'financials', 'execution', 'permits', 'selections', 'settings'];
   const [activeTab, setActiveTab] = useState<JobDetailTab>(
     paramTab && validTabs.includes(paramTab) ? paramTab : initialTab
   );
@@ -160,6 +162,15 @@ export default function JobDetailWorkspace({
 
             <button
               type="button"
+              className={`job-workspace-tab ${activeTab === 'permits' ? 'is-active' : ''}`}
+              onClick={() => handleTabChange('permits')}
+            >
+              <span className="job-tab-icon">🏛️</span>
+              <span className="job-tab-label">Permits &amp; Intel</span>
+            </button>
+
+            <button
+              type="button"
               className={`job-workspace-tab ${activeTab === 'selections' ? 'is-active' : ''}`}
               onClick={() => handleTabChange('selections')}
             >
@@ -190,6 +201,7 @@ export default function JobDetailWorkspace({
             {activeTab === 'overview' && overviewPane}
             {activeTab === 'financials' && financialsPane}
             {activeTab === 'execution' && executionPane}
+            {activeTab === 'permits' && permitsPane}
             {activeTab === 'selections' && selectionsPane}
             {activeTab === 'settings' && settingsPane}
           </div>

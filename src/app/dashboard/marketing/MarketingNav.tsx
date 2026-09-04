@@ -24,6 +24,7 @@ const SECTIONS: { path: string; label: string; demo?: boolean }[] = [
   { path: '/blog', label: 'Blog & SEO' },
   { path: '/links', label: 'Tracking' },
   { path: '/performance', label: 'Results' },
+  { path: '/merchandise', label: 'Merch Studio' },
   // demo:false because there is no /demo/marketing/referrals route. The "only"
   // allowlist below would also cover this, but nothing passes it today — so a
   // tab added here would have appeared in the logged-out demo and 404'd, which
