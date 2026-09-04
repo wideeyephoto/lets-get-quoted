@@ -22,6 +22,8 @@ interface Props {
   initialMetrics: ExpenseMetrics;
   jobs: Array<{ id: string; ref: string; clientName: string; status: string }>;
   crew: Array<{ id: string; name: string; role_label: string | null; hourly_rate: number }>;
+  accountTimeZone?: string;
+  availableSuppliers?: string[];
 }
 
 const CATEGORY_TABS: Array<{ value: CostType | 'all'; label: string }> = [
@@ -42,15 +44,49 @@ function formatMoneyExact(n: number): string {
   return (rounded < 0 ? '-$' : '$') + Math.abs(rounded).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
-function formatDate(iso: string): string {
+function toLocalDateStr(iso: string, timeZone?: string): string {
   if (!iso) return '';
-  const [year, month, day] = iso.slice(0, 10).split('-').map(Number);
-  return new Date(Date.UTC(year, (month || 1) - 1, day || 1)).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  });
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || undefined,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  } catch {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+}
+
+function formatDate(iso: string, timeZone?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  try {
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      timeZone: timeZone || undefined,
+    });
+  } catch {
+    return d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  }
+}
+
+function isSafeHttpUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  const trimmed = url.trim().toLowerCase();
+  return trimmed.startsWith('https://') || trimmed.startsWith('http://');
 }
 
 const SOURCE_BADGES: Record<CostSource, { label: string; tone: string }> = {
@@ -79,6 +115,8 @@ export default function ExpensesLedger({
   initialMetrics,
   jobs,
   crew,
+  accountTimeZone = 'America/New_York',
+  availableSuppliers = [],
 }: Props) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -101,11 +139,14 @@ export default function ExpensesLedger({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
 
-  // Add modal state
-  const [selectedModalJobId, setSelectedModalJobId] = useState<string>(jobs[0]?.id || '');
+  // Add modal state - default to General Overhead ("")
+  const [selectedModalJobId, setSelectedModalJobId] = useState<string>('');
 
   // Available unique suppliers
   const suppliers = useMemo(() => {
+    if (availableSuppliers && availableSuppliers.length > 0) {
+      return availableSuppliers;
+    }
     const set = new Set<string>();
     for (const r of initialRows) {
       if (r.supplier && r.supplier.trim()) {
@@ -113,39 +154,45 @@ export default function ExpensesLedger({
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [initialRows]);
+  }, [availableSuppliers, initialRows]);
 
-  // Date preset handler
+  // Date preset handler aligned to account timezone
   const handleDatePreset = (preset: string) => {
     setDatePreset(preset);
     const now = new Date();
-    const y = now.getUTCFullYear();
-    const m = now.getUTCMonth(); // 0-indexed
+    const todayStr = toLocalDateStr(now.toISOString(), accountTimeZone);
+    const [y, m] = todayStr.split('-').map(Number); // m is 1..12
 
     if (preset === 'all') {
       setDateFrom('');
       setDateTo('');
     } else if (preset === 'this_month') {
-      const start = new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 10);
-      const end = new Date(Date.UTC(y, m + 1, 0)).toISOString().slice(0, 10);
+      const start = `${y}-${String(m).padStart(2, '0')}-01`;
+      const lastDay = new Date(y, m, 0).getDate();
+      const end = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       setDateFrom(start);
       setDateTo(end);
     } else if (preset === 'last_month') {
-      const start = new Date(Date.UTC(y, m - 1, 1)).toISOString().slice(0, 10);
-      const end = new Date(Date.UTC(y, m, 0)).toISOString().slice(0, 10);
+      const prevMonth = m === 1 ? 12 : m - 1;
+      const prevYear = m === 1 ? y - 1 : y;
+      const lastDay = new Date(prevYear, prevMonth, 0).getDate();
+      const start = `${prevYear}-${String(prevMonth).padStart(2, '0')}-01`;
+      const end = `${prevYear}-${String(prevMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       setDateFrom(start);
       setDateTo(end);
     } else if (preset === 'this_quarter') {
-      const q = Math.floor(m / 3);
-      const start = new Date(Date.UTC(y, q * 3, 1)).toISOString().slice(0, 10);
-      const end = new Date(Date.UTC(y, (q + 1) * 3, 0)).toISOString().slice(0, 10);
+      const q = Math.floor((m - 1) / 3);
+      const startMonth = q * 3 + 1;
+      const endMonth = startMonth + 2;
+      const lastDay = new Date(y, endMonth, 0).getDate();
+      const start = `${y}-${String(startMonth).padStart(2, '0')}-01`;
+      const end = `${y}-${String(endMonth).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
       setDateFrom(start);
       setDateTo(end);
     } else if (preset === 'ytd') {
       const start = `${y}-01-01`;
-      const end = now.toISOString().slice(0, 10);
       setDateFrom(start);
-      setDateTo(end);
+      setDateTo(todayStr);
     }
   };
 
@@ -189,12 +236,12 @@ export default function ExpensesLedger({
       }
 
       if (dateFrom) {
-        const rowDate = row.created_at.slice(0, 10);
+        const rowDate = toLocalDateStr(row.created_at, accountTimeZone);
         if (rowDate < dateFrom) return false;
       }
 
       if (dateTo) {
-        const rowDate = row.created_at.slice(0, 10);
+        const rowDate = toLocalDateStr(row.created_at, accountTimeZone);
         if (rowDate > dateTo) return false;
       }
 
@@ -212,7 +259,7 @@ export default function ExpensesLedger({
 
       return true;
     });
-  }, [initialRows, query, selectedCategory, selectedSource, selectedJobId, selectedSupplier, dateFrom, dateTo]);
+  }, [initialRows, query, selectedCategory, selectedSource, selectedJobId, selectedSupplier, dateFrom, dateTo, accountTimeZone]);
 
   // Sorted rows
   const sortedRows = useMemo(() => {
@@ -302,11 +349,12 @@ export default function ExpensesLedger({
     if (selectedCategory !== 'all') params.set('type', selectedCategory);
     if (selectedSource !== 'all') params.set('source', selectedSource);
     if (selectedJobId !== 'all') params.set('jobId', selectedJobId);
+    if (selectedSupplier !== 'all') params.set('supplier', selectedSupplier);
     if (query.trim()) params.set('query', query.trim());
     if (dateFrom) params.set('dateFrom', dateFrom);
     if (dateTo) params.set('dateTo', dateTo);
     return `/api/export/expenses?${params.toString()}`;
-  }, [selectedCategory, selectedSource, selectedJobId, query, dateFrom, dateTo]);
+  }, [selectedCategory, selectedSource, selectedJobId, selectedSupplier, query, dateFrom, dateTo]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) {
@@ -680,7 +728,7 @@ export default function ExpensesLedger({
                   return (
                     <tr key={row.id} style={{ borderBottom: '1px solid var(--line)' }}>
                       <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap', color: 'var(--muted)' }}>
-                        {formatDate(row.created_at)}
+                        {formatDate(row.created_at, accountTimeZone)}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
                         {row.job_id ? (
@@ -728,9 +776,9 @@ export default function ExpensesLedger({
                           <span className={`status-badge ${source.tone}`} style={{ fontSize: '0.72rem', padding: '0.15rem 0.45rem' }}>
                             {source.label}
                           </span>
-                          {row.receipt_url && (
+                          {isSafeHttpUrl(row.receipt_url) && (
                             <a
-                              href={row.receipt_url}
+                              href={row.receipt_url!}
                               target="_blank"
                               rel="noopener noreferrer"
                               style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
@@ -811,6 +859,17 @@ export default function ExpensesLedger({
                                     name="amount"
                                     defaultValue={row.amount}
                                     required
+                                  />
+                                </div>
+
+                                <div className="field">
+                                  <label htmlFor={`edit-cost-receipt-${row.id}`}>Receipt / Invoice Link (URL)</label>
+                                  <input
+                                    id={`edit-cost-receipt-${row.id}`}
+                                    type="url"
+                                    name="receiptUrl"
+                                    placeholder="https://..."
+                                    defaultValue={row.receipt_url || ''}
                                   />
                                 </div>
 

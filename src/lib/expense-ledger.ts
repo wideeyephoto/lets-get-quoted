@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Cost, CostType } from '@/lib/jobs';
 import type { CostSource } from '@/lib/cost-truth';
+import { fetchAllPages } from '@/lib/pagination';
 
 export interface ExpenseRow extends Cost {
   job_ref?: string | null;
@@ -12,6 +13,7 @@ export interface ExpenseFilters {
   type?: CostType | 'all';
   source?: CostSource | 'all';
   jobId?: string;
+  supplier?: string;
   query?: string;
   dateFrom?: string;
   dateTo?: string;
@@ -61,6 +63,10 @@ export async function listAccountExpenses(
     } else {
       query = query.eq('job_id', filters.jobId);
     }
+  }
+
+  if (filters.supplier && filters.supplier !== 'all') {
+    query = query.eq('supplier', filters.supplier);
   }
 
   if (filters.dateFrom) {
@@ -114,34 +120,102 @@ export async function listAccountExpenses(
   return { rows, totalCount: count ?? rows.length };
 }
 
+export async function listAllAccountExpenses(
+  supabase: SupabaseClient,
+  accountId: string,
+  filters: ExpenseFilters = {},
+): Promise<{ rows: ExpenseRow[]; totalCount: number }> {
+  const allRows: ExpenseRow[] = [];
+  let offset = 0;
+  const BATCH_SIZE = 1000;
+
+  while (true) {
+    const { rows, totalCount } = await listAccountExpenses(supabase, accountId, {
+      ...filters,
+      limit: BATCH_SIZE,
+      offset,
+    });
+    allRows.push(...rows);
+    offset += rows.length;
+    if (rows.length === 0 || allRows.length >= totalCount || rows.length < BATCH_SIZE) {
+      return { rows: allRows, totalCount };
+    }
+  }
+}
+
+export async function listAccountSuppliers(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<string[]> {
+  const rows = await fetchAllPages<{ supplier: string | null }>((from, to) => {
+    return supabase
+      .from('costs')
+      .select('supplier')
+      .eq('account_id', accountId)
+      .not('supplier', 'is', null)
+      .order('supplier', { ascending: true })
+      .range(from, to);
+  });
+  const set = new Set<string>();
+  for (const r of rows) {
+    if (r.supplier && r.supplier.trim()) {
+      set.add(r.supplier.trim());
+    }
+  }
+  return Array.from(set).sort((a, b) => a.localeCompare(b));
+}
+
 export async function getExpenseSummaryMetrics(
   supabase: SupabaseClient,
   accountId: string,
-  filters: Pick<ExpenseFilters, 'dateFrom' | 'dateTo' | 'jobId'> = {},
+  filters: Pick<ExpenseFilters, 'dateFrom' | 'dateTo' | 'jobId' | 'type' | 'source' | 'supplier'> = {},
 ): Promise<ExpenseMetrics> {
-  let query = supabase
-    .from('costs')
-    .select('type, amount, burden_amount, cost_source')
-    .eq('account_id', accountId);
+  const rows = await fetchAllPages<{
+    type: CostType;
+    amount: number;
+    burden_amount: number | null;
+    cost_source: CostSource;
+  }>((from, to) => {
+    let query = supabase
+      .from('costs')
+      .select('type, amount, burden_amount, cost_source')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false });
 
-  if (filters.jobId) {
-    if (filters.jobId === 'overhead') {
-      query = query.is('job_id', null);
-    } else {
-      query = query.eq('job_id', filters.jobId);
+    if (filters.jobId) {
+      if (filters.jobId === 'overhead') {
+        query = query.is('job_id', null);
+      } else {
+        query = query.eq('job_id', filters.jobId);
+      }
     }
-  }
 
-  if (filters.dateFrom) {
-    query = query.gte('created_at', `${filters.dateFrom}T00:00:00.000Z`);
-  }
+    if (filters.type && filters.type !== 'all') {
+      if (filters.type === 'material') {
+        query = query.in('type', ['material', 'receipt']);
+      } else {
+        query = query.eq('type', filters.type);
+      }
+    }
 
-  if (filters.dateTo) {
-    query = query.lte('created_at', `${filters.dateTo}T23:59:59.999Z`);
-  }
+    if (filters.source && filters.source !== 'all') {
+      query = query.eq('cost_source', filters.source);
+    }
 
-  const { data, error } = await query;
-  if (error) throw error;
+    if (filters.supplier && filters.supplier !== 'all') {
+      query = query.eq('supplier', filters.supplier);
+    }
+
+    if (filters.dateFrom) {
+      query = query.gte('created_at', `${filters.dateFrom}T00:00:00.000Z`);
+    }
+
+    if (filters.dateTo) {
+      query = query.lte('created_at', `${filters.dateTo}T23:59:59.999Z`);
+    }
+
+    return query.range(from, to);
+  });
 
   let materialsTotal = 0;
   let laborWagesTotal = 0;
@@ -150,7 +224,6 @@ export async function getExpenseSummaryMetrics(
   let otherTotal = 0;
   let evidencedCount = 0;
 
-  const rows = data ?? [];
   for (const item of rows) {
     const amt = Number(item.amount) || 0;
     const burden = Number(item.burden_amount) || 0;
@@ -190,7 +263,26 @@ export async function getExpenseSummaryMetrics(
   };
 }
 
-export function generateExpensesCsv(rows: ExpenseRow[]): string {
+export function formatExpenseLocalDate(iso: string, timeZone?: string): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  try {
+    return new Intl.DateTimeFormat('en-CA', {
+      timeZone: timeZone || undefined,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    }).format(d);
+  } catch {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+}
+
+export function generateExpensesCsv(rows: ExpenseRow[], timeZone?: string): string {
   const headers = [
     'Date',
     'Job Ref',
@@ -209,8 +301,12 @@ export function generateExpensesCsv(rows: ExpenseRow[]): string {
   ];
 
   const escapeCsv = (val: unknown): string => {
-    const s = String(val ?? '');
-    if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    let s = String(val ?? '');
+    // Neutralize spreadsheet formula injection (CWE-1236)
+    if (/^[=+\-@\t\r]/.test(s)) {
+      s = `'${s}`;
+    }
+    if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) {
       return `"${s.replace(/"/g, '""')}"`;
     }
     return s;
@@ -220,7 +316,7 @@ export function generateExpensesCsv(rows: ExpenseRow[]): string {
 
   for (const r of rows) {
     const totalCost = (Number(r.amount) || 0) + (Number(r.burden_amount) || 0);
-    const dateStr = r.created_at ? r.created_at.slice(0, 10) : '';
+    const dateStr = r.created_at ? (timeZone ? formatExpenseLocalDate(r.created_at, timeZone) : r.created_at.slice(0, 10)) : '';
 
     const line = [
       escapeCsv(dateStr),

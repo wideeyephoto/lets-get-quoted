@@ -237,8 +237,18 @@ export default function JobExpenseFields({ crew, onReadReceipt }: JobExpenseFiel
       )}
 
       <div className="field full">
-        <label htmlFor="supplier">Notes</label>
-        <textarea id="supplier" name="supplier" placeholder="Optional notes for this expense" />
+        <label htmlFor="cost-receipt-url">Receipt / Invoice Link (URL)</label>
+        <input
+          id="cost-receipt-url"
+          name="receiptUrl"
+          type="url"
+          placeholder="https://example.com/receipt.pdf"
+        />
+      </div>
+
+      <div className="field full">
+        <label htmlFor="cost-notes">Notes</label>
+        <textarea id="cost-notes" name="notes" placeholder="Optional notes for this expense" />
       </div>
     </>
   );

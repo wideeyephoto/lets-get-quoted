@@ -2,20 +2,21 @@ import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { listJobs } from '@/lib/jobs';
 import { listCrew } from '@/lib/crew';
-import { listAccountExpenses, getExpenseSummaryMetrics } from '@/lib/expense-ledger';
+import { listAllAccountExpenses, getExpenseSummaryMetrics, listAccountSuppliers } from '@/lib/expense-ledger';
 import ExpensesLedger from './ExpensesLedger';
 
 export const metadata = { title: 'All Expenses Ledger · Let’s Get Quoted' };
 
 export default async function ExpensesPage() {
-  const { supabase, accountId, role, capabilities } = await requireOfficeContext('reports.read');
+  const { supabase, accountId, role, capabilities, accountTimeZone } = await requireOfficeContext('reports.read');
   const canManageCosts = role === 'owner' || capabilities.has('jobs.write');
 
-  const [{ rows, totalCount }, metrics, jobs, crew] = await Promise.all([
-    listAccountExpenses(supabase, accountId, { limit: 500 }),
+  const [{ rows, totalCount }, metrics, jobs, crew, suppliers] = await Promise.all([
+    listAllAccountExpenses(supabase, accountId),
     getExpenseSummaryMetrics(supabase, accountId),
     listJobs(supabase, accountId),
     listCrew(supabase, accountId),
+    listAccountSuppliers(supabase, accountId),
   ]);
 
   const mappedJobs = jobs.map((j) => ({
@@ -61,6 +62,8 @@ export default async function ExpensesPage() {
         initialMetrics={metrics}
         jobs={mappedJobs}
         crew={mappedCrew}
+        accountTimeZone={accountTimeZone || 'America/New_York'}
+        availableSuppliers={suppliers}
       />
     </main>
   );
