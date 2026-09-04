@@ -4,7 +4,8 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { normalizeUsPhone } from '@/lib/phone';
 import {
-  readySignalWireVoiceSender,
+  readySignalWireVoiceNumber,
+  signalWireVoiceRouteTargets,
   voiceRouteRevision,
   type SignalWireVoiceNumber,
 } from '@/lib/voice/number-readiness';
@@ -74,6 +75,11 @@ export async function loadVoiceOperatorHealth(
         failures.push('active routes');
         console.error('voice operator active-route read failed:', routes.error);
       } else {
+        const routeTargets = signalWireVoiceRouteTargets();
+        if (!routeTargets) {
+          failures.push('active routes');
+          console.error('voice operator active-route origin is not safely configured');
+        }
         const currentAccounts = new Map<string, { number: string; revision: number }>();
         for (const row of routes.data ?? []) {
           const value = row as {
@@ -88,25 +94,26 @@ export async function loadVoiceOperatorHealth(
           }
         }
 
-        const inventory = await admin
-          .from('sms_sender_numbers')
-          .select('id, provider, e164_number, provider_number_id, purpose, account_id, assignment_state, provisioning_status, inbound_ready, activated_at, suspended_at')
+        const inventory = routeTargets ? await admin
+          .from('voice_number_inventory')
+          .select('id, provider, e164_number, provider_number_id, purpose, account_id, lifecycle_state, voice_capable, call_handler, call_request_url, call_request_method, call_status_callback_url, call_status_callback_method, provider_readiness_state, provider_verified_at, last_provider_sync_at, activated_at, suspended_at, released_at')
           .eq('provider', 'signalwire')
-          .eq('purpose', 'contractor_dedicated')
-          .in('account_id', accountIds);
-        if (inventory.error) {
+          .eq('purpose', 'ai_voice')
+          .in('account_id', accountIds) : null;
+        if (inventory?.error) {
           failures.push('active routes');
           console.error('voice operator active-route inventory read failed:', inventory.error);
-        } else {
+        } else if (inventory && routeTargets) {
           const readyByAccount = new Map<string, SignalWireVoiceNumber>();
           for (const row of inventory.data ?? []) {
             const value = row as Record<string, unknown>;
             const accountId = String(value.account_id ?? '');
             const current = currentAccounts.get(accountId);
             if (!current) continue;
-            const ready = readySignalWireVoiceSender(value, {
+            const ready = readySignalWireVoiceNumber(value, {
               accountId,
               number: current.number,
+              ...routeTargets,
             });
             if (ready) {
               readyByAccount.set(accountId, Object.freeze({

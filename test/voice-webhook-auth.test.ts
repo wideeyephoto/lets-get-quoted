@@ -53,6 +53,15 @@ describe('voice receipt Basic authentication', () => {
     expect(verifyVoiceReceiptAuthorization(request(header), ENV)).toEqual({ ok: true });
   });
 
+  it.each([
+    'Basic !!!not-base64!!!',
+    `Basic ${Buffer.from('voice-receipt:test:password').toString('base64')}=`,
+    'Basic /w==',
+  ])('rejects malformed or noncanonical Basic credentials', (header) => {
+    expect(verifyVoiceReceiptAuthorization(request(header), ENV))
+      .toEqual({ ok: false, reason: 'malformed' });
+  });
+
   it('reports presence only for health diagnostics', () => {
     expect(voiceWebhookSecuritySummary({
       ...ENV,

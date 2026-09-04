@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { verifyVoiceToolToken, voiceReceiptAuthorization } from '@/lib/voice/auth';
+import { verifyVoiceReceiptAuthorization, verifyVoiceToolToken } from '@/lib/voice/auth';
 import { sendCallerVoiceBookingLinkSms, sendCallerVoiceBookingConfirmationSms } from '@/lib/sms';
 import { getAvailableBookingDays, claimBookingHold, createBooking } from '@/lib/booking';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
@@ -9,31 +9,22 @@ import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
-import { handleContractorVoiceAction, resolveVoiceJob } from '@/lib/voice/contractor-actions';
+import {
+  CONTRACTOR_VOICE_FUNCTIONS,
+  handleContractorVoiceAction,
+  resolveVoiceJob,
+} from '@/lib/voice/contractor-actions';
+import {
+  getVoiceStaffStepUpStatus,
+  requestVoiceStaffStepUp,
+  verifyVoiceStaffStepUp,
+} from '@/lib/voice/staff-step-up';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-function verifySwaigAuth(request: Request): boolean {
-  const expected = voiceReceiptAuthorization();
-  if (!expected) return false;
-
-  const authHeader = request.headers.get('authorization') || '';
-  if (!authHeader.startsWith('Basic ')) return false;
-
-  const b64 = authHeader.slice(6).trim();
-  const decoded = Buffer.from(b64, 'base64').toString('utf8');
-  const colonIndex = decoded.indexOf(':');
-  if (colonIndex === -1) return false;
-
-  const user = decoded.slice(0, colonIndex);
-  const pass = decoded.slice(colonIndex + 1);
-
-  return user === expected.username && pass === expected.password;
-}
-
 export async function POST(request: Request) {
-  if (!verifySwaigAuth(request)) {
+  if (!verifyVoiceReceiptAuthorization(request).ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -71,8 +62,19 @@ export async function POST(request: Request) {
     : {};
 
   const admin = createAdminClient();
+  const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
 
   if (fnName === 'send_booking_link') {
+    if (identity.status === 'staff') {
+      return NextResponse.json({
+        response: 'Booking-link texts are a customer-call tool and are not available in contractor mode.',
+      });
+    }
+    if (identity.status === 'ambiguous' || identity.status === 'unavailable') {
+      return NextResponse.json({
+        response: 'I could not safely verify this caller, so I did not send a booking text.',
+      });
+    }
     const callerPhone = verifiedCallerPhone || String(args.caller_phone || '').trim();
     if (!callerPhone) {
       return NextResponse.json({
@@ -174,6 +176,16 @@ export async function POST(request: Request) {
   }
 
   if (fnName === 'book_appointment_slot') {
+    if (identity.status === 'staff') {
+      return NextResponse.json({
+        response: 'That customer booking tool is disabled on staff calls. Use the verified contractor scheduling action instead; nothing was changed.',
+      });
+    }
+    if (identity.status === 'ambiguous' || identity.status === 'unavailable') {
+      return NextResponse.json({
+        response: 'I could not safely verify this caller, so I did not create a booking.',
+      });
+    }
     const callerName = String(args.caller_name || '').trim();
     const suppliedPhone = verifiedCallerPhone || String(args.caller_phone || '').trim();
     const callerPhone = suppliedPhone ? normalizeUsPhone(suppliedPhone) : null;
@@ -381,11 +393,22 @@ export async function POST(request: Request) {
     }
 
     try {
-      const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
       if (identity.status === 'unavailable' || identity.status === 'ambiguous') {
         return NextResponse.json({
           response: 'I could not safely verify who is asking for that project status, so I did not disclose it. Please contact the office.',
         });
+      }
+      if (identity.status === 'staff') {
+        const stepUp = await getVoiceStaffStepUpStatus({
+          admin,
+          accountId,
+          providerCallId: verifiedProviderCallId,
+          signedCallerPhone: verifiedCallerPhone,
+          identity,
+        });
+        if (!stepUp.verified) {
+          return NextResponse.json({ response: stepUp.response });
+        }
       }
       const allowedCallerPhone = identity.status === 'customer'
         ? normalizeUsPhone(verifiedCallerPhone || '')
@@ -526,22 +549,53 @@ export async function POST(request: Request) {
     }
   }
 
-  const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
+  if (fnName === 'request_staff_step_up') {
+    const result = await requestVoiceStaffStepUp({
+      admin,
+      accountId,
+      providerCallId: verifiedProviderCallId,
+      signedCallerPhone: verifiedCallerPhone,
+      identity,
+    });
+    return NextResponse.json({ response: result.response });
+  }
+
+  if (fnName === 'verify_staff_step_up') {
+    const result = await verifyVoiceStaffStepUp({
+      admin,
+      accountId,
+      providerCallId: verifiedProviderCallId,
+      signedCallerPhone: verifiedCallerPhone,
+      identity,
+      code: args.code,
+    });
+    return NextResponse.json({ response: result.response });
+  }
+
   if (identity.status === 'staff') {
+    const stepUp = CONTRACTOR_VOICE_FUNCTIONS.has(fnName)
+      ? await getVoiceStaffStepUpStatus({
+        admin,
+        accountId,
+        providerCallId: verifiedProviderCallId,
+        signedCallerPhone: verifiedCallerPhone,
+        identity,
+      })
+      : null;
+    if (stepUp && !stepUp.verified) {
+      return NextResponse.json({ response: stepUp.response });
+    }
     const action = await handleContractorVoiceAction({
       admin,
       accountId,
       providerCallId: verifiedProviderCallId,
       caller: identity.caller,
+      stepUpVerified: stepUp?.verified === true,
       functionName: fnName,
       args,
     });
     if (action.handled) return NextResponse.json({ response: action.response });
-  } else if (
-    ['update_job_details', 'update_job_scope', 'create_or_update_lead',
-      'log_crew_time_and_materials', 'create_job_change_order',
-      'append_job_caution_or_note', 'add_caution_note'].includes(fnName)
-  ) {
+  } else if (CONTRACTOR_VOICE_FUNCTIONS.has(fnName)) {
     return NextResponse.json({
       response: identity.status === 'customer'
         ? 'Job updates and internal commands are restricted to verified team members.'

@@ -112,7 +112,7 @@ export type VoiceMinuteDecision =
   /** Follow the contractor's forwarding or voicemail rule. Not an error. */
   | Readonly<{
       outcome: 'refused';
-      reason: 'no_allowance' | 'admission_unavailable' | 'at_capacity' | 'number_not_ready';
+      reason: 'no_allowance' | 'admission_unavailable' | 'at_capacity' | 'number_not_ready' | 'call_terminal';
     }>;
 
 export type VoiceAdmissionInput = Readonly<{
@@ -208,12 +208,16 @@ export async function admitVoiceCall(
   if (slot.outcome === 'number_not_ready') {
     return Object.freeze({ outcome: 'refused' as const, reason: 'number_not_ready' as const });
   }
+  if (slot.outcome === 'call_terminal') {
+    return Object.freeze({ outcome: 'refused' as const, reason: 'call_terminal' as const });
+  }
   if (slot.outcome !== 'claimed') {
     return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
   }
 
   if (mode === 'off') {
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({ outcome: 'admitted_unmetered' as const, reason: 'not_metered' as const });
@@ -239,6 +243,7 @@ export async function admitVoiceCall(
     reserveError = result.error;
   } catch {
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({
@@ -250,6 +255,7 @@ export async function admitVoiceCall(
     if (insufficientCredits(reserveError)) {
       if (mode !== 'enforce') {
         if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+          await releaseAdmissionClaim(admin, slot.admissionId, input);
           return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
         }
         return Object.freeze({
@@ -281,6 +287,7 @@ export async function admitVoiceCall(
             resourceCode: VOICE_MINUTE_RESOURCE_CODE,
             millicents: overage.chargedMillicents,
           });
+          await releaseAdmissionClaim(admin, slot.admissionId, input);
           return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
         }
         return Object.freeze({
@@ -299,6 +306,7 @@ export async function admitVoiceCall(
     }
     console.error('voice minute reservation failed:', reserveError);
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({
@@ -308,6 +316,7 @@ export async function admitVoiceCall(
 
   if (typeof reservationId !== 'string' || !reservationId) {
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({
@@ -325,6 +334,7 @@ export async function admitVoiceCall(
   });
   if (!await finalizeAdmission(admin, slot.admissionId, input, reservationId, cap)) {
     await releaseVoiceCall(admin, lease, 'admission_record_failed');
+    await releaseAdmissionClaim(admin, slot.admissionId, input);
     return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
   }
   return Object.freeze({
@@ -337,7 +347,7 @@ export async function admitVoiceCall(
 type AdmissionSlot =
   | Readonly<{ outcome: 'claimed'; admissionId: string }>
   | Readonly<{
-    outcome: 'existing' | 'at_capacity' | 'number_not_ready' | 'busy' | 'unavailable';
+    outcome: 'existing' | 'at_capacity' | 'number_not_ready' | 'call_terminal' | 'busy' | 'unavailable';
   }>;
 
 async function claimAdmissionSlot(
@@ -365,7 +375,7 @@ async function claimAdmissionSlot(
     if (!row || typeof row !== 'object') return Object.freeze({ outcome: 'unavailable' as const });
     const status = (row as { claim_status?: unknown }).claim_status;
     if (status === 'existing' || status === 'at_capacity'
-        || status === 'number_not_ready' || status === 'busy') {
+        || status === 'number_not_ready' || status === 'call_terminal' || status === 'busy') {
       return Object.freeze({ outcome: status });
     }
     const admissionId = (row as { admission_id?: unknown }).admission_id;

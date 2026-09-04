@@ -80,6 +80,7 @@ function actionContext(
     accountId: ACCOUNT_ID,
     providerCallId: PROVIDER_CALL_ID,
     caller: ownerCaller,
+    stepUpVerified: true,
     functionName,
     args,
   };
@@ -209,6 +210,26 @@ describe('AI Voice contractor lead intent', () => {
 });
 
 describe('AI Voice contractor durable action outcomes', () => {
+  it('prompts for step-up and performs no reads or writes until the call is verified', async () => {
+    const { admin, from, rpc } = mockAdmin({ jobs: [baseJob] });
+
+    const result = await handleContractorVoiceAction({
+      ...actionContext(
+        admin,
+        'append_job_caution_or_note',
+        { job_ref_or_client: baseJob.ref, note: 'Side gate is locked.' },
+      ),
+      stepUpVerified: false,
+    });
+
+    expect(result).toEqual({
+      handled: true,
+      response: 'Before I can save that dispatch change, I need to text a six-digit verification code to the verified phone calling now.',
+    });
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
   it('confirms a job mutation only after the RPC returns a durable outcome', async () => {
     const { admin, rpc } = mockAdmin({
       jobs: [baseJob],

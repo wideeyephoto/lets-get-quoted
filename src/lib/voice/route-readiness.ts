@@ -22,7 +22,7 @@ function evidenceShape(number: SignalWireVoiceNumber) {
   return Object.freeze({
     route: 'ai_voice',
     number: number.number,
-    sender_number_id: number.senderNumberId,
+    voice_number_id: number.voiceNumberId,
     route_revision: number.routeRevision,
   });
 }
@@ -36,7 +36,7 @@ export function matchesCurrentVoiceRouteEvidence(
     : {};
   return meta.route === 'ai_voice'
     && meta.number === number.number
-    && meta.sender_number_id === number.senderNumberId
+    && meta.voice_number_id === number.voiceNumberId
     && meta.route_revision === number.routeRevision;
 }
 

@@ -10,6 +10,8 @@ import type { VoiceReceipt } from '@/lib/voice/provider';
 import { detectCallEmergency, notifyEmergencyCall } from '@/lib/voice/triage';
 import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { invalidateVoiceStaffStepUp } from '@/lib/voice/staff-step-up';
+import { sanitizeVoiceReceipt } from '@/lib/voice/receipt-redaction';
 
 const MICROS_PER_SECOND = 1_000_000;
 
@@ -73,9 +75,10 @@ function callerPhone(receipt: VoiceReceipt): string | null {
 
 export async function settleVoiceReceipt(
   admin: SupabaseClient,
-  receipt: VoiceReceipt,
+  receiptInput: VoiceReceipt,
   options: Readonly<{ voiceEventId?: string }> = {},
 ): Promise<VoiceSettlement> {
+  const receipt = sanitizeVoiceReceipt(receiptInput);
   const { data: admission, error: admissionError } = await admin
     .from('voice_call_admissions')
     .select('account_id, reservation_id, reserved_minutes, overage_key, caller_number, caller_kind')
@@ -176,6 +179,16 @@ export async function settleVoiceReceipt(
   }
   const staffCaller = callerKind === 'owner' || callerKind === 'office'
     || callerKind === 'crew' || callerKind === 'staff_ambiguous';
+
+  if (staffCaller && authoritativeCallerNumber) {
+    await invalidateVoiceStaffStepUp({
+      admin,
+      accountId: row.account_id,
+      providerCallId: receipt.providerCallId,
+      callerPhone: authoritativeCallerNumber,
+      reason: 'call_ended',
+    });
+  }
 
   // The lead is why the contractor bought this. It is attempted whatever
   // happened above. Its event-scoped insert is idempotent, so a transient error
@@ -396,7 +409,7 @@ export async function recordProvisionalVoiceCall(
 /** Required transcript projection; throws so the durable receipt can retry. */
 export async function recordCallHistory(
   admin: SupabaseClient,
-  receipt: VoiceReceipt,
+  receiptInput: VoiceReceipt,
   facts: Readonly<{
     accountId: string;
     minutes: number | null;
@@ -410,6 +423,7 @@ export async function recordCallHistory(
     callerNumber?: string | null;
   }>,
 ): Promise<void> {
+  const receipt = sanitizeVoiceReceipt(receiptInput);
   const seconds = receipt.aiStartMicros !== null && receipt.aiEndMicros !== null
     && receipt.aiEndMicros >= receipt.aiStartMicros
     ? Math.round((receipt.aiEndMicros - receipt.aiStartMicros) / MICROS_PER_SECOND)

@@ -4,6 +4,7 @@ import {
   minimizeSignalWireVoiceReceiptPayload,
   signalwireVoiceProvider as provider,
 } from '@/lib/voice/signalwire';
+import { sanitizeVoiceReceiptValue } from '@/lib/voice/receipt-redaction';
 
 /**
  * The payload below is the one captured from a live SignalWire scratch agent on
@@ -44,6 +45,98 @@ const measured = () => ({
 });
 
 describe('reading the measured receipt', () => {
+  it('bounds deep model JSON while removing code keys and six-digit strings', () => {
+    const otp = '481920';
+    let deep: Record<string, unknown> = { code: otp };
+    for (let index = 0; index < 20; index += 1) deep = { next: deep };
+    const sanitized = sanitizeVoiceReceiptValue({
+      code: 'arbitrary-secret',
+      VerificationCode: 'spelled-out-secret',
+      one_time_password: 'another-secret',
+      note: `read ${otp}`,
+      deep,
+      oversized: [...Array.from({ length: 100 }, () => 'safe'), otp],
+    });
+
+    expect(JSON.stringify(sanitized)).not.toContain(otp);
+    expect(JSON.stringify(sanitized)).not.toContain('arbitrary-secret');
+    expect(JSON.stringify(sanitized)).not.toContain('spelled-out-secret');
+    expect(JSON.stringify(sanitized)).not.toContain('another-secret');
+    expect(sanitized).toMatchObject({
+      code: '[REDACTED]',
+      VerificationCode: '[REDACTED]',
+      one_time_password: '[REDACTED]',
+      note: 'read [REDACTED]',
+    });
+  });
+
+  it('redacts ASR-formatted OTPs while preserving complete phone numbers', () => {
+    const sanitized = sanitizeVoiceReceiptValue({
+      grouped: 'The authorization code is 123 456.',
+      separated: 'Code: 1-2-3-4-5-6.',
+      words: 'My verification code was one two three four five six.',
+      bareSpokenDigits: '1 2 3 4 5 6',
+      bareSpokenWords: 'one two three four five six',
+      embeddedSpokenWords: 'It is one two three four five six.',
+      phoneDigits: 'My phone is 8 1 0 3 0 4 2 0 6 1.',
+      phoneWords: 'My phone is eight one zero three zero four two zero six one.',
+    });
+
+    expect(sanitized).toMatchObject({
+      grouped: 'The authorization code is [REDACTED].',
+      separated: 'Code: [REDACTED].',
+      words: 'My verification code was [REDACTED].',
+      bareSpokenDigits: '[REDACTED]',
+      bareSpokenWords: '[REDACTED]',
+      embeddedSpokenWords: 'It is [REDACTED].',
+      phoneDigits: 'My phone is 8 1 0 3 0 4 2 0 6 1.',
+      phoneWords: 'My phone is eight one zero three zero four two zero six one.',
+    });
+  });
+
+  it('redacts bare grouped six-digit OTPs while preserving complete phone runs', () => {
+    const sanitized = sanitizeVoiceReceiptValue({
+      groupedThreeThree: '123-456',
+      groupedTwoTwoTwo: '12 34 56',
+      groupedIrregular: '1 23 45 6',
+      phoneContiguous: '2485550105',
+      phoneSeparated: '248-555-0105',
+      phoneSpaced: '248 555 0105',
+    });
+
+    expect(sanitized).toEqual(expect.objectContaining({
+      groupedThreeThree: '[REDACTED]',
+      groupedTwoTwoTwo: '[REDACTED]',
+      groupedIrregular: '[REDACTED]',
+      phoneContiguous: '2485550105',
+      phoneSeparated: '248-555-0105',
+      phoneSpaced: '248 555 0105',
+    }));
+  });
+
+  it('redacts OTPs before the persisted transcript truncation boundary', () => {
+    const boundary = 'x'.repeat(19_995);
+    const spokenBoundary = `${'x'.repeat(19_994)} `;
+    const sanitized = sanitizeVoiceReceiptValue({
+      numeric: `${boundary}123456 trailing provider text`,
+      separated: `${boundary}1-2-3-4-5-6 trailing provider text`,
+      grouped: `${boundary}123-456 trailing provider text`,
+      spoken: `${spokenBoundary}one two three four five six trailing provider text`,
+    });
+
+    expect(sanitized).toMatchObject({
+      numeric: expect.stringContaining('[REDACTED]'),
+      separated: expect.stringContaining('[REDACTED]'),
+      grouped: expect.stringContaining('[REDACTED]'),
+      spoken: expect.stringContaining('[REDACTED]'),
+    });
+    const durableJson = JSON.stringify(sanitized);
+    expect(durableJson).not.toContain('12345');
+    expect(durableJson).not.toContain('1-2-3-4-5');
+    expect(durableJson).not.toContain('one two three four five');
+    expect(durableJson).toContain('[TRUNCATED]');
+  });
+
   it('accepts the payload a real agent sent', () => {
     const parsed = provider.parseReceipt(measured());
     expect(parsed.ok).toBe(true);
@@ -82,6 +175,50 @@ describe('reading the measured receipt', () => {
       expect(evidence).not.toHaveProperty(transcriptKey);
     }
     expect(parsed.receipt.callLog).toHaveLength(4);
+  });
+
+  it('redacts spoken OTPs and exact code arguments before receipt evidence exists', () => {
+    const otp = '481920';
+    const payload = {
+      ...measured(),
+      call_log: [
+        { role: 'user', content: `The authorization code is ${otp}. My phone is 8103042061.` },
+        { role: 'tool', content: JSON.stringify({ code: otp, action: 'verify_staff_step_up' }) },
+      ],
+      post_prompt_data: {
+        substituted: `Staff caller supplied ${otp}.`,
+        parsed: {
+          code: otp,
+          issue_summary: `Verified with ${otp}`,
+          nested: [{
+            tool_args: { code: 'not-six-digits-but-still-secret' },
+            numeric_note: 123456,
+            leading_zero_note: '048192',
+          }],
+        },
+      },
+    };
+
+    const parsed = provider.parseReceipt(payload);
+    if (!parsed.ok) throw new Error('expected a receipt');
+    const evidence = minimizeSignalWireVoiceReceiptPayload(payload, parsed.receipt);
+
+    expect(JSON.stringify(parsed.receipt)).not.toContain(otp);
+    expect(JSON.stringify(parsed.receipt)).not.toContain('123456');
+    expect(JSON.stringify(parsed.receipt)).not.toContain('048192');
+    expect(JSON.stringify(evidence)).not.toContain(otp);
+    expect(parsed.receipt.summary).toBe('Staff caller supplied [REDACTED].');
+    expect(parsed.receipt.callLog?.[0].content).toContain('[REDACTED]');
+    expect(parsed.receipt.callLog?.[0].content).toContain('8103042061');
+    expect(parsed.receipt.structuredPostPrompt).toMatchObject({
+      code: '[REDACTED]',
+      issue_summary: 'Verified with [REDACTED]',
+      nested: [{
+        tool_args: { code: '[REDACTED]' },
+        numeric_note: '[REDACTED]',
+        leading_zero_note: '[REDACTED]',
+      }],
+    });
   });
 
   it('carries the billable window and the answered window separately', () => {
@@ -214,6 +351,22 @@ describe('rendering an answer', () => {
     expect(main[playIndex].play.url).toContain('This call may be recorded for quality and training purposes.');
   });
 
+  it('hard-disables provider recording on contractor calls and asks the provider to redact spoken codes', () => {
+    const answer = provider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Thanks for calling.', capMinutes: 60, transferTo: null,
+      recordCall: true, recordingStatusUrl: 'https://x.test/recording',
+      swaigUrl: 'https://x.test/swaig', contractorMode: true,
+    });
+    const main = JSON.parse(answer.body).sections.main;
+    expect(main.some((section: Record<string, unknown>) => 'record_call' in section)).toBe(false);
+    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.url)
+      .not.toContain('This call may be recorded');
+    const ai = main.find((section: Record<string, unknown>) => 'ai' in section).ai;
+    expect(ai.params.redact_prompt).toMatch(/six-digit voice authorization codes/i);
+    expect(ai.params.redact_prompt).toMatch(/one-time passwords|OTPs/i);
+  });
+
   it('renders conservative contractor mutation tool contracts', () => {
     const answer = provider.renderAnswer({
       kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
@@ -224,6 +377,16 @@ describe('rendering an answer', () => {
       .find((section: Record<string, unknown>) => 'ai' in section).ai;
     const functions = ai.SWAIG.functions;
     const tool = (name: string) => functions.find((candidate: { function: string }) => candidate.function === name);
+
+    const requestStepUp = tool('request_staff_step_up');
+    const verifyStepUp = tool('verify_staff_step_up');
+    expect(requestStepUp).toBeDefined();
+    expect(requestStepUp.argument.properties).toEqual({});
+    expect(verifyStepUp.argument.required).toEqual(['code']);
+    expect(verifyStepUp.argument.properties.code.pattern).toBe('^[0-9]{6}$');
+    expect(verifyStepUp.purpose).toMatch(/never repeat the code aloud/i);
+    expect(tool('book_appointment_slot')).toBeUndefined();
+    expect(tool('send_booking_link')).toBeUndefined();
 
     for (const name of [
       'append_job_caution_or_note',
@@ -252,6 +415,19 @@ describe('rendering an answer', () => {
 
     expect(tool('create_job_change_order').argument.required)
       .toEqual(expect.arrayContaining(['job_ref_or_client', 'title', 'description']));
+  });
+
+  it('never exposes staff step-up tools on a customer-mode call', () => {
+    const answer = provider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://x.test/r', receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Hi', capMinutes: 60, transferTo: null,
+      swaigUrl: 'https://x.test/swaig', contractorMode: false,
+    });
+    const ai = JSON.parse(answer.body).sections.main
+      .find((section: Record<string, unknown>) => 'ai' in section).ai;
+    const names = ai.SWAIG.functions.map((candidate: { function: string }) => candidate.function);
+    expect(names).not.toContain('request_staff_step_up');
+    expect(names).not.toContain('verify_staff_step_up');
   });
 
   it('omits the transfer function entirely when there is nowhere to transfer', () => {

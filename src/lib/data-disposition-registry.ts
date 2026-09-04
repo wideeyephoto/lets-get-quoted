@@ -3,7 +3,7 @@
  *
  * Defines the comprehensive data lifecycle, privacy categorization, and
  * retention/anonymization rules strictly aligned with PostgreSQL schema.sql and migrations.
- * Covers 100% of all 191 PostgreSQL tables.
+ * Covers 100% of all canonical PostgreSQL tables.
  */
 
 export interface RetentionPolicy {
@@ -1293,6 +1293,151 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Idempotent AI voice tool mutation ledger
+  voice_tool_actions: {
+    tableName: 'voice_tool_actions',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // HMAC-only possession challenges bound to one admitted staff voice call
+  voice_staff_step_up_challenges: {
+    tableName: 'voice_staff_step_up_challenges',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'call_ended' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Append-only OTP delivery attempts used for workspace and recipient budgets
+  voice_staff_step_up_send_events: {
+    tableName: 'voice_staff_step_up_send_events',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'call_ended' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Global recurring-price and aggregate-spend guard for AI voice numbers
+  voice_number_spend_policies: {
+    tableName: 'voice_number_spend_policies',
+    relationship: 'system_global',
+    primaryKeyColumn: 'provider',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Short-lived carrier search and operator price evidence for exact candidates
+  voice_number_candidate_observations: {
+    tableName: 'voice_number_candidate_observations',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Dedicated voice-only number inventory and lifecycle state
+  voice_number_inventory: {
+    tableName: 'voice_number_inventory',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Short-lived exact-price purchase approvals retained as an audit trail
+  voice_number_purchase_authorizations: {
+    tableName: 'voice_number_purchase_authorizations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Durable, idempotent provider provisioning operations
+  voice_number_provisioning_operations: {
+    tableName: 'voice_number_provisioning_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Immutable carrier-attempt history for voice number provisioning
+  voice_number_provisioning_attempts: {
+    tableName: 'voice_number_provisioning_attempts',
+    relationship: 'fk_chain',
+    primaryKeyColumn: 'id',
+    fkPath: ["operation_id","voice_number_provisioning_operations.account_id"],
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Short-lived possession-bound approval to retry a failed configure/release
+  voice_number_operation_retry_authorizations: {
+    tableName: 'voice_number_operation_retry_authorizations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Exact carrier-identity lease and proof required before destructive cleanup
+  voice_number_identity_cleanup_reservations: {
+    tableName: 'voice_number_identity_cleanup_reservations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+
+  // Seven-day provider terminal fact prevents delayed admissions and replays
+  voice_provider_terminal_call_tombstones: {
+    tableName: 'voice_provider_terminal_call_tombstones',
+    relationship: 'system_global',
+    primaryKeyColumn: 'provider_call_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 7, startEvent: 'call_ended' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
   },
 
   // Carrier TCR brand registration profiles

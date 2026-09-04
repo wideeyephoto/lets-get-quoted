@@ -8,6 +8,7 @@ import type {
   VoiceReceiptParse,
   VoiceTranscriptTurn,
 } from '@/lib/voice/provider';
+import { sanitizeVoiceReceipt } from '@/lib/voice/receipt-redaction';
 
 /**
  * SignalWire AI Agents, behind the provider-neutral seam.
@@ -85,6 +86,7 @@ export function minimizeSignalWireVoiceReceiptPayload(
   payload: unknown,
   receipt: VoiceReceipt,
 ): Readonly<Record<string, unknown>> {
+  const safeReceipt = sanitizeVoiceReceipt(receipt);
   const body = record(payload) ?? {};
   const swmlCall = record(body.SWMLCall);
   const swmlVars = record(record(body.SWMLVars)?.userVariables);
@@ -92,19 +94,19 @@ export function minimizeSignalWireVoiceReceiptPayload(
   const memberEcho = text(swmlVars?.memberCallId);
 
   return compact({
-    action: receipt.eventType,
-    call_id: receipt.providerCallId,
-    project_id: receipt.projectId,
-    space_id: receipt.spaceId,
+    action: safeReceipt.eventType,
+    call_id: safeReceipt.providerCallId,
+    project_id: safeReceipt.projectId,
+    space_id: safeReceipt.spaceId,
     conversation_type: text(body.conversation_type),
-    call_start_date: receipt.callStartMicros,
-    call_answer_date: receipt.callAnswerMicros,
-    call_end_date: receipt.callEndMicros,
-    ai_start_date: receipt.aiStartMicros,
-    ai_end_date: receipt.aiEndMicros,
-    caller_id_number: receipt.callerNumber,
-    summary: receipt.summary,
-    structured_post_prompt: receipt.structuredPostPrompt ?? null,
+    call_start_date: safeReceipt.callStartMicros,
+    call_answer_date: safeReceipt.callAnswerMicros,
+    call_end_date: safeReceipt.callEndMicros,
+    ai_start_date: safeReceipt.aiStartMicros,
+    ai_end_date: safeReceipt.aiEndMicros,
+    caller_id_number: safeReceipt.callerNumber,
+    summary: safeReceipt.summary,
+    structured_post_prompt: safeReceipt.structuredPostPrompt ?? null,
     SWMLCall: callEcho ? { call_id: callEcho } : null,
     SWMLVars: memberEcho ? { userVariables: { memberCallId: memberEcho } } : null,
   });
@@ -187,15 +189,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
     if (plan.kind === 'ai_agent') {
       // SWML, which is JSON. `post_prompt_url` is where the receipt lands, and
       // it is the only URL in here — LGQ's own.
+      const recordCall = plan.recordCall === true && plan.contractorMode !== true;
       const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
-        recordingEnabled: plan.recordCall,
+        recordingEnabled: recordCall,
       });
       const mainSection: Record<string, unknown>[] = [{ answer: {} }];
       // The deterministic disclosure must finish before recording begins. The
       // AI instruction that follows cannot substitute for audio the caller has
       // actually heard.
       mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
-      if (plan.recordCall) {
+      if (recordCall) {
         mainSection.push({
           record_call: {
             ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}),
@@ -231,22 +234,24 @@ export const signalwireVoiceProvider: VoiceProvider = {
       }
 
       if (plan.swaigUrl) {
-        swaigFunctions.push({
-          function: 'send_booking_link',
-          purpose: 'Send an SMS text message containing our direct online appointment and estimate booking link to the caller\'s phone.',
-          argument: {
-            type: 'object',
-            properties: {
-              caller_phone: {
-                type: 'string',
-                description: 'The phone number to receive the booking text message.',
+        if (!plan.contractorMode) {
+          swaigFunctions.push({
+            function: 'send_booking_link',
+            purpose: 'Send an SMS text message containing our direct online appointment and estimate booking link to the caller\'s phone.',
+            argument: {
+              type: 'object',
+              properties: {
+                caller_phone: {
+                  type: 'string',
+                  description: 'The phone number to receive the booking text message.',
+                },
               },
             },
-          },
-          web_hook_url: plan.swaigUrl,
-          web_hook_auth_user: plan.receiptAuthorization.username,
-          web_hook_auth_password: plan.receiptAuthorization.password,
-        });
+            web_hook_url: plan.swaigUrl,
+            web_hook_auth_user: plan.receiptAuthorization.username,
+            web_hook_auth_password: plan.receiptAuthorization.password,
+          });
+        }
 
         swaigFunctions.push({
           function: 'check_available_slots',
@@ -273,51 +278,53 @@ export const signalwireVoiceProvider: VoiceProvider = {
           web_hook_auth_password: plan.receiptAuthorization.password,
         });
 
-        swaigFunctions.push({
-          function: 'book_appointment_slot',
-          purpose: 'Directly schedule and confirm an appointment slot into the system, place a hold, and send an SMS confirmation to the caller.',
-          argument: {
-            type: 'object',
-            properties: {
-              caller_name: {
-                type: 'string',
-                description: 'Full name of the homeowner or business contact.',
+        if (!plan.contractorMode) {
+          swaigFunctions.push({
+            function: 'book_appointment_slot',
+            purpose: 'Directly schedule and confirm an appointment slot into the system, place a hold, and send an SMS confirmation to the caller.',
+            argument: {
+              type: 'object',
+              properties: {
+                caller_name: {
+                  type: 'string',
+                  description: 'Full name of the homeowner or business contact.',
+                },
+                caller_phone: {
+                  type: 'string',
+                  description: 'Mobile phone number for booking confirmation and dispatch alerts.',
+                },
+                service_address: {
+                  type: 'string',
+                  description: 'The street address, city, and ZIP where the service will take place.',
+                },
+                requested_date: {
+                  type: 'string',
+                  description: 'The chosen date in YYYY-MM-DD format (e.g. 2026-08-27).',
+                },
+                requested_time: {
+                  type: 'string',
+                  description: 'The start time of the window (HH:MM format in 24h or label e.g. 08:00 or Morning).',
+                },
+                service_description: {
+                  type: 'string',
+                  description: 'Description of the work needed or issue reported.',
+                },
+                notes: {
+                  type: 'string',
+                  description: 'Optional gate codes, parking instructions, or customer notes.',
+                },
               },
-              caller_phone: {
-                type: 'string',
-                description: 'Mobile phone number for booking confirmation and dispatch alerts.',
-              },
-              service_address: {
-                type: 'string',
-                description: 'The street address, city, and ZIP where the service will take place.',
-              },
-              requested_date: {
-                type: 'string',
-                description: 'The chosen date in YYYY-MM-DD format (e.g. 2026-08-27).',
-              },
-              requested_time: {
-                type: 'string',
-                description: 'The start time of the window (HH:MM format in 24h or label e.g. 08:00 or Morning).',
-              },
-              service_description: {
-                type: 'string',
-                description: 'Description of the work needed or issue reported.',
-              },
-              notes: {
-                type: 'string',
-                description: 'Optional gate codes, parking instructions, or customer notes.',
-              },
+              required: ['caller_name', 'requested_date', 'requested_time'],
             },
-            required: ['caller_name', 'requested_date', 'requested_time'],
-          },
-          fillers: [
-            'Reserving that appointment window for you right now...',
-            'Locking in your appointment slot on our schedule...',
-          ],
-          web_hook_url: plan.swaigUrl,
-          web_hook_auth_user: plan.receiptAuthorization.username,
-          web_hook_auth_password: plan.receiptAuthorization.password,
-        });
+            fillers: [
+              'Reserving that appointment window for you right now...',
+              'Locking in your appointment slot on our schedule...',
+            ],
+            web_hook_url: plan.swaigUrl,
+            web_hook_auth_user: plan.receiptAuthorization.username,
+            web_hook_auth_password: plan.receiptAuthorization.password,
+          });
+        }
 
         swaigFunctions.push({
           function: 'check_contractor_availability',
@@ -403,6 +410,39 @@ export const signalwireVoiceProvider: VoiceProvider = {
         });
 
       if (plan.swaigUrl && plan.contractorMode) {
+        swaigFunctions.push({
+          function: 'request_staff_step_up',
+          purpose: 'Send a one-time authorization code only to the verified staff phone that placed this active call. Use before every contractor mutation unless the call is already verified.',
+          argument: {
+            type: 'object',
+            properties: {},
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'verify_staff_step_up',
+          purpose: 'Verify the six-digit authorization code read by the staff caller. Never repeat the code aloud, include it in a confirmation, or use it on another call.',
+          argument: {
+            type: 'object',
+            properties: {
+              code: {
+                type: 'string',
+                pattern: '^[0-9]{6}$',
+                minLength: 6,
+                maxLength: 6,
+                description: 'The exact six-digit code the verified staff caller reads from the text message.',
+              },
+            },
+            required: ['code'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
         swaigFunctions.push({
           function: 'append_job_caution_or_note',
           purpose: 'Add an internal note, safety warning, gate code, pet caution, or special request to a job or client record.',
@@ -594,6 +634,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
             // holds even if LGQ's own settlement never runs.
             end_of_speech_timeout: 1000,
             max_duration: plan.capMinutes * 60,
+            // Provider-side best effort. Structured fields and tool results can
+            // still retain originals, so the receipt boundary redacts again.
+            redact_prompt: 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
           },
           prompt: {
             text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '
@@ -681,24 +724,25 @@ export const signalwireVoiceProvider: VoiceProvider = {
       }
     }
 
+    const receipt = sanitizeVoiceReceipt(Object.freeze({
+      provider: 'signalwire' as const,
+      providerCallId: callId,
+      eventType: 'post_conversation' as const,
+      projectId,
+      spaceId,
+      callStartMicros: micros(body.call_start_date),
+      callAnswerMicros: micros(body.call_answer_date),
+      callEndMicros: micros(body.call_end_date),
+      aiStartMicros: micros(body.ai_start_date),
+      aiEndMicros: micros(body.ai_end_date),
+      callerNumber: text(body.caller_id_number) ?? text(record(body.global_data)?.caller_id_number),
+      summary: summaryFrom(body),
+      structuredPostPrompt: structuredPostPromptFrom(body),
+      callLog: transcriptFrom(body),
+    }));
     return Object.freeze({
       ok: true as const,
-      receipt: Object.freeze({
-        provider: 'signalwire' as const,
-        providerCallId: callId,
-        eventType: 'post_conversation' as const,
-        projectId,
-        spaceId,
-        callStartMicros: micros(body.call_start_date),
-        callAnswerMicros: micros(body.call_answer_date),
-        callEndMicros: micros(body.call_end_date),
-        aiStartMicros: micros(body.ai_start_date),
-        aiEndMicros: micros(body.ai_end_date),
-        callerNumber: text(body.caller_id_number) ?? text(record(body.global_data)?.caller_id_number),
-        summary: summaryFrom(body),
-        structuredPostPrompt: structuredPostPromptFrom(body),
-        callLog: transcriptFrom(body),
-      }),
+      receipt,
     });
   },
 };

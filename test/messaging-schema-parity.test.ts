@@ -62,6 +62,8 @@ const MIGRATIONS = [
   'migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql',
   'migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql',
   'migrations/20260903215831_voice_contractor_dispatch_hardening.sql',
+  'migrations/20260903231235_ai_voice_number_provisioning.sql',
+  'migrations/20260903232815_voice_staff_step_up_authorization.sql',
 ] as const;
 
 function lf(value: string): string {

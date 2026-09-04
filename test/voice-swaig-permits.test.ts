@@ -5,13 +5,37 @@ vi.mock('@/lib/auth', () => ({
 }));
 
 vi.mock('@/lib/voice/auth', () => ({
-  voiceReceiptAuthorization: vi.fn().mockReturnValue({
-    username: 'test-user',
-    password: 'test-password',
-  }),
+  verifyVoiceReceiptAuthorization: vi.fn().mockReturnValue({ ok: true }),
   verifyVoiceToolToken: vi.fn().mockReturnValue({
     ok: true,
     payload: { accountId: 'acc-1', callerPhone: '+13135550100', providerCallId: 'call-1' },
+  }),
+}));
+
+vi.mock('@/lib/voice/caller-identity', () => ({
+  resolveVoiceCallerIdentity: vi.fn().mockResolvedValue({ status: 'customer' }),
+}));
+
+vi.mock('@/lib/voice/contractor-actions', () => ({
+  CONTRACTOR_VOICE_FUNCTIONS: new Set([
+    'update_job_details',
+    'update_job_scope',
+    'create_or_update_lead',
+    'log_crew_time_and_materials',
+    'create_job_change_order',
+    'append_job_caution_or_note',
+    'add_caution_note',
+  ]),
+  handleContractorVoiceAction: vi.fn(),
+  resolveVoiceJob: vi.fn().mockResolvedValue({
+    status: 'resolved',
+    job: {
+      id: 'job-1',
+      ref: 'JOB-101',
+      client_name: 'John Doe',
+      client_phone: '+13135550100',
+      address: '211 S Williams St',
+    },
   }),
 }));
 
@@ -89,18 +113,13 @@ describe('Voice SWAIG Permitting Tools - POST /api/voice/swaig', () => {
     vi.mocked(createAdminClient).mockReturnValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'jobs') {
+          const chain: Record<string, unknown> = {};
+          chain.select = vi.fn().mockReturnValue(chain);
+          chain.eq = vi.fn().mockReturnValue(chain);
+          chain.is = vi.fn().mockReturnValue(chain);
+          chain.maybeSingle = mockMaybeSingleJob;
           return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                or: vi.fn().mockReturnValue({
-                  order: vi.fn().mockReturnValue({
-                    limit: vi.fn().mockReturnValue({
-                      maybeSingle: mockMaybeSingleJob,
-                    }),
-                  }),
-                }),
-              }),
-            }),
+            ...chain,
           };
         }
         if (table === 'job_permit_cases') {

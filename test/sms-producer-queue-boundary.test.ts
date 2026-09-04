@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 const sms = readFileSync('src/lib/sms.ts', 'utf8');
 const settlement = readFileSync('src/lib/billing/direct-payment-settlement-worker.ts', 'utf8');
 const deliveryWorker = readFileSync('src/lib/sms-delivery-worker.ts', 'utf8');
+const voiceStaffStepUp = readFileSync('src/lib/voice/staff-step-up.ts', 'utf8');
 const durabilityFollowups = readFileSync(
   'migrations/20260821210000_sms_durability_followups.sql',
   'utf8',
@@ -45,16 +46,52 @@ function executableSource(path: string): string {
 }
 
 describe('outbound SMS producer boundary', () => {
-  it('allows provider egress only in the generic durable delivery worker', () => {
+  it('allows only the durable worker and the audited in-call OTP exception to reach provider egress', () => {
     const files = sourceFiles('src');
     const callers = files.filter((path) => {
       if (path === 'src/lib/sms-provider.ts') return false;
       return /\bsendProviderMessage\s*\(/.test(executableSource(path));
     });
-    expect(callers.sort()).toEqual(['src/lib/sms-delivery-worker.ts']);
+    expect(callers.sort()).toEqual([
+      'src/lib/sms-delivery-worker.ts',
+      'src/lib/voice/staff-step-up.ts',
+    ]);
     expect(executableSource('src/lib/sms.ts')).not.toContain('sendProviderMessage');
     expect(executableSource('src/lib/billing/direct-payment-settlement-worker.ts'))
       .not.toContain('sendProviderMessage');
+
+    // Voice staff OTPs deliberately do not use the generic queue: persisting
+    // the body there would store the plaintext code and could retry it after
+    // the live call or challenge generation is stale. This synchronous path is
+    // permitted only while all of its fail-closed activation invariants remain.
+    const request = voiceStaffStepUp.slice(
+      voiceStaffStepUp.indexOf('export async function requestVoiceStaffStepUp'),
+    );
+    const issueAt = request.indexOf("'issue_voice_staff_step_up_challenge'");
+    const sendAt = request.indexOf('providerMessageId = await (runtime.sendSms ?? sendStepUpSms)');
+    const providerIdAt = request.indexOf('definitiveProviderId(providerMessageId)');
+    const acceptanceAt = request.indexOf("'mark_voice_staff_step_up_provider_accepted'");
+
+    expect(voiceStaffStepUp).toContain("outboundSmsLaneSuppression(input.accountId, 'lgq_shared')");
+    expect(voiceStaffStepUp).toContain("{ accountId: input.accountId, category: 'verification' }");
+    expect(request).toContain('messageKey: `voice-step-up:${issued.challengeId}:${issued.sendCount}`');
+    expect(request).toContain("reason: 'sms_delivery_failed'");
+    expect(voiceStaffStepUp).not.toContain('enqueueSmsDelivery');
+    expect(voiceStaffStepUp).not.toContain('enqueue_sms_delivery');
+    expect(voiceStaffStepUp).not.toMatch(/\.from\(['"]sms_events['"]\)/);
+    expect(request).toContain('p_account_id: context.accountId');
+    expect(request).toContain('p_provider_call_id: context.providerCallId');
+    expect(request).toContain('p_caller_number: context.callerPhone');
+    expect(request).toContain('p_challenge_id: issued.challengeId');
+    expect(request).toContain('p_code_hmac: digest.codeHmac');
+    expect(request).toContain('p_code_key_id: digest.codeKeyId');
+    expect(request).toContain('p_send_count: issued.sendCount');
+    expect(request).toContain('p_provider_message_id: providerMessageId');
+    expect(request.match(/runtime\.sendSms \?\? sendStepUpSms/g)).toHaveLength(1);
+    expect(issueAt).toBeGreaterThan(-1);
+    expect(sendAt).toBeGreaterThan(issueAt);
+    expect(providerIdAt).toBeGreaterThan(sendAt);
+    expect(acceptanceAt).toBeGreaterThan(providerIdAt);
   });
 
   it('treats public lead verification as contractor traffic, not accountless LGQ traffic', () => {

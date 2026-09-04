@@ -2,29 +2,46 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
+import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
 import { normalizeUsPhone } from '@/lib/phone';
 
 const SIGNALWIRE_RESOURCE_ID =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
-const SENDER_COLUMNS = [
+/**
+ * Provider configuration proof is operational evidence, not a permanent fact.
+ * The hourly reconciliation job refreshes it; after six hours without a
+ * successful exact SignalWire GET, request admission fails closed.
+ */
+export const VOICE_NUMBER_PROVIDER_PROOF_MAX_AGE_MS = 6 * 60 * 60 * 1000;
+const VOICE_NUMBER_PROVIDER_PROOF_MAX_FUTURE_SKEW_MS = 5 * 60 * 1000;
+
+const VOICE_NUMBER_COLUMNS = [
   'id',
   'provider',
   'e164_number',
   'provider_number_id',
   'purpose',
   'account_id',
-  'assignment_state',
-  'provisioning_status',
-  'inbound_ready',
+  'lifecycle_state',
+  'voice_capable',
+  'call_handler',
+  'call_request_url',
+  'call_request_method',
+  'call_status_callback_url',
+  'call_status_callback_method',
+  'provider_readiness_state',
+  'provider_verified_at',
+  'last_provider_sync_at',
   'activated_at',
   'suspended_at',
+  'released_at',
 ].join(', ');
 
 export type SignalWireVoiceNumber = Readonly<{
   accountId: string;
   number: string;
-  senderNumberId: string;
+  voiceNumberId: string;
   providerNumberId: string;
   routeRevision: number;
 }>;
@@ -42,7 +59,12 @@ type ReadinessInput = Readonly<{
   number?: string;
 }>;
 
-type SenderExpectation = Readonly<{ accountId: string; number: string }>;
+type VoiceNumberExpectation = Readonly<{
+  accountId: string;
+  number: string;
+  inboundUrl: string;
+  statusUrl: string;
+}>;
 
 function text(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -60,28 +82,66 @@ export function voiceRouteRevision(value: unknown): number | null {
  * This pure half is shared by the request boundary and the batched operator
  * view so neither surface can gradually acquire a weaker definition of ready.
  */
-export function readySignalWireVoiceSender(
+export function signalWireVoiceRouteTargets(): Readonly<{
+  inboundUrl: string;
+  statusUrl: string;
+}> | null {
+  const origin = trustedProviderCallbackOrigin();
+  return origin ? Object.freeze({
+    inboundUrl: `${origin}/api/voice/ai`,
+    statusUrl: `${origin}/api/voice/provider-status`,
+  }) : null;
+}
+
+function freshProviderTimestamp(value: unknown, nowMs: number): boolean {
+  const raw = text(value);
+  if (!raw) return false;
+  const timestampMs = Date.parse(raw);
+  if (!Number.isFinite(timestampMs)) return false;
+  const ageMs = nowMs - timestampMs;
+  return ageMs >= -VOICE_NUMBER_PROVIDER_PROOF_MAX_FUTURE_SKEW_MS
+    && ageMs <= VOICE_NUMBER_PROVIDER_PROOF_MAX_AGE_MS;
+}
+
+export function hasFreshVoiceNumberProviderProof(
   value: unknown,
-  expected: SenderExpectation,
+  nowMs = Date.now(),
+): boolean {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+  const row = value as Record<string, unknown>;
+  return row.provider_readiness_state === 'ready'
+    && freshProviderTimestamp(row.provider_verified_at, nowMs)
+    && freshProviderTimestamp(row.last_provider_sync_at, nowMs);
+}
+
+export function readySignalWireVoiceNumber(
+  value: unknown,
+  expected: VoiceNumberExpectation,
 ): Omit<SignalWireVoiceNumber, 'routeRevision'> | null {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
   const row = value as Record<string, unknown>;
   const number = normalizeUsPhone(String(row.e164_number ?? ''));
   const providerNumberId = text(row.provider_number_id);
-  const senderNumberId = text(row.id);
+  const voiceNumberId = text(row.id);
   const accountId = text(row.account_id);
 
   if (
     row.provider !== 'signalwire'
-    || row.purpose !== 'contractor_dedicated'
+    || row.purpose !== 'ai_voice'
     || accountId !== expected.accountId
     || number !== expected.number
-    || row.provisioning_status !== 'active'
-    || row.assignment_state !== 'assigned'
-    || row.inbound_ready !== true
+    || row.lifecycle_state !== 'active'
+    || row.voice_capable !== true
+    || String(row.call_handler ?? '').toLowerCase() !== 'laml_webhooks'
+    || row.call_request_url !== expected.inboundUrl
+    || String(row.call_request_method ?? '').toUpperCase() !== 'POST'
+    || row.call_status_callback_url !== expected.statusUrl
+    || String(row.call_status_callback_method ?? '').toUpperCase() !== 'POST'
+    || !hasFreshVoiceNumberProviderProof(row)
     || !text(row.activated_at)
     || row.suspended_at !== null
-    || !senderNumberId
+    || row.released_at !== null
+    || !voiceNumberId
     || !providerNumberId
     || !SIGNALWIRE_RESOURCE_ID.test(providerNumberId)
   ) return null;
@@ -89,7 +149,7 @@ export function readySignalWireVoiceSender(
   return Object.freeze({
     accountId,
     number,
-    senderNumberId,
+    voiceNumberId,
     providerNumberId: providerNumberId.toLowerCase(),
   });
 }
@@ -145,23 +205,25 @@ export async function loadSignalWireVoiceNumberReadiness(
   }
 
   try {
+    const routeTargets = signalWireVoiceRouteTargets();
+    if (!routeTargets) return { kind: 'unavailable' };
     if (requestedAccountId && !requestedNumber) {
       const account = await loadAccount(admin, requestedAccountId);
       if (account.kind !== 'ready') return account;
 
-      const { data: sender, error: senderError } = await admin
-        .from('sms_sender_numbers')
-        .select(SENDER_COLUMNS)
+      const { data: voiceNumber, error: voiceNumberError } = await admin
+        .from('voice_number_inventory')
+        .select(VOICE_NUMBER_COLUMNS)
         .eq('provider', 'signalwire')
-        .eq('purpose', 'contractor_dedicated')
+        .eq('purpose', 'ai_voice')
         .eq('account_id', account.accountId)
         .eq('e164_number', account.number)
         .maybeSingle();
-      if (senderError) {
-        console.error('SignalWire voice sender-inventory read failed:', senderError);
+      if (voiceNumberError) {
+        console.error('SignalWire voice number-inventory read failed:', voiceNumberError);
         return { kind: 'unavailable' };
       }
-      const ready = readySignalWireVoiceSender(sender, account);
+      const ready = readySignalWireVoiceNumber(voiceNumber, { ...account, ...routeTargets });
       return ready
         ? { kind: 'ready', number: Object.freeze({ ...ready, routeRevision: account.routeRevision }) }
         : { kind: 'not_ready', currentNumber: account.number };
@@ -170,36 +232,37 @@ export async function loadSignalWireVoiceNumberReadiness(
     // Inbound and evidence-writing mode: prove inventory before resolving an
     // account. Adding account_id to the query when supplied makes a number from
     // another workspace indistinguishable from an unprovisioned number.
-    let senderQuery = admin
-      .from('sms_sender_numbers')
-      .select(SENDER_COLUMNS)
+    let voiceNumberQuery = admin
+      .from('voice_number_inventory')
+      .select(VOICE_NUMBER_COLUMNS)
       .eq('provider', 'signalwire')
       .eq('e164_number', requestedNumber as string);
-    if (requestedAccountId) senderQuery = senderQuery.eq('account_id', requestedAccountId);
-    const { data: sender, error: senderError } = await senderQuery.maybeSingle();
-    if (senderError) {
-      console.error('SignalWire voice sender-inventory read failed:', senderError);
+    if (requestedAccountId) voiceNumberQuery = voiceNumberQuery.eq('account_id', requestedAccountId);
+    const { data: voiceNumber, error: voiceNumberError } = await voiceNumberQuery.maybeSingle();
+    if (voiceNumberError) {
+      console.error('SignalWire voice number-inventory read failed:', voiceNumberError);
       return { kind: 'unavailable' };
     }
-    const row = sender as Record<string, unknown> | null;
+    const row = voiceNumber as Record<string, unknown> | null;
     const inventoryAccountId = text(row?.account_id);
     if (!inventoryAccountId) {
       return { kind: 'not_ready', currentNumber: requestedNumber };
     }
-    const readySender = readySignalWireVoiceSender(row, {
+    const readyVoiceNumber = readySignalWireVoiceNumber(row, {
       accountId: requestedAccountId ?? inventoryAccountId,
       number: requestedNumber as string,
+      ...routeTargets,
     });
-    if (!readySender) return { kind: 'not_ready', currentNumber: requestedNumber };
+    if (!readyVoiceNumber) return { kind: 'not_ready', currentNumber: requestedNumber };
 
-    const account = await loadAccount(admin, readySender.accountId);
+    const account = await loadAccount(admin, readyVoiceNumber.accountId);
     if (account.kind === 'unavailable') return account;
-    if (account.kind !== 'ready' || account.number !== readySender.number) {
+    if (account.kind !== 'ready' || account.number !== readyVoiceNumber.number) {
       return { kind: 'not_ready', currentNumber: requestedNumber };
     }
     return {
       kind: 'ready',
-      number: Object.freeze({ ...readySender, routeRevision: account.routeRevision }),
+      number: Object.freeze({ ...readyVoiceNumber, routeRevision: account.routeRevision }),
     };
   } catch (error) {
     console.error('SignalWire voice number readiness threw:', error);

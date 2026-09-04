@@ -887,6 +887,7 @@ const SIGNED_PROVIDER_CALLBACK_PATHS: ReadonlySet<string> = new Set([
   '/api/twilio/voice/status',
   '/api/voice/ai',
   '/api/voice/ai/status',
+  '/api/voice/provider-status',
 ]);
 
 /**

@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   loadVoiceRouteReadiness,
@@ -12,21 +12,29 @@ const inserted: unknown[] = [];
 const contained: unknown[] = [];
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
-const SENDER = '22222222-2222-4222-8222-222222222222';
+const VOICE_NUMBER = '22222222-2222-4222-8222-222222222222';
 const PHONE_RESOURCE = '33333333-3333-4333-8333-333333333333';
 const NUMBER = '+12485550199';
 const ACTIVE_DEDICATED = {
-  id: SENDER,
+  id: VOICE_NUMBER,
   provider: 'signalwire',
   e164_number: NUMBER,
   provider_number_id: PHONE_RESOURCE,
-  purpose: 'contractor_dedicated',
+  purpose: 'ai_voice',
   account_id: ACCOUNT,
-  assignment_state: 'assigned',
-  provisioning_status: 'active',
-  inbound_ready: true,
+  lifecycle_state: 'active',
+  voice_capable: true,
+  call_handler: 'laml_webhooks',
+  call_request_url: 'https://app.letsgetquoted.com/api/voice/ai',
+  call_request_method: 'POST',
+  call_status_callback_url: 'https://app.letsgetquoted.com/api/voice/provider-status',
+  call_status_callback_method: 'POST',
+  provider_readiness_state: 'ready',
+  provider_verified_at: new Date().toISOString(),
+  last_provider_sync_at: new Date().toISOString(),
   activated_at: '2026-08-21T11:00:00Z',
   suspended_at: null,
+  released_at: null,
 };
 
 const client = {
@@ -50,6 +58,8 @@ const client = {
 } as never;
 
 beforeEach(() => {
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.letsgetquoted.com');
+  vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'letsgetquoted.com');
   inserted.length = 0;
   contained.length = 0;
   replies = {
@@ -57,7 +67,7 @@ beforeEach(() => {
       data: { id: ACCOUNT, call_tracking_number: NUMBER, ai_voice_route_revision: 2 },
       error: null,
     },
-    'sms_sender_numbers:single': { data: ACTIVE_DEDICATED, error: null },
+    'voice_number_inventory:single': { data: ACTIVE_DEDICATED, error: null },
     'account_events:single': { data: { created_at: '2026-08-21T12:00:00Z' }, error: null },
     'account_events:insert': { error: null },
     'accounts:update': { error: null },
@@ -65,13 +75,15 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
+afterEach(() => vi.unstubAllEnvs());
+
 describe('AI Voice route readiness evidence', () => {
   it('requires route-specific evidence for the current number', async () => {
     expect(await loadVoiceRouteReadiness(client, ACCOUNT)).toEqual({
       kind: 'ready', number: NUMBER, verifiedAt: '2026-08-21T12:00:00Z',
     });
     expect(contained.at(-1)).toEqual({
-      route: 'ai_voice', number: NUMBER, sender_number_id: SENDER, route_revision: 2,
+      route: 'ai_voice', number: NUMBER, voice_number_id: VOICE_NUMBER, route_revision: 2,
     });
 
     replies['account_events:single'] = { data: null, error: null };
@@ -101,15 +113,15 @@ describe('AI Voice route readiness evidence', () => {
   });
 
   it('requires active dedicated inventory and keeps a failed inventory read unavailable', async () => {
-    replies['sms_sender_numbers:single'] = {
-      data: { ...ACTIVE_DEDICATED, purpose: 'lgq_shared', account_id: null },
+    replies['voice_number_inventory:single'] = {
+      data: { ...ACTIVE_DEDICATED, purpose: 'not_voice', account_id: null },
       error: null,
     };
     expect(await loadVoiceRouteReadiness(client, ACCOUNT)).toEqual({
       kind: 'not_ready', reason: 'dedicated_number_not_ready', number: NUMBER,
     });
 
-    replies['sms_sender_numbers:single'] = { data: null, error: { message: 'down' } };
+    replies['voice_number_inventory:single'] = { data: null, error: { message: 'down' } };
     expect(await loadVoiceRouteReadiness(client, ACCOUNT)).toEqual({ kind: 'unavailable' });
   });
 
@@ -117,15 +129,15 @@ describe('AI Voice route readiness evidence', () => {
     const current = {
       accountId: ACCOUNT,
       number: NUMBER,
-      senderNumberId: SENDER,
+      voiceNumberId: VOICE_NUMBER,
       providerNumberId: PHONE_RESOURCE,
       routeRevision: 2,
     };
     expect(matchesCurrentVoiceRouteEvidence({
-      route: 'ai_voice', number: NUMBER, sender_number_id: SENDER, route_revision: 0,
+      route: 'ai_voice', number: NUMBER, voice_number_id: VOICE_NUMBER, route_revision: 0,
     }, current)).toBe(false);
     expect(matchesCurrentVoiceRouteEvidence({
-      route: 'ai_voice', number: NUMBER, sender_number_id: SENDER, route_revision: 2,
+      route: 'ai_voice', number: NUMBER, voice_number_id: VOICE_NUMBER, route_revision: 2,
     }, current)).toBe(true);
   });
 
@@ -140,7 +152,7 @@ describe('AI Voice route readiness evidence', () => {
       meta: {
         route: 'ai_voice',
         number: NUMBER,
-        sender_number_id: SENDER,
+        voice_number_id: VOICE_NUMBER,
         route_revision: 2,
         provider_call_id: 'call-1',
       },
@@ -149,12 +161,12 @@ describe('AI Voice route readiness evidence', () => {
 
   it('will not record shared, other-account, inactive, or unprovisioned numbers', async () => {
     for (const sender of [
-      { ...ACTIVE_DEDICATED, purpose: 'lgq_shared', account_id: null },
+      { ...ACTIVE_DEDICATED, purpose: 'not_voice', account_id: null },
       { ...ACTIVE_DEDICATED, account_id: '44444444-4444-4444-8444-444444444444' },
-      { ...ACTIVE_DEDICATED, provisioning_status: 'suspended', suspended_at: '2026-08-21T13:00:00Z' },
+      { ...ACTIVE_DEDICATED, lifecycle_state: 'suspended', suspended_at: '2026-08-21T13:00:00Z' },
       { ...ACTIVE_DEDICATED, provider_number_id: null },
     ]) {
-      replies['sms_sender_numbers:single'] = { data: sender, error: null };
+      replies['voice_number_inventory:single'] = { data: sender, error: null };
       await expect(recordVoiceRouteVerification(client, {
         accountId: ACCOUNT, number: NUMBER, providerCallId: 'call-1',
       })).resolves.toBe(false);
@@ -168,5 +180,17 @@ describe('AI Voice route readiness evidence', () => {
     await expect(recordVoiceRouteVerification(client, {
       accountId: ACCOUNT, number: NUMBER, providerCallId: 'call-1',
     })).resolves.toBe(false);
+  });
+
+  it('fails closed after provider proof is more than six hours old', async () => {
+    const stale = new Date(Date.now() - 6 * 60 * 60 * 1000 - 1).toISOString();
+    replies['voice_number_inventory:single'] = {
+      data: { ...ACTIVE_DEDICATED, provider_verified_at: stale, last_provider_sync_at: stale },
+      error: null,
+    };
+
+    expect(await loadVoiceRouteReadiness(client, ACCOUNT)).toEqual({
+      kind: 'not_ready', reason: 'dedicated_number_not_ready', number: NUMBER,
+    });
   });
 });

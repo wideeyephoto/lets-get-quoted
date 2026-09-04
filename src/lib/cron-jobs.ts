@@ -147,6 +147,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
   },
   {
+    job: 'voice-number-reconciliation',
+    label: 'AI Voice number reconciliation',
+    schedule: '0 * * * *',
+    importance: 'customer',
+    consequence: 'SignalWire number drift and stale provider proof stop being detected, so inbound AI Voice must fail closed after six hours.',
+  },
+  {
     job: 'dunning',
     label: 'Dunning retries',
     schedule: '0 15 * * *',
@@ -238,6 +245,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '0 12 * * *',
     importance: 'customer',
     consequence: 'Owners lose their morning summary — usually reported by them before anyone here notices.',
+  },
+  {
+    job: 'weather-morning-alert',
+    label: 'Morning weather alerts',
+    schedule: '*/15 * * * *',
+    importance: 'customer',
+    consequence: 'Owners stop receiving weather-risk alerts for scheduled outdoor work during their configured morning window.',
   },
   {
     job: 'blog',

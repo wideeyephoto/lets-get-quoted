@@ -131,10 +131,13 @@ export function verifyVoiceReceiptAuthorization(
     return Object.freeze({ ok: false as const, reason: 'malformed' as const });
   }
 
-  // Buffer's base64 decoder is intentionally permissive. Round-tripping keeps
-  // malformed input from being accepted as a valid credential by accident.
+  // Buffer's base64 decoder is intentionally permissive. Require the one exact
+  // canonical encoding so ignored junk, missing padding, or surplus padding
+  // cannot become a second accepted representation of the same credential.
   const canonical = Buffer.from(presented, 'utf8').toString('base64').replace(/=+$/, '');
-  if (canonical !== match[1].replace(/=+$/, '')) {
+  const presentedEncoding = match[1];
+  const canonicalWithPadding = Buffer.from(presented, 'utf8').toString('base64');
+  if (canonical !== presentedEncoding.replace(/=+$/, '') || canonicalWithPadding !== presentedEncoding) {
     return Object.freeze({ ok: false as const, reason: 'malformed' as const });
   }
 
@@ -178,6 +181,50 @@ function getToolSigningSecret(env: ServerEnvironment = process.env): string | nu
     ''
   ).trim();
   return secret || null;
+}
+
+export type VoiceStaffStepUpCodeDigest = Readonly<{
+  codeHmac: string;
+  codeKeyId: string;
+}>;
+
+/**
+ * Derive the database-safe proof for one staff-call verification code.
+ *
+ * The voice tool signing secret stays inside this module. A separate domain is
+ * used for the key identifier and for the code proof so neither value can be
+ * replayed as a SWAIG token signature. The binding also prevents a code issued
+ * for one account, provider call, or caller number from being tried on another.
+ */
+export function deriveVoiceStaffStepUpCodeDigest(
+  input: Readonly<{
+    accountId: string;
+    providerCallId: string;
+    callerPhone: string;
+    code: string;
+  }>,
+  env: ServerEnvironment = process.env,
+): VoiceStaffStepUpCodeDigest | null {
+  const secret = getToolSigningSecret(env);
+  if (!secret || !/^\d{6}$/.test(input.code)) return null;
+  if (!input.accountId || !input.providerCallId || !input.callerPhone) return null;
+
+  const codeKeyId = `voice-tool-v1-${createHmac('sha256', secret)
+    .update('lgq.voice.staff-step-up.key-id.v1\0', 'utf8')
+    .digest('hex')
+    .slice(0, 16)}`;
+  const binding = JSON.stringify([
+    input.accountId,
+    input.providerCallId,
+    input.callerPhone,
+    input.code,
+  ]);
+  const codeHmac = createHmac('sha256', secret)
+    .update('lgq.voice.staff-step-up.code.v1\0', 'utf8')
+    .update(binding, 'utf8')
+    .digest('hex');
+
+  return Object.freeze({ codeHmac, codeKeyId });
 }
 
 /**

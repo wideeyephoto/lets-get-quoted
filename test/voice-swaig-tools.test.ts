@@ -32,6 +32,10 @@ vi.mock('@/lib/sms', () => ({
   sendCallerVoiceBookingConfirmationSms: vi.fn().mockResolvedValue({ ok: true }),
 }));
 
+vi.mock('@/lib/voice/caller-identity', () => ({
+  resolveVoiceCallerIdentity: vi.fn().mockResolvedValue({ status: 'customer' }),
+}));
+
 const DUMMY_AUTH = { scheme: 'basic' as const, username: 'test-user', password: 'test-password' };
 
 describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
@@ -137,6 +141,22 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     expect(data.response).toContain('Thursday, Aug 27');
     expect(data.response).toContain('Morning: 9 AM – 12 PM');
   }, 15000);
+
+  it.each([
+    'Basic !!!not-base64!!!',
+    `Basic ${Buffer.from('test-user:test-password').toString('base64')}=`,
+  ])('rejects malformed and noncanonical SWAIG Basic credentials', async (authorization) => {
+    process.env.LGQ_VOICE_RECEIPT_BASIC = 'test-user:test-password';
+    process.env.SIGNALWIRE_SIGNING_KEY = 'test-secret';
+    const { POST: swaigHandler } = await import('@/app/api/voice/swaig/route');
+    const response = await swaigHandler(new Request('https://example.com/api/voice/swaig?token=unused', {
+      method: 'POST',
+      headers: { authorization, 'content-type': 'application/json' },
+      body: JSON.stringify({ function: 'check_available_slots', argument: {} }),
+    }));
+    expect(response.status).toBe(401);
+    await expect(response.json()).resolves.toEqual({ error: 'Unauthorized' });
+  });
 
   it('executes in-call book_appointment_slot tool with hold, booking creation, and confirmation text', async () => {
     process.env.LGQ_VOICE_RECEIPT_BASIC = 'test-user:test-password';

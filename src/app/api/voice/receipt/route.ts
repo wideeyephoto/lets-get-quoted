@@ -16,6 +16,7 @@ import {
   processVoiceReceipt,
   VoiceReceiptProcessingRpcError,
 } from '@/lib/voice/receipt-processing';
+import { sanitizeVoiceReceipt } from '@/lib/voice/receipt-redaction';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -111,7 +112,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: parsed.reason }, { status: 400 });
   }
 
-  const receipt = parsed.receipt;
+  // Universal provider-neutral boundary: neither immutable event evidence nor
+  // settlement receives a plaintext spoken authorization code.
+  const receipt = sanitizeVoiceReceipt(parsed.receipt);
   const minimizedPayload = minimizeSignalWireVoiceReceiptPayload(payload, receipt);
   const admin = createAdminClient();
 

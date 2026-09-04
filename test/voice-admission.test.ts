@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   AI_VOICE_FLAG,
@@ -22,7 +22,7 @@ vi.mock('@/lib/voice/caller-identity', () => ({
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 const CALL = 'a15ce0a0-ac77-44a8-bd9e-5d9e506775ba';
 const TO = '+15551230000';
-const SENDER = '22222222-2222-4222-8222-222222222222';
+const VOICE_NUMBER = '22222222-2222-4222-8222-222222222222';
 const PHONE_RESOURCE = '33333333-3333-4333-8333-333333333333';
 
 /**
@@ -69,17 +69,25 @@ const ACTIVE = {
 };
 
 const ACTIVE_DEDICATED = {
-  id: SENDER,
+  id: VOICE_NUMBER,
   provider: 'signalwire',
   e164_number: TO,
   provider_number_id: PHONE_RESOURCE,
-  purpose: 'contractor_dedicated',
+  purpose: 'ai_voice',
   account_id: ACCOUNT,
-  assignment_state: 'assigned',
-  provisioning_status: 'active',
-  inbound_ready: true,
+  lifecycle_state: 'active',
+  voice_capable: true,
+  call_handler: 'laml_webhooks',
+  call_request_url: 'https://app.letsgetquoted.com/api/voice/ai',
+  call_request_method: 'POST',
+  call_status_callback_url: 'https://app.letsgetquoted.com/api/voice/provider-status',
+  call_status_callback_method: 'POST',
+  provider_readiness_state: 'ready',
+  provider_verified_at: new Date().toISOString(),
+  last_provider_sync_at: new Date().toISOString(),
   activated_at: '2026-08-21T12:00:00Z',
   suspended_at: null,
+  released_at: null,
 };
 
 const workspace = (
@@ -89,7 +97,7 @@ const workspace = (
   timezone = 'America/New_York',
 ) => {
   replies = {
-    sms_sender_numbers: { data: ACTIVE_DEDICATED, error: null },
+    voice_number_inventory: { data: ACTIVE_DEDICATED, error: null },
     accounts: {
       data: {
         id: ACCOUNT,
@@ -115,6 +123,8 @@ const workspace = (
 };
 
 beforeEach(() => {
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.letsgetquoted.com');
+  vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'letsgetquoted.com');
   admitVoiceCall.mockReset();
   admitVoiceCall.mockResolvedValue({ outcome: 'admitted', lease: {} });
   resolveVoiceCallerIdentity.mockReset();
@@ -123,6 +133,8 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => {});
   workspace({ voice_concurrent_calls: 1 });
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('the product flag is not a metering flag', () => {
   it('is off unless set to exactly 1', () => {
@@ -238,7 +250,7 @@ describe('what a caller gets', () => {
   });
 
   it('does not recognise a number belonging to no workspace', async () => {
-    replies = { sms_sender_numbers: { data: null, error: null } };
+    replies = { voice_number_inventory: { data: null, error: null } };
     const result = await planInboundCall(admin, call, options);
     expect(result).toMatchObject({ declineReason: 'no_workspace', accountId: null });
     expect(result.plan.kind).toBe('unavailable');
@@ -246,15 +258,15 @@ describe('what a caller gets', () => {
 
   it('does not resolve shared, other-account, inactive, or unprovisioned inventory', async () => {
     const invalidRows = [
-      { ...ACTIVE_DEDICATED, purpose: 'lgq_shared', account_id: null },
+      { ...ACTIVE_DEDICATED, purpose: 'not_voice', account_id: null },
       { ...ACTIVE_DEDICATED, account_id: '44444444-4444-4444-8444-444444444444' },
-      { ...ACTIVE_DEDICATED, provisioning_status: 'suspended', suspended_at: '2026-08-21T13:00:00Z' },
-      { ...ACTIVE_DEDICATED, provider_number_id: null, provisioning_status: 'pending' },
+      { ...ACTIVE_DEDICATED, lifecycle_state: 'suspended', suspended_at: '2026-08-21T13:00:00Z' },
+      { ...ACTIVE_DEDICATED, provider_number_id: null, lifecycle_state: 'purchased' },
     ];
 
     for (const sender of invalidRows) {
       workspace({ voice_concurrent_calls: 1 });
-      replies.sms_sender_numbers = { data: sender, error: null };
+      replies.voice_number_inventory = { data: sender, error: null };
       const result = await planInboundCall(admin, call, options);
       expect(result).toMatchObject({ declineReason: 'no_workspace', accountId: null });
       expect(result.plan.kind).toBe('unavailable');
@@ -263,7 +275,7 @@ describe('what a caller gets', () => {
   });
 
   it('fails closed without leaking ownership when sender inventory cannot be read', async () => {
-    replies.sms_sender_numbers = { data: null, error: { message: 'inventory down' } };
+    replies.voice_number_inventory = { data: null, error: { message: 'inventory down' } };
     const result = await planInboundCall(admin, call, options);
     expect(result).toMatchObject({ declineReason: 'no_workspace', accountId: null });
     expect(result.plan.kind).toBe('unavailable');
@@ -329,6 +341,13 @@ describe('what a caller gets', () => {
     expect(result.plan.kind).not.toBe('ai_agent');
   });
 
+  it('does not answer a CallSid already closed by the provider terminal tombstone', async () => {
+    admitVoiceCall.mockResolvedValue({ outcome: 'refused', reason: 'call_terminal' });
+    const result = await planInboundCall(admin, call, options);
+    expect(result.declineReason).toBe('call_terminal');
+    expect(result.plan.kind).not.toBe('ai_agent');
+  });
+
   it('answers on an authorized overage too', async () => {
     admitVoiceCall.mockResolvedValue({ outcome: 'admitted_overage', overage: {} });
     expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
@@ -347,6 +366,18 @@ describe('concurrency, without a call-started event to count from', () => {
       data: [{ provider_call_id: 'done-1' }, { provider_call_id: 'live-1' }], error: null,
     };
     replies.voice_events = { data: [{ provider_call_id: 'done-1' }], error: null };
+    expect(await countOpenAiCalls(admin, ACCOUNT, 3)).toBe(1);
+  });
+
+  it('stops counting a provider-terminal admission before its delayed receipt arrives', async () => {
+    replies.voice_call_admissions = {
+      data: [
+        { provider_call_id: 'terminal-1', provider_terminal_at: '2026-09-03T23:00:00.000Z', provider_terminal_status: 'completed' },
+        { provider_call_id: 'live-1', provider_terminal_at: null, provider_terminal_status: null },
+      ],
+      error: null,
+    };
+    replies.voice_events = { data: [], error: null };
     expect(await countOpenAiCalls(admin, ACCOUNT, 3)).toBe(1);
   });
 

@@ -189,7 +189,7 @@ export async function countOpenAiCalls(
   try {
     const { data, error } = await admin
       .from('voice_call_admissions')
-      .select('provider_call_id')
+      .select('provider_call_id, provider_terminal_at, provider_terminal_status')
       .eq('account_id', accountId)
       .gte('admitted_at', since);
 
@@ -197,9 +197,10 @@ export async function countOpenAiCalls(
       console.error('open AI call count failed:', error);
       return limit;
     }
-    if (data.length === 0) return 0;
+    const liveAdmissions = data.filter((row) => !(row as { provider_terminal_at?: unknown }).provider_terminal_at);
+    if (liveAdmissions.length === 0) return 0;
 
-    const ids = data.map((row) => String((row as { provider_call_id: string }).provider_call_id));
+    const ids = liveAdmissions.map((row) => String((row as { provider_call_id: string }).provider_call_id));
     const { data: finished, error: finishedError } = await admin
       .from('voice_events')
       .select('provider_call_id')
@@ -228,7 +229,7 @@ export type VoiceCallPlan = Readonly<{
   | 'no_workspace' | 'product_off' | 'not_configured' | 'paused' | 'within_business_hours'
   | 'no_entitlement' | 'receipt_auth_unavailable' | 'no_seat' | 'at_capacity'
   | 'no_allowance' | 'number_not_ready' | 'admission_unavailable'
-  | 'caller_identity_unavailable' | null;
+  | 'caller_identity_unavailable' | 'call_terminal' | null;
 }>;
 
 export type PlanInboundOptions = Readonly<{

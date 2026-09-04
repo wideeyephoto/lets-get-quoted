@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 16e29bea2a20b20c
+   source-sha256: b4b4d75e1b7b0d66
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -16876,6 +16876,18 @@ a.ropsrow-fact:hover {
   margin: 0.6rem 0 0;
   font-size: 0.83rem;
   color: var(--ink-orange-1);
+}
+
+.weather-risk {
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  border: 1px solid var(--ink-amber-3);
+  background: rgba(255, 179, 122, 0.1);
+}
+
+.weather-risk.level-unworkable {
+  border-color: var(--ink-orange-1);
+  background: rgba(255, 138, 61, 0.14);
 }
 
 .weather-alt-pill.is-active {

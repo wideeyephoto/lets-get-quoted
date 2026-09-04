@@ -1,24 +1,32 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { loadVoiceOperatorHealth } from '@/lib/voice/operator-health';
 
 type Reply = { data?: unknown; count?: number | null; error?: unknown };
 let replies: Record<string, Reply>;
 
-const SENDER = '11111111-1111-4111-8111-111111111111';
+const VOICE_NUMBER = '11111111-1111-4111-8111-111111111111';
 const PHONE_RESOURCE = '22222222-2222-4222-8222-222222222222';
 const activeSender = (over: Record<string, unknown> = {}) => ({
-  id: SENDER,
+  id: VOICE_NUMBER,
   provider: 'signalwire',
   e164_number: '+12485550100',
   provider_number_id: PHONE_RESOURCE,
-  purpose: 'contractor_dedicated',
+  purpose: 'ai_voice',
   account_id: 'a1',
-  assignment_state: 'assigned',
-  provisioning_status: 'active',
-  inbound_ready: true,
+  lifecycle_state: 'active',
+  voice_capable: true,
+  call_handler: 'laml_webhooks',
+  call_request_url: 'https://app.letsgetquoted.com/api/voice/ai',
+  call_request_method: 'POST',
+  call_status_callback_url: 'https://app.letsgetquoted.com/api/voice/provider-status',
+  call_status_callback_method: 'POST',
+  provider_readiness_state: 'ready',
+  provider_verified_at: new Date().toISOString(),
+  last_provider_sync_at: new Date().toISOString(),
   activated_at: '2026-08-21T11:00:00Z',
   suspended_at: null,
+  released_at: null,
   ...over,
 });
 
@@ -39,6 +47,8 @@ const admin = {
 } as never;
 
 beforeEach(() => {
+  vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.letsgetquoted.com');
+  vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'letsgetquoted.com');
   replies = {
     voice_settings: {
       data: [{ account_id: 'a1' }, { account_id: 'a2' }], error: null,
@@ -50,14 +60,14 @@ beforeEach(() => {
       ],
       error: null,
     },
-    sms_sender_numbers: { data: [activeSender()], error: null },
+    voice_number_inventory: { data: [activeSender()], error: null },
     account_events: {
       data: [{
         account_id: 'a1',
         meta: {
           route: 'ai_voice',
           number: '+12485550100',
-          sender_number_id: SENDER,
+          voice_number_id: VOICE_NUMBER,
           route_revision: 1,
         },
       }],
@@ -69,6 +79,8 @@ beforeEach(() => {
   };
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
+
+afterEach(() => vi.unstubAllEnvs());
 
 describe('AI Voice operator health', () => {
   it('shows configured versus actually verified routes and queue review counts', async () => {
@@ -108,21 +120,21 @@ describe('AI Voice operator health', () => {
 
   it('does not count shared, inactive, unprovisioned, or stale-revision routes', async () => {
     for (const sender of [
-      activeSender({ purpose: 'lgq_shared', account_id: null }),
-      activeSender({ provisioning_status: 'suspended', suspended_at: '2026-08-21T13:00:00Z' }),
+      activeSender({ purpose: 'not_voice', account_id: null }),
+      activeSender({ lifecycle_state: 'suspended', suspended_at: '2026-08-21T13:00:00Z' }),
       activeSender({ provider_number_id: null }),
     ]) {
-      replies.sms_sender_numbers = { data: [sender], error: null };
+      replies.voice_number_inventory = { data: [sender], error: null };
       expect((await loadVoiceOperatorHealth(admin)).verifiedActiveRoutes).toBe(0);
     }
 
-    replies.sms_sender_numbers = { data: [activeSender()], error: null };
+    replies.voice_number_inventory = { data: [activeSender()], error: null };
     replies.account_events = {
       data: [{
         account_id: 'a1',
         meta: {
           route: 'ai_voice', number: '+12485550100',
-          sender_number_id: SENDER, route_revision: 0,
+          voice_number_id: VOICE_NUMBER, route_revision: 0,
         },
       }],
       error: null,
@@ -131,9 +143,19 @@ describe('AI Voice operator health', () => {
   });
 
   it('reports inventory read failure as unknown rather than a verified zero', async () => {
-    replies.sms_sender_numbers = { data: null, error: { message: 'inventory down' } };
+    replies.voice_number_inventory = { data: null, error: { message: 'inventory down' } };
     const result = await loadVoiceOperatorHealth(admin);
     expect(result.verifiedActiveRoutes).toBeNull();
     expect(result.failures).toContain('active routes');
+  });
+
+  it('does not count stale provider proof as a verified active route', async () => {
+    const stale = new Date(Date.now() - 6 * 60 * 60 * 1000 - 1).toISOString();
+    replies.voice_number_inventory = {
+      data: [activeSender({ provider_verified_at: stale, last_provider_sync_at: stale })],
+      error: null,
+    };
+
+    expect((await loadVoiceOperatorHealth(admin)).verifiedActiveRoutes).toBe(0);
   });
 });

@@ -172,6 +172,15 @@ describe('admission', () => {
     expect(callsFor('reserve_usage_credits')).toHaveLength(0);
   });
 
+  it('refuses a CallSid that was terminally tombstoned before admission', async () => {
+    setRpc('claim_voice_call_admission_v2', {
+      data: [{ claim_status: 'call_terminal', admission_id: null }], error: null,
+    });
+    expect(await admitVoiceCall(admin, input, { mode: 'enforce', concurrencyLimit: 1 }))
+      .toEqual({ outcome: 'refused', reason: 'call_terminal' });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(0);
+  });
+
   it('replays an already-finalized call without buying a second hold', async () => {
     setRpc('claim_voice_call_admission_v2', {
       data: [{ claim_status: 'existing', admission_id: 'adm-1' }], error: null,
@@ -259,6 +268,47 @@ describe('the failure posture: answer the call', () => {
     });
     expect(await admitVoiceCall(admin, input, { mode: 'off' }))
       .toMatchObject({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(callsFor('release_voice_call_admission_claim')).toEqual([[
+      'release_voice_call_admission_claim',
+      {
+        p_admission_id: 'adm-1',
+        p_account_id: ACCOUNT,
+        p_provider_call_id: CALL,
+      },
+    ]]);
+  });
+
+  it.each([
+    ['the minute ledger throws', 'enforce', () => {
+      setRpc('reserve_usage_credits', new Error('connection reset'));
+    }],
+    ['the minute ledger returns an error', 'enforce', () => {
+      setRpc('reserve_usage_credits', {
+        data: null, error: { code: '57014', message: 'canceling statement' },
+      });
+    }],
+    ['the minute ledger returns an unusable reservation id', 'enforce', () => {
+      setRpc('reserve_usage_credits', { data: 42, error: null });
+    }],
+    ['measure mode has no allowance', 'measure', () => {
+      setRpc('reserve_usage_credits', { data: null, error: insufficient });
+    }],
+  ] as const)('releases the exact claim when %s and fallback attribution fails', async (_label, mode, arrange) => {
+    arrange();
+    setRpc('finalize_voice_call_admission', {
+      data: null, error: { code: '08006', message: 'database unavailable' },
+    });
+
+    expect(await admitVoiceCall(admin, input, { mode }))
+      .toMatchObject({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(callsFor('release_voice_call_admission_claim')).toEqual([[
+      'release_voice_call_admission_claim',
+      {
+        p_admission_id: 'adm-1',
+        p_account_id: ACCOUNT,
+        p_provider_call_id: CALL,
+      },
+    ]]);
   });
 
   it('answers anyway when the ledger throws', async () => {
@@ -304,10 +354,14 @@ describe('the failure posture: answer the call', () => {
     setRpc('release_usage_reservation', { data: true, error: null });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
       .toMatchObject({ outcome: 'refused', reason: 'admission_unavailable' });
-    expect(rpc).toHaveBeenLastCalledWith('release_usage_reservation', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('release_usage_reservation', expect.objectContaining({
       p_reservation_id: 'res-orphan',
       p_reason: 'admission_record_failed',
     }));
+    expect(rpc.mock.calls.slice(-2).map((call) => call[0])).toEqual([
+      'release_usage_reservation',
+      'release_voice_call_admission_claim',
+    ]);
   });
 
   it('refuses an exhausted workspace, which is voicemail and not an error', async () => {
@@ -366,6 +420,12 @@ describe('the failure posture: answer the call', () => {
       accountId: ACCOUNT,
       idempotencyKey: 'voice-overage-key',
     }));
+    expect(callsFor('release_voice_call_admission_claim')).toHaveLength(1);
+    const claimReleaseIndex = rpc.mock.calls.findIndex(
+      (call) => call[0] === 'release_voice_call_admission_claim',
+    );
+    expect(releaseOverage.mock.invocationCallOrder[0])
+      .toBeLessThan(rpc.mock.invocationCallOrder[claimReleaseIndex]);
   });
 
   it('refuses when overage is unavailable, and never admits on uncertainty there', async () => {

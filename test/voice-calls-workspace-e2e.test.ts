@@ -133,14 +133,14 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
     const swml = JSON.parse(rendered.body);
     expect(swml.sections.main).toHaveLength(4);
     expect(swml.sections.main[0]).toEqual({ answer: {} });
-    expect(swml.sections.main[1]).toMatchObject({
+    expect(swml.sections.main[1].play.url).toContain(AI_VOICE_DISCLOSURE);
+    expect(swml.sections.main[1].play.url).toContain(RECORDING_DISCLOSURE);
+    expect(swml.sections.main[2]).toMatchObject({
       record_call: {
         status_url: 'https://app.letsgetquoted.com/api/voice/recording-status',
         format: 'mp3',
       },
     });
-    expect(swml.sections.main[2].play.url).toContain(AI_VOICE_DISCLOSURE);
-    expect(swml.sections.main[2].play.url).toContain(RECORDING_DISCLOSURE);
 
     // Stage 3: Conversation Settlement & Ingestion
     const rawConversation = [

@@ -20,6 +20,7 @@ type ContractorActionContext = Readonly<{
   accountId: string;
   providerCallId: string;
   caller: VoiceStaffCaller;
+  stepUpVerified: boolean;
   functionName: string;
   args: Record<string, unknown>;
 }>;
@@ -263,6 +264,12 @@ export async function handleContractorVoiceAction(
   context: ContractorActionContext,
 ): Promise<ContractorActionResult> {
   if (!CONTRACTOR_VOICE_FUNCTIONS.has(context.functionName)) return { handled: false };
+  if (context.stepUpVerified !== true) {
+    return {
+      handled: true,
+      response: 'Before I can save that dispatch change, I need to text a six-digit verification code to the verified phone calling now.',
+    };
+  }
   const fn = canonicalFunction(context.functionName);
   const args = context.args;
 

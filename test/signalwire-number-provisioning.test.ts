@@ -85,6 +85,31 @@ describe('SignalWire dedicated-number REST adapter', () => {
       .resolves.toEqual([]);
   });
 
+  it('offers voice-capable inventory through the separate AI Voice search rail', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ data: [
+      {
+        e164: '+18103192943',
+        rate_center: 'FLINT',
+        region: 'MI',
+        capabilities: ['voice', 'fax'],
+      },
+      {
+        e164: '+18103192944',
+        rate_center: 'FLINT',
+        region: 'MI',
+        capabilities: ['sms'],
+      },
+    ] }));
+
+    await expect(client(fetchMock).searchAvailableVoiceNumbers({ areaCode: '810', region: 'MI' }))
+      .resolves.toEqual([{
+        number: '+18103192943',
+        region: 'MI',
+        city: 'FLINT',
+        capabilities: { voice: true, sms: false, mms: false, fax: true },
+      }]);
+  });
+
   it('uses the documented purchase, update, assignment, order, and individual-status contracts', async () => {
     const fetchMock = vi.fn<typeof fetch>(async (raw, init) => {
       const url = String(raw);
@@ -292,6 +317,158 @@ describe('SignalWire dedicated-number REST adapter', () => {
       }).catch((value) => value);
       expect(error).toMatchObject({ code: 'malformed_response', outcomeKnownAbsent: false });
       expect(String((error as Error).message)).toMatch(/did not confirm the requested inbound webhook/i);
+    }
+  });
+
+  it('uses the native DELETE contract to release one exact provider phone resource', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => new Response(null, { status: 204 }));
+    await expect(client(fetchMock).releasePhoneNumber({
+      providerNumberId: PHONE_ID,
+      number: '+12485550140',
+    })).resolves.toEqual({
+      id: PHONE_ID,
+      number: '+12485550140',
+      released: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      `https://lgq-test.signalwire.com/api/relay/rest/phone_numbers/${PHONE_ID}`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeTruthy();
+  });
+
+  it('lets cleanup own one shared DELETE-404 proof deadline without a duplicate inventory scan', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async () => json({ error: 'not found' }, 404));
+    const signal = AbortSignal.timeout(1_000);
+
+    const error = await client(fetchMock).releasePhoneNumber({
+      providerNumberId: PHONE_ID,
+      number: '+12485550140',
+      signal,
+      reconcileNotFound: false,
+    }).catch((value) => value);
+
+    expect(error).toMatchObject({ status: 404, outcomeKnownAbsent: true });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBe(signal);
+  });
+
+  it('treats DELETE 404 as idempotent success only after exact inventory absence is proved', async () => {
+    const listPath = '/api/relay/rest/phone_numbers?filter_number=%2B12485550140&page_size=1000';
+    const fetchMock = vi.fn<typeof fetch>(async (raw, init) => {
+      if (init?.method === 'DELETE') return json({ error: 'not found' }, 404);
+      if (String(raw).endsWith(listPath)) return json({ links: {}, data: [] });
+      return json({ error: 'unexpected request' }, 500);
+    });
+
+    await expect(client(fetchMock).releasePhoneNumber({
+      providerNumberId: PHONE_ID,
+      number: '+12485550140',
+    })).resolves.toEqual({
+      id: PHONE_ID,
+      number: '+12485550140',
+      released: true,
+    });
+    expect(fetchMock.mock.calls.map(([raw, init]) => [String(raw), init?.method])).toEqual([
+      [`https://lgq-test.signalwire.com/api/relay/rest/phone_numbers/${PHONE_ID}`, 'DELETE'],
+      [`https://lgq-test.signalwire.com${listPath}`, 'GET'],
+    ]);
+  });
+
+  it('quarantines DELETE 404 when the exact number still survives under any resource', async () => {
+    const otherId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
+    const fetchMock = vi.fn<typeof fetch>(async (_raw, init) => init?.method === 'DELETE'
+      ? json({ error: 'not found' }, 404)
+      : json({ links: {}, data: [{
+          id: otherId,
+          number: '+12485550140',
+          capabilities: ['voice'],
+        }] }));
+
+    const error = await client(fetchMock).releasePhoneNumber({
+      providerNumberId: PHONE_ID,
+      number: '+12485550140',
+    }).catch((value) => value);
+
+    expect(error).toMatchObject({
+      code: 'malformed_response',
+      outcomeKnownAbsent: false,
+    });
+    expect(String((error as Error).message)).toMatch(/different resource/i);
+  });
+
+  it('configures the exact AI Voice and provider-status POST routes without changing messaging fields', async () => {
+    const fetchMock = vi.fn<typeof fetch>(async (_raw, init) => json({
+      id: PHONE_ID,
+      number: '+18103192943',
+      name: 'LGQ AI Voice',
+      capabilities: ['voice'],
+      call_handler: 'laml_webhooks',
+      call_request_url: 'https://app.example.com/api/voice/ai',
+      call_request_method: 'POST',
+      call_status_callback_url: 'https://app.example.com/api/voice/provider-status',
+      call_status_callback_method: 'POST',
+      message_handler: 'laml_webhooks',
+      message_request_url: 'https://app.example.com/api/sms/inbound',
+      message_request_method: 'POST',
+    }));
+
+    await expect(client(fetchMock).updateVoicePhoneNumber({
+      providerNumberId: PHONE_ID,
+      number: '+18103192943',
+      friendlyName: 'LGQ AI Voice',
+      inboundWebhookUrl: 'https://app.example.com/api/voice/ai',
+      statusCallbackUrl: 'https://app.example.com/api/voice/provider-status',
+    })).resolves.toMatchObject({
+      id: PHONE_ID,
+      number: '+18103192943',
+      callHandler: 'laml_webhooks',
+      callRequestUrl: 'https://app.example.com/api/voice/ai',
+      callRequestMethod: 'POST',
+      callStatusCallbackUrl: 'https://app.example.com/api/voice/provider-status',
+      callStatusCallbackMethod: 'POST',
+    });
+
+    const payload = JSON.parse(String(fetchMock.mock.calls[0]![1]?.body));
+    expect(payload).toEqual({
+      name: 'LGQ AI Voice',
+      call_handler: 'laml_webhooks',
+      call_request_url: 'https://app.example.com/api/voice/ai',
+      call_request_method: 'POST',
+      call_status_callback_url: 'https://app.example.com/api/voice/provider-status',
+      call_status_callback_method: 'POST',
+    });
+    expect(payload).not.toHaveProperty('message_handler');
+    expect(payload).not.toHaveProperty('message_request_url');
+  });
+
+  it('rejects a voice update unless SignalWire echoes every exact POST route field', async () => {
+    const base = {
+      id: PHONE_ID,
+      number: '+18103192943',
+      capabilities: ['voice'],
+      call_handler: 'laml_webhooks',
+      call_request_url: 'https://app.example.com/api/voice/ai',
+      call_request_method: 'POST',
+      call_status_callback_url: 'https://app.example.com/api/voice/provider-status',
+      call_status_callback_method: 'POST',
+    };
+    for (const response of [
+      { ...base, capabilities: ['sms'] },
+      { ...base, call_handler: 'ai_agent' },
+      { ...base, call_request_url: 'https://wrong.example.com/api/voice/ai' },
+      { ...base, call_request_method: 'GET' },
+      { ...base, call_status_callback_url: 'https://app.example.com/api/voice/ai/status' },
+      { ...base, call_status_callback_method: 'GET' },
+    ]) {
+      const update = client(vi.fn<typeof fetch>(async () => json(response))).updateVoicePhoneNumber({
+        providerNumberId: PHONE_ID,
+        number: '+18103192943',
+        friendlyName: 'LGQ AI Voice',
+        inboundWebhookUrl: 'https://app.example.com/api/voice/ai',
+        statusCallbackUrl: 'https://app.example.com/api/voice/provider-status',
+      });
+      await expect(update).rejects.toThrow(/voice capability and the exact AI Voice inbound and provider-status POST configuration/i);
     }
   });
 

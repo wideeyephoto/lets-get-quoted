@@ -157,7 +157,16 @@ describe('settling voice receipt updates outcome and workflow urgency', () => {
         for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
         chain.maybeSingle = () => {
           if (table === 'voice_call_admissions') {
-            return Promise.resolve({ data: { account_id: ACCOUNT, reservation_id: 'res-1', reserved_minutes: 60 }, error: null });
+            return Promise.resolve({
+              data: {
+                account_id: ACCOUNT,
+                reservation_id: 'res-1',
+                reserved_minutes: 60,
+                caller_number: '+15559876543',
+                caller_kind: 'customer',
+              },
+              error: null,
+            });
           }
           if (table === 'voice_calls') {
             return Promise.resolve({ data: { id: 'call-row-1' }, error: null });
@@ -193,6 +202,131 @@ describe('settling voice receipt updates outcome and workflow urgency', () => {
       account_id: ACCOUNT,
       disposition: 'unreviewed',
       urgency: 'emergency',
+    });
+  });
+
+  it('redacts a spoken OTP again before transcript, lead, workflow, or logs can persist it', async () => {
+    const otp = '481920';
+    const upserts: Record<string, unknown>[] = [];
+    const { createLead } = await import('@/lib/leads');
+    const { triggerVoicePostCallFollowup } = await import('@/lib/voice/post-call-sms');
+    vi.mocked(createLead).mockClear();
+    vi.mocked(triggerVoicePostCallFollowup).mockClear();
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const mockAdmin = {
+      from(table: string) {
+        const chain: Record<string, unknown> = {};
+        for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
+        chain.maybeSingle = () => {
+          if (table === 'voice_call_admissions') {
+            return Promise.resolve({
+              data: {
+                account_id: ACCOUNT,
+                reservation_id: 'res-otp',
+                reserved_minutes: 60,
+                caller_number: '+15559876543',
+                caller_kind: 'customer',
+              },
+              error: null,
+            });
+          }
+          if (table === 'voice_calls') {
+            return Promise.resolve({ data: { id: 'call-row-otp' }, error: null });
+          }
+          return Promise.resolve({ data: null, error: null });
+        };
+        chain.upsert = (row: Record<string, unknown>) => {
+          upserts.push({ table, ...row });
+          return Promise.resolve({ error: null });
+        };
+        return chain;
+      },
+    } as never;
+    const unsafeReceipt: VoiceReceipt = {
+      ...baseReceipt,
+      summary: 'Staff repeated authorization code one two three four five six.',
+      structuredPostPrompt: {
+        code: otp,
+        issue_summary: 'Caller supplied code 481 920',
+        nested: { tool_args: { code: otp }, numeric_note: 123456, leading_zero_note: '048192' },
+      },
+      callLog: [
+        { role: 'user', content: 'It is one two three four five six.', timestamp: null },
+        { role: 'user', content: 'My code is 4-8-1-9-2-0. My phone is 8103042061.', timestamp: null },
+        { role: 'user', content: '123-456 then 12 34 56 and 1 23 45 6.', timestamp: null },
+        { role: 'tool', content: JSON.stringify({ code: otp }), timestamp: null },
+      ],
+    };
+
+    await settleVoiceReceipt(mockAdmin, unsafeReceipt);
+
+    const durableJson = JSON.stringify({
+      upserts,
+      leadCalls: vi.mocked(createLead).mock.calls,
+      followupCalls: vi.mocked(triggerVoicePostCallFollowup).mock.calls,
+      errorCalls: errorLog.mock.calls,
+    });
+    expect(durableJson).not.toContain(otp);
+    expect(durableJson).not.toContain('123456');
+    expect(durableJson).not.toContain('048192');
+    expect(durableJson).not.toContain('code 481 920');
+    expect(durableJson).not.toContain('one two three four five six');
+    expect(durableJson).not.toContain('4-8-1-9-2-0');
+    expect(durableJson).not.toContain('123-456');
+    expect(durableJson).not.toContain('12 34 56');
+    expect(durableJson).not.toContain('1 23 45 6');
+    expect(durableJson).toContain('8103042061');
+    expect(durableJson).toContain('[REDACTED]');
+    expect(upserts.find((row) => row.table === 'voice_calls')).toMatchObject({
+      summary: 'Staff repeated authorization code [REDACTED].',
+      transcript: expect.arrayContaining([
+        expect.objectContaining({ content: 'It is [REDACTED].' }),
+        expect.objectContaining({ content: 'My code is [REDACTED]. My phone is 8103042061.' }),
+        expect.objectContaining({ content: '[REDACTED] then [REDACTED] and [REDACTED].' }),
+      ]),
+    });
+  });
+
+  it('invalidates the exact staff-call step-up when the authoritative receipt ends the call', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+    const mockAdmin = {
+      rpc,
+      from(table: string) {
+        const chain: Record<string, unknown> = {};
+        for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
+        chain.maybeSingle = () => {
+          if (table === 'voice_call_admissions') {
+            return Promise.resolve({
+              data: {
+                account_id: ACCOUNT,
+                reservation_id: 'res-staff',
+                reserved_minutes: 60,
+                caller_number: '+18103042061',
+                caller_kind: 'owner',
+              },
+              error: null,
+            });
+          }
+          if (table === 'voice_calls') {
+            return Promise.resolve({ data: { id: 'call-row-staff' }, error: null });
+          }
+          return Promise.resolve({ data: null, error: null });
+        };
+        chain.upsert = () => Promise.resolve({ error: null });
+        return chain;
+      },
+    } as never;
+
+    await settleVoiceReceipt(mockAdmin, {
+      ...baseReceipt,
+      callerNumber: '+18103042061',
+    });
+
+    expect(rpc).toHaveBeenCalledWith('invalidate_voice_staff_step_up_challenge', {
+      p_account_id: ACCOUNT,
+      p_provider_call_id: CALL,
+      p_caller_number: '+18103042061',
+      p_reason: 'call_ended',
     });
   });
 });

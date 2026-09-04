@@ -32,9 +32,20 @@ export type SignalWirePhoneNumber = Readonly<{
   number: string;
   name: string | null;
   capabilities: readonly string[];
+  callHandler: string | null;
+  callRequestUrl: string | null;
+  callRequestMethod: string | null;
+  callStatusCallbackUrl: string | null;
+  callStatusCallbackMethod: string | null;
   messageHandler: string | null;
   messageRequestUrl: string | null;
   messageRequestMethod: string | null;
+}>;
+
+export type SignalWireReleasedPhoneNumber = Readonly<{
+  id: string;
+  number: string;
+  released: true;
 }>;
 
 export type SignalWireBrand = Readonly<{
@@ -77,7 +88,7 @@ export type SignalWireProvisioningConfig = Readonly<{
 type ErrorOptions = Readonly<{
   status: number | null;
   code: string;
-  requiredScopes: readonly ('Numbers' | 'Messaging')[];
+  requiredScopes: readonly ('Numbers' | 'Messaging' | 'Voice')[];
   responseReceived: boolean;
   outcomeKnownAbsent: boolean;
 }>;
@@ -85,7 +96,7 @@ type ErrorOptions = Readonly<{
 export class SignalWireProvisioningError extends Error {
   readonly status: number | null;
   readonly code: string;
-  readonly requiredScopes: readonly ('Numbers' | 'Messaging')[];
+  readonly requiredScopes: readonly ('Numbers' | 'Messaging' | 'Voice')[];
   readonly responseReceived: boolean;
   /** True only when SignalWire explicitly rejected the mutation. */
   readonly outcomeKnownAbsent: boolean;
@@ -261,12 +272,16 @@ export class SignalWireNumberProvisioningClient {
   private async request(
     path: string,
     init: RequestInit,
-    requiredScopes: readonly ('Numbers' | 'Messaging')[],
+    requiredScopes: readonly ('Numbers' | 'Messaging' | 'Voice')[],
   ): Promise<unknown> {
     let response: Response;
     try {
       response = await this.fetchImpl(`${this.origin}${path}`, {
         ...init,
+        // Provider mutations run under short database leases. Bound every
+        // network attempt so a timed-out worker cannot remain in flight past
+        // its exclusive carrier-mutation authority and overlap a reclaimer.
+        signal: init.signal ?? AbortSignal.timeout(15_000),
         cache: 'no-store',
         headers: {
           Accept: 'application/json',
@@ -325,7 +340,7 @@ export class SignalWireNumberProvisioningClient {
     return body;
   }
 
-  async searchAvailableNumbers(input: Readonly<{
+  private async searchAvailableNumberInventory(input: Readonly<{
     areaCode: string;
     region?: string | null;
     maxResults?: number;
@@ -360,7 +375,27 @@ export class SignalWireNumberProvisioningClient {
         city: optionalText(row.city) ?? optionalText(row.rate_center),
         capabilities: candidateCapabilities(row.capabilities),
       };
-    }).filter((candidate) => candidate.capabilities.sms);
+    });
+  }
+
+  /** Messaging inventory must never offer a voice-only number for purchase. */
+  async searchAvailableNumbers(input: Readonly<{
+    areaCode: string;
+    region?: string | null;
+    maxResults?: number;
+  }>): Promise<readonly SignalWireNumberCandidate[]> {
+    const candidates = await this.searchAvailableNumberInventory(input);
+    return candidates.filter((candidate) => candidate.capabilities.sms);
+  }
+
+  /** Dedicated AI Voice inventory is intentionally independent of SMS/10DLC. */
+  async searchAvailableVoiceNumbers(input: Readonly<{
+    areaCode: string;
+    region?: string | null;
+    maxResults?: number;
+  }>): Promise<readonly SignalWireNumberCandidate[]> {
+    const candidates = await this.searchAvailableNumberInventory(input);
+    return candidates.filter((candidate) => candidate.capabilities.voice);
   }
 
   async purchaseNumber(number: string): Promise<SignalWirePhoneNumber> {
@@ -372,15 +407,62 @@ export class SignalWireNumberProvisioningClient {
     ));
   }
 
-  async getPhoneNumber(providerNumberId: string): Promise<SignalWirePhoneNumber> {
+  async getPhoneNumber(
+    providerNumberId: string,
+    options: Readonly<{ signal?: AbortSignal }> = {},
+  ): Promise<SignalWirePhoneNumber> {
     if (!UUID.test(providerNumberId)) throw new Error('SignalWire phone number ID is invalid.');
     const phone = this.parsePhone(await this.request(
       `/api/relay/rest/phone_numbers/${encodeURIComponent(providerNumberId)}`,
-      { method: 'GET' },
+      { method: 'GET', signal: options.signal },
       ['Numbers'],
     ));
     if (phone.id !== providerNumberId) throw malformed('SignalWire returned a different phone number resource than requested.');
     return phone;
+  }
+
+  async releasePhoneNumber(input: Readonly<{
+    providerNumberId: string;
+    number: string;
+    signal?: AbortSignal;
+    reconcileNotFound?: boolean;
+  }>): Promise<SignalWireReleasedPhoneNumber> {
+    if (!UUID.test(input.providerNumberId)) throw new Error('SignalWire phone number ID is invalid.');
+    if (!E164.test(input.number)) throw new Error('Released number must be E.164.');
+    try {
+      await this.request(
+        `/api/relay/rest/phone_numbers/${encodeURIComponent(input.providerNumberId)}`,
+        { method: 'DELETE', signal: input.signal },
+        ['Numbers'],
+      );
+    } catch (error) {
+      if (!(error instanceof SignalWireProvisioningError
+          && error.status === 404
+          && error.outcomeKnownAbsent)) throw error;
+      if (input.reconcileNotFound === false) throw error;
+
+      // DELETE 404 is not a failed release. It can be an idempotent replay
+      // after the provider already removed the resource, or an identity typo.
+      // Prove that this project no longer owns the exact E.164 before treating
+      // the desired absent state as success. A lookup failure or a surviving
+      // resource remains indeterminate and must not disappear from accounting.
+      const surviving = await this.findOwnedPhoneNumber(input.number, { signal: input.signal });
+      if (surviving) {
+        throw malformed(
+          surviving.id === input.providerNumberId
+            ? 'SignalWire returned 404 for release but still lists the exact phone resource.'
+            : 'SignalWire returned 404 for release but still owns the exact number under a different resource.',
+        );
+      }
+    }
+    // The documented successful response is 204 with no representation. The
+    // exact identity therefore comes from the claimed immutable request. A
+    // 404 reaches this point only after the exact E.164 absence check above.
+    return Object.freeze({
+      id: input.providerNumberId,
+      number: input.number,
+      released: true as const,
+    });
   }
 
   /**
@@ -388,7 +470,10 @@ export class SignalWireNumberProvisioningClient {
    * project. SignalWire's filter is substring-based, so every returned page is
    * parsed and filtered for exact equality before absence is accepted.
    */
-  async findOwnedPhoneNumber(number: string): Promise<SignalWirePhoneNumber | null> {
+  async findOwnedPhoneNumber(
+    number: string,
+    options: Readonly<{ signal?: AbortSignal }> = {},
+  ): Promise<SignalWirePhoneNumber | null> {
     if (!E164.test(number)) throw new Error('Owned phone number lookup must be E.164.');
     const listPath = '/api/relay/rest/phone_numbers';
     const query = new URLSearchParams({ filter_number: number, page_size: String(PHONE_PAGE_SIZE) });
@@ -401,7 +486,7 @@ export class SignalWireNumberProvisioningClient {
       visited.add(pagePath);
       const body = record(await this.request(
         pagePath,
-        { method: 'GET' },
+        { method: 'GET', signal: options.signal },
         ['Numbers'],
       ), 'SignalWire phone list');
       if (!Array.isArray(body.data)) throw malformed('SignalWire phone list has no data array.');
@@ -602,6 +687,50 @@ export class SignalWireNumberProvisioningClient {
     return updated;
   }
 
+  async updateVoicePhoneNumber(input: Readonly<{
+    providerNumberId: string;
+    number: string;
+    friendlyName: string;
+    inboundWebhookUrl: string;
+    statusCallbackUrl: string;
+  }>): Promise<SignalWirePhoneNumber> {
+    if (!UUID.test(input.providerNumberId)) throw new Error('SignalWire phone number ID is invalid.');
+    if (!E164.test(input.number)) throw new Error('Configured number must be E.164.');
+    const friendlyName = input.friendlyName.trim();
+    if (!friendlyName) throw new Error('Voice phone number friendly name is required.');
+    const inbound = secureCallbackUrl(input.inboundWebhookUrl, 'AI Voice inbound webhook');
+    const status = secureCallbackUrl(input.statusCallbackUrl, 'AI Voice provider status callback');
+    const updated = this.parsePhone(await this.request(
+      `/api/relay/rest/phone_numbers/${encodeURIComponent(input.providerNumberId)}`,
+      {
+        method: 'PUT',
+        body: JSON.stringify({
+          name: friendlyName.slice(0, 120),
+          call_handler: 'laml_webhooks',
+          call_request_url: inbound,
+          call_request_method: 'POST',
+          call_status_callback_url: status,
+          call_status_callback_method: 'POST',
+        }),
+      },
+      ['Numbers', 'Voice'],
+    ));
+    if (updated.id !== input.providerNumberId || updated.number !== input.number) {
+      throw malformed('SignalWire updated a different phone number than requested.');
+    }
+    if (
+      !updated.capabilities.includes('voice')
+      || updated.callHandler?.toLowerCase() !== 'laml_webhooks'
+      || updated.callRequestUrl !== inbound
+      || updated.callRequestMethod?.toUpperCase() !== 'POST'
+      || updated.callStatusCallbackUrl !== status
+      || updated.callStatusCallbackMethod?.toUpperCase() !== 'POST'
+    ) {
+      throw malformed('SignalWire did not confirm voice capability and the exact AI Voice inbound and provider-status POST configuration.');
+    }
+    return updated;
+  }
+
   async assignNumberToCampaign(input: Readonly<{
     campaignId: string;
     number: string;
@@ -719,6 +848,11 @@ export class SignalWireNumberProvisioningClient {
           .map((item) => item.trim().toLowerCase())
           .filter(Boolean)
         : [],
+      callHandler: optionalText(row.call_handler),
+      callRequestUrl: optionalText(row.call_request_url),
+      callRequestMethod: optionalText(row.call_request_method),
+      callStatusCallbackUrl: optionalText(row.call_status_callback_url),
+      callStatusCallbackMethod: optionalText(row.call_status_callback_method),
       messageHandler: optionalText(row.message_handler),
       messageRequestUrl: optionalText(row.message_request_url),
       messageRequestMethod: optionalText(row.message_request_method),

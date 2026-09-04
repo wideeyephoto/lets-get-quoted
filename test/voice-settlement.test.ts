@@ -36,7 +36,9 @@ let admissionRow: unknown;
 let admissionError: { code?: string; message?: string } | null;
 let historyError: { code?: string; message?: string } | null;
 const history = vi.fn();
+const adminRpc = vi.fn();
 const admin = {
+  rpc: (...args: unknown[]) => adminRpc(...args),
   from(table: string) {
     const chain: Record<string, unknown> = {};
     for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
@@ -82,6 +84,8 @@ beforeEach(() => {
   createLead.mockReset();
   createLead.mockResolvedValue({ id: 'lead-1' });
   history.mockReset();
+  adminRpc.mockReset();
+  adminRpc.mockResolvedValue({ data: true, error: null });
   vi.spyOn(console, 'error').mockImplementation(() => {});
   admissionRow = admitted();
   admissionError = null;
@@ -136,6 +140,12 @@ describe('settling a call', () => {
     expect(history).toHaveBeenCalledWith(expect.objectContaining({
       lead_id: null,
     }));
+    expect(adminRpc).toHaveBeenCalledWith('invalidate_voice_staff_step_up_challenge', {
+      p_account_id: ACCOUNT,
+      p_provider_call_id: CALL,
+      p_caller_number: '+15559876543',
+      p_reason: 'call_ended',
+    });
   });
 });
 

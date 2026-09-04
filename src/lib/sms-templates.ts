@@ -72,6 +72,10 @@ export function crewPhoneVerificationCodeText(input: { businessName: string; cod
   return `${input.businessName}: Your 6-digit verification code for Voice Assistant & Field Access is ${input.code}. Reply STOP to opt out.`;
 }
 
+export function voiceStaffStepUpCodeText(input: { code: string }): string {
+  return `Your Let’s Get Quoted voice authorization code is ${input.code}. It expires in 10 minutes. Only use it on the call you started. Reply STOP to opt out.`;
+}
+
 export function ownerVoiceEmergencyAlertText(input: {
   businessName: string;
   callerNumber: string | null;

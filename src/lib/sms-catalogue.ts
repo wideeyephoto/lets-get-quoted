@@ -13,6 +13,7 @@ import {
   composeOfferMessage,
   crewAssignmentText,
   crewPhoneVerificationCodeText,
+  voiceStaffStepUpCodeText,
   crewScheduleSelectedText,
   crewWelcomeText,
   inboxReplyText,
@@ -194,6 +195,14 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     audience: 'crew',
     control: always('One-time code to verify crew mobile access'),
     body: crewPhoneVerificationCodeText({ businessName: SAMPLE.business, code: '481920' }),
+  },
+  {
+    id: 'voice-staff-step-up',
+    title: 'AI Voice staff authorization code',
+    trigger: 'A verified owner, office member, or crew member asks the AI Voice assistant to change dispatch records',
+    audience: 'owner',
+    control: always('One-time code sent only to the verified phone on the active call'),
+    body: voiceStaffStepUpCodeText({ code: '481920' }),
   },
   {
     id: 'lead-decline',
