@@ -99,8 +99,61 @@ export function renderPlatformCampaignEmailHtml(
   });
 }
 
+export const MAX_PLATFORM_CAMPAIGN_AUDIENCE = 10000;
+export const MAX_ACTIVITY_SCAN_ROWS = 25000;
+
+/**
+ * Paged, ordered scan for active account IDs across jobs or invoices.
+ * Fails closed if the scan hits the safety cap to prevent sending to an arbitrary slice.
+ */
+async function scanActiveAccountIds(
+  admin: SupabaseClient,
+  table: 'jobs' | 'invoices',
+  sinceDate: string,
+  maxScan = MAX_ACTIVITY_SCAN_ROWS,
+): Promise<Set<string>> {
+  const activeSet = new Set<string>();
+  const CHUNK = 1000;
+  let offset = 0;
+
+  while (offset < maxScan) {
+    const { data, error } = await admin
+      .from(table)
+      .select('account_id')
+      .is('test_marker', null)
+      .gte('created_at', sinceDate)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + CHUNK - 1);
+
+    if (error) {
+      console.error(`[admin-platform-campaigns] Failed scanning ${table} for active audience:`, error);
+      throw new Error(`Activity scan failed on ${table}: ${error.message}`);
+    }
+
+    if (!data || data.length === 0) break;
+
+    for (const row of data) {
+      if (row.account_id) activeSet.add(row.account_id);
+    }
+
+    offset += data.length;
+    if (data.length < CHUNK) break;
+  }
+
+  if (offset >= maxScan) {
+    throw new Error(
+      `Activity scan on ${table} hit safety cap of ${maxScan} records created since ${sinceDate}. Refusing to blast truncated active cohort.`
+    );
+  }
+
+  return activeSet;
+}
+
 /**
  * Resolve recipients for any chosen platform audience.
+ * Enforces deterministic ordering, paged scanning, and fails closed if
+ * the cohort exceeds the maximum supported platform campaign audience.
  */
 export async function resolvePlatformCampaignRecipients(
   admin: SupabaseClient,
@@ -117,51 +170,94 @@ export async function resolvePlatformCampaignRecipients(
     }));
   }
 
-  // Query accounts matching filter criteria
-  let query = admin
-    .from('accounts')
-    .select('id, business_name, plan, connect_onboarded, created_at, test_marker, reply_to_email')
-    .is('test_marker', null);
-
   const now = new Date();
 
+  // First verify total matching account count to refuse truncated blasts
+  let countQuery = admin
+    .from('accounts')
+    .select('id', { count: 'exact', head: true })
+    .is('test_marker', null);
+
   if (audience === 'paid_tier') {
-    query = query.in('plan', ['pro', 'crew_plus']);
+    countQuery = countQuery.in('plan', ['pro', 'crew_plus']);
   } else if (audience === 'free_tier') {
-    query = query.eq('plan', 'free');
+    countQuery = countQuery.eq('plan', 'free');
   } else if (audience === 'incomplete_onboarding') {
-    query = query.eq('connect_onboarded', false);
+    countQuery = countQuery.eq('connect_onboarded', false);
   } else if (audience === 'recent_signups') {
     const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
-    query = query.gte('created_at', fourteenDaysAgo);
+    countQuery = countQuery.gte('created_at', fourteenDaysAgo);
   }
 
-  const { data: accounts, error: accountsError } = await query.order('created_at', { ascending: false }).limit(2000);
-  if (accountsError || !accounts) {
-    console.error('[admin-platform-campaigns] Failed to load accounts:', accountsError);
-    return [];
+  const { count: totalAccountsCount, error: countError } = await countQuery;
+  if (countError) {
+    console.error('[admin-platform-campaigns] Failed to count accounts:', countError);
+    throw new Error(`Failed to count audience accounts: ${countError.message}`);
   }
 
-  // For active_30d and active_90d, filter by recent activity
+  const totalAccounts = totalAccountsCount ?? 0;
+  if (totalAccounts > MAX_PLATFORM_CAMPAIGN_AUDIENCE) {
+    throw new Error(
+      `Audience scan cap reached: ${totalAccounts} accounts match '${audience}', exceeding safe platform campaign limit of ${MAX_PLATFORM_CAMPAIGN_AUDIENCE}. Refusing to broadcast to a truncated audience.`
+    );
+  }
+
+  // Page through accounts deterministically
+  const PAGE_CHUNK = 1000;
+  const accounts: Array<{
+    id: string;
+    business_name: string | null;
+    plan: string | null;
+    connect_onboarded: boolean | null;
+    created_at: string;
+    test_marker: string | null;
+    reply_to_email: string | null;
+  }> = [];
+
+  for (let offset = 0; offset < Math.max(totalAccounts, 1); offset += PAGE_CHUNK) {
+    let chunkQuery = admin
+      .from('accounts')
+      .select('id, business_name, plan, connect_onboarded, created_at, test_marker, reply_to_email')
+      .is('test_marker', null)
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: false })
+      .range(offset, offset + PAGE_CHUNK - 1);
+
+    if (audience === 'paid_tier') {
+      chunkQuery = chunkQuery.in('plan', ['pro', 'crew_plus']);
+    } else if (audience === 'free_tier') {
+      chunkQuery = chunkQuery.eq('plan', 'free');
+    } else if (audience === 'incomplete_onboarding') {
+      chunkQuery = chunkQuery.eq('connect_onboarded', false);
+    } else if (audience === 'recent_signups') {
+      const fourteenDaysAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      chunkQuery = chunkQuery.gte('created_at', fourteenDaysAgo);
+    }
+
+    const { data: chunk, error: chunkError } = await chunkQuery;
+    if (chunkError || !chunk) {
+      console.error('[admin-platform-campaigns] Failed to fetch account chunk:', chunkError);
+      throw new Error(`Failed to fetch accounts at offset ${offset}: ${chunkError?.message || 'unknown error'}`);
+    }
+    accounts.push(...chunk);
+    if (chunk.length < PAGE_CHUNK) break;
+  }
+
+  if (!accounts.length) return [];
+
+  // For active_30d and active_90d, filter by recent activity across jobs and invoices
   let eligibleAccountIds = new Set(accounts.map((a) => a.id));
 
   if (audience === 'active_30d' || audience === 'active_90d') {
     const days = audience === 'active_30d' ? 30 : 90;
     const sinceDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString();
 
-    const [activeJobs, activeInvoices] = await Promise.all([
-      admin.from('jobs').select('account_id').gte('created_at', sinceDate).limit(2000),
-      admin.from('invoices').select('account_id').gte('created_at', sinceDate).limit(2000),
+    const [activeJobsSet, activeInvoicesSet] = await Promise.all([
+      scanActiveAccountIds(admin, 'jobs', sinceDate),
+      scanActiveAccountIds(admin, 'invoices', sinceDate),
     ]);
 
-    const activeSet = new Set<string>();
-    for (const row of activeJobs.data ?? []) {
-      if (row.account_id) activeSet.add(row.account_id);
-    }
-    for (const row of activeInvoices.data ?? []) {
-      if (row.account_id) activeSet.add(row.account_id);
-    }
-
+    const activeSet = new Set<string>([...activeJobsSet, ...activeInvoicesSet]);
     eligibleAccountIds = activeSet;
   }
 
