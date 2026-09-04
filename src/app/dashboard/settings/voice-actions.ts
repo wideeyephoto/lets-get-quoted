@@ -186,6 +186,13 @@ export async function updateVoiceSettingsAction(
       .eq('id', accountId);
   }
 
+  if (transferNumber !== undefined) {
+    await supabase
+      .from('accounts')
+      .update({ call_forward_number: transferNumber })
+      .eq('id', accountId);
+  }
+
   const { data: { user } } = await supabase.auth.getUser();
   await recordAccountEvent({
     accountId,

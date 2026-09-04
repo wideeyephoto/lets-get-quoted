@@ -103,6 +103,11 @@ describe('what the server does with what the form sends', () => {
     expect(update).toHaveBeenCalledWith({ alert_phone: '+12485550199' });
   });
 
+  it('synchronises call_forward_number on accounts table when transferNumber is updated', async () => {
+    await updateVoiceSettingsAction(input({ transferNumber: '(248) 555-0100' }));
+    expect(update).toHaveBeenCalledWith({ call_forward_number: '+12485550100' });
+  });
+
   it('rejects an invalid nonblank transfer number instead of silently erasing it', async () => {
     await expect(updateVoiceSettingsAction(input({ transferNumber: 'call me maybe' })))
       .rejects.toThrow(/valid US transfer number/i);
