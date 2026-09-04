@@ -298,7 +298,7 @@ export default function CashFlowBoard({
   // The shift lands on the events, so buildForecast's own numbers — the warning
   // date, the low, the required starting balance — are all about this scenario.
   // lateDays stays 0 below or the delay would be applied twice.
-  const scenarioEvents = useMemo(() => applyScenario(events, scenarioDef), [events, scenarioDef]);
+  const scenarioEvents = useMemo(() => applyScenario(events, scenarioDef, todayKey), [events, scenarioDef, todayKey]);
 
   const forecast = useMemo(
     () =>

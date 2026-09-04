@@ -180,6 +180,21 @@ function overdueIncomingSlot(dateKey: string, todayKey: string, days: number): n
   return mirrored >= days ? null : mirrored;
 }
 
+/**
+ * The day Base actually expects an incoming event to land — the mirror above,
+ * as a date key rather than a slot.
+ *
+ * Exported because a scenario that delays customer money has to delay it from
+ * HERE. Adding days to the raw due date instead shrinks the mirror: an invoice
+ * fifteen days overdue, pushed a fortnight later, reads as one day overdue and
+ * lands on day one, so "everyone pays late" delivers it a fortnight EARLIER
+ * than "everything lands on time". That inverted the scenario cards.
+ */
+export function expectedIncomingKey(dateKey: string, todayKey: string): string {
+  const offset = daysBetween(todayKey, dateKey);
+  return offset >= 0 ? dateKey : addDays(todayKey, -offset);
+}
+
 export function buildForecast(events: CashEvent[], options: ForecastOptions): Forecast {
   const days = Math.max(1, Math.round(options.days));
   const { todayKey, buffer } = options;
@@ -228,11 +243,13 @@ export function buildForecast(events: CashEvent[], options: ForecastOptions): Fo
     // window, it simply doesn't arrive in time — which is the point), and
     // outgoing we only ESTIMATED comes in heavier than we guessed.
     if (event.slips && event.amount > 0) {
-      // Same rule as the base placement: an already-late invoice pushed later
-      // still must not be clamped back onto today, which is what slotFor would
-      // do to a due date that is in the past even after lateDays is added.
-      const lateSlot = overdueIncomingSlot(addDays(event.dateKey, lateDays), todayKey, days);
-      if (lateSlot !== null) worstDelta[lateSlot] += event.amount;
+      // Lateness stacks on TOP of where Base already put it, which for an
+      // overdue invoice is the mirrored slot — not a fresh placement of a
+      // shifted date key. Shifting the key first and re-mirroring moves an
+      // already-late payment closer to today the later you assume it is, so the
+      // stressed line came out above the projected one. See expectedIncomingKey.
+      const lateSlot = slot + lateDays;
+      if (lateSlot < days) worstDelta[lateSlot] += event.amount;
     } else if (event.amount < 0 && !event.confirmed) {
       worstDelta[slot] += event.amount * stress;
     } else {

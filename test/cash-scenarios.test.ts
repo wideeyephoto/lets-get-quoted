@@ -100,7 +100,7 @@ describe('scenarios move the numbers, not just a dashed line', () => {
 
 describe('applyScenario — the shift lands on the events, once', () => {
   it('moves customer money and leaves everything else where it was', () => {
-    const shifted = applyScenario(EVENTS, CASH_SCENARIOS[1]);
+    const shifted = applyScenario(EVENTS, CASH_SCENARIOS[1], TODAY);
     expect(shifted.find((e) => e.amount > 0)!.dateKey).toBe(day(12));
     expect(shifted.find((e) => e.amount < 0)!.dateKey).toBe(day(8));
   });
@@ -108,7 +108,7 @@ describe('applyScenario — the shift lands on the events, once', () => {
   it('returns the same list untouched for the base case', () => {
     // Identity, not a copy: nothing downstream should re-render because a
     // no-op scenario handed back a new array.
-    expect(applyScenario(EVENTS, CASH_SCENARIOS[0])).toBe(EVENTS);
+    expect(applyScenario(EVENTS, CASH_SCENARIOS[0], TODAY)).toBe(EVENTS);
   });
 
   it('does not apply the delay twice when the forecast is built', () => {
@@ -195,5 +195,42 @@ describe('cashLowPanel — the low, and what to do about it', () => {
     // reason. At half and half, naming one alone would mislead.
     expect(lowHeadline(even, day(1))).not.toContain('causes');
     expect(lowHeadline(even, day(1))).toContain('1 more');
+  });
+});
+
+describe('an invoice that is ALREADY overdue', () => {
+  // The reason this needs its own block: every other fixture here is dated in
+  // the future, where "delay it a week" and "delay its due date a week" are the
+  // same operation. For an overdue invoice they are opposites, and the page had
+  // been shipping the opposite one.
+  const overdue = [
+    money(day(-15), 4_480, { confirmed: false }),  // asked for, 15 days late
+    money(day(5), -6_000),                          // payroll, day 5
+  ];
+  const overdueInput = { events: overdue, todayKey: TODAY, days: 30, startingBalance: 2_000, buffer: 0 };
+
+  it('lands later, never earlier, the later you assume payment is', () => {
+    const [base, late, stress] = summariseScenarios(overdueInput);
+    // Base mirrors it to day 15. Seven days late is day 22, a fortnight is 29.
+    expect(late.lowest).toBeLessThanOrEqual(base.lowest);
+    expect(stress.lowest).toBeLessThanOrEqual(late.lowest);
+  });
+
+  it('never lets the stress test report a safer month than the base case', () => {
+    const [base, late, stress] = summariseScenarios(overdueInput);
+    // The whole point of the control. Stress once reported no shortfall at all
+    // on this month while Base asked for $4,000.
+    for (const worse of [late, stress]) {
+      expect(worse.funding).toBeGreaterThanOrEqual(base.funding);
+      if (base.warningDateKey) expect(worse.warningDateKey).not.toBeNull();
+    }
+    expect(stress.funding).toBeGreaterThanOrEqual(4_000);
+  });
+
+  it('delays from the day Base expects it, not from the due date', () => {
+    const shifted = applyScenario(overdue, CASH_SCENARIOS[1], TODAY);
+    // Mirror puts it on day 15; a week late is day 22. Adding 7 to the raw due
+    // date would give day -8, which buildForecast re-mirrors onto day 8.
+    expect(shifted.find((e) => e.amount > 0)!.dateKey).toBe(day(22));
   });
 });

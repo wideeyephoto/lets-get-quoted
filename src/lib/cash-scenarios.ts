@@ -13,7 +13,7 @@
 //
 // PURE and CLOCK-FREE, like the rest of the forecast math.
 
-import { buildForecast, type CashEvent } from '@/lib/cash-forecast';
+import { buildForecast, expectedIncomingKey, type CashEvent } from '@/lib/cash-forecast';
 import { cashDayLabel } from '@/lib/cash-outlook';
 import { addDays, daysBetween } from '@/lib/pay-day';
 
@@ -64,12 +64,16 @@ export const CASH_SCENARIOS: ScenarioDef[] = [
  * the point. Outgoing we only ESTIMATED comes in heavier than we guessed; a
  * bill with a due date does not, so confirmed costs are left alone.
  */
-export function applyScenario(events: CashEvent[], def: ScenarioDef): CashEvent[] {
+export function applyScenario(events: CashEvent[], def: ScenarioDef, todayKey: string): CashEvent[] {
   if (def.lateDays === 0 && def.costStressPct === 0) return events;
   const stress = 1 + def.costStressPct / 100;
   return events.map((event) => {
     if (event.slips && event.amount > 0 && def.lateDays > 0) {
-      return { ...event, dateKey: addDays(event.dateKey, def.lateDays) };
+      // From the day Base expects it, NOT from the due date. For an invoice
+      // already overdue those are different days, and delaying the due date
+      // instead walks the payment backwards towards today — which made "Stress
+      // test" report no shortfall on an account "Base" said was $4,000 short.
+      return { ...event, dateKey: addDays(expectedIncomingKey(event.dateKey, todayKey), def.lateDays) };
     }
     if (event.amount < 0 && !event.confirmed && def.costStressPct > 0) {
       return { ...event, amount: round(event.amount * stress) };
@@ -115,7 +119,7 @@ export type ScenarioInput = {
  * precisely why the old checkbox could not move the numbers in the cards.
  */
 export function summariseScenario(def: ScenarioDef, input: ScenarioInput): ScenarioSummary {
-  const forecast = buildForecast(applyScenario(input.events, def), {
+  const forecast = buildForecast(applyScenario(input.events, def, input.todayKey), {
     todayKey: input.todayKey,
     days: input.days,
     startingBalance: input.startingBalance,

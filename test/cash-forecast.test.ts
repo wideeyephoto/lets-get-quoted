@@ -359,3 +359,38 @@ function addDaysKey(key: string, delta: number): string {
   const dt = new Date(Date.UTC(y, m - 1, d + delta));
   return dt.toISOString().slice(0, 10);
 }
+
+describe('the stressed line and an already-overdue invoice', () => {
+  it('never delivers overdue money earlier than the projected line does', () => {
+    // lateDays is meant to make things worse. Applied to the DUE DATE of an
+    // invoice that is already 15 days late, a 14-day delay reads as "1 day
+    // late" and arrives on day 1 — ahead of the projected line's day 15.
+    const events: CashEvent[] = [
+      {
+        id: 'inv', dateKey: '2026-01-17', label: 'Johnson', detail: 'overdue',
+        amount: 4_480, kind: 'final', confirmed: false, slips: true, repeating: false, href: null,
+      },
+    ];
+    const forecast = buildForecast(events, {
+      todayKey: '2026-02-01', days: 40, startingBalance: 0, buffer: 0, lateDays: 14,
+    });
+    const arrives = (series: 'projected' | 'worstCase') => forecast.days.findIndex((d) => d[series] > 0);
+    expect(arrives('projected')).toBe(15);
+    expect(arrives('worstCase')).toBe(29);
+  });
+
+  it('drops overdue money the delay pushes past the horizon', () => {
+    const events: CashEvent[] = [
+      {
+        id: 'inv', dateKey: '2026-01-17', label: 'Johnson', detail: 'overdue',
+        amount: 4_480, kind: 'final', confirmed: false, slips: true, repeating: false, href: null,
+      },
+    ];
+    const forecast = buildForecast(events, {
+      todayKey: '2026-02-01', days: 20, startingBalance: 0, buffer: 0, lateDays: 14,
+    });
+    // Mirrored to day 15, delayed to day 29, which is past a 20-day window.
+    expect(forecast.days[19].projected).toBe(4_480);
+    expect(forecast.days[19].worstCase).toBe(0);
+  });
+});

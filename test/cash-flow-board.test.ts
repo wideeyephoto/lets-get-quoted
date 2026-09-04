@@ -304,7 +304,7 @@ describe('scenarios are a control, not a checkbox that draws a line', () => {
   });
 
   it('applies the scenario to the events, so every number is about it', () => {
-    expect(BOARD).toContain('applyScenario(events, scenarioDef)');
+    expect(BOARD).toContain('applyScenario(events, scenarioDef, todayKey)');
     expect(BOARD).toContain('buildForecast(scenarioEvents');
     // Shifted list AND a lateDays would move the money twice.
     expect(BOARD).not.toMatch(/lateDays:\s*modelledLateDays/);
