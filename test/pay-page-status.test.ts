@@ -344,7 +344,7 @@ describe('a partial refund is not invisible', () => {
 
   it('keeps the plain message when nothing was refunded', () => {
     expect(bannerFor({ status: 'paid', refunded: 0 })).toBe('paid');
-    expect(bannerText('paid')).toBe('This payment has already been completed. Thank you!');
+    expect(bannerText('paid')).toBe('Payment received in full. Thank you!');
   });
 
   it('does not print null at somebody', () => {

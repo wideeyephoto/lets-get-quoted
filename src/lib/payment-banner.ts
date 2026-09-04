@@ -207,7 +207,7 @@ const STATIC_MESSAGE: Record<PaymentBanner, PaymentBannerMessage | null> = {
       + 'and this is still outstanding. You can pay below.',
   },
 
-  paid: { lead: null, body: 'This payment has already been completed. Thank you!' },
+  paid: { lead: null, body: 'Payment received in full. Thank you!' },
   partly_refunded: null, // Interpolates the amount. See paymentBannerMessage.
   refunded: { lead: null, body: 'This payment has been refunded.' },
 
@@ -281,7 +281,7 @@ export function paymentBannerMessage(
      */
     return {
       lead: null,
-      body: `This payment has already been completed, and ${formatMoney(refunded)} of it has since been `
+      body: `Payment received in full, and ${formatMoney(refunded)} of it has since been `
         + 'refunded to you. Refunds usually reach your account within a few business days.',
     };
   }

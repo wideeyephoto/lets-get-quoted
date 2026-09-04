@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import ModalDialog from '@/components/modal-dialog';
+import { formatUsPhone } from '@/lib/phone';
 import { aggregateChip, ownerAlertChip, registrationChip, canSaveOwnerAlerts, type MessagingSetup as Setup } from '@/lib/owner-sms-presentation';
 import OwnerAlertsForm from './OwnerAlertsForm';
 
@@ -284,7 +285,7 @@ export function MessagingSetupSections({
                 <div className="msg-setup-assigned-number">
                   <p className="msg-setup-status is-ready">
                     <span className="msg-setup-status-label">Your number</span>
-                    <b>{setup.registration.assignedNumber}</b>
+                    <b>{formatUsPhone(setup.registration.assignedNumber)}</b>
                   </p>
                 </div>
               ) : null}

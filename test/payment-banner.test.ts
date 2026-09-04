@@ -184,7 +184,7 @@ describe('what the money messages say', () => {
   });
 
   it('keeps the plain message when nothing was refunded', () => {
-    expect(text('paid')).toBe('This payment has already been completed. Thank you!');
+    expect(text('paid')).toBe('Payment received in full. Thank you!');
   });
 
   it('formats the refund with the caller’s own formatter', () => {
