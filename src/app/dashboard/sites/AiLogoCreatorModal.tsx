@@ -107,6 +107,29 @@ const AI_LOGO_STUDIO_STYLES = `
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.3; transform: scale(0.8); }
 }
+
+.ai-logo-studio-modal {
+  background: var(--bg-2, #ffffff);
+  color: var(--text, #0f172a);
+}
+
+.ai-logo-studio-modal input[type="text"],
+.ai-logo-studio-modal select,
+.ai-logo-studio-modal textarea {
+  background: var(--bg-2, #ffffff);
+  color: var(--text, #0f172a);
+  border-color: var(--line, #cbd5e1);
+}
+
+.ai-logo-studio-checkerboard {
+  background-color: var(--bg-3, #f8fafc);
+  background-image: linear-gradient(45deg, rgba(var(--tint, 15, 23, 42), 0.08) 25%, transparent 25%),
+                    linear-gradient(-45deg, rgba(var(--tint, 15, 23, 42), 0.08) 25%, transparent 25%),
+                    linear-gradient(45deg, transparent 75%, rgba(var(--tint, 15, 23, 42), 0.08) 75%),
+                    linear-gradient(-45deg, transparent 75%, rgba(var(--tint, 15, 23, 42), 0.08) 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
 `;
 
 function AiArtDirectorLoadingState({
@@ -585,8 +608,7 @@ type Props = {
   onPendingChange?: (pending: PendingAiLogo | null) => void;
 };
 
-type ViewTab = 'ai' | 'concepts' | 'mockups';
-type MockupType = 'truck' | 'uniform' | 'invoice' | 'mobile';
+type ViewTab = 'ai' | 'concepts';
 
 export default function AiLogoCreatorModal({
   open,
@@ -613,13 +635,10 @@ export default function AiLogoCreatorModal({
   const [glyphSearch, setGlyphSearch] = useState('');
   const [activeFilter, setActiveFilter] = useState<LogoStyle | 'all'>('all');
   const [activeTab, setActiveTab] = useState<ViewTab>('ai');
-  const [selectedMockup, setSelectedMockup] = useState<MockupType>('truck');
-  const [previewLogoIndex, setPreviewLogoIndex] = useState(0);
   const [creativeBrief, setCreativeBrief] = useState('');
   const [aiDirection, setAiDirection] = useState<AiLogoDirection>('art_director');
   const [aiConcepts, setAiConcepts] = useState<GeneratedAiLogo[]>(() => savedLogos);
   const [selectedAiLogoId, setSelectedAiLogoId] = useState<string | null>(() => savedLogos[0]?.id ?? null);
-  const [mockupUsesAi, setMockupUsesAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
   const [deletingLogoId, setDeletingLogoId] = useState<string | null>(null);
   const [localPending, setLocalPending] = useState<PendingAiLogo | null>(null);
@@ -807,7 +826,6 @@ export default function AiLogoCreatorModal({
     });
   }, [name, trade, tagline, year, accent, secondary, selectedGlyphKey, colorMode, activeFilter]);
 
-  const activeMockupLogo = concepts[previewLogoIndex] ?? concepts[0];
   const activeAiLogo = aiConcepts.find((concept) => concept.id === selectedAiLogoId) ?? aiConcepts[0] ?? null;
 
   if (!open) return null;
@@ -1026,40 +1044,6 @@ export default function AiLogoCreatorModal({
     document.body.appendChild(anchor);
     anchor.click();
     document.body.removeChild(anchor);
-  }
-
-  function renderMockupLogo(vectorMode: LogoColorMode = 'color') {
-    if (mockupUsesAi && activeAiLogo) {
-      return (
-        <Image
-          src={activeAiLogo.url}
-          alt={`${name} logo mockup`}
-          width={1536}
-          height={1024}
-          sizes="(max-width: 900px) 80vw, 520px"
-          style={{ display: 'block', width: '100%', height: 'auto', maxHeight: '190px', objectFit: 'contain' }}
-        />
-      );
-    }
-
-    return (
-      <div
-        style={{ width: '100%' }}
-        dangerouslySetInnerHTML={{
-          __html: generateLogoSvg({
-            businessName: name,
-            trade,
-            tagline: tagline || null,
-            establishedYear: year || null,
-            accentColor: accent,
-            secondaryColor: secondary,
-            iconGlyphKey: selectedGlyphKey,
-            style: activeMockupLogo.style,
-            colorMode: vectorMode,
-          }),
-        }}
-      />
-    );
   }
 
   function handleDownloadSvg(logo: GeneratedLogo, suffix = '') {
