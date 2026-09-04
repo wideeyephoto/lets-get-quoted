@@ -636,7 +636,7 @@ export default async function AutomationsPage() {
               Configure Receptionist Settings →
             </Link>
             <Link className="btn secondary" href="/dashboard/voice-calls">
-              View Voice Calls Inbox →
+              View Voice Controls →
             </Link>
           </div>
         </AutomationCard>

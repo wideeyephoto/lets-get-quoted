@@ -20,6 +20,7 @@ export type VoiceEntitlement = Readonly<{
   concurrentCalls: number;
   historyDays: number;
   advancedRouting: boolean;
+  planCode?: string;
 }>;
 
 const NONE: VoiceEntitlement = Object.freeze({
@@ -60,7 +61,7 @@ export async function loadVoiceEntitlement(
   try {
     const { data, error } = await admin
       .from('workspace_entitlements')
-      .select('entitlement_state, feature_limits, feature_flags')
+      .select('plan_code, entitlement_state, feature_limits, feature_flags')
       .eq('account_id', accountId)
       .maybeSingle();
 
@@ -81,6 +82,24 @@ export async function loadVoiceEntitlement(
     const included = flags.voice_included === true
       && nonNegativeInteger(limits.voice_included_minutes) > 0;
 
+    // A workspace is entitled when its base plan explicitly includes voice,
+    // when it has active recurring voice capacity, or when it has available
+    // voice minutes in usage credit balances (top-ups or granted allowance).
+    let creditBalance = 0;
+    try {
+      const { data: balanceData, error: balanceError } = await admin
+        .from('workspace_usage_credit_balances')
+        .select('available_units')
+        .eq('account_id', accountId)
+        .eq('resource_code', 'voice_minutes')
+        .maybeSingle();
+      if (!balanceError && balanceData) {
+        creditBalance = nonNegativeInteger((balanceData as { available_units?: unknown }).available_units);
+      }
+    } catch {
+      // Non-fatal if table or column is unavailable or not mocked
+    }
+
     let purchased = 0;
     const { data: purchasedData, error: purchasedError } = await admin.rpc(
       'workspace_purchased_capacity_units',
@@ -88,26 +107,33 @@ export async function loadVoiceEntitlement(
     );
     if (purchasedError) {
       // Included voice remains usable if the add-on read is temporarily
-      // unavailable. A non-included workspace fails closed.
+      // unavailable. A non-included workspace with no credit balance fails closed.
       console.error('purchased voice entitlement read failed:', purchasedError.message ?? purchasedError);
-      if (!included) return UNKNOWN;
+      if (!included && creditBalance <= 0) return UNKNOWN;
     } else {
       purchased = nonNegativeInteger(purchasedData);
     }
 
-    const enabled = included || purchased > 0;
+    const enabled = included || purchased > 0 || creditBalance > 0;
     if (!enabled) return NONE;
+
+    const planCode = typeof row.plan_code === 'string' ? row.plan_code.toLowerCase().trim() : '';
+    // Real live simultaneous call capacity floors by plan tier (at least 3 or 5 lines)
+    const planFloor = planCode === 'scale' ? 10 : planCode === 'growth' ? 5 : planCode === 'solo' || planCode === 'flex' ? 3 : 0;
+    const storedLimit = nonNegativeInteger(limits.voice_concurrent_calls);
+    const concurrentCalls = Math.max(storedLimit, planFloor);
 
     return Object.freeze({
       available: true,
       enabled: true,
       source: included ? 'included' as const : 'add_on' as const,
-      concurrentCalls: nonNegativeInteger(limits.voice_concurrent_calls),
+      concurrentCalls,
       historyDays: nonNegativeInteger(limits.voice_history_days),
       // Do not expose a catalog promise as a working product feature. This is
       // true only for an entitled workspace and is consumed when advanced
       // routing itself exists.
       advancedRouting: flags.voice_advanced_routing === true,
+      planCode: planCode || undefined,
     });
   } catch (error) {
     console.error('voice entitlement read threw:', error);

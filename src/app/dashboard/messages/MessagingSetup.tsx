@@ -36,6 +36,8 @@ export default function MessagingSetup({
   triggerClassName,
   triggerLabel,
   showTextToJobLink = true,
+  title = 'Texting setup',
+  subtitle = 'Your alerts and customer texting number',
 }: {
   setup: Setup;
   openOnLoad?: boolean;
@@ -43,6 +45,8 @@ export default function MessagingSetup({
   triggerClassName?: string;
   triggerLabel?: ReactNode;
   showTextToJobLink?: boolean;
+  title?: string;
+  subtitle?: string;
 }) {
   const alerts = ownerAlertChip(setup.alerts);
   const registration = registrationChip(setup.registration);
@@ -52,7 +56,7 @@ export default function MessagingSetup({
     return (
       <ModalDialog
         triggerClassName={triggerClassName}
-        title="Texting setup"
+        title={title}
         defaultOpen={openOnLoad}
         obscureBackdrop
         triggerLabel={triggerLabel}
@@ -73,7 +77,7 @@ export default function MessagingSetup({
     <div className="msg-setup" id="texting-setup">
       <ModalDialog
         triggerClassName="msg-setup-strip"
-        title="Texting setup"
+        title={title}
         // ?setup=1 arrives from the automations page. `defaultOpen` is
         // initial-state only by design, which is exactly right here: a server
         // action revalidating the inbox underneath must not shove the dialog
@@ -92,8 +96,8 @@ export default function MessagingSetup({
             </span>
 
             <span className="msg-setup-copy">
-              <b>Texting setup</b>
-              <small>Your alerts and customer texting number</small>
+              <b>{title}</b>
+              <small>{subtitle}</small>
             </span>
 
             {/* Both statuses at desktop widths. Hidden below 720 in CSS rather

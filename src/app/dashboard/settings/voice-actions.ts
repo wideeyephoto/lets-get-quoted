@@ -198,6 +198,7 @@ export async function updateVoiceSettingsAction(
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/automations');
   revalidatePath('/dashboard/text-to-job');
+  revalidatePath('/dashboard/voice-calls');
   return { saved: true, droppedDays: dropped };
 }
 

@@ -20,6 +20,8 @@ import MessagingSetup from '@/app/dashboard/messages/MessagingSetup';
 import { loadMessagingSetup } from '@/lib/owner-sms';
 import { displayPhone } from '@/lib/phone';
 import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
+import { countOpenAiCalls } from '@/lib/voice/admission';
+import { loadVerifiedPhoneOptions } from '@/lib/verified-phones';
 import AiReceptionistSection from '../settings/AiReceptionistSection';
 import styles from './voice-calls.module.css';
 
@@ -63,12 +65,13 @@ export default async function VoiceCallsPage({
   const [
     { data: account },
     { data: site },
-    { data: voiceSettings },
+    voiceSettingsResult,
     { data: balanceRows },
     routeReadiness,
     queue,
     messagingSetup,
     voiceEntitlement,
+    liveActiveCalls,
   ] = await Promise.all([
     supabase
       .from('accounts')
@@ -82,7 +85,7 @@ export default async function VoiceCallsPage({
       .maybeSingle(),
     supabase
       .from('voice_settings')
-      .select('status, answer_mode, greeting, transfer_number, alert_phone, voice_tone, business_hours')
+      .select('status, answer_mode, greeting, transfer_number, voice_tone, business_hours')
       .eq('account_id', accountId)
       .maybeSingle(),
     supabase
@@ -99,10 +102,21 @@ export default async function VoiceCallsPage({
     }),
     loadMessagingSetup(accountId),
     loadVoiceEntitlement(admin, accountId),
+    countOpenAiCalls(admin, accountId, 10).catch(() => 0),
   ]);
 
+  const voiceSettings = voiceSettingsResult?.error ? null : (voiceSettingsResult?.data ?? null) as Record<string, unknown> | null;
+  const voiceSettingsAvailable = Boolean(voiceSettingsResult && !voiceSettingsResult.error);
+  if (voiceSettingsResult?.error) console.error('voice settings read failed:', voiceSettingsResult.error);
+
+  const verifiedNumbers = await loadVerifiedPhoneOptions(
+    admin,
+    accountId,
+    voiceSettings?.transfer_number as string | null,
+    account?.alert_phone as string | null,
+  );
+
   const isRouteReady = routeReadiness.kind === 'ready';
-  const voiceSettingsAvailable = Boolean(voiceSettings);
   const voiceEntitlementAvailable = voiceEntitlement?.available === true;
   const voiceRouteState = routeReadiness.kind === 'ready'
     ? 'ready' as const
@@ -176,11 +190,13 @@ export default async function VoiceCallsPage({
         </div>
       </header>
 
-      {/* Texting setup strip, mirroring Messages and Text-to-Job */}
+      {/* Dedicated 2-Way Number strip */}
       <MessagingSetup
         setup={messagingSetup}
         openOnLoad={searchParams.setup === '1'}
         sharedPhoneNumber={process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323'}
+        title="Dedicated 2-Way Number"
+        subtitle="Your shared phone line for AI voice and customer texting"
       />
 
       {/* Top 3 Navigation Tabs */}
@@ -658,7 +674,8 @@ export default async function VoiceCallsPage({
               answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'always'}
               greeting={(voiceSettings?.greeting as string | null) ?? ''}
               transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
-              alertPhone={(voiceSettings?.alert_phone as string | null) ?? (account?.alert_phone as string | null) ?? ''}
+              alertPhone={(account?.alert_phone as string | null) ?? ''}
+              verifiedNumbers={verifiedNumbers}
               callForwardNumber={callForwardNumber}
               voiceTone={(voiceSettings?.voice_tone as 'friendly' | 'professional' | 'urgent_dispatcher') ?? 'professional'}
               businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
@@ -667,7 +684,9 @@ export default async function VoiceCallsPage({
               entitlementAvailable={voiceEntitlementAvailable}
               settingsAvailable={voiceSettingsAvailable}
               routeState={voiceRouteState}
-              concurrentCalls={voiceEntitlement?.concurrentCalls ?? 0}
+              concurrentCalls={voiceEntitlement?.concurrentCalls ?? 3}
+              activeCalls={liveActiveCalls ?? 0}
+              planName={voiceEntitlement?.planCode ? (voiceEntitlement.planCode.charAt(0).toUpperCase() + voiceEntitlement.planCode.slice(1)) : 'Solo'}
             />
           </div>
         </div>
