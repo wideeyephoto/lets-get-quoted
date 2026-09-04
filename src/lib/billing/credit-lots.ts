@@ -35,13 +35,15 @@ import { PLAN_USAGE_RESOURCES, type PlanUsageResourceCode } from '@/lib/billing/
 export type CreditLotSplit = Readonly<{
   resourceCode: PlanUsageResourceCode;
   label: string;
-  /** Credits in an open, expiring lot -- this period's allowance. */
+  /** Total credits available to spend across all lots: plan, rollover, and purchases. */
+  totalAvailable: number;
+  /** Credits in an open period lot -- this period's allowance. */
   periodRemaining: number | null;
-  /** What that allowance started at. The only honest meter denominator. */
+  /** What that allowance started at. */
   periodGranted: number | null;
-  /** Consumed out of the open window. Not derived from the two above: a lot can be revoked. */
+  /** Consumed out of the open window. */
   periodUsed: number | null;
-  /** Credits that never expire: purchases, and the free starter grant. */
+  /** Credits that roll over and never expire: purchases, prior periods, and the starter grant. */
   nonExpiring: number;
   /** 0-100 of the period allowance consumed, or null when there is no window to measure. */
   percentUsed: number | null;
@@ -138,9 +140,11 @@ export function normalizeCreditLots(
       target.nonExpiring += remaining;
       continue;
     }
-    // Expired, and nothing to say about it here -- the balance view reports
-    // expired_unused_units separately and this surface does not show it.
-    if (expiresAt <= now) continue;
+    // Credits never expire for anyone: past lots with an expiry date roll over into available balance.
+    if (expiresAt <= now) {
+      target.nonExpiring += remaining;
+      continue;
+    }
 
     target.sawPeriodLot = true;
     target.periodGranted += granted;
@@ -157,16 +161,19 @@ export function normalizeCreditLots(
       const found = byResource.get(resource.code);
       const sawPeriod = found?.sawPeriodLot ?? false;
       const periodGranted = sawPeriod ? found!.periodGranted : null;
+      const periodRemaining = sawPeriod ? found!.periodRemaining : null;
+      const nonExpiring = found?.nonExpiring ?? 0;
       return {
         resourceCode: resource.code,
         label: resource.label,
+        totalAvailable: (periodRemaining ?? 0) + nonExpiring,
         // Null, not zero: a workspace with no open window has no period
         // allowance to report, which is exactly Flex's situation and not a
         // shortage.
-        periodRemaining: sawPeriod ? found!.periodRemaining : null,
+        periodRemaining,
         periodGranted,
         periodUsed: sawPeriod ? found!.periodUsed : null,
-        nonExpiring: found?.nonExpiring ?? 0,
+        nonExpiring,
         percentUsed: periodGranted && periodGranted > 0
           ? Math.min(100, Math.round((found!.periodUsed / periodGranted) * 100))
           : null,

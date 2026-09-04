@@ -180,8 +180,7 @@ function balanceNote(balance: Extract<WorkspacePlanUsage['balances'], { kind: 'r
       ? 'The standard quote form stays available.'
       : 'No credits are currently available.';
   }
-  if (balance.nextExpirationAt) return `Next expiration ${formatDate(balance.nextExpirationAt)}`;
-  return 'No expiration is scheduled.';
+  return 'Credits never expire.';
 }
 
 /**
@@ -555,6 +554,7 @@ function consolidateCreditResources(resources: readonly CreditLotSplit[]): Credi
     result.push({
       resourceCode: 'ai_writing_drafts',
       label: 'AI Usage Credits',
+      totalAvailable: (periodRemaining ?? 0) + nonExpiring,
       periodRemaining,
       periodGranted,
       periodUsed,
@@ -597,21 +597,20 @@ function consolidateUsageBalances(balances: readonly UsageBalance[]): UsageBalan
 }
 
 /**
- * One credit resource, with a meter ONLY where a meter can be honest.
+ * One credit resource. Credits roll over and never expire for anyone.
  *
- * A Flex workspace has no refreshing allowance at all -- its starter credits do
- * not expire and are never re-granted -- so there is no window to measure and it
- * gets a count. A paid workspace has both, and they are stated as two numbers
- * rather than one sum, because "444 available" hides whether 400 of those vanish
- * at the reset.
+ * The bold figure displays the total available credits ready to spend. For
+ * active subscriptions, the renewal/refresh date is stated alongside the
+ * guarantee that credits never expire.
  */
 function CreditBalance({ resource }: { resource: CreditLotSplit }) {
+  const totalAvailable = resource.totalAvailable ?? ((resource.periodRemaining ?? 0) + resource.nonExpiring);
   const hasWindow = resource.periodGranted !== null && resource.periodGranted > 0;
-  const tone: Tone = !hasWindow
-    ? 'neutral'
-    : resource.percentUsed !== null && resource.percentUsed >= 90
+  const tone: Tone = totalAvailable > 0
+    ? 'healthy'
+    : totalAvailable === 0
       ? 'warn'
-      : 'healthy';
+      : 'neutral';
 
   return (
     <article className="plan-usage-balance" data-tone={tone}>
@@ -626,46 +625,20 @@ function CreditBalance({ resource }: { resource: CreditLotSplit }) {
         </SettingsHashLink>
       </div>
       <strong>
-        {hasWindow
-          ? `${resource.periodRemaining!.toLocaleString('en-US')} of ${resource.periodGranted!.toLocaleString('en-US')} left`
-          : resource.nonExpiring > 0
-            ? `${resource.nonExpiring.toLocaleString('en-US')} available`
-            // Not "0". Nothing was granted and nothing expired -- there is no
-            // balance here to report, and a zero claims one was spent.
+        {totalAvailable > 0
+          ? `${totalAvailable.toLocaleString('en-US')} available`
+          : (hasWindow || resource.nonExpiring > 0)
+            ? '0 available'
             : 'Not issued'}
       </strong>
-
-      {hasWindow ? (
-        <div
-          className="plan-usage-storage-meter"
-          role="img"
-          aria-label={`${resource.percentUsed ?? 0}% of this period's ${resource.label.toLowerCase()} used`}
-        >
-          {/* FILLS WITH WHAT HAS BEEN USED, like every other meter on this page.
-              It drew the REMAINDER at first, which put a full green bar beside
-              "500 of 500 left" and an identical full green bar beside "Office
-              users 1 of 1 used - at plan limit" two cards below. One visual,
-              two opposite meanings, on one screen. The aria-label said "used"
-              throughout and was the half that was right. */}
-          <div
-            className={`plan-usage-storage-meter-fill${resource.percentUsed !== null && resource.percentUsed >= 90 ? ' nearly' : ''}`}
-            style={{ width: `${Math.max(resource.percentUsed ?? 0, 2)}%` }}
-          />
-        </div>
-      ) : null}
 
       <small>
         {hasWindow
           ? resource.nextExpirationAt
-            ? `Refreshes ${formatDate(resource.nextExpirationAt)}`
-            : 'Refreshes with your plan'
+            ? `Refreshes ${formatDate(resource.nextExpirationAt)} · Credits never expire`
+            : 'Refreshes with your plan · Credits never expire'
           : 'Never expires'}
       </small>
-      {/* Stated separately whenever both exist. Folding a non-expiring balance
-          into the meter is what would let a top-up read as 122% remaining. */}
-      {hasWindow && resource.nonExpiring > 0 ? (
-        <small>Plus {resource.nonExpiring.toLocaleString('en-US')} that never expire</small>
-      ) : null}
       {(resource.label.includes('AI') || resource.resourceCode === 'ai_intake_threads' || resource.resourceCode === 'ai_writing_drafts') ? (
         <small className="plan-usage-shared-pool-tag">⚡ Powers Smart Intake lead qualification, AI quotes, &amp; marketing copy</small>
       ) : null}
@@ -1225,9 +1198,10 @@ export default function PlanUsageSection({
               <details className="plan-usage-limit-details plan-usage-credit-details">
                 <summary>How these balances work</summary>
                 <p className="workspace-details-copy plan-usage-intro">
-                  Plan credits refresh each period. Purchased credits and starter balances are counted separately,
-                  never expire, and are used only after refreshing credits run out. Ad balances are continuously
-                  applied to live Google and Meta ad clicks and auto-refill or drip based on your campaign settings.
+                  Credits never expire for anyone. Plan credits roll over each billing period and add to
+                  your available balance alongside any purchased or starter credits, which are counted separately
+                  in your ledger so you keep every credit. Ad balances are continuously applied to live Google
+                  and Meta ad clicks and auto-refill or drip based on your campaign settings.
                 </p>
               </details>
             </details>

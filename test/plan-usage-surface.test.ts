@@ -77,6 +77,8 @@ describe('the contractor-facing claims are bounded by what the ledger knows', ()
     // arithmetic that made the refusal unnecessary, and test/credit-lots holds
     // the ">100% is impossible" property directly.
     expect(SECTION).toContain('are counted separately');
+    expect(SECTION).toContain('Credits never expire');
+    expect(SECTION).not.toContain('that never expire</small>');
     expect(SECTION).not.toContain('progressbar');
     expect(SECTION).not.toContain('fee-tier-bar');
   });

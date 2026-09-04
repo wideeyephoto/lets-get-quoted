@@ -65,6 +65,7 @@ describe('a top-up can never push the meter past full', () => {
     expect(resource.periodRemaining).toBe(444);
     expect(resource.periodUsed).toBe(56);
     expect(resource.nonExpiring).toBe(1_000);
+    expect(resource.totalAvailable).toBe(1_444);
     // 56 of 500, NOT 1444 of 500.
     expect(resource.percentUsed).toBe(11);
   });
@@ -104,13 +105,16 @@ describe('a workspace with no refreshing allowance has no meter, not an empty on
 });
 
 describe('what is counted, and what is deliberately not', () => {
-  it('ignores a lot that has expired', () => {
+  it('rolls unconsumed credits from past lots over into available balance', () => {
     const resource = texts([
       lot({ granted_units: 500, consumed_units: 100, expires_at: LONG_GONE }),
       lot({ granted_units: 300, consumed_units: 30 }),
     ]);
     expect(resource.periodGranted).toBe(300);
     expect(resource.periodUsed).toBe(30);
+    expect(resource.periodRemaining).toBe(270);
+    expect(resource.nonExpiring).toBe(400);
+    expect(resource.totalAvailable).toBe(670);
   });
 
   it('ignores a lot that is not available yet', () => {
