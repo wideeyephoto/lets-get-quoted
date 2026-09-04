@@ -578,6 +578,7 @@ export default function ExpenseDetailDrawer({
               Job Assignment
             </label>
             <select
+              aria-label="Job Assignment"
               value={draft.jobId}
               onChange={(e) => handleDropdownChange('jobId', e.target.value)}
               disabled={!canManageCosts}
@@ -606,6 +607,7 @@ export default function ExpenseDetailDrawer({
               Category
             </label>
             <select
+              aria-label="Expense Category"
               value={draft.type}
               onChange={(e) => handleDropdownChange('type', e.target.value)}
               disabled={!canManageCosts}
@@ -671,6 +673,7 @@ export default function ExpenseDetailDrawer({
                   Crew Member
                 </label>
                 <select
+                  aria-label="Crew Member"
                   value={draft.crewId}
                   onChange={(e) => handleDropdownChange('crewId', e.target.value)}
                   disabled={!canManageCosts}
@@ -813,6 +816,7 @@ export default function ExpenseDetailDrawer({
               Provenance Source
             </label>
             <select
+              aria-label="Provenance Source"
               value={draft.costSource}
               onChange={(e) => handleDropdownChange('costSource', e.target.value)}
               disabled={!canManageCosts}

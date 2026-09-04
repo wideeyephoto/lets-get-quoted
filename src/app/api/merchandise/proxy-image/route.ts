@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { createAdminClient } from '@/lib/auth';
+import { checkRateLimit, clientIpFrom } from '@/lib/rate-limit';
 
 // Whitelisted image hosts and domains for security
 const ALLOWED_DOMAINS = [
@@ -35,6 +37,12 @@ export async function OPTIONS() {
 }
 
 export async function GET(request: NextRequest) {
+  const admin = createAdminClient();
+  const ip = clientIpFrom(request.headers);
+  if (!(await checkRateLimit(admin, `merch_proxy:ip:${ip}`, 60, 60))) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 });
+  }
+
   const urlParam = request.nextUrl.searchParams.get('url');
 
   if (!urlParam) {

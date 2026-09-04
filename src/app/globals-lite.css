@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 467a2514447d0c48
+   source-sha256: 48198a26c77fa1e1
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -23640,6 +23640,10 @@ a.bset-card {
 
 .cash-decision-facts dd.is-risk {
   color: var(--ink-red-1);
+}
+
+.cash-flag-text {
+  min-width: 0;
 }
 
 .cash-confidence.is-low {
