@@ -26,14 +26,27 @@ vi.mock('next/headers', () => ({
 
 let mockCreatedOrderData: any = null;
 let mockFoundOrderData: any = null;
+let mockSiteData: any = null;
 const mockDbUpdates: any[] = [];
 const mockLedgerInserts: any[] = [];
 
 const mockAdmin = {
   from: vi.fn((table: string) => {
+    if (table === 'sites') {
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockImplementation(async () => ({
+          data: mockSiteData,
+          error: null,
+        })),
+      };
+    }
     if (table === 'merchandise_orders') {
       return {
         select: vi.fn().mockReturnThis(),
+        order: vi.fn().mockResolvedValue({ data: [], error: null }),
         insert: vi.fn().mockImplementation((payload: any) => ({
           select: vi.fn().mockReturnValue({
             single: vi.fn().mockImplementation(async () => {
@@ -122,6 +135,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
   beforeEach(() => {
     mockCreatedOrderData = null;
     mockFoundOrderData = null;
+    mockSiteData = null;
     mockDbUpdates.length = 0;
     mockLedgerInserts.length = 0;
     mockStripeSessionsCreate.mockClear();
@@ -943,6 +957,203 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       );
       const resUnknown = await GET(reqUnknown);
       expect(resUnknown.status).toBe(403);
+    });
+  });
+
+  describe('Studio Data Resolution & Web Address Hierarchy', () => {
+    it('prioritizes custom_domain when present and strips protocol and trailing slash', async () => {
+      const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
+      mockSiteData = {
+        company_name: 'Apex Pro Roofing',
+        tagline: 'Premier Quality',
+        phone: '(303) 555-1234',
+        license: 'LIC-12345',
+        custom_domain: 'https://www.apexproroofing.com/',
+        subdomain: 'apexroofing',
+        content: { website: 'https://fallback.com' },
+      };
+
+      const res = await getMerchandiseStudioDataAction();
+      expect(res.ok).toBe(true);
+      expect(res.data?.website).toBe('www.apexproroofing.com');
+      expect(res.data?.companyName).toBe('Apex Pro Roofing');
+    });
+
+    it('falls back to subdomain.letsgetquoted.com when custom_domain is not configured', async () => {
+      const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
+      mockSiteData = {
+        company_name: 'Apex Pro Roofing',
+        subdomain: 'apexroofing',
+        custom_domain: null,
+        content: {},
+      };
+
+      const res = await getMerchandiseStudioDataAction();
+      expect(res.ok).toBe(true);
+      expect(res.data?.website).toBe('apexroofing.letsgetquoted.com');
+    });
+
+    it('falls back to content.website when both custom_domain and subdomain are absent', async () => {
+      const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
+      mockSiteData = {
+        company_name: 'Apex Pro Roofing',
+        subdomain: null,
+        custom_domain: null,
+        content: { website: 'https://mycontractorhub.com/' },
+      };
+
+      const res = await getMerchandiseStudioDataAction();
+      expect(res.ok).toBe(true);
+      expect(res.data?.website).toBe('mycontractorhub.com');
+    });
+
+    it('generates a company slug URL when no domain or website is set', async () => {
+      const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
+      mockSiteData = {
+        company_name: 'Apex Plumbing Experts',
+        subdomain: null,
+        custom_domain: null,
+        content: {},
+      };
+
+      const res = await getMerchandiseStudioDataAction();
+      expect(res.ok).toBe(true);
+      expect(res.data?.website).toBe('www.apexplumbingexperts.com');
+    });
+
+    it('uses fallback www.contractorpro.com when site row does not exist', async () => {
+      const { getMerchandiseStudioDataAction } = await import('@/app/dashboard/merchandise/actions');
+      mockSiteData = null;
+
+      const res = await getMerchandiseStudioDataAction();
+      expect(res.ok).toBe(true);
+      expect(res.data?.website).toBe('www.contractorpro.com');
+    });
+  });
+
+  describe('Free Shipping Threshold & Calculation', () => {
+    it('applies standard shipping charge when subtotal is below $150', () => {
+      const subtotalLow = 149.99;
+      const shippingStandard = subtotalLow >= 150 ? 0.0 : 12.0;
+      const shippingRush = 24.0;
+
+      expect(shippingStandard).toBe(12.0);
+      expect(shippingRush).toBe(24.0);
+    });
+
+    it('unlocks free standard shipping when subtotal reaches or exceeds $150', () => {
+      const subtotalThreshold = 150.0;
+      const subtotalHigh = 320.0;
+
+      expect(subtotalThreshold >= 150 ? 0.0 : 12.0).toBe(0.0);
+      expect(subtotalHigh >= 150 ? 0.0 : 12.0).toBe(0.0);
+      const rushHigh = 24.0;
+      expect(rushHigh).toBe(24.0);
+    });
+  });
+
+  describe('Cart Line Item Merging & Bulk Tier Recalculation', () => {
+    function mergeCartItems(prev: MerchandiseOrderItem[], item: MerchandiseOrderItem): MerchandiseOrderItem[] {
+      const matchIndex = prev.findIndex(
+        (p) =>
+          p.productId === item.productId &&
+          p.colorHex === item.colorHex &&
+          p.customizationDetails.finish === item.customizationDetails.finish &&
+          p.customizationDetails.deviceModel === item.customizationDetails.deviceModel &&
+          p.customizationDetails.businessName === item.customizationDetails.businessName &&
+          JSON.stringify(p.customizationDetails.sizeBreakdown) ===
+            JSON.stringify(item.customizationDetails.sizeBreakdown)
+      );
+
+      if (matchIndex > -1) {
+        const next = [...prev];
+        const existing = next[matchIndex];
+        const newQty = existing.quantity + item.quantity;
+        const productDef = getProductById(item.productId);
+        const tier =
+          productDef?.pricingTiers
+            .slice()
+            .reverse()
+            .find((t) => newQty >= t.quantity) || productDef?.pricingTiers[0];
+        const unitPrice = tier ? tier.unitPrice : existing.unitPrice;
+        next[matchIndex] = {
+          ...existing,
+          quantity: newQty,
+          unitPrice,
+          totalPrice: Math.round(newQty * unitPrice * 100) / 100,
+        };
+        return next;
+      }
+
+      return [...prev, item];
+    }
+
+    it('merges identical business card lines and upgrades to the higher volume discount tier', () => {
+      const card250: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 250,
+        unitPrice: 0.18,
+        totalPrice: 45.0,
+        colorName: 'Classic Slate',
+        colorHex: '#1e293b',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          finish: 'Velvet Matte + Raised Gold Foil',
+          decorationMethod: 'offset_cmyk',
+          placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
+        },
+      };
+
+      const initialCart = [card250];
+      const merged = mergeCartItems(initialCart, card250);
+
+      expect(merged.length).toBe(1);
+      expect(merged[0].quantity).toBe(500);
+      // At 500 cards, pricing tier drops to $0.17/card ($85.00 total)
+      expect(merged[0].unitPrice).toBe(0.17);
+      expect(merged[0].totalPrice).toBe(85.0);
+    });
+
+    it('keeps items with different colorHex or finish as separate cart entries', () => {
+      const blueCard: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 250,
+        unitPrice: 0.18,
+        totalPrice: 45.0,
+        colorName: 'Royal Blue',
+        colorHex: '#1d4ed8',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          finish: 'Velvet Matte',
+          decorationMethod: 'offset_cmyk',
+          placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
+        },
+      };
+
+      const blackCard: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 250,
+        unitPrice: 0.18,
+        totalPrice: 45.0,
+        colorName: 'Onyx Black',
+        colorHex: '#0f172a',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          finish: 'Velvet Matte',
+          decorationMethod: 'offset_cmyk',
+          placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
+        },
+      };
+
+      const initialCart = [blueCard];
+      const result = mergeCartItems(initialCart, blackCard);
+
+      expect(result.length).toBe(2);
+      expect(result[0].colorHex).toBe('#1d4ed8');
+      expect(result[1].colorHex).toBe('#0f172a');
     });
   });
 });

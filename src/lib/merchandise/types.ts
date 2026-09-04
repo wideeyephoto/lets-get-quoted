@@ -176,6 +176,7 @@ export type MerchandiseOrder = {
 };
 
 export type MerchandiseStudioInitialData = {
+  accountId?: string;
   companyName: string;
   trade: string;
   tagline: string;

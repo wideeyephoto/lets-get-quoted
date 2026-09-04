@@ -60,6 +60,7 @@ export default function Product3DMockupStage({
   });
   const [isInteractiveTilt, setIsInteractiveTilt] = useState(true);
   const [isHovered, setIsHovered] = useState(false);
+  const [showBleedGuides, setShowBleedGuides] = useState(false);
 
   // Unique IDs for SVG gradients & filters
   const filterId = useId();
@@ -137,6 +138,9 @@ export default function Product3DMockupStage({
               key={vw}
               type="button"
               onClick={() => setViewAngle(vw)}
+              aria-pressed={viewAngle === vw}
+              aria-label={`Switch to ${vw} view`}
+              className="focus-ring"
               style={{
                 padding: '0.4rem 0.85rem',
                 borderRadius: '7px',
@@ -165,13 +169,41 @@ export default function Product3DMockupStage({
           ))}
         </div>
 
-        {/* Right Stage Tools: Lighting + 3D Tilt */}
+        {/* Right Stage Tools: Bleed Guides + Lighting + 3D Tilt */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+          {/* Safe Zone & Print Bleed Overlay Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowBleedGuides((prev) => !prev)}
+            aria-pressed={showBleedGuides}
+            aria-label="Toggle print safe zone and bleed guides"
+            className="focus-ring"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              padding: '0.38rem 0.75rem',
+              borderRadius: '7px',
+              border: showBleedGuides ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
+              background: showBleedGuides ? 'rgba(255, 122, 33, 0.2)' : 'rgba(255, 255, 255, 0.05)',
+              color: showBleedGuides ? '#ffffff' : 'var(--muted)',
+              fontSize: '0.74rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            <span>📐</span>
+            <span>{showBleedGuides ? 'Bleed Guides: ON' : 'Bleed Guides: OFF'}</span>
+          </button>
 
           {/* Interactive Gyro/Tilt Toggle */}
           <button
             type="button"
             onClick={() => setIsInteractiveTilt((prev) => !prev)}
+            aria-pressed={isInteractiveTilt}
+            aria-label="Toggle interactive mouse 3D tilt"
+            className="focus-ring"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -205,7 +237,10 @@ export default function Product3DMockupStage({
             <button
               type="button"
               onClick={() => setBackdropTheme('clean')}
+              aria-pressed={backdropTheme === 'clean'}
+              aria-label="Set studio clean lighting"
               title="Studio Clean: Neutral 5000K daylight showroom lighting"
+              className="focus-ring"
               style={{
                 padding: '3px 8px',
                 borderRadius: '5px',
@@ -222,7 +257,10 @@ export default function Product3DMockupStage({
             <button
               type="button"
               onClick={() => setBackdropTheme('dark')}
+              aria-pressed={backdropTheme === 'dark'}
+              aria-label="Set dark spotlight lighting"
               title="Dark Carbon: High contrast theatrical spotlight"
+              className="focus-ring"
               style={{
                 padding: '3px 8px',
                 borderRadius: '5px',
@@ -239,7 +277,10 @@ export default function Product3DMockupStage({
             <button
               type="button"
               onClick={() => setBackdropTheme('jobsite')}
+              aria-pressed={backdropTheme === 'jobsite'}
+              aria-label="Set jobsite warm daylight lighting"
               title="Jobsite Daylight: Warm golden hour outdoor contrast"
+              className="focus-ring"
               style={{
                 padding: '3px 8px',
                 borderRadius: '5px',
@@ -346,18 +387,82 @@ export default function Product3DMockupStage({
           {/* ========================================================================= */}
           {/* 1. BUSINESS CARDS MOCKUP */}
           {/* ========================================================================= */}
-          {product.id === 'biz_cards' && (
-            <div
-              style={{
-                display: 'flex',
-                gap: '2.5rem',
-                flexWrap: 'wrap',
-                justifyContent: 'center',
-                alignItems: 'center',
-                transformStyle: 'preserve-3d',
-              }}
-            >
-              {/* Front Card (Floating 3D Velvet Card with Raised Spot-UV) */}
+          {/* ========================================================================= */}
+          {/* 1. BUSINESS CARDS MOCKUP */}
+          {/* ========================================================================= */}
+          {product.id === 'biz_cards' && (() => {
+            const renderBleedGuides = () => (
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  pointerEvents: 'none',
+                  zIndex: 20,
+                  boxSizing: 'border-box',
+                }}
+              >
+                {/* Outer Bleed Margin (0.125" / ~6px outside trim) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '2px',
+                    border: '1.5px dashed #ef4444',
+                    borderRadius: '10px',
+                  }}
+                />
+                {/* Trim Cut Line */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '10px',
+                    border: '1.5px solid #06b6d4',
+                    borderRadius: '7px',
+                  }}
+                />
+                {/* Safe Zone Inset (where critical copy/logos reside) */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    inset: '18px',
+                    border: '1.5px dashed #22c55e',
+                    borderRadius: '5px',
+                  }}
+                />
+                {/* Corner Crop Marks (L-brackets at trim corners) */}
+                <div style={{ position: 'absolute', top: '10px', left: '10px', width: '10px', height: '10px', borderTop: '2px solid #06b6d4', borderLeft: '2px solid #06b6d4' }} />
+                <div style={{ position: 'absolute', top: '10px', right: '10px', width: '10px', height: '10px', borderTop: '2px solid #06b6d4', borderRight: '2px solid #06b6d4' }} />
+                <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '10px', height: '10px', borderBottom: '2px solid #06b6d4', borderLeft: '2px solid #06b6d4' }} />
+                <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '10px', height: '10px', borderBottom: '2px solid #06b6d4', borderRight: '2px solid #06b6d4' }} />
+
+                {/* Guide Legend Tag */}
+                <div
+                  style={{
+                    position: 'absolute',
+                    bottom: '12px',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    background: 'rgba(15, 23, 42, 0.94)',
+                    color: '#ffffff',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    fontSize: '0.62rem',
+                    fontWeight: 800,
+                    whiteSpace: 'nowrap',
+                    display: 'flex',
+                    gap: '8px',
+                    alignItems: 'center',
+                    boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                  }}
+                >
+                  <span style={{ color: '#ef4444' }}>■ Bleed (0.125&quot;)</span>
+                  <span style={{ color: '#06b6d4' }}>■ Trim Line</span>
+                  <span style={{ color: '#22c55e' }}>■ Safe Zone</span>
+                </div>
+              </div>
+            );
+
+            const renderFrontCard = (customStyle?: React.CSSProperties) => (
               <div
                 style={{
                   width: '370px',
@@ -377,8 +482,8 @@ export default function Product3DMockupStage({
                   boxSizing: 'border-box',
                   position: 'relative',
                   overflow: 'hidden',
-                  transform: 'translateZ(30px) rotateY(-8deg)',
-                  transition: 'box-shadow 0.2s ease',
+                  transition: 'box-shadow 0.2s ease, transform 0.3s ease',
+                  ...customStyle,
                 }}
               >
                 {/* Velvet Lamination Matte Texture & Painted Edge Accent */}
@@ -418,9 +523,12 @@ export default function Product3DMockupStage({
                     </span>
                   </div>
                 </div>
-              </div>
 
-              {/* Back Card (Contact Details + Dynamic QR Code) */}
+                {showBleedGuides && renderBleedGuides()}
+              </div>
+            );
+
+            const renderBackCard = (customStyle?: React.CSSProperties) => (
               <div
                 style={{
                   width: '370px',
@@ -434,9 +542,10 @@ export default function Product3DMockupStage({
                   flexDirection: 'column',
                   justifyContent: 'space-between',
                   boxSizing: 'border-box',
-                  transform: 'translateZ(15px) rotateY(6deg)',
                   position: 'relative',
                   overflow: 'hidden',
+                  transition: 'box-shadow 0.2s ease, transform 0.3s ease',
+                  ...customStyle,
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -456,37 +565,57 @@ export default function Product3DMockupStage({
                   </span>
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#334155' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                  <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#334155', minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 800 }}>📞 {phone}</div>
-                    <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
+                    <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      🌐 {website}
+                    </div>
                     <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
                       Fast Estimates • Licensed &amp; Insured
                     </div>
                   </div>
 
                   {includeQrCode && (
-                    <div
-                      style={{
-                        width: '74px',
-                        height: '74px',
-                        background: '#0f172a',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#ffffff',
-                        fontSize: '0.62rem',
-                        fontWeight: 900,
-                        textAlign: 'center',
-                        padding: '4px',
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-                      }}
-                    >
-                      <span>📱 SCAN TO</span>
-                      <span style={{ color: '#38bdf8' }}>BOOK NOW</span>
-                      <span style={{ fontSize: '0.52rem', opacity: 0.8, marginTop: '2px' }}>INSTANT</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
+                      <div
+                        style={{
+                          width: '74px',
+                          height: '74px',
+                          background: '#0f172a',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#ffffff',
+                          fontSize: '0.62rem',
+                          fontWeight: 900,
+                          textAlign: 'center',
+                          padding: '4px',
+                          boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
+                        }}
+                      >
+                        <span>📱 SCAN TO</span>
+                        <span style={{ color: '#38bdf8' }}>BOOK NOW</span>
+                        <span style={{ fontSize: '0.52rem', opacity: 0.8, marginTop: '2px' }}>INSTANT</span>
+                      </div>
+                      <span
+                        style={{
+                          fontSize: '0.52rem',
+                          color: '#475569',
+                          maxWidth: '85px',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          whiteSpace: 'nowrap',
+                          textAlign: 'center',
+                          fontWeight: 700,
+                          display: 'block',
+                        }}
+                        title={website.startsWith('http') ? website : `https://${website}`}
+                      >
+                        {website.replace(/^https?:\/\//, '')}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -504,9 +633,55 @@ export default function Product3DMockupStage({
                   <span>Residential &amp; Commercial Specialist</span>
                   <span style={{ fontWeight: 800 }}>Free Consultation</span>
                 </div>
+
+                {showBleedGuides && renderBleedGuides()}
               </div>
-            </div>
-          )}
+            );
+
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '2.5rem',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  transformStyle: 'preserve-3d',
+                  width: '100%',
+                }}
+              >
+                {viewAngle === 'front' && renderFrontCard({ transform: 'translateZ(25px)' })}
+                {viewAngle === 'back' && renderBackCard({ transform: 'translateZ(25px)' })}
+                {viewAngle === 'angle' && (
+                  <>
+                    {renderFrontCard({ transform: 'translateZ(35px) rotateY(-12deg) rotateX(4deg)' })}
+                    {renderBackCard({ transform: 'translateZ(10px) rotateY(8deg) rotateX(2deg)' })}
+                  </>
+                )}
+                {viewAngle === 'detail' && (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                    <div style={{ transform: 'scale(1.28) translateZ(35px)', transformOrigin: 'center' }}>
+                      {renderFrontCard()}
+                    </div>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        color: '#94a3b8',
+                        fontWeight: 800,
+                        letterSpacing: '0.06em',
+                        background: 'rgba(0,0,0,0.5)',
+                        padding: '3px 10px',
+                        borderRadius: '999px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      🔍 MACRO ZOOM • 16PT VELVET SOFT TOUCH &amp; RAISED SPOT-UV GLOSS
+                    </span>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ========================================================================= */}
           {/* 2. EMBROIDERED WORK POLO MOCKUP (HTML5 Canvas Casting Engine)             */}
@@ -969,6 +1144,41 @@ export default function Product3DMockupStage({
 
         </div>
       </div>
+
+      {/* Dynamic QR Destination Indicator */}
+      {includeQrCode && (
+        <div
+          style={{
+            marginTop: '0.75rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '0.5rem',
+            flexWrap: 'wrap',
+            fontSize: '0.74rem',
+            color: 'var(--muted)',
+            padding: '0.4rem 0.85rem',
+            borderRadius: '8px',
+            background: 'rgba(11, 15, 23, 0.65)',
+            border: '1px solid rgba(255, 255, 255, 0.08)',
+          }}
+        >
+          <span>📱 Direct QR Scan Destination:</span>
+          <a
+            href={website.startsWith('http') ? website : `https://${website}`}
+            target="_blank"
+            rel="noreferrer"
+            style={{
+              color: '#38bdf8',
+              fontWeight: 800,
+              textDecoration: 'underline',
+              textUnderlineOffset: '2px',
+            }}
+          >
+            {website.startsWith('http') ? website : `https://${website}`}
+          </a>
+        </div>
+      )}
     </div>
   );
 }

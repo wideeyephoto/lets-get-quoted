@@ -35,7 +35,7 @@ export async function getMerchandiseStudioDataAction(): Promise<{
     // Fetch site record
     const { data: siteRow } = await admin
       .from('sites')
-      .select('id, company_name, tagline, phone, license, accent_override, logo_url, content')
+      .select('id, company_name, tagline, phone, license, accent_override, logo_url, content, subdomain, custom_domain')
       .eq('account_id', accountId)
       .limit(1)
       .maybeSingle();
@@ -44,6 +44,37 @@ export async function getMerchandiseStudioDataAction(): Promise<{
       string,
       unknown
     >;
+
+    // Real web address resolution (custom domain > subdomain.letsgetquoted.com > content.website > fallback)
+    const siteWithDomains = siteRow as {
+      company_name?: string | null;
+      tagline?: string | null;
+      phone?: string | null;
+      license?: string | null;
+      accent_override?: string | null;
+      logo_url?: string | null;
+      content?: unknown;
+      subdomain?: string | null;
+      custom_domain?: string | null;
+    } | null;
+
+    const rawDomain = siteWithDomains?.custom_domain?.trim();
+    const rawSubdomain = siteWithDomains?.subdomain?.trim();
+    const contentWebsite = typeof content.website === 'string' ? content.website.trim() : '';
+
+    let website = '';
+    if (rawDomain) {
+      website = rawDomain.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    } else if (rawSubdomain) {
+      website = `${rawSubdomain}.letsgetquoted.com`;
+    } else if (contentWebsite) {
+      website = contentWebsite.replace(/^https?:\/\//i, '').replace(/\/$/, '');
+    } else if (siteRow?.company_name) {
+      const slug = siteRow.company_name.toLowerCase().replace(/[^a-z0-9]/g, '');
+      website = slug ? `www.${slug}.com` : 'www.contractorpro.com';
+    } else {
+      website = 'www.contractorpro.com';
+    }
 
     let aiLogos: GeneratedAiLogo[] = Array.isArray(content.ai_logos)
       ? (content.ai_logos as GeneratedAiLogo[])
@@ -69,11 +100,12 @@ export async function getMerchandiseStudioDataAction(): Promise<{
     const recentOrders = await listMerchandiseOrders(admin, accountId);
 
     const initialData: MerchandiseStudioInitialData = {
+      accountId,
       companyName: siteRow?.company_name || 'Premier Contractors',
       trade: (content.trade as string) || 'Contractor',
       tagline: siteRow?.tagline || 'Licensed, Insured & Trusted Workmanship',
       phone: siteRow?.phone || '(555) 234-5678',
-      website: 'www.contractorpro.com',
+      website,
       license: siteRow?.license || 'LIC #849201-B',
       accentColor: siteRow?.accent_override || '#2563eb',
       secondaryColor: (content.secondary_color as string) || '#f59e0b',
