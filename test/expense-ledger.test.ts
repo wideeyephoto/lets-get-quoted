@@ -114,4 +114,173 @@ describe('generateExpensesCsv', () => {
     expect(lines.length).toBe(1);
     expect(lines[0]).toContain('Date,Job Ref,Client');
   });
+
+  it('correctly handles general overhead expenses with null job_id and ref', () => {
+    const overheadExpenses: ExpenseRow[] = [
+      {
+        id: 'cost-overhead-1',
+        account_id: 'acc-123',
+        job_id: null,
+        type: 'other',
+        category: 'Operating Overhead',
+        description: 'Commercial vehicle insurance',
+        amount: 350.0,
+        burden_amount: 0,
+        crew_id: null,
+        crew_name: 'Owner / Office',
+        crew_role_label: null,
+        supplier: 'Geico Commercial',
+        receipt_url: 'https://example.com/receipt-insurance.pdf',
+        client_charge_payment_id: null,
+        client_charge_requested_at: null,
+        cost_source: 'supplier_invoice',
+        hours: null,
+        rate: null,
+        created_at: '2026-08-30T10:00:00Z',
+        job_ref: null,
+        job_client_name: null,
+        job_status: null,
+      },
+    ];
+
+    const csv = generateExpensesCsv(overheadExpenses);
+    const lines = csv.trim().split('\n');
+    expect(lines.length).toBe(2);
+    // Date,Job Ref,Client,Category...
+    // Job Ref and Client should be empty strings
+    const parts = lines[1].split(',');
+    expect(parts[0]).toBe('2026-08-30');
+    expect(parts[1]).toBe(''); // Job Ref
+    expect(parts[2]).toBe(''); // Client
+    expect(parts[5]).toBe('Commercial vehicle insurance');
+    expect(parts[6]).toBe('Geico Commercial');
+    expect(parts[7]).toBe('350.00');
+  });
+});
+
+describe('listAccountExpenses & getExpenseSummaryMetrics unit tests', () => {
+  it('allows limit up to 5000 and does not clamp at 200', async () => {
+    const { listAccountExpenses } = await import('@/lib/expense-ledger');
+
+    let capturedLimit = 0;
+    let capturedOffset = 0;
+
+    const mockQuery: any = {
+      eq: () => mockQuery,
+      is: () => mockQuery,
+      gte: () => mockQuery,
+      lte: () => mockQuery,
+      or: () => mockQuery,
+      order: () => mockQuery,
+      range: (from: number, to: number) => {
+        capturedOffset = from;
+        capturedLimit = to - from + 1;
+        return Promise.resolve({
+          data: [],
+          count: 0,
+          error: null,
+        });
+      },
+    };
+
+    const mockSupabase: any = {
+      from: () => ({
+        select: () => mockQuery,
+      }),
+    };
+
+    // Requesting limit: 1000 should NOT be clamped to 200 anymore
+    await listAccountExpenses(mockSupabase, 'acc-123', { limit: 1000, offset: 0 });
+    expect(capturedLimit).toBe(1000);
+    expect(capturedOffset).toBe(0);
+
+    // Requesting limit: 3500 should be preserved
+    await listAccountExpenses(mockSupabase, 'acc-123', { limit: 3500, offset: 50 });
+    expect(capturedLimit).toBe(3500);
+    expect(capturedOffset).toBe(50);
+  });
+
+  it('filters overhead expenses using is(job_id, null)', async () => {
+    const { listAccountExpenses } = await import('@/lib/expense-ledger');
+
+    let isCalledWith: [string, any] | null = null;
+
+    const mockQuery: any = {
+      eq: () => mockQuery,
+      is: (col: string, val: any) => {
+        isCalledWith = [col, val];
+        return mockQuery;
+      },
+      gte: () => mockQuery,
+      lte: () => mockQuery,
+      or: () => mockQuery,
+      order: () => mockQuery,
+      range: () =>
+        Promise.resolve({
+          data: [
+            {
+              id: 'c-1',
+              account_id: 'acc-123',
+              job_id: null,
+              type: 'other',
+              category: 'Overhead',
+              description: 'Fuel card',
+              amount: 85,
+              burden_amount: 0,
+              cost_source: 'receipt',
+              created_at: '2026-09-01T00:00:00Z',
+              jobs: null,
+            },
+          ],
+          count: 1,
+          error: null,
+        }),
+    };
+
+    const mockSupabase: any = {
+      from: () => ({
+        select: () => mockQuery,
+      }),
+    };
+
+    const result = await listAccountExpenses(mockSupabase, 'acc-123', { jobId: 'overhead' });
+    expect(isCalledWith).toEqual(['job_id', null]);
+    expect(result.rows[0].job_id).toBeNull();
+    expect(result.rows[0].description).toBe('Fuel card');
+  });
+
+  it('computes metrics accurately and handles evidenced ratio', async () => {
+    const { getExpenseSummaryMetrics } = await import('@/lib/expense-ledger');
+
+    const mockSupabase: any = {
+      from: () => ({
+        select: () => ({
+          eq: () =>
+            Promise.resolve({
+              data: [
+                { type: 'material', amount: 500, burden_amount: 0, cost_source: 'receipt' },
+                { type: 'labor', amount: 1000, burden_amount: 250, cost_source: 'clocked' },
+                { type: 'sub', amount: 2000, burden_amount: 0, cost_source: 'supplier_invoice' },
+                { type: 'other', amount: 300, burden_amount: 0, cost_source: 'estimated' },
+              ],
+              error: null,
+            }),
+        }),
+      }),
+    };
+
+    const metrics = await getExpenseSummaryMetrics(mockSupabase, 'acc-123');
+    expect(metrics.materialsTotal).toBe(500);
+    expect(metrics.laborWagesTotal).toBe(1000);
+    expect(metrics.laborBurdenTotal).toBe(250);
+    expect(metrics.laborTotal).toBe(1250);
+    expect(metrics.subcontractorsTotal).toBe(2000);
+    expect(metrics.otherTotal).toBe(300);
+    // 500 + 1250 + 2000 + 300 = 4050
+    expect(metrics.totalSpend).toBe(4050);
+    expect(metrics.transactionCount).toBe(4);
+    // 3 out of 4 are evidenced (receipt, clocked, supplier_invoice)
+    expect(metrics.evidencedCount).toBe(3);
+    expect(metrics.evidencedRatio).toBe(0.75);
+  });
 });

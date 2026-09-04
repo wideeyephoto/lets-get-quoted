@@ -804,7 +804,7 @@ alter table crew add column if not exists start_lng numeric;
 create table if not exists costs (
   id            uuid primary key default gen_random_uuid(),
   account_id    uuid not null references accounts(id) on delete cascade,
-  job_id        uuid not null references jobs(id) on delete cascade,
+  job_id        uuid references jobs(id) on delete cascade,
 
   type          cost_type not null,
   category      text not null,
@@ -2084,10 +2084,19 @@ create policy job_crew_read   on jobs for select using ( crew_on_job(id) );
 create policy asg_owner     on crew_assignments for all    using ( is_owner(account_id) );
 create policy asg_crew_read on crew_assignments for select using ( crew_owns_crew_row(crew_id) );
 
--- COSTS: owners full access. Crew may INSERT time/materials on an assigned job,
+-- COSTS: owners full access. Office users can select with reports.read / jobs.read
+-- and manage with jobs.write. Crew may INSERT time/materials on an assigned job,
 -- attributed to themselves, and READ only their OWN cost rows — never a
 -- coworker's labor rate or the job's full cost ledger / margin.
-create policy cost_owner       on costs for all    using ( is_owner(account_id) );
+create policy cost_select on costs for select using (
+  office_can(account_id, 'reports.read')
+  or office_can(account_id, 'jobs.read')
+);
+create policy cost_modify on costs for all using (
+  office_can(account_id, 'jobs.write')
+) with check (
+  office_can(account_id, 'jobs.write')
+);
 create policy cost_crew_read   on costs for select using ( crew_owns_crew_row(crew_id) );
 create policy cost_crew_insert on costs for insert with check ( crew_on_job(job_id) and crew_owns_crew_row(crew_id) and account_id = job_account_id(job_id) );
 

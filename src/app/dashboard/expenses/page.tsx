@@ -8,10 +8,11 @@ import ExpensesLedger from './ExpensesLedger';
 export const metadata = { title: 'All Expenses Ledger · Let’s Get Quoted' };
 
 export default async function ExpensesPage() {
-  const { supabase, accountId } = await requireOfficeContext('reports.read');
+  const { supabase, accountId, role, capabilities } = await requireOfficeContext('reports.read');
+  const canManageCosts = role === 'owner' || capabilities.has('jobs.write');
 
-  const [{ rows }, metrics, jobs, crew] = await Promise.all([
-    listAccountExpenses(supabase, accountId, { limit: 150 }),
+  const [{ rows, totalCount }, metrics, jobs, crew] = await Promise.all([
+    listAccountExpenses(supabase, accountId, { limit: 500 }),
     getExpenseSummaryMetrics(supabase, accountId),
     listJobs(supabase, accountId),
     listCrew(supabase, accountId),
@@ -55,6 +56,8 @@ export default async function ExpensesPage() {
 
       <ExpensesLedger
         initialRows={rows}
+        totalCount={totalCount}
+        canManageCosts={canManageCosts}
         initialMetrics={metrics}
         jobs={mappedJobs}
         crew={mappedCrew}

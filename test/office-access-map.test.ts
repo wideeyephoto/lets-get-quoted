@@ -54,6 +54,7 @@ describe('what an office user may open', () => {
       '/dashboard/reviews',
       '/dashboard/rebook',
       '/dashboard/cash-flow',
+      '/dashboard/expenses',
       '/dashboard/reports',
       '/dashboard/insights',
       '/dashboard/settings',

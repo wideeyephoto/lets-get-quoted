@@ -24,6 +24,7 @@ import { draftQuote, loadDraftContext } from '@/lib/quote-draft-ai';
 import { draftConfidenceNote, draftToQuoteItems, draftTotal, type SerializedDraft } from '@/lib/quote-draft';
 import {
   createCost,
+  updateCost,
   createJob,
   deleteCost,
   deleteJob,
@@ -976,8 +977,11 @@ export async function readReceiptAction(dataUrl: string): Promise<{ ok: true; re
   return { ok: true, read };
 }
 
-export async function createCostAction(jobId: string, formData: FormData) {
-  const { supabase, accountId } = await requireOwnerContext();
+export async function createCostAction(jobId: string | null | undefined, formData: FormData) {
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+
+  const rawJob = formData.get('jobId') ? String(formData.get('jobId')).trim() : (jobId ? String(jobId).trim() : '');
+  const targetJobId = rawJob && rawJob !== 'overhead' ? rawJob : null;
 
   const type = (formData.get('type') as CostType) || 'material';
   const description = (formData.get('description') ?? '').toString().trim() || 'Cost item';
@@ -986,6 +990,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
   // 'unspecified' is reserved for rows recorded before the question was asked.
   const rawSource = normalizeCostSource(formData.get('costSource'));
   const source = rawSource === 'unspecified' ? 'estimated' : rawSource;
+  const receiptUrl = optionalText(formData.get('receiptUrl'));
 
   let createdCost: { id: string; amount: number; description: string; type: CostType } | null = null;
 
@@ -998,7 +1003,7 @@ export async function createCostAction(jobId: string, formData: FormData) {
     }
 
     const crewId = optionalText(formData.get('crewId'));
-    const cost = await createCost(supabase, accountId, jobId, {
+    const cost = await createCost(supabase, accountId, targetJobId, {
       type: 'labor',
       description,
       crewId,
@@ -1009,15 +1014,17 @@ export async function createCostAction(jobId: string, formData: FormData) {
       burdenPct: await resolveCrewBurdenPct(supabase, accountId, crewId),
     });
     createdCost = cost;
-    await createJobFeedEvent(supabase, accountId, jobId, {
-      kind: 'cost_added',
-      title: 'Cost added',
-      body: description,
-      visibility: 'internal',
-      amount: Number(cost.amount),
-      sourceTable: 'costs',
-      sourceId: cost.id,
-    });
+    if (targetJobId) {
+      await createJobFeedEvent(supabase, accountId, targetJobId, {
+        kind: 'cost_added',
+        title: 'Cost added',
+        body: description,
+        visibility: 'internal',
+        amount: Number(cost.amount),
+        sourceTable: 'costs',
+        sourceId: cost.id,
+      });
+    }
   } else {
     const amount = parseAmount(formData.get('amount'));
 
@@ -1025,30 +1032,37 @@ export async function createCostAction(jobId: string, formData: FormData) {
       throw new Error('Cost amount must be greater than 0.');
     }
 
-    const cost = await createCost(supabase, accountId, jobId, {
+    const cost = await createCost(supabase, accountId, targetJobId, {
       type,
       description,
       amount,
       supplier: optionalText(formData.get('supplier')),
+      receiptUrl,
       source,
     });
     createdCost = cost;
-    await createJobFeedEvent(supabase, accountId, jobId, {
-      kind: 'cost_added',
-      title: 'Cost added',
-      body: description,
-      visibility: 'internal',
-      amount: Number(cost.amount),
-      sourceTable: 'costs',
-      sourceId: cost.id,
-    });
+    if (targetJobId) {
+      await createJobFeedEvent(supabase, accountId, targetJobId, {
+        kind: 'cost_added',
+        title: 'Cost added',
+        body: description,
+        visibility: 'internal',
+        amount: Number(cost.amount),
+        sourceTable: 'costs',
+        sourceId: cost.id,
+      });
+    }
   }
 
-  if (createdCost) {
-    await evaluateAndTriggerMarginAlert(supabase, accountId, jobId, createdCost);
+  if (createdCost && targetJobId) {
+    await evaluateAndTriggerMarginAlert(supabase, accountId, targetJobId, createdCost);
   }
 
-  revalidatePath(`/dashboard/jobs/${jobId}`);
+  if (targetJobId) {
+    revalidatePath(`/dashboard/jobs/${targetJobId}`);
+  }
+  revalidatePath('/dashboard/expenses');
+  revalidatePath('/dashboard/jobs');
 }
 
 export async function createManualJobFeedAction(jobId: string, formData: FormData) {
@@ -1211,12 +1225,67 @@ export async function revokeClientJobLinkAction(jobId: string) {
   revalidatePath(`/dashboard/jobs/${jobId}`);
 }
 
-export async function deleteCostAction(jobId: string, costId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+export async function deleteCostAction(jobId: string | null | undefined, costId: string) {
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
-  await deleteCost(supabase, accountId, jobId, costId);
+  const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
+  await deleteCost(supabase, accountId, cleanJobId, costId);
 
-  revalidatePath(`/dashboard/jobs/${jobId}`);
+  if (cleanJobId) {
+    revalidatePath(`/dashboard/jobs/${cleanJobId}`);
+  }
+  revalidatePath('/dashboard/expenses');
+  revalidatePath('/dashboard/jobs');
+}
+
+export async function updateCostAction(jobId: string | null | undefined, costId: string, formData: FormData) {
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+
+  const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
+  const type = (formData.get('type') as CostType) || 'material';
+  const description = (formData.get('description') ?? '').toString().trim() || 'Cost item';
+  const rawSource = normalizeCostSource(formData.get('costSource'));
+  const source = rawSource === 'unspecified' ? 'estimated' : rawSource;
+  const supplier = optionalText(formData.get('supplier'));
+  const receiptUrl = optionalText(formData.get('receiptUrl'));
+
+  if (type === 'labor') {
+    const hours = parseAmount(formData.get('hours'));
+    const rate = parseAmount(formData.get('rate'));
+    if (hours <= 0 || rate <= 0) {
+      throw new Error('Labor costs require both hours and an hourly rate greater than 0.');
+    }
+    const crewId = optionalText(formData.get('crewId'));
+    await updateCost(supabase, accountId, cleanJobId, costId, {
+      type: 'labor',
+      description,
+      crewId,
+      supplier,
+      hours,
+      rate,
+      source,
+      burdenPct: await resolveCrewBurdenPct(supabase, accountId, crewId),
+    });
+  } else {
+    const amount = parseAmount(formData.get('amount'));
+    if (amount <= 0) {
+      throw new Error('Cost amount must be greater than 0.');
+    }
+    await updateCost(supabase, accountId, cleanJobId, costId, {
+      type,
+      description,
+      amount,
+      supplier,
+      receiptUrl,
+      source,
+    });
+  }
+
+  if (cleanJobId) {
+    revalidatePath(`/dashboard/jobs/${cleanJobId}`);
+  }
+  revalidatePath('/dashboard/expenses');
+  revalidatePath('/dashboard/jobs');
 }
 
 // Save the itemized quote from the job-page builder. Items are validated and the

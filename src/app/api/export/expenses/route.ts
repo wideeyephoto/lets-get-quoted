@@ -22,11 +22,26 @@ export async function GET(request: Request) {
     query,
     dateFrom,
     dateTo,
-    limit: 1000,
   };
 
-  const { rows } = await listAccountExpenses(supabase, accountId, filters);
-  const csv = generateExpensesCsv(rows);
+  // Fetch all matching rows in batches to guarantee zero silent truncation
+  const allRows = [];
+  let offset = 0;
+  const BATCH_SIZE = 1000;
+  while (true) {
+    const { rows, totalCount } = await listAccountExpenses(supabase, accountId, {
+      ...filters,
+      limit: BATCH_SIZE,
+      offset,
+    });
+    allRows.push(...rows);
+    offset += rows.length;
+    if (rows.length === 0 || allRows.length >= totalCount || rows.length < BATCH_SIZE) {
+      break;
+    }
+  }
+
+  const csv = generateExpensesCsv(allRows);
 
   const dateTag = new Date().toISOString().slice(0, 10);
   const filename = `letsgetquoted-expenses-ledger-${dateTag}.csv`;

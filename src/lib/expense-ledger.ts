@@ -56,7 +56,11 @@ export async function listAccountExpenses(
   }
 
   if (filters.jobId) {
-    query = query.eq('job_id', filters.jobId);
+    if (filters.jobId === 'overhead') {
+      query = query.is('job_id', null);
+    } else {
+      query = query.eq('job_id', filters.jobId);
+    }
   }
 
   if (filters.dateFrom) {
@@ -72,7 +76,7 @@ export async function listAccountExpenses(
     query = query.or(`description.ilike.%${q}%,supplier.ilike.%${q}%,crew_name.ilike.%${q}%`);
   }
 
-  const limit = Math.min(200, Math.max(1, filters.limit ?? 50));
+  const limit = Math.min(5000, Math.max(1, filters.limit ?? 50));
   const offset = Math.max(0, filters.offset ?? 0);
   query = query.range(offset, offset + limit - 1);
 
@@ -84,7 +88,7 @@ export async function listAccountExpenses(
     return {
       id: String(item.id),
       account_id: String(item.account_id),
-      job_id: String(item.job_id),
+      job_id: item.job_id ? String(item.job_id) : null,
       type: item.type as CostType,
       category: String(item.category ?? 'Other'),
       description: String(item.description ?? ''),
@@ -121,7 +125,11 @@ export async function getExpenseSummaryMetrics(
     .eq('account_id', accountId);
 
   if (filters.jobId) {
-    query = query.eq('job_id', filters.jobId);
+    if (filters.jobId === 'overhead') {
+      query = query.is('job_id', null);
+    } else {
+      query = query.eq('job_id', filters.jobId);
+    }
   }
 
   if (filters.dateFrom) {

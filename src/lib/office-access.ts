@@ -117,6 +117,11 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     requires: Object.freeze(['reports.read']),
   }),
   Object.freeze({
+    href: '/dashboard/expenses',
+    label: 'Expenses',
+    requires: Object.freeze(['reports.read']),
+  }),
+  Object.freeze({
     href: '/dashboard/reports',
     label: 'Reports',
     requires: Object.freeze(['reports.read']),

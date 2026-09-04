@@ -110,7 +110,7 @@ export function sortJobsByStatus<T extends { status: JobStatus; created_at: stri
 export type Cost = {
   id: string;
   account_id: string;
-  job_id: string;
+  job_id: string | null;
   type: CostType;
   category: string;
   description: string;
@@ -1246,19 +1246,23 @@ export async function listCosts(supabase: SupabaseClient, accountId: string, job
 export async function createCost(
   supabase: SupabaseClient,
   accountId: string,
-  jobId: string,
+  jobId: string | null | undefined,
   input: CostInput
 ): Promise<Cost> {
   assertNoSensitiveIdentifiers(input.description, 'Cost description');
   assertNoSensitiveIdentifiers(input.supplier, 'Cost supplier / payee');
 
+  const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
+
   // Verify the job actually belongs to this account before attaching a cost to
   // it. RLS on `costs` only checks costs.account_id, not job_id/account_id
   // consistency, so without this check a caller could attach a cost row to a
   // job_id belonging to a different account (polluting that job's margin).
-  const job = await getJob(supabase, accountId, jobId);
-  if (!job) {
-    throw new Error('Job not found for this account.');
+  if (cleanJobId) {
+    const job = await getJob(supabase, accountId, cleanJobId);
+    if (!job) {
+      throw new Error('Job not found for this account.');
+    }
   }
 
   const category = (input.type === 'labor' && input.category) || COST_TYPE_CATEGORY[input.type];
@@ -1289,7 +1293,7 @@ export async function createCost(
           const { wages, burden } = loadedLabourCost(input.hours, input.rate, input.burdenPct ?? 0);
           return {
             account_id: accountId,
-            job_id: jobId,
+            job_id: cleanJobId,
             type: 'labor' as const,
             category,
             description: input.description,
@@ -1308,7 +1312,7 @@ export async function createCost(
         })()
       : {
           account_id: accountId,
-          job_id: jobId,
+          job_id: cleanJobId,
           type: input.type,
           category,
           description: input.description,
@@ -1330,18 +1334,103 @@ export async function createCost(
   return data as Cost;
 }
 
+export async function updateCost(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string | null | undefined,
+  costId: string,
+  input: {
+    type?: CostType;
+    category?: string;
+    description?: string;
+    amount?: number;
+    supplier?: string | null;
+    receiptUrl?: string | null;
+    source?: CostSource;
+    crewId?: string | null;
+    hours?: number | null;
+    rate?: number | null;
+    burdenPct?: number;
+  }
+): Promise<Cost> {
+  if (input.description) assertNoSensitiveIdentifiers(input.description, 'Cost description');
+  if (input.supplier) assertNoSensitiveIdentifiers(input.supplier, 'Cost supplier / payee');
+
+  const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
+
+  let query = supabase.from('costs').select('*').eq('account_id', accountId).eq('id', costId);
+  if (cleanJobId) {
+    query = query.eq('job_id', cleanJobId);
+  }
+  const { data: existing, error: fetchErr } = await query.single();
+  if (fetchErr || !existing) throw fetchErr ?? new Error('Cost item not found');
+
+  const type = input.type ?? (existing.type as CostType);
+  const category = (type === 'labor' && input.category) || input.category || existing.category;
+  const description = input.description ?? existing.description;
+  const supplier = input.supplier !== undefined ? input.supplier : existing.supplier;
+  const source = input.source ? normalizeCostSource(input.source) : (existing.cost_source as CostSource);
+  const receiptUrl = input.receiptUrl !== undefined ? input.receiptUrl : existing.receipt_url;
+
+  const updates: Record<string, unknown> = {
+    type,
+    category,
+    description,
+    supplier,
+    cost_source: source,
+    receipt_url: receiptUrl,
+  };
+
+  if (type === 'labor') {
+    const hours = input.hours !== undefined ? (Number(input.hours) || 0) : (Number(existing.hours) || 0);
+    const rate = input.rate !== undefined ? (Number(input.rate) || 0) : (Number(existing.rate) || 0);
+    const crewId = input.crewId !== undefined ? input.crewId : existing.crew_id;
+    const burdenPct = input.burdenPct !== undefined ? input.burdenPct : (existing.burden_amount && existing.amount ? (Number(existing.burden_amount) / Number(existing.amount)) : 0);
+    const { wages, burden } = loadedLabourCost(hours, rate, burdenPct);
+    updates.hours = hours;
+    updates.rate = rate;
+    updates.amount = wages;
+    updates.burden_amount = burden;
+    updates.crew_id = crewId ?? null;
+  } else {
+    if (input.amount !== undefined) {
+      updates.amount = input.amount;
+      updates.burden_amount = 0;
+    }
+    updates.hours = null;
+    updates.rate = null;
+  }
+
+  const { data, error } = await supabase
+    .from('costs')
+    .update(updates)
+    .eq('account_id', accountId)
+    .eq('id', costId)
+    .select('*')
+    .single();
+
+  if (error || !data) throw error ?? new Error('Unable to update cost');
+  return data as Cost;
+}
+
 export async function deleteCost(
   supabase: SupabaseClient,
   accountId: string,
-  jobId: string,
+  jobId: string | null | undefined,
   costId: string
 ): Promise<void> {
-  const { error } = await supabase
+  const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
+  let query = supabase
     .from('costs')
     .delete()
     .eq('account_id', accountId)
-    .eq('job_id', jobId)
     .eq('id', costId);
+
+  if (cleanJobId) {
+    query = query.eq('job_id', cleanJobId);
+  }
+
+  const { error } = await query;
 
   if (error) {
     throw error;
