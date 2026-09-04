@@ -1,6 +1,14 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { createAdminSignalDiagnostics, getFailedEmailEvents, getFailedSmsEvents, getUnresolvedWebhookFailures } from '@/lib/admin-alerts';
+import {
+  createAdminSignalDiagnostics,
+  getFailedEmailEvents,
+  getFailedSmsEvents,
+  getUnresolvedWebhookFailures,
+  countUnresolvedWebhookFailures,
+  countFailedSmsEvents,
+  countFailedEmailEvents,
+} from '@/lib/admin-alerts';
 import { groupEmailFailures, groupSmsFailures, groupWebhookFailures } from '@/lib/admin-failure-groups';
 import { loadOutboundWebhookFailures } from '@/lib/admin-public-api';
 import { staffCan } from '@/lib/staff';
@@ -18,10 +26,13 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const diagnostics = createAdminSignalDiagnostics();
-  const [webhooks, sms, emails, outboundDeliveries] = await Promise.all([
+  const [webhooks, totalWebhooks, sms, totalSms, emails, totalEmails, outboundDeliveries] = await Promise.all([
     getUnresolvedWebhookFailures(ctx.admin, { limit: 500, diagnostics }),
+    countUnresolvedWebhookFailures(ctx.admin),
     getFailedSmsEvents(ctx.admin, { limit: 500, diagnostics }),
+    countFailedSmsEvents(ctx.admin),
     getFailedEmailEvents(ctx.admin, { limit: 500, diagnostics }),
+    countFailedEmailEvents(ctx.admin),
     loadOutboundWebhookFailures(ctx.admin, 100),
   ]);
   const webhookGroups = groupWebhookFailures(webhooks);
@@ -40,7 +51,9 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Enter a reason and try again.</div> : null}
 
     <section className={styles.panel} id="webhooks">
-      <h2 className={styles.panelTitle}>Inbound webhook failures · {webhooks.length} events in {webhookGroups.length} groups</h2>
+      <h2 className={styles.panelTitle}>
+        Inbound webhook failures · {totalWebhooks.toLocaleString('en-US')} total {totalWebhooks > webhooks.length ? `(${webhooks.length} latest in ${webhookGroups.length} groups)` : `in ${webhookGroups.length} groups`}
+      </h2>
       {webhookGroups.length === 0 && !diagnostics.failed.includes('webhookFailures') ? <p className={styles.emptyState}>No unresolved inbound webhook failures.</p> : null}
       {webhookGroups.length ? <div className={styles.tableWrap}><table className={styles.table}>
         <thead><tr><th>Source</th><th>Event</th><th>Error</th><th className="num">Occurrences</th><th>First / latest</th><th>Action</th></tr></thead>
@@ -69,7 +82,9 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     </section>
 
     <section className={styles.panel} id="texts">
-      <h2 className={styles.panelTitle}>Failed texts · {sms.length} events in {smsGroups.length} groups</h2>
+      <h2 className={styles.panelTitle}>
+        Failed texts · {totalSms.toLocaleString('en-US')} total {totalSms > sms.length ? `(${sms.length} latest in ${smsGroups.length} groups)` : `in ${smsGroups.length} groups`}
+      </h2>
       {smsGroups.length === 0 && !diagnostics.failed.includes('failedSms') ? <p className={styles.emptyState}>No failed tracked texts.</p> : null}
       {smsGroups.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Type</th><th>Error</th><th className="num">Occurrences</th><th>Latest</th><th>Account</th></tr></thead><tbody>
         {smsGroups.map((entry) => <tr key={entry.key}><td>{entry.sample.event_type.replace(/_/g, ' ')}</td><td className={styles.muted}>{entry.sample.error_reason || 'Unknown'}</td><td className="num">{entry.count}</td><td>{fmt(entry.latestAt)}</td><td><Link className={styles.rowLink} href={`/admin/accounts/${entry.sample.account_id}`}>Open →</Link></td></tr>)}
@@ -77,7 +92,9 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     </section>
 
     <section className={styles.panel} id="emails">
-      <h2 className={styles.panelTitle}>Failed emails · {emails.length} events in {emailGroups.length} groups</h2>
+      <h2 className={styles.panelTitle}>
+        Failed emails · {totalEmails.toLocaleString('en-US')} total {totalEmails > emails.length ? `(${emails.length} latest in ${emailGroups.length} groups)` : `in ${emailGroups.length} groups`}
+      </h2>
       {emailGroups.length === 0 && !diagnostics.failed.includes('failedEmails') ? <p className={styles.emptyState}>No bounced or complained emails.</p> : null}
       {emailGroups.length ? <div className={styles.tableWrap}><table className={styles.table}><thead><tr><th>Kind</th><th>Status</th><th>Error</th><th className="num">Occurrences</th><th>Latest</th></tr></thead><tbody>
         {emailGroups.map((entry) => <tr key={entry.key}><td>{entry.sample.kind}</td><td>{entry.sample.status}</td><td className={styles.muted}>{entry.sample.error_reason || '—'}</td><td className="num">{entry.count}</td><td>{fmt(entry.latestAt)}</td></tr>)}

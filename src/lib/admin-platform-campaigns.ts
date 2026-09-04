@@ -266,34 +266,40 @@ export async function resolvePlatformCampaignRecipients(
 
   const targetIds = targetAccounts.map((a) => a.id);
 
-  // Fetch site names for better businessName display
-  const { data: sites } = await admin
-    .from('sites')
-    .select('account_id, company_name')
-    .in('account_id', targetIds);
-
+  // Fetch site names in safe chunks for better businessName display
   const siteMap = new Map<string, string>();
-  for (const s of sites ?? []) {
-    if (s.company_name?.trim()) siteMap.set(s.account_id, s.company_name.trim());
+  for (let i = 0; i < targetIds.length; i += 500) {
+    const chunkIds = targetIds.slice(i, i + 500);
+    const { data: sites } = await admin
+      .from('sites')
+      .select('account_id, company_name')
+      .in('account_id', chunkIds);
+
+    for (const s of sites ?? []) {
+      if (s.company_name?.trim()) siteMap.set(s.account_id, s.company_name.trim());
+    }
   }
 
   // Hydrate owner login emails
   const ownerEmailMap = await ownerEmailsForAccounts(admin, targetIds);
 
-  // Load suppressions to fail closed on opted out emails
-  const { data: suppressions, error: suppressionError } = await admin
-    .from('email_suppression')
-    .select('email, account_id')
-    .in('account_id', targetIds);
-
-  if (suppressionError) {
-    console.error('Failed to load email suppression list for platform campaigns (failing closed):', suppressionError.message);
-    throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
-  }
-
+  // Load suppressions in safe chunks to fail closed on opted out emails
   const suppressedSet = new Set<string>();
-  for (const s of suppressions ?? []) {
-    if (s.email) suppressedSet.add(String(s.email).toLowerCase().trim());
+  for (let i = 0; i < targetIds.length; i += 500) {
+    const chunkIds = targetIds.slice(i, i + 500);
+    const { data: suppressions, error: suppressionError } = await admin
+      .from('email_suppression')
+      .select('email, account_id')
+      .in('account_id', chunkIds);
+
+    if (suppressionError) {
+      console.error('Failed to load email suppression list for platform campaigns (failing closed):', suppressionError.message);
+      throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+    }
+
+    for (const s of suppressions ?? []) {
+      if (s.email) suppressedSet.add(String(s.email).toLowerCase().trim());
+    }
   }
 
   const recipients: PlatformCampaignRecipient[] = [];

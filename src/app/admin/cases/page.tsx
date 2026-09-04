@@ -1,11 +1,13 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
-import { listSupportCases, type CaseStatus } from '@/lib/support-cases';
+import { listSupportCasesPaged, type CaseStatus } from '@/lib/support-cases';
 import { accountDisplayName } from '@/lib/admin-accounts';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Cases' };
+
+const PAGE_SIZE = 50;
 
 const FILTERS: { key: string; label: string; statuses?: CaseStatus[] }[] = [
   { key: 'open', label: 'Open', statuses: ['open', 'pending'] },
@@ -22,13 +24,31 @@ function priorityPill(priority: string) {
   return <span className={`${styles.pill} ${cls}`}>{priority}</span>;
 }
 
-export default async function AdminCasesPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ f?: string }> }) {
+export default async function AdminCasesPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ f?: string; page?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const active = FILTERS.find((f) => f.key === searchParams.f) ?? FILTERS[0];
+  const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1);
   let available = true;
   let namesAvailable = true;
-  const cases = await listSupportCases(admin, { statuses: active.statuses, limit: 150, onError: () => { available = false; } });
+  const { rows: cases, total } = await listSupportCasesPaged(admin, {
+    statuses: active.statuses,
+    page,
+    pageSize: PAGE_SIZE,
+    onError: () => { available = false; },
+  });
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+
+  function paramsFor(next: Record<string, string | undefined>): string {
+    const p = new URLSearchParams();
+    if (active.key !== 'open') p.set('f', active.key);
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    const qs = p.toString();
+    return qs ? `/admin/cases?${qs}` : '/admin/cases';
+  }
 
   const acctIds = [...new Set(cases.map((c) => c.account_id).filter((id): id is string => Boolean(id)))];
   const nameMap = new Map<string, { business_name: string | null; account_number: number | null }>();
@@ -64,6 +84,11 @@ export default async function AdminCasesPage({ searchParams: searchParamsPromise
       {!available || !namesAvailable ? <div className={`${styles.banner} ${styles.err}`}>Case data is incomplete. A blank list or missing account names are not being treated as clear.</div> : null}
 
       <section className={styles.panel}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+            {total.toLocaleString('en-US')} cases{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
+          </h2>
+        </div>
         {available && cases.length === 0 ? (
           <p className={styles.emptyState}>No cases in this view.</p>
         ) : (
@@ -102,6 +127,12 @@ export default async function AdminCasesPage({ searchParams: searchParamsPromise
             </table>
           </div>
         )}
+        {pageCount > 1 ? (
+          <div className={styles.pagination}>
+            {page > 1 ? <Link className="btn secondary" href={paramsFor({ page: String(page - 1) })}>← Previous</Link> : <span />}
+            {page < pageCount ? <Link className="btn secondary" href={paramsFor({ page: String(page + 1) })}>Next →</Link> : null}
+          </div>
+        ) : null}
       </section>
     </>
   );

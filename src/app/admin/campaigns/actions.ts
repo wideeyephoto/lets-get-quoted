@@ -31,20 +31,53 @@ export async function previewPlatformCampaignAction(
   }
 }
 
+import { logAdminAction } from '@/lib/admin';
+import { staffCan } from '@/lib/staff';
+
+function maskEmail(email: string): string {
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***@***';
+  const name = parts[0];
+  const domain = parts[1];
+  const maskedName = name.length > 2 ? `${name[0]}***${name[name.length - 1]}` : `${name[0]}***`;
+  return `${maskedName}@${domain}`;
+}
+
 /**
  * Server action to get real-time recipient count and sample addresses for an audience.
+ * Masks recipient emails unless caller holds ops.manage, and audit-logs unmasked inspections.
  */
 export async function getAudienceReachAction(
   audience: PlatformAudienceId,
   customEmails = '',
 ): Promise<{ success: boolean; count: number; sampleEmails: string[]; error?: string }> {
   try {
-    const { admin } = await requireAdmin();
-    const recipients = await resolvePlatformCampaignRecipients(admin, audience, customEmails);
+    const ctx = await requireAdmin();
+    const recipients = await resolvePlatformCampaignRecipients(ctx.admin, audience, customEmails);
+    const canViewPii = staffCan(ctx.staff, 'ops.manage');
+
+    const sampleEmails = recipients.slice(0, 5).map((r) => {
+      const emailDisplay = canViewPii ? r.email : maskEmail(r.email);
+      return r.businessName ? `${r.businessName} (${emailDisplay})` : emailDisplay;
+    });
+
+    if (canViewPii && recipients.length > 0) {
+      await logAdminAction(ctx.admin, ctx, {
+        action: 'campaign_audience_reach_inspected',
+        targetType: 'platform_audience',
+        targetId: audience,
+        meta: {
+          audience,
+          totalCount: recipients.length,
+          sampleCount: sampleEmails.length,
+        },
+      });
+    }
+
     return {
       success: true,
       count: recipients.length,
-      sampleEmails: recipients.slice(0, 5).map((r) => `${r.businessName ? `${r.businessName} (${r.email})` : r.email}`),
+      sampleEmails,
     };
   } catch (err) {
     return {
@@ -57,15 +90,35 @@ export async function getAudienceReachAction(
 }
 
 /**
- * Server action to send a single test email directly to the admin's inbox.
+ * Server action to send a single test email directly to an inbox.
+ * Strictly gated on ops.manage with mandatory audit logging.
  */
 export async function sendTestPlatformEmailAction(
   campaign: Omit<PlatformCampaignInput, 'audience'>,
   testEmail: string,
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    await requireAdmin();
-    return await sendTestPlatformCampaignEmail(campaign, testEmail);
+    const context = await requirePermission('ops.manage');
+    const cleanEmail = (testEmail || '').trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      return { success: false, error: 'A valid destination email is required for test sends.' };
+    }
+
+    const result = await sendTestPlatformCampaignEmail(campaign, cleanEmail);
+    if (result.success) {
+      await logAdminAction(context.admin, context, {
+        action: 'campaign_send_test_email',
+        targetType: 'platform_campaign',
+        meta: {
+          to: cleanEmail,
+          subject: campaign.subject,
+          senderName: campaign.senderName,
+          senderEmail: campaign.senderEmail,
+          theme: campaign.theme,
+        },
+      });
+    }
+    return result;
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }

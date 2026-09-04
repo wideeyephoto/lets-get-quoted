@@ -83,19 +83,19 @@ export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): P
   const since = new Date(now.getTime() - RISK_WINDOW_DAYS * DAY_MS).toISOString();
 
   const [acctRes, payRes, qsRes] = await Promise.all([
-    admin.from('accounts').select('id, business_name, account_number, created_at, suspended_at').is('test_marker', null).limit(ROW_CAP),
+    admin.from('accounts').select('id, business_name, account_number, created_at, suspended_at', { count: 'exact' }).is('test_marker', null).limit(ROW_CAP),
     // Dated on paid_at OR disputed_at: a charge collected before the window can
     // still be disputed inside it, and that dispute is exactly what this queue
     // exists to surface. Filtering on paid_at alone would hide it.
     admin
       .from('payments')
-      .select('account_id, status, amount, refunded_amount, disputed_at, dispute_status, paid_at')
+      .select('account_id, status, amount, refunded_amount, disputed_at, dispute_status, paid_at', { count: 'exact' })
       .is('test_marker', null)
       .or(`paid_at.gte.${since},disputed_at.gte.${since}`)
       .limit(ROW_CAP),
     admin
       .from('extra_stop_requests')
-      .select('account_id, status')
+      .select('account_id, status', { count: 'exact' })
       .is('test_marker', null)
       .eq('status', 'no_show_confirmed')
       .gte('created_at', since)
@@ -174,11 +174,19 @@ export async function buildRiskQueue(admin: SupabaseClient, now = new Date()): P
       a.name.localeCompare(b.name),
   );
 
+  const isTruncated =
+    (acctRes.count ?? 0) > ROW_CAP ||
+    (payRes.count ?? 0) > ROW_CAP ||
+    (qsRes.count ?? 0) > ROW_CAP ||
+    accounts.length >= ROW_CAP ||
+    payments.length >= ROW_CAP ||
+    noShows.length >= ROW_CAP;
+
   return {
     rows,
     accountsScanned: accounts.length,
     windowDays: RISK_WINDOW_DAYS,
-    truncated: accounts.length >= ROW_CAP || payments.length >= ROW_CAP || noShows.length >= ROW_CAP,
+    truncated: isTruncated,
     available: unavailableSources.length === 0,
     unavailableSources,
   };

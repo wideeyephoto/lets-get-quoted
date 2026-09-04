@@ -1,7 +1,7 @@
 import { requireAdmin } from '@/lib/auth';
 import styles from '../../admin.module.css';
 import { createCaseAction } from './actions';
-import { listAccountsForAdmin, accountDisplayName } from '@/lib/admin-accounts';
+import { listAccountsForAdmin, countAccountsForAdmin, accountDisplayName } from '@/lib/admin-accounts';
 import { listStaff } from '@/lib/staff-directory';
 
 export const dynamic = 'force-dynamic';
@@ -20,10 +20,43 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
   const ctx = await requireAdmin();
   let accountsAvailable = true;
   let staffAvailable = true;
-  const [accounts, staff] = await Promise.all([
+  const [initialAccounts, totalAccounts, staff] = await Promise.all([
     listAccountsForAdmin(ctx.admin, { limit: 200, onError: () => { accountsAvailable = false; } }),
+    countAccountsForAdmin(ctx.admin, { onError: () => { accountsAvailable = false; } }),
     listStaff(ctx.admin, () => { staffAvailable = false; }),
   ]);
+
+  const accounts = [...initialAccounts];
+  let invalidAccountRequested = false;
+
+  const targetAccountId = searchParams.account_id?.trim();
+  if (targetAccountId) {
+    const existing = accounts.find((a) => a.id === targetAccountId);
+    if (!existing) {
+      // Fetch the specific account directly if not in the initial 200 slice
+      const { data: acct, error: acctErr } = await ctx.admin
+        .from('accounts')
+        .select('id, business_name, account_number, connect_onboarded, stripe_connect_id, connect_disabled_at, suspended_at, suspended_reason, suspended_by, created_at, test_marker')
+        .eq('id', targetAccountId)
+        .maybeSingle();
+
+      if (acctErr || !acct) {
+        invalidAccountRequested = true;
+      } else {
+        const { data: site } = await ctx.admin
+          .from('sites')
+          .select('company_name')
+          .eq('account_id', targetAccountId)
+          .maybeSingle();
+
+        accounts.unshift({
+          ...acct,
+          company_name: site?.company_name ?? null,
+          entitlement: { kind: 'missing' as const },
+        });
+      }
+    }
+  }
 
   return (
     <>
@@ -34,6 +67,16 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
       </header>
 
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>{ERROR_MESSAGES[searchParams.error] ?? 'Something went wrong.'}</div> : null}
+      {invalidAccountRequested ? (
+        <div className={`${styles.banner} ${styles.err}`}>
+          The specified account ID ({targetAccountId}) was not found. Please select an account from the list or leave it unassigned for a general platform case.
+        </div>
+      ) : null}
+      {totalAccounts > accounts.length ? (
+        <div className={`${styles.banner} ${styles.warn}`}>
+          Showing {accounts.length} of {totalAccounts.toLocaleString('en-US')} accounts. If your account is not in the dropdown, open the case directly from that account&apos;s page.
+        </div>
+      ) : null}
       {!accountsAvailable || !staffAvailable ? <div className={`${styles.banner} ${styles.err}`}>Account or staff choices are incomplete. Refresh before assigning this case.</div> : null}
 
       <section className={styles.panel}>
@@ -42,7 +85,7 @@ export default async function NewCasePage({ searchParams: searchParamsPromise }:
           <input id="case-subject" className={styles.input} name="subject" required placeholder="What's this case about?" autoFocus />
 
           <label htmlFor="case-account">Account (optional)</label>
-          <select id="case-account" className={styles.input} name="account_id" defaultValue={searchParams.account_id ?? ''}>
+          <select id="case-account" className={styles.input} name="account_id" defaultValue={invalidAccountRequested ? '' : (targetAccountId ?? '')}>
             <option value="">General platform case</option>
             {accounts.map((account) => (
               <option key={account.id} value={account.id}>{accountDisplayName(account)}{account.account_number ? ` · #${account.account_number}` : ''}</option>

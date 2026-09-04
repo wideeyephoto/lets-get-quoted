@@ -1,6 +1,7 @@
+import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
-import { createAdminSignalDiagnostics, getRecentIncidents } from '@/lib/admin-alerts';
+import { createAdminSignalDiagnostics, getIncidentsPaged, getOpenIncidents } from '@/lib/admin-alerts';
 import {
   INCIDENT_KINDS,
   INCIDENT_SEVERITIES,
@@ -43,13 +44,32 @@ function fmt(v: string | null): string {
   return v ? new Date(v).toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }) : '—';
 }
 
-export default async function AdminIncidentsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string }> }) {
+const PAGE_SIZE = 25;
+
+export default async function AdminIncidentsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string; page?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const diagnostics = createAdminSignalDiagnostics();
-  const incidents = await getRecentIncidents(ctx.admin, { limit: 50, diagnostics });
+  const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1);
+  const [open, { rows: incidents, total }] = await Promise.all([
+    getOpenIncidents(ctx.admin, { diagnostics }),
+    getIncidentsPaged(ctx.admin, { page, pageSize: PAGE_SIZE, diagnostics }),
+  ]);
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const now = new Date();
-  const open = incidents.filter((i) => i.kind === 'incident' && !i.resolved_at);
+
+  function paramsFor(next: Record<string, string | undefined>): string {
+    const p = new URLSearchParams();
+    if (searchParams.done) p.set('done', searchParams.done);
+    if (searchParams.error) p.set('error', searchParams.error);
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    const qs = p.toString();
+    return qs ? `/admin/incidents?${qs}` : '/admin/incidents';
+  }
+
   // Both write surfaces on this page call requirePermission('ops.manage'),
   // which only ops and super_admin hold — but the page is in the nav for
   // everyone and used to render the form and the resolve button regardless.
@@ -99,7 +119,11 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
       <div className={styles.detailGrid}>
         <div>
           <section className={styles.panel}>
-            <h2 className={styles.panelTitle}>Recent</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
+              <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+                Recent ({total.toLocaleString('en-US')} total{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''})
+              </h2>
+            </div>
             {incidents.length === 0 ? (
               diagnostics.failed.includes('incidents') ? null : <p className={styles.emptyState}>Nothing logged yet.</p>
             ) : (
@@ -136,6 +160,12 @@ export default async function AdminIncidentsPage({ searchParams: searchParamsPro
                 </table>
               </div>
             )}
+            {pageCount > 1 ? (
+              <div className={styles.pagination}>
+                {page > 1 ? <Link className="btn secondary" href={paramsFor({ page: String(page - 1) })}>← Previous</Link> : <span />}
+                {page < pageCount ? <Link className="btn secondary" href={paramsFor({ page: String(page + 1) })}>Next →</Link> : null}
+              </div>
+            ) : null}
           </section>
         </div>
 

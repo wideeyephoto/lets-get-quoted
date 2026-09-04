@@ -83,26 +83,59 @@ const CASE_COLUMNS =
   'id, account_id, subject, status, priority, assigned_to, sla_due_at, source, requester_email, created_by, created_at';
 const NOTE_COLUMNS = 'id, case_id, kind, visibility, body, created_by, created_at';
 
+export type ListSupportCasesResult = {
+  rows: SupportCase[];
+  total: number;
+};
+
+export async function listSupportCasesPaged(
+  admin: SupabaseClient,
+  opts: {
+    statuses?: CaseStatus[];
+    assignedTo?: string;
+    accountId?: string;
+    page?: number;
+    pageSize?: number;
+    onError?: (error: unknown) => void;
+  } = {},
+): Promise<ListSupportCasesResult> {
+  const pageSize = opts.pageSize ?? 50;
+  const page = Math.max(1, opts.page ?? 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let query = admin
+    .from('support_cases')
+    .select(CASE_COLUMNS, { count: 'exact' })
+    .is('test_marker', null)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (opts.statuses?.length) query = query.in('status', opts.statuses);
+  if (opts.assignedTo) query = query.eq('assigned_to', opts.assignedTo);
+  if (opts.accountId) query = query.eq('account_id', opts.accountId);
+
+  const { data, error, count } = await query;
+  if (error) {
+    console.error('listSupportCasesPaged failed:', error);
+    opts.onError?.(error);
+    return { rows: [], total: 0 };
+  }
+  return { rows: (data ?? []) as SupportCase[], total: count ?? (data?.length ?? 0) };
+}
+
 export async function listSupportCases(
   admin: SupabaseClient,
   opts: { statuses?: CaseStatus[]; assignedTo?: string; accountId?: string; limit?: number; onError?: (error: unknown) => void } = {}
 ): Promise<SupportCase[]> {
-  let query = admin
-    .from('support_cases')
-    .select(CASE_COLUMNS)
-    .is('test_marker', null)
-    .order('created_at', { ascending: false })
-    .limit(opts.limit ?? 100);
-  if (opts.statuses?.length) query = query.in('status', opts.statuses);
-  if (opts.assignedTo) query = query.eq('assigned_to', opts.assignedTo);
-  if (opts.accountId) query = query.eq('account_id', opts.accountId);
-  const { data, error } = await query;
-  if (error) {
-    console.error('listSupportCases failed:', error);
-    opts.onError?.(error);
-    return [];
-  }
-  return (data ?? []) as SupportCase[];
+  const res = await listSupportCasesPaged(admin, {
+    statuses: opts.statuses,
+    assignedTo: opts.assignedTo,
+    accountId: opts.accountId,
+    pageSize: opts.limit ?? 100,
+    onError: opts.onError,
+  });
+  return res.rows;
 }
 
 export async function getSupportCase(admin: SupabaseClient, id: string): Promise<SupportCase | null> {

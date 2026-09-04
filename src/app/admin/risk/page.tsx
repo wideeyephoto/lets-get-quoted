@@ -46,15 +46,35 @@ function FactorList({ factors, kind }: { factors: RiskFactor[]; kind: RiskFactor
   );
 }
 
-export default async function AdminRiskPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ status?: string; done?: string; error?: string }> }) {
+const PAGE_SIZE = 50;
+
+export default async function AdminRiskPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ status?: string; done?: string; error?: string; page?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const queue = await buildRiskQueue(ctx.admin);
   const latest = await latestRiskReviews(ctx.admin, queue.rows.map((row) => row.accountId));
+  const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1);
   const status: RiskDisposition | 'all' = searchParams.status === 'all' ? 'all' : isRiskDisposition(searchParams.status) ? searchParams.status : 'open';
   const dispositionFor = (accountId: string): RiskDisposition => latest.reviews.get(accountId)?.disposition ?? 'open';
-  const rows = status === 'all' ? queue.rows : queue.rows.filter((row) => dispositionFor(row.accountId) === status);
+  const filteredRows = status === 'all' ? queue.rows : queue.rows.filter((row) => dispositionFor(row.accountId) === status);
+  const total = filteredRows.length;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  const from = (page - 1) * PAGE_SIZE;
+  const pagedRows = filteredRows.slice(from, from + PAGE_SIZE);
   const canReview = staffCan(ctx.staff, 'account.enforce');
+
+  function paramsFor(next: Record<string, string | undefined>): string {
+    const p = new URLSearchParams();
+    if (status !== 'open') p.set('status', status);
+    if (searchParams.done) p.set('done', searchParams.done);
+    if (searchParams.error) p.set('error', searchParams.error);
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    const qs = p.toString();
+    return qs ? `/admin/risk?${qs}` : '/admin/risk';
+  }
 
   return (
     <>
@@ -69,6 +89,11 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
 
       {!queue.available || !latest.available ? (
         <div className={`${styles.banner} ${styles.err}`}>Review data is incomplete. {queue.unavailableSources.length ? `Could not read ${queue.unavailableSources.join(', ')}.` : 'Could not read review dispositions.'} No empty state should be treated as clear.</div>
+      ) : null}
+      {queue.truncated ? (
+        <div className={`${styles.banner} ${styles.warn}`}>
+          <strong>Signal cap reached:</strong> Over 5,000 records were found in the {queue.windowDays}-day window across accounts, payments, or no-shows. The risk queue was capped at the most recent 5,000 rows per data source; older activity may be missing from the scores below.
+        </div>
       ) : null}
       {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>Review disposition recorded.</div> : null}
       {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Choose a disposition and enter a reason of at least four characters.</div> : null}
@@ -90,12 +115,14 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
       </nav>
 
       <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>
-          {rows.length} {rows.length === 1 ? 'account' : 'accounts'} with review signals
-          <span className={styles.muted} style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
-            {' '}· {queue.accountsScanned.toLocaleString('en-US')} scanned over {queue.windowDays} days
-          </span>
-        </h2>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+            {total} {total === 1 ? 'account' : 'accounts'} with review signals{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
+            <span className={styles.muted} style={{ fontWeight: 400, textTransform: 'none', letterSpacing: 0 }}>
+              {' '}· {queue.accountsScanned.toLocaleString('en-US')} scanned over {queue.windowDays} days
+            </span>
+          </h2>
+        </div>
         {queue.truncated ? (
           <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.8rem' }}>
             A row cap was reached, so this covers the most recent activity rather than the whole window. Everything
@@ -103,7 +130,7 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
           </p>
         ) : null}
 
-        {rows.length === 0 ? (
+        {filteredRows.length === 0 ? (
           queue.available && latest.available ? <p className={styles.emptyState}>
             No accounts match the {status} review filter in the last {queue.windowDays} days across {queue.accountsScanned.toLocaleString('en-US')} accounts.
           </p> : null
@@ -122,7 +149,7 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
                 </tr>
               </thead>
               <tbody>
-                {rows.map((row) => (
+                {pagedRows.map((row) => (
                   <tr key={row.accountId}>
                     <td>
                       <Link href={`/admin/accounts/${row.accountId}`} className={styles.rowLink}>{row.name}</Link>
@@ -179,6 +206,12 @@ export default async function AdminRiskPage({ searchParams: searchParamsPromise 
             </table>
           </div>
         )}
+        {pageCount > 1 ? (
+          <div className={styles.pagination}>
+            {page > 1 ? <Link className="btn secondary" href={paramsFor({ page: String(page - 1) })}>← Previous</Link> : <span />}
+            {page < pageCount ? <Link className="btn secondary" href={paramsFor({ page: String(page + 1) })}>Next →</Link> : null}
+          </div>
+        ) : null}
       </section>
 
       <section className={styles.panel}>

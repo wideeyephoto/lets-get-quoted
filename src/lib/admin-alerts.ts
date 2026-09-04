@@ -372,6 +372,36 @@ export async function getUnresolvedWebhookFailures(admin: SupabaseClient, opts?:
   return (data ?? []) as WebhookFailureRow[];
 }
 
+export async function countUnresolvedWebhookFailures(admin: SupabaseClient): Promise<number> {
+  const { count, error } = await admin
+    .from('webhook_failures')
+    .select('id', { count: 'exact', head: true })
+    .is('test_marker', null)
+    .is('resolved_at', null);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function countFailedSmsEvents(admin: SupabaseClient): Promise<number> {
+  const { count, error } = await admin
+    .from('sms_events')
+    .select('id', { count: 'exact', head: true })
+    .is('test_marker', null)
+    .eq('status', 'failed');
+  if (error) return 0;
+  return count ?? 0;
+}
+
+export async function countFailedEmailEvents(admin: SupabaseClient): Promise<number> {
+  const { count, error } = await admin
+    .from('email_events')
+    .select('id', { count: 'exact', head: true })
+    .is('test_marker', null)
+    .in('status', ['bounced', 'complained']);
+  if (error) return 0;
+  return count ?? 0;
+}
+
 export type PlatformIncidentRow = {
   id: string;
   kind: string;
@@ -390,17 +420,56 @@ export type PlatformIncidentRow = {
   external_url: string | null;
 };
 
-export async function getRecentIncidents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<PlatformIncidentRow[]> {
+export type ListIncidentsResult = {
+  rows: PlatformIncidentRow[];
+  total: number;
+};
+
+export async function getIncidentsPaged(
+  admin: SupabaseClient,
+  opts?: SignalOptions & { page?: number; pageSize?: number; limit?: number },
+): Promise<ListIncidentsResult> {
+  const pageSize = opts?.pageSize ?? opts?.limit ?? 25;
+  const page = Math.max(1, opts?.page ?? 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  const { data, error, count } = await admin
+    .from('platform_incidents')
+    .select(
+      'id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url',
+      { count: 'exact' },
+    )
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
+  if (error) {
+    signalFailed(opts?.diagnostics, 'incidents', 'getIncidentsPaged', error);
+    return { rows: [], total: 0 };
+  }
+  return { rows: (data ?? []) as PlatformIncidentRow[], total: count ?? (data?.length ?? 0) };
+}
+
+export async function getOpenIncidents(admin: SupabaseClient, opts?: SignalOptions): Promise<PlatformIncidentRow[]> {
   const { data, error } = await admin
     .from('platform_incidents')
-    .select('id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url')
-    .order('created_at', { ascending: false })
-    .limit(opts?.limit ?? 8);
+    .select(
+      'id, kind, title, description, severity, started_at, resolved_at, created_by, owner, affected_services, impact_summary, root_cause, resolution_summary, external_url',
+    )
+    .eq('kind', 'incident')
+    .is('resolved_at', null)
+    .order('started_at', { ascending: false });
+
   if (error) {
-    signalFailed(opts?.diagnostics, 'incidents', 'getRecentIncidents', error);
+    signalFailed(opts?.diagnostics, 'incidents', 'getOpenIncidents', error);
     return [];
   }
   return (data ?? []) as PlatformIncidentRow[];
+}
+
+export async function getRecentIncidents(admin: SupabaseClient, opts?: SignalOptions & { limit?: number }): Promise<PlatformIncidentRow[]> {
+  const paged = await getIncidentsPaged(admin, { limit: opts?.limit ?? 8, diagnostics: opts?.diagnostics });
+  return paged.rows;
 }
 
 // Full case CRUD lives in src/lib/support-cases.ts — these two are

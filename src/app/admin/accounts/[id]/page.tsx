@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { getAccountAdminDetail, accountDisplayName } from '@/lib/admin-accounts';
-import { listAdminActions } from '@/lib/admin';
+import { listAdminActions, logAdminAction } from '@/lib/admin';
 import { listSupportCases } from '@/lib/support-cases';
 import { accountAttachmentUrl } from '@/lib/account-attachments';
 import styles from '../../admin.module.css';
@@ -170,6 +170,20 @@ export default async function AdminAccountDetailPage({
       url: await accountAttachmentUrl(att.account_id, att.path),
     })),
   );
+
+  // Record customer data access for internal audit & compliance
+  await logAdminAction(admin, ctx, {
+    action: 'account_view',
+    accountId: params.id,
+    targetType: 'account',
+    targetId: params.id,
+    meta: {
+      businessName: displayName,
+      ownerEmail: detail.ownerEmail,
+      viewedBy: ctx.adminEmail,
+      role: ctx.role,
+    },
+  });
 
   const suspended = Boolean(a.suspended_at);
   const lockedUntil =
