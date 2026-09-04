@@ -38,9 +38,8 @@ describe('the view names describe what you get', () => {
       { id: 'day', label: 'Day' },
       { id: 'week', label: 'Week' },
       { id: 'month', label: 'Capacity' },
-      { id: 'resource_timeline', label: 'Timeline' },
-      { id: 'timeline_week', label: 'Timeline week' },
       { id: 'crew', label: 'Dispatch' },
+      { id: 'timeline_week', label: 'Dispatch week' },
       { id: 'agenda', label: 'Month list' },
       { id: 'timeline', label: 'Project timeline' },
       { id: 'year', label: 'Year overview' },
@@ -59,14 +58,17 @@ describe('the view names describe what you get', () => {
    */
   it('renames the labels without touching the stored ids', () => {
     expect(CALENDAR_VIEWS).toEqual(['day', 'week', 'month', 'resource_timeline', 'timeline_week', 'crew', 'agenda', 'timeline', 'year']);
-    expect(viewLabels().map((option) => option.id)).toEqual(CALENDAR_VIEWS);
+    expect(viewLabels().map((option) => option.id)).toEqual(['day', 'week', 'month', 'crew', 'timeline_week', 'agenda', 'timeline', 'year']);
     // An old cookie still resolves rather than dumping somebody in the default.
-    for (const view of CALENDAR_VIEWS) expect(normalizeCalendarView(view)).toBe(view);
+    for (const view of CALENDAR_VIEWS) {
+      const expected = view === 'resource_timeline' ? 'crew' : view;
+      expect(normalizeCalendarView(view)).toBe(expected);
+    }
   });
 
-  /** Day, Week, Capacity, Timeline and Timeline week are in the quick switcher. */
+  /** Day, Week, and Capacity are in the quick switcher. */
   it('promotes the quick switcher views and leaves specialist views in the menu', () => {
-    expect(CALENDAR_CODE).toContain("const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month', 'resource_timeline', 'timeline_week']);");
+    expect(CALENDAR_CODE).toContain("const QUICK_VIEWS = new Set<CalendarView>(['day', 'week', 'month']);");
   });
 });
 

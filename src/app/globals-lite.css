@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 1787d74609efa05e
+   source-sha256: 38da1e13c8a8cc1c
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -27915,6 +27915,11 @@ select optgroup {
   --job-line: #6a34cc;
   --job-fill: rgba(106, 52, 204, 0.15);
   --job-ink: #6a34cc;
+}
+
+@keyframes schedCrewSlideUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 /* THE RAIL TOGGLE IS GONE, AND SO ARE ITS RULES.

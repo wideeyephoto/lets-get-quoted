@@ -50,7 +50,7 @@ describe('Contractor site templates header company name visibility', () => {
 
   it('professional.tsx preserves license display even when company name is hidden', () => {
     const code = readTemplate('professional');
-    expect(code).toContain('(!content.hideHeaderCompanyName || site.license)');
+    expect(code).toContain('(!content.hideHeaderCompanyName || site.license || content.headerTagline)');
     expect(code).toContain('site.license ? <small data-edit="bizLicense">{site.license}</small> : null');
   });
 
