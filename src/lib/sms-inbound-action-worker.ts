@@ -13,6 +13,7 @@ import {
   enqueueInboundReply,
   type InboundReplyKind,
 } from '@/lib/sms-webhook-ingress';
+import { normalizeUsPhone } from '@/lib/phone';
 import type { SmsProviderId } from '@/lib/sms-provider';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -240,6 +241,29 @@ function ownerAlertIdempotencyKey(claim: SmsInboundActionClaim): string {
   return `inbound-owner-alert:${claim.provider}:${digest}`;
 }
 
+async function isOwnerFieldIntake(claim: SmsInboundActionClaim, admin: SupabaseClient): Promise<boolean> {
+  if (claim.senderPurpose === 'lgq_shared') return true;
+  if (claim.senderPurpose === 'contractor_dedicated') {
+    if (typeof admin?.from !== 'function') return false;
+    try {
+      const { data: account } = await admin
+        .from('accounts')
+        .select('alert_phone, high_value_sms_enabled')
+        .eq('id', claim.accountId)
+        .maybeSingle();
+
+      const ownerAlertNormalized = account?.alert_phone ? normalizeUsPhone(account.alert_phone) : null;
+      const senderNormalized = normalizeUsPhone(claim.fromNumber);
+      if (account?.high_value_sms_enabled === true && ownerAlertNormalized && senderNormalized === ownerAlertNormalized) {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 async function processClaim(
   claim: SmsInboundActionClaim,
   store: SmsInboundActionStore,
@@ -247,7 +271,8 @@ async function processClaim(
   fieldIntakeProcessor: SmsFieldIntakeProcessor,
 ): Promise<void> {
   try {
-    if (claim.senderPurpose === 'lgq_shared' && !claim.effectApplied) {
+    const isFieldIntake = !claim.effectApplied && await isOwnerFieldIntake(claim, admin);
+    if (isFieldIntake) {
       const fieldResult = await fieldIntakeProcessor(claim, admin);
       if (!fieldResult.handled) {
         throw new Error(fieldResult.errorMessage || 'Field intake task was not completed.');

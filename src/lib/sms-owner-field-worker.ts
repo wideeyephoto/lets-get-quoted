@@ -409,11 +409,11 @@ export async function processOwnerFieldClaim(
   claim: SmsInboundActionClaim,
   admin: SupabaseClient,
 ): Promise<OwnerFieldActionResult> {
-  if (claim.senderPurpose !== 'lgq_shared') {
+  if (claim.senderPurpose !== 'lgq_shared' && claim.senderPurpose !== 'contractor_dedicated') {
     return {
       handled: false,
       outcome: 'error',
-      errorMessage: 'Owner field intake requires the LGQ shared sender',
+      errorMessage: 'Owner field intake requires an authorized sender',
     };
   }
 
@@ -520,19 +520,24 @@ export async function processOwnerFieldClaim(
     };
   }
 
-  const { data: sender, error: senderError } = await admin
+  let senderQuery = admin
     .from('sms_sender_numbers')
     .select('id')
     .eq('id', claim.senderNumberId)
     .eq('provider', claim.provider)
     .eq('e164_number', receipt.to_number)
-    .eq('purpose', 'lgq_shared')
     .eq('provisioning_status', 'active')
     .eq('assignment_state', 'assigned')
     .eq('inbound_ready', true)
-    .is('account_id', null)
-    .is('suspended_at', null)
-    .maybeSingle();
+    .is('suspended_at', null);
+
+  if (claim.senderPurpose === 'contractor_dedicated') {
+    senderQuery = senderQuery.eq('purpose', 'contractor_dedicated').eq('account_id', accountId);
+  } else {
+    senderQuery = senderQuery.eq('purpose', 'lgq_shared').is('account_id', null);
+  }
+
+  const { data: sender, error: senderError } = await senderQuery.maybeSingle();
 
   if (senderError || !sender) {
     return {

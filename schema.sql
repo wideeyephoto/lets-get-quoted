@@ -20823,7 +20823,10 @@ begin
       from public.sms_sender_numbers s
      where s.id = v_event.sender_number_id
        and s.provider = p_provider
-       and s.purpose = v_event.sender_purpose
+       and (
+         s.purpose = v_event.sender_purpose
+         or (s.purpose = 'contractor_dedicated' and s.account_id = v_event.account_id)
+       )
        and (s.account_id is null or s.account_id = v_event.account_id)
        and s.provisioning_status = 'active'
        and s.assignment_state = 'assigned'
@@ -20831,14 +20834,12 @@ begin
        and s.suspended_at is null
      for share;
   else
+    -- Priority 1: If this account owns an active dedicated business line, ALL outbound runs through it!
     select s.* into v_sender
       from public.sms_sender_numbers s
      where s.provider = p_provider
-       and s.purpose = v_event.sender_purpose
-       and (
-         (s.purpose = 'contractor_dedicated' and s.account_id = v_event.account_id)
-         or (s.purpose in ('lgq_shared', 'lgq_dispatch') and s.account_id is null)
-       )
+       and s.purpose = 'contractor_dedicated'
+       and s.account_id = v_event.account_id
        and s.provisioning_status = 'active'
        and s.assignment_state = 'assigned'
        and s.inbound_ready
@@ -20846,6 +20847,25 @@ begin
      order by s.activated_at, s.id
      limit 1
      for share;
+
+    -- Priority 2: Fall back to purpose matching (e.g. lgq_shared for accounts without dedicated lines)
+    if v_sender.id is null then
+      select s.* into v_sender
+        from public.sms_sender_numbers s
+       where s.provider = p_provider
+         and s.purpose = v_event.sender_purpose
+         and (
+           (s.purpose = 'contractor_dedicated' and s.account_id = v_event.account_id)
+           or (s.purpose in ('lgq_shared', 'lgq_dispatch') and s.account_id is null)
+         )
+         and s.provisioning_status = 'active'
+         and s.assignment_state = 'assigned'
+         and s.inbound_ready
+         and s.suspended_at is null
+       order by s.activated_at, s.id
+       limit 1
+       for share;
+    end if;
   end if;
   if v_sender.id is null then
     return query select 'blocked_sender'::text, null::uuid, null::text, null::text;

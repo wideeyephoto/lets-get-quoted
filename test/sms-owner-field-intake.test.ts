@@ -642,6 +642,70 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(mockRpc).not.toHaveBeenCalledWith('reserve_usage_credits', expect.anything());
   });
 
+  it('processes field commands on contractor_dedicated numbers for authorized owner', async () => {
+    const accountId = '11111111-1111-4111-8111-111111111111';
+    const taskId = '22222222-2222-4222-8222-222222222222';
+    const claimToken = '33333333-3333-4333-8333-333333333333';
+    const claim: SmsInboundActionClaim = {
+      taskId,
+      claimToken,
+      provider: 'signalwire',
+      providerEventId: 'ev-dedicated-field-call',
+      accountId,
+      senderNumberId: '55555555-5555-4555-8555-555555555555',
+      senderPurpose: 'contractor_dedicated',
+      fromNumber: '+15551234567',
+      effectApplied: false,
+    };
+    mockGenerateContent.mockResolvedValueOnce({
+      text: 'Note logged',
+      functionCalls: [{
+        name: 'append_internal_note',
+        args: { job_id: '88888888-8888-4888-8888-888888888888', note: 'Done for the day' },
+      }],
+    });
+    const mockRpc = createFieldRpcMock({
+      data: { target_id: '88888888-8888-4888-8888-888888888888', intent: 'append_internal_note' },
+      error: null,
+    });
+    const mockAdmin = {
+      rpc: mockRpc,
+      from: vi.fn((table: string) => {
+        const messageQuery = fieldMessageQuery(table, 'Done for the day');
+        if (messageQuery) return messageQuery;
+        if (table === 'accounts') {
+          return createMockQueryBuilder({
+            id: accountId,
+            business_name: 'BrokePipes Plumbing',
+            alert_phone: '+15551234567',
+            high_value_sms_enabled: true,
+          });
+        }
+        if (table === 'sms_sender_numbers') {
+          return createMockQueryBuilder({
+            id: '55555555-5555-4555-8555-555555555555',
+            purpose: 'contractor_dedicated',
+            account_id: accountId,
+          });
+        }
+        return createMockQueryBuilder([]);
+      }),
+    } as unknown as Parameters<typeof processOwnerFieldClaim>[1];
+
+    const result = await processOwnerFieldClaim(claim, mockAdmin);
+    expect(result).toEqual(expect.objectContaining({
+      handled: true,
+      outcome: 'completed',
+      intent: 'append_internal_note',
+      targetId: '88888888-8888-4888-8888-888888888888',
+    }));
+    expect(mockRpc).toHaveBeenCalledWith('apply_authorized_sms_field_action', expect.objectContaining({
+      p_task_id: taskId,
+      p_claim_token: claimToken,
+      p_intent: 'append_internal_note',
+    }));
+  });
+
   it('terminalizes an authorized non-owner without account context, usage, or Gemini', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const claim: SmsInboundActionClaim = {

@@ -358,4 +358,77 @@ describe('durable inbound SMS action worker', () => {
     expect(actions.fail).not.toHaveBeenCalled();
     expect(db.rpc).not.toHaveBeenCalled();
   });
+
+  it('routes dedicated sender field task to field intake when texted by owner', async () => {
+    const ownerClaim: SmsInboundActionClaim = Object.freeze({
+      ...CLAIM,
+      senderPurpose: 'contractor_dedicated',
+      fromNumber: '+18103042061',
+    });
+    const fromMock = vi.fn((table: string) => {
+      if (table !== 'accounts') throw new Error(`Unexpected table ${table}`);
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(async () => ({
+              data: { alert_phone: '+18103042061', high_value_sms_enabled: true },
+              error: null,
+            })),
+          })),
+        })),
+      };
+    });
+    const db = { client: { rpc: vi.fn(), from: fromMock } as never };
+    const actions = store({
+      claimReceipt: vi.fn(async () => ({ status: 'claimed' as const, claim: ownerClaim })),
+    });
+    const fieldIntake = vi.fn(async () => ({
+      handled: true,
+      outcome: 'completed' as const,
+      intent: 'append_internal_note',
+    }));
+
+    await expect(
+      processSmsInboundActionReceipt(RECEIPT, db.client, actions, fieldIntake),
+    ).resolves.toBe('completed');
+
+    expect(fieldIntake).toHaveBeenCalledWith(ownerClaim, db.client);
+    expect(actions.apply).not.toHaveBeenCalled();
+    expect(actions.complete).not.toHaveBeenCalled();
+  });
+
+  it('routes dedicated sender customer reply to generic store.apply when sender is not owner', async () => {
+    const customerClaim: SmsInboundActionClaim = Object.freeze({
+      ...CLAIM,
+      senderPurpose: 'contractor_dedicated',
+      fromNumber: '+12485550111',
+    });
+    const fromMock = vi.fn((table: string) => {
+      if (table !== 'accounts') throw new Error(`Unexpected table ${table}`);
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            maybeSingle: vi.fn(async () => ({
+              data: { alert_phone: '+18103042061', high_value_sms_enabled: true },
+              error: null,
+            })),
+          })),
+        })),
+      };
+    });
+    const db = admin();
+    (db.client as unknown as Record<string, unknown>).from = fromMock;
+    const actions = store({
+      claimReceipt: vi.fn(async () => ({ status: 'claimed' as const, claim: customerClaim })),
+    });
+    const fieldIntake = vi.fn();
+
+    await expect(
+      processSmsInboundActionReceipt(RECEIPT, db.client, actions, fieldIntake),
+    ).resolves.toBe('completed');
+
+    expect(fieldIntake).not.toHaveBeenCalled();
+    expect(actions.apply).toHaveBeenCalledWith(customerClaim);
+    expect(actions.complete).toHaveBeenCalledWith(customerClaim, CUSTOMER_EVENT, OWNER_EVENT);
+  });
 });

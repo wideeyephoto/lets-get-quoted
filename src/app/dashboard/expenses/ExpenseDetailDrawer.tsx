@@ -234,7 +234,7 @@ export default function ExpenseDetailDrawer({
   // Immediate save for dropdowns
   const handleDropdownChange = (key: keyof DraftState, value: string) => {
     if (!draft) return;
-    let nextDraft = { ...draft, [key]: value };
+    const nextDraft = { ...draft, [key]: value };
 
     // When toggling to/from labor, adjust sensible source default
     if (key === 'type') {
