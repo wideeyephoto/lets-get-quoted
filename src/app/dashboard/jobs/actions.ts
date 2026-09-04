@@ -37,6 +37,7 @@ import {
   saveQuoteItems,
   updateJob,
   updateJobSchedule,
+  type Cost,
   type CostType,
   type JobStatus,
   type QuoteItem,
@@ -977,7 +978,7 @@ export async function readReceiptAction(dataUrl: string): Promise<{ ok: true; re
   return { ok: true, read };
 }
 
-export async function createCostAction(jobId: string | null | undefined, formData: FormData) {
+export async function createCostAction(jobId: string | null | undefined, formData: FormData): Promise<any> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
   const rawJob = formData.get('jobId') ? String(formData.get('jobId')).trim() : (jobId ? String(jobId).trim() : '');
@@ -992,7 +993,7 @@ export async function createCostAction(jobId: string | null | undefined, formDat
   const source = rawSource === 'unspecified' ? 'estimated' : rawSource;
   const receiptUrl = optionalText(formData.get('receiptUrl'));
 
-  let createdCost: { id: string; amount: number; description: string; type: CostType } | null = null;
+  let createdCost: Cost | null = null;
 
   if (type === 'labor') {
     const hours = parseAmount(formData.get('hours'));
@@ -1063,6 +1064,8 @@ export async function createCostAction(jobId: string | null | undefined, formDat
   }
   revalidatePath('/dashboard/expenses');
   revalidatePath('/dashboard/jobs');
+
+  return createdCost!;
 }
 
 export async function createManualJobFeedAction(jobId: string, formData: FormData) {
@@ -1238,16 +1241,25 @@ export async function deleteCostAction(jobId: string | null | undefined, costId:
   revalidatePath('/dashboard/jobs');
 }
 
-export async function updateCostAction(jobId: string | null | undefined, costId: string, formData: FormData) {
+export async function updateCostAction(
+  jobId: string | null | undefined,
+  costId: string,
+  formData: FormData
+): Promise<Cost> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
 
+  const rawJob = formData.has('jobId') ? String(formData.get('jobId')).trim() : (jobId ? String(jobId).trim() : '');
+  const targetJobId = rawJob && rawJob !== 'overhead' ? rawJob : null;
   const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
+
   const type = (formData.get('type') as CostType) || 'material';
   const description = (formData.get('description') ?? '').toString().trim() || 'Cost item';
   const rawSource = normalizeCostSource(formData.get('costSource'));
   const source = rawSource === 'unspecified' ? 'estimated' : rawSource;
   const supplier = optionalText(formData.get('supplier'));
   const receiptUrl = optionalText(formData.get('receiptUrl'));
+
+  let updatedCost: Cost;
 
   if (type === 'labor') {
     const hours = parseAmount(formData.get('hours'));
@@ -1256,7 +1268,8 @@ export async function updateCostAction(jobId: string | null | undefined, costId:
       throw new Error('Labor costs require both hours and an hourly rate greater than 0.');
     }
     const crewId = optionalText(formData.get('crewId'));
-    await updateCost(supabase, accountId, cleanJobId, costId, {
+    updatedCost = await updateCost(supabase, accountId, cleanJobId, costId, {
+      jobId: formData.has('jobId') ? targetJobId : undefined,
       type: 'labor',
       description,
       crewId,
@@ -1271,7 +1284,8 @@ export async function updateCostAction(jobId: string | null | undefined, costId:
     if (amount <= 0) {
       throw new Error('Cost amount must be greater than 0.');
     }
-    await updateCost(supabase, accountId, cleanJobId, costId, {
+    updatedCost = await updateCost(supabase, accountId, cleanJobId, costId, {
+      jobId: formData.has('jobId') ? targetJobId : undefined,
       type,
       description,
       amount,
@@ -1284,8 +1298,13 @@ export async function updateCostAction(jobId: string | null | undefined, costId:
   if (cleanJobId) {
     revalidatePath(`/dashboard/jobs/${cleanJobId}`);
   }
+  if (targetJobId && targetJobId !== cleanJobId) {
+    revalidatePath(`/dashboard/jobs/${targetJobId}`);
+  }
   revalidatePath('/dashboard/expenses');
   revalidatePath('/dashboard/jobs');
+
+  return updatedCost;
 }
 
 // Save the itemized quote from the job-page builder. Items are validated and the

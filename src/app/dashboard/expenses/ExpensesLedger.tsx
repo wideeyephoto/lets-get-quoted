@@ -1,18 +1,15 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import type { ExpenseRow, ExpenseMetrics } from '@/lib/expense-ledger';
-import type { CostType } from '@/lib/jobs';
+import type { Cost, CostType } from '@/lib/jobs';
 import type { CostSource } from '@/lib/cost-truth';
-import ModalDialog, { CloseOnSuccess } from '@/components/modal-dialog';
-import JobExpenseFields from '@/components/job-expense-fields';
+import ExpenseDetailDrawer from './ExpenseDetailDrawer';
 import {
-  readReceiptAction,
   createCostAction,
   deleteCostAction,
-  updateCostAction,
 } from '@/app/dashboard/jobs/actions';
 
 interface Props {
@@ -139,8 +136,26 @@ export default function ExpensesLedger({
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
 
-  // Add modal state - default to General Overhead ("")
-  const [selectedModalJobId, setSelectedModalJobId] = useState<string>('');
+  // Live row state for instant updates and autosave sync
+  const [rows, setRows] = useState<ExpenseRow[]>(initialRows);
+  const [liveTotalCount, setLiveTotalCount] = useState<number>(totalCount);
+
+  useEffect(() => {
+    setRows(initialRows);
+  }, [initialRows]);
+
+  useEffect(() => {
+    setLiveTotalCount(totalCount);
+  }, [totalCount]);
+
+  // Quick Add state (first 3 fields visible: Job, Item, Cost)
+  const [quickJobId, setQuickJobId] = useState<string>('');
+  const [quickItem, setQuickItem] = useState<string>('');
+  const [quickCost, setQuickCost] = useState<string>('');
+  const [isQuickAdding, setIsQuickAdding] = useState<boolean>(false);
+
+  // Active drawer for full details & autosaving
+  const [activeDrawerExpense, setActiveDrawerExpense] = useState<ExpenseRow | null>(null);
 
   // Available unique suppliers
   const suppliers = useMemo(() => {
@@ -148,13 +163,13 @@ export default function ExpensesLedger({
       return availableSuppliers;
     }
     const set = new Set<string>();
-    for (const r of initialRows) {
+    for (const r of rows) {
       if (r.supplier && r.supplier.trim()) {
         set.add(r.supplier.trim());
       }
     }
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [availableSuppliers, initialRows]);
+  }, [availableSuppliers, rows]);
 
   // Date preset handler aligned to account timezone
   const handleDatePreset = (preset: string) => {
@@ -210,7 +225,7 @@ export default function ExpensesLedger({
 
   // Filtered rows
   const filteredRows = useMemo(() => {
-    return initialRows.filter((row) => {
+    return rows.filter((row) => {
       if (selectedCategory !== 'all') {
         if (selectedCategory === 'material') {
           if (row.type !== 'material' && row.type !== 'receipt') return false;
@@ -259,7 +274,7 @@ export default function ExpensesLedger({
 
       return true;
     });
-  }, [initialRows, query, selectedCategory, selectedSource, selectedJobId, selectedSupplier, dateFrom, dateTo, accountTimeZone]);
+  }, [rows, query, selectedCategory, selectedSource, selectedJobId, selectedSupplier, dateFrom, dateTo, accountTimeZone]);
 
   // Sorted rows
   const sortedRows = useMemo(() => {
@@ -365,9 +380,71 @@ export default function ExpensesLedger({
     }
   };
 
+  const handleQuickAdd = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const item = quickItem.trim();
+    const amt = Number(quickCost);
+    if (!item || isNaN(amt) || amt <= 0) return;
+
+    setIsQuickAdding(true);
+    try {
+      const formData = new FormData();
+      formData.set('jobId', quickJobId || 'overhead');
+      formData.set('type', 'material');
+      formData.set('description', item);
+      formData.set('amount', quickCost.trim());
+      formData.set('costSource', 'estimated');
+
+      const targetJob = quickJobId && quickJobId !== 'overhead' ? quickJobId : null;
+      const created = (await createCostAction(targetJob, formData)) as Cost;
+
+      const matchedJob = jobs.find((j) => j.id === quickJobId);
+      const newRow: ExpenseRow = {
+        ...created,
+        job_id: targetJob,
+        job_ref: matchedJob?.ref || null,
+        job_client_name: matchedJob?.clientName || null,
+        job_status: matchedJob?.status || null,
+      };
+
+      setRows((prev) => [newRow, ...prev.filter((r) => r.id !== newRow.id)]);
+      setLiveTotalCount((c) => c + 1);
+      setQuickItem('');
+      setQuickCost('');
+      setActiveDrawerExpense(newRow);
+
+      router.refresh();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Failed to add expense');
+    } finally {
+      setIsQuickAdding(false);
+    }
+  };
+
+  const handleUpdateRow = (updated: ExpenseRow) => {
+    setRows((prev) => prev.map((r) => (r.id === updated.id ? updated : r)));
+    if (activeDrawerExpense?.id === updated.id) {
+      setActiveDrawerExpense(updated);
+    }
+  };
+
+  const handleDeleteRow = (deletedId: string) => {
+    setRows((prev) => prev.filter((r) => r.id !== deletedId));
+    setLiveTotalCount((c) => Math.max(0, c - 1));
+    if (activeDrawerExpense?.id === deletedId) {
+      setActiveDrawerExpense(null);
+    }
+  };
+
   const handleDelete = async (row: ExpenseRow) => {
     const confirmed = window.confirm(`Delete "${row.description || 'this expense'}" ($${(Number(row.amount) || 0).toFixed(2)})?`);
     if (!confirmed) return;
+
+    setRows((prev) => prev.filter((r) => r.id !== row.id));
+    setLiveTotalCount((c) => Math.max(0, c - 1));
+    if (activeDrawerExpense?.id === row.id) {
+      setActiveDrawerExpense(null);
+    }
 
     startTransition(async () => {
       await deleteCostAction(row.job_id, row.id);
@@ -519,53 +596,6 @@ export default function ExpensesLedger({
             <a href={exportUrl} className="btn secondary" download style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
               <span>⬇ Export CSV</span>
             </a>
-
-            {canManageCosts && (
-              <ModalDialog
-                triggerClassName="btn primary"
-                triggerLabel="+ Add Expense"
-                title="Log New Expense"
-                onSuccess={() => router.refresh()}
-              >
-                <form
-                  action={async (formData) => {
-                    const rawJob = formData.get('jobId') ? String(formData.get('jobId')).trim() : selectedModalJobId;
-                    const targetJob = rawJob && rawJob !== 'overhead' ? rawJob : null;
-                    await createCostAction(targetJob, formData);
-                  }}
-                  className="cost-form"
-                >
-                  <CloseOnSuccess />
-                  <div className="field">
-                    <label htmlFor="modal-job-select">Select Job or Overhead</label>
-                    <select
-                      id="modal-job-select"
-                      name="jobId"
-                      value={selectedModalJobId}
-                      onChange={(e) => setSelectedModalJobId(e.target.value)}
-                    >
-                      <option value="">General Overhead (Rent, Truck, Tools, Fuel)</option>
-                      {jobs.map((j) => (
-                        <option key={j.id} value={j.id}>
-                          {j.ref} — {j.clientName} ({j.status})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <JobExpenseFields
-                    crew={crew as unknown as Parameters<typeof JobExpenseFields>[0]['crew']}
-                    onReadReceipt={readReceiptAction}
-                  />
-
-                  <div className="modal-actions" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                    <button type="submit" className="btn primary">
-                      Save Expense
-                    </button>
-                  </div>
-                </form>
-              </ModalDialog>
-            )}
           </div>
         </div>
 
@@ -663,9 +693,125 @@ export default function ExpensesLedger({
 
       {/* Expenses Table */}
       <section className="panel workspace-section-card" style={{ padding: 0, overflow: 'hidden' }}>
+        {/* Quick Add Form: Job, Item, Cost */}
+        {canManageCosts && (
+          <form
+            onSubmit={handleQuickAdd}
+            style={{
+              padding: '0.85rem 1.25rem',
+              borderBottom: '1px solid var(--line)',
+              background: 'rgba(var(--tint), 0.03)',
+              display: 'flex',
+              alignItems: 'flex-end',
+              gap: '0.75rem',
+              flexWrap: 'wrap',
+            }}
+          >
+            <div style={{ flex: '1 1 200px', minWidth: '170px' }}>
+              <label htmlFor="quick-job-select" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '0.3rem' }}>
+                Job
+              </label>
+              <select
+                id="quick-job-select"
+                value={quickJobId}
+                onChange={(e) => setQuickJobId(e.target.value)}
+                style={{
+                  width: '100%',
+                  padding: '0.48rem 0.65rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--card-bg, rgba(255,255,255,0.05))',
+                  color: 'inherit',
+                  fontSize: '0.85rem',
+                }}
+              >
+                <option value="">General Overhead (No Job)</option>
+                {jobs.map((j) => (
+                  <option key={j.id} value={j.id}>
+                    {j.ref} — {j.clientName} ({j.status})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ flex: '2 1 240px', minWidth: '180px' }}>
+              <label htmlFor="quick-item-input" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '0.3rem' }}>
+                Item / Description
+              </label>
+              <input
+                id="quick-item-input"
+                type="text"
+                value={quickItem}
+                onChange={(e) => setQuickItem(e.target.value)}
+                placeholder="e.g. 2x4 Lumber, Dump fee, Tools..."
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.48rem 0.65rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--card-bg, rgba(255,255,255,0.05))',
+                  color: 'inherit',
+                  fontSize: '0.85rem',
+                }}
+              />
+            </div>
+
+            <div style={{ flex: '0 1 140px', minWidth: '110px' }}>
+              <label htmlFor="quick-cost-input" style={{ display: 'block', fontSize: '0.75rem', fontWeight: 600, color: 'var(--muted)', marginBottom: '0.3rem' }}>
+                Cost ($)
+              </label>
+              <input
+                id="quick-cost-input"
+                type="number"
+                step="0.01"
+                min="0.01"
+                value={quickCost}
+                onChange={(e) => setQuickCost(e.target.value)}
+                placeholder="0.00"
+                required
+                style={{
+                  width: '100%',
+                  padding: '0.48rem 0.65rem',
+                  borderRadius: '6px',
+                  border: '1px solid var(--line)',
+                  background: 'var(--card-bg, rgba(255,255,255,0.05))',
+                  color: 'inherit',
+                  fontSize: '0.85rem',
+                }}
+              />
+            </div>
+
+            <div>
+              <button
+                type="submit"
+                className="btn primary"
+                disabled={isQuickAdding || !quickItem.trim() || !quickCost || Number(quickCost) <= 0}
+                style={{
+                  padding: '0.48rem 1rem',
+                  fontSize: '0.85rem',
+                  whiteSpace: 'nowrap',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                }}
+              >
+                {isQuickAdding ? (
+                  <>
+                    <span className="spinner" style={{ width: '12px', height: '12px' }} />
+                    <span>Adding…</span>
+                  </>
+                ) : (
+                  <span>+ Add Expense</span>
+                )}
+              </button>
+            </div>
+          </form>
+        )}
+
         <div style={{ padding: '0.85rem 1.25rem', borderBottom: '1px solid var(--line)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'rgba(var(--tint), 0.02)', flexWrap: 'wrap', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.85rem', color: 'var(--muted)' }}>
-            Showing <strong>{sortedRows.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, sortedRows.length)}</strong> of <strong>{sortedRows.length}</strong> matching ({totalCount} total)
+            Showing <strong>{sortedRows.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, sortedRows.length)}</strong> of <strong>{sortedRows.length}</strong> matching ({liveTotalCount} total)
           </span>
           <span style={{ fontSize: '0.85rem', fontWeight: 650 }}>
             Filtered Total: <strong style={{ color: '#ffd166' }}>{formatMoneyExact(filteredTotal)}</strong>
@@ -726,13 +872,26 @@ export default function ExpensesLedger({
                   const totalCost = (Number(row.amount) || 0) + (Number(row.burden_amount) || 0);
 
                   return (
-                    <tr key={row.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                    <tr
+                      key={row.id}
+                      style={{
+                        borderBottom: '1px solid var(--line)',
+                        cursor: canManageCosts ? 'pointer' : 'default',
+                      }}
+                      onClick={() => {
+                        if (canManageCosts) setActiveDrawerExpense(row);
+                      }}
+                    >
                       <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap', color: 'var(--muted)' }}>
                         {formatDate(row.created_at, accountTimeZone)}
                       </td>
                       <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap' }}>
                         {row.job_id ? (
-                          <Link href={`/dashboard/jobs/${row.job_id}?open=costs`} style={{ fontWeight: 600, textDecoration: 'none', color: '#60a5fa' }}>
+                          <Link
+                            href={`/dashboard/jobs/${row.job_id}?open=costs`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ fontWeight: 600, textDecoration: 'none', color: '#60a5fa' }}
+                          >
                             {row.job_ref || 'Job'}
                             <small style={{ display: 'block', color: 'var(--muted)', fontWeight: 400 }}>
                               {row.job_client_name || ''}
@@ -781,6 +940,7 @@ export default function ExpensesLedger({
                               href={row.receipt_url!}
                               target="_blank"
                               rel="noopener noreferrer"
+                              onClick={(e) => e.stopPropagation()}
                               style={{ color: '#60a5fa', textDecoration: 'none', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.2rem' }}
                             >
                               <span>🧾 View Receipt ↗</span>
@@ -795,102 +955,20 @@ export default function ExpensesLedger({
                         {formatMoneyExact(totalCost)}
                       </td>
                       {canManageCosts && (
-                        <td style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                        <td
+                          style={{ padding: '0.75rem 1rem', whiteSpace: 'nowrap', textAlign: 'center' }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
                           <div style={{ display: 'inline-flex', gap: '0.35rem', alignItems: 'center' }}>
-                            <ModalDialog
-                              triggerClassName="icon-btn"
-                              triggerLabel="✎"
-                              title={`Edit Expense: ${row.description || 'Item'}`}
-                              onSuccess={() => router.refresh()}
+                            <button
+                              type="button"
+                              className="icon-btn"
+                              title="Edit expense details"
+                              onClick={() => setActiveDrawerExpense(row)}
+                              style={{ cursor: 'pointer', background: 'none', border: 'none', fontSize: '0.95rem' }}
                             >
-                              <form
-                                action={async (formData) => {
-                                  await updateCostAction(row.job_id, row.id, formData);
-                                }}
-                                className="cost-form"
-                              >
-                                <CloseOnSuccess />
-                                <div className="field">
-                                  <label>Job Assignment</label>
-                                  <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)' }}>
-                                    {row.job_id ? `${row.job_ref || 'Job'} — ${row.job_client_name || ''}` : 'General Overhead (No Job)'}
-                                  </p>
-                                </div>
-
-                                <div className="field">
-                                  <label htmlFor={`edit-cost-type-${row.id}`}>Category</label>
-                                  <select id={`edit-cost-type-${row.id}`} name="type" defaultValue={row.type}>
-                                    <option value="material">Material</option>
-                                    <option value="labor">Labor</option>
-                                    <option value="sub">Subcontractor</option>
-                                    <option value="receipt">Receipt</option>
-                                    <option value="other">Other</option>
-                                  </select>
-                                </div>
-
-                                <div className="field">
-                                  <label htmlFor={`edit-cost-desc-${row.id}`}>Description</label>
-                                  <input
-                                    id={`edit-cost-desc-${row.id}`}
-                                    type="text"
-                                    name="description"
-                                    defaultValue={row.description}
-                                    required
-                                  />
-                                </div>
-
-                                <div className="field">
-                                  <label htmlFor={`edit-cost-supplier-${row.id}`}>Supplier / Vendor</label>
-                                  <input
-                                    id={`edit-cost-supplier-${row.id}`}
-                                    type="text"
-                                    name="supplier"
-                                    defaultValue={row.supplier || ''}
-                                  />
-                                </div>
-
-                                <div className="field">
-                                  <label htmlFor={`edit-cost-amount-${row.id}`}>Amount ($)</label>
-                                  <input
-                                    id={`edit-cost-amount-${row.id}`}
-                                    type="number"
-                                    step="0.01"
-                                    min="0.01"
-                                    name="amount"
-                                    defaultValue={row.amount}
-                                    required
-                                  />
-                                </div>
-
-                                <div className="field">
-                                  <label htmlFor={`edit-cost-receipt-${row.id}`}>Receipt / Invoice Link (URL)</label>
-                                  <input
-                                    id={`edit-cost-receipt-${row.id}`}
-                                    type="url"
-                                    name="receiptUrl"
-                                    placeholder="https://..."
-                                    defaultValue={row.receipt_url || ''}
-                                  />
-                                </div>
-
-                                <div className="field">
-                                  <label htmlFor={`edit-cost-source-${row.id}`}>Provenance Source</label>
-                                  <select id={`edit-cost-source-${row.id}`} name="costSource" defaultValue={row.cost_source}>
-                                    <option value="receipt">Receipt Photo</option>
-                                    <option value="supplier_invoice">Supplier Invoice</option>
-                                    <option value="clocked">Clocked Time</option>
-                                    <option value="price_book">Price Book</option>
-                                    <option value="estimated">Estimated Recollection</option>
-                                  </select>
-                                </div>
-
-                                <div className="modal-actions" style={{ marginTop: '1rem', display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                                  <button type="submit" className="btn primary">
-                                    Update Expense
-                                  </button>
-                                </div>
-                              </form>
-                            </ModalDialog>
+                              ✎
+                            </button>
 
                             <button
                               type="button"
@@ -942,6 +1020,19 @@ export default function ExpensesLedger({
           </div>
         )}
       </section>
+
+      {/* Slide-over Expense Detail Drawer */}
+      <ExpenseDetailDrawer
+        expense={activeDrawerExpense}
+        onClose={() => setActiveDrawerExpense(null)}
+        onUpdate={handleUpdateRow}
+        onDelete={handleDeleteRow}
+        jobs={jobs}
+        crew={crew}
+        suppliers={suppliers}
+        accountTimeZone={accountTimeZone}
+        canManageCosts={canManageCosts}
+      />
     </div>
   );
 }

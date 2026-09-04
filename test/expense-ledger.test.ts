@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { generateExpensesCsv, type ExpenseRow, type ExpenseMetrics } from '@/lib/expense-ledger';
+import { updateCost } from '@/lib/jobs';
 
 const SAMPLE_EXPENSES: ExpenseRow[] = [
   {
@@ -423,5 +424,69 @@ describe('listAccountExpenses & getExpenseSummaryMetrics unit tests', () => {
     expect(metrics.materialsTotal).toBe(10000);
     expect(metrics.subcontractorsTotal).toBe(10000);
     expect(metrics.totalSpend).toBe(20000);
+  });
+
+  it('allows reassigning an expense from overhead to a job and vice versa', async () => {
+    let updatedPayload: any = null;
+    const mockSupabase: any = {
+      from: () => ({
+        select: () => ({
+          eq: () => ({
+            eq: () => ({
+              single: () =>
+                Promise.resolve({
+                  data: {
+                    id: 'cost-1',
+                    account_id: 'acc-1',
+                    job_id: null,
+                    type: 'material',
+                    category: 'Materials',
+                    description: '2x4 Lumber',
+                    amount: 100,
+                    cost_source: 'receipt',
+                  },
+                  error: null,
+                }),
+            }),
+          }),
+        }),
+        update: (payload: any) => {
+          updatedPayload = payload;
+          return {
+            eq: () => ({
+              eq: () => ({
+                select: () => ({
+                  single: () =>
+                    Promise.resolve({
+                      data: {
+                        id: 'cost-1',
+                        account_id: 'acc-1',
+                        ...payload,
+                      },
+                      error: null,
+                    }),
+                }),
+              }),
+            }),
+          };
+        },
+      }),
+    };
+
+    // Reassign to job-100
+    await updateCost(mockSupabase, 'acc-1', null, 'cost-1', {
+      jobId: 'job-100',
+      description: '2x4 Lumber',
+      amount: 100,
+    });
+    expect(updatedPayload.job_id).toBe('job-100');
+
+    // Reassign to overhead ('overhead' or null or '')
+    await updateCost(mockSupabase, 'acc-1', null, 'cost-1', {
+      jobId: 'overhead',
+      description: '2x4 Lumber',
+      amount: 100,
+    });
+    expect(updatedPayload.job_id).toBeNull();
   });
 });

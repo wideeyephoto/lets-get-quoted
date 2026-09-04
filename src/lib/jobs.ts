@@ -1340,6 +1340,7 @@ export async function updateCost(
   jobId: string | null | undefined,
   costId: string,
   input: {
+    jobId?: string | null;
     type?: CostType;
     category?: string;
     description?: string;
@@ -1381,6 +1382,11 @@ export async function updateCost(
     receipt_url: receiptUrl,
   };
 
+  if (input.jobId !== undefined) {
+    const newJobId = input.jobId && input.jobId.trim() && input.jobId !== 'overhead' ? input.jobId.trim() : null;
+    updates.job_id = newJobId;
+  }
+
   if (type === 'labor') {
     const hours = input.hours !== undefined ? (Number(input.hours) || 0) : (Number(existing.hours) || 0);
     const rate = input.rate !== undefined ? (Number(input.rate) || 0) : (Number(existing.rate) || 0);
@@ -1392,6 +1398,14 @@ export async function updateCost(
     updates.amount = wages;
     updates.burden_amount = burden;
     updates.crew_id = crewId ?? null;
+    if (crewId && crewId !== existing.crew_id) {
+      const crewSnapshot = await supabase.from('crew_members').select('name, role_label').eq('account_id', accountId).eq('id', crewId).maybeSingle();
+      updates.crew_name = crewSnapshot?.data?.name ?? null;
+      updates.crew_role_label = crewSnapshot?.data?.role_label ?? null;
+    } else if (crewId === null) {
+      updates.crew_name = null;
+      updates.crew_role_label = null;
+    }
   } else {
     if (input.amount !== undefined) {
       updates.amount = input.amount;
@@ -1399,6 +1413,9 @@ export async function updateCost(
     }
     updates.hours = null;
     updates.rate = null;
+    updates.crew_id = null;
+    updates.crew_name = null;
+    updates.crew_role_label = null;
   }
 
   const { data, error } = await supabase
