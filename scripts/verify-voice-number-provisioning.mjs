@@ -351,7 +351,7 @@ try {
     'select state,consumed_operation_id from public.voice_number_purchase_authorizations where id=$1',
     [authorization.authorization_id],
   ));
-  check('purchase claim atomically consumes its one-time authorization',
+  check('purchase claim consumes its one-time authorization in a single transaction',
     purchase.claim_status === 'claimed'
       && authState.state === 'consumed'
       && authState.consumed_operation_id === purchase.operation_id);

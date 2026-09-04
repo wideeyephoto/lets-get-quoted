@@ -88,7 +88,7 @@ describe('shared-number notice wiring', () => {
     expect(fn).toContain('consent?.opted_out_at != null');
   });
 
-  it('claims atomically before returning a Message verb', () => {
+  it('claims in a single transaction before returning a Message verb', () => {
     // Otherwise a provider retry of the same receipt texts the sender twice.
     const fn = route.slice(route.indexOf('async function sharedNoticeTwiml'));
     expect(fn).toContain('record_sms_shared_notice_reply');

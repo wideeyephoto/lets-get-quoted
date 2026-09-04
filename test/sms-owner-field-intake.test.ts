@@ -274,7 +274,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     expect(mockGenerateContent).not.toHaveBeenCalled();
   });
 
-  it('atomically completes no_credits without Gemini or a domain action', async () => {
+  it('completes no_credits without Gemini or a domain action in a single transaction', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const taskId = '22222222-2222-4222-8222-222222222222';
     const claimToken = '33333333-3333-4333-8333-333333333333';
@@ -531,7 +531,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     });
   });
 
-  it('atomically finalizes an explicit Gemini no_action result', async () => {
+  it('finalizes an explicit Gemini no_action result in a single transaction', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const taskId = '22222222-2222-4222-8222-222222222222';
     const claim: SmsInboundActionClaim = {
@@ -584,7 +584,7 @@ describe('Owner Field Intake Claim Worker (Async & Atomic)', () => {
     }));
   });
 
-  it('atomically finalizes a missing Gemini function call as no_action', async () => {
+  it('finalizes a missing Gemini function call as no_action in a single transaction', async () => {
     const accountId = '11111111-1111-4111-8111-111111111111';
     const taskId = '22222222-2222-4222-8222-222222222222';
     const claimToken = '33333333-3333-4333-8333-333333333333';

@@ -278,7 +278,7 @@ async function processClaim(
         throw new Error(fieldResult.errorMessage || 'Field intake task was not completed.');
       }
       // apply_owner_field_action owns both the domain mutation/confirmation and
-      // the durable task completion atomically. Calling the generic completion
+      // the durable task completion in a single transaction. Calling the generic completion
       // RPC here would use a claim token that the field RPC has already cleared.
       return;
     }

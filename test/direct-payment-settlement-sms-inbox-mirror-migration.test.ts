@@ -56,7 +56,7 @@ describe('dark direct payment settlement SMS inbox mirror migration', () => {
     expect(compact).not.toContain('create policy sms_messages');
   });
 
-  it('atomically mirrors a provider success before task or attempt completion', () => {
+  it('mirrors a provider success before task or attempt completion in a single transaction', () => {
     const complete = functionDefinition('complete_direct_payment_settlement_sms');
     const eventUpdate = complete.indexOf('update public.sms_events s');
     const mirrorInsert = complete.indexOf('insert into public.sms_messages');

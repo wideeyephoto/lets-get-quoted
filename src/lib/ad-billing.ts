@@ -483,7 +483,7 @@ export async function createAdBudgetBillingPortalSession(params: {
 }
 
 /**
- * Atomically credits an account's ad wallet balance and records the operation
+ * Credits an account's ad wallet balance and records the operation in a single transaction
  * to prevent double-crediting or race conditions.
  */
 export async function atomicCreditAdWalletState(
@@ -649,7 +649,7 @@ export async function atomicCreditAdWalletState(
 }
 
 /**
- * Atomically deducts ad spend from wallet balance, updating daily history and spend metrics.
+ * Deducts ad spend from wallet balance, updating daily history and spend metrics in a single transaction.
  */
 export async function atomicDebitAdWalletState(
   admin: SupabaseClient,
@@ -1421,7 +1421,7 @@ export async function processAllWalletAutoRefills(admin: SupabaseClient): Promis
 
 /**
  * Records an ad spend usage/consumption event for an account, decrementing
- * the contractor's advertising balance atomically and checking whether an auto-refill is triggered.
+ * the contractor's advertising balance in a single transaction and checking whether an auto-refill is triggered.
  */
 export async function recordAdSpendUsage(params: {
   admin: SupabaseClient;

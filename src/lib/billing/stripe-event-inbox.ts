@@ -381,7 +381,7 @@ function defaultDependencies(): StripeEventInboxDependencies {
 
 /**
  * Verifies the raw Stripe signature, validates/classifies the Event, redacts it,
- * then asks Postgres to bind and insert/replay it atomically.
+ * then asks Postgres to bind and insert/replay it in a single transaction.
  */
 export async function ingestStripeEventInboxDelivery(
   delivery: StripeEventInboxDelivery,

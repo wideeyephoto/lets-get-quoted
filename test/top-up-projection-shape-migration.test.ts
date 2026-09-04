@@ -125,7 +125,7 @@ describe('the top-up projection shape', () => {
     expect(definition).toContain('p_expires_at => null');
   });
 
-  it('takes the same advisory lock the grant does, so a replay reads and writes atomically', () => {
+  it('takes the same advisory lock the grant does, so a replay reads and writes in a single transaction', () => {
     const definition = functionDefinition('project_stripe_platform_top_up_event');
     expect(definition).toContain('pg_catalog.pg_advisory_xact_lock');
     expect(definition).toContain('pg_catalog.hashtextextended(v_account::text || \':\' || v_resource, 0)');

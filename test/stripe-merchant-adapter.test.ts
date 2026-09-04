@@ -559,7 +559,7 @@ describe('Merchant readiness evidence', () => {
 });
 
 describe('dark-launched Merchant orchestration', () => {
-  it('claims, submits, creates, and atomically completes in order', async () => {
+  it('claims, submits, creates, and safely completes in order', async () => {
     const harness = provisioningHarness();
     const result = await provisionMerchantAccount(UNUSED_ADMIN, {
       workspaceId: WORKSPACE_ID,

@@ -898,7 +898,7 @@ try {
        join public.sms_delivery_tasks d on d.sms_event_id=e.id
       where t.id=$1`, [queuedDirectTaskId],
   )).rows[0];
-  check('direct-payment settlement atomically hands SMS to generic durable delivery',
+  check('direct-payment settlement hands SMS to generic durable delivery in a single transaction',
     queuedDirectResult?.dispatch_status === 'queued'
       && queuedDirectResult?.sms_event_id === queuedDirectState?.sms_event_id
       && queuedDirectState?.task_state === 'completed'
@@ -1274,7 +1274,7 @@ try {
       where e.account_id=$1 and e.idempotency_key=$2`,
     [accountId, underfundedKey],
   )).rows[0];
-  check('overage settlement refuses missing or underfunded aggregate evidence atomically',
+  check('overage settlement refuses missing or underfunded aggregate evidence safely',
     missingAggregateCode === '55000'
       && Number(missingAggregateState?.units) === 10
       && Number(missingAggregateState?.millicents) === 1000

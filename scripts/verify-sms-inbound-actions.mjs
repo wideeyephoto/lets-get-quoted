@@ -739,7 +739,7 @@ try {
     'select count(*)::int as count from public.sms_inbound_action_tasks where webhook_receipt_id=$1',
     [estimateReceipt.webhook_receipt_id],
   ));
-  check('routed receipt atomically creates one action task', taskCreated.count === 1);
+  check('routed receipt creates one action task in a single transaction', taskCreated.count === 1);
 
   const claim = one(await client.query(
     'select * from public.claim_sms_inbound_action($1)', [estimateReceipt.webhook_receipt_id],
@@ -939,7 +939,7 @@ try {
        from public.subcontractor_requests r join public.subcontractor_offers o on o.request_id=r.id
       where r.id=$1`, [subRequest],
   ));
-  check('one exactly-bound subcontractor YES atomically claims and assigns',
+  check('one exactly-bound subcontractor YES claims and assigns in a single transaction',
     subOutcome.action_kind === 'subcontractor' && subState.status === 'claimed'
       && subState.claimed_offer_id === subOffer && subState.offer_status === 'accepted'
       && subState.won === true && subState.assignments === 1,

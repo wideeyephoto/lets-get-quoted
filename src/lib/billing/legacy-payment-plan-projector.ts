@@ -10,7 +10,7 @@ import { createAdminClient } from '@/lib/auth';
  * No route, webhook, payoff action, or cron imports this module. The caller must
  * already have persisted verified legacy destination-payment truth. This adapter
  * supplies only the payment identity and optional saved-card evidence; the RPC
- * locks, derives, verifies, and commits every plan-side effect atomically.
+ * locks, derives, verifies, and commits every plan-side effect in a single transaction.
  */
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

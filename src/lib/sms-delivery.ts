@@ -83,7 +83,7 @@ export function newSmsIdempotencyKey(messageKind: string): string {
 }
 
 /**
- * Atomically records delivery intent and its one queue task.
+ * Records delivery intent and its one queue task in a single transaction.
  *
  * Domain producers should pass a stable idempotency key derived from the
  * business transition. The generated fallback is reserved for an intentional

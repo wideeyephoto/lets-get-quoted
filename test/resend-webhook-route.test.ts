@@ -201,7 +201,7 @@ describe('Resend webhook database ordering guard', () => {
     expect(migration).toContain('email_events_status_check');
   });
 
-  it('atomically rejects older, lower-rank, and conflicting terminal updates', () => {
+  it('rejects older, lower-rank, and conflicting terminal updates in one step', () => {
     expect(migration).toContain('before update of status, occurred_at');
     expect(migration).toContain('new.occurred_at < old.occurred_at');
     expect(migration).toContain('v_new_rank < v_old_rank');

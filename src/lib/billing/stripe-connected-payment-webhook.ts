@@ -65,8 +65,8 @@ function usesAnotherEndpointSecret(
  *
  * The endpoint declares `connected_payment` itself; no request field or Stripe
  * metadata can choose the charge model. The inbox then requires event.account
- * and atomically binds that Merchant account plus the event's livemode to one
- * workspace before persisting the minimized receipt. A future projector must
+ * and binds that Merchant account plus the event's livemode to one
+ * workspace in a single transaction before persisting the minimized receipt. A future projector must
  * still retrieve and correlate the connected-account object before changing
  * payment state.
  */

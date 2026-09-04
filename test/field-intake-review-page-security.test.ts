@@ -473,7 +473,8 @@ describe('field intake result UI', () => {
       }],
     }));
 
-    expect(html).toContain('already applied atomically');
+    expect(html).toContain('already applied');
+    expect(html).not.toContain('atomically');
     expect(html).toContain(`/dashboard/jobs/${TARGET_ID}`);
     expect(html).not.toContain('Approve All Inputs');
     expect(html).not.toContain('Undo');

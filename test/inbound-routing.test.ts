@@ -209,7 +209,7 @@ describe('strict tenant routing contract', () => {
 
     // Each exception gates its OWN egress. A Message verb is an outbound text,
     // so it answers to the kill switch, canary allow-list and lane gates like
-    // the durable worker; and it is claimed atomically against the receipt, so
+    // the durable worker; and it is claimed in a single transaction against the receipt, so
     // a provider retry cannot ask the carrier to send the same text twice.
     for (const name of EXCEPTIONS) {
       const start = inboundRoute.indexOf(`function ${name}(`);
@@ -217,7 +217,7 @@ describe('strict tenant routing contract', () => {
       const next = inboundRoute.slice(start + 1).search(/\n(?:export\s+)?(?:async\s+)?function\s/);
       const body = inboundRoute.slice(start, next === -1 ? undefined : start + 1 + next);
       expect(body, `${name}() does not check lane suppression`).toContain('outboundSmsLaneSuppression(');
-      expect(body, `${name}() does not claim its egress atomically`).toMatch(/rpc\('record_sms_[a-z_]+reply/);
+      expect(body, `${name}() does not claim its egress in a single transaction`).toMatch(/rpc\('record_sms_[a-z_]+reply/);
       expect(body, `${name}() does not hash the body it claims`)
         .toContain("createHash('sha256').update(responseBody, 'utf8')");
     }

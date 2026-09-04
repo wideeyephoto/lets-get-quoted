@@ -20,7 +20,7 @@ import {
  *
  * No route or active payment caller imports this module. The database owns the
  * claim/fingerprint/replay ledger; this process only contacts Stripe to create
- * after it receives a claim token and atomically moves that claim to `submitted`.
+ * after it receives a claim token and moves that claim to `submitted` in one step.
  */
 
 const CHECKOUT_SESSION_ID_PATTERN = /^cs_(?:test|live)_[A-Za-z0-9_]+$/;

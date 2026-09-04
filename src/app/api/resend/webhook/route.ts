@@ -155,7 +155,7 @@ export async function POST(request: Request) {
 
     // Upsert keyed by provider_id. Resend is at-least-once and explicitly does
     // not guarantee delivery order, so the database trigger installed with
-    // this projector rejects an older/lower lifecycle state atomically. Doing
+    // this projector rejects an older/lower lifecycle state in one step. Doing
     // that in SQL also closes the race between two concurrent webhook calls.
     const { error } = await admin.from('email_events').upsert(
       {

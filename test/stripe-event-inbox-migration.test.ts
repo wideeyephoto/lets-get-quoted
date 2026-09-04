@@ -63,7 +63,7 @@ describe('Stripe event inbox migration', () => {
     expect(compact).not.toContain('p_payload_sha256');
   });
 
-  it('atomically resolves exactly one account+mode Merchant mapping', () => {
+  it('resolves exactly one account+mode Merchant mapping in a single transaction', () => {
     expect(compact).toContain('ingest_stripe_event_inbox');
     expect(compact).toContain('a.stripe_merchant_account_id = p_provider_account_id');
     expect(compact).toContain('a.merchant_livemode = p_livemode');

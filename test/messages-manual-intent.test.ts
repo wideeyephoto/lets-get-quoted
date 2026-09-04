@@ -47,7 +47,7 @@ describe('manual Messages producer identity', () => {
     expect(compose).toContain('No contacts currently have recorded SMS consent');
   });
 
-  it('hides arbitrary URL threads and atomically authorizes real replies', () => {
+  it('hides arbitrary URL threads and safely authorizes real replies', () => {
     expect(page).toContain('const knownThread = messagesAvailable && messages.length > 0');
     expect(page).toContain('customerMessagingReady && knownThread');
     expect(page).toContain("messageRead.kind === 'ready'");

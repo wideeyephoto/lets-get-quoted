@@ -87,7 +87,7 @@ describe('durable SMS delivery foundation migration', () => {
     expect(definition('prevent_sms_delivery_attempt_mutation')).toContain('attempts are append-only');
   });
 
-  it('atomically creates an event and task and rejects idempotency drift', () => {
+  it('creates an event and task in a single transaction and rejects idempotency drift', () => {
     const enqueue = definition('enqueue_sms_delivery');
     expect(enqueue).toContain('insert into public.sms_events');
     expect(enqueue).toContain('on conflict (idempotency_key) where idempotency_key is not null do nothing');

@@ -139,7 +139,7 @@ export async function handleWeatherRescheduleInboundReply(
   const proposedDate = meta.proposedDate as string;
   const oldDate = targetJob.scheduled_for || 'unscheduled';
 
-  // Atomically shift scheduled_for and mark appointment_confirmed_at
+  // Shift scheduled_for and mark appointment_confirmed_at in a single update
   const nowIso = new Date().toISOString();
   const { error: updateErr } = await admin
     .from('jobs')

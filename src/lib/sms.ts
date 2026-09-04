@@ -946,7 +946,7 @@ export async function hasCurrentSmsConsent(accountId: string, phone: string): Pr
     && !base.opted_out_at;
 }
 
-// Atomically establishes the approved audience scope for an insert-if-absent
+// Establishes the approved audience scope in one step for an insert-if-absent
 // baseline. The DB boundary never overwrites STOP and still adds customer scope
 // when a portal/call request shares a phone with an older crew/owner row.
 // Storage failures throw so callers about to enqueue fail honestly; legacy

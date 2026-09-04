@@ -18,3 +18,6 @@ After changing code:
 - **Internal Concept Only**: "Sparky" is an in-app and marketing conceptual AI assistant persona for contractors ("Text Sparky from the truck"). Contact cards (.vcf) are named `[Business Name] Field Hotline`.
 - **100% White-Labeled**: Homeowners and external clients must never see or hear the name "Sparky". All customer-facing messages and portals use the contractor's business name.
 
+## Terminology & Style Invariants
+
+- **Do Not Use the Term "atomically"**: Never use the term "atomically" anywhere in conversation, documentation, UI copy, code comments, error messages, or commit messages. Use clear alternative phrasing (such as "in a single transaction", "in one step", "all-or-nothing", or describe the concrete mechanism directly).

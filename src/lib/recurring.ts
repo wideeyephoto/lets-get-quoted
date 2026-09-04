@@ -859,14 +859,14 @@ export async function removeFuturePlanVisits(
 async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, plan: RecurringPlan): Promise<{ outcome: ChargeOutcome; jobId: string }> {
   const dateKey = plan.next_run_date;
 
-  // CLAIM this visit atomically: advance the cadence ONLY while it's still on
+  // CLAIM this visit in one step: advance the cadence ONLY while it's still on
   // dateKey. If a concurrent cron run (or an owner "run now") already advanced
   // it, 0 rows change and we bail — so a plan can never spawn two jobs / two
   // payment rows for the same visit (the Stripe idempotency key dedupes the
   // charge, but not the DB rows / revenue counting).
   const nowIso = new Date().toISOString();
   // Honor a fixed term: this spawn consumes one cycle. When it's the last one,
-  // deactivate in the same atomic claim so no further visits are generated.
+  // deactivate in the same claim so no further visits are generated.
   const termLeft = plan.remaining_cycles;
   const termFields = typeof termLeft === 'number'
     ? { remaining_cycles: Math.max(0, termLeft - 1), active: termLeft - 1 > 0 }

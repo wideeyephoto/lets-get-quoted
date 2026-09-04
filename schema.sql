@@ -1533,7 +1533,7 @@ create table if not exists payment_plans (
   authorized_at             timestamptz,
   authorized_name           text,
 
-  -- Set atomically while an early payoff is in flight so the installment cron
+  -- Set in a single transaction while an early payoff is in flight so the installment cron
   -- pauses collections on this plan; cleared if the payoff is abandoned.
   payoff_locked_at          timestamptz,
 

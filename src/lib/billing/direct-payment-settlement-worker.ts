@@ -484,7 +484,7 @@ async function failClaim(
 
 /**
  * Processes a bounded batch strictly one task at a time. Feed completion is
- * durable before the SMS is atomically handed to the generic delivery queue.
+ * durable before the SMS is handed to the generic delivery queue in a single transaction.
  * This financial worker never opens a carrier socket; sender readiness,
  * kill-switch/canary policy, consent, metering, and provider uncertainty all
  * belong to the generic SMS delivery state machine.

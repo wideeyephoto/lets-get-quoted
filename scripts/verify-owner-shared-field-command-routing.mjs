@@ -663,7 +663,7 @@ try {
   ));
   const emptyTwimlHash = 'f94774d9eace296b75aeb622792d92dd74b7873a3b10ade1f415c0d399cfac07';
   check(
-    'courtesy claim atomically persists sender/account STOP suppression and retry immutability',
+    'courtesy claim persists sender/account STOP suppression and retry immutability in a single transaction',
     liveNotice.errorCode === null
       && liveNotice.claimed === true
       && liveNoticeRetry.claimed === false

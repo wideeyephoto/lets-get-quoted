@@ -69,7 +69,7 @@ describe('dark paid-plan monthly allowance reset migration', () => {
     expect(compact).not.toMatch(/units\s*\*\s*12/);
   });
 
-  it('atomically verifies exactly four canonical expiring plan lots', () => {
+  it('verifies exactly four canonical expiring plan lots in a single transaction', () => {
     expect(compact).toContain("'text_segments'::text, case v_subscription.plan_code when 'solo' then 500");
     expect(compact).toContain("'marketing_email_sends'::text, case v_subscription.plan_code when 'solo' then 500");
     expect(compact).toContain("'ai_intake_threads'::text, case v_subscription.plan_code when 'solo' then 250");

@@ -533,7 +533,7 @@ describe('legacy Stripe webhook projection cutover', () => {
     },
   );
 
-  it('binds a failed Checkout PI from NULL atomically and retries the RPC on the exact replay', async () => {
+  it('binds a failed Checkout PI from NULL in a single transaction and retries the RPC on the exact replay', async () => {
     process.env[PLAN_FLAG] = '1';
     const db = statefulPaymentAdmin(paymentRow());
     mocks.admin = db.admin;

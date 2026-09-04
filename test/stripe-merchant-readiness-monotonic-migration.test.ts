@@ -10,7 +10,7 @@ const sql = readFileSync(migrationPath, 'utf8').replace(/\r\n/g, '\n').toLowerCa
 const compact = sql.replace(/\s+/g, ' ');
 
 describe('Stripe Merchant monotonic readiness migration', () => {
-  it('atomically locks the exact workspace before its strict timestamp comparison', () => {
+  it('locks the exact workspace in a single transaction before its strict timestamp comparison', () => {
     expect(compact).toContain('begin;');
     expect(compact.trimEnd().endsWith('commit;')).toBe(true);
     expect(sql).toContain('persist_stripe_merchant_readiness_evidence');

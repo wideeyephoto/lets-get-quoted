@@ -45,7 +45,7 @@ export default function IntakeApprovalWorkspace({
       ? 'applied'
       : 'not_applied';
   const overallCopy = overallStatus === 'applied'
-    ? 'This field input was already applied atomically. No approval step is required.'
+    ? 'This field input was already applied. No approval step is required.'
     : overallStatus === 'pending'
       ? 'This field input is still processing. No action is required on this page.'
       : 'The request was recorded, but no business record change was applied.';

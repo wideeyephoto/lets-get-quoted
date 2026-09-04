@@ -974,7 +974,7 @@ try {
     [jobA, calls.atomic],
   ));
   check(
-    'late feed failure rolls back the earlier job and ledger writes atomically',
+    'late feed failure rolls back the earlier job and ledger writes in a single transaction',
     atomic.errorCode === '23514'
       && atomicState.scope === beforeAtomic
       && atomicState.action_count === 0

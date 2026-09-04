@@ -551,7 +551,7 @@ export async function createCheckoutSessionForPayment(paymentId: string, origin:
   if (payment.stripe_checkout_session) {
     const existing = await stripe.checkout.sessions.retrieve(payment.stripe_checkout_session);
     // Re-prove the rail after the provider round-trip. A requested destination
-    // row can be atomically prepared as direct while this request is in flight;
+    // row can be prepared as direct in a single transaction while this request is in flight;
     // once that happens, even an otherwise reusable legacy Session is barred.
     const existingRail = await requireLegacyDestinationPaymentRail(admin, paymentId);
 

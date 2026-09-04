@@ -14,7 +14,7 @@ import PersistentMessageIntent from './PersistentMessageIntent';
 //
 // Picking from the current consent ledger beats typing a number: a lead/job
 // phone is not permission, and a typo could send a stranger a contractor-
-// branded text. The server rechecks consent atomically at enqueue time.
+// branded text. The server rechecks consent at enqueue time.
 
 type Contact = { phone: string; name: string };
 

@@ -50,8 +50,8 @@ export interface RequestClosureParams {
 }
 
 /**
- * Stage 1: Request account closure atomically via PostgreSQL RPC.
- * Atomically suspends the account, deactivates memberships, cancels queued SMS, and registers the closure job.
+ * Stage 1: Request account closure in a single transaction via PostgreSQL RPC.
+ * Suspends the account, deactivates memberships, cancels queued SMS, and registers the closure job in a single transaction.
  */
 export async function requestAccountClosure(
   admin: SupabaseClient,
@@ -70,7 +70,7 @@ export async function requestAccountClosure(
   });
 
   if (rpcError || !jobId) {
-    throw new Error(`Failed to atomically request account closure: ${rpcError?.message}`);
+    throw new Error(`Failed to request account closure: ${rpcError?.message}`);
   }
 
   return { jobId: String(jobId) };

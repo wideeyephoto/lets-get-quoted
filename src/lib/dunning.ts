@@ -344,7 +344,7 @@ async function retryDunningPayment(admin: AdminClient, payment: SweptPayment): P
     }
   }
 
-  // Atomically CLAIM this retry: bump the lifetime charge counter + push the next
+  // CLAIM this retry in a single update: bump the lifetime charge counter + push the next
   // retry out, conditional on the row being unchanged since the sweep. If another
   // concurrent run already claimed it, 0 rows change and we bail — no double work,
   // and the bumped counter guarantees a fresh idempotency key so this attempt

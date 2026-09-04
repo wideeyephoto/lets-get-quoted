@@ -105,7 +105,7 @@ Rationale and constraints, all of which are load-bearing:
 - **It obeys the same gates as the durable worker.** A carrier `<Message>` verb
   *is* an outbound text, so it passes through `outboundSmsLaneSuppression` —
   kill switch, canary allow-list, lane flag. A dark deployment does not text.
-- **It is claimed atomically.** `record_sms_shared_notice_reply` returns true to
+- **It is claimed in a single transaction.** `record_sms_shared_notice_reply` returns true to
   exactly one caller per receipt, so a provider retry cannot double-text.
 - **It never answers a contractor-dedicated number.** Auto-replying there would
   put words in the contractor's mouth mid-conversation with their customer. Both

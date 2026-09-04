@@ -82,7 +82,7 @@ describe('SMS durability follow-up migration', () => {
     expect(migration).not.toContain("set task_state = 'ready'");
   });
 
-  it('atomically hands new direct-payment receipts to the generic SMS queue', () => {
+  it('hands new direct-payment receipts to the generic SMS queue in a single transaction', () => {
     const start = migration.indexOf(
       'create or replace function public.enqueue_direct_payment_settlement_sms',
     );

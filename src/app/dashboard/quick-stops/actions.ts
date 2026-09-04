@@ -63,7 +63,7 @@ export async function requestMoreInfoQuickStopAction(requestId: string, formData
 }
 
 // Contractor sends an offer: validates the window + fee against settings and the
-// daily cap, atomically claims the request, then creates a TENTATIVE job — that
+// daily cap, claims the request in a single transaction, then creates a TENTATIVE job — that
 // job is the calendar placeholder (it renders like any scheduled job, flagged as
 // an unconfirmed Quick Stop) and is what the payment attaches to. Payment link +
 // customer SMS + the transition to awaiting_customer_payment are added in M5.
@@ -118,7 +118,7 @@ export async function createQuickStopOfferAction(requestId: string, formData: Fo
     throw new Error(`You’re at your Quick Stop limit (${settings.maxPerDay}) for that day.`);
   }
 
-  // Atomically claim the request so a double-submit can't create two placeholders.
+  // Claim the request in a single update so a double-submit can't create two placeholders.
   const { data: claimed } = await supabase
     .from('extra_stop_requests')
     .update({ status: 'contractor_offer_sent', updated_at: new Date().toISOString() })

@@ -46,7 +46,7 @@ describe('direct Checkout operation orchestration migration', () => {
     expect(sql).toContain('v_payment.fee_rate is distinct from p_fee_rate');
   });
 
-  it('atomically records the payment session and succeeded operation', () => {
+  it('records the payment session and succeeded operation in a single transaction', () => {
     expect(sql).toContain('complete_one_off_direct_checkout_operation');
     expect(sql).toMatch(/update public\.payments[\s\S]*stripe_checkout_session = p_checkout_session_id[\s\S]*update public\.billing_payment_operations[\s\S]*state = 'succeeded'/);
     expect(sql).toContain('protect_direct_checkout_session_identity');

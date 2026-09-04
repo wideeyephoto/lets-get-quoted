@@ -113,7 +113,7 @@ describe('one-off direct payment preparation migration', () => {
     expect(compact).not.toMatch(/v_fee_basis_cents\s*:=.*v_tax_amount/);
   });
 
-  it('atomically snapshots exact direct fields and has exact replay/mismatch behavior', () => {
+  it('snapshots exact direct fields in a single transaction and has exact replay/mismatch behavior', () => {
     expect(compact).toContain("v_status := 'prepared'");
     expect(compact).toContain("v_status := 'replay'");
     expect(compact).toContain("set charge_model = 'direct'");

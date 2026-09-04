@@ -26,7 +26,7 @@ Dashboard maps use Advanced Markers and the JavaScript vector map ID in `NEXT_PU
 SMS login and application messaging are separate systems:
 
 1. Supabase Auth keeps its Twilio Phone provider. It sends and verifies contractor login codes outside this repository. Changing LGQ's application provider does not change that integration.
-2. LGQ producers write `sms_events` and `sms_delivery_tasks` atomically. The one-minute worker leases work, rechecks consent and sender readiness, records the no-return boundary, and only then calls Twilio or SignalWire. A post-request unknown is `indeterminate`, never an automatic retry.
+2. LGQ producers write `sms_events` and `sms_delivery_tasks` in a single transaction. The one-minute worker leases work, rechecks consent and sender readiness, records the no-return boundary, and only then calls Twilio or SignalWire. A post-request unknown is `indeterminate`, never an automatic retry.
 3. Every real send comes from `sms_sender_numbers`. LGQ account traffic, LGQ dispatch traffic, and contractor-branded homeowner traffic are separate purposes with separate exact-`1` release gates. A contractor message requires that contractor's active, assigned, inbound-ready dedicated number.
 4. Configure the application provider block from `.env.example`. SignalWire additionally requires `SIGNALWIRE_SIGNING_KEY`, which is the distinct Dashboard Signing Key — never default it to `SIGNALWIRE_API_TOKEN`.
 5. Set `LGQ_LEAD_VERIFICATION_SECRET` before removing any application Twilio secret. It signs LGQ lead-verification tokens and is unrelated to Supabase Auth.

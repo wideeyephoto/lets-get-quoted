@@ -40,7 +40,7 @@ describe('Stripe Merchant provisioning operation migration', () => {
     expect(compact).toContain('v_account.merchant_livemode is distinct from v_operation.livemode');
   });
 
-  it('atomically maps the operation-owned workspace and completes the provider ID', () => {
+  it('maps the operation-owned workspace and completes the provider ID in a single transaction', () => {
     expect(sql).toContain('complete_stripe_merchant_provisioning_operation');
     expect(sql).toMatch(/select a\.\* into v_account[\s\S]*where a\.id = v_operation\.workspace_id[\s\S]*for update/);
     expect(sql).toMatch(/update public\.accounts[\s\S]*stripe_merchant_account_id = p_provider_account_id[\s\S]*where a\.id = v_operation\.workspace_id[\s\S]*update public\.stripe_merchant_provisioning_operations[\s\S]*state = 'succeeded'/);

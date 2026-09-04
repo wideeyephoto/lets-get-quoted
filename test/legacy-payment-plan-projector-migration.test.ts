@@ -153,7 +153,7 @@ describe('dark legacy payment-plan projection foundation migration', () => {
     );
   });
 
-  it('finalizes exact current-owner payoff truth atomically and cancels rather than deletes', () => {
+  it('finalizes exact current-owner payoff truth in a single transaction and cancels rather than deletes', () => {
     const payoff = rpc.slice(rpc.indexOf("if v_payment.kind::text = 'final'"));
     for (const guard of [
       "v_payment.status::text = 'paid'",
