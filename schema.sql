@@ -16254,7 +16254,10 @@ begin
     from public.sms_sender_numbers s
    where s.id = v_event.sender_number_id
      and s.provider = v_event.provider
-     and s.purpose = v_event.sender_purpose
+     and (
+       s.purpose = v_event.sender_purpose
+       or (s.purpose = 'contractor_dedicated' and s.account_id = v_event.account_id)
+     )
      and (s.account_id is null or s.account_id = v_event.account_id)
      and s.provisioning_status = 'active'
      and s.assignment_state = 'assigned'
