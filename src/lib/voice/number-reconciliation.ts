@@ -126,15 +126,20 @@ export function exactVoiceNumberProviderMatch(
   observed: VoiceNumberProviderObservation,
   targets: Readonly<{ inboundUrl: string; statusUrl: string }>,
 ): boolean {
+  const handler = String(observed.call_handler ?? '').toLowerCase();
+  const validHandler = handler === 'laml_webhooks' || handler === 'relay_script';
+  const requestUrlMatches = observed.call_request_url === targets.inboundUrl
+    || (observed as Record<string, unknown>).call_relay_script_url === targets.inboundUrl;
+
   return observed.provider === 'signalwire'
     && observed.id.toLowerCase() === row.provider_number_id
     && observed.number === row.e164_number
     && observed.voice_capable
-    && observed.call_handler === 'laml_webhooks'
-    && observed.call_request_url === targets.inboundUrl
-    && observed.call_request_method === 'POST'
-    && observed.call_status_callback_url === targets.statusUrl
-    && observed.call_status_callback_method === 'POST';
+    && validHandler
+    && requestUrlMatches
+    && (observed.call_request_method === 'POST' || (handler === 'relay_script' && observed.call_request_method === null))
+    && (observed.call_status_callback_url === targets.statusUrl || (handler === 'relay_script' && observed.call_status_callback_url === null))
+    && (observed.call_status_callback_method === 'POST' || (handler === 'relay_script' && observed.call_status_callback_method === null));
 }
 
 function blankSummary(batchSize: number): VoiceNumberReconciliationSummary {

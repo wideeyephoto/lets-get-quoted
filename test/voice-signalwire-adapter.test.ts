@@ -306,6 +306,31 @@ describe('reading an inbound call', () => {
   it('returns null without a call id, since nothing could be settled later', () => {
     expect(provider.parseInboundCall({ To: '+15551230000' })).toBeNull();
   });
+
+  it('reads JSON inbound call payloads from SignalWire SWML webhooks', () => {
+    expect(provider.parseInboundCall({
+      call: {
+        call_id: CALL,
+        to: '+15551230000',
+        from: '+15559876543',
+        direction: 'inbound',
+      },
+    })).toEqual({
+      providerCallId: CALL,
+      toNumber: '+15551230000',
+      fromNumber: '+15559876543',
+    });
+
+    expect(provider.parseInboundCall({
+      call_id: CALL,
+      to: '+15551230000',
+      from: '+15559876543',
+    })).toEqual({
+      providerCallId: CALL,
+      toNumber: '+15551230000',
+      fromNumber: '+15559876543',
+    });
+  });
 });
 
 describe('rendering an answer', () => {
@@ -476,6 +501,32 @@ describe('rendering an answer', () => {
       .toContain('<Record');
     expect(provider.renderAnswer({ kind: 'unavailable', message: 'Sorry.' }).body)
       .not.toContain('<Record');
+  });
+
+  it('renders SWML JSON for forward, voicemail, and decline when format is swml', () => {
+    const forward = provider.renderAnswer({
+      kind: 'forward', number: '+15551230000', callerId: '+15559876543',
+      timeoutSeconds: 20, actionUrl: 'https://x.test/s',
+    }, { format: 'swml' });
+    expect(forward.contentType).toBe('application/json');
+    const fSwml = JSON.parse(forward.body);
+    expect(fSwml.sections.main[0].connect.to).toBe('+15551230000');
+
+    const decline = provider.renderAnswer({
+      kind: 'unavailable', message: 'Sorry, we are closed.',
+    }, { format: 'swml' });
+    expect(decline.contentType).toBe('application/json');
+    const dSwml = JSON.parse(decline.body);
+    expect(dSwml.sections.main[1].play.url).toBe('say: Sorry, we are closed.');
+    expect(dSwml.sections.main[2].hangup).toBeDefined();
+
+    const voicemail = provider.renderAnswer({
+      kind: 'voicemail', message: 'Please leave a message.',
+    }, { format: 'swml' });
+    expect(voicemail.contentType).toBe('application/json');
+    const vSwml = JSON.parse(voicemail.body);
+    expect(vSwml.sections.main[1].play.url).toBe('say: Please leave a message.');
+    expect(vSwml.sections.main[2].record_call).toBeDefined();
   });
 
   it('parses structured JSON post prompt data into receipt.structuredPostPrompt', () => {

@@ -33,6 +33,7 @@ export type SignalWirePhoneNumber = Readonly<{
   name: string | null;
   capabilities: readonly string[];
   callHandler: string | null;
+  callRelayScriptUrl?: string | null;
   callRequestUrl: string | null;
   callRequestMethod: string | null;
   callStatusCallbackUrl: string | null;
@@ -706,7 +707,8 @@ export class SignalWireNumberProvisioningClient {
         method: 'PUT',
         body: JSON.stringify({
           name: friendlyName.slice(0, 120),
-          call_handler: 'laml_webhooks',
+          call_handler: 'relay_script',
+          call_relay_script_url: inbound,
           call_request_url: inbound,
           call_request_method: 'POST',
           call_status_callback_url: status,
@@ -849,7 +851,8 @@ export class SignalWireNumberProvisioningClient {
           .filter(Boolean)
         : [],
       callHandler: optionalText(row.call_handler),
-      callRequestUrl: optionalText(row.call_request_url),
+      callRelayScriptUrl: optionalText(row.call_relay_script_url),
+      callRequestUrl: optionalText(row.call_relay_script_url) ?? optionalText(row.call_request_url),
       callRequestMethod: optionalText(row.call_request_method),
       callStatusCallbackUrl: optionalText(row.call_status_callback_url),
       callStatusCallbackMethod: optionalText(row.call_status_callback_method),

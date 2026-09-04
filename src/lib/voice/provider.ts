@@ -189,7 +189,7 @@ export interface VoiceProvider {
   parseInboundCall(body: FormData | Record<string, unknown>): InboundCall | null;
 
   /** Render a decision into whatever this provider understands. */
-  renderAnswer(plan: VoiceAnswerPlan): VoiceAnswer;
+  renderAnswer(plan: VoiceAnswerPlan, options?: { format?: 'swml' | 'laml' }): VoiceAnswer;
 
   /** Normalise an end-of-call receipt, or say why it is not one. */
   parseReceipt(payload: unknown): VoiceReceiptParse;

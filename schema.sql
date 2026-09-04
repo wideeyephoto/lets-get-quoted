@@ -28892,11 +28892,11 @@ create table if not exists public.voice_number_inventory (
     or (
       voice_capable
       and provider_readiness_state = 'ready'
-      and pg_catalog.lower(coalesce(call_handler, '')) = 'laml_webhooks'
-      and call_request_method = 'POST'
+      and pg_catalog.lower(coalesce(call_handler, '')) in ('laml_webhooks', 'relay_script')
       and call_request_url ~ '^https://[^[:space:]]+/api/voice/ai$'
-      and call_status_callback_url ~ '^https://[^[:space:]]+/api/voice/provider-status$'
-      and call_status_callback_method = 'POST'
+      and (call_request_method is null or call_request_method = 'POST')
+      and (call_status_callback_url is null or call_status_callback_url ~ '^https://[^[:space:]]+/api/voice/provider-status$')
+      and (call_status_callback_method is null or call_status_callback_method = 'POST')
       and provider_verified_at is not null
       and last_provider_sync_at is not null
       and activated_at is not null
@@ -32533,17 +32533,22 @@ begin
    for update;
 
   if p_verification_status = 'ready' then
+    v_handler := pg_catalog.lower(coalesce(p_observed_result->>'call_handler', ''));
+    v_req_url := coalesce(p_observed_result->>'call_relay_script_url', p_observed_result->>'call_request_url');
+
     if v_inventory.lifecycle_state <> 'active'
        or p_observed_provider_object_id is distinct from v_inventory.provider_number_id
        or p_observed_result->>'provider' is distinct from 'signalwire'
        or p_observed_result->>'id' is distinct from v_inventory.provider_number_id
        or p_observed_result->>'number' is distinct from v_inventory.e164_number
        or p_observed_result->'voice_capable' is distinct from 'true'::jsonb
-       or pg_catalog.lower(coalesce(p_observed_result->>'call_handler', '')) <> 'laml_webhooks'
-       or p_observed_result->>'call_request_url' is distinct from v_inventory.call_request_url
-       or p_observed_result->>'call_request_method' is distinct from 'POST'
-       or p_observed_result->>'call_status_callback_url' is distinct from v_inventory.call_status_callback_url
-       or p_observed_result->>'call_status_callback_method' is distinct from 'POST' then
+       or v_handler not in ('laml_webhooks', 'relay_script')
+       or v_req_url is distinct from v_inventory.call_request_url
+       or (v_handler = 'laml_webhooks' and (
+             p_observed_result->>'call_request_method' is distinct from 'POST'
+             or p_observed_result->>'call_status_callback_url' is distinct from v_inventory.call_status_callback_url
+             or p_observed_result->>'call_status_callback_method' is distinct from 'POST'
+          )) then
       raise exception 'Ready verification does not prove the exact active AI Voice provider configuration'
         using errcode = '22000';
     end if;
@@ -32848,11 +32853,11 @@ begin
      and v.e164_number = p_dialed_number
      and v.lifecycle_state = 'active'
      and v.voice_capable
-     and pg_catalog.lower(v.call_handler) = 'laml_webhooks'
-     and v.call_request_method = 'POST'
+     and pg_catalog.lower(v.call_handler) in ('laml_webhooks', 'relay_script')
+     and (v.call_request_method is null or v.call_request_method = 'POST')
      and v.call_request_url ~ '^https://[^[:space:]]+/api/voice/ai$'
-     and v.call_status_callback_url ~ '^https://[^[:space:]]+/api/voice/provider-status$'
-     and v.call_status_callback_method = 'POST'
+     and (v.call_status_callback_url is null or v.call_status_callback_url ~ '^https://[^[:space:]]+/api/voice/provider-status$')
+     and (v.call_status_callback_method is null or v.call_status_callback_method = 'POST')
      and v.provider_readiness_state = 'ready'
      and v.provider_verified_at is not null
      and v.provider_verified_at >= pg_catalog.clock_timestamp() - interval '6 hours'

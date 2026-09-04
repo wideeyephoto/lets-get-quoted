@@ -41,8 +41,53 @@ function xml(inner: string, status = 200) {
   });
 }
 
+function escapeXml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+function failureResponse(isJson: boolean, message?: string, status = 200) {
+  if (isJson) {
+    if (status === 403 || !message) {
+      return new NextResponse(
+        JSON.stringify({
+          version: '1.0.0',
+          sections: {
+            main: [{ hangup: {} }],
+          },
+        }),
+        {
+          status,
+          headers: { 'Content-Type': 'application/json' },
+        },
+      );
+    }
+    return new NextResponse(
+      JSON.stringify({
+        version: '1.0.0',
+        sections: {
+          main: [
+            { answer: {} },
+            { play: { url: `say: ${message}` } },
+            { hangup: {} },
+          ],
+        },
+      }),
+      {
+        status,
+        headers: { 'Content-Type': 'application/json' },
+      },
+    );
+  }
+  return xml(message ? `<Say voice="man">${escapeXml(message)}</Say>` : '', status);
+}
+
 export async function POST(request: Request) {
   const rawBody = await request.clone().text();
+  const contentType = request.headers.get('content-type')?.split(';', 1)[0].trim().toLowerCase() ?? '';
+  const isJson = contentType === 'application/json' || (rawBody.trim().startsWith('{') && rawBody.trim().endsWith('}'));
+
   const check = verifySignedVoiceWebhook(request, rawBody);
   if (!check.ok) {
     await logWebhookFailure({
@@ -50,23 +95,42 @@ export async function POST(request: Request) {
       referenceId: null,
       errorMessage: `Voice admission signature validation failed: ${check.reason}`,
     });
-    return xml('', 403);
+    return failureResponse(isJson, undefined, 403);
   }
-  const data = await request.formData();
+
+  let bodyData: FormData | Record<string, unknown>;
+  if (isJson) {
+    try {
+      bodyData = JSON.parse(rawBody);
+    } catch {
+      bodyData = {};
+    }
+  } else {
+    try {
+      bodyData = await request.formData();
+    } catch {
+      bodyData = {};
+    }
+  }
 
   const provider = signalwireVoiceProvider;
+  const apologyMessage = "Sorry, we can't take your call right now. Please try again later.";
 
   try {
-    const call = provider.parseInboundCall(data);
+    const call = provider.parseInboundCall(bodyData);
     if (!call) {
+      const refId = bodyData instanceof FormData
+        ? String(bodyData.get('CallSid') || '') || null
+        : (typeof bodyData === 'object' && bodyData !== null
+          ? String((bodyData as Record<string, unknown>).CallSid ?? (bodyData as Record<string, unknown>).call_id ?? '') || null
+          : null);
       await logWebhookFailure({
         source: 'ai_voice',
-        referenceId: String(data.get('CallSid') || '') || null,
+        referenceId: refId,
         errorMessage: 'Inbound call carried no dialled number or no call id',
       });
       // A caller is on the line and nothing here identifies them. Say something.
-      return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. '
-        + 'Please try again later.</Say>');
+      return failureResponse(isJson, apologyMessage);
     }
 
     // The receipt contains transcript PII and is sent with a reusable Basic
@@ -79,8 +143,7 @@ export async function POST(request: Request) {
         referenceId: call.providerCallId,
         errorMessage: 'Voice callback origin is missing or unsafe',
       });
-      return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. '
-        + 'Please try again later.</Say>');
+      return failureResponse(isJson, apologyMessage);
     }
 
     // The unsigned end-of-call receipt is safe only when it can be checked
@@ -92,8 +155,7 @@ export async function POST(request: Request) {
         referenceId: call.providerCallId,
         errorMessage: 'Voice receipt project/space scope is missing or invalid',
       });
-      return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. '
-        + 'Please try again later.</Say>');
+      return failureResponse(isJson, apologyMessage);
     }
 
     const admin = createAdminClient();
@@ -142,21 +204,25 @@ export async function POST(request: Request) {
       console.info('AI voice declined:', { reason: declineReason, accountId, call: call.providerCallId });
     }
 
-    const answer = provider.renderAnswer(plan);
+    const answer = provider.renderAnswer(plan, { format: isJson ? 'swml' : 'laml' });
     return new NextResponse(answer.body, {
       status: 200,
       headers: { 'Content-Type': answer.contentType },
     });
   } catch (error) {
     console.error('AI voice admission threw:', error);
+    const refId = bodyData instanceof FormData
+      ? String(bodyData.get('CallSid') || '') || null
+      : (typeof bodyData === 'object' && bodyData !== null
+        ? String((bodyData as Record<string, unknown>).CallSid ?? (bodyData as Record<string, unknown>).call_id ?? '') || null
+        : null);
     await logWebhookFailure({
       source: 'ai_voice',
-      referenceId: String(data.get('CallSid') || '') || null,
+      referenceId: refId,
       errorMessage: error instanceof Error ? error.message : String(error),
     });
     // Never a 500. A caller hears dead air or a provider retry, and neither is
     // something a homeowner should get for a bug on our side.
-    return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. '
-      + 'Please try again later.</Say>');
+    return failureResponse(isJson, apologyMessage);
   }
 }

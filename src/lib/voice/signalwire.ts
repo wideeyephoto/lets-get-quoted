@@ -168,24 +168,35 @@ function summaryFrom(payload: Record<string, unknown>): string | null {
 export const signalwireVoiceProvider: VoiceProvider = {
   id: 'signalwire',
 
-  parseInboundCall(body): InboundCall | null {
-    const get = (key: string): unknown =>
-      body instanceof FormData ? body.get(key) : (body as Record<string, unknown>)[key];
+  parseInboundCall(body: FormData | Record<string, unknown>): InboundCall | null {
+    if (body instanceof FormData) {
+      const toNumber = text(body.get('To') ?? body.get('to'));
+      const providerCallId = text(body.get('CallSid') ?? body.get('call_id'));
+      if (!toNumber || !providerCallId) return null;
 
-    // The inbound leg still arrives on the compatibility API, which is form
-    // encoded and uses the same field names as the existing voice rail.
-    const toNumber = text(get('To'));
-    const providerCallId = text(get('CallSid')) ?? text(get('call_id'));
+      return Object.freeze({
+        providerCallId,
+        toNumber,
+        fromNumber: text(body.get('From') ?? body.get('from')),
+      });
+    }
+
+    const payload = record(body);
+    if (!payload) return null;
+
+    const callObj = record(payload.call);
+    const toNumber = text(callObj?.to ?? payload.To ?? payload.to);
+    const providerCallId = text(callObj?.call_id ?? payload.CallSid ?? payload.call_id);
     if (!toNumber || !providerCallId) return null;
 
     return Object.freeze({
       providerCallId,
       toNumber,
-      fromNumber: text(get('From')),
+      fromNumber: text(callObj?.from ?? payload.From ?? payload.from),
     });
   },
 
-  renderAnswer(plan: VoiceAnswerPlan): VoiceAnswer {
+  renderAnswer(plan: VoiceAnswerPlan, options?: { format?: 'swml' | 'laml' }): VoiceAnswer {
     if (plan.kind === 'ai_agent') {
       // SWML, which is JSON. `post_prompt_url` is where the receipt lands, and
       // it is the only URL in here — LGQ's own.
@@ -662,6 +673,35 @@ export const signalwireVoiceProvider: VoiceProvider = {
           version: '1.0.0',
           sections: {
             main: mainSection,
+          },
+        }),
+      });
+    }
+
+    if (options?.format === 'swml') {
+      if (plan.kind === 'forward') {
+        return Object.freeze({
+          contentType: 'application/json',
+          body: JSON.stringify({
+            version: '1.0.0',
+            sections: {
+              main: [{ connect: { to: plan.number } }],
+            },
+          }),
+        });
+      }
+      const message = plan.kind === 'voicemail' ? plan.message : plan.message;
+      return Object.freeze({
+        contentType: 'application/json',
+        body: JSON.stringify({
+          version: '1.0.0',
+          sections: {
+            main: [
+              { answer: {} },
+              { play: { url: `say: ${message}` } },
+              ...(plan.kind === 'voicemail' ? [{ record_call: { format: 'mp3', stereo: false } }] : []),
+              { hangup: {} },
+            ],
           },
         }),
       });

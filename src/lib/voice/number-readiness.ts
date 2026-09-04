@@ -124,6 +124,8 @@ export function readySignalWireVoiceNumber(
   const providerNumberId = text(row.provider_number_id);
   const voiceNumberId = text(row.id);
   const accountId = text(row.account_id);
+  const callHandler = String(row.call_handler ?? '').toLowerCase();
+  const validHandler = callHandler === 'laml_webhooks' || callHandler === 'relay_script';
 
   if (
     row.provider !== 'signalwire'
@@ -132,11 +134,11 @@ export function readySignalWireVoiceNumber(
     || number !== expected.number
     || row.lifecycle_state !== 'active'
     || row.voice_capable !== true
-    || String(row.call_handler ?? '').toLowerCase() !== 'laml_webhooks'
+    || !validHandler
     || row.call_request_url !== expected.inboundUrl
-    || String(row.call_request_method ?? '').toUpperCase() !== 'POST'
-    || row.call_status_callback_url !== expected.statusUrl
-    || String(row.call_status_callback_method ?? '').toUpperCase() !== 'POST'
+    || (callHandler === 'laml_webhooks' && String(row.call_request_method ?? '').toUpperCase() !== 'POST')
+    || (row.call_status_callback_url && row.call_status_callback_url !== expected.statusUrl)
+    || (row.call_status_callback_method && String(row.call_status_callback_method ?? '').toUpperCase() !== 'POST')
     || !hasFreshVoiceNumberProviderProof(row)
     || !text(row.activated_at)
     || row.suspended_at !== null
