@@ -37,11 +37,11 @@ export type BriefCrewModalProps = {
 };
 
 const NOTE_PRESETS = [
-  { label: '🌦️ Rain forecast', text: 'Rain in forecast — please start exterior jobs first.' },
+  { label: '🌦️ Rain forecast', text: 'Rain in forecast - please start exterior jobs first.' },
   { label: '🪜 Extension ladder', text: 'Bring 32ft extension ladder and safety gear.' },
   { label: '🔒 Gate codes in notes', text: 'Check individual job notes for gate codes and pet alerts.' },
   { label: '🚚 Fuel & restock', text: 'Fuel up truck and restock fittings before leaving shop.' },
-  { label: '💧 Heat advisory', text: 'Heat advisory today — stay hydrated and take shade breaks.' },
+  { label: '💧 Heat advisory', text: 'Heat advisory today - stay hydrated and take shade breaks.' },
   { label: '📞 Call on way', text: 'Please call client 15 minutes before arrival window.' },
 ];
 

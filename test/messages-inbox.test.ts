@@ -18,6 +18,7 @@ function client(rows: Row[], opts: {
   fallbackError?: boolean;
   eventError?: boolean;
   threadError?: boolean;
+  events?: Array<Record<string, unknown>>;
   names?: Array<{ name: string; phone: string }>;
 } = {}): SupabaseClient {
   let smsCalls = 0;
@@ -51,7 +52,7 @@ function client(rows: Row[], opts: {
           } else if (table === 'sms_events') {
             chain.__result = opts.eventError
               ? { data: null, error: { message: 'delivery overlay unavailable' } }
-              : { data: [], error: null };
+              : { data: opts.events ?? [], error: null };
           } else if (table === 'leads') {
             chain.__result = { data: opts.names ?? [], error: null };
           } else {
@@ -158,6 +159,33 @@ describe('listConversations', () => {
       'acct-1',
       '+12485550100',
     )).resolves.toEqual({ kind: 'unavailable', data: [] });
+  });
+
+  it('overlays delivery failures from automated SMS into customer thread', async () => {
+    const threadMessages = [row({ phone_number: '+12485550100', body: 'Can I get a quote?', direction: 'inbound' })];
+    const failedEvent = {
+      id: 'event-failed-reminder',
+      account_id: 'acct-1',
+      phone_number: '+12485550100',
+      body: 'Appointment reminder: tomorrow at 9am',
+      provider_id: 'SM999',
+      provider: 'twilio',
+      sender_number_id: 'num-1',
+      status: 'failed',
+      queued_at: '2026-08-04T12:05:00Z',
+      created_at: '2026-08-04T12:05:00Z',
+    };
+    const res = await loadConversationMessages(
+      client(threadMessages, { events: [failedEvent] }),
+      'acct-1',
+      '+12485550100',
+    );
+    expect(res.kind).toBe('ready');
+    expect(res.data).toHaveLength(2);
+    const failedMsg = res.data.find((m) => m.id === 'event-failed-reminder');
+    expect(failedMsg?.delivery_status).toBe('failed');
+    expect(failedMsg?.direction).toBe('outbound');
+    expect(failedMsg?.body).toBe('Appointment reminder: tomorrow at 9am');
   });
 });
 

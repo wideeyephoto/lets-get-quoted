@@ -58,6 +58,8 @@ export type AiWritingKind =
   | 'contractor_voice_assist'
   /** Generating an insurance adjuster supplement justification or scope analysis. */
   | 'insurance_claim_assist'
+  /** Generating smart reply suggestions in the messages inbox. Non-billable assistant feature. */
+  | 'inbox_smart_reply'
   /**
    * LGQ's own blog content.
    *
@@ -86,6 +88,7 @@ const BILLABLE: Readonly<Record<AiWritingKind, boolean>> = Object.freeze({
   qualifier: false,
   transcription: false,
   lead_photo_analysis: false,
+  inbox_smart_reply: false,
   platform_content: false,
 });
 

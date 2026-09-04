@@ -44,6 +44,7 @@ describe('what a draft credit is spent on', () => {
   it('does not charge for transcription or routing', () => {
     expect(bills('transcription')).toBe(false);
     expect(bills('qualifier')).toBe(false);
+    expect(bills('inbox_smart_reply')).toBe(false);
   });
 
   it('never charges a contractor for LGQ writing its own blog', () => {

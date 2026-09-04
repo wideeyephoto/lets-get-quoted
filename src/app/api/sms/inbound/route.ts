@@ -39,6 +39,53 @@ function emptyTwiml(status = 200) {
 
 type SynchronousComplianceKeyword = 'stop' | 'start' | 'help';
 
+async function contractorSupportContact(
+  admin: SupabaseClient,
+  accountId: string | null,
+  senderPurpose: InboundIngressResult['senderPurpose'],
+): Promise<string> {
+  if (!accountId || senderPurpose !== 'contractor_dedicated') {
+    return 'hello@letsgetquoted.com';
+  }
+  try {
+    const { data: reg } = await admin
+      .from('messaging_registration_applications')
+      .select('messaging_support_email, messaging_support_phone')
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (reg?.messaging_support_email && typeof reg.messaging_support_email === 'string') {
+      const email = reg.messaging_support_email.trim();
+      if (email) return email;
+    }
+    if (reg?.messaging_support_phone && typeof reg.messaging_support_phone === 'string') {
+      const phone = reg.messaging_support_phone.trim();
+      if (phone) return phone;
+    }
+
+    const { data: acct } = await admin
+      .from('accounts')
+      .select('business_email, alert_email, phone')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    if (acct?.business_email && typeof acct.business_email === 'string' && acct.business_email.trim()) {
+      return acct.business_email.trim();
+    }
+    if (acct?.alert_email && typeof acct.alert_email === 'string' && acct.alert_email.trim()) {
+      return acct.alert_email.trim();
+    }
+    if (acct?.phone && typeof acct.phone === 'string' && acct.phone.trim()) {
+      return acct.phone.trim();
+    }
+  } catch {
+    // Fail safe to default platform email
+  }
+  return 'hello@letsgetquoted.com';
+}
+
 /**
  * The only synchronous carrier egress left in the callback route.
  *
@@ -63,11 +110,14 @@ async function minimumComplianceKeywordTwiml(
   // purpose release gates as the durable worker. An unknown shared-number
   // association cannot prove canary membership and is suppressed while a
   // canary allow-list is active.
+  const supportContact = keyword === 'help'
+    ? await contractorSupportContact(admin, accountId, senderPurpose)
+    : 'hello@letsgetquoted.com';
   const message = keyword === 'stop'
     ? `${brand}: You are unsubscribed and will no longer receive texts from this number. Reply START to resume.`
     : keyword === 'start'
       ? `${brand}: You are re-subscribed to texts from this number. Reply STOP to opt out.`
-      : `${brand} support: hello@letsgetquoted.com. Reply STOP to opt out. Message and data rates may apply.`;
+      : `${brand} support: ${supportContact}. Reply STOP to opt out. Message and data rates may apply.`;
   const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(message)}</Message></Response>`;
   const suppressed = outboundSmsLaneSuppression(accountId, senderPurpose) !== null;
   const responseBody = suppressed ? EMPTY_TWIML : twiml;

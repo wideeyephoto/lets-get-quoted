@@ -215,7 +215,7 @@ async function loadManualSmsEvents(
       .from('sms_events')
       .select('id, account_id, phone_number, body, provider_id, provider, sender_number_id, status, queued_at, created_at')
       .eq('account_id', accountId)
-      .eq('message_kind', 'inbox-reply');
+      .or('message_kind.eq.inbox-reply,status.in.(failed,undelivered)');
     if (phone) query = query.eq('phone_number', phone);
     query = query.order('created_at', { ascending: false });
     if (limit) query = query.limit(limit);

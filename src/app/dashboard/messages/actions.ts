@@ -448,6 +448,12 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
   const normalized = normalizeUsPhone(phone) ?? phone;
   if (!normalized) return { ok: false, message: 'Invalid phone number.' };
 
+  const admin = createAdminClient();
+  const allowed = await checkRateLimitStrict(admin, `inbox-smart-replies:${accountId}`, 20, 60);
+  if (!allowed) {
+    return { ok: false, message: 'Rate limit reached for smart reply suggestions. Please wait a minute.' };
+  }
+
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return { ok: false, message: 'AI generation is not configured.' };
 
@@ -492,7 +498,7 @@ export async function suggestSmartRepliesAction(phone: string): Promise<{ ok: tr
       instructions,
       input: `CONVERSATION:\n${threadContext}`,
       text: { format: { type: 'json_object' } },
-    }, { accountId, kind: 'marketing_draft' });
+    }, { accountId, kind: 'inbox_smart_reply' });
 
     if (!response.ok) throw new Error(`Model error: ${response.status}`);
     const payload = await response.json();

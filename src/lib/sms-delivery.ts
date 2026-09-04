@@ -6,6 +6,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
+import { getTcpaCompliantSendTime, resolveRecipientTimeZone } from '@/lib/phone-timezone';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const PHONE = /^\+[1-9][0-9]{7,14}$/;
@@ -40,6 +41,7 @@ export type EnqueueSmsDeliveryInput = Readonly<{
   crewId?: string | null;
   senderNumberId?: string | null;
   availableAt?: Date | string | null;
+  bypassQuietHours?: boolean;
 }>;
 
 export type EnqueuedSmsDelivery = Readonly<{
@@ -101,6 +103,15 @@ export async function enqueueSmsDelivery(
   const idempotencyKey = input.idempotencyKey ?? newSmsIdempotencyKey(messageKind);
   if (!IDEMPOTENCY_KEY.test(idempotencyKey)) throw new Error('SMS idempotency key is invalid.');
 
+  let availableAt = input.availableAt;
+  if (!availableAt && !input.bypassQuietHours && input.billingCategory === 'customer_message') {
+    const tz = resolveRecipientTimeZone({ phone: input.phoneNumber });
+    const check = getTcpaCompliantSendTime(new Date(), tz);
+    if (check.isDelayed) {
+      availableAt = check.sendAt;
+    }
+  }
+
   const { data, error } = await admin.rpc('enqueue_sms_delivery', {
     p_account_id: accountId,
     p_phone_number: input.phoneNumber,
@@ -114,10 +125,10 @@ export async function enqueueSmsDelivery(
     p_payment_id: nullableUuid(input.paymentId, 'SMS payment id'),
     p_crew_id: nullableUuid(input.crewId, 'SMS crew id'),
     p_sender_number_id: nullableUuid(input.senderNumberId, 'SMS sender number id'),
-    p_available_at: input.availableAt
-      ? typeof input.availableAt === 'string'
-        ? input.availableAt
-        : input.availableAt.toISOString()
+    p_available_at: availableAt
+      ? typeof availableAt === 'string'
+        ? availableAt
+        : availableAt.toISOString()
       : null,
   });
 

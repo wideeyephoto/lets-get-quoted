@@ -136,8 +136,13 @@ export type StatusIngressResult = {
   projectedStatus: string | null;
 };
 
-const STOP = new Set(['STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT']);
-const START = new Set(['START', 'UNSTOP']);
+const STOP = new Set([
+  'STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT',
+  'REVOKE', 'OPTOUT', 'OPT-OUT',
+  'ALTO', 'DETENER', 'CANCELAR',
+]);
+const START = new Set(['START', 'UNSTOP', 'REANUDAR']);
+const HELP = new Set(['HELP', 'INFO', 'AYUDA']);
 
 export function webhookBodySha256(rawBody: string): string {
   return createHash('sha256').update(rawBody, 'utf8').digest('hex');
@@ -215,7 +220,7 @@ function classifyKeyword(body: string): InboundKeyword {
   const first = body.trim().toUpperCase().split(/\s+/, 1)[0] ?? '';
   if (STOP.has(first)) return 'stop';
   if (START.has(first)) return 'start';
-  if (first === 'HELP') return 'help';
+  if (HELP.has(first)) return 'help';
   return 'other';
 }
 
