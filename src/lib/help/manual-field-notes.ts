@@ -439,11 +439,11 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
   'configure-text-to-job-and-field-intake': {
     useWhen: 'Enabling road dictation for change orders, voice memos, punch lists, and receipt photo OCR from mobile.',
     bestPractice: 'Save the business dispatch number in phone contacts as "Job Intake" for hands-free driving dictation.',
-    watchFor: 'Reply "UNDO" within 15 minutes to atomically roll back any accidental voice or text updates.',
+    watchFor: 'Updates file to the job timeline on receipt and cannot be reverted by text. Check the confirmation text, then correct anything wrong in the dashboard.',
     completionChecks: [
       'Owner and crew mobile numbers are authorized in Settings.',
       'Dispatch number is saved in mobile contacts for Siri / Assistant dictation.',
-      'Test voice memo and receipt photo process successfully with 15-minute undo safety.',
+      'Test voice memo and receipt photo process successfully and return a confirmation text.',
     ],
   },
   'manage-office-access-and-security': {

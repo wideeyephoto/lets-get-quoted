@@ -334,8 +334,8 @@ export default function TextToJobDataBeams() {
           <strong>Atomic Database Commit &middot; 1-segment confirmation</strong>
         </div>
         <div className={styles.statusItem}>
-          <span>↺ Revert Guard:</span>
-          <strong>Reply UNDO within 15m to rollback</strong>
+          <span>↺ Written Receipt:</span>
+          <strong>Confirmation text back on every filed update</strong>
         </div>
       </div>
     </div>

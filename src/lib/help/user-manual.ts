@@ -1984,16 +1984,17 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
         ],
       },
       {
-        title: 'Understand the 15-minute UNDO rollback safety invariant',
+        title: 'Confirm what was filed, and correct a mistake',
         paragraphs: [
-          'If you dictate an accidental change or make a typo, reply "UNDO" within 15 minutes to atomically roll back the database update with zero data loss.',
+          'Every accepted update texts a confirmation back to the sender, so you can check what was filed without opening the dashboard. Updates file to the job timeline on receipt and are not held for approval.',
+          'There is no revert-by-text. To fix a mistake, text a follow-up note describing the correction — it appends to the same timeline — then edit the underlying cost, task, or lead in the dashboard.',
         ],
       },
     ],
     customerView: 'Customers receive clean, formatted 1-tap quote approval SMS links when you text "SEND" after adding a change order.',
     troubleshooting: [
       { problem: 'Text-to-Job does not recognize your phone number.', fix: 'Add your mobile number to the Authorized Phone Numbers list in Settings.' },
-      { problem: 'Dictated change order had a typo.', fix: 'Reply "UNDO" within 15 minutes to roll back the change immediately.' },
+      { problem: 'Dictated change order had a typo.', fix: 'Text a follow-up note with the correction, then edit the amount on the job in the dashboard. Texting cannot revert a filed update.' },
     ],
     related: ['document-work-and-change-orders', 'run-the-field-workflow', 'manage-the-job-workspace'],
   },

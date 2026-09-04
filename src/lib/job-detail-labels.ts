@@ -125,13 +125,22 @@ export function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margi
 }
 
 export function formatFeedTime(value: string, timeZone?: string): string {
-  return new Date(value).toLocaleString('en-US', {
+  const options: Intl.DateTimeFormatOptions = {
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
     timeZone,
-  });
+  };
+  try {
+    return new Date(value).toLocaleString('en-US', options);
+  } catch {
+    // accounts.timezone is free text with only a null fallback, so it can hold
+    // a zone Intl does not recognise -- and toLocaleString throws RangeError on
+    // it, which would 500 the whole server component over a feed timestamp.
+    // Same rule quote-options.ts states for the customer's page.
+    return new Date(value).toLocaleString('en-US', { ...options, timeZone: undefined });
+  }
 }
 
 export type CompleteJobWarningInput = {

@@ -59,7 +59,7 @@ const CHEATSHEET_ITEMS: CheatItem[] = [
     icon: '⚡',
     pillar: 'Timeline Audit',
     voicePhrase: '“Correction on Miller: change order was $450 not $350”',
-    result: 'Instantly appends verified correction note directly to the job timeline and cost records.',
+    result: 'Appends a verified correction note to the job timeline and texts back a confirmation. The original cost entry stays as filed — edit the amount in the dashboard.',
   },
 ];
 
