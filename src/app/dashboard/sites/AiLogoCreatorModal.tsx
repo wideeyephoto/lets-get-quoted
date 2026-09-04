@@ -673,6 +673,7 @@ export default function AiLogoCreatorModal({
   }, [open, onLogosChange, onPendingChange]);
 
   const [suggestedTaglines, setSuggestedTaglines] = useState<string[]>([]);
+  const [taglineError, setTaglineError] = useState<string | null>(null);
   const [isGeneratingAi, startAiTransition] = useTransition();
   const [isGeneratingImage, startImageTransition] = useTransition();
   const [downloadingKit, setDownloadingKit] = useState(false);
@@ -817,17 +818,25 @@ export default function AiLogoCreatorModal({
   }
 
   function handleTriggerAiSlogans() {
+    setTaglineError(null);
     startAiTransition(async () => {
-      const res = await generateLogoTaglinesAction({
-        companyName: name,
-        trade: trade || 'Contractor',
-      });
-      if (res.ok && res.taglines && res.taglines.length > 0) {
-        setSuggestedTaglines(res.taglines);
-        if (!tagline) {
-          setTagline(res.taglines[0]);
+      try {
+        const res = await generateLogoTaglinesAction({
+          companyName: name || "Let's Get Quoted",
+          trade: trade || 'Contractor',
+        });
+        const taglines = res.taglines && res.taglines.length > 0 ? res.taglines : null;
+        if (taglines) {
+          setSuggestedTaglines(taglines);
+          if (!tagline) {
+            setTagline(taglines[0]);
+          }
+          onRefreshCredits?.();
+        } else if (!res.ok) {
+          setTaglineError(res.message || 'Could not generate taglines.');
         }
-        onRefreshCredits?.();
+      } catch (err) {
+        setTaglineError(err instanceof Error ? err.message : 'Could not generate taglines.');
       }
     });
   }
@@ -1406,10 +1415,25 @@ export default function AiLogoCreatorModal({
                 style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
               />
 
+              {taglineError && (
+                <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#b91c1c', fontWeight: 600 }}>
+                  ⚠️ {taglineError}
+                </div>
+              )}
+
               {/* AI Slogan Suggestions Pills */}
               {suggestedTaglines.length > 0 && (
                 <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                  <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Pick an AI Slogan:</span>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Pick an AI Slogan:</span>
+                    <button
+                      type="button"
+                      onClick={() => setSuggestedTaglines([])}
+                      style={{ border: 'none', background: 'transparent', color: '#94a3b8', fontSize: '0.68rem', cursor: 'pointer' }}
+                    >
+                      Dismiss
+                    </button>
+                  </div>
                   {suggestedTaglines.map((t, idx) => (
                     <button
                       key={idx}
@@ -1417,7 +1441,7 @@ export default function AiLogoCreatorModal({
                       onClick={() => setTagline(t)}
                       style={{
                         textAlign: 'left',
-                        padding: '4px 8px',
+                        padding: '5px 8px',
                         background: tagline === t ? '#eff6ff' : '#ffffff',
                         border: tagline === t ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
                         borderRadius: '6px',
@@ -1425,9 +1449,13 @@ export default function AiLogoCreatorModal({
                         color: tagline === t ? '#1d4ed8' : '#334155',
                         fontWeight: tagline === t ? 700 : 500,
                         cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
                       }}
                     >
-                      &bull; {t}
+                      <span>&bull; {t}</span>
+                      {tagline === t && <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 900 }}>✓</span>}
                     </button>
                   ))}
                 </div>

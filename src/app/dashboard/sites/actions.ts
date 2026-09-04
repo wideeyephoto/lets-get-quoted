@@ -22,6 +22,7 @@ import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
 import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings, preserveAiLogos, type PersistedAiLogo, type PendingAiLogo } from '@/lib/site-content';
 import { preserveBlogPosts } from '@/lib/site-blog';
 import { matchesServedCity } from '@/lib/service-area-match';
+import { buildTaglinePromptInput, getFallbackTaglines, TAGLINE_INSTRUCTIONS } from '@/lib/logo-taglines';
 import {
   getOrCreateSite,
   updateSite,
@@ -263,11 +264,19 @@ function normalizeStatSuffix(value: unknown): string {
 }
 
 function extractOutputText(payload: unknown): string {
-  const record = payload as { output_text?: unknown; output?: unknown[] };
+  if (typeof payload === 'string') return payload;
+  const record = payload as {
+    output_text?: unknown;
+    output?: unknown[];
+    choices?: Array<{ message?: { content?: unknown } }>;
+  };
   if (typeof record?.output_text === 'string') return record.output_text;
   const message = record?.output?.find((item): item is { type: string; content?: unknown[] } => (item as { type?: string })?.type === 'message');
   const textPart = message?.content?.find((part): part is { type: string; text?: string } => (part as { type?: string })?.type === 'output_text');
-  return textPart?.text ?? '{}';
+  if (typeof textPart?.text === 'string') return textPart.text;
+  const choiceText = record?.choices?.[0]?.message?.content;
+  if (typeof choiceText === 'string') return choiceText;
+  return '{}';
 }
 
 // Generates fresh, randomized example headline/tagline/SEO copy for the
@@ -860,40 +869,32 @@ export async function generateLogoTaglinesAction(params: {
   serviceArea?: string;
   zip?: string;
 }): Promise<{ ok: boolean; taglines?: string[]; message?: string }> {
+  const companyName = params.companyName?.trim() || 'Our Company';
+  const trade = params.trade?.trim() || 'General Contractor';
+
   try {
     const { accountId } = await requireOfficeContext('settings.write');
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
       return {
         ok: true,
-        taglines: [
-          'Master Craftsmanship & Reliable Service',
-          'Licensed, Insured & Family Owned',
-          'Fast, Honest & Precision Quality',
-          'Residential & Commercial Specialists',
-          'Your Trusted Local Trade Experts',
-        ],
+        taglines: getFallbackTaglines(trade, companyName),
       };
     }
 
-    const companyName = params.companyName?.trim() || 'Our Company';
-    const trade = params.trade?.trim() || 'General Contractor';
-    const location = params.serviceArea?.trim() || params.zip?.trim() || '';
-
-    const instructions =
-      'You generate 5 distinct, high-impact, professional marketing taglines/slogans for a local home services contractor logo. ' +
-      'Rules: ' +
-      '1. Each tagline must be under 40 characters so it fits cleanly on an invoice, truck wrap, or logo emblem. ' +
-      '2. Make them punchy, trustworthy, and industry-specific (e.g. Plumbing, HVAC, Roofing, Electrical). ' +
-      '3. Offer varied angles: one reliability/speed, one master craftsmanship/heritage, one local pride, one modern concise, one premium quality. ' +
-      '4. Return strict JSON format: {"taglines": ["line 1", "line 2", "line 3", "line 4", "line 5"]}';
-
-    const input = `Company: ${companyName}. Trade: ${trade}. Location: ${location || 'Local'}.`;
+    const instructions = TAGLINE_INSTRUCTIONS;
+    // CRITICAL: input must include 'json' to prevent the Responses API 400 rejection
+    const input = buildTaglinePromptInput({
+      companyName,
+      trade,
+      serviceArea: params.serviceArea,
+      zip: params.zip,
+    });
 
     const response = await callModel(
       {
         model: 'gpt-4o-mini',
-        temperature: 0.8,
+        temperature: 0.85,
         instructions,
         input,
         text: { format: { type: 'json_object' } },
@@ -903,33 +904,27 @@ export async function generateLogoTaglinesAction(params: {
 
     if (!response.ok) throw new Error(`Model request failed: ${response.status}`);
     const payload = await response.json();
-    const parsed = JSON.parse(extractOutputText(payload)) as { taglines?: string[] };
-
-    const taglines = Array.isArray(parsed.taglines)
-      ? parsed.taglines.map((t) => String(t).trim().slice(0, 50)).filter(Boolean)
-      : [];
+    const rawText = extractOutputText(payload);
+    let taglines: string[] = [];
+    try {
+      const parsed = JSON.parse(rawText) as { taglines?: string[] };
+      if (Array.isArray(parsed.taglines)) {
+        taglines = parsed.taglines.map((t) => String(t).trim().slice(0, 50)).filter(Boolean);
+      }
+    } catch {
+      // JSON parse fallback
+    }
 
     return {
       ok: true,
-      taglines: taglines.length > 0 ? taglines : [
-        'Master Craftsmanship & Reliable Service',
-        'Licensed, Insured & Family Owned',
-        'Fast, Honest & Precision Quality',
-        'Residential & Commercial Specialists',
-        'Your Trusted Local Trade Experts',
-      ],
+      taglines: taglines.length > 0 ? taglines : getFallbackTaglines(trade, companyName),
     };
   } catch (error) {
+    // If the model fails or is unconfigured or rate-limited, return high-quality trade-specific taglines so the contractor is never blocked
     return {
-      ok: false,
-      message: error instanceof Error ? error.message : 'Could not generate taglines.',
-      taglines: [
-        'Master Craftsmanship & Reliable Service',
-        'Licensed, Insured & Family Owned',
-        'Fast, Honest & Precision Quality',
-        'Residential & Commercial Specialists',
-        'Your Trusted Local Trade Experts',
-      ],
+      ok: true,
+      taglines: getFallbackTaglines(trade, companyName),
+      message: error instanceof Error ? error.message : undefined,
     };
   }
 }

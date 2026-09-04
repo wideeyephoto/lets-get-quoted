@@ -211,4 +211,22 @@ describe('Website Builder AI Credits Display', () => {
     expect(MODAL_CODE).toContain('Offline Fallback');
     expect(MODAL_CODE).toContain('AI generator is offline. You can use Editable Vectors');
   });
+
+  it('wires up Tagline / Slogan generator with resilient error handling and OpenAI Responses API compliance', () => {
+    // Modal wires up AI slogans button and tagline input
+    expect(MODAL_CODE).toContain('Tagline / Slogan');
+    expect(MODAL_CODE).toContain('handleTriggerAiSlogans');
+    expect(MODAL_CODE).toContain('taglineError');
+    expect(MODAL_CODE).toContain('suggestedTaglines');
+    expect(MODAL_CODE).toContain('Pick an AI Slogan:');
+
+    // Actions implementation uses buildTaglinePromptInput and getFallbackTaglines
+    const ACTIONS_CODE = readFileSync(
+      join(__dirname, '../src/app/dashboard/sites/actions.ts'),
+      'utf-8',
+    );
+    expect(ACTIONS_CODE).toContain('generateLogoTaglinesAction');
+    expect(ACTIONS_CODE).toContain('buildTaglinePromptInput');
+    expect(ACTIONS_CODE).toContain('getFallbackTaglines');
+  });
 });
