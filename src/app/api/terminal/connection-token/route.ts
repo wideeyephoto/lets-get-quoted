@@ -4,7 +4,7 @@ import { createTerminalConnectionToken } from '@/lib/stripe-terminal';
 
 export async function POST() {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const token = await createTerminalConnectionToken(supabase, accountId);
 
     return NextResponse.json({

@@ -61,10 +61,23 @@ export default function RevenuePaymentsScreen({
   const [selectedPayment, setSelectedPayment] = useState<PaymentLedgerItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Monthly Revenue Goal Pacing State
+  // Monthly Revenue Goal Pacing State (persisted locally)
   const [monthlyGoal, setMonthlyGoal] = useState(35000);
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('35000');
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('lgq_monthly_revenue_goal');
+      if (saved) {
+        const num = Number.parseFloat(saved);
+        if (Number.isFinite(num) && num > 0) {
+          setMonthlyGoal(num);
+          setGoalInput(String(num));
+        }
+      }
+    } catch {}
+  }, []);
 
   // Sync hash routing
   useEffect(() => {
@@ -87,6 +100,40 @@ export default function RevenuePaymentsScreen({
   function handleShowToast(msg: string) {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
+  }
+
+  function handleExportCsv() {
+    const headers = ['Date', 'Customer', 'Job Ref', 'Invoice Ref', 'Description', 'Method', 'Gross', 'Fee', 'Net', 'Status', 'Transaction ID'];
+    const csvRows = [headers.join(',')];
+
+    for (const r of initialPayments) {
+      const dateStr = r.paidAt ? r.paidAt.slice(0, 10) : r.requestedAt.slice(0, 10);
+      const values = [
+        `"${dateStr}"`,
+        `"${(r.clientName || '').replace(/"/g, '""')}"`,
+        `"${r.jobRef || ''}"`,
+        `"${r.invoiceRef || ''}"`,
+        `"${(r.label || '').replace(/"/g, '""')}"`,
+        `"${r.paymentMethod || ''}"`,
+        (r.amount || 0).toFixed(2),
+        (r.platformFee || 0).toFixed(2),
+        (r.netAmount || 0).toFixed(2),
+        `"${r.status || ''}"`,
+        `"${r.id || ''}"`,
+      ];
+      csvRows.push(values.join(','));
+    }
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `payments_ledger_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    handleShowToast('Payments ledger CSV exported successfully');
   }
 
   const failedPayments = initialPayments.filter((p) => p.status === 'failed');
@@ -128,31 +175,84 @@ export default function RevenuePaymentsScreen({
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
             <span style={{ fontSize: '1.4rem' }}>💰</span>
             <h1 className="workspace-title" style={{ margin: 0 }}>Revenue &amp; Payments</h1>
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                padding: '0.15rem 0.55rem',
-                borderRadius: '999px',
-                background: 'rgba(16, 185, 129, 0.1)',
-                color: 'var(--good, #047857)',
-                fontSize: '0.72rem',
-                fontWeight: 600,
-                border: '1px solid rgba(16, 185, 129, 0.25)',
-              }}
-            >
-              <span
+            {!payouts.connected ? (
+              <div
                 style={{
-                  width: '6px',
-                  height: '6px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.15rem 0.55rem',
                   borderRadius: '999px',
-                  background: '#10b981',
-                  boxShadow: '0 0 6px #10b981',
+                  background: 'rgba(156, 163, 175, 0.15)',
+                  color: 'var(--muted, #6b7280)',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  border: '1px solid rgba(156, 163, 175, 0.3)',
                 }}
-              />
-              Live Settlement Engine Active
-            </div>
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '999px',
+                    background: '#9ca3af',
+                  }}
+                />
+                Stripe Not Connected
+              </div>
+            ) : payouts.payoutsPaused ? (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '999px',
+                  background: 'rgba(239, 68, 68, 0.1)',
+                  color: '#dc2626',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  border: '1px solid rgba(239, 68, 68, 0.25)',
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '999px',
+                    background: '#ef4444',
+                    boxShadow: '0 0 6px #ef4444',
+                  }}
+                />
+                Payouts Paused by Stripe
+              </div>
+            ) : (
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.15rem 0.55rem',
+                  borderRadius: '999px',
+                  background: 'rgba(16, 185, 129, 0.1)',
+                  color: 'var(--good, #047857)',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  border: '1px solid rgba(16, 185, 129, 0.25)',
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '999px',
+                    background: '#10b981',
+                    boxShadow: '0 0 6px #10b981',
+                  }}
+                />
+                Live Settlement Engine Active
+              </div>
+            )}
           </div>
           <p className="workspace-lead" style={{ marginTop: '0.25rem' }}>
             Cash operations, online &amp; offline collections, aging receivables, and bank transfers.
@@ -198,13 +298,14 @@ export default function RevenuePaymentsScreen({
             ⚙️ Financial Tools ▾
           </button>
 
-          <a
-            href="/api/export/tax?type=pl"
+          <button
+            type="button"
             className="btn secondary"
-            title="Download CSV report"
+            title="Export Payments Ledger CSV"
+            onClick={handleExportCsv}
           >
             📥 Export CSV
-          </a>
+          </button>
 
           <div style={{ display: 'flex', gap: '0.35rem', marginLeft: '0.25rem' }}>
             <Link className="btn secondary" href="/dashboard/cash-flow" style={{ fontSize: '0.82rem', padding: '0.45rem 0.65rem' }}>
@@ -269,7 +370,12 @@ export default function RevenuePaymentsScreen({
                     style={{ padding: '0.1rem 0.35rem', fontSize: '0.72rem' }}
                     onClick={() => {
                       const num = Number.parseFloat(goalInput);
-                      if (Number.isFinite(num) && num > 0) setMonthlyGoal(num);
+                      if (Number.isFinite(num) && num > 0) {
+                        setMonthlyGoal(num);
+                        try {
+                          localStorage.setItem('lgq_monthly_revenue_goal', String(num));
+                        } catch {}
+                      }
                       setEditingGoal(false);
                     }}
                   >

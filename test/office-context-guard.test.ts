@@ -405,7 +405,7 @@ describe('the wiring, as source', () => {
       for (const entry of readdirSync(join(process.cwd(), dir))) {
         const rel = `${dir}/${entry}`;
         if (statSync(join(process.cwd(), rel)).isDirectory()) walk(rel);
-        else if (/\.tsx?$/.test(entry) && read(rel).includes('requireOfficeContext(')) callers.push(rel);
+        else if (/\.tsx?$/.test(entry) && (read(rel).includes('requireOfficeContext(') || read(rel).includes('requireOfficeContextAny('))) callers.push(rel);
       }
     };
     walk('src/app');

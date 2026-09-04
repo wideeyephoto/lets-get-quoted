@@ -1044,6 +1044,25 @@ export async function requireOfficeContext(...capabilities: readonly string[]) {
 }
 
 /**
+ * Admits an office user who holds ANY of the supplied capabilities.
+ * Useful for composite dashboard workspaces (such as Payments & Revenue) where
+ * holding reports.read, payments.read, or payments.collect is sufficient to view the page.
+ */
+export async function requireOfficeContextAny(...capabilities: readonly string[]) {
+  if (capabilities.length === 0) {
+    throw new Error('requireOfficeContextAny requires at least one capability');
+  }
+
+  const context = await resolveOfficeCapableMember();
+
+  if (!capabilities.some((capability) => context.capabilities.has(capability))) {
+    redirect(context.role === 'owner' ? '/dashboard' : officeLandingPath(context.capabilities));
+  }
+
+  return context;
+}
+
+/**
  * An owner's capability set: everything, including keys that do not exist.
  *
  * A plain Set could not express that, and enumerating the catalog here would

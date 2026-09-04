@@ -1,10 +1,12 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOfficeContext, requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { refundPayment } from '@/lib/payments';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
-import { sendPaymentSmsEvent } from '@/lib/sms';
+import { sendPaymentSmsEvent, sendLienWaiverSms, queueAccountSms } from '@/lib/sms';
+import { normalizeUsPhone } from '@/lib/phone';
+import { createJobFeedEvent } from '@/lib/job-feed';
 import { assembleDisputeEvidence, type DisputeEvidenceBundle } from '@/lib/dispute-evidence';
 import { calculateFinancingOptions, type FinancingTermOption } from '@/lib/financing-calculator';
 import {
@@ -33,7 +35,7 @@ export type ActionState<T = unknown> = {
  */
 export async function recordManualPaymentAction(formData: FormData): Promise<ActionState> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
     const jobId = String(formData.get('jobId') || '').trim();
     const invoiceId = String(formData.get('invoiceId') || '').trim() || null;
@@ -109,7 +111,7 @@ export async function recordBatchInvoiceSettlementAction(
   allocations: Array<{ invoiceId: string; amount: number; ref?: string }>,
 ): Promise<ActionState> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
     if (!allocations || allocations.length === 0) {
       return { success: false, error: 'No invoices selected for settlement.' };
@@ -197,6 +199,35 @@ export async function sendPaymentReminderAction(formData: FormData): Promise<Act
 }
 
 /**
+ * Send an SMS payment receipt confirmation to the customer
+ */
+export async function sendPaymentReceiptSmsAction(paymentId: string): Promise<ActionState> {
+  try {
+    const { accountId } = await requireOfficeContext('messages.send');
+    const pid = String(paymentId || '').trim();
+
+    if (!pid) {
+      return { success: false, error: 'Payment ID is required.' };
+    }
+
+    try {
+      await sendPaymentSmsEvent(pid, 'payment_paid', accountId);
+    } catch (smsErr) {
+      console.warn('SMS receipt failed:', smsErr);
+      return { success: false, error: smsErr instanceof Error ? smsErr.message : 'Could not dispatch receipt SMS.' };
+    }
+
+    return { success: true, message: 'Payment receipt sent successfully via SMS.' };
+  } catch (error) {
+    console.error('sendPaymentReceiptSmsAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to dispatch receipt SMS.',
+    };
+  }
+}
+
+/**
  * Batch broadcast SMS reminders to all overdue invoice recipients
  */
 export async function batchSendOverdueRemindersAction(_formData?: FormData): Promise<ActionState> {
@@ -246,7 +277,7 @@ export async function batchSendOverdueRemindersAction(_formData?: FormData): Pro
  */
 export async function issueRefundAction(formData: FormData): Promise<ActionState> {
   try {
-    const { supabase, accountId } = await requireOwnerContext();
+    const { supabase, accountId } = await requireOfficeContext('payments.refund');
     const paymentId = String(formData.get('paymentId') || '').trim();
     const amountStr = String(formData.get('amount') || '').trim();
 
@@ -281,7 +312,7 @@ export async function issueRefundAction(formData: FormData): Promise<ActionState
  */
 export async function createInstantPayLinkAction(formData: FormData): Promise<ActionState<{ paymentId: string; payUrl: string }>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const jobId = String(formData.get('jobId') || '').trim();
     const amountStr = String(formData.get('amount') || '').trim();
     const label = String(formData.get('label') || 'Payment Request').trim();
@@ -353,7 +384,7 @@ export async function createPaymentPlanScheduleAction(
   milestones: Array<{ label: string; amount: number; kind: string }>,
 ): Promise<ActionState> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
     if (!jobId) {
       return { success: false, error: 'Job is required.' };
@@ -396,7 +427,7 @@ export async function createPaymentPlanScheduleAction(
  */
 export async function assembleDisputeEvidenceAction(paymentId: string): Promise<ActionState<DisputeEvidenceBundle>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.read');
     const bundle = await assembleDisputeEvidence(supabase, accountId, paymentId);
     if (!bundle) {
       return { success: false, error: 'Could not assemble dispute evidence for this payment.' };
@@ -482,7 +513,7 @@ export async function getClientStatementDataAction(clientName: string): Promise<
  */
 export async function recordPromiseToPayAction(formData: FormData): Promise<ActionState> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const paymentId = String(formData.get('paymentId') || '').trim();
     const promisedDate = String(formData.get('promisedDate') || '').trim();
     const note = String(formData.get('note') || '').trim();
@@ -557,7 +588,7 @@ export async function generateNoiNoticeAction(input: {
   cureDays?: number;
 }): Promise<ActionState<import('@/lib/noi-generator').NoiDocumentData>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const { generateNoiDocumentData } = await import('@/lib/noi-generator');
 
     // Fetch payment, job and contractor profile
@@ -611,8 +642,29 @@ export async function generateNoiNoticeAction(input: {
  */
 export async function saveDunningRulesAction(formData: FormData): Promise<ActionState> {
   try {
-    await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('settings.write');
     const enabled = formData.get('enabled') === '1' || formData.get('enabled') === 'true';
+    const dunning1Days = Number(formData.get('dunning1Days')) || 1;
+    const dunning2Days = Number(formData.get('dunning2Days')) || 7;
+    const dunning3Days = Number(formData.get('dunning3Days')) || 14;
+    const dunning4Days = Number(formData.get('dunning4Days')) || 30;
+
+    const { error: updateError } = await supabase
+      .from('accounts')
+      .update({
+        dunning_rules: {
+          enabled,
+          dunning1Days,
+          dunning2Days,
+          dunning3Days,
+          dunning4Days,
+          updatedAt: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', accountId);
+
+    if (updateError) throw updateError;
 
     revalidatePath('/dashboard/payments');
     return {
@@ -693,7 +745,7 @@ export async function generateLienWaiverAction(params: {
   claimantSignatureName?: string;
 }): Promise<ActionState<import('@/lib/lien-waiver').LienWaiverDocument>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('billing.read');
+    const { supabase, accountId } = await requireOfficeContext('payments.read');
     const { generateLienWaiverDocument } = await import('@/lib/lien-waiver');
 
     const { data: job } = await supabase
@@ -736,7 +788,7 @@ export async function generateLienWaiverAction(params: {
 /**
  * Sends a signed statutory lien waiver document link to the homeowner via SMS.
  */
-export async function sendLienWaiverSmsAction(_params: {
+export async function sendLienWaiverSmsAction(params: {
   waiverId: string;
   phone: string;
   customerName: string;
@@ -744,7 +796,21 @@ export async function sendLienWaiverSmsAction(_params: {
   waiverTypeTitle: string;
 }): Promise<ActionState<boolean>> {
   try {
-    await requireOfficeContext('billing.write');
+    const { accountId } = await requireOfficeContext('messages.send');
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
+    const waiverLink = `${origin}/waivers/${params.waiverId}`;
+    const body = `Hi ${params.customerName}, here is your official signed ${params.waiverTypeTitle} for job ${params.jobRef}: ${waiverLink}. Reply STOP to opt out.`;
+
+    const sent = await sendLienWaiverSms({
+      accountId,
+      phone: params.phone,
+      body,
+      idempotencyKey: `waiver-sms-${params.waiverId}`,
+    });
+
+    if (!sent) {
+      return { success: false, error: 'Could not deliver lien waiver SMS.' };
+    }
     return { success: true, data: true };
   } catch (error) {
     console.error('sendLienWaiverSmsAction failed:', error);
@@ -767,7 +833,7 @@ export async function sendRetainageReleaseRequestAction(params: {
   substantialCompletionDate: string;
 }): Promise<ActionState<string>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('billing.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const { generateRetainageReleaseDemand } = await import('@/lib/retainage-tracker');
 
     const { data: job } = await supabase
@@ -794,6 +860,37 @@ export async function sendRetainageReleaseRequestAction(params: {
       punchListCompleted: true,
     });
 
+    // If client phone is provided, dispatch SMS notice
+    if (params.clientPhone) {
+      const to = normalizeUsPhone(params.clientPhone);
+      if (to) {
+        try {
+          await queueAccountSms({
+            accountId,
+            phone: to,
+            body: `Demand for Release of Retainage: ${account?.business_name || 'Contractor'} has reached substantial completion on ${job?.ref || 'Project'} and requests release of $${params.retainageAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} retainage. Reply STOP to opt out.`,
+            messageKind: 'retainage-release-demand',
+            category: 'customer_message',
+          });
+        } catch (smsErr) {
+          console.warn('Could not dispatch retainage SMS:', smsErr);
+        }
+      }
+    }
+
+    // Record job feed event
+    try {
+      await createJobFeedEvent(supabase, {
+        accountId,
+        jobId: params.jobId,
+        eventType: 'note_added',
+        title: 'Retainage Release Demanded',
+        body: `Formal demand dispatched for release of $${params.retainageAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} retainage funds.`,
+      });
+    } catch (feedErr) {
+      console.warn('Could not record retainage feed event:', feedErr);
+    }
+
     return { success: true, data: demand.body };
   } catch (error) {
     console.error('sendRetainageReleaseRequestAction failed:', error);
@@ -807,22 +904,32 @@ export async function sendRetainageReleaseRequestAction(params: {
 /**
  * Saves homeowner ACH Early-Pay Incentive discount settings.
  */
-export async function saveAchIncentiveSettingsAction(_params: {
+export async function saveAchIncentiveSettingsAction(params: {
   enabled: boolean;
   discountType: 'percentage' | 'fixed';
   discountValue: number;
   minimumTransactionAmount: number;
 }): Promise<ActionState<boolean>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('billing.write');
+    const { supabase, accountId } = await requireOfficeContext('settings.write');
 
-    await supabase
+    const { error } = await supabase
       .from('accounts')
       .update({
+        ach_incentive_settings: {
+          enabled: Boolean(params.enabled),
+          discountType: params.discountType,
+          discountValue: Number(params.discountValue) || 0,
+          minimumTransactionAmount: Number(params.minimumTransactionAmount) || 0,
+          updatedAt: new Date().toISOString(),
+        },
         updated_at: new Date().toISOString(),
       })
       .eq('id', accountId);
 
+    if (error) throw error;
+
+    revalidatePath('/dashboard/payments');
     return { success: true, data: true };
   } catch (error) {
     console.error('saveAchIncentiveSettingsAction failed:', error);
@@ -834,11 +941,50 @@ export async function saveAchIncentiveSettingsAction(_params: {
 }
 
 /**
+ * Saves payment prompt-discount and late fee penalty rules.
+ */
+export async function savePaymentRulesAction(params: {
+  discountPct: number;
+  discountDays: number;
+  lateFeePct: number;
+  lateFeeDays: number;
+}): Promise<ActionState<boolean>> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('settings.write');
+
+    const { error } = await supabase
+      .from('accounts')
+      .update({
+        payment_rules: {
+          discountPct: Number(params.discountPct) || 0,
+          discountDays: Number(params.discountDays) || 0,
+          lateFeePct: Number(params.lateFeePct) || 0,
+          lateFeeDays: Number(params.lateFeeDays) || 0,
+          updatedAt: new Date().toISOString(),
+        },
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', accountId);
+
+    if (error) throw error;
+
+    revalidatePath('/dashboard/payments');
+    return { success: true, data: true };
+  } catch (error) {
+    console.error('savePaymentRulesAction failed:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to save payment incentive rules.',
+    };
+  }
+}
+
+/**
  * Fetch a Stripe Terminal Connection Token for Reader SDK / Tap to Pay.
  */
 export async function getTerminalConnectionTokenAction(): Promise<ActionState<TerminalConnectionToken>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const token = await createTerminalConnectionToken(supabase, accountId);
     return { success: true, data: token };
   } catch (error) {
@@ -876,7 +1022,7 @@ export async function registerTerminalReaderAction(
   locationId?: string
 ): Promise<ActionState<TerminalReader>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     if (!registrationCode) {
       return { success: false, error: 'Registration code is required.' };
     }
@@ -906,7 +1052,7 @@ export async function createTerminalPaymentIntentAction(params: {
   readerId?: string;
 }): Promise<ActionState<TerminalPaymentIntentResult>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const result = await createTerminalPaymentIntent(supabase, accountId, params);
 
     revalidatePath('/dashboard/payments');
@@ -929,7 +1075,7 @@ export async function simulateTerminalTapAction(
   paymentIntentId?: string
 ): Promise<ActionState<{ message: string }>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const result = await simulateTerminalCardTap(supabase, accountId, readerId, paymentIntentId);
     return { success: true, message: result.message };
   } catch (error) {
@@ -950,7 +1096,7 @@ export async function cancelTerminalAction(params: {
   paymentId?: string;
 }): Promise<ActionState<boolean>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     await cancelTerminalReaderAction(supabase, accountId, params);
 
     revalidatePath('/dashboard/payments');
@@ -972,7 +1118,7 @@ export async function confirmTerminalPaymentAction(
   paymentIntentId: string
 ): Promise<ActionState<TerminalPaymentStatusResult>> {
   try {
-    const { supabase, accountId } = await requireOfficeContext('payments.write');
+    const { supabase, accountId } = await requireOfficeContext('payments.collect');
     const result = await confirmTerminalPayment(supabase, accountId, paymentId, paymentIntentId);
 
     revalidatePath('/dashboard/payments');

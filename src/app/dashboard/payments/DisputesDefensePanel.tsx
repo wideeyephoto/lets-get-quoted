@@ -65,7 +65,7 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
           <div style={{ fontSize: '2.5rem' }}>🏆</div>
           <strong style={{ fontSize: '1.1rem', color: 'var(--text)' }}>Dispute Defense Studio Standing By</strong>
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', maxWidth: '460px' }}>
-            When a credit card issuer opens a dispute, our automated counter-evidence compiler will instantly assemble contract signatures, photo evidence, and timestamped SMS records to submit directly to Stripe.
+            When a credit card issuer opens a dispute, our automated counter-evidence compiler compiles signed agreements, photo logs, and timestamped SMS communications into an audit-ready dossier you can copy and submit directly in the Stripe Disputes portal.
           </p>
         </div>
       ) : (
@@ -113,9 +113,16 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
                       <strong style={{ fontSize: '0.95rem', color: 'var(--text)' }}>{p.clientName}</strong>
                       <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>({p.jobRef})</span>
                     </div>
-                    <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
-                      Dispute initiated on {p.disputedAt ? new Date(p.disputedAt).toLocaleDateString() : 'recently'}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontSize: '0.82rem', color: 'var(--muted)' }}>
+                        Dispute opened: {p.disputedAt ? new Date(p.disputedAt).toLocaleDateString() : 'recently'}
+                      </span>
+                      {p.disputeDueBy && (
+                        <span style={{ fontSize: '0.76rem', fontWeight: 600, color: '#dc2626', background: 'rgba(239, 68, 68, 0.1)', padding: '0.1rem 0.45rem', borderRadius: '4px' }}>
+                          ⏳ Response deadline: {new Date(p.disputeDueBy).toLocaleDateString()}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 

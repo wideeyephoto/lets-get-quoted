@@ -28,6 +28,7 @@ export type PaymentLedgerItem = {
   disputedAt: string | null;
   disputeReason: string | null;
   disputeStatus: string | null;
+  disputeDueBy: string | null;
   chargeModel: string | null;
   stripePaymentIntent: string | null;
   stripeCheckoutSession: string | null;
@@ -107,6 +108,7 @@ type DbPaymentRow = {
   disputed_at: string | null;
   dispute_reason: string | null;
   dispute_status: string | null;
+  dispute_due_by?: string | null;
   payment_plan_id?: string | null;
   due_date?: string | null;
 };
@@ -151,6 +153,7 @@ export async function loadPaymentsLedgerData(
           disputed_at,
           dispute_reason,
           dispute_status,
+          dispute_due_by,
           payment_plan_id,
           due_date
         `)
@@ -268,6 +271,7 @@ export async function loadPaymentsLedgerData(
         disputedAt: row.disputed_at,
         disputeReason: row.dispute_reason,
         disputeStatus: row.dispute_status,
+        disputeDueBy: row.dispute_due_by || null,
         chargeModel: row.charge_model,
         stripePaymentIntent: row.stripe_payment_intent,
         stripeCheckoutSession: row.stripe_checkout_session,

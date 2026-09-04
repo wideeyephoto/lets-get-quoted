@@ -1,4 +1,4 @@
-import { requireOfficeContext } from '@/lib/auth';
+import { requireOfficeContextAny } from '@/lib/auth';
 import { listJobs } from '@/lib/jobs';
 import { loadPaymentsLedgerData, type LedgerFilterOptions } from '@/lib/payments-ledger-data';
 import { loadReceivablesData } from '@/lib/receivables-data';
@@ -18,7 +18,7 @@ export default async function PaymentsRevenuePage({
   searchParams: Promise<{ range?: string }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContext('reports.read');
+  const { supabase, accountId } = await requireOfficeContextAny('reports.read', 'payments.read', 'payments.collect');
 
   const selectedRange = (searchParams.range || '30d') as NonNullable<LedgerFilterOptions['range']>;
 

@@ -100,24 +100,53 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
             <strong style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text)' }}>
               <span>⚡</span> Instant Payout (Emergency Liquidity)
             </strong>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.15)', color: 'var(--info, #2563eb)', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
-              Within 30 Mins
+            <span
+              style={{
+                fontSize: '0.75rem',
+                fontWeight: 600,
+                background: payouts.instantPayoutEligible ? 'rgba(16, 185, 129, 0.15)' : 'rgba(156, 163, 175, 0.15)',
+                color: payouts.instantPayoutEligible ? 'var(--good, #047857)' : 'var(--muted, #64748b)',
+                padding: '0.15rem 0.5rem',
+                borderRadius: '999px',
+              }}
+            >
+              {payouts.instantPayoutEligible ? '⚡ Within 30 Mins (Eligible)' : 'Standard Daily ACH Active'}
             </span>
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted)' }}>
-            Need material funds on Friday afternoon before banks open Monday? Transfer available funds immediately to your debit card.
+            {payouts.instantPayoutEligible
+              ? 'Need material funds before banks open? Transfer available funds directly to your linked debit card via Stripe Express.'
+              : 'Standard automatic daily ACH transfers (1–2 business days) are active. Instant 30-minute transfers require linking an eligible business debit card in Stripe Express.'}
           </p>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', padding: '0.5rem 0.75rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', fontSize: '0.84rem' }}>
             <div>
-              <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Available to Transfer</span>
+              <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Available Balance</span>
               <strong style={{ color: 'var(--text)' }}>{formatUsd(payouts.availableBalanceDollars)}</strong>
             </div>
-            <div style={{ textAlign: 'right' }}>
-              <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Net After 1.5% Fee</span>
-              <strong style={{ color: 'var(--good, #047857)' }}>
-                {formatUsd(Math.max(0, payouts.availableBalanceDollars * 0.985))}
-              </strong>
-            </div>
+            {payouts.instantPayoutEligible ? (
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Net After 1.5% Fee</span>
+                <strong style={{ color: 'var(--good, #047857)' }}>
+                  {formatUsd(Math.max(0, payouts.availableBalanceDollars * 0.985))}
+                </strong>
+              </div>
+            ) : (
+              <div style={{ textAlign: 'right' }}>
+                <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Transfer Schedule</span>
+                <strong style={{ color: 'var(--text)' }}>Daily Automatic</strong>
+              </div>
+            )}
+          </div>
+          <div style={{ marginTop: '0.35rem' }}>
+            <a
+              href="https://dashboard.stripe.com"
+              target="_blank"
+              rel="noreferrer"
+              className={payouts.instantPayoutEligible ? 'btn primary' : 'btn secondary'}
+              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+            >
+              {payouts.instantPayoutEligible ? '⚡ Transfer via Stripe Express ↗' : 'Manage Payout Methods in Stripe ↗'}
+            </a>
           </div>
         </div>
 

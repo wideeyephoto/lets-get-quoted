@@ -13,8 +13,10 @@ import {
   generateFinancingQuoteAction,
   recordPromiseToPayAction,
   sendPaymentReminderAction,
+  sendPaymentReceiptSmsAction,
   generateNoiNoticeAction,
   saveDunningRulesAction,
+  savePaymentRulesAction,
   generateAccountingJournalCsvAction,
   generateLienWaiverAction,
   sendLienWaiverSmsAction,
@@ -213,10 +215,7 @@ export default function PaymentModals({
   // Batch Settle State
   const [batchJobId, setBatchJobId] = useState('');
   const [batchMethod, setBatchMethod] = useState('Check');
-  const [batchInvoices, setBatchInvoices] = useState<Array<{ id: string; ref: string; amount: number }>>([
-    { id: '1', ref: 'INV-101', amount: 1200 },
-    { id: '2', ref: 'INV-102', amount: 850 },
-  ]);
+  const [batchInvoices, setBatchInvoices] = useState<Array<{ id: string; ref: string; amount: number }>>([]);
 
   // Financing State
   const [financingAmount, setFinancingAmount] = useState('12000');
@@ -497,6 +496,7 @@ export default function PaymentModals({
       { id: 'tax_vault' as ModalType, icon: '🏛️', title: 'Tax Reserve Vault', desc: 'Isolate 25% income & 15.3% self-employment reserves from gross revenue.' },
       { id: 'financing' as ModalType, icon: '🏷️', title: 'Homeowner Financing Estimator', desc: 'Calculate monthly payments (12 to 84 months) to help close high-ticket quotes.' },
       { id: 'payment_rules' as ModalType, icon: '⚙️', title: 'Payment Incentive & Late Rules', desc: 'Configure 2% prompt-pay discounts and 1.5% overdue late fees.' },
+      { id: 'tax_export' as ModalType, icon: '📊', title: 'P&L Tax Export (Schedule C / 1099-K)', desc: 'Download complete profit & loss report CSV with categorized revenue, materials, and card processing fee deductions.' },
       { id: 'qr_poster' as ModalType, icon: '🖨️', title: 'Printable Job-Site QR Poster', desc: 'Generate printable yard-sign & truck flyer with payment QR code.' },
       { id: 'client_statement' as ModalType, icon: '📑', title: 'Client Account Statement', desc: 'Generate complete historical billing statements and receipts.' },
     ];
@@ -508,7 +508,14 @@ export default function PaymentModals({
             <button
               key={t.id}
               type="button"
-              onClick={() => onOpenModal(t.id)}
+              onClick={() => {
+                if ((t.id as string) === 'tax_export') {
+                  window.location.href = '/api/export/tax?type=pl';
+                  onClose();
+                  return;
+                }
+                onOpenModal(t.id);
+              }}
               style={{
                 display: 'flex',
                 alignItems: 'flex-start',
@@ -1088,13 +1095,34 @@ export default function PaymentModals({
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem' }}>
             <button
               type="button"
+              className="btn secondary"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
               className="btn primary"
-              onClick={() => {
-                onSuccess('Saved payment incentive rules.');
-                onClose();
+              disabled={loading}
+              onClick={async () => {
+                setLoading(true);
+                const res = await savePaymentRulesAction({
+                  discountPct,
+                  discountDays,
+                  lateFeePct,
+                  lateFeeDays,
+                });
+                setLoading(false);
+                if (res.success) {
+                  onSuccess('Saved payment incentive rules.');
+                  onClose();
+                } else {
+                  setError(res.error || 'Failed to save rules.');
+                }
               }}
             >
-              Save Rules
+              {loading ? 'Saving…' : 'Save Rules'}
             </button>
           </div>
         </div>
@@ -1422,18 +1450,29 @@ export default function PaymentModals({
                 />
               </div>
 
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className="btn primary"
-                  onClick={() => {
-                    navigator.clipboard.writeText(evidenceBundle.summaryText);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                  }}
-                >
-                  {copied ? '✓ Copied Evidence Statement!' : '📋 Copy Evidence to Clipboard'}
-                </button>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn primary"
+                    onClick={() => {
+                      navigator.clipboard.writeText(evidenceBundle.summaryText);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 2000);
+                    }}
+                  >
+                    {copied ? '✓ Copied Evidence Statement!' : '📋 Copy Evidence to Clipboard'}
+                  </button>
+                  <a
+                    href="https://dashboard.stripe.com/disputes"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn secondary"
+                    style={{ fontSize: '0.85rem' }}
+                  >
+                    Submit in Stripe Portal ↗
+                  </a>
+                </div>
                 <button type="button" className="btn secondary" onClick={onClose}>
                   Close
                 </button>
@@ -1624,7 +1663,12 @@ export default function PaymentModals({
             <select
               aria-label="Select Job"
               value={batchJobId}
-              onChange={(e) => setBatchJobId(e.target.value)}
+              onChange={(e) => {
+                const jId = e.target.value;
+                setBatchJobId(jId);
+                const matching = (receivables || []).filter((r) => r.jobId === jId && r.amountDue > 0);
+                setBatchInvoices(matching.map((r) => ({ id: r.id, ref: r.ref || 'INV', amount: r.amountDue })));
+              }}
               required
               className="input"
               style={{ width: '100%' }}
@@ -1668,34 +1712,40 @@ export default function PaymentModals({
 
           <div style={{ border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '6px', padding: '0.75rem' }}>
             <strong style={{ fontSize: '0.85rem' }}>Invoices to Settle:</strong>
-            <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {batchInvoices.map((inv, idx) => (
-                <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
-                  <span>{inv.ref}</span>
-                  <input
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    value={inv.amount}
-                    onChange={(e) => {
-                      const val = Number.parseFloat(e.target.value) || 0;
-                      const updated = [...batchInvoices];
-                      updated[idx].amount = val;
-                      setBatchInvoices(updated);
-                    }}
-                    className="input"
-                    style={{ width: '110px', padding: '0.2rem 0.4rem', fontSize: '0.82rem', textAlign: 'right' }}
-                  />
-                </div>
-              ))}
-            </div>
+            {batchInvoices.length === 0 ? (
+              <div style={{ padding: '0.75rem 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                {batchJobId ? 'No open receivables found for this job.' : 'Select a job above to view and settle open invoices.'}
+              </div>
+            ) : (
+              <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                {batchInvoices.map((inv, idx) => (
+                  <div key={inv.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.85rem' }}>
+                    <span>{inv.ref}</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      value={inv.amount}
+                      onChange={(e) => {
+                        const val = Number.parseFloat(e.target.value) || 0;
+                        const updated = [...batchInvoices];
+                        updated[idx].amount = val;
+                        setBatchInvoices(updated);
+                      }}
+                      className="input"
+                      style={{ width: '110px', padding: '0.2rem 0.4rem', fontSize: '0.82rem', textAlign: 'right' }}
+                    />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
             <button type="button" className="btn secondary" onClick={onClose} disabled={loading}>
               Cancel
             </button>
-            <button type="submit" className="btn primary" disabled={loading}>
+            <button type="submit" className="btn primary" disabled={loading || batchInvoices.length === 0 || totalAllocated <= 0}>
               {loading ? 'Settling Invoices…' : 'Record Lump Settlement'}
             </button>
           </div>
@@ -2033,11 +2083,8 @@ export default function PaymentModals({
                 className="btn secondary"
                 style={{ fontSize: '0.84rem' }}
                 onClick={() => {
-                  const form = new FormData();
-                  form.set('paymentId', selectedPayment.id);
-                  form.set('channel', 'sms');
-                  sendPaymentReminderAction(form).then((res) => {
-                    if (res.success) onSuccess('Receipt dispatched via SMS.');
+                  sendPaymentReceiptSmsAction(selectedPayment.id).then((res) => {
+                    if (res.success) onSuccess('Payment receipt dispatched via SMS.');
                     else alert(res.error || 'Failed to dispatch SMS receipt.');
                   });
                 }}
