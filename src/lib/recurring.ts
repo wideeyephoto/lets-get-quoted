@@ -49,6 +49,7 @@ export type RecurringPlan = {
   card_last4: string | null;
   last_job_id: string | null;
   last_run_at: string | null;
+  cancelled_at?: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -408,9 +409,14 @@ export async function setRecurringPlanActive(
   planId: string,
   active: boolean,
 ): Promise<{ visitsChanged: number }> {
+  const nowIso = new Date().toISOString();
   const { error } = await supabase
     .from('recurring_plans')
-    .update({ active, updated_at: new Date().toISOString() })
+    .update({
+      active,
+      cancelled_at: active ? null : nowIso,
+      updated_at: nowIso,
+    })
     .eq('account_id', accountId)
     .eq('id', planId);
   if (error) throw error;

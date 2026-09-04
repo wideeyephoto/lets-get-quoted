@@ -26,12 +26,17 @@ describe('monthlyRunRate', () => {
     expect(monthlyRunRate(100, 'weekly')).toBeCloseTo((100 * 52) / 12, 5);
     expect(monthlyRunRate(100, 'biweekly')).toBeCloseTo((100 * 26) / 12, 5);
     expect(monthlyRunRate(100, 'monthly')).toBe(100);
+    expect(monthlyRunRate(1200, 'quarterly')).toBe(400);
+    expect(monthlyRunRate(1200, 'semi-annual')).toBe(200);
+    expect(monthlyRunRate(1200, 'semi_annual')).toBe(200);
+    expect(monthlyRunRate(1200, 'annual')).toBe(100);
+    expect(monthlyRunRate(1200, 'yearly')).toBe(100);
   });
   it('coerces string amounts and ignores non-positive / unknown cadence', () => {
     expect(monthlyRunRate('200' as unknown as number, 'monthly')).toBe(200);
     expect(monthlyRunRate(0, 'weekly')).toBe(0);
     expect(monthlyRunRate(-50, 'monthly')).toBe(0);
-    expect(monthlyRunRate(100, 'yearly')).toBe(0);
+    expect(monthlyRunRate(100, 'unknown_cadence')).toBe(0);
   });
 });
 
@@ -157,14 +162,32 @@ describe('metricsForRange', () => {
     expect(metricsForRange(data, from, to).approvedRevenue).toBe(3000);
   });
 
-  it('splits labor vs materials for profit + margin', () => {
+  it('splits labor, materials, and overhead for profit + margin', () => {
     const m = metricsForRange(data, from, to);
     expect(m.laborCost).toBe(100);
-    expect(m.materialsCost).toBe(75); // material 50 + sub 25 (everything not 'labor')
+    expect(m.materialsCost).toBe(75); // material 50 + sub 25 (job-specific, not 'labor')
+    expect(m.overheadCost).toBe(0);
     expect(m.costs).toBe(175);
     expect(m.grossProfit).toBe(575.5);
     expect(m.margin).toBeCloseTo(575.5 / 750.5, 5);
     expect(m.marginPct).toBe(77);
+  });
+
+  it('includes burden_amount in laborCost and breaks out unallocated overheadCost', () => {
+    const withBurdenAndOverhead = {
+      ...data,
+      costs: [
+        { type: 'labor', amount: 100, burden_amount: 25, created_at: '2026-06-11T00:00:00Z', job_id: 'j1' },
+        { type: 'overhead', amount: 50, created_at: '2026-06-12T00:00:00Z', job_id: 'j1' },
+        { type: 'material', amount: 40, created_at: '2026-06-13T00:00:00Z', job_id: null }, // no job_id is also overhead
+        { type: 'material', amount: 30, created_at: '2026-06-14T00:00:00Z', job_id: 'j1' },
+      ],
+    };
+    const m = metricsForRange(withBurdenAndOverhead, from, to);
+    expect(m.laborCost).toBe(125); // 100 + 25 burden
+    expect(m.overheadCost).toBe(90); // 50 overhead + 40 unallocated
+    expect(m.materialsCost).toBe(30);
+    expect(m.costs).toBe(245); // 125 + 90 + 30
   });
 
   it('reports zero margin (not NaN) when nothing was collected', () => {
@@ -223,6 +246,15 @@ describe('buildTrend', () => {
     const trend = buildTrend([{ amount: 1000, refunded_amount: 250, paid_at: '2026-06-05T00:00:00Z' }], [], [], 6, now);
     expect(trend[5].total).toBe(750);
     expect(trend[5].profit).toBe(750);
+  });
+
+  it('includes labor burden_amount in monthly trend costs', () => {
+    const costsWithBurden = [
+      { amount: 300, burden_amount: 50, created_at: '2026-06-06T00:00:00Z', type: 'labor' },
+    ];
+    const trend = buildTrend(paid, costsWithBurden, jobs, 6, now);
+    expect(trend[5].costs).toBe(350); // 300 + 50 burden
+    expect(trend[5].profit).toBe(650); // 1000 - 350
   });
 });
 
@@ -429,9 +461,12 @@ describe('resolvePeriod', () => {
     expect(resolvePeriod({ from: 'garbage', to: 'worse' }, now).custom).toBe(false);
   });
 
-  it('never runs a custom range past today', () => {
-    const p = resolvePeriod({ from: '2026-08-01', to: '2027-01-01' }, now);
-    expect(p.toMs).toBeLessThanOrEqual(new Date(2026, 7, 5).getTime());
+  it('preserves future end dates on custom ranges to support pace projections', () => {
+    const p = resolvePeriod({ from: '2026-08-01', to: '2026-08-31' }, now);
+    expect(p.custom).toBe(true);
+    expect(p.days).toBe(31);
+    expect(new Date(p.toMs).getDate()).toBe(1); // 1 Sept exclusive
+    expect(p.toMs).toBeGreaterThan(now.getTime());
   });
 });
 

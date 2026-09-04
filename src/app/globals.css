@@ -53378,6 +53378,10 @@ a.ins-export-opt:focus-visible {
   background: #6366f1;
 }
 
+.ins-dot.is-overhead {
+  background: #8b5cf6;
+}
+
 .ins-dot.is-profit {
   background: #4ade80;
 }
@@ -54080,6 +54084,10 @@ a.ins-export-opt:focus-visible {
 
 .ins-split-fill.is-labor {
   background: #6366f1;
+}
+
+.ins-split-fill.is-overhead {
+  background: #8b5cf6;
 }
 
 .ins-split-fill.is-profit {

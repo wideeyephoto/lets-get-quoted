@@ -79,6 +79,7 @@ import {
   deleteLocationAction,
   autofillToolFromStoreAction,
   searchStoreCatalogAction,
+  seedStarterInventoryAction,
 } from './actions';
 import { getTodayDateString, type StoreAutofillResult } from '@/lib/store-autofill';
 import styles from './inventory.module.css';
@@ -235,8 +236,8 @@ export default function InventoryClient({
   const [stockSearch, setStockSearch] = useState('');
 
   // Modal active schedule states for live tax advice
-  const [toolModalSchedule, setToolModalSchedule] = useState<DepreciationSchedule>('section_179');
-  const [vehicleModalSchedule, setVehicleModalSchedule] = useState<DepreciationSchedule>('section_179');
+  const [toolModalSchedule, setToolModalSchedule] = useState<DepreciationSchedule>('none');
+  const [vehicleModalSchedule, setVehicleModalSchedule] = useState<DepreciationSchedule>('none');
   const [toolModalImageUrl, setToolModalImageUrl] = useState<string>('');
   const [toolModalFormKey, setToolModalFormKey] = useState(0);
   const [storeAutofillUrl, setStoreAutofillUrl] = useState('');
@@ -280,6 +281,23 @@ export default function InventoryClient({
   function showToast(text: string, type: 'success' | 'error' = 'success') {
     setToastMessage({ text, type });
     setTimeout(() => setToastMessage(null), 4000);
+  }
+
+  function handleLoadStarterInventory() {
+    startTransition(async () => {
+      try {
+        const payload = await seedStarterInventoryAction();
+        setLocations(payload.locations);
+        setTools(payload.tools);
+        setVehicles(payload.vehicles);
+        setStock(payload.stock);
+        setMaintenance(payload.maintenance);
+        setTransfers(payload.transfers);
+        showToast('Loaded starter multi-location inventory & fleet records.');
+      } catch (err: unknown) {
+        showToast(err instanceof Error ? err.message : 'Failed to load starter inventory', 'error');
+      }
+    });
   }
 
   // Audits & KPIs
@@ -444,7 +462,7 @@ export default function InventoryClient({
 
   function openVehicleModal(vehicle: Partial<FleetVehicle> | null = null) {
     setVehicleModal({ open: true, vehicle });
-    setVehicleModalSchedule(vehicle?.depreciationSchedule || 'section_179');
+    setVehicleModalSchedule(vehicle?.depreciationSchedule || 'none');
   }
 
   // ── Handlers: Tools ────────────────────────────────────────────────────────
@@ -608,25 +626,28 @@ export default function InventoryClient({
   function handleSaveVehicle(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const fd = new FormData(e.currentTarget);
-    const id = vehicleModal.vehicle?.id;
+    const existing = vehicleModal.vehicle;
     const vehicleData = {
-      id,
-      name: fd.get('name') as string,
-      make: fd.get('make') as string,
-      model: fd.get('model') as string,
+      id: existing?.id,
+      name: (fd.get('name') as string)?.trim(),
+      make: (fd.get('make') as string)?.trim(),
+      model: (fd.get('model') as string)?.trim(),
       year: Number(fd.get('year')) || new Date().getFullYear(),
-      licensePlate: fd.get('licensePlate') as string,
-      vin: (fd.get('vin') as string) || null,
+      licensePlate: (fd.get('licensePlate') as string)?.trim().toUpperCase(),
+      vin: (fd.get('vin') as string)?.trim() || null,
       currentMileage: Number(fd.get('currentMileage')) || 0,
       purchasePrice: fd.get('purchasePrice') ? Number(fd.get('purchasePrice')) : null,
-      purchaseDate: (fd.get('purchaseDate') as string)?.trim() || getTodayDateString(),
-      depreciationSchedule: (fd.get('depreciationSchedule') as DepreciationSchedule) || null,
-      primaryDriverName: (fd.get('primaryDriverName') as string) || null,
-      status: (fd.get('status') as VehicleStatus) || 'active',
+      purchaseDate: (fd.get('purchaseDate') as string)?.trim() || null,
+      depreciationSchedule: (fd.get('depreciationSchedule') as DepreciationSchedule) || 'none',
+      primaryDriverId: existing?.primaryDriverId ?? null,
+      primaryDriverName: (fd.get('primaryDriverName') as string)?.trim() || null,
+      status: (fd.get('status') as VehicleStatus) || existing?.status || 'active',
+      lastServiceDate: existing?.lastServiceDate ?? null,
+      lastServiceMileage: existing?.lastServiceMileage ?? null,
       nextServiceDueMileage: fd.get('nextServiceDueMileage') ? Number(fd.get('nextServiceDueMileage')) : null,
       inspectionExpiresAt: (fd.get('inspectionExpiresAt') as string) || null,
       insuranceExpiresAt: (fd.get('insuranceExpiresAt') as string) || null,
-      notes: (fd.get('notes') as string) || null,
+      notes: (fd.get('notes') as string)?.trim() || null,
     };
 
     setVehicleModal({ open: false, vehicle: null });
@@ -1034,13 +1055,59 @@ export default function InventoryClient({
         </div>
       </section>
 
+      {/* Empty Starter Inventory Prompt for New Accounts */}
+      {locations.length === 0 && tools.length === 0 && vehicles.length === 0 && stock.length === 0 && (
+        <div
+          style={{
+            background: 'rgba(56, 189, 248, 0.08)',
+            border: '1px solid rgba(56, 189, 248, 0.25)',
+            borderRadius: '12px',
+            padding: '1rem 1.25rem',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '1rem',
+            marginBottom: '0.75rem',
+          }}
+        >
+          <div>
+            <h4 style={{ margin: 0, fontSize: '0.98rem', color: '#ffffff', fontWeight: 700 }}>
+              Welcome to Inventory &amp; Fleet Tracker
+            </h4>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.85rem', color: '#cbd5e1' }}>
+              Your workspace is empty. Add your own locations, tools, and fleet vehicles, or load sample starter data to explore features.
+            </p>
+          </div>
+          <button
+            type="button"
+            className={styles.btnSecondary}
+            disabled={isPending}
+            onClick={() => handleLoadStarterInventory()}
+            style={{ whiteSpace: 'nowrap', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Sparkles size={15} /> {isPending ? 'Loading...' : 'Load Starter Inventory'}
+          </button>
+        </div>
+      )}
+
       {/* KPI Metrics Strip */}
       <div className={styles.kpiGrid}>
         <div
           className={styles.kpiCard}
+          role="button"
+          tabIndex={0}
+          aria-label="Fleet Asset Basis: view all equipment & asset tax basis"
           onClick={() => {
             setActiveTab('tools');
             setToolFilter('all');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setActiveTab('tools');
+              setToolFilter('all');
+            }
           }}
           title="View all equipment & asset tax basis"
         >
@@ -1058,9 +1125,19 @@ export default function InventoryClient({
 
         <div
           className={styles.kpiCard}
+          role="button"
+          tabIndex={0}
+          aria-label="Low Stock Alert: open restock purchase order sheet"
           onClick={() => {
             setActiveTab('stock');
             setShowPoModal(true);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setActiveTab('stock');
+              setShowPoModal(true);
+            }
           }}
           title="Open Restock PO Sheet"
         >
@@ -1091,7 +1168,16 @@ export default function InventoryClient({
 
         <div
           className={styles.kpiCard}
+          role="button"
+          tabIndex={0}
+          aria-label="Vehicle Service Due: review fleet maintenance schedules"
           onClick={() => setActiveTab('fleet')}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setActiveTab('fleet');
+            }
+          }}
           title="Review fleet maintenance schedules"
         >
           <div className={styles.kpiHeader}>
@@ -1121,9 +1207,19 @@ export default function InventoryClient({
 
         <div
           className={styles.kpiCard}
+          role="button"
+          tabIndex={0}
+          aria-label="Field Custody: filter tools currently checked out"
           onClick={() => {
             setActiveTab('tools');
             setToolFilter('checked_out');
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setActiveTab('tools');
+              setToolFilter('checked_out');
+            }
           }}
           title="Filter tools currently checked out"
         >
@@ -1963,8 +2059,8 @@ export default function InventoryClient({
                               assetId: v.id,
                               assetName: `${v.name} (${v.make} ${v.model})`,
                               serviceType: 'Routine Oil & Inspection',
-                              cost: 150,
-                              performedBy: 'Fleet Tech',
+                              cost: 0,
+                              performedBy: '',
                               performedAt: new Date().toISOString().split('T')[0],
                               mileageAtService: v.currentMileage,
                             },
@@ -3186,7 +3282,8 @@ export default function InventoryClient({
                   type="text"
                   name="name"
                   required
-                  defaultValue={vehicleModal.vehicle?.name || 'Van #3 (Service)'}
+                  defaultValue={vehicleModal.vehicle?.name || ''}
+                  placeholder="e.g. Van #3 (Service)"
                   className={styles.fieldInput}
                 />
               </div>
@@ -3198,7 +3295,8 @@ export default function InventoryClient({
                     type="text"
                     name="make"
                     required
-                    defaultValue={vehicleModal.vehicle?.make || 'Ford'}
+                    defaultValue={vehicleModal.vehicle?.make || ''}
+                    placeholder="e.g. Ford"
                     className={styles.fieldInput}
                   />
                 </div>
@@ -3208,7 +3306,8 @@ export default function InventoryClient({
                     type="text"
                     name="model"
                     required
-                    defaultValue={vehicleModal.vehicle?.model || 'Transit 250'}
+                    defaultValue={vehicleModal.vehicle?.model || ''}
+                    placeholder="e.g. Transit 250"
                     className={styles.fieldInput}
                   />
                 </div>
@@ -3226,12 +3325,40 @@ export default function InventoryClient({
                   />
                 </div>
                 <div className={styles.formField}>
+                  <label className={styles.fieldLabel}>Operational Status</label>
+                  <select
+                    name="status"
+                    aria-label="Operational Status"
+                    defaultValue={vehicleModal.vehicle?.status || 'active'}
+                    className={styles.fieldSelect}
+                  >
+                    <option value="active">Active (In Service)</option>
+                    <option value="in_shop">In Shop (Maintenance / Repair)</option>
+                    <option value="retired">Retired / Out of Service</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className={styles.formGrid2Col}>
+                <div className={styles.formField}>
                   <label className={styles.fieldLabel}>License Plate *</label>
                   <input
                     type="text"
                     name="licensePlate"
                     required
                     defaultValue={vehicleModal.vehicle?.licensePlate || ''}
+                    placeholder="e.g. X92-KLP"
+                    className={styles.fieldInput}
+                  />
+                </div>
+                <div className={styles.formField}>
+                  <label className={styles.fieldLabel}>VIN (Vehicle Identification Number)</label>
+                  <input
+                    type="text"
+                    name="vin"
+                    defaultValue={vehicleModal.vehicle?.vin || ''}
+                    placeholder="e.g. 1FT8W2BT5REC99210"
+                    maxLength={17}
                     className={styles.fieldInput}
                   />
                 </div>
@@ -3243,7 +3370,7 @@ export default function InventoryClient({
                   <input
                     type="number"
                     name="currentMileage"
-                    defaultValue={vehicleModal.vehicle?.currentMileage || 0}
+                    defaultValue={vehicleModal.vehicle?.currentMileage ?? 0}
                     className={styles.fieldInput}
                   />
                 </div>
@@ -3252,29 +3379,40 @@ export default function InventoryClient({
                   <input
                     type="number"
                     name="nextServiceDueMileage"
-                    defaultValue={vehicleModal.vehicle?.nextServiceDueMileage || 30000}
+                    defaultValue={vehicleModal.vehicle?.nextServiceDueMileage ?? ''}
+                    placeholder="e.g. 30000"
                     className={styles.fieldInput}
                   />
                 </div>
               </div>
 
+              <div className={styles.formField}>
+                <label className={styles.fieldLabel}>Primary Driver Name</label>
+                <input
+                  type="text"
+                  name="primaryDriverName"
+                  defaultValue={vehicleModal.vehicle?.primaryDriverName || ''}
+                  placeholder="e.g. Carlos Ramirez"
+                  className={styles.fieldInput}
+                />
+              </div>
+
               <div className={styles.formGrid2Col}>
-                <div className={styles.formField}>
-                  <label className={styles.fieldLabel}>Primary Driver Name</label>
-                  <input
-                    type="text"
-                    name="primaryDriverName"
-                    defaultValue={vehicleModal.vehicle?.primaryDriverName || ''}
-                    placeholder="e.g. Carlos Ramirez"
-                    className={styles.fieldInput}
-                  />
-                </div>
                 <div className={styles.formField}>
                   <label className={styles.fieldLabel}>State Inspection Expiration</label>
                   <input
                     type="date"
                     name="inspectionExpiresAt"
                     defaultValue={vehicleModal.vehicle?.inspectionExpiresAt || ''}
+                    className={styles.fieldInput}
+                  />
+                </div>
+                <div className={styles.formField}>
+                  <label className={styles.fieldLabel}>Commercial Auto Insurance Expiration</label>
+                  <input
+                    type="date"
+                    name="insuranceExpiresAt"
+                    defaultValue={vehicleModal.vehicle?.insuranceExpiresAt || ''}
                     className={styles.fieldInput}
                   />
                 </div>
@@ -3297,7 +3435,7 @@ export default function InventoryClient({
                   <input
                     type="date"
                     name="purchaseDate"
-                    defaultValue={vehicleModal.vehicle?.purchaseDate || getTodayDateString()}
+                    defaultValue={vehicleModal.vehicle?.purchaseDate || ''}
                     className={styles.fieldInput}
                   />
                 </div>
@@ -3320,10 +3458,10 @@ export default function InventoryClient({
                   onChange={(e) => setVehicleModalSchedule(e.target.value as DepreciationSchedule)}
                   className={styles.fieldSelect}
                 >
+                  <option value="none">No Depreciation (Hold at Cost Basis)</option>
                   <option value="section_179">Section 179 (100% Write-Off for &gt;6,000 lb GVWR Work Trucks)</option>
                   <option value="macrs_5">MACRS 5-Year (Standard Fleet Vehicles &amp; Cargo Vans)</option>
                   <option value="straight_line_5">Straight-Line 5-Year (Uniform Accounting)</option>
-                  <option value="none">No Depreciation (Hold at Cost Basis)</option>
                 </select>
                 <div className={styles.taxTipBox}>
                   <p style={{ margin: 0, fontWeight: 600, color: '#38bdf8' }}>
@@ -3333,6 +3471,17 @@ export default function InventoryClient({
                     {COMMERCIAL_VEHICLE_TAX_TIP}
                   </p>
                 </div>
+              </div>
+
+              <div className={styles.formField}>
+                <label className={styles.fieldLabel}>Vehicle Notes / Equipment Specs</label>
+                <textarea
+                  name="notes"
+                  rows={3}
+                  defaultValue={vehicleModal.vehicle?.notes || ''}
+                  placeholder="e.g. Equipped with ladder rack, packout shelves, 100-gal fuel transfer tank..."
+                  className={styles.fieldTextarea}
+                />
               </div>
 
               <div className={styles.modalFooter}>
@@ -3703,7 +3852,8 @@ export default function InventoryClient({
                     step="0.01"
                     name="cost"
                     required
-                    defaultValue={maintenanceModal.record.cost || 0}
+                    defaultValue={maintenanceModal.record.cost !== undefined ? maintenanceModal.record.cost : ''}
+                    placeholder="0.00"
                     className={styles.fieldInput}
                     style={{ fontFamily: 'monospace' }}
                   />
@@ -3714,7 +3864,8 @@ export default function InventoryClient({
                     type="text"
                     name="performedBy"
                     required
-                    defaultValue={maintenanceModal.record.performedBy || 'Fleet Tech'}
+                    defaultValue={maintenanceModal.record.performedBy || ''}
+                    placeholder="e.g. In-House Mechanic, Dealership"
                     className={styles.fieldInput}
                   />
                 </div>

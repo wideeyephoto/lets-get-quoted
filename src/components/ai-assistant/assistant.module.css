@@ -38,6 +38,20 @@
   transform: translateY(0) scale(0.97);
 }
 
+.triggerMainBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  outline: none;
+}
+
 /* Minimal Avatar-only badge for all subsequent pages after first login/visit */
 .isMinimal {
   padding: 4px;
@@ -57,8 +71,13 @@
   transition: max-width 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease;
 }
 
+.isMinimal .triggerHideBtn {
+  display: none;
+}
+
 .isMinimal:hover,
-.isMinimal:focus-visible {
+.isMinimal:focus-visible,
+.isMinimal:focus-within {
   padding: 5px 14px 5px 5px;
   gap: 9px;
   border-radius: 9999px;
@@ -68,9 +87,16 @@
 }
 
 .isMinimal:hover .triggerInfo,
-.isMinimal:focus-visible .triggerInfo {
+.isMinimal:focus-visible .triggerInfo,
+.isMinimal:focus-within .triggerInfo {
   max-width: 170px;
   opacity: 1;
+}
+
+.isMinimal:hover .triggerHideBtn,
+.isMinimal:focus-visible .triggerHideBtn,
+.isMinimal:focus-within .triggerHideBtn {
+  display: inline-flex;
 }
 
 .triggerHideBtn {

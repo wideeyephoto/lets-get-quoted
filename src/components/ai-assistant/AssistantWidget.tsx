@@ -422,38 +422,42 @@ export default function AssistantWidget() {
       {/* Compact Floating Trigger (Zero Clutter) */}
       {!isOpen && isFloatingEnabled ? (
         <div className={styles.triggerWrapper}>
-          <button
-            type="button"
+          <div
             className={`${styles.floatingTrigger}${isMinimal ? ` ${styles.isMinimal}` : ''}`}
-            onClick={handleTriggerClick}
-            aria-label={`Open ${companion.name} Copilot (⌘J)`}
-            title={`Ask ${companion.name} (AI Copilot) — ⌘J / Ctrl+J`}
           >
-            <div className={styles.triggerAvatarWrap}>
-              <SparkyAvatar
-                companionId={companionId}
-                trade={companionTrade}
-                size={34}
-                expression="avatar"
-                status="online"
-                bordered={false}
-                alt={companion.name}
-              />
-            </div>
-            <div className={styles.triggerInfo}>
-              <span className={styles.triggerName}>Copilot</span>
-              <span className={styles.triggerBadge}>{companion.name}</span>
-              <button
-                type="button"
-                className={styles.triggerHideBtn}
-                onClick={handleHideFloating}
-                title="Hide floating Copilot (press ⌘J anytime)"
-                aria-label="Hide floating Copilot button"
-              >
-                ✕
-              </button>
-            </div>
-          </button>
+            <button
+              type="button"
+              className={styles.triggerMainBtn}
+              onClick={handleTriggerClick}
+              aria-label={`Open ${companion.name} Copilot (⌘J)`}
+              title={`Ask ${companion.name} (AI Copilot) — ⌘J / Ctrl+J`}
+            >
+              <div className={styles.triggerAvatarWrap}>
+                <SparkyAvatar
+                  companionId={companionId}
+                  trade={companionTrade}
+                  size={34}
+                  expression="avatar"
+                  status="online"
+                  bordered={false}
+                  alt={companion.name}
+                />
+              </div>
+              <div className={styles.triggerInfo}>
+                <span className={styles.triggerName}>Copilot</span>
+                <span className={styles.triggerBadge}>{companion.name}</span>
+              </div>
+            </button>
+            <button
+              type="button"
+              className={styles.triggerHideBtn}
+              onClick={handleHideFloating}
+              title="Hide floating Copilot (press ⌘J anytime)"
+              aria-label="Hide floating Copilot button"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       ) : null}
 

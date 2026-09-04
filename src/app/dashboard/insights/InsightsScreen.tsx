@@ -340,10 +340,17 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
   const bars: Array<{ key: string; label: string; value: number; pct: string; isSub?: boolean }> = [
     { key: 'revenue', label: 'Revenue', value: summary.revenue, pct: revenue > 0 ? '100%' : '—' },
     { key: 'costs', label: 'Costs', value: summary.costs, pct: ofRevenue(summary.costs) },
-    ...(summary.materialsCost > 0 || summary.laborCost > 0
+    ...(summary.materialsCost > 0 || summary.laborCost > 0 || summary.overheadCost > 0
       ? [
-          { key: 'materials', label: '↳ Materials', value: summary.materialsCost, pct: ofRevenue(summary.materialsCost), isSub: true },
-          { key: 'labor', label: '↳ Labor', value: summary.laborCost, pct: ofRevenue(summary.laborCost), isSub: true },
+          ...(summary.materialsCost > 0
+            ? [{ key: 'materials', label: '↳ Materials', value: summary.materialsCost, pct: ofRevenue(summary.materialsCost), isSub: true }]
+            : []),
+          ...(summary.laborCost > 0
+            ? [{ key: 'labor', label: '↳ Labor', value: summary.laborCost, pct: ofRevenue(summary.laborCost), isSub: true }]
+            : []),
+          ...(summary.overheadCost > 0
+            ? [{ key: 'overhead', label: '↳ Overhead', value: summary.overheadCost, pct: ofRevenue(summary.overheadCost), isSub: true }]
+            : []),
         ]
       : []),
     { key: 'profit', label: 'Profit', value: summary.profit, pct: ofRevenue(summary.profit) },
@@ -397,10 +404,11 @@ function ExecutiveSummary({ insights, basePath }: { insights: Insights; basePath
             <span className="ins-figure-label">Costs</span>
             <strong className="ins-figure-value">{formatMoney(summary.costs)}</strong>
             <DeltaPill delta={summary.deltas.costs} tone="up-bad" />
-            {(summary.materialsCost > 0 || summary.laborCost > 0) && (
+            {(summary.materialsCost > 0 || summary.laborCost > 0 || summary.overheadCost > 0) && (
               <span className="ins-sub" style={{ marginTop: '0.3rem', fontSize: '0.73rem', display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                <span>Materials: <strong>{formatMoney(summary.materialsCost)}</strong></span>
-                <span>Labor: <strong>{formatMoney(summary.laborCost)}</strong></span>
+                {summary.materialsCost > 0 && <span>Materials: <strong>{formatMoney(summary.materialsCost)}</strong></span>}
+                {summary.laborCost > 0 && <span>Labor: <strong>{formatMoney(summary.laborCost)}</strong></span>}
+                {summary.overheadCost > 0 && <span>Overhead: <strong>{formatMoney(summary.overheadCost)}</strong></span>}
               </span>
             )}
           </div>

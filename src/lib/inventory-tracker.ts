@@ -398,7 +398,7 @@ export function calculateAssetDepreciation(
   asOfDate: Date = new Date()
 ): AssetDepreciationResult {
   const cost = Math.max(0, Number(purchasePrice) || 0);
-  const selectedSchedule = schedule || (cost > 0 && cost < 2500 ? 'de_minimis' : cost > 0 ? 'macrs_5' : 'none');
+  const selectedSchedule = schedule || 'none';
   const info = TAX_GUIDANCE_SCHEDULES[selectedSchedule] || TAX_GUIDANCE_SCHEDULES.none;
 
   if (cost === 0) {

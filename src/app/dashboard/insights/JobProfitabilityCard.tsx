@@ -36,7 +36,7 @@ export default function JobProfitabilityCard({
 
       <div className="ins-figures" style={{ marginBottom: '1rem' }}>
         <div className="ins-figure">
-          <span className="ins-figure-label">Tracked profit</span>
+          <span className="ins-figure-label">Direct job profit</span>
           <strong className={`ins-figure-value${totalProfit < 0 ? ' is-negative' : ' is-positive'}`}>
             {totalProfit < 0 ? `−${formatMoney(Math.abs(totalProfit))}` : formatMoney(totalProfit)}
           </strong>
@@ -137,7 +137,7 @@ export default function JobProfitabilityCard({
       </div>
 
       <div className="ins-card-foot" style={{ marginTop: '1rem' }}>
-        <span>Compares billed payments or signed quotes against recorded labor &amp; material expenses.</span>
+        <span>Direct job gross profit excludes unallocated business overhead. Compares billed payments or signed quotes against direct job expenses.</span>
         <Link className="ins-inline-link" href={`${basePath}/jobs`}>All jobs →</Link>
       </div>
     </section>

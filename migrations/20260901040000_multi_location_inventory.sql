@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_locations (
 );
 
 CREATE INDEX IF NOT EXISTS idx_inventory_locations_account ON public.inventory_locations(account_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_locations_account_name ON public.inventory_locations(account_id, lower(trim(name)));
 
 ALTER TABLE public.inventory_locations ENABLE ROW LEVEL SECURITY;
 
@@ -42,6 +43,7 @@ CREATE POLICY "office_users_write_inventory_locations"
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_locations TO authenticated;
+REVOKE ALL ON public.inventory_locations FROM anon, public;
 
 -- 2. Tools & Equipment Custody
 CREATE TABLE IF NOT EXISTS public.inventory_tools (
@@ -57,6 +59,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_tools (
   asset_tag TEXT NOT NULL,
   purchase_price NUMERIC(10, 2),
   purchase_date DATE,
+  depreciation_schedule TEXT,
   status TEXT NOT NULL DEFAULT 'available', -- 'available', 'checked_out', 'in_maintenance', 'lost_damaged'
   assigned_crew_id UUID REFERENCES public.crew(id) ON DELETE SET NULL,
   assigned_crew_name TEXT,
@@ -95,7 +98,10 @@ CREATE POLICY "office_users_write_inventory_tools"
     public.office_can(account_id, 'jobs.write')
   );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_tools_account_asset_tag ON public.inventory_tools(account_id, lower(trim(asset_tag)));
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_tools TO authenticated;
+REVOKE ALL ON public.inventory_tools FROM anon, public;
 
 -- 3. Fleet Vehicles & Maintenance Schedules
 CREATE TABLE IF NOT EXISTS public.inventory_vehicles (
@@ -108,6 +114,9 @@ CREATE TABLE IF NOT EXISTS public.inventory_vehicles (
   license_plate TEXT NOT NULL,
   vin TEXT,
   current_mileage INTEGER NOT NULL DEFAULT 0,
+  purchase_price NUMERIC(10, 2),
+  purchase_date DATE,
+  depreciation_schedule TEXT,
   primary_driver_id UUID REFERENCES public.crew(id) ON DELETE SET NULL,
   primary_driver_name TEXT,
   status TEXT NOT NULL DEFAULT 'active', -- 'active', 'in_shop', 'retired'
@@ -147,7 +156,10 @@ CREATE POLICY "office_users_write_inventory_vehicles"
     public.office_can(account_id, 'jobs.write')
   );
 
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_vehicles_account_plate ON public.inventory_vehicles(account_id, lower(trim(license_plate)));
+
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_vehicles TO authenticated;
+REVOKE ALL ON public.inventory_vehicles FROM anon, public;
 
 -- 4. Multi-Location Stock Items & Materials
 CREATE TABLE IF NOT EXISTS public.inventory_stock_items (
@@ -172,6 +184,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_stock_items (
 CREATE INDEX IF NOT EXISTS idx_inventory_stock_account ON public.inventory_stock_items(account_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_stock_location ON public.inventory_stock_items(account_id, location_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_stock_sku ON public.inventory_stock_items(account_id, sku);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_stock_account_sku_loc ON public.inventory_stock_items(account_id, lower(trim(sku)), lower(trim(coalesce(location_name, ''))));
 
 ALTER TABLE public.inventory_stock_items ENABLE ROW LEVEL SECURITY;
 
@@ -197,6 +210,7 @@ CREATE POLICY "office_users_write_inventory_stock_items"
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_stock_items TO authenticated;
+REVOKE ALL ON public.inventory_stock_items FROM anon, public;
 
 -- 5. Stock Transfers Between Locations
 CREATE TABLE IF NOT EXISTS public.inventory_stock_transfers (
@@ -239,6 +253,7 @@ CREATE POLICY "office_users_write_inventory_stock_transfers"
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_stock_transfers TO authenticated;
+REVOKE ALL ON public.inventory_stock_transfers FROM anon, public;
 
 -- 6. Maintenance & Service Records
 CREATE TABLE IF NOT EXISTS public.inventory_maintenance_records (
@@ -260,6 +275,7 @@ CREATE TABLE IF NOT EXISTS public.inventory_maintenance_records (
 
 CREATE INDEX IF NOT EXISTS idx_inventory_maint_account ON public.inventory_maintenance_records(account_id);
 CREATE INDEX IF NOT EXISTS idx_inventory_maint_asset ON public.inventory_maintenance_records(account_id, asset_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_inventory_maint_record_dedup ON public.inventory_maintenance_records(account_id, asset_type, lower(trim(asset_name)), lower(trim(service_type)), performed_at);
 
 ALTER TABLE public.inventory_maintenance_records ENABLE ROW LEVEL SECURITY;
 
@@ -285,5 +301,6 @@ CREATE POLICY "office_users_write_inventory_maintenance_records"
   );
 
 GRANT SELECT, INSERT, UPDATE, DELETE ON public.inventory_maintenance_records TO authenticated;
+REVOKE ALL ON public.inventory_maintenance_records FROM anon, public;
 
 commit;

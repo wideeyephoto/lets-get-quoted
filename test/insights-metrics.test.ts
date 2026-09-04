@@ -709,6 +709,26 @@ describe('computeJobProfitability', () => {
     expect(prof.overruns.some((o) => o.jobId === 'j3')).toBe(true);
     expect(prof.overruns.find((o) => o.jobId === 'j3')!.costOverrun).toBe(200); // 700 cost - 500 quote
   });
+
+  it('does not treat a partial deposit as total revenue on a quoted job and includes burden_amount', () => {
+    const customJobs: MetricJob[] = [
+      { id: 'j-quoted', ref: 'J-Q1', client_name: 'Dave', client_id: 'c4', quoted_amount: 10000, status: 'in_progress', created_at: '2026-06-05T00:00:00Z' },
+    ];
+    const customPaid: MetricPayment[] = [
+      { amount: 2000, refunded_amount: null, status: 'paid', paid_at: '2026-06-08T00:00:00Z', requested_at: null, job_id: 'j-quoted' },
+    ];
+    const customCosts: MetricCost[] = [
+      { amount: 2500, burden_amount: 500, type: 'labor', created_at: '2026-06-10T00:00:00Z', job_id: 'j-quoted' },
+    ];
+    const prof = computeJobProfitability(customJobs, customCosts, customPaid, period);
+    expect(prof.measuredJobs).toBe(1);
+    const jobResult = prof.winners[0];
+    expect(jobResult.revenue).toBe(10000); // Evaluated against full quoted value, not $2,000 deposit
+    expect(jobResult.costs).toBe(3000); // 2500 + 500 burden
+    expect(jobResult.profit).toBe(7000);
+    expect(jobResult.marginPct).toBe(70);
+    expect(prof.bleeders.length).toBe(0);
+  });
 });
 
 describe('computeLaborEfficiency', () => {
@@ -736,6 +756,16 @@ describe('computeLaborEfficiency', () => {
     expect(result.revenuePerCrewHour).toBe(200); // 3200 / 16
     expect(result.crewBreakdown.length).toBe(2);
   });
+
+  it('does not fabricate hours at $35/hr when hours are missing, and includes burden_amount in labor costs', () => {
+    const unmeasuredCosts: MetricCost[] = [
+      { amount: 700, burden_amount: 140, type: 'labor', created_at: '2026-06-10T00:00:00Z', hours: null, rate: null },
+    ];
+    // With 0 timeEntries, and labor cost with no hours specified, totalHours must be 0 (NOT 700 / 35 = 20)
+    const result = computeLaborEfficiency([], unmeasuredCosts, crew, 1000, period);
+    expect(result.totalHours).toBe(0);
+    expect(result.totalLaborCost).toBe(840); // 700 + 140 burden
+  });
 });
 
 describe('computeReputationMetrics', () => {
@@ -757,6 +787,21 @@ describe('computeReputationMetrics', () => {
     expect(rep.googleReviewsCount).toBe(2);
     expect(rep.googleConversionRate).toBe(67); // 2 of 3 responded
   });
+
+  it('measures response rate on the cohort of invites sent in the period, avoiding mismatched populations', () => {
+    const mismatchedInvites = [
+      // 1 invite sent in June (this period), not yet responded
+      { id: 'inv-jun-1', rating: null, routed_to: null, google_clicked_at: null, responded_at: null, created_at: '2026-06-15T12:00:00Z' },
+      // 2 invites sent in May, but responded to in June
+      { id: 'inv-may-1', rating: 5, routed_to: 'google', google_clicked_at: '2026-06-02T12:00:00Z', responded_at: '2026-06-02T12:00:00Z', created_at: '2026-05-20T12:00:00Z' },
+      { id: 'inv-may-2', rating: 4, routed_to: 'private', google_clicked_at: null, responded_at: '2026-06-03T12:00:00Z', created_at: '2026-05-22T12:00:00Z' },
+    ];
+    const rep = computeReputationMetrics(mismatchedInvites, period);
+    // Period has 1 invite created in June, 0 responded from that cohort.
+    expect(rep.totalInvites).toBe(1);
+    expect(rep.respondedCount).toBe(0);
+    expect(rep.responseRate).toBe(0); // NOT 200% or clamped 100%
+  });
 });
 
 describe('computeVoiceMetrics', () => {
@@ -776,6 +821,17 @@ describe('computeVoiceMetrics', () => {
     expect(voice.leadsCreated).toBe(2);
     expect(voice.estimatedRevenue).toBe(4000); // 2 * 2000
     expect(voice.totalMinutes).toBe(5); // 300s / 60
+  });
+
+  it('does not invent a $500 fallback when avgJobValue is 0, and respects conversion rate', () => {
+    // Zero avg job value -> $0 estimated revenue
+    const zeroValue = computeVoiceMetrics(calls, 0, period);
+    expect(zeroValue.estimatedRevenue).toBe(0);
+
+    // With 25% conversion rate: 2 leads * $2000 avg job value * 0.25 = $1000
+    const withConv = computeVoiceMetrics(calls, 2000, period, 0.25);
+    expect(withConv.estimatedRevenue).toBe(1000);
+    expect(withConv.conversionRate).toBe(0.25);
   });
 });
 
@@ -800,6 +856,36 @@ describe('computeMrrMovement', () => {
     expect(movement.churnedPlans).toBe(1);
     expect(movement.churnedMrr).toBe(50);
     expect(movement.netMrrDelta).toBe(150); // 200 - 50
+  });
+
+  it('keys churn on cancelled_at so price edits to older inactive plans do not report new churn', () => {
+    const plansWithOldCancellation = [
+      // Active plan
+      { id: 'p1', amount: 100, frequency: 'monthly', active: true, created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' },
+      // Cancelled in January, price-edited in June: must NOT report as June churn
+      {
+        id: 'p-jan-cancelled',
+        amount: 400,
+        frequency: 'monthly',
+        active: false,
+        created_at: '2025-10-01T00:00:00Z',
+        cancelled_at: '2026-01-15T00:00:00Z',
+        updated_at: '2026-06-10T00:00:00Z',
+      },
+      // Cancelled in June: MUST report as June churn
+      {
+        id: 'p-jun-cancelled',
+        amount: 50,
+        frequency: 'monthly',
+        active: false,
+        created_at: '2026-02-01T00:00:00Z',
+        cancelled_at: '2026-06-15T00:00:00Z',
+        updated_at: '2026-06-15T00:00:00Z',
+      },
+    ];
+    const movement = computeMrrMovement(plansWithOldCancellation, period);
+    expect(movement.churnedPlans).toBe(1);
+    expect(movement.churnedMrr).toBe(50); // Only p-jun-cancelled, NOT $450
   });
 });
 
@@ -830,6 +916,17 @@ describe('computePaceForecast', () => {
       days: 30,
     };
     expect(computePaceForecast(10000, pastPeriod, undefined, now)).toBeNull();
+  });
+
+  it('returns null when daysElapsed >= period.days (e.g. completed/trailing presets)', () => {
+    const now = Date.parse('2026-06-30T12:00:00Z');
+    // Trailing 30 days ending now: elapsed is 30, period.days is 30
+    const trailingPeriod = {
+      fromMs: Date.parse('2026-06-01T00:00:00Z'),
+      toMs: now,
+      days: 30,
+    };
+    expect(computePaceForecast(15000, trailingPeriod, 12000, now)).toBeNull();
   });
 });
 

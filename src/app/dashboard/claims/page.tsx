@@ -26,7 +26,7 @@ export default async function InsuranceClaimsPage() {
   const profile = getInsuranceTradeProfile(tradeSlug);
 
   return (
-    <main className="min-h-screen bg-stone-50/50 pb-16 pt-4">
+    <main className="wide-shell workspace-shell">
       <InsuranceClaimsClient
         tradeSlug={profile.tradeSlug}
         businessName={businessName}

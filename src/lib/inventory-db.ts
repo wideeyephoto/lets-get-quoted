@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type {
   ToolAsset,
+  ToolAssetStatus,
   FleetVehicle,
   VanStockItem,
   MaintenanceRecord,
@@ -122,6 +123,18 @@ export async function loadInventoryData(
     supabase.from('inventory_maintenance_records').select('*').eq('account_id', accountId).order('performed_at', { ascending: false }),
   ]);
 
+  const queryErr =
+    locRes.error ||
+    toolsRes.error ||
+    vehRes.error ||
+    stockRes.error ||
+    transferRes.error ||
+    maintRes.error;
+
+  if (queryErr) {
+    throw new Error(`Failed to load inventory data: ${queryErr.message || JSON.stringify(queryErr)}`);
+  }
+
   const rawLocations = locRes.data ?? [];
   const rawTools = toolsRes.data ?? [];
   const rawVehicles = vehRes.data ?? [];
@@ -129,17 +142,7 @@ export async function loadInventoryData(
   const rawTransfers = transferRes.data ?? [];
   const rawMaintenance = maintRes.data ?? [];
 
-  // Check if we need to seed starter inventory data
-  const isEmpty =
-    rawLocations.length === 0 &&
-    rawTools.length === 0 &&
-    rawVehicles.length === 0 &&
-    rawStock.length === 0;
-
-  if (isEmpty) {
-    return await seedInitialInventory(supabase, accountId);
-  }
-
+  // Return empty collections if no records exist yet — never auto-seed fake records on read.
   return {
     locations: rawLocations.map(mapLocationRow),
     tools: rawTools.map(mapToolRow),
@@ -152,11 +155,23 @@ export async function loadInventoryData(
 
 /**
  * Seeds default multi-location inventory records for an account.
+ * Guarded to ensure it never runs twice or duplicates records.
  */
 export async function seedInitialInventory(
   supabase: SupabaseClient,
   accountId: string,
 ): Promise<InventoryPayload> {
+  // Guard against duplicate seed runs
+  const { data: existingLocs } = await supabase
+    .from('inventory_locations')
+    .select('id')
+    .eq('account_id', accountId)
+    .limit(1);
+
+  if (existingLocs && existingLocs.length > 0) {
+    return loadInventoryData(supabase, accountId);
+  }
+
   const locationInserts = DEFAULT_LOCATIONS.map((loc) => ({
     account_id: accountId,
     name: loc.name,
@@ -181,6 +196,7 @@ export async function seedInitialInventory(
     asset_tag: t.assetTag,
     purchase_price: t.purchasePrice ?? null,
     purchase_date: t.purchaseDate ?? null,
+    depreciation_schedule: t.depreciationSchedule ?? null,
     status: t.status,
     location_name: t.status === 'available' ? 'Main Shop & Warehouse' : 'Van #1 (Lead Tech)',
     assigned_crew_name: t.assignedCrewName ?? null,
@@ -208,6 +224,9 @@ export async function seedInitialInventory(
     license_plate: v.licensePlate,
     vin: v.vin ?? null,
     current_mileage: v.currentMileage,
+    purchase_price: v.purchasePrice ?? null,
+    purchase_date: v.purchaseDate ?? null,
+    depreciation_schedule: v.depreciationSchedule ?? null,
     primary_driver_name: v.primaryDriverName ?? null,
     status: v.status,
     last_service_date: v.lastServiceDate ?? null,
@@ -215,11 +234,7 @@ export async function seedInitialInventory(
     next_service_due_mileage: v.nextServiceDueMileage ?? null,
     inspection_expires_at: v.inspectionExpiresAt ?? null,
     insurance_expires_at: v.insuranceExpiresAt ?? null,
-    notes: encodeTaxMeta(v.notes, {
-      depreciationSchedule: v.depreciationSchedule,
-      purchasePrice: v.purchasePrice,
-      purchaseDate: v.purchaseDate,
-    }),
+    notes: v.notes ?? null,
   }));
 
   const { data: insertedVehicles } = await supabase
@@ -281,40 +296,62 @@ export async function seedInitialInventory(
 export async function saveTool(
   supabase: SupabaseClient,
   accountId: string,
-  tool: Partial<ToolAsset> & { name: string; brand: string; category: string; assetTag: string },
+  tool: Partial<ToolAsset> & { name?: string; brand?: string; category?: string; assetTag?: string },
 ): Promise<ToolAsset> {
+  const isUpdate = Boolean(tool.id && !tool.id.startsWith('temp-'));
+  let existing: Record<string, unknown> | null = null;
+  if (isUpdate) {
+    const { data } = await supabase
+      .from('inventory_tools')
+      .select('*')
+      .eq('id', tool.id!)
+      .eq('account_id', accountId)
+      .maybeSingle();
+    existing = data;
+  }
+
+  const existingNotes = existing?.notes ? String(existing.notes) : null;
+  const { cleanNotes: existingCleanNotes, meta: existingMeta } = decodeTaxMeta(existingNotes);
+  const notesToEncode = tool.notes !== undefined ? tool.notes : existingCleanNotes;
+  const metaToEncode = {
+    depreciationSchedule: tool.depreciationSchedule !== undefined ? tool.depreciationSchedule : existingMeta.depreciationSchedule,
+    purchasePrice: tool.purchasePrice !== undefined ? tool.purchasePrice : existingMeta.purchasePrice,
+    purchaseDate: tool.purchaseDate !== undefined ? tool.purchaseDate : existingMeta.purchaseDate,
+    imageUrl: tool.imageUrl !== undefined ? tool.imageUrl : existingMeta.imageUrl,
+  };
+
   const payload = {
     account_id: accountId,
-    name: tool.name.trim(),
-    brand: tool.brand.trim(),
-    category: tool.category.trim(),
-    asset_tag: tool.assetTag.trim(),
-    model_number: tool.modelNumber?.trim() || null,
-    serial_number: tool.serialNumber?.trim() || null,
-    purchase_price: tool.purchasePrice !== undefined && tool.purchasePrice !== null ? Number(tool.purchasePrice) : null,
-    purchase_date: tool.purchaseDate || null,
-    status: tool.status || 'available',
-    location_id: tool.locationId || null,
-    location_name: tool.locationName || null,
-    assigned_crew_id: tool.assignedCrewId || null,
-    assigned_crew_name: tool.assignedCrewName || null,
-    assigned_job_id: tool.assignedJobId || null,
-    assigned_job_label: tool.assignedJobLabel || null,
-    checked_out_at: tool.checkedOutAt || null,
-    notes: encodeTaxMeta(tool.notes, {
-      depreciationSchedule: tool.depreciationSchedule,
-      purchasePrice: tool.purchasePrice,
-      purchaseDate: tool.purchaseDate,
-      imageUrl: tool.imageUrl,
-    }),
+    name: tool.name !== undefined ? tool.name.trim() : String(existing?.name ?? '').trim(),
+    brand: tool.brand !== undefined ? tool.brand.trim() : String(existing?.brand ?? '').trim(),
+    category: tool.category !== undefined ? tool.category.trim() : String(existing?.category ?? '').trim(),
+    asset_tag: tool.assetTag !== undefined ? tool.assetTag.trim() : String(existing?.asset_tag ?? '').trim(),
+    model_number: tool.modelNumber !== undefined ? (tool.modelNumber?.trim() || null) : (existing?.model_number as string ?? null),
+    serial_number: tool.serialNumber !== undefined ? (tool.serialNumber?.trim() || null) : (existing?.serial_number as string ?? null),
+    purchase_price: tool.purchasePrice !== undefined
+      ? (tool.purchasePrice !== null ? Number(tool.purchasePrice) : null)
+      : (existing?.purchase_price !== null && existing?.purchase_price !== undefined ? Number(existing.purchase_price) : null),
+    purchase_date: tool.purchaseDate !== undefined ? (tool.purchaseDate || null) : (existing?.purchase_date as string ?? null),
+    depreciation_schedule: tool.depreciationSchedule !== undefined
+      ? (tool.depreciationSchedule || null)
+      : (existing?.depreciation_schedule as string ?? existingMeta.depreciationSchedule ?? null),
+    status: tool.status || (existing?.status as ToolAsset['status']) || 'available',
+    location_id: tool.locationId !== undefined ? (tool.locationId || null) : (existing?.location_id as string ?? null),
+    location_name: tool.locationName !== undefined ? (tool.locationName || null) : (existing?.location_name as string ?? null),
+    assigned_crew_id: tool.assignedCrewId !== undefined ? (tool.assignedCrewId || null) : (existing?.assigned_crew_id as string ?? null),
+    assigned_crew_name: tool.assignedCrewName !== undefined ? (tool.assignedCrewName || null) : (existing?.assigned_crew_name as string ?? null),
+    assigned_job_id: tool.assignedJobId !== undefined ? (tool.assignedJobId || null) : (existing?.assigned_job_id as string ?? null),
+    assigned_job_label: tool.assignedJobLabel !== undefined ? (tool.assignedJobLabel || null) : (existing?.assigned_job_label as string ?? null),
+    checked_out_at: tool.checkedOutAt !== undefined ? (tool.checkedOutAt || null) : (existing?.checked_out_at as string ?? null),
+    notes: notesToEncode,
     updated_at: new Date().toISOString(),
   };
 
-  if (tool.id && !tool.id.startsWith('temp-') && !tool.id.startsWith('tool-')) {
+  if (isUpdate) {
     const { data, error } = await supabase
       .from('inventory_tools')
       .update(payload)
-      .eq('id', tool.id)
+      .eq('id', tool.id!)
       .eq('account_id', accountId)
       .select()
       .single();
@@ -329,6 +366,75 @@ export async function saveTool(
     if (error) throw error;
     return mapToolRow(data);
   }
+}
+
+/**
+ * Checks out a tool to crew/job without modifying other asset attributes.
+ */
+export async function checkOutToolDb(
+  supabase: SupabaseClient,
+  accountId: string,
+  params: {
+    toolId: string;
+    crewId?: string | null;
+    crewName: string;
+    jobId?: string | null;
+    jobLabel?: string | null;
+    notes?: string | null;
+  },
+): Promise<ToolAsset> {
+  const { data, error } = await supabase
+    .from('inventory_tools')
+    .update({
+      status: 'checked_out',
+      assigned_crew_id: params.crewId || null,
+      assigned_crew_name: params.crewName,
+      assigned_job_id: params.jobId || null,
+      assigned_job_label: params.jobLabel || null,
+      checked_out_at: new Date().toISOString(),
+      notes: params.notes !== undefined ? params.notes : undefined,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.toolId)
+    .eq('account_id', accountId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapToolRow(data);
+}
+
+/**
+ * Checks in a tool back to available pool without modifying other asset attributes.
+ */
+export async function checkInToolDb(
+  supabase: SupabaseClient,
+  accountId: string,
+  params: {
+    toolId: string;
+    condition?: ToolAssetStatus;
+    notes?: string | null;
+  },
+): Promise<ToolAsset> {
+  const { data, error } = await supabase
+    .from('inventory_tools')
+    .update({
+      status: params.condition || 'available',
+      assigned_crew_id: null,
+      assigned_crew_name: null,
+      assigned_job_id: null,
+      assigned_job_label: null,
+      checked_out_at: null,
+      notes: params.notes !== undefined ? params.notes : undefined,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', params.toolId)
+    .eq('account_id', accountId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapToolRow(data);
 }
 
 /**
@@ -349,42 +455,82 @@ export async function deleteTool(
 
 /**
  * Save (create or update) a fleet vehicle.
+ * Safely merges existing fields when updating so partial saves do not blank records.
+ * Vehicle purchase price, purchase date, and depreciation schedule are stored directly
+ * in dedicated database columns rather than embedded in HTML comments inside notes.
  */
 export async function saveVehicle(
   supabase: SupabaseClient,
   accountId: string,
-  vehicle: Partial<FleetVehicle> & { name: string; make: string; model: string; year: number; licensePlate: string },
+  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string },
 ): Promise<FleetVehicle> {
+  const isUpdate = Boolean(vehicle.id && !vehicle.id.startsWith('temp-'));
+  let existing: Record<string, unknown> | null = null;
+  if (isUpdate) {
+    const { data } = await supabase
+      .from('inventory_vehicles')
+      .select('*')
+      .eq('id', vehicle.id!)
+      .eq('account_id', accountId)
+      .maybeSingle();
+    existing = data;
+  }
+
+  const existingNotes = existing?.notes ? String(existing.notes) : null;
+  const { cleanNotes: existingCleanNotes, meta: existingMeta } = decodeTaxMeta(existingNotes);
+
+  const purchasePrice =
+    vehicle.purchasePrice !== undefined
+      ? (vehicle.purchasePrice !== null ? Number(vehicle.purchasePrice) : null)
+      : (existing?.purchase_price !== null && existing?.purchase_price !== undefined
+          ? Number(existing.purchase_price)
+          : (existingMeta.purchasePrice ?? null));
+
+  const purchaseDate =
+    vehicle.purchaseDate !== undefined
+      ? (vehicle.purchaseDate || null)
+      : (existing?.purchase_date ? String(existing.purchase_date) : (existingMeta.purchaseDate ?? null));
+
+  const depreciationSchedule =
+    vehicle.depreciationSchedule !== undefined
+      ? (vehicle.depreciationSchedule || null)
+      : (existing?.depreciation_schedule ? String(existing.depreciation_schedule) : (existingMeta.depreciationSchedule ?? null));
+
+  const notesToSave = vehicle.notes !== undefined ? (vehicle.notes?.trim() || null) : existingCleanNotes;
+
   const payload = {
     account_id: accountId,
-    name: vehicle.name.trim(),
-    make: vehicle.make.trim(),
-    model: vehicle.model.trim(),
-    year: Number(vehicle.year),
-    license_plate: vehicle.licensePlate.trim().toUpperCase(),
-    vin: vehicle.vin?.trim() || null,
-    current_mileage: Number(vehicle.currentMileage) || 0,
-    primary_driver_id: vehicle.primaryDriverId || null,
-    primary_driver_name: vehicle.primaryDriverName?.trim() || null,
-    status: vehicle.status || 'active',
-    last_service_date: vehicle.lastServiceDate || null,
-    last_service_mileage: vehicle.lastServiceMileage ? Number(vehicle.lastServiceMileage) : null,
-    next_service_due_mileage: vehicle.nextServiceDueMileage ? Number(vehicle.nextServiceDueMileage) : null,
-    inspection_expires_at: vehicle.inspectionExpiresAt || null,
-    insurance_expires_at: vehicle.insuranceExpiresAt || null,
-    notes: encodeTaxMeta(vehicle.notes, {
-      depreciationSchedule: vehicle.depreciationSchedule,
-      purchasePrice: vehicle.purchasePrice,
-      purchaseDate: vehicle.purchaseDate,
-    }),
+    name: vehicle.name !== undefined ? vehicle.name.trim() : String(existing?.name ?? '').trim(),
+    make: vehicle.make !== undefined ? vehicle.make.trim() : String(existing?.make ?? '').trim(),
+    model: vehicle.model !== undefined ? vehicle.model.trim() : String(existing?.model ?? '').trim(),
+    year: vehicle.year !== undefined ? Number(vehicle.year) : Number(existing?.year ?? new Date().getFullYear()),
+    license_plate: vehicle.licensePlate !== undefined ? vehicle.licensePlate.trim().toUpperCase() : String(existing?.license_plate ?? '').trim().toUpperCase(),
+    vin: vehicle.vin !== undefined ? (vehicle.vin?.trim() || null) : (existing?.vin as string ?? null),
+    current_mileage: vehicle.currentMileage !== undefined ? (Number(vehicle.currentMileage) || 0) : Number(existing?.current_mileage ?? 0),
+    purchase_price: purchasePrice,
+    purchase_date: purchaseDate,
+    depreciation_schedule: depreciationSchedule,
+    primary_driver_id: vehicle.primaryDriverId !== undefined ? (vehicle.primaryDriverId || null) : (existing?.primary_driver_id as string ?? null),
+    primary_driver_name: vehicle.primaryDriverName !== undefined ? (vehicle.primaryDriverName?.trim() || null) : (existing?.primary_driver_name as string ?? null),
+    status: vehicle.status || (existing?.status as FleetVehicle['status']) || 'active',
+    last_service_date: vehicle.lastServiceDate !== undefined ? (vehicle.lastServiceDate || null) : (existing?.last_service_date as string ?? null),
+    last_service_mileage: vehicle.lastServiceMileage !== undefined
+      ? (vehicle.lastServiceMileage ? Number(vehicle.lastServiceMileage) : null)
+      : (existing?.last_service_mileage ? Number(existing.last_service_mileage) : null),
+    next_service_due_mileage: vehicle.nextServiceDueMileage !== undefined
+      ? (vehicle.nextServiceDueMileage ? Number(vehicle.nextServiceDueMileage) : null)
+      : (existing?.next_service_due_mileage ? Number(existing.next_service_due_mileage) : null),
+    inspection_expires_at: vehicle.inspectionExpiresAt !== undefined ? (vehicle.inspectionExpiresAt || null) : (existing?.inspection_expires_at as string ?? null),
+    insurance_expires_at: vehicle.insuranceExpiresAt !== undefined ? (vehicle.insuranceExpiresAt || null) : (existing?.insurance_expires_at as string ?? null),
+    notes: notesToSave,
     updated_at: new Date().toISOString(),
   };
 
-  if (vehicle.id && !vehicle.id.startsWith('temp-') && !vehicle.id.startsWith('veh-')) {
+  if (isUpdate) {
     const { data, error } = await supabase
       .from('inventory_vehicles')
       .update(payload)
-      .eq('id', vehicle.id)
+      .eq('id', vehicle.id!)
       .eq('account_id', accountId)
       .select()
       .single();
@@ -399,6 +545,31 @@ export async function saveVehicle(
     if (error) throw error;
     return mapVehicleRow(data);
   }
+}
+
+/**
+ * Dedicated odometer update that modifies current_mileage and updated_at ONLY.
+ * Never blanks or modifies any other vehicle column.
+ */
+export async function updateVehicleMileage(
+  supabase: SupabaseClient,
+  accountId: string,
+  vehicleId: string,
+  currentMileage: number,
+): Promise<FleetVehicle> {
+  const { data, error } = await supabase
+    .from('inventory_vehicles')
+    .update({
+      current_mileage: Math.max(0, Number(currentMileage) || 0),
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', vehicleId)
+    .eq('account_id', accountId)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return mapVehicleRow(data);
 }
 
 /**
@@ -442,7 +613,7 @@ export async function saveStockItem(
     updated_at: new Date().toISOString(),
   };
 
-  if (stock.id && !stock.id.startsWith('temp-') && !stock.id.startsWith('stock-')) {
+  if (stock.id && !stock.id.startsWith('temp-')) {
     const { data, error } = await supabase
       .from('inventory_stock_items')
       .update(payload)
@@ -649,14 +820,16 @@ export async function saveMaintenanceRecord(
 
   // If this was a vehicle service, update vehicle's last_service_date and last_service_mileage
   if (record.assetType === 'vehicle') {
-    await supabase
+    const { error: vehUpdateErr } = await supabase
       .from('inventory_vehicles')
       .update({
         last_service_date: record.performedAt,
         last_service_mileage: record.mileageAtService ? Number(record.mileageAtService) : undefined,
+        updated_at: new Date().toISOString(),
       })
       .eq('id', record.assetId)
       .eq('account_id', accountId);
+    if (vehUpdateErr) throw vehUpdateErr;
   }
 
   return mapMaintenanceRow(data);
@@ -680,7 +853,7 @@ export async function saveLocation(
     updated_at: new Date().toISOString(),
   };
 
-  if (loc.id && !loc.id.startsWith('temp-') && !loc.id.startsWith('loc-')) {
+  if (loc.id && !loc.id.startsWith('temp-')) {
     const { data, error } = await supabase
       .from('inventory_locations')
       .update(payload)
@@ -736,28 +909,23 @@ function mapToolRow(row: Record<string, unknown>): ToolAsset {
   const tag = String(row.asset_tag ?? '');
   const sn = row.serial_number ? String(row.serial_number) : null;
   const nm = String(row.name ?? '');
-  const fallback = DEFAULT_TOOLS.find(
-    (dt) => (tag && dt.assetTag === tag) || (sn && dt.serialNumber === sn) || (nm && dt.name === nm)
-  );
 
   const purchasePrice =
     row.purchase_price !== null && row.purchase_price !== undefined
       ? Number(row.purchase_price)
-      : (meta.purchasePrice ?? fallback?.purchasePrice ?? null);
+      : (meta.purchasePrice ?? null);
 
   const purchaseDate =
-    row.purchase_date ? String(row.purchase_date) : (meta.purchaseDate ?? fallback?.purchaseDate ?? null);
+    row.purchase_date ? String(row.purchase_date) : (meta.purchaseDate ?? null);
 
   const depreciationSchedule =
     (row.depreciation_schedule as DepreciationSchedule) ||
     meta.depreciationSchedule ||
-    fallback?.depreciationSchedule ||
-    (purchasePrice ? (purchasePrice < 2500 ? 'de_minimis' : 'section_179') : null);
+    null;
 
   const imageUrl =
     (row.image_url ? String(row.image_url) : null) ||
     meta.imageUrl ||
-    fallback?.imageUrl ||
     null;
 
   return {
@@ -790,23 +958,19 @@ function mapVehicleRow(row: Record<string, unknown>): FleetVehicle {
   const plate = String(row.license_plate ?? '');
   const vin = row.vin ? String(row.vin) : null;
   const nm = String(row.name ?? '');
-  const fallback = DEFAULT_VEHICLES.find(
-    (dv) => (plate && dv.licensePlate === plate) || (vin && dv.vin === vin) || (nm && dv.name === nm)
-  );
 
   const purchasePrice =
     row.purchase_price !== null && row.purchase_price !== undefined
       ? Number(row.purchase_price)
-      : (meta.purchasePrice ?? fallback?.purchasePrice ?? null);
+      : (meta.purchasePrice ?? null);
 
   const purchaseDate =
-    row.purchase_date ? String(row.purchase_date) : (meta.purchaseDate ?? fallback?.purchaseDate ?? null);
+    row.purchase_date ? String(row.purchase_date) : (meta.purchaseDate ?? null);
 
   const depreciationSchedule =
     (row.depreciation_schedule as DepreciationSchedule) ||
     meta.depreciationSchedule ||
-    fallback?.depreciationSchedule ||
-    (purchasePrice ? 'section_179' : null);
+    null;
 
   return {
     id: String(row.id),

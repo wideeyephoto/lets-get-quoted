@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 48198a26c77fa1e1
+   source-sha256: 1787d74609efa05e
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -25507,6 +25507,10 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
   background: #6366f1;
 }
 
+.ins-dot.is-overhead {
+  background: #8b5cf6;
+}
+
 .ins-dot.is-profit {
   background: #4ade80;
 }
@@ -25807,6 +25811,10 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
 
 .ins-split-fill.is-labor {
   background: #6366f1;
+}
+
+.ins-split-fill.is-overhead {
+  background: #8b5cf6;
 }
 
 .ins-split-fill.is-profit {

@@ -94,7 +94,7 @@ export function mean(values: number[]): number {
 }
 
 // Normalize a recurring plan's per-visit amount to a monthly run-rate, so weekly,
-// biweekly, and monthly plans sum into one comparable MRR figure.
+// biweekly, monthly, quarterly, semi-annual, and annual plans sum into one comparable MRR figure.
 export function monthlyRunRate(amount: number | string | null, frequency: string): number {
   const a = Number(amount) || 0;
   if (a <= 0) return 0;
@@ -105,6 +105,14 @@ export function monthlyRunRate(amount: number | string | null, frequency: string
       return (a * 26) / 12;
     case 'monthly':
       return a;
+    case 'quarterly':
+      return a / 3;
+    case 'semi-annual':
+    case 'semi_annual':
+      return a / 6;
+    case 'annual':
+    case 'yearly':
+      return a / 12;
     default:
       return 0;
   }
@@ -194,8 +202,8 @@ export function resolvePeriod(
   const to = parseDateInput(input.to);
   if (from !== null && to !== null && to >= from) {
     // The end date is inclusive to a human — "to Aug 4" means through Aug 4.
-    const toExclusive = Math.min(to + DAY_MS, startOfDay(now) + DAY_MS);
-    const label = `${formatDay(from)} – ${formatDay(Math.max(from, toExclusive - DAY_MS))}`;
+    const toExclusive = to + DAY_MS;
+    const label = `${formatDay(from)} – ${formatDay(to)}`;
     return {
       key: 'custom',
       label,
@@ -252,6 +260,7 @@ type CostRow = {
   hours?: number | string | null;
   rate?: number | string | null;
   crew_id?: string | null;
+  burden_amount?: number | string | null;
 };
 
 type Rowset = {
@@ -279,6 +288,7 @@ export type WindowMetrics = {
   costs: number;
   materialsCost: number;
   laborCost: number;
+  overheadCost: number;
   grossProfit: number;
   /** 0..1 */
   margin: number;
@@ -323,9 +333,19 @@ export function metricsForRange(data: Rowset, fromMs: number, toMs: number): Win
     .reduce((sum, p) => sum + Math.max(0, (Number(p.amount) || 0) - (Number(p.refunded_amount) || 0)), 0);
 
   const costRows = data.costs.filter((c) => inRange(c.created_at));
-  const laborCost = costRows.filter((c) => c.type === 'labor').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const materialsCost = costRows.filter((c) => c.type !== 'labor').reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
-  const costs = laborCost + materialsCost;
+  // Labor costs include wages and burden amount (jobs.ts:233)
+  const laborCost = costRows
+    .filter((c) => c.type === 'labor')
+    .reduce((sum, c) => sum + (Number(c.amount) || 0) + (Number(c.burden_amount) || 0), 0);
+  // Non-job overhead expenses (rent, insurance, truck note, etc.)
+  const overheadCost = costRows
+    .filter((c) => (!c.job_id || c.type === 'overhead') && c.type !== 'labor')
+    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  // Direct job materials / subcontractors / supplies
+  const materialsCost = costRows
+    .filter((c) => c.job_id && c.type !== 'labor' && c.type !== 'overhead')
+    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+  const costs = laborCost + materialsCost + overheadCost;
   const grossProfit = collected - costs;
   const margin = collected > 0 ? grossProfit / collected : 0;
 
@@ -345,6 +365,7 @@ export function metricsForRange(data: Rowset, fromMs: number, toMs: number): Win
     costs,
     materialsCost,
     laborCost,
+    overheadCost,
     grossProfit,
     margin,
     marginPct: Math.round(margin * 100),
@@ -356,7 +377,7 @@ export function metricsForRange(data: Rowset, fromMs: number, toMs: number): Win
 // months — a 30-day window with one bar is not a trend.
 export function buildTrend(
   paid: Array<{ amount: number | string; refunded_amount?: number | string | null; paid_at: string }>,
-  costs: Array<{ amount: number | string; created_at: string }>,
+  costs: Array<{ amount: number | string; created_at: string; type?: string; burden_amount?: number | string | null }>,
   jobs: Array<{ quoted_amount: number | string | null; created_at: string }>,
   months: number,
   now: Date = new Date(),
@@ -385,7 +406,10 @@ export function buildTrend(
   }
   for (const cost of costs) {
     const slot = index.get(monthKey(new Date(cost.created_at)));
-    if (slot !== undefined) buckets[slot].costs += Number(cost.amount) || 0;
+    if (slot !== undefined) {
+      const burden = cost.type === 'labor' ? (Number(cost.burden_amount) || 0) : 0;
+      buckets[slot].costs += (Number(cost.amount) || 0) + burden;
+    }
   }
   for (const job of jobs) {
     const slot = index.get(monthKey(new Date(job.created_at)));
@@ -681,6 +705,7 @@ export type Insights = {
     approvedRevenue: number;
     materialsCost: number;
     laborCost: number;
+    overheadCost: number;
     deltas: {
       revenue: Delta;
       costs: Delta;
@@ -690,10 +715,12 @@ export type Insights = {
       approvedRevenue: Delta;
       materialsCost: Delta;
       laborCost: Delta;
+      overheadCost: Delta;
     };
   };
   materialsCost: number;
   laborCost: number;
+  overheadCost: number;
   funnel: FunnelStage[];
   drop: FunnelDrop;
   winRate: number;
@@ -810,10 +837,10 @@ export async function buildInsights(
     // refunds from the same rows; invoice_id and status let a deposit be credited
     // against its own invoice for the outstanding balance.
     supabase.from('payments').select('amount, refunded_amount, status, paid_at, requested_at, job_id, invoice_id').eq('account_id', accountId).eq('status', 'paid'),
-    supabase.from('costs').select('type, amount, created_at, job_id, hours, rate, crew_id').eq('account_id', accountId),
+    supabase.from('costs').select('type, amount, created_at, job_id, hours, rate, crew_id, burden_amount').eq('account_id', accountId),
     supabase.from('invoices').select('id, total, status, created_at, job_id').eq('account_id', accountId).in('status', ['sent', 'signed']),
     supabase.from('invoices').select('job_id, status').eq('account_id', accountId),
-    supabase.from('recurring_plans').select('id, amount, frequency, active, created_at, updated_at').eq('account_id', accountId),
+    supabase.from('recurring_plans').select('id, amount, frequency, active, created_at, updated_at, cancelled_at').eq('account_id', accountId),
     supabase.from('job_feed').select('amount, job_id, created_at').eq('account_id', accountId).eq('kind', 'quote_approved'),
     // When a quote was actually put in front of the customer.
     supabase.from('job_feed').select('job_id, created_at').eq('account_id', accountId).eq('kind', 'client_link_created'),
@@ -897,6 +924,7 @@ export async function buildInsights(
     approvedRevenue: cur.approvedRevenue,
     materialsCost: cur.materialsCost,
     laborCost: cur.laborCost,
+    overheadCost: cur.overheadCost,
     deltas: {
       revenue: computeDelta(cur.collected, prev.collected),
       // Costs going UP is not good news, but the pill only reports direction —
@@ -908,6 +936,7 @@ export async function buildInsights(
       approvedRevenue: computeDelta(cur.approvedRevenue, prev.approvedRevenue),
       materialsCost: computeDelta(cur.materialsCost, prev.materialsCost),
       laborCost: computeDelta(cur.laborCost, prev.laborCost),
+      overheadCost: computeDelta(cur.overheadCost, prev.overheadCost),
     },
   };
 
@@ -927,7 +956,7 @@ export async function buildInsights(
   }, 0);
 
   const paymentGaps = daysToPayment(data.paid);
-  const allPlans = (planRows ?? []) as Array<{ id: string; amount: number | string; frequency: string; active: boolean; created_at: string; updated_at?: string | null }>;
+  const allPlans = (planRows ?? []) as Array<{ id: string; amount: number | string; frequency: string; active: boolean; created_at: string; updated_at?: string | null; cancelled_at?: string | null }>;
   const activePlans = allPlans.filter((p) => p.active);
 
   // Open quotes: still at the quote stage, with a price on them.
@@ -1077,7 +1106,7 @@ export async function buildInsights(
     availability: bookingAvailabilityFromAccount(accountConfigRow),
     scheduledDates: upcomingScheduled,
     blocks: (blockRows ?? []) as Array<{ start_date: string; end_date: string }>,
-    avgJobValue: cur.avgQuoteValue,
+    avgJobValue: cur.medianQuoteValue > 0 ? cur.medianQuoteValue : cur.avgQuoteValue,
     now,
     lookaheadDays: 21,
   });
@@ -1137,10 +1166,12 @@ export async function buildInsights(
     { fromMs: period.fromMs, toMs: period.toMs },
   );
 
+  const voiceConversionRate = cur.overallConversion > 0 ? cur.overallConversion / 100 : (cur.winRate > 0 ? cur.winRate / 100 : undefined);
   const voice = computeVoiceMetrics(
     (voiceCallRows ?? []) as Parameters<typeof computeVoiceMetrics>[0],
-    cur.avgQuoteValue,
+    cur.medianQuoteValue > 0 ? cur.medianQuoteValue : cur.avgQuoteValue,
     { fromMs: period.fromMs, toMs: period.toMs },
+    voiceConversionRate,
   );
 
   const mrrMovement = computeMrrMovement(allPlans, { fromMs: period.fromMs, toMs: period.toMs });
@@ -1153,6 +1184,7 @@ export async function buildInsights(
     summary,
     materialsCost: cur.materialsCost,
     laborCost: cur.laborCost,
+    overheadCost: cur.overheadCost,
     funnel,
     drop: biggestDrop(funnel),
     winRate: cur.winRate,

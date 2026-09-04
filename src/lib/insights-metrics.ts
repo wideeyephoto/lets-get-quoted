@@ -88,6 +88,7 @@ export type MetricCost = {
   hours?: number | string | null;
   crew_id?: string | null;
   rate?: number | string | null;
+  burden_amount?: number | string | null;
 };
 
 /** Collected net of refunds — the honest "money that stayed" for a window. */
@@ -99,11 +100,12 @@ function netPaidInRange(paid: MetricPayment[], fromMs: number, toMs: number): nu
   }, 0);
 }
 
-/** Costs created in the window. */
+/** Costs created in the window (labor wages + burden, plus materials/other). */
 function costsInRange(costs: MetricCost[], fromMs: number, toMs: number): number {
   return costs.reduce((sum, c) => {
     if (!inRange(c.created_at, fromMs, toMs)) return sum;
-    return sum + (Number(c.amount) || 0);
+    const burden = c.type === 'labor' ? (Number(c.burden_amount) || 0) : 0;
+    return sum + (Number(c.amount) || 0) + burden;
   }, 0);
 }
 
@@ -1009,7 +1011,7 @@ export type JobProfitability = {
 
 export function computeJobProfitability(
   jobs: Array<{ id: string; ref?: string | null; client_name?: string | null; quoted_amount: number | string | null; created_at: string; status?: string }>,
-  costs: Array<{ job_id?: string | null; amount: number | string; type?: string; created_at: string }>,
+  costs: Array<{ job_id?: string | null; amount: number | string; type?: string; created_at: string; burden_amount?: number | string | null }>,
   paid: Array<{ job_id?: string | null; amount: number | string; refunded_amount?: number | string | null; paid_at: string }>,
   period?: { fromMs: number; toMs: number },
 ): JobProfitability {
@@ -1019,11 +1021,13 @@ export function computeJobProfitability(
     if (!cost.job_id) continue;
     if (period && !inRange(cost.created_at, period.fromMs, period.toMs)) continue;
     const amount = Number(cost.amount) || 0;
+    const burden = cost.type === 'labor' ? (Number(cost.burden_amount) || 0) : 0;
+    const totalRowCost = amount + burden;
     const existing = costsByJob.get(cost.job_id) ?? { total: 0, labor: 0, materials: 0, rows: 0 };
-    existing.total += amount;
+    existing.total += totalRowCost;
     existing.rows += 1;
-    if (cost.type === 'labor') existing.labor += amount;
-    else existing.materials += amount;
+    if (cost.type === 'labor') existing.labor += totalRowCost;
+    else existing.materials += totalRowCost;
     costsByJob.set(cost.job_id, existing);
   }
 
@@ -1059,7 +1063,9 @@ export function computeJobProfitability(
     // A job needs some financial data (revenue or costs) to be analyzed
     if (costAgg.total === 0 && paidAmount === 0 && quoted === 0) continue;
 
-    const revenue = paidAmount > 0 ? paidAmount : quoted;
+    // A deposit banked does not reduce the job's revenue to the deposit amount;
+    // measure against the full contract quote (or collected amount if higher).
+    const revenue = quoted > 0 ? (paidAmount > quoted ? paidAmount : quoted) : paidAmount;
     const totalCost = costAgg.total;
     const profit = revenue - totalCost;
     const marginPct = revenue > 0 ? Math.round((profit / revenue) * 100) : (profit < 0 ? -100 : 0);
@@ -1138,7 +1144,7 @@ export type LaborEfficiency = {
 
 export function computeLaborEfficiency(
   timeEntries: Array<{ id: string; crew_id: string; job_id: string | null; started_at: string; ended_at: string | null; rate?: number | string | null }>,
-  costs: Array<{ type?: string; amount: number | string; hours?: number | string | null; crew_id?: string | null; created_at: string; job_id?: string | null }>,
+  costs: Array<{ type?: string; amount: number | string; hours?: number | string | null; crew_id?: string | null; created_at: string; job_id?: string | null; burden_amount?: number | string | null }>,
   crew: Array<{ id: string; name: string }>,
   collectedRevenue: number,
   period: { fromMs: number; toMs: number },
@@ -1171,15 +1177,17 @@ export function computeLaborEfficiency(
     // 2. Fallback to labor cost rows with hours or cost
     const laborCosts = costs.filter((c) => c.type === 'labor' && inRange(c.created_at, period.fromMs, period.toMs));
     for (const cost of laborCosts) {
-      const h = Number(cost.hours) || (Number(cost.amount) > 0 ? Number(cost.amount) / 35 : 0);
+      // Do not invent hours if none were logged. A missing hour count remains 0.
+      const h = Number(cost.hours) || 0;
       const amount = Number(cost.amount) || 0;
+      const burden = Number(cost.burden_amount) || 0;
       totalHours += h;
       if (cost.job_id) billableHours += h;
 
       const crewId = cost.crew_id || 'unassigned';
       const rec = crewHours.get(crewId) ?? { hours: 0, cost: 0, jobs: new Set() };
       rec.hours += h;
-      rec.cost += amount;
+      rec.cost += amount + burden;
       if (cost.job_id) rec.jobs.add(cost.job_id);
       crewHours.set(crewId, rec);
     }
@@ -1187,7 +1195,7 @@ export function computeLaborEfficiency(
 
   const laborCostSum = costs
     .filter((c) => c.type === 'labor' && inRange(c.created_at, period.fromMs, period.toMs))
-    .reduce((sum, c) => sum + (Number(c.amount) || 0), 0);
+    .reduce((sum, c) => sum + (Number(c.amount) || 0) + (Number(c.burden_amount) || 0), 0);
 
   const roundedHours = round2(totalHours);
   const roundedBillable = round2(billableHours);
@@ -1235,20 +1243,22 @@ export function computeReputationMetrics(
   period: { fromMs: number; toMs: number },
 ): ReputationMetrics {
   const invitesInPeriod = reviewInvites.filter((r) => inRange(r.created_at, period.fromMs, period.toMs));
-  const respondedInPeriod = reviewInvites.filter((r) => inRange(r.responded_at, period.fromMs, period.toMs));
+  const respondedInvites = invitesInPeriod.filter((r) => Boolean(r.responded_at) || (typeof r.rating === 'number' && r.rating >= 1));
 
   const totalInvites = invitesInPeriod.length;
-  const respondedCount = respondedInPeriod.length;
-  const responseRate = totalInvites > 0 ? Math.min(100, Math.round((respondedCount / totalInvites) * 100)) : 0;
+  const respondedCount = respondedInvites.length;
+  // Cohort response rate: of the invites sent in this window, how many were answered.
+  // Never exceeds 100% because respondedInvites is a subset of invitesInPeriod.
+  const responseRate = totalInvites > 0 ? Math.round((respondedCount / totalInvites) * 100) : 0;
 
-  const ratings = respondedInPeriod
+  const ratings = respondedInvites
     .filter((r) => typeof r.rating === 'number' && r.rating >= 1)
     .map((r) => r.rating as number);
 
   const averageRating = ratings.length > 0 ? Math.round((ratings.reduce((a, b) => a + b, 0) / ratings.length) * 10) / 10 : null;
 
-  const googleReviewsCount = respondedInPeriod.filter((r) => Boolean(r.google_clicked_at) || r.routed_to === 'google').length;
-  const googleConversionRate = respondedCount > 0 ? Math.min(100, Math.round((googleReviewsCount / respondedCount) * 100)) : 0;
+  const googleReviewsCount = respondedInvites.filter((r) => Boolean(r.google_clicked_at) || r.routed_to === 'google').length;
+  const googleConversionRate = respondedCount > 0 ? Math.round((googleReviewsCount / respondedCount) * 100) : 0;
 
   const ratingCounts = { 5: 0, 4: 0, 3: 0, 2: 0, 1: 0 };
   for (const rating of ratings) {
@@ -1280,12 +1290,14 @@ export type VoiceMetrics = {
   leadsCreated: number;
   estimatedRevenue: number;
   totalMinutes: number;
+  conversionRate?: number;
 };
 
 export function computeVoiceMetrics(
   calls: Array<{ id: string; started_at?: string | null; ai_seconds?: number | null; outcome?: string | null; lead_id?: string | null; created_at: string }>,
   avgJobValue: number,
   period: { fromMs: number; toMs: number },
+  conversionRate?: number,
 ): VoiceMetrics {
   const callsInPeriod = calls.filter((c) => inRange(c.started_at || c.created_at, period.fromMs, period.toMs));
   const totalCalls = callsInPeriod.length;
@@ -1294,7 +1306,12 @@ export function computeVoiceMetrics(
   const leadsCreated = callsInPeriod.filter((c) => Boolean(c.lead_id)).length;
   const totalSeconds = callsInPeriod.reduce((sum, c) => sum + (Number(c.ai_seconds) || 0), 0);
   const totalMinutes = Math.round(totalSeconds / 60);
-  const estimatedRevenue = Math.round(leadsCreated * (avgJobValue > 0 ? avgJobValue : 500));
+
+  // Honest conversion: use actual avg quote value (no fabricated $500 fallback).
+  // Factor in lead conversion rate if provided; otherwise default to 1.
+  const rate = conversionRate !== undefined ? Math.max(0, Math.min(1, conversionRate)) : 1;
+  const baseJobValue = Math.max(0, avgJobValue);
+  const estimatedRevenue = Math.round(leadsCreated * baseJobValue * rate);
 
   return {
     hasVoice: calls.length > 0,
@@ -1304,6 +1321,7 @@ export function computeVoiceMetrics(
     leadsCreated,
     estimatedRevenue,
     totalMinutes,
+    conversionRate: conversionRate !== undefined ? rate : undefined,
   };
 }
 
@@ -1323,7 +1341,7 @@ export type MrrMovement = {
 };
 
 export function computeMrrMovement(
-  plans: Array<{ id?: string; amount: number | string; frequency: string; active: boolean; created_at?: string | null; updated_at?: string | null }>,
+  plans: Array<{ id?: string; amount: number | string; frequency: string; active: boolean; created_at?: string | null; updated_at?: string | null; cancelled_at?: string | null }>,
   period: { fromMs: number; toMs: number },
 ): MrrMovement {
   const activePlans = plans.filter((p) => p.active);
@@ -1332,7 +1350,13 @@ export function computeMrrMovement(
   const newPlansList = plans.filter((p) => inRange(p.created_at, period.fromMs, period.toMs));
   const newMrr = newPlansList.reduce((sum, p) => sum + monthlyRunRate(p.amount, p.frequency), 0);
 
-  const churnedPlansList = plans.filter((p) => !p.active && inRange(p.updated_at, period.fromMs, period.toMs));
+  // A plan churned when it was cancelled/deactivated. If cancelled_at is stored, use it.
+  // Never re-report an already inactive plan as newly churned due to a subsequent price or detail update.
+  const churnedPlansList = plans.filter((p) => {
+    if (p.active) return false;
+    const churnDate = p.cancelled_at !== undefined ? p.cancelled_at : p.updated_at;
+    return inRange(churnDate, period.fromMs, period.toMs);
+  });
   const churnedMrr = churnedPlansList.reduce((sum, p) => sum + monthlyRunRate(p.amount, p.frequency), 0);
 
   const netMrrDelta = newMrr - churnedMrr;
@@ -1369,11 +1393,15 @@ export function computePaceForecast(
   priorCollected?: number,
   nowMs: number = Date.now(),
 ): PaceForecast | null {
-  // Only meaningful if the period contains "now" or ends today/future
-  const isCurrentPeriod = period.toMs >= nowMs - DAY_MS && period.fromMs <= nowMs;
-  if (!isCurrentPeriod || collected <= 0) return null;
+  // Only meaningful if the period contains "now" and has future days remaining.
+  // A completed period (or trailing window where now is the end) has 100% of days elapsed,
+  // making any projection a tautology of what was already collected.
+  if (collected <= 0 || period.toMs <= nowMs || nowMs < period.fromMs) return null;
 
   const daysElapsed = Math.max(1, Math.min(period.days, Math.ceil((nowMs - period.fromMs) / DAY_MS)));
+  // If all days in the period have already elapsed, there is nothing left to forecast.
+  if (daysElapsed >= period.days) return null;
+
   const dailyRunRate = round2(collected / daysElapsed);
   const projectedRevenue = Math.round(dailyRunRate * period.days);
   const pacePercentage = priorCollected && priorCollected > 0 ? Math.round((projectedRevenue / priorCollected) * 100) : null;
@@ -1385,7 +1413,7 @@ export function computePaceForecast(
   }
 
   return {
-    isCurrentPeriod,
+    isCurrentPeriod: true,
     daysElapsed,
     totalDays: period.days,
     projectedRevenue,

@@ -41,7 +41,11 @@ export default function VoiceInsightsCard({
           <strong className="ins-figure-value" style={{ color: '#166534' }}>
             {formatMoney(estimatedRevenue)}
           </strong>
-          <span className="ins-sub">from phone leads</span>
+          <span className="ins-sub">
+            {voice.conversionRate !== undefined && voice.conversionRate < 1
+              ? `at ${Math.round(voice.conversionRate * 100)}% lead conversion`
+              : 'from phone leads'}
+          </span>
         </div>
       </div>
 

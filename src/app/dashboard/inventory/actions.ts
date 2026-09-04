@@ -24,6 +24,10 @@ import {
   saveMaintenanceRecord,
   saveLocation,
   deleteLocation,
+  checkOutToolDb,
+  checkInToolDb,
+  updateVehicleMileage,
+  seedInitialInventory,
 } from '@/lib/inventory-db';
 
 export async function fetchInventoryDataAction(): Promise<InventoryPayload> {
@@ -31,8 +35,13 @@ export async function fetchInventoryDataAction(): Promise<InventoryPayload> {
   return loadInventoryData(supabase, accountId);
 }
 
+export async function seedStarterInventoryAction(): Promise<InventoryPayload> {
+  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+  return seedInitialInventory(supabase, accountId);
+}
+
 export async function saveToolAction(
-  tool: Partial<ToolAsset> & { name: string; brand: string; category: string; assetTag: string },
+  tool: Partial<ToolAsset> & { name?: string; brand?: string; category?: string; assetTag?: string },
 ): Promise<ToolAsset> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
   return saveTool(supabase, accountId, tool);
@@ -52,20 +61,7 @@ export async function checkOutToolAction(params: {
   notes?: string;
 }): Promise<ToolAsset> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
-  return saveTool(supabase, accountId, {
-    id: params.toolId,
-    status: 'checked_out',
-    name: '',
-    brand: '',
-    category: '',
-    assetTag: '',
-    assignedCrewId: params.crewId ?? null,
-    assignedCrewName: params.crewName,
-    assignedJobId: params.jobId ?? null,
-    assignedJobLabel: params.jobLabel ?? null,
-    checkedOutAt: new Date().toISOString(),
-    notes: params.notes ?? null,
-  });
+  return checkOutToolDb(supabase, accountId, params);
 }
 
 export async function checkInToolAction(params: {
@@ -74,24 +70,11 @@ export async function checkInToolAction(params: {
   notes?: string;
 }): Promise<ToolAsset> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
-  return saveTool(supabase, accountId, {
-    id: params.toolId,
-    status: params.condition || 'available',
-    name: '',
-    brand: '',
-    category: '',
-    assetTag: '',
-    assignedCrewId: null,
-    assignedCrewName: null,
-    assignedJobId: null,
-    assignedJobLabel: null,
-    checkedOutAt: null,
-    notes: params.notes ?? null,
-  });
+  return checkInToolDb(supabase, accountId, params);
 }
 
 export async function saveVehicleAction(
-  vehicle: Partial<FleetVehicle> & { name: string; make: string; model: string; year: number; licensePlate: string },
+  vehicle: Partial<FleetVehicle> & { name?: string; make?: string; model?: string; year?: number; licensePlate?: string },
 ): Promise<FleetVehicle> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
   return saveVehicle(supabase, accountId, vehicle);
@@ -107,15 +90,7 @@ export async function updateVehicleMileageAction(params: {
   currentMileage: number;
 }): Promise<FleetVehicle> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
-  return saveVehicle(supabase, accountId, {
-    id: params.vehicleId,
-    name: '',
-    make: '',
-    model: '',
-    year: 0,
-    licensePlate: '',
-    currentMileage: params.currentMileage,
-  });
+  return updateVehicleMileage(supabase, accountId, params.vehicleId, params.currentMileage);
 }
 
 export async function saveStockItemAction(

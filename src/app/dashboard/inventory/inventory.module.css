@@ -184,6 +184,12 @@
   box-shadow: 0 8px 20px rgba(0, 0, 0, 0.55);
 }
 
+.kpiCard:focus-visible {
+  outline: 2px solid var(--accent, #38bdf8);
+  outline-offset: 2px;
+  border-color: rgba(56, 189, 248, 0.6);
+}
+
 .kpiHeader {
   display: flex;
   align-items: center;

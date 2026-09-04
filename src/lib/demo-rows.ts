@@ -337,6 +337,7 @@ export const DEMO_RECURRING_ROWS: DemoRow[] = DEMO_CLIENT_ROWS.slice(0, 6).map((
     card_last4: hasCard ? ['4242', '1881', '5556', null, '9021', '3310'][index] ?? null : null,
     last_job_id: null,
     last_run_at: daysAgo(14 - index),
+    cancelled_at: index === 5 ? daysAgo(14 - index) : null,
     created_at: daysAgo(120 - index * 9),
     updated_at: daysAgo(14 - index),
   };
