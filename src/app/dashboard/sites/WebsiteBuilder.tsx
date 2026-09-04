@@ -847,6 +847,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
       // falling through to SECTION_TARGETS, which assumes the Page tab.
       if (target === 'socials') { setActiveTab('business'); setOpenSection('socials'); scrollCardToTop(); return; }
       if (target === 'heroBadge') { setActiveTab('page'); setOpenSection('hero'); flashCard('heroBadge', 'design-hero-badge'); return; }
+      if (target === 'headerTagline') { setActiveTab('design'); setOpenSection('logo'); focusField('bf-header-tagline'); return; }
       // The logo + auto trade-icon jump to the Brand tab's "Logo & brand icon" card
       if (target === 'brandIcon' || target === 'logo') { setActiveTab('design'); setOpenSection('logo'); scrollCardToTop(); return; }
       // Every photo opens the "Replace photo" popup, routed by what was clicked.
@@ -2349,6 +2350,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                         <small>Turn off if your logo already includes your company name, so it doesn&apos;t appear twice.</small>
                       </span>
                     </label>
+                    <label className={styles.formField} style={{ marginTop: '.65rem' }}>
+                      <span>Header tagline / slogan</span>
+                      <input
+                        id="bf-header-tagline"
+                        type="text"
+                        value={siteContent.headerTagline}
+                        maxLength={100}
+                        placeholder="e.g. 24/7 Emergency Service • Licensed & Insured"
+                        onChange={(event) => updateSiteContent({ headerTagline: event.target.value })}
+                      />
+                      <small className={styles.fieldHint}>Displayed in the website header next to your logo. Perfect for a catchy trade slogan or trust badge.</small>
+                    </label>
                     <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
                   </div>
                 </SectionCard>
@@ -2904,6 +2917,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                      <strong>Show company name in header</strong>
                                      <small>Display your text business name next to your logo or icon. Turn off if your logo already includes your name.</small>
                                    </span>
+                                 </label>
+                                 <label className={styles.formField} style={{ marginTop: '.65rem' }}>
+                                   <span>Header tagline / slogan</span>
+                                   <input
+                                     type="text"
+                                     value={siteContent.headerTagline || ''}
+                                     maxLength={100}
+                                     placeholder="e.g. 24/7 Emergency Service • Licensed & Insured"
+                                     onChange={(event) => updateSiteContent({ headerTagline: event.target.value })}
+                                   />
+                                   <small className={styles.fieldHint}>Displayed in the website header next to your logo or company name.</small>
                                  </label>
 
                                 <hr className={styles.logoDivider} />

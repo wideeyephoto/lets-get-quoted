@@ -108,7 +108,12 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
           {site.logo_url
             ? <img className={styles.blogChromeLogo} src={site.logo_url} alt="" />
             : <span className={styles.blogChromeMark}><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-          {!content.hideHeaderCompanyName && <strong>{site.company_name}</strong>}
+          {(!content.hideHeaderCompanyName || content.headerTagline) && (
+            <span className={styles.brandText}>
+              {!content.hideHeaderCompanyName && <strong>{site.company_name}</strong>}
+              {content.headerTagline && <span className={styles.headerTagline}>{content.headerTagline}</span>}
+            </span>
+          )}
         </a>
         <nav className={styles.blogChromeNav} aria-label="Site navigation">
           {navLinks.map((link) => <a key={link.href} href={link.href}>{link.label}</a>)}
