@@ -428,10 +428,10 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
   },
   'configure-ai-receptionist': {
     useWhen: 'Setting up 24/7 AI call answering, voice greetings, call transcripts, and emergency forwarding.',
-    bestPractice: 'Configure AI receptionist settings on Automations (#ai-receptionist) with a verified emergency number.',
-    watchFor: 'Ensure settings.write clearance is available when modifying AI receptionist configurations.',
+    bestPractice: 'Configure AI receptionist settings on Voice Calls Settings (/dashboard/voice-calls?view=settings) with a verified emergency number.',
+    watchFor: 'Ensure owner clearance is available when modifying AI receptionist configurations.',
     completionChecks: [
-      'AI phone greeting and business operating hours are configured on Automations.',
+      'AI phone greeting and business operating hours are configured on Voice Calls Settings.',
       'Emergency transfer phone number is verified for urgent live calls.',
       'Inbound call transcripts and lead extractions log into the Lead Inbox.',
     ],

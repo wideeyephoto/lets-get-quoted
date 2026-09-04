@@ -1909,18 +1909,18 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     chapterId: 'intake',
     order: 5,
     title: 'Configure AI receptionist and call routing',
-    summary: 'Configure AI call answering on Automations (#ai-receptionist), business hours, and phone call routing.',
+    summary: 'Configure AI call answering on Voice Calls settings, business hours, and phone call routing.',
     outcome: 'Your incoming calls will be answered professionally 24/7 with call transcripts and lead logging.',
     audiences: ['Owner'],
     readMinutes: 6,
-    routes: [{ label: 'Automations', href: '/dashboard/automations#ai-receptionist' }],
+    routes: [{ label: 'Voice Calls Settings', href: '/dashboard/voice-calls?view=settings' }],
     prerequisites: ['Owner access', 'settings.write permission'],
     keywords: ['ai receptionist', 'call routing', 'phone answering', 'automations', 'business hours', 'call transcripts', 'simultaneous calls', 'overflow calls', 'call capacity'],
     sections: [
       {
-        title: 'Settings location on Automations page',
+        title: 'Settings location on Voice Calls page',
         paragraphs: [
-          'All AI Receptionist and call answering configurations are located on the Automations page (/dashboard/automations#ai-receptionist), requiring owner settings.write clearance. They are not configured on general voice routing pages.',
+          'All AI Receptionist and call answering configurations are located on the Voice Calls workspace under Receptionist Settings (/dashboard/voice-calls?view=settings), requiring owner clearance.',
         ],
       },
       {
@@ -1946,7 +1946,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     ],
     customerView: 'Callers speak to a polite, articulate AI assistant that answers company questions and books appointments.',
     troubleshooting: [
-      { problem: 'Emergency calls are not forwarding.', fix: 'Verify the emergency forwarding phone number in Automations → AI Receptionist settings.' },
+      { problem: 'Emergency calls are not forwarding.', fix: 'Verify the emergency forwarding phone number in Voice Calls → Receptionist Settings.' },
     ],
     related: ['configure-text-to-job-and-field-intake', 'manage-the-lead-inbox', 'set-up-business-texting'],
   },
