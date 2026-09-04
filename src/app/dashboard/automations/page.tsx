@@ -462,19 +462,13 @@ export default async function AutomationsPage() {
               <Link href="/dashboard/messages?setup=1#texting-setup">Open Texting setup &rarr;</Link>
             </span>
           </div>
-        ) : null}
-        {!allEssentialsOn ? (
+        ) : !allEssentialsOn ? (
           <form action={enableRecommendedAutomationsAction} className="automation-recommend">
             <div className="automation-recommend-copy">
               <strong>Turn on the essentials in one click</strong>
               <span>Enables review asks, quote follow-ups, appointment reminders, and your daily digest with sensible defaults. Tune or turn any off below.</span>
             </div>
-            <SaveButton
-              disabled={!customerTextingReady}
-              title={!customerTextingReady ? customerTextingBlockReason : undefined}
-            >
-              {customerTextingReady ? 'Turn on recommended' : 'Texting setup required'}
-            </SaveButton>
+            <SaveButton>Turn on recommended</SaveButton>
           </form>
         ) : null}
         <p className="automation-group">Booking &amp; intake</p>

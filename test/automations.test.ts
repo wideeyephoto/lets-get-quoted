@@ -65,3 +65,18 @@ describe('automation toggle map', () => {
     expect(automationRequiresDedicatedMessaging('daily-digest')).toBe(false);
   });
 });
+
+describe('automations page top banners', () => {
+  it('does not stack the texting prereq banner and essentials recommendation banner together', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const page = readFileSync(join(process.cwd(), 'src', 'app', 'dashboard', 'automations', 'page.tsx'), 'utf8');
+
+    // The essentials recommendation banner must be mutually exclusive with the
+    // texting-prereq banner so unconfigured workspaces never see two stacked
+    // amber banners both stating texting setup is required.
+    expect(page).toMatch(/!customerTextingReady\s*\?\s*\([\s\S]*?automation-prereq[\s\S]*?\)\s*:\s*!allEssentialsOn\s*\?\s*\([\s\S]*?automation-recommend/);
+    expect(page).not.toContain('Texting setup required');
+  });
+});
+
