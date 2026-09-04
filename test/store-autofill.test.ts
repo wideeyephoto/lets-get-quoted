@@ -38,7 +38,7 @@ describe('store-autofill', () => {
     expect(res.sku).toBe('1000135831');
     expect(res.category).toBe('Power Tools');
     expect(res.purchasePrice).toBe(159);
-    expect(res.notes).toContain("Lowe's");
+    expect(res.notes).toContain('1000135831');
   });
 
   it('gracefully handles uncataloged store URLs and extracts brand, model, and category', () => {

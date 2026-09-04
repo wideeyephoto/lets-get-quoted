@@ -1,5 +1,3 @@
-import type { DepreciationSchedule } from './inventory-tracker';
-
 export interface StoreProductCatalogItem {
   id: string;
   retailer: 'Home Depot' | "Lowe's";

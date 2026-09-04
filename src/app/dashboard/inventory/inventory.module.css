@@ -1578,48 +1578,45 @@
   flex-shrink: 0;
 }
 
-.photoInputWrap {
-  flex: 1;
+.photoUploadActions {
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  min-width: 0;
+  gap: 0.4rem;
+  align-items: flex-start;
 }
 
-.photoPresetRow {
-  display: flex;
+.photoUploadBtn {
+  display: inline-flex;
   align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-}
-
-.photoPresetBtn {
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: #cbd5e1;
-  font-size: 0.72rem;
+  gap: 0.45rem;
+  padding: 0.45rem 0.85rem;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  font-size: 0.8rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
-.photoPresetBtn:hover {
-  background: rgba(255, 122, 33, 0.2);
-  border-color: rgba(255, 122, 33, 0.5);
-  color: #ffb580;
+.photoUploadBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
 }
 
 .photoClearBtn {
   background: none;
   border: none;
   color: #f87171;
-  font-size: 0.74rem;
+  font-size: 0.76rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 0.1rem 0.3rem;
+  padding: 0.2rem 0.4rem;
   border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   transition: background 0.15s ease;
 }
 
@@ -1627,19 +1624,112 @@
   background: rgba(239, 68, 68, 0.15);
 }
 
+.photoEmptyBox {
+  width: 90px;
+  height: 72px;
+  border-radius: 8px;
+  border: 1.5px dashed rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.02);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  color: #94a3b8;
+  font-size: 0.68rem;
+  flex-shrink: 0;
+}
+
 /* ==========================================================================
-   Store Autofill (Home Depot & Lowe's)
+   Tool Modal Mode Switcher (+ Add Tool Manually vs Quick Autofill)
+   ========================================================================== */
+
+.toolModalModeToggle {
+  display: flex;
+  gap: 0.35rem;
+  background: rgba(0, 0, 0, 0.4);
+  padding: 0.25rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0.75rem;
+}
+
+.toolModalModeBtn {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  padding: 0.5rem 0.85rem;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toolModalModeBtn:hover:not(.toolModalModeBtnActive) {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.toolModalModeBtnActive {
+  background: rgba(255, 122, 33, 0.18);
+  color: #ff9d5c;
+  border-color: rgba(255, 122, 33, 0.5);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.manualEntryBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  font-size: 0.76rem;
+  color: #94a3b8;
+  margin-bottom: 0.45rem;
+}
+
+.manualEntryAutofillLink {
+  background: none;
+  border: none;
+  color: #ff9d5c;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  transition: all 0.12s ease;
+}
+
+.manualEntryAutofillLink:hover {
+  background: rgba(255, 122, 33, 0.15);
+  color: #ffb580;
+}
+
+/* ==========================================================================
+   Tool Autofill (Optional)
    ========================================================================== */
 
 .storeAutofillCard {
-  background: linear-gradient(135deg, rgba(255, 122, 33, 0.08), rgba(14, 165, 233, 0.06));
-  border: 1px solid rgba(255, 122, 33, 0.28);
+  background: rgba(255, 122, 33, 0.05);
+  border: 1px solid rgba(255, 122, 33, 0.25);
   border-radius: 12px;
   padding: 0.85rem 1rem;
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.65rem;
 }
 
 .storeAutofillHeader {
@@ -1657,32 +1747,6 @@
   align-items: center;
   gap: 0.45rem;
   letter-spacing: -0.01em;
-}
-
-.storeBadges {
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
-.storeBadgeHD {
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  background: rgba(249, 115, 22, 0.2);
-  border: 1px solid rgba(249, 115, 22, 0.5);
-  color: #fb923c;
-  font-size: 0.68rem;
-  font-weight: 700;
-}
-
-.storeBadgeLowes {
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  background: rgba(14, 165, 233, 0.2);
-  border: 1px solid rgba(14, 165, 233, 0.5);
-  color: #38bdf8;
-  font-size: 0.68rem;
-  font-weight: 700;
 }
 
 .storeInputGroup {
@@ -1819,23 +1883,12 @@
   margin-left: 0.5rem;
 }
 
-.storeResultBadgeHD {
+.storeResultBrandBadge {
   padding: 0.1rem 0.35rem;
   border-radius: 4px;
-  background: rgba(249, 115, 22, 0.25);
-  border: 1px solid rgba(249, 115, 22, 0.6);
-  color: #fdba74;
-  font-size: 0.66rem;
-  font-weight: 700;
-  flex-shrink: 0;
-}
-
-.storeResultBadgeLowes {
-  padding: 0.1rem 0.35rem;
-  border-radius: 4px;
-  background: rgba(14, 165, 233, 0.25);
-  border: 1px solid rgba(14, 165, 233, 0.6);
-  color: #7dd3fc;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  color: #e2e8f0;
   font-size: 0.66rem;
   font-weight: 700;
   flex-shrink: 0;
@@ -1873,51 +1926,6 @@
 .storeAutofillBtn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.storePresetRow {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  font-size: 0.73rem;
-  color: #94a3b8;
-}
-
-.storePresetTagHD {
-  padding: 0.18rem 0.45rem;
-  border-radius: 5px;
-  background: rgba(249, 115, 22, 0.12);
-  border: 1px solid rgba(249, 115, 22, 0.3);
-  color: #fdba74;
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.storePresetTagHD:hover {
-  background: rgba(249, 115, 22, 0.25);
-  border-color: #f97316;
-  color: #ffffff;
-}
-
-.storePresetTagLowes {
-  padding: 0.18rem 0.45rem;
-  border-radius: 5px;
-  background: rgba(14, 165, 233, 0.12);
-  border: 1px solid rgba(14, 165, 233, 0.3);
-  color: #7dd3fc;
-  font-size: 0.72rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.12s ease;
-}
-
-.storePresetTagLowes:hover {
-  background: rgba(14, 165, 233, 0.25);
-  border-color: #38bdf8;
-  color: #ffffff;
 }
 
 .storeSuccessBanner {

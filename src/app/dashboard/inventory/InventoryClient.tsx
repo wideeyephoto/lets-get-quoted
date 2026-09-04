@@ -244,6 +244,7 @@ export default function InventoryClient({
   const [storeAutofillSuccess, setStoreAutofillSuccess] = useState<string | null>(null);
   const [storeSearchResults, setStoreSearchResults] = useState<StoreAutofillResult[]>([]);
   const [showStoreDropdown, setShowStoreDropdown] = useState(false);
+  const [toolEntryMode, setToolEntryMode] = useState<'manual' | 'autofill'>('manual');
 
   // Modals state
   const [checkoutTool, setCheckoutTool] = useState<ToolAsset | null>(null);
@@ -325,6 +326,7 @@ export default function InventoryClient({
       (tool?.purchasePrice && tool.purchasePrice < 2500 ? 'de_minimis' : 'section_179');
     setToolModalSchedule(defaultSchedule);
     setToolModalImageUrl(tool?.imageUrl || '');
+    setToolEntryMode('manual');
     setStoreAutofillUrl('');
     setStoreAutofillSuccess(null);
     setStoreAutofillLoading(false);
@@ -355,11 +357,10 @@ export default function InventoryClient({
     setToolModalSchedule(res.depreciationSchedule);
     setStoreAutofillUrl(res.name);
     setShowStoreDropdown(false);
+    setToolEntryMode('manual');
     setToolModalFormKey((k) => k + 1);
-    setStoreAutofillSuccess(
-      `Autofilled from ${res.retailer}: ${res.name} (${res.sku ? `${res.retailer === 'Home Depot' ? 'Internet #' : 'Item #'}${res.sku}` : 'Catalog'})`
-    );
-    showToast(`Loaded ${res.brand} ${res.name} from ${res.retailer}`);
+    setStoreAutofillSuccess(`Autofilled: ${res.name}`);
+    showToast(`Loaded ${res.name}`);
   }
 
   async function handleStoreInputChange(val: string) {
@@ -382,7 +383,7 @@ export default function InventoryClient({
   async function handleAutofillStore(urlToUse?: string) {
     const raw = (urlToUse || storeAutofillUrl).trim();
     if (!raw) {
-      showToast('Please enter a tool keyword or paste a Home Depot / Lowe’s link', 'error');
+      showToast('Please enter a tool keyword or paste a product link', 'error');
       return;
     }
     setShowStoreDropdown(false);
@@ -2538,224 +2539,176 @@ export default function InventoryClient({
             </div>
 
             <form key={toolModalFormKey} onSubmit={handleSaveTool} className={styles.formGrid}>
-              {/* Store Autofill from Home Depot & Lowe's */}
-              <div className={styles.storeAutofillCard}>
-                <div className={styles.storeAutofillHeader}>
-                  <div className={styles.storeAutofillTitle}>
-                    <Sparkles size={15} style={{ color: '#ff7a21' }} />
-                    Autofill from Home Depot &amp; Lowe&apos;s
-                  </div>
-                  <div className={styles.storeBadges}>
-                    <span className={styles.storeBadgeHD}>Home Depot</span>
-                    <span className={styles.storeBadgeLowes}>Lowe&apos;s</span>
-                  </div>
-                </div>
-
-                <div className={styles.storeInputGroup}>
-                  <div className={styles.storeInputWrap}>
-                    <input
-                      type="text"
-                      value={storeAutofillUrl}
-                      onChange={(e) => handleStoreInputChange(e.target.value)}
-                      onFocus={() => {
-                        if (storeAutofillUrl.trim().length > 0 && storeSearchResults.length > 0) {
-                          setShowStoreDropdown(true);
-                        }
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          if (storeSearchResults.length > 0) {
-                            applyStoreProduct(storeSearchResults[0]);
-                          } else {
-                            handleAutofillStore();
-                          }
-                        } else if (e.key === 'Escape') {
-                          setShowStoreDropdown(false);
-                        }
-                      }}
-                      placeholder="Search store catalog (e.g. pipe, drill, bandsaw) or paste URL..."
-                      className={styles.storeUrlInput}
-                    />
-
-                    {showStoreDropdown && (
-                      <div className={styles.storeSearchResultsDropdown}>
-                        <div className={styles.storeSearchResultsHeader}>
-                          <span>Matching Home Depot &amp; Lowe&apos;s Products ({storeSearchResults.length})</span>
-                          <button
-                            type="button"
-                            onClick={() => setShowStoreDropdown(false)}
-                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.72rem' }}
-                          >
-                            Close ✕
-                          </button>
-                        </div>
-                        {storeSearchResults.length > 0 ? (
-                          storeSearchResults.map((item, idx) => (
-                            <button
-                              key={item.sku || `${item.name}-${idx}`}
-                              type="button"
-                              className={styles.storeSearchResultItem}
-                              onClick={() => applyStoreProduct(item)}
-                            >
-                              {item.imageUrl ? (
-                                <img
-                                  src={item.imageUrl}
-                                  alt={item.name}
-                                  className={styles.storeResultThumb}
-                                  onError={(e) => {
-                                    e.currentTarget.style.display = 'none';
-                                  }}
-                                />
-                              ) : (
-                                <div className={styles.storeResultThumb} style={{ display: 'grid', placeItems: 'center' }}>
-                                  <Sparkles size={16} style={{ color: '#ff7a21' }} />
-                                </div>
-                              )}
-                              <div className={styles.storeResultInfo}>
-                                <div className={styles.storeResultTitleRow}>
-                                  <span
-                                    className={
-                                      item.retailer === 'Home Depot'
-                                        ? styles.storeResultBadgeHD
-                                        : styles.storeResultBadgeLowes
-                                    }
-                                  >
-                                    {item.retailer}
-                                  </span>
-                                  <span className={styles.storeResultTitle}>{item.name}</span>
-                                </div>
-                                <div className={styles.storeResultMeta}>
-                                  <span>{item.brand}</span>
-                                  {item.modelNumber && <span>· Model #{item.modelNumber}</span>}
-                                  {item.sku && (
-                                    <span>
-                                      · {item.retailer === 'Home Depot' ? 'Internet #' : 'Item #'}{item.sku}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              {item.purchasePrice !== null && (
-                                <div className={styles.storeResultPrice}>
-                                  {formatUsdExact(item.purchasePrice)}
-                                </div>
-                              )}
-                            </button>
-                          ))
-                        ) : (
-                          <div className={styles.storeSearchEmpty}>
-                            No matching contractor tools found in store catalog for &ldquo;{storeAutofillUrl}&rdquo;.
-                            <br />
-                            Try searching for <em>&ldquo;pipe&rdquo;</em>, <em>&ldquo;drill&rdquo;</em>, <em>&ldquo;bandsaw&rdquo;</em>, or paste a product link.
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    disabled={storeAutofillLoading}
-                    onClick={() => {
-                      if (storeSearchResults.length > 0) {
-                        applyStoreProduct(storeSearchResults[0]);
-                      } else {
-                        handleAutofillStore();
-                      }
-                    }}
-                    className={styles.storeAutofillBtn}
-                  >
-                    {storeAutofillLoading ? (
-                      <>
-                        <Loader2 size={13} className={styles.spinner} />
-                        Autofilling...
-                      </>
-                    ) : (
-                      <>
-                        <Zap size={13} />
-                        Autofill Tool
-                      </>
-                    )}
-                  </button>
-                </div>
-
-                <div className={styles.storePresetRow}>
-                  <span>Popular contractor tools:</span>
-                  <button
-                    type="button"
-                    className={styles.storePresetTagHD}
-                    onClick={() =>
-                      handleAutofillStore(
-                        'https://www.homedepot.com/p/RIDGID-18-in-Heavy-Duty-Straight-Pipe-Wrench-31025/100072045'
-                      )
-                    }
-                  >
-                    HD: RIDGID 18&quot; Pipe Wrench
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.storePresetTagHD}
-                    onClick={() =>
-                      handleAutofillStore(
-                        'https://www.homedepot.com/p/RIDGID-RP-351-ProPress-Press-Tool-Kit-with-1-2-in-to-2-in-ProPress-Jaws-67123/319409824'
-                      )
-                    }
-                  >
-                    HD: RIDGID ProPress
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.storePresetTagHD}
-                    onClick={() =>
-                      handleAutofillStore(
-                        'https://www.homedepot.com/p/Milwaukee-M18-FUEL-18V-Lithium-Ion-Brushless-Cordless-Deep-Cut-Band-Saw-Tool-Only-2729-20/205629470'
-                      )
-                    }
-                  >
-                    HD: Milwaukee Band Saw
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.storePresetTagHD}
-                    onClick={() =>
-                      handleAutofillStore(
-                        'https://www.homedepot.com/p/Klein-Tools-Digital-Multimeter-600V-Auto-Ranging-MM400/206517333'
-                      )
-                    }
-                  >
-                    HD: Klein Multimeter
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.storePresetTagLowes}
-                    onClick={() =>
-                      handleAutofillStore(
-                        'https://www.lowes.com/pd/DEWALT-20V-MAX-1-2-in-Brushless-Cordless-Drill-Driver/1000135831'
-                      )
-                    }
-                  >
-                    Lowe&apos;s: DEWALT Drill
-                  </button>
-                  <button
-                    type="button"
-                    className={styles.storePresetTagLowes}
-                    onClick={() =>
-                      handleAutofillStore(
-                        'https://www.lowes.com/pd/Kobalt-14-in-Steel-Pipe-Wrench/807387'
-                      )
-                    }
-                  >
-                    Lowe&apos;s: Kobalt Pipe Wrench
-                  </button>
-                </div>
-
-                {storeAutofillSuccess && (
-                  <div className={styles.storeSuccessBanner}>
-                    <Check size={14} style={{ flexShrink: 0 }} />
-                    <span>{storeAutofillSuccess}</span>
-                  </div>
-                )}
+              {/* Mode Switcher: + Add Tool Manually (Default) vs Quick Autofill (Optional) */}
+              <div className={styles.toolModalModeToggle}>
+                <button
+                  type="button"
+                  className={`${styles.toolModalModeBtn} ${toolEntryMode === 'manual' ? styles.toolModalModeBtnActive : ''}`}
+                  onClick={() => setToolEntryMode('manual')}
+                >
+                  <Plus size={14} /> + Add Tool Manually
+                </button>
+                <button
+                  type="button"
+                  className={`${styles.toolModalModeBtn} ${toolEntryMode === 'autofill' ? styles.toolModalModeBtnActive : ''}`}
+                  onClick={() => setToolEntryMode('autofill')}
+                >
+                  <Sparkles size={14} /> Quick Autofill (Optional)
+                </button>
               </div>
+
+              {storeAutofillSuccess && (
+                <div className={styles.storeSuccessBanner} style={{ marginBottom: '0.65rem' }}>
+                  <Check size={14} style={{ flexShrink: 0 }} />
+                  <span>{storeAutofillSuccess}</span>
+                </div>
+              )}
+
+              {/* Quick Autofill Section (Optional - only visible when toggled) */}
+              {toolEntryMode === 'autofill' && (
+                <div className={styles.storeAutofillCard}>
+                  <div className={styles.storeAutofillHeader}>
+                    <div className={styles.storeAutofillTitle}>
+                      <Sparkles size={15} style={{ color: '#ff7a21' }} />
+                      Quick Tool Autofill
+                    </div>
+                    <span style={{ fontSize: '0.74rem', color: '#94a3b8' }}>
+                      Search contractor catalog or paste a product link
+                    </span>
+                  </div>
+
+                  <div className={styles.storeInputGroup}>
+                    <div className={styles.storeInputWrap}>
+                      <input
+                        type="text"
+                        value={storeAutofillUrl}
+                        onChange={(e) => handleStoreInputChange(e.target.value)}
+                        onFocus={() => {
+                          if (storeAutofillUrl.trim().length > 0 && storeSearchResults.length > 0) {
+                            setShowStoreDropdown(true);
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            if (storeSearchResults.length > 0) {
+                              applyStoreProduct(storeSearchResults[0]);
+                            } else {
+                              handleAutofillStore();
+                            }
+                          } else if (e.key === 'Escape') {
+                            setShowStoreDropdown(false);
+                          }
+                        }}
+                        placeholder="Search tool catalog (e.g. pipe, drill, bandsaw) or paste link..."
+                        className={styles.storeUrlInput}
+                      />
+
+                      {showStoreDropdown && (
+                        <div className={styles.storeSearchResultsDropdown}>
+                          <div className={styles.storeSearchResultsHeader}>
+                            <span>Matching Tools ({storeSearchResults.length})</span>
+                            <button
+                              type="button"
+                              onClick={() => setShowStoreDropdown(false)}
+                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '0.72rem' }}
+                            >
+                              Close ✕
+                            </button>
+                          </div>
+                          {storeSearchResults.length > 0 ? (
+                            storeSearchResults.map((item, idx) => (
+                              <button
+                                key={item.sku || `${item.name}-${idx}`}
+                                type="button"
+                                className={styles.storeSearchResultItem}
+                                onClick={() => applyStoreProduct(item)}
+                              >
+                                {item.imageUrl ? (
+                                  <img
+                                    src={item.imageUrl}
+                                    alt={item.name}
+                                    className={styles.storeResultThumb}
+                                    onError={(e) => {
+                                      e.currentTarget.style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className={styles.storeResultThumb} style={{ display: 'grid', placeItems: 'center' }}>
+                                    <Sparkles size={16} style={{ color: '#ff7a21' }} />
+                                  </div>
+                                )}
+                                <div className={styles.storeResultInfo}>
+                                  <div className={styles.storeResultTitleRow}>
+                                    <span className={styles.storeResultBrandBadge}>
+                                      {item.brand}
+                                    </span>
+                                    <span className={styles.storeResultTitle}>{item.name}</span>
+                                  </div>
+                                  <div className={styles.storeResultMeta}>
+                                    <span>{item.category}</span>
+                                    {item.modelNumber && <span>· Model #{item.modelNumber}</span>}
+                                    {item.sku && <span>· SKU #{item.sku}</span>}
+                                  </div>
+                                </div>
+                                {item.purchasePrice !== null && (
+                                  <div className={styles.storeResultPrice}>
+                                    {formatUsdExact(item.purchasePrice)}
+                                  </div>
+                                )}
+                              </button>
+                            ))
+                          ) : (
+                            <div className={styles.storeSearchEmpty}>
+                              No matching tools found for &ldquo;{storeAutofillUrl}&rdquo;.
+                              <br />
+                              Try searching for <em>&ldquo;pipe&rdquo;</em>, <em>&ldquo;drill&rdquo;</em>, or <em>&ldquo;bandsaw&rdquo;</em>.
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+
+                    <button
+                      type="button"
+                      disabled={storeAutofillLoading}
+                      onClick={() => {
+                        if (storeSearchResults.length > 0) {
+                          applyStoreProduct(storeSearchResults[0]);
+                        } else {
+                          handleAutofillStore();
+                        }
+                      }}
+                      className={styles.storeAutofillBtn}
+                    >
+                      {storeAutofillLoading ? (
+                        <>
+                          <Loader2 size={13} className={styles.spinner} />
+                          Autofilling...
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={13} />
+                          Autofill Tool
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {toolEntryMode === 'manual' && !storeAutofillSuccess && (
+                <div className={styles.manualEntryBanner}>
+                  <span>Entering tool details manually.</span>
+                  <button
+                    type="button"
+                    onClick={() => setToolEntryMode('autofill')}
+                    className={styles.manualEntryAutofillLink}
+                  >
+                    <Sparkles size={12} /> Or use Quick Autofill
+                  </button>
+                </div>
+              )}
 
               <div className={styles.formField}>
                 <label className={styles.fieldLabel}>Tool Name *</label>
@@ -2906,19 +2859,7 @@ export default function InventoryClient({
               </div>
 
               <div className={styles.formField}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <label className={styles.fieldLabel}>Tool Photo (Optional)</label>
-                  {toolModalImageUrl && (
-                    <button
-                      type="button"
-                      onClick={() => setToolModalImageUrl('')}
-                      className={styles.photoClearBtn}
-                    >
-                      Clear Photo
-                    </button>
-                  )}
-                </div>
-
+                <label className={styles.fieldLabel}>Tool Photo (Optional)</label>
                 <div className={styles.photoFieldWrap}>
                   {toolModalImageUrl ? (
                     <div className={styles.photoPreviewWrap}>
@@ -2932,67 +2873,46 @@ export default function InventoryClient({
                       />
                     </div>
                   ) : (
-                    <div className={styles.photoPreviewPlaceholder}>
-                      <Camera size={20} style={{ opacity: 0.6 }} />
-                      <span>Optional Photo</span>
+                    <div className={styles.photoEmptyBox}>
+                      <Camera size={20} style={{ opacity: 0.5 }} />
+                      <span>No Photo</span>
                     </div>
                   )}
 
-                  <div className={styles.photoInputWrap}>
-                    <input
-                      type="text"
-                      name="imageUrl"
-                      value={toolModalImageUrl}
-                      onChange={(e) => setToolModalImageUrl(e.target.value)}
-                      placeholder="e.g. /images/tools/ridgid-propress.jpg or image URL"
-                      className={styles.fieldInput}
-                    />
-                    <div className={styles.photoPresetRow}>
-                      <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Presets:</span>
+                  <div className={styles.photoUploadActions}>
+                    <label className={styles.photoUploadBtn}>
+                      <Camera size={14} />
+                      <span>{toolModalImageUrl ? 'Change Photo' : 'Upload Photo'}</span>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            const reader = new FileReader();
+                            reader.onload = () => {
+                              setToolModalImageUrl(reader.result as string);
+                            };
+                            reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                    </label>
+                    {toolModalImageUrl && (
                       <button
                         type="button"
-                        className={styles.photoPresetBtn}
-                        onClick={() => setToolModalImageUrl('/images/tools/ridgid-propress.jpg')}
+                        onClick={() => setToolModalImageUrl('')}
+                        className={styles.photoClearBtn}
                       >
-                        ProPress
+                        <X size={12} /> Remove Photo
                       </button>
-                      <button
-                        type="button"
-                        className={styles.photoPresetBtn}
-                        onClick={() => setToolModalImageUrl('/images/tools/spartan-jetter.jpg')}
-                      >
-                        Jetter
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.photoPresetBtn}
-                        onClick={() => setToolModalImageUrl('/images/tools/flir-thermal.jpg')}
-                      >
-                        FLIR
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.photoPresetBtn}
-                        onClick={() => setToolModalImageUrl('/images/tools/milwaukee-bandsaw.jpg')}
-                      >
-                        Band Saw
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.photoPresetBtn}
-                        onClick={() => setToolModalImageUrl('/images/tools/fieldpiece-manifold.jpg')}
-                      >
-                        Manifold
-                      </button>
-                      <button
-                        type="button"
-                        className={styles.photoPresetBtn}
-                        onClick={() => setToolModalImageUrl('/images/tools/generic-tool.jpg')}
-                      >
-                        Packout
-                      </button>
-                    </div>
+                    )}
+                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                      Upload image from device (optional)
+                    </span>
                   </div>
+                  <input type="hidden" name="imageUrl" value={toolModalImageUrl} />
                 </div>
               </div>
 

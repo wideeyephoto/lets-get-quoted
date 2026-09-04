@@ -63,7 +63,7 @@ export function getTodayDateString(): string {
  */
 function catalogItemToAutofillResult(item: StoreProductCatalogItem): StoreAutofillResult {
   const today = getTodayDateString();
-  const prefix = item.retailer === 'Home Depot' ? 'HD' : item.retailer === "Lowe's" ? 'LOW' : 'TOOL';
+  const brandPrefix = item.brand.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || 'TOOL';
   return {
     success: true,
     retailer: item.retailer,
@@ -72,12 +72,12 @@ function catalogItemToAutofillResult(item: StoreProductCatalogItem): StoreAutofi
     category: item.category,
     modelNumber: item.modelNumber,
     sku: item.sku,
-    assetTagSuggestion: `TAG-${prefix}-${item.sku.slice(-4)}`,
+    assetTagSuggestion: `TAG-${brandPrefix}-${item.sku.slice(-4)}`,
     purchasePrice: item.price,
     purchaseDate: today,
     depreciationSchedule: item.price < 2500 ? 'de_minimis' : 'section_179',
     imageUrl: item.imageUrl,
-    notes: `Purchased from ${item.retailer}. ${item.retailer === 'Home Depot' ? 'Internet' : 'Item'} #${item.sku}. Model: ${item.modelNumber}.\n${item.description}\nStore Link: ${item.storeUrl}`,
+    notes: `Model: ${item.modelNumber}. SKU: #${item.sku}.\n${item.description}`,
     productUrl: item.storeUrl,
   };
 }
@@ -261,7 +261,7 @@ export function parseStoreProductUrl(rawInput: string): StoreAutofillResult {
     }
   }
 
-  let nameTokens = [...tokens];
+  const nameTokens = [...tokens];
   if (nameTokens.length > 0 && nameTokens[0].toLowerCase() === brand.toLowerCase()) {
     nameTokens.shift();
   }
@@ -302,11 +302,11 @@ export function parseStoreProductUrl(rawInput: string): StoreAutofillResult {
     imageUrl = '/images/tools/fieldpiece-manifold.jpg';
   }
 
-  const prefix = retailer === 'Home Depot' ? 'HD' : retailer === "Lowe's" ? 'LOW' : 'TOOL';
+  const brandPrefix = brand.toUpperCase().replace(/[^A-Z]/g, '').slice(0, 4) || 'TOOL';
   const randomSuffix = Math.floor(1000 + Math.random() * 9000);
   const assetTagSuggestion = skuFromUrl
-    ? `TAG-${prefix}-${skuFromUrl.slice(-4)}`
-    : `TAG-${prefix}-${randomSuffix}`;
+    ? `TAG-${brandPrefix}-${skuFromUrl.slice(-4)}`
+    : `TAG-${brandPrefix}-${randomSuffix}`;
 
   return {
     success: true,
@@ -321,7 +321,7 @@ export function parseStoreProductUrl(rawInput: string): StoreAutofillResult {
     purchaseDate: today,
     depreciationSchedule: suggestedPrice < 2500 ? 'de_minimis' : 'section_179',
     imageUrl,
-    notes: `Autofilled from ${retailer}.${skuFromUrl ? ` ${retailer === 'Home Depot' ? 'Internet' : 'Item'} #${skuFromUrl}.` : ''}${modelNumber ? ` Model: ${modelNumber}.` : ''}\nStore Link: ${trimmed}`,
+    notes: `Model: ${modelNumber || 'N/A'}.${skuFromUrl ? ` SKU: #${skuFromUrl}.` : ''}\nProduct Reference: ${trimmed}`,
     productUrl: trimmed,
   };
 }
