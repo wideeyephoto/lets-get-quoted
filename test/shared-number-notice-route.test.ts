@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => ({
   logWebhookFailure: vi.fn(),
 }));
 
+
 vi.mock('@/lib/auth', () => ({ createAdminClient: mocks.createAdminClient }));
 vi.mock('@/lib/sms-provider', () => ({
   hasSignatureHeader: mocks.hasSignatureHeader,
@@ -39,6 +40,7 @@ vi.mock('@/lib/sms-webhook-ingress', () => ({
   loadInboundReceiptDisposition: mocks.loadInboundReceiptDisposition,
   parseSmsWebhookBody: mocks.parseSmsWebhookBody,
   recordInvalidWebhook: mocks.recordInvalidWebhook,
+  isAutoResponderText: () => false,
 }));
 vi.mock('@/lib/sms-inbound-action-worker', () => ({
   processSmsInboundActionReceipt: mocks.processSmsInboundActionReceipt,
