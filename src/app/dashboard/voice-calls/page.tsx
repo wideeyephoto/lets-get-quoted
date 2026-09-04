@@ -18,6 +18,9 @@ import VoiceHealthWidget from './VoiceHealthWidget';
 import FieldIntakeHint from '@/components/field-intake-hint';
 import MessagingSetup from '@/app/dashboard/messages/MessagingSetup';
 import { loadMessagingSetup } from '@/lib/owner-sms';
+import { displayPhone } from '@/lib/phone';
+import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
+import AiReceptionistSection from '../settings/AiReceptionistSection';
 import styles from './voice-calls.module.css';
 
 export const metadata = { title: 'AI Voice Assistant | Receptionist & Call Triage' };
@@ -53,7 +56,7 @@ export default async function VoiceCallsPage({
   const { supabase, accountId } = await requireOfficeContext('leads.read');
   const admin = createAdminClient();
 
-  const currentView = (searchParams.view as 'inbox' | 'simulator' | 'analytics') || 'inbox';
+  const currentView = (searchParams.view as 'inbox' | 'simulator' | 'analytics' | 'settings') || 'inbox';
   const currentTab = (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all';
   const currentDateRange = (searchParams.dateRange as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all';
 
@@ -65,10 +68,11 @@ export default async function VoiceCallsPage({
     routeReadiness,
     queue,
     messagingSetup,
+    voiceEntitlement,
   ] = await Promise.all([
     supabase
       .from('accounts')
-      .select('company_name, business_name, trade, phone, timezone, license_number, service_areas, call_tracking_number')
+      .select('company_name, business_name, trade, phone, timezone, license_number, service_areas, call_tracking_number, call_forward_number, alert_phone')
       .eq('id', accountId)
       .maybeSingle(),
     supabase
@@ -78,7 +82,7 @@ export default async function VoiceCallsPage({
       .maybeSingle(),
     supabase
       .from('voice_settings')
-      .select('status, answer_mode, greeting, transfer_number, alert_phone, voice_tone')
+      .select('status, answer_mode, greeting, transfer_number, alert_phone, voice_tone, business_hours')
       .eq('account_id', accountId)
       .maybeSingle(),
     supabase
@@ -94,9 +98,18 @@ export default async function VoiceCallsPage({
       outcome: (searchParams.outcome as VoiceCallOutcome) || 'all',
     }),
     loadMessagingSetup(accountId),
+    loadVoiceEntitlement(admin, accountId),
   ]);
 
   const isRouteReady = routeReadiness.kind === 'ready';
+  const voiceSettingsAvailable = Boolean(voiceSettings);
+  const voiceEntitlementAvailable = voiceEntitlement?.available === true;
+  const voiceRouteState = routeReadiness.kind === 'ready'
+    ? 'ready' as const
+    : routeReadiness.kind === 'not_ready'
+      ? routeReadiness.reason
+      : 'unavailable' as const;
+  const callForwardNumber = displayPhone(String(account?.call_forward_number ?? ''));
   const assignedMessagingNumber = messagingSetup?.registration?.kind === 'ok'
     ? messagingSetup.registration.assignedNumber
     : null;
@@ -203,6 +216,14 @@ export default async function VoiceCallsPage({
               {counters.emergencyCount} urgent
             </span>
           ) : null}
+        </Link>
+        <Link
+          href={`/dashboard/voice-calls?view=settings&dateRange=${currentDateRange}`}
+          className={`${styles.mainNavTab} ${currentView === 'settings' ? styles.mainNavTabActive : ''}`}
+          role="tab"
+          aria-selected={currentView === 'settings'}
+        >
+          <span>⚙️ Receptionist Settings</span>
         </Link>
       </nav>
 
@@ -615,6 +636,40 @@ export default async function VoiceCallsPage({
 
           {/* Streamlined Assistant Capabilities & Safety Guards */}
           <VoiceCapabilitiesGrid />
+        </div>
+      )}
+
+      {/* VIEW 4: RECEPTIONIST SETTINGS */}
+      {currentView === 'settings' && (
+        <div className={styles.tabViewContent}>
+          {/* Top Assistant Status Banner */}
+          <VoiceStatusBanner
+            status={(voiceSettings?.status as 'active' | 'paused' | 'off') || 'active'}
+            answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') || 'always'}
+            dedicatedNumber={dedicatedNumber}
+            isReady={isRouteReady}
+            businessName={resolvedBusinessName}
+            trade={account?.trade || null}
+          />
+
+          <div style={{ maxWidth: '860px', width: '100%', margin: '0 auto' }}>
+            <AiReceptionistSection
+              status={(voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off'}
+              answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'always'}
+              greeting={(voiceSettings?.greeting as string | null) ?? ''}
+              transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
+              alertPhone={(voiceSettings?.alert_phone as string | null) ?? (account?.alert_phone as string | null) ?? ''}
+              callForwardNumber={callForwardNumber}
+              voiceTone={(voiceSettings?.voice_tone as 'friendly' | 'professional' | 'urgent_dispatcher') ?? 'professional'}
+              businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
+              timezone={timezone}
+              entitled={voiceEntitlement?.enabled ?? false}
+              entitlementAvailable={voiceEntitlementAvailable}
+              settingsAvailable={voiceSettingsAvailable}
+              routeState={voiceRouteState}
+              concurrentCalls={voiceEntitlement?.concurrentCalls ?? 0}
+            />
+          </div>
         </div>
       )}
     </div>
