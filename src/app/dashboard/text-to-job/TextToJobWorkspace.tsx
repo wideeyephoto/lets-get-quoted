@@ -789,7 +789,7 @@ export default function TextToJobWorkspace({
       </div>
     </div>
     <div class="footer">
-      <div>↺ <strong>15-Min SMS Undo:</strong> Reply <code>UNDO</code> to revert any change. 📞 Call or text hands-free (calls use Voice credits).</div>
+      <div>⚡ <strong>Live Timeline Sync:</strong> Updates auto-file to the job timeline upon receipt. 📞 Call or text hands-free (calls use Voice credits).</div>
       <div class="footer-right">Your AI Copilot (Currently: ${companion.name}) Field Hotline &bull; Let's Get Quoted</div>
     </div>
   </div>
@@ -826,7 +826,7 @@ export default function TextToJobWorkspace({
    ${selectedPhrases.receipts}
 
 📞 Hands-Free Dictation: Call ${fieldPhoneNumber} from your truck to dictate updates hands-free using your Voice credits.
-🛡️ 15-Min SMS Undo: Reply UNDO within 15 minutes to revert.`;
+⚡ Live Timeline Sync: Updates auto-file directly to the job timeline upon receipt.`;
     navigator.clipboard.writeText(text);
     setNotification('📋 Copied text cheatsheet to clipboard!');
     setTimeout(() => setNotification(null), 3500);
@@ -943,7 +943,7 @@ export default function TextToJobWorkspace({
   function handleApply() {
     const enabledCount = selectedMessage.extractedItems.filter((i) => i.enabled).length;
     setNotification(
-      `✓ Applied ${enabledCount} verified updates to ${selectedMessage.matchedJobRef || 'records'}.`
+      `⚡ Previewed ${enabledCount} simulated updates in memory (test simulation only — not persisted to database).`
     );
     setTimeout(() => setNotification(null), 4000);
   }
@@ -2334,7 +2334,7 @@ export default function TextToJobWorkspace({
               </div>
 
               <div className={styles.cardFooterRules}>
-                <span>↺ <strong>15-Min Undo:</strong> Reply <code>UNDO</code> to revert. 📞 Call or text hands-free (calls use Voice credits).</span>
+                <span>⚡ <strong>Live Timeline Sync:</strong> Updates auto-file to the job timeline upon receipt. 📞 Call or text hands-free (calls use Voice credits).</span>
                 <span className={styles.cardPoweredBy}>Your AI Copilot (Currently: {companion.name}) Field Hotline &bull; Let&apos;s Get Quoted</span>
               </div>
             </div>

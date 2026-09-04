@@ -124,8 +124,14 @@ export function marginTier(margin: number): 'margin-good' | 'margin-ok' | 'margi
   return 'margin-bad';
 }
 
-export function formatFeedTime(value: string): string {
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+export function formatFeedTime(value: string, timeZone?: string): string {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZone,
+  });
 }
 
 export type CompleteJobWarningInput = {

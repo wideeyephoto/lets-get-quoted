@@ -163,7 +163,7 @@ export default function SunVisorCardGenerator() {
           </div>
 
           <div className={styles.cardFooterRules}>
-            <span>↺ <strong>Rollback Safety:</strong> Reply <code>UNDO</code> within 15 mins to revert any change.</span>
+            <span>⚡ <strong>Live Timeline Ingest:</strong> Notes, leads, and photos auto-file to the job timeline upon receipt.</span>
             <span className={styles.cardPoweredBy}>Powered by Gemini AI</span>
           </div>
         </div>

@@ -5,6 +5,7 @@ import { evaluateFieldNoteConfidence } from '@/lib/field-intake-quality';
 import { loadSmsFieldLeads } from '@/lib/field-intake-leads';
 import { formatFeedTime } from '@/lib/job-detail-labels';
 import { isOwnerFieldLineReady, loadOwnerAlerts } from '@/lib/owner-sms';
+import { formatUsPhone } from '@/lib/phone';
 import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function TextToJobDashboardPage() {
-  const { supabase, accountId, capabilities } = await requireOfficeContext('leads.read');
+  const { supabase, accountId, capabilities, accountTimeZone } = await requireOfficeContext('leads.read');
   const canManageOwnerPhone = capabilities.has('settings.write');
 
   const [
@@ -73,6 +74,7 @@ export default async function TextToJobDashboardPage() {
   }
 
   const ownerAlertPhone = ownerAlerts.kind === 'ok' ? ownerAlerts.phone : null;
+  const formattedOwnerAlertPhone = ownerAlertPhone ? formatUsPhone(ownerAlertPhone) : null;
 
   const mappedCrew: CrewRow[] = (crewRows || []).map((c) => {
     const verified = isCrewPhoneVerified(c);
@@ -95,7 +97,7 @@ export default async function TextToJobDashboardPage() {
     const isVoice = row.kind === 'field_voice_note';
     const isCost = row.kind === 'cost_added';
     const createdDate = new Date(row.created_at);
-    const timeFormatted = formatFeedTime(row.created_at);
+    const timeFormatted = formatFeedTime(row.created_at, accountTimeZone);
     const rawText = row.body || row.title || 'Field update logged';
     const matchedRef = jobTitle ? `Job: ${jobTitle}` : undefined;
     const targetUrl = row.job_id ? `/dashboard/jobs/${row.job_id}` : '/dashboard/jobs';
@@ -107,7 +109,7 @@ export default async function TextToJobDashboardPage() {
 
     return {
       id: row.id,
-      sender: row.author || (ownerAlertPhone ? `Owner (${ownerAlertPhone})` : 'Field Note'),
+      sender: row.author || (formattedOwnerAlertPhone ? `Owner (${formattedOwnerAlertPhone})` : 'Field Note'),
       type: isVoice ? 'voice' : isCost ? 'receipt' : 'sms',
       time: timeFormatted,
       rawText,
@@ -134,7 +136,7 @@ export default async function TextToJobDashboardPage() {
 
   const leadMessages: InboundMessageWithTime[] = (fieldLeads || []).map((lead) => {
     const leadCreatedDate = new Date(lead.createdAt);
-    const timeFormatted = formatFeedTime(lead.createdAt);
+    const timeFormatted = formatFeedTime(lead.createdAt, accountTimeZone);
     const rawText = lead.rawSmsText;
     const matchedRef = `New Lead: ${lead.leadName || 'New Prospect'}`;
     const targetUrl = lead.leadId ? `/dashboard/leads/${lead.leadId}` : '/dashboard/leads';
@@ -147,14 +149,16 @@ export default async function TextToJobDashboardPage() {
     });
 
     const detailParts: string[] = [];
-    if (lead.phone) detailParts.push(`Phone: ${lead.phone}`);
+    if (lead.phone) detailParts.push(`Phone: ${formatUsPhone(lead.phone)}`);
     if (lead.address) detailParts.push(`Address: ${lead.address}`);
     if (lead.message) detailParts.push(`Note: ${lead.message}`);
     const detail = detailParts.join(' · ') || 'Captured in leads pipeline';
 
     return {
       id: `lead-${lead.leadId}`,
-      sender: lead.senderPhone || (ownerAlertPhone ? `Owner (${ownerAlertPhone})` : 'Field Lead Intake'),
+      sender: lead.senderPhone
+        ? formatUsPhone(lead.senderPhone)
+        : (formattedOwnerAlertPhone ? `Owner (${formattedOwnerAlertPhone})` : 'Field Lead Intake'),
       type: 'sms' as const,
       time: timeFormatted,
       rawText,

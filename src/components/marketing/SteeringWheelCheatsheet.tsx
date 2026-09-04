@@ -55,11 +55,11 @@ const CHEATSHEET_ITEMS: CheatItem[] = [
   },
   {
     id: 'c-6',
-    category: '15-Minute Revert Rollback',
-    icon: '↺',
-    pillar: 'Safety Guard',
-    voicePhrase: '“UNDO” (Reply via SMS within 15 mins)',
-    result: 'Instantly rolls back the previous change order or task update with 0 database traces.',
+    category: 'Live Timeline Filing & Corrections',
+    icon: '⚡',
+    pillar: 'Timeline Audit',
+    voicePhrase: '“Correction on Miller: change order was $450 not $350”',
+    result: 'Instantly appends verified correction note directly to the job timeline and cost records.',
   },
 ];
 

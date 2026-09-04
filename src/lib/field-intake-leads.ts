@@ -1,4 +1,4 @@
-﻿import { createAdminClient } from '@/lib/auth';
+import { createAdminClient } from '@/lib/auth';
 
 export type SmsFieldLeadRecord = {
   leadId: string;
@@ -48,6 +48,7 @@ export async function loadSmsFieldLeads(accountId: string): Promise<SmsFieldLead
     const { data: leads, error: leadsError } = await admin
       .from('leads')
       .select('id, name, phone, address, message, status, created_at')
+      .eq('account_id', accountId)
       .in('id', leadIds);
 
     if (leadsError) {
@@ -55,7 +56,17 @@ export async function loadSmsFieldLeads(accountId: string): Promise<SmsFieldLead
       return [];
     }
 
-    const leadMap = new Map((leads || []).map((l) => [l.id, l]));
+    type RawLeadRow = {
+      id: string;
+      name: string | null;
+      phone: string | null;
+      address: string | null;
+      message: string | null;
+      status: string | null;
+      created_at: string;
+    };
+
+    const leadMap = new Map<string, RawLeadRow>((leads || []).map((l) => [l.id, l as RawLeadRow]));
 
     return tasks.map((t) => {
       const targetId = (t.outcome as { target_id?: string } | null)?.target_id ?? '';
