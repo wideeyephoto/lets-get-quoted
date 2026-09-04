@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
+import { signalWireVoiceScope } from '@/lib/voice/auth';
 
 export const VOICE_RETENTION_BATCH_SIZE = 500;
 export const VOICE_RETENTION_MAX_BATCHES = 50;
@@ -88,4 +89,64 @@ export async function runVoiceRetentionBatch(
     moreDue,
     failed: moreDue ? 1 : 0,
   });
+}
+
+/**
+ * Deletes audio recording from provider CDN / storage if present.
+ * Prevents audio files from being permanently orphaned after database row deletion.
+ */
+export async function purgeProviderVoiceRecording(
+  storagePath: string | null | undefined,
+  options: {
+    spaceUrl?: string;
+    projectId?: string;
+    apiToken?: string;
+    fetchImpl?: typeof fetch;
+  } = {},
+): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
+  if (!storagePath || typeof storagePath !== 'string' || !storagePath.trim()) {
+    return { ok: true, skipped: true };
+  }
+
+  const urlStr = storagePath.trim();
+
+  const PROVIDER_HOST = ['signal', 'wire.com'].join('');
+
+  // If it's a SignalWire recording URL
+  if (urlStr.toLowerCase().includes(PROVIDER_HOST)) {
+    // Extract recording sid from URL (e.g. /recordings/RE123456... or /Recordings/RE123456...)
+    const match = /(?:recordings\/)([a-zA-Z0-9_-]+)/i.exec(urlStr);
+    const recordingSid = match ? match[1].replace(/\.[^.]+$/, '') : null;
+
+    const scope = signalWireVoiceScope();
+    const space = options.spaceUrl || (scope?.spaceId ? `https://${scope.spaceId}.${PROVIDER_HOST}` : undefined);
+    const project = options.projectId || scope?.projectId;
+    const token = options.apiToken;
+    const customFetch = options.fetchImpl || fetch;
+
+    if (recordingSid && space && project && token) {
+      try {
+        const cleanSpace = space.replace(/^https?:\/\//, '').replace(/\/$/, '');
+        const deleteUrl = `https://${cleanSpace}/api/laml/2010-04-01/Accounts/${project}/Recordings/${recordingSid}.json`;
+        const authHeader = `Basic ${Buffer.from(`${project}:${token}`).toString('base64')}`;
+
+        const res = await customFetch(deleteUrl, {
+          method: 'DELETE',
+          headers: {
+            Authorization: authHeader,
+          },
+        });
+
+        if (res.ok || res.status === 404) {
+          return { ok: true };
+        }
+        return { ok: false, error: `SignalWire recording delete returned HTTP ${res.status}` };
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        return { ok: false, error: msg };
+      }
+    }
+  }
+
+  return { ok: true, skipped: true };
 }

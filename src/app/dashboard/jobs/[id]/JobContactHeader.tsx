@@ -22,9 +22,18 @@ export default function JobContactHeader({
   return (
     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
       {clientPhone ? (
-        <a href={`tel:${clientPhone}`} className="hero-phone-link" aria-label={`Call ${clientPhone}`}>
-          <span aria-hidden="true">📞</span> {formatPhoneDashes(clientPhone)}
-        </a>
+        <>
+          <a href={`tel:${clientPhone}`} className="hero-phone-link" aria-label={`Call ${clientPhone}`}>
+            <span aria-hidden="true">📞</span> {formatPhoneDashes(clientPhone)}
+          </a>
+          <a
+            href={`/dashboard/messages?to=${encodeURIComponent(clientPhone)}`}
+            className="hero-phone-link"
+            aria-label={`Message ${clientPhone}`}
+          >
+            <span aria-hidden="true">💬</span> Message client
+          </a>
+        </>
       ) : null}
       {clientEmail ? (
         <a href={`mailto:${clientEmail}`} className="hero-email-link" aria-label={`Email ${clientEmail}`}>

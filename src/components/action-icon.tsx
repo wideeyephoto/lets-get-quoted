@@ -13,6 +13,7 @@ export const ACTION_ICON_PATHS = {
   job: '<rect x="3" y="7.5" width="18" height="12.5" rx="2"/><path d="M8 7.5V5.5a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M3 12.5h18"/>',
   payment: '<circle cx="12" cy="12" r="8.6"/><path d="M12 7.2v9.6"/><path d="M14.4 9.5a2.6 2.6 0 0 0-2.4-1.3c-1.5 0-2.5.8-2.5 1.9 0 2.6 5 1.4 5 4 0 1.2-1.1 2-2.6 2a2.7 2.7 0 0 1-2.5-1.4"/>',
   expense: '<path d="M6 3.4h12a1 1 0 0 1 1 1v16.2l-2.6-1.6-2.6 1.6-2.6-1.6-2.6 1.6L5 20.6V4.4a1 1 0 0 1 1-1z"/><path d="M9 8.4h6M9 12.4h6"/>',
+  sms: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
   // A compass, which is what the button said in emoji before it said it in line.
   plan: '<circle cx="12" cy="12" r="8.8"/><path d="m15.4 8.6-2 4.8-4.8 2 2-4.8z"/>',
 

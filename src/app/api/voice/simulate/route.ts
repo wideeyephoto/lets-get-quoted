@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireOfficeContext } from '@/lib/auth';
 import { loadVoiceGroundingContext, buildVoiceSystemPrompt } from '@/lib/voice/grounding';
 import { detectCallEmergency } from '@/lib/voice/triage';
+import { getAvailableBookingDays } from '@/lib/booking';
+import { calculateCleanEnergyRebates } from '@/lib/rebates/clean-energy-rebate-engine';
+import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
+import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -44,13 +48,27 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Scheduling / Available Slots Tool Trigger
     if (lower.includes('slot') || lower.includes('appointment') || lower.includes('open') || lower.includes('tomorrow') || lower.includes('available') || lower.includes('schedule') || lower.includes('come out') || lower.includes('book')) {
+      let dates = grounding.availableSlots;
+      if (!dates || dates.length === 0) {
+        try {
+          const bookingDays = await getAvailableBookingDays(supabase, accountId);
+          if (bookingDays && bookingDays.length > 0) {
+            dates = bookingDays.slice(0, 3).map((d) => {
+              const slotLabels = d.slots.map((s) => s.label);
+              return slotLabels.length > 0 ? `${d.dayLabel} (${slotLabels.join(' or ')})` : d.dayLabel;
+            });
+          }
+        } catch {
+          // Fallback to standard windows
+        }
+      }
       toolsExecuted.push({
         tool: 'check_available_slots',
         parameters: { preferred_window: 'next available' },
         result: {
           status: 'success',
-          available_dates: grounding.availableSlots.length > 0
-            ? grounding.availableSlots
+          available_dates: dates && dates.length > 0
+            ? dates
             : ['Tomorrow Morning (8:00 AM - 12:00 PM)', 'Thursday Afternoon (12:00 PM - 4:00 PM)'],
           booking_rule: 'Appointments can be locked in during this call with instant SMS confirmation.',
         },
@@ -59,15 +77,56 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Rebates Tool Trigger
     if (lower.includes('rebate') || lower.includes('tax credit') || lower.includes('ira') || lower.includes('incentive') || lower.includes('heat pump') || lower.includes('25c')) {
+      let rebateReport: ReturnType<typeof calculateCleanEnergyRebates> | null = null;
+      try {
+        rebateReport = calculateCleanEnergyRebates({
+          category: 'heat_pump_hvac',
+          state: 'MI',
+        });
+      } catch (err) {
+        console.warn('Rebate engine calculation notice:', err);
+      }
+      const cap = rebateReport?.incentives.federalTaxCredit.maxAnnualCap ?? 2000;
+      const prog = rebateReport?.incentives.utilityRebate?.programName
+        ? `Federal Inflation Reduction Act (IRA) + ${rebateReport.incentives.utilityRebate.programName}`
+        : 'Federal Inflation Reduction Act (IRA) + Local Utility Clean Heat Program';
+
       toolsExecuted.push({
         tool: 'check_rebates_and_incentives',
         parameters: { inquiry: 'clean energy incentives & tax credits' },
         result: {
           status: 'success',
-          federal_credit: 'Up to 30% (capped at $2,000 for qualifying heat pumps under Section 25C)',
-          program: 'Federal Inflation Reduction Act (IRA) + Local Utility Clean Heat Program',
+          federal_credit: `Up to 30% (capped at $${cap.toLocaleString()} for qualifying heat pumps under Section 25C)`,
+          program: prog,
         },
       });
+    }
+
+    // Permit Tool Trigger
+    if (lower.includes('permit') || lower.includes('inspection') || lower.includes('building code')) {
+      try {
+        const jurisdiction = resolveJurisdiction(
+          { raw: 'Detroit, MI', city: 'Detroit', state: 'MI', formattedAddress: 'Detroit, MI', isValid: true },
+          'mechanical',
+        );
+        const reqResult = evaluatePermitRequirement(jurisdiction.authorityId, {
+          trade: 'mechanical',
+          scope: 'replacement',
+          freeTextDescription: testMessage,
+        });
+        toolsExecuted.push({
+          tool: 'check_permit_requirement',
+          parameters: { city: 'Detroit, MI', trade: 'mechanical' },
+          result: {
+            status: 'success',
+            decision: reqResult.decision,
+            authority: jurisdiction.authorityName,
+            agency: jurisdiction.agencyName,
+          },
+        });
+      } catch (err) {
+        console.warn('Permit engine notice:', err);
+      }
     }
 
     // Emergency Hazard Tool Trigger

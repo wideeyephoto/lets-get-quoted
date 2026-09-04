@@ -5,6 +5,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 import {
   runVoiceRetentionBatch,
+  purgeProviderVoiceRecording,
   VOICE_RETENTION_BATCH_SIZE,
 } from '@/lib/voice/retention';
 
@@ -104,5 +105,39 @@ describe('the voice retention worker', () => {
     expect(source).not.toMatch(/process\.env|workerEnabled|_ENABLED/);
     expect(route).not.toMatch(/process\.env|workerEnabled|_ENABLED/);
     expect(route).toContain("cronRoute('voice-retention'");
+  });
+
+  it('skips purging provider recording if storagePath is null or missing', async () => {
+    const result = await purgeProviderVoiceRecording(null);
+    expect(result.ok).toBe(true);
+    expect(result.skipped).toBe(true);
+  });
+
+  it('sends DELETE request to SignalWire REST API when deleting audio recording', async () => {
+    const mockFetch = vi.fn(async () => ({
+      ok: true,
+      status: 200,
+    })) as unknown as typeof fetch;
+
+    const result = await purgeProviderVoiceRecording(
+      'https://example.signalwire.com/recordings/RE123456789.mp3',
+      {
+        projectId: 'proj-abc',
+        spaceUrl: 'example.signalwire.com',
+        apiToken: 'test-token-123',
+        fetchImpl: mockFetch,
+      },
+    );
+
+    expect(result.ok).toBe(true);
+    expect(mockFetch).toHaveBeenCalledWith(
+      'https://example.signalwire.com/api/laml/2010-04-01/Accounts/proj-abc/Recordings/RE123456789.json',
+      expect.objectContaining({
+        method: 'DELETE',
+        headers: expect.objectContaining({
+          Authorization: expect.stringContaining('Basic '),
+        }),
+      }),
+    );
   });
 });

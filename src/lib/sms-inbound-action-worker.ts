@@ -321,7 +321,11 @@ async function processClaim(
     }
     await store.complete(claim, customerReplyEventId, ownerAlertEventId);
   } catch (error) {
-    await store.fail(claim, classifyInboundActionFailure(error));
+    try {
+      await store.fail(claim, classifyInboundActionFailure(error));
+    } catch (failError) {
+      console.error('[sms-inbound-action-worker] Failed to record task failure in DB:', failError);
+    }
     throw error;
   }
 }
@@ -370,7 +374,8 @@ export async function runSmsInboundActionBatch(
     try {
       await processClaim(claim, store, admin, fieldIntakeProcessor);
       return true;
-    } catch {
+    } catch (err) {
+      console.error('[sms-inbound-action-worker] Claim processing error for task', claim.taskId, err);
       return false;
     }
   }));

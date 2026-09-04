@@ -82,14 +82,14 @@ export async function POST(request: Request) {
           .maybeSingle();
 
         if (event?.account_id && event.phone_number) {
+          const eventPhone = normalizeUsPhone(event.phone_number);
           const { data: leads } = await admin
             .from('leads')
             .select('id, status, triage, phone')
             .eq('account_id', event.account_id)
-            .order('created_at', { ascending: false })
-            .limit(10);
+            .not('phone', 'is', null)
+            .order('created_at', { ascending: false });
 
-          const eventPhone = normalizeUsPhone(event.phone_number);
           const lead = (leads ?? []).find(
             (l) => l.phone && normalizeUsPhone(l.phone) === eventPhone,
           );
@@ -103,10 +103,10 @@ export async function POST(request: Request) {
                 note: `Delivered to ${event.phone_number}.`,
               };
               const contactLog = [...(triage.contactLog ?? []), entry];
-              const nextStatus = lead.status === 'new' ? 'contacted' : lead.status;
+              // Keep lead status intact — automated delivery does not constitute human contact.
               await admin
                 .from('leads')
-                .update({ triage: { ...triage, contactLog }, status: nextStatus, updated_at: new Date().toISOString() })
+                .update({ triage: { ...triage, contactLog }, updated_at: new Date().toISOString() })
                 .eq('id', lead.id);
             } else if (ingressResult.projectedStatus === 'failed') {
               const entry = {

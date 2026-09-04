@@ -2,6 +2,10 @@ import { describe, expect, it, vi } from 'vitest';
 import { callerVoicePostCallFollowupText } from '@/lib/sms-templates';
 import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
 
+vi.mock('@/lib/sms', () => ({
+  sendCallerVoicePostCallFollowupSms: vi.fn(async () => ({ ok: true })),
+}));
+
 describe('AI Voice Post-Call SMS Follow-up Engine', () => {
   it('formats scheduled appointment follow-up SMS text correctly with portal url', () => {
     const text = callerVoicePostCallFollowupText({
@@ -88,5 +92,50 @@ describe('AI Voice Post-Call SMS Follow-up Engine', () => {
 
     expect(result.ok).toBe(true);
     expect(result.skipped).toBe(true);
+  });
+
+  it('records sms_consent baseline and sms_consent_scopes upon triggering follow-up', async () => {
+    const insertedRows: Record<string, unknown[]> = {};
+    const mockAdmin = {
+      from: (table: string) => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => ({
+              data: { post_call_sms_enabled: true },
+              error: null,
+            }),
+          }),
+        }),
+        insert: async (row: unknown) => {
+          insertedRows[table] = insertedRows[table] || [];
+          insertedRows[table].push(row);
+          return { error: null };
+        },
+      }),
+    } as never;
+
+    const result = await triggerVoicePostCallFollowup(
+      mockAdmin,
+      'acc-456',
+      'call-789',
+      '+12485550122',
+      { callerName: 'Alice Green' }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(insertedRows.sms_consent).toBeDefined();
+    expect(insertedRows.sms_consent[0]).toMatchObject({
+      account_id: 'acc-456',
+      phone_number: '+12485550122',
+      status: 'opted_in',
+      source: 'voice_post_call_followup',
+    });
+    expect(insertedRows.sms_consent_scopes).toBeDefined();
+    expect(insertedRows.sms_consent_scopes[0]).toMatchObject({
+      account_id: 'acc-456',
+      phone_number: '+12485550122',
+      consent_scope: 'customer',
+      source: 'voice_post_call_followup',
+    });
   });
 });

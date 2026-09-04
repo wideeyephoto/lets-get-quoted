@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sendCallerVoicePostCallFollowupSms } from '@/lib/sms';
+import { normalizeUsPhone } from '@/lib/phone';
 
 export type VoiceFollowupOptions = {
   callerName?: string | null;
@@ -48,6 +49,38 @@ export async function triggerVoicePostCallFollowup(
   }
 
   const idempotencyKey = `voice-post-call-followup-${callId}`;
+
+  const normalizedPhone = normalizeUsPhone(callerPhone);
+  if (normalizedPhone && typeof _supabase?.from === 'function') {
+    const nowIso = new Date().toISOString();
+    try {
+      const consentTable = _supabase.from('sms_consent');
+      if (typeof consentTable?.insert === 'function') {
+        await consentTable.insert({
+          account_id: accountId,
+          phone_number: normalizedPhone,
+          status: 'opted_in',
+          source: 'voice_post_call_followup',
+          consented_at: nowIso,
+          updated_at: nowIso,
+        }).catch?.(() => {});
+      }
+
+      const scopeTable = _supabase.from('sms_consent_scopes');
+      if (typeof scopeTable?.insert === 'function') {
+        await scopeTable.insert({
+          account_id: accountId,
+          phone_number: normalizedPhone,
+          consent_scope: 'customer',
+          source: 'voice_post_call_followup',
+          consented_at: nowIso,
+          updated_at: nowIso,
+        }).catch?.(() => {});
+      }
+    } catch (err) {
+      console.warn('[triggerVoicePostCallFollowup] Error logging consent baseline:', err);
+    }
+  }
 
   try {
     const result = await sendCallerVoicePostCallFollowupSms({

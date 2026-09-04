@@ -25,7 +25,8 @@ export async function runSmsDeliveryCronBatch(): Promise<Record<string, number |
     producerClaimed = producer.claimed;
     producerCompleted = producer.completed;
     producerFailed = producer.failed;
-  } catch {
+  } catch (err) {
+    console.error('[sms-delivery-cron] Payment SMS producer batch failed:', err);
     producerRuntimeFailure = 1;
   }
 
@@ -46,7 +47,8 @@ export async function runSmsDeliveryCronBatch(): Promise<Record<string, number |
     deferred = result.deferredCount;
     indeterminate = result.indeterminateCount;
     failed = result.failedCount;
-  } catch {
+  } catch (err) {
+    console.error('[sms-delivery-cron] SMS delivery batch failed:', err);
     deliveryRuntimeFailure = 1;
   }
 
@@ -65,7 +67,8 @@ export async function runSmsDeliveryCronBatch(): Promise<Record<string, number |
     usageReleased = usage.released;
     usageUnmetered = usage.unmetered;
     usageFailed = usage.failed;
-  } catch {
+  } catch (err) {
+    console.error('[sms-delivery-cron] SMS text usage reconciliation failed:', err);
     usageRuntimeFailure = 1;
   }
 
@@ -80,7 +83,8 @@ export async function runSmsDeliveryCronBatch(): Promise<Record<string, number |
     statusExamined = status.examined;
     statusProjected = status.projected;
     statusFailed = status.failed;
-  } catch {
+  } catch (err) {
+    console.error('[sms-delivery-cron] SMS matched status reconciliation failed:', err);
     statusRuntimeFailure = 1;
   }
 

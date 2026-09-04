@@ -38,6 +38,19 @@ function text(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+export const CUSTOMER_SWAIG_TOOLS = [
+  'transfer_to_business',
+  'send_booking_link',
+  'check_available_slots',
+  'book_appointment_slot',
+  'check_permit_requirement',
+  'check_inspection_status',
+  'check_rebates_and_incentives',
+  'cancel_or_reschedule_appointment',
+  'get_service_quote_range',
+  'capture_lead',
+] as const;
+
 /** Microsecond epoch, or null. Zero is not a timestamp. */
 function micros(value: unknown): number | null {
   const n = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : Number.NaN;

@@ -411,3 +411,11 @@ export async function recordInvalidWebhook(
 export function sharedNoticeText(brand: string): string {
   return `${brand}: Alerts only, replies not monitored. View your client portal: ${APP_ORIGIN}/portal Reply STOP to opt out.`;
 }
+
+const AUTO_RESPONDER_PATTERN = /^(auto[- ]?reply|automatic reply|out of office|i am (currently )?(out of the office|away|on vacation)|automated response|autoreply|this is an automated|status: out of office)/i;
+
+export function isAutoResponderText(body: string): boolean {
+  if (!body || typeof body !== 'string') return false;
+  return AUTO_RESPONDER_PATTERN.test(body.trim());
+}
+

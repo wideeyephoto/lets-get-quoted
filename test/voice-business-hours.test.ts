@@ -110,4 +110,24 @@ describe('open and shut', () => {
     // 14:00 EDT (closed during afternoon)
     expect(isWithinBusinessHours(overnightHours, 'America/Detroit', new Date('2026-08-18T14:00:00-04:00'))).toBe(false);
   });
+
+  it('treats major US federal holidays as closed so after-hours answering takes calls', () => {
+    // Christmas Day 2026 (Friday) at 10:00 AM EST (within normal weekday hours)
+    expect(isWithinBusinessHours(WEEKDAYS, 'America/New_York', new Date('2026-12-25T15:00:00Z'))).toBe(false);
+
+    // Thanksgiving 2026 (Thursday Nov 26) at 11:00 AM EST
+    expect(isWithinBusinessHours(WEEKDAYS, 'America/New_York', new Date('2026-11-26T16:00:00Z'))).toBe(false);
+
+    // New Year's Day 2026 (Thursday Jan 1) at 10:00 AM EST
+    expect(isWithinBusinessHours(WEEKDAYS, 'America/New_York', new Date('2026-01-01T15:00:00Z'))).toBe(false);
+
+    // Can be overridden with checkHolidays: false
+    expect(isWithinBusinessHours(WEEKDAYS, 'America/New_York', new Date('2026-12-25T15:00:00Z'), { checkHolidays: false })).toBe(true);
+  });
+
+  it('supports explicit US business fallback timezone on unknown timezones', () => {
+    const evening = new Date('2026-08-19T01:30:00Z'); // 21:30 EDT
+    const clock = localClock(evening, 'Invalid/Unknown_Zone', { fallbackTimeZone: 'America/New_York' });
+    expect(clock.minutes).toBe(21 * 60 + 30);
+  });
 });

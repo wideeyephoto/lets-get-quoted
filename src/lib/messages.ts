@@ -295,6 +295,10 @@ export async function logInboundMessage(
   }
 }
 
+/**
+ * @deprecated Outbound sends must use `enqueueSmsDelivery` and the durable delivery worker.
+ * Direct writes to sms_messages bypass carrier queueing, rate limits, and compliance checks.
+ */
 export async function logOutboundMessage(
   supabase: SupabaseClient,
   accountId: string,
@@ -436,7 +440,10 @@ async function platformLaneSenderIds(supabase: SupabaseClient): Promise<string[]
     .in('purpose', PLATFORM_LANE_PURPOSES as unknown as string[]);
   // FAIL OPEN. If the lane list is unreadable, showing an extra thread is a
   // cosmetic problem; hiding the contractor's real customer threads is not.
-  if (error) return [];
+  if (error) {
+    console.error('[messages] Failed to query platform lane sender IDs:', error);
+    return [];
+  }
   return (data ?? []).map((row) => String((row as { id: unknown }).id));
 }
 

@@ -20,7 +20,8 @@ export async function runSmsInboundActionCronBatch(): Promise<Record<string, num
       failed: result.failedCount,
       failures: result.failedCount,
     });
-  } catch {
+  } catch (error) {
+    console.error('[sms-inbound-action-cron] Inbound action cron batch execution failed:', error);
     return Object.freeze({ requested: BATCH_SIZE, claimed: 0, completed: 0, failed: 0, failures: 1 });
   }
 }

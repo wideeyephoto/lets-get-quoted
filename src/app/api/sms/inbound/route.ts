@@ -11,6 +11,7 @@ import {
 import {
   extractInboundWebhook,
   ingestInboundWebhook,
+  isAutoResponderText,
   loadInboundReceiptDisposition,
   parseSmsWebhookBody,
   recordInvalidWebhook,
@@ -227,8 +228,12 @@ async function sharedNoticeTwiml(
   ingress: InboundIngressResult,
   brand: string,
   recipientPhone: string,
+  messageBody?: string,
 ): Promise<NextResponse> {
   if (!ingress.senderPurpose || !SHARED_NOTICE_LANES.has(ingress.senderPurpose)) {
+    return emptyTwiml();
+  }
+  if (messageBody && isAutoResponderText(messageBody)) {
     return emptyTwiml();
   }
   const twiml = `<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(sharedNoticeText(brand))}</Message></Response>`;
@@ -353,11 +358,15 @@ export async function POST(request: Request) {
     // is precisely the unroutable-reply case, the one with no other answer. The
     // notice is the only thing that changes; nothing is routed or applied.
     if (ingress.disposition === 'review') {
+      if (isAutoResponderText(inbound.body)) {
+        return emptyTwiml();
+      }
       return await sharedNoticeTwiml(
         admin,
         ingress,
         await senderName(admin, ingress.accountId),
         inbound.fromNumber,
+        inbound.body,
       );
     }
     const effectiveDisposition = ingress.disposition === 'duplicate'

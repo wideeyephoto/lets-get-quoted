@@ -230,7 +230,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Is AI Voice Receptionist & Field Assistant available?',
-    a: 'AI Voice Receptionist is currently in preview while carrier line routing and dedicated voice numbers complete final rollout. Web-based 24/7 Smart Intake, instant quote generation, automated SMS dispatch, and multi-tier estimate workflows are fully live across all accounts today. Dedicated business lines and AI call answering add-ons become active as carrier 10DLC registrations are verified.',
+    a: 'AI Voice Receptionist is coming soon (in preview rollout) while carrier line routing and dedicated voice numbers complete final validation. Web-based 24/7 Smart Intake, instant quote generation, automated SMS dispatch, and multi-tier estimate workflows are fully live across all accounts today. Dedicated business lines and AI call answering add-ons become active as carrier 10DLC registrations are verified.',
   },
   {
     q: 'Can the AI receptionist answer multiple calls at once?',

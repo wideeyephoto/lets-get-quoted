@@ -715,6 +715,15 @@ export default async function JobDetailPage({
                 <strong>View the live client page</strong>
                 <small>{activeClientLinkCount > 0 ? 'Shared and live' : 'Not shared yet'}</small>
               </Link>
+              {job.client_phone ? (
+                <Link
+                  className="job-actions-item"
+                  href={`/dashboard/messages?to=${encodeURIComponent(job.client_phone)}`}
+                >
+                  <strong>Message client</strong>
+                  <small>Text {formatPhoneDashes(job.client_phone)}</small>
+                </Link>
+              ) : null}
               <div className="job-actions-item is-control">
                 <ModalDialog triggerClassName="btn secondary" triggerLabel="Add expense" title="Add expense" defaultOpen={searchParams.open === 'costs'}>
                   <form action={boundCreateCost} className="cost-form">

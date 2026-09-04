@@ -182,6 +182,21 @@ export async function importClients(
       skipped += chunk.length;
     } else {
       imported += (data ?? []).length;
+      const phones = chunk.map((c) => c.phone).filter((p): p is string => Boolean(p));
+      if (phones.length > 0) {
+        try {
+          const { recordSmsConsent } = await import('@/lib/sms');
+          for (const phone of phones) {
+            try {
+              await recordSmsConsent(accountId, phone, 'client_import');
+            } catch {
+              // Never overwrite STOP; ignore opted-out numbers on import
+            }
+          }
+        } catch {
+          // Non-blocking for import completion
+        }
+      }
     }
   }
 

@@ -69,8 +69,8 @@ type RpcError = Readonly<{ code?: string; message?: string }>;
 
 export class SmsDeliveryRpcError extends Error {
   override readonly name = 'SmsDeliveryRpcError';
-  constructor(readonly rpcCode: string | null) {
-    super('SMS delivery database operation failed.');
+  constructor(readonly rpcCode: string | null, readonly details?: string) {
+    super(`SMS delivery database operation failed${rpcCode ? ` (${rpcCode})` : ''}${details ? `: ${details}` : ''}`);
   }
 }
 
@@ -82,7 +82,7 @@ export class SmsDeliveryWorkerError extends Error {
 }
 
 function rpcFailure(error: RpcError | null): SmsDeliveryRpcError {
-  return new SmsDeliveryRpcError(error?.code?.trim() || null);
+  return new SmsDeliveryRpcError(error?.code?.trim() || null, error?.message);
 }
 
 function record(value: unknown, label: string): Record<string, unknown> {
@@ -487,6 +487,7 @@ export async function runSmsDeliveryBatch(
       await store.complete(claim, providerId);
       completedCount += 1;
     } catch (error) {
+      console.error('[sms-delivery-worker] SMS delivery failed for claim', claim.eventId, error);
       const failure = classifySmsDeliveryFailure(error);
       const outcome = requestStarted && failure.providerRejection
         ? await store.recordProviderRejection(claim, failure.code, failure.retryable)

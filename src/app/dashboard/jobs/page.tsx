@@ -197,6 +197,7 @@ export default async function JobsPage({
       id: job.id,
       ref: job.ref,
       clientName: job.client_name,
+      clientPhone: job.client_phone ?? null,
       address: job.address,
       status: job.status,
       badgeLabel: badge.label,

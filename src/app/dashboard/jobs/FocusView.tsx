@@ -289,6 +289,16 @@ export default function FocusView({
                   <ActionIcon name="expense" />
                   Add expense
                 </Link>
+                {selected.clientPhone ? (
+                  <Link
+                    className="action-btn action-btn--secondary"
+                    href={`${base}/messages?to=${encodeURIComponent(selected.clientPhone)}`}
+                    title={`Text ${selected.clientName || 'client'}`}
+                  >
+                    <ActionIcon name="sms" />
+                    Message client
+                  </Link>
+                ) : null}
               </div>
               </div>
               </div>

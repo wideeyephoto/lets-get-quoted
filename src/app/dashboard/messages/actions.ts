@@ -372,7 +372,7 @@ export async function startConversationAction(formData: FormData) {
   await requireActiveDedicatedMessagingSender(accountId);
 
   if (!(await hasCurrentSmsConsent(accountId, normalized))) {
-    throw new Error('We do not have current SMS consent for this contact. Record consent through the customer workflow, or have them send your business a message. If they previously opted out, they must text START before you can reply.');
+    throw new Error('We do not have current SMS consent for this contact. Record consent via their Client profile, Job, or Lead record, or have them text your dedicated number first. If they previously opted out, they must text START before you can message them.');
   }
 
   // Same ladder as the reply above — and it matters more here, because this is

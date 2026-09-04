@@ -2,6 +2,7 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { GET } from '@/app/api/voice/health/route';
 import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 import { signalWireVoiceScope } from '@/lib/voice/auth';
+import { CUSTOMER_SWAIG_TOOLS } from '@/lib/voice/signalwire';
 
 vi.mock('@/lib/auth', () => ({
   requireOfficeContext: vi.fn(async () => ({
@@ -53,7 +54,7 @@ describe('Voice Health & Latency API Endpoint', () => {
     expect(json.activeNumber).toBe('+12485550100');
     expect(json.routeState).toBe('ready');
     expect(json.notReadyReason).toBeNull();
-    expect(json.toolsActive).toBe(8);
+    expect(json.toolsActive).toBe(CUSTOMER_SWAIG_TOOLS.length);
     expect(json.securityGuard).toContain('HMAC-SHA256');
     expect(json.latencyMs).toBeGreaterThanOrEqual(1);
   });

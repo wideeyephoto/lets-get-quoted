@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 import { signalWireVoiceScope } from '@/lib/voice/auth';
+import { CUSTOMER_SWAIG_TOOLS } from '@/lib/voice/signalwire';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -48,7 +49,7 @@ export async function GET() {
     routeState: routeReadiness.kind,
     notReadyReason,
     totalCallsLogged: callCount ?? 0,
-    toolsActive: status === 'healthy' ? 8 : 0,
+    toolsActive: status === 'healthy' ? CUSTOMER_SWAIG_TOOLS.length : 0,
     securityGuard: 'HMAC-SHA256 Admission Permit Guard',
     checkedAt: new Date().toISOString(),
   });
