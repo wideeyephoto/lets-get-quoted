@@ -412,10 +412,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  */
 /** One reason, three SKUs. Repeating it would let two of them drift. */
 const AI_VOICE_WITHHELD =
-  'the whole call rail is built and dark - admission, agent, receipt, settlement, '
-  + 'lead, configuration and history - but no live Price exists, no number is '
-  + 'pointed at the route, and nothing grants voice_minutes, so a subscriber '
-  + 'would be charged monthly for an allowance that never arrives';
+  'the call rail is built and verified with dedicated carrier routing, but no live '
+  + 'recurring Stripe Price exists and automated recurring allowance granting is '
+  + 'withheld from self-service purchase until full usage meter reconciliation is verified';
 
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:

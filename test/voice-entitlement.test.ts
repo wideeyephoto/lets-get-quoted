@@ -50,8 +50,6 @@ beforeEach(() => {
   entitlementError = null;
   purchased = 0;
   purchasedError = null;
-  creditBalance = 0;
-  creditBalanceError = null;
   vi.spyOn(console, 'error').mockImplementation(() => {});
 });
 
@@ -77,13 +75,6 @@ describe('explicit AI Voice entitlement', () => {
 
   it('accepts active purchased voice capacity for a non-included plan', async () => {
     purchased = 100;
-    expect(await loadVoiceEntitlement(admin, ACCOUNT)).toEqual({
-      available: true, enabled: true, source: 'add_on', concurrentCalls: 1, historyDays: 30, advancedRouting: false,
-    });
-  });
-
-  it('accepts available voice minutes balance for a non-included plan', async () => {
-    creditBalance = 100;
     expect(await loadVoiceEntitlement(admin, ACCOUNT)).toEqual({
       available: true, enabled: true, source: 'add_on', concurrentCalls: 1, historyDays: 30, advancedRouting: false,
     });
@@ -121,15 +112,15 @@ describe('explicit AI Voice entitlement', () => {
     expect(await loadVoiceEntitlement(admin, ACCOUNT)).toMatchObject({ available: false, enabled: false });
   });
 
-  it('guarantees real live concurrency floors of at least 3 for Solo and 5 for Growth', async () => {
-    creditBalance = 100;
+  it('strictly respects database catalog concurrency limits without artificial floors', async () => {
+    purchased = 100;
     entitlement = {
       entitlement_state: 'active',
       plan_code: 'solo',
       feature_limits: { voice_concurrent_calls: 1 },
       feature_flags: { voice_included: false },
     };
-    expect((await loadVoiceEntitlement(admin, ACCOUNT)).concurrentCalls).toBe(3);
+    expect((await loadVoiceEntitlement(admin, ACCOUNT)).concurrentCalls).toBe(1);
 
     entitlement = {
       entitlement_state: 'active',
@@ -137,7 +128,7 @@ describe('explicit AI Voice entitlement', () => {
       feature_limits: { voice_concurrent_calls: 1 },
       feature_flags: { voice_included: false },
     };
-    expect((await loadVoiceEntitlement(admin, ACCOUNT)).concurrentCalls).toBe(5);
+    expect((await loadVoiceEntitlement(admin, ACCOUNT)).concurrentCalls).toBe(1);
 
     entitlement = {
       entitlement_state: 'active',
@@ -145,6 +136,6 @@ describe('explicit AI Voice entitlement', () => {
       feature_limits: { voice_concurrent_calls: 3 },
       feature_flags: { voice_included: true },
     };
-    expect((await loadVoiceEntitlement(admin, ACCOUNT)).concurrentCalls).toBe(10);
+    expect((await loadVoiceEntitlement(admin, ACCOUNT)).concurrentCalls).toBe(3);
   });
 });
