@@ -224,7 +224,7 @@ async function applyAction(
   targetLeadId: string | null,
   payload: Record<string, unknown>,
 ): Promise<{ outcome: RpcOutcome | null; code: string | null }> {
-  const { data, error } = await context.admin.rpc('apply_voice_contractor_action', {
+  const res = await context.admin.rpc('apply_voice_contractor_action', {
     p_account_id: context.accountId,
     p_provider_call_id: context.providerCallId,
     p_caller_number: context.caller.normalizedPhone,
@@ -233,6 +233,9 @@ async function applyAction(
     p_target_lead_id: targetLeadId,
     p_payload: payload,
   });
+
+  const data = res?.data;
+  const error = res?.error;
 
   if (error) {
     const code = typeof error.code === 'string' ? error.code : 'unknown';
@@ -264,14 +267,18 @@ export async function handleContractorVoiceAction(
   context: ContractorActionContext,
 ): Promise<ContractorActionResult> {
   if (!CONTRACTOR_VOICE_FUNCTIONS.has(context.functionName)) return { handled: false };
-  if (context.stepUpVerified !== true) {
+  const fn = canonicalFunction(context.functionName);
+  const args = context.args;
+
+  const rawOp = (text(args.operation ?? args.intent, 20) ?? '').toLowerCase();
+  const isLeadCreate = fn === 'create_or_update_lead' && (rawOp === 'create' || rawOp === '');
+
+  if (!isLeadCreate && context.stepUpVerified !== true) {
     return {
       handled: true,
       response: 'Before I can save that dispatch change, I need to text a six-digit verification code to the verified phone calling now.',
     };
   }
-  const fn = canonicalFunction(context.functionName);
-  const args = context.args;
 
   if (!context.providerCallId || !context.caller.normalizedPhone) {
     return { handled: true, response: 'This call is missing its signed dispatch identity, so I did not save anything.' };
@@ -292,16 +299,20 @@ export async function handleContractorVoiceAction(
     }
 
     const name = text(args.name ?? args.customer_name, 300);
-    const phoneRaw = text(args.phone ?? args.customer_phone, 80);
+    let phoneRaw = text(args.phone ?? args.customer_phone, 80);
+    if (phoneRaw && /^(?:none|no|n\/a|na|null|unknown|not provided|no phone|doesn'?t have one|unspecified)$/i.test(phoneRaw.trim())) {
+      phoneRaw = null;
+    }
     const phone = phoneRaw ? normalizeUsPhone(phoneRaw) : null;
     const email = text(args.email, 320)?.toLowerCase() ?? null;
     const address = text(args.address ?? args.service_address, 1000);
     const projectType = text(args.project_type ?? args.service_description, 1000);
-    const message = text(args.message ?? args.notes, 4000);
+    let message = text(args.message ?? args.notes, 4000);
     const leadId = text(args.lead_id, 100);
 
     if (phoneRaw && !phone) {
-      return { handled: true, response: 'That phone number was not valid, so I did not save the lead. Please repeat the ten-digit number.' };
+      const noteTag = `[Caller phone note: ${phoneRaw}]`;
+      message = message ? `${message}\n${noteTag}` : noteTag;
     }
     if (email && (!email.includes('@') || email.length > 320)) {
       return { handled: true, response: 'That email address was not valid, so I did not save the lead.' };
@@ -324,11 +335,11 @@ export async function handleContractorVoiceAction(
 
     const payload: Record<string, unknown> = { operation };
     if (name !== null) payload.name = name;
-    if (phoneRaw !== null) payload.phone = phone;
+    if (phone !== null) payload.phone = phone;
     if (args.email !== undefined) payload.email = email;
     if (args.address !== undefined || args.service_address !== undefined) payload.address = address;
     if (args.project_type !== undefined || args.service_description !== undefined) payload.project_type = projectType;
-    if (args.message !== undefined || args.notes !== undefined) payload.message = message;
+    if (message !== null) payload.message = message;
     if (requestedDate && requestedTime) {
       payload.quote_visit = {
         scheduledFor: requestedDate,

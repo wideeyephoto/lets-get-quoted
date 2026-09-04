@@ -420,6 +420,44 @@ export const signalwireVoiceProvider: VoiceProvider = {
           web_hook_auth_password: plan.receiptAuthorization.password,
         });
 
+        swaigFunctions.push({
+          function: 'capture_lead',
+          purpose: 'Save customer intake information and create a new lead in the CRM when a caller requests a quote, service, inspection, or callback. Phone number is optional.',
+          argument: {
+            type: 'object',
+            properties: {
+              name: {
+                type: 'string',
+                description: 'Full name of the customer or contact person.',
+              },
+              phone: {
+                type: 'string',
+                description: 'Optional callback phone number. Omit or set null if unavailable or not provided.',
+              },
+              address: {
+                type: 'string',
+                description: 'Optional property or service address.',
+              },
+              project_type: {
+                type: 'string',
+                description: 'Optional category or type of work requested (e.g. plumbing, leak repair, water heater).',
+              },
+              notes: {
+                type: 'string',
+                description: 'Description of the customer issue, request, or details.',
+              },
+              email: {
+                type: 'string',
+                description: 'Optional email address of the customer.',
+              },
+            },
+            required: ['name'],
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
       if (plan.swaigUrl && plan.contractorMode) {
         swaigFunctions.push({
           function: 'request_staff_step_up',
@@ -524,28 +562,26 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'create_or_update_lead',
-          purpose: 'Create a new customer lead only. Do not use this tool to update or implicitly match '
-            + 'an existing lead by name, phone, or address. For an update, ask for the exact lead ID and '
-            + 'use an update-capable workflow or transfer to the office.',
+          purpose: 'Create a new customer lead only. Do not use this tool to update or implicitly match an existing lead without an exact lead ID. Phone number is optional. Lead creation is additive and does not require SMS verification.',
           argument: {
             type: 'object',
             properties: {
               intent: {
                 type: 'string',
                 enum: ['create'],
-                description: 'Explicit operation intent. This handler supports creation only.',
+                description: 'Explicit operation intent. Defaults to create.',
               },
               name: {
                 type: 'string',
-                description: 'Full name for the new lead. Do not use a name as an existing-record lookup key.',
+                description: 'Full name for the new lead.',
               },
               phone: {
                 type: 'string',
-                description: 'Contact mobile phone number.',
+                description: 'Optional contact phone number. Can be omitted or null if unavailable or not provided.',
               },
               address: {
                 type: 'string',
-                description: 'Street address and city.',
+                description: 'Optional street address and city.',
               },
               project_type: {
                 type: 'string',

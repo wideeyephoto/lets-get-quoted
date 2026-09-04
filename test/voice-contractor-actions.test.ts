@@ -207,6 +207,87 @@ describe('AI Voice contractor lead intent', () => {
     });
     expect(result.response).toBe('I updated the lead for Jamie Rivera.');
   });
+
+  it('creates a new lead without requiring step-up verification and with optional phone', async () => {
+    const { admin, rpc } = mockAdmin({
+      rpcResults: [{
+        data: { operation: 'create', lead_id: LEAD_ID, target_name: 'John Davis' },
+        error: null,
+      }],
+    });
+
+    const result = await handleContractorVoiceAction({
+      ...actionContext(
+        admin,
+        'create_or_update_lead',
+        {
+          operation: 'create',
+          name: 'John Davis',
+          address: '142 Elm St',
+          project_type: 'roof leak',
+          message: 'Needs inspection Friday',
+        },
+      ),
+      stepUpVerified: false,
+    });
+
+    expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', {
+      p_account_id: ACCOUNT_ID,
+      p_provider_call_id: PROVIDER_CALL_ID,
+      p_caller_number: ownerCaller.normalizedPhone,
+      p_function_name: 'create_or_update_lead',
+      p_target_job_id: null,
+      p_target_lead_id: null,
+      p_payload: {
+        operation: 'create',
+        name: 'John Davis',
+        address: '142 Elm St',
+        project_type: 'roof leak',
+        message: 'Needs inspection Friday',
+      },
+    });
+    expect(result.response).toBe('I created the lead for John Davis.');
+  });
+
+  it('sanitizes negative phone phrases to null when creating a lead', async () => {
+    const { admin, rpc } = mockAdmin({
+      rpcResults: [{
+        data: { operation: 'create', lead_id: LEAD_ID, target_name: 'Jane Smith' },
+        error: null,
+      }],
+    });
+
+    const result = await handleContractorVoiceAction({
+      ...actionContext(
+        admin,
+        'create_or_update_lead',
+        {
+          operation: 'create',
+          name: 'Jane Smith',
+          phone: 'none',
+          address: '456 Oak St',
+          message: 'Water heater leaking',
+        },
+      ),
+      stepUpVerified: false,
+    });
+
+    expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', {
+      p_account_id: ACCOUNT_ID,
+      p_provider_call_id: PROVIDER_CALL_ID,
+      p_caller_number: ownerCaller.normalizedPhone,
+      p_function_name: 'create_or_update_lead',
+      p_target_job_id: null,
+      p_target_lead_id: null,
+      p_payload: {
+        operation: 'create',
+        name: 'Jane Smith',
+        address: '456 Oak St',
+        message: 'Water heater leaking',
+      },
+    });
+    expect(result.response).toBe('I created the lead for Jane Smith.');
+  });
 });
 
 describe('AI Voice contractor durable action outcomes', () => {

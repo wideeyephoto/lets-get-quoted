@@ -195,7 +195,7 @@ export async function settleVoiceReceipt(
   // must escape and make the whole receipt retry instead of completing without
   // the customer inquiry.
   let leadId: string | null = null;
-  if (!staffCaller) try {
+  try {
     const { data: inCallLead, error: inCallLeadError } = await admin
       .from('leads')
       .select('id, source_voice_event_id')
@@ -221,58 +221,86 @@ export async function settleVoiceReceipt(
       leadId = inCallLead.id;
     }
 
-    const structured = receipt.structuredPostPrompt;
-    // The model-produced structured phone is useful transcript data, not
-    // identity authority. Admission-bound caller ID wins for CRM attribution.
-    const phone = authoritativeCallerNumber || callerPhone(receipt);
+    // Fallback: If contractor created a lead via voice_tool_actions but source_voice_provider_call_id was null
+    if (!leadId) {
+      const { data: actionRows } = await admin
+        .from('voice_tool_actions')
+        .select('id')
+        .eq('account_id', row.account_id)
+        .eq('provider_call_id', receipt.providerCallId);
+      const actionIds = (actionRows ?? []).map((a) => a.id).filter(Boolean);
+      if (actionIds.length > 0) {
+        const { data: actionLeads } = await admin
+          .from('leads')
+          .select('id, source_voice_event_id')
+          .eq('account_id', row.account_id)
+          .in('source_voice_action_id', actionIds)
+          .limit(1);
+        if (actionLeads && actionLeads.length > 0) {
+          const actLead = actionLeads[0];
+          if (options.voiceEventId && actLead.source_voice_event_id !== options.voiceEventId) {
+            await admin
+              .from('leads')
+              .update({ source_voice_event_id: options.voiceEventId })
+              .eq('account_id', row.account_id)
+              .eq('id', actLead.id);
+          }
+          leadId = actLead.id;
+        }
+      }
+    }
 
-    const summary = summaryLine(receipt);
-    const emergency = detectCallEmergency(summary);
-    const isEmergency = structured?.is_emergency === true || structured?.urgency === 'emergency' || emergency.isEmergency;
-    const hazardType = (typeof structured?.hazard_type === 'string' && structured.hazard_type) || emergency.hazardType;
-    const flags = isEmergency ? ['emergency_hazard', hazardType].filter(Boolean) as string[] : [];
-    const score = isEmergency ? 'hot' : 'warm';
+    if (!leadId && !staffCaller) {
+      const structured = receipt.structuredPostPrompt;
+      // The model-produced structured phone is useful transcript data, not
+      // identity authority. Admission-bound caller ID wins for CRM attribution.
+      const phone = authoritativeCallerNumber || callerPhone(receipt);
 
-    const callerName = (typeof structured?.caller_name === 'string' && structured.caller_name.trim())
-      ? structured.caller_name.trim()
-      : (phone ? `AI call — ${phone}` : 'AI call — caller unknown');
+      const summary = summaryLine(receipt);
+      const emergency = detectCallEmergency(summary);
+      const isEmergency = structured?.is_emergency === true || structured?.urgency === 'emergency' || emergency.isEmergency;
+      const hazardType = (typeof structured?.hazard_type === 'string' && structured.hazard_type) || emergency.hazardType;
+      const flags = isEmergency ? ['emergency_hazard', hazardType].filter(Boolean) as string[] : [];
+      const score = isEmergency ? 'hot' : 'warm';
 
-    const serviceAddress = (typeof structured?.service_address === 'string' && structured.service_address.trim())
-      ? structured.service_address.trim()
-      : null;
+      const callerName = (typeof structured?.caller_name === 'string' && structured.caller_name.trim())
+        ? structured.caller_name.trim()
+        : (phone ? `AI call — ${phone}` : 'AI call — caller unknown');
 
-    const projectType = (typeof structured?.work_requested === 'string' && structured.work_requested.trim())
-      ? structured.work_requested.trim()
-      : 'AI Voice inquiry';
+      const serviceAddress = (typeof structured?.service_address === 'string' && structured.service_address.trim())
+        ? structured.service_address.trim()
+        : null;
 
-    const requestedSlot = (typeof structured?.requested_slot === 'string' && structured.requested_slot.trim())
-      ? structured.requested_slot.trim()
-      : undefined;
+      const projectType = (typeof structured?.work_requested === 'string' && structured.work_requested.trim())
+        ? structured.work_requested.trim()
+        : 'AI Voice inquiry';
 
-    const lead = leadId ? null : await createLead(admin, row.account_id, {
-      source: 'ai_voice',
-      name: callerName,
-      phone,
-      address: serviceAddress,
-      projectType,
-      message: summary,
-      sourcePage: '/call',
-      sourceVoiceEventId: options.voiceEventId,
-      triage: {
-        score,
-        flags,
-        ...(requestedSlot ? { timeline: requestedSlot } : {}),
-        contactPreference: 'any',
-      },
-    });
-    if (lead) leadId = lead.id;
+      const requestedSlot = (typeof structured?.requested_slot === 'string' && structured.requested_slot.trim())
+        ? structured.requested_slot.trim()
+        : undefined;
+
+      const lead = await createLead(admin, row.account_id, {
+        source: 'ai_voice',
+        name: callerName,
+        phone,
+        address: serviceAddress,
+        projectType,
+        message: summary,
+        sourcePage: '/call',
+        sourceVoiceEventId: options.voiceEventId,
+        triage: {
+          score,
+          flags,
+          ...(requestedSlot ? { timeline: requestedSlot } : {}),
+          contactPreference: 'any',
+        },
+      });
+      if (lead) leadId = lead.id;
+    }
   } catch (error) {
     console.error('AI voice lead creation failed:', error);
     throw error;
   }
-
-  // The contractor-facing record is written last. Billing must never READ this
-  // row, but its transcript is now the only retained copy of what the caller
   // said. A write failure must therefore escape to the durable receipt worker;
   // settlement, lead creation, and this upsert all have stable replay keys.
   await recordCallHistory(admin, receipt, {

@@ -6,6 +6,7 @@ import { getAvailableBookingDays, claimBookingHold, createBooking } from '@/lib/
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
 import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib/rebates/clean-energy-rebate-engine';
+import { createLead } from '@/lib/leads';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
@@ -572,8 +573,54 @@ export async function POST(request: Request) {
     return NextResponse.json({ response: result.response });
   }
 
+  if (fnName === 'capture_lead' || (fnName === 'create_or_update_lead' && identity.status !== 'staff')) {
+    const callerName = String(args.name || args.caller_name || args.customer_name || '').trim();
+    let phoneRaw = String(args.phone || args.caller_phone || args.customer_phone || '').trim();
+    if (phoneRaw && /^(?:none|no|n\/a|na|null|unknown|not provided|no phone|doesn'?t have one|unspecified)$/i.test(phoneRaw)) {
+      phoneRaw = '';
+    }
+    const phone = phoneRaw ? (normalizeUsPhone(phoneRaw) || null) : (verifiedCallerPhone ? normalizeUsPhone(verifiedCallerPhone) : null);
+    const email = String(args.email || '').trim().toLowerCase() || null;
+    const address = String(args.address || args.service_address || '').trim() || null;
+    const projectType = String(args.project_type || args.work_requested || args.service_description || '').trim() || 'AI Voice inquiry';
+    let message = String(args.notes || args.message || args.issue || '').trim() || null;
+
+    if (phoneRaw && !normalizeUsPhone(phoneRaw)) {
+      const noteTag = `[Caller phone note: ${phoneRaw}]`;
+      message = message ? `${message}\n${noteTag}` : noteTag;
+    }
+
+    const finalName = callerName || (phone ? `AI call — ${phone}` : 'AI Phone Caller');
+
+    try {
+      await createLead(admin, accountId, {
+        source: 'ai_voice',
+        name: finalName,
+        phone,
+        email,
+        address,
+        projectType,
+        message: message || 'Inquiry taken by AI receptionist',
+        sourcePage: '/call',
+        sourceVoiceProviderCallId: verifiedProviderCallId,
+      });
+
+      return NextResponse.json({
+        response: `I've saved your request for ${finalName}${address ? ` at ${address}` : ''}. Our team will review the details and follow up with you.`,
+      });
+    } catch (err) {
+      console.error('Error in capture_lead SWAIG handler:', err);
+      return NextResponse.json({
+        response: 'I have recorded your information for our team to follow up on shortly.',
+      });
+    }
+  }
+
+  const rawOp = String(args.operation || args.intent || '').trim().toLowerCase();
+  const isLeadCreate = fnName === 'create_or_update_lead' && (rawOp === 'create' || rawOp === '');
+
   if (identity.status === 'staff') {
-    const stepUp = CONTRACTOR_VOICE_FUNCTIONS.has(fnName)
+    const stepUp = CONTRACTOR_VOICE_FUNCTIONS.has(fnName) && !isLeadCreate
       ? await getVoiceStaffStepUpStatus({
         admin,
         accountId,
@@ -585,14 +632,18 @@ export async function POST(request: Request) {
     if (stepUp && !stepUp.verified) {
       return NextResponse.json({ response: stepUp.response });
     }
+    const effectiveArgs = { ...args };
+    if (isLeadCreate && !effectiveArgs.operation && !effectiveArgs.intent) {
+      effectiveArgs.operation = 'create';
+    }
     const action = await handleContractorVoiceAction({
       admin,
       accountId,
       providerCallId: verifiedProviderCallId,
       caller: identity.caller,
-      stepUpVerified: stepUp?.verified === true,
+      stepUpVerified: stepUp?.verified === true || isLeadCreate,
       functionName: fnName,
-      args,
+      args: effectiveArgs,
     });
     if (action.handled) return NextResponse.json({ response: action.response });
   } else if (CONTRACTOR_VOICE_FUNCTIONS.has(fnName)) {

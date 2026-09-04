@@ -36,6 +36,10 @@ vi.mock('@/lib/voice/caller-identity', () => ({
   resolveVoiceCallerIdentity: vi.fn().mockResolvedValue({ status: 'customer' }),
 }));
 
+vi.mock('@/lib/leads', () => ({
+  createLead: vi.fn().mockResolvedValue({ id: 'lead-captured-1' }),
+}));
+
 const DUMMY_AUTH = { scheme: 'basic' as const, username: 'test-user', password: 'test-password' };
 
 describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
@@ -193,6 +197,7 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
       }),
     });
 
+
     const res = await swaigHandler(req);
     expect(res.status).toBe(200);
     const data = await res.json();
@@ -200,5 +205,45 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     expect(data.response).toContain('Thursday, Aug 27');
     expect(data.response).toContain('450 Continental Way');
   });
-});
 
+  it('executes in-call capture_lead tool without phone number', async () => {
+    process.env.LGQ_VOICE_RECEIPT_BASIC = 'test-user:test-password';
+    process.env.SIGNALWIRE_SIGNING_KEY = 'test-secret';
+
+    const { POST: swaigHandler } = await import('@/app/api/voice/swaig/route');
+    const { signVoiceToolToken } = await import('@/lib/voice/auth');
+
+    const authHeader = `Basic ${Buffer.from('test-user:test-password').toString('base64')}`;
+    const token = signVoiceToolToken(
+      { accountId: 'acc-123', providerCallId: 'call-xyz', callerPhone: '+12485550199' },
+      3600,
+      {
+        LGQ_VOICE_RECEIPT_BASIC: 'test-user:test-password',
+        SIGNALWIRE_SIGNING_KEY: 'test-secret',
+      },
+    );
+
+    const req = new Request(`https://example.com/api/voice/swaig?token=${token}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeader,
+      },
+      body: JSON.stringify({
+        function: 'capture_lead',
+        argument: {
+          name: 'Sarah Connor',
+          phone: 'none',
+          address: '123 Resistance Way',
+          notes: 'Burst pipe under kitchen sink',
+        },
+      }),
+    });
+
+    const res = await swaigHandler(req);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    expect(data.response).toContain('Sarah Connor');
+    expect(data.response).toContain('123 Resistance Way');
+  });
+});
