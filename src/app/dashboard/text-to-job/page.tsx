@@ -4,8 +4,9 @@ import { isCrewPhoneVerified, resolveCrewPhoneVerification } from '@/lib/crew-ve
 import { evaluateFieldNoteConfidence } from '@/lib/field-intake-quality';
 import { loadSmsFieldLeads } from '@/lib/field-intake-leads';
 import { formatFeedTime } from '@/lib/job-detail-labels';
-import { isOwnerFieldLineReady, loadOwnerAlerts } from '@/lib/owner-sms';
+import { isOwnerFieldLineReady, loadOwnerAlerts, loadMessagingSetup } from '@/lib/owner-sms';
 import { formatUsPhone } from '@/lib/phone';
+import MessagingSetup from '@/app/dashboard/messages/MessagingSetup';
 import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
 export const metadata: Metadata = {
@@ -14,7 +15,14 @@ export const metadata: Metadata = {
     'Send messages by voice or text to your smart AI Copilot, and it will organize notes, update job records, calculate change orders, log punch lists, and manage schedule slots automatically.',
 };
 
-export default async function TextToJobDashboardPage() {
+export default async function TextToJobDashboardPage({
+  searchParams: searchParamsPromise,
+}: {
+  searchParams?: Promise<{
+    setup?: string;
+  }>;
+}) {
+  const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId, capabilities, accountTimeZone } = await requireOfficeContext('leads.read');
   const canManageOwnerPhone = capabilities.has('settings.write');
 
@@ -25,6 +33,7 @@ export default async function TextToJobDashboardPage() {
     { count: leadCount, error: leadError },
     { data: feedRows, error: feedError },
     ownerAlerts,
+    messagingSetup,
     fieldLeads,
   ] = await Promise.all([
     supabase
@@ -54,6 +63,7 @@ export default async function TextToJobDashboardPage() {
       .order('created_at', { ascending: false })
       .limit(20),
     loadOwnerAlerts(accountId),
+    loadMessagingSetup(accountId),
     loadSmsFieldLeads(accountId),
   ]);
 
@@ -221,17 +231,25 @@ export default async function TextToJobDashboardPage() {
       };
 
   return (
-    <TextToJobWorkspace
-      account={workspaceAccount}
-      crewMembers={mappedCrew}
-      initialMessages={realMessages.length > 0 ? realMessages : undefined}
-      sharedPhoneNumber={rawSharedNumber}
-      isQualified={isQualified}
-      qualificationUnavailable={ownerAlerts.kind === 'unavailable'}
-      ownerPhoneSetup={ownerPhoneSetup}
-      activeJobCount={jobCount ?? 0}
-      leadCount={leadCount ?? 0}
-      crewCount={crewRows?.length ?? 0}
-    />
+    <>
+      <MessagingSetup
+        setup={messagingSetup}
+        openOnLoad={searchParams.setup === '1'}
+        sharedPhoneNumber={rawSharedNumber}
+        showTextToJobLink={false}
+      />
+      <TextToJobWorkspace
+        account={workspaceAccount}
+        crewMembers={mappedCrew}
+        initialMessages={realMessages.length > 0 ? realMessages : undefined}
+        sharedPhoneNumber={rawSharedNumber}
+        isQualified={isQualified}
+        qualificationUnavailable={ownerAlerts.kind === 'unavailable'}
+        ownerPhoneSetup={ownerPhoneSetup}
+        activeJobCount={jobCount ?? 0}
+        leadCount={leadCount ?? 0}
+        crewCount={crewRows?.length ?? 0}
+      />
+    </>
   );
 }

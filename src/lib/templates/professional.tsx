@@ -92,9 +92,10 @@ export default function GuildTemplate({ site }: TemplateProps) {
               business name whenever the licence field was empty — a credential
               claimed by the template on behalf of a contractor who never made
               it. Nothing under the wordmark is better than something untrue. */}
-          {(!content.hideHeaderCompanyName || site.license) && (
-            <span>
+          {(!content.hideHeaderCompanyName || site.license || content.headerTagline) && (
+            <span className={styles.brandText}>
               {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+              {content.headerTagline && <span className={styles.headerTagline} data-edit="headerTagline">{content.headerTagline}</span>}
               {site.license ? <small data-edit="bizLicense">{site.license}</small> : null}
             </span>
           )}

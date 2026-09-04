@@ -65,7 +65,12 @@ export default function ForgeTemplate({ site }: TemplateProps) {
       <header className={styles.forgeHeader}>
         <a className={styles.brand} href="#top" aria-label={`${site.company_name} home`}>
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.brandBlock} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-          {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+          {(!content.hideHeaderCompanyName || content.headerTagline) && (
+            <span className={styles.brandText}>
+              {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+              {content.headerTagline && <span className={styles.headerTagline} data-edit="headerTagline">{content.headerTagline}</span>}
+            </span>
+          )}
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.forgeHeaderActions}>

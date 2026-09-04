@@ -1674,6 +1674,9 @@
 .footerLogo { height: 30px; width: auto; max-width: 160px; display: inline-block; vertical-align: middle; }
 .guildBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #fff); flex: none; }
 .vistaBrandMark { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--theme-accent); color: var(--theme-on-accent, #111); flex: none; }
+.brandText { display: inline-flex; flex-direction: column; justify-content: center; min-width: 0; line-height: 1.2; }
+.headerTagline { display: block; font-family: var(--theme-display, inherit); font-size: clamp(.68rem, 1.1vw, .82rem); font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: color-mix(in srgb, currentColor 68%, transparent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; line-height: 1.25; margin-top: .15rem; }
+.brandText > .headerTagline:only-child { margin-top: 0; font-size: clamp(.75rem, 1.3vw, .9rem); letter-spacing: .05em; color: color-mix(in srgb, currentColor 75%, transparent); }
 .headerPhone { justify-self: end; font-family: var(--font-mono); font-size: .82rem; font-weight: 500; letter-spacing: .04em; transition: color .2s ease; }
 .headerPhone:hover { color: var(--theme-accent); }
 .forgeHero { position: relative; overflow: hidden; min-height: min(850px, 92svh); display: flex; align-items: center; justify-content: center; padding: clamp(6.5rem, 10vw, 8.5rem) 6vw clamp(3rem, 6vh, 4.5rem); }
@@ -3407,10 +3410,10 @@
      was running through the hamburger on a 390px screen.
      Letting the cell shrink and the name ellipsis is the fix; the full name is
      still on screen everywhere it has room, and in the menu when it doesn't. */
-  .guildBrand, .careBrand, .coatBrand, .fixitBrand, .renoBrand, .shineBrand, .vistaBrand { min-width: 0; }
-  .guildBrand > span, .careBrand > span, .coatBrand > span, .fixitBrand > span, .renoBrand > span, .shineBrand > span { min-width: 0; }
-  .guildBrand strong, .careBrand strong, .coatBrand strong, .fixitBrand strong, .renoBrand strong, .shineBrand strong, .vistaBrand strong,
-  .guildBrand small, .careBrand small, .coatBrand small, .fixitBrand small, .renoBrand small, .shineBrand small {
+  .guildBrand, .careBrand, .coatBrand, .fixitBrand, .renoBrand, .shineBrand, .vistaBrand, .brand, .blogChromeBrand { min-width: 0; }
+  .guildBrand > span, .careBrand > span, .coatBrand > span, .fixitBrand > span, .renoBrand > span, .shineBrand > span, .brand > span, .brandText { min-width: 0; }
+  .guildBrand strong, .careBrand strong, .coatBrand strong, .fixitBrand strong, .renoBrand strong, .shineBrand strong, .vistaBrand strong, .brand strong, .blogChromeBrand strong,
+  .guildBrand small, .careBrand small, .coatBrand small, .fixitBrand small, .renoBrand small, .shineBrand small, .headerTagline {
     display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }
   .forgeHeader .headerPhone, .guildHeader .guildQuote, .vistaHeader .vistaActions { grid-column: auto; justify-self: end; }

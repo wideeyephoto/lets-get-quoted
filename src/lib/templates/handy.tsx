@@ -87,7 +87,12 @@ export default function HandyTemplate({ site, galleryImages = [] }: TemplateProp
       <header className={styles.careHeader}>
         <a className={styles.careBrand} href="#top" aria-label={`${site.company_name} home`}>
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.careBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-          {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+          {(!content.hideHeaderCompanyName || content.headerTagline) && (
+            <span className={styles.brandText}>
+              {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+              {content.headerTagline && <span className={styles.headerTagline} data-edit="headerTagline">{content.headerTagline}</span>}
+            </span>
+          )}
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={navLinks} />
         <div className={styles.careHeaderActions}>

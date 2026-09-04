@@ -16,6 +16,8 @@ import { VoiceStatusBanner, VoiceCapabilitiesGrid, ContractorHotlineShowcase } f
 import VoiceSimulatorSandbox from './VoiceSimulatorSandbox';
 import VoiceHealthWidget from './VoiceHealthWidget';
 import FieldIntakeHint from '@/components/field-intake-hint';
+import MessagingSetup from '@/app/dashboard/messages/MessagingSetup';
+import { loadMessagingSetup } from '@/lib/owner-sms';
 import styles from './voice-calls.module.css';
 
 export const metadata = { title: 'AI Voice Assistant | Receptionist & Call Triage' };
@@ -44,6 +46,7 @@ export default async function VoiceCallsPage({
     q?: string;
     disposition?: string;
     outcome?: string;
+    setup?: string;
   }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
@@ -54,7 +57,15 @@ export default async function VoiceCallsPage({
   const currentTab = (searchParams.tab as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all';
   const currentDateRange = (searchParams.dateRange as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all';
 
-  const [{ data: account }, { data: site }, { data: voiceSettings }, { data: balanceRows }, routeReadiness, queue] = await Promise.all([
+  const [
+    { data: account },
+    { data: site },
+    { data: voiceSettings },
+    { data: balanceRows },
+    routeReadiness,
+    queue,
+    messagingSetup,
+  ] = await Promise.all([
     supabase
       .from('accounts')
       .select('company_name, business_name, trade, phone, timezone, license_number, service_areas, call_tracking_number')
@@ -82,6 +93,7 @@ export default async function VoiceCallsPage({
       disposition: (searchParams.disposition as VoiceCallDisposition) || 'all',
       outcome: (searchParams.outcome as VoiceCallOutcome) || 'all',
     }),
+    loadMessagingSetup(accountId),
   ]);
 
   const isRouteReady = routeReadiness.kind === 'ready';
@@ -143,6 +155,13 @@ export default async function VoiceCallsPage({
           )}
         </div>
       </header>
+
+      {/* Texting setup strip, mirroring Messages and Text-to-Job */}
+      <MessagingSetup
+        setup={messagingSetup}
+        openOnLoad={searchParams.setup === '1'}
+        sharedPhoneNumber={process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323'}
+      />
 
       {/* Top 3 Navigation Tabs */}
       <nav className={styles.mainNavTabs} role="tablist" aria-label="AI Voice workspace views">

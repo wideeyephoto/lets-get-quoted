@@ -78,7 +78,12 @@ export default function CoatTemplate({ site, galleryImages = [] }: TemplateProps
       <header className={styles.coatHeader}>
         <a className={styles.coatBrand} href="#top" aria-label={`${site.company_name} home`}>
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.coatBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-          {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+          {(!content.hideHeaderCompanyName || content.headerTagline) && (
+            <span className={styles.brandText}>
+              {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+              {content.headerTagline && <span className={styles.headerTagline} data-edit="headerTagline">{content.headerTagline}</span>}
+            </span>
+          )}
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <a className={styles.coatHeaderCta} data-edit="quoteForm" href="#contact">{getEstimateButtonLabel(content.quoteForm)} <span aria-hidden="true">↗</span></a>

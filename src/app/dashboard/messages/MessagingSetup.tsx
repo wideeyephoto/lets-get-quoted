@@ -1,6 +1,7 @@
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import ModalDialog from '@/components/modal-dialog';
-import { aggregateChip, ownerAlertChip, registrationChip, canSaveOwnerAlerts, type MessagingSetup as Setup } from '@/lib/owner-sms';
+import { aggregateChip, ownerAlertChip, registrationChip, canSaveOwnerAlerts, type MessagingSetup as Setup } from '@/lib/owner-sms-presentation';
 import OwnerAlertsForm from './OwnerAlertsForm';
 
 /**
@@ -29,16 +30,40 @@ import OwnerAlertsForm from './OwnerAlertsForm';
  */
 export default function MessagingSetup({
   setup,
-  openOnLoad,
+  openOnLoad = false,
   sharedPhoneNumber,
+  triggerClassName,
+  triggerLabel,
+  showTextToJobLink = true,
 }: {
   setup: Setup;
-  openOnLoad: boolean;
+  openOnLoad?: boolean;
   sharedPhoneNumber?: string;
+  triggerClassName?: string;
+  triggerLabel?: ReactNode;
+  showTextToJobLink?: boolean;
 }) {
   const alerts = ownerAlertChip(setup.alerts);
   const registration = registrationChip(setup.registration);
   const summary = aggregateChip(setup.alerts, setup.registration);
+
+  if (triggerLabel) {
+    return (
+      <ModalDialog
+        triggerClassName={triggerClassName}
+        title="Texting setup"
+        defaultOpen={openOnLoad}
+        obscureBackdrop
+        triggerLabel={triggerLabel}
+      >
+        <MessagingSetupSections
+          setup={setup}
+          sharedPhoneNumber={sharedPhoneNumber}
+          showTextToJobLink={showTextToJobLink}
+        />
+      </ModalDialog>
+    );
+  }
 
   return (
     // The anchor the automations page links to. On the wrapper rather than the
@@ -90,21 +115,44 @@ export default function MessagingSetup({
           </>
         }
       >
-        <div className="msg-setup-sections">
-          <section className="msg-setup-section msg-setup-card">
-            <div className="msg-setup-section-head">
-              <div className="msg-setup-section-badge is-alert" aria-hidden="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
-                  <path d="M13.73 21a2 2 0 0 1-3.46 0" />
-                </svg>
-              </div>
-              <div className="msg-setup-section-titles">
-                <h3>Your Let&rsquo;s Get Quoted notifications</h3>
-                <span className="msg-setup-subhead">Instant SMS alerts sent to you</span>
-              </div>
-              <span className={`msg-setup-status-pill is-${alerts.tone}`}>{alerts.label}</span>
-            </div>
+        <MessagingSetupSections
+          setup={setup}
+          sharedPhoneNumber={sharedPhoneNumber}
+          showTextToJobLink={showTextToJobLink}
+        />
+      </ModalDialog>
+    </div>
+  );
+}
+
+export function MessagingSetupSections({
+  setup,
+  sharedPhoneNumber,
+  showTextToJobLink = true,
+}: {
+  setup: Setup;
+  sharedPhoneNumber?: string;
+  showTextToJobLink?: boolean;
+}) {
+  const alerts = ownerAlertChip(setup.alerts);
+  const registration = registrationChip(setup.registration);
+
+  return (
+    <div className="msg-setup-sections">
+      <section className="msg-setup-section msg-setup-card">
+        <div className="msg-setup-section-head">
+          <div className="msg-setup-section-badge is-alert" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+              <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+            </svg>
+          </div>
+          <div className="msg-setup-section-titles">
+            <h3>Your Let&rsquo;s Get Quoted notifications</h3>
+            <span className="msg-setup-subhead">Instant SMS alerts sent to you</span>
+          </div>
+          <span className={`msg-setup-status-pill is-${alerts.tone}`}>{alerts.label}</span>
+        </div>
 
             {/* The four traffic types, named, and in the same order as the
                 consent label and the registered campaign. This used to say "a
@@ -131,6 +179,7 @@ export default function MessagingSetup({
               consentVersion={setup.alerts.kind === 'ok' ? setup.alerts.consentVersion : null}
               disabled={!canSaveOwnerAlerts(setup.alerts)}
               sharedPhoneNumber={sharedPhoneNumber}
+              showTextToJobLink={showTextToJobLink}
             />
           </section>
 
@@ -249,8 +298,6 @@ export default function MessagingSetup({
             </div>
           </section>
         </div>
-      </ModalDialog>
-    </div>
   );
 }
 

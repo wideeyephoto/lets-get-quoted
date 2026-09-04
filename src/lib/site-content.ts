@@ -789,6 +789,10 @@ export function shouldHideHeaderCompanyName(content: Record<string, unknown> | n
   return getSiteContent(content).hideHeaderCompanyName;
 }
 
+export function getHeaderTagline(content: Record<string, unknown> | null | undefined): string {
+  return getSiteContent(content).headerTagline;
+}
+
 // Legibility and shadow treatments for hero headlines and header text, applied
 // via data-hero-shadow on the root. 'none' = clean default text.
 export const HERO_TEXT_SHADOW_STYLES = [
@@ -1596,6 +1600,8 @@ export type NormalizedSiteContent = {
   // or AI-generated logo already includes the business name). Off by default
   // (the company name is displayed next to the logo/icon).
   hideHeaderCompanyName: boolean;
+  // Tagline/slogan rendered in the website header next to the logo.
+  headerTagline: string;
   // Hero headline readability and shadow treatment ('none' | 'soft' | 'bold' | 'glow' | 'scrim').
   heroTextShadow: SiteHeroTextShadowStyle;
   // Instant quote form appearance style ('glow' | 'clean' | 'glass' | 'bold').
@@ -2362,6 +2368,7 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     hideHeaderCompanyName: toBoolean(
       root.hideHeaderCompanyName ?? root.hideHeaderBusinessName ?? root.hideHeaderName
     ),
+    headerTagline: toString(root.headerTagline ?? root.headerSlogan).slice(0, 100),
     heroTextShadow: HERO_TEXT_SHADOW_STYLE_KEYS.has(toString(root.heroTextShadow)) ? (toString(root.heroTextShadow) as SiteHeroTextShadowStyle) : 'none',
     quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'clean',
     quoteFormFieldBg: QUOTE_FORM_FIELD_BG_KEYS.has(toString(root.quoteFormFieldBg)) ? (toString(root.quoteFormFieldBg) as QuoteFormFieldBg) : 'auto',
