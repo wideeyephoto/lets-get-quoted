@@ -639,6 +639,8 @@ export default function AiLogoCreatorModal({
   const [adjustPreviewBg, setAdjustPreviewBg] = useState<'checkered' | 'dark' | 'light'>('checkered');
   const [isSavingAdjusted, setIsSavingAdjusted] = useState(false);
   const adjustCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const isAdjustBackdropMouseDownRef = useRef(false);
+  const isRemixBackdropMouseDownRef = useRef(false);
 
   // Sync when savedLogos prop updates from parent
   useEffect(() => {
@@ -1158,7 +1160,11 @@ export default function AiLogoCreatorModal({
         padding: '1.25rem',
         boxSizing: 'border-box',
       }}
-      onClick={onClose}
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !adjustingLogo && !remixingLogo && !glyphPickerOpen) {
+          onClose();
+        }
+      }}
     >
       <div
         style={{
@@ -2350,7 +2356,10 @@ export default function AiLogoCreatorModal({
             justifyContent: 'center',
             padding: '1.5rem',
           }}
-          onClick={() => setGlyphPickerOpen(false)}
+          onClick={(e) => {
+            e.stopPropagation();
+            if (e.target === e.currentTarget) setGlyphPickerOpen(false);
+          }}
         >
           <div
             style={{
@@ -2441,11 +2450,20 @@ export default function AiLogoCreatorModal({
             justifyContent: 'center',
             padding: '1rem',
           }}
+          onMouseDown={(e) => {
+            isRemixBackdropMouseDownRef.current = (e.target === e.currentTarget);
+          }}
           onClick={(e) => {
-            if (e.target === e.currentTarget) setRemixingLogo(null);
+            e.stopPropagation();
+            if (isRemixBackdropMouseDownRef.current && e.target === e.currentTarget) {
+              setRemixingLogo(null);
+            }
+            isRemixBackdropMouseDownRef.current = false;
           }}
         >
           <div
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
               maxWidth: '560px',
@@ -2718,11 +2736,20 @@ export default function AiLogoCreatorModal({
             justifyContent: 'center',
             padding: '1rem',
           }}
+          onMouseDown={(e) => {
+            isAdjustBackdropMouseDownRef.current = (e.target === e.currentTarget);
+          }}
           onClick={(e) => {
-            if (e.target === e.currentTarget && !isSavingAdjusted) setAdjustingLogo(null);
+            e.stopPropagation();
+            if (isAdjustBackdropMouseDownRef.current && e.target === e.currentTarget && !isSavingAdjusted) {
+              setAdjustingLogo(null);
+            }
+            isAdjustBackdropMouseDownRef.current = false;
           }}
         >
           <div
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
             style={{
               width: '100%',
               maxWidth: '620px',
@@ -2962,7 +2989,11 @@ export default function AiLogoCreatorModal({
               </div>
 
               {/* Color Tuning Sliders */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: isWhiteDecal || isBlackSilhouette ? 0.45 : 1 }}>
+              <div
+                onClick={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: isWhiteDecal || isBlackSilhouette ? 0.45 : 1 }}
+              >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Color & Tone Sliders
@@ -2987,6 +3018,8 @@ export default function AiLogoCreatorModal({
                     step="1"
                     disabled={isWhiteDecal || isBlackSilhouette}
                     value={adjustHue}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       setIsWhiteDecal(false);
                       setIsBlackSilhouette(false);
@@ -3009,6 +3042,8 @@ export default function AiLogoCreatorModal({
                     step="2"
                     disabled={isWhiteDecal || isBlackSilhouette}
                     value={adjustSaturation}
+                    onClick={(e) => e.stopPropagation()}
+                    onPointerDown={(e) => e.stopPropagation()}
                     onChange={(e) => {
                       setIsWhiteDecal(false);
                       setIsBlackSilhouette(false);
@@ -3032,6 +3067,8 @@ export default function AiLogoCreatorModal({
                       step="2"
                       disabled={isWhiteDecal || isBlackSilhouette}
                       value={adjustBrightness}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         setIsWhiteDecal(false);
                         setIsBlackSilhouette(false);
@@ -3052,6 +3089,8 @@ export default function AiLogoCreatorModal({
                       step="2"
                       disabled={isWhiteDecal || isBlackSilhouette}
                       value={adjustContrast}
+                      onClick={(e) => e.stopPropagation()}
+                      onPointerDown={(e) => e.stopPropagation()}
                       onChange={(e) => {
                         setIsWhiteDecal(false);
                         setIsBlackSilhouette(false);
