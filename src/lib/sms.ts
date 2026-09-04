@@ -115,7 +115,7 @@ type QueueAccountSmsInput = Readonly<{
 const SMS_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 /** Queue an account-scoped text and return its durable event id. */
-async function queueAccountSms(input: QueueAccountSmsInput): Promise<string> {
+export async function queueAccountSms(input: QueueAccountSmsInput): Promise<string> {
   const phoneNumber = normalizeUsPhone(input.phone) ?? input.phone.trim();
   const queued = await enqueueSmsDelivery({
     accountId: input.accountId,

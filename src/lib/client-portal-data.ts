@@ -348,7 +348,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
     }));
 
   // Service & Maintenance Plans: recurring_plans and payment_plans
-  const [{ data: recurringPlanRows }, { data: paymentPlanRows }, propertyPassports] = await Promise.all([
+  const [{ data: recurringPlanRows, error: recPlanError }, { data: paymentPlanRows }, propertyPassports] = await Promise.all([
     admin
       .from('recurring_plans')
       .select('id, title, scope, amount, frequency, next_run_date, active, auto_charge, prepaid, card_brand, card_last4, remaining_cycles, membership_tier_id, membership_tier_name, tier_level, tier_benefits, member_number, created_at')
@@ -365,6 +365,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
       : Promise.resolve({ data: [] }),
     listPropertyPassports(admin, accountId, clientId),
   ]);
+  if (recPlanError) console.error('Portal recurring plan query failed:', recPlanError.message);
 
   let membershipSummary: MemberBenefitsSummary | null = null;
   const activeTierPlan = (recurringPlanRows ?? []).find((r) => r.active && (r.membership_tier_name || r.membership_tier_id));

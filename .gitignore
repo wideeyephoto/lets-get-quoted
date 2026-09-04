@@ -39,6 +39,7 @@ _e2e-*
 
 # Seed manifests — ids of rows a seeder wrote, so --undo can delete exactly those.
 scripts/.seed-*.json
+scripts/.*.json
 
 # Source assets staged for the site — 49MB of screenshots, icon sets and photo
 # exports that get processed into public/ rather than shipped from here. Kept

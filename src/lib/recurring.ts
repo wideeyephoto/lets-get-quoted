@@ -263,7 +263,10 @@ export async function createRecurringPlan(
     address: input.address,
   });
 
-  const memberNum = input.memberNumber || (input.membershipTierId ? `MEM-${Date.now().toString(36).toUpperCase()}` : null);
+  const validTierId = input.membershipTierId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.membershipTierId)
+    ? input.membershipTierId
+    : null;
+  const memberNum = input.memberNumber || (validTierId ? `MEM-${Date.now().toString(36).toUpperCase()}` : null);
 
   const { data, error } = await supabase
     .from('recurring_plans')
@@ -285,7 +288,7 @@ export async function createRecurringPlan(
       auto_charge: input.autoCharge,
       prepaid: Boolean(input.prepaid),
       remaining_cycles: input.termCycles && input.termCycles > 0 ? Math.floor(input.termCycles) : null,
-      membership_tier_id: input.membershipTierId || null,
+      membership_tier_id: validTierId,
       membership_tier_name: input.membershipTierName || null,
       tier_level: input.tierLevel || null,
       tier_benefits: input.tierBenefits || null,
@@ -391,12 +394,12 @@ export function nextFutureRunDate(
   maxSteps = 400,
 ): string {
   let dateKey = nextRunDate;
-  for (let step = 0; step < maxSteps && dateKey < todayKey; step++) {
+  for (let step = 0; step < maxSteps && dateKey <= todayKey; step++) {
     dateKey = advanceDate(dateKey, frequency, anchorDay);
   }
-  // Still behind after the cap means the plan has been dormant for years; today
-  // is a truthful answer and a silently-past date is not.
-  return dateKey < todayKey ? todayKey : dateKey;
+  // Still behind or on today after the cap means the plan has been dormant for years;
+  // advance one cadence past today as the honest next future date.
+  return dateKey <= todayKey ? advanceDate(todayKey, frequency, anchorDay) : dateKey;
 }
 
 export async function setRecurringPlanActive(

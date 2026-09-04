@@ -880,10 +880,8 @@ export async function sendRetainageReleaseRequestAction(params: {
 
     // Record job feed event
     try {
-      await createJobFeedEvent(supabase, {
-        accountId,
-        jobId: params.jobId,
-        eventType: 'note_added',
+      await createJobFeedEvent(supabase, accountId, params.jobId, {
+        kind: 'note_added',
         title: 'Retainage Release Demanded',
         body: `Formal demand dispatched for release of $${params.retainageAmount.toLocaleString('en-US', { minimumFractionDigits: 2 })} retainage funds.`,
       });

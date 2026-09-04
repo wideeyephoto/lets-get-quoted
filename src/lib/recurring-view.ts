@@ -161,7 +161,7 @@ export async function buildRecurringView(
   // Active membership tiers for tier-backed recurring plan composition.
   const rawTiers = await listMembershipTiers(supabase, accountId);
   const membershipTiers = rawTiers
-    .filter((tier) => tier.isActive)
+    .filter((tier) => tier.isActive && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tier.id))
     .map((tier) => ({
       id: tier.id,
       name: tier.name,

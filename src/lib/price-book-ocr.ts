@@ -3,6 +3,7 @@ import { callModel } from '@/lib/ai-model-call';
 export type PriceBookOcrItem = {
   name: string;
   unit_price: number | null;
+  unit_cost?: number | null;
   unit?: string | null;
   description?: string | null;
 };
@@ -18,12 +19,13 @@ const INSTRUCTIONS = [
   'You read contractor price books, rate sheets, service catalogs, laminated truck sheets, and estimating menus off photos and scans and return JSON.',
   '',
   'Return exactly this shape:',
-  '{"items":[{"name":string,"unit_price":number|null,"unit":string|null,"description":string|null}],"confidence":number,"unreadable":[string]}',
+  '{"items":[{"name":string,"unit_price":number|null,"unit_cost":number|null,"unit":string|null,"description":string|null}],"confidence":number,"unreadable":[string]}',
   '',
   'RULES:',
   '- Transcribe every visible service, task, labor rate, or material line item.',
   '- "name" is the clean title or service name (e.g., "50-Gallon Gas Water Heater Install", "200A Electrical Panel Upgrade", "Gutter Cleaning (up to 2 stories)").',
   '- "unit_price" is the dollar amount or rate as a positive number (e.g. 150, 45.50, 1200). If a price range is shown (e.g. $150–$200), use the lower base number. If no price is stated, return null.',
+  '- "unit_cost" is what the service or material costs the contractor (wholesale / expense / COGS) if printed. Null if not specified.',
   '- "unit" must be normalized to one of: "each", "hour", "sqft", "visit", "job" (or null if unspecified, which defaults to "each").',
   '- "description" captures scope notes, included materials, labor details, or specifications printed with the line item. Null if none provided.',
   '- "confidence" is your assessment of document legibility from 0.0 to 1.0 (1.0 = crystal clear).',
@@ -55,6 +57,20 @@ function sanitizeCsvField(field: string | number | null | undefined): string {
 
 /** Converts structured OCR items into CSV text suitable for the SmartImport pipeline. */
 export function priceBookItemsToCsv(items: PriceBookOcrItem[]): string {
+  const hasCost = items.some((i) => i.unit_cost !== undefined && i.unit_cost !== null);
+  if (hasCost) {
+    const header = 'Name,Price,Cost,Unit,Description';
+    const rows = items.map((item) => {
+      const name = sanitizeCsvField(item.name);
+      const price = sanitizeCsvField(item.unit_price ?? '');
+      const cost = sanitizeCsvField(item.unit_cost ?? '');
+      const unit = sanitizeCsvField(item.unit ?? 'each');
+      const desc = sanitizeCsvField(item.description ?? '');
+      return `${name},${price},${cost},${unit},${desc}`;
+    });
+    return [header, ...rows].join('\n');
+  }
+
   const header = 'Name,Price,Unit,Description';
   const rows = items.map((item) => {
     const name = sanitizeCsvField(item.name);
@@ -90,6 +106,14 @@ export function normalizePriceBookOcr(raw: unknown): PriceBookOcrResult {
         if (Number.isFinite(parsed)) price = parsed;
       }
 
+      let cost: number | null = null;
+      if (typeof rec.unit_cost === 'number' && Number.isFinite(rec.unit_cost)) {
+        cost = rec.unit_cost;
+      } else if (typeof rec.unit_cost === 'string') {
+        const parsed = parseFloat(rec.unit_cost.replace(/[^0-9.]/g, ''));
+        if (Number.isFinite(parsed)) cost = parsed;
+      }
+
       let unit = 'each';
       if (typeof rec.unit === 'string') {
         const u = rec.unit.trim().toLowerCase();
@@ -111,6 +135,7 @@ export function normalizePriceBookOcr(raw: unknown): PriceBookOcrResult {
       return {
         name,
         unit_price: price,
+        ...(cost !== null ? { unit_cost: cost } : {}),
         unit,
         description,
       };

@@ -54,7 +54,10 @@ export async function createRecurringPlanAction(formData: FormData) {
 
   const rawTerm = formData.get('termCycles');
   const termCycles = rawTerm && Number(rawTerm) > 0 ? Math.floor(Number(rawTerm)) : null;
-  const membershipTierId = String(formData.get('membershipTierId') ?? '').trim() || null;
+  const rawTierId = String(formData.get('membershipTierId') ?? '').trim();
+  const membershipTierId = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawTierId)
+    ? rawTierId
+    : null;
   let tierInfo: { name?: string; level?: number; benefits?: Record<string, unknown> } = {};
   if (membershipTierId) {
     try {

@@ -64,6 +64,9 @@ export const MONTHLY_MULTIPLIER: Record<RecurringFrequency, number> = {
   weekly: 52 / 12,
   biweekly: 26 / 12,
   monthly: 1,
+  quarterly: 1 / 3,
+  'semi-annual': 1 / 6,
+  annual: 1 / 12,
 };
 
 // What one plan is worth per month, normalized across cadences so weekly and

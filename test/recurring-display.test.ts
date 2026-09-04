@@ -63,11 +63,14 @@ describe('upcoming visits rail', () => {
 });
 
 describe('a plan normalized to a month', () => {
-  // Weekly and monthly plans sit in the same column, so they have to be comparable.
+  // Weekly, monthly, quarterly, semi-annual, and annual plans sit in the same column, so they have to be comparable.
   it('scales by cadence', () => {
     expect(planMonthlyValue(60, 'weekly')).toBeCloseTo(260, 5);
     expect(planMonthlyValue(60, 'biweekly')).toBeCloseTo(130, 5);
     expect(planMonthlyValue(60, 'monthly')).toBe(60);
+    expect(planMonthlyValue(300, 'quarterly')).toBeCloseTo(100, 5);
+    expect(planMonthlyValue(600, 'semi-annual')).toBeCloseTo(100, 5);
+    expect(planMonthlyValue(1200, 'annual')).toBeCloseTo(100, 5);
   });
 
   it('treats a missing amount as nothing, not NaN', () => {

@@ -377,15 +377,7 @@ export async function listMembershipTiers(
     .order('created_at', { ascending: true });
 
   if (error || !data || data.length === 0) {
-    // Return virtual default tiers if not yet customized/migrated
-    const defaults = DEFAULT_MEMBERSHIP_TIERS.hvac.concat(DEFAULT_MEMBERSHIP_TIERS.general.slice(0, 1));
-    return defaults.map((item, idx) => ({
-      ...item,
-      id: `default_tier_${idx + 1}`,
-      accountId,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    }));
+    return [];
   }
 
   return data.map(shapeMembershipTier);
@@ -396,9 +388,13 @@ export async function getMembershipTier(
   accountId: string,
   tierId: string,
 ): Promise<MembershipTier | null> {
-  if (tierId.startsWith('default_tier_')) {
-    const list = await listMembershipTiers(supabase, accountId);
-    return list.find((t) => t.id === tierId) ?? null;
+  if (!tierId || tierId.startsWith('default_tier_')) {
+    return null;
+  }
+
+  // Validate UUID to prevent Postgres 22P02 syntax errors
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tierId)) {
+    return null;
   }
 
   const { data, error } = await supabase

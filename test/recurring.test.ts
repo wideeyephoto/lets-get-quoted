@@ -231,8 +231,8 @@ describe('nextFutureRunDate — resuming a plan that was paused', () => {
     expect(nextFutureRunDate('2026-09-10', 'weekly', '2026-08-01')).toBe('2026-09-10');
   });
 
-  it('counts today as future — a visit due today has not been missed', () => {
-    expect(nextFutureRunDate('2026-08-01', 'weekly', '2026-08-01')).toBe('2026-08-01');
+  it('enforces a strictly-future boundary — a date landing on today is advanced so sweep does not double-bill', () => {
+    expect(nextFutureRunDate('2026-08-01', 'weekly', '2026-08-01')).toBe('2026-08-08');
   });
 
   it('keeps the anchor while catching up, so a month-end plan lands month-end', () => {
@@ -241,7 +241,7 @@ describe('nextFutureRunDate — resuming a plan that was paused', () => {
 
   it('never returns a past date, even for a plan dormant for years', () => {
     const result = nextFutureRunDate('2019-01-01', 'weekly', '2026-08-01', null, 5);
-    expect(result >= '2026-08-01').toBe(true);
+    expect(result > '2026-08-01').toBe(true);
   });
 });
 

@@ -23,6 +23,9 @@ const CADENCE_MARK: Record<RecurringPlan['frequency'], string> = {
   weekly: '7d',
   biweekly: '14d',
   monthly: '1mo',
+  quarterly: '3mo',
+  'semi-annual': '6mo',
+  annual: '1yr',
 };
 
 export default function RecurringPlanCard({

@@ -18,6 +18,7 @@ import { occurrenceMinutes } from '@/lib/schedule-timeline';
 import { monthKeyOf, parseDateKey, shiftDateKey } from '@/lib/schedule-agenda';
 import { setCalendarViewAction, setCalendarWeekendAction } from '../view-actions';
 import type { CalendarView, WeekendDays } from '@/lib/dashboard-views';
+import type { RecurringFrequency } from '@/lib/recurring';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
@@ -305,7 +306,7 @@ export type PlannedVisit = {
   clientName: string;
   dateKey: string;
   amount: number;
-  frequency: 'weekly' | 'biweekly' | 'monthly';
+  frequency: RecurringFrequency;
   cycle: number;
   remainingAfter: number | null;
 };
@@ -314,6 +315,9 @@ const CADENCE_WORD: Record<PlannedVisit['frequency'], string> = {
   weekly: 'weekly',
   biweekly: 'every 2 weeks',
   monthly: 'monthly',
+  quarterly: 'quarterly',
+  'semi-annual': 'every 6 months',
+  annual: 'annually',
 };
 
 // Says what it is AND that it isn't booked yet — the chip is visibly different,

@@ -186,7 +186,13 @@ export function mostRecentServiceAgeDays(services: Service[]): number | null {
   return Math.max(0, Math.floor((Date.now() - newest) / DAY));
 }
 
-export type ServiceImportRow = { name: string | null; description: string | null; unitPrice: number; unit: string | null };
+export type ServiceImportRow = {
+  name: string | null;
+  description: string | null;
+  unitPrice: number;
+  unitCost?: number | null;
+  unit: string | null;
+};
 
 // Bulk-import price-book services, deduped by name (case-insensitive) against
 // existing services AND within the file, so a re-import is safe. New rows sort
@@ -204,7 +210,15 @@ export async function importServices(
     maxSort = Math.max(maxSort, Number(s.sort_order) || 0);
   }
 
-  const toInsert: Array<{ account_id: string; name: string; description: string | null; unit_price: number; unit: string; sort_order: number }> = [];
+  const toInsert: Array<{
+    account_id: string;
+    name: string;
+    description: string | null;
+    unit_price: number;
+    unit_cost: number | null;
+    unit: string;
+    sort_order: number;
+  }> = [];
   let duplicates = 0;
   let skipped = 0;
 
@@ -225,6 +239,7 @@ export async function importServices(
       name,
       description: row.description?.trim() || null,
       unit_price: Math.max(0, Math.round((Number(row.unitPrice) || 0) * 100) / 100),
+      unit_cost: cleanUnitCost(row.unitCost),
       unit: cleanUnit(row.unit),
       sort_order: (maxSort += 1),
     });

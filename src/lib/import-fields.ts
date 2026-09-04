@@ -14,7 +14,8 @@ export const CLIENT_FIELDS: ImportField[] = [
 
 export const SERVICE_FIELDS: ImportField[] = [
   { key: 'name', label: 'Name', keywords: ['name', 'service', 'item', 'product', 'title'], hint: 'the service or product name', required: true },
-  { key: 'unit_price', label: 'Price', keywords: ['unit price', 'price', 'rate', 'amount', 'cost', 'fee', 'charge'], hint: 'the price per unit in US dollars' },
+  { key: 'unit_price', label: 'Price', keywords: ['unit price', 'price', 'rate', 'amount', 'fee', 'charge', 'retail', 'sales price'], hint: 'the price per unit in US dollars' },
+  { key: 'unit_cost', label: 'Your cost', keywords: ['unit cost', 'your cost', 'cost', 'expense', 'wholesale', 'cogs', 'contractor cost', 'material cost'], hint: 'what the service costs you (materials + labor)' },
   { key: 'unit', label: 'Unit', keywords: ['unit', 'uom', 'per', 'measure'], hint: 'the unit sold in — one of each, hour, sqft, visit, job' },
   { key: 'description', label: 'Description', keywords: ['description', 'desc', 'details', 'notes'], hint: 'a longer description of the service' },
 ];

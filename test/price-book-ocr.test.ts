@@ -35,6 +35,17 @@ describe('priceBookItemsToCsv', () => {
     const csv = priceBookItemsToCsv(items);
     expect(csv).toBe('Name,Price,Unit,Description\nCustom Fabrication,,each,');
   });
+
+  it('formats CSV with Cost column when unit_cost is present', () => {
+    const items: PriceBookOcrItem[] = [
+      { name: '50-Gal Water Heater Install', unit_price: 1850, unit_cost: 850, unit: 'each', description: 'Tank + haul-away' },
+    ];
+    const csv = priceBookItemsToCsv(items);
+    expect(csv).toBe(
+      'Name,Price,Cost,Unit,Description\n' +
+      '50-Gal Water Heater Install,1850,850,each,Tank + haul-away'
+    );
+  });
 });
 
 describe('normalizePriceBookOcr', () => {
@@ -71,6 +82,25 @@ describe('normalizePriceBookOcr', () => {
     expect(result.items[4].unit).toBe('each');
 
     expect(result.rawCsv).toContain('Emergency Dispatch,175,visit,After-hours triage');
+  });
+
+  it('normalizes unit_cost when present in OCR output', () => {
+    const raw = {
+      items: [
+        { name: 'Water Heater Replacement', unit_price: '$1,850.00', unit_cost: '$850.00', unit: 'each', description: '50-gal tank' },
+      ],
+      confidence: 0.98,
+    };
+
+    const result = normalizePriceBookOcr(raw);
+    expect(result.items[0]).toEqual({
+      name: 'Water Heater Replacement',
+      unit_price: 1850,
+      unit_cost: 850,
+      unit: 'each',
+      description: '50-gal tank',
+    });
+    expect(result.rawCsv).toBe('Name,Price,Cost,Unit,Description\nWater Heater Replacement,1850,850,each,50-gal tank');
   });
 
   it('handles empty or malformed input safely', () => {

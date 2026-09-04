@@ -31,6 +31,7 @@ export default async function ImportServicesPage() {
         fields={[
           { key: 'name', label: 'Name' },
           { key: 'unit_price', label: 'Price' },
+          { key: 'unit_cost', label: 'Your cost' },
           { key: 'unit', label: 'Unit' },
           { key: 'description', label: 'Description' },
         ]}
@@ -51,12 +52,12 @@ export default async function ImportServicesPage() {
         </div>
         <ul className="workspace-card-copy" style={{ margin: 0, paddingLeft: '1.1rem', lineHeight: 1.7 }}>
           <li>
-            <strong>📷 Photos &amp; Scans (AI OCR):</strong> Snap a photo or upload an image (<strong>.jpg</strong>, <strong>.png</strong>, <strong>.webp</strong>) of your printed price list, laminated truck sheet, or supplier catalog. Our vision model transcribes every service item, unit price, and description automatically.
+            <strong>📷 Photos &amp; Scans (AI OCR):</strong> Snap a photo or upload an image (<strong>.jpg</strong>, <strong>.png</strong>, <strong>.webp</strong>) of your printed price list, laminated truck sheet, or supplier catalog. Our vision model transcribes every service item, unit price, cost, and description automatically.
           </li>
           <li>
             <strong>📊 Spreadsheets:</strong> Upload a <strong>.csv</strong> or <strong>Excel</strong> file (<strong>.xlsx</strong>), or paste raw rows — any column names or order.
           </li>
-          <li>We match <strong>name</strong>, <strong>price</strong>, <strong>unit</strong>, and <strong>description</strong> automatically, and you can reassign any column before importing.</li>
+          <li>We match <strong>name</strong>, <strong>price</strong>, <strong>cost</strong>, <strong>unit</strong>, and <strong>description</strong> automatically, and you can reassign any column before importing.</li>
           <li>Units map to one of <em>each</em>, <em>hour</em>, <em>sqft</em>, <em>visit</em>, or <em>job</em> (anything else defaults to <em>each</em>).</li>
           <li>Each service needs a name — rows without one are skipped.</li>
           <li>Services already in your price book (same name) are skipped, so re-importing is safe.</li>

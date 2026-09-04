@@ -2,7 +2,6 @@ import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { listServices, SERVICE_UNITS, type Service } from '@/lib/services';
 import { formatUnitPrice, glyphsForServices, priceBookStats, unitSuffix } from '@/lib/price-book';
-import { listTradeStarterCatalogs } from '@/lib/trade-catalogs';
 import TradeCatalogHub from './TradeCatalogHub';
 import ServiceIcon from '@/lib/templates/ServiceIcon';
 import PriceBookStats from '@/components/price-book-stats';
@@ -26,7 +25,6 @@ export default async function ServicesPage({
   const searchParams = (await searchParamsPromise) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read');
   const services = await listServices(supabase, accountId);
-  const starterCatalogs = listTradeStarterCatalogs();
 
   const active = services.filter((s) => s.active);
   const filter = searchParams.status === 'archived' ? 'archived' : 'active';
@@ -68,7 +66,7 @@ export default async function ServicesPage({
         {stats ? <PriceBookStats stats={stats} /> : null}
       </section>
 
-      <TradeCatalogHub onLoadStarterPack={loadTradeStarterCatalogAction} />
+      <TradeCatalogHub onLoadStarterPack={loadTradeStarterCatalogAction} defaultOpen={services.length === 0} />
 
       <section className="panel workspace-section-card">
         <div className="section-heading workspace-section-heading compact-heading">
@@ -142,53 +140,6 @@ export default async function ServicesPage({
         )}
       </section>
 
-      {services.length > 0 ? (
-        <details className="panel workspace-section-card workspace-details">
-          <summary className="workspace-details-summary">
-            <span className="btn secondary">⚡ Add Trade Starter Packs</span>
-            <span className="workspace-details-copy">Add more pre-built trade services without overwriting existing ones.</span>
-          </summary>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))',
-              gap: '1rem',
-              marginTop: '1rem',
-            }}
-          >
-            {starterCatalogs.map((cat) => (
-              <div
-                key={cat.id}
-                style={{
-                  padding: '1rem',
-                  border: '1px solid var(--border-color, rgba(0,0,0,0.08))',
-                  borderRadius: '8px',
-                  background: 'var(--surface-subtle, rgba(0,0,0,0.02))',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  gap: '0.5rem',
-                }}
-              >
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.25rem' }}>
-                    <span>{cat.icon}</span>
-                    <strong>{cat.name}</strong>
-                  </div>
-                  <small style={{ color: 'var(--muted)' }}>{cat.items.length} items</small>
-                </div>
-                <form action={loadTradeStarterCatalogAction}>
-                  <input type="hidden" name="tradeId" value={cat.id} />
-                  <SaveButton pendingLabel="Loading…" savedLabel="Loaded ✓" className="btn secondary">
-                    + Load {cat.name}
-                  </SaveButton>
-                </form>
-              </div>
-            ))}
-          </div>
-        </details>
-      ) : null}
-
       <details className="panel workspace-section-card workspace-details" open={services.length === 0}>
         <summary className="workspace-details-summary">
           <span className="btn primary">+ Add a custom service</span>
@@ -228,7 +179,7 @@ function ServiceFields({ prefix, service }: { prefix: string; service?: Service 
           />
           {/* Leaving it blank is a real answer. An un-costed line shows margin
               as "—" rather than as 100%, which is what a $0 cost would imply. */}
-          <small className="field-hint">Materials and labour this line costs you. Leave blank if you don&apos;t know yet.</small>
+          <small className="field-hint">Materials and labor this line costs you. Leave blank if you don&apos;t know yet.</small>
         </div>
         <div className="field">
           <label htmlFor={`${prefix}-unit`}>Per</label>

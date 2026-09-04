@@ -66,6 +66,13 @@ export async function runMigration(items: MigrationRunItem[]): Promise<Migration
   return results;
 }
 
+function parseOptionalMoney(value: string | null | undefined): number | null {
+  const s = String(value ?? '').trim();
+  if (!s) return null;
+  const n = Number(s.replace(/[^0-9.\-]/g, ''));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : null;
+}
+
 async function commitOne(
   supabase: SupabaseClient,
   accountId: string,
@@ -84,8 +91,19 @@ async function commitOne(
     const r = await importClients(supabase, accountId, rows.map((x) => ({ name: x.name, phone: x.phone, email: x.email, address: x.address })));
     return { name, entity, ...r };
   }
+
   if (entity === 'services') {
-    const r = await importServices(supabase, accountId, rows.map((x) => ({ name: x.name, description: x.description, unitPrice: parseMoney(x.unit_price), unit: x.unit })));
+    const r = await importServices(
+      supabase,
+      accountId,
+      rows.map((x) => ({
+        name: x.name,
+        description: x.description,
+        unitPrice: parseMoney(x.unit_price),
+        unitCost: parseOptionalMoney(x.unit_cost),
+        unit: x.unit,
+      })),
+    );
     return { name, entity, ...r };
   }
   if (entity === 'jobs') {

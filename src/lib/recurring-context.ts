@@ -96,11 +96,11 @@ export async function planContexts(
     jobIds.length
       ? supabase
           .from('payments')
-          .select('id, job_id, recurring_plan_id, amount, refunded_amount, status, dunning_state, created_at')
+          .select('id, job_id, recurring_plan_id, amount, refunded_amount, status, dunning_state, requested_at')
           .eq('account_id', accountId)
           .in('job_id', jobIds)
-          .order('created_at', { ascending: false })
-      : Promise.resolve({ data: [] as { id: string; job_id: string; recurring_plan_id?: string | null; amount: number; refunded_amount: number; status: string; dunning_state?: string | null; created_at?: string }[] }),
+          .order('requested_at', { ascending: false })
+      : Promise.resolve({ data: [] as { id: string; job_id: string; recurring_plan_id?: string | null; amount: number; refunded_amount: number; status: string; dunning_state?: string | null; requested_at?: string }[] }),
   ]);
 
   const crewName = new Map<string, string>();
