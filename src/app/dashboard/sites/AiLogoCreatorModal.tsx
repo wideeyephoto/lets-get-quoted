@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition } from 'react';
+import { useState, useMemo, useTransition, useEffect } from 'react';
 import Image from 'next/image';
 import {
   generateLogoConcepts,
@@ -15,6 +15,551 @@ import {
 import { AI_LOGO_DIRECTIONS, type AiLogoDirection } from '@/lib/logo-image-prompt';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
 import { generateAiLogoAction, generateLogoTaglinesAction, type GeneratedAiLogo } from './actions';
+
+const CREATIVE_PHASES = [
+  {
+    step: '01',
+    title: 'Deconstructing brand brief & trade symbolism',
+    detail: 'Translating industry marks, negative space cues, and custom brand personality…',
+  },
+  {
+    step: '02',
+    title: 'Forging geometric silhouette & emblem balance',
+    detail: 'Iterating bold marks calibrated for work trucks, yard signs, and mobile headers…',
+  },
+  {
+    step: '03',
+    title: 'Harmonizing bespoke typography & hierarchy',
+    detail: 'Refining letterforms, kerning, and visual weight for premium contractor branding…',
+  },
+  {
+    step: '04',
+    title: 'Rendering high-resolution vector geometry & palette',
+    detail: 'Infusing primary accents and balanced contrast into production artwork…',
+  },
+  {
+    step: '05',
+    title: 'Resolving transparent alpha channel & production asset',
+    detail: 'Finalizing clean transparent edges for seamless dark and light background use…',
+  },
+];
+
+function formatElapsed(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
+const AI_LOGO_STUDIO_STYLES = `
+@keyframes aiLogoSpinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes aiLogoSpinReverse {
+  from { transform: rotate(360deg); }
+  to { transform: rotate(0deg); }
+}
+
+@keyframes aiLogoPulseGlow {
+  0%, 100% {
+    opacity: 0.42;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(1.1);
+  }
+}
+
+@keyframes aiLogoSparkPulse {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 0.95;
+    filter: drop-shadow(0 0 8px rgba(168,85,247,0.5));
+  }
+  50% {
+    transform: scale(1.18) rotate(10deg);
+    opacity: 1;
+    filter: drop-shadow(0 0 20px rgba(168,85,247,0.85));
+  }
+}
+
+@keyframes aiLogoShimmerBar {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(250%);
+  }
+}
+
+@keyframes aiLogoDotBlink {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.3; transform: scale(0.8); }
+}
+`;
+
+function AiArtDirectorLoadingState({
+  variant = 'hero',
+  elapsedSeconds,
+}: {
+  variant?: 'hero' | 'card';
+  elapsedSeconds: number;
+}) {
+  const phaseIndex = Math.min(CREATIVE_PHASES.length - 1, Math.floor(elapsedSeconds / 22));
+  const currentPhase = CREATIVE_PHASES[phaseIndex];
+
+  const progressPercent = Math.min(
+    96,
+    Math.max(
+      8,
+      elapsedSeconds < 20
+        ? Math.round(8 + (elapsedSeconds / 20) * 32)
+        : elapsedSeconds < 60
+          ? Math.round(40 + ((elapsedSeconds - 20) / 40) * 35)
+          : Math.round(75 + ((elapsedSeconds - 60) / 60) * 21)
+    )
+  );
+
+  const milestones = [
+    { label: 'Bespoke Concept', icon: '✦', active: phaseIndex >= 0 },
+    { label: 'Vector Silhouette', icon: '◬', active: phaseIndex >= 1 },
+    { label: 'Brand Typography', icon: 'Aa', active: phaseIndex >= 2 },
+    { label: 'Transparent PNG', icon: '❖', active: phaseIndex >= 3 },
+  ];
+
+  if (variant === 'card') {
+    return (
+      <div
+        style={{
+          borderRadius: '16px',
+          padding: '1.25rem 1.4rem',
+          background:
+            'radial-gradient(circle at 18% 22%, rgba(124, 58, 237, 0.32), transparent 45%), linear-gradient(145deg, #090d16 0%, #1e1b4b 60%, #172554 100%)',
+          color: '#ffffff',
+          boxShadow: '0 16px 36px rgba(15, 23, 42, 0.28)',
+          border: '1px solid rgba(167, 139, 250, 0.28)',
+          position: 'relative',
+          overflow: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '1rem',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: '1rem' }}>
+          {/* Orbital Spinner Emblem */}
+          <div
+            style={{
+              position: 'relative',
+              width: '52px',
+              height: '52px',
+              flexShrink: 0,
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: '-6px',
+                borderRadius: '50%',
+                background: 'radial-gradient(circle, rgba(168,85,247,0.5), transparent 70%)',
+                animation: 'aiLogoPulseGlow 2.8s ease-in-out infinite',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                borderRadius: '50%',
+                border: '2px dashed rgba(196,181,253,0.5)',
+                animation: 'aiLogoSpinSlow 12s linear infinite',
+              }}
+            />
+            <div
+              style={{
+                position: 'absolute',
+                inset: '4px',
+                borderRadius: '50%',
+                background: 'linear-gradient(135deg, #7c3aed, #4338ca)',
+                border: '1px solid rgba(255,255,255,0.25)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: '0 6px 16px rgba(109,40,217,0.4)',
+              }}
+            >
+              <span
+                style={{
+                  fontSize: '1.35rem',
+                  color: '#ffffff',
+                  animation: 'aiLogoSparkPulse 2.4s ease-in-out infinite',
+                }}
+              >
+                ✦
+              </span>
+            </div>
+          </div>
+
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.35rem' }}>
+              <strong style={{ fontSize: '1.05rem', fontWeight: 900, color: '#ffffff' }}>
+                Your AI art director is building a fresh identity
+              </strong>
+              <span
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '2px 8px',
+                  borderRadius: '999px',
+                  background: 'rgba(167,139,250,0.18)',
+                  border: '1px solid rgba(196,181,253,0.3)',
+                  color: '#c4b5fd',
+                  fontSize: '0.7rem',
+                  fontWeight: 800,
+                }}
+              >
+                <span
+                  style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    background: '#4ade80',
+                    animation: 'aiLogoDotBlink 1.4s ease-in-out infinite',
+                  }}
+                />
+                ⏱ {formatElapsed(elapsedSeconds)}
+              </span>
+            </div>
+            <p style={{ margin: 0, color: '#c4b5fd', fontSize: '0.8rem', lineHeight: 1.5 }}>
+              Concept, silhouette, typography, and transparent production artwork are being resolved together. This can take up to two minutes.
+            </p>
+          </div>
+        </div>
+
+        {/* Progress Bar & Current Phase */}
+        <div style={{ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', padding: '0.75rem 0.9rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem', fontSize: '0.72rem' }}>
+            <span style={{ color: '#e2e8f0', fontWeight: 700 }}>
+              <span style={{ color: '#a78bfa', fontWeight: 800, marginRight: '0.35rem' }}>PHASE {currentPhase.step}</span>
+              {currentPhase.title}
+            </span>
+            <span style={{ color: '#94a3b8', fontWeight: 700 }}>{progressPercent}%</span>
+          </div>
+
+          <div
+            style={{
+              height: '6px',
+              borderRadius: '999px',
+              background: 'rgba(255,255,255,0.1)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${progressPercent}%`,
+                background: 'linear-gradient(90deg, #7c3aed, #6366f1, #38bdf8)',
+                borderRadius: '999px',
+                position: 'relative',
+                transition: 'width 0.8s ease',
+              }}
+            >
+              <div
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
+                  animation: 'aiLogoShimmerBar 1.8s infinite',
+                }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Milestones */}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.45rem' }}>
+          {milestones.map((m) => (
+            <span
+              key={m.label}
+              style={{
+                padding: '0.25rem 0.6rem',
+                borderRadius: '999px',
+                border: m.active ? '1px solid rgba(196,181,253,0.45)' : '1px solid rgba(255,255,255,0.1)',
+                background: m.active ? 'rgba(124,58,237,0.24)' : 'rgba(255,255,255,0.03)',
+                color: m.active ? '#e0e7ff' : '#64748b',
+                fontSize: '0.68rem',
+                fontWeight: 700,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.3rem',
+                transition: 'all 0.3s ease',
+              }}
+            >
+              <span style={{ color: m.active ? '#a78bfa' : '#475569' }}>{m.icon}</span>
+              {m.label}
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  // Hero Variant (when aiConcepts.length === 0)
+  return (
+    <div
+      style={{
+        minHeight: '520px',
+        borderRadius: '20px',
+        padding: '3rem 1.5rem',
+        background:
+          'radial-gradient(circle at 50% 25%, rgba(124, 58, 237, 0.32), transparent 48%), radial-gradient(circle at 80% 85%, rgba(37, 99, 235, 0.22), transparent 44%), linear-gradient(155deg, #090d16 0%, #17153a 52%, #0e1e38 100%)',
+        color: '#ffffff',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        textAlign: 'center',
+        boxShadow: '0 24px 60px rgba(10, 13, 26, 0.45)',
+        border: '1px solid rgba(167, 139, 250, 0.22)',
+        position: 'relative',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Studio Emblem / Ring */}
+      <div
+        style={{
+          position: 'relative',
+          width: '108px',
+          height: '108px',
+          marginBottom: '1.75rem',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: '-18px',
+            borderRadius: '50%',
+            background: 'radial-gradient(circle, rgba(168,85,247,0.55), rgba(79,70,229,0.2) 60%, transparent 75%)',
+            animation: 'aiLogoPulseGlow 3s ease-in-out infinite',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: '50%',
+            border: '2px dashed rgba(196,181,253,0.45)',
+            animation: 'aiLogoSpinSlow 18s linear infinite',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: '6px',
+            borderRadius: '50%',
+            border: '2px solid transparent',
+            borderTopColor: '#c084fc',
+            borderRightColor: '#60a5fa',
+            animation: 'aiLogoSpinReverse 8s linear infinite',
+          }}
+        />
+        <div
+          style={{
+            position: 'absolute',
+            inset: '12px',
+            borderRadius: '50%',
+            background: 'linear-gradient(135deg, rgba(124,58,237,0.9), rgba(67,56,202,0.95))',
+            backdropFilter: 'blur(10px)',
+            border: '1px solid rgba(255,255,255,0.28)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 8px 24px rgba(79,70,229,0.5)',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '2.1rem',
+              color: '#ffffff',
+              animation: 'aiLogoSparkPulse 2.4s ease-in-out infinite',
+            }}
+          >
+            ✦
+          </span>
+        </div>
+      </div>
+
+      {/* Eyebrow */}
+      <div
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '0.45rem',
+          padding: '0.35rem 0.85rem',
+          borderRadius: '999px',
+          background: 'rgba(167,139,250,0.12)',
+          border: '1px solid rgba(196,181,253,0.25)',
+          color: '#c4b5fd',
+          fontSize: '0.72rem',
+          fontWeight: 800,
+          letterSpacing: '0.12em',
+          textTransform: 'uppercase',
+          marginBottom: '1rem',
+        }}
+      >
+        <span
+          style={{
+            width: '7px',
+            height: '7px',
+            borderRadius: '50%',
+            background: '#4ade80',
+            animation: 'aiLogoDotBlink 1.4s ease-in-out infinite',
+          }}
+        />
+        STUDIO IN SESSION • RESOLVING BRAND IDENTITY
+      </div>
+
+      {/* Required Exact Headline */}
+      <h3
+        style={{
+          maxWidth: '640px',
+          margin: '0 0 0.75rem',
+          fontSize: 'clamp(1.5rem, 3.2vw, 2.15rem)',
+          fontWeight: 900,
+          lineHeight: 1.18,
+          letterSpacing: '-0.03em',
+          color: '#ffffff',
+        }}
+      >
+        Your AI art director is building a fresh identity
+      </h3>
+
+      {/* Required Exact Description */}
+      <p
+        style={{
+          maxWidth: '560px',
+          margin: '0 0 1.75rem',
+          color: '#cbd5e1',
+          fontSize: '0.92rem',
+          lineHeight: 1.65,
+        }}
+      >
+        Concept, silhouette, typography, and transparent production artwork are being resolved together. This can take up to two minutes.
+      </p>
+
+      {/* Progress Track */}
+      <div style={{ width: '100%', maxWidth: '480px', marginBottom: '1.25rem' }}>
+        <div
+          style={{
+            height: '8px',
+            borderRadius: '999px',
+            background: 'rgba(255,255,255,0.1)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+        >
+          <div
+            style={{
+              height: '100%',
+              width: `${progressPercent}%`,
+              background: 'linear-gradient(90deg, #7c3aed, #6366f1, #38bdf8)',
+              borderRadius: '999px',
+              position: 'relative',
+              transition: 'width 0.8s ease',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.7) 50%, transparent 100%)',
+                animation: 'aiLogoShimmerBar 1.8s infinite',
+              }}
+            />
+          </div>
+        </div>
+
+        <div
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '0.5rem',
+            fontSize: '0.74rem',
+            color: '#94a3b8',
+          }}
+        >
+          <span>⏱ {formatElapsed(elapsedSeconds)} elapsed</span>
+          <span style={{ color: '#c4b5fd', fontWeight: 700 }}>{progressPercent}% resolved</span>
+        </div>
+      </div>
+
+      {/* Active Phase Card */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: '520px',
+          padding: '0.9rem 1.2rem',
+          borderRadius: '12px',
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          marginBottom: '1.5rem',
+          textAlign: 'left',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.25rem' }}>
+          <span
+            style={{
+              background: '#7c3aed',
+              color: '#ffffff',
+              padding: '2px 7px',
+              borderRadius: '5px',
+              fontSize: '0.66rem',
+              fontWeight: 800,
+              letterSpacing: '0.05em',
+            }}
+          >
+            PHASE {currentPhase.step}
+          </span>
+          <span style={{ color: '#ffffff', fontSize: '0.84rem', fontWeight: 700 }}>
+            {currentPhase.title}
+          </span>
+        </div>
+        <div style={{ color: '#94a3b8', fontSize: '0.75rem', lineHeight: 1.45 }}>
+          {currentPhase.detail}
+        </div>
+      </div>
+
+      {/* Milestone Badges */}
+      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.55rem', maxWidth: '580px' }}>
+        {milestones.map((m) => (
+          <span
+            key={m.label}
+            style={{
+              padding: '0.4rem 0.8rem',
+              borderRadius: '999px',
+              border: m.active ? '1px solid rgba(196,181,253,0.45)' : '1px solid rgba(255,255,255,0.1)',
+              background: m.active ? 'rgba(124,58,237,0.22)' : 'rgba(255,255,255,0.04)',
+              color: m.active ? '#e0e7ff' : '#64748b',
+              fontSize: '0.74rem',
+              fontWeight: 700,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '0.35rem',
+              transition: 'all 0.3s ease',
+            }}
+          >
+            <span style={{ color: m.active ? '#a78bfa' : '#475569', fontSize: '0.75rem' }}>{m.icon}</span>
+            {m.label}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 type Props = {
   open: boolean;
@@ -64,6 +609,19 @@ export default function AiLogoCreatorModal({
   const [isGeneratingAi, startAiTransition] = useTransition();
   const [isGeneratingImage, startImageTransition] = useTransition();
   const [downloadingKit, setDownloadingKit] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  useEffect(() => {
+    if (!isGeneratingImage) {
+      setElapsedSeconds(0);
+      return;
+    }
+    const startedAt = Date.now();
+    const interval = setInterval(() => {
+      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [isGeneratingImage]);
 
   const concepts = useMemo(() => {
     return generateLogoConcepts({
@@ -315,6 +873,7 @@ export default function AiLogoCreatorModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
+        <style>{AI_LOGO_STUDIO_STYLES}</style>
         {/* Header */}
         <div
           style={{
@@ -619,15 +1178,28 @@ export default function AiLogoCreatorModal({
                     padding: '0.7rem 0.9rem',
                     border: 'none',
                     borderRadius: '9px',
-                    background: isGeneratingImage ? '#a78bfa' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                    background: isGeneratingImage ? '#6d28d9' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
                     color: '#ffffff',
                     fontWeight: 900,
                     fontSize: '0.86rem',
                     cursor: isGeneratingImage ? 'wait' : 'pointer',
                     boxShadow: '0 7px 18px rgba(109,40,217,0.24)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.45rem',
                   }}
                 >
-                  {isGeneratingImage ? 'Creating an original direction…' : aiConcepts.length ? '✦ Generate Another Concept' : '✦ Generate My First AI Logo'}
+                  {isGeneratingImage ? (
+                    <>
+                      <span style={{ display: 'inline-block', animation: 'aiLogoSpinSlow 2.5s linear infinite' }}>✦</span>
+                      <span>Building identity ({formatElapsed(elapsedSeconds)})…</span>
+                    </>
+                  ) : aiConcepts.length ? (
+                    '✦ Generate Another Concept'
+                  ) : (
+                    '✦ Generate My First AI Logo'
+                  )}
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                   {typeof aiCredits === 'number' && (
@@ -914,15 +1486,13 @@ export default function AiLogoCreatorModal({
                     </div>
                   )}
 
-                  {isGeneratingImage && (
-                    <div style={{ minHeight: '180px', borderRadius: '16px', padding: '1.5rem', background: 'radial-gradient(circle at 20% 20%, rgba(167,139,250,0.42), transparent 40%), linear-gradient(135deg, #111827, #312e81)', color: '#ffffff', display: 'flex', alignItems: 'center', gap: '1rem', boxShadow: '0 18px 40px rgba(49,46,129,0.22)' }}>
-                      <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.5rem' }}>✦</div>
-                      <div>
-                        <strong style={{ display: 'block', fontSize: '1.05rem', marginBottom: '0.35rem' }}>Your AI art director is building a fresh identity</strong>
-                        <span style={{ color: '#c4b5fd', fontSize: '0.8rem', lineHeight: 1.5 }}>Concept, silhouette, typography, and transparent production artwork are being resolved together. This can take up to two minutes.</span>
-                      </div>
-                    </div>
-                  )}
+                  {isGeneratingImage && aiConcepts.length === 0 ? (
+                    <AiArtDirectorLoadingState variant="hero" elapsedSeconds={elapsedSeconds} />
+                  ) : null}
+
+                  {isGeneratingImage && aiConcepts.length > 0 ? (
+                    <AiArtDirectorLoadingState variant="card" elapsedSeconds={elapsedSeconds} />
+                  ) : null}
 
                   {aiConcepts.length === 0 && !isGeneratingImage ? (
                     <div
@@ -957,13 +1527,13 @@ export default function AiLogoCreatorModal({
                       <button
                         type="button"
                         onClick={handleGenerateAiLogo}
-                        disabled={!name.trim()}
+                        disabled={!name.trim() || isGeneratingImage}
                         style={{ marginTop: '1.75rem', padding: '0.8rem 1.15rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: '#ffffff', color: '#4c1d95', fontSize: '0.88rem', fontWeight: 900, cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.22)' }}
                       >
                         ✦ Generate {name.trim() ? `${name.trim()}'s` : 'My'} First Concept
                       </button>
                     </div>
-                  ) : (
+                  ) : aiConcepts.length > 0 ? (
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '1rem' }}>
                       {aiConcepts.map((logo, index) => {
                         const direction = AI_LOGO_DIRECTIONS.find((item) => item.id === logo.direction);
@@ -998,7 +1568,7 @@ export default function AiLogoCreatorModal({
                         );
                       })}
                     </div>
-                  )}
+                  ) : null}
 
                   {aiConcepts.length > 0 && (
                     <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', border: '1px solid #dbeafe', background: '#eff6ff', color: '#1e40af', fontSize: '0.72rem', lineHeight: 1.5 }}>

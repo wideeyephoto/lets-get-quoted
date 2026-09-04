@@ -71,6 +71,31 @@ describe('Website Builder AI Credits Display', () => {
     expect(MODAL_CODE).toContain('AI {aiCredits === 1 ? \'credit\' : \'credits\'} available');
   });
 
+  it('renders animated studio loading state with exact copy and phase milestones in AiLogoCreatorModal.tsx', () => {
+    // Exact user-specified copy
+    expect(MODAL_CODE).toContain('Your AI art director is building a fresh identity');
+    expect(MODAL_CODE).toContain(
+      'Concept, silhouette, typography, and transparent production artwork are being resolved together. This can take up to two minutes.'
+    );
+
+    // Studio animations & keyframes
+    expect(MODAL_CODE).toContain('aiLogoPulseGlow');
+    expect(MODAL_CODE).toContain('aiLogoSpinSlow');
+    expect(MODAL_CODE).toContain('aiLogoSparkPulse');
+    expect(MODAL_CODE).toContain('aiLogoShimmerBar');
+
+    // Live elapsed timer & phase tracking
+    expect(MODAL_CODE).toContain('formatElapsed');
+    expect(MODAL_CODE).toContain('CREATIVE_PHASES');
+    expect(MODAL_CODE).toContain('AiArtDirectorLoadingState');
+
+    // Milestones
+    expect(MODAL_CODE).toContain('Bespoke Concept');
+    expect(MODAL_CODE).toContain('Vector Silhouette');
+    expect(MODAL_CODE).toContain('Brand Typography');
+    expect(MODAL_CODE).toContain('Transparent PNG');
+  });
+
   it('includes complete CSS classes for AI credit indicators and top-up prompts', () => {
     expect(CSS_CODE).toContain('.aiCreditChip');
     expect(CSS_CODE).toContain('.aiCreditChipLow');
