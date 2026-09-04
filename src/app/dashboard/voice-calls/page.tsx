@@ -5,6 +5,7 @@ import {
   formatDispositionLabel,
   formatOutcomeLabel,
   loadVoiceWorkspaceQueue,
+  parseVoiceCallSummary,
   type VoiceCallOutcome,
   type VoiceCallDisposition,
 } from '@/lib/voice/call-workspace';
@@ -434,6 +435,7 @@ export default async function VoiceCallsPage({
                 {items.map((call) => {
                   const isUrgent = call.workflow.urgency === 'urgent' || call.workflow.urgency === 'emergency';
                   const isUnreviewed = call.workflow.disposition === 'unreviewed';
+                  const parsed = parseVoiceCallSummary(call.summary);
 
                   let outcomeBadgeClass = styles.badgeAi;
                   if (call.outcome === 'transfer_attempted' || call.outcome === 'transferred_and_answered' || call.outcome === 'transferred') {
@@ -450,8 +452,13 @@ export default async function VoiceCallsPage({
                       <div className={styles.cardHead}>
                         <div className={styles.callerGroup}>
                           <span className={styles.callerNumber}>
-                            {call.callerNumber ?? 'Unknown Caller'}
+                            {parsed.callerName ?? (call.callerNumber ?? 'Unknown Caller')}
                           </span>
+                          {parsed.callerName && call.callerNumber ? (
+                            <span className={styles.callerSubNumber}>
+                              ({call.callerNumber})
+                            </span>
+                          ) : null}
                           {call.isProvisional || call.outcome === 'in_progress' ? (
                             <span className={`${styles.badge} ${styles.badgeLive}`}>
                               🔴 Live Call
@@ -476,8 +483,26 @@ export default async function VoiceCallsPage({
                         <span className={styles.timeText}>{formatCallTime(call.startedAt, timezone)}</span>
                       </div>
 
-                      {call.summary ? (
-                        <p className={styles.summaryText}>{call.summary}</p>
+                      {parsed.displaySummary ? (
+                        <div className={styles.summaryContainer}>
+                          <p className={styles.summaryText}>
+                            {parsed.workRequested ?? parsed.displaySummary}
+                          </p>
+                          {parsed.structured ? (
+                            <div className={styles.summaryMetaRow}>
+                              {parsed.serviceAddress ? (
+                                <span className={styles.metaChip}>
+                                  📍 {parsed.serviceAddress}
+                                </span>
+                              ) : null}
+                              {parsed.slot ? (
+                                <span className={`${styles.metaChip} ${parsed.isBooked ? styles.metaChipBooked : ''}`}>
+                                  {parsed.isBooked ? '📅 Booked:' : '🗓️ Requested:'} {parsed.slot}
+                                </span>
+                              ) : null}
+                            </div>
+                          ) : null}
+                        </div>
                       ) : (
                         <p className={styles.summaryText} style={{ fontStyle: 'italic', opacity: 0.7 }}>
                           {call.isProvisional ? 'Call in progress or awaiting terminal transcript summary...' : 'No conversation summary recorded.'}

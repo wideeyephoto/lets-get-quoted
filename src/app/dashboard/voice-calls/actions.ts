@@ -8,7 +8,7 @@ import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
 import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 import { createLead } from '@/lib/leads';
 import { detectCallEmergency } from '@/lib/voice/triage';
-import type { VoiceCallDisposition } from '@/lib/voice/call-workspace';
+import { parseVoiceCallSummary, type VoiceCallDisposition } from '@/lib/voice/call-workspace';
 
 const VALID_DISPOSITIONS: Set<VoiceCallDisposition> = new Set([
   'unreviewed',
@@ -133,15 +133,17 @@ export async function createLeadFromVoiceCallAction(formData: FormData): Promise
   if (call.lead_id) return { leadId: call.lead_id };
 
   const phone = call.caller_number;
-  const summary = call.summary || 'AI receptionist call';
-  const emergency = detectCallEmergency(summary);
+  const parsed = parseVoiceCallSummary(call.summary);
+  const summary = parsed.displaySummary || call.summary || 'AI receptionist call';
+  const emergency = detectCallEmergency(call.summary || summary);
   const flags = emergency.isEmergency ? ['emergency_hazard', emergency.hazardType].filter(Boolean) as string[] : [];
   const score = emergency.isEmergency ? 'hot' : 'warm';
 
   const lead = await createLead(supabase, accountId, {
     source: 'ai_voice',
-    name: phone ? `AI call — ${phone}` : 'AI call — caller unknown',
+    name: parsed.callerName ?? (phone ? `AI call — ${phone}` : 'AI call — caller unknown'),
     phone,
+    address: parsed.serviceAddress || undefined,
     message: summary,
     sourcePage: '/call',
     triage: { score, flags, contactPreference: 'any' },
@@ -176,15 +178,17 @@ export async function convertVoiceCallToQuoteDraftAction(formData: FormData): Pr
   let leadId = call.lead_id;
   if (!leadId) {
     const phone = call.caller_number;
-    const summary = call.summary || 'AI receptionist call';
-    const emergency = detectCallEmergency(summary);
+    const parsed = parseVoiceCallSummary(call.summary);
+    const summary = parsed.displaySummary || call.summary || 'AI receptionist call';
+    const emergency = detectCallEmergency(call.summary || summary);
     const flags = emergency.isEmergency ? ['emergency_hazard', emergency.hazardType].filter(Boolean) as string[] : [];
     const score = emergency.isEmergency ? 'hot' : 'warm';
 
     const lead = await createLead(supabase, accountId, {
       source: 'ai_voice',
-      name: phone ? `AI call — ${phone}` : 'AI call — caller unknown',
+      name: parsed.callerName ?? (phone ? `AI call — ${phone}` : 'AI call — caller unknown'),
       phone,
+      address: parsed.serviceAddress || undefined,
       message: summary,
       sourcePage: '/call',
       triage: { score, flags, contactPreference: 'any' },

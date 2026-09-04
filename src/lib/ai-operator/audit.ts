@@ -254,6 +254,45 @@ export function getOperatorAuditLogs(options?: {
 }
 
 /**
+ * Returns recent operator audit logs from DB with in-memory fallback
+ */
+export async function getOperatorAuditLogsAsync(
+  options?: {
+    category?: OperatorCategory;
+    severity?: OperatorActionSeverity;
+    limit?: number;
+  },
+  supabase?: SupabaseClient,
+): Promise<OperatorAuditLogEntry[]> {
+  const client = getAdminClientSafe(supabase);
+  if (!client) return getOperatorAuditLogs(options);
+
+  try {
+    let query = client
+      .from('ai_operator_logs')
+      .select('*')
+      .order('timestamp', { ascending: false })
+      .limit(options?.limit ?? 50);
+
+    if (options?.category) {
+      query = query.eq('category', options.category);
+    }
+    if (options?.severity) {
+      query = query.eq('severity', options.severity);
+    }
+
+    const { data, error } = await query;
+    if (!error && data && data.length > 0) {
+      return data.map((row) => mapDbToAuditLog(row as Record<string, unknown>));
+    }
+  } catch {
+    // fallback
+  }
+
+  return getOperatorAuditLogs(options);
+}
+
+/**
  * Creates a Human-in-the-Loop (HITL) action request that requires founder confirmation
  */
 export function createHitlAction(

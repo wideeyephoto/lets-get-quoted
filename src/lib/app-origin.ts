@@ -49,7 +49,7 @@ function validHostname(value: string): boolean {
 export function trustedProviderCallbackOrigin(
   env: PublicOriginEnvironment = process.env,
 ): string | null {
-  let raw = (env.SIGNALWIRE_WEBHOOK_ORIGIN ?? env.PROVIDER_CALLBACK_ORIGIN ?? env.NEXT_PUBLIC_APP_URL ?? '').trim();
+  const raw = (env.SIGNALWIRE_WEBHOOK_ORIGIN ?? env.PROVIDER_CALLBACK_ORIGIN ?? env.NEXT_PUBLIC_APP_URL ?? '').trim();
   const root = (env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'letsgetquoted.com')
     .trim().toLowerCase();
   if (!validHostname(root)) return null;

@@ -3,6 +3,7 @@ import {
   formatDispositionLabel,
   formatOutcomeLabel,
   loadVoiceWorkspaceQueue,
+  parseVoiceCallSummary,
 } from '@/lib/voice/call-workspace';
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
@@ -148,3 +149,65 @@ describe('voice workspace queue loader', () => {
     expect(phoneRes.items[0]!.id).toBe('call-1');
   });
 });
+
+describe('parseVoiceCallSummary', () => {
+  it('handles null or empty summary gracefully', () => {
+    expect(parseVoiceCallSummary(null)).toEqual({
+      structured: null,
+      displaySummary: '',
+      callerName: null,
+      workRequested: null,
+      serviceAddress: null,
+      slot: null,
+      isBooked: false,
+    });
+    expect(parseVoiceCallSummary('  ')).toEqual({
+      structured: null,
+      displaySummary: '',
+      callerName: null,
+      workRequested: null,
+      serviceAddress: null,
+      slot: null,
+      isBooked: false,
+    });
+  });
+
+  it('preserves plain prose summaries', () => {
+    const plain = 'Homeowner called regarding a slow drain in the upstairs bathroom.';
+    const parsed = parseVoiceCallSummary(plain);
+    expect(parsed.structured).toBeNull();
+    expect(parsed.displaySummary).toBe(plain);
+    expect(parsed.workRequested).toBe(plain);
+    expect(parsed.callerName).toBeNull();
+    expect(parsed.isBooked).toBe(false);
+  });
+
+  it('correctly parses structured JSON summaries from AI post-prompt', () => {
+    const jsonSummary = JSON.stringify({
+      caller_name: 'Hermione Granger',
+      caller_phone: '2485630746',
+      service_address: '82 East Street, Port Huron County, Michigan',
+      work_requested: 'Small leak under the kitchen sink',
+      urgency: 'normal',
+      is_emergency: false,
+      hazard_type: null,
+      requested_slot: 'Thursday, September 24',
+      booked_slot: 'Thursday, September 24',
+      transfer_requested: false,
+      follow_up_action: 'booked',
+      confidence: 1,
+    });
+
+    const parsed = parseVoiceCallSummary(jsonSummary);
+    expect(parsed.structured).not.toBeNull();
+    expect(parsed.callerName).toBe('Hermione Granger');
+    expect(parsed.workRequested).toBe('Small leak under the kitchen sink');
+    expect(parsed.serviceAddress).toBe('82 East Street, Port Huron County, Michigan');
+    expect(parsed.slot).toBe('Thursday, September 24');
+    expect(parsed.isBooked).toBe(true);
+    expect(parsed.displaySummary).toContain('Small leak under the kitchen sink');
+    expect(parsed.displaySummary).toContain('82 East Street');
+    expect(parsed.displaySummary).toContain('Booked: Thursday, September 24');
+  });
+});
+

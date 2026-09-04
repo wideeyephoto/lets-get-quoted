@@ -78,6 +78,12 @@ export type SanitizedTranscriptTurn = Readonly<{
   timestamp: number | null;
 }>;
 
+export {
+  parseVoiceCallSummary,
+  type StructuredVoiceSummary,
+  type ParsedVoiceCallSummary,
+} from '@/lib/voice/call-formatting';
+
 export type MatchedClientProfile = Readonly<{
   id: string;
   name: string;

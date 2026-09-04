@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { parseVoiceCallSummary } from '@/lib/voice/call-formatting';
 import styles from './call-detail.module.css';
 
 type Props = {
@@ -17,11 +18,14 @@ export default function QuickSmsFollowupCard({
   summary,
   businessName,
 }: Props) {
-  const displayName = callerName ? callerName.split(' ')[0] : 'there';
+  const parsed = parseVoiceCallSummary(summary);
+  const effectiveName = callerName || parsed.callerName || null;
+  const displayName = effectiveName ? effectiveName.split(' ')[0] : 'there';
   const displayBiz = businessName || 'our team';
+  const subjectWork = parsed.workRequested || (parsed.displaySummary ? parsed.displaySummary.slice(0, 80) : null);
 
-  const defaultDraft = summary
-    ? `Hi ${displayName}, this is ${displayBiz}. Following up on your recent call regarding "${summary.trim().slice(0, 80)}". When is a good time for us to connect?`
+  const defaultDraft = subjectWork
+    ? `Hi ${displayName}, this is ${displayBiz}. Following up on your recent call regarding "${subjectWork}". When is a good time for us to connect?`
     : `Hi ${displayName}, this is ${displayBiz}. Thanks for calling earlier. How can we help you today?`;
 
   const [message, setMessage] = useState(defaultDraft);

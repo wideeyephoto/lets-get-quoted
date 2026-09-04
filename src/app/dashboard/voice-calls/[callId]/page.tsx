@@ -5,6 +5,7 @@ import {
   formatDispositionLabel,
   formatOutcomeLabel,
   loadVoiceCallDetail,
+  parseVoiceCallSummary,
 } from '@/lib/voice/call-workspace';
 import { formatCallLength } from '@/lib/voice/call-formatting';
 import { describeSettlement, type VoiceCallSettlement } from '@/lib/voice/call-history';
@@ -55,7 +56,8 @@ export default async function VoiceCallDetailPage({
     notFound();
   }
 
-  const callerName = call.contact.client?.name ?? call.contact.lead?.name ?? null;
+  const parsedSummary = parseVoiceCallSummary(call.summary);
+  const callerName = call.contact.client?.name ?? call.contact.lead?.name ?? parsedSummary.callerName ?? null;
   const emergency = call.summary ? detectCallEmergency(call.summary) : null;
 
   return (
@@ -67,7 +69,12 @@ export default async function VoiceCallDetailPage({
       <div className={styles.header}>
         <div className={styles.headerLeft}>
           <div className={styles.titleRow}>
-            <h1>{call.callerNumber ?? 'Unknown Caller'}</h1>
+            <h1>{callerName ?? (call.callerNumber ?? 'Unknown Caller')}</h1>
+            {callerName && call.callerNumber ? (
+              <span style={{ fontSize: '1.05rem', color: 'var(--mute-t62, #94a3b8)', fontWeight: 500 }}>
+                ({call.callerNumber})
+              </span>
+            ) : null}
             {call.workflow.urgency === 'emergency' || emergency?.isEmergency ? (
               <span className={`${styles.badge} ${styles.badgeEmergency}`}>
                 🚨 Emergency Hazard
@@ -143,7 +150,37 @@ export default async function VoiceCallDetailPage({
               <span>AI Receptionist Summary</span>
             </div>
             <div className={styles.summaryContent}>
-              {call.summary || (
+              {parsedSummary.displaySummary ? (
+                <div>
+                  <p style={{ fontSize: '1.02rem', fontWeight: 600, color: '#f8fafc', margin: '0 0 0.6rem' }}>
+                    {parsedSummary.workRequested || parsedSummary.displaySummary}
+                  </p>
+                  {parsedSummary.structured ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '0.6rem', marginTop: '0.75rem', fontSize: '0.88rem' }}>
+                      {parsedSummary.callerName ? (
+                        <div><strong style={{ color: '#94a3b8' }}>Caller Name:</strong> <span style={{ color: '#f1f5f9' }}>{parsedSummary.callerName}</span></div>
+                      ) : null}
+                      {parsedSummary.serviceAddress ? (
+                        <div><strong style={{ color: '#94a3b8' }}>Service Address:</strong> <span style={{ color: '#f1f5f9' }}>{parsedSummary.serviceAddress}</span></div>
+                      ) : null}
+                      {parsedSummary.slot ? (
+                        <div>
+                          <strong style={{ color: '#94a3b8' }}>{parsedSummary.isBooked ? 'Appointment (Booked):' : 'Requested Slot:'}</strong>{' '}
+                          <span style={{ color: parsedSummary.isBooked ? '#86efac' : '#f1f5f9', fontWeight: parsedSummary.isBooked ? 600 : 400 }}>
+                            {parsedSummary.slot}
+                          </span>
+                        </div>
+                      ) : null}
+                      {parsedSummary.structured.urgency ? (
+                        <div><strong style={{ color: '#94a3b8' }}>Urgency:</strong> <span style={{ textTransform: 'capitalize', color: '#f1f5f9' }}>{parsedSummary.structured.urgency}</span></div>
+                      ) : null}
+                      {parsedSummary.structured.hazard_type ? (
+                        <div><strong style={{ color: '#f87171' }}>Hazard:</strong> <span style={{ color: '#fca5a5' }}>{parsedSummary.structured.hazard_type}</span></div>
+                      ) : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : (
                 <span style={{ fontStyle: 'italic', opacity: 0.7 }}>
                   {call.isProvisional
                     ? 'This call was recently admitted. Summary will be generated once the call ends.'
