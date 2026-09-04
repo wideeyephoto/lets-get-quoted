@@ -32,6 +32,9 @@ export type VoiceSettingsInput = {
   alertPhone?: string;
   voiceTone?: string;
   businessHours: Record<string, [string, string] | null>;
+  postCallSmsEnabled?: boolean;
+  contractorNotificationsEnabled?: boolean;
+  contractorNotificationChannel?: 'sms' | 'email' | 'both';
 };
 
 function statusOf(value: unknown): 'off' | 'active' | 'paused' {
@@ -165,17 +168,29 @@ export async function updateVoiceSettingsAction(
   // Recording is NOT settable here. It is a legal act with its own action and
   // its own record of who accepted what; folding it into a general save would
   // let a contractor turn it on by editing their opening times.
+  const settingsUpsert: Record<string, unknown> = {
+    account_id: accountId,
+    status,
+    answer_mode: answerMode,
+    greeting,
+    transfer_number: transferNumber,
+    voice_tone: voiceToneOf(input.voiceTone),
+    business_hours: hours,
+  };
+  if (input?.postCallSmsEnabled !== undefined) {
+    settingsUpsert.post_call_sms_enabled = Boolean(input.postCallSmsEnabled);
+  }
+  if (input?.contractorNotificationsEnabled !== undefined) {
+    settingsUpsert.contractor_notifications_enabled = Boolean(input.contractorNotificationsEnabled);
+  }
+  if (input?.contractorNotificationChannel !== undefined) {
+    const channel = input.contractorNotificationChannel;
+    settingsUpsert.contractor_notification_channel = (channel === 'email' || channel === 'both') ? channel : 'sms';
+  }
+
   const { error } = await supabase
     .from('voice_settings')
-    .upsert({
-      account_id: accountId,
-      status,
-      answer_mode: answerMode,
-      greeting,
-      transfer_number: transferNumber,
-      voice_tone: voiceToneOf(input.voiceTone),
-      business_hours: hours,
-    }, { onConflict: 'account_id' });
+    .upsert(settingsUpsert, { onConflict: 'account_id' });
 
   if (error) throw new Error(error.message);
 
@@ -199,7 +214,15 @@ export async function updateVoiceSettingsAction(
     kind: 'ai_voice_settings_updated',
     summary: `AI receptionist ${status === 'active' ? 'turned on' : status === 'paused' ? 'paused' : 'turned off'}`,
     actorEmail: user?.email ?? null,
-    meta: { status, answer_mode: answerMode, has_transfer: Boolean(transferNumber), has_alert_phone: Boolean(alertPhone), dropped_days: dropped },
+    meta: {
+      status,
+      answer_mode: answerMode,
+      has_transfer: Boolean(transferNumber),
+      has_alert_phone: Boolean(alertPhone),
+      dropped_days: dropped,
+      ...(input?.postCallSmsEnabled !== undefined ? { post_call_sms_enabled: input.postCallSmsEnabled } : {}),
+      ...(input?.contractorNotificationsEnabled !== undefined ? { contractor_notifications_enabled: input.contractorNotificationsEnabled } : {}),
+    },
   });
 
   revalidatePath('/dashboard/settings');
@@ -209,27 +232,48 @@ export async function updateVoiceSettingsAction(
   return { saved: true, droppedDays: dropped };
 }
 
-/**
- * Compatibility endpoint retained for any already-loaded client bundle.
- *
- * The provider answer currently starts no `record_call` instruction and LGQ has
- * no recording retention/deletion rail. Claiming that this toggle records calls
- * would therefore be false. Enabling fails closed; disabling remains available
- * so a stale true row can always be made safe.
- */
 export async function setVoiceRecordingAction(
   input: { enabled: boolean; acknowledged: boolean },
 ): Promise<{ enabled: boolean }> {
   const { supabase, accountId } = await requireOwnerContext();
   const enabled = input?.enabled === true;
 
-  if (enabled) throw new Error('Call recording is not available yet.');
-
   const { data: { user } } = await supabase.auth.getUser();
+
+  if (enabled) {
+    if (!input?.acknowledged) {
+      throw new Error('You must acknowledge call recording consent requirements.');
+    }
+
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('voice_settings')
+      .upsert({
+        account_id: accountId,
+        recording_enabled: true,
+        recording_disclosure_accepted_at: now,
+        recording_disclosure_accepted_by: user?.id ?? null,
+      }, { onConflict: 'account_id' });
+    if (error) throw new Error(error.message);
+
+    await recordAccountEvent({
+      accountId,
+      kind: 'ai_voice_recording_changed',
+      summary: 'Call recording turned on',
+      actorEmail: user?.email ?? null,
+      meta: { enabled: true, accepted_at: now },
+    });
+
+    revalidatePath('/dashboard/settings');
+    return { enabled: true };
+  }
 
   const { error } = await supabase
     .from('voice_settings')
-    .upsert({ account_id: accountId, recording_enabled: false }, { onConflict: 'account_id' });
+    .upsert({
+      account_id: accountId,
+      recording_enabled: false,
+    }, { onConflict: 'account_id' });
   if (error) throw new Error(error.message);
 
   await recordAccountEvent({
@@ -242,4 +286,57 @@ export async function setVoiceRecordingAction(
 
   revalidatePath('/dashboard/settings');
   return { enabled: false };
+}
+
+export async function setVoicePostCallSmsAction(
+  input: { enabled: boolean },
+): Promise<{ enabled: boolean }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const enabled = input?.enabled === true;
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from('voice_settings')
+    .upsert({ account_id: accountId, post_call_sms_enabled: enabled }, { onConflict: 'account_id' });
+  if (error) throw new Error(error.message);
+
+  await recordAccountEvent({
+    accountId,
+    kind: 'ai_voice_settings_updated',
+    summary: `Post-call SMS ${enabled ? 'enabled' : 'disabled'}`,
+    actorEmail: user?.email ?? null,
+    meta: { post_call_sms_enabled: enabled },
+  });
+
+  revalidatePath('/dashboard/settings');
+  return { enabled };
+}
+
+export async function setVoiceContractorNotificationsAction(
+  input: { enabled: boolean; channel?: 'sms' | 'email' | 'both' },
+): Promise<{ enabled: boolean; channel: 'sms' | 'email' | 'both' }> {
+  const { supabase, accountId } = await requireOwnerContext();
+  const enabled = input?.enabled === true;
+  const channel: 'sms' | 'email' | 'both' = (input?.channel === 'email' || input?.channel === 'both') ? input.channel : 'sms';
+  const { data: { user } } = await supabase.auth.getUser();
+
+  const { error } = await supabase
+    .from('voice_settings')
+    .upsert({
+      account_id: accountId,
+      contractor_notifications_enabled: enabled,
+      contractor_notification_channel: channel,
+    }, { onConflict: 'account_id' });
+  if (error) throw new Error(error.message);
+
+  await recordAccountEvent({
+    accountId,
+    kind: 'ai_voice_settings_updated',
+    summary: `Contractor voice call notifications ${enabled ? 'enabled' : 'disabled'} (${channel})`,
+    actorEmail: user?.email ?? null,
+    meta: { contractor_notifications_enabled: enabled, contractor_notification_channel: channel },
+  });
+
+  revalidatePath('/dashboard/settings');
+  return { enabled, channel };
 }

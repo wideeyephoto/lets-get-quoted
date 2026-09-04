@@ -803,6 +803,8 @@ export async function configureVoiceNumberInbound(input: Readonly<{
     call_request_method: 'POST',
     call_status_callback_url: statusUrl,
     call_status_callback_method: 'POST',
+    call_fallback_url: `${origin}/api/voice/health`,
+    call_fallback_method: 'POST',
   };
   const configurationKey = operationFingerprint(payload).slice(0, 16);
   const retryAuthorization = input.retryAuthorization
@@ -820,6 +822,7 @@ export async function configureVoiceNumberInbound(input: Readonly<{
       friendlyName,
       inboundWebhookUrl: inboundUrl,
       statusCallbackUrl: statusUrl,
+      fallbackUrl: `${origin}/api/voice/health`,
     }),
     validate: (phone) => requireExactConfiguredVoicePhone(phone, {
       providerNumberId, number, inboundUrl, statusUrl,

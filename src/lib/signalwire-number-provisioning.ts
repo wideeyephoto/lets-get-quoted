@@ -694,6 +694,7 @@ export class SignalWireNumberProvisioningClient {
     friendlyName: string;
     inboundWebhookUrl: string;
     statusCallbackUrl: string;
+    fallbackUrl?: string | null;
   }>): Promise<SignalWirePhoneNumber> {
     if (!UUID.test(input.providerNumberId)) throw new Error('SignalWire phone number ID is invalid.');
     if (!E164.test(input.number)) throw new Error('Configured number must be E.164.');
@@ -701,6 +702,7 @@ export class SignalWireNumberProvisioningClient {
     if (!friendlyName) throw new Error('Voice phone number friendly name is required.');
     const inbound = secureCallbackUrl(input.inboundWebhookUrl, 'AI Voice inbound webhook');
     const status = secureCallbackUrl(input.statusCallbackUrl, 'AI Voice provider status callback');
+    const fallback = input.fallbackUrl ? secureCallbackUrl(input.fallbackUrl, 'AI Voice fallback webhook') : undefined;
     const updated = this.parsePhone(await this.request(
       `/api/relay/rest/phone_numbers/${encodeURIComponent(input.providerNumberId)}`,
       {
@@ -713,6 +715,7 @@ export class SignalWireNumberProvisioningClient {
           call_request_method: 'POST',
           call_status_callback_url: status,
           call_status_callback_method: 'POST',
+          ...(fallback ? { call_fallback_url: fallback, call_fallback_method: 'POST' } : {}),
         }),
       },
       ['Numbers', 'Voice'],

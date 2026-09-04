@@ -236,10 +236,31 @@ export const signalwireVoiceProvider: VoiceProvider = {
           },
           data_map: { expressions: [{
             string: 'true', pattern: '.*',
-            output: { response: 'Connecting you with our office staff now. Please hold for just a moment.', action: [{ transfer: true, SWML: {
-              version: '1.0.0',
-              sections: { main: [{ connect: { to: plan.transferTo } }] },
-            } }] },
+            output: {
+              response: 'Connecting you with our office staff now. Please hold for just a moment.',
+              action: [{
+                transfer: true,
+                SWML: {
+                  version: '1.0.0',
+                  sections: {
+                    main: [
+                      {
+                        connect: {
+                          to: plan.transferTo,
+                          timeout: 25,
+                          confirm: [
+                            { play: { url: 'say: Incoming transfer from AI receptionist regarding: %{args.reason}.' } },
+                          ],
+                        },
+                      },
+                      { play: { url: 'say: Our office staff is currently unavailable to take your call. Please leave a message after the beep.' } },
+                      { record_call: { format: 'mp3', stereo: false } },
+                      { hangup: {} },
+                    ],
+                  },
+                },
+              }],
+            },
           }] },
         });
       }
@@ -453,6 +474,74 @@ export const signalwireVoiceProvider: VoiceProvider = {
             },
             required: ['name'],
           },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'cancel_or_reschedule_appointment',
+          purpose: 'Reschedule or cancel an existing appointment for a customer by their phone number or address.',
+          argument: {
+            type: 'object',
+            properties: {
+              customer_phone: {
+                type: 'string',
+                description: 'The phone number associated with the appointment.',
+              },
+              service_address: {
+                type: 'string',
+                description: 'The property or street address of the service appointment.',
+              },
+              action: {
+                type: 'string',
+                enum: ['reschedule', 'cancel'],
+                description: 'Whether the customer wants to reschedule or cancel.',
+              },
+              new_date: {
+                type: 'string',
+                description: 'The new requested date in YYYY-MM-DD format (for rescheduling).',
+              },
+              new_time: {
+                type: 'string',
+                description: 'The new requested appointment window or time (for rescheduling).',
+              },
+              reason: {
+                type: 'string',
+                description: 'Optional reason provided by the customer.',
+              },
+            },
+            required: ['action'],
+          },
+          fillers: [
+            'Looking up your existing appointment on the schedule...',
+            'Updating our appointment dispatch calendar for you...',
+          ],
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
+          function: 'get_service_quote_range',
+          purpose: 'Provide standard estimate ranges and typical pricing benchmarks for requested trade services, explaining that final quotes require an in-person assessment.',
+          argument: {
+            type: 'object',
+            properties: {
+              trade: {
+                type: 'string',
+                description: 'The trade discipline (e.g. plumbing, electrical, hvac, roofing).',
+              },
+              service_type: {
+                type: 'string',
+                description: 'The specific job or equipment (e.g. water heater replacement, panel upgrade, roof repair, drain clearing).',
+              },
+            },
+            required: ['service_type'],
+          },
+          fillers: [
+            'Checking our standard pricing guide and typical project ranges for you...',
+          ],
           web_hook_url: plan.swaigUrl,
           web_hook_auth_user: plan.receiptAuthorization.username,
           web_hook_auth_password: plan.receiptAuthorization.password,
@@ -690,9 +779,13 @@ export const signalwireVoiceProvider: VoiceProvider = {
               + 'The opening greeting and AI disclosure have already been played; do not repeat them unless asked. '
               + 'Collect the caller\'s name, callback number, service address, the work requested, urgency, '
               + 'and preferred appointment time. Never claim an appointment is confirmed. '
+              + 'If the caller speaks Spanish, politely assist them in Spanish. '
               + 'If the caller asks whether a permit or city inspection is needed or asks about municipal building code rules, use the check_permit_requirement tool with their city and trade. '
               + 'If an existing customer calls asking about their permit status or scheduled municipal inspection, use the check_inspection_status tool. '
-              + 'If the caller asks for a person and a transfer tool is available, use it.'),
+              + 'If the caller asks for a price range or quote, use the get_service_quote_range tool. '
+              + 'If the caller needs to cancel or reschedule an existing appointment, use the cancel_or_reschedule_appointment tool. '
+              + 'If the caller asks for a person and a transfer tool is available, use it. '
+              + 'If the caller reports an acute emergency such as active flooding, electrical sparks, or gas odor, prioritize safety and transfer immediately if a transfer tool is available.'),
           },
           post_prompt: {
             text: plan.postPrompt || ('Summarise the caller\'s name, phone number, service address, '
@@ -721,7 +814,20 @@ export const signalwireVoiceProvider: VoiceProvider = {
           body: JSON.stringify({
             version: '1.0.0',
             sections: {
-              main: [{ connect: { to: plan.number } }],
+              main: [
+                {
+                  connect: {
+                    to: plan.number,
+                    from: plan.callerId,
+                    timeout: plan.timeoutSeconds,
+                    call_state_url: plan.actionUrl,
+                    call_state_events: ['ended'],
+                  },
+                },
+                { play: { url: "say: We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep." } },
+                { record_call: { format: 'mp3', stereo: false } },
+                { hangup: {} },
+              ],
             },
           }),
         });

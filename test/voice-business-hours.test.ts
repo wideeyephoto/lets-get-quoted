@@ -98,4 +98,16 @@ describe('open and shut', () => {
       ), JSON.stringify(window)).toBe(false);
     }
   });
+
+  it('accurately identifies open and closed times for overnight windows spanning midnight', () => {
+    const overnightHours = { 2: ['22:00', '06:00'] as const };
+    // 23:00 EDT (open)
+    expect(isWithinBusinessHours(overnightHours, 'America/Detroit', new Date('2026-08-18T23:00:00-04:00'))).toBe(true);
+    // 03:00 EDT (open)
+    expect(isWithinBusinessHours(overnightHours, 'America/Detroit', new Date('2026-08-18T03:00:00-04:00'))).toBe(true);
+    // 06:00 EDT (closed at close time)
+    expect(isWithinBusinessHours(overnightHours, 'America/Detroit', new Date('2026-08-18T06:00:00-04:00'))).toBe(false);
+    // 14:00 EDT (closed during afternoon)
+    expect(isWithinBusinessHours(overnightHours, 'America/Detroit', new Date('2026-08-18T14:00:00-04:00'))).toBe(false);
+  });
 });

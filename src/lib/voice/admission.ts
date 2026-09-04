@@ -74,6 +74,9 @@ export type VoiceSettings = Readonly<{
   businessHours: BusinessHours;
   greeting: string | null;
   transferNumber: string | null;
+  recordingEnabled: boolean;
+  postCallSmsEnabled: boolean;
+  contractorNotificationsEnabled: boolean;
 }>;
 
 export type VoiceWorkspace = Readonly<{
@@ -141,7 +144,7 @@ export async function resolveVoiceWorkspace(
   // not become a permissive default on the one surface that answers a phone.
   const { data: configured } = await admin
     .from('voice_settings')
-    .select('status, answer_mode, business_hours, greeting, transfer_number')
+    .select('status, answer_mode, business_hours, greeting, transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
     .eq('account_id', account.id)
     .maybeSingle();
 
@@ -161,6 +164,9 @@ export async function resolveVoiceWorkspace(
         businessHours: (row.business_hours ?? {}) as BusinessHours,
         greeting: (row.greeting as string | null) ?? null,
         transferNumber: (row.transfer_number as string | null) ?? null,
+        recordingEnabled: row.recording_enabled === true,
+        postCallSmsEnabled: row.post_call_sms_enabled !== false,
+        contractorNotificationsEnabled: row.contractor_notifications_enabled !== false,
       })
       : null,
   });
@@ -235,6 +241,7 @@ export type PlanInboundOptions = Readonly<{
   receiptUrl: string;
   receiptAuthorization: VoiceReceiptAuthorization | null;
   forwardActionUrl: (accountId: string) => string;
+  recordingStatusUrl?: (accountId: string) => string;
   swaigUrl?: (
     accountId: string,
     callContext?: { providerCallId: string; callerPhone?: string | null },
@@ -268,6 +275,16 @@ export async function planInboundCall(
           callerId: workspace.voiceNumber,
           timeoutSeconds: 20,
           actionUrl: options.forwardActionUrl(workspace.accountId),
+        }),
+      });
+    }
+    if (workspace && reason !== 'no_workspace' && reason !== 'product_off') {
+      return Object.freeze({
+        accountId: workspace.accountId,
+        declineReason: reason,
+        plan: Object.freeze({
+          kind: 'voicemail' as const,
+          message: "Sorry, we're currently unable to take your call. Please leave your name, phone number, and a detailed message after the beep, and our team will get right back to you.",
         }),
       });
     }
@@ -310,14 +327,18 @@ export async function planInboundCall(
     workspace.accountId,
     call.fromNumber,
   ).catch(() => ({ status: 'unavailable' as const }));
-  if (callerIdentity.status === 'unavailable' || callerIdentity.status === 'ambiguous') {
-    return fallback(workspace, 'caller_identity_unavailable');
-  }
-  const callerKind = callerIdentity.status === 'staff'
-    ? callerIdentity.caller.role
+
+  // Transient lookup failure or ambiguous matches must not deny AI answering to customers.
+  // We degrade safely to customer status (which denies staff mutation tools but admits the caller).
+  const effectiveIdentity = (callerIdentity.status === 'unavailable' || callerIdentity.status === 'ambiguous')
+    ? { status: 'customer' as const }
+    : callerIdentity;
+
+  const callerKind = effectiveIdentity.status === 'staff'
+    ? effectiveIdentity.caller.role
     : 'customer';
-  const callerNumber = callerIdentity.status === 'staff'
-    ? callerIdentity.caller.normalizedPhone
+  const callerNumber = effectiveIdentity.status === 'staff'
+    ? effectiveIdentity.caller.normalizedPhone
     : normalizeUsPhone(call.fromNumber || '');
 
   const open = await countOpenAiCalls(
@@ -351,7 +372,7 @@ export async function planInboundCall(
     admin,
     workspace.accountId,
     call.fromNumber,
-    callerIdentity,
+    effectiveIdentity,
   ).catch((err) => {
     console.error('Failed to load voice grounding context:', err);
     return null;
@@ -377,6 +398,10 @@ export async function planInboundCall(
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
       transferTo: settings.transferNumber || workspace.callForwardNumber,
+      recordCall: settings.recordingEnabled === true && !grounding?.contractorStaffCaller,
+      recordingStatusUrl: options.recordingStatusUrl
+        ? options.recordingStatusUrl(workspace.accountId)
+        : undefined,
       swaigUrl: options.swaigUrl
         ? options.swaigUrl(workspace.accountId, {
             providerCallId: call.providerCallId,

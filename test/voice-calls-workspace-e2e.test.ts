@@ -31,6 +31,8 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
       leads: Record<string, unknown>[];
       clients: Record<string, unknown>[];
       jobs: Record<string, unknown>[];
+      accounts: Record<string, unknown>[];
+      voice_settings: Record<string, unknown>[];
     } = {
       voice_calls: [],
       voice_call_workflows: [],
@@ -38,10 +40,13 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
       leads: [],
       clients: [],
       jobs: [],
+      accounts: [{ id: ACCOUNT_ID, alert_phone: '+12485550100', business_name: 'Test Co' }],
+      voice_settings: [{ account_id: ACCOUNT_ID, post_call_sms_enabled: false, contractor_notifications_enabled: false }],
     };
 
     const mockSupabase = {
-      from(table: keyof typeof memoryDb) {
+      rpc: async () => ({ data: null, error: null }),
+      from(table: string) {
         const chain: Record<string, unknown> = {};
         for (const m of ['select', 'order', 'limit', 'gte', 'in', 'neq']) {
           chain[m] = () => chain;
@@ -54,7 +59,8 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
         };
 
         chain.maybeSingle = async () => {
-          const rows = memoryDb[table].filter((r) =>
+          const list = (memoryDb as Record<string, Record<string, unknown>[]>)[table] ?? [];
+          const rows = list.filter((r) =>
             Object.entries(eqConditions).every(([k, v]) => r[k] === v),
           );
           return { data: rows[0] ?? null, error: null };

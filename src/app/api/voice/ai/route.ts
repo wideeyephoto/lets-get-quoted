@@ -166,7 +166,8 @@ export async function POST(request: Request) {
       // SignalWire renders this into dedicated auth fields. It is never placed
       // in the URL or included in the decline log below.
       receiptAuthorization: voiceReceiptAuthorization(),
-      forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}`,
+      forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}&from=${encodeURIComponent(call.fromNumber || '')}&call_id=${encodeURIComponent(call.providerCallId)}`,
+      recordingStatusUrl: (id) => `${callbackOrigin}/api/voice/recording-status?account=${id}`,
       swaigUrl: (id, ctx) => {
         const token = ctx
           ? signVoiceToolToken({

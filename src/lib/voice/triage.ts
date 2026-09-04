@@ -3,7 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { enqueueSmsDelivery } from '@/lib/sms-delivery';
 import { normalizeUsPhone } from '@/lib/phone';
-import { ownerVoiceEmergencyAlertText } from '@/lib/sms-templates';
+import { ownerVoiceEmergencyAlertText, ownerVoiceCallNotificationText } from '@/lib/sms-templates';
 
 export type EmergencyDetectionResult = {
   isEmergency: boolean;
@@ -120,6 +120,73 @@ export async function notifyEmergencyCall(
     return Boolean(queued?.eventId);
   } catch (error) {
     console.error('[AI Voice Emergency] Failed to send emergency SMS alert:', error);
+    return false;
+  }
+}
+
+/**
+ * Dispatches an SMS alert to the contractor when an incoming call is answered and summarized.
+ */
+export async function notifyOrdinaryCall(
+  admin: SupabaseClient,
+  accountId: string,
+  callerPhone: string | null,
+  summary: string,
+  callerName?: string | null,
+  callId?: string | null,
+): Promise<boolean> {
+  const { data: voiceSettings } = await admin
+    .from('voice_settings')
+    .select('transfer_number, contractor_notifications_enabled, contractor_notification_channel')
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (voiceSettings && voiceSettings.contractor_notifications_enabled === false) {
+    return false;
+  }
+
+  const { data: account } = await admin
+    .from('accounts')
+    .select('company_name, business_name, alert_phone, phone, call_forward_number')
+    .eq('id', accountId)
+    .maybeSingle();
+
+  const targetPhone = normalizeUsPhone(
+    account?.alert_phone || voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
+  );
+
+  if (!targetPhone) {
+    return false;
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com';
+  const dashboardUrl = callId
+    ? `${appUrl}/dashboard/voice-calls/${callId}`
+    : `${appUrl}/dashboard/voice-calls`;
+  const businessName = account?.business_name || account?.company_name || 'Your Business';
+
+  const alertText = ownerVoiceCallNotificationText({
+    businessName,
+    callerName,
+    callerNumber: callerPhone,
+    summary,
+    dashboardUrl,
+  });
+
+  try {
+    const queued = await enqueueSmsDelivery({
+      accountId,
+      phoneNumber: targetPhone,
+      body: alertText,
+      messageKind: 'owner-voice-call-notification',
+      billingCategory: 'owner_alert',
+      context: 'owner',
+      senderPurpose: 'lgq_dispatch',
+      idempotencyKey: callId ? `voice-call-notify:${accountId}:${callId}` : undefined,
+    }, admin);
+    return Boolean(queued?.eventId);
+  } catch (error) {
+    console.error('[AI Voice Notification] Failed to send ordinary call SMS notification:', error);
     return false;
   }
 }

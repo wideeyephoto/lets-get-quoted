@@ -7,7 +7,7 @@ import { settleUsageOverage } from '@/lib/billing/usage-overage';
 import { createLead } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceReceipt } from '@/lib/voice/provider';
-import { detectCallEmergency, notifyEmergencyCall } from '@/lib/voice/triage';
+import { detectCallEmergency, notifyEmergencyCall, notifyOrdinaryCall } from '@/lib/voice/triage';
 import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
 import { invalidateVoiceStaffStepUp } from '@/lib/voice/staff-step-up';
@@ -354,11 +354,14 @@ export function inferProviderOutcome(receipt: VoiceReceipt): VoiceCallProviderOu
   const hasUserTurns = log.some((turn) => turn.role === 'user' && turn.content.trim().length > 0);
   const hasAssistantTurns = log.some((turn) => turn.role === 'assistant' && turn.content.trim().length > 0);
 
-  const transferMentioned = log.some((turn) =>
-    turn.content.toLowerCase().includes('connecting you now')
-    || turn.content.toLowerCase().includes('transfer_to_business')
-    || turn.content.toLowerCase().includes('transferring you')
-  );
+  const transferMentioned = log.some((turn) => {
+    const text = turn.content.toLowerCase();
+    return text.includes('connecting you now')
+      || text.includes('connecting you with')
+      || text.includes('transfer_to_business')
+      || text.includes('transferring you')
+      || text.includes('transfer to business');
+  });
 
   if (transferMentioned) {
     return 'transfer_attempted';
@@ -520,36 +523,58 @@ export async function recordCallHistory(
         urgency,
       }, { onConflict: 'call_id' });
 
+      const cPhone = facts.callerNumber ?? callerPhone(receipt);
+
       if (isEmergency && !facts.staffCaller) {
-        await notifyEmergencyCall(
-          admin,
-          facts.accountId,
-          facts.callerNumber ?? callerPhone(receipt),
-          summaryLine(receipt) || emergency.reason,
-          emergency,
-          callRow.id,
-        );
+        try {
+          await notifyEmergencyCall(
+            admin,
+            facts.accountId,
+            cPhone,
+            summaryLine(receipt) || emergency.reason,
+            emergency,
+            callRow.id,
+          );
+        } catch (emergencyError) {
+          console.error('[AI Voice Settlement] Emergency alert dispatch failed:', emergencyError);
+        }
+      } else if (!facts.staffCaller && outcome !== 'caller_abandoned') {
+        try {
+          await notifyOrdinaryCall(
+            admin,
+            facts.accountId,
+            cPhone,
+            summaryLine(receipt),
+            typeof structured?.caller_name === 'string' ? structured.caller_name : null,
+            callRow.id,
+          );
+        } catch (notifyError) {
+          console.error('[AI Voice Settlement] Ordinary call notification dispatch failed:', notifyError);
+        }
       }
 
-      const cPhone = facts.callerNumber ?? callerPhone(receipt);
       if (cPhone && outcome !== 'caller_abandoned' && !facts.staffCaller) {
-        const callerName = typeof structured?.caller_name === 'string' ? structured.caller_name : null;
-        const issueSummary = typeof structured?.issue_summary === 'string'
-          ? structured.issue_summary
-          : (summaryLine(receipt) || null);
-        await triggerVoicePostCallFollowup(
-          admin,
-          facts.accountId,
-          callRow.id,
-          cPhone,
-          {
-            callerName,
-            issueSummary,
-          },
-        );
+        try {
+          const callerName = typeof structured?.caller_name === 'string' ? structured.caller_name : null;
+          const issueSummary = typeof structured?.issue_summary === 'string'
+            ? structured.issue_summary
+            : (summaryLine(receipt) || null);
+          await triggerVoicePostCallFollowup(
+            admin,
+            facts.accountId,
+            callRow.id,
+            cPhone,
+            {
+              callerName,
+              issueSummary,
+            },
+          );
+        } catch (smsError) {
+          console.error('[AI Voice Settlement] Post-call SMS dispatch failed:', smsError);
+        }
       }
     }
-  } catch {
-    // Non-blocking on workflow sync, emergency alert, and follow-up SMS
+  } catch (error) {
+    console.error('[AI Voice Settlement] Workflow/notification sync failed:', error);
   }
 }

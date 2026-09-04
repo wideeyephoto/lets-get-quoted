@@ -350,11 +350,27 @@ export async function POST(request: Request) {
 
     const projectDesc = String(args.project_description || '').trim() || `${tradeKey} project`;
 
+    const estimatedCost = typeof args.estimated_cost === 'number'
+      ? args.estimated_cost
+      : typeof args.estimated_cost === 'string' && Number.isFinite(Number(args.estimated_cost))
+      ? Number(args.estimated_cost)
+      : undefined;
+
+    const roofSquares = typeof args.roof_squares === 'number'
+      ? args.roof_squares
+      : typeof args.roof_squares === 'string' && Number.isFinite(Number(args.roof_squares))
+      ? Number(args.roof_squares)
+      : undefined;
+
+    const stateParam = typeof args.state === 'string' && args.state.trim().length === 2
+      ? args.state.trim().toUpperCase()
+      : undefined;
+
     const jurisdiction = resolveJurisdiction(
       {
         raw: cityOrAddress,
         city: cityOrAddress,
-        state: 'MI',
+        state: stateParam || 'MI',
         formattedAddress: cityOrAddress,
         isValid: true,
       },
@@ -365,20 +381,20 @@ export async function POST(request: Request) {
       trade: tradeKey,
       scope: 'replacement',
       freeTextDescription: projectDesc,
-      estimatedCost: 8500,
-      roofSquares: 22,
+      ...(estimatedCost !== undefined ? { estimatedCost } : {}),
+      ...(roofSquares !== undefined ? { roofSquares } : {}),
     });
 
     const isReq = requirement.decision === 'required';
-    const feeText = requirement.estimatedGovernmentFee
-      ? ` The estimated municipal permit fee is approximately $${requirement.estimatedGovernmentFee.estimatedTotal.toFixed(0)}.`
-      : '';
+    const feeText = (estimatedCost !== undefined && requirement.estimatedGovernmentFee)
+      ? ` The estimated municipal permit fee is approximately $${requirement.estimatedGovernmentFee.estimatedTotal.toFixed(0)} based on your project scope.`
+      : ' Municipal permit fees depend on final contract valuation and inspection schedule, which our team coordinates for you.';
 
     const spokenResponse = isReq
-      ? `In ${jurisdiction.authorityName}, a building and trade permit is required for ${projectDesc}.${feeText} Our team can coordinate the permit and required city inspections with ${jurisdiction.agencyName}.`
+      ? `In ${jurisdiction.authorityName}, a building and trade permit is required for ${projectDesc}.${feeText} Our team manages the full permit and municipal inspection process directly with ${jurisdiction.agencyName}.`
       : requirement.decision === 'not_required'
-      ? `In ${jurisdiction.authorityName}, a permit is typically not required for minor repairs under ${projectDesc}. Our team ensures all work strictly complies with Michigan building codes.`
-      : `In ${jurisdiction.authorityName}, we recommend verifying with ${jurisdiction.agencyName} based on your exact project scope. Our office manages the full municipal permit and inspection process for you.`;
+      ? `In ${jurisdiction.authorityName}, a permit is typically not required for minor repairs or maintenance under ${projectDesc}. Our office ensures all work complies strictly with local building safety codes.`
+      : `In ${jurisdiction.authorityName}, requirements depend on your exact project scope. Our office manages the municipal permit and inspection process with ${jurisdiction.agencyName}.`;
 
     return NextResponse.json({
       response: spokenResponse,
@@ -525,29 +541,139 @@ export async function POST(request: Request) {
     else if (rawCategory.includes('insulation')) cat = 'roof_insulation_air_sealing';
 
     try {
-      const report = calculateCleanEnergyRebates({
-        category: cat,
-        state,
-        projectCost: 9500,
-      });
+      const callerCost = typeof args.project_cost === 'number'
+        ? args.project_cost
+        : typeof args.project_cost === 'string' && Number.isFinite(Number(args.project_cost))
+        ? Number(args.project_cost)
+        : null;
 
-      const fedCredit = report.incentives.federalTaxCredit.calculatedAmount;
-      const utilityRebate = report.incentives.utilityRebate?.cashRebateAmount || 0;
-      const totalIncentives = fedCredit + utilityRebate;
+      if (callerCost && callerCost > 0) {
+        const report = calculateCleanEnergyRebates({
+          category: cat,
+          state,
+          projectCost: callerCost,
+        });
+        const fedCredit = report.incentives.federalTaxCredit.calculatedAmount;
+        const utilityRebate = report.incentives.utilityRebate?.cashRebateAmount || 0;
+        const totalIncentives = fedCredit + utilityRebate;
 
-      let benefitText = `Under the Federal Inflation Reduction Act, qualifying installations are eligible for a 30% federal tax credit up to $${fedCredit.toLocaleString()}`;
-      if (utilityRebate > 0) {
-        benefitText += `, plus an estimated $${utilityRebate.toLocaleString()} in local utility rebates, bringing total estimated savings to $${totalIncentives.toLocaleString()}`;
+        let benefitText = `For a project estimate of $${callerCost.toLocaleString()}, qualifying installations are eligible for up to $${fedCredit.toLocaleString()} in federal tax credits`;
+        if (utilityRebate > 0) {
+          benefitText += `, plus an estimated $${utilityRebate.toLocaleString()} in local utility rebates, for up to $${totalIncentives.toLocaleString()} in total incentives`;
+        }
+        benefitText += '. Would you like our specialist to assess your home and prepare a formal estimate?';
+        return NextResponse.json({ response: benefitText });
       }
-      benefitText += '. Would you like me to schedule a consultation with our technician to assess your home?';
 
-      return NextResponse.json({ response: benefitText });
+      let summaryText = '';
+      if (cat === 'heat_pump_hvac') {
+        summaryText = 'Under the Federal Inflation Reduction Act 25C, qualifying high-efficiency heat pump HVAC systems are eligible for a 30% federal tax credit up to $2,000, plus local utility rebates. Would you like to schedule a consultation with our technician to assess your home?';
+      } else if (cat === 'heat_pump_water_heater') {
+        summaryText = 'Under the Federal Inflation Reduction Act 25C, qualifying heat pump water heaters are eligible for a 30% federal tax credit up to $2,000, plus local electric utility rebates. Would you like our specialist to give you a full estimate?';
+      } else if (cat === 'solar_rooftop_pv') {
+        summaryText = 'Under Federal IRA Section 25D, qualifying rooftop solar installations are eligible for an uncapped 30% federal tax credit. Would you like our specialist to review your roof and energy usage?';
+      } else if (cat === 'electrical_panel_200a') {
+        summaryText = 'Under Federal IRA Section 25C, electrical panel upgrades installed in conjunction with heat pumps or clean energy qualify for a 30% tax credit up to $600. Would you like our team to schedule an on-site evaluation?';
+      } else {
+        summaryText = 'Federal Inflation Reduction Act tax credits and local utility rebates cover up to 30% of qualifying clean energy home improvements. Would you like our specialist to provide a personalized estimate?';
+      }
+
+      return NextResponse.json({ response: summaryText });
     } catch (err) {
       console.error('Error in check_rebates_and_incentives SWAIG tool:', err);
       return NextResponse.json({
         response: 'Federal tax credits and local utility rebates are available for qualifying high-efficiency upgrades. Would you like our specialist to give you a full estimate?',
       });
     }
+  }
+
+  if (fnName === 'cancel_or_reschedule_appointment') {
+    const customerPhone = String(args.customer_phone || verifiedCallerPhone || '').trim();
+    const action = String(args.action || 'reschedule').toLowerCase();
+    const newDate = String(args.new_date || '').trim();
+    const newTime = String(args.new_time || '').trim();
+    const reason = String(args.reason || '').trim();
+
+    try {
+      const normalizedPhone = customerPhone ? normalizeUsPhone(customerPhone) : null;
+      let leadRow: Record<string, unknown> | null = null;
+      if (normalizedPhone) {
+        const { data } = await admin
+          .from('leads')
+          .select('id, name, scheduled_date, scheduled_time, address')
+          .eq('account_id', accountId)
+          .eq('phone', normalizedPhone)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        leadRow = data as Record<string, unknown> | null;
+      }
+
+      if (action === 'cancel') {
+        if (leadRow?.id) {
+          await admin
+            .from('leads')
+            .update({
+              status: 'canceled',
+              notes: reason ? `Canceled via AI voice: ${reason}` : 'Canceled via AI voice phone request',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', leadRow.id);
+        }
+        return NextResponse.json({
+          response: 'I have noted the cancellation on your appointment. Our office dispatch team will confirm and follow up if you need to rebook in the future.',
+        });
+      }
+
+      if (newDate) {
+        if (leadRow?.id) {
+          await admin
+            .from('leads')
+            .update({
+              scheduled_date: newDate,
+              scheduled_time: newTime || (leadRow.scheduled_time as string | null) || 'Morning',
+              notes: reason ? `Rescheduled via AI voice: ${reason}` : 'Rescheduled via AI voice phone request',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', leadRow.id);
+        }
+        const timeClause = newTime ? ` at ${newTime}` : '';
+        return NextResponse.json({
+          response: `I have updated your appointment request to ${newDate}${timeClause}. Our team will review the calendar and text you a confirmation shortly.`,
+        });
+      }
+
+      return NextResponse.json({
+        response: 'What date and time would you prefer to reschedule your appointment to?',
+      });
+    } catch (err) {
+      console.error('Error in cancel_or_reschedule_appointment SWAIG tool:', err);
+      return NextResponse.json({
+        response: 'I have noted your schedule change request. Our office staff will follow up directly with you to confirm the timing.',
+      });
+    }
+  }
+
+  if (fnName === 'get_service_quote_range') {
+    const serviceType = String(args.service_type || '').toLowerCase();
+
+    let estimateGuidance = '';
+    if (serviceType.includes('water heater') || serviceType.includes('tankless')) {
+      estimateGuidance = 'Standard tank water heater replacements typically range from $1,500 to $2,800 installed, while high-efficiency tankless units generally range from $3,000 to $5,000 including venting and gas lines.';
+    } else if (serviceType.includes('drain') || serviceType.includes('clog') || serviceType.includes('sewer')) {
+      estimateGuidance = 'Standard drain clearing typically ranges from $175 to $450 depending on access and severity, while main sewer line hydro-jetting or repairs range higher based on depth.';
+    } else if (serviceType.includes('panel') || serviceType.includes('200 amp') || serviceType.includes('breaker')) {
+      estimateGuidance = 'Standard 200-amp electrical service panel upgrades typically range from $2,200 to $3,800 depending on utility coordination and grounding requirements.';
+    } else if (serviceType.includes('roof') || serviceType.includes('leak') || serviceType.includes('shingle')) {
+      estimateGuidance = 'Minor roof leak repairs typically range from $350 to $1,200, while complete architectural shingle roof replacements generally range from $6,500 to $15,000+ depending on square footage and pitch.';
+    } else if (serviceType.includes('hvac') || serviceType.includes('furnace') || serviceType.includes('ac') || serviceType.includes('heat pump')) {
+      estimateGuidance = 'Complete heating and cooling system replacements typically range from $6,500 to $14,000 depending on equipment efficiency and sizing, while seasonal tune-ups range from $99 to $189.';
+    } else {
+      estimateGuidance = 'Pricing varies depending on project scope, accessibility, and material requirements.';
+    }
+
+    const spokenResponse = `${estimateGuidance} Every home is unique, so our technician provides an exact, written quote on-site before any work begins. Would you like me to reserve an estimate appointment for you?`;
+    return NextResponse.json({ response: spokenResponse });
   }
 
   if (fnName === 'request_staff_step_up') {

@@ -16,7 +16,7 @@ function xml(status = 200) {
   });
 }
 
-const MISSED = new Set(['no-answer', 'busy', 'failed', 'canceled']);
+const MISSED = new Set(['no-answer', 'busy', 'failed', 'canceled', 'ended']);
 
 /**
  * Dial completion for the fallback emitted by /api/voice/ai.
@@ -37,11 +37,39 @@ export async function POST(request: Request) {
     return xml(403);
   }
 
-  const data = await request.formData();
-  const accountId = new URL(request.url).searchParams.get('account');
-  const callId = String(data.get('CallSid') ?? '').trim() || null;
-  const dialStatus = String(data.get('DialCallStatus') ?? '').trim() || 'unknown';
-  const caller = normalizeUsPhone(String(data.get('From') ?? ''));
+  const url = new URL(request.url);
+  const accountId = url.searchParams.get('account');
+  const queryCallId = url.searchParams.get('call_id');
+  const queryFrom = url.searchParams.get('from');
+
+  let callId: string | null = null;
+  let dialStatus = 'unknown';
+  let caller: string | null = null;
+
+  const contentType = request.headers.get('content-type') || '';
+  if (contentType.includes('application/json')) {
+    try {
+      const json = JSON.parse(rawBody) as Record<string, unknown>;
+      const params = (json.params ?? {}) as Record<string, unknown>;
+      callId = String(json.CallSid ?? json.call_id ?? params.call_id ?? queryCallId ?? '').trim() || null;
+      dialStatus = String(json.DialCallStatus ?? json.dial_status ?? params.call_state ?? 'no-answer').trim();
+      caller = normalizeUsPhone(String(json.From ?? json.from ?? params.from ?? queryFrom ?? ''));
+    } catch {
+      // fallback to query params
+    }
+  } else {
+    try {
+      const data = await request.formData();
+      callId = String(data.get('CallSid') ?? queryCallId ?? '').trim() || null;
+      dialStatus = String(data.get('DialCallStatus') ?? 'unknown').trim();
+      caller = normalizeUsPhone(String(data.get('From') ?? queryFrom ?? ''));
+    } catch {
+      // fallback to query params
+    }
+  }
+
+  if (!callId && queryCallId) callId = queryCallId.trim();
+  if (!caller && queryFrom) caller = normalizeUsPhone(queryFrom);
 
   // Presence-only operational signal. No phone numbers, form body, signature,
   // or callback credentials are written to a log.

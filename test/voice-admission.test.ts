@@ -200,7 +200,7 @@ describe('what a caller gets', () => {
     ['unavailable', 'an identity dependency is unavailable'],
     ['ambiguous', 'the signed caller matches more than one staff identity'],
   ] as const)(
-    'forwards without reserving a paid call when %s: %s',
+    'safely admits as customer rather than dropping to forward when %s: %s',
     async (status, _reason) => {
       resolveVoiceCallerIdentity.mockResolvedValue({ status });
 
@@ -209,10 +209,17 @@ describe('what a caller gets', () => {
       expect(resolveVoiceCallerIdentity).toHaveBeenCalledWith(admin, ACCOUNT, call.fromNumber);
       expect(result).toMatchObject({
         accountId: ACCOUNT,
-        declineReason: 'caller_identity_unavailable',
+        declineReason: null,
       });
-      expect(result.plan.kind).toBe('forward');
-      expect(admitVoiceCall).not.toHaveBeenCalled();
+      expect(result.plan.kind).toBe('ai_agent');
+      expect(admitVoiceCall).toHaveBeenCalledWith(
+        admin,
+        expect.objectContaining({
+          accountId: ACCOUNT,
+          callerKind: 'customer',
+        }),
+        { mode: 'enforce', concurrencyLimit: 1 },
+      );
     },
   );
 

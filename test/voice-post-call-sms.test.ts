@@ -44,4 +44,49 @@ describe('AI Voice Post-Call SMS Follow-up Engine', () => {
     expect(result.ok).toBe(false);
     expect(result.error).toContain('Invalid or missing caller phone');
   });
+
+  it('skips follow-up SMS when postCallSmsEnabled is false in options', async () => {
+    const mockAdmin = {} as never;
+    const result = await triggerVoicePostCallFollowup(
+      mockAdmin,
+      'acc-123',
+      'call-123',
+      '+12485550199',
+      { callerName: 'John Doe', postCallSmsEnabled: false }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.skipped).toBe(true);
+  });
+
+  it('skips follow-up SMS when post_call_sms_enabled is false in voice_settings', async () => {
+    const mockAdmin = {
+      from: (table: string) => ({
+        select: () => ({
+          eq: () => ({
+            maybeSingle: async () => {
+              if (table === 'voice_settings') {
+                return {
+                  data: { post_call_sms_enabled: false },
+                  error: null,
+                };
+              }
+              return { data: null, error: null };
+            },
+          }),
+        }),
+      }),
+    } as never;
+
+    const result = await triggerVoicePostCallFollowup(
+      mockAdmin,
+      'acc-123',
+      'call-123',
+      '+12485550199',
+      { callerName: 'John Doe' }
+    );
+
+    expect(result.ok).toBe(true);
+    expect(result.skipped).toBe(true);
+  });
 });

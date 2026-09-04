@@ -22,6 +22,7 @@ vi.mock('@/lib/voice/triage', () => ({
     reason: 'Emergency detected',
   })),
   notifyEmergencyCall: vi.fn().mockResolvedValue(undefined),
+  notifyOrdinaryCall: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock('@/lib/voice/post-call-sms', () => ({
@@ -68,6 +69,18 @@ describe('voice settlement outcome inference', () => {
       callLog: [
         { role: 'user', content: 'Can I speak to a real person?', timestamp: null },
         { role: 'assistant', content: 'Connecting you now to the business owner.', timestamp: null },
+      ],
+    };
+    const outcome = inferProviderOutcome(transferReceipt);
+    expect(outcome).toBe('transfer_attempted');
+  });
+
+  it('identifies transfer_attempted when SWML transfer phrase is present', () => {
+    const transferReceipt: VoiceReceipt = {
+      ...baseReceipt,
+      callLog: [
+        { role: 'user', content: 'Can I speak to someone?', timestamp: null },
+        { role: 'assistant', content: 'Connecting you with our office staff now.', timestamp: null },
       ],
     };
     const outcome = inferProviderOutcome(transferReceipt);
@@ -328,5 +341,53 @@ describe('settling voice receipt updates outcome and workflow urgency', () => {
       p_caller_number: '+18103042061',
       p_reason: 'call_ended',
     });
+  });
+
+  it('dispatches ordinary call notification for non-emergency customer calls', async () => {
+    const mockAdmin = {
+      from(table: string) {
+        const chain: Record<string, unknown> = {};
+        for (const method of ['select', 'eq', 'update']) chain[method] = () => chain;
+        chain.maybeSingle = () => {
+          if (table === 'voice_call_admissions') {
+            return Promise.resolve({
+              data: {
+                account_id: ACCOUNT,
+                reservation_id: 'res-cust',
+                reserved_minutes: 60,
+                caller_number: '+15559876543',
+                caller_kind: 'customer',
+              },
+              error: null,
+            });
+          }
+          if (table === 'voice_calls') {
+            return Promise.resolve({ data: { id: 'call-row-cust' }, error: null });
+          }
+          return Promise.resolve({ data: null, error: null });
+        };
+        chain.upsert = () => Promise.resolve({ error: null });
+        return chain;
+      },
+    } as never;
+
+    const { notifyOrdinaryCall } = await import('@/lib/voice/triage');
+
+    await settleVoiceReceipt(mockAdmin, {
+      ...baseReceipt,
+      summary: 'Customer wants a quote for siding replacement.',
+      structuredPostPrompt: {
+        caller_name: 'Jane Doe',
+      },
+    });
+
+    expect(notifyOrdinaryCall).toHaveBeenCalledWith(
+      mockAdmin,
+      ACCOUNT,
+      '+15559876543',
+      'Customer wants a quote for siding replacement.',
+      'Jane Doe',
+      'call-row-cust',
+    );
   });
 });

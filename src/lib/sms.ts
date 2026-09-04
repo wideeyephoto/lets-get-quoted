@@ -33,6 +33,7 @@ import {
   ownerHighValueLeadText,
   ownerVerificationCodeText,
   ownerVoiceEmergencyAlertText,
+  ownerVoiceCallNotificationText,
   callerVoiceBookingLinkText,
   callerVoiceBookingConfirmationText,
   callerVoicePostCallFollowupText,
@@ -275,6 +276,45 @@ export async function sendOwnerVoiceEmergencyAlertSms(input: {
     });
   } catch (error) {
     console.error('Owner voice emergency alert SMS failed:', error instanceof Error ? error.message : error);
+  }
+}
+
+/**
+ * Dispatches an SMS alert to the contractor when an incoming ordinary call is answered by AI receptionist.
+ */
+export async function sendOwnerVoiceCallNotificationSms(input: {
+  accountId: string;
+  alertPhone: string;
+  businessName: string;
+  callerName?: string | null;
+  callerPhone: string | null;
+  summary: string;
+  dashboardUrl: string;
+  idempotencyKey?: string;
+}): Promise<void> {
+  try {
+    const to = normalizeUsPhone(input.alertPhone);
+    if (!to) return;
+    if (await isPhoneOptedOut(input.accountId, to)) return;
+    const body = ownerVoiceCallNotificationText({
+      businessName: input.businessName,
+      callerName: input.callerName,
+      callerNumber: input.callerPhone,
+      summary: input.summary,
+      dashboardUrl: input.dashboardUrl,
+    });
+    await queueAccountSms({
+      accountId: input.accountId,
+      phone: to,
+      body,
+      messageKind: 'owner-voice-call-notification',
+      category: 'owner_alert',
+      context: 'owner',
+      senderPurpose: 'lgq_dispatch',
+      idempotencyKey: input.idempotencyKey,
+    });
+  } catch (error) {
+    console.error('Owner voice call notification SMS failed:', error instanceof Error ? error.message : error);
   }
 }
 

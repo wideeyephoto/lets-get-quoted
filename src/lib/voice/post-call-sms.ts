@@ -6,6 +6,7 @@ export type VoiceFollowupOptions = {
   scheduledTime?: string | null;
   portalUrl?: string | null;
   issueSummary?: string | null;
+  postCallSmsEnabled?: boolean;
 };
 
 /**
@@ -22,6 +23,28 @@ export async function triggerVoicePostCallFollowup(
 ): Promise<{ ok: boolean; skipped?: boolean; error?: string }> {
   if (!callerPhone || callerPhone.trim().length < 7) {
     return { ok: false, error: 'Invalid or missing caller phone' };
+  }
+
+  // If explicitly passed, honor caller's check
+  if (options.postCallSmsEnabled === false) {
+    return { ok: true, skipped: true };
+  }
+
+  // Check voice_settings if not explicitly provided
+  if (options.postCallSmsEnabled === undefined) {
+    try {
+      const { data: settings } = await _supabase
+        .from('voice_settings')
+        .select('post_call_sms_enabled')
+        .eq('account_id', accountId)
+        .maybeSingle();
+
+      if (settings && settings.post_call_sms_enabled === false) {
+        return { ok: true, skipped: true };
+      }
+    } catch (err) {
+      console.warn('[triggerVoicePostCallFollowup] Could not verify post_call_sms_enabled:', err);
+    }
   }
 
   const idempotencyKey = `voice-post-call-followup-${callId}`;

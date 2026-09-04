@@ -1,4 +1,4 @@
-﻿import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   createAdminClient: vi.fn(),
@@ -115,5 +115,38 @@ describe('AI voice fallback status callback', () => {
     const response = await POST(callback());
     expect(response.status).toBe(403);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
+  });
+
+  it('acknowledges and ingests missed call when receiving SWML JSON callback', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ ingest_disposition: 'accepted' }], error: null,
+    });
+    mocks.createAdminClient.mockReturnValue({ rpc });
+    const { POST } = await import('@/app/api/voice/ai/status/route');
+
+    const jsonReq = new Request(`https://lgq.test/api/voice/ai/status?account=${ACCOUNT}&from=%2B18105550199&call_id=call-sw-swml-1`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-signalwire-signature': 'signed',
+      },
+      body: JSON.stringify({
+        event_type: 'calling.call.state',
+        params: {
+          call_id: 'call-sw-swml-1',
+          call_state: 'ended',
+        },
+      }),
+    });
+
+    const response = await POST(jsonReq);
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('ingest_sms_missed_call', expect.objectContaining({
+      p_provider: 'signalwire',
+      p_provider_call_id: 'call-sw-swml-1',
+      p_account_id: ACCOUNT,
+      p_phone_number: '+18105550199',
+      p_dial_status: 'ended',
+    }));
   });
 });

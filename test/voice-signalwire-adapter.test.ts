@@ -511,6 +511,11 @@ describe('rendering an answer', () => {
     expect(forward.contentType).toBe('application/json');
     const fSwml = JSON.parse(forward.body);
     expect(fSwml.sections.main[0].connect.to).toBe('+15551230000');
+    expect(fSwml.sections.main[0].connect.from).toBe('+15559876543');
+    expect(fSwml.sections.main[0].connect.timeout).toBe(20);
+    expect(fSwml.sections.main[0].connect.call_state_url).toBe('https://x.test/s');
+    expect(fSwml.sections.main[1].play.url).toContain('say:');
+    expect(fSwml.sections.main[2].record_call).toBeDefined();
 
     const decline = provider.renderAnswer({
       kind: 'unavailable', message: 'Sorry, we are closed.',
@@ -527,6 +532,30 @@ describe('rendering an answer', () => {
     const vSwml = JSON.parse(voicemail.body);
     expect(vSwml.sections.main[1].play.url).toBe('say: Please leave a message.');
     expect(vSwml.sections.main[2].record_call).toBeDefined();
+  });
+
+  it('renders transfer_to_business with whisper confirm, timeout, and voicemail fallback', () => {
+    const aiAnswer = provider.renderAnswer({
+      kind: 'ai_agent',
+      receiptUrl: 'https://x.test/receipt',
+      receiptAuthorization: RECEIPT_AUTH,
+      greeting: 'Hello',
+      capMinutes: 10,
+      transferTo: '+15558889999',
+    });
+    const parsed = JSON.parse(aiAnswer.body);
+    const aiSection = parsed.sections.main.find((s: Record<string, unknown>) => 'ai' in s);
+    const swaig = aiSection.ai.SWAIG.functions;
+    const transferFn = swaig.find((f: Record<string, unknown>) => f.function === 'transfer_to_business');
+    expect(transferFn).toBeDefined();
+    const action = transferFn.data_map.expressions[0].output.action[0];
+    expect(action.transfer).toBe(true);
+    const transferMain = action.SWML.sections.main;
+    expect(transferMain[0].connect.to).toBe('+15558889999');
+    expect(transferMain[0].connect.timeout).toBe(25);
+    expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
+    expect(transferMain[1].play.url).toContain('say:');
+    expect(transferMain[2].record_call).toBeDefined();
   });
 
   it('parses structured JSON post prompt data into receipt.structuredPostPrompt', () => {

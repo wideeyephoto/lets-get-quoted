@@ -34,8 +34,12 @@ vi.mock('@/lib/account-events', () => ({
   recordAccountEvent: (...a: unknown[]) => recordAccountEvent(...a),
 }));
 
-const { setVoiceRecordingAction, updateVoiceSettingsAction } =
-  await import('@/app/dashboard/settings/voice-actions');
+const {
+  setVoiceRecordingAction,
+  updateVoiceSettingsAction,
+  setVoicePostCallSmsAction,
+  setVoiceContractorNotificationsAction,
+} = await import('@/app/dashboard/settings/voice-actions');
 
 const ACCOUNT = '11111111-1111-4111-8111-111111111111';
 
@@ -225,24 +229,63 @@ describe('what the server does with what the form sends', () => {
 
 afterEach(() => vi.unstubAllEnvs());
 
-describe('recording stays disabled until the provider rail exists', () => {
-  it('refuses to turn on even with an acknowledgement', async () => {
-    await expect(setVoiceRecordingAction({ enabled: true, acknowledged: true }))
-      .rejects.toThrow(/not available yet/i);
+describe('recording toggle enforces two-party consent disclosure and saves state', () => {
+  it('refuses to turn on without acknowledgement', async () => {
+    await expect(setVoiceRecordingAction({ enabled: true, acknowledged: false }))
+      .rejects.toThrow(/consent requirements/i);
     expect(upsert).not.toHaveBeenCalled();
   });
 
-  it('keeps a compatibility path that can turn a stale row off', async () => {
-    await setVoiceRecordingAction({ enabled: false, acknowledged: false });
+  it('turns on recording with disclosure timestamp and user attribution when acknowledged', async () => {
+    const result = await setVoiceRecordingAction({ enabled: true, acknowledged: true });
+    expect(result).toEqual({ enabled: true });
+    expect(upsert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        account_id: ACCOUNT,
+        recording_enabled: true,
+        recording_disclosure_accepted_by: 'user-1',
+      }),
+      { onConflict: 'account_id' },
+    );
+    expect(recordAccountEvent).toHaveBeenCalledWith(expect.objectContaining({
+      kind: 'ai_voice_recording_changed',
+      summary: 'Call recording turned on',
+    }));
+  });
+
+  it('turns recording off and records audit event', async () => {
+    const result = await setVoiceRecordingAction({ enabled: false, acknowledged: false });
+    expect(result).toEqual({ enabled: false });
     const row = upsert.mock.calls[0][0];
     expect(row.recording_enabled).toBe(false);
     expect(row).not.toHaveProperty('recording_disclosure_accepted_at');
-  });
-
-  it('writes an audit entry when forcing a stale row off', async () => {
-    await setVoiceRecordingAction({ enabled: false, acknowledged: false });
     expect(recordAccountEvent).toHaveBeenCalledWith(expect.objectContaining({
       kind: 'ai_voice_recording_changed',
+      summary: 'Call recording kept off',
     }));
+  });
+});
+
+describe('post-call SMS and contractor notification toggles', () => {
+  it('toggles post-call SMS setting', async () => {
+    const result = await setVoicePostCallSmsAction({ enabled: false });
+    expect(result).toEqual({ enabled: false });
+    expect(upsert).toHaveBeenCalledWith(
+      { account_id: ACCOUNT, post_call_sms_enabled: false },
+      { onConflict: 'account_id' },
+    );
+  });
+
+  it('toggles contractor notifications setting and channel', async () => {
+    const result = await setVoiceContractorNotificationsAction({ enabled: true, channel: 'both' });
+    expect(result).toEqual({ enabled: true, channel: 'both' });
+    expect(upsert).toHaveBeenCalledWith(
+      {
+        account_id: ACCOUNT,
+        contractor_notifications_enabled: true,
+        contractor_notification_channel: 'both',
+      },
+      { onConflict: 'account_id' },
+    );
   });
 });

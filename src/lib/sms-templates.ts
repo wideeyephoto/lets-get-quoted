@@ -86,6 +86,18 @@ export function ownerVoiceEmergencyAlertText(input: {
   return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
 }
 
+export function ownerVoiceCallNotificationText(input: {
+  businessName: string;
+  callerName?: string | null;
+  callerNumber: string | null;
+  summary: string;
+  dashboardUrl: string;
+}): string {
+  const caller = input.callerName ? `${input.callerName} (${input.callerNumber || 'Unknown'})` : (input.callerNumber || 'Unknown caller');
+  const brief = input.summary.slice(0, 140);
+  return `📞 New call answered for ${input.businessName} from ${caller}: ${brief}. Details: ${input.dashboardUrl} — Reply STOP to opt out.`;
+}
+
 export function callerVoiceBookingLinkText(input: {
   businessName: string;
   bookingUrl: string;

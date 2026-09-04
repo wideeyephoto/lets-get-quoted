@@ -65,10 +65,9 @@ export function localClock(at: Date, timeZone: string): { weekday: number; minut
  * the correct reading of a contractor who never set hours but did switch the
  * receptionist on.
  *
- * A close time at or before the open time is treated as closed rather than as
- * an overnight window. Overnight hours are a real thing and this does not
- * support them yet; guessing would silently keep a business "open" until the
- * following afternoon.
+ * When close is before open (e.g. 22:00–06:00), it represents an overnight
+ * shift spanning midnight: the business is open if the time is at/after open
+ * or before close. If open === close, the duration is zero and the business is closed.
  */
 export function isWithinBusinessHours(
   hours: BusinessHours,
@@ -81,8 +80,13 @@ export function isWithinBusinessHours(
 
   const open = minutesOfDay(String(window[0]));
   const close = minutesOfDay(String(window[1]));
-  if (open === null || close === null || close <= open) return false;
+  if (open === null || close === null || open === close) return false;
 
-  // Half-open: a business closing at 17:00 is shut at 17:00, not at 17:01.
+  // Overnight window crossing midnight (e.g. 22:00 to 06:00)
+  if (close < open) {
+    return minutes >= open || minutes < close;
+  }
+
+  // Standard daytime window: half-open (closing at 17:00 is shut at 17:00)
   return minutes >= open && minutes < close;
 }
