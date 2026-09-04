@@ -66,6 +66,7 @@ export const CALENDAR_VIEWS: CalendarView[] = ['day', 'week', 'month', 'resource
  * only what an absent cookie means.
  */
 export function normalizeCalendarView(value: unknown): CalendarView {
+  if (value === 'resource_timeline') return 'crew';
   return CALENDAR_VIEWS.includes(value as CalendarView) ? (value as CalendarView) : 'week';
 }
 
