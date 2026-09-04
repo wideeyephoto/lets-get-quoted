@@ -1,0 +1,128 @@
+/* Base filter button styles */
+.datePresetBtn {
+  font-size: 0.82rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.datePresetBtn:hover {
+  color: var(--text);
+  background: rgba(var(--tint), 0.05);
+}
+
+.categoryTabBtn {
+  font-size: 0.85rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  cursor: pointer;
+  font-family: inherit;
+  font-weight: 600;
+  border: 1px solid transparent;
+  background: none;
+  color: var(--muted);
+  transition: color 0.15s ease, background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.categoryTabBtn:hover {
+  color: var(--text);
+  background: rgba(var(--tint), 0.05);
+}
+
+/* ==========================================================================
+   ACTIVE FILTER STATE - SIGNATURE YELLOW (#ffd166) IN BOTH DARK THEMES (dark, dim)
+   ========================================================================== */
+.activeLink {
+  color: #ffd166 !important;
+  background: rgba(255, 209, 102, 0.14) !important;
+  border: 1px solid rgba(255, 209, 102, 0.35) !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='dark'] .activeLink,
+:root[data-theme='dim'] .activeLink,
+:root[data-theme='onyx'] .activeLink,
+:root:not([data-theme='light']):not([data-theme='sunlight']):not([data-theme='parchment']):not([data-theme='clarity']) .activeLink {
+  color: #ffd166 !important;
+  background: rgba(255, 209, 102, 0.14) !important;
+  border: 1px solid rgba(255, 209, 102, 0.35) !important;
+  font-weight: 700 !important;
+}
+
+:root[data-theme='dark'] .activeLink:hover,
+:root[data-theme='dim'] .activeLink:hover,
+:root[data-theme='onyx'] .activeLink:hover,
+:root:not([data-theme='light']):not([data-theme='sunlight']):not([data-theme='parchment']):not([data-theme='clarity']) .activeLink:hover {
+  color: #ffd166 !important;
+  background: rgba(255, 209, 102, 0.22) !important;
+  border-color: rgba(255, 209, 102, 0.5) !important;
+}
+
+/* ==========================================================================
+   WORKBENCH THEME (data-theme='light')
+   High contrast dark-ink active pill on light workbench card
+   ========================================================================== */
+:root[data-theme='light'] .datePresetBtn,
+:root[data-theme='light'] .categoryTabBtn {
+  background: #f8fafc !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+  font-weight: 650 !important;
+}
+
+:root[data-theme='light'] .datePresetBtn:hover,
+:root[data-theme='light'] .categoryTabBtn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #0f172a !important;
+}
+
+:root[data-theme='light'] .datePresetBtn.activeLink,
+:root[data-theme='light'] .categoryTabBtn.activeLink,
+:root[data-theme='light'] [class*='expenses'] button.activeLink {
+  background: #16202b !important;
+  border: 1.5px solid #16202b !important;
+  color: #ffffff !important;
+  font-weight: 750 !important;
+}
+
+/* ==========================================================================
+   SUNLIGHT & PARCHMENT THEMES
+   High-contrast daytime styling
+   ========================================================================== */
+:root[data-theme='sunlight'] .datePresetBtn,
+:root[data-theme='sunlight'] .categoryTabBtn,
+:root[data-theme='parchment'] .datePresetBtn,
+:root[data-theme='parchment'] .categoryTabBtn {
+  background: #ffffff !important;
+  border: 1.5px solid #cbd5e1 !important;
+  color: #334155 !important;
+  font-weight: 650 !important;
+}
+
+:root[data-theme='sunlight'] .datePresetBtn:hover,
+:root[data-theme='sunlight'] .categoryTabBtn:hover,
+:root[data-theme='parchment'] .datePresetBtn:hover,
+:root[data-theme='parchment'] .categoryTabBtn:hover {
+  background: #f1f5f9 !important;
+  border-color: #94a3b8 !important;
+  color: #090d16 !important;
+}
+
+:root[data-theme='sunlight'] .datePresetBtn.activeLink,
+:root[data-theme='sunlight'] .categoryTabBtn.activeLink,
+:root[data-theme='parchment'] .datePresetBtn.activeLink,
+:root[data-theme='parchment'] .categoryTabBtn.activeLink,
+:root[data-theme='sunlight'] [class*='expenses'] button.activeLink,
+:root[data-theme='parchment'] [class*='expenses'] button.activeLink {
+  background: #090d16 !important;
+  border: 1.5px solid #090d16 !important;
+  color: #ffffff !important;
+  font-weight: 750 !important;
+}

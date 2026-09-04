@@ -7,6 +7,7 @@ import type { ExpenseRow, ExpenseMetrics } from '@/lib/expense-ledger';
 import type { Cost, CostType } from '@/lib/jobs';
 import type { CostSource } from '@/lib/cost-truth';
 import ExpenseDetailDrawer from './ExpenseDetailDrawer';
+import styles from './ExpensesLedger.module.css';
 import {
   createCostAction,
   deleteCostAction,
@@ -609,25 +610,19 @@ export default function ExpensesLedger({
             { id: 'this_quarter', label: 'This Quarter' },
             { id: 'ytd', label: 'YTD' },
             { id: 'custom', label: 'Custom' },
-          ].map((preset) => (
-            <button
-              key={preset.id}
-              type="button"
-              className={`tab${datePreset === preset.id ? ' active' : ''}`}
-              onClick={() => handleDatePreset(preset.id)}
-              style={{
-                fontSize: '0.82rem',
-                padding: '0.25rem 0.6rem',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                background: datePreset === preset.id ? 'rgba(59, 130, 246, 0.15)' : 'none',
-                color: datePreset === preset.id ? '#60a5fa' : 'inherit',
-                border: datePreset === preset.id ? '1px solid rgba(59, 130, 246, 0.3)' : '1px solid transparent',
-              }}
-            >
-              {preset.label}
-            </button>
-          ))}
+          ].map((preset) => {
+            const isActive = datePreset === preset.id;
+            return (
+              <button
+                key={preset.id}
+                type="button"
+                className={`tab ${styles.datePresetBtn}${isActive ? ` active ${styles.activeLink}` : ''}`}
+                onClick={() => handleDatePreset(preset.id)}
+              >
+                {preset.label}
+              </button>
+            );
+          })}
 
           {(datePreset === 'custom' || dateFrom || dateTo) && (
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginLeft: '0.5rem' }}>
@@ -674,20 +669,22 @@ export default function ExpensesLedger({
 
         {/* Category Tabs */}
         <div className="tabs" style={{ margin: 0 }}>
-          {CATEGORY_TABS.map((tab) => (
-            <button
-              key={tab.value}
-              type="button"
-              className={`tab${selectedCategory === tab.value ? ' active' : ''}`}
-              onClick={() => {
-                setSelectedCategory(tab.value);
-                setCurrentPage(1);
-              }}
-              style={{ cursor: 'pointer', background: 'none', border: 'none' }}
-            >
-              {tab.label}
-            </button>
-          ))}
+          {CATEGORY_TABS.map((tab) => {
+            const isActive = selectedCategory === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                className={`tab ${styles.categoryTabBtn}${isActive ? ` active ${styles.activeLink}` : ''}`}
+                onClick={() => {
+                  setSelectedCategory(tab.value);
+                  setCurrentPage(1);
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </section>
 
