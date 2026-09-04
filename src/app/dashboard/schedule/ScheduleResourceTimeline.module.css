@@ -83,6 +83,27 @@
   flex-direction: column;
   overflow-x: auto;
   min-width: 100%;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--tint), 0.25) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.timelineGridWrapper::-webkit-scrollbar {
+  height: 6px;
+}
+
+.timelineGridWrapper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.timelineGridWrapper::-webkit-scrollbar-thumb {
+  background: rgba(var(--tint), 0.2);
+  border-radius: 999px;
+  transition: background 0.15s ease;
+}
+
+.timelineGridWrapper::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--tint), 0.35);
 }
 
 .timelineHeadRow {
@@ -92,13 +113,16 @@
   position: sticky;
   top: 0;
   z-index: 10;
+  min-width: 100%;
+  width: fit-content;
 }
 
 .resourceCorner {
-  width: 230px;
-  min-width: 230px;
-  max-width: 230px;
-  padding: 10px 16px;
+  width: 175px;
+  min-width: 175px;
+  max-width: 175px;
+  flex-shrink: 0;
+  padding: 10px 12px;
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -108,19 +132,24 @@
   background: var(--bg-3);
   display: flex;
   align-items: center;
+  align-self: stretch;
   box-sizing: border-box;
+  position: sticky;
+  left: 0;
+  z-index: 12;
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.12);
 }
 
 .axisHeader {
   flex: 1;
   display: flex;
   position: relative;
-  min-width: 600px;
+  min-width: 460px;
 }
 
 .axisSlot {
   flex: 1;
-  padding: 10px 6px;
+  padding: 8px 4px;
   text-align: left;
   font-size: 0.75rem;
   font-weight: 600;
@@ -129,6 +158,8 @@
   box-sizing: border-box;
   display: flex;
   align-items: center;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .axisSlot strong {
@@ -152,15 +183,19 @@
 .timelineBody {
   display: flex;
   flex-direction: column;
+  min-width: 100%;
+  width: fit-content;
 }
 
 .timelineRow {
   display: flex;
   border-bottom: 1px solid rgba(var(--tint), 0.08);
-  min-height: 82px;
+  min-height: 76px;
   transition: background 0.15s ease;
   position: relative;
   background: var(--bg-2);
+  min-width: 100%;
+  width: fit-content;
 }
 
 .timelineRow:last-child {
@@ -169,6 +204,10 @@
 
 .timelineRow.targetLane {
   background: rgba(59, 130, 246, 0.12) !important;
+}
+
+.timelineRow.targetLane .resourceCell {
+  background: color-mix(in srgb, #3b82f6 15%, var(--bg-2)) !important;
 }
 
 .unassignedRow {
@@ -180,29 +219,39 @@
   background: rgba(255, 138, 61, 0.14) !important;
 }
 
+.unassignedRow.targetLane .resourceCell {
+  background: color-mix(in srgb, #ff8a3d 18%, var(--bg-2)) !important;
+}
+
 /* Resource Column */
 .resourceCell {
-  width: 230px;
-  min-width: 230px;
-  max-width: 230px;
-  padding: 12px 16px;
+  width: 175px;
+  min-width: 175px;
+  max-width: 175px;
+  flex-shrink: 0;
+  padding: 10px 12px;
   border-right: 1px solid rgba(var(--tint), 0.12);
   display: flex;
   align-items: center;
-  gap: 12px;
+  align-self: stretch;
+  gap: 10px;
   background: var(--bg-2);
   box-sizing: border-box;
   pointer-events: none;
+  position: sticky;
+  left: 0;
+  z-index: 6;
+  box-shadow: 2px 0 6px -2px rgba(0, 0, 0, 0.12);
 }
 
 .unassignedCell {
-  background: rgba(var(--tint), 0.035);
+  background: var(--bg-3);
 }
 
 .avatar {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 1px solid rgba(var(--tint), 0.16);
@@ -210,9 +259,9 @@
 }
 
 .initialsAvatar {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   background: linear-gradient(135deg, #2563eb, #1d4ed8);
   color: #ffffff;
@@ -220,16 +269,16 @@
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: 0.9375rem;
+  font-size: 0.8125rem;
   letter-spacing: 0.02em;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
   border: 1px solid rgba(var(--tint), 0.15);
 }
 
 .unassignedIcon {
-  width: 42px;
-  height: 42px;
-  min-width: 42px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   border-radius: 50%;
   background: rgba(var(--tint), 0.1);
   color: var(--text);
@@ -237,7 +286,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.125rem;
+  font-size: 1rem;
   font-weight: 700;
 }
 
@@ -245,10 +294,11 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-width: 0;
 }
 
 .resourceName {
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   font-weight: 700;
   color: var(--text);
   white-space: nowrap;
@@ -257,7 +307,7 @@
 }
 
 .resourceRole {
-  font-size: 0.8125rem;
+  font-size: 0.75rem;
   color: var(--muted);
   white-space: nowrap;
   overflow: hidden;
@@ -268,7 +318,7 @@
 .trackCell {
   flex: 1;
   position: relative;
-  min-width: 600px;
+  min-width: 460px;
   background: var(--bg-2);
   background-image: repeating-linear-gradient(
     to right,
@@ -282,10 +332,10 @@
 /* Job Cards (Modern Rounded Pill Shape with WCAG AAA/AA Contrast) */
 .jobCard {
   position: absolute;
-  top: 10px;
-  bottom: 10px;
-  border-radius: 10px;
-  padding: 8px 14px;
+  top: 8px;
+  bottom: 8px;
+  border-radius: 8px;
+  padding: 6px 10px;
   color: #ffffff;
   display: flex;
   flex-direction: column;

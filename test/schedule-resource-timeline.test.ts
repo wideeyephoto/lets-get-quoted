@@ -71,4 +71,39 @@ describe('Resource Timeline views registration', () => {
     expect(tsx).toContain("import { STATUS_MARK } from './CalendarLegend';");
     expect(tsx).toContain('STATUS_MARK[job.status]');
   });
+
+  it('makes technician column and corner sticky on horizontal scroll with compact width', () => {
+    const css = read('src', 'app', 'dashboard', 'schedule', 'ScheduleResourceTimeline.module.css');
+    // Ensure resourceCorner is sticky to left: 0 with higher z-index
+    expect(css).toMatch(/\.resourceCorner\s*\{[^}]*position:\s*sticky;/);
+    expect(css).toMatch(/\.resourceCorner\s*\{[^}]*left:\s*0;/);
+    expect(css).toMatch(/\.resourceCorner\s*\{[^}]*z-index:\s*12;/);
+    expect(css).toMatch(/\.resourceCorner\s*\{[^}]*width:\s*175px;/);
+
+    // Ensure resourceCell is sticky to left: 0 with solid background
+    expect(css).toMatch(/\.resourceCell\s*\{[^}]*position:\s*sticky;/);
+    expect(css).toMatch(/\.resourceCell\s*\{[^}]*left:\s*0;/);
+    expect(css).toMatch(/\.resourceCell\s*\{[^}]*z-index:\s*6;/);
+    expect(css).toMatch(/\.resourceCell\s*\{[^}]*width:\s*175px;/);
+  });
+
+  it('configures rows to expand to fit-content and tracks to have responsive min-width', () => {
+    const css = read('src', 'app', 'dashboard', 'schedule', 'ScheduleResourceTimeline.module.css');
+    // Ensure rows and body expand with fit-content to span the full scrollWidth
+    expect(css).toMatch(/\.timelineHeadRow\s*\{[^}]*width:\s*fit-content;/);
+    expect(css).toMatch(/\.timelineBody\s*\{[^}]*width:\s*fit-content;/);
+    expect(css).toMatch(/\.timelineRow\s*\{[^}]*width:\s*fit-content;/);
+
+    // Ensure axisHeader and trackCell use reduced responsive min-width
+    expect(css).toMatch(/\.axisHeader\s*\{[^}]*min-width:\s*460px;/);
+    expect(css).toMatch(/\.trackCell\s*\{[^}]*min-width:\s*460px;/);
+  });
+
+  it('provides sleek custom scrollbar styling on timelineGridWrapper', () => {
+    const css = read('src', 'app', 'dashboard', 'schedule', 'ScheduleResourceTimeline.module.css');
+    expect(css).toMatch(/\.timelineGridWrapper\s*\{[^}]*scrollbar-width:\s*thin;/);
+    expect(css).toContain('.timelineGridWrapper::-webkit-scrollbar');
+    expect(css).toContain('.timelineGridWrapper::-webkit-scrollbar-thumb');
+  });
 });
+
