@@ -658,7 +658,6 @@ export default async function VoiceCallsPage({
       {/* VIEW 4: RECEPTIONIST SETTINGS */}
       {currentView === 'settings' && (
         <div className={styles.tabViewContent}>
-          {/* Top Assistant Status Banner */}
           <VoiceStatusBanner
             status={(voiceSettings?.status as 'active' | 'paused' | 'off') || 'active'}
             answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') || 'always'}
@@ -666,9 +665,10 @@ export default async function VoiceCallsPage({
             isReady={isRouteReady}
             businessName={resolvedBusinessName}
             trade={account?.trade || null}
+            hideConfigButton
           />
 
-          <div style={{ maxWidth: '860px', width: '100%', margin: '0 auto' }}>
+          <div style={{ maxWidth: '1280px', width: '100%', margin: '0 auto' }}>
             <AiReceptionistSection
               status={(voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off'}
               answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'always'}

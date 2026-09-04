@@ -411,14 +411,32 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
   const forward = normalizeUsPhone(String(input.forward ?? '')) || null;
   const tracking = normalizeUsPhone(String(input.tracking ?? '')) || null;
 
+  // Protect dedicated AI Voice provisioned number from being hijacked or desynced
+  // by edits in the missed-call settings card.
+  const admin = createAdminClient();
+  const { data: dedicated } = await admin
+    .from('voice_number_inventory')
+    .select('e164_number')
+    .eq('account_id', accountId)
+    .eq('provider', 'signalwire')
+    .is('released_at', null)
+    .maybeSingle();
+
+  const dedicatedNumber = dedicated?.e164_number ? normalizeUsPhone(String(dedicated.e164_number)) : null;
+  if (dedicatedNumber && tracking && tracking !== dedicatedNumber) {
+    throw new Error('This account has a dedicated AI Voice number provisioned. The customer-facing number cannot be changed here.');
+  }
+
+  const effectiveTracking = dedicatedNumber || tracking;
+
   const { data: current } = await supabase
     .from('accounts')
     .select('call_tracking_number')
     .eq('id', accountId)
     .maybeSingle();
 
-  const patch: Record<string, unknown> = { call_forward_number: forward, call_tracking_number: tracking };
-  if ((current?.call_tracking_number ?? null) !== tracking) patch.call_tracking_verified_at = null;
+  const patch: Record<string, unknown> = { call_forward_number: forward, call_tracking_number: effectiveTracking };
+  if ((current?.call_tracking_number ?? null) !== effectiveTracking) patch.call_tracking_verified_at = null;
 
   const { error } = await supabase.from('accounts').update(patch).eq('id', accountId);
   if (error) {
@@ -427,7 +445,17 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
     if (error.code === '23505') throw new Error('That tracking number is already in use on another account.');
     throw new Error('Could not save missed-call settings.');
   }
+
+  // Keep voice_settings.transfer_number synchronized with call_forward_number
+  // so the AI Receptionist and missed-call forwarding never disagree on where to ring.
+  await supabase
+    .from('voice_settings')
+    .update({ transfer_number: forward })
+    .eq('account_id', accountId);
+
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
+  revalidatePath('/dashboard/voice-calls');
 }
 
 /**

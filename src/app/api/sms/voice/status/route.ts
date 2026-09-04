@@ -52,7 +52,7 @@ export async function POST(request: Request) {
       referenceId: callId || null,
       errorMessage: 'Missed-call callback is missing account, caller, or call identity',
     });
-    return xml('', 500);
+    return xml('', 400);
   }
 
   try {

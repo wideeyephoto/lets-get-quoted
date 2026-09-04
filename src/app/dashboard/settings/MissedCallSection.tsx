@@ -24,6 +24,8 @@ type Props = {
   forwardNumber: string;
   trackingNumber: string;
   verifiedAt: string | null;
+  aiVoiceActive?: boolean;
+  hasDedicatedNumber?: boolean;
 };
 
 export default function MissedCallSection({
@@ -32,6 +34,8 @@ export default function MissedCallSection({
   forwardNumber,
   trackingNumber,
   verifiedAt,
+  aiVoiceActive,
+  hasDedicatedNumber,
 }: Props) {
   const [forward, setForward] = useState(forwardNumber);
   const [tracking, setTracking] = useState(trackingNumber);
@@ -93,6 +97,7 @@ export default function MissedCallSection({
     trackingNumber: tracking.trim() || null,
     // A tracking number edited in the box has never been called at that value.
     verifiedAt: tracking.trim() === trackingNumber.trim() ? verifiedAt : null,
+    aiVoiceActive,
   });
 
   return (
@@ -128,10 +133,15 @@ export default function MissedCallSection({
               inputMode="tel"
               placeholder="(248) 555-0199"
               value={tracking}
+              disabled={hasDedicatedNumber}
               onChange={(event) => edit('tracking', event.target.value)}
               onBlur={flush}
             />
-            <small>Use this number on your website, ads, and listings.</small>
+            <small>
+              {hasDedicatedNumber
+                ? 'Dedicated business line provisioned for AI Voice and SMS.'
+                : 'Use this number on your website, ads, and listings.'}
+            </small>
           </div>
 
           <div className={`missed-status is-${status.tone}`}>

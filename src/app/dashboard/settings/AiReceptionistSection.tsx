@@ -415,82 +415,137 @@ export default function AiReceptionistSection(props: Props) {
         </div>
       ) : null}
 
-      {/* CARD 1: Receptionist Answering State */}
-      <section className={styles.card} aria-labelledby="status-heading">
+      {/* MODULE 1: Availability & Operating Schedule */}
+      <section className={styles.card} aria-labelledby="availability-heading">
         <div className={styles.cardHeader}>
           <div className={styles.cardTitleGroup}>
-            <div className={styles.cardIcon}>📞</div>
+            <div className={styles.cardIcon}>⏱️</div>
             <div>
-              <h2 id="status-heading" className={styles.cardTitle}>Receptionist Answering Status</h2>
-              <p className={styles.cardSubtitle}>Choose whether your AI answers live callers right now</p>
+              <h2 id="availability-heading" className={styles.cardTitle}>Availability &amp; Operating Schedule</h2>
+              <p className={styles.cardSubtitle}>Configure whether and when your AI receptionist answers inbound callers</p>
             </div>
           </div>
-          {status === 'active' && !activationBlockedReason ? (
-            <span className={`${styles.tileBadge} ${styles.badgeGreen}`}>● Answering Active</span>
-          ) : status === 'paused' ? (
-            <span className={`${styles.tileBadge} ${styles.badgeAmber}`}>❚❚ Paused</span>
-          ) : (
-            <span className={`${styles.tileBadge}`} style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>○ Off</span>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
+            <span style={{ fontSize: '0.78rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px' }}>
+              📍 {props.timezone.replace(/_/g, ' ')}
+            </span>
+            {status === 'active' && !activationBlockedReason ? (
+              <span className={`${styles.tileBadge} ${styles.badgeGreen}`}>● Answering Active</span>
+            ) : status === 'paused' ? (
+              <span className={`${styles.tileBadge} ${styles.badgeAmber}`}>❚❚ Paused</span>
+            ) : (
+              <span className={`${styles.tileBadge}`} style={{ background: 'rgba(255,255,255,0.08)', color: '#94a3b8' }}>○ Off</span>
+            )}
+          </div>
         </div>
 
-        <div className={styles.tileGrid3} role="group" aria-label="Receptionist status">
-          {/* Active Option */}
-          <button
-            type="button"
-            className={`${styles.optionTile} ${status === 'active' ? styles.tileActiveGreen : ''}`}
-            aria-pressed={status === 'active'}
-            disabled={controlsDisabled || activationBlockedReason !== null}
-            title={activationBlockedReason ?? undefined}
-            onClick={() => { markEdited(); setStatus('active'); }}
-          >
-            <div className={styles.tileHeader}>
-              <span className={styles.tileTitle}>
-                <span style={{ color: '#4ade80' }}>●</span> Answering
-              </span>
-              <span className={`${styles.tileBadge} ${styles.badgeGreen}`}>Live</span>
+        {/* 2 Sub-Sections: Answering Status & Coverage Mode */}
+        <div className={styles.splitSectionRow}>
+          {/* Sub-Section A: Status */}
+          <div className={styles.subSectionBlock}>
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Receptionist Answering State</span>
             </div>
-            <p className={styles.tileDesc}>
-              AI receptionist actively answers callers based on the operating hours selected below.
-            </p>
-          </button>
+            <div className={styles.tileGrid3} role="group" aria-label="Receptionist status">
+              <button
+                type="button"
+                className={`${styles.optionTile} ${status === 'active' ? styles.tileActiveGreen : ''}`}
+                aria-pressed={status === 'active'}
+                disabled={controlsDisabled || activationBlockedReason !== null}
+                title={activationBlockedReason ?? undefined}
+                onClick={() => { markEdited(); setStatus('active'); }}
+              >
+                <div className={styles.tileHeader}>
+                  <span className={styles.tileTitle}>
+                    <span style={{ color: '#4ade80' }}>●</span> Answering
+                  </span>
+                  <span className={`${styles.tileBadge} ${styles.badgeGreen}`}>Live</span>
+                </div>
+                <p className={styles.tileDesc}>
+                  AI receptionist actively answers inbound callers according to your schedule.
+                </p>
+              </button>
 
-          {/* Paused Option */}
-          <button
-            type="button"
-            className={`${styles.optionTile} ${status === 'paused' ? styles.tileActiveAmber : ''}`}
-            aria-pressed={status === 'paused'}
-            disabled={controlsDisabled}
-            onClick={() => { markEdited(); setStatus('paused'); }}
-          >
-            <div className={styles.tileHeader}>
-              <span className={styles.tileTitle}>
-                <span style={{ color: '#fbbf24' }}>❚❚</span> Paused
-              </span>
-              <span className={`${styles.tileBadge} ${styles.badgeAmber}`}>Muted</span>
-            </div>
-            <p className={styles.tileDesc}>
-              Temporarily stops answering for vacations or holidays. Keeps your greeting and schedule intact.
-            </p>
-          </button>
+              <button
+                type="button"
+                className={`${styles.optionTile} ${status === 'paused' ? styles.tileActiveAmber : ''}`}
+                aria-pressed={status === 'paused'}
+                disabled={controlsDisabled}
+                onClick={() => { markEdited(); setStatus('paused'); }}
+              >
+                <div className={styles.tileHeader}>
+                  <span className={styles.tileTitle}>
+                    <span style={{ color: '#fbbf24' }}>❚❚</span> Paused
+                  </span>
+                  <span className={`${styles.tileBadge} ${styles.badgeAmber}`}>Muted</span>
+                </div>
+                <p className={styles.tileDesc}>
+                  Temporarily stops answering for holidays. Greeting and routing remain saved.
+                </p>
+              </button>
 
-          {/* Off Option */}
-          <button
-            type="button"
-            className={`${styles.optionTile} ${status === 'off' ? styles.tileActiveNeutral : ''}`}
-            aria-pressed={status === 'off'}
-            disabled={controlsDisabled}
-            onClick={() => { markEdited(); setStatus('off'); }}
-          >
-            <div className={styles.tileHeader}>
-              <span className={styles.tileTitle}>
-                <span style={{ color: '#94a3b8' }}>○</span> Turned Off
-              </span>
+              <button
+                type="button"
+                className={`${styles.optionTile} ${status === 'off' ? styles.tileActiveNeutral : ''}`}
+                aria-pressed={status === 'off'}
+                disabled={controlsDisabled}
+                onClick={() => { markEdited(); setStatus('off'); }}
+              >
+                <div className={styles.tileHeader}>
+                  <span className={styles.tileTitle}>
+                    <span style={{ color: '#94a3b8' }}>○</span> Turned Off
+                  </span>
+                </div>
+                <p className={styles.tileDesc}>
+                  AI does not answer. All inbound calls ring your normal phone forwarding.
+                </p>
+              </button>
             </div>
-            <p className={styles.tileDesc}>
-              AI does not pick up. All inbound calls bypass the AI and ring your normal phone forwarding.
-            </p>
-          </button>
+          </div>
+
+          {/* Sub-Section B: Coverage Mode */}
+          <div className={styles.subSectionBlock}>
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Coverage Window</span>
+            </div>
+            <div className={styles.tileGrid2} role="group" aria-label="When the receptionist answers">
+              <button
+                type="button"
+                className={`${styles.optionTile} ${answerMode === 'after_hours' ? styles.tileActiveBlue : ''}`}
+                aria-pressed={answerMode === 'after_hours'}
+                disabled={controlsDisabled}
+                onClick={() => { markEdited(); setAnswerMode('after_hours'); }}
+              >
+                <div className={styles.tileHeader}>
+                  <span className={styles.tileTitle}>🌙 Outside Business Hours</span>
+                  {answerMode === 'after_hours' ? (
+                    <span className={`${styles.tileBadge} ${styles.badgeBlue}`}>Selected</span>
+                  ) : null}
+                </div>
+                <p className={styles.tileDesc}>
+                  You answer during the day; AI covers nights, early mornings, and closed weekends.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                className={`${styles.optionTile} ${answerMode === 'always' ? styles.tileActiveBlue : ''}`}
+                aria-pressed={answerMode === 'always'}
+                disabled={controlsDisabled}
+                onClick={() => { markEdited(); setAnswerMode('always'); }}
+              >
+                <div className={styles.tileHeader}>
+                  <span className={styles.tileTitle}>⚡ 24/7 Every Inbound Call</span>
+                  {answerMode === 'always' ? (
+                    <span className={`${styles.tileBadge} ${styles.badgeBlue}`}>Selected</span>
+                  ) : null}
+                </div>
+                <p className={styles.tileDesc}>
+                  AI answers 100% of customer calls around the clock, transferring staff when needed.
+                </p>
+              </button>
+            </div>
+          </div>
         </div>
 
         {activationBlockedReason && status === 'active' ? (
@@ -498,91 +553,36 @@ export default function AiReceptionistSection(props: Props) {
             ⚠️ {activationBlockedReason}
           </p>
         ) : null}
-      </section>
 
-      {/* CARD 2: Operating Hours & Answering Rules */}
-      <section className={styles.card} aria-labelledby="hours-heading">
-        <div className={styles.cardHeader}>
-          <div className={styles.cardTitleGroup}>
-            <div className={styles.cardIcon}>⏱️</div>
-            <div>
-              <h2 id="hours-heading" className={styles.cardTitle}>Operating Schedule &amp; Answering Mode</h2>
-              <p className={styles.cardSubtitle}>Specify when the AI receptionist answers vs. your normal pickup</p>
-            </div>
-          </div>
-          <span style={{ fontSize: '0.78rem', color: '#94a3b8', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.65rem', borderRadius: '6px' }}>
-            📍 {props.timezone.replace(/_/g, ' ')}
-          </span>
-        </div>
-
-        <div className={styles.tileGrid2} role="group" aria-label="When the receptionist answers">
-          {/* After Hours Mode */}
-          <button
-            type="button"
-            className={`${styles.optionTile} ${answerMode === 'after_hours' ? styles.tileActiveBlue : ''}`}
-            aria-pressed={answerMode === 'after_hours'}
-            disabled={controlsDisabled}
-            onClick={() => { markEdited(); setAnswerMode('after_hours'); }}
-          >
-            <div className={styles.tileHeader}>
-              <span className={styles.tileTitle}>🌙 Outside Business Hours</span>
-              {answerMode === 'after_hours' ? (
-                <span className={`${styles.tileBadge} ${styles.badgeBlue}`}>Selected</span>
-              ) : null}
-            </div>
-            <p className={styles.tileDesc}>
-              You take calls during your workday; the AI covers nights, early mornings, and closed weekends.
-            </p>
-          </button>
-
-          {/* Always Mode */}
-          <button
-            type="button"
-            className={`${styles.optionTile} ${answerMode === 'always' ? styles.tileActiveBlue : ''}`}
-            aria-pressed={answerMode === 'always'}
-            disabled={controlsDisabled}
-            onClick={() => { markEdited(); setAnswerMode('always'); }}
-          >
-            <div className={styles.tileHeader}>
-              <span className={styles.tileTitle}>⚡ 24/7 Every Inbound Call</span>
-              {answerMode === 'always' ? (
-                <span className={`${styles.tileBadge} ${styles.badgeBlue}`}>Selected</span>
-              ) : null}
-            </div>
-            <p className={styles.tileDesc}>
-              The AI receptionist answers every inbound call around the clock, screening spammers and booking jobs.
-            </p>
-          </button>
-        </div>
-
+        {/* Operating Hours Editor (shows when Outside Business Hours is selected) */}
         {answerMode === 'after_hours' ? (
-          <div className={styles.scheduleSection}>
-            <div className={styles.scheduleQuickBar}>
-              <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 600 }}>Quick Hours:</span>
-              <button
-                type="button"
-                className={styles.quickBtn}
-                disabled={controlsDisabled}
-                onClick={() => applyWeekdaySchedule('08:00', '17:00')}
-              >
-                ⚡ 8:00 AM – 5:00 PM (Mon–Fri)
-              </button>
-              <button
-                type="button"
-                className={styles.quickBtn}
-                disabled={controlsDisabled}
-                onClick={() => applyWeekdaySchedule('07:00', '18:00')}
-              >
-                🛠️ 7:00 AM – 6:00 PM (Mon–Fri)
-              </button>
-              <button
-                type="button"
-                className={styles.quickBtn}
-                disabled={controlsDisabled}
-                onClick={closeWeekends}
-              >
-                🚫 Close Weekends
-              </button>
+          <div className={styles.scheduleContainer}>
+            <div className={styles.scheduleHeader}>
+              <div>
+                <strong style={{ fontSize: '0.9rem', color: '#f1f5f9' }}>Standard Business Operating Hours</strong>
+                <p style={{ margin: '0.15rem 0 0', fontSize: '0.78rem', color: '#94a3b8' }}>
+                  During open hours, calls ring your team directly. During closed hours, your AI receptionist answers immediately.
+                </p>
+              </div>
+
+              <div className={styles.quickActions}>
+                <button
+                  type="button"
+                  className={styles.quickBtn}
+                  disabled={controlsDisabled}
+                  onClick={() => applyWeekdaySchedule('08:00', '17:00')}
+                >
+                  ⚡ 8 AM – 5 PM Weekdays
+                </button>
+                <button
+                  type="button"
+                  className={styles.quickBtn}
+                  disabled={controlsDisabled}
+                  onClick={closeWeekends}
+                >
+                  🚫 Close Weekends
+                </button>
+              </div>
             </div>
 
             <div className={styles.daysGrid}>
@@ -645,211 +645,111 @@ export default function AiReceptionistSection(props: Props) {
               })}
             </div>
           </div>
-        ) : null}
+        ) : (
+          <div className={styles.alwaysCoverageNote}>
+            <span style={{ fontSize: '1.2rem' }}>⚡</span>
+            <div>
+              <strong>24/7 Full-Time Coverage Active</strong> &mdash; The AI receptionist answers every inbound call day and night. If all simultaneous lines are in use, extra calls roll over to your normal line.
+            </div>
+          </div>
+        )}
       </section>
 
-      {/* CARD 3: Conversational Persona & Tone */}
-      <section className={styles.card} aria-labelledby="persona-heading">
+      {/* MODULE 2: Voice Persona & Spoken Greeting Studio */}
+      <section className={styles.card} aria-labelledby="studio-heading">
         <div className={styles.cardHeader}>
           <div className={styles.cardTitleGroup}>
             <div className={styles.cardIcon}>🎭</div>
             <div>
-              <h2 id="persona-heading" className={styles.cardTitle}>Conversational Persona &amp; Speaking Tone</h2>
-              <p className={styles.cardSubtitle}>Select how your AI sounds when talking with homeowners</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.tileGrid3} role="group" aria-label="Receptionist Persona Tone">
-          {PERSONAS.map((p) => {
-            const isSelected = voiceTone === p.id;
-            return (
-              <button
-                key={p.id}
-                type="button"
-                className={`${styles.optionTile} ${isSelected ? p.accentClass : ''}`}
-                aria-pressed={isSelected}
-                disabled={controlsDisabled}
-                onClick={() => { markEdited(); setVoiceTone(p.id); }}
-              >
-                <div className={styles.tileHeader}>
-                  <span className={styles.tileTitle}>
-                    <span>{p.icon}</span> {p.title}
-                  </span>
-                  <span className={`${styles.tileBadge} ${p.badgeClass}`}>{p.badge}</span>
-                </div>
-                <p className={styles.tileDesc}>{p.desc}</p>
-                <div className={styles.sampleBubble}>
-                  {p.sample}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* CARD 4: Opening Spoken Greeting */}
-      <section className={styles.card} aria-labelledby="greeting-heading">
-        <div className={styles.cardHeader}>
-          <div className={styles.cardTitleGroup}>
-            <div className={styles.cardIcon}>💬</div>
-            <div>
-              <h2 id="greeting-heading" className={styles.cardTitle}>Opening Greeting Script</h2>
-              <p className={styles.cardSubtitle}>The first sentence spoken to callers right after they dial</p>
+              <h2 id="studio-heading" className={styles.cardTitle}>Voice Persona &amp; Spoken Greeting Studio</h2>
+              <p className={styles.cardSubtitle}>Choose your assistant’s demeanor and customize the exact opening script callers hear</p>
             </div>
           </div>
           <span className={styles.charCount}>{greeting.length} / 1,000 characters</span>
         </div>
 
-        <div className={styles.textareaContainer}>
-          <div className={styles.chipsBar}>
-            <span className={styles.chipsLabel}>Quick Templates:</span>
-            {GREETING_PRESETS.map((preset) => (
-              <button
-                key={preset.label}
-                type="button"
-                className={styles.chipBtn}
-                disabled={controlsDisabled}
-                onClick={() => { markEdited(); setGreeting(preset.text); }}
-              >
-                {preset.label}
-              </button>
-            ))}
+        <div className={styles.studioGrid}>
+          {/* Column A: Speaking Persona */}
+          <div className={styles.subSectionBlock}>
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Speaking Demeanor &amp; Tone</span>
+            </div>
+            <div className={styles.personaStack} role="group" aria-label="Receptionist Persona Tone">
+              {PERSONAS.map((p) => {
+                const isSelected = voiceTone === p.id;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    className={`${styles.optionTile} ${isSelected ? p.accentClass : ''}`}
+                    aria-pressed={isSelected}
+                    disabled={controlsDisabled}
+                    onClick={() => { markEdited(); setVoiceTone(p.id); }}
+                  >
+                    <div className={styles.tileHeader}>
+                      <span className={styles.tileTitle}>
+                        <span>{p.icon}</span> {p.title}
+                      </span>
+                      <span className={`${styles.tileBadge} ${p.badgeClass}`}>{p.badge}</span>
+                    </div>
+                    <p className={styles.tileDesc} style={{ margin: '0.15rem 0' }}>{p.desc}</p>
+                    <div className={styles.sampleBubble} style={{ marginTop: '0.35rem' }}>
+                      {p.sample}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
-          <textarea
-            id="voice-greeting"
-            className={styles.textarea}
-            rows={3}
-            maxLength={1000}
-            disabled={controlsDisabled}
-            placeholder="Thanks for calling Rivera Plumbing. How can I help you today?"
-            value={greeting}
-            onChange={(event) => { markEdited(); setGreeting(event.target.value); }}
-          />
+          {/* Column B: Opening Greeting Script */}
+          <div className={styles.greetingColumn}>
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Opening Greeting Statement</span>
+              <span style={{ fontSize: '0.75rem', color: '#64748b' }}>First words spoken to caller</span>
+            </div>
 
-          <p className={styles.helperText}>
-            🛡️ Callers are always politely notified they are speaking with an AI assistant to comply with US telecom disclosure rules.
-          </p>
+            <div className={styles.chipsBar}>
+              <span className={styles.chipsLabel}>Quick Templates:</span>
+              {GREETING_PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className={styles.chipBtn}
+                  disabled={controlsDisabled}
+                  onClick={() => { markEdited(); setGreeting(preset.text); }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            <textarea
+              id="voice-greeting"
+              className={styles.textarea}
+              rows={5}
+              maxLength={1000}
+              disabled={controlsDisabled}
+              placeholder="Thanks for calling Rivera Plumbing. How can I help you today?"
+              value={greeting}
+              onChange={(event) => { markEdited(); setGreeting(event.target.value); }}
+            />
+
+            <p className={styles.helperText} style={{ margin: 0 }}>
+              🛡️ Callers are politely notified they are speaking with an AI assistant to comply with US telecom disclosure rules.
+            </p>
+          </div>
         </div>
       </section>
 
-      {/* CARD 5: Live Phone Transfers & Emergency Hazard SMS */}
-      <section className={styles.card} aria-labelledby="routing-heading">
+      {/* MODULE 3: Call Routing, Escalations & Live Line Capacity */}
+      <section className={styles.card} aria-labelledby="telephony-heading">
         <div className={styles.cardHeader}>
           <div className={styles.cardTitleGroup}>
             <div className={styles.cardIcon}>📲</div>
             <div>
-              <h2 id="routing-heading" className={styles.cardTitle}>Live Transfers &amp; Emergency Escalations</h2>
-              <p className={styles.cardSubtitle}>Where to put callers through and where to send urgent danger alerts</p>
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.tileGrid2}>
-          {/* Transfer Line */}
-          <div className={styles.inputGroup}>
-            <div className={styles.labelRow}>
-              <label className={styles.inputLabel} htmlFor="voice-transfer">
-                <span>📞</span> Office Warm Transfer Line
-              </label>
-              <button
-                type="button"
-                className={styles.addNumberBtn}
-                disabled={controlsDisabled}
-                onClick={() => openVerifyModal('transfer')}
-              >
-                + Add verified #
-              </button>
-            </div>
-            <div className={styles.inputWrapper}>
-              <span className={styles.inputIcon}>☎️</span>
-              <select
-                id="voice-transfer"
-                className={styles.selectField}
-                disabled={controlsDisabled}
-                value={transferNumber}
-                onChange={(event) => {
-                  if (event.target.value === '__ADD_NEW__') {
-                    openVerifyModal('transfer');
-                  } else {
-                    markEdited();
-                    setTransferNumber(event.target.value);
-                  }
-                }}
-              >
-                <option value="">None (Leave unassigned / No live transfer)</option>
-                {allOptions.map((opt) => (
-                  <option key={opt.number} value={opt.number}>
-                    {opt.label}
-                  </option>
-                ))}
-                <option value="__ADD_NEW__">➕ Add new verified number…</option>
-              </select>
-            </div>
-            <p className={styles.helperText}>
-              When a caller insists on speaking to a real person, the AI receptionist announces caller context and bridges the call to this verified line.
-            </p>
-          </div>
-
-          {/* Emergency SMS Alerts */}
-          <div className={styles.inputGroup}>
-            <div className={styles.labelRow}>
-              <label className={styles.inputLabel} htmlFor="voice-alert-phone">
-                <span>🚨</span> Owner Emergency SMS Alerts
-              </label>
-              <button
-                type="button"
-                className={styles.addNumberBtn}
-                disabled={controlsDisabled}
-                onClick={() => openVerifyModal('alert')}
-              >
-                + Add verified #
-              </button>
-            </div>
-            <div className={styles.inputWrapper}>
-              <span className={styles.inputIcon}>🔔</span>
-              <select
-                id="voice-alert-phone"
-                className={styles.selectField}
-                disabled={controlsDisabled}
-                value={alertPhone}
-                onChange={(event) => {
-                  if (event.target.value === '__ADD_NEW__') {
-                    openVerifyModal('alert');
-                  } else {
-                    markEdited();
-                    setAlertPhone(event.target.value);
-                  }
-                }}
-              >
-                <option value="">None (No emergency SMS alerts)</option>
-                {allOptions.map((opt) => (
-                  <option key={opt.number} value={opt.number}>
-                    {opt.label}
-                  </option>
-                ))}
-                <option value="__ADD_NEW__">➕ Add new verified number…</option>
-              </select>
-            </div>
-            <p className={styles.helperText}>
-              Dispatches an immediate priority SMS alert to this mobile number with a direct transcript link whenever flooding, gas smells, or electrical fires are detected.
-            </p>
-          </div>
-        </div>
-
-      </section>
-
-      {/* CARD 6: Simultaneous Call Capacity & Line Concurrency */}
-      <section className={styles.card} aria-labelledby="capacity-heading">
-        <div className={styles.cardHeader}>
-          <div className={styles.cardTitleGroup}>
-            <div className={styles.cardIcon}>📶</div>
-            <div>
-              <h3 id="capacity-heading" className={styles.cardTitle}>Simultaneous Call Capacity & Line Concurrency</h3>
-              <p className={styles.cardSubtitle}>
-                Live caller concurrency engine & automatic overflow protection
-              </p>
+              <h2 id="telephony-heading" className={styles.cardTitle}>Call Routing, Escalations &amp; Live Line Capacity</h2>
+              <p className={styles.cardSubtitle}>Manage live staff transfers, emergency hazard alerts, and real-time line concurrency</p>
             </div>
           </div>
           <span className={styles.planTierBadge}>
@@ -857,94 +757,186 @@ export default function AiReceptionistSection(props: Props) {
           </span>
         </div>
 
-        {/* 3 Metric Cards */}
-        <div className={styles.capacityStatsGrid}>
-          <div className={styles.capacityStatCard}>
-            <span className={styles.capacityStatLabel}>Plan Line Capacity</span>
-            <div className={styles.capacityStatValue}>
-              {capacity} <span className={styles.capacityStatSub}>lines</span>
+        <div className={styles.telephonyGrid}>
+          {/* Column A: Transfers & Emergency Numbers */}
+          <div className={styles.routingColumn}>
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Verified Escalation Destinations</span>
             </div>
-            <p className={styles.capacityStatDesc}>
-              {planLabel} supports up to <strong>{capacity} callers at the exact same time</strong> with zero queue delay.
-            </p>
+
+            {/* Office Warm Transfer Line */}
+            <div className={styles.inputGroup}>
+              <div className={styles.labelRow}>
+                <label className={styles.inputLabel} htmlFor="voice-transfer">
+                  <span>📞</span> Office Warm Transfer Line
+                </label>
+                <button
+                  type="button"
+                  className={styles.addNumberBtn}
+                  disabled={controlsDisabled}
+                  onClick={() => openVerifyModal('transfer')}
+                >
+                  + Add verified #
+                </button>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span className={styles.inputPrefixIcon}>☎️</span>
+                <select
+                  id="voice-transfer"
+                  className={styles.selectField}
+                  disabled={controlsDisabled}
+                  value={transferNumber}
+                  onChange={(event) => {
+                    if (event.target.value === '__ADD_NEW__') {
+                      openVerifyModal('transfer');
+                    } else {
+                      markEdited();
+                      setTransferNumber(event.target.value);
+                    }
+                  }}
+                >
+                  <option value="">None (Leave unassigned / No live transfer)</option>
+                  {allOptions.map((opt) => (
+                    <option key={`transfer-${opt.number}`} value={opt.number}>
+                      {opt.label}
+                    </option>
+                  ))}
+                  <option value="__ADD_NEW__">➕ Add new verified number…</option>
+                </select>
+              </div>
+              <p className={styles.helperText}>
+                When a homeowner asks to speak with staff, the AI warmly transfers the call to this verified number.
+              </p>
+            </div>
+
+            {/* Owner Emergency SMS Alerts */}
+            <div className={styles.inputGroup}>
+              <div className={styles.labelRow}>
+                <label className={styles.inputLabel} htmlFor="voice-alert-phone">
+                  <span>🚨</span> Owner Emergency SMS Alerts
+                </label>
+                <button
+                  type="button"
+                  className={styles.addNumberBtn}
+                  disabled={controlsDisabled}
+                  onClick={() => openVerifyModal('alert')}
+                >
+                  + Add verified #
+                </button>
+              </div>
+              <div style={{ position: 'relative' }}>
+                <span className={styles.inputPrefixIcon}>💬</span>
+                <select
+                  id="voice-alert-phone"
+                  className={styles.selectField}
+                  disabled={controlsDisabled}
+                  value={alertPhone}
+                  onChange={(event) => {
+                    if (event.target.value === '__ADD_NEW__') {
+                      openVerifyModal('alert');
+                    } else {
+                      markEdited();
+                      setAlertPhone(event.target.value);
+                    }
+                  }}
+                >
+                  <option value="">None (No emergency SMS alerts)</option>
+                  {allOptions.map((opt) => (
+                    <option key={`alert-${opt.number}`} value={opt.number}>
+                      {opt.label}
+                    </option>
+                  ))}
+                  <option value="__ADD_NEW__">➕ Add new verified number…</option>
+                </select>
+              </div>
+              <p className={styles.helperText}>
+                Dispatches an immediate priority SMS alert to this mobile number with a direct transcript link whenever flooding, gas smells, or electrical fires are detected.
+              </p>
+            </div>
           </div>
 
-          <div className={styles.capacityStatCard}>
-            <span className={styles.capacityStatLabel}>Live In-Flight Calls</span>
-            <div className={styles.capacityStatValue} style={{ color: activeCalls > 0 ? '#38bdf8' : '#34d399' }}>
-              {activeCalls} <span className={styles.capacityStatSub}>in use</span>
+          {/* Column B: Real-Time Call Capacity & Active Lines */}
+          <div className={styles.concurrencyColumn}>
+            <div className={styles.subSectionHeader}>
+              <span className={styles.subSectionTitle}>Real-Time Concurrency &amp; Lines</span>
+              <div style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                <span>✓</span> Engine Online
+              </div>
             </div>
-            <p className={styles.capacityStatDesc}>
-              {activeCalls === 0
-                ? 'All simultaneous lines are currently open and waiting for inbound callers.'
-                : `${activeCalls} line${activeCalls === 1 ? ' is' : 's are'} actively speaking with an AI assistant.`}
-            </p>
-          </div>
 
-          <div className={styles.capacityStatCard}>
-            <span className={styles.capacityStatLabel}>Zero-Drop Overflow</span>
-            <div className={styles.capacityStatValue} style={{ color: '#38bdf8' }}>
-              {props.callForwardNumber ? 'Protected' : 'Standard'} <span className={styles.capacityStatSub}>rollover</span>
+            {/* 2 Stat Cards */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+              <div className={styles.capacityStatCard} style={{ padding: '0.85rem' }}>
+                <span className={styles.capacityStatLabel}>Concurrent Lines</span>
+                <div className={styles.capacityStatValue} style={{ fontSize: '1.4rem' }}>
+                  {capacity} <span className={styles.capacityStatSub}>lines</span>
+                </div>
+                <p className={styles.capacityStatDesc} style={{ fontSize: '0.74rem' }}>
+                  {planLabel} supports up to {capacity} simultaneous callers.
+                </p>
+              </div>
+
+              <div className={styles.capacityStatCard} style={{ padding: '0.85rem' }}>
+                <span className={styles.capacityStatLabel}>Live In-Flight</span>
+                <div className={styles.capacityStatValue} style={{ fontSize: '1.4rem', color: activeCalls > 0 ? '#38bdf8' : '#34d399' }}>
+                  {activeCalls} <span className={styles.capacityStatSub}>active</span>
+                </div>
+                <p className={styles.capacityStatDesc} style={{ fontSize: '0.74rem' }}>
+                  {activeCalls === 0 ? 'All lines open & ready.' : `${activeCalls} line(s) currently active.`}
+                </p>
+              </div>
             </div>
-            <p className={styles.capacityStatDesc}>
-              {props.callForwardNumber ? (
-                <>Overflow callers exceeding {capacity} lines instantly ring <strong>{props.callForwardNumber}</strong>.</>
-              ) : (
-                'Configure your primary business line to receive overflow callers if all lines are busy.'
-              )}
-            </p>
+
+            {/* Visual Line Status Rack */}
+            <div className={styles.linesContainer} style={{ padding: '0.85rem' }}>
+              <div className={styles.linesHeader}>
+                <div className={styles.linesHeaderTitle} style={{ fontSize: '0.82rem' }}>
+                  <span className={styles.livePulseDot} />
+                  <span>Line Activity Status</span>
+                  <span style={{ fontSize: '0.75rem', color: '#94a3b8', fontWeight: 500 }}>
+                    ({activeCalls} of {capacity} in use)
+                  </span>
+                </div>
+              </div>
+
+              <div className={styles.linesGrid}>
+                {lineSlots.map((slot) => (
+                  <div
+                    key={slot.lineNumber}
+                    className={`${styles.lineTile} ${slot.isActive ? styles.lineTileActive : styles.lineTileReady}`}
+                    style={{ padding: '0.65rem 0.8rem' }}
+                  >
+                    <div className={styles.lineInfo}>
+                      <div className={styles.lineName} style={{ fontSize: '0.78rem' }}>Line {String(slot.lineNumber).padStart(2, '0')}</div>
+                      <div className={styles.lineDesc} style={{ fontSize: '0.7rem' }}>
+                        {slot.isActive ? 'In-Flight' : 'Ready'}
+                      </div>
+                    </div>
+                    <span className={`${styles.lineStatusPill} ${slot.isActive ? styles.lineStatusPillActive : styles.lineStatusPillReady}`}>
+                      {slot.isActive ? '📞 Busy' : '🟢 Open'}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Visual Real-Time Line Tracker Rack */}
-        <div className={styles.linesContainer}>
-          <div className={styles.linesHeader}>
-            <div className={styles.linesHeaderTitle}>
-              <span className={styles.livePulseDot} />
-              <span>Real-Time Line Status</span>
-              <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 500 }}>
-                ({activeCalls} of {capacity} active lines in use)
-              </span>
-            </div>
-            <div style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-              <span>✓</span> Concurrency Engine Active
-            </div>
-          </div>
-
-          <div className={styles.linesGrid}>
-            {lineSlots.map((slot) => (
-              <div
-                key={slot.lineNumber}
-                className={`${styles.lineTile} ${slot.isActive ? styles.lineTileActive : styles.lineTileReady}`}
-              >
-                <div className={styles.lineInfo}>
-                  <div className={styles.lineName}>Line {String(slot.lineNumber).padStart(2, '0')}</div>
-                  <div className={styles.lineDesc}>
-                    {slot.isActive ? 'Active Call In-Flight' : 'Open & Ready'}
-                  </div>
-                </div>
-                <span className={`${styles.lineStatusPill} ${slot.isActive ? styles.lineStatusPillActive : styles.lineStatusPillReady}`}>
-                  {slot.isActive ? '📞 Busy' : '🟢 Open'}
-                </span>
-              </div>
-            ))}
-          </div>
-
-          <div className={styles.overflowCallout}>
-            <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>🛡️</span>
-            <div>
-              <strong style={{ color: '#f1f5f9', display: 'block', marginBottom: '0.2rem' }}>
-                Zero-Dropped-Call Overflow Guarantee
-              </strong>
-              <span>
-                If more than {capacity} customers call in at the exact same moment, incoming call #{capacity + 1} will never get a busy tone or disconnect. Additional callers automatically roll over directly to your normal line:{' '}
-                {props.callForwardNumber ? (
-                  <strong style={{ color: '#38bdf8' }}>{props.callForwardNumber}</strong>
-                ) : (
-                  <span style={{ color: '#fbbf24' }}>your configured transfer phone number</span>
-                )}.
-              </span>
-            </div>
+        {/* Full-Width Bottom Zero-Drop Overflow Guarantee */}
+        <div className={styles.overflowCallout}>
+          <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>🛡️</span>
+          <div>
+            <strong style={{ color: '#f1f5f9', display: 'block', marginBottom: '0.2rem' }}>
+              Zero-Dropped-Call Overflow Guarantee
+            </strong>
+            <span>
+              If more than {capacity} customers call in at the exact same moment, incoming call #{capacity + 1} will never get a busy tone or disconnect. Additional callers automatically roll over directly to your normal line:{' '}
+              {props.callForwardNumber ? (
+                <strong style={{ color: '#38bdf8' }}>{props.callForwardNumber}</strong>
+              ) : (
+                <span style={{ color: '#fbbf24' }}>your configured transfer phone number</span>
+              )}.
+            </span>
           </div>
         </div>
       </section>

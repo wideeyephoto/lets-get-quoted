@@ -63,6 +63,19 @@ describe('what the settings card says about the connection', () => {
     expect(status.detail).not.toContain('automatic text-back');
   });
 
+  it('does not show error when AI Voice is active without a forward number', () => {
+    const status = missedCallStatus({ ...base, forwardNumber: null, aiVoiceActive: true });
+    expect(status.tone).toBe('setup');
+    expect(status.label).toBe('Transfer number recommended');
+    expect(status.detail).toContain('AI receptionist answers your calls');
+  });
+
+  it('indicates AI receptionist handles calls when connected with AI Voice active', () => {
+    const status = missedCallStatus({ ...base, aiVoiceActive: true });
+    expect(status.tone).toBe('live');
+    expect(status.detail).toContain('AI receptionist answers calls');
+  });
+
   it('has no "disconnected" state', () => {
     // A released or re-pointed number sends us nothing, and silence is
     // indistinguishable from a quiet week. A red warning that fires on a slow

@@ -3,6 +3,7 @@ import { createAdminClient } from '@/lib/auth';
 import { hasSignatureHeader, validateWebhookSignature } from '@/lib/sms-provider';
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
+import { normalizeUsPhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -57,13 +58,36 @@ export async function POST(request: Request) {
 }
 
 async function dispatchVoiceCall(request: Request, data: FormData): Promise<NextResponse> {
-  const to = String(data.get('To') ?? '');
+  const rawTo = String(data.get('To') ?? '');
+  const to = normalizeUsPhone(rawTo) || rawTo;
   const admin = createAdminClient();
   const { data: account } = await admin
     .from('accounts')
     .select('id, call_forward_number, call_tracking_verified_at')
     .eq('call_tracking_number', to)
     .maybeSingle();
+
+  if (!account) {
+    return xml('<Say voice="man">Sorry, we can&apos;t take your call right now. Please try again later.</Say>');
+  }
+
+  let forwardNumber = account.call_forward_number;
+  if (!forwardNumber) {
+    const { data: vs } = await admin
+      .from('voice_settings')
+      .select('transfer_number')
+      .eq('account_id', account.id)
+      .maybeSingle();
+    forwardNumber = (vs?.transfer_number as string | null) ?? null;
+    if (forwardNumber) {
+      admin
+        .from('accounts')
+        .update({ call_forward_number: forwardNumber })
+        .eq('id', account.id)
+        .is('call_forward_number', null)
+        .then(undefined, () => {});
+    }
+  }
 
   // call_textback_enabled is deliberately NOT read here.
   //
@@ -73,7 +97,7 @@ async function dispatchVoiceCall(request: Request, data: FormData): Promise<Next
   // switch governs the TEXT, which is what it says it does — see
   // voice/status, where it is now enforced. A phone number keeps being a phone
   // number.
-  if (!account || !account.call_forward_number) {
+  if (!forwardNumber) {
     // voice is pinned. <Say> defaults to a male voice on Twilio and a female
     // one on SignalWire, so leaving it unset means the recording a caller hears
     // changes gender the day the provider changes — a difference nobody would
@@ -111,6 +135,6 @@ async function dispatchVoiceCall(request: Request, data: FormData): Promise<Next
   // callerId is the (owned) tracking number so the contractor sees a consistent
   // caller; timeout then fires the action callback for the missed-call text-back.
   return xml(
-    `<Dial timeout="20" callerId="${escapeXml(to)}" action="${escapeXml(action)}" method="POST"><Number>${escapeXml(String(account.call_forward_number))}</Number></Dial>`,
+    `<Dial timeout="20" callerId="${escapeXml(to)}" action="${escapeXml(action)}" method="POST"><Number>${escapeXml(String(forwardNumber))}</Number></Dial>`,
   );
 }

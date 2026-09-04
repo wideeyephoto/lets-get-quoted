@@ -122,7 +122,6 @@ export async function resolveVoiceWorkspace(
     // everyone. The greeting lands with the settings screen that edits it.
     .select('id, call_forward_number, timezone')
     .eq('id', dedicatedNumber.accountId)
-    .eq('call_tracking_number', dedicatedNumber.number)
     .maybeSingle();
 
   if (error) {
@@ -151,7 +150,7 @@ export async function resolveVoiceWorkspace(
   return Object.freeze({
     accountId: String(account.id),
     voiceNumber: dedicatedNumber.number,
-    callForwardNumber: (account.call_forward_number as string | null) ?? null,
+    callForwardNumber: (account.call_forward_number as string | null) ?? ((row?.transfer_number as string | null) || null),
     voiceEntitled: voiceEntitlement.enabled,
     concurrentCallLimit: positiveInteger(voiceEntitlement.concurrentCalls, 0),
     timezone: (account.timezone as string | null) || 'America/New_York',
@@ -258,13 +257,14 @@ export async function planInboundCall(
   ): VoiceCallPlan => {
     // The contractor's own rule, not an error message. A number keeps being a
     // phone number even when the product on top of it is off.
-    if (workspace?.callForwardNumber) {
+    const forwardTo = workspace?.settings?.transferNumber || workspace?.callForwardNumber;
+    if (forwardTo && workspace) {
       return Object.freeze({
         accountId: workspace.accountId,
         declineReason: reason,
         plan: Object.freeze({
           kind: 'forward' as const,
-          number: workspace.callForwardNumber,
+          number: forwardTo,
           callerId: workspace.voiceNumber,
           timeoutSeconds: 20,
           actionUrl: options.forwardActionUrl(workspace.accountId),

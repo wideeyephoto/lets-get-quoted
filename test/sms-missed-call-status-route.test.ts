@@ -80,7 +80,7 @@ describe('missed-call status callback durability', () => {
     mocks.createAdminClient.mockReturnValue({ rpc: vi.fn() });
     const { POST } = await import('@/app/api/sms/voice/status/route');
     const response = await POST(callback({ CallSid: '' }));
-    expect(response.status).toBe(500);
+    expect(response.status).toBe(400);
     expect(mocks.createAdminClient).not.toHaveBeenCalled();
   });
 

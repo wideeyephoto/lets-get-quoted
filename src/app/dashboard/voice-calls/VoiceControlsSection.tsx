@@ -10,6 +10,7 @@ interface VoiceStatusBannerProps {
   isReady: boolean;
   businessName: string | null;
   trade: string | null;
+  hideConfigButton?: boolean;
 }
 
 interface VoiceControlsSectionProps extends VoiceStatusBannerProps {
@@ -109,6 +110,7 @@ export function VoiceStatusBanner({
   isReady,
   businessName,
   trade,
+  hideConfigButton,
 }: VoiceStatusBannerProps) {
   const isAnswering = isReady && status === 'active';
   const statusLabel = !isReady
@@ -148,9 +150,11 @@ export function VoiceStatusBanner({
         </div>
       </div>
 
-      <Link href="/dashboard/voice-calls?view=settings" className={styles.configActionBtn}>
-        Configure Voice Receptionist →
-      </Link>
+      {!hideConfigButton && (
+        <Link href="/dashboard/voice-calls?view=settings" className={styles.configActionBtn}>
+          Configure Voice Receptionist →
+        </Link>
+      )}
     </div>
   );
 }

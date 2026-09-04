@@ -374,7 +374,10 @@ export default async function AutomationsPage() {
   const callTextbackEnabled = Boolean((account as { call_textback_enabled?: boolean } | null)?.call_textback_enabled);
   // Shown the way a person writes a phone number, not the way Twilio stores it.
   // The action normalizes back to E.164 on save.
-  const callForwardNumber = displayPhone(String((account as { call_forward_number?: string } | null)?.call_forward_number ?? ''));
+  const rawForward = (account as { call_forward_number?: string } | null)?.call_forward_number
+    || (voiceSettings?.transfer_number as string | null)
+    || '';
+  const callForwardNumber = displayPhone(rawForward);
   const callTrackingNumber = displayPhone(String((account as { call_tracking_number?: string } | null)?.call_tracking_number ?? ''));
   // Defensive, like the other automation reads: pre-migration the column is
   // absent, and the card degrades to "waiting for the first call".
@@ -392,6 +395,7 @@ export default async function AutomationsPage() {
       ? voiceRouteReadiness.reason
       : 'unavailable' as const;
   const voiceRouteReady = voiceRouteState === 'ready';
+  const hasDedicatedNumber = voiceRouteReady || customerTextingReady;
   const voiceActivationReady = voiceSettingsAvailable
     && voiceEntitlementAvailable
     && voiceEntitlement?.enabled === true
@@ -648,6 +652,8 @@ export default async function AutomationsPage() {
             forwardNumber={callForwardNumber}
             trackingNumber={callTrackingNumber}
             verifiedAt={callTrackingVerifiedAt}
+            aiVoiceActive={voiceConfiguredStatus === 'active'}
+            hasDedicatedNumber={hasDedicatedNumber}
           />
         </AutomationCard>
 

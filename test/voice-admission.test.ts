@@ -249,6 +249,15 @@ describe('what a caller gets', () => {
     expect(result.plan.kind).toBe('unavailable');
   });
 
+  it('falls back to settings transferNumber when callForwardNumber is null', async () => {
+    workspace({ voice_concurrent_calls: 1 }, null, { ...ACTIVE, transfer_number: '+18105550199' });
+    const result = await planInboundCall(admin, call, { ...options, enabled: false });
+    expect(result.plan.kind).toBe('forward');
+    if (result.plan.kind === 'forward') {
+      expect(result.plan.number).toBe('+18105550199');
+    }
+  });
+
   it('does not recognise a number belonging to no workspace', async () => {
     replies = { voice_number_inventory: { data: null, error: null } };
     const result = await planInboundCall(admin, call, options);

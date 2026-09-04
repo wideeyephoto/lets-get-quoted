@@ -34,6 +34,8 @@ export type MissedCallInput = {
   trackingNumber: string | null;
   /** When we first saw a real call arrive on that number. Null = never. */
   verifiedAt: string | null;
+  /** Whether the AI receptionist is active and answering calls on this number. */
+  aiVoiceActive?: boolean;
 };
 
 /**
@@ -61,7 +63,16 @@ export function missedCallStatus(input: MissedCallInput): MissedCallStatus {
   // The live failure: callers hear a dead-end recording instead of ringing
   // anybody. Worth shouting about, because from the outside it looks like the
   // business has stopped answering the phone.
+  //
+  // BUT if AI Voice is active, callers reach the receptionist rather than dead air.
   if (!input.forwardNumber) {
+    if (input.aiVoiceActive) {
+      return {
+        tone: 'setup',
+        label: 'Transfer number recommended',
+        detail: 'AI receptionist answers your calls. Add a forward number below if you want callers transferred to staff.',
+      };
+    }
     return {
       tone: 'error',
       label: 'Calls aren’t reaching you',
@@ -81,7 +92,11 @@ export function missedCallStatus(input: MissedCallInput): MissedCallStatus {
     tone: 'live',
     label: 'Tracking number connected',
     detail: input.enabled
-      ? 'Unanswered calls receive an automatic text-back.'
-      : 'Calls still ring your phone. Unanswered ones get no text while this is off.',
+      ? (input.aiVoiceActive
+          ? 'AI receptionist answers calls. Unanswered transfers receive an automatic text-back.'
+          : 'Unanswered calls receive an automatic text-back.')
+      : (input.aiVoiceActive
+          ? 'AI receptionist answers calls. Missed calls get no text while this is off.'
+          : 'Calls still ring your phone. Unanswered ones get no text while this is off.'),
   };
 }
