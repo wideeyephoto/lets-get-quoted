@@ -19,8 +19,8 @@ export default async function TextToJobDashboardPage() {
     { data: account, error: accountError },
     { data: crewRows, error: crewError },
     { count: jobCount },
-    { count: leadCount },
-    { data: feedRows },
+    { data: leadRows, count: leadCount, error: leadError },
+    { data: feedRows, error: feedError },
     ownerAlerts,
   ] = await Promise.all([
     supabase
@@ -40,8 +40,10 @@ export default async function TextToJobDashboardPage() {
       .neq('status', 'archived'),
     supabase
       .from('leads')
-      .select('id', { count: 'exact', head: true })
-      .eq('account_id', accountId),
+      .select('id, name, phone, address, message, source, status, created_at', { count: 'exact' })
+      .eq('account_id', accountId)
+      .order('created_at', { ascending: false })
+      .limit(20),
     supabase
       .from('job_feed')
       .select('id, kind, title, body, amount, author, created_at, meta, job_id, jobs(title)')
@@ -61,6 +63,12 @@ export default async function TextToJobDashboardPage() {
   if (crewError) {
     console.error('Text-to-Job crew phone status unreadable:', crewError);
   }
+  if (leadError) {
+    console.error('Text-to-Job leads unreadable:', leadError);
+  }
+  if (feedError) {
+    console.error('Text-to-Job feed rows unreadable:', feedError);
+  }
 
   const ownerAlertPhone = ownerAlerts.kind === 'ok' ? ownerAlerts.phone : null;
 
@@ -78,7 +86,9 @@ export default async function TextToJobDashboardPage() {
     };
   });
 
-  const realMessages: InboundMessage[] = (feedRows || []).map((row) => {
+  type InboundMessageWithTime = InboundMessage & { createdAtMs: number };
+
+  const feedMessages: InboundMessageWithTime[] = (feedRows || []).map((row) => {
     const jobTitle = (row.jobs as unknown as { title?: string } | null)?.title;
     const isVoice = row.kind === 'field_voice_note';
     const isCost = row.kind === 'cost_added';
@@ -113,8 +123,56 @@ export default async function TextToJobDashboardPage() {
           enabled: true,
         },
       ],
+      createdAtMs: createdDate.getTime(),
     };
   });
+
+  const leadMessages: InboundMessageWithTime[] = (leadRows || []).map((lead) => {
+    const leadCreatedDate = new Date(lead.created_at);
+    const timeFormatted = leadCreatedDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const rawText = lead.message || `New prospect intake for ${lead.name || 'new client'}`;
+    const matchedRef = `New Lead: ${lead.name || 'New Prospect'}`;
+    const verdict = evaluateFieldNoteConfidence(rawText, {
+      type: 'sms',
+      matchedJobRef: matchedRef,
+      extractedItemsCount: 1,
+      isLead: true,
+    });
+
+    const detailParts: string[] = [];
+    if (lead.phone) detailParts.push(`Phone: ${lead.phone}`);
+    if (lead.address) detailParts.push(`Address: ${lead.address}`);
+    if (lead.message) detailParts.push(`Note: ${lead.message}`);
+    const detail = detailParts.join(' · ') || 'Captured in leads pipeline';
+
+    return {
+      id: `lead-${lead.id}`,
+      sender: ownerAlertPhone ? `Owner (${ownerAlertPhone})` : 'Field Lead Intake',
+      type: 'sms' as const,
+      time: timeFormatted,
+      rawText,
+      confidence: verdict.score,
+      qualityVerdict: verdict,
+      matchedJobRef: matchedRef,
+      extractedItems: [
+        {
+          id: `item-lead-${lead.id}`,
+          pillar: 'leads' as const,
+          title: `New Lead: ${lead.name || 'New Prospect'}`,
+          detail,
+          targetTable: 'leads',
+          mutation: 'Lead Created · Ingested from Field',
+          enabled: true,
+        },
+      ],
+      createdAtMs: leadCreatedDate.getTime(),
+    };
+  });
+
+  const realMessages: InboundMessage[] = [...feedMessages, ...leadMessages]
+    .sort((a, b) => b.createdAtMs - a.createdAtMs)
+    .slice(0, 20)
+    .map(({ createdAtMs: _ignored, ...msg }) => msg);
 
   const rawSharedNumber = process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323';
   // Match the owner lane used by inbound field routing: a normalized phone on

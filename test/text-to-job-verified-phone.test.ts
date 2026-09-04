@@ -158,4 +158,26 @@ describe('Text-to-Job Verified Phone & Shared Copilot Hotline', () => {
       expect(formatUsPhone(line)).toBe('(947) 941-2323');
     });
   });
+
+  describe('Field Leads Integration & Real Feed Unification', () => {
+    it('queries recent leads alongside exact count in page.tsx', () => {
+      expect(TEXT_TO_JOB_PAGE).toContain(
+        ".select('id, name, phone, address, message, source, status, created_at', { count: 'exact' })"
+      );
+      expect(TEXT_TO_JOB_PAGE).toContain("console.error('Text-to-Job leads unreadable:', leadError)");
+    });
+
+    it('maps leads with pillar leads and merges with feed rows chronologically', () => {
+      expect(TEXT_TO_JOB_PAGE).toContain("pillar: 'leads'");
+      expect(TEXT_TO_JOB_PAGE).toContain("matchedRef = `New Lead: ${lead.name || 'New Prospect'}`");
+      expect(TEXT_TO_JOB_PAGE).toContain('[...feedMessages, ...leadMessages]');
+    });
+
+    it('dynamically directs to /dashboard/leads when viewing a lead record', () => {
+      expect(TEXT_TO_JOB_WORKSPACE).toContain("selectedMessage.extractedItems.some((i) => i.pillar === 'leads')");
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('Open Lead ↗');
+      expect(TEXT_TO_JOB_WORKSPACE).toContain('href="/dashboard/leads"');
+    });
+  });
 });
+

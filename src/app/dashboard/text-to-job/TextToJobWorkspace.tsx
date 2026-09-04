@@ -1547,9 +1547,15 @@ export default function TextToJobWorkspace({
                   </p>
                 </div>
                 <div className={styles.receiptHeaderRight}>
-                  <Link href="/dashboard/jobs" className={styles.openJobLink}>
-                    Open Job ↗
-                  </Link>
+                  {selectedMessage.extractedItems.some((i) => i.pillar === 'leads') ? (
+                    <Link href="/dashboard/leads" className={styles.openJobLink}>
+                      Open Lead ↗
+                    </Link>
+                  ) : (
+                    <Link href="/dashboard/jobs" className={styles.openJobLink}>
+                      Open Job ↗
+                    </Link>
+                  )}
                   {(() => {
                     const selectedVerdict = getMessageVerdict(selectedMessage);
                     return (
