@@ -29,6 +29,8 @@ export type BoardPlan = {
   nextRunDate: string;
   /** Null when no visit job exists yet — not the same as "nobody assigned". */
   nextVisitAssigned: boolean | null;
+  prepaid?: boolean;
+  lastPaymentFailed?: boolean;
 };
 
 export type BoardIssue = {
@@ -83,6 +85,10 @@ const ISSUE_COPY: Record<string, { headline: string; detail: string }> = {
   'No payment method on file': {
     headline: 'No payment method',
     detail: 'Autopay is on but no card ever landed, so every visit bills nobody.',
+  },
+  'Last autopay payment failed': {
+    headline: 'Autopay failed',
+    detail: 'The latest card charge was declined or failed dunning. Money is not arriving.',
   },
   'Nobody assigned to the next visit': {
     headline: 'Nobody assigned',
@@ -146,6 +152,8 @@ export function boardIssues(plans: BoardPlan[], today: string): BoardIssue[] {
       amount: plan.amount,
       daysUntilNext: countdown.days,
       nextVisitAssigned: plan.nextVisitAssigned,
+      prepaid: plan.prepaid,
+      lastPaymentFailed: plan.lastPaymentFailed,
     });
     if (health.level === 'healthy') continue;
 

@@ -31,6 +31,9 @@ export type PlanContext = {
   nextVisitAssigned: boolean | null;
   lastCompletedDate: string | null;
   lastCompletedPaid: number | null;
+  /** True when the most recent visit charge for this plan failed or is in dunning. */
+  lastPaymentFailed: boolean;
+  dunningState: string | null;
   /**
    * Where the plan's visits actually happen, taken from its most recently dated
    * geocoded job.
@@ -57,6 +60,8 @@ export const EMPTY_PLAN_CONTEXT: PlanContext = {
   nextVisitAssigned: null,
   lastCompletedDate: null,
   lastCompletedPaid: null,
+  lastPaymentFailed: false,
+  dunningState: null,
   lat: null,
   lng: null,
 };
@@ -91,11 +96,11 @@ export async function planContexts(
     jobIds.length
       ? supabase
           .from('payments')
-          .select('job_id, amount, refunded_amount')
+          .select('id, job_id, recurring_plan_id, amount, refunded_amount, status, dunning_state, created_at')
           .eq('account_id', accountId)
-          .eq('status', 'paid')
           .in('job_id', jobIds)
-      : Promise.resolve({ data: [] as { job_id: string; amount: number; refunded_amount: number }[] }),
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: [] as { id: string; job_id: string; recurring_plan_id?: string | null; amount: number; refunded_amount: number; status: string; dunning_state?: string | null; created_at?: string }[] }),
   ]);
 
   const crewName = new Map<string, string>();
@@ -116,10 +121,22 @@ export async function planContexts(
 
   const paidByJob = new Map<string, number>();
   for (const row of paymentRows ?? []) {
-    if (!row.job_id) continue;
+    if (!row.job_id || row.status !== 'paid') continue;
     const net = (Number(row.amount) || 0) - (Number(row.refunded_amount) || 0);
     if (net <= 0) continue;
     paidByJob.set(row.job_id, (paidByJob.get(row.job_id) ?? 0) + net);
+  }
+
+  const jobIdToPlanId = new Map<string, string>();
+  for (const job of jobs) {
+    if (job.recurring_plan_id) jobIdToPlanId.set(job.id, job.recurring_plan_id);
+  }
+
+  const latestPaymentByPlan = new Map<string, { status: string; dunning_state: string | null }>();
+  for (const row of paymentRows ?? []) {
+    const planId = (row.recurring_plan_id as string | null) ?? jobIdToPlanId.get(row.job_id as string);
+    if (!planId || latestPaymentByPlan.has(planId)) continue;
+    latestPaymentByPlan.set(planId, { status: row.status as string, dunning_state: (row.dunning_state as string) ?? null });
   }
 
   for (const plan of plans) {
@@ -176,6 +193,14 @@ export async function planContexts(
       nextVisitAssigned: nextJob ? crewNames.length > 0 : null,
       lastCompletedDate: (last?.recurring_visit_date as string) ?? (last?.scheduled_for as string) ?? null,
       lastCompletedPaid: last ? paidByJob.get(last.id as string) ?? null : null,
+      lastPaymentFailed: Boolean(
+        latestPaymentByPlan.get(plan.id) &&
+          (latestPaymentByPlan.get(plan.id)!.status === 'failed' ||
+            latestPaymentByPlan.get(plan.id)!.dunning_state === 'needs_card' ||
+            latestPaymentByPlan.get(plan.id)!.dunning_state === 'exhausted' ||
+            latestPaymentByPlan.get(plan.id)!.dunning_state === 'scheduled'),
+      ),
+      dunningState: latestPaymentByPlan.get(plan.id)?.dunning_state ?? null,
       lat: pin?.lat ?? null,
       lng: pin?.lng ?? null,
     });

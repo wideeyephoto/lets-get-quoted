@@ -12,6 +12,8 @@ import { generateReferralCode, buildReferralShareText } from '@/lib/referrals';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
 import { PortalMessageForm } from './PortalMessageForm';
 import MailIcon from '@/components/MailIcon';
+import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
+import { customerTogglePlanAction } from './actions';
 
 export const dynamic = 'force-dynamic';
 // Never indexed. A live portal link in a search result is somebody's home
@@ -358,8 +360,8 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                     {plan.totalCycles ? <span>🔢 {plan.totalCycles} total installments</span> : null}
                   </div>
 
-                  {brand.phone ? (
-                    <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    {brand.phone ? (
                       <a
                         href={`sms:${brand.phone.replace(/[^0-9+]/g, '')}?&body=${encodeURIComponent(`Hi ${portal.businessName}, regarding my service plan (${plan.title}): `)}`}
                         className="btn secondary"
@@ -367,8 +369,32 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                       >
                         🔧 Request Plan Service Visit
                       </a>
-                    </div>
-                  ) : null}
+                    ) : null}
+
+                    {plan.kind === 'recurring_service' ? (
+                      plan.status === 'active' ? (
+                        <ConfirmActionButton
+                          action={customerTogglePlanAction.bind(null, params.token, plan.id, false)}
+                          confirmMessage={`Are you sure you want to pause your ${plan.title}? Any upcoming visits will be removed from the schedule.`}
+                          className="btn secondary"
+                          pendingLabel="Pausing…"
+                          savedLabel="Paused ✓"
+                        >
+                          <span style={{ fontSize: '0.8rem' }}>⏸ Pause plan</span>
+                        </ConfirmActionButton>
+                      ) : (
+                        <ConfirmActionButton
+                          action={customerTogglePlanAction.bind(null, params.token, plan.id, true)}
+                          confirmMessage={`Resume your ${plan.title}? Future visits will be scheduled starting from the next upcoming date.`}
+                          className="btn primary"
+                          pendingLabel="Resuming…"
+                          savedLabel="Resumed ✓"
+                        >
+                          <span style={{ fontSize: '0.8rem' }}>▶ Resume plan</span>
+                        </ConfirmActionButton>
+                      )
+                    ) : null}
+                  </div>
                 </article>
               ))}
             </div>

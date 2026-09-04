@@ -13,20 +13,27 @@ const FREQUENCY_OPTIONS = [
   { id: 'weekly', label: 'Weekly' },
   { id: 'biweekly', label: 'Every 2 weeks' },
   { id: 'monthly', label: 'Monthly' },
+  { id: 'quarterly', label: 'Quarterly (every 3 mos)' },
+  { id: 'semi-annual', label: 'Semi-annually (every 6 mos)' },
+  { id: 'annual', label: 'Annually' },
 ] as const;
 
 type ServiceOption = { id: string; name: string; unitPrice: number };
+type MembershipTierOption = { id: string; name: string; monthlyPrice: number; annualPrice: number; tierLevel: number };
 
 export default function RecurringComposer({
   today,
   services = [],
   clients = [],
+  membershipTiers = [],
 }: {
   today: string;
   services?: ServiceOption[];
   clients?: LookupClient[];
+  membershipTiers?: MembershipTierOption[];
 }) {
   const [autoCharge, setAutoCharge] = useState(false);
+  const [selectedTierId, setSelectedTierId] = useState<string>('');
   const phoneRef = useRef<HTMLInputElement | null>(null);
   const emailRef = useRef<HTMLInputElement | null>(null);
   const addressRef = useRef<HTMLInputElement | null>(null);
@@ -62,6 +69,22 @@ export default function RecurringComposer({
     event.currentTarget.value = '';
   }
 
+  // Picking a membership tier prefills title and price based on selected frequency
+  function prefillFromTier(event: React.ChangeEvent<HTMLSelectElement>) {
+    const tierId = event.target.value;
+    setSelectedTierId(tierId);
+    const tier = membershipTiers.find((item) => item.id === tierId);
+    const form = event.currentTarget.form;
+    if (tier && form) {
+      const titleInput = form.elements.namedItem('title') as HTMLInputElement | null;
+      const amountInput = form.elements.namedItem('amount') as HTMLInputElement | null;
+      const freqSelect = form.elements.namedItem('frequency') as HTMLSelectElement | null;
+      if (titleInput) titleInput.value = `${tier.name} Membership`;
+      const isAnnual = freqSelect?.value === 'annual';
+      if (amountInput) amountInput.value = String(isAnnual && tier.annualPrice > 0 ? tier.annualPrice : tier.monthlyPrice);
+    }
+  }
+
   // Money field: keep it to cents. step="0.01" only validates on submit, so it
   // doesn't stop someone typing 450.2266565 — strip non-numerics and cap the
   // decimals at 2 as they type.
@@ -79,6 +102,7 @@ export default function RecurringComposer({
     <details className="recurring-composer job-feed-composer">
       <summary className="btn primary">+ New recurring plan</summary>
       <form action={createRecurringPlanAction} className="recurring-form job-feed-composer-form">
+        <input type="hidden" name="membershipTierId" value={selectedTierId} />
         {services.length > 0 ? (
           <div className="field">
             <label htmlFor="rp-fromservice">Start from a saved service (optional)</label>
@@ -88,6 +112,19 @@ export default function RecurringComposer({
                 <option key={service.id} value={service.id}>
                   {service.name}
                   {service.unitPrice > 0 ? ` — $${Math.round(service.unitPrice).toLocaleString('en-US')}` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+        ) : null}
+        {membershipTiers.length > 0 ? (
+          <div className="field">
+            <label htmlFor="rp-fromtier">Link a membership tier (optional)</label>
+            <select id="rp-fromtier" value={selectedTierId} onChange={prefillFromTier} aria-label="Fill from membership tiers">
+              <option value="">None (standard plan)</option>
+              {membershipTiers.map((tier) => (
+                <option key={tier.id} value={tier.id}>
+                  {tier.name} — ${Math.round(tier.monthlyPrice)}/mo{tier.annualPrice > 0 ? ` or $${Math.round(tier.annualPrice)}/yr` : ''}
                 </option>
               ))}
             </select>
@@ -117,6 +154,10 @@ export default function RecurringComposer({
               <span aria-hidden="true">$</span>
               <input id="rp-amount" name="amount" type="text" inputMode="decimal" placeholder="0.00" autoComplete="off" onInput={limitCents} />
             </div>
+          </div>
+          <div className="field">
+            <label htmlFor="rp-term">Duration / Term</label>
+            <input id="rp-term" name="termCycles" type="number" min={1} max={500} placeholder="Visits (e.g. 12, optional)" />
           </div>
         </div>
 

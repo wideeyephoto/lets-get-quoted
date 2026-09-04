@@ -11,6 +11,7 @@ import {
 import { listServices } from '@/lib/services';
 import { listClientsWithStats } from '@/lib/clients';
 import { listCrew } from '@/lib/crew';
+import { listMembershipTiers } from '@/lib/membership-tiers';
 import { planContexts, type PlanContext } from '@/lib/recurring-context';
 import { autopayCoverage, boardIssues, boardVisits, type BoardPlan, type BoardIssue, type BoardVisit } from '@/lib/recurring-board';
 
@@ -48,6 +49,7 @@ export type RecurringView = {
   services: { id: string; name: string; unitPrice: number }[];
   clients: { id: string; name: string; phone: string | null; email: string | null; address: string | null }[];
   roster: { id: string; name: string }[];
+  membershipTiers: { id: string; name: string; monthlyPrice: number; annualPrice: number; tierLevel: number }[];
 
   activeCount: number;
   monthlyRecurring: number;
@@ -125,17 +127,22 @@ export async function buildRecurringView(
   // filter. Three answers to one question. boardIssues is now the only one, and
   // the tile, the filter, the map pins and the board all read it.
   const issues = boardIssues(
-    plans.map<BoardPlan>((plan) => ({
-      id: plan.id,
-      clientName: plan.client_name,
-      title: plan.title,
-      active: plan.active,
-      autoCharge: plan.auto_charge,
-      hasCard: Boolean(plan.card_last4),
-      amount: plan.amount,
-      nextRunDate: plan.next_run_date,
-      nextVisitAssigned: contexts.get(plan.id)?.nextVisitAssigned ?? null,
-    })),
+    plans.map<BoardPlan>((plan) => {
+      const ctx = contexts.get(plan.id);
+      return {
+        id: plan.id,
+        clientName: plan.client_name,
+        title: plan.title,
+        active: plan.active,
+        autoCharge: plan.auto_charge,
+        hasCard: Boolean(plan.card_last4),
+        amount: plan.amount,
+        nextRunDate: plan.next_run_date,
+        nextVisitAssigned: ctx?.nextVisitAssigned ?? null,
+        prepaid: Boolean(plan.prepaid),
+        lastPaymentFailed: ctx?.lastPaymentFailed ?? false,
+      };
+    }),
     today,
   );
   const issueIds = new Set(issues.map((issue) => issue.planId));
@@ -150,6 +157,18 @@ export async function buildRecurringView(
   // board widens to a month when the week is empty — and SAYS it widened. The
   // tile keeps its seven days either way.
   const boardVisitList = weekVisits.length > 0 ? weekVisits : boardVisits(projected, today, dateKeyPlusDays(today, 29));
+
+  // Active membership tiers for tier-backed recurring plan composition.
+  const rawTiers = await listMembershipTiers(supabase, accountId);
+  const membershipTiers = rawTiers
+    .filter((tier) => tier.isActive)
+    .map((tier) => ({
+      id: tier.id,
+      name: tier.name,
+      monthlyPrice: tier.monthlyPrice,
+      annualPrice: tier.annualPrice,
+      tierLevel: tier.tierLevel,
+    }));
 
   // The roster once for the page, so the crew picker in every plan's menu is
   // already loaded when it opens rather than fetching on click.
@@ -224,6 +243,7 @@ export async function buildRecurringView(
     services,
     clients,
     roster,
+    membershipTiers,
     activeCount,
     monthlyRecurring,
     autoBilledCount,

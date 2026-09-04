@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { planMonthlyValue, shortDate, upcomingVisits, visitCountdown } from '@/lib/recurring-display';
+import { planHealth, nextChargeLabel, planMonthlyValue, shortDate, upcomingVisits, visitCountdown } from '@/lib/recurring-display';
 
 describe('next-visit countdown', () => {
   const today = '2026-08-04';
@@ -80,5 +80,61 @@ describe('date labels', () => {
     // Parsed as UTC — otherwise a west-coast owner sees the day before.
     expect(shortDate('2026-08-04')).toBe('Aug 4');
     expect(shortDate('2026-01-01')).toBe('Jan 1');
+  });
+});
+
+describe('plan health and next charge labels', () => {
+  const formatMoney = (n: number) => `$${n}`;
+
+  it('marks active plan with failed autopay as at-risk', () => {
+    const health = planHealth({
+      active: true,
+      autoCharge: true,
+      hasCard: true,
+      amount: 100,
+      daysUntilNext: 5,
+      nextVisitAssigned: true,
+      lastPaymentFailed: true,
+    });
+    expect(health.level).toBe('at-risk');
+    expect(health.reasons).toContain('Last autopay payment failed');
+  });
+
+  it('does not require card or positive price for prepaid plans', () => {
+    const health = planHealth({
+      active: true,
+      autoCharge: false,
+      hasCard: false,
+      amount: 0,
+      daysUntilNext: 5,
+      nextVisitAssigned: true,
+      prepaid: true,
+    });
+    expect(health.level).toBe('healthy');
+    expect(health.reasons).toEqual([]);
+  });
+
+  it('labels prepaid visits clearly without double-billing wording', () => {
+    const label = nextChargeLabel({
+      amount: 0,
+      nextRunDate: '2026-08-10',
+      autoCharge: false,
+      hasCard: false,
+      formatMoney,
+      prepaid: true,
+    });
+    expect(label).toBe('Prepaid visit on Aug 10');
+  });
+
+  it('labels normal autopay plan correctly', () => {
+    const label = nextChargeLabel({
+      amount: 75,
+      nextRunDate: '2026-08-10',
+      autoCharge: true,
+      hasCard: true,
+      formatMoney,
+      prepaid: false,
+    });
+    expect(label).toBe('$75 charged after the Aug 10 visit');
   });
 });

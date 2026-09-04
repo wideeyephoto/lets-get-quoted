@@ -35,3 +35,32 @@ export async function sendPortalMessageAction(
 
   return result;
 }
+
+export async function customerTogglePlanAction(
+  token: string,
+  planId: string,
+  active: boolean,
+): Promise<void> {
+  const admin = createAdminClient();
+  const access = await resolvePortalAccess(admin, token);
+  if (!access) {
+    throw new Error('Your link has expired. Please request a fresh one.');
+  }
+
+  const { data: plan, error: planError } = await admin
+    .from('recurring_plans')
+    .select('id, client_id, title')
+    .eq('account_id', access.accountId)
+    .eq('id', planId)
+    .maybeSingle();
+
+  if (planError || !plan || plan.client_id !== access.clientId) {
+    throw new Error('Plan not found or unauthorized.');
+  }
+
+  const { setRecurringPlanActive } = await import('@/lib/recurring');
+  await setRecurringPlanActive(admin, access.accountId, planId, active);
+
+  revalidatePath(`/portal/view/${token}`);
+}
+

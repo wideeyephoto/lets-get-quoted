@@ -22,8 +22,9 @@ import { sendJobAppointmentReminder, type RemindableJob } from '@/lib/reminders'
 import { sendCardSetupSms } from '@/lib/sms';
 import { sendCardSetupEmail } from '@/lib/email';
 import { deleteJob } from '@/lib/jobs';
+import { getMembershipTier } from '@/lib/membership-tiers';
 
-const FREQUENCIES: RecurringFrequency[] = ['weekly', 'biweekly', 'monthly'];
+const FREQUENCIES: RecurringFrequency[] = ['weekly', 'biweekly', 'monthly', 'quarterly', 'semi-annual', 'annual'];
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
 export async function createRecurringPlanAction(formData: FormData) {
@@ -51,6 +52,21 @@ export async function createRecurringPlanAction(formData: FormData) {
   if (autoCharge && amount <= 0) throw new Error('Auto-charge needs an amount greater than $0.');
   if (autoCharge && !clientEmail && !clientPhone) throw new Error('Auto-charge needs the customer’s email or phone to send the card link.');
 
+  const rawTerm = formData.get('termCycles');
+  const termCycles = rawTerm && Number(rawTerm) > 0 ? Math.floor(Number(rawTerm)) : null;
+  const membershipTierId = String(formData.get('membershipTierId') ?? '').trim() || null;
+  let tierInfo: { name?: string; level?: number; benefits?: Record<string, unknown> } = {};
+  if (membershipTierId) {
+    try {
+      const tier = await getMembershipTier(supabase, accountId, membershipTierId);
+      if (tier) {
+        tierInfo = { name: tier.name, level: tier.tierLevel, benefits: tier.benefits };
+      }
+    } catch (tierErr) {
+      console.error('Failed to load membership tier:', tierErr);
+    }
+  }
+
   const plan = await createRecurringPlan(supabase, accountId, {
     title,
     scope: scope || null,
@@ -62,6 +78,11 @@ export async function createRecurringPlanAction(formData: FormData) {
     frequency,
     firstVisitDate,
     autoCharge,
+    termCycles,
+    membershipTierId,
+    membershipTierName: tierInfo.name || null,
+    tierLevel: tierInfo.level || null,
+    tierBenefits: tierInfo.benefits || null,
   });
 
   // Put the first visits on the calendar now rather than one at a time on the
@@ -102,12 +123,13 @@ export async function runPlanNowAction(planId: string) {
 
 export async function setPlanActiveAction(planId: string, active: boolean) {
   const { supabase, accountId, userId, role, userEmail } = await requireOfficeContext('jobs.write');
-  await setRecurringPlanActive(supabase, accountId, planId, active);
+  const { visitsChanged } = await setRecurringPlanActive(supabase, accountId, planId, active);
   // Pausing removes upcoming visits and resuming puts them back, so the calendar
   // this changed has to be re-rendered too.
   revalidatePath('/dashboard/recurring');
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/jobs');
+  redirect(`/dashboard/recurring?flash=${active ? 'resumed' : 'paused'}${visitsChanged > 0 ? `&changed=${visitsChanged}` : ''}`);
 }
 
 export async function deletePlanAction(planId: string) {
@@ -344,7 +366,7 @@ export async function updatePlanAction(planId: string, formData: FormData) {
   const rawAmount = Number(formData.get('amount'));
   const amount = Number.isFinite(rawAmount) && rawAmount >= 0 ? Math.round(rawAmount * 100) / 100 : plan.amount;
   const rawFrequency = (formData.get('frequency') ?? '').toString();
-  const frequency = rawFrequency === 'weekly' || rawFrequency === 'biweekly' || rawFrequency === 'monthly' ? rawFrequency : plan.frequency;
+  const frequency = FREQUENCIES.includes(rawFrequency as RecurringFrequency) ? (rawFrequency as RecurringFrequency) : plan.frequency;
   const nextRunDate = (formData.get('nextRunDate') ?? '').toString().trim() || plan.next_run_date;
 
   if (requiresReconsent(plan, amount) && formData.get('confirmIncrease') !== 'on') {

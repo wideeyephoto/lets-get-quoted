@@ -166,21 +166,24 @@ export function planHealth(input: {
   daysUntilNext: number | null;
   /** Null when no visit job exists yet — that is not the same as unassigned. */
   nextVisitAssigned: boolean | null;
+  prepaid?: boolean;
+  lastPaymentFailed?: boolean;
 }): PlanHealth {
   if (!input.active) return { level: 'healthy', reasons: [] };
 
   const reasons: string[] = [];
-  const cannotBill = input.autoCharge && !input.hasCard;
+  const cannotBill = !input.prepaid && input.autoCharge && !input.hasCard;
   const late = input.daysUntilNext !== null && input.daysUntilNext < 0;
 
   if (cannotBill) reasons.push('No payment method on file');
+  if (input.lastPaymentFailed) reasons.push('Last autopay payment failed');
   if (input.nextVisitAssigned === false) reasons.push('Nobody assigned to the next visit');
   if (late) reasons.push('Next visit is past due');
-  if ((Number(input.amount) || 0) <= 0) reasons.push('No price set');
+  if (!input.prepaid && (Number(input.amount) || 0) <= 0) reasons.push('No price set');
 
   if (!reasons.length) return { level: 'healthy', reasons };
-  // Late work that cannot be billed is the one pairing that earns the top level.
-  if (cannotBill && late) return { level: 'at-risk', reasons };
+  // Late work that cannot be billed OR payment failure on an active autopay plan is at-risk
+  if ((cannotBill && late) || (input.autoCharge && input.lastPaymentFailed)) return { level: 'at-risk', reasons };
   return { level: 'attention', reasons };
 }
 
@@ -205,10 +208,12 @@ export function nextChargeLabel(input: {
   autoCharge: boolean;
   hasCard: boolean;
   formatMoney: (n: number) => string;
+  prepaid?: boolean;
 }): string | null {
+  const when = shortDate(input.nextRunDate);
+  if (input.prepaid) return `Prepaid visit on ${when}`;
   const amount = Number(input.amount) || 0;
   if (amount <= 0) return null;
-  const when = shortDate(input.nextRunDate);
   if (input.autoCharge && input.hasCard) return `${input.formatMoney(amount)} charged after the ${when} visit`;
   if (input.autoCharge) return `${input.formatMoney(amount)} due ${when} — no card on file yet`;
   return `${input.formatMoney(amount)} to invoice on ${when}`;

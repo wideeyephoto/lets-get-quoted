@@ -187,4 +187,23 @@ describe('summarisePortal', () => {
     expect(view.documentsCount).toBe(2);
     expect(view.messagesCount).toBe(2);
   });
+
+  it('supports prepaid plans and extended cadences in the client portal', () => {
+    const p = plan({
+      prepaid: true,
+      frequency: 'annual',
+      frequencyLabel: 'Annually',
+    });
+    expect(p.prepaid).toBe(true);
+    expect(p.frequency).toBe('annual');
+    expect(p.frequencyLabel).toBe('Annually');
+
+    const view = summarisePortal({
+      businessName: 'Apex Roofing',
+      clientName: 'Sarah Jenkins',
+      jobs: [],
+      plans: [p, plan({ id: 'p2', frequency: 'quarterly', frequencyLabel: 'Quarterly' })],
+    });
+    expect(view.activePlansCount).toBe(2);
+  });
 });

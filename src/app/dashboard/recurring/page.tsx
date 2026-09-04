@@ -29,6 +29,8 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
   'card-sent': { tone: 'success', text: 'Plan saved, the next visits are on your calendar, and a secure card-setup link was sent to your customer.' },
   'card-failed': { tone: 'warn', text: 'Plan saved and the visits are on your calendar, but the card link couldn’t be sent. Add an email or opted-in phone, then resend it.' },
   deleted: { tone: 'info', text: 'Recurring plan cancelled. Its upcoming visits were taken off the calendar; anything already worked or billed stays.' },
+  paused: { tone: 'info', text: 'Recurring plan paused. Upcoming visits were taken off the calendar.' },
+  resumed: { tone: 'success', text: 'Recurring plan resumed. Upcoming visits are back on the calendar.' },
   'ran-paid': { tone: 'success', text: 'Visit created and the saved card was charged. Check the job and its payment to confirm.' },
   'ran-skipped': { tone: 'info', text: 'Visit created and the schedule advanced. Nothing was charged (auto-charge off or no card on file).' },
   'ran-failed': { tone: 'warn', text: 'Visit created, but the card charge didn’t go through — the customer was sent a pay link. See the job’s payment.' },
@@ -53,7 +55,15 @@ const FLASH_MESSAGES: Record<string, { tone: 'success' | 'info' | 'warn'; text: 
 export default async function RecurringPage({
   searchParams,
 }: {
-  searchParams: Promise<{ flash?: string; job?: string; on?: string; then?: string; plan?: string }>;
+  searchParams: Promise<{
+    flash?: string;
+    job?: string;
+    on?: string;
+    then?: string;
+    plan?: string;
+    changed?: string;
+    removed?: string;
+  }>;
 }) {
   const resolvedSearchParams = (await searchParams) || {};
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
@@ -63,15 +73,32 @@ export default async function RecurringPage({
   const view = await buildRecurringView(supabase, accountId, today);
 
   const baseFlash = resolvedSearchParams.flash ? FLASH_MESSAGES[resolvedSearchParams.flash] : null;
-  // A skip is about two specific days, and naming them is the difference between
-  // "a visit was skipped" and knowing which one, and when they're next due.
-  const flash =
-    baseFlash && resolvedSearchParams.flash === 'skipped' && resolvedSearchParams.on && resolvedSearchParams.then
-      ? {
-          ...baseFlash,
-          text: `${shortDate(resolvedSearchParams.on)} skipped and taken off the calendar — the next visit is ${shortDate(resolvedSearchParams.then)}. A fixed term didn’t lose a visit.`,
-        }
-      : baseFlash;
+  const changedCount = resolvedSearchParams.changed ? Number(resolvedSearchParams.changed) : 0;
+  const removedCount = resolvedSearchParams.removed ? Number(resolvedSearchParams.removed) : 0;
+
+  // Enhance flash messages with visit counts and specific dates
+  let flash = baseFlash;
+  if (baseFlash && resolvedSearchParams.flash === 'skipped' && resolvedSearchParams.on && resolvedSearchParams.then) {
+    flash = {
+      ...baseFlash,
+      text: `${shortDate(resolvedSearchParams.on)} skipped and taken off the calendar — the next visit is ${shortDate(resolvedSearchParams.then)}. A fixed term didn’t lose a visit.`,
+    };
+  } else if (baseFlash && resolvedSearchParams.flash === 'paused' && changedCount > 0) {
+    flash = {
+      ...baseFlash,
+      text: `Recurring plan paused. ${changedCount} upcoming visit${changedCount === 1 ? ' was' : 's were'} taken off the calendar.`,
+    };
+  } else if (baseFlash && resolvedSearchParams.flash === 'resumed' && changedCount > 0) {
+    flash = {
+      ...baseFlash,
+      text: `Recurring plan resumed. ${changedCount} upcoming visit${changedCount === 1 ? ' is' : 's are'} back on the calendar.`,
+    };
+  } else if (baseFlash && resolvedSearchParams.flash === 'deleted' && removedCount > 0) {
+    flash = {
+      ...baseFlash,
+      text: `Recurring plan cancelled. ${removedCount} upcoming visit${removedCount === 1 ? ' was' : 's were'} taken off the calendar; anything already worked or billed stays.`,
+    };
+  }
   // Creating a visit early passes the created job id so we can link straight to it.
   const flashJobId = flash && resolvedSearchParams.flash?.startsWith('ran-') ? resolvedSearchParams.job ?? null : null;
 
@@ -152,7 +179,14 @@ export default async function RecurringPage({
       view={view}
       mode={mode}
       planActions={planActions}
-      composer={<RecurringComposer today={today} services={view.services} clients={view.clients} />}
+      composer={
+        <RecurringComposer
+          today={today}
+          services={view.services}
+          clients={view.clients}
+          membershipTiers={view.membershipTiers}
+        />
+      }
       gear={<RecurringViewGear view={mode} />}
       attentionAction={
         view.noCardPlans.length === 1 ? (

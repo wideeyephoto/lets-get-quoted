@@ -134,6 +134,7 @@ export type PortalPlan = {
   frequencyLabel: string;
   nextRunDate: string | null;
   autoCharge: boolean;
+  prepaid?: boolean;
   cardBrand: string | null;
   cardLast4: string | null;
   paymentMethodSummary: string | null;

@@ -12,6 +12,9 @@ const FREQUENCY_OPTIONS: { id: RecurringPlan['frequency']; label: string }[] = [
   { id: 'weekly', label: 'Weekly' },
   { id: 'biweekly', label: 'Every 2 weeks' },
   { id: 'monthly', label: 'Monthly' },
+  { id: 'quarterly', label: 'Quarterly (every 3 months)' },
+  { id: 'semi-annual', label: 'Semi-annual (every 6 months)' },
+  { id: 'annual', label: 'Annual (yearly)' },
 ];
 
 // Change a live plan's price, cadence, or next visit date.

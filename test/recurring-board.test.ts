@@ -186,4 +186,17 @@ describe('issueBreakdown — what the "needs attention" number is made of', () =
   it('is empty when nothing is wrong', () => {
     expect(issueBreakdown(boardIssues([plan()], today))).toEqual([]);
   });
+
+  it('flags a plan with failed autopay payment', () => {
+    const issues = boardIssues([plan({ id: 'failed', clientName: 'Dave', lastPaymentFailed: true })], today);
+    expect(issues).toHaveLength(1);
+    expect(issues[0].headline).toBe('Autopay failed');
+    expect(issues[0].detail).toContain('declined or failed dunning');
+    expect(issues[0].level).toBe('at-risk');
+  });
+
+  it('does not flag a prepaid plan without a card or price', () => {
+    const issues = boardIssues([plan({ id: 'prepaid', clientName: 'Prepaid User', autoCharge: false, hasCard: false, amount: 0, prepaid: true })], today);
+    expect(issues).toEqual([]);
+  });
 });

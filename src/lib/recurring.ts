@@ -10,7 +10,7 @@ import { sendPaymentSmsEvent } from '@/lib/sms';
 import { recordRecurringChargeFailure, extractStripeDecline } from '@/lib/dunning';
 import { createInvoiceWithSingleItem, markInvoicePaidForPayment } from '@/lib/invoices';
 
-export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly';
+export type RecurringFrequency = 'weekly' | 'biweekly' | 'monthly' | 'quarterly' | 'semi-annual' | 'annual';
 
 export type RecurringPlan = {
   id: string;
@@ -27,6 +27,8 @@ export type RecurringPlan = {
   next_run_date: string;
   active: boolean;
   auto_charge: boolean;
+  // Whether the entire term was charged up-front, so individual visits do not invoice again.
+  prepaid?: boolean;
   // Remaining visits before the plan ends; null = ongoing (no term).
   remaining_cycles: number | null;
   /**
@@ -55,12 +57,18 @@ export const FREQUENCY_LABEL: Record<RecurringFrequency, string> = {
   weekly: 'Weekly',
   biweekly: 'Every 2 weeks',
   monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  'semi-annual': 'Every 6 months',
+  annual: 'Annual',
 };
 
 export const FREQUENCY_OPTIONS: { id: RecurringFrequency; label: string }[] = [
   { id: 'weekly', label: 'Weekly' },
   { id: 'biweekly', label: 'Every 2 weeks' },
   { id: 'monthly', label: 'Monthly' },
+  { id: 'quarterly', label: 'Quarterly (every 3 months)' },
+  { id: 'semi-annual', label: 'Semi-annual (every 6 months)' },
+  { id: 'annual', label: 'Annual (every 12 months)' },
 ];
 
 // Bound one cron invocation.
@@ -94,11 +102,18 @@ export function todayDateKey(): string {
  */
 export function advanceDate(dateKey: string, frequency: RecurringFrequency, anchorDay?: number | null): string {
   const [year, month, day] = dateKey.split('-').map(Number);
-  if (frequency === 'monthly') {
+  const monthStep =
+    frequency === 'monthly' ? 1
+    : frequency === 'quarterly' ? 3
+    : frequency === 'semi-annual' ? 6
+    : frequency === 'annual' ? 12
+    : 0;
+
+  if (monthStep > 0) {
     let nextYear = year;
-    let nextMonth = month + 1;
-    if (nextMonth > 12) {
-      nextMonth = 1;
+    let nextMonth = month + monthStep;
+    while (nextMonth > 12) {
+      nextMonth -= 12;
       nextYear += 1;
     }
     const lastDay = new Date(Date.UTC(nextYear, nextMonth, 0)).getUTCDate();
@@ -223,6 +238,8 @@ export type RecurringPlanInput = {
   frequency: RecurringFrequency;
   firstVisitDate: string;
   autoCharge: boolean;
+  // Whether the entire term was charged up-front.
+  prepaid?: boolean;
   // Optional term: the plan stops after this many visits. Omit/0 = ongoing.
   termCycles?: number | null;
   // Optional Service-Club Membership linkage
@@ -266,6 +283,7 @@ export async function createRecurringPlan(
       // month-end plan permanently. See advanceDate.
       anchor_day: anchorDayFrom(input.firstVisitDate),
       auto_charge: input.autoCharge,
+      prepaid: Boolean(input.prepaid),
       remaining_cycles: input.termCycles && input.termCycles > 0 ? Math.floor(input.termCycles) : null,
       membership_tier_id: input.membershipTierId || null,
       membership_tier_name: input.membershipTierName || null,
@@ -305,7 +323,7 @@ export async function enrollMembershipPlan(
   autoCharge = true,
 ): Promise<RecurringPlan> {
   const amount = billingCadence === 'annual' ? (tier.annualPrice || tier.monthlyPrice * 11) : tier.monthlyPrice;
-  const frequency: RecurringFrequency = 'monthly';
+  const frequency: RecurringFrequency = billingCadence === 'annual' ? 'annual' : 'monthly';
   const memberNumber = `VIP-${Math.random().toString(36).substring(2, 6).toUpperCase()}-${Date.now().toString(36).slice(-4).toUpperCase()}`;
 
   return createRecurringPlan(supabase, accountId, {
@@ -558,7 +576,7 @@ async function chargePlanVisit(
   dateKey: string,
   invoiceId: string | null,
 ): Promise<ChargeOutcome> {
-  if (!plan.auto_charge || !plan.stripe_payment_method_id || !plan.stripe_customer_id || plan.amount <= 0) {
+  if (plan.prepaid || !plan.auto_charge || !plan.stripe_payment_method_id || !plan.stripe_customer_id || plan.amount <= 0) {
     return 'skipped';
   }
 
@@ -844,9 +862,14 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
   const termFields = typeof termLeft === 'number'
     ? { remaining_cycles: Math.max(0, termLeft - 1), active: termLeft - 1 > 0 }
     : {};
+  // Advance by at least one cadence step; if clearing a backlog from a cron outage,
+  // roll forward to the next future date rather than billing consecutive days.
+  const nextStep = advanceDate(dateKey, plan.frequency, plan.anchor_day);
+  const nextRun = nextFutureRunDate(nextStep, plan.frequency, todayDateKey(), plan.anchor_day);
+
   const { data: claimed } = await admin
     .from('recurring_plans')
-    .update({ next_run_date: advanceDate(dateKey, plan.frequency, plan.anchor_day), last_run_at: nowIso, updated_at: nowIso, ...termFields })
+    .update({ next_run_date: nextRun, last_run_at: nowIso, updated_at: nowIso, ...termFields })
     .eq('id', plan.id)
     .eq('next_run_date', dateKey)
     .select('id')
@@ -871,8 +894,11 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
   // with its own ref#), then hand its id to the charge so a successful auto-charge
   // flips it to paid. Best-effort: a failure here must never sink the charge — the
   // money path is what matters; a missing invoice is a soft loss.
+  //
+  // PREPAID plans: The entire term was charged upfront as a lump sum at signup.
+  // Never mint a 'sent' invoice that demands payment a second time.
   let invoiceId: string | null = null;
-  if (plan.amount > 0) {
+  if (plan.amount > 0 && !plan.prepaid) {
     try {
       const invoice = await createInvoiceWithSingleItem(
         admin,
@@ -897,7 +923,7 @@ async function spawnPlanOccurrence(admin: ReturnType<typeof createAdminClient>, 
     }
   }
 
-  const outcome = await chargePlanVisit(admin, plan, job, dateKey, invoiceId);
+  const outcome = plan.prepaid ? 'skipped' : await chargePlanVisit(admin, plan, job, dateKey, invoiceId);
   return { outcome, jobId: job.id };
 }
 

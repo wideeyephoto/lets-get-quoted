@@ -176,6 +176,9 @@ const PLAN_FREQUENCY_LABEL: Record<string, string> = {
   weekly: 'Weekly',
   biweekly: 'Every 2 weeks',
   monthly: 'Monthly',
+  quarterly: 'Quarterly',
+  'semi-annual': 'Every 6 months',
+  annual: 'Annual',
 };
 
 /**
@@ -348,7 +351,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
   const [{ data: recurringPlanRows }, { data: paymentPlanRows }, propertyPassports] = await Promise.all([
     admin
       .from('recurring_plans')
-      .select('id, title, scope, amount, frequency, next_run_date, active, auto_charge, card_brand, card_last4, remaining_cycles, membership_tier_id, membership_tier_name, tier_level, tier_benefits, member_number, created_at')
+      .select('id, title, scope, amount, frequency, next_run_date, active, auto_charge, prepaid, card_brand, card_last4, remaining_cycles, membership_tier_id, membership_tier_name, tier_level, tier_benefits, member_number, created_at')
       .eq('account_id', accountId)
       .eq('client_id', clientId)
       .order('created_at', { ascending: false }),
@@ -399,6 +402,7 @@ export async function loadPortal(admin: SupabaseClient, accountId: string, clien
       frequencyLabel: PLAN_FREQUENCY_LABEL[r.frequency as string] || (r.frequency as string),
       nextRunDate: (r.next_run_date as string | null) ?? null,
       autoCharge: Boolean(r.auto_charge),
+      prepaid: Boolean(r.prepaid),
       cardBrand: (r.card_brand as string | null) ?? null,
       cardLast4: (r.card_last4 as string | null) ?? null,
       paymentMethodSummary: cardSummary,

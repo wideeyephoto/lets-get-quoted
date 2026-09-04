@@ -126,6 +126,7 @@ export async function startSubscriptionSignup(
       frequency: item.frequency ?? 'monthly',
       firstVisitDate: startDate,
       autoCharge: mode === 'cycle',
+      prepaid: mode === 'prepay',
       termCycles: term,
     });
   } catch (error) {
@@ -217,6 +218,7 @@ export async function acceptSubscriptionForClient(
       // Prepay is one lump sum up front, so per-visit charging stays off however
       // the owner set the toggle — otherwise the client pays twice.
       autoCharge: options.mode === 'cycle' && options.autoCharge,
+      prepaid: options.mode === 'prepay',
       termCycles: term,
     });
   } catch (error) {

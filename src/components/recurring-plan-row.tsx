@@ -60,6 +60,8 @@ export default function RecurringPlanRow({
     amount: plan.amount,
     daysUntilNext: countdown ? countdown.days : null,
     nextVisitAssigned: context.nextVisitAssigned,
+    prepaid: plan.prepaid,
+    lastPaymentFailed: context.lastPaymentFailed,
   });
 
   const charge = plan.active
@@ -69,6 +71,7 @@ export default function RecurringPlanRow({
         autoCharge: plan.auto_charge,
         hasCard,
         formatMoney,
+        prepaid: plan.prepaid,
       })
     : null;
 

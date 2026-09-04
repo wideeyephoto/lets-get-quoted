@@ -244,3 +244,35 @@ describe('nextFutureRunDate — resuming a plan that was paused', () => {
     expect(result >= '2026-08-01').toBe(true);
   });
 });
+
+describe('advanceDate — quarterly, semi-annual, annual', () => {
+  it('adds 3 months for quarterly', () => {
+    expect(advanceDate('2026-01-15', 'quarterly')).toBe('2026-04-15');
+    expect(advanceDate('2026-11-15', 'quarterly')).toBe('2027-02-15');
+  });
+
+  it('clamps quarterly month-end and respects anchor', () => {
+    const anchor = anchorDayFrom('2026-01-31');
+    const q1 = advanceDate('2026-01-31', 'quarterly', anchor);
+    expect(q1).toBe('2026-04-30'); // April has 30 days
+    const q2 = advanceDate(q1, 'quarterly', anchor);
+    expect(q2).toBe('2026-07-31'); // July has 31 days
+  });
+
+  it('adds 6 months for semi-annual', () => {
+    expect(advanceDate('2026-02-10', 'semi-annual')).toBe('2026-08-10');
+    expect(advanceDate('2026-08-31', 'semi-annual', 31)).toBe('2027-02-28');
+  });
+
+  it('adds 12 months for annual', () => {
+    expect(advanceDate('2026-05-20', 'annual')).toBe('2027-05-20');
+    // Leap year clamping: Feb 29 2028 + 1 yr -> Feb 28 2029
+    expect(advanceDate('2028-02-29', 'annual', 29)).toBe('2029-02-28');
+  });
+
+  it('rolls forward stale annual/quarterly dates in nextFutureRunDate', () => {
+    expect(nextFutureRunDate('2024-03-15', 'annual', '2026-08-01')).toBe('2027-03-15');
+    expect(nextFutureRunDate('2026-01-10', 'quarterly', '2026-08-01')).toBe('2026-10-10');
+  });
+});
+
