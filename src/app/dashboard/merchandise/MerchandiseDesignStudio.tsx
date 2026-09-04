@@ -191,13 +191,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             : undefined,
         decorationMethod: currentProduct.decorationMethod,
         placement:
-          currentProduct.id === 'polos'
-            ? 'Left Chest High-Density Embroidery'
-            : currentProduct.id === 't_shirts'
-            ? 'Left Chest Logo + Full Back Tradesman Layout'
-            : currentProduct.id === 'hats'
-            ? 'Front Crown Laser-Etched Patch'
-            : 'Front & Back Commercial Print',
+          currentProduct.id === 'biz_cards'
+            ? 'Front & Back Velvet Offset Imprint with Dynamic QR'
+            : 'Personalized Header & 2-Part NCR Carbonless Grid',
         sizeBreakdown: currentProduct.options?.sizes ? sizeQuantities : undefined,
         finish: selectedFinish || undefined,
         deviceModel: currentProduct.id === 'phone_cases' ? selectedModel : undefined,
@@ -398,10 +394,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               Marketing &amp; Brand Studio
             </p>
             <h1 className="workspace-title" style={{ fontSize: '1.8rem', marginBottom: '0.35rem', color: 'var(--text)', letterSpacing: '-0.02em' }}>
-              Merchandise &amp; Swag Studio
+              Business Cards &amp; Field Forms Studio
             </h1>
             <p className="workspace-lead" style={{ margin: 0, fontSize: '0.92rem', color: 'var(--muted)' }}>
-              Commercial-grade crew apparel, embroidered hats, velvet cards, and jobsite gear for {businessName}.
+              Commercial-grade 16pt velvet business cards and 2-part carbonless NCR job order pads for {businessName}.
             </p>
           </div>
 
@@ -421,9 +417,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               }}
               className="hidden md:flex"
             >
-              <span style={{ color: 'var(--good)' }}>⚡ 3–5 Day Dispatch</span>
+              <span style={{ color: 'var(--good)' }}>⚡ 2–3 Day Dispatch</span>
               <span style={{ opacity: 0.3 }}>&bull;</span>
-              <span style={{ color: 'var(--gold-ink)' }}>🧵 Free Digitizing 6+ Units</span>
+              <span style={{ color: 'var(--gold-ink)' }}>📝 2-Part Carbonless NCR &amp; 16pt Velvet</span>
               <span style={{ opacity: 0.3 }}>&bull;</span>
               <span style={{ color: '#60a5fa' }}>📦 Free Shipping $150+</span>
             </div>
@@ -503,67 +499,69 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         }}
       >
 
-      {/* 2. Category Selector Pills */}
-      <div
-        style={{
-          background: 'rgba(var(--tint), 0.025)',
-          borderBottom: '1px solid var(--line)',
-          padding: '0.75rem 1.5rem',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.55rem',
-          overflowX: 'auto',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => setSelectedCategory('all')}
+      {/* 2. Category Selector Pills (Shown when multiple categories exist) */}
+      {MERCHANDISE_CATEGORIES.length > 1 && (
+        <div
           style={{
-            padding: '0.45rem 0.95rem',
-            borderRadius: '8px',
-            border: selectedCategory === 'all' ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
-            background: selectedCategory === 'all' ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
-            color: selectedCategory === 'all' ? '#ffffff' : 'var(--muted)',
-            fontWeight: 800,
-            fontSize: '0.82rem',
-            cursor: 'pointer',
-            whiteSpace: 'nowrap',
-            boxShadow: selectedCategory === 'all' ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
-            transition: 'all 0.15s ease',
+            background: 'rgba(var(--tint), 0.025)',
+            borderBottom: '1px solid var(--line)',
+            padding: '0.75rem 1.5rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.55rem',
+            overflowX: 'auto',
           }}
         >
-          All Merch ({MERCHANDISE_PRODUCTS.length})
-        </button>
-        {MERCHANDISE_CATEGORIES.map((cat) => {
-          const isSelected = selectedCategory === cat.id;
-          return (
-            <button
-              key={cat.id}
-              type="button"
-              onClick={() => setSelectedCategory(cat.id)}
-              style={{
-                padding: '0.45rem 0.95rem',
-                borderRadius: '8px',
-                border: isSelected ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
-                background: isSelected ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
-                color: isSelected ? '#ffffff' : 'var(--muted)',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: 'pointer',
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                whiteSpace: 'nowrap',
-                boxShadow: isSelected ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
-                transition: 'all 0.15s ease',
-              }}
-            >
-              <span>{cat.icon}</span>
-              <span>{cat.label}</span>
-            </button>
-          );
-        })}
-      </div>
+          <button
+            type="button"
+            onClick={() => setSelectedCategory('all')}
+            style={{
+              padding: '0.45rem 0.95rem',
+              borderRadius: '8px',
+              border: selectedCategory === 'all' ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
+              background: selectedCategory === 'all' ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
+              color: selectedCategory === 'all' ? '#ffffff' : 'var(--muted)',
+              fontWeight: 800,
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+              boxShadow: selectedCategory === 'all' ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            All Products ({MERCHANDISE_PRODUCTS.length})
+          </button>
+          {MERCHANDISE_CATEGORIES.map((cat) => {
+            const isSelected = selectedCategory === cat.id;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setSelectedCategory(cat.id)}
+                style={{
+                  padding: '0.45rem 0.95rem',
+                  borderRadius: '8px',
+                  border: isSelected ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
+                  background: isSelected ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
+                  color: isSelected ? '#ffffff' : 'var(--muted)',
+                  fontWeight: 800,
+                  fontSize: '0.82rem',
+                  cursor: 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.4rem',
+                  whiteSpace: 'nowrap',
+                  boxShadow: isSelected ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>{cat.icon}</span>
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {/* 3. Main Split-Pane Workspace */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -595,9 +593,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 marginBottom: '0.5rem',
               }}
             >
-              1. Select Merchandise Item
+              1. Select Stationery &amp; Form Item
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
               {displayedProducts.map((prod) => {
                 const active = prod.id === selectedProductId;
                 return (
@@ -607,28 +605,32 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     onClick={() => handleSelectProduct(prod)}
                     style={{
                       textAlign: 'left',
-                      padding: '0.65rem 0.75rem',
-                      borderRadius: '9px',
+                      padding: '0.75rem 0.85rem',
+                      borderRadius: '10px',
                       border: active ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.08)',
-                      background: active ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.18), rgba(255, 122, 33, 0.04))' : 'rgba(var(--tint), 0.035)',
+                      background: active ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.2), rgba(255, 122, 33, 0.05))' : 'rgba(var(--tint), 0.035)',
                       cursor: 'pointer',
                       transition: 'all 0.15s ease',
                       boxShadow: active ? '0 4px 14px rgba(255, 122, 33, 0.25)' : 'none',
                     }}
                   >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
                       <strong
                         style={{
-                          fontSize: '0.8rem',
+                          fontSize: '0.84rem',
                           color: active ? '#ffffff' : 'var(--text)',
                           fontWeight: 800,
                           lineHeight: 1.25,
+                          display: 'block',
                         }}
                       >
-                        {prod.name.split(' ')[0]} {prod.name.split(' ')[1]}
+                        {prod.id === 'biz_cards' ? '📇 Business Cards' : '📝 Job Order Notepads'}
                       </strong>
+                      <span style={{ fontSize: '0.68rem', color: active ? '#38bdf8' : '#64748b', display: 'block', marginTop: '3px', fontWeight: 600 }}>
+                        {prod.id === 'biz_cards' ? '16pt Velvet & Spot-UV' : '2-Part NCR Carbonless'}
+                      </span>
                     </div>
-                    <span style={{ fontSize: '0.68rem', color: '#64748b', display: 'block', marginTop: '2px' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 800, display: 'block', marginTop: '6px' }}>
                       From ${prod.basePrice < 1 ? prod.basePrice.toFixed(2) : Math.round(prod.basePrice)}/ea
                     </span>
                   </button>

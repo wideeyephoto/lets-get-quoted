@@ -8,13 +8,10 @@
 import type { MerchandiseProduct, MerchandiseCategoryId } from './types';
 
 export const MERCHANDISE_CATEGORIES: { id: MerchandiseCategoryId; label: string; icon: string }[] = [
-  { id: 'apparel', label: 'Crew Apparel & Hats', icon: '👕' },
-  { id: 'print', label: 'Cards & Job Forms', icon: '📇' },
-  { id: 'gear', label: 'Jobsite Tech & Gear', icon: '📱' },
-  { id: 'signage', label: 'Signs & Vehicle Decals', icon: '🪧' },
+  { id: 'print', label: 'Cards & Field Forms', icon: '📇' },
 ];
 
-export const MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
+export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
   // 1. Business Cards
   {
     id: 'biz_cards',
@@ -481,8 +478,18 @@ export const MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
   },
 ];
 
+/**
+ * Active Storefront Catalog Products
+ *
+ * Currently focused exclusively on high-conversion stationery essentials
+ * for contractor quotes and field paperwork: Business Cards & Notepads.
+ */
+export const MERCHANDISE_PRODUCTS: MerchandiseProduct[] = ALL_MERCHANDISE_PRODUCTS.filter(
+  (p) => p.id === 'biz_cards' || p.id === 'notepads'
+);
+
 export function getProductById(id: string): MerchandiseProduct | undefined {
-  return MERCHANDISE_PRODUCTS.find((p) => p.id === id);
+  return MERCHANDISE_PRODUCTS.find((p) => p.id === id) || ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === id);
 }
 
 export function getProductsByCategory(category: MerchandiseCategoryId): MerchandiseProduct[] {

@@ -1,25 +1,26 @@
 import { describe, it, expect } from 'vitest';
-import { MERCHANDISE_PRODUCTS, getProductById } from '@/lib/merchandise/catalog';
+import { MERCHANDISE_PRODUCTS, ALL_MERCHANDISE_PRODUCTS, getProductById } from '@/lib/merchandise/catalog';
 import { calculateMerchandisePricing } from '@/lib/merchandise/pricing';
 import { createPrintfulOrder } from '@/lib/merchandise/printful-client';
 import type { MerchandiseOrderItem, ShippingAddress } from '@/lib/merchandise/types';
 
 describe('Merchandise Studio & Instant Purchasing Engine', () => {
   describe('Product Catalog Integrity', () => {
-    it('contains all requested contractor merchandise categories and products', () => {
-      const productIds = MERCHANDISE_PRODUCTS.map((p) => p.id);
+    it('focuses active storefront on business cards and notepads, preserving extended catalog', () => {
+      const activeProductIds = MERCHANDISE_PRODUCTS.map((p) => p.id);
+      expect(activeProductIds).toEqual(['biz_cards', 'notepads']);
 
-      // Verify core requested products
-      expect(productIds).toContain('biz_cards');
-      expect(productIds).toContain('polos');
-      expect(productIds).toContain('t_shirts');
-      expect(productIds).toContain('hats');
-      expect(productIds).toContain('notepads');
-      expect(productIds).toContain('pens');
-      expect(productIds).toContain('phone_cases');
-      expect(productIds).toContain('yard_signs');
-      expect(productIds).toContain('tumblers');
-      expect(productIds).toContain('decals');
+      const allProductIds = ALL_MERCHANDISE_PRODUCTS.map((p) => p.id);
+      expect(allProductIds).toContain('biz_cards');
+      expect(allProductIds).toContain('polos');
+      expect(allProductIds).toContain('t_shirts');
+      expect(allProductIds).toContain('hats');
+      expect(allProductIds).toContain('notepads');
+      expect(allProductIds).toContain('pens');
+      expect(allProductIds).toContain('phone_cases');
+      expect(allProductIds).toContain('yard_signs');
+      expect(allProductIds).toContain('tumblers');
+      expect(allProductIds).toContain('decals');
     });
 
     it('defines rich volume pricing tiers and specs for each item', () => {
