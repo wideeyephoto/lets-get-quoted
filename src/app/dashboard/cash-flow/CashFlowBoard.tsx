@@ -93,9 +93,9 @@ const OPTIONAL_LINES: { key: LineKey; label: string; hint: string }[] = [
 
 const BUFFER_PRESETS = [0, 2500, 5000, 10000];
 
-/** Days of movements shown before "Show all". A week is the horizon of the
- *  question this list answers; the other 50-odd are one press away. */
-const DAYS_SHOWN = 7;
+/** Days of movements shown initially before "+10 more". */
+const DAYS_SHOWN = 10;
+const DAYS_STEP = 10;
 
 const STATUS_TONE: Record<'unknown' | 'safe' | 'tight' | 'shortfall', 'ok' | 'warn' | 'alert'> = {
   unknown: 'warn',
@@ -256,7 +256,11 @@ export default function CashFlowBoard({
    * about the scenario you are looking at.
    */
   const [scenario, setScenario] = useState<ScenarioKey>('base');
-  const [showAllDays, setShowAllDays] = useState(false);
+  const [visibleDaysCount, setVisibleDaysCount] = useState(DAYS_SHOWN);
+
+  useEffect(() => {
+    setVisibleDaysCount(DAYS_SHOWN);
+  }, [horizonDays]);
   const [selected, setSelected] = useState<number | null>(null);
   const [lines, setLines] = useState<Record<LineKey, boolean>>({
     confirmed: true,
@@ -405,19 +409,19 @@ export default function CashFlowBoard({
 
   const activeDays = forecast.days.filter((day) => day.events.length > 0);
   /**
-   * The next seven days of movements, then the rest on request.
+   * The next ten days of movements initially, then +10 more on request.
    *
    * A 90-day window is 60-odd days with something in them, and rendering all of
-   * them made the page 10,000px on a phone. Seven is the horizon of the
+   * them made the page 10,000px on a phone. Ten is the horizon of the
    * question this list actually answers — what is coming — and a day the reader
    * has selected on the chart is always shown whether or not it is inside it,
    * because otherwise selecting a marker scrolls to nothing.
    */
   const shownDays =
-    showAllDays || activeDays.length <= DAYS_SHOWN
+    activeDays.length <= visibleDaysCount
       ? activeDays
-      : activeDays.filter((day, index) => index < DAYS_SHOWN || day.index === selected);
-  const hiddenDays = activeDays.length - shownDays.length;
+      : activeDays.filter((day, index) => index < visibleDaysCount || day.index === selected);
+  const hiddenDays = Math.max(0, activeDays.length - shownDays.length);
 
   const tone = STATUS_TONE[outlook.status];
 
@@ -493,34 +497,29 @@ export default function CashFlowBoard({
           plot squeezed into a 1.3fr text column is a sparkline. */}
       <section className="workspace-hero panel workspace-hero-solo cash-hero">
         <div className="workspace-hero-copy">
-          <p className="eyebrow">Cash flow</p>
-          <h1 className="workspace-title">Cash-flow forecast</h1>
+          <div className="cash-hero-topline">
+            <div className="cash-hero-title-block">
+              <p className="eyebrow">Cash flow</p>
+              <h1 className="workspace-title">Cash-flow forecast</h1>
+            </div>
+            <div className="cash-hero-actions-bar">
+              <div className="cash-quick-links">
+                <Link className="btn ghost cash-quick-link" href="/dashboard/expenses">
+                  Expenses Ledger →
+                </Link>
+                <Link className="btn ghost cash-quick-link" href="/dashboard/payments">
+                  Revenue &amp; Payments →
+                </Link>
+                <Link className="btn ghost cash-quick-link" href="/dashboard/reports">
+                  Tax &amp; P&amp;L →
+                </Link>
+              </div>
+            </div>
+          </div>
           <p className="workspace-lead">
             Payroll, bills and materials going out; deposits, invoices and plans coming in — your balance day by
             day, and the first day it falls below its safety buffer.
           </p>
-
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.6rem', marginBottom: '0.85rem' }}>
-            <Link className="btn secondary" href="/dashboard/expenses" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
-              💳 All Expenses Ledger →
-            </Link>
-            <Link className="btn secondary" href="/dashboard/payments" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
-              💰 Revenue &amp; Payments →
-            </Link>
-            <Link className="btn secondary" href="/dashboard/reports" style={{ fontSize: '0.82rem', padding: '0.35rem 0.65rem' }}>
-              📑 Tax &amp; P&amp;L Reports →
-            </Link>
-          </div>
-
-          {/* THE SETUP WALL IS GONE.
-              A callout headed "Preview — starting balance needed", with its own
-              paragraph and its own button, stood between the page's title and
-              its first number on every load until somebody had gone and looked
-              up their bank balance. The forecast underneath it was already
-              working: the SHAPE of the month — what leaves, what arrives, on
-              which days — is real whether or not anyone has typed a balance.
-              The page now opens from $0 and says so quietly, in the field, where
-              the fix is. See the note on `balance` above. */}
 
           {/* THE DECISION, ABOVE THE PICTURE OF IT.
               Status, when it goes wrong, how much room there is, and what it
@@ -529,8 +528,63 @@ export default function CashFlowBoard({
               for them, not the way to work them out. */}
           <div className={`cash-decision tone-${tone}`}>
             <div className="cash-decision-head">
-              <span className={`cash-status-pill tone-${tone}`}>{outlook.label}</span>
-              <p className="cash-decision-sentence">{outlook.sentence}</p>
+              <div className="cash-decision-status-row">
+                {!balanceGiven ? (
+                  <button
+                    type="button"
+                    className={`cash-status-pill is-action tone-${tone}`}
+                    onClick={focusBalance}
+                    title="Open bank balance settings"
+                  >
+                    {outlook.label}
+                  </button>
+                ) : (
+                  <span className={`cash-status-pill tone-${tone}`}>{outlook.label}</span>
+                )}
+                <p className="cash-decision-sentence">{outlook.sentence}</p>
+              </div>
+
+              <div className="cash-quick-balance">
+                <label htmlFor="cash-quick-balance-input" className="cash-quick-balance-label">
+                  Today&rsquo;s bank balance
+                </label>
+                <div className="cash-quick-balance-input-wrap">
+                  <span className="cash-quick-balance-symbol" aria-hidden="true">$</span>
+                  <input
+                    id="cash-quick-balance-input"
+                    type="number"
+                    step="any"
+                    placeholder="0"
+                    value={balance === 0 && !balanceTouched ? '' : balance}
+                    onKeyDown={(event) => {
+                      if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') {
+                        setBalanceTouched(true);
+                      }
+                    }}
+                    onChange={(event) => {
+                      const raw = event.target.value.trim();
+                      if (raw === '' || raw === '-') {
+                        changeBalance(0);
+                        return;
+                      }
+                      const next = Number(raw);
+                      if (Number.isFinite(next)) changeBalance(next);
+                    }}
+                  />
+                </div>
+                {settingsAvailable && dirty ? (
+                  <form action={saveSettings} className="cash-quick-save-form">
+                    {balanceGiven ? <input type="hidden" name="balance" value={balance} /> : null}
+                    <input type="hidden" name="buffer" value={buffer} />
+                    <input type="hidden" name="creditLine" value={creditLine} />
+                    <SaveButton className="btn secondary cash-quick-save-btn" pendingLabel="Saving…">
+                      Save
+                    </SaveButton>
+                  </form>
+                ) : balanceSaved ? (
+                  <span className="cash-quick-saved-note">✓ Saved</span>
+                ) : null}
+              </div>
             </div>
 
             <dl className="cash-decision-facts">
@@ -560,11 +614,6 @@ export default function CashFlowBoard({
               </div>
               <div>
                 <dt>Funding needed</dt>
-                {/* A gap is the difference between what the movements need and
-                    what is in the account, so with no balance saved there is no
-                    gap to state — only a placeholder subtracted from a real
-                    figure. Safe starting cash below is the half of it the
-                    movements alone do support. */}
                 <dd className={balanceGiven && outlook.funding > 0 ? 'is-risk' : ''}>
                   {balanceGiven ? money(outlook.funding) : '—'}
                 </dd>
@@ -578,10 +627,6 @@ export default function CashFlowBoard({
               </div>
             </dl>
 
-            {/* THE RISKY DATE AS SOMETHING TO DO, not a number to worry about.
-                Naming the day and stopping leaves the actual work — finding the
-                four rows out of eighty that made it, then working out which of
-                them you have any control over — on the reader. */}
             {lowPanel ? (
               <div className="cash-low-panel">
                 <p className="cash-low-headline">
@@ -618,23 +663,19 @@ export default function CashFlowBoard({
             ) : null}
           </div>
 
-          {/* WHAT WE ARE UNSURE OF, and what looks wrong.
-              Nothing here corrects anything — a forecast that silently fixes
-              its inputs is worse than one that draws them wrong, because at
-              least the wrong one can be spotted. */}
           {flags.length > 0 ? (
             <div className="cash-flags">
               {flags.map((flag) => (
                 <div key={flag.kind + flag.question} className="cash-flag">
-                  <p className="cash-flag-q">{flag.question}</p>
-                  <p className="cash-flag-detail">{flag.detail}</p>
-                  {/* One link per side when the two sides live on different
-                      pages. "Check the entries →" always landed in the bills
-                      panel, which holds scheduled payments only — so a bill
-                      colliding with a payroll run or a customer payment sent
-                      somebody to a list containing at most half the question. */}
+                  <div className="cash-flag-content">
+                    <span className="cash-flag-icon" aria-hidden="true">⚠️</span>
+                    <div className="cash-flag-body">
+                      <p className="cash-flag-q">{flag.question}</p>
+                      <p className="cash-flag-detail">{flag.detail}</p>
+                    </div>
+                  </div>
                   {flag.entries.length > 0 ? (
-                    <p className="cash-flag-detail">
+                    <p className="cash-flag-detail cash-flag-action">
                       {flag.entries.map((entry, index) => (
                         <span key={entry.href}>
                           {index > 0 ? ' · ' : ''}
@@ -645,55 +686,12 @@ export default function CashFlowBoard({
                       ))}
                     </p>
                   ) : flag.href ? (
-                    <Link href={flag.href} className="linklike">
+                    <Link href={flag.href} className="linklike cash-flag-action">
                       Check the entries →
                     </Link>
                   ) : null}
                 </div>
               ))}
-            </div>
-          ) : null}
-
-          <div className="cash-hero-chart">
-            <div className="cash-hero-chart-head">
-              <span className="cash-hero-chart-label">Projected account balance</span>
-              <span className="cash-hero-chart-sub">
-                <span className={`cash-confidence is-${confidence.level}`}>{confidence.sentence}</span>
-                {balanceAge === null ? null : (
-                  <span className="cash-confidence-age">
-                    {' '}
-                    Balance last updated{' '}
-                    {balanceAge === 0 ? 'today' : balanceAge === 1 ? 'yesterday' : `${balanceAge} days ago`}.
-                  </span>
-                )}
-              </span>
-            </div>
-            {chart}
-            {/* One line under the chart rather than a callout above the title.
-                It is worth saying that the curve is starting from a zero nobody
-                confirmed — it is not worth blocking the page to say it. It goes
-                as soon as a number is typed, saved or not: the sentence names
-                $0 outright, and by then the line above it starts somewhere
-                else. */}
-            {balanceGiven ? null : (
-              <p className="cash-provisional-note">
-                Starting from <strong>$0</strong>, because no bank balance has been saved yet. Put today&rsquo;s number
-                in <button type="button" className="cash-inline-link" onClick={focusBalance}>below</button> and every
-                figure on this page moves with it.
-              </p>
-            )}
-          </div>
-
-          {/* Directly under the lead, above the chart: whether to believe the
-              curve is the first thing you need, not a footnote under it. */}
-          {accuracy ? (
-            <div className={`cash-accuracy tone-${accuracy.direction}`}>
-              <p className="cash-accuracy-line">{accuracySentence(accuracy)}</p>
-              <p className="cash-accuracy-note">
-                {accuracy.direction === 'on'
-                  ? 'Worth knowing the next number is coming from something that has been right before.'
-                  : 'Some of that gap is money that moved without passing through here — cash jobs, transfers, anything you paid on a card. The rest is worth chasing.'}
-              </p>
             </div>
           ) : null}
 
@@ -712,10 +710,6 @@ export default function CashFlowBoard({
               ))}
             </div>
 
-            {/* THE SCENARIOS, beside the horizon rather than buried below it.
-                Each tab carries what it assumes and what that does — when the
-                warning lands and what it would take to cover — so the
-                comparison is readable without selecting all three in turn. */}
             <div className="cash-scenario-tabs" role="group" aria-label="Scenario">
               {scenarios.map((summary) => {
                 const delta = scenarioDelta(baseScenario, summary, todayKey);
@@ -731,35 +725,17 @@ export default function CashFlowBoard({
                     <strong>{summary.label}</strong>
                     <small>
                       {summary.warningLabel ? `Warning ${summary.warningLabel}` : `No warning in ${longHorizon} days`}
-                      {/* The same subtraction the Funding needed card refuses
-                          to print without a balance — `required` minus what is
-                          in the account — so with no balance given it is the
-                          withheld figure, to the dollar, 200px below the card
-                          that withheld it. The warning DATE stays: that comes
-                          off the shape of the month either way. */}
                       {balanceGiven && summary.funding > 0 ? ` · ${money(summary.funding)} needed` : ''}
                       {summary.key !== 'base' && delta.daysEarlier && delta.daysEarlier > 0
                         ? ` · ${delta.daysEarlier} days sooner`
                         : ''}
                     </small>
-                    {/* The assumption, on the tab. It was a title tooltip and a
-                        line in the settings drawer — neither of which a touch
-                        reader can reach — so "Warning Sep 10" was a date with
-                        no stated reason to believe it. */}
                     <small>{summary.hint}</small>
                   </button>
                 );
               })}
             </div>
 
-            {/* Up here because this is where somebody is looking at the line
-                dipping and thinking "that's the insurance I haven't put in yet".
-                The same form is still in the bills panel below; this is the same
-                thing reachable without scrolling past the whole forecast.
-
-                Shown but inert on the demo, like the other demo buttons: the
-                form posts to a Server Action that requires an owner, so on a
-                public page it would bounce a visitor to /login mid-demo. */}
             {canAddExpense ? (
               <ModalDialog
                 triggerLabel="+ Add expense"
@@ -773,6 +749,41 @@ export default function CashFlowBoard({
               <span className="btn secondary cash-add-expense" aria-disabled="true">+ Add expense</span>
             )}
           </div>
+
+          <div className="cash-hero-chart">
+            <div className="cash-hero-chart-head">
+              <span className="cash-hero-chart-label">Projected account balance</span>
+              <span className="cash-hero-chart-sub">
+                <span className={`cash-confidence is-${confidence.level}`}>{confidence.sentence}</span>
+                {balanceAge === null ? null : (
+                  <span className="cash-confidence-age">
+                    {' '}
+                    Balance last updated{' '}
+                    {balanceAge === 0 ? 'today' : balanceAge === 1 ? 'yesterday' : `${balanceAge} days ago`}.
+                  </span>
+                )}
+              </span>
+            </div>
+            {chart}
+            {balanceGiven ? null : (
+              <p className="cash-provisional-note">
+                Starting from <strong>$0</strong>, because no bank balance has been saved yet. Put today&rsquo;s number
+                in <button type="button" className="cash-inline-link" onClick={focusBalance}>below</button> and every
+                figure on this page moves with it.
+              </p>
+            )}
+          </div>
+
+          {accuracy ? (
+            <div className={`cash-accuracy tone-${accuracy.direction}`}>
+              <p className="cash-accuracy-line">{accuracySentence(accuracy)}</p>
+              <p className="cash-accuracy-note">
+                {accuracy.direction === 'on'
+                  ? 'Worth knowing the next number is coming from something that has been right before.'
+                  : 'Some of that gap is money that moved without passing through here — cash jobs, transfers, anything you paid on a card. The rest is worth chasing.'}
+              </p>
+            </div>
+          ) : null}
         </div>
       </section>
 
@@ -1075,7 +1086,7 @@ export default function CashFlowBoard({
             Nothing scheduled in this window. Add your bills and payroll below and the forecast will have something to draw.
           </p>
         ) : (
-          <ol className="cash-event-list">
+          <ol className="cash-event-list is-compact">
             {shownDays.map((day) => (
               <li
                 key={day.dateKey}
@@ -1111,13 +1122,15 @@ export default function CashFlowBoard({
           </ol>
         )}
 
-        {/* A quarter of movements is 60-odd rows, and on a phone that is most
-            of a 10,000px page nobody scrolls to the end of. The next week is
-            what "what moves money" means on the day you ask it; the rest is
-            still here, one press away. */}
+        {/* Movements are shown 10 at a time to keep the list compact. The "+10 more"
+            button reveals additional days on demand. */}
         {hiddenDays > 0 ? (
-          <button type="button" className="btn secondary cash-show-all" onClick={() => setShowAllDays(true)}>
-            Show all {activeDays.length} days ({hiddenDays} more)
+          <button
+            type="button"
+            className="btn secondary cash-show-all"
+            onClick={() => setVisibleDaysCount((prev) => prev + DAYS_STEP)}
+          >
+            Add +10 more
           </button>
         ) : null}
       </section>

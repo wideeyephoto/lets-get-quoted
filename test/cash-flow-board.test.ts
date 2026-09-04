@@ -375,12 +375,13 @@ describe('the page says how much of itself to trust', () => {
   });
 });
 
-describe('the page is a week, not a quarter of rows', () => {
-  it('shows seven days of movements and keeps the rest one press away', () => {
-    expect(BOARD).toContain('const DAYS_SHOWN = 7');
+describe('the page is a compact list, not a quarter of rows', () => {
+  it('shows ten days of movements initially and keeps the rest one press away', () => {
+    expect(BOARD).toContain('const DAYS_SHOWN = 10');
     expect(BOARD).toContain('shownDays.map');
     expect(BOARD).toContain('cash-show-all');
-    // Selecting a marker past day seven has to still land somewhere.
+    expect(BOARD).toContain('Add +10 more');
+    // Selecting a marker past day ten has to still land somewhere.
     expect(BOARD).toContain('day.index === selected');
   });
 
