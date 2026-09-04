@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
-import { loadVoiceCallHistory } from '@/lib/voice/call-history';
 import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
 import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
 import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
@@ -16,8 +15,6 @@ import ChoiceRemindersSection from '../settings/ChoiceRemindersSection';
 import ClientPortalSection from '../settings/ClientPortalSection';
 import IntakeContentSection from '../settings/IntakeContentSection';
 import MissedCallSection from '../settings/MissedCallSection';
-import AiReceptionistSection from '../settings/AiReceptionistSection';
-import VoiceCallHistorySection from '../settings/VoiceCallHistorySection';
 import ReviewRequestSection from '../settings/ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import OpenAnchoredCard from './OpenAnchoredCard';
@@ -194,16 +191,6 @@ export default async function AutomationsPage() {
       loadVoiceEntitlement(admin, accountId),
     ])
     : [null, null] as const;
-  // voice_calls lands ahead of its migration on an environment that has not
-  // applied it. The reader degrades an unreadable history to an empty one. The
-  // entitlement window is also enforced in the query so a daily purge cannot
-  // expose a call for the hours between expiry and its next run.
-  const voiceHistory = aiVoice
-    ? await loadVoiceCallHistory(supabase, accountId, {
-      limit: 20,
-      historyDays: voiceEntitlement?.historyDays,
-    })
-    : null;
   const voiceSettings = voiceRead?.error ? null : (voiceRead?.data ?? null) as Record<string, unknown> | null;
   const voiceSettingsAvailable = Boolean(voiceRead && !voiceRead.error);
   if (voiceRead?.error) console.error('voice settings read failed:', voiceRead.error);
@@ -622,60 +609,37 @@ export default async function AutomationsPage() {
           </Link>
         </AutomationCard>
 
-        {aiVoice ? (
-          <AutomationCard
-            group="booking-intake"
-            id="ai-receptionist"
-            title="AI receptionist"
-            subtitle="Answers the calls you can’t"
-            /* No `toggle`. The card would give this a second on/off beside the
-               section's own three-state control, and two controls for one
-               setting means one of them is always about to be wrong — the
-               lesson the missed-call card below already carries. */
-            status={{
-              label: !voiceSettingsAvailable ? 'Unavailable'
-                : voiceConfiguredStatus === 'active' && !voiceActivationReady ? 'Configured — not answering'
-                  : voiceConfiguredStatus === 'active' ? 'Answering'
-                    : voiceConfiguredStatus === 'paused' ? 'Paused' : 'Off',
-              tone: voiceConfiguredStatus === 'active' && voiceActivationReady ? 'on'
-                : voiceConfiguredStatus === 'off' ? 'off' : 'neutral',
-            }}
-          >
-            <AiReceptionistSection
-              status={voiceConfiguredStatus}
-              answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'after_hours'}
-              greeting={(voiceSettings?.greeting as string | null) ?? ''}
-              transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
-              alertPhone={(account?.alert_phone as string | null) ?? ''}
-              callForwardNumber={callForwardNumber}
-              businessHours={(voiceSettings?.business_hours ?? {}) as Record<string, [string, string] | null>}
-              timezone={accountTimeZone}
-              entitled={voiceEntitlement?.enabled ?? false}
-              entitlementAvailable={voiceEntitlementAvailable}
-              settingsAvailable={voiceSettingsAvailable}
-              routeState={voiceRouteState}
-              concurrentCalls={voiceEntitlement?.concurrentCalls ?? 0}
-            />
-            {voiceHistory ? (
-              <VoiceCallHistorySection history={voiceHistory} timezone={accountTimeZone} />
-            ) : null}
-          </AutomationCard>
-        ) : (
-          <AutomationCard
-            group="booking-intake"
-            id="ai-receptionist"
-            title="AI receptionist"
-            subtitle="Answers the calls you can’t"
-            status={{ label: 'Not enabled', tone: 'off' }}
-          >
-            <p className="workspace-details-copy" style={{ marginTop: 0 }}>
-              AI phone call answering is available on supported plans. Visit Voice Calls to review settings and phone line readiness.
-            </p>
-            <Link className="btn secondary" href="/dashboard/voice-calls">
-              View Voice Controls →
+        <AutomationCard
+          group="booking-intake"
+          id="ai-receptionist"
+          title="AI receptionist"
+          subtitle="Answers the calls you can’t"
+          status={{
+            label: !aiVoice ? 'Not enabled'
+              : !voiceSettingsAvailable ? 'Unavailable'
+              : voiceConfiguredStatus === 'active' && !voiceActivationReady ? 'Configured — not answering'
+                : voiceConfiguredStatus === 'active' ? 'Answering'
+                  : voiceConfiguredStatus === 'paused' ? 'Paused' : 'Off',
+            tone: aiVoice && voiceConfiguredStatus === 'active' && voiceActivationReady ? 'on'
+              : !aiVoice || voiceConfiguredStatus === 'off' ? 'off' : 'neutral',
+          }}
+        >
+          <p className="workspace-details-copy" style={{ marginTop: 0 }}>
+            {voiceConfiguredStatus === 'active' && voiceActivationReady
+              ? 'Online & Answering. Your AI receptionist answers inbound calls according to your schedule, qualifies homeowner leads, and logs transcripts.'
+              : voiceConfiguredStatus === 'paused'
+                ? 'Answering is currently paused. Your greeting, hours, and routing configurations are preserved.'
+                : 'AI phone call answering is off. Calls follow your normal forwarding configuration.'}
+          </p>
+          <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginTop: '1rem' }}>
+            <Link className="btn primary" href="/dashboard/voice-calls?view=settings">
+              Configure Receptionist Settings →
             </Link>
-          </AutomationCard>
-        )}
+            <Link className="btn secondary" href="/dashboard/voice-calls">
+              View Voice Calls Inbox →
+            </Link>
+          </div>
+        </AutomationCard>
 
         <AutomationCard group="booking-intake" id="missed-call" title="Missed-call text-back" subtitle="Auto-text callers you miss" toggle={{ on: callTextbackEnabled, action: toggleAutomationAction.bind(null, 'missed-call'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}>
           <MissedCallSection
