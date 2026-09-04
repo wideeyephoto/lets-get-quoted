@@ -414,17 +414,23 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
   // Protect dedicated AI Voice provisioned number from being hijacked or desynced
   // by edits in the missed-call settings card.
   const admin = createAdminClient();
-  const { data: dedicated } = await admin
+  const { data: dedicatedRows, error: dedicatedError } = await admin
     .from('voice_number_inventory')
     .select('e164_number')
     .eq('account_id', accountId)
     .eq('provider', 'signalwire')
-    .is('released_at', null)
-    .maybeSingle();
+    .is('released_at', null);
 
+  if (dedicatedError) {
+    throw new Error('Could not verify dedicated number status.');
+  }
+
+  const dedicated = dedicatedRows?.[0];
   const dedicatedNumber = dedicated?.e164_number ? normalizeUsPhone(String(dedicated.e164_number)) : null;
-  if (dedicatedNumber && tracking && tracking !== dedicatedNumber) {
-    throw new Error('This account has a dedicated AI Voice number provisioned. The customer-facing number cannot be changed here.');
+  if ((dedicatedRows && dedicatedRows.length > 0) || dedicatedNumber) {
+    if (tracking && tracking !== dedicatedNumber) {
+      throw new Error('This account has a dedicated AI Voice number provisioned. The customer-facing number cannot be changed here.');
+    }
   }
 
   const effectiveTracking = dedicatedNumber || tracking;
@@ -448,10 +454,13 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
 
   // Keep voice_settings.transfer_number synchronized with call_forward_number
   // so the AI Receptionist and missed-call forwarding never disagree on where to ring.
+  // Use upsert so accounts that haven't initialized voice settings don't silently drop the write.
   await supabase
     .from('voice_settings')
-    .update({ transfer_number: forward })
-    .eq('account_id', accountId);
+    .upsert(
+      { account_id: accountId, transfer_number: forward },
+      { onConflict: 'account_id' }
+    );
 
   revalidatePath('/dashboard/settings');
   revalidatePath('/dashboard/automations');

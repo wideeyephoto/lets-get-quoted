@@ -134,6 +134,63 @@ describe('voice webhook route boundaries', () => {
     });
   });
 
+  it('binds ?account= query parameter into the SignalWire HMAC signature', () => {
+    const accountId = '22222222-2222-4222-8222-222222222222';
+    const legitimateUrl = `https://lgq.test/api/voice/ai/status?account=${accountId}`;
+    const rawBody = 'CallSid=call-sw-1&DialCallStatus=no-answer&From=%2B18105550199';
+    useTrustedCallbackOrigin();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'signalwire-signing-key');
+
+    // SignalWire compatibility form signature: base64(hmac-sha1(url + sorted_form_pairs))
+    const sortedPairs = 'CallSidcall-sw-1DialCallStatusno-answerFrom+18105550199';
+    const validSignature = createHmac('sha1', 'signalwire-signing-key')
+      .update(legitimateUrl + sortedPairs)
+      .digest('base64');
+
+    // Legitimate signed request succeeds and yields provider: 'signalwire'
+    const legitimateReq = new Request(legitimateUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-signalwire-signature': validSignature,
+      },
+      body: rawBody,
+    });
+    const legitCheck = verifySignedVoiceWebhook(legitimateReq, rawBody);
+    expect(legitCheck).toEqual({ ok: true, provider: 'signalwire' });
+
+    // Attack 1: Replaying with a different workspace's account id in the query parameter fails
+    const attackerAccountId = '33333333-3333-4333-8333-333333333333';
+    const tamperedUrl = `https://lgq.test/api/voice/ai/status?account=${attackerAccountId}`;
+    const tamperedReq = new Request(tamperedUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-signalwire-signature': validSignature,
+      },
+      body: rawBody,
+    });
+    expect(verifySignedVoiceWebhook(tamperedReq, rawBody)).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+
+    // Attack 2: Stripping the account query parameter fails
+    const strippedUrl = 'https://lgq.test/api/voice/ai/status';
+    const strippedReq = new Request(strippedUrl, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/x-www-form-urlencoded',
+        'x-signalwire-signature': validSignature,
+      },
+      body: rawBody,
+    });
+    expect(verifySignedVoiceWebhook(strippedReq, rawBody)).toEqual({
+      ok: false,
+      reason: 'mismatch',
+    });
+  });
+
   it('keeps voice routes behind the voice auth boundary', () => {
     for (const route of [
       source('src', 'app', 'api', 'voice', 'ai', 'route.ts'),
