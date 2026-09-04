@@ -10,6 +10,8 @@ export const metadata = {
   description: 'Customize your contractor website',
 };
 
+export const maxDuration = 180;
+
 // `?built=1` is set by first run when it generated the whole site from the
 // business name, trade and ZIP. Without a word of explanation the owner arrives
 // at a finished website they never asked anyone to write, which reads as

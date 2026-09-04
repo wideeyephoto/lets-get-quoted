@@ -143,4 +143,20 @@ describe('Website Builder AI Credits Display', () => {
     expect(BUILDER_CODE).toContain('savedLogos={aiLogos}');
     expect(BUILDER_CODE).toContain('pendingGeneration={pendingAiLogo}');
   });
+
+  it('allocates sufficient timeout headroom for AI image generation without premature 30s abort', () => {
+    const aiModelCode = read('src', 'lib', 'ai-model-call.ts');
+    const pageCode = read('src', 'app', 'dashboard', 'sites', 'page.tsx');
+    const actionsCode = read('src', 'app', 'dashboard', 'sites', 'actions.ts');
+
+    // Default image model timeout must be at least 180,000ms (3 mins) instead of the previous 30,000ms
+    expect(aiModelCode).toContain("endpoint === 'images/generations' ? 180000 : 45000");
+    expect(aiModelCode).toContain('timeoutMs?: number');
+
+    // Actions pass extended timeout
+    expect(actionsCode).toContain('timeoutMs: 180000');
+
+    // Page exports maxDuration = 180
+    expect(pageCode).toContain('export const maxDuration = 180');
+  });
 });

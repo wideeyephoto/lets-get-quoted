@@ -1014,6 +1014,7 @@ export async function generateAiLogoAction(params: {
         user: accountId,
       },
       { accountId, kind: 'site_copy' },
+      { timeoutMs: 180000 },
     );
 
     if (!response.ok) {
@@ -1112,7 +1113,15 @@ export async function generateAiLogoAction(params: {
       logos: nextLogos,
     };
   } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : 'Could not generate a logo right now.';
+    let errorMsg = error instanceof Error ? error.message : 'Could not generate a logo right now.';
+    if (
+      error instanceof Error &&
+      (error.name === 'TimeoutError' ||
+        error.message.toLowerCase().includes('timeout') ||
+        error.message.toLowerCase().includes('aborted'))
+    ) {
+      errorMsg = 'AI logo generation timed out. The image model may be experiencing high demand. Please try again.';
+    }
     if (siteId) {
       try {
         const { data: freshSite } = await admin.from('sites').select('content').eq('id', siteId).maybeSingle();

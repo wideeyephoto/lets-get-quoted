@@ -70,7 +70,7 @@ async function callOpenAiEndpoint(
   endpoint: OpenAiEndpoint,
   body: ModelRequestBody,
   context: AiWritingContext,
-  options: Readonly<{ apiKey?: string | null }> = {},
+  options: Readonly<{ apiKey?: string | null; timeoutMs?: number }> = {},
 ): Promise<Response> {
   // `apiKey` is an override rather than the usual source. quick-stop-qualify
   // accepts one through its options so a caller can supply a key explicitly;
@@ -103,11 +103,15 @@ async function callOpenAiEndpoint(
 
   try {
     const payload = endpoint === 'responses' ? { ...body, store: false } : body;
+    // Image models (such as gpt-image-2 or DALL-E) need up to 2-3 minutes to compose high-resolution artwork,
+    // whereas text completions return within 10-30s.
+    const defaultTimeoutMs = endpoint === 'images/generations' ? 180000 : 45000;
+    const timeoutMs = options.timeoutMs ?? defaultTimeoutMs;
     const response = await fetch(`https://api.openai.com/v1/${endpoint}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${apiKey}` },
       body: JSON.stringify(payload),
-      signal: AbortSignal.timeout(30000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
 
 
@@ -135,7 +139,7 @@ async function callOpenAiEndpoint(
 export async function callModel(
   body: ModelRequestBody,
   context: AiWritingContext,
-  options: Readonly<{ apiKey?: string | null }> = {},
+  options: Readonly<{ apiKey?: string | null; timeoutMs?: number }> = {},
 ): Promise<Response> {
   return callOpenAiEndpoint('responses', body, context, options);
 }
@@ -144,7 +148,7 @@ export async function callModel(
 export async function callImageModel(
   body: ModelRequestBody,
   context: AiWritingContext,
-  options: Readonly<{ apiKey?: string | null }> = {},
+  options: Readonly<{ apiKey?: string | null; timeoutMs?: number }> = {},
 ): Promise<Response> {
   return callOpenAiEndpoint('images/generations', body, context, options);
 }
