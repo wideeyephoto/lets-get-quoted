@@ -1359,15 +1359,16 @@ export async function updateCost(
 
   const cleanJobId = jobId && jobId.trim() && jobId !== 'overhead' ? jobId.trim() : null;
 
-  let query = supabase.from('costs').select('*').eq('account_id', accountId).eq('id', costId);
-  if (cleanJobId) {
-    query = query.eq('job_id', cleanJobId);
-  }
+  const query = supabase.from('costs').select('*').eq('account_id', accountId).eq('id', costId);
   const { data: existing, error: fetchErr } = await query.single();
   if (fetchErr || !existing) throw fetchErr ?? new Error('Cost item not found');
 
   const type = input.type ?? (existing.type as CostType);
-  const category = (type === 'labor' && input.category) || input.category || existing.category;
+  const category =
+    input.category ||
+    (input.type && input.type !== existing.type
+      ? COST_TYPE_CATEGORY[input.type]
+      : existing.category || COST_TYPE_CATEGORY[type]);
   const description = input.description ?? existing.description;
   const supplier = input.supplier !== undefined ? input.supplier : existing.supplier;
   const source = input.source ? normalizeCostSource(input.source) : (existing.cost_source as CostSource);
@@ -1399,7 +1400,7 @@ export async function updateCost(
     updates.burden_amount = burden;
     updates.crew_id = crewId ?? null;
     if (crewId && crewId !== existing.crew_id) {
-      const crewSnapshot = await supabase.from('crew_members').select('name, role_label').eq('account_id', accountId).eq('id', crewId).maybeSingle();
+      const crewSnapshot = await supabase.from('crew').select('name, role_label').eq('account_id', accountId).eq('id', crewId).maybeSingle();
       updates.crew_name = crewSnapshot?.data?.name ?? null;
       updates.crew_role_label = crewSnapshot?.data?.role_label ?? null;
     } else if (crewId === null) {

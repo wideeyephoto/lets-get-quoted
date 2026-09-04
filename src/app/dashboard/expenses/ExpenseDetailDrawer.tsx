@@ -83,10 +83,12 @@ export default function ExpenseDetailDrawer({
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const drawerRef = useRef<HTMLDivElement>(null);
+  const loadedExpenseIdRef = useRef<string | null>(null);
 
-  // Initialize draft when expense changes
+  // Initialize draft when expense changes (guard against wiping in-flight typing on parent re-renders)
   useEffect(() => {
     if (!expense) {
+      loadedExpenseIdRef.current = null;
       setDraft(null);
       lastSavedRef.current = null;
       setSaveStatus('idle');
@@ -95,6 +97,12 @@ export default function ExpenseDetailDrawer({
       setScanMessage(null);
       return;
     }
+
+    if (loadedExpenseIdRef.current === expense.id) {
+      return;
+    }
+
+    loadedExpenseIdRef.current = expense.id;
 
     const initial: DraftState = {
       jobId: expense.job_id || '',
@@ -367,8 +375,8 @@ export default function ExpenseDetailDrawer({
           width: '100%',
           maxWidth: '540px',
           height: '100%',
-          background: '#0e171b',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.12)',
+          background: 'var(--card-bg, #0B1519)',
+          borderLeft: '1px solid var(--line, rgba(255, 255, 255, 0.12))',
           display: 'flex',
           flexDirection: 'column',
           boxShadow: '-10px 0 30px rgba(0, 0, 0, 0.6)',
@@ -380,16 +388,16 @@ export default function ExpenseDetailDrawer({
         <div
           style={{
             padding: '1.25rem 1.5rem',
-            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            borderBottom: '1px solid var(--line, rgba(255, 255, 255, 0.08))',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'rgba(255, 255, 255, 0.02)',
+            background: 'rgba(var(--tint, 255, 255, 255), 0.02)',
           }}
         >
           <div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.15rem', color: '#fff', fontWeight: 650 }}>
+              <h3 style={{ margin: 0, fontSize: '1.15rem', color: 'inherit', fontWeight: 650 }}>
                 Expense Details
               </h3>
               {/* Autosave badge */}
@@ -463,10 +471,10 @@ export default function ExpenseDetailDrawer({
             onClick={onClose}
             aria-label="Close drawer"
             style={{
-              background: 'rgba(255, 255, 255, 0.06)',
-              border: '1px solid rgba(255, 255, 255, 0.1)',
+              background: 'rgba(var(--tint, 255, 255, 255), 0.06)',
+              border: '1px solid var(--line, rgba(255, 255, 255, 0.1))',
               borderRadius: '6px',
-              color: '#cbd5e1',
+              color: 'inherit',
               cursor: 'pointer',
               padding: '0.4rem 0.65rem',
               fontSize: '1rem',
@@ -566,7 +574,7 @@ export default function ExpenseDetailDrawer({
 
           {/* 1. Job Assignment */}
           <div className="field">
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)', marginBottom: '0.35rem' }}>
               Job Assignment
             </label>
             <select
@@ -577,9 +585,9 @@ export default function ExpenseDetailDrawer({
                 width: '100%',
                 padding: '0.55rem 0.75rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#132127',
-                color: '#fff',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                background: 'var(--card-bg, #132127)',
+                color: 'inherit',
                 fontSize: '0.88rem',
               }}
             >
@@ -594,7 +602,7 @@ export default function ExpenseDetailDrawer({
 
           {/* 2. Expense Category */}
           <div className="field">
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)', marginBottom: '0.35rem' }}>
               Category
             </label>
             <select
@@ -605,9 +613,9 @@ export default function ExpenseDetailDrawer({
                 width: '100%',
                 padding: '0.55rem 0.75rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#132127',
-                color: '#fff',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                background: 'var(--card-bg, #132127)',
+                color: 'inherit',
                 fontSize: '0.88rem',
               }}
             >
@@ -621,7 +629,7 @@ export default function ExpenseDetailDrawer({
 
           {/* 3. Description */}
           <div className="field">
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)', marginBottom: '0.35rem' }}>
               Item / Description <span style={{ color: '#f87171' }}>*</span>
             </label>
             <input
@@ -636,9 +644,9 @@ export default function ExpenseDetailDrawer({
                 width: '100%',
                 padding: '0.55rem 0.75rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#132127',
-                color: '#fff',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                background: 'var(--card-bg, #132127)',
+                color: 'inherit',
                 fontSize: '0.88rem',
               }}
             />
@@ -659,7 +667,7 @@ export default function ExpenseDetailDrawer({
             >
               <strong style={{ fontSize: '0.85rem', color: '#c084fc' }}>Labor Details</strong>
               <div className="field">
-                <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.25rem' }}>
+                <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--muted, #cbd5e1)', marginBottom: '0.25rem' }}>
                   Crew Member
                 </label>
                 <select
@@ -670,9 +678,9 @@ export default function ExpenseDetailDrawer({
                     width: '100%',
                     padding: '0.5rem 0.75rem',
                     borderRadius: '6px',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                    background: '#132127',
-                    color: '#fff',
+                    border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                    background: 'var(--card-bg, #132127)',
+                    color: 'inherit',
                     fontSize: '0.85rem',
                   }}
                 >
@@ -687,7 +695,7 @@ export default function ExpenseDetailDrawer({
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
                 <div className="field">
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--muted, #cbd5e1)', marginBottom: '0.25rem' }}>
                     Hours
                   </label>
                   <input
@@ -703,15 +711,15 @@ export default function ExpenseDetailDrawer({
                       width: '100%',
                       padding: '0.5rem 0.75rem',
                       borderRadius: '6px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      background: '#132127',
-                      color: '#fff',
+                      border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                      background: 'var(--card-bg, #132127)',
+                      color: 'inherit',
                       fontSize: '0.85rem',
                     }}
                   />
                 </div>
                 <div className="field">
-                  <label style={{ display: 'block', fontSize: '0.8rem', color: '#cbd5e1', marginBottom: '0.25rem' }}>
+                  <label style={{ display: 'block', fontSize: '0.8rem', color: 'var(--muted, #cbd5e1)', marginBottom: '0.25rem' }}>
                     Hourly Rate ($/hr)
                   </label>
                   <input
@@ -727,9 +735,9 @@ export default function ExpenseDetailDrawer({
                       width: '100%',
                       padding: '0.5rem 0.75rem',
                       borderRadius: '6px',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      background: '#132127',
-                      color: '#fff',
+                      border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                      background: 'var(--card-bg, #132127)',
+                      color: 'inherit',
                       fontSize: '0.85rem',
                     }}
                   />
@@ -743,7 +751,7 @@ export default function ExpenseDetailDrawer({
             </div>
           ) : (
             <div className="field">
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
+              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)', marginBottom: '0.35rem' }}>
                 Amount ($) <span style={{ color: '#f87171' }}>*</span>
               </label>
               <input
@@ -760,9 +768,9 @@ export default function ExpenseDetailDrawer({
                   width: '100%',
                   padding: '0.55rem 0.75rem',
                   borderRadius: '6px',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
-                  background: '#132127',
-                  color: '#fff',
+                  border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                  background: 'var(--card-bg, #132127)',
+                  color: 'inherit',
                   fontSize: '0.88rem',
                 }}
               />
@@ -771,7 +779,7 @@ export default function ExpenseDetailDrawer({
 
           {/* 5. Supplier / Vendor */}
           <div className="field">
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)', marginBottom: '0.35rem' }}>
               Supplier / Vendor / Payee
             </label>
             <input
@@ -786,9 +794,9 @@ export default function ExpenseDetailDrawer({
                 width: '100%',
                 padding: '0.55rem 0.75rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#132127',
-                color: '#fff',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                background: 'var(--card-bg, #132127)',
+                color: 'inherit',
                 fontSize: '0.88rem',
               }}
             />
@@ -801,7 +809,7 @@ export default function ExpenseDetailDrawer({
 
           {/* 6. Provenance Source */}
           <div className="field">
-            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1', marginBottom: '0.35rem' }}>
+            <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)', marginBottom: '0.35rem' }}>
               Provenance Source
             </label>
             <select
@@ -812,9 +820,9 @@ export default function ExpenseDetailDrawer({
                 width: '100%',
                 padding: '0.55rem 0.75rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#132127',
-                color: '#fff',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                background: 'var(--card-bg, #132127)',
+                color: 'inherit',
                 fontSize: '0.88rem',
               }}
             >
@@ -833,7 +841,7 @@ export default function ExpenseDetailDrawer({
           {/* 7. Receipt Link */}
           <div className="field">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: '#cbd5e1' }}>
+              <label style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--muted, #cbd5e1)' }}>
                 Receipt / Invoice Link (URL)
               </label>
               {isSafeHttpUrl(draft.receiptUrl) && (
@@ -865,9 +873,9 @@ export default function ExpenseDetailDrawer({
                 width: '100%',
                 padding: '0.55rem 0.75rem',
                 borderRadius: '6px',
-                border: '1px solid rgba(255, 255, 255, 0.15)',
-                background: '#132127',
-                color: '#fff',
+                border: '1px solid var(--line, rgba(255, 255, 255, 0.15))',
+                background: 'var(--card-bg, #132127)',
+                color: 'inherit',
                 fontSize: '0.88rem',
               }}
             />
@@ -878,8 +886,8 @@ export default function ExpenseDetailDrawer({
             style={{
               padding: '0.75rem 1rem',
               borderRadius: '6px',
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid rgba(255, 255, 255, 0.06)',
+              background: 'rgba(var(--tint, 255, 255, 255), 0.03)',
+              border: '1px solid var(--line, rgba(255, 255, 255, 0.06))',
               fontSize: '0.78rem',
               color: 'var(--muted, #94a3b8)',
               display: 'flex',
@@ -887,8 +895,8 @@ export default function ExpenseDetailDrawer({
               gap: '0.25rem',
             }}
           >
-            <div>Logged By: <strong style={{ color: '#cbd5e1' }}>{expense.crew_name || 'Owner / Office'}</strong></div>
-            <div>Recorded Date: <strong style={{ color: '#cbd5e1' }}>{formatDate(expense.created_at, accountTimeZone)}</strong></div>
+            <div>Logged By: <strong style={{ color: 'inherit' }}>{expense.crew_name || 'Owner / Office'}</strong></div>
+            <div>Recorded Date: <strong style={{ color: 'inherit' }}>{formatDate(expense.created_at, accountTimeZone)}</strong></div>
             <div>Database ID: <code style={{ fontSize: '0.75rem', color: 'var(--muted)' }}>{expense.id}</code></div>
           </div>
         </div>
@@ -897,11 +905,11 @@ export default function ExpenseDetailDrawer({
         <div
           style={{
             padding: '1rem 1.5rem',
-            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            borderTop: '1px solid var(--line, rgba(255, 255, 255, 0.08))',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'rgba(255, 255, 255, 0.02)',
+            background: 'rgba(var(--tint, 255, 255, 255), 0.02)',
           }}
         >
           {canManageCosts ? (
