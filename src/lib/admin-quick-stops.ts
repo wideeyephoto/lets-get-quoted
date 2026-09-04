@@ -14,19 +14,36 @@ export type AdminQuickStopRow = QuickStopRequest & {
 const LIST_COLUMNS =
   'id, account_id, status, client_name, client_phone, fee_cents, refund_cents, arrival_date, arrival_start, arrival_end, payment_id, paid_at, no_show_reported_at, created_at, ai_summary';
 
+export type ListQuickStopsResult = {
+  rows: AdminQuickStopRow[];
+  total: number;
+};
+
 export async function listQuickStopRequestsForAdmin(
   admin: SupabaseClient,
-  opts: { statuses?: string[]; limit?: number; accountId?: string } = {},
-): Promise<AdminQuickStopRow[]> {
-  let q = admin.from('extra_stop_requests').select(LIST_COLUMNS).order('created_at', { ascending: false }).limit(opts.limit ?? 100);
+  opts: { statuses?: string[]; limit?: number; page?: number; pageSize?: number; accountId?: string } = {},
+): Promise<ListQuickStopsResult> {
+  const pageSize = opts.pageSize ?? opts.limit ?? 50;
+  const page = Math.max(1, opts.page ?? 1);
+  const from = (page - 1) * pageSize;
+  const to = from + pageSize - 1;
+
+  let q = admin
+    .from('extra_stop_requests')
+    .select(LIST_COLUMNS, { count: 'exact' })
+    .is('test_marker', null)
+    .order('created_at', { ascending: false })
+    .range(from, to);
+
   if (opts.statuses && opts.statuses.length) q = q.in('status', opts.statuses);
   // Lets the per-account no-show and Quick Stop counts open the requests they
   // count, instead of pointing at a capped cross-account list.
   if (opts.accountId) q = q.eq('account_id', opts.accountId);
-  const { data, error } = await q;
-  if (error || !data) return [];
+  const { data, error, count } = await q;
+  if (error || !data) return { rows: [], total: 0 };
 
   const rows = data as unknown as QuickStopRequest[];
+  const total = count ?? rows.length;
   const accountIds = [...new Set(rows.map((r) => r.account_id).filter(Boolean))];
   const names = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
   if (accountIds.length) {
@@ -44,7 +61,8 @@ export async function listQuickStopRequestsForAdmin(
       names.set(a.id, { business_name: a.business_name, company_name: siteNames.get(a.id) ?? null, account_number: a.account_number });
     }
   }
-  return rows.map((r) => ({ ...r, ...(names.get(r.account_id) ?? { business_name: null, company_name: null, account_number: null }) }));
+  const hydrated = rows.map((r) => ({ ...r, ...(names.get(r.account_id) ?? { business_name: null, company_name: null, account_number: null }) }));
+  return { rows: hydrated, total };
 }
 
 export type QuickStopEventRow = {

@@ -43,20 +43,41 @@ function money(cents: number | null | undefined): string {
   return `$${centsToDollars(cents).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
-export default async function AdminQuickStopsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ f?: string; account?: string }> }) {
+const PAGE_SIZE = 50;
+
+export default async function AdminQuickStopsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ f?: string; account?: string; page?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   const { admin } = await requireAdmin();
   const active = FILTERS.find((f) => f.key === searchParams.f) ?? FILTERS[0];
+  const page = Math.max(1, Number.parseInt(searchParams.page ?? '1', 10) || 1);
   // Scoping to one account is what makes the per-account "No-shows" count on
   // the account page openable. Without it that number pointed at a
   // cross-account list capped at 150 rows, where the requests it counted might
   // not even appear.
   const accountId = searchParams.account?.trim() || undefined;
-  const rows = await listQuickStopRequestsForAdmin(admin, { statuses: active.statuses, limit: ROW_LIMIT, accountId });
+  const { rows, total } = await listQuickStopRequestsForAdmin(admin, {
+    statuses: active.statuses,
+    page,
+    pageSize: PAGE_SIZE,
+    accountId,
+  });
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const scopedName = accountId && rows.length ? accountDisplayName(rows[0]) : null;
 
+  function paramsFor(next: Record<string, string | undefined>): string {
+    const p = new URLSearchParams();
+    if (active.key !== 'active') p.set('f', active.key);
+    if (accountId) p.set('account', accountId);
+    for (const [k, v] of Object.entries(next)) {
+      if (v) p.set(k, v);
+      else p.delete(k);
+    }
+    const qs = p.toString();
+    return qs ? `/admin/quick-stops?${qs}` : '/admin/quick-stops';
+  }
+
   function href(key: string): string {
-    return accountId ? `/admin/quick-stops?f=${key}&account=${accountId}` : `/admin/quick-stops?f=${key}`;
+    return paramsFor({ f: key, page: undefined });
   }
 
   return (
@@ -91,12 +112,11 @@ export default async function AdminQuickStopsPage({ searchParams: searchParamsPr
       ) : null}
 
       <section className={styles.panel}>
-        {/* A list that silently stops at 150 reads as "there are 150". */}
-        {rows.length >= ROW_LIMIT ? (
-          <p className={styles.muted} style={{ margin: '0 0 .6rem', fontSize: '.8rem' }}>
-            Showing the {ROW_LIMIT} most recent. There are more — narrow with a tab above.
-          </p>
-        ) : null}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '.8rem', flexWrap: 'wrap', gap: '.5rem' }}>
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>
+            {total.toLocaleString('en-US')} Quick Stops{pageCount > 1 ? ` · page ${page} of ${pageCount}` : ''}
+          </h2>
+        </div>
         {rows.length === 0 ? (
           <p className={styles.emptyState}>No Quick Stops in this view.</p>
         ) : (
@@ -130,6 +150,12 @@ export default async function AdminQuickStopsPage({ searchParams: searchParamsPr
             </table>
           </div>
         )}
+        {pageCount > 1 ? (
+          <div className={styles.pagination}>
+            {page > 1 ? <Link className="btn secondary" href={paramsFor({ page: String(page - 1) })}>← Previous</Link> : <span />}
+            {page < pageCount ? <Link className="btn secondary" href={paramsFor({ page: String(page + 1) })}>Next →</Link> : null}
+          </div>
+        ) : null}
       </section>
     </>
   );

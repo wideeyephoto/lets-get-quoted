@@ -436,9 +436,9 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
       .order('created_at', { ascending: false })
       .limit(12),
     getAccountCreditBalanceCents(admin, id),
-    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id).in('status', ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived']),
-    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id),
-    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).eq('account_id', id).eq('status', 'no_show_confirmed'),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).in('status', ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived']),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id),
+    admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).eq('status', 'no_show_confirmed'),
     listLoginEvents(admin, id, 10),
     listAccountNotes(admin, id),
     listAccountTags(admin, id),
