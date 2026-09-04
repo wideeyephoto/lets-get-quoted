@@ -10,6 +10,7 @@ const ACTIONS_CODE = read('src', 'app', 'dashboard', 'sites', 'actions.ts');
 const BUILDER_CODE = read('src', 'app', 'dashboard', 'sites', 'WebsiteBuilder.tsx');
 const MODAL_CODE = read('src', 'app', 'dashboard', 'sites', 'AiLogoCreatorModal.tsx');
 const CSS_CODE = read('src', 'app', 'dashboard', 'sites', 'SiteEditor.module.css');
+const PROMPT_CODE = read('src', 'lib', 'logo-image-prompt.ts');
 
 describe('Website Builder AI Credits Display', () => {
   it('loads AI credit balances from Supabase in dashboard/sites/page.tsx', () => {
@@ -158,5 +159,44 @@ describe('Website Builder AI Credits Display', () => {
 
     // Page exports maxDuration = 180
     expect(pageCode).toContain('export const maxDuration = 180');
+  });
+
+  it('supports AI logo prompt revision instructions and parent prompt grounding', async () => {
+    const { buildAiLogoPrompt } = await import('../src/lib/logo-image-prompt');
+    expect(PROMPT_CODE).toContain('revisionInstructions?: string | null');
+    expect(PROMPT_CODE).toContain('parentPrompt?: string | null');
+    expect(PROMPT_CODE).toContain('CREATIVE REVISION INSTRUCTIONS:');
+    expect(PROMPT_CODE).toContain('Reference prior design concept:');
+
+    const prompt = buildAiLogoPrompt({
+      businessName: 'BrokePipes Plumbers',
+      trade: 'Plumbing',
+      direction: 'bold_symbol',
+      parentPrompt: 'Vintage pipe wrench with water drop',
+      revisionInstructions: 'Make the typography bolder and switch secondary color to vivid orange',
+    });
+
+    expect(prompt).toContain('Reference prior design concept: "Vintage pipe wrench with water drop"');
+    expect(prompt).toContain('CREATIVE REVISION INSTRUCTIONS: Maintain the core design silhouette, metaphor, and visual DNA of the referenced concept');
+    expect(prompt).toContain('Make the typography bolder and switch secondary color to vivid orange');
+  });
+
+  it('supports saving canvas-adjusted logos in actions.ts', () => {
+    expect(ACTIONS_CODE).toContain('export async function saveAdjustedAiLogoAction(');
+    expect(ACTIONS_CODE).toContain('parentLogoId?: string | null');
+    expect(ACTIONS_CODE).toContain('revisionInstructions?: string | null');
+    expect(ACTIONS_CODE).toContain('base64Png: string');
+  });
+
+  it('provides Tweak with AI and Quick Adjust buttons and overlays in AiLogoCreatorModal.tsx', () => {
+    expect(MODAL_CODE).toContain('🪄 Tweak with AI');
+    expect(MODAL_CODE).toContain('🎨 Quick Adjust');
+    expect(MODAL_CODE).toContain('handleGenerateRemixLogo');
+    expect(MODAL_CODE).toContain('handleSaveAdjustedCanvasLogo');
+    expect(MODAL_CODE).toContain('handleDownloadAdjustedCanvas');
+    expect(MODAL_CODE).toContain('⚪ White Vinyl Decal');
+    expect(MODAL_CODE).toContain('⚫ Black Silhouette');
+    expect(MODAL_CODE).toContain('Quick Adjust & Decal Studio');
+    expect(MODAL_CODE).toContain('Tweak Logo with AI');
   });
 });

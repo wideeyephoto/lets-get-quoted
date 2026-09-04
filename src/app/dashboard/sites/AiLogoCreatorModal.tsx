@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useTransition, useEffect } from 'react';
+import { useState, useMemo, useTransition, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import {
   generateLogoConcepts,
@@ -624,6 +624,22 @@ export default function AiLogoCreatorModal({
   const [deletingLogoId, setDeletingLogoId] = useState<string | null>(null);
   const [localPending, setLocalPending] = useState<PendingAiLogo | null>(null);
 
+  // AI Remix / Iteration state
+  const [remixingLogo, setRemixingLogo] = useState<GeneratedAiLogo | null>(null);
+  const [remixPrompt, setRemixPrompt] = useState('');
+
+  // Client-side Canvas Quick Adjust state (0 AI credits)
+  const [adjustingLogo, setAdjustingLogo] = useState<GeneratedAiLogo | null>(null);
+  const [adjustHue, setAdjustHue] = useState(0);
+  const [adjustSaturation, setAdjustSaturation] = useState(100);
+  const [adjustBrightness, setAdjustBrightness] = useState(100);
+  const [adjustContrast, setAdjustContrast] = useState(100);
+  const [isWhiteDecal, setIsWhiteDecal] = useState(false);
+  const [isBlackSilhouette, setIsBlackSilhouette] = useState(false);
+  const [adjustPreviewBg, setAdjustPreviewBg] = useState<'checkered' | 'dark' | 'light'>('checkered');
+  const [isSavingAdjusted, setIsSavingAdjusted] = useState(false);
+  const adjustCanvasRef = useRef<HTMLCanvasElement | null>(null);
+
   // Sync when savedLogos prop updates from parent
   useEffect(() => {
     if (savedLogos && savedLogos.length > 0) {
@@ -701,6 +717,69 @@ export default function AiLogoCreatorModal({
     }, 2500);
     return () => clearInterval(poller);
   }, [open, effectivePending, onLogosChange, onPendingChange]);
+
+  useEffect(() => {
+    if (!adjustingLogo || !adjustCanvasRef.current) return;
+    let active = true;
+    let objectUrl = '';
+    const canvas = adjustCanvasRef.current;
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    if (!ctx) return;
+
+    (async () => {
+      try {
+        let src = adjustingLogo.url;
+        try {
+          const res = await fetch(adjustingLogo.url);
+          if (res.ok) {
+            const blob = await res.blob();
+            if (!active) return;
+            objectUrl = URL.createObjectURL(blob);
+            src = objectUrl;
+          }
+        } catch {
+          // fallback to original url
+        }
+
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          if (!active) return;
+          canvas.width = img.naturalWidth || img.width;
+          canvas.height = img.naturalHeight || img.height;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+          if (isWhiteDecal || isBlackSilhouette) {
+            ctx.drawImage(img, 0, 0);
+            const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imgData.data;
+            const targetColor = isWhiteDecal ? 255 : 0;
+            for (let i = 0; i < data.length; i += 4) {
+              const alpha = data[i + 3];
+              if (alpha > 15) {
+                data[i] = targetColor;
+                data[i + 1] = targetColor;
+                data[i + 2] = targetColor;
+              }
+            }
+            ctx.putImageData(imgData, 0, 0);
+          } else {
+            ctx.filter = `hue-rotate(${adjustHue}deg) saturate(${adjustSaturation}%) brightness(${adjustBrightness}%) contrast(${adjustContrast}%)`;
+            ctx.drawImage(img, 0, 0);
+            ctx.filter = 'none';
+          }
+        };
+        img.src = src;
+      } catch (err) {
+        console.error('Failed to render canvas adjustment', err);
+      }
+    })();
+
+    return () => {
+      active = false;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [adjustingLogo, adjustHue, adjustSaturation, adjustBrightness, adjustContrast, isWhiteDecal, isBlackSilhouette]);
 
   const concepts = useMemo(() => {
     return generateLogoConcepts({
@@ -832,6 +911,104 @@ export default function AiLogoCreatorModal({
     } catch {
       window.open(logo.url, '_blank', 'noopener,noreferrer');
     }
+  }
+
+  function handleGenerateRemixLogo() {
+    if (!remixingLogo) return;
+    const target = remixingLogo;
+    const promptText = remixPrompt.trim();
+    if (!promptText) return;
+
+    setAiError(null);
+    const pendingRecord: PendingAiLogo = {
+      id: `pending-${Date.now()}`,
+      startedAt: new Date().toISOString(),
+      prompt: `Revision: ${promptText}`,
+      direction: target.direction,
+      status: 'pending',
+    };
+    setLocalPending(pendingRecord);
+    onPendingChange?.(pendingRecord);
+    setRemixingLogo(null);
+    setRemixPrompt('');
+
+    startImageTransition(async () => {
+      const result = await generateAiLogoAction({
+        businessName: name,
+        trade,
+        tagline: tagline || null,
+        establishedYear: year || null,
+        accentColor: accent,
+        secondaryColor: secondary,
+        emblem: selectedGlyphKey,
+        direction: target.direction,
+        creativeBrief: creativeBrief || null,
+        parentLogoId: target.id,
+        revisionInstructions: promptText,
+      });
+
+      setLocalPending(null);
+      onPendingChange?.(null);
+
+      if (!result.ok || !result.image) {
+        setAiError(result.message || 'Could not generate revised logo right now.');
+        return;
+      }
+
+      const updated = result.logos || [result.image, ...aiConcepts.filter((c) => c.id !== result.image!.id)];
+      setAiConcepts(updated);
+      onLogosChange?.(updated);
+      setSelectedAiLogoId(result.image.id);
+      onRefreshCredits?.();
+    });
+  }
+
+  async function handleSaveAdjustedCanvasLogo() {
+    if (!adjustingLogo || !adjustCanvasRef.current) return;
+    const canvas = adjustCanvasRef.current;
+    try {
+      setIsSavingAdjusted(true);
+      const base64Png = canvas.toDataURL('image/png');
+      const label = isWhiteDecal
+        ? 'White Decal'
+        : isBlackSilhouette
+        ? 'Black Silhouette'
+        : 'Adjusted';
+      const res = await saveAdjustedAiLogoAction({
+        base64Png,
+        originalLogoId: adjustingLogo.id,
+        businessName: name,
+        label,
+      });
+
+      if (res.ok && res.image) {
+        const updated = res.logos || [res.image, ...aiConcepts.filter((c) => c.id !== res.image!.id)];
+        setAiConcepts(updated);
+        onLogosChange?.(updated);
+        setSelectedAiLogoId(res.image.id);
+        setAdjustingLogo(null);
+      } else {
+        alert(res.message || 'Could not save adjusted logo.');
+      }
+    } catch (err) {
+      console.error('Failed to save adjusted logo', err);
+      alert('Error saving adjusted logo.');
+    } finally {
+      setIsSavingAdjusted(false);
+    }
+  }
+
+  function handleDownloadAdjustedCanvas() {
+    if (!adjustCanvasRef.current) return;
+    const label = isWhiteDecal ? 'white-decal' : isBlackSilhouette ? 'black-silhouette' : 'adjusted';
+    const fileName = `${name.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'brand'}-${label}-logo.png`;
+    const dataUrl = adjustCanvasRef.current.toDataURL('image/png');
+    const anchor = document.createElement('a');
+    anchor.href = dataUrl;
+    anchor.download = fileName;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
   }
 
   function renderMockupLogo(vectorMode: LogoColorMode = 'color') {
@@ -1681,6 +1858,57 @@ export default function AiLogoCreatorModal({
                               <button type="button" onClick={() => { onSelectLogo('', logo.url); onClose(); }} style={{ flex: 1, minWidth: '150px', padding: '0.58rem 0.7rem', borderRadius: '8px', border: 'none', background: 'linear-gradient(135deg, #7c3aed, #4f46e5)', color: '#ffffff', fontSize: '0.8rem', fontWeight: 900, cursor: 'pointer' }}>
                                 Apply to Website
                               </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setRemixingLogo(logo);
+                                  setRemixPrompt('');
+                                }}
+                                style={{
+                                  padding: '0.58rem 0.7rem',
+                                  borderRadius: '8px',
+                                  border: '1px solid #c084fc',
+                                  background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)',
+                                  color: '#6b21a8',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                                title="Tweak colors, typography, or iconography with AI iterations"
+                              >
+                                🪄 Tweak with AI
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setAdjustingLogo(logo);
+                                  setAdjustHue(0);
+                                  setAdjustSaturation(100);
+                                  setAdjustBrightness(100);
+                                  setAdjustContrast(100);
+                                  setIsWhiteDecal(false);
+                                  setIsBlackSilhouette(false);
+                                }}
+                                style={{
+                                  padding: '0.58rem 0.7rem',
+                                  borderRadius: '8px',
+                                  border: '1px solid #93c5fd',
+                                  background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
+                                  color: '#1e40af',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 800,
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                }}
+                                title="Instant color shift, white vinyl decal filter, or silhouette (0 AI credits)"
+                              >
+                                🎨 Quick Adjust
+                              </button>
                               <button type="button" onClick={() => void handleDownloadAiLogo(logo)} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>Download PNG</button>
                               <button type="button" onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); setActiveTab('mockups'); }} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#faf5ff', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>See Mockups</button>
                               <a href="/dashboard/merchandise" style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #10b981', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>👕 Order Merch</a>
@@ -2194,6 +2422,718 @@ export default function AiLogoCreatorModal({
                   </button>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* AI Remix / Tweak Modal */}
+      {remixingLogo && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000002,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setRemixingLogo(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '560px',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '90vh',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '1.1rem 1.25rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🪄</span> Tweak Logo with AI
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  Iterate on this concept while preserving its core silhouette & visual metaphor
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRemixingLogo(null)}
+                style={{
+                  background: '#e2e8f0',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontWeight: 800,
+                  color: '#475569',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {/* Reference Logo Preview */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '1rem',
+                  padding: '0.75rem',
+                  borderRadius: '12px',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                }}
+              >
+                <div
+                  style={{
+                    width: '80px',
+                    height: '60px',
+                    position: 'relative',
+                    borderRadius: '8px',
+                    overflow: 'hidden',
+                    border: '1px solid #cbd5e1',
+                    background: '#f1f5f9',
+                    backgroundImage: 'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)',
+                    backgroundSize: '12px 12px',
+                    backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0px',
+                    flexShrink: 0,
+                  }}
+                >
+                  <Image
+                    src={remixingLogo.url}
+                    alt="Original concept"
+                    fill
+                    sizes="80px"
+                    style={{ objectFit: 'contain', padding: '4px' }}
+                  />
+                </div>
+                <div>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a' }}>
+                    Reference Concept ({AI_LOGO_DIRECTIONS.find((d) => d.id === remixingLogo.direction)?.label || 'Original'})
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                    The art director will use this concept as the structural foundation for your revision.
+                  </div>
+                </div>
+              </div>
+
+              {/* 1-Click Suggestion Pills */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Quick Revision Ideas
+                </label>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
+                  {[
+                    { label: '🎨 Apply selected palette', prompt: `Update color accents to match our palette (${accent} and ${secondary}).` },
+                    { label: '🔤 Make font bolder', prompt: 'Make the business name typography bolder, heavier, and more commanding.' },
+                    { label: '💧 Simplify symbol', prompt: 'Simplify and sharpen the symbol mark with cleaner lines and less visual clutter.' },
+                    { label: '🏷️ Add tagline', prompt: `Add tagline "${tagline || 'Quality Service'}" cleanly integrated under the primary mark.` },
+                    { label: '✨ Minimalist & clean', prompt: 'Make it more minimalist and modern with streamlined shapes and maximum negative space.' },
+                    { label: '🏗️ More rugged & industrial', prompt: 'Give it a more rugged, industrial, heavy-duty aesthetic suitable for fleet vehicles.' },
+                  ].map((pill) => (
+                    <button
+                      key={pill.label}
+                      type="button"
+                      onClick={() => {
+                        setRemixPrompt((prev) => {
+                          const trimmed = prev.trim();
+                          if (!trimmed) return pill.prompt;
+                          if (trimmed.includes(pill.prompt)) return trimmed;
+                          return `${trimmed} ${pill.prompt}`;
+                        });
+                      }}
+                      style={{
+                        padding: '0.35rem 0.65rem',
+                        borderRadius: '999px',
+                        border: '1px solid #cbd5e1',
+                        background: '#f8fafc',
+                        color: '#334155',
+                        fontSize: '0.75rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = '#7c3aed';
+                        e.currentTarget.style.color = '#7c3aed';
+                        e.currentTarget.style.background = '#faf5ff';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = '#cbd5e1';
+                        e.currentTarget.style.color = '#334155';
+                        e.currentTarget.style.background = '#f8fafc';
+                      }}
+                    >
+                      {pill.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Revision Instructions Textarea */}
+              <div>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  Revision Instructions
+                </label>
+                <textarea
+                  rows={3}
+                  value={remixPrompt}
+                  onChange={(e) => setRemixPrompt(e.target.value)}
+                  placeholder="Describe your desired changes (e.g. 'Make the icon more abstract and modern', 'Change the accent colors to vivid cyan and navy', 'Enlarge the company name')..."
+                  style={{
+                    width: '100%',
+                    padding: '0.65rem 0.75rem',
+                    borderRadius: '10px',
+                    border: '1.5px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontSize: '0.85rem',
+                    lineHeight: 1.45,
+                    resize: 'vertical',
+                    boxSizing: 'border-box',
+                    outline: 'none',
+                    fontFamily: 'inherit',
+                  }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = '#7c3aed'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                />
+              </div>
+
+              {/* Credit Note */}
+              <div
+                style={{
+                  padding: '0.65rem 0.85rem',
+                  borderRadius: '10px',
+                  background: '#faf5ff',
+                  border: '1px solid #e9d5ff',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  fontSize: '0.75rem',
+                  color: '#6b21a8',
+                  fontWeight: 600,
+                }}
+              >
+                <span>⚡</span>
+                <span>
+                  Uses 1 AI generation credit. Generates in the background so you can freely navigate while the art director finishes.
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '0.85rem 1.25rem',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'flex-end',
+                alignItems: 'center',
+                gap: '0.65rem',
+                background: '#f8fafc',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => setRemixingLogo(null)}
+                style={{
+                  padding: '0.55rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleGenerateRemixLogo}
+                disabled={!remixPrompt.trim() || isGenerating}
+                style={{
+                  padding: '0.55rem 1.15rem',
+                  borderRadius: '8px',
+                  border: 'none',
+                  background: !remixPrompt.trim() || isGenerating
+                    ? '#cbd5e1'
+                    : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                  color: '#ffffff',
+                  fontSize: '0.82rem',
+                  fontWeight: 800,
+                  cursor: !remixPrompt.trim() || isGenerating ? 'not-allowed' : 'pointer',
+                  boxShadow: !remixPrompt.trim() || isGenerating ? 'none' : '0 4px 12px rgba(124, 58, 237, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span>✦</span> Generate Revised Concept
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Canvas Quick Adjust & Decal Modal */}
+      {adjustingLogo && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            zIndex: 10000002,
+            background: 'rgba(15, 23, 42, 0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1rem',
+          }}
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !isSavingAdjusted) setAdjustingLogo(null);
+          }}
+        >
+          <div
+            style={{
+              width: '100%',
+              maxWidth: '620px',
+              background: '#ffffff',
+              borderRadius: '16px',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              maxHeight: '92vh',
+              overflow: 'hidden',
+            }}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '1.1rem 1.25rem',
+                borderBottom: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+              }}
+            >
+              <div>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🎨</span> Quick Adjust & Decal Studio
+                </h3>
+                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                  0 AI credits • Instant color shifts, filters, and white vinyl decal conversion
+                </span>
+              </div>
+              <button
+                type="button"
+                disabled={isSavingAdjusted}
+                onClick={() => setAdjustingLogo(null)}
+                style={{
+                  background: '#e2e8f0',
+                  border: 'none',
+                  borderRadius: '8px',
+                  width: '28px',
+                  height: '28px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: isSavingAdjusted ? 'not-allowed' : 'pointer',
+                  fontWeight: 800,
+                  color: '#475569',
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+              {/* Canvas Preview Area with Background Selector */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Live Canvas Preview
+                  </span>
+                  <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustPreviewBg('checkered')}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: adjustPreviewBg === 'checkered' ? '#ffffff' : 'transparent',
+                        color: adjustPreviewBg === 'checkered' ? '#0f172a' : '#64748b',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        boxShadow: adjustPreviewBg === 'checkered' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                      }}
+                    >
+                      Checker
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustPreviewBg('dark')}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: adjustPreviewBg === 'dark' ? '#0f172a' : 'transparent',
+                        color: adjustPreviewBg === 'dark' ? '#ffffff' : '#64748b',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Dark
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setAdjustPreviewBg('light')}
+                      style={{
+                        padding: '2px 8px',
+                        borderRadius: '4px',
+                        border: 'none',
+                        background: adjustPreviewBg === 'light' ? '#ffffff' : 'transparent',
+                        color: adjustPreviewBg === 'light' ? '#0f172a' : '#64748b',
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        cursor: 'pointer',
+                        boxShadow: adjustPreviewBg === 'light' ? '0 1px 2px rgba(0,0,0,0.1)' : 'none',
+                      }}
+                    >
+                      Light
+                    </button>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: '200px',
+                    borderRadius: '12px',
+                    border: '1.5px solid #cbd5e1',
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background:
+                      adjustPreviewBg === 'dark'
+                        ? '#090d16'
+                        : adjustPreviewBg === 'light'
+                        ? '#ffffff'
+                        : '#f8fafc',
+                    backgroundImage:
+                      adjustPreviewBg === 'checkered'
+                        ? 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)'
+                        : 'none',
+                    backgroundSize: '20px 20px',
+                    backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
+                  }}
+                >
+                  <canvas
+                    ref={adjustCanvasRef}
+                    style={{
+                      maxWidth: '92%',
+                      maxHeight: '92%',
+                      objectFit: 'contain',
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* 1-Click Preset Modes */}
+              <div>
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  1-Click Presets & Decals
+                </span>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWhiteDecal(true);
+                      setIsBlackSilhouette(false);
+                      setAdjustPreviewBg('dark');
+                    }}
+                    style={{
+                      padding: '0.55rem 0.65rem',
+                      borderRadius: '8px',
+                      border: isWhiteDecal ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      background: isWhiteDecal ? '#eff6ff' : '#ffffff',
+                      color: isWhiteDecal ? '#1d4ed8' : '#334155',
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2px',
+                    }}
+                  >
+                    <span>⚪ White Vinyl Decal</span>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>For dark glass & trucks</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsBlackSilhouette(true);
+                      setIsWhiteDecal(false);
+                      setAdjustPreviewBg('light');
+                    }}
+                    style={{
+                      padding: '0.55rem 0.65rem',
+                      borderRadius: '8px',
+                      border: isBlackSilhouette ? '2px solid #2563eb' : '1px solid #cbd5e1',
+                      background: isBlackSilhouette ? '#eff6ff' : '#ffffff',
+                      color: isBlackSilhouette ? '#1d4ed8' : '#334155',
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2px',
+                    }}
+                  >
+                    <span>⚫ Black Silhouette</span>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>Single-color stamp</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWhiteDecal(false);
+                      setIsBlackSilhouette(false);
+                      setAdjustHue(0);
+                      setAdjustSaturation(100);
+                      setAdjustBrightness(100);
+                      setAdjustContrast(100);
+                      setAdjustPreviewBg('checkered');
+                    }}
+                    style={{
+                      padding: '0.55rem 0.65rem',
+                      borderRadius: '8px',
+                      border: '1px solid #cbd5e1',
+                      background: '#ffffff',
+                      color: '#475569',
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '2px',
+                    }}
+                  >
+                    <span>↺ Reset to Original</span>
+                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>Revert all sliders</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Color Tuning Sliders */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: isWhiteDecal || isBlackSilhouette ? 0.45 : 1 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    Color & Tone Sliders
+                  </span>
+                  {(isWhiteDecal || isBlackSilhouette) && (
+                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontStyle: 'italic' }}>
+                      (Sliders active when decal preset is off)
+                    </span>
+                  )}
+                </div>
+
+                {/* Hue Rotate */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                    <span>Hue Shift</span>
+                    <span>{adjustHue}°</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="-180"
+                    max="180"
+                    step="1"
+                    disabled={isWhiteDecal || isBlackSilhouette}
+                    value={adjustHue}
+                    onChange={(e) => {
+                      setIsWhiteDecal(false);
+                      setIsBlackSilhouette(false);
+                      setAdjustHue(Number(e.target.value));
+                    }}
+                    style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
+                  />
+                </div>
+
+                {/* Saturation */}
+                <div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                    <span>Color Saturation</span>
+                    <span>{adjustSaturation}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="200"
+                    step="2"
+                    disabled={isWhiteDecal || isBlackSilhouette}
+                    value={adjustSaturation}
+                    onChange={(e) => {
+                      setIsWhiteDecal(false);
+                      setIsBlackSilhouette(false);
+                      setAdjustSaturation(Number(e.target.value));
+                    }}
+                    style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
+                  />
+                </div>
+
+                {/* Brightness & Contrast */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                      <span>Brightness</span>
+                      <span>{adjustBrightness}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="150"
+                      step="2"
+                      disabled={isWhiteDecal || isBlackSilhouette}
+                      value={adjustBrightness}
+                      onChange={(e) => {
+                        setIsWhiteDecal(false);
+                        setIsBlackSilhouette(false);
+                        setAdjustBrightness(Number(e.target.value));
+                      }}
+                      style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
+                    />
+                  </div>
+                  <div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                      <span>Contrast</span>
+                      <span>{adjustContrast}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="150"
+                      step="2"
+                      disabled={isWhiteDecal || isBlackSilhouette}
+                      value={adjustContrast}
+                      onChange={(e) => {
+                        setIsWhiteDecal(false);
+                        setIsBlackSilhouette(false);
+                        setAdjustContrast(Number(e.target.value));
+                      }}
+                      style={{ width: '100%', cursor: 'pointer', accentColor: '#2563eb' }}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div
+              style={{
+                padding: '0.85rem 1.25rem',
+                borderTop: '1px solid #e2e8f0',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: '#f8fafc',
+              }}
+            >
+              <button
+                type="button"
+                disabled={isSavingAdjusted}
+                onClick={() => setAdjustingLogo(null)}
+                style={{
+                  padding: '0.55rem 1rem',
+                  borderRadius: '8px',
+                  border: '1px solid #cbd5e1',
+                  background: '#ffffff',
+                  color: '#475569',
+                  fontSize: '0.82rem',
+                  fontWeight: 700,
+                  cursor: isSavingAdjusted ? 'not-allowed' : 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button
+                  type="button"
+                  onClick={handleDownloadAdjustedCanvas}
+                  style={{
+                    padding: '0.55rem 0.95rem',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    background: '#ffffff',
+                    color: '#0f172a',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                  }}
+                >
+                  ⬇️ Download PNG
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingAdjusted}
+                  onClick={handleSaveAdjustedCanvasLogo}
+                  style={{
+                    padding: '0.55rem 1.15rem',
+                    borderRadius: '8px',
+                    border: 'none',
+                    background: isSavingAdjusted ? '#94a3b8' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    color: '#ffffff',
+                    fontSize: '0.82rem',
+                    fontWeight: 800,
+                    cursor: isSavingAdjusted ? 'wait' : 'pointer',
+                    boxShadow: isSavingAdjusted ? 'none' : '0 4px 12px rgba(37, 99, 235, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <span>💾</span> {isSavingAdjusted ? 'Saving to Studio...' : 'Save as New Logo'}
+                </button>
+              </div>
             </div>
           </div>
         </div>

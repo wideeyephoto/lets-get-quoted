@@ -40,9 +40,11 @@ const PRINTFUL_API_BASE = 'https://api.printful.com';
 
 function getPrintfulHeaders(): Record<string, string> {
   const token = process.env.PRINTFUL_API_KEY || process.env.PRINTFUL_ACCESS_TOKEN;
+  const storeId = process.env.PRINTFUL_STORE_ID;
   return {
     'Content-Type': 'application/json',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(storeId ? { 'X-PF-Store-Id': storeId } : {}),
   };
 }
 
