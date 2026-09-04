@@ -71,9 +71,9 @@
 }
 
 .mainNavTabActive {
-  color: #fff;
-  background: rgba(59, 130, 246, 0.15);
-  border-color: rgba(59, 130, 246, 0.35);
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
 }
 
 .navBadge {
@@ -556,6 +556,29 @@
   50% { opacity: 0.4; transform: scale(0.85); }
 }
 
+.statusIndicatorStandby {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.85rem;
+  border-radius: 9999px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #f59e0b;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.statusDotStandby {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 10px #f59e0b;
+  animation: pulseDot 2s infinite ease-in-out;
+}
+
 .statusDetails {
   display: flex;
   flex-direction: column;
@@ -593,18 +616,101 @@
   transform: translateY(-1px);
 }
 
+:root[data-theme='light'] .mainNavTabs,
+:root[data-theme='sunlight'] .mainNavTabs,
+:root[data-theme='parchment'] .mainNavTabs,
+:root[data-theme='clarity'] .mainNavTabs {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+}
+
+:root[data-theme='light'] .mainNavTab,
+:root[data-theme='sunlight'] .mainNavTab,
+:root[data-theme='parchment'] .mainNavTab,
+:root[data-theme='clarity'] .mainNavTab {
+  color: #334155;
+}
+
+:root[data-theme='light'] .mainNavTab:hover,
+:root[data-theme='sunlight'] .mainNavTab:hover,
+:root[data-theme='parchment'] .mainNavTab:hover,
+:root[data-theme='clarity'] .mainNavTab:hover {
+  color: #0f172a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme='light'] .mainNavTabActive,
+:root[data-theme='sunlight'] .mainNavTabActive,
+:root[data-theme='parchment'] .mainNavTabActive,
+:root[data-theme='clarity'] .mainNavTabActive {
+  color: #1d4ed8;
+  background: #ffffff;
+  border-color: #93c5fd;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .assistantStatusBanner,
+:root[data-theme='sunlight'] .assistantStatusBanner,
+:root[data-theme='parchment'] .assistantStatusBanner,
+:root[data-theme='clarity'] .assistantStatusBanner {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
 :root[data-theme='light'] .statusTitle,
-:root[data-theme='sunlight'] .statusTitle {
+:root[data-theme='sunlight'] .statusTitle,
+:root[data-theme='parchment'] .statusTitle,
+:root[data-theme='clarity'] .statusTitle {
   color: #090d16;
 }
 
 :root[data-theme='light'] .statusSub,
-:root[data-theme='sunlight'] .statusSub {
+:root[data-theme='sunlight'] .statusSub,
+:root[data-theme='parchment'] .statusSub,
+:root[data-theme='clarity'] .statusSub {
   color: #475569;
 }
 
+:root[data-theme='light'] .statusIndicatorStandby,
+:root[data-theme='sunlight'] .statusIndicatorStandby,
+:root[data-theme='parchment'] .statusIndicatorStandby,
+:root[data-theme='clarity'] .statusIndicatorStandby {
+  background: #fef3c7;
+  border: 1.5px solid #fcd34d;
+  color: #92400e;
+}
+
+:root[data-theme='light'] .statusDotStandby,
+:root[data-theme='sunlight'] .statusDotStandby,
+:root[data-theme='parchment'] .statusDotStandby,
+:root[data-theme='clarity'] .statusDotStandby {
+  background: #d97706;
+  box-shadow: 0 0 6px rgba(217, 119, 6, 0.5);
+}
+
+:root[data-theme='light'] .statusIndicator,
+:root[data-theme='sunlight'] .statusIndicator,
+:root[data-theme='parchment'] .statusIndicator,
+:root[data-theme='clarity'] .statusIndicator {
+  background: #dcfce7;
+  border: 1.5px solid #86efac;
+  color: #15803d;
+}
+
+:root[data-theme='light'] .statusDot,
+:root[data-theme='sunlight'] .statusDot,
+:root[data-theme='parchment'] .statusDot,
+:root[data-theme='clarity'] .statusDot {
+  background: #16a34a;
+  box-shadow: 0 0 6px rgba(22, 163, 74, 0.5);
+}
+
 :root[data-theme='light'] .configActionBtn,
-:root[data-theme='sunlight'] .configActionBtn {
+:root[data-theme='sunlight'] .configActionBtn,
+:root[data-theme='parchment'] .configActionBtn,
+:root[data-theme='clarity'] .configActionBtn {
   background: #c2410c;
   border-color: #9a3412;
   color: #ffffff;
@@ -612,12 +718,16 @@
 }
 
 :root[data-theme='light'] .configActionBtn:hover,
-:root[data-theme='sunlight'] .configActionBtn:hover {
+:root[data-theme='sunlight'] .configActionBtn:hover,
+:root[data-theme='parchment'] .configActionBtn:hover,
+:root[data-theme='clarity'] .configActionBtn:hover {
   background: #9a3412;
 }
 
 :root[data-theme='light'] .dateFilterActive,
-:root[data-theme='sunlight'] .dateFilterActive {
+:root[data-theme='sunlight'] .dateFilterActive,
+:root[data-theme='parchment'] .dateFilterActive,
+:root[data-theme='clarity'] .dateFilterActive {
   background: #c2410c;
   border-color: #9a3412;
   color: #ffffff;
@@ -812,6 +922,526 @@
 .healthRefreshBtn:hover {
   background: rgba(255, 255, 255, 0.1);
   color: #fff;
+}
+
+/* Voice Simulator Sandbox */
+.simulatorWrapper {
+  margin-top: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.simulatorContainer {
+  background: rgba(30, 41, 59, 0.4);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+  padding: 1.25rem 1.5rem;
+  backdrop-filter: blur(8px);
+}
+
+.simulatorHeader {
+  display: flex;
+  align-items: center;
+  margin-bottom: 1.25rem;
+}
+
+.simulatorTitle {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #f8fafc;
+}
+
+.simulatorContent {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.presetSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.presetLabel {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.presetGroup {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.presetBtn {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(255, 255, 255, 0.05);
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transition: all 0.15s ease;
+}
+
+.presetBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.presetBtnActive {
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+  border: 1px solid #3b82f6;
+  transition: all 0.15s ease;
+}
+
+.simulatorPromptRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.75rem;
+  align-items: flex-end;
+}
+
+@media (max-width: 640px) {
+  .simulatorPromptRow {
+    grid-template-columns: 1fr;
+  }
+}
+
+.simulatorPromptCol {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  flex: 1;
+}
+
+.simulatorTextareaLabel {
+  display: block;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+}
+
+.simulatorTextarea {
+  width: 100%;
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #f8fafc;
+  font-size: 0.9rem;
+  font-family: inherit;
+  resize: vertical;
+  line-height: 1.45;
+  box-sizing: border-box;
+}
+
+.simulatorTextarea:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.simulatorActionCol {
+  display: flex;
+  align-items: flex-end;
+}
+
+.simulatorRunBtn {
+  padding: 10px 20px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  color: #ffffff;
+  border: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.simulatorRunBtn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #1d4ed8, #1e40af);
+  transform: translateY(-1px);
+}
+
+.simulatorRunBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.simulationResultCard {
+  background: rgba(15, 23, 42, 0.7);
+  border-radius: 10px;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  padding: 1.25rem;
+  animation: fadeIn 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.simulationResultHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.resultTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.resultIcon {
+  font-size: 1.1rem;
+}
+
+.resultTitle {
+  color: #f8fafc;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.resultToneBadge {
+  font-size: 0.72rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(147, 197, 253, 0.15);
+  color: #93c5fd;
+  border: 1px solid rgba(147, 197, 253, 0.3);
+  font-weight: 600;
+}
+
+.audioBtn {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  transition: all 0.15s ease;
+}
+
+.audioBtn:hover {
+  background: rgba(59, 130, 246, 0.3);
+  color: #ffffff;
+}
+
+.audioBtnPlaying {
+  padding: 5px 12px;
+  border-radius: 6px;
+  background: #ef4444;
+  color: #ffffff;
+  border: 1px solid #dc2626;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.responseBubble {
+  background: rgba(30, 41, 59, 0.8);
+  border-radius: 8px;
+  padding: 0.9rem 1.15rem;
+  border-left: 4px solid #3b82f6;
+  color: #f1f5f9;
+  font-size: 0.95rem;
+  line-height: 1.55;
+}
+
+.toolTraceSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.toolTraceLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.toolTraceList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.toolTraceItem {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.82rem;
+}
+
+.toolTraceHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.toolTraceCheck {
+  color: #34d399;
+  font-weight: 700;
+}
+
+.toolTraceCode {
+  font-family: ui-monospace, monospace;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #6ee7b7;
+}
+
+.toolTraceResult {
+  margin-top: 0.25rem;
+  color: #94a3b8;
+  font-size: 0.75rem;
+  font-family: ui-monospace, monospace;
+  word-break: break-all;
+}
+
+.crmIntakeSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.crmIntakeLabel {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.crmIntakeBox {
+  background: rgba(15, 23, 42, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.85rem;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  color: #cbd5e1;
+  overflow-x: auto;
+  line-height: 1.6;
+}
+
+/* Light theme overrides for Voice Simulator */
+:root[data-theme='light'] .simulatorContainer,
+:root[data-theme='sunlight'] .simulatorContainer,
+:root[data-theme='parchment'] .simulatorContainer,
+:root[data-theme='clarity'] .simulatorContainer {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+:root[data-theme='light'] .simulatorTitle,
+:root[data-theme='sunlight'] .simulatorTitle,
+:root[data-theme='parchment'] .simulatorTitle,
+:root[data-theme='clarity'] .simulatorTitle {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .presetLabel,
+:root[data-theme='sunlight'] .presetLabel,
+:root[data-theme='parchment'] .presetLabel,
+:root[data-theme='clarity'] .presetLabel,
+:root[data-theme='light'] .simulatorTextareaLabel,
+:root[data-theme='sunlight'] .simulatorTextareaLabel,
+:root[data-theme='parchment'] .simulatorTextareaLabel,
+:root[data-theme='clarity'] .simulatorTextareaLabel,
+:root[data-theme='light'] .toolTraceLabel,
+:root[data-theme='sunlight'] .toolTraceLabel,
+:root[data-theme='parchment'] .toolTraceLabel,
+:root[data-theme='clarity'] .toolTraceLabel,
+:root[data-theme='light'] .crmIntakeLabel,
+:root[data-theme='sunlight'] .crmIntakeLabel,
+:root[data-theme='parchment'] .crmIntakeLabel,
+:root[data-theme='clarity'] .crmIntakeLabel {
+  color: #334155;
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .presetBtn,
+:root[data-theme='sunlight'] .presetBtn,
+:root[data-theme='parchment'] .presetBtn,
+:root[data-theme='clarity'] .presetBtn {
+  background: #f8fafc;
+  color: #1e293b;
+  border: 1px solid #cbd5e1;
+}
+
+:root[data-theme='light'] .presetBtn:hover,
+:root[data-theme='sunlight'] .presetBtn:hover,
+:root[data-theme='parchment'] .presetBtn:hover,
+:root[data-theme='clarity'] .presetBtn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+:root[data-theme='light'] .presetBtnActive,
+:root[data-theme='sunlight'] .presetBtnActive,
+:root[data-theme='parchment'] .presetBtnActive,
+:root[data-theme='clarity'] .presetBtnActive {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1.5px solid #2563eb;
+  font-weight: 700;
+  box-shadow: 0 1px 2px rgba(37, 99, 235, 0.1);
+}
+
+:root[data-theme='light'] .simulatorTextarea,
+:root[data-theme='sunlight'] .simulatorTextarea,
+:root[data-theme='parchment'] .simulatorTextarea,
+:root[data-theme='clarity'] .simulatorTextarea {
+  background: #ffffff;
+  border: 1.5px solid #94a3b8;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .simulatorTextarea:focus,
+:root[data-theme='sunlight'] .simulatorTextarea:focus,
+:root[data-theme='parchment'] .simulatorTextarea:focus,
+:root[data-theme='clarity'] .simulatorTextarea:focus {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+}
+
+:root[data-theme='light'] .simulationResultCard,
+:root[data-theme='sunlight'] .simulationResultCard,
+:root[data-theme='parchment'] .simulationResultCard,
+:root[data-theme='clarity'] .simulationResultCard {
+  background: #f8fafc;
+  border: 1.5px solid #93c5fd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .resultTitle,
+:root[data-theme='sunlight'] .resultTitle,
+:root[data-theme='parchment'] .resultTitle,
+:root[data-theme='clarity'] .resultTitle {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .resultToneBadge,
+:root[data-theme='sunlight'] .resultToneBadge,
+:root[data-theme='parchment'] .resultToneBadge,
+:root[data-theme='clarity'] .resultToneBadge {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+:root[data-theme='light'] .audioBtn,
+:root[data-theme='sunlight'] .audioBtn,
+:root[data-theme='parchment'] .audioBtn,
+:root[data-theme='clarity'] .audioBtn {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #93c5fd;
+}
+
+:root[data-theme='light'] .audioBtn:hover,
+:root[data-theme='sunlight'] .audioBtn:hover,
+:root[data-theme='parchment'] .audioBtn:hover,
+:root[data-theme='clarity'] .audioBtn:hover {
+  background: #dbeafe;
+  color: #1e40af;
+}
+
+:root[data-theme='light'] .responseBubble,
+:root[data-theme='sunlight'] .responseBubble,
+:root[data-theme='parchment'] .responseBubble,
+:root[data-theme='clarity'] .responseBubble {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-left: 4px solid #2563eb;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .toolTraceItem,
+:root[data-theme='sunlight'] .toolTraceItem,
+:root[data-theme='parchment'] .toolTraceItem,
+:root[data-theme='clarity'] .toolTraceItem {
+  background: #f0fdf4;
+  border: 1px solid #86efac;
+  color: #166534;
+}
+
+:root[data-theme='light'] .toolTraceCheck,
+:root[data-theme='sunlight'] .toolTraceCheck,
+:root[data-theme='parchment'] .toolTraceCheck,
+:root[data-theme='clarity'] .toolTraceCheck {
+  color: #15803d;
+}
+
+:root[data-theme='light'] .toolTraceCode,
+:root[data-theme='sunlight'] .toolTraceCode,
+:root[data-theme='parchment'] .toolTraceCode,
+:root[data-theme='clarity'] .toolTraceCode {
+  background: #dcfce7;
+  color: #14532d;
+}
+
+:root[data-theme='light'] .toolTraceResult,
+:root[data-theme='sunlight'] .toolTraceResult,
+:root[data-theme='parchment'] .toolTraceResult,
+:root[data-theme='clarity'] .toolTraceResult {
+  color: #374151;
+}
+
+:root[data-theme='light'] .crmIntakeBox,
+:root[data-theme='sunlight'] .crmIntakeBox,
+:root[data-theme='parchment'] .crmIntakeBox,
+:root[data-theme='clarity'] .crmIntakeBox {
+  background: #ffffff;
+  border: 1.5px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 

@@ -133,29 +133,8 @@ export function VoiceStatusBanner({
   return (
     <div className={styles.assistantStatusBanner} role="region" aria-label="AI Voice Assistant Status">
       <div className={styles.statusMetaGroup}>
-        <div
-          className={styles.statusIndicator}
-          style={
-            !isAnswering
-              ? {
-                  background: 'rgba(245, 158, 11, 0.15)',
-                  borderColor: 'rgba(245, 158, 11, 0.35)',
-                  color: '#f59e0b',
-                }
-              : undefined
-          }
-        >
-          <span
-            className={styles.statusDot}
-            style={
-              !isAnswering
-                ? {
-                    background: '#f59e0b',
-                    boxShadow: '0 0 10px #f59e0b',
-                  }
-                : undefined
-            }
-          />
+        <div className={isAnswering ? styles.statusIndicator : styles.statusIndicatorStandby}>
+          <span className={isAnswering ? styles.statusDot : styles.statusDotStandby} />
           <span>{statusLabel}</span>
         </div>
 
