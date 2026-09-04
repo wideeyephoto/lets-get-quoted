@@ -33,6 +33,7 @@ describe('navAttentionLabel', () => {
     expect(navAttentionLabel('/dashboard/jobs', 3)).toBe('3 jobs need attention');
     expect(navAttentionLabel('/dashboard/schedule', 3)).toBe('3 approved jobs have no date yet');
     expect(navAttentionLabel('/dashboard/messages', 3)).toBe('3 unread messages');
+    expect(navAttentionLabel('/dashboard/text-to-job', 3)).toBe('3 field memos need review');
   });
 
   it('reads as English at one', () => {
@@ -42,6 +43,7 @@ describe('navAttentionLabel', () => {
     expect(navAttentionLabel('/dashboard/jobs', 1)).toBe('1 job needs attention');
     expect(navAttentionLabel('/dashboard/schedule', 1)).toBe('1 approved job has no date yet');
     expect(navAttentionLabel('/dashboard/messages', 1)).toBe('1 unread message');
+    expect(navAttentionLabel('/dashboard/text-to-job', 1)).toBe('1 field memo needs review');
   });
 
   it('refuses to invent a label for a count it has no definition of', () => {

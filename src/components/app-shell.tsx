@@ -190,6 +190,10 @@ type AccountStatus = {
   newestQuoteRequestHighValue: boolean;
   /** When the newest live job arrived — drives the rail's "New" badge. */
   newestJobCreatedAt: string | null;
+  /** Field memos and updates logged via Text-to-Job. */
+  textToJobCount?: number;
+  /** When the newest field memo arrived — drives Text-to-Job's "New" badge. */
+  newestTextToJobCreatedAt?: string | null;
   /** Whether Quick Stop is accepting expedited work right now. */
   quickStopState: NavState;
   /** Whether the public booking page is actually live. */
@@ -355,6 +359,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [newestQuoteRequestCreatedAt, setNewestQuoteRequestCreatedAt] = useState<string | null>(null);
   const [newestLeadHighValue, setNewestLeadHighValue] = useState(false);
   const [newestJobCreatedAt, setNewestJobCreatedAt] = useState<string | null>(null);
+  const [textToJobCount, setTextToJobCount] = useState(0);
+  const [newestTextToJobCreatedAt, setNewestTextToJobCreatedAt] = useState<string | null>(null);
   // Per-section "you've looked at this" marks, read from localStorage after
   // mount. Empty on the server and on the first client render, which is what we
   // want: the badge appears a beat later rather than hydrating wrong.
@@ -665,6 +671,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setNewestQuoteRequestId(null);
       setNewestQuoteRequestCreatedAt(null);
       setNewestLeadHighValue(false);
+      setTextToJobCount(0);
+      setNewestTextToJobCreatedAt(null);
       setQuickStopState('unknown');
       setBookingState('unknown');
       setLowCreditAlert(false);
@@ -696,6 +704,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setNewestQuoteRequestCreatedAt(data.newestQuoteRequestCreatedAt ?? null);
             setNewestLeadHighValue(Boolean(data.newestQuoteRequestHighValue));
             setNewestJobCreatedAt(data.newestJobCreatedAt ?? null);
+            setTextToJobCount(Number(data.textToJobCount ?? 0));
+            setNewestTextToJobCreatedAt(data.newestTextToJobCreatedAt ?? null);
             setQuickStopState(navState(data.quickStopState));
             setBookingState(navState(data.bookingState));
             setLowCreditAlert(Boolean(data.lowCreditAlert));
@@ -736,6 +746,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const newestFor: Record<string, string | null> = {
       '/dashboard/leads': newestQuoteRequestCreatedAt,
       '/dashboard/jobs': newestJobCreatedAt,
+      '/dashboard/text-to-job': newestTextToJobCreatedAt,
     };
     const href = Object.keys(newestFor).find((section) => isActiveNav(pathname, section));
     if (!href) return;
@@ -752,7 +763,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       }
       return next;
     });
-  }, [isLoggedIn, pathname, newestQuoteRequestCreatedAt, newestJobCreatedAt]);
+  }, [isLoggedIn, pathname, newestQuoteRequestCreatedAt, newestJobCreatedAt, newestTextToJobCreatedAt]);
 
   if (isStandaloneSite) {
     return <>{children}</>;
@@ -846,6 +857,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       // A customer text is exactly the kind of thing this dot exists for.
       '/dashboard/messages': unreadMessageCount,
       '/dashboard/quick-stops': openQuickStopCount,
+      '/dashboard/text-to-job': textToJobCount,
     };
     // Inventory beside attention. The filled circle has always meant "these
     // need you today" and stays that way; the hollow one is simply how much is
@@ -861,10 +873,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const newestByHref: Record<string, string | null> = {
       '/dashboard/leads': newestQuoteRequestCreatedAt,
       '/dashboard/jobs': newestJobCreatedAt,
+      '/dashboard/text-to-job': newestTextToJobCreatedAt,
     };
     const newLabelByHref: Record<string, string> = {
       '/dashboard/leads': 'New leads have come in since you last opened Leads',
       '/dashboard/jobs': 'New work has landed since you last opened Jobs',
+      '/dashboard/text-to-job': 'New field memos have arrived since you last opened Text-to-Job',
     };
     const renderSideLink = (href: string, extraClass = '') => {
       const item = byHref.get(href);
@@ -1581,6 +1595,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                       ['/dashboard/jobs', jobsNeedingAttentionCount],
                       ['/dashboard/schedule', unscheduledJobCount],
                       ['/dashboard/quick-stops', openQuickStopCount],
+                      ['/dashboard/text-to-job', textToJobCount],
                     ].map(([href, n]) =>
                       item.href === href && (n as number) > 0 ? (
                         <span className="topnav-count" key={href as string} title={navAttentionLabel(href as string, n as number) ?? undefined}>

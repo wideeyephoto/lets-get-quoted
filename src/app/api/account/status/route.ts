@@ -11,6 +11,7 @@ import { countUnreadMessages } from '@/lib/messages';
 import { quickStopNavState, quickStopState } from '@/lib/quick-stop-state';
 import { pickBusinessName } from '@/lib/business-name';
 import { applyTestRecordFilter } from '@/lib/test-records';
+import { loadTextToJobStatus } from '@/lib/field-intake-leads';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -28,18 +29,18 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null, textToJobCount: 0, newestTextToJobCreatedAt: null });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null, textToJobCount: 0, newestTextToJobCreatedAt: null });
   }
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }, { data: balanceRows }] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }, { data: balanceRows }, textToJobStatus] = await Promise.all([
     admin
       .from('accounts')
       .select(
@@ -106,6 +107,7 @@ export async function GET() {
       .from('workspace_usage_credit_balances')
       .select('resource_code, available_units')
       .eq('account_id', membership.accountId),
+    loadTextToJobStatus(admin, membership.accountId),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
       // in the approval stage (drop the moment they're approved -> in_progress);
@@ -237,6 +239,8 @@ export async function GET() {
     newestQuoteRequestCreatedAt: newestLead?.created_at ?? null,
     newestQuoteRequestHighValue,
     newestJobCreatedAt,
+    textToJobCount: textToJobStatus.count,
+    newestTextToJobCreatedAt: textToJobStatus.newestCreatedAt,
     quickStopState: quickStopNav,
     lowCreditAlert,
     // Online booking, judged the same way its own setup page judges it: the

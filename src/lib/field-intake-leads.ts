@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type SmsFieldLeadRecord = {
   leadId: string;
@@ -90,3 +91,57 @@ export async function loadSmsFieldLeads(accountId: string): Promise<SmsFieldLead
     return [];
   }
 }
+
+export type TextToJobStatus = {
+  count: number;
+  newestCreatedAt: string | null;
+};
+
+/**
+ * Counts field intake messages (voice memos, SMS updates, costs, tasks, and field leads)
+ * and retrieves the timestamp of the newest arrival. Drives the Text-to-Job nav badge and "New" pill.
+ */
+export async function loadTextToJobStatus(
+  admin: SupabaseClient,
+  accountId: string,
+): Promise<TextToJobStatus> {
+  try {
+    const [feedRes, leadTasksRes] = await Promise.all([
+      admin
+        .from('job_feed')
+        .select('id, created_at', { count: 'exact' })
+        .eq('account_id', accountId)
+        .in('kind', ['field_voice_note', 'field_sms_update', 'cost_added', 'task_created'])
+        .order('created_at', { ascending: false })
+        .limit(1),
+      admin
+        .from('sms_inbound_action_tasks')
+        .select('id, created_at', { count: 'exact' })
+        .eq('account_id', accountId)
+        .eq('task_state', 'completed')
+        .filter('outcome->>intent', 'eq', 'create_lead')
+        .order('created_at', { ascending: false })
+        .limit(1),
+    ]);
+
+    const count = (feedRes.count ?? 0) + (leadTasksRes.count ?? 0);
+    const newestFeed = feedRes.data?.[0]?.created_at as string | undefined;
+    const newestLead = leadTasksRes.data?.[0]?.created_at as string | undefined;
+
+    let newestCreatedAt: string | null = null;
+    if (newestFeed && newestLead) {
+      newestCreatedAt =
+        new Date(newestFeed).getTime() >= new Date(newestLead).getTime()
+          ? newestFeed
+          : newestLead;
+    } else {
+      newestCreatedAt = newestFeed ?? newestLead ?? null;
+    }
+
+    return { count, newestCreatedAt };
+  } catch (err) {
+    console.error('Error loading Text-to-Job status:', err);
+    return { count: 0, newestCreatedAt: null };
+  }
+}
+
