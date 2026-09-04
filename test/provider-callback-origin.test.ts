@@ -50,11 +50,11 @@ describe('trusted provider callback origin', () => {
     })).toBe('https://staging.letsgetquoted.com');
   });
 
-  it('falls back to the canonical app subdomain when running in development against localhost', () => {
+  it('rejects localhost in development to prevent leaking provider callbacks or credentials to production', () => {
     expect(trustedProviderCallbackOrigin({
       NODE_ENV: 'development',
       NEXT_PUBLIC_APP_URL: 'http://localhost:3020',
       NEXT_PUBLIC_ROOT_DOMAIN: 'letsgetquoted.com',
-    })).toBe('https://app.letsgetquoted.com');
+    })).toBeNull();
   });
 });

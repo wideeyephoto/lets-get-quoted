@@ -10,6 +10,7 @@ import {
   isHitlActionExpired,
   isActionSafeForAutoRemediation,
   validateActionExecutionSafety,
+  permissionForHitlAction,
   SAFE_AUTO_REMEDIATION_ACTION_TYPES,
   REQUIRES_APPROVAL_ACTION_TYPES,
 } from '@/lib/ai-operator/audit';
@@ -19,7 +20,11 @@ import {
 } from '@/lib/ai-operator/support-copilot';
 import { runRevOpsGrowthScan } from '@/lib/ai-operator/revops';
 import { generateExecutiveBriefing } from '@/lib/ai-operator/briefing';
-import { runAutonomousOperatorCycle, askAiOperator } from '@/lib/ai-operator/engine';
+import {
+  runAutonomousOperatorCycle,
+  askAiOperator,
+  executeHitlDecision,
+} from '@/lib/ai-operator/engine';
 import { isSafeReadOnlySqlQuery } from '@/lib/ai-operator/sql-interpreter';
 import type { OperatorExecutionContext } from '@/lib/ai-operator/types';
 
@@ -601,5 +606,42 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
 
     // Dangerous functions
     expect(isSafeReadOnlySqlQuery('SELECT pg_sleep(10)')).toBe(false);
+  });
+
+  it('correctly maps operator actions to explicit staff permissions preventing privilege escalation', () => {
+    expect(permissionForHitlAction('issue_subscription_refund')).toBe('money.refund');
+    expect(permissionForHitlAction('modify_account_tier')).toBe('money.plan');
+    expect(permissionForHitlAction('waive_platform_fee')).toBe('money.plan');
+    expect(permissionForHitlAction('extend_contractor_trial')).toBe('money.plan');
+    expect(permissionForHitlAction('suspend_account_access')).toBe('account.enforce');
+    expect(permissionForHitlAction('force_payout_settlement')).toBe('money.payouts');
+    expect(permissionForHitlAction('trigger_dunning_escalation')).toBe('money.payouts');
+    expect(permissionForHitlAction('trigger_contractor_lifecycle_nudge')).toBe('account.support');
+    expect(permissionForHitlAction('replay_failed_webhooks')).toBe('ops.manage');
+    expect(permissionForHitlAction('execute_database_mutation')).toBe('ops.manage');
+  });
+
+  it('executes approved HITL actions and records execution result', async () => {
+    const action = createHitlAction({
+      category: 'growth_lifecycle',
+      title: 'Send Onboarding Nudge to Stalled Lead',
+      description: 'Contractor stalled after connecting bank',
+      actionType: 'trigger_contractor_lifecycle_nudge',
+      payload: { accountId: 'acc-test-999', campaignType: 'onboarding_welcome' },
+    });
+
+    const approvedResult = await executeHitlDecision(
+      action.id,
+      'approved',
+      'staff@letsgetquoted.com',
+      'Approved following customer request',
+      ctx,
+    );
+
+    expect(approvedResult.success).toBe(true);
+    expect(approvedResult.action?.status).toBe('approved');
+    expect(approvedResult.action?.resolvedBy).toBe('staff@letsgetquoted.com');
+    expect(approvedResult.executionResult).toBeDefined();
+    expect((approvedResult.executionResult as any).success).toBe(true);
   });
 });

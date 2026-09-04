@@ -185,6 +185,7 @@ export function demoJobViews(): DemoJobView[] {
       id: job.id,
       ref: job.ref,
       clientName: job.client_name,
+      clientPhone: (job as { client_phone?: string | null }).client_phone ?? null,
       address: job.address,
       status: job.status,
       badgeLabel: badge.label,

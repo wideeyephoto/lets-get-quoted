@@ -155,6 +155,10 @@
     {
       "path": "/api/cron/contractor-lifecycle",
       "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/purge-expired",
+      "schedule": "0 3 * * *"
     }
   ]
 }

@@ -82,13 +82,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         rebateReport = calculateCleanEnergyRebates({
           category: 'heat_pump_hvac',
           state: 'MI',
+          projectCost: 8000,
         });
       } catch (err) {
         console.warn('Rebate engine calculation notice:', err);
       }
-      const cap = rebateReport?.incentives.federalTaxCredit.maxAnnualCap ?? 2000;
-      const prog = rebateReport?.incentives.utilityRebate?.programName
-        ? `Federal Inflation Reduction Act (IRA) + ${rebateReport.incentives.utilityRebate.programName}`
+      const cap = rebateReport?.incentives.federalTaxCredit.maxCap ?? 2000;
+      const prog = rebateReport?.incentives.utilityRebate?.programTitle
+        ? `Federal Inflation Reduction Act (IRA) + ${rebateReport.incentives.utilityRebate.programTitle}`
         : 'Federal Inflation Reduction Act (IRA) + Local Utility Clean Heat Program';
 
       toolsExecuted.push({

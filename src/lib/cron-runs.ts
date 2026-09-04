@@ -113,11 +113,35 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
   if (Array.isArray(summary.failures) && summary.failures.length > 0) {
     return `${job} logical failure: ${JSON.stringify(summary.failures)}`.slice(0, 2000);
   }
+
+  const breakdown: string[] = [];
+  for (const [key, val] of Object.entries(summary)) {
+    if (
+      typeof val === 'number' &&
+      val > 0 &&
+      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors)$/i.test(key) &&
+      key !== 'failures' &&
+      key !== 'failed'
+    ) {
+      breakdown.push(`${key}=${val}`);
+    }
+  }
+  const detail = breakdown.length > 0 ? ` (${breakdown.join(', ')})` : '';
+
   if (typeof summary.failed === 'number' && summary.failed > 0) {
     const candidateInfo = typeof summary.candidates === 'number'
       ? ` (${summary.failed}/${summary.candidates} candidates failed)`
       : ` (${summary.failed} items failed)`;
-    return `${job} reported logical failures${candidateInfo}`.slice(0, 2000);
+    return `${job} reported logical failures${candidateInfo}${detail}`.slice(0, 2000);
+  }
+  if (typeof summary.failures === 'number' && summary.failures > 0) {
+    return `${job} reported logical failures (${summary.failures} failure(s))${detail}`.slice(0, 2000);
+  }
+  if (typeof summary.error_count === 'number' && summary.error_count > 0) {
+    return `${job} reported logical failures (${summary.error_count} error(s))${detail}`.slice(0, 2000);
+  }
+  if (breakdown.length > 0) {
+    return `${job} reported logical failures${detail}`.slice(0, 2000);
   }
   return `${job} reported failed work: ${JSON.stringify(summary)}`.slice(0, 2000);
 }
@@ -152,7 +176,7 @@ export function cronRoute(job: string, run: () => Promise<unknown>) {
         ok: !logicalFailure,
         durationMs: Date.now() - startedMs,
         summary,
-        error: null,
+        error: logicalFailure ? extractLogicalFailureReason(job, summaryJson) : null,
       });
       if (Math.floor(Math.random() * PRUNE_ODDS) === 0) await pruneOldRuns(admin);
       if (logicalFailure) {

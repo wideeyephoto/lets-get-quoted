@@ -24,16 +24,7 @@ const CALL_ID = 'vc-001';
 
 describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
   it('executes full 7-stage lifecycle: admission -> swml -> settlement -> recording -> queue -> detail -> staff workflow', async () => {
-    const memoryDb: {
-      voice_calls: Record<string, unknown>[];
-      voice_call_workflows: Record<string, unknown>[];
-      voice_call_notes: Record<string, unknown>[];
-      leads: Record<string, unknown>[];
-      clients: Record<string, unknown>[];
-      jobs: Record<string, unknown>[];
-      accounts: Record<string, unknown>[];
-      voice_settings: Record<string, unknown>[];
-    } = {
+    const memoryDb: Record<string, Record<string, unknown>[]> = {
       voice_calls: [],
       voice_call_workflows: [],
       voice_call_notes: [],

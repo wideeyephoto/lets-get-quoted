@@ -1,8 +1,10 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
+import { staffCan } from '@/lib/staff';
 import { cronJob, cronSummaryHasFailures } from '@/lib/cron-jobs';
 import { listCronRuns } from '@/lib/cron-runs';
+import { RunCronButton } from '../RunCronButton';
 import styles from '../../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -16,12 +18,20 @@ export default async function CronJobHistoryPage({ params: paramsPromise }: { pa
   const params = await paramsPromise;
   const spec = cronJob(params.job);
   if (!spec) notFound();
-  const { admin } = await requireAdmin();
+  const { admin, staff } = await requireAdmin();
+  const canManageOps = staffCan(staff, 'ops.manage');
   const history = await listCronRuns(admin, spec.job, 50);
   const runs = history.runs;
   return <>
     <Link href="/admin/health" className={styles.backLink}>← Service health</Link>
-    <header className={styles.pageHead}><p className={styles.eyebrow}>Scheduled job</p><h1 className={styles.title}>{spec.label}</h1><p className={styles.lead}>{spec.consequence}</p></header>
+    <header className={styles.pageHead}>
+      <p className={styles.eyebrow}>Scheduled job</p>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 className={styles.title}>{spec.label}</h1>
+        {canManageOps ? <RunCronButton job={spec.job} jobLabel={spec.label} /> : null}
+      </div>
+      <p className={styles.lead}>{spec.consequence}</p>
+    </header>
     {!history.available ? <div className={`${styles.banner} ${styles.err}`}>Run history is unavailable. A blank table is not being treated as no runs.</div> : null}
     <section className={styles.panel}>
       <h2 className={styles.panelTitle}>Recent runs · {runs.length}</h2>

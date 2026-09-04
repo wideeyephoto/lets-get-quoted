@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth';
 import { createAdminSignalDiagnostics, getFailedEmailEvents, getFailedSmsEvents, getUnresolvedWebhookFailures } from '@/lib/admin-alerts';
 import { groupEmailFailures, groupSmsFailures, groupWebhookFailures } from '@/lib/admin-failure-groups';
+import { loadOutboundWebhookFailures } from '@/lib/admin-public-api';
 import { staffCan } from '@/lib/staff';
 import { resolveWebhookGroupAction } from './actions';
 import styles from '../admin.module.css';
@@ -17,10 +18,11 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const diagnostics = createAdminSignalDiagnostics();
-  const [webhooks, sms, emails] = await Promise.all([
+  const [webhooks, sms, emails, outboundDeliveries] = await Promise.all([
     getUnresolvedWebhookFailures(ctx.admin, { limit: 500, diagnostics }),
     getFailedSmsEvents(ctx.admin, { limit: 500, diagnostics }),
     getFailedEmailEvents(ctx.admin, { limit: 500, diagnostics }),
+    loadOutboundWebhookFailures(ctx.admin, 100),
   ]);
   const webhookGroups = groupWebhookFailures(webhooks);
   const smsGroups = groupSmsFailures(sms);
@@ -38,13 +40,30 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Enter a reason and try again.</div> : null}
 
     <section className={styles.panel} id="webhooks">
-      <h2 className={styles.panelTitle}>Webhook failures · {webhooks.length} events in {webhookGroups.length} groups</h2>
-      {webhookGroups.length === 0 && !diagnostics.failed.includes('webhookFailures') ? <p className={styles.emptyState}>No unresolved webhook failures.</p> : null}
+      <h2 className={styles.panelTitle}>Inbound webhook failures · {webhooks.length} events in {webhookGroups.length} groups</h2>
+      {webhookGroups.length === 0 && !diagnostics.failed.includes('webhookFailures') ? <p className={styles.emptyState}>No unresolved inbound webhook failures.</p> : null}
       {webhookGroups.length ? <div className={styles.tableWrap}><table className={styles.table}>
         <thead><tr><th>Source</th><th>Event</th><th>Error</th><th className="num">Occurrences</th><th>First / latest</th><th>Action</th></tr></thead>
         <tbody>{webhookGroups.map((entry) => <tr key={entry.key}>
           <td>{entry.sample.source.replace(/_/g, ' ')}</td><td>{entry.sample.event_type || '—'}</td><td className={styles.muted}>{entry.sample.error_message}</td><td className="num">{entry.count}</td><td className={styles.muted}>{fmt(entry.firstAt)}<br />{fmt(entry.latestAt)}</td>
           <td>{canResolve ? <form action={resolveWebhookGroupAction.bind(null, entry.ids)} className={styles.compactForm}><label className={styles.srOnly} htmlFor={`resolve-${entry.ids[0]}`}>Resolution reason</label><input id={`resolve-${entry.ids[0]}`} className={styles.compactInput} name="reason" required minLength={4} placeholder="Resolution reason" /><button className="btn secondary" type="submit">Resolve group</button></form> : '—'}</td>
+        </tr>)}</tbody>
+      </table></div> : null}
+    </section>
+
+    <section className={styles.panel} id="outbound-webhooks">
+      <h2 className={styles.panelTitle}>Outbound webhook delivery failures · {outboundDeliveries.length}</h2>
+      {outboundDeliveries.length === 0 ? <p className={styles.emptyState}>No failed outbound webhook deliveries.</p> : null}
+      {outboundDeliveries.length ? <div className={styles.tableWrap}><table className={styles.table}>
+        <thead><tr><th>Account</th><th>Endpoint</th><th>Status</th><th>Error</th><th className="num">Attempts</th><th>Next retry</th><th>Latest</th></tr></thead>
+        <tbody>{outboundDeliveries.map((d) => <tr key={d.id}>
+          <td><Link className={styles.rowLink} href={`/admin/accounts/${d.accountId}?tab=api`}>{d.businessName || d.accountId.slice(0, 8)}</Link></td>
+          <td><code style={{ fontSize: '.75rem' }}>{d.targetUrl}</code></td>
+          <td><span className={`${styles.pill} ${d.status === 'dead_letter' ? styles.bad : styles.warn}`}>{d.status}</span>{d.lastStatusCode ? <span className={styles.muted} style={{ fontSize: '.72rem', marginLeft: '.3rem' }}>HTTP {d.lastStatusCode}</span> : null}</td>
+          <td className={styles.muted} style={{ fontSize: '.75rem', maxWidth: '30ch' }}>{d.lastErrorMessage || d.lastErrorCode || '—'}</td>
+          <td className="num">{d.attemptCount}</td>
+          <td className={styles.muted}>{d.nextRetryAt ? fmt(d.nextRetryAt) : 'None'}</td>
+          <td className={styles.muted}>{fmt(d.updatedAt)}</td>
         </tr>)}</tbody>
       </table></div> : null}
     </section>
@@ -66,3 +85,4 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     </section>
   </>;
 }
+

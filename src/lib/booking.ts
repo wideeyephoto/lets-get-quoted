@@ -13,7 +13,7 @@ import {
 import { loadBusinessName } from '@/lib/business-name';
 import { createLead, type Lead, type LeadAttribution } from '@/lib/leads';
 import { getAccountOwnerEmail, sendLeadNotificationEmail, sendBookingConfirmationEmail } from '@/lib/email';
-import { sendBookingRequestCustomerConfirmationSms, sendOwnerBookingRequestAlertSms } from '@/lib/sms';
+import { sendBookingRequestCustomerConfirmationSms, sendOwnerBookingRequestAlertSms, ensureSmsConsentBaseline } from '@/lib/sms';
 import { checkRateLimitStrict } from '@/lib/rate-limit';
 import { bookingAvailabilityFromAccount, windowsForTimes, outsideWorkdayWindowTimes, type BookingAvailability } from '@/lib/booking-availability';
 
@@ -584,6 +584,11 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     try {
       const withinSmsCap = await checkRateLimitStrict(admin, `bookconfirm:sms:${input.phone}`, 3, 3600);
       if (withinSmsCap) {
+        if (input.sourceVoiceProviderCallId) {
+          await ensureSmsConsentBaseline(accountId, input.phone, 'missed_call_text_back').catch(() => {});
+        } else {
+          await ensureSmsConsentBaseline(accountId, input.phone, 'portal_link_request').catch(() => {});
+        }
         await sendBookingRequestCustomerConfirmationSms({
           accountId,
           phone: input.phone,

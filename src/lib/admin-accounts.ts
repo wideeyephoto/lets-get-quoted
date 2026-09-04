@@ -168,9 +168,84 @@ export async function ownerEmailsForAccounts(admin: SupabaseClient, ids: string[
   return map;
 }
 
-// Search accounts by business name, site company name, account number, or the
-// owner's login email — the last of these being the one a support ticket
-// actually arrives with.
+/**
+ * Searches phone numbers across accounts, sites, voice inventory, and messaging sender numbers.
+ * Matches on the last 10 and last 7 digits so local and E.164 formats both resolve.
+ */
+export async function accountIdsByPhone(
+  admin: SupabaseClient,
+  digits: string,
+  limit = 50,
+  onError?: (context: string, error: unknown) => void,
+): Promise<{ accountIds: string[]; phoneMatchMap: Map<string, string> }> {
+  const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+  const last7 = digits.length >= 7 ? digits.slice(-7) : digits;
+  const phoneMatchMap = new Map<string, string>();
+  const accountIds: string[] = [];
+
+  const addMatch = (accId: string, phone: string, source: string) => {
+    if (!accId) return;
+    if (!accountIds.includes(accId)) accountIds.push(accId);
+    if (!phoneMatchMap.has(accId)) phoneMatchMap.set(accId, `${source}: ${phone}`);
+  };
+
+  try {
+    const [
+      acctCallTracking,
+      acctSmsNumber,
+      acctAlertPhone,
+      sitesPhone,
+      voiceInventory,
+      smsSenders,
+    ] = await Promise.all([
+      admin.from('accounts').select('id, call_tracking_number').or(`call_tracking_number.ilike.%${last10}%,call_tracking_number.ilike.%${last7}%`).limit(limit),
+      admin.from('accounts').select('id, sms_number').or(`sms_number.ilike.%${last10}%,sms_number.ilike.%${last7}%`).limit(limit),
+      admin.from('accounts').select('id, alert_phone').or(`alert_phone.ilike.%${last10}%,alert_phone.ilike.%${last7}%`).limit(limit),
+      admin.from('sites').select('account_id, phone').or(`phone.ilike.%${last10}%,phone.ilike.%${last7}%`).limit(limit),
+      admin.from('voice_number_inventory').select('account_id, e164_number').or(`e164_number.ilike.%${last10}%,e164_number.ilike.%${last7}%`).limit(limit),
+      admin.from('sms_sender_numbers').select('account_id, e164_number').or(`e164_number.ilike.%${last10}%,e164_number.ilike.%${last7}%`).limit(limit),
+    ]);
+
+    for (const r of (acctCallTracking.data ?? []) as { id: string; call_tracking_number: string }[]) {
+      if (r.call_tracking_number) addMatch(r.id, r.call_tracking_number, 'Call tracking');
+    }
+    for (const r of (acctSmsNumber.data ?? []) as { id: string; sms_number: string }[]) {
+      if (r.sms_number) addMatch(r.id, r.sms_number, 'SMS number');
+    }
+    for (const r of (acctAlertPhone.data ?? []) as { id: string; alert_phone: string }[]) {
+      if (r.alert_phone) addMatch(r.id, r.alert_phone, 'Alert phone');
+    }
+    for (const r of (sitesPhone.data ?? []) as { account_id: string; phone: string }[]) {
+      if (r.phone) addMatch(r.account_id, r.phone, 'Site phone');
+    }
+    for (const r of (voiceInventory.data ?? []) as { account_id: string; e164_number: string }[]) {
+      if (r.e164_number) addMatch(r.account_id, r.e164_number, 'Voice inventory');
+    }
+    for (const r of (smsSenders.data ?? []) as { account_id: string; e164_number: string }[]) {
+      if (r.e164_number) addMatch(r.account_id, r.e164_number, 'Messaging sender');
+    }
+
+    try {
+      const msgSenders = await admin.from('messaging_sender_numbers').select('account_id, phone_number').or(`phone_number.ilike.%${last10}%,phone_number.ilike.%${last7}%`).limit(limit);
+      if (!msgSenders.error && msgSenders.data) {
+        for (const r of msgSenders.data as { account_id: string; phone_number: string }[]) {
+          if (r.phone_number) addMatch(r.account_id, r.phone_number, 'Messaging sender');
+        }
+      }
+    } catch {
+      // Table may not exist or may be aliased
+    }
+  } catch (err) {
+    console.error('accountIdsByPhone failed:', err);
+    onError?.('phone number lookup', err);
+  }
+
+  return { accountIds, phoneMatchMap };
+}
+
+// Search accounts by business name, site company name, account number, phone
+// numbers (call tracking, sms number, alert phone, site phone, voice inventory,
+// messaging sender), or the owner's login email.
 export async function listAccountsForAdmin(
   admin: SupabaseClient,
   opts: { query?: string; limit?: number; filter?: AccountFilter; joinedSince?: string; includeTestRecords?: boolean; onError?: (context: string, error: unknown) => void } = {},
@@ -189,21 +264,20 @@ export async function listAccountsForAdmin(
 
   if (term) {
     const digits = term.replace(/[^0-9]/g, '');
-    if (/^\d+$/.test(digits) && Number(digits) > 0) {
+    const isPureDigits = /^\d+$/.test(digits);
+    const isShortAccountNumber = isPureDigits && digits.length <= 6 && Number(digits) > 0;
+    const isPhoneNumber = digits.length >= 7;
+
+    if (isShortAccountNumber) {
       const { data, error } = await base().eq('account_number', Number(digits)).limit(limit);
       if (error) opts.onError?.('account number search', error);
       rows = (data ?? []) as AdminAccountBaseRow[];
     } else {
-      // Three ways in: the account's business_name, the site's company_name, or
-      // the owner's login email. The last one is what a support ticket actually
-      // arrives with, and it only became searchable once the RPC above existed.
-      const [byBiz, bySite, byEmail] = await Promise.all([
+      const [byBiz, bySite, byEmail, byPhone] = await Promise.all([
         base().ilike('business_name', `%${term}%`).limit(limit),
         admin.from('sites').select('account_id').ilike('company_name', `%${term}%`).limit(limit),
-        // Skipped unless the term looks like part of an address. Every search
-        // would otherwise pay for an auth.users scan, and a bare word matches
-        // far too much of an email corpus to be a useful signal.
         term.includes('@') || term.includes('.') ? accountIdsByOwnerEmail(admin, term, limit, opts.onError) : Promise.resolve([]),
+        isPhoneNumber ? accountIdsByPhone(admin, digits, limit, opts.onError) : Promise.resolve({ accountIds: [], phoneMatchMap: new Map() }),
       ]);
       if (byBiz.error) opts.onError?.('business name search', byBiz.error);
       if (bySite.error) opts.onError?.('site name search', bySite.error);
@@ -212,12 +286,10 @@ export async function listAccountsForAdmin(
       const extraIds = [
         ...(bySite.data ?? []).map((s) => (s as { account_id: string }).account_id),
         ...byEmail,
+        ...byPhone.accountIds,
       ].filter((id, i, all) => id && !haveIds.has(id) && all.indexOf(id) === i);
       if (extraIds.length) {
-        // Re-filtered, not just re-fetched. Neither the sites table nor the
-        // email lookup knows anything about onboarding or suspension, so
-        // without this a name or address match could smuggle an account into a
-        // filtered list it does not belong in.
+        // Re-filtered, not just re-fetched.
         const { data: extra, error } = await base().in('id', extraIds).limit(limit);
         if (error) opts.onError?.('account search hydration', error);
         rows = [...found, ...((extra ?? []) as AdminAccountBaseRow[])];
@@ -230,6 +302,7 @@ export async function listAccountsForAdmin(
     if (error) opts.onError?.('account list', error);
     rows = (data ?? []) as AdminAccountBaseRow[];
   }
+
 
   // Stitch each account's site company_name and canonical entitlement in, then
   // order newest-first. Never fill a missing entitlement from accounts.plan:

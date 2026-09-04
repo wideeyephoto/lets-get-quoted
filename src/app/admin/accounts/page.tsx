@@ -149,8 +149,15 @@ export default async function AdminAccountsPage({
   return (
     <>
       <header className={styles.pageHead}>
-        <p className={styles.eyebrow}>Support</p>
-        <h1 className={styles.title}>{info ? info.label : joined ? 'New accounts' : 'Accounts'}</h1>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '0.75rem' }}>
+          <div>
+            <p className={styles.eyebrow}>Support</p>
+            <h1 className={styles.title}>{info ? info.label : joined ? 'New accounts' : 'Accounts'}</h1>
+          </div>
+          <Link href="/admin/accounts/closures" className={styles.rowLink} style={{ fontSize: '0.84rem', fontWeight: 700, padding: '0.35rem 0.65rem', borderRadius: '0.45rem', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)' }}>
+            🗑️ Closures & Trash Bin →
+          </Link>
+        </div>
         <p className={styles.lead}>
           {info
             ? info.blurb

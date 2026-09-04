@@ -171,7 +171,7 @@ export async function processMobileApprovalCallback(
   }
 
   // Execute decision via AI Operator Engine
-  const result = executeHitlDecision(params.actionId, params.decision, 'mobile-1click-webhook', 'Executed via signed mobile 1-click bridge');
+  const result = await executeHitlDecision(params.actionId, params.decision, 'mobile-1click-webhook', 'Executed via signed mobile 1-click bridge');
 
   if (result.success) {
     recordOperatorAudit({

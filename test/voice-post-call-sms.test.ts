@@ -4,6 +4,7 @@ import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
 
 vi.mock('@/lib/sms', () => ({
   sendCallerVoicePostCallFollowupSms: vi.fn(async () => ({ ok: true })),
+  ensureSmsConsentBaseline: vi.fn(async () => true),
 }));
 
 describe('AI Voice Post-Call SMS Follow-up Engine', () => {
@@ -128,14 +129,14 @@ describe('AI Voice Post-Call SMS Follow-up Engine', () => {
       account_id: 'acc-456',
       phone_number: '+12485550122',
       status: 'opted_in',
-      source: 'voice_post_call_followup',
+      source: 'missed_call_text_back',
     });
     expect(insertedRows.sms_consent_scopes).toBeDefined();
     expect(insertedRows.sms_consent_scopes[0]).toMatchObject({
       account_id: 'acc-456',
       phone_number: '+12485550122',
       consent_scope: 'customer',
-      source: 'voice_post_call_followup',
+      evidence_source: 'missed_call_text_back',
     });
   });
 });

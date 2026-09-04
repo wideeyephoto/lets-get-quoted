@@ -1,4 +1,4 @@
-﻿import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { withPublicContact, type Site } from '@/lib/sites';
 import { toggleWebsitePhoneFunnelAction } from '@/app/dashboard/voice-calls/actions';
 
@@ -7,9 +7,20 @@ vi.mock('next/cache', () => ({
 }));
 
 const mockRequireOfficeContext = vi.fn();
+const mockCreateAdminClient = vi.fn();
 vi.mock('@/lib/auth', () => ({
   requireOfficeContext: (...args: unknown[]) => mockRequireOfficeContext(...args),
-  createAdminClient: vi.fn(),
+  createAdminClient: (...args: unknown[]) => mockCreateAdminClient(...args),
+}));
+
+const mockLoadVoiceEntitlement = vi.fn();
+vi.mock('@/lib/voice/entitlement', () => ({
+  loadVoiceEntitlement: (...args: unknown[]) => mockLoadVoiceEntitlement(...args),
+}));
+
+const mockLoadVoiceRouteReadiness = vi.fn();
+vi.mock('@/lib/voice/route-readiness', () => ({
+  loadVoiceRouteReadiness: (...args: unknown[]) => mockLoadVoiceRouteReadiness(...args),
 }));
 
 const mockGetOrCreateSite = vi.fn();
@@ -125,29 +136,26 @@ describe('Website Inbound Lead Funnel: toggleWebsitePhoneFunnelAction', () => {
     );
   });
 
-  it('updates sites row with phonePublic: true and dedicated AI number when switching to phone funnel', async () => {
+  it('updates sites row with phonePublic: true, preserves original phone, and uses dedicated AI number when switching to phone funnel', async () => {
+    mockLoadVoiceEntitlement.mockResolvedValue({ available: true, enabled: true });
+    mockLoadVoiceRouteReadiness.mockResolvedValue({ kind: 'ready' });
+
     const updateSpy = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({
         eq: vi.fn().mockResolvedValue({ error: null }),
       }),
     });
 
-    const mockSupabase = {
+    const mockAdmin = {
       from: vi.fn((table: string) => {
-        if (table === 'sites') {
+        if (table === 'voice_settings') {
           return {
             select: vi.fn().mockReturnThis(),
             eq: vi.fn().mockReturnThis(),
             maybeSingle: vi.fn().mockResolvedValue({
-              data: {
-                id: 'site-123',
-                phone: null,
-                content: { phonePublic: false },
-                subdomain: 'brokepipes',
-              },
+              data: { status: 'active' },
             }),
-            update: updateSpy,
-          } as unknown as Site;
+          };
         }
         if (table === 'accounts') {
           return {
@@ -159,6 +167,28 @@ describe('Website Inbound Lead Funnel: toggleWebsitePhoneFunnelAction', () => {
                 alert_phone: '+18103042061',
               },
             }),
+          };
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }),
+    };
+    mockCreateAdminClient.mockReturnValue(mockAdmin);
+
+    const mockSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'sites') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                id: 'site-123',
+                phone: '(248) 555-0199',
+                content: { phonePublic: false },
+                subdomain: 'brokepipes',
+              },
+            }),
+            update: updateSpy,
           } as unknown as Site;
         }
         throw new Error(`Unexpected table ${table}`);
@@ -180,8 +210,136 @@ describe('Website Inbound Lead Funnel: toggleWebsitePhoneFunnelAction', () => {
         phone: '(810) 320-2687',
         content: expect.objectContaining({
           phonePublic: true,
+          originalPhone: '(248) 555-0199',
         }),
       })
+    );
+  });
+
+  it('restores contractor original phone when switching from phone funnel back to forms funnel', async () => {
+    const updateSpy = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error: null }),
+      }),
+    });
+
+    const mockSupabase = {
+      from: vi.fn((table: string) => {
+        if (table === 'sites') {
+          return {
+            select: vi.fn().mockReturnThis(),
+            eq: vi.fn().mockReturnThis(),
+            maybeSingle: vi.fn().mockResolvedValue({
+              data: {
+                id: 'site-123',
+                phone: '(810) 320-2687',
+                content: { phonePublic: true, originalPhone: '(248) 555-0199' },
+                subdomain: 'brokepipes',
+              },
+            }),
+            update: updateSpy,
+          } as unknown as Site;
+        }
+        throw new Error(`Unexpected table ${table}`);
+      }),
+    } as unknown as Site;
+
+    mockRequireOfficeContext.mockResolvedValue({
+      supabase: mockSupabase,
+      accountId: 'acc-123',
+    });
+
+    const result = await toggleWebsitePhoneFunnelAction(false);
+
+    expect(result.success).toBe(true);
+    expect(result.phonePublic).toBe(false);
+    expect(updateSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phone: '(248) 555-0199',
+        content: expect.objectContaining({
+          phonePublic: false,
+          originalPhone: '(248) 555-0199',
+        }),
+      })
+    );
+  });
+
+  it('rejects activating phone funnel when voice entitlement is missing', async () => {
+    mockLoadVoiceEntitlement.mockResolvedValue({ available: true, enabled: false });
+
+    mockRequireOfficeContext.mockResolvedValue({
+      supabase: {
+        from: () => ({
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 's1', content: {} } }) }) }),
+        }),
+      },
+      accountId: 'acc-123',
+    });
+
+    await expect(toggleWebsitePhoneFunnelAction(true)).rejects.toThrow(
+      'AI Voice is not included in this workspace or an active add-on.'
+    );
+  });
+
+  it('rejects activating phone funnel when voice settings status is not active', async () => {
+    mockLoadVoiceEntitlement.mockResolvedValue({ available: true, enabled: true });
+    mockCreateAdminClient.mockReturnValue({
+      from: () => ({
+        select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { status: 'paused' } }) }) }),
+      }),
+    });
+
+    mockRequireOfficeContext.mockResolvedValue({
+      supabase: {
+        from: () => ({
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 's1', content: {} } }) }) }),
+        }),
+      },
+      accountId: 'acc-123',
+    });
+
+    await expect(toggleWebsitePhoneFunnelAction(true)).rejects.toThrow(
+      'AI Voice must be active before publishing the number on your website.'
+    );
+  });
+
+  it('never falls back to alert_phone when dedicated number is missing', async () => {
+    mockLoadVoiceEntitlement.mockResolvedValue({ available: true, enabled: true });
+    mockLoadVoiceRouteReadiness.mockResolvedValue({ kind: 'ready' });
+
+    mockCreateAdminClient.mockReturnValue({
+      from: (table: string) => {
+        if (table === 'voice_settings') {
+          return {
+            select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { status: 'active' } }) }) }),
+          };
+        }
+        if (table === 'accounts') {
+          return {
+            select: () => ({
+              eq: () => ({
+                maybeSingle: async () => ({
+                  data: { call_tracking_number: null, alert_phone: '+12485550199' },
+                }),
+              }),
+            }),
+          };
+        }
+        throw new Error(`Unexpected table ${table}`);
+      },
+    });
+
+    mockRequireOfficeContext.mockResolvedValue({
+      supabase: {
+        from: () => ({
+          select: () => ({ eq: () => ({ maybeSingle: async () => ({ data: { id: 's1', content: {} } }) }) }),
+        }),
+      },
+      accountId: 'acc-123',
+    });
+
+    await expect(toggleWebsitePhoneFunnelAction(true)).rejects.toThrow(
+      'No dedicated AI Voice phone number configured for this workspace.'
     );
   });
 });

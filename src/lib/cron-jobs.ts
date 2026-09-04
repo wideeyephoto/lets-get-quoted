@@ -328,6 +328,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'customer',
     consequence: 'New trade contractors stop receiving automated onboarding guidance, quote activation playbooks, and Stripe payout reminders.',
   },
+  {
+    job: 'purge-expired',
+    label: 'Expired data and closure purge',
+    schedule: '0 3 * * *',
+    importance: 'housekeeping',
+    consequence: 'Soft-deleted entities past retention and closed accounts past their legal hold window stop being permanently purged.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

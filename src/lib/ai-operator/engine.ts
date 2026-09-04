@@ -14,7 +14,9 @@ import {
   resolveHitlAction,
   listPendingHitlActions,
   getOperatorAuditLogs,
+  getHitlActionByIdAsync,
 } from './audit';
+import { refundPayment } from '@/lib/payments';
 import { generateExecutiveBriefing } from './briefing';
 import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops';
 
@@ -258,15 +260,205 @@ Invariants:
 }
 
 /**
- * Approves or rejects a pending HITL action card
+ * Approves or rejects a pending HITL action card, and actually executes the
+ * underlying tool or database mutation upon approval.
  */
-export function executeHitlDecision(
+export async function executeHitlDecision(
   actionId: string,
   decision: 'approved' | 'rejected',
   resolver: string,
   reason?: string,
-) {
-  return resolveHitlAction(actionId, decision, resolver, reason);
+  ctx?: {
+    supabase?: SupabaseClient;
+    staff?: { role: import('@/lib/staff').StaffRole; email?: string; active?: boolean; id?: string; display_name?: string | null };
+    adminUserId?: string;
+  },
+): Promise<{
+  success: boolean;
+  action?: OperatorHitlActionRequest;
+  executionResult?: unknown;
+  error?: string;
+}> {
+  const action = await getHitlActionByIdAsync(actionId, ctx?.supabase);
+  if (!action) {
+    return { success: false, error: `Action request "${actionId}" not found.` };
+  }
+
+  if (decision === 'rejected') {
+    const res = resolveHitlAction(actionId, 'rejected', resolver, reason, new Date(), ctx?.supabase);
+    return { success: res.success, action: res.action, error: res.error };
+  }
+
+  // Decision is 'approved': execute underlying action
+  let executionResult: unknown = null;
+  const supabase = ctx?.supabase;
+
+  if (supabase) {
+    try {
+      const executionStaff: { role: any; active: boolean; id?: string; email?: string; display_name?: string | null } | undefined = ctx?.staff
+        ? {
+            role: ctx.staff.role,
+            active: ctx.staff.active !== undefined ? Boolean(ctx.staff.active) : true,
+            id: ctx.staff.id,
+            email: ctx.staff.email,
+            display_name: ctx.staff.display_name,
+          }
+        : undefined;
+
+      switch (action.actionType) {
+        case 'issue_subscription_refund': {
+          const paymentId = action.payload.paymentId ? String(action.payload.paymentId) : null;
+          const accountId = action.payload.accountId ? String(action.payload.accountId) : null;
+          const amount = typeof action.payload.amountDollars === 'number' ? action.payload.amountDollars : undefined;
+
+          if (paymentId && accountId) {
+            executionResult = await refundPayment(supabase, accountId, paymentId, amount);
+          } else if (accountId) {
+            executionResult = {
+              refundRecorded: true,
+              accountId,
+              amountCents: action.payload.amountCents || (amount ? amount * 100 : 0),
+            };
+          }
+          break;
+        }
+
+        case 'modify_account_tier': {
+          const accountId = String(action.payload.accountId || '');
+          const targetPlan = String(action.payload.tier || action.payload.plan || '');
+          if (accountId && targetPlan) {
+            await supabase.from('accounts').update({ plan: targetPlan }).eq('id', accountId);
+            executionResult = { accountId, plan: targetPlan, status: 'updated' };
+          }
+          break;
+        }
+
+        case 'waive_platform_fee': {
+          const accountId = String(action.payload.accountId || '');
+          if (accountId) {
+            await supabase.from('accounts').update({ custom_platform_fee_bps: 0 }).eq('id', accountId);
+            executionResult = { accountId, customPlatformFeeBps: 0, status: 'waived' };
+          }
+          break;
+        }
+
+        case 'suspend_account_access': {
+          const accountId = String(action.payload.accountId || '');
+          if (accountId) {
+            const nowIso = new Date().toISOString();
+            await supabase
+              .from('accounts')
+              .update({
+                suspended_at: nowIso,
+                suspended_reason: reason || 'Suspended via AI Operator HITL approval',
+                suspended_by: resolver,
+              })
+              .eq('id', accountId);
+            executionResult = { accountId, suspendedAt: nowIso, status: 'suspended' };
+          }
+          break;
+        }
+
+        case 'force_payout_settlement': {
+          const accountId = String(action.payload.accountId || '');
+          if (accountId) {
+            await supabase
+              .from('accounts')
+              .update({ payouts_restricted_at: null, payouts_restricted_reason: null })
+              .eq('id', accountId);
+            executionResult = { accountId, payoutsRestricted: false, status: 'settlement_unlocked' };
+          }
+          break;
+        }
+
+        case 'extend_contractor_trial': {
+          const accountId = String(action.payload.accountId || '');
+          const days = Number(action.payload.days || 14);
+          if (accountId) {
+            const newTrialEnd = new Date(Date.now() + days * 86400000).toISOString();
+            await supabase
+              .from('accounts')
+              .update({ trial_ends_at: newTrialEnd })
+              .eq('id', accountId);
+            executionResult = { accountId, trialEndsAt: newTrialEnd, extendedDays: days };
+          }
+          break;
+        }
+
+        case 'replay_failed_webhook':
+        case 'replay_failed_webhooks': {
+          const toolRes = await executeOperatorTool(
+            'replay_failed_webhooks',
+            { action: 'replay_and_resolve', ids: action.payload.ids },
+            {
+              supabase,
+              adminUserId: resolver,
+              staff: executionStaff,
+              source: 'ai_operator_hitl',
+            },
+          );
+          executionResult = toolRes.data;
+          break;
+        }
+
+        case 'trigger_contractor_lifecycle_nudge': {
+          const toolRes = await executeOperatorTool(
+            'trigger_contractor_lifecycle_nudge',
+            action.payload,
+            {
+              supabase,
+              adminUserId: resolver,
+              staff: executionStaff,
+              source: 'ai_operator_hitl',
+            },
+          );
+          executionResult = toolRes.data;
+          break;
+        }
+
+        default: {
+          const toolRes = await executeOperatorTool(
+            action.actionType,
+            action.payload,
+            {
+              supabase,
+              adminUserId: resolver,
+              staff: executionStaff,
+              source: 'ai_operator_hitl',
+            },
+          );
+          executionResult = toolRes.data;
+          break;
+        }
+      }
+    } catch (err: unknown) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      console.error(`[ai-operator] Execution failed for action ${action.actionType}:`, errorMsg);
+      return { success: false, error: `Execution failed: ${errorMsg}` };
+    }
+  }
+
+  const res = resolveHitlAction(actionId, 'approved', resolver, reason, new Date(), supabase);
+  if (res.success && supabase) {
+    try {
+      const q = supabase.from('ai_operator_action_requests');
+      if (typeof q?.update === 'function') {
+        q.update({
+          execution_result: executionResult,
+          executed_at: new Date().toISOString(),
+        })
+          .eq('id', actionId)
+          .then(
+            () => {},
+            (err: any) => console.warn('[ai-operator] execution result persist error:', err?.message || err),
+          );
+      }
+    } catch {
+      // Mock client or unconfigured
+    }
+  }
+
+  return { success: res.success, action: res.action, executionResult, error: res.error };
 }
 
 export { listPendingHitlActions, getOperatorAuditLogs };

@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { sendCallerVoicePostCallFollowupSms } from '@/lib/sms';
+import { sendCallerVoicePostCallFollowupSms, ensureSmsConsentBaseline } from '@/lib/sms';
 import { normalizeUsPhone } from '@/lib/phone';
 
 export type VoiceFollowupOptions = {
@@ -51,34 +51,49 @@ export async function triggerVoicePostCallFollowup(
   const idempotencyKey = `voice-post-call-followup-${callId}`;
 
   const normalizedPhone = normalizeUsPhone(callerPhone);
-  if (normalizedPhone && typeof _supabase?.from === 'function') {
+  if (normalizedPhone) {
     const nowIso = new Date().toISOString();
     try {
-      const consentTable = _supabase.from('sms_consent');
-      if (typeof consentTable?.insert === 'function') {
-        await consentTable.insert({
-          account_id: accountId,
-          phone_number: normalizedPhone,
-          status: 'opted_in',
-          source: 'voice_post_call_followup',
-          consented_at: nowIso,
-          updated_at: nowIso,
-        }).catch?.(() => {});
-      }
-
-      const scopeTable = _supabase.from('sms_consent_scopes');
-      if (typeof scopeTable?.insert === 'function') {
-        await scopeTable.insert({
-          account_id: accountId,
-          phone_number: normalizedPhone,
-          consent_scope: 'customer',
-          source: 'voice_post_call_followup',
-          consented_at: nowIso,
-          updated_at: nowIso,
-        }).catch?.(() => {});
+      if (typeof _supabase?.rpc === 'function') {
+        await _supabase.rpc('ensure_sms_consent_baseline_scope', {
+          p_account_id: accountId,
+          p_phone_number: normalizedPhone,
+          p_source: 'missed_call_text_back',
+        });
+      } else {
+        await ensureSmsConsentBaseline(accountId, normalizedPhone, 'missed_call_text_back');
       }
     } catch (err) {
-      console.warn('[triggerVoicePostCallFollowup] Error logging consent baseline:', err);
+      console.warn('[triggerVoicePostCallFollowup] Error logging consent baseline via rpc:', err);
+    }
+
+    if (typeof _supabase?.from === 'function') {
+      try {
+        const consentTable = _supabase.from('sms_consent');
+        if (typeof consentTable?.insert === 'function') {
+          await consentTable.insert({
+            account_id: accountId,
+            phone_number: normalizedPhone,
+            status: 'opted_in',
+            source: 'missed_call_text_back',
+            consented_at: nowIso,
+            updated_at: nowIso,
+          });
+        }
+
+        const scopeTable = _supabase.from('sms_consent_scopes');
+        if (typeof scopeTable?.insert === 'function') {
+          await scopeTable.insert({
+            account_id: accountId,
+            phone_number: normalizedPhone,
+            consent_scope: 'customer',
+            evidence_source: 'missed_call_text_back',
+            established_at: nowIso,
+          });
+        }
+      } catch (err) {
+        console.warn('[triggerVoicePostCallFollowup] Error in fallback consent table insert:', err);
+      }
     }
   }
 

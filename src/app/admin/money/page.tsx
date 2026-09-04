@@ -5,6 +5,8 @@ import { createAdminSignalDiagnostics, getOpenDisputes, getPausedPayouts, getNot
 import { fetchFeeWindow } from '@/lib/platform-fees';
 import { stripeAdminLinks } from '@/lib/admin-payments';
 import { isDateRange, rangeWindow, type DateRange } from '@/lib/command-center-logic';
+import { loadPlatformOverageOverview } from '@/lib/admin-overage';
+import { loadAdminGoogleLsaOverview } from '@/lib/admin-google-lsa';
 import { StatCard } from '../StatCard';
 import styles from '../admin.module.css';
 
@@ -45,11 +47,13 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
   // The fee arithmetic — and the refund rows the table renders — come from the
   // one definition in lib/platform-fees.ts, which the Command Center shares.
   // They used to be two copies of the same query carrying the same defect.
-  const [fees, disputes, pausedRows, notOnboardedCount] = await Promise.all([
+  const [fees, disputes, pausedRows, notOnboardedCount, overageOverview, lsaOverview] = await Promise.all([
     fetchFeeWindow(admin, win.currentStart, win.currentEnd),
     getOpenDisputes(admin, { accountId, diagnostics }),
     getPausedPayouts(admin, { diagnostics }),
     getNotOnboardedCount(admin, { diagnostics }),
+    loadPlatformOverageOverview(admin),
+    loadAdminGoogleLsaOverview(admin),
   ]);
 
   // Deliberately not named *30 any more — the window is whatever `range` says,
@@ -65,12 +69,16 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
     + Number(!fees.availability.fees)
     + Number(!fees.availability.refunds);
 
-  // Stitch display names (site company_name preferred) onto the dispute, paused
-  // and refund rows in one pass.
+  // Stitch display names (site company_name preferred) onto the dispute, paused,
+  // refund, overage, and LSA rows in one pass.
   const acctIds = [...new Set([
     ...disputes.map((d) => d.account_id),
     ...pausedRows.map((p) => p.id),
     ...refundRows.map((r) => r.account_id),
+    ...overageOverview.exhaustedAccountIds,
+    ...overageOverview.recentSettlements.map((s) => s.accountId),
+    ...lsaOverview.wallets.map((w) => w.accountId),
+    ...lsaOverview.connections.map((c) => c.accountId),
   ].filter(Boolean))];
   const nameMap = new Map<string, { business_name: string | null; company_name: string | null; account_number: number | null }>();
   let namesAvailable = true;
@@ -276,6 +284,194 @@ export default async function AdminMoneyPage({ searchParams: searchParamsPromise
           </div>
         )}
       </section>
+
+      {/* Platform Overage & Cap Exhaustion Oversight */}
+      <section className={styles.panel} id="overage-overview">
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+          <div>
+            <h2 className={styles.panelTitle} style={{ margin: 0 }}>Platform overage &amp; caps oversight</h2>
+            <p className={styles.muted} style={{ margin: '0.2rem 0 0 0', fontSize: '.8rem' }}>
+              Pending unbilled accruals, exhausted spending caps, and recent settlements across all customer workspaces.
+            </p>
+          </div>
+          <span className={`${styles.pill} ${overageOverview.exhaustedCapsCount > 0 ? styles.bad : styles.good}`}>
+            {overageOverview.exhaustedCapsCount} exhausted cap{overageOverview.exhaustedCapsCount === 1 ? '' : 's'}
+          </span>
+        </div>
+
+        <div className={styles.cardGrid} style={{ marginBottom: '1.25rem' }}>
+          <StatCard
+            label="Pending unbilled accruals"
+            value={usd(overageOverview.totalPendingAccrualDollars)}
+            tone={overageOverview.totalPendingAccrualDollars > 0 ? 'warn' : undefined}
+            accent="amber"
+            note={`${overageOverview.pendingAccrualAccountsCount} accounts currently accruing unbilled usage`}
+          />
+          <StatCard
+            label="Exhausted spending caps"
+            value={overageOverview.exhaustedCapsCount.toLocaleString('en-US')}
+            tone={overageOverview.exhaustedCapsCount > 0 ? 'bad' : undefined}
+            accent={overageOverview.exhaustedCapsCount > 0 ? 'rose' : 'emerald'}
+            note={overageOverview.exhaustedCapsCount > 0 ? 'Workspaces blocked by hard cap' : 'All workspaces within spending caps'}
+          />
+          <StatCard
+            label="Unsettled / failed settlements"
+            value={overageOverview.failedSettlementsCount.toLocaleString('en-US')}
+            tone={overageOverview.failedSettlementsCount > 0 ? 'warn' : undefined}
+            accent={overageOverview.failedSettlementsCount > 0 ? 'amber' : 'neutral'}
+            note="Failed or indeterminate invoice item operations"
+          />
+        </div>
+
+        {overageOverview.exhaustedAccountIds.length > 0 ? (
+          <div style={{ marginBottom: '1.5rem' }}>
+            <h3 style={{ fontSize: '.9rem', fontWeight: 600, color: '#fca5a5', marginBottom: '.5rem' }}>
+              Exhausted spending caps ({overageOverview.exhaustedAccountIds.length})
+            </h3>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead><tr><th>Workspace</th><th>Account #</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody>
+                  {overageOverview.exhaustedAccountIds.map((accId) => {
+                    const info = nameMap.get(accId);
+                    return (
+                      <tr key={accId}>
+                        <td><Link href={`/admin/accounts/${accId}?tab=overage`} className={styles.rowLink}>{info ? accountDisplayName(info) : accId.slice(0, 8)}</Link></td>
+                        <td className={styles.muted}>{info?.account_number ?? '—'}</td>
+                        <td><span className={`${styles.pill} ${styles.bad}`}>Cap exhausted</span></td>
+                        <td><Link href={`/admin/accounts/${accId}?tab=overage`} className={styles.rowLink}>View usage &amp; adjust cap →</Link></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+
+        {overageOverview.recentSettlements.length > 0 ? (
+          <div>
+            <h3 style={{ fontSize: '.9rem', fontWeight: 600, marginBottom: '.5rem' }}>
+              Recent overage settlements ({overageOverview.recentSettlements.length})
+            </h3>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead><tr><th>Workspace</th><th>Period end</th><th>Closed at</th><th>Chargeable amount</th><th>State</th><th>Action</th></tr></thead>
+                <tbody>
+                  {overageOverview.recentSettlements.map((s) => {
+                    const info = nameMap.get(s.accountId);
+                    return (
+                      <tr key={s.id}>
+                        <td><Link href={`/admin/accounts/${s.accountId}?tab=overage`} className={styles.rowLink}>{info ? accountDisplayName(info) : s.accountId.slice(0, 8)}</Link></td>
+                        <td className={styles.muted}>{fmtDate(s.periodEnd)}</td>
+                        <td className={styles.muted}>{fmtDate(s.closedAt)}</td>
+                        <td><strong>{usd(s.chargeableCents / 100)}</strong></td>
+                        <td><span className={`${styles.pill} ${s.state === 'settled' ? styles.good : s.state === 'failed' ? styles.bad : styles.warn}`}>{s.state}</span></td>
+                        <td><Link href={`/admin/accounts/${s.accountId}?tab=overage`} className={styles.rowLink}>Inspect →</Link></td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        ) : null}
+      </section>
+
+      {/* Google Local Services Ads (LSA) Overview */}
+      <section className={styles.panel} id="google-lsa-overview">
+        {(() => {
+          const depletedWallets = lsaOverview.wallets.filter((w) => w.balanceDollars <= w.thresholdDollars);
+          return (
+            <>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                <div>
+                  <h2 className={styles.panelTitle} style={{ margin: 0 }}>Google Local Services Ads (LSA) platform overview</h2>
+                  <p className={styles.muted} style={{ margin: '0.2rem 0 0 0', fontSize: '.8rem' }}>
+                    Cross-contractor aggregated LSA click spend, lead delivery metrics, and pre-funded ad wallet balances.
+                  </p>
+                </div>
+                <span className={`${styles.pill} ${depletedWallets.length > 0 ? styles.bad : styles.good}`}>
+                  {lsaOverview.activeConnectionsCount} connected account{lsaOverview.activeConnectionsCount === 1 ? '' : 's'}
+                </span>
+              </div>
+
+              <div className={styles.cardGrid} style={{ marginBottom: '1.25rem' }}>
+                <StatCard
+                  label="Total 30-day LSA spend"
+                  value={usd(lsaOverview.totalSpendDollars)}
+                  accent="emerald"
+                  note="Direct Google Ads campaign spend"
+                />
+                <StatCard
+                  label="Total leads generated"
+                  value={lsaOverview.totalLeadsCount.toLocaleString('en-US')}
+                  accent="indigo"
+                  note="Verified contractor customer inquiries"
+                />
+                <StatCard
+                  label="Depleted ad wallets"
+                  value={depletedWallets.length.toLocaleString('en-US')}
+                  tone={depletedWallets.length > 0 ? 'bad' : undefined}
+                  accent={depletedWallets.length > 0 ? 'rose' : 'emerald'}
+                  note={depletedWallets.length > 0 ? 'Below auto-refill threshold' : `All ${lsaOverview.activeWalletsCount} contractor balances funded`}
+                />
+              </div>
+
+              {depletedWallets.length > 0 ? (
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <h3 style={{ fontSize: '.9rem', fontWeight: 600, color: '#fca5a5', marginBottom: '.5rem' }}>
+                    Wallets requiring attention / refill ({depletedWallets.length})
+                  </h3>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead><tr><th>Contractor</th><th>Current balance</th><th>Auto-refill threshold</th><th>Refill amount</th><th>Status</th><th>Action</th></tr></thead>
+                      <tbody>
+                        {depletedWallets.map((w) => (
+                          <tr key={w.accountId}>
+                            <td><Link href={`/admin/accounts/${w.accountId}?tab=ads`} className={styles.rowLink}>{w.businessName || w.accountId.slice(0, 8)}</Link></td>
+                            <td><strong style={{ color: '#fca5a5' }}>{usd(w.balanceDollars)}</strong></td>
+                            <td className={styles.muted}>{usd(w.thresholdDollars)}</td>
+                            <td>{usd(w.refillDollars)}</td>
+                            <td><span className={`${styles.pill} ${styles.bad}`}>{w.status}</span></td>
+                            <td><Link href={`/admin/accounts/${w.accountId}?tab=ads`} className={styles.rowLink}>Manage wallet →</Link></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+
+              {lsaOverview.connections.length > 0 ? (
+                <div>
+                  <h3 style={{ fontSize: '.9rem', fontWeight: 600, marginBottom: '.5rem' }}>
+                    Active Google LSA accounts ({lsaOverview.connections.length})
+                  </h3>
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead><tr><th>Contractor</th><th>Customer ID</th><th>Account name</th><th>Mode</th><th>Last synced</th><th>Action</th></tr></thead>
+                      <tbody>
+                        {lsaOverview.connections.map((c) => (
+                          <tr key={c.accountId}>
+                            <td><Link href={`/admin/accounts/${c.accountId}?tab=ads`} className={styles.rowLink}>{c.businessName || c.accountId.slice(0, 8)}</Link></td>
+                            <td><code>{c.customerId || '—'}</code></td>
+                            <td className={styles.muted}>{c.customerName || '—'}</td>
+                            <td><span className={`${styles.pill} ${styles.neutral}`}>{c.campaignMode || 'managed'}</span></td>
+                            <td className={styles.muted}>{c.lastSyncAt ? fmtDate(c.lastSyncAt) : 'Never'}</td>
+                            <td><Link href={`/admin/accounts/${c.accountId}?tab=ads`} className={styles.rowLink}>View ads →</Link></td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          );
+        })()}
+      </section>
+
     </>
   );
 }

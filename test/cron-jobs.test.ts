@@ -218,4 +218,27 @@ describe('extracting logical failure reason from cron summaries', () => {
       })
     ).toBe('appointment-reminders reported logical failures (1/1 candidates failed)');
   });
+
+  it('extracts numeric failures count and breakdown for worker crons', async () => {
+    const { extractLogicalFailureReason } = await import('@/lib/cron-runs');
+    expect(
+      extractLogicalFailureReason('sms-delivery', {
+        requested: 20,
+        claimed: 6,
+        failed: 2,
+        indeterminate: 4,
+        failures: 6,
+      })
+    ).toBe('sms-delivery reported logical failures (2 items failed) (indeterminate=4)');
+
+    expect(
+      extractLogicalFailureReason('voice-number-reconciliation', {
+        considered: 25,
+        verified: 20,
+        failures: 5,
+        providerErrors: 3,
+        databaseErrors: 2,
+      })
+    ).toBe('voice-number-reconciliation reported logical failures (5 failure(s)) (providerErrors=3, databaseErrors=2)');
+  });
 });

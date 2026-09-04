@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import styles from '../../admin.module.css';
 
-export type AccountTabId = 'overview' | 'billing' | 'messages' | 'support' | 'staff' | 'all';
+export type AccountTabId = 'overview' | 'billing' | 'api' | 'messages' | 'support' | 'staff' | 'all';
 
 export interface AccountTab {
   id: AccountTabId;
@@ -17,6 +17,7 @@ export default function AccountDetailView({
   defaultTab = 'overview',
   overviewPanel,
   billingPanel,
+  apiPanel,
   messagesPanel,
   supportPanel,
   staffPanel,
@@ -26,6 +27,7 @@ export default function AccountDetailView({
   defaultTab?: AccountTabId;
   overviewPanel: React.ReactNode;
   billingPanel: React.ReactNode;
+  apiPanel?: React.ReactNode;
   messagesPanel: React.ReactNode;
   supportPanel: React.ReactNode;
   staffPanel: React.ReactNode;
@@ -36,7 +38,7 @@ export default function AccountDetailView({
   useEffect(() => {
     const handleHash = () => {
       const hash = window.location.hash.replace('#', '') as AccountTabId;
-      if (['overview', 'billing', 'messages', 'support', 'staff', 'all'].includes(hash)) {
+      if (['overview', 'billing', 'api', 'messages', 'support', 'staff', 'all'].includes(hash)) {
         setActiveTab(hash);
       }
     };
@@ -82,6 +84,9 @@ export default function AccountDetailView({
         </div>
         <div style={{ display: activeTab === 'billing' ? 'block' : 'none' }}>
           {billingPanel}
+        </div>
+        <div style={{ display: activeTab === 'api' ? 'block' : 'none' }}>
+          {apiPanel}
         </div>
         <div style={{ display: activeTab === 'messages' ? 'block' : 'none' }}>
           {messagesPanel}

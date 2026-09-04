@@ -1,9 +1,11 @@
 import { requireAdmin } from '@/lib/auth';
+import { staffCan } from '@/lib/staff';
 import {
   loadAdminBillingOperations,
   type BillingOperationsAvailability,
   type BillingOperationsLedger,
 } from '@/lib/admin-billing-operations';
+import { RequeueDeadLettersButton } from './RequeueDeadLettersButton';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -68,7 +70,8 @@ export default async function AdminBillingOperationsPage() {
   // Layout authorization is repeated intentionally, as on the other admin
   // pages: this binds the cross-workspace service-role read to a current,
   // active staff session at the point where the data is requested.
-  const { admin } = await requireAdmin();
+  const { admin, staff } = await requireAdmin();
+  const canManageOps = staffCan(staff, 'ops.manage');
   const { ledgers } = await loadAdminBillingOperations(admin);
   const now = new Date();
   const notInstalled = ledgers.filter((ledger) => ledger.availability === 'not_installed').length;
@@ -77,11 +80,10 @@ export default async function AdminBillingOperationsPage() {
   return (
     <>
       <header className={styles.pageHead}>
-        <p className={styles.eyebrow}>Read-only readiness</p>
+        <p className={styles.eyebrow}>Readiness &amp; Operations</p>
         <h1 className={styles.title}>Billing operations</h1>
         <p className={styles.lead}>
-          Coarse operational health for the dark billing ledgers. This page reads counts and ages only; it does not
-          activate a webhook or worker, retry work, requeue failures, or expose provider payloads and customer data.
+          Operational health and dead-letter queue resolution for the billing ledgers. Staff with ops permissions can safely requeue stalled and dead-lettered background tasks after verification.
         </p>
       </header>
 
@@ -119,6 +121,7 @@ export default async function AdminBillingOperationsPage() {
             <tbody>
               {ledgers.map((ledger) => {
                 const availability = AVAILABILITY[ledger.availability];
+                const deadLetterCount = ledger.metrics.find((m) => m.code === 'dead_letter')?.count ?? 0;
                 return (
                   <tr key={ledger.id}>
                     <td style={{ maxWidth: '31ch' }}>
@@ -130,7 +133,16 @@ export default async function AdminBillingOperationsPage() {
                     <td>
                       <span className={`${styles.pill} ${styles[availability.tone]}`}>{availability.label}</span>
                     </td>
-                    <td style={{ minWidth: '19rem' }}><Metrics ledger={ledger} /></td>
+                    <td style={{ minWidth: '19rem' }}>
+                      <Metrics ledger={ledger} />
+                      {canManageOps && deadLetterCount > 0 ? (
+                        <RequeueDeadLettersButton
+                          ledgerId={ledger.id}
+                          ledgerLabel={ledger.label}
+                          deadLetterCount={deadLetterCount}
+                        />
+                      ) : null}
+                    </td>
                     <td style={{ whiteSpace: 'nowrap' }}>
                       {ledger.availability === 'installed' ? (
                         <span title={ledger.oldestOpenAt ? new Date(ledger.oldestOpenAt).toLocaleString('en-US') : undefined}>

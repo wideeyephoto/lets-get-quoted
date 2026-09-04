@@ -601,7 +601,7 @@ export async function executeOperatorTool(
 
       // Verify staff authority: mutating callers must hold ops.manage permission
       if (action === 'replay_and_resolve') {
-        if (ctx.staff && !staffCan(ctx.staff, 'ops.manage')) {
+        if (ctx.staff && !staffCan({ role: ctx.staff.role, active: ctx.staff.active ?? true }, 'ops.manage')) {
           return {
             data: {
               success: false,
@@ -618,7 +618,7 @@ export async function executeOperatorTool(
             ctx.isFounderApproved ||
             ctx.source === 'founder_cli' ||
             ctx.source === 'cron' ||
-            (ctx.staff ? staffCan(ctx.staff, 'ops.manage') : true),
+            (ctx.staff ? staffCan({ role: ctx.staff.role, active: ctx.staff.active ?? true }, 'ops.manage') : true),
         });
 
         if (!safety.allowed) {

@@ -26,6 +26,7 @@ import { getApmSummary, getRecentExceptions } from '@/lib/apm-telemetry';
 import { runSyntheticUptimeProbe } from '@/lib/uptime-monitoring';
 import { getOnCallRoster, getRecentPagingEvents } from '@/lib/on-call-paging';
 import { dispatchTestPageAction } from './actions';
+import { RunCronButton } from './RunCronButton';
 import styles from '../admin.module.css';
 
 const PROVIDER_LABEL: Record<SmsProviderId, string> = {
@@ -438,6 +439,7 @@ export default async function AdminHealthPage({
                 <th>Last success</th>
                 <th>Took</th>
                 <th>What it reported</th>
+                {canManageOps ? <th>Action</th> : null}
               </tr>
             </thead>
             <tbody>
@@ -475,6 +477,11 @@ export default async function AdminHealthPage({
                         </div>
                       ) : null}
                     </td>
+                    {canManageOps ? (
+                      <td style={{ whiteSpace: 'nowrap' }}>
+                        <RunCronButton job={spec.job} jobLabel={spec.label} compact />
+                      </td>
+                    ) : null}
                   </tr>
                 );
               })}

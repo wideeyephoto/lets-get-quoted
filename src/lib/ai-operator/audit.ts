@@ -1,15 +1,100 @@
 import { randomUUID } from 'node:crypto';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Permission } from '@/lib/staff';
+import { createAdminClient } from '@/lib/auth';
 import type {
   OperatorAuditLogEntry,
   OperatorHitlActionRequest,
   OperatorCategory,
   OperatorActionSeverity,
+  HitlActionStatus,
 } from './types';
 
 // In-memory runtime stores for audit trails and HITL queues
-// (Can be backed by Supabase `ai_operator_logs` / `ai_operator_action_requests` tables)
+// Backed by Supabase `ai_operator_logs` and `ai_operator_action_requests` tables
 const auditLogsStore: OperatorAuditLogEntry[] = [];
 const hitlActionStore: Map<string, OperatorHitlActionRequest> = new Map();
+
+function getAdminClientSafe(provided?: SupabaseClient): SupabaseClient | null {
+  if (provided) return provided;
+  try {
+    if (
+      process.env.NEXT_PUBLIC_SUPABASE_URL &&
+      process.env.SUPABASE_SERVICE_ROLE_KEY
+    ) {
+      return createAdminClient();
+    }
+  } catch {
+    // safe fallback to in-memory store in unit tests or when unconfigured
+  }
+  return null;
+}
+
+/**
+ * Returns the exact permission an operator action requires.
+ * Prevents privilege escalation where an operator with ops.manage
+ * could approve a refund, tier change, or suspension they lack authority for.
+ */
+export function permissionForHitlAction(actionType: string): Permission {
+  switch (actionType) {
+    case 'issue_subscription_refund':
+      return 'money.refund';
+    case 'modify_account_tier':
+    case 'waive_platform_fee':
+    case 'extend_contractor_trial':
+      return 'money.plan';
+    case 'suspend_account_access':
+      return 'account.enforce';
+    case 'force_payout_settlement':
+    case 'trigger_dunning_escalation':
+      return 'money.payouts';
+    case 'trigger_contractor_lifecycle_nudge':
+    case 'send_onboarding_reminder':
+    case 'triage_support_case':
+      return 'account.support';
+    case 'replay_failed_webhook':
+    case 'replay_failed_webhooks':
+    case 'reassign_sms_number':
+    case 'execute_database_mutation':
+    default:
+      return 'ops.manage';
+  }
+}
+
+function mapDbToHitlAction(row: Record<string, unknown>): OperatorHitlActionRequest {
+  return {
+    id: String(row.id),
+    category: row.category as OperatorCategory,
+    title: String(row.title),
+    description: String(row.description),
+    actionType: String(row.action_type),
+    payload: (row.payload as Record<string, unknown>) || {},
+    status: row.status as HitlActionStatus,
+    createdAt: String(row.created_at),
+    expiresAt: row.expires_at ? String(row.expires_at) : undefined,
+    resolvedAt: row.resolved_at ? String(row.resolved_at) : undefined,
+    resolvedBy: row.resolved_by ? String(row.resolved_by) : undefined,
+    resolutionReason: row.resolution_reason ? String(row.resolution_reason) : undefined,
+    isFinancialMutation: Boolean(row.is_financial_mutation),
+    requiredRole: (row.required_role as 'founder' | 'admin' | 'staff') || 'admin',
+  };
+}
+
+function mapDbToAuditLog(row: Record<string, unknown>): OperatorAuditLogEntry {
+  return {
+    id: String(row.id),
+    timestamp: String(row.timestamp),
+    category: row.category as OperatorCategory,
+    actionName: String(row.action_name),
+    severity: row.severity as OperatorActionSeverity,
+    toolName: row.tool_name ? String(row.tool_name) : undefined,
+    inputPayload: row.input_payload,
+    outputResult: row.output_result,
+    reasoningSummary: String(row.reasoning_summary),
+    accountId: row.account_id ? String(row.account_id) : undefined,
+    status: row.status as 'success' | 'failure' | 'queued_hitl',
+  };
+}
 
 
 /**
@@ -97,6 +182,7 @@ export function recordOperatorAudit(
     id?: string;
     timestamp?: string;
   },
+  supabase?: SupabaseClient,
 ): OperatorAuditLogEntry {
   const fullEntry: OperatorAuditLogEntry = {
     id: entry.id || `audit-${randomUUID()}`,
@@ -115,6 +201,33 @@ export function recordOperatorAudit(
   auditLogsStore.unshift(fullEntry);
   if (auditLogsStore.length > 500) {
     auditLogsStore.pop();
+  }
+
+  const client = getAdminClientSafe(supabase);
+  if (client) {
+    try {
+      const q = client.from('ai_operator_logs');
+      if (typeof q?.insert === 'function') {
+        q.insert({
+          id: fullEntry.id,
+          timestamp: fullEntry.timestamp,
+          category: fullEntry.category,
+          action_name: fullEntry.actionName,
+          severity: fullEntry.severity,
+          tool_name: fullEntry.toolName,
+          input_payload: fullEntry.inputPayload,
+          output_result: fullEntry.outputResult,
+          reasoning_summary: fullEntry.reasoningSummary,
+          account_id: fullEntry.accountId,
+          status: fullEntry.status,
+        }).then(
+          () => {},
+          (err: any) => console.warn('[ai-operator] audit persist error:', err?.message || err),
+        );
+      }
+    } catch {
+      // Mock client or unconfigured
+    }
   }
 
   return fullEntry;
@@ -148,6 +261,7 @@ export function createHitlAction(
     id?: string;
     expiresInHours?: number;
   },
+  supabase?: SupabaseClient,
 ): OperatorHitlActionRequest {
   const id = params.id || `hitl-${randomUUID()}`;
   const now = new Date();
@@ -165,9 +279,38 @@ export function createHitlAction(
     status: 'pending',
     createdAt: now.toISOString(),
     expiresAt,
+    isFinancialMutation: params.isFinancialMutation,
+    requiredRole: params.requiredRole,
   };
 
   hitlActionStore.set(id, request);
+
+  const client = getAdminClientSafe(supabase);
+  if (client) {
+    try {
+      const q = client.from('ai_operator_action_requests');
+      if (typeof q?.insert === 'function') {
+        q.insert({
+          id: request.id,
+          category: request.category,
+          title: request.title,
+          description: request.description,
+          action_type: request.actionType,
+          payload: request.payload,
+          status: request.status,
+          created_at: request.createdAt,
+          expires_at: request.expiresAt,
+          is_financial_mutation: Boolean(params.isFinancialMutation),
+          required_role: params.requiredRole || 'admin',
+        }).then(
+          () => {},
+          (err: any) => console.warn('[ai-operator] hitl persist error:', err?.message || err),
+        );
+      }
+    } catch {
+      // Mock client or unconfigured
+    }
+  }
 
   // Log in audit trail
   recordOperatorAudit({
@@ -177,16 +320,46 @@ export function createHitlAction(
     reasoningSummary: params.description,
     inputPayload: params.payload,
     status: 'queued_hitl',
-  });
+  }, client ?? undefined);
 
   return request;
 }
 
 /**
- * Retrieves a HITL action by its ID
+ * Retrieves a HITL action by its ID (synchronous from memory)
  */
 export function getHitlActionById(actionId: string): OperatorHitlActionRequest | undefined {
   return hitlActionStore.get(actionId);
+}
+
+/**
+ * Retrieves a HITL action by its ID, checking DB first then falling back to memory
+ */
+export async function getHitlActionByIdAsync(
+  actionId: string,
+  supabase?: SupabaseClient,
+): Promise<OperatorHitlActionRequest | undefined> {
+  const memory = hitlActionStore.get(actionId);
+  const client = getAdminClientSafe(supabase);
+  if (!client) return memory;
+
+  try {
+    const { data, error } = await client
+      .from('ai_operator_action_requests')
+      .select('*')
+      .eq('id', actionId)
+      .maybeSingle();
+
+    if (!error && data) {
+      const parsed = mapDbToHitlAction(data as Record<string, unknown>);
+      hitlActionStore.set(actionId, parsed);
+      return parsed;
+    }
+  } catch {
+    // fallback to memory
+  }
+
+  return memory;
 }
 
 /**
@@ -194,7 +367,7 @@ export function getHitlActionById(actionId: string): OperatorHitlActionRequest |
  */
 export function listPendingHitlActions(now = new Date()): OperatorHitlActionRequest[] {
   const actions = Array.from(hitlActionStore.values());
-  
+
   // Sweep for expired pending items
   for (const action of actions) {
     if (action.status === 'pending' && isHitlActionExpired(action, now)) {
@@ -215,6 +388,48 @@ export function listPendingHitlActions(now = new Date()): OperatorHitlActionRequ
 }
 
 /**
+ * Lists all pending HITL action requests from the database with in-memory fallback
+ */
+export async function listPendingHitlActionsAsync(
+  now = new Date(),
+  supabase?: SupabaseClient,
+): Promise<OperatorHitlActionRequest[]> {
+  const client = getAdminClientSafe(supabase);
+  if (!client) return listPendingHitlActions(now);
+
+  try {
+    const { data, error } = await client
+      .from('ai_operator_action_requests')
+      .select('*')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      const items: OperatorHitlActionRequest[] = [];
+      for (const row of data) {
+        const action = mapDbToHitlAction(row as Record<string, unknown>);
+        if (isHitlActionExpired(action, now)) {
+          action.status = 'expired';
+          client
+            .from('ai_operator_action_requests')
+            .update({ status: 'expired' })
+            .eq('id', action.id)
+            .then(() => {}, () => {});
+        } else {
+          items.push(action);
+        }
+        hitlActionStore.set(action.id, action);
+      }
+      return items;
+    }
+  } catch {
+    // fallback to memory
+  }
+
+  return listPendingHitlActions(now);
+}
+
+/**
  * Resolves (approves or rejects) a pending HITL action
  */
 export function resolveHitlAction(
@@ -223,6 +438,7 @@ export function resolveHitlAction(
   resolver: string,
   reason?: string,
   now = new Date(),
+  supabase?: SupabaseClient,
 ): { success: boolean; action?: OperatorHitlActionRequest; error?: string } {
   const action = hitlActionStore.get(actionId);
   if (!action) {
@@ -249,14 +465,39 @@ export function resolveHitlAction(
   action.resolvedBy = resolver;
   action.resolutionReason = reason;
 
-  recordOperatorAudit({
-    category: action.category,
-    actionName: `HITL Action ${decision.toUpperCase()}: ${action.title}`,
-    severity: 'requires_hitl_approval',
-    reasoningSummary: reason || `Action was ${decision} by ${resolver}.`,
-    outputResult: { decision, resolvedBy: resolver },
-    status: 'success',
-  });
+  const client = getAdminClientSafe(supabase);
+  if (client) {
+    try {
+      const q = client.from('ai_operator_action_requests');
+      if (typeof q?.update === 'function') {
+        q.update({
+          status: decision,
+          resolved_at: action.resolvedAt,
+          resolved_by: action.resolvedBy,
+          resolution_reason: action.resolutionReason,
+        })
+          .eq('id', actionId)
+          .then(
+            () => {},
+            (err: any) => console.warn('[ai-operator] resolve persist error:', err?.message || err),
+          );
+      }
+    } catch {
+      // Mock client or unconfigured
+    }
+  }
+
+  recordOperatorAudit(
+    {
+      category: action.category,
+      actionName: `HITL Action ${decision.toUpperCase()}: ${action.title}`,
+      severity: 'requires_hitl_approval',
+      reasoningSummary: reason || `Action was ${decision} by ${resolver}.`,
+      outputResult: { decision, resolvedBy: resolver },
+      status: 'success',
+    },
+    client ?? undefined,
+  );
 
   return { success: true, action };
 }

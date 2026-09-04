@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { verifyVoiceReceiptAuthorization, verifyVoiceToolToken } from '@/lib/voice/auth';
-import { sendCallerVoiceBookingLinkSms, sendCallerVoiceBookingConfirmationSms } from '@/lib/sms';
+import { sendCallerVoiceBookingLinkSms, sendCallerVoiceBookingConfirmationSms, ensureSmsConsentBaseline } from '@/lib/sms';
 import { getAvailableBookingDays, claimBookingHold, createBooking } from '@/lib/booking';
 import { resolveJurisdiction } from '@/lib/location-context/jurisdiction-resolver';
 import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine';
@@ -98,6 +98,10 @@ export async function POST(request: Request) {
     } else if (site?.subdomain) {
       bookingUrl = `https://${site.subdomain}.letsgetquoted.com/quote`;
     }
+
+    await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back').catch((err) => {
+      console.warn('[swaig:send_booking_link] Failed to establish caller SMS consent baseline:', err);
+    });
 
     const sendResult = await sendCallerVoiceBookingLinkSms({
       accountId,
@@ -288,6 +292,10 @@ export async function POST(request: Request) {
 
     // Create the booking lead and pending job in database
     try {
+      await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back').catch((err) => {
+        console.warn('[swaig:book_appointment_slot] Failed to establish caller SMS consent baseline:', err);
+      });
+
       await createBooking(admin, accountId, {
         name: callerName,
         phone: callerPhone,

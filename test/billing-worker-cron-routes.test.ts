@@ -386,7 +386,7 @@ describe('dark billing worker route gates', () => {
     expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
-      error: null,
+      error: expect.stringContaining('reported logical failures'),
     }));
   });
 
@@ -518,7 +518,7 @@ describe('dark billing worker route gates', () => {
     expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
-      error: null,
+      error: expect.stringContaining('reported logical failures'),
     }));
   });
 
@@ -661,7 +661,7 @@ describe('dark billing worker route gates', () => {
     expect(builder.update).toHaveBeenCalledWith(expect.objectContaining({
       ok: false,
       summary: expect.objectContaining({ worker_errors: 1, failures: 1 }),
-      error: null,
+      error: expect.stringContaining('reported logical failures'),
     }));
   });
 });

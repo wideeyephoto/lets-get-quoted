@@ -239,7 +239,7 @@ export interface SupportCaseTriageResult {
 export interface OperatorExecutionContext {
   supabase: SupabaseClient;
   adminUserId?: string;
-  source: 'cron' | 'founder_cli' | 'admin_dashboard' | 'telegram' | 'webhook';
+  source: 'cron' | 'founder_cli' | 'admin_dashboard' | 'telegram' | 'webhook' | 'ai_operator_hitl';
   staff?: {
     role: any;
     active: boolean;

@@ -345,6 +345,11 @@ export function classifySmsDeliveryFailure(
         code: 'sms_sender_opted_out', retryable: false, providerRejection: false,
       });
     }
+    if (error.rpcCode === 'P5104') {
+      return Object.freeze({
+        code: 'sms_delivery_expired', retryable: false, providerRejection: false,
+      });
+    }
     if (error.rpcCode === 'P5105') {
       return Object.freeze({
         code: 'sms_payment_transition_superseded', retryable: false, providerRejection: false,

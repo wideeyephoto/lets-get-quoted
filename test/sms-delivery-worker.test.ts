@@ -220,6 +220,7 @@ describe('durable SMS delivery worker', () => {
     ['P5101', 'sms_consent_not_current', false],
     ['P5102', 'sms_sender_not_ready', true],
     ['P5103', 'sms_sender_opted_out', false],
+    ['P5104', 'sms_delivery_expired', false],
     ['P5105', 'sms_payment_transition_superseded', false],
   ] as const)(
     'keeps final-boundary readiness failure %s before provider egress',

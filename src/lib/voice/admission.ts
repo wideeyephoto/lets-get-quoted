@@ -24,6 +24,7 @@ import {
 } from '@/lib/voice/grounding';
 import { recordProvisionalVoiceCall } from '@/lib/voice/settlement';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { ensureSmsConsentBaseline } from '@/lib/sms';
 
 /**
  * Deciding what happens to an inbound call, with no HTTP anywhere in it.
@@ -359,6 +360,12 @@ export async function planInboundCall(
   });
 
   if (decision.outcome === 'refused') return fallback(workspace, decision.reason);
+
+  if (callerNumber && callerKind === 'customer') {
+    await ensureSmsConsentBaseline(workspace.accountId, callerNumber, 'missed_call_text_back').catch((err) => {
+      console.warn('[planInboundCall] Failed to establish caller SMS consent baseline:', err);
+    });
+  }
 
   await recordProvisionalVoiceCall(admin, {
     accountId: workspace.accountId,

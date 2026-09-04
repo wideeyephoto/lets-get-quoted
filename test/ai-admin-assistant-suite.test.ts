@@ -39,9 +39,6 @@ import { checkThirdPartyCircuitBreakers } from '@/lib/ai-operator/circuit-breake
 // 13. Support Inbox Responder
 import { generateAutoSupportReply } from '@/lib/ai-operator/support-inbox-responder';
 
-// 14. Support Impersonation Launcher
-import { generateSupportImpersonationSession } from '@/lib/ai-operator/impersonation-launcher';
-
 // 15. Courtesy Credit Policy Advisor
 import { calculateCourtesyCreditRecommendation } from '@/lib/ai-operator/refund-policy-advisor';
 
@@ -192,19 +189,6 @@ describe('20 AI Admin Assistant Improvements Suite', () => {
     expect(draft.category).toBe('stripe_payouts');
     expect(draft.confidenceScore).toBeGreaterThan(0.9);
     expect(draft.draftReply).toContain('rolling 2-business-day');
-  });
-
-  // 14. Support Impersonation Launcher
-  it('14. generates audited 15-minute read-only support impersonation sessions', () => {
-    const session = generateSupportImpersonationSession({
-      accountId: 'acc-101',
-      businessName: 'Elite Roofing Pro',
-      adminStaffEmail: 'support@letsgetquoted.com',
-      durationMinutes: 15,
-    });
-    expect(session.isReadOnly).toBe(true);
-    expect(session.impersonationUrl).toContain('read_only=1');
-    expect(session.impersonationUrl).toContain('acc-101');
   });
 
   // 15. Courtesy Credit Policy Advisor

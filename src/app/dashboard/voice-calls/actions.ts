@@ -1,9 +1,11 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOfficeContext } from '@/lib/auth';
+import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { getOrCreateSite } from '@/lib/sites';
 import { displayPhone } from '@/lib/phone';
+import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
+import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
 import { createLead } from '@/lib/leads';
 import { detectCallEmergency } from '@/lib/voice/triage';
 import type { VoiceCallDisposition } from '@/lib/voice/call-workspace';
@@ -246,22 +248,6 @@ export async function toggleWebsitePhoneFunnelAction(publishAiNumber: boolean): 
   const existingContent = (site.content as Record<string, unknown> | null) || {};
   let targetPhone = site.phone;
 
-  if (publishAiNumber) {
-    // If activating phone calls funnel, ensure we have the AI receptionist dedicated number
-    const { data: account } = await supabase
-      .from('accounts')
-      .select('call_tracking_number, alert_phone')
-      .eq('id', accountId)
-      .maybeSingle();
-
-    const dedicatedNumber = account?.call_tracking_number || null;
-    if (dedicatedNumber) {
-      targetPhone = displayPhone(dedicatedNumber);
-    } else if (!targetPhone && account?.alert_phone) {
-      targetPhone = displayPhone(account.alert_phone);
-    }
-  }
-
   const updatedContent: Record<string, unknown> = {
     ...existingContent,
     phonePublic: publishAiNumber,
@@ -272,8 +258,50 @@ export async function toggleWebsitePhoneFunnelAction(publishAiNumber: boolean): 
     updated_at: new Date().toISOString(),
   };
 
-  if (targetPhone) {
+  if (publishAiNumber) {
+    const admin = createAdminClient();
+    const entitlement = await loadVoiceEntitlement(admin, accountId);
+    if (!entitlement.available || !entitlement.enabled) {
+      throw new Error('AI Voice is not included in this workspace or an active add-on.');
+    }
+
+    const { data: voiceSettings } = await admin
+      .from('voice_settings')
+      .select('status')
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (voiceSettings?.status !== 'active') {
+      throw new Error('AI Voice must be active before publishing the number on your website.');
+    }
+
+    const route = await loadVoiceRouteReadiness(admin, accountId);
+    if (route.kind !== 'ready') {
+      throw new Error('The AI Voice phone number route is not ready.');
+    }
+
+    const { data: account } = await admin
+      .from('accounts')
+      .select('call_tracking_number')
+      .eq('id', accountId)
+      .maybeSingle();
+
+    const dedicatedNumber = account?.call_tracking_number || null;
+    if (!dedicatedNumber) {
+      throw new Error('No dedicated AI Voice phone number configured for this workspace.');
+    }
+
+    targetPhone = displayPhone(dedicatedNumber);
+    if (site.phone && site.phone !== targetPhone && !existingContent.originalPhone) {
+      updatedContent.originalPhone = site.phone;
+    }
     updatePayload.phone = targetPhone;
+  } else {
+    // If disabling AI number publishing, restore the original phone number if one was saved
+    if (existingContent.originalPhone) {
+      targetPhone = String(existingContent.originalPhone);
+      updatePayload.phone = targetPhone;
+    }
   }
 
   const { error: updateError } = await supabase

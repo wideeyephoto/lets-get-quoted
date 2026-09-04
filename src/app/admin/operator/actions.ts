@@ -1,12 +1,13 @@
 'use server';
 
-import { requireAdmin, requirePermission } from '@/lib/auth';
+import { requireAdmin, requirePermission, requireMfaPermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import {
   runAutonomousOperatorCycle,
   askAiOperator,
   executeHitlDecision,
 } from '@/lib/ai-operator/engine';
+import { permissionForHitlAction, getHitlActionByIdAsync } from '@/lib/ai-operator/audit';
 import { triageSupportCase, diagnoseContractorOnboarding } from '@/lib/ai-operator/support-copilot';
 import { executeOperatorTool } from '@/lib/ai-operator/tools';
 import { dispatchExecutiveBriefingDigest } from '@/lib/ai-operator/digest';
@@ -28,14 +29,46 @@ export async function resolveHitlActionServerAction(
   reason?: string,
 ) {
   const context = await requirePermission('ops.manage');
-  const result = executeHitlDecision(actionId, decision, context.adminEmail, reason);
+  const action = await getHitlActionByIdAsync(actionId, context.admin);
+  if (!action) {
+    throw new Error(`Action "${actionId}" not found or already purged.`);
+  }
+
+  // Determine the exact permission this action needs, preventing ops.manage privilege escalation
+  const requiredPermission = permissionForHitlAction(action.actionType);
+
+  // Require MFA on high-impact money operations (refunds, payouts)
+  if (requiredPermission === 'money.refund' || requiredPermission === 'money.payouts') {
+    await requireMfaPermission(requiredPermission);
+  } else if (requiredPermission !== 'ops.manage') {
+    await requirePermission(requiredPermission);
+  }
+
+  const result = await executeHitlDecision(
+    actionId,
+    decision,
+    context.adminEmail,
+    reason,
+    {
+      supabase: context.admin,
+      staff: context.staff,
+      adminUserId: context.adminEmail,
+    },
+  );
+
   await logAdminAction(context.admin, context, {
     action: 'operator.hitl_decision',
     targetType: 'operator_action',
     targetId: actionId,
     reason: reason ?? `Decision: ${decision}`,
-    meta: { decision },
+    meta: {
+      decision,
+      actionType: action.actionType,
+      requiredPermission,
+      executionResult: result.executionResult,
+    },
   });
+
   return result;
 }
 

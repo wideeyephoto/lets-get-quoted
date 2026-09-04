@@ -22,6 +22,17 @@ import { ACCOUNT_FLAGS } from '@/lib/account-flags';
 import { listAccountMessages, messageFailed, messageKindLabel } from '@/lib/admin-messages';
 import { staffCan } from '@/lib/staff';
 import { formatPlatformFeeBps } from '@/lib/admin-plan-authority';
+import {
+  loadAdminAccountUsageAndOverage,
+  describeOverageResource,
+  formatOverageTotal,
+  formatOverageRate,
+  remainingCapMillicents,
+  formatStorageBytes,
+} from '@/lib/admin-overage';
+import { loadAccountIrreversibleWork } from '@/lib/admin-closures';
+import { loadAccountApiSurface } from '@/lib/admin-public-api';
+import { loadAccountGoogleLsa } from '@/lib/admin-google-lsa';
 
 export const dynamic = 'force-dynamic';
 
@@ -136,10 +147,22 @@ export default async function AdminAccountDetailPage({
     company_name: detail.site?.company_name ?? null,
     business_name: (a.business_name as string | null) ?? null,
   });
-  const [actions, cases, messages] = await Promise.all([
+  const [
+    actions,
+    cases,
+    messages,
+    usageOverage,
+    irreversibleWork,
+    apiSurface,
+    googleLsa,
+  ] = await Promise.all([
     listAdminActions(admin, { accountId: params.id, limit: 25 }),
     listSupportCases(admin, { accountId: params.id, limit: 10 }),
     listAccountMessages(admin, params.id, 50),
+    loadAdminAccountUsageAndOverage(admin, params.id),
+    loadAccountIrreversibleWork(admin, params.id),
+    loadAccountApiSurface(admin, params.id),
+    loadAccountGoogleLsa(admin, params.id),
   ]);
   const attachmentLinks = await Promise.all(
     detail.attachments.map(async (att) => ({
@@ -164,9 +187,15 @@ export default async function AdminAccountDetailPage({
     { id: 'overview', label: 'Overview', icon: '📑' },
     {
       id: 'billing',
-      label: 'Billing & Payments',
+      label: 'Billing & Usage',
       icon: '💳',
       badge: detail.recentPayments.length > 0 ? detail.recentPayments.length : null,
+    },
+    {
+      id: 'api',
+      label: 'API & Webhooks',
+      icon: '🔌',
+      badge: apiSurface.subscriptions.length + apiSurface.credentials.length || null,
     },
     {
       id: 'messages',
@@ -528,6 +557,462 @@ export default async function AdminAccountDetailPage({
                   </td>
                   <td>
                     <PaymentStatusPill status={p.status} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+
+  const renderUsageAndOveragePanel = () => {
+    const summary = usageOverage.summary;
+    const creditLots = usageOverage.creditLots;
+    const storage = usageOverage.storageState;
+    const seats = usageOverage.purchasedSeats;
+    const settlements = usageOverage.settlements;
+
+    const statusLabel = !summary.readable
+      ? 'UNAVAILABLE'
+      : summary.atCap
+        ? 'AT CAP'
+        : summary.enabled
+          ? 'ACTIVE'
+          : 'DISABLED';
+    const statusClass = !summary.readable
+      ? styles.warn
+      : summary.atCap
+        ? styles.bad
+        : summary.enabled
+          ? styles.good
+          : styles.neutral;
+
+    const capUsagePercent =
+      summary.capCents !== null && summary.capCents > 0
+        ? Math.min(100, Math.round((summary.totalMillicents / (summary.capCents * 1000)) * 100))
+        : null;
+    const remaining = remainingCapMillicents(summary);
+
+    return (
+      <section className={styles.panel}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.4rem' }}>
+          <h2 className={styles.panelTitle} style={{ margin: 0 }}>Usage, credits & overage</h2>
+          <span className={`${styles.pill} ${statusClass}`}>{statusLabel}</span>
+        </div>
+        <p className={styles.muted} style={{ margin: '0 0 0.75rem', fontSize: '0.76rem' }}>
+          Real-time mirror of customer-facing Plan & Usage meters, credit lots, and billing rail accruals.
+        </p>
+
+        <dl className={styles.kv}>
+          <dt>Overage rail</dt>
+          <dd>
+            {summary.enabled ? (
+              <span className={`${styles.pill} ${styles.good}`}>Active & authorized</span>
+            ) : (
+              <span className={`${styles.pill} ${styles.neutral}`}>Disabled</span>
+            )}
+          </dd>
+          <dt>Current period</dt>
+          <dd>
+            {summary.periodStart && summary.periodEnd
+              ? `${fmtDate(summary.periodStart)} – ${fmtDate(summary.periodEnd)}`
+              : '—'}
+          </dd>
+          <dt>Monthly cap</dt>
+          <dd>
+            <strong>{summary.capCents !== null ? usdCents(summary.capCents) : 'No cap'}</strong>
+            {summary.capCents !== null && (
+              <span className={styles.muted}>
+                {' '}({usdCents(summary.totalMillicents / 1000)} accrued{capUsagePercent !== null ? `, ${capUsagePercent}% used` : ''})
+              </span>
+            )}
+          </dd>
+          <dt>Remaining cap</dt>
+          <dd>
+            {summary.capCents !== null && remaining !== null ? (
+              <strong style={{ color: summary.atCap ? '#f87171' : 'inherit' }}>
+                {usdCents(remaining / 1000)}
+              </strong>
+            ) : (
+              'Unlimited'
+            )}
+          </dd>
+        </dl>
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1.2rem 0 1rem' }} />
+
+        <h3 style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', fontWeight: 700, color: 'rgba(247,245,239,0.85)' }}>
+          Current period overage line items
+        </h3>
+        {summary.lines.length === 0 ? (
+          <p className={styles.emptyState}>No overage accrued in current period.</p>
+        ) : (
+          <div className={styles.tableWrap} style={{ marginBottom: '1rem' }}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Resource</th>
+                  <th className="num">Quantity</th>
+                  <th className="num">Rate</th>
+                  <th className="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {summary.lines.map((line) => (
+                  <tr key={line.resourceCode}>
+                    <td>
+                      <strong>{describeOverageResource(line.resourceCode)}</strong>
+                      <div className={styles.muted} style={{ fontSize: '0.72rem' }}>{line.resourceCode}</div>
+                    </td>
+                    <td className={`num ${styles.muted}`}>{line.units.toLocaleString()}</td>
+                    <td className={`num ${styles.muted}`}>
+                      {line.rateMillicents !== null ? formatOverageRate(line.rateMillicents) : '—'}
+                    </td>
+                    <td className="num" style={{ fontWeight: 600 }}>{formatOverageTotal(line.millicents)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1.2rem 0 1rem' }} />
+
+        <h3 style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', fontWeight: 700, color: 'rgba(247,245,239,0.85)' }}>
+          Credit allowances & rollover balances
+        </h3>
+        {creditLots.kind === 'ready' && creditLots.resources.length > 0 ? (
+          <div className={styles.tableWrap} style={{ marginBottom: '1rem' }}>
+            <table className={styles.table}>
+              <thead>
+                <tr>
+                  <th>Resource</th>
+                  <th className="num">Period Allowance</th>
+                  <th className="num">Used This Period</th>
+                  <th className="num">Remaining</th>
+                  <th className="num">Non-Expiring</th>
+                  <th className="num">Total Available</th>
+                  <th>Next Expiration</th>
+                </tr>
+              </thead>
+              <tbody>
+                {creditLots.resources.map((res) => (
+                  <tr key={res.resourceCode}>
+                    <td>
+                      <strong>{res.label}</strong>
+                      <div className={styles.muted} style={{ fontSize: '0.72rem' }}>{res.resourceCode}</div>
+                    </td>
+                    <td className={`num ${styles.muted}`}>
+                      {res.periodGranted !== null ? res.periodGranted.toLocaleString() : '—'}
+                    </td>
+                    <td className={`num ${styles.muted}`}>
+                      {res.periodUsed !== null ? res.periodUsed.toLocaleString() : '—'}
+                      {res.percentUsed !== null ? ` (${res.percentUsed}%)` : ''}
+                    </td>
+                    <td className={`num ${styles.muted}`}>
+                      {res.periodRemaining !== null ? res.periodRemaining.toLocaleString() : '—'}
+                    </td>
+                    <td className={`num ${styles.muted}`}>{res.nonExpiring.toLocaleString()}</td>
+                    <td className="num" style={{ fontWeight: 600 }}>{res.totalAvailable.toLocaleString()}</td>
+                    <td className={styles.muted}>{fmtDate(res.nextExpirationAt)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className={styles.emptyState}>No credit allowances or lots recorded for this account.</p>
+        )}
+
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1.2rem 0 1rem' }} />
+
+        <h3 style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', fontWeight: 700, color: 'rgba(247,245,239,0.85)' }}>
+          Workspace storage & capacity
+        </h3>
+        <dl className={styles.kv}>
+          <dt>Storage used</dt>
+          <dd>
+            {storage.bytesUsed !== null ? formatStorageBytes(storage.bytesUsed) : 'Unmeasured'}
+            {storage.limitBytes !== null ? ` / ${formatStorageBytes(storage.limitBytes)}` : ' (no limit)'}
+            {storage.bytesUsed !== null && storage.limitBytes !== null && storage.limitBytes > 0 && (
+              <span className={styles.muted}>
+                {' '}({Math.round((storage.bytesUsed / storage.limitBytes) * 100)}%)
+              </span>
+            )}
+            {storage.objectCount !== null && (
+              <span className={styles.muted}> · {storage.objectCount.toLocaleString()} objects</span>
+            )}
+          </dd>
+          <dt>Purchased seats</dt>
+          <dd>
+            {seats.crewUsers} crew seat{seats.crewUsers === 1 ? '' : 's'}, {seats.officeUsers} office seat{seats.officeUsers === 1 ? '' : 's'}
+          </dd>
+        </dl>
+
+        {settlements.length > 0 && (
+          <>
+            <div style={{ height: 1, background: 'rgba(255,255,255,0.07)', margin: '1.2rem 0 1rem' }} />
+            <h3 style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', fontWeight: 700, color: 'rgba(247,245,239,0.85)' }}>
+              Recent overage settlements
+            </h3>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
+                <thead>
+                  <tr>
+                    <th>Closed Date</th>
+                    <th>Period</th>
+                    <th className="num">Accrued</th>
+                    <th className="num">Charged</th>
+                    <th>State</th>
+                    <th>Invoice Item</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {settlements.slice(0, 5).map((s) => (
+                    <tr key={s.id}>
+                      <td className={styles.muted}>{fmtDate(s.closedAt)}</td>
+                      <td className={styles.muted}>{fmtDate(s.periodStart)} – {fmtDate(s.periodEnd)}</td>
+                      <td className={`num ${styles.muted}`}>{usdCents(s.totalMillicents / 1000)}</td>
+                      <td className="num" style={{ fontWeight: 600 }}>{usdCents(s.chargeableCents)}</td>
+                      <td>
+                        <span className={`${styles.pill} ${s.state === 'invoiced' || s.state === 'settled' ? styles.good : s.state === 'failed' ? styles.bad : styles.neutral}`}>
+                          {s.state}
+                        </span>
+                        {s.lastError && (
+                          <div style={{ fontSize: '0.7rem', color: '#f87171', marginTop: '0.2rem' }}>
+                            {s.lastError}
+                          </div>
+                        )}
+                      </td>
+                      <td className={styles.muted} style={{ fontSize: '0.72rem' }}>
+                        {s.stripeInvoiceItemId ? <code>{s.stripeInvoiceItemId}</code> : '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+      </section>
+    );
+  };
+
+  const renderGoogleLsaPanel = () => (
+    <section className={styles.panel}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.4rem' }}>
+        <h2 className={styles.panelTitle} style={{ margin: 0 }}>Google Local Services Ads & Ad Wallet</h2>
+        {googleLsa.connection ? (
+          <span className={`${styles.pill} ${styles.good}`}>Connected</span>
+        ) : (
+          <span className={`${styles.pill} ${styles.neutral}`}>Not Connected</span>
+        )}
+      </div>
+      <p className={styles.muted} style={{ margin: '0 0 0.75rem', fontSize: '0.76rem' }}>
+        Ad spend, incoming leads, and auto-refill wallet telemetry for Google LSA.
+      </p>
+
+      <dl className={styles.kv}>
+        <dt>LSA customer</dt>
+        <dd>
+          {googleLsa.connection ? (
+            <>
+              {googleLsa.connection.customerName || 'Connected Account'}{' '}
+              <span className={styles.muted}>({googleLsa.connection.customerId})</span>
+            </>
+          ) : (
+            '—'
+          )}
+        </dd>
+        <dt>Total LSA spend</dt>
+        <dd>
+          <strong>{usd(googleLsa.totalSpendDollars)}</strong>
+        </dd>
+        <dt>Total leads</dt>
+        <dd>
+          <strong>{googleLsa.leadsCount}</strong>
+        </dd>
+        <dt>Last synced</dt>
+        <dd>{fmtDateTime(googleLsa.connection?.lastSyncAt)}</dd>
+        <dt>Ad wallet</dt>
+        <dd>
+          {googleLsa.wallet ? (
+            <>
+              <strong>{usd(googleLsa.wallet.balanceDollars)}</strong>{' '}
+              <span className={styles.muted}>
+                (Refills {usd(googleLsa.wallet.refillDollars)} when below {usd(googleLsa.wallet.thresholdDollars)})
+              </span>{' '}
+              <span className={`${styles.pill} ${googleLsa.wallet.status === 'active' ? styles.good : styles.warn}`}>
+                {googleLsa.wallet.status}
+              </span>
+            </>
+          ) : (
+            <span className={styles.muted}>No auto-refill ad wallet configured</span>
+          )}
+        </dd>
+      </dl>
+    </section>
+  );
+
+  const renderApiSurfacePanel = () => (
+    <section className={styles.panel}>
+      <h2 className={styles.panelTitle}>Public API Credentials & Activity</h2>
+      <p className={styles.muted} style={{ margin: '0 0 0.75rem', fontSize: '0.76rem' }}>
+        Developer credentials and recent customer API requests for this account.
+      </p>
+      {apiSurface.credentials.length === 0 ? (
+        <p className={styles.emptyState}>No API keys issued for this account.</p>
+      ) : (
+        <div className={styles.tableWrap} style={{ marginBottom: '1.2rem' }}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Key Name</th>
+                <th>Token Prefix</th>
+                <th>Scopes</th>
+                <th>Last Used</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiSurface.credentials.map((cred) => (
+                <tr key={cred.id}>
+                  <td><strong>{cred.name}</strong></td>
+                  <td><code>{cred.tokenPrefix}...</code></td>
+                  <td className={styles.muted}>{cred.scopes.join(', ') || 'all'}</td>
+                  <td className={styles.muted}>{fmtDateTime(cred.lastUsedAt)}</td>
+                  <td>
+                    {cred.revokedAt ? (
+                      <span className={`${styles.pill} ${styles.bad}`}>Revoked</span>
+                    ) : cred.expiresAt && new Date(cred.expiresAt).getTime() < Date.now() ? (
+                      <span className={`${styles.pill} ${styles.warn}`}>Expired</span>
+                    ) : (
+                      <span className={`${styles.pill} ${styles.good}`}>Active</span>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h3 style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', fontWeight: 700, color: 'rgba(247,245,239,0.85)' }}>
+        Recent API request audit
+      </h3>
+      {apiSurface.recentRequests.length === 0 ? (
+        <p className={styles.emptyState}>No recent API requests logged.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Method</th>
+                <th>Endpoint</th>
+                <th>Status</th>
+                <th className="num">Latency</th>
+                <th>IP</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiSurface.recentRequests.slice(0, 15).map((req) => (
+                <tr key={req.id}>
+                  <td className={styles.muted}>{fmtDateTime(req.createdAt)}</td>
+                  <td><span className={`${styles.pill} ${styles.neutral}`}>{req.method}</span></td>
+                  <td><code>{req.endpoint}</code></td>
+                  <td>
+                    <span className={`${styles.pill} ${req.statusCode < 400 ? styles.good : styles.bad}`}>
+                      {req.statusCode}
+                    </span>
+                    {req.errorCode && <span className={styles.muted}> ({req.errorCode})</span>}
+                  </td>
+                  <td className={`num ${styles.muted}`}>{req.responseTimeMs ? `${req.responseTimeMs}ms` : '—'}</td>
+                  <td className={styles.muted} style={{ fontSize: '0.72rem' }}>{req.ipAddress || '—'}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+
+  const renderWebhookDeliveriesPanel = () => (
+    <section className={styles.panel}>
+      <h2 className={styles.panelTitle}>Outbound Webhooks</h2>
+      <p className={styles.muted} style={{ margin: '0 0 0.75rem', fontSize: '0.76rem' }}>
+        Configured endpoints and webhook delivery telemetry.
+      </p>
+      {apiSurface.subscriptions.length === 0 ? (
+        <p className={styles.emptyState}>No outbound webhook subscriptions configured.</p>
+      ) : (
+        <div className={styles.tableWrap} style={{ marginBottom: '1.2rem' }}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Target URL</th>
+                <th>Events</th>
+                <th>Failures</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiSurface.subscriptions.map((sub) => (
+                <tr key={sub.id}>
+                  <td><code>{sub.targetUrl}</code></td>
+                  <td className={styles.muted}>{sub.subscribedEvents.join(', ') || 'all'}</td>
+                  <td className={styles.muted}>
+                    {sub.failureCount > 0 ? (
+                      <span className={`${styles.pill} ${styles.bad}`}>{sub.failureCount}</span>
+                    ) : (
+                      '0'
+                    )}
+                  </td>
+                  <td>
+                    <span className={`${styles.pill} ${sub.status === 'active' ? styles.good : styles.bad}`}>
+                      {sub.status}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <h3 style={{ margin: '0 0 0.65rem', fontSize: '0.86rem', fontWeight: 700, color: 'rgba(247,245,239,0.85)' }}>
+        Recent delivery failures
+      </h3>
+      {apiSurface.recentDeliveries.length === 0 ? (
+        <p className={styles.emptyState}>No delivery failures reported.</p>
+      ) : (
+        <div className={styles.tableWrap}>
+          <table className={styles.table}>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Target URL</th>
+                <th>Attempts</th>
+                <th>Status</th>
+                <th>Error</th>
+              </tr>
+            </thead>
+            <tbody>
+              {apiSurface.recentDeliveries.slice(0, 10).map((d) => (
+                <tr key={d.id}>
+                  <td className={styles.muted}>{fmtDateTime(d.createdAt)}</td>
+                  <td><code>{d.targetUrl}</code></td>
+                  <td className={styles.muted}>{d.attemptCount}</td>
+                  <td>
+                    <span className={`${styles.pill} ${d.status === 'dead_letter' ? styles.bad : styles.warn}`}>
+                      {d.status}
+                    </span>
+                  </td>
+                  <td className={styles.muted} style={{ fontSize: '0.72rem' }}>
+                    {d.lastErrorMessage || d.lastErrorCode || 'Delivery failed'}
                   </td>
                 </tr>
               ))}
@@ -929,6 +1414,36 @@ export default async function AdminAccountDetailPage({
       </header>
 
       {/* Alert Banners */}
+      {irreversibleWork.activeClosure && (
+        <div className={`${styles.banner} ${styles.err}`} style={{ borderLeft: '4px solid #f87171' }}>
+          <strong>⚠️ Account Closure Job Active:</strong> Closure subject <code>{irreversibleWork.activeClosure.closureSubjectId}</code>.
+          Local disposal: <strong>{irreversibleWork.activeClosure.localDisposalState}</strong> ·
+          Stripe: <strong>{irreversibleWork.activeClosure.stripeState}</strong> ·
+          QuickBooks: <strong>{irreversibleWork.activeClosure.quickbooksState}</strong> ·
+          Storage: <strong>{irreversibleWork.activeClosure.storageState}</strong> ·
+          Auth cleanup: <strong>{irreversibleWork.activeClosure.authCleanupState}</strong>
+          {irreversibleWork.activeClosure.lastError && (
+            <div style={{ marginTop: '0.4rem', color: '#ff8080' }}>
+              Error: {irreversibleWork.activeClosure.lastError} (Attempt {irreversibleWork.activeClosure.attempts}/{irreversibleWork.activeClosure.maxAttempts})
+            </div>
+          )}
+          <div style={{ marginTop: '0.5rem' }}>
+            <Link href="/admin/accounts/closures" className={styles.rowLink}>
+              View in Closures Console →
+            </Link>
+          </div>
+        </div>
+      )}
+      {irreversibleWork.recoverableDeletions.length > 0 && (
+        <div className={`${styles.banner} ${styles.warn}`} style={{ borderLeft: '4px solid #fbbf24' }}>
+          <strong>🗑️ {irreversibleWork.recoverableDeletions.length} item(s) in trash bin:</strong>{' '}
+          {irreversibleWork.recoverableDeletions.slice(0, 3).map((d) => `${d.title} (${d.daysRemaining}d ${d.hoursRemaining}h left)`).join(', ')}
+          {irreversibleWork.recoverableDeletions.length > 3 ? '...' : ''}{' '}
+          <Link href="/admin/accounts/closures#trash" className={styles.rowLink}>
+            View in Closures Console →
+          </Link>
+        </div>
+      )}
       {doneMessage ? <div className={`${styles.banner} ${styles.ok}`}>{doneMessage}</div> : null}
       {searchParams?.error ? (
         <div className={`${styles.banner} ${styles.err}`}>
@@ -1029,10 +1544,22 @@ export default async function AdminAccountDetailPage({
           <div className={styles.detailGrid}>
             <div>
               {renderPlanAuthorityPanel()}
+              {renderUsageAndOveragePanel()}
+              {renderGoogleLsaPanel()}
               {renderPaymentsPanel()}
             </div>
             <div>
               {renderRecentPaymentsPanel()}
+            </div>
+          </div>
+        }
+        apiPanel={
+          <div className={styles.detailGrid}>
+            <div>
+              {renderApiSurfacePanel()}
+            </div>
+            <div>
+              {renderWebhookDeliveriesPanel()}
             </div>
           </div>
         }
@@ -1081,6 +1608,8 @@ export default async function AdminAccountDetailPage({
             <div>
               {renderProfilePanel()}
               {renderPlanAuthorityPanel()}
+              {renderUsageAndOveragePanel()}
+              {renderGoogleLsaPanel()}
               {renderPaymentsPanel()}
               {renderRecentPaymentsPanel()}
               {renderMessagesPanel()}
@@ -1089,6 +1618,8 @@ export default async function AdminAccountDetailPage({
             <div>
               {renderActivityPanel()}
               {renderFeatureFlagsPanel()}
+              {renderApiSurfacePanel()}
+              {renderWebhookDeliveriesPanel()}
               {renderNotesAndTagsPanel()}
               {renderAttachmentsPanel()}
               {renderSupportCasesPanel()}

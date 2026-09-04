@@ -198,15 +198,6 @@ export default function AccountActions({
                   </form>
                 </>
               ) : null}
-
-              {/* Impersonation Placeholder */}
-              <div style={{ height: 1, background: 'rgba(255,255,255,0.06)' }} />
-              <div className={styles.formStack}>
-                <p className={styles.formLabel}>Securely view customer experience</p>
-                <button type="button" className="btn secondary" disabled title="Not available yet — impersonation hasn't been built.">
-                  View as customer (coming soon)
-                </button>
-              </div>
             </div>
           ) : null}
 

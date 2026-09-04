@@ -41,7 +41,7 @@ describe('ingest_sms_missed_call PostgreSQL contract tests', () => {
       // Find an existing account to use as test fixture inside rollback transactions
       const accRes = await client.query('select id from public.accounts limit 1');
       if (accRes.rows.length > 0) {
-        accountId = accRes.rows[0].id;
+        accountId = String(accRes.rows[0].id);
       }
     } catch (err) {
       console.warn('Could not connect to database for contract tests:', err);

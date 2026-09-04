@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { listAccountsForAdmin, ownerEmailsForAccounts, accountDisplayName } from '@/lib/admin-accounts';
+import { listAccountsForAdmin, ownerEmailsForAccounts, accountDisplayName, accountIdsByPhone } from '@/lib/admin-accounts';
 import { QUICK_STOP_STATUS_LABEL, type QuickStopStatus } from '@/lib/quick-stop';
 
 // Universal Search backend. Staff today look accounts/customers/payments up by
@@ -56,19 +56,23 @@ async function searchAccounts(admin: SupabaseClient, term: string, limit: number
   try {
     let available = true;
     const onError = () => { available = false; };
-    // Matches on business name, site company name, account number, and — since
-    // the owner-email RPC exists — the contractor's own login address. That last
-    // one is the reason this page previously misled: it advertised "email" and
-    // searched clients.email, which is the contractors' HOMEOWNERS, so a staff
-    // member pasting a contractor's address got a confident "no results".
-    const rows = await listAccountsForAdmin(admin, { query: term, limit, onError });
+    const digits = term.replace(/[^0-9]/g, '');
+    const isPhoneNumber = digits.length >= 7;
+
+    const [rows, phoneRes] = await Promise.all([
+      listAccountsForAdmin(admin, { query: term, limit, onError }),
+      isPhoneNumber
+        ? accountIdsByPhone(admin, digits, limit, onError)
+        : Promise.resolve({ accountIds: [], phoneMatchMap: new Map<string, string>() }),
+    ]);
+
     const emails = await ownerEmailsForAccounts(admin, rows.map((r) => r.id), onError);
     return { available, rows: rows.map((r) => {
       const email = emails.get(r.id);
-      // The owner email leads the subtitle when it is what matched, so the
-      // reason a row is in the list is visible rather than guessed at.
+      const matchedPhone = phoneRes.phoneMatchMap.get(r.id);
       const matchedOnEmail = Boolean(email && email.toLowerCase().includes(term.toLowerCase()));
       const parts = [
+        matchedPhone ? matchedPhone : null,
         matchedOnEmail ? email : null,
         r.account_number ? `Account #${r.account_number}` : null,
         !matchedOnEmail && email ? email : null,
@@ -92,23 +96,34 @@ const CLIENT_COLUMNS = 'id, account_id, name, phone, email';
 
 async function searchClients(admin: SupabaseClient, term: string, limit: number): Promise<SearchBranch> {
   try {
-    const [byName, byPhone, byEmail] = await Promise.all([
+    const digits = term.replace(/[^0-9]/g, '');
+    const isPhone = digits.length >= 7;
+    const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+    const last7 = digits.length >= 7 ? digits.slice(-7) : digits;
+
+    const queries = [
       admin.from('clients').select(CLIENT_COLUMNS).is('test_marker', null).ilike('name', `%${term}%`).limit(limit),
       admin.from('clients').select(CLIENT_COLUMNS).is('test_marker', null).ilike('phone', `%${term}%`).limit(limit),
       admin.from('clients').select(CLIENT_COLUMNS).is('test_marker', null).ilike('email', `%${term}%`).limit(limit),
-    ]);
-    if (byName.error || byPhone.error || byEmail.error) throw byName.error ?? byPhone.error ?? byEmail.error;
-    const rows = dedupeById<ClientRow>([
-      (byName.data ?? []) as ClientRow[],
-      (byPhone.data ?? []) as ClientRow[],
-      (byEmail.data ?? []) as ClientRow[],
-    ]).slice(0, limit);
+    ];
+    if (isPhone) {
+      queries.push(
+        admin.from('clients').select(CLIENT_COLUMNS).is('test_marker', null).ilike('phone', `%${last10}%`).limit(limit),
+        admin.from('clients').select(CLIENT_COLUMNS).is('test_marker', null).ilike('phone', `%${last7}%`).limit(limit),
+      );
+    }
+
+    const results = await Promise.all(queries);
+    for (const res of results) {
+      if (res.error) throw res.error;
+    }
+
+    const rows = dedupeById<ClientRow>(results.map((r) => (r.data ?? []) as ClientRow[])).slice(0, limit);
     return { available: true, rows: rows.map((r) => ({
       kind: 'client',
       id: r.id,
       title: r.name,
       subtitle: [r.phone, r.email].filter(Boolean).join(' · ') || null,
-      // Clients have no standalone admin page — surface them via their account.
       href: `/admin/accounts/${r.account_id}`,
     })) };
   } catch (error) {
@@ -135,19 +150,28 @@ async function searchQuickStops(admin: SupabaseClient, term: string, limit: numb
       if (error) throw error;
       rows = (data ?? []) as QuickStopRow[];
     } else {
-      // Quick Stops carry their own customer fields (independent of `clients`),
-      // so this is a second, separate fan-out rather than a join.
-      const [byName, byPhone, byEmail] = await Promise.all([
+      const digits = term.replace(/[^0-9]/g, '');
+      const isPhone = digits.length >= 7;
+      const last10 = digits.length >= 10 ? digits.slice(-10) : digits;
+      const last7 = digits.length >= 7 ? digits.slice(-7) : digits;
+
+      const queries = [
         admin.from('extra_stop_requests').select(QUICK_STOP_COLUMNS).is('test_marker', null).ilike('client_name', `%${term}%`).limit(limit),
         admin.from('extra_stop_requests').select(QUICK_STOP_COLUMNS).is('test_marker', null).ilike('client_phone', `%${term}%`).limit(limit),
         admin.from('extra_stop_requests').select(QUICK_STOP_COLUMNS).is('test_marker', null).ilike('client_email', `%${term}%`).limit(limit),
-      ]);
-      if (byName.error || byPhone.error || byEmail.error) throw byName.error ?? byPhone.error ?? byEmail.error;
-      rows = dedupeById<QuickStopRow>([
-        (byName.data ?? []) as QuickStopRow[],
-        (byPhone.data ?? []) as QuickStopRow[],
-        (byEmail.data ?? []) as QuickStopRow[],
-      ]);
+      ];
+      if (isPhone) {
+        queries.push(
+          admin.from('extra_stop_requests').select(QUICK_STOP_COLUMNS).is('test_marker', null).ilike('client_phone', `%${last10}%`).limit(limit),
+          admin.from('extra_stop_requests').select(QUICK_STOP_COLUMNS).is('test_marker', null).ilike('client_phone', `%${last7}%`).limit(limit),
+        );
+      }
+
+      const results = await Promise.all(queries);
+      for (const res of results) {
+        if (res.error) throw res.error;
+      }
+      rows = dedupeById<QuickStopRow>(results.map((r) => (r.data ?? []) as QuickStopRow[]));
     }
     return { available: true, rows: rows.slice(0, limit).map((r) => ({
       kind: 'quick_stop',

@@ -54,11 +54,6 @@ export function trustedProviderCallbackOrigin(
     .trim().toLowerCase();
   if (!validHostname(root)) return null;
 
-  const isDev = (env.NODE_ENV ?? process.env.NODE_ENV) === 'development';
-  if (isDev && (!raw || raw.includes('localhost') || raw.includes('127.0.0.1'))) {
-    raw = `https://app.${root}`;
-  }
-
   if (!raw) return null;
 
   try {
