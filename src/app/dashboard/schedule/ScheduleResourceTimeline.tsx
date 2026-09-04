@@ -593,10 +593,6 @@ export default function ScheduleResourceTimeline({
         </div>
 
         <div className={styles.timelineHeaderMeta}>
-          <span className={styles.timelineSnapPill}>
-            <span>⚡</span>
-            <span>15m snap</span>
-          </span>
           <span>{crew.length} Technicians</span>
           <span>{unassignedJobs.length} Unassigned</span>
         </div>

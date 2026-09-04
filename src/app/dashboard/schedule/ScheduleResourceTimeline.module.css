@@ -76,17 +76,6 @@
   color: var(--muted);
 }
 
-.timelineSnapPill {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 4px 10px;
-  background: rgba(var(--tint), 0.06);
-  border: 1px solid rgba(var(--tint), 0.12);
-  border-radius: 9999px;
-  font-weight: 600;
-  color: var(--text);
-}
 
 /* Main Grid Layout */
 .timelineGridWrapper {
