@@ -153,7 +153,12 @@ async function readServerTheme() {
 
 export async function generateViewport(): Promise<Viewport> {
   const serverTheme = await readServerTheme();
-  return { themeColor: themeColor(serverTheme.theme) };
+  return {
+    themeColor: themeColor(serverTheme.theme),
+    width: 'device-width',
+    initialScale: 1,
+    viewportFit: 'cover',
+  };
 }
 
 export default async function RootLayout({ children }: { children: ReactNode }) {

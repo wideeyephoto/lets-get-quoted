@@ -33,11 +33,9 @@
     ]
   },
   "include": [
-    ".next-build-verify/types/**/*.ts",
     ".next/types/**/*.ts",
     "next-env.d.ts",
-    "src",
-    ".next-verify/types/**/*.ts"
+    "src"
   ],
   "exclude": [
     "node_modules"

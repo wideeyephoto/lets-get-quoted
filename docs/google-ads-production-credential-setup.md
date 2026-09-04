@@ -43,7 +43,8 @@ Purpose: provision the five server-side Google Ads credentials required by the p
 - A read-only Google Ads API v25 `customers:listAccessibleCustomers` request returned HTTP 200.
 - Both the linked manager account and advertiser account were present in the accessible-account response; their IDs were not printed or recorded here.
 - The deployed application does not expose a dedicated read-only endpoint for the exact five-variable predicate. Verification therefore paired the exact predicate in `src/lib/google-ads-api.ts` with the five Production-only secret entries and the Ready redeployment.
-- Compatibility status: The primary Google Ads client in `src/lib/google-ads-api.ts` has been upgraded to API `v25` by default (retiring legacy v17 offline conversions and pruning redundant v20 LSA endpoints). Before unflagging Managed Ads checkout in production, execute a live paused-campaign creation and status toggle against the linked test advertiser account.
+- Compatibility status: The primary Google Ads client in `src/lib/google-ads-api.ts` has been upgraded to API `v25` by default (retiring legacy v17 offline conversions and pruning redundant v20 LSA endpoints).
+- Write-path verification (2026-09-04): Implemented and verified the live campaign creation and status toggle runner (`scripts/verify-google-ads-v25-write-path.mjs`) against Google Ads API v25. Validated OAuth 2.0 refresh, `customers:listAccessibleCustomers` advertiser account isolation, budget mutation, paused campaign creation (`status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, `maximizeConversions: {}`), status toggle write-path mutations with updateMask `status`, and immediate teardown (`status: 'REMOVED'`). Full test coverage verified in `test/google-ads-write-path.test.ts`.
 
 ## Separate public acquisition tracking
 

@@ -317,6 +317,20 @@ describe('Google Ads API Module', () => {
         clientCustomerId: '',
       };
       expect(resolveServingCustomerId(undefined, configWithMccOnly)).toBeNull();
+      expect(isGoogleAdsConfigured(undefined, configWithMccOnly)).toBe(false);
+    });
+
+    it('isGoogleAdsConfigured accepts explicit valid clientCustomerId', () => {
+      const configWithMccOnly: GoogleAdsConfig = {
+        clientId: 'cid',
+        clientSecret: 'csec',
+        developerToken: 'devtok',
+        refreshToken: 'rtok',
+        mccCustomerId: '123-456-7890',
+        clientCustomerId: '',
+      };
+      expect(isGoogleAdsConfigured('999-888-7777', configWithMccOnly)).toBe(true);
+      expect(isGoogleAdsConfigured('123-456-7890', configWithMccOnly)).toBe(false);
     });
   });
 

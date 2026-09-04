@@ -2950,6 +2950,7 @@ html,
 body {
   margin: 0;
   min-height: 100%;
+  overflow-x: clip;
 }
 
 body {
@@ -10288,6 +10289,7 @@ p {
   border-radius: 999px;
   font-weight: 700;
   border: 1px solid transparent;
+  min-height: 44px;
 }
 
 /* OUTLINE, not a slab. White on that orange gradient measured 3.12:1 at its
@@ -24043,6 +24045,13 @@ button.inbox-thread-item {
 
 .payment-shell {
   max-width: 980px;
+  padding-bottom: calc(2.2rem + env(safe-area-inset-bottom, 0px));
+}
+
+.payment-hero,
+.portal-section,
+.workspace-hero {
+  scroll-margin-top: calc(72px + env(safe-area-inset-top, 0px));
 }
 
 .payment-hero {
@@ -26871,6 +26880,17 @@ button.inbox-thread-item {
   .toolbar form .btn,
   .toolbar form select {
     width: 100%;
+  }
+
+  .payment-shell .actions.workspace-actions,
+  .payment-shell .workspace-actions {
+    width: 100%;
+  }
+
+  .payment-shell .workspace-actions .btn,
+  .payment-shell .actions .btn {
+    width: 100%;
+    min-height: 48px;
   }
 
   .status-tabs,
@@ -58247,6 +58267,7 @@ a.ins-export-opt:focus-visible {
      on a phone, and iOS Safari still needs -webkit-. */
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
+  padding-top: env(safe-area-inset-top, 0px);
 }
 
 .cbrand-inner {
@@ -58361,7 +58382,7 @@ a.ins-export-opt:focus-visible {
 .cbrand-foot {
   max-width: 1180px;
   margin: 2.2rem auto 2.6rem;
-  padding: 0 1.4rem;
+  padding: 0 1.4rem calc(1rem + env(safe-area-inset-bottom, 0px));
   color: var(--mute-t55);
   font-size: 0.78rem;
   text-align: center;

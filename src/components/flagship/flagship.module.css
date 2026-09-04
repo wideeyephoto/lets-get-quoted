@@ -27,7 +27,7 @@
 
 .root { scroll-behavior: smooth; background: var(--ink); }
 
-.root { margin: 0; color: #eef5f6; background: var(--ink); font-family: var(--font-geist-sans), Arial, sans-serif; }
+.root { margin: 0; color: #eef5f6; background: var(--ink); font-family: var(--font-geist-sans), Arial, sans-serif; overflow-x: clip; }
 
 .root :where(button, a) { font: inherit; }
 
@@ -2169,6 +2169,7 @@
    --font-geist-sans needs no alias: GeistSans.variable really is on <body>. */
 .root {
   --font-geist-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+  overflow-x: clip;
 }
 
 /* ---- the H1's tracking & contrast -------------------------------------------

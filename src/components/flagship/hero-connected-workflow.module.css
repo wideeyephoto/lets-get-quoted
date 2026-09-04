@@ -1033,6 +1033,17 @@
 }
 
 @media (max-width: 760px) {
+  .pricingVisual {
+    overflow: hidden;
+    max-width: 100%;
+    padding: 18px 14px;
+    transform: none !important;
+  }
+
+  .visualOrbit {
+    display: none !important;
+  }
+
   .tradePill,
   .actionBtnNext,
   .replayBtn {

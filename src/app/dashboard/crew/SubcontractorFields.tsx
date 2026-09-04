@@ -15,6 +15,12 @@ import {
   W9_STATUS_LABEL,
   type SubcontractorProfile,
 } from '@/lib/subcontractors';
+import {
+  CREW_SMS_CONSENT_LABEL,
+  CREW_SMS_DISCLOSURE,
+  CREW_SMS_DISCLOSURE_VERSION,
+} from '@/lib/crew-sms-disclosure';
+import { normalizeUsPhone } from '@/lib/phone';
 import { formatPhoneAsTyped } from './AddCrewDrawer';
 import styles from './dispatch.module.css';
 
@@ -52,6 +58,9 @@ export default function SubcontractorFields({
   baseAddress?: string;
 }) {
   const [phone, setPhone] = useState(formatPhoneAsTyped(initialPhone));
+  const phoneChanged = Boolean(
+    normalizeUsPhone(phone) && normalizeUsPhone(initialPhone) !== normalizeUsPhone(phone),
+  );
   const [ratePreference, setRatePreference] = useState(profile?.ratePreference ?? 'fixed');
   const tradeOptions = [...new Set([...knownTrades, ...SEED_TRADES])].sort((a, b) => a.localeCompare(b));
   const chosen = new Set((profile?.trades ?? []).map((trade) => trade.toLowerCase()));
@@ -98,6 +107,30 @@ export default function SubcontractorFields({
             <small id={`${idPrefix}-phone-why`} className="field-hint">
               A job offer is a text. A subcontractor with no number is never asked.
             </small>
+          </div>
+          <div className="field full">
+            <label className="checkbox-row" htmlFor={`${idPrefix}-crew-sms-consent`}>
+              <input
+                id={`${idPrefix}-crew-sms-consent`}
+                name="crewSmsConsent"
+                type="checkbox"
+                required={!profile || phoneChanged}
+                aria-describedby={`${idPrefix}-crew-sms-disclosure`}
+              />
+              <span>{CREW_SMS_CONSENT_LABEL}</span>
+            </label>
+            <p id={`${idPrefix}-crew-sms-disclosure`} className="field-hint">
+              {CREW_SMS_DISCLOSURE}{' '}
+              <a href="/sms-terms" target="_blank" rel="noreferrer">
+                SMS Terms
+              </a>
+              {' and '}
+              <a href="/privacy" target="_blank" rel="noreferrer">
+                Privacy Policy
+              </a>
+              .
+            </p>
+            <input type="hidden" name="crewSmsDisclosureVersion" value={CREW_SMS_DISCLOSURE_VERSION} />
           </div>
           <div className="field">
             <label htmlFor={`${idPrefix}-email`}>Email address</label>

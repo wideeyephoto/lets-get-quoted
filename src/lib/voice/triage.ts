@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { enqueueSmsDelivery } from '@/lib/sms-delivery';
 import { normalizeUsPhone } from '@/lib/phone';
+import { ownerVoiceEmergencyAlertText } from '@/lib/sms-templates';
 
 export type EmergencyDetectionResult = {
   isEmergency: boolean;
@@ -98,14 +99,19 @@ export async function notifyEmergencyCall(
   const businessName = account?.business_name || account?.company_name || 'Your Business';
   const hazardSummary = summary.slice(0, 140) || emergency.reason;
 
-  const alertText = `🚨 EMERGENCY CALL for ${businessName} from ${callerDisplay}: ${hazardSummary}. View transcript: ${dashboardUrl} — Reply STOP to opt out.`;
+  const alertText = ownerVoiceEmergencyAlertText({
+    businessName,
+    callerNumber: callerDisplay,
+    hazardSummary,
+    dashboardUrl,
+  });
 
   try {
     const queued = await enqueueSmsDelivery({
       accountId,
       phoneNumber: targetPhone,
       body: alertText,
-      messageKind: 'voice_emergency_alert',
+      messageKind: 'owner-voice-emergency-alert',
       billingCategory: 'owner_alert',
       context: 'owner',
       senderPurpose: 'lgq_dispatch',

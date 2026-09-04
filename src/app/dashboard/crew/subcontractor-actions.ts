@@ -4,9 +4,11 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { requireOfficeContext } from '@/lib/auth';
 import { getJob } from '@/lib/jobs';
-import { ensureSmsConsentBaseline, sendCrewWelcomeSms } from '@/lib/sms';
+import { recordCrewSmsConsent, sendCrewWelcomeSms } from '@/lib/sms';
 import { loadBusinessName } from '@/lib/business-name';
 import { saveCrewStartAddress } from '@/lib/crew';
+import { normalizeUsPhone } from '@/lib/phone';
+import { CREW_SMS_DISCLOSURE_VERSION } from '@/lib/crew-sms-disclosure';
 import {
   cancelSubcontractorRequest,
   chooseSubcontractor,
@@ -58,8 +60,23 @@ export async function createSubcontractorAction(
   const problem = subcontractorProblem(values);
   if (problem) return { status: 'error', message: problem };
 
+  const smsConsentAccepted = formData.get('crewSmsConsent') === 'on';
+  const submittedDisclosureVersion = String(formData.get('crewSmsDisclosureVersion') ?? '');
+  if (!smsConsentAccepted) {
+    return {
+      status: 'error',
+      message: 'Confirm that this subcontractor gave permission to receive text messages.',
+    };
+  }
+  if (submittedDisclosureVersion !== CREW_SMS_DISCLOSURE_VERSION) {
+    return {
+      status: 'error',
+      message: 'The SMS consent wording has changed. Review it and try again.',
+    };
+  }
+
   try {
-    const { supabase, accountId } = await requireOfficeContext('crew.write');
+    const { supabase, accountId, userId } = await requireOfficeContext('crew.write');
     const { data, error } = await supabase
       .from('crew')
       .insert({ account_id: accountId, ...subcontractorColumns(values) })
@@ -83,16 +100,31 @@ export async function createSubcontractorAction(
     const serviceAddress = (formData.get('baseAddress') ?? '').toString().trim();
     if (serviceAddress) await saveCrewStartAddress(supabase, accountId, data.id as string, serviceAddress);
 
-    await ensureSmsConsentBaseline(accountId, values.phone, 'subcontractor_added').catch(() => {});
-
-    const businessName = await loadBusinessName(supabase, accountId);
-    await sendCrewWelcomeSms({
+    // Record audited consent evidence. Fail closed if evidence storage fails.
+    const consentOutcome = await recordCrewSmsConsent({
       accountId,
-      crewId: data.id as string,
       phone: values.phone,
-      crewName: values.name,
-      businessName,
-    }).catch(() => {});
+      disclosureVersion: submittedDisclosureVersion,
+      userId: userId ?? null,
+      crewId: data.id as string,
+      sourcePage: '/dashboard/crew',
+      source: 'crew_roster',
+    });
+
+    if (consentOutcome === 'failed') {
+      throw new Error('Could not record SMS consent evidence. SMS sending is not authorized.');
+    }
+
+    if (consentOutcome !== 'suppressed') {
+      const businessName = await loadBusinessName(supabase, accountId);
+      await sendCrewWelcomeSms({
+        accountId,
+        crewId: data.id as string,
+        phone: values.phone,
+        crewName: values.name,
+        businessName,
+      }).catch(() => {});
+    }
 
     revalidateDispatch();
     return {
@@ -116,7 +148,55 @@ export async function updateSubcontractorAction(crewId: string, formData: FormDa
   const problem = subcontractorProblem(values);
   if (problem) throw new Error(problem);
 
-  const { supabase, accountId } = await requireOfficeContext('crew.write');
+  const { supabase, accountId, userId } = await requireOfficeContext('crew.write');
+
+  const { data: existing } = await supabase
+    .from('crew')
+    .select('phone')
+    .eq('account_id', accountId)
+    .eq('id', crewId)
+    .maybeSingle();
+
+  const oldNormalized = existing?.phone ? normalizeUsPhone(existing.phone) : null;
+  const newNormalized = normalizeUsPhone(values.phone);
+  const phoneChanged = Boolean(newNormalized && oldNormalized !== newNormalized);
+
+  if (phoneChanged) {
+    const smsConsentAccepted = formData.get('crewSmsConsent') === 'on';
+    const submittedDisclosureVersion = String(formData.get('crewSmsDisclosureVersion') ?? '');
+    if (!smsConsentAccepted) {
+      throw new Error('Confirm that this subcontractor gave permission to receive text messages.');
+    }
+    if (submittedDisclosureVersion !== CREW_SMS_DISCLOSURE_VERSION) {
+      throw new Error('The SMS consent wording has changed. Review it and try again.');
+    }
+
+    const consentOutcome = await recordCrewSmsConsent({
+      accountId,
+      phone: values.phone,
+      disclosureVersion: submittedDisclosureVersion,
+      userId: userId ?? null,
+      crewId,
+      sourcePage: '/dashboard/crew',
+      source: 'crew_roster',
+    });
+
+    if (consentOutcome === 'failed') {
+      throw new Error('Could not record SMS consent evidence. SMS sending is not authorized.');
+    }
+
+    if (consentOutcome !== 'suppressed') {
+      const businessName = await loadBusinessName(supabase, accountId);
+      await sendCrewWelcomeSms({
+        accountId,
+        crewId,
+        phone: values.phone,
+        crewName: values.name,
+        businessName,
+      }).catch(() => {});
+    }
+  }
+
   const { error } = await supabase
     .from('crew')
     .update(subcontractorColumns(values))
@@ -127,7 +207,6 @@ export async function updateSubcontractorAction(crewId: string, formData: FormDa
 
   const baseAddress = (formData.get('baseAddress') ?? '').toString().trim();
   await saveCrewStartAddress(supabase, accountId, crewId, baseAddress || null);
-  await ensureSmsConsentBaseline(accountId, values.phone, 'subcontractor_added').catch(() => {});
 
   revalidateDispatch();
 }

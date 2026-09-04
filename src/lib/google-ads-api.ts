@@ -38,14 +38,14 @@ export function getGoogleAdsConfig(): GoogleAdsConfig {
   };
 }
 
-export function isGoogleAdsConfigured(): boolean {
-  const config = getGoogleAdsConfig();
+export function isGoogleAdsConfigured(clientCustomerId?: string, config?: GoogleAdsConfig): boolean {
+  const effectiveConfig = config || getGoogleAdsConfig();
   return Boolean(
-    config.clientId &&
-    config.clientSecret &&
-    config.developerToken &&
-    config.refreshToken &&
-    resolveServingCustomerId(undefined, config)
+    effectiveConfig.clientId &&
+    effectiveConfig.clientSecret &&
+    effectiveConfig.developerToken &&
+    effectiveConfig.refreshToken &&
+    resolveServingCustomerId(clientCustomerId, effectiveConfig)
   );
 }
 
@@ -164,7 +164,7 @@ export async function provisionManagedSearchCampaign(
   const config = getGoogleAdsConfig();
   const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 
-  if (isGoogleAdsConfigured()) {
+  if (isGoogleAdsConfigured(clientCustomerId, config)) {
     try {
       const token = await fetchGoogleAdsAccessToken(config);
       const targetCustomerId = resolveServingCustomerId(clientCustomerId, config);
@@ -1032,15 +1032,16 @@ export async function updateCampaignBidModifier(params: {
  */
 export async function toggleCampaignStatus(
   campaignId: string,
-  status: 'ENABLED' | 'PAUSED'
+  status: 'ENABLED' | 'PAUSED',
+  clientCustomerId?: string
 ): Promise<{ success: boolean; status: 'ENABLED' | 'PAUSED'; message: string }> {
   const config = getGoogleAdsConfig();
   const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 
-  if (isGoogleAdsConfigured()) {
+  if (isGoogleAdsConfigured(clientCustomerId, config)) {
     try {
       const token = await fetchGoogleAdsAccessToken(config);
-      const customerId = resolveServingCustomerId(undefined, config);
+      const customerId = resolveServingCustomerId(clientCustomerId, config);
       if (!customerId) {
         return {
           success: false,
@@ -1343,12 +1344,13 @@ export async function fetchGoogleAdsCampaignDailySpend(
 
 export async function updateGoogleAdsCampaignStatus(
   campaignId: string,
-  status: 'ENABLED' | 'PAUSED' | 'REMOVED'
+  status: 'ENABLED' | 'PAUSED' | 'REMOVED',
+  clientCustomerId?: string
 ): Promise<{ success: boolean; message?: string }> {
   const config = getGoogleAdsConfig();
   const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 
-  if (!isGoogleAdsConfigured()) {
+  if (!isGoogleAdsConfigured(clientCustomerId, config)) {
     if (isProduction) {
       return {
         success: false,
@@ -1364,7 +1366,7 @@ export async function updateGoogleAdsCampaignStatus(
   try {
     const token = await fetchGoogleAdsAccessToken(config);
     const headers = buildGoogleAdsHeaders(config, token);
-    const customerId = resolveServingCustomerId(undefined, config);
+    const customerId = resolveServingCustomerId(clientCustomerId, config);
     if (!customerId) {
       return {
         success: false,
