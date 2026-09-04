@@ -785,6 +785,10 @@ export function getWordmarkStyle(content: Record<string, unknown> | null | undef
   return getSiteContent(content).wordmarkStyle;
 }
 
+export function shouldHideHeaderCompanyName(content: Record<string, unknown> | null | undefined): boolean {
+  return getSiteContent(content).hideHeaderCompanyName;
+}
+
 // Legibility and shadow treatments for hero headlines and header text, applied
 // via data-hero-shadow on the root. 'none' = clean default text.
 export const HERO_TEXT_SHADOW_STYLES = [
@@ -1588,6 +1592,10 @@ export type NormalizedSiteContent = {
   colorScheme: string;
   // Company-name wordmark display treatment ('' = plain). See WORDMARK_STYLES.
   wordmarkStyle: string;
+  // Hide the text company name in the site header (e.g. when the uploaded
+  // or AI-generated logo already includes the business name). Off by default
+  // (the company name is displayed next to the logo/icon).
+  hideHeaderCompanyName: boolean;
   // Hero headline readability and shadow treatment ('none' | 'soft' | 'bold' | 'glow' | 'scrim').
   heroTextShadow: SiteHeroTextShadowStyle;
   // Instant quote form appearance style ('glow' | 'clean' | 'glass' | 'bold').
@@ -2351,6 +2359,9 @@ export function getSiteContent(content: Record<string, unknown> | null | undefin
     headerButtonStyle: HEADER_BUTTON_STYLE_KEYS.has(toString(root.headerButtonStyle)) ? toString(root.headerButtonStyle) : '',
     colorScheme: COLOR_SCHEMES.some((scheme) => scheme.key === root.colorScheme) ? toString(root.colorScheme) : '',
     wordmarkStyle: WORDMARK_STYLES.some((style) => style.key === root.wordmarkStyle) ? toString(root.wordmarkStyle) : '',
+    hideHeaderCompanyName: toBoolean(
+      root.hideHeaderCompanyName ?? root.hideHeaderBusinessName ?? root.hideHeaderName
+    ),
     heroTextShadow: HERO_TEXT_SHADOW_STYLE_KEYS.has(toString(root.heroTextShadow)) ? (toString(root.heroTextShadow) as SiteHeroTextShadowStyle) : 'none',
     quoteFormStyle: QUOTE_FORM_STYLE_KEYS.has(toString(root.quoteFormStyle)) ? (toString(root.quoteFormStyle) as QuoteFormStyle) : 'clean',
     quoteFormFieldBg: QUOTE_FORM_FIELD_BG_KEYS.has(toString(root.quoteFormFieldBg)) ? (toString(root.quoteFormFieldBg) as QuoteFormFieldBg) : 'auto',

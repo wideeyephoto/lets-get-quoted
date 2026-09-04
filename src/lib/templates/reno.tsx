@@ -61,7 +61,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
   } as CSSProperties;
 
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-hero-shadow={content.heroTextShadow}>
+    <main className={`${templateFontVars} ${styles.site} ${styles.reno}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
@@ -70,7 +70,7 @@ export default function RenoTemplate({ site, galleryImages = [] }: TemplateProps
       <header className={styles.renoHeader}>
         <a className={styles.renoBrand} href="#top" aria-label={`${site.company_name} home`}>
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.renoHex} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
-          <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>
+          {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={getPublishedServices(site.content) ? [{ href: '#our-services', label: 'Services' }] : []} />
         <div className={styles.renoHeaderActions}>

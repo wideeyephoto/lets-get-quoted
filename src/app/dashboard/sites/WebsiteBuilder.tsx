@@ -2338,6 +2338,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       <label className={styles.formField}><span>Logo style</span><select value={siteContent.logoStyle} onChange={(event) => updateSiteContent({ logoStyle: event.target.value })}><option value="plain">Plain (no frame)</option><option value="transparent">Transparent (no background)</option><option value="rounded">Rounded corners</option><option value="squircle">Squircle</option><option value="circle">Circle</option><option value="framed">Framed chip (padding + border)</option></select></label>
                       <label className={styles.formField}><span>Logo size</span><select value={siteContent.logoSize} onChange={(event) => updateSiteContent({ logoSize: event.target.value })}><option value="small">Small</option><option value="medium">Medium</option><option value="large">Large</option></select></label>
                     </div>
+                    <label className={styles.toggleRow} style={{ marginTop: '.65rem', marginBottom: '.35rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={!siteContent.hideHeaderCompanyName}
+                        onChange={(event) => updateSiteContent({ hideHeaderCompanyName: !event.target.checked })}
+                      />
+                      <span>
+                        <strong>Show text company name in header</strong>
+                        <small>Turn off if your logo already includes your company name, so it doesn&apos;t appear twice.</small>
+                      </span>
+                    </label>
                     <small className={styles.fieldHint}>Best as a <strong>PNG or SVG with a transparent background</strong> — wide and simple. Aim for ~400×120px; it&apos;s shown up to 70px tall.</small>
                   </div>
                 </SectionCard>
@@ -2356,6 +2367,18 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                     </select>
                   </label>
 
+                  <label className={styles.toggleRow} style={{ marginTop: '.65rem', marginBottom: '.75rem' }}>
+                    <input
+                      type="checkbox"
+                      checked={!siteContent.hideHeaderCompanyName}
+                      onChange={(event) => updateSiteContent({ hideHeaderCompanyName: !event.target.checked })}
+                    />
+                    <span>
+                      <strong>Show company name in header</strong>
+                      <small>Display your text business name next to your logo in the header. Turn off if your logo already includes your name.</small>
+                    </span>
+                  </label>
+
                   <div className={styles.formField} id="bf-name-style">
                     <span>Company name style</span>
                     {(() => {
@@ -2367,7 +2390,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       const previewFont = siteContent.brandFont && siteContent.brandFont !== 'var(--theme-display)' ? siteContent.brandFont : undefined;
                       const options = [{ key: '', label: 'Standard' }, ...WORDMARK_STYLES];
                       return (
-                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont } as CSSProperties}>
+                        <div className={styles.namePicker} role="radiogroup" aria-label="Company name style" style={{ '--wm-accent': site.accent_override || '#ff7a21', fontFamily: previewFont, opacity: siteContent.hideHeaderCompanyName ? 0.65 : 1 } as CSSProperties}>
                           {options.map((style) => {
                             const selected = (siteContent.wordmarkStyle || '') === style.key;
                             return (
@@ -2381,7 +2404,11 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       );
                     })()}
                   </div>
-                  <small className={styles.fieldHint}>Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.</small>
+                  <small className={styles.fieldHint}>
+                    {siteContent.hideHeaderCompanyName
+                      ? 'Text company name is currently hidden in the header. Turn it back on above if you want your name displayed next to your logo.'
+                      : 'Your business name in the header — shown exactly as you type. Tap a style to layer a treatment on top; the accent color follows your theme.'}
+                  </small>
 
                   <hr className={styles.logoDivider} />
                   <div className={styles.formColumns}>
@@ -2867,6 +2894,17 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                                   ))}
                                 </div>
                                 <label className={styles.toggleRow}><input type="checkbox" checked={siteContent.headerCta} onChange={(event) => updateSiteContent({ headerCta: event.target.checked })} /><span><strong>Show the button in the header</strong><small>The call-to-action at the top-right of every page. Off = just your logo and menu. (Always hidden on phones — the menu carries the action there.)</small></span></label>
+                                <label className={styles.toggleRow} style={{ marginTop: '.65rem' }}>
+                                   <input
+                                     type="checkbox"
+                                     checked={!siteContent.hideHeaderCompanyName}
+                                     onChange={(event) => updateSiteContent({ hideHeaderCompanyName: !event.target.checked })}
+                                   />
+                                   <span>
+                                     <strong>Show company name in header</strong>
+                                     <small>Display your text business name next to your logo or icon. Turn off if your logo already includes your name.</small>
+                                   </span>
+                                 </label>
 
                                 <hr className={styles.logoDivider} />
                                 <div className={styles.contentSubhead}><strong>Mobile menu button</strong><small>The hamburger shown on phones.</small></div>

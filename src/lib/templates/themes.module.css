@@ -3409,7 +3409,7 @@
      still on screen everywhere it has room, and in the menu when it doesn't. */
   .guildBrand, .careBrand, .coatBrand, .fixitBrand, .renoBrand, .shineBrand, .vistaBrand { min-width: 0; }
   .guildBrand > span, .careBrand > span, .coatBrand > span, .fixitBrand > span, .renoBrand > span, .shineBrand > span { min-width: 0; }
-  .guildBrand strong, .careBrand strong, .coatBrand strong, .fixitBrand strong, .renoBrand strong, .shineBrand strong,
+  .guildBrand strong, .careBrand strong, .coatBrand strong, .fixitBrand strong, .renoBrand strong, .shineBrand strong, .vistaBrand strong,
   .guildBrand small, .careBrand small, .coatBrand small, .fixitBrand small, .renoBrand small, .shineBrand small {
     display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   }

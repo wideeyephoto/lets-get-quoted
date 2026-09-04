@@ -80,19 +80,24 @@ export default function GuildTemplate({ site }: TemplateProps) {
   } as CSSProperties;
 
   return (
-    <main className={`${templateFontVars} ${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-hero-shadow={content.heroTextShadow}>
+    <main className={`${templateFontVars} ${styles.site} ${styles.guild}`} style={themeStyle} data-button={site.button_style || 'solid'} data-mode={scheme ? undefined : site.portal_mode} data-badge-style={getHeroBadgeStyle(site.content)} data-logo-style={getLogoStyle(site.content)} data-logo-size={getLogoSize(site.content)} data-header={getHeaderStyle(site.template, site.content)} data-header-button={getSiteContent(site.content).headerButtonStyle || 'match'} data-header-cta={content.headerCta ? undefined : 'off'} data-menu-btn={content.menuButton} data-wordmark={getWordmarkStyle(site.content)} data-header-name={content.hideHeaderCompanyName ? 'hidden' : undefined} data-hero-shadow={content.heroTextShadow}>
       <SiteAnnouncementBar site={site} />
       <SiteHeaderUtilityBar site={site} />
       <ScrollReveal />
       <Parallax />
       <header className={styles.guildHeader}>
-        <a className={styles.guildBrand} href="#top">
+        <a className={styles.guildBrand} href="#top" aria-label={`${site.company_name} home`}>
           {site.logo_url ? <img className={styles.logo} src={site.logo_url} alt="" data-edit="logo" /> : <span className={styles.guildBrandMark} data-edit="brandIcon"><ServiceIcon name={glyphForContent(content)} className={styles.brandGlyph} /></span>}
           {/* No fallback. This used to read "Licensed contractor" under the
               business name whenever the licence field was empty — a credential
               claimed by the template on behalf of a contractor who never made
               it. Nothing under the wordmark is better than something untrue. */}
-          <span><strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>{site.license ? <small data-edit="bizLicense">{site.license}</small> : null}</span>
+          {(!content.hideHeaderCompanyName || site.license) && (
+            <span>
+              {!content.hideHeaderCompanyName && <strong data-edit="identity"><WordmarkName name={site.company_name} /></strong>}
+              {site.license ? <small data-edit="bizLicense">{site.license}</small> : null}
+            </span>
+          )}
         </a>
         <SiteNavLinks site={site} className={styles.navLinks} links={[{ href: services ? '#our-services' : '#services', label: 'Services' }]} />
         <a className={styles.guildQuote} data-edit="quoteForm" href="#contact">{estimateLabel}</a>
