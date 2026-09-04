@@ -62,11 +62,15 @@ async function main() {
   console.log('Target Payment Found:');
   console.log(`  Account:        ${payment.account?.business_name} (${payment.account_id})`);
   console.log(`  Connected ID:   ${payment.account?.stripe_connect_id}`);
+  console.log(`  Job ID:         ${payment.job_id}`);
   console.log(`  Amount:         $${payment.amount}`);
   console.log(`  Status:         ${payment.status}`);
   console.log(`  Payment Intent: ${payment.stripe_payment_intent}`);
   console.log(`  Invoice ID:     ${payment.invoice_id} (Ref: ${payment.invoice?.ref})`);
-  console.log(`  Invoice Status: ${payment.invoice?.status}\n`);
+  console.log(`  Invoice Status: ${payment.invoice?.status}`);
+  console.log(`  Dashboard URL:  https://app.letsgetquoted.com/dashboard/jobs/${payment.job_id}`);
+  console.log(`  Admin URL:      https://app.letsgetquoted.com/admin/payments/${payment.id}\n`);
+  return;
 
   if (payment.status !== 'paid') {
     console.error(`Cannot refund payment: current status is '${payment.status}' (expected 'paid')`);
