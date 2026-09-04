@@ -64,6 +64,7 @@ const MIGRATIONS = [
   'migrations/20260903215831_voice_contractor_dispatch_hardening.sql',
   'migrations/20260903231235_ai_voice_number_provisioning.sql',
   'migrations/20260903232815_voice_staff_step_up_authorization.sql',
+  'migrations/20260904133000_unify_delivery_request_started_sender.sql',
 ] as const;
 
 function lf(value: string): string {
