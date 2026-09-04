@@ -55,7 +55,7 @@ const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
     accent: 'work',
     items: [
       { icon: '/dashboard/leads', label: 'Leads', href: '/demo/leads' },
-      { icon: '/dashboard/messages', label: 'Customer Messages', href: '/demo/messages' },
+      { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
       { icon: '/dashboard/jobs', label: 'Jobs', href: '/demo/jobs' },
       { icon: '/dashboard/schedule', label: 'Schedule', href: '/demo/schedule' },
       { icon: '/dashboard/crew', label: 'Crew & Labor', href: '/demo/crew' },
