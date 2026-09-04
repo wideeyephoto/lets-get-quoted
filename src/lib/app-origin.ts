@@ -49,10 +49,17 @@ function validHostname(value: string): boolean {
 export function trustedProviderCallbackOrigin(
   env: PublicOriginEnvironment = process.env,
 ): string | null {
-  const raw = (env.NEXT_PUBLIC_APP_URL ?? '').trim();
+  let raw = (env.SIGNALWIRE_WEBHOOK_ORIGIN ?? env.PROVIDER_CALLBACK_ORIGIN ?? env.NEXT_PUBLIC_APP_URL ?? '').trim();
   const root = (env.NEXT_PUBLIC_ROOT_DOMAIN ?? 'letsgetquoted.com')
     .trim().toLowerCase();
-  if (!raw || !validHostname(root)) return null;
+  if (!validHostname(root)) return null;
+
+  const isDev = (env.NODE_ENV ?? process.env.NODE_ENV) === 'development';
+  if (isDev && (!raw || raw.includes('localhost') || raw.includes('127.0.0.1'))) {
+    raw = `https://app.${root}`;
+  }
+
+  if (!raw) return null;
 
   try {
     const url = new URL(raw);

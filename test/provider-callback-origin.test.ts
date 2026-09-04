@@ -35,4 +35,26 @@ describe('trusted provider callback origin', () => {
     expect(origin('https://app.letsgetquoted.com', 'https://letsgetquoted.com')).toBeNull();
     expect(origin('https://app.letsgetquoted.com', 'letsgetquoted.com/path')).toBeNull();
   });
+
+  it('honours SIGNALWIRE_WEBHOOK_ORIGIN and PROVIDER_CALLBACK_ORIGIN when valid', () => {
+    expect(trustedProviderCallbackOrigin({
+      SIGNALWIRE_WEBHOOK_ORIGIN: 'https://app.letsgetquoted.com',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NEXT_PUBLIC_ROOT_DOMAIN: 'letsgetquoted.com',
+    })).toBe('https://app.letsgetquoted.com');
+
+    expect(trustedProviderCallbackOrigin({
+      PROVIDER_CALLBACK_ORIGIN: 'https://staging.letsgetquoted.com',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3000',
+      NEXT_PUBLIC_ROOT_DOMAIN: 'letsgetquoted.com',
+    })).toBe('https://staging.letsgetquoted.com');
+  });
+
+  it('falls back to the canonical app subdomain when running in development against localhost', () => {
+    expect(trustedProviderCallbackOrigin({
+      NODE_ENV: 'development',
+      NEXT_PUBLIC_APP_URL: 'http://localhost:3020',
+      NEXT_PUBLIC_ROOT_DOMAIN: 'letsgetquoted.com',
+    })).toBe('https://app.letsgetquoted.com');
+  });
 });

@@ -97,7 +97,14 @@ export default async function VoiceCallsPage({
   ]);
 
   const isRouteReady = routeReadiness.kind === 'ready';
-  const dedicatedNumber = isRouteReady ? routeReadiness.number : null;
+  const assignedMessagingNumber = messagingSetup?.registration?.kind === 'ok'
+    ? messagingSetup.registration.assignedNumber
+    : null;
+  const dedicatedNumber = (routeReadiness.kind === 'ready' && routeReadiness.number)
+    || (routeReadiness.kind === 'not_ready' && routeReadiness.number)
+    || account?.call_tracking_number
+    || assignedMessagingNumber
+    || null;
 
   const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
   const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;

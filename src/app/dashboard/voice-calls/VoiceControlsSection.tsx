@@ -1,3 +1,4 @@
+import React from 'react';
 import Link from 'next/link';
 import { displayPhone } from '@/lib/phone';
 import styles from './voice-calls.module.css';
@@ -111,13 +112,23 @@ export function VoiceStatusBanner({
 }: VoiceStatusBannerProps) {
   const isAnswering = isReady && status === 'active';
   const statusLabel = !isReady
-    ? 'Standby · No Dedicated Line'
+    ? (dedicatedNumber ? 'Standby · Verification Pending' : 'Standby · No Dedicated Line')
     : isAnswering
     ? 'Online & Answering'
     : status === 'paused'
     ? 'Paused'
     : 'Off';
   const modeLabel = answerMode === 'always' ? '24/7 All Inbound Calls' : 'After Hours Only';
+
+  const statusSubtext = isReady && dedicatedNumber
+    ? status === 'active'
+      ? `Answering on ${displayPhone(dedicatedNumber)} · Mode: ${modeLabel}`
+      : status === 'paused'
+      ? `Dedicated line ${displayPhone(dedicatedNumber)} · Answering paused`
+      : `Dedicated line ${displayPhone(dedicatedNumber)} · Answering off`
+    : dedicatedNumber
+    ? `Dedicated line ${displayPhone(dedicatedNumber)} connected · Verification in progress`
+    : 'Dedicated line not connected · Setup required before AI can answer live calls';
 
   return (
     <div className={styles.assistantStatusBanner} role="region" aria-label="AI Voice Assistant Status">
@@ -153,14 +164,12 @@ export function VoiceStatusBanner({
             {businessName || 'Your Business'} · {trade ? `${trade.charAt(0).toUpperCase() + trade.slice(1)} Assistant` : 'AI Receptionist'}
           </span>
           <span className={styles.statusSub}>
-            {isReady && dedicatedNumber
-              ? `Answering on ${displayPhone(dedicatedNumber)} · Mode: ${modeLabel}`
-              : 'Dedicated line not connected · Setup required before AI can answer live calls'}
+            {statusSubtext}
           </span>
         </div>
       </div>
 
-      <Link href="/dashboard/automations#ai-receptionist" className={styles.configActionBtn}>
+      <Link href="/dashboard/voice-calls?view=settings" className={styles.configActionBtn}>
         Configure Voice Receptionist →
       </Link>
     </div>
