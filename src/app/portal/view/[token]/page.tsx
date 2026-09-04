@@ -131,7 +131,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
 
               {portal.outstanding > 0 && openInvoices[0] ? (
                 <Link className="btn secondary" href={`/invoice/${openInvoices[0].id}`}>
-                  💳 Pay {formatMoney(openInvoices[0].due)}
+                  📄 Review &amp; Pay Invoice ({formatMoney(openInvoices[0].due)})
                 </Link>
               ) : null}
 
@@ -218,7 +218,7 @@ export default async function PortalViewPage({ params: paramsPromise }: { params
                   </div>
                   <span className="client-attention-pay-block">
                     <span className="cost-item-amount">{formatMoney(invoice.due)}</span>
-                    <span className="client-attention-action">{invoice.processing ? 'Processing' : 'Pay now'}</span>
+                    <span className="client-attention-action">{invoice.processing ? 'Processing' : 'Review & pay'}</span>
                   </span>
                 </Link>
               ))}

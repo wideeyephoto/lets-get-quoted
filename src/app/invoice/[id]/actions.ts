@@ -2,9 +2,11 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
 import { computeInvoiceTotals, getPublicInvoice, signInvoice } from '@/lib/invoices';
 import { invoicePayState, type InvoicePayment } from '@/lib/invoice-pay';
+import { createCheckoutSessionForPayment } from '@/lib/payments';
 
 export async function signInvoiceAction(invoiceId: string, formData: FormData) {
   const signerName = (formData.get('signerName') ?? '').toString().trim();
@@ -26,7 +28,7 @@ export async function signInvoiceAction(invoiceId: string, formData: FormData) {
 
 /**
  * "Pay this invoice" — reuse the open payment request for this invoice, or mint
- * one, then hand off to the existing /pay page and its Stripe checkout.
+ * one, then hand off directly to Stripe Checkout for card/wallet processing.
  *
  * This is an UNAUTHENTICATED server action, which in this codebase means it is a
  * public endpoint that anyone who has the invoice link can call. What that is
@@ -68,27 +70,41 @@ export async function payInvoiceAction(invoiceId: string) {
 
   const state = invoicePayState(invoice, totals.total, (paymentRows ?? []) as InvoicePayment[]);
 
-  // Already in flight — send them to it rather than starting a second one.
-  if (state.state === 'processing') redirect(`/pay/${state.paymentId}`);
-  if (state.state !== 'payable') throw new Error('This invoice is not currently payable.');
-  if (state.paymentId) redirect(`/pay/${state.paymentId}`);
+  if (state.state !== 'payable' && state.state !== 'processing') {
+    throw new Error('This invoice is not currently payable.');
+  }
 
-  const { data: created, error } = await admin
-    .from('payments')
-    .insert({
-      account_id: invoice.account_id,
-      job_id: invoice.job_id,
-      invoice_id: invoice.id,
-      kind: 'final',
-      label: `Invoice ${invoice.ref}`,
-      amount: state.due,
-      status: 'requested',
-    })
-    .select('id')
-    .single();
+  let paymentId = state.paymentId;
 
-  if (error || !created) throw new Error('Could not start this payment. Please try again.');
+  if (!paymentId) {
+    const { data: created, error } = await admin
+      .from('payments')
+      .insert({
+        account_id: invoice.account_id,
+        job_id: invoice.job_id,
+        invoice_id: invoice.id,
+        kind: 'final',
+        label: `Invoice ${invoice.ref}`,
+        amount: state.due,
+        status: 'requested',
+      })
+      .select('id')
+      .single();
 
-  revalidatePath(`/dashboard/jobs/${invoice.job_id}`);
-  redirect(`/pay/${created.id}`);
+    if (error || !created) throw new Error('Could not start this payment. Please try again.');
+    paymentId = created.id;
+    revalidatePath(`/dashboard/jobs/${invoice.job_id}`);
+  }
+
+  if (typeof paymentId !== 'string' || !paymentId) {
+    throw new Error('Could not start this payment. Please try again.');
+  }
+
+  const h = await headers();
+  const proto = h.get('x-forwarded-proto') ?? 'https';
+  const host = h.get('host') ?? 'localhost:3000';
+  const origin = `${proto}://${host}`;
+
+  const checkoutUrl = await createCheckoutSessionForPayment(paymentId, origin);
+  redirect(checkoutUrl);
 }
