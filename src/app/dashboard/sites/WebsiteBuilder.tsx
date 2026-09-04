@@ -6,11 +6,11 @@ import type { SiteImage } from '@/lib/site-images';
 import { getSiteGallery, STOCK_SITE_IMAGES } from '@/lib/site-images';
 import { getSiteContent, getTradeGlyphOptions, getUnreviewedGeneratedSections, glyphForContent, mergeSiteContent, COLOR_SCHEMES, getActiveColorSchemes, getColorScheme, HEADER_STYLES,
   MENU_BUTTON_STYLES,
-  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_TEXT_SHADOW_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, QUOTE_FORM_TRUST_CUES, DEFAULT_QUOTE_FORM_TRUST_ITEMS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, QUICK_STOP_SECTION_STYLES, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteHeroTextShadowStyle, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteQuickStopContent, type SiteQuickStopStyle, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent, type QuoteFormRadius, type QuoteFormWidth, type QuoteFormStepper, type QuoteFormBadge } from '@/lib/site-content';
+  BLOG_STYLES, BUTTON_STYLES, HEADER_BUTTON_STYLES, WORDMARK_STYLES, HERO_TEXT_SHADOW_STYLES, QUOTE_FORM_STYLES, QUOTE_FORM_FIELD_BGS, QUOTE_FORM_RADII, QUOTE_FORM_STEPPERS, QUOTE_FORM_BADGES, QUOTE_FORM_WIDTHS, QUOTE_FORM_TRUST_CUES, DEFAULT_QUOTE_FORM_TRUST_ITEMS, HERO_BADGE_PRESETS, HERO_BADGE_STYLES, IMAGE_SLOT_LABELS, MAX_EXTRA_HERO_IMAGES, PROJECT_SHOWCASE_STYLES, MAX_PROJECT_SHOWCASE_ITEMS, DEFAULT_PROJECT_SHOWCASE_PLACEHOLDERS, DEFAULT_PROJECT_SHOWCASE_EYEBROW, DEFAULT_PROJECT_SHOWCASE_TITLE, STOCK_PROJECT_SHOWCASE_EYEBROW, STOCK_PROJECT_SHOWCASE_TITLE, QUICK_STOP_SECTION_STYLES, VIDEO_SECTION_STYLES, videoStyleCapacity, videoSectionKey, MAX_VIDEO_SECTIONS, DEFAULT_VIDEOS_NAV_LABEL, type NormalizedSiteContent, type SiteHeroTextShadowStyle, type SiteProjectShowcaseContent, type SiteVideoSectionContent, type SiteBlogContent, type SiteAnnouncementContent, type SiteBeforeAfterContent, type SiteServicesContent, type SiteQuickStopContent, type SiteQuickStopStyle, type SiteHowItWorksContent, type SiteFaqContent, type SiteQuoteFormContent, type SiteRatingBadgeContent, type SiteServiceAreasContent, type SiteShowcaseContent, type SiteShowcaseItem, type SiteStatItem, type SiteStatsContent, type SiteTestimonialItem, type SiteStickyCallBarContent, type SiteChatButtonContent, type SiteAnalyticsContent, type SiteTestimonialsContent, type SiteTrustBadgesContent, type SiteWhyUsContent, type SiteLegalContent, type QuoteFormRadius, type QuoteFormWidth, type QuoteFormStepper, type QuoteFormBadge, type PendingAiLogo } from '@/lib/site-content';
 import { generatePrivacyPolicy, generateTermsOfService } from '@/lib/legal/legal-copy';
 import { AVAILABLE_TEMPLATES } from '@/lib/templates/types';
 import ServiceIcon, { SERVICE_ICON_KEYS } from '@/lib/templates/ServiceIcon';
-import { checkSubdomainAvailableAction, generateSiteTextAction, getAvailableAiCreditsAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, syncClientReviewsToSiteAction, syncCompletedJobsToSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption } from './actions';
+import { checkSubdomainAvailableAction, generateSiteTextAction, getAvailableAiCreditsAction, getAiLogosAction, importJobPhotoToSiteImageAction, listCompletedJobPhotoOptionsAction, listCompletedJobReviewsAction, publishSiteAction, regenerateSeoCopyAction, regenerateStockImagesAction, syncClientReviewsToSiteAction, syncCompletedJobsToSiteAction, updateSiteAction, uploadSiteImageAction, verifyCustomDomainAction, type JobPhotoImportOption, type CompletedJobReviewOption, type GeneratedAiLogo } from './actions';
 import { SEO_TITLE_MAX as SEO_TITLE_LIMIT, SEO_DESC_MAX as SEO_DESC_LIMIT } from '@/lib/seo/seo-copy';
 import { parseVerificationToken, verificationTokenProblem } from '@/lib/seo/search-console';
 // Shared with the first-run seed (lib/site-seed) so "Generate" here and the
@@ -394,6 +394,30 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
   // hero badge control).
   const [flashField, setFlashField] = useState<string | null>(null);
   const [showLogoStudio, setShowLogoStudio] = useState(false);
+  const [aiLogos, setAiLogos] = useState<GeneratedAiLogo[]>(() => ((initialSite.content as Record<string, unknown> | null)?.ai_logos as GeneratedAiLogo[]) || []);
+  const [pendingAiLogo, setPendingAiLogo] = useState<PendingAiLogo | null>(() => ((initialSite.content as Record<string, unknown> | null)?.pending_ai_logo as PendingAiLogo) || null);
+
+  // Poll for background AI logo completion if a generation is pending
+  useEffect(() => {
+    if (!pendingAiLogo || pendingAiLogo.status !== 'pending') return;
+
+    const poller = setInterval(async () => {
+      try {
+        const res = await getAiLogosAction();
+        if (res.logos && res.logos.length > 0) {
+          setAiLogos(res.logos);
+        }
+        if (!res.pending || res.pending.status !== 'pending') {
+          setPendingAiLogo(res.pending ?? null);
+          refreshAiCredits();
+        }
+      } catch {
+        // Keep polling
+      }
+    }, 2500);
+
+    return () => clearInterval(poller);
+  }, [pendingAiLogo, refreshAiCredits]);
   // Session undo/redo over `site` snapshots (works across saves — undoing to a
   // pre-save state marks the builder dirty so Save can persist the recovery).
   // Rapid keystrokes coalesce into one entry: a snapshot is only pushed when an
@@ -2162,6 +2186,28 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                       <button type="button" className={`${styles.secondaryAction} btn primary`} onClick={() => setShowLogoStudio(true)} style={{ background: '#2563eb', color: '#ffffff', border: 'none', fontWeight: 700 }}>
                         ✨ AI Logo Studio
                       </button>
+                      {pendingAiLogo?.status === 'pending' && (
+                        <button
+                          type="button"
+                          onClick={() => setShowLogoStudio(true)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '0.45rem',
+                            padding: '0.45rem 0.8rem',
+                            borderRadius: '8px',
+                            background: '#f3e8ff',
+                            border: '1.5px solid #a855f7',
+                            color: '#6d28d9',
+                            fontSize: '0.8rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <span style={{ display: 'inline-block', animation: 'aiBuilderSpin 3s linear infinite' }}>✦</span>
+                          <span>AI Art Director is building your logo…</span>
+                        </button>
+                      )}
                       <AiCreditIndicator credits={availableAiCredits} />
                       <button type="button" className={styles.secondaryAction} onClick={() => openPicker('your logo', 'logo')}>{site.logo_url ? 'Replace photo' : 'Upload custom file'}</button>
                       {site.logo_url && <button type="button" className={styles.secondaryAction} onClick={() => handleChange('logo_url', null)}>Remove</button>}
@@ -3973,11 +4019,63 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
         accentColor={site.accent_override}
         aiCredits={availableAiCredits}
         onRefreshCredits={refreshAiCredits}
+        savedLogos={aiLogos}
+        onLogosChange={setAiLogos}
+        pendingGeneration={pendingAiLogo}
+        onPendingChange={setPendingAiLogo}
         onSelectLogo={(_svg, dataUri) => {
           handleChange('logo_url', dataUri);
           updateSiteContent({ logoStyle: 'transparent' });
         }}
       />
+
+      {pendingAiLogo?.status === 'pending' && !showLogoStudio && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            left: '24px',
+            zIndex: 99,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.75rem',
+            padding: '0.65rem 1.1rem',
+            background: 'linear-gradient(135deg, #1e1b4b, #31104b)',
+            border: '1.5px solid #a855f7',
+            borderRadius: '999px',
+            boxShadow: '0 12px 30px rgba(0,0,0,0.35)',
+            color: '#ffffff',
+            fontSize: '0.82rem',
+            fontWeight: 700,
+          }}
+        >
+          <span style={{ display: 'inline-block', animation: 'aiBuilderSpin 2s linear infinite', color: '#c084fc', fontSize: '1rem' }}>✦</span>
+          <span>AI Art Director is generating your logo in the background…</span>
+          <button
+            type="button"
+            onClick={() => setShowLogoStudio(true)}
+            style={{
+              padding: '0.35rem 0.75rem',
+              borderRadius: '999px',
+              border: 'none',
+              background: '#9333ea',
+              color: '#ffffff',
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              cursor: 'pointer',
+            }}
+          >
+            Open Studio
+          </button>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes aiBuilderSpin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
 
       {(() => {
         // Resolved from the live list, not captured when it opened: deleting the

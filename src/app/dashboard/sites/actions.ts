@@ -19,7 +19,7 @@ import { siteToSeoInput } from '@/lib/seo/site-seo';
 import { generateStockImages, type StockImageResult } from '@/lib/stock/generate';
 import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
 import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
-import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings } from '@/lib/site-content';
+import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings, preserveAiLogos, type PersistedAiLogo, type PendingAiLogo } from '@/lib/site-content';
 import { preserveBlogPosts } from '@/lib/site-blog';
 import { matchesServedCity } from '@/lib/service-area-match';
 import {
@@ -74,9 +74,12 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   // Intake tuning is preserved for the same reason: it moved to Settings →
   // Automations → Smart Intake, and the builder would otherwise revert it.
   const contentWithBlogPreserved = updates.content
-    ? preserveIntakeSettings(
+    ? preserveAiLogos(
         sites[0].content as Record<string, unknown> | null,
-        preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content),
+        preserveIntakeSettings(
+          sites[0].content as Record<string, unknown> | null,
+          preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content),
+        ),
       )
     : updates.content;
 
@@ -950,7 +953,10 @@ export async function generateAiLogoAction(params: {
   emblem?: string | null;
   direction?: string | null;
   creativeBrief?: string | null;
-}): Promise<{ ok: boolean; image?: GeneratedAiLogo; message?: string }> {
+}): Promise<{ ok: boolean; image?: GeneratedAiLogo; logos?: GeneratedAiLogo[]; message?: string }> {
+  let siteId: string | null = null;
+  const admin = createAdminClient();
+
   try {
     const { accountId } = await requireOfficeContext('settings.write');
     const businessName = params.businessName?.trim().slice(0, 80) || '';
@@ -970,6 +976,30 @@ export async function generateAiLogoAction(params: {
       direction,
       creativeBrief: params.creativeBrief,
     });
+
+    // Record pending generation task in site.content so navigation away is fully supported
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .limit(1)
+      .maybeSingle();
+
+    if (siteRow) {
+      siteId = siteRow.id;
+      const currentContent = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
+      const pendingRecord: PendingAiLogo = {
+        id: `pending-${Date.now()}`,
+        startedAt: new Date().toISOString(),
+        prompt,
+        direction,
+        status: 'pending',
+      };
+      await admin.from('sites').update({
+        content: { ...currentContent, pending_ai_logo: pendingRecord },
+        updated_at: new Date().toISOString(),
+      }).eq('id', siteRow.id);
+    }
 
     const response = await callImageModel(
       {
@@ -998,26 +1028,40 @@ export async function generateAiLogoAction(params: {
         type: payload?.error?.type,
         message: payload?.error?.message,
       });
+
+      let failMsg = `Image model request failed (${response.status}).`;
       if (payload?.error?.code === 'moderation_blocked') {
-        return { ok: false, message: 'That brief could not be generated. Try describing the visual idea in more neutral brand language.' };
-      }
-      if (response.status === 429) {
-        return { ok: false, message: 'The AI studio is at capacity right now. Wait a moment and try again.' };
-      }
-      if (response.status === 401) {
+        failMsg = 'That brief could not be generated. Try describing the visual idea in more neutral brand language.';
+      } else if (response.status === 429) {
+        failMsg = 'The AI studio is at capacity right now. Wait a moment and try again.';
+      } else if (response.status === 401) {
         const errorDetail = payload?.error?.message;
         if (errorDetail?.includes('Missing scopes') || errorDetail?.includes('permissions')) {
-          return {
-            ok: false,
-            message: 'Image model request failed (401): The OpenAI API key lacks image generation permissions (missing api.model.images.request scope).',
-          };
+          failMsg = 'Image model request failed (401): The OpenAI API key lacks image generation permissions (missing api.model.images.request scope).';
+        } else {
+          failMsg = 'Image model request failed (401): Authentication failed. Check your OpenAI API key.';
         }
-        return {
-          ok: false,
-          message: 'Image model request failed (401): Authentication failed. Check your OpenAI API key.',
-        };
       }
-      throw new Error(`Image model request failed (${response.status}).`);
+
+      // Record failure on site.content so returning users see the status
+      if (siteId) {
+        const { data: freshSite } = await admin.from('sites').select('content').eq('id', siteId).maybeSingle();
+        const freshContent = (freshSite?.content && typeof freshSite.content === 'object' ? freshSite.content : {}) as Record<string, unknown>;
+        await admin.from('sites').update({
+          content: {
+            ...freshContent,
+            pending_ai_logo: {
+              id: `failed-${Date.now()}`,
+              startedAt: new Date().toISOString(),
+              status: 'failed',
+              error: failMsg,
+            },
+          },
+          updated_at: new Date().toISOString(),
+        }).eq('id', siteId);
+      }
+
+      return { ok: false, message: failMsg };
     }
 
     const payload = await response.json() as { data?: Array<{ b64_json?: string }> };
@@ -1033,22 +1077,202 @@ export async function generateAiLogoAction(params: {
       alt: `${businessName} AI-generated logo`,
     });
 
+    const newLogo: GeneratedAiLogo = {
+      id: stored.id,
+      url: stored.url,
+      storagePath: stored.storagePath || '',
+      direction,
+      prompt,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Auto-save the new logo permanently in site.content.ai_logos and clear pending_ai_logo
+    let nextLogos: GeneratedAiLogo[] = [newLogo];
+    if (siteId) {
+      const { data: freshSite } = await admin.from('sites').select('content').eq('id', siteId).maybeSingle();
+      const freshContent = (freshSite?.content && typeof freshSite.content === 'object' ? freshSite.content : {}) as Record<string, unknown>;
+      const existingLogos = Array.isArray(freshContent.ai_logos) ? (freshContent.ai_logos as GeneratedAiLogo[]) : [];
+      nextLogos = [newLogo, ...existingLogos.filter((l) => l.id !== newLogo.id && l.storagePath !== newLogo.storagePath)];
+
+      await admin.from('sites').update({
+        content: {
+          ...freshContent,
+          ai_logos: nextLogos,
+          pending_ai_logo: null,
+        },
+        updated_at: new Date().toISOString(),
+      }).eq('id', siteId);
+    }
+
+    revalidatePath('/dashboard/sites');
+
     return {
       ok: true,
-      image: {
-        id: stored.id,
-        url: stored.url,
-        storagePath: stored.storagePath || '',
-        direction,
-        prompt,
-        createdAt: new Date().toISOString(),
-      },
+      image: newLogo,
+      logos: nextLogos,
     };
   } catch (error) {
+    const errorMsg = error instanceof Error ? error.message : 'Could not generate a logo right now.';
+    if (siteId) {
+      try {
+        const { data: freshSite } = await admin.from('sites').select('content').eq('id', siteId).maybeSingle();
+        const freshContent = (freshSite?.content && typeof freshSite.content === 'object' ? freshSite.content : {}) as Record<string, unknown>;
+        await admin.from('sites').update({
+          content: {
+            ...freshContent,
+            pending_ai_logo: {
+              id: `failed-${Date.now()}`,
+              startedAt: new Date().toISOString(),
+              status: 'failed',
+              error: errorMsg,
+            },
+          },
+          updated_at: new Date().toISOString(),
+        }).eq('id', siteId);
+      } catch {
+        // Best-effort cleanup
+      }
+    }
     return {
       ok: false,
-      message: error instanceof Error ? error.message : 'Could not generate a logo right now.',
+      message: errorMsg,
     };
+  }
+}
+
+export async function getAiLogosAction(): Promise<{
+  logos: GeneratedAiLogo[];
+  pending: PendingAiLogo | null;
+}> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!siteRow) return { logos: [], pending: null };
+
+    const content = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
+    let logos = Array.isArray(content.ai_logos) ? (content.ai_logos as GeneratedAiLogo[]) : [];
+
+    // If ai_logos is empty, auto-discover any existing AI logo assets in site-images storage matching -ai-logo
+    if (logos.length === 0) {
+      const uploaded = await listUploadedSiteImages(accountId).catch(() => []);
+      const legacyLogos = uploaded.filter((img) => img.storagePath?.includes('-ai-logo'));
+      if (legacyLogos.length > 0) {
+        logos = legacyLogos.map((img) => ({
+          id: img.id,
+          url: img.url,
+          storagePath: img.storagePath || '',
+          direction: 'art_director' as AiLogoDirection,
+          prompt: img.alt || 'AI generated logo concept',
+          createdAt: new Date().toISOString(),
+        }));
+        await admin.from('sites').update({
+          content: { ...content, ai_logos: logos },
+          updated_at: new Date().toISOString(),
+        }).eq('id', siteRow.id);
+      }
+    }
+
+    // Check pending generation status
+    let pending: PendingAiLogo | null = null;
+    if (content.pending_ai_logo && typeof content.pending_ai_logo === 'object') {
+      const rawPending = content.pending_ai_logo as PendingAiLogo;
+      const startedAtMs = Date.parse(rawPending.startedAt);
+      // Auto-expire pending tasks older than 3 minutes (180,000 ms)
+      if (!Number.isNaN(startedAtMs) && Date.now() - startedAtMs < 180000 && rawPending.status === 'pending') {
+        pending = rawPending;
+      } else if (rawPending.status === 'pending') {
+        await admin.from('sites').update({
+          content: { ...content, pending_ai_logo: null },
+          updated_at: new Date().toISOString(),
+        }).eq('id', siteRow.id);
+      } else if (rawPending.status === 'failed') {
+        pending = rawPending;
+      }
+    }
+
+    return { logos, pending };
+  } catch (err) {
+    console.error('Failed to get AI logos', err);
+    return { logos: [], pending: null };
+  }
+}
+
+export async function deleteAiLogoAction(
+  storagePath: string,
+  logoId: string,
+): Promise<{ ok: boolean; message?: string; logos?: GeneratedAiLogo[] }> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+
+    // 1. Remove from storage bucket if storagePath is provided
+    if (storagePath && storagePath.startsWith(`${accountId}/`)) {
+      await deleteSiteImage(accountId, storagePath).catch((err) => {
+        console.warn('Failed to delete file from site-images storage:', err);
+      });
+    }
+
+    // 2. Remove from site.content.ai_logos in database
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .limit(1)
+      .maybeSingle();
+
+    if (!siteRow) return { ok: false, message: 'Site not found' };
+
+    const content = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
+    const existingLogos = Array.isArray(content.ai_logos) ? (content.ai_logos as GeneratedAiLogo[]) : [];
+    const remainingLogos = existingLogos.filter((logo) => logo.id !== logoId && logo.storagePath !== storagePath);
+
+    await admin.from('sites').update({
+      content: {
+        ...content,
+        ai_logos: remainingLogos,
+      },
+      updated_at: new Date().toISOString(),
+    }).eq('id', siteRow.id);
+
+    revalidatePath('/dashboard/sites');
+    return { ok: true, logos: remainingLogos };
+  } catch (error) {
+    console.error('Failed to delete AI logo', error);
+    return {
+      ok: false,
+      message: error instanceof Error ? error.message : 'Could not delete logo.',
+    };
+  }
+}
+
+export async function dismissAiLogoPendingAction(): Promise<{ ok: boolean }> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+    const { data: siteRow } = await admin
+      .from('sites')
+      .select('id, content')
+      .eq('account_id', accountId)
+      .limit(1)
+      .maybeSingle();
+
+    if (siteRow) {
+      const content = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
+      await admin.from('sites').update({
+        content: { ...content, pending_ai_logo: null },
+        updated_at: new Date().toISOString(),
+      }).eq('id', siteRow.id);
+    }
+    return { ok: true };
+  } catch {
+    return { ok: false };
   }
 }
 

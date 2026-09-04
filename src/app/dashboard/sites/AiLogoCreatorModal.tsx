@@ -14,7 +14,15 @@ import {
 } from '@/lib/logo-creator';
 import { AI_LOGO_DIRECTIONS, type AiLogoDirection } from '@/lib/logo-image-prompt';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/ServiceIcon';
-import { generateAiLogoAction, generateLogoTaglinesAction, type GeneratedAiLogo } from './actions';
+import type { PendingAiLogo } from '@/lib/site-content';
+import {
+  generateAiLogoAction,
+  generateLogoTaglinesAction,
+  getAiLogosAction,
+  deleteAiLogoAction,
+  dismissAiLogoPendingAction,
+  type GeneratedAiLogo,
+} from './actions';
 
 const CREATIVE_PHASES = [
   {
@@ -570,6 +578,10 @@ type Props = {
   aiCredits?: number | null;
   onRefreshCredits?: () => void;
   onSelectLogo: (logoSvg: string, logoDataUri: string) => void;
+  savedLogos?: GeneratedAiLogo[];
+  onLogosChange?: (logos: GeneratedAiLogo[]) => void;
+  pendingGeneration?: PendingAiLogo | null;
+  onPendingChange?: (pending: PendingAiLogo | null) => void;
 };
 
 type ViewTab = 'ai' | 'concepts' | 'mockups';
@@ -584,6 +596,10 @@ export default function AiLogoCreatorModal({
   aiCredits,
   onRefreshCredits,
   onSelectLogo,
+  savedLogos = [],
+  onLogosChange,
+  pendingGeneration = null,
+  onPendingChange,
 }: Props) {
   const [name, setName] = useState(initialName || "Let's Get Quoted");
   const [tagline, setTagline] = useState('');
@@ -600,28 +616,90 @@ export default function AiLogoCreatorModal({
   const [previewLogoIndex, setPreviewLogoIndex] = useState(0);
   const [creativeBrief, setCreativeBrief] = useState('');
   const [aiDirection, setAiDirection] = useState<AiLogoDirection>('art_director');
-  const [aiConcepts, setAiConcepts] = useState<GeneratedAiLogo[]>([]);
-  const [selectedAiLogoId, setSelectedAiLogoId] = useState<string | null>(null);
+  const [aiConcepts, setAiConcepts] = useState<GeneratedAiLogo[]>(() => savedLogos);
+  const [selectedAiLogoId, setSelectedAiLogoId] = useState<string | null>(() => savedLogos[0]?.id ?? null);
   const [mockupUsesAi, setMockupUsesAi] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
-  
+  const [deletingLogoId, setDeletingLogoId] = useState<string | null>(null);
+  const [localPending, setLocalPending] = useState<PendingAiLogo | null>(null);
+
+  // Sync when savedLogos prop updates from parent
+  useEffect(() => {
+    if (savedLogos && savedLogos.length > 0) {
+      setAiConcepts(savedLogos);
+      setSelectedAiLogoId((prev) => prev ?? savedLogos[0]?.id ?? null);
+    }
+  }, [savedLogos]);
+
+  // Load latest AI logos & pending task when modal opens
+  useEffect(() => {
+    if (!open) return;
+    let isMounted = true;
+    getAiLogosAction().then((res) => {
+      if (!isMounted) return;
+      if (res.logos && res.logos.length > 0) {
+        setAiConcepts(res.logos);
+        onLogosChange?.(res.logos);
+        setSelectedAiLogoId((prev) => prev ?? res.logos[0]?.id ?? null);
+      }
+      if (res.pending) {
+        setLocalPending(res.pending);
+        onPendingChange?.(res.pending);
+        if (res.pending.status === 'failed' && res.pending.error) {
+          setAiError(res.pending.error);
+        }
+      }
+    }).catch(() => {});
+    return () => { isMounted = false; };
+  }, [open, onLogosChange, onPendingChange]);
+
   const [suggestedTaglines, setSuggestedTaglines] = useState<string[]>([]);
   const [isGeneratingAi, startAiTransition] = useTransition();
   const [isGeneratingImage, startImageTransition] = useTransition();
   const [downloadingKit, setDownloadingKit] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
 
+  const effectivePending = localPending || pendingGeneration;
+  const isGenerating = isGeneratingImage || (effectivePending?.status === 'pending');
+
   useEffect(() => {
-    if (!isGeneratingImage) {
+    if (!isGenerating) {
       setElapsedSeconds(0);
       return;
     }
-    const startedAt = Date.now();
-    const interval = setInterval(() => {
-      setElapsedSeconds(Math.floor((Date.now() - startedAt) / 1000));
-    }, 1000);
+    const startedAt = effectivePending?.startedAt ? Date.parse(effectivePending.startedAt) : Date.now();
+    const tick = () => {
+      const ms = Date.now() - (Number.isNaN(startedAt) ? Date.now() : startedAt);
+      setElapsedSeconds(Math.max(0, Math.floor(ms / 1000)));
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [isGeneratingImage]);
+  }, [isGenerating, effectivePending?.startedAt]);
+
+  // Background polling while pending generation is active and modal is open
+  useEffect(() => {
+    if (!open || !effectivePending || effectivePending.status !== 'pending') return;
+    const poller = setInterval(async () => {
+      try {
+        const res = await getAiLogosAction();
+        if (res.logos && res.logos.length > 0) {
+          setAiConcepts(res.logos);
+          onLogosChange?.(res.logos);
+        }
+        if (!res.pending || res.pending.status !== 'pending') {
+          setLocalPending(null);
+          onPendingChange?.(res.pending ?? null);
+          if (res.pending?.status === 'failed') {
+            setAiError(res.pending.error || 'AI logo generation was unable to complete.');
+          }
+        }
+      } catch {
+        // Keep polling
+      }
+    }, 2500);
+    return () => clearInterval(poller);
+  }, [open, effectivePending, onLogosChange, onPendingChange]);
 
   const concepts = useMemo(() => {
     return generateLogoConcepts({
@@ -668,6 +746,16 @@ export default function AiLogoCreatorModal({
 
   function handleGenerateAiLogo() {
     setAiError(null);
+    const pendingRecord: PendingAiLogo = {
+      id: `pending-${Date.now()}`,
+      startedAt: new Date().toISOString(),
+      prompt: creativeBrief || name,
+      direction: aiDirection,
+      status: 'pending',
+    };
+    setLocalPending(pendingRecord);
+    onPendingChange?.(pendingRecord);
+
     startImageTransition(async () => {
       const result = await generateAiLogoAction({
         businessName: name,
@@ -681,15 +769,50 @@ export default function AiLogoCreatorModal({
         creativeBrief: creativeBrief || null,
       });
 
+      setLocalPending(null);
+      onPendingChange?.(null);
+
       if (!result.ok || !result.image) {
         setAiError(result.message || 'Could not generate a logo right now.');
         return;
       }
 
-      setAiConcepts((current) => [result.image!, ...current]);
+      const updated = result.logos || [result.image, ...aiConcepts.filter((c) => c.id !== result.image!.id)];
+      setAiConcepts(updated);
+      onLogosChange?.(updated);
       setSelectedAiLogoId(result.image.id);
       onRefreshCredits?.();
     });
+  }
+
+  async function handleDeleteAiLogo(logo: GeneratedAiLogo) {
+    if (!window.confirm('Delete this AI logo concept? This permanently removes the file from your brand studio.')) {
+      return;
+    }
+    setDeletingLogoId(logo.id);
+    try {
+      const res = await deleteAiLogoAction(logo.storagePath || '', logo.id);
+      if (res.ok && res.logos) {
+        setAiConcepts(res.logos);
+        onLogosChange?.(res.logos);
+        if (selectedAiLogoId === logo.id) {
+          setSelectedAiLogoId(res.logos[0]?.id ?? null);
+        }
+      } else {
+        const next = aiConcepts.filter((item) => item.id !== logo.id);
+        setAiConcepts(next);
+        onLogosChange?.(next);
+        if (selectedAiLogoId === logo.id) {
+          setSelectedAiLogoId(next[0]?.id ?? null);
+        }
+      }
+      onRefreshCredits?.();
+    } catch (err) {
+      console.error('Failed to delete logo', err);
+      alert('Could not delete logo. Please try again.');
+    } finally {
+      setDeletingLogoId(null);
+    }
   }
 
   async function handleDownloadAiLogo(logo: GeneratedAiLogo) {
@@ -1172,17 +1295,17 @@ export default function AiLogoCreatorModal({
                 <button
                   type="button"
                   onClick={handleGenerateAiLogo}
-                  disabled={isGeneratingImage || !name.trim()}
+                  disabled={isGenerating || !name.trim()}
                   style={{
                     width: '100%',
                     padding: '0.7rem 0.9rem',
                     border: 'none',
                     borderRadius: '9px',
-                    background: isGeneratingImage ? '#6d28d9' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
+                    background: isGenerating ? '#6d28d9' : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
                     color: '#ffffff',
                     fontWeight: 900,
                     fontSize: '0.86rem',
-                    cursor: isGeneratingImage ? 'wait' : 'pointer',
+                    cursor: isGenerating ? 'wait' : 'pointer',
                     boxShadow: '0 7px 18px rgba(109,40,217,0.24)',
                     display: 'flex',
                     alignItems: 'center',
@@ -1190,7 +1313,7 @@ export default function AiLogoCreatorModal({
                     gap: '0.45rem',
                   }}
                 >
-                  {isGeneratingImage ? (
+                  {isGenerating ? (
                     <>
                       <span style={{ display: 'inline-block', animation: 'aiLogoSpinSlow 2.5s linear infinite' }}>✦</span>
                       <span>Building identity ({formatElapsed(elapsedSeconds)})…</span>
@@ -1486,15 +1609,15 @@ export default function AiLogoCreatorModal({
                     </div>
                   )}
 
-                  {isGeneratingImage && aiConcepts.length === 0 ? (
+                  {isGenerating && aiConcepts.length === 0 ? (
                     <AiArtDirectorLoadingState variant="hero" elapsedSeconds={elapsedSeconds} />
                   ) : null}
 
-                  {isGeneratingImage && aiConcepts.length > 0 ? (
+                  {isGenerating && aiConcepts.length > 0 ? (
                     <AiArtDirectorLoadingState variant="card" elapsedSeconds={elapsedSeconds} />
                   ) : null}
 
-                  {aiConcepts.length === 0 && !isGeneratingImage ? (
+                  {aiConcepts.length === 0 && !isGenerating ? (
                     <div
                       style={{
                         minHeight: '500px',
@@ -1527,7 +1650,7 @@ export default function AiLogoCreatorModal({
                       <button
                         type="button"
                         onClick={handleGenerateAiLogo}
-                        disabled={!name.trim() || isGeneratingImage}
+                        disabled={!name.trim() || isGenerating}
                         style={{ marginTop: '1.75rem', padding: '0.8rem 1.15rem', borderRadius: '10px', border: '1px solid rgba(255,255,255,0.2)', background: '#ffffff', color: '#4c1d95', fontSize: '0.88rem', fontWeight: 900, cursor: 'pointer', boxShadow: '0 10px 25px rgba(0,0,0,0.22)' }}
                       >
                         ✦ Generate {name.trim() ? `${name.trim()}'s` : 'My'} First Concept
@@ -1559,6 +1682,24 @@ export default function AiLogoCreatorModal({
                               </button>
                               <button type="button" onClick={() => void handleDownloadAiLogo(logo)} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>Download PNG</button>
                               <button type="button" onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); setActiveTab('mockups'); }} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#faf5ff', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>See Mockups</button>
+                              <button
+                                type="button"
+                                onClick={() => void handleDeleteAiLogo(logo)}
+                                disabled={deletingLogoId === logo.id}
+                                style={{
+                                  padding: '0.58rem 0.7rem',
+                                  borderRadius: '8px',
+                                  border: '1px solid #fecaca',
+                                  background: '#fff1f2',
+                                  color: '#dc2626',
+                                  fontSize: '0.78rem',
+                                  fontWeight: 800,
+                                  cursor: deletingLogoId === logo.id ? 'wait' : 'pointer',
+                                }}
+                                title="Permanently delete this AI logo concept"
+                              >
+                                {deletingLogoId === logo.id ? 'Deleting...' : '🗑 Delete'}
+                              </button>
                             </div>
                             <details style={{ marginTop: '0.6rem' }}>
                               <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>View the art-direction prompt</summary>

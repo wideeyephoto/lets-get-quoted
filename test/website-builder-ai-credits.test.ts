@@ -104,4 +104,43 @@ describe('Website Builder AI Credits Display', () => {
     expect(CSS_CODE).toContain('.headerCreditBadgeLow');
     expect(CSS_CODE).toContain('.aiButtonGroup');
   });
+
+  it('preserves AI logos and pending generation across general site updates', async () => {
+    const { preserveAiLogos } = await import('../src/lib/site-content');
+    const stored = {
+      ai_logos: [{ id: 'logo-1', url: 'https://example.com/logo-1.png', prompt: 'test' }],
+      pending_ai_logo: { id: 'pending-1', startedAt: '2026-09-04T12:00:00Z', status: 'pending' },
+    };
+    const incomingWithoutLogos = {
+      trade: 'plumber',
+    };
+    const merged = preserveAiLogos(stored, incomingWithoutLogos);
+    expect(merged.ai_logos).toEqual(stored.ai_logos);
+    expect(merged.pending_ai_logo).toEqual(stored.pending_ai_logo);
+  });
+
+  it('supports AI logo retrieval, auto-save, and deletion in actions.ts', () => {
+    expect(ACTIONS_CODE).toContain('export async function getAiLogosAction()');
+    expect(ACTIONS_CODE).toContain('export async function deleteAiLogoAction(');
+    expect(ACTIONS_CODE).toContain('preserveAiLogos');
+    expect(ACTIONS_CODE).toContain('pending_ai_logo');
+    expect(ACTIONS_CODE).toContain('deleteSiteImage');
+  });
+
+  it('supports AI logo deletion and background generation in AiLogoCreatorModal.tsx', () => {
+    expect(MODAL_CODE).toContain('handleDeleteAiLogo');
+    expect(MODAL_CODE).toContain('🗑 Delete');
+    expect(MODAL_CODE).toContain('savedLogos');
+    expect(MODAL_CODE).toContain('pendingGeneration');
+    expect(MODAL_CODE).toContain('getAiLogosAction');
+  });
+
+  it('supports background AI logo generation and notifications in WebsiteBuilder.tsx', () => {
+    expect(BUILDER_CODE).toContain('pendingAiLogo');
+    expect(BUILDER_CODE).toContain('getAiLogosAction');
+    expect(BUILDER_CODE).toContain('AI Art Director is building your logo');
+    expect(BUILDER_CODE).toContain('AI Art Director is generating your logo in the background');
+    expect(BUILDER_CODE).toContain('savedLogos={aiLogos}');
+    expect(BUILDER_CODE).toContain('pendingGeneration={pendingAiLogo}');
+  });
 });

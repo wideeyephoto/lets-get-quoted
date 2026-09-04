@@ -2568,6 +2568,51 @@ export function preserveIntakeSettings(
   return next;
 }
 
+export type PersistedAiLogo = {
+  id: string;
+  url: string;
+  storagePath: string;
+  direction?: string;
+  prompt?: string;
+  createdAt: string;
+};
+
+export type PendingAiLogo = {
+  id: string;
+  startedAt: string;
+  prompt?: string;
+  direction?: string;
+  status: 'pending' | 'completed' | 'failed';
+  error?: string;
+};
+
+/**
+ * Keep AI logos and background generation state so general builder saves
+ * do not overwrite concepts generated in the background or previously saved.
+ */
+export function preserveAiLogos(
+  stored: Record<string, unknown> | null | undefined,
+  incoming: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const next = (incoming && typeof incoming === 'object' ? { ...incoming } : {}) as Record<string, unknown>;
+  const storedRoot = (stored && typeof stored === 'object' ? stored : {}) as Record<string, unknown>;
+  if (Array.isArray(storedRoot.ai_logos)) {
+    const incomingLogos = Array.isArray(next.ai_logos) ? (next.ai_logos as PersistedAiLogo[]) : [];
+    const storedLogos = storedRoot.ai_logos as PersistedAiLogo[];
+    const combined = [...incomingLogos];
+    for (const s of storedLogos) {
+      if (!combined.some((item) => item.id === s.id || item.storagePath === s.storagePath)) {
+        combined.push(s);
+      }
+    }
+    next.ai_logos = combined;
+  }
+  if (storedRoot.pending_ai_logo) {
+    next.pending_ai_logo = storedRoot.pending_ai_logo;
+  }
+  return next;
+}
+
 /**
  * A slug no other post on this site is already using.
  *
