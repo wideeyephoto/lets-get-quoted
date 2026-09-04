@@ -87,7 +87,7 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   // Lucide help-circle. A question mark rather than a lifebuoy: this is where
   // you ask something, not a rescue you have to be drowning to deserve.
   '/dashboard/help': '<circle cx="12" cy="12" r="9.2"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.5-2.8 4"/><path d="M12 17.4h.01"/>',
-  '/dashboard/merchandise': '<path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/>',
+  '/dashboard/merchandise': '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4M14.5 15h3"/>',
   '/dashboard/sites': '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M3 9h18M8 20h8M12 16.5V20"/>',
 };
 

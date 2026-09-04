@@ -78,7 +78,7 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/expenses', label: 'Expenses Ledger', hint: 'Cross-job supplier receipts, labor & costs' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
-  { href: '/dashboard/merchandise', label: 'Merch Studio', hint: 'Branded crew uniforms, business cards & promotional swag' },
+  { href: '/dashboard/merchandise', label: 'Cards & Stationery', hint: 'Commercial business cards, 2-part NCR order pads & field forms' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },

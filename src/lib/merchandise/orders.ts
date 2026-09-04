@@ -7,13 +7,15 @@
  * migration has not yet been executed in a local or preview sandbox.
  */
 
+import { randomBytes } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { MerchandiseOrder, MerchandiseOrderItem, ShippingAddress } from './types';
 
 export function generateOrderNumber(): string {
   const year = new Date().getFullYear();
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  return `LGQ-MRCH-${year}-${randomSuffix}`;
+  const timeSuffix = Date.now().toString(36).toUpperCase().slice(-4);
+  const entropy = randomBytes(3).toString('hex').toUpperCase();
+  return `LGQ-MRCH-${year}-${timeSuffix}-${entropy}`;
 }
 
 export async function saveMerchandiseOrder(
@@ -29,6 +31,9 @@ export async function saveMerchandiseOrder(
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     printfulOrderId?: number | null;
+    trackingNumber?: string | null;
+    trackingCarrier?: string | null;
+    estimatedDeliveryDate?: string | null;
     status?: MerchandiseOrder['status'];
     proofApprovedAt?: string | null;
     proofSnapshotUrl?: string | null;
@@ -42,10 +47,9 @@ export async function saveMerchandiseOrder(
 ): Promise<MerchandiseOrder> {
   const orderNumber = generateOrderNumber();
   const now = new Date().toISOString();
-  const estimatedDelivery = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
 
   const newOrder: MerchandiseOrder = {
-    id: `ord_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    id: `ord_${Date.now()}_${randomBytes(4).toString('hex')}`,
     accountId,
     orderNumber,
     status: params.status || (params.stripeSessionId ? 'pending_payment' : 'proof_approved'),
@@ -58,9 +62,9 @@ export async function saveMerchandiseOrder(
     stripeSessionId: params.stripeSessionId || null,
     stripePaymentIntentId: params.stripePaymentIntentId || null,
     printfulOrderId: params.printfulOrderId || null,
-    trackingNumber: `1Z9999999${Math.floor(100000000 + Math.random() * 900000000)}`,
-    trackingCarrier: 'UPS Ground Commercial',
-    estimatedDeliveryDate: estimatedDelivery,
+    trackingNumber: params.trackingNumber || null,
+    trackingCarrier: params.trackingCarrier || null,
+    estimatedDeliveryDate: params.estimatedDeliveryDate || null,
     proofApprovedAt: params.proofApprovedAt || now,
     proofSnapshotUrl: params.proofSnapshotUrl || null,
     revenueBreakdown: params.revenueBreakdown,
@@ -95,24 +99,6 @@ export async function saveMerchandiseOrder(
       .single();
 
     if (!error && data) {
-      // Record platform fee into merchandise_revenue_ledger
-      if (params.revenueBreakdown) {
-        try {
-          await supabase.from('merchandise_revenue_ledger').insert({
-            account_id: accountId,
-            order_id: data.id,
-            order_number: data.order_number,
-            gross_retail_amount: params.subtotal,
-            wholesale_manufacturing_cost: params.revenueBreakdown.wholesaleCost,
-            platform_cut_amount: params.revenueBreakdown.platformCutAmount,
-            stripe_processing_fee: params.revenueBreakdown.stripeFee,
-            net_platform_profit: params.revenueBreakdown.netProfit,
-          });
-        } catch {
-          // Ledger table may not yet exist in unmigrated environment
-        }
-      }
-
       return {
         id: data.id,
         accountId,
@@ -137,7 +123,15 @@ export async function saveMerchandiseOrder(
         updatedAt: data.updated_at,
       };
     }
-  } catch {
+
+    if (error && error.code !== '42P01') {
+      console.error('Database error inserting merchandise order:', error);
+      throw new Error(`Could not insert merchandise order: ${error.message}`);
+    }
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith('Could not insert merchandise order:')) {
+      throw err;
+    }
     // Fall back to site content metadata if table does not exist
   }
 
@@ -232,4 +226,91 @@ export async function listMerchandiseOrders(
   }
 
   return [];
+}
+
+/**
+ * Records platform take-rate fee into merchandise_revenue_ledger upon confirmed payment.
+ */
+export async function recordMerchandiseRevenueLedger(
+  supabase: SupabaseClient,
+  params: {
+    accountId: string;
+    orderId: string;
+    orderNumber: string;
+    grossRetailAmount: number;
+    wholesaleCost: number;
+    platformCutAmount: number;
+    stripeFee: number;
+    netProfit: number;
+  }
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('merchandise_revenue_ledger').insert({
+      account_id: params.accountId,
+      order_id: params.orderId,
+      order_number: params.orderNumber,
+      gross_retail_amount: params.grossRetailAmount,
+      wholesale_manufacturing_cost: params.wholesaleCost,
+      platform_cut_amount: params.platformCutAmount,
+      stripe_processing_fee: params.stripeFee,
+      net_platform_profit: params.netProfit,
+    });
+
+    if (error) {
+      console.warn('Could not record merchandise revenue ledger entry:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Failed to insert merchandise revenue ledger entry:', err);
+    return false;
+  }
+}
+
+/**
+ * Updates status, fulfillment, and payment IDs on an existing merchandise order.
+ */
+export async function updateMerchandiseOrder(
+  supabase: SupabaseClient,
+  orderIdOrNumber: string,
+  updates: Partial<{
+    status: MerchandiseOrder['status'];
+    stripeSessionId: string | null;
+    stripePaymentIntentId: string | null;
+    printfulOrderId: number | null;
+    trackingNumber: string | null;
+    trackingCarrier: string | null;
+    estimatedDeliveryDate: string | null;
+  }>
+): Promise<boolean> {
+  try {
+    const payload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+
+    if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.stripeSessionId !== undefined) payload.stripe_session_id = updates.stripeSessionId;
+    if (updates.stripePaymentIntentId !== undefined) payload.stripe_payment_intent_id = updates.stripePaymentIntentId;
+    if (updates.printfulOrderId !== undefined) payload.printful_order_id = updates.printfulOrderId;
+    if (updates.trackingNumber !== undefined) payload.tracking_number = updates.trackingNumber;
+    if (updates.trackingCarrier !== undefined) payload.tracking_carrier = updates.trackingCarrier;
+    if (updates.estimatedDeliveryDate !== undefined) payload.estimated_delivery_date = updates.estimatedDeliveryDate;
+
+    let query = supabase.from('merchandise_orders').update(payload);
+    if (orderIdOrNumber.startsWith('LGQ-MRCH-')) {
+      query = query.eq('order_number', orderIdOrNumber);
+    } else {
+      query = query.eq('id', orderIdOrNumber);
+    }
+
+    const { error } = await query;
+    if (error) {
+      console.warn('Could not update merchandise order:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Failed to update merchandise order:', err);
+    return false;
+  }
 }

@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useMemo, useTransition, useRef } from 'react';
+import { useState, useMemo, useTransition, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import {
   MERCHANDISE_PRODUCTS,
   MERCHANDISE_CATEGORIES,
   getProductById,
 } from '@/lib/merchandise/catalog';
+import { calculateSalesTax, getSalesTaxRate } from '@/lib/merchandise/pricing';
 import type {
   MerchandiseProduct,
   MerchandiseCategoryId,
@@ -162,13 +163,26 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     activeColor.darkText,
   ]);
 
-  // Calculate pricing
-  const itemSubtotal = activeTier.totalPrice;
-  const estimatedShipping = shippingMethod === 'rush' ? 24.0 : itemSubtotal >= 150 ? 0.0 : 12.0;
-  const estimatedTax = Math.round(itemSubtotal * 0.065 * 100) / 100;
-  const grandTotal = Math.round((itemSubtotal + estimatedShipping + estimatedTax) * 100) / 100;
+  const [cart, setCart] = useState<MerchandiseOrderItem[]>([]);
+  const [cartToast, setCartToast] = useState<string | null>(null);
 
-  // Build current item object
+  // Return from Stripe Checkout handling
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('order_success') === 'true') {
+      const sessionId = params.get('session_id') || undefined;
+      setCart([]);
+      setCartToast('🎉 Order placed successfully! Direct print run queued.');
+      // Refresh order list if session exists
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (params.get('order_cancelled') === 'true') {
+      setCheckoutError('Payment was cancelled. Your items remain saved in your cart.');
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
+
+  // Build current customized item
   function getCurrentOrderItem(): MerchandiseOrderItem {
     return {
       productId: currentProduct.id,
@@ -201,22 +215,60 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     };
   }
 
-  // Trigger Instant Checkout
-  function handleExecuteCheckout(isInstantTestOrder = false) {
+  // Active items in checkout (cart if populated, else current item)
+  const checkoutItems = useMemo(() => {
+    return cart.length > 0 ? cart : [getCurrentOrderItem()];
+  }, [cart, currentProduct, activeColor, activeTier, businessName, phone, website, license, logoSource, activeAiLogo, initialData, selectedFinish, selectedModel, sizeQuantities]);
+
+  const itemSubtotal = Math.round(checkoutItems.reduce((acc, it) => acc + it.totalPrice, 0) * 100) / 100;
+  const estimatedShipping = shippingMethod === 'rush' ? 24.0 : itemSubtotal >= 150 ? 0.0 : 12.0;
+  const estimatedTax = calculateSalesTax(itemSubtotal, shippingAddress.state);
+  const grandTotal = Math.round((itemSubtotal + estimatedShipping + estimatedTax) * 100) / 100;
+
+  function handleAddToCart() {
+    const item = getCurrentOrderItem();
+    setCart((prev) => [...prev, item]);
+    setCartToast(`Added ${item.quantity} × ${item.productName} to your order!`);
+    setTimeout(() => setCartToast(null), 4500);
+  }
+
+  function handleRemoveFromCart(index: number) {
+    setCart((prev) => prev.filter((_, i) => i !== index));
+  }
+
+  function handleOpenCheckout() {
+    if (currentProduct.options?.sizes) {
+      const allocated = Object.values(sizeQuantities).reduce((a, b) => a + b, 0);
+      if (allocated !== activeTier.quantity) {
+        setCheckoutError(`Please allocate all ${activeTier.quantity} items across sizes before checking out (currently ${allocated} allocated).`);
+      }
+    }
+    setCheckoutOpen(true);
+  }
+
+  // Trigger Instant Checkout via Stripe
+  function handleExecuteCheckout() {
     if (!proofApproved) {
       setCheckoutError('Please check the digital proof approval box before completing your order.');
       return;
     }
 
+    if (currentProduct.options?.sizes && cart.length === 0) {
+      const allocated = Object.values(sizeQuantities).reduce((a, b) => a + b, 0);
+      if (allocated !== activeTier.quantity) {
+        setCheckoutError(`Please allocate all ${activeTier.quantity} items across sizes before checking out (currently ${allocated} allocated).`);
+        return;
+      }
+    }
+
     setCheckoutError(null);
     startCheckoutTransition(async () => {
-      const item = getCurrentOrderItem();
+      const itemsToOrder = cart.length > 0 ? cart : [getCurrentOrderItem()];
       const res = await createMerchandiseCheckoutAction({
-        items: [item],
+        items: itemsToOrder,
         shippingAddress,
         shippingMethod,
         proofApproved: true,
-        isInstantTestOrder,
       });
 
       if (!res.ok) {
@@ -225,11 +277,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       }
 
       if (res.checkoutUrl) {
+        setCart([]);
         window.location.href = res.checkoutUrl;
         return;
       }
 
       if (res.order) {
+        setCart([]);
         setOrders((prev) => [res.order!, ...prev]);
         setOrderSuccessModal(res.order);
         setCheckoutOpen(false);
@@ -424,6 +478,42 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               <span style={{ color: '#60a5fa' }}>📦 Free Shipping $150+</span>
             </div>
 
+            {cart.length > 0 && (
+              <button
+                type="button"
+                onClick={handleOpenCheckout}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.55rem 0.95rem',
+                  borderRadius: '8px',
+                  border: '1.5px solid var(--accent)',
+                  background: 'rgba(255, 122, 33, 0.15)',
+                  color: 'var(--text)',
+                  fontWeight: 800,
+                  fontSize: '0.84rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                <span>🛒 Cart</span>
+                <span
+                  style={{
+                    background: 'var(--accent)',
+                    color: '#ffffff',
+                    fontSize: '0.7rem',
+                    padding: '1px 6px',
+                    borderRadius: '999px',
+                    fontWeight: 800,
+                  }}
+                >
+                  {cart.length}
+                </span>
+                <span>(${cart.reduce((s, it) => s + it.totalPrice, 0).toFixed(2)})</span>
+              </button>
+            )}
+
             <button
               type="button"
               onClick={() => setOrdersDrawerOpen(true)}
@@ -461,7 +551,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
             <button
               type="button"
-              onClick={() => setCheckoutOpen(true)}
+              onClick={handleOpenCheckout}
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -477,12 +567,52 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 boxShadow: '0 4px 16px rgba(255,122,33,0.35)',
               }}
             >
-              <span>⚡ Instant Checkout ({activeTier.quantity})</span>
+              <span>⚡ Review Order ({activeTier.quantity})</span>
               <span>&bull;</span>
               <span>${activeTier.totalPrice.toFixed(2)}</span>
             </button>
           </div>
         </div>
+
+        {cartToast && (
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '-1rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              background: 'var(--good, #16a34a)',
+              color: '#ffffff',
+              padding: '0.45rem 1.2rem',
+              borderRadius: '999px',
+              fontSize: '0.82rem',
+              fontWeight: 800,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+              zIndex: 10,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+            }}
+          >
+            <span>{cartToast}</span>
+            <button
+              type="button"
+              onClick={handleOpenCheckout}
+              style={{
+                background: '#ffffff',
+                color: '#16a34a',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '2px 8px',
+                fontSize: '0.74rem',
+                fontWeight: 900,
+                cursor: 'pointer',
+              }}
+            >
+              Checkout Now
+            </button>
+          </div>
+        )}
       </section>
 
       {/* Main Studio Frame */}
@@ -972,15 +1102,24 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                <label style={{ fontSize: '0.74rem', fontWeight: 800, color: '#334155' }}>Size Quantities</label>
-                <span style={{ fontSize: '0.7rem', color: '#64748b' }}>
+                <label style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)' }}>Size Quantities</label>
+                <span
+                  style={{
+                    fontSize: '0.7rem',
+                    color:
+                      Object.values(sizeQuantities).reduce((a, b) => a + b, 0) === activeTier.quantity
+                        ? 'var(--good, #16a34a)'
+                        : 'var(--warn, #eab308)',
+                    fontWeight: 700,
+                  }}
+                >
                   Total: {Object.values(sizeQuantities).reduce((a, b) => a + b, 0)} / {activeTier.quantity} allocated
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.35rem' }}>
-                {['M', 'L', 'XL', '2XL'].map((sz) => (
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(currentProduct.options?.sizes?.length || 4, 7)}, 1fr)`, gap: '0.35rem' }}>
+                {(currentProduct.options?.sizes || ['S', 'M', 'L', 'XL', '2XL']).map((sz) => (
                   <div key={sz} style={{ textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b', display: 'block' }}>{sz}</span>
+                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--muted)', display: 'block' }}>{sz}</span>
                     <input
                       type="number"
                       min={0}
@@ -994,9 +1133,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                         textAlign: 'center',
                         padding: '0.3rem',
                         borderRadius: '6px',
-                        border: '1px solid rgba(var(--tint), 0.14)',
+                        border: '1px solid var(--line)',
                         background: 'rgba(var(--tint), 0.08)',
-                        color: '#ffffff',
+                        color: 'var(--text)',
                         fontWeight: 800,
                         fontSize: '0.8rem',
                         boxSizing: 'border-box',
@@ -1085,7 +1224,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto', paddingTop: '1rem' }}>
             <button
               type="button"
-              onClick={() => setCheckoutOpen(true)}
+              onClick={handleOpenCheckout}
               style={{
                 width: '100%',
                 padding: '0.85rem 1rem',
@@ -1103,9 +1242,31 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 gap: '0.5rem',
               }}
             >
-              <span>⚡ Instant Purchasing</span>
+              <span>⚡ Review Proof &amp; Checkout</span>
               <span>&bull;</span>
               <span>${activeTier.totalPrice.toFixed(2)}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleAddToCart}
+              style={{
+                width: '100%',
+                padding: '0.68rem 1rem',
+                borderRadius: '8px',
+                border: '1.5px solid var(--accent)',
+                background: 'rgba(255, 122, 33, 0.12)',
+                color: 'var(--text)',
+                fontWeight: 800,
+                fontSize: '0.84rem',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.4rem',
+              }}
+            >
+              <span>🛒 Add to Order &amp; Keep Designing</span>
             </button>
 
             <button
@@ -1272,32 +1433,103 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 </div>
               )}
 
-              {/* Order Summary Pill */}
+              {/* Order Items Summary */}
               <div
                 style={{
-                  padding: '1rem',
                   borderRadius: '10px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  overflow: 'hidden',
                 }}
               >
-                <div>
-                  <strong style={{ fontSize: '0.95rem', color: '#1e40af', display: 'block' }}>
-                    {currentProduct.name} ({activeTier.quantity} units)
-                  </strong>
-                  <span style={{ fontSize: '0.76rem', color: '#3b82f6' }}>
-                    Color: {activeColor.name} &bull; Method: {currentProduct.decorationLabel}
+                <div
+                  style={{
+                    padding: '0.65rem 1rem',
+                    background: 'rgba(255, 255, 255, 0.05)',
+                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                  }}
+                >
+                  <span style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
+                    Order Items ({checkoutItems.reduce((acc, it) => acc + it.quantity, 0)} units total)
+                  </span>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>
+                    {checkoutItems.length} {checkoutItems.length === 1 ? 'line item' : 'line items'}
                   </span>
                 </div>
-                <strong style={{ fontSize: '1.25rem', color: '#1d4ed8' }}>${itemSubtotal.toFixed(2)}</strong>
+
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {checkoutItems.map((item, idx) => (
+                    <div
+                      key={`${item.productId}-${idx}`}
+                      style={{
+                        padding: '0.85rem 1rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        gap: '0.75rem',
+                        borderBottom: idx < checkoutItems.length - 1 ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
+                      }}
+                    >
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <strong style={{ fontSize: '0.92rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                            {item.productName}
+                          </strong>
+                          <span
+                            style={{
+                              fontSize: '0.72rem',
+                              padding: '1px 6px',
+                              borderRadius: '4px',
+                              background: 'rgba(var(--tint), 0.1)',
+                              color: 'var(--muted)',
+                              fontWeight: 700,
+                            }}
+                          >
+                            ×{item.quantity}
+                          </span>
+                        </div>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block', marginTop: '2px' }}>
+                          Color: {item.colorName}
+                          {item.customizationDetails?.finish ? ` • Finish: ${item.customizationDetails.finish}` : ''}
+                          {item.customizationDetails?.deviceModel ? ` • Model: ${item.customizationDetails.deviceModel}` : ''}
+                          {item.customizationDetails?.sizeBreakdown ? ` • Sizes: ${Object.entries(item.customizationDetails.sizeBreakdown).map(([s, q]) => `${s}:${q}`).join(', ')}` : ''}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        <strong style={{ fontSize: '1rem', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                          ${item.totalPrice.toFixed(2)}
+                        </strong>
+                        {cart.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFromCart(idx)}
+                            style={{
+                              background: 'rgba(239, 68, 68, 0.1)',
+                              border: '1px solid rgba(239, 68, 68, 0.25)',
+                              color: '#ef4444',
+                              borderRadius: '5px',
+                              padding: '2px 6px',
+                              fontSize: '0.7rem',
+                              cursor: 'pointer',
+                              fontWeight: 700,
+                            }}
+                            title="Remove from order"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
               </div>
 
               {/* Shipping Address Inputs */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Shipping &amp; Delivery Address
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
@@ -1307,14 +1539,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       placeholder="Recipient Full Name"
                       value={shippingAddress.fullName}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="text"
                       placeholder="Company Name (Optional)"
                       value={shippingAddress.companyName || ''}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, companyName: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                   </div>
 
@@ -1323,7 +1555,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     placeholder="Street Address (e.g. 100 Main St)"
                     value={shippingAddress.streetAddress}
                     onChange={(e) => setShippingAddress({ ...shippingAddress, streetAddress: e.target.value })}
-                    style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                    style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                   />
 
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem' }}>
@@ -1332,21 +1564,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       placeholder="City"
                       value={shippingAddress.city}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="text"
                       placeholder="State (e.g. CO)"
                       value={shippingAddress.state}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="text"
                       placeholder="ZIP Code"
                       value={shippingAddress.postalCode}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, postalCode: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                   </div>
 
@@ -1356,14 +1588,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       placeholder="Delivery Phone #"
                       value={shippingAddress.phone}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                     <input
                       type="email"
                       placeholder="Receipt Email"
                       value={shippingAddress.email}
                       onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: '#ffffff', fontSize: '0.84rem', outline: 'none' }}
+                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
                     />
                   </div>
                 </div>
@@ -1371,7 +1603,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
               {/* Shipping Speed Radio */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.5rem', textTransform: 'uppercase' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Delivery Speed
                 </label>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
@@ -1389,7 +1621,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     }}
                   >
                     <strong style={{ fontSize: '0.82rem', display: 'block' }}>Standard Tracked Ground</strong>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
                       {itemSubtotal >= 150 ? 'FREE (Orders $150+)' : '$12.00 • 3–5 days'}
                     </span>
                   </button>
@@ -1408,7 +1640,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     }}
                   >
                     <strong style={{ fontSize: '0.82rem', display: 'block' }}>Rush Priority Air Freight</strong>
-                    <span style={{ fontSize: '0.72rem', color: '#64748b' }}>$24.00 • 2-day priority</span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>$24.00 • 2-day priority</span>
                   </button>
                 </div>
               </div>
@@ -1448,22 +1680,29 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               </div>
 
               {/* Cost Breakdown */}
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '0.75rem', fontSize: '0.82rem', color: '#475569' }}>
+              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '0.75rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span>Merchandise Subtotal:</span>
-                  <span>${itemSubtotal.toFixed(2)}</span>
+                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>${itemSubtotal.toFixed(2)}</span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>Shipping:</span>
-                  <span>{estimatedShipping === 0 ? 'FREE' : `$${estimatedShipping.toFixed(2)}`}</span>
+                  <span>Shipping ({shippingMethod === 'rush' ? 'Rush Priority' : 'Standard Ground'}):</span>
+                  <span style={{ color: estimatedShipping === 0 ? 'var(--good, #22c55e)' : 'var(--text)', fontWeight: 600 }}>
+                    {estimatedShipping === 0 ? 'FREE' : `$${estimatedShipping.toFixed(2)}`}
+                  </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span>Estimated Sales Tax (6.5%):</span>
-                  <span>${estimatedTax.toFixed(2)}</span>
+                  <span>
+                    Estimated Sales Tax
+                    {shippingAddress.state.trim()
+                      ? ` (${(getSalesTaxRate(shippingAddress.state) * 100).toFixed(1)}% • ${shippingAddress.state.trim().toUpperCase()}):`
+                      : ':'}
+                  </span>
+                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>${estimatedTax.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e2e8f0', paddingTop: '6px', fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '8px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
                   <span>Total Amount:</span>
-                  <span>${grandTotal.toFixed(2)}</span>
+                  <span style={{ color: 'var(--accent)' }}>${grandTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -1498,35 +1737,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
               <button
                 type="button"
-                onClick={() => handleExecuteCheckout(true)}
+                onClick={handleExecuteCheckout}
                 disabled={isCheckingOut || !proofApproved}
                 style={{
-                  padding: '0.6rem 1rem',
-                  borderRadius: '7px',
-                  border: '1px solid rgba(255, 255, 255, 0.14)',
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: !proofApproved ? '#64748b' : 'var(--text)',
-                  fontWeight: 800,
-                  fontSize: '0.82rem',
-                  cursor: isCheckingOut ? 'wait' : !proofApproved ? 'not-allowed' : 'pointer',
-                }}
-                title={!proofApproved ? 'Please check the proof sign-off box above' : undefined}
-              >
-                Instant Test Order
-              </button>
-
-              <button
-                type="button"
-                onClick={() => handleExecuteCheckout(false)}
-                disabled={isCheckingOut || !proofApproved}
-                style={{
-                  padding: '0.6rem 1.25rem',
+                  padding: '0.6rem 1.35rem',
                   borderRadius: '7px',
                   border: 'none',
                   background: !proofApproved ? 'rgba(255,255,255,0.1)' : 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
                   color: '#ffffff',
                   fontWeight: 900,
-                  fontSize: '0.86rem',
+                  fontSize: '0.88rem',
                   cursor: isCheckingOut ? 'wait' : !proofApproved ? 'not-allowed' : 'pointer',
                   boxShadow: !proofApproved ? 'none' : '0 4px 16px rgba(255,122,33,0.35)',
                 }}
@@ -1585,7 +1805,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             {orders.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem 1rem', color: '#64748b' }}>
                 <p style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>📦</p>
-                <strong style={{ display: 'block', color: '#0f172a' }}>No merchandise orders yet</strong>
+                <strong style={{ display: 'block', color: 'var(--text)' }}>No merchandise orders yet</strong>
                 <span style={{ fontSize: '0.8rem' }}>Customize an item above and place your first instant order!</span>
               </div>
             ) : (

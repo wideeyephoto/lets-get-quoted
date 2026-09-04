@@ -2,8 +2,8 @@ import { getMerchandiseStudioDataAction } from './actions';
 import MerchandiseDesignStudio from './MerchandiseDesignStudio';
 
 export const metadata = {
-  title: 'Merchandise & Swag Design Studio',
-  description: 'Design and instantly purchase branded uniforms, business cards, hats, and contractor gear.',
+  title: 'Business Cards & Field Forms Studio',
+  description: 'Design and order commercial-grade 16pt business cards and carbonless NCR work order pads.',
 };
 
 export default async function MerchandisePage() {

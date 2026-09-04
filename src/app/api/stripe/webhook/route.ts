@@ -14,6 +14,7 @@ import { markInvoicePaidForPayment } from '@/lib/invoices';
 import { handlePlanPaymentSettled, handlePlanPaymentFailed } from '@/lib/payment-plans';
 import { confirmQuickStopPayment } from '@/lib/quick-stop-payments';
 import { handleAdBudgetWebhookEvent } from '@/lib/ad-billing';
+import { handleMerchandiseWebhookEvent } from '@/lib/merchandise/stripe-webhook';
 import {
   coordinateLegacyDestinationPaymentProjection,
   legacyPaymentPlanProjectionEnabled,
@@ -609,6 +610,10 @@ async function dispatchStripeEvent(
   // Handle managed ad budget subscriptions & charges
   const handledAdEvent = await handleAdBudgetWebhookEvent(event, admin);
   if (handledAdEvent) return;
+
+  // Handle merchandise store orders & automated fulfillment
+  const handledMerchandiseEvent = await handleMerchandiseWebhookEvent(event, admin);
+  if (handledMerchandiseEvent) return;
 
   // Checkout session completed — a one-off payment succeeded, OR a recurring
   // plan's card-setup session finished (mode='setup', no charge).

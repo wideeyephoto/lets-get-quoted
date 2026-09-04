@@ -488,8 +488,10 @@ export const MERCHANDISE_PRODUCTS: MerchandiseProduct[] = ALL_MERCHANDISE_PRODUC
   (p) => p.id === 'biz_cards' || p.id === 'notepads'
 );
 
-export function getProductById(id: string): MerchandiseProduct | undefined {
-  return MERCHANDISE_PRODUCTS.find((p) => p.id === id) || ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === id);
+export function getProductById(id: string, allowInactive = false): MerchandiseProduct | undefined {
+  const active = MERCHANDISE_PRODUCTS.find((p) => p.id === id);
+  if (active || !allowInactive) return active;
+  return ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === id);
 }
 
 export function getProductsByCategory(category: MerchandiseCategoryId): MerchandiseProduct[] {

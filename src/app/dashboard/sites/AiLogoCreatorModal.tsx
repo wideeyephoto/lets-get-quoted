@@ -1166,16 +1166,19 @@ export default function AiLogoCreatorModal({
       }}
     >
       <div
+        className="ai-logo-studio-modal"
         style={{
-          background: '#ffffff',
+          background: 'var(--bg-2, #ffffff)',
+          color: 'var(--text, #0f172a)',
           borderRadius: '16px',
-          maxWidth: '1200px',
+          maxWidth: '1240px',
           width: '100%',
           height: '92vh',
           display: 'flex',
           flexDirection: 'column',
-          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.4)',
+          boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.5)',
           overflow: 'hidden',
+          border: '1px solid var(--line, rgba(255, 255, 255, 0.1))',
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -1184,11 +1187,11 @@ export default function AiLogoCreatorModal({
         <div
           style={{
             padding: '1rem 1.5rem',
-            borderBottom: '1px solid #e2e8f0',
+            borderBottom: '1px solid var(--line, rgba(255, 255, 255, 0.08))',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            background: 'linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)',
+            background: 'var(--bg-2, #ffffff)',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -1210,7 +1213,7 @@ export default function AiLogoCreatorModal({
             </div>
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#0f172a' }}>
+                <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: 'var(--text, #0f172a)' }}>
                   AI Logo &amp; Brand Studio
                 </h2>
                 {typeof aiCredits === 'number' && (
@@ -1221,31 +1224,31 @@ export default function AiLogoCreatorModal({
                       gap: '0.35rem',
                       padding: '0.25rem 0.6rem',
                       borderRadius: '999px',
-                      background: aiCredits <= 25 ? '#fef3c7' : '#eff6ff',
-                      border: aiCredits <= 25 ? '1px solid #fde68a' : '1px solid #dbeafe',
-                      color: aiCredits <= 25 ? '#b45309' : '#1d4ed8',
+                      background: aiCredits <= 25 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(59, 130, 246, 0.15)',
+                      border: aiCredits <= 25 ? '1px solid rgba(245, 158, 11, 0.35)' : '1px solid rgba(59, 130, 246, 0.35)',
+                      color: aiCredits <= 25 ? '#f59e0b' : '#3b82f6',
                       fontSize: '0.75rem',
                       fontWeight: 700,
                     }}
                   >
                     <span>⚡ {aiCredits.toLocaleString('en-US')} AI {aiCredits === 1 ? 'credit' : 'credits'}</span>
                     {aiCredits <= 25 ? (
-                      <a href="/dashboard/settings#buy-credits" style={{ color: '#b45309', textDecoration: 'underline', marginLeft: '0.2rem' }}>
+                      <a href="/dashboard/settings#buy-credits" style={{ color: '#f59e0b', textDecoration: 'underline', marginLeft: '0.2rem' }}>
                         + Top up
                       </a>
                     ) : null}
                   </span>
                 )}
               </div>
-              <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
-                Generate original brand concepts, then prove them on your website, truck, and uniform.
+              <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: 'var(--muted, #64748b)' }}>
+                Generate original brand concepts and apply them directly to your contractor website.
               </p>
             </div>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             {/* View Tab Switcher */}
-            <div style={{ background: '#e2e8f0', padding: '3px', borderRadius: '8px', display: 'flex', gap: '3px' }}>
+            <div style={{ background: 'rgba(var(--tint, 15, 23, 42), 0.08)', padding: '3px', borderRadius: '8px', display: 'flex', gap: '3px' }}>
               <button
                 type="button"
                 onClick={() => setActiveTab('ai')}
@@ -1253,12 +1256,12 @@ export default function AiLogoCreatorModal({
                   padding: '0.4rem 0.85rem',
                   borderRadius: '6px',
                   border: 'none',
-                  background: activeTab === 'ai' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'ai' ? '#6d28d9' : '#64748b',
+                  background: activeTab === 'ai' ? 'var(--bg-2, #ffffff)' : 'transparent',
+                  color: activeTab === 'ai' ? '#a855f7' : 'var(--muted, #64748b)',
                   fontWeight: 800,
                   fontSize: '0.8rem',
                   cursor: 'pointer',
-                  boxShadow: activeTab === 'ai' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                  boxShadow: activeTab === 'ai' ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
                 }}
               >
                 ✦ AI Concept Lab
@@ -1271,12 +1274,12 @@ export default function AiLogoCreatorModal({
                     padding: '0.4rem 0.85rem',
                     borderRadius: '6px',
                     border: 'none',
-                    background: activeTab === 'concepts' ? '#ffffff' : 'transparent',
-                    color: activeTab === 'concepts' ? '#0f172a' : '#64748b',
+                    background: activeTab === 'concepts' ? 'var(--bg-2, #ffffff)' : 'transparent',
+                    color: activeTab === 'concepts' ? 'var(--text, #0f172a)' : 'var(--muted, #64748b)',
                     fontWeight: 700,
                     fontSize: '0.8rem',
                     cursor: 'pointer',
-                    boxShadow: activeTab === 'concepts' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    boxShadow: activeTab === 'concepts' ? '0 1px 3px rgba(0,0,0,0.15)' : 'none',
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '5px',
@@ -1290,36 +1293,19 @@ export default function AiLogoCreatorModal({
                   )}
                 </button>
               )}
-              <button
-                type="button"
-                onClick={() => setActiveTab('mockups')}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  background: activeTab === 'mockups' ? '#ffffff' : 'transparent',
-                  color: activeTab === 'mockups' ? '#0f172a' : '#64748b',
-                  fontWeight: 700,
-                  fontSize: '0.8rem',
-                  cursor: 'pointer',
-                  boxShadow: activeTab === 'mockups' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                }}
-              >
-                🚚 Brand Mockups
-              </button>
             </div>
 
             <button
               type="button"
               onClick={onClose}
               style={{
-                background: '#f1f5f9',
-                border: 'none',
+                background: 'rgba(var(--tint, 15, 23, 42), 0.06)',
+                border: '1px solid var(--line, transparent)',
                 borderRadius: '8px',
                 padding: '0.5rem 0.75rem',
                 cursor: 'pointer',
                 fontWeight: 700,
-                color: '#475569',
+                color: 'var(--text, #475569)',
               }}
             >
               ✕ Close
@@ -1333,8 +1319,8 @@ export default function AiLogoCreatorModal({
           <div
             style={{
               width: '340px',
-              borderRight: '1px solid #e2e8f0',
-              background: '#f8fafc',
+              borderRight: '1px solid var(--line, rgba(255, 255, 255, 0.08))',
+              background: 'var(--bg-3, #f8fafc)',
               overflowY: 'auto',
               padding: '1.25rem',
               display: 'flex',
@@ -1345,7 +1331,7 @@ export default function AiLogoCreatorModal({
           >
             {/* Business Name */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Business Name
               </label>
               <input
@@ -1353,14 +1339,14 @@ export default function AiLogoCreatorModal({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Maplewood Plumbing"
-                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', fontWeight: 600, boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid var(--line, #cbd5e1)', background: 'var(--bg-2, #ffffff)', color: 'var(--text, #0f172a)', fontSize: '0.9rem', fontWeight: 600, boxSizing: 'border-box' }}
               />
             </div>
 
             {/* Tagline + AI Generator */}
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <label style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Tagline / Slogan
                 </label>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1369,13 +1355,13 @@ export default function AiLogoCreatorModal({
                     onClick={handleTriggerAiSlogans}
                     disabled={isGeneratingAi}
                     style={{
-                      background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-                      border: '1px solid #bfdbfe',
+                      background: 'rgba(59, 130, 246, 0.12)',
+                      border: '1px solid rgba(59, 130, 246, 0.3)',
                       borderRadius: '6px',
                       padding: '2px 8px',
                       fontSize: '0.72rem',
                       fontWeight: 700,
-                      color: '#1d4ed8',
+                      color: '#3b82f6',
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
@@ -1385,7 +1371,7 @@ export default function AiLogoCreatorModal({
                     {isGeneratingAi ? '⏳ Generating...' : '✨ AI Slogans'}
                   </button>
                   {typeof aiCredits === 'number' && (
-                    <span style={{ fontSize: '0.7rem', color: aiCredits <= 25 ? '#b45309' : '#64748b', fontWeight: 600 }}>
+                    <span style={{ fontSize: '0.7rem', color: aiCredits <= 25 ? '#b45309' : 'var(--muted, #64748b)', fontWeight: 600 }}>
                       ⚡ {aiCredits.toLocaleString('en-US')}
                     </span>
                   )}
@@ -1396,11 +1382,11 @@ export default function AiLogoCreatorModal({
                 value={tagline}
                 placeholder="e.g. Heating, Cooling & Drain Experts"
                 onChange={(e) => setTagline(e.target.value)}
-                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.9rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.5rem 0.75rem', borderRadius: '8px', border: '1.5px solid var(--line, #cbd5e1)', background: 'var(--bg-2, #ffffff)', color: 'var(--text, #0f172a)', fontSize: '0.9rem', boxSizing: 'border-box' }}
               />
 
               {taglineError && (
-                <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#b91c1c', fontWeight: 600 }}>
+                <div style={{ marginTop: '0.35rem', fontSize: '0.72rem', color: '#ef4444', fontWeight: 600 }}>
                   ⚠️ {taglineError}
                 </div>
               )}
@@ -1409,11 +1395,11 @@ export default function AiLogoCreatorModal({
               {suggestedTaglines.length > 0 && (
                 <div style={{ marginTop: '0.5rem', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: 700 }}>Pick an AI Slogan:</span>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted, #64748b)', fontWeight: 700 }}>Pick an AI Slogan:</span>
                     <button
                       type="button"
                       onClick={() => setSuggestedTaglines([])}
-                      style={{ border: 'none', background: 'transparent', color: '#94a3b8', fontSize: '0.68rem', cursor: 'pointer' }}
+                      style={{ border: 'none', background: 'transparent', color: 'var(--muted, #94a3b8)', fontSize: '0.68rem', cursor: 'pointer' }}
                     >
                       Dismiss
                     </button>
@@ -1426,11 +1412,11 @@ export default function AiLogoCreatorModal({
                       style={{
                         textAlign: 'left',
                         padding: '5px 8px',
-                        background: tagline === t ? '#eff6ff' : '#ffffff',
-                        border: tagline === t ? '1.5px solid #3b82f6' : '1px solid #e2e8f0',
+                        background: tagline === t ? 'rgba(59, 130, 246, 0.18)' : 'var(--bg-2, #ffffff)',
+                        border: tagline === t ? '1.5px solid #3b82f6' : '1px solid var(--line, #e2e8f0)',
                         borderRadius: '6px',
                         fontSize: '0.75rem',
-                        color: tagline === t ? '#1d4ed8' : '#334155',
+                        color: tagline === t ? '#60a5fa' : 'var(--text, #334155)',
                         fontWeight: tagline === t ? 700 : 500,
                         cursor: 'pointer',
                         display: 'flex',
@@ -1439,7 +1425,7 @@ export default function AiLogoCreatorModal({
                       }}
                     >
                       <span>&bull; {t}</span>
-                      {tagline === t && <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 900 }}>✓</span>}
+                      {tagline === t && <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 900 }}>✓</span>}
                     </button>
                   ))}
                 </div>
@@ -1451,15 +1437,15 @@ export default function AiLogoCreatorModal({
                 style={{
                   padding: '0.9rem',
                   borderRadius: '12px',
-                  background: 'linear-gradient(145deg, #faf5ff, #eef2ff)',
-                  border: '1px solid #ddd6fe',
+                  background: 'linear-gradient(145deg, rgba(168, 85, 247, 0.08), rgba(59, 130, 246, 0.08))',
+                  border: '1px solid rgba(168, 85, 247, 0.25)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '0.75rem',
                 }}
               >
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 900, color: '#5b21b6', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 900, color: '#a855f7', marginBottom: '5px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
                     Creative Direction
                   </label>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5px' }}>
@@ -1472,9 +1458,9 @@ export default function AiLogoCreatorModal({
                         style={{
                           padding: '0.45rem 0.5rem',
                           borderRadius: '7px',
-                          border: aiDirection === direction.id ? '1.5px solid #7c3aed' : '1px solid #ddd6fe',
-                          background: aiDirection === direction.id ? '#ffffff' : 'rgba(255,255,255,0.55)',
-                          color: aiDirection === direction.id ? '#5b21b6' : '#475569',
+                          border: aiDirection === direction.id ? '1.5px solid #a855f7' : '1px solid var(--line, rgba(168, 85, 247, 0.2))',
+                          background: aiDirection === direction.id ? 'var(--bg-2, #ffffff)' : 'rgba(var(--tint, 15, 23, 42), 0.04)',
+                          color: aiDirection === direction.id ? '#a855f7' : 'var(--muted, #475569)',
                           fontWeight: 800,
                           fontSize: '0.72rem',
                           textAlign: 'left',
@@ -1485,14 +1471,14 @@ export default function AiLogoCreatorModal({
                       </button>
                     ))}
                   </div>
-                  <p style={{ margin: '5px 0 0', fontSize: '0.69rem', lineHeight: 1.35, color: '#6b7280' }}>
+                  <p style={{ margin: '5px 0 0', fontSize: '0.69rem', lineHeight: 1.35, color: 'var(--muted, #6b7280)' }}>
                     {AI_LOGO_DIRECTIONS.find((direction) => direction.id === aiDirection)?.description}
                   </p>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 900, color: '#5b21b6', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    Art Director Brief <span style={{ fontWeight: 600, color: '#8b5cf6' }}>(optional)</span>
+                  <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 900, color: '#a855f7', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    Art Director Brief <span style={{ fontWeight: 600, color: 'var(--muted, #8b5cf6)' }}>(optional)</span>
                   </label>
                   <textarea
                     value={creativeBrief}
@@ -1500,7 +1486,7 @@ export default function AiLogoCreatorModal({
                     onChange={(event) => setCreativeBrief(event.target.value)}
                     placeholder="Try: An alpine peak hidden inside a lightning bolt. Confident, premium, no generic house roofs."
                     rows={3}
-                    style={{ width: '100%', resize: 'vertical', padding: '0.55rem 0.65rem', borderRadius: '8px', border: '1.5px solid #c4b5fd', background: '#ffffff', color: '#1e1b4b', fontSize: '0.8rem', lineHeight: 1.4, boxSizing: 'border-box' }}
+                    style={{ width: '100%', resize: 'vertical', padding: '0.55rem 0.65rem', borderRadius: '8px', border: '1.5px solid var(--line, #c4b5fd)', background: 'var(--bg-2, #ffffff)', color: 'var(--text, #1e1b4b)', fontSize: '0.8rem', lineHeight: 1.4, boxSizing: 'border-box' }}
                   />
                 </div>
 
@@ -1538,16 +1524,16 @@ export default function AiLogoCreatorModal({
                 </button>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '4px' }}>
                   {typeof aiCredits === 'number' && (
-                    <span style={{ fontSize: '0.72rem', color: aiCredits <= 25 ? '#b45309' : '#6d28d9', fontWeight: 700 }}>
+                    <span style={{ fontSize: '0.72rem', color: aiCredits <= 25 ? '#f59e0b' : '#a855f7', fontWeight: 700 }}>
                       ⚡ {aiCredits.toLocaleString('en-US')} AI {aiCredits === 1 ? 'credit' : 'credits'} available
                       {aiCredits <= 25 ? (
-                        <a href="/dashboard/settings#buy-credits" style={{ color: '#b45309', textDecoration: 'underline', marginLeft: '0.25rem' }}>
+                        <a href="/dashboard/settings#buy-credits" style={{ color: '#f59e0b', textDecoration: 'underline', marginLeft: '0.25rem' }}>
                           + Top up
                         </a>
                       ) : null}
                     </span>
                   )}
-                  <span style={{ fontSize: '0.66rem', color: '#6d28d9', textAlign: 'right', lineHeight: 1.35, flex: '1 1 auto' }}>
+                  <span style={{ fontSize: '0.66rem', color: 'var(--muted, #6d28d9)', textAlign: 'right', lineHeight: 1.35, flex: '1 1 auto' }}>
                     Transparent, high-res PNG
                   </span>
                 </div>
@@ -1557,7 +1543,7 @@ export default function AiLogoCreatorModal({
             {/* Trade Icon Glyph Picker - ONLY needed when using editable vectors */}
             {activeTab === 'concepts' && (
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   Trade Emblem / Icon
                 </label>
                 <div
@@ -1567,31 +1553,31 @@ export default function AiLogoCreatorModal({
                     alignItems: 'center',
                     justifyContent: 'space-between',
                     padding: '0.5rem 0.75rem',
-                    background: '#ffffff',
-                    border: '1.5px solid #cbd5e1',
+                    background: 'var(--bg-2, #ffffff)',
+                    border: '1.5px solid var(--line, #cbd5e1)',
                     borderRadius: '8px',
                     cursor: 'pointer',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <div
-                      style={{ width: '28px', height: '28px', background: '#eff6ff', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ width: '28px', height: '28px', background: 'rgba(var(--tint, 15, 23, 42), 0.06)', borderRadius: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
                       dangerouslySetInnerHTML={{
                         __html: `<svg width="18" height="18" viewBox="0 0 24 24" fill="${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.mode === 'fill' ? accent : 'none'}" stroke="${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.mode === 'fill' ? 'none' : accent}" stroke-width="2">${SERVICE_ICON_GLYPHS[selectedGlyphKey]?.body ?? ''}</svg>`,
                       }}
                     />
-                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#0f172a', textTransform: 'capitalize' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text, #0f172a)', textTransform: 'capitalize' }}>
                       {selectedGlyphKey}
                     </span>
                   </div>
-                  <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: 700 }}>Browse 45+ ▾</span>
+                  <span style={{ fontSize: '0.75rem', color: '#3b82f6', fontWeight: 700 }}>Browse 45+ ▾</span>
                 </div>
               </div>
             )}
 
             {/* Curated Color Themes */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Color Story Presets
               </label>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
@@ -1605,13 +1591,13 @@ export default function AiLogoCreatorModal({
                       alignItems: 'center',
                       justifyContent: 'space-between',
                       padding: '0.4rem 0.6rem',
-                      background: accent === p.primary && secondary === p.secondary ? '#eff6ff' : '#ffffff',
-                      border: accent === p.primary && secondary === p.secondary ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
+                      background: accent === p.primary && secondary === p.secondary ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-2, #ffffff)',
+                      border: accent === p.primary && secondary === p.secondary ? '1.5px solid #3b82f6' : '1px solid var(--line, rgba(255, 255, 255, 0.08))',
                       borderRadius: '6px',
                       cursor: 'pointer',
                     }}
                   >
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: '#334155' }}>{p.name}</span>
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: 'var(--text, #334155)' }}>{p.name}</span>
                     <div style={{ display: 'flex', gap: '3px' }}>
                       <span style={{ width: '14px', height: '14px', borderRadius: '3px', background: p.primary }} />
                       <span style={{ width: '14px', height: '14px', borderRadius: '3px', background: p.secondary }} />
@@ -1624,50 +1610,50 @@ export default function AiLogoCreatorModal({
             {/* Custom Colors & Established Year */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#475569', marginBottom: '2px' }}>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted, #475569)', marginBottom: '2px' }}>
                   Primary Accent
                 </label>
                 <input
                   type="color"
                   value={accent}
                   onChange={(e) => setAccent(e.target.value)}
-                  style={{ width: '100%', height: '32px', padding: '2px', borderRadius: '6px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                  style={{ width: '100%', height: '32px', padding: '2px', borderRadius: '6px', border: '1px solid var(--line, #cbd5e1)', cursor: 'pointer' }}
                 />
               </div>
               <div>
-                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#475569', marginBottom: '2px' }}>
+                <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted, #475569)', marginBottom: '2px' }}>
                   Secondary / Gold
                 </label>
                 <input
                   type="color"
                   value={secondary}
                   onChange={(e) => setSecondary(e.target.value)}
-                  style={{ width: '100%', height: '32px', padding: '2px', borderRadius: '6px', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+                  style={{ width: '100%', height: '32px', padding: '2px', borderRadius: '6px', border: '1px solid var(--line, #cbd5e1)', cursor: 'pointer' }}
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: '#475569', marginBottom: '2px' }}>
+              <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 700, color: 'var(--muted, #475569)', marginBottom: '2px' }}>
                 Est. Year
               </label>
               <input
                 type="text"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                style={{ width: '100%', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.4rem 0.6rem', borderRadius: '6px', border: '1px solid var(--line, #cbd5e1)', background: 'var(--bg-2, #ffffff)', color: 'var(--text, #0f172a)', fontSize: '0.85rem', boxSizing: 'border-box' }}
               />
             </div>
           </div>
 
-          {/* Right Stage: Concepts or Mockups */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#f1f5f9' }}>
+          {/* Right Stage: Concepts */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: 'var(--bg-3, #f1f5f9)' }}>
             {/* View Mode Bar */}
             <div
               style={{
                 padding: '0.65rem 1.25rem',
-                background: '#ffffff',
-                borderBottom: '1px solid #e2e8f0',
+                background: 'var(--bg-2, #ffffff)',
+                borderBottom: '1px solid var(--line, rgba(255,255,255,0.08))',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
@@ -1675,14 +1661,14 @@ export default function AiLogoCreatorModal({
             >
               {activeTab === 'ai' ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                  <span style={{ padding: '3px 8px', borderRadius: '999px', background: '#f3e8ff', color: '#6d28d9', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.04em' }}>
+                  <span style={{ padding: '3px 8px', borderRadius: '999px', background: 'rgba(124, 58, 237, 0.15)', color: '#c084fc', fontSize: '0.7rem', fontWeight: 900, letterSpacing: '0.04em' }}>
                     GPT IMAGE
                   </span>
-                  <span style={{ color: '#475569', fontSize: '0.78rem', fontWeight: 700 }}>
+                  <span style={{ color: 'var(--text, #475569)', fontSize: '0.78rem', fontWeight: 700 }}>
                     {AI_LOGO_DIRECTIONS.find((direction) => direction.id === aiDirection)?.label}
                   </span>
                 </div>
-              ) : activeTab === 'concepts' ? (
+              ) : (
                 <div style={{ display: 'flex', gap: '0.4rem', overflowX: 'auto' }}>
                   <button
                     type="button"
@@ -1690,9 +1676,9 @@ export default function AiLogoCreatorModal({
                     style={{
                       padding: '0.3rem 0.7rem',
                       borderRadius: '16px',
-                      border: activeFilter === 'all' ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
-                      background: activeFilter === 'all' ? '#eff6ff' : '#ffffff',
-                      color: activeFilter === 'all' ? '#1d4ed8' : '#475569',
+                      border: activeFilter === 'all' ? '1.5px solid #3b82f6' : '1px solid var(--line, #e2e8f0)',
+                      background: activeFilter === 'all' ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-2, #ffffff)',
+                      color: activeFilter === 'all' ? '#60a5fa' : 'var(--text, #475569)',
                       fontWeight: 700,
                       fontSize: '0.75rem',
                       cursor: 'pointer',
@@ -1708,9 +1694,9 @@ export default function AiLogoCreatorModal({
                       style={{
                         padding: '0.3rem 0.7rem',
                         borderRadius: '16px',
-                        border: activeFilter === st ? '1.5px solid #2563eb' : '1px solid #e2e8f0',
-                        background: activeFilter === st ? '#eff6ff' : '#ffffff',
-                        color: activeFilter === st ? '#1d4ed8' : '#475569',
+                        border: activeFilter === st ? '1.5px solid #3b82f6' : '1px solid var(--line, #e2e8f0)',
+                        background: activeFilter === st ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-2, #ffffff)',
+                        color: activeFilter === st ? '#60a5fa' : 'var(--text, #475569)',
                         fontWeight: 700,
                         fontSize: '0.75rem',
                         cursor: 'pointer',
@@ -1721,92 +1707,64 @@ export default function AiLogoCreatorModal({
                     </button>
                   ))}
                 </div>
-              ) : (
-                /* Mockup Type Switcher */
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', alignSelf: 'center' }}>Proof Context:</span>
-                  {(
-                    [
-                      { id: 'truck', label: '🚚 Service Truck Door' },
-                      { id: 'uniform', label: '👕 Work Polo / Shirt' },
-                      { id: 'invoice', label: '📄 Invoice Header' },
-                      { id: 'mobile', label: '📱 Mobile Favicon' },
-                    ] as const
-                  ).map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setSelectedMockup(m.id)}
-                      style={{
-                        padding: '0.3rem 0.65rem',
-                        borderRadius: '6px',
-                        border: selectedMockup === m.id ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                        background: selectedMockup === m.id ? '#eff6ff' : '#ffffff',
-                        color: selectedMockup === m.id ? '#1d4ed8' : '#475569',
-                        fontWeight: 700,
-                        fontSize: '0.78rem',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {m.label}
-                    </button>
-                  ))}
-                </div>
               )}
 
               {/* Color Mode Switcher */}
-              {activeTab !== 'ai' ? <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 700 }}>Render Mode:</span>
-                <button
-                  type="button"
-                  onClick={() => setColorMode('color')}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    border: colorMode === 'color' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                    background: colorMode === 'color' ? '#eff6ff' : '#ffffff',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  ☀️ Light
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setColorMode('dark')}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    border: colorMode === 'dark' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                    background: colorMode === 'dark' ? '#1e293b' : '#ffffff',
-                    color: colorMode === 'dark' ? '#ffffff' : '#334155',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                >
-                  🌙 Dark
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setColorMode('white_decal')}
-                  style={{
-                    padding: '3px 8px',
-                    borderRadius: '4px',
-                    border: colorMode === 'white_decal' ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                    background: colorMode === 'white_decal' ? '#0f172a' : '#ffffff',
-                    color: colorMode === 'white_decal' ? '#ffffff' : '#334155',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    cursor: 'pointer',
-                  }}
-                  title="White vinyl decal cutout for truck wraps"
-                >
-                  ⚪ Decal
-                </button>
-              </div> : (
-                <span style={{ color: '#64748b', fontSize: '0.72rem', fontWeight: 700 }}>
+              {activeTab !== 'ai' ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--muted, #64748b)', fontWeight: 700 }}>Render Mode:</span>
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('color')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: colorMode === 'color' ? '1.5px solid #3b82f6' : '1px solid var(--line, #cbd5e1)',
+                      background: colorMode === 'color' ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-2, #ffffff)',
+                      color: colorMode === 'color' ? '#60a5fa' : 'var(--text, #334155)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    ☀️ Light
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('dark')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: colorMode === 'dark' ? '1.5px solid #3b82f6' : '1px solid var(--line, #cbd5e1)',
+                      background: colorMode === 'dark' ? '#1e293b' : 'var(--bg-2, #ffffff)',
+                      color: colorMode === 'dark' ? '#ffffff' : 'var(--text, #334155)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    🌙 Dark
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setColorMode('white_decal')}
+                    style={{
+                      padding: '3px 8px',
+                      borderRadius: '4px',
+                      border: colorMode === 'white_decal' ? '1.5px solid #3b82f6' : '1px solid var(--line, #cbd5e1)',
+                      background: colorMode === 'white_decal' ? '#0f172a' : 'var(--bg-2, #ffffff)',
+                      color: colorMode === 'white_decal' ? '#ffffff' : 'var(--text, #334155)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                    title="White vinyl decal cutout for truck wraps"
+                  >
+                    ⚪ Decal
+                  </button>
+                </div>
+              ) : (
+                <span style={{ color: 'var(--muted, #64748b)', fontSize: '0.72rem', fontWeight: 700 }}>
                   Transparent PNG • 1536 × 1024
                 </span>
               )}
@@ -1817,16 +1775,16 @@ export default function AiLogoCreatorModal({
               {activeTab === 'ai' ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                   {aiError && (
-                    <div role="alert" style={{ padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid #fecaca', background: '#fff1f2', color: '#9f1239', fontSize: '0.82rem', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div role="alert" style={{ padding: '0.85rem 1rem', borderRadius: '10px', border: '1px solid rgba(239, 68, 68, 0.3)', background: 'rgba(239, 68, 68, 0.08)', color: '#f87171', fontSize: '0.82rem', fontWeight: 700, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>⚠️</span>
                           <span>{aiError}</span>
                         </div>
-                        <button type="button" onClick={() => setAiError(null)} style={{ border: 'none', background: 'transparent', color: '#9f1239', cursor: 'pointer', fontWeight: 900 }}>✕</button>
+                        <button type="button" onClick={() => setAiError(null)} style={{ border: 'none', background: 'transparent', color: '#f87171', cursor: 'pointer', fontWeight: 900 }}>✕</button>
                       </div>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.45rem', borderTop: '1px solid #fecaca' }}>
-                        <span style={{ fontSize: '0.75rem', color: '#881337', fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '0.45rem', borderTop: '1px solid rgba(239, 68, 68, 0.2)' }}>
+                        <span style={{ fontSize: '0.75rem', color: '#fca5a5', fontWeight: 600 }}>
                           AI generator is offline. You can use Editable Vectors to create your brand identity.
                         </span>
                         <button
@@ -1835,9 +1793,9 @@ export default function AiLogoCreatorModal({
                           style={{
                             padding: '0.35rem 0.75rem',
                             borderRadius: '6px',
-                            border: '1px solid #f43f5e',
-                            background: '#ffe4e6',
-                            color: '#9f1239',
+                            border: '1px solid rgba(239, 68, 68, 0.4)',
+                            background: 'rgba(239, 68, 68, 0.15)',
+                            color: '#f87171',
                             fontSize: '0.75rem',
                             fontWeight: 800,
                             cursor: 'pointer',
@@ -1902,16 +1860,16 @@ export default function AiLogoCreatorModal({
                         const direction = AI_LOGO_DIRECTIONS.find((item) => item.id === logo.direction);
                         const selected = activeAiLogo?.id === logo.id;
                         return (
-                          <div key={logo.id} style={{ padding: '0.9rem', borderRadius: '15px', border: selected ? '2px solid #7c3aed' : '1px solid #dbe2ea', background: '#ffffff', boxShadow: selected ? '0 14px 32px rgba(109,40,217,0.14)' : '0 5px 15px rgba(15,23,42,0.06)' }}>
+                          <div key={logo.id} style={{ padding: '0.9rem', borderRadius: '15px', border: selected ? '2px solid #7c3aed' : '1px solid var(--line, rgba(255,255,255,0.08))', background: 'var(--bg-2, #ffffff)', boxShadow: selected ? '0 14px 32px rgba(109,40,217,0.18)' : '0 4px 12px rgba(0,0,0,0.06)' }}>
                             <button type="button" onClick={() => setSelectedAiLogoId(logo.id)} style={{ display: 'block', width: '100%', padding: 0, border: 0, background: 'transparent', cursor: 'pointer', textAlign: 'left' }}>
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', marginBottom: '0.65rem' }}>
                                 <div>
-                                  <strong style={{ display: 'block', color: '#0f172a', fontSize: '0.83rem' }}>{direction?.label || 'AI concept'} {aiConcepts.length > 1 ? `#${aiConcepts.length - index}` : ''}</strong>
-                                  <span style={{ color: '#64748b', fontSize: '0.68rem' }}>Original AI concept • transparent PNG</span>
+                                  <strong style={{ display: 'block', color: 'var(--text, #0f172a)', fontSize: '0.83rem' }}>{direction?.label || 'AI concept'} {aiConcepts.length > 1 ? `#${aiConcepts.length - index}` : ''}</strong>
+                                  <span style={{ color: 'var(--muted, #64748b)', fontSize: '0.68rem' }}>Original AI concept • transparent PNG</span>
                                 </div>
-                                {selected && <span style={{ padding: '3px 7px', borderRadius: '999px', background: '#f3e8ff', color: '#6d28d9', fontSize: '0.65rem', fontWeight: 900 }}>SELECTED</span>}
+                                {selected && <span style={{ padding: '3px 7px', borderRadius: '999px', background: 'rgba(124, 58, 237, 0.15)', color: '#c084fc', fontSize: '0.65rem', fontWeight: 900 }}>SELECTED</span>}
                               </div>
-                              <div style={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', overflow: 'hidden', borderRadius: '11px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', backgroundImage: 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)', backgroundSize: '22px 22px', backgroundPosition: '0 0, 0 11px, 11px -11px, -11px 0px' }}>
+                              <div className="ai-logo-studio-checkerboard" style={{ position: 'relative', width: '100%', aspectRatio: '3 / 2', overflow: 'hidden', borderRadius: '11px', border: '1px solid var(--line, #e2e8f0)' }}>
                                 <Image src={logo.url} alt={`${name} generated logo concept`} fill sizes="(max-width: 900px) 100vw, 50vw" style={{ objectFit: 'contain', padding: '0.75rem' }} />
                               </div>
                             </button>
@@ -1929,9 +1887,9 @@ export default function AiLogoCreatorModal({
                                 style={{
                                   padding: '0.58rem 0.7rem',
                                   borderRadius: '8px',
-                                  border: '1px solid #c084fc',
-                                  background: 'linear-gradient(135deg, #faf5ff, #f3e8ff)',
-                                  color: '#6b21a8',
+                                  border: '1px solid rgba(192, 132, 252, 0.4)',
+                                  background: 'rgba(124, 58, 237, 0.1)',
+                                  color: '#c084fc',
                                   fontSize: '0.78rem',
                                   fontWeight: 800,
                                   cursor: 'pointer',
@@ -1957,9 +1915,9 @@ export default function AiLogoCreatorModal({
                                 style={{
                                   padding: '0.58rem 0.7rem',
                                   borderRadius: '8px',
-                                  border: '1px solid #93c5fd',
-                                  background: 'linear-gradient(135deg, #eff6ff, #dbeafe)',
-                                  color: '#1e40af',
+                                  border: '1px solid rgba(147, 197, 253, 0.4)',
+                                  background: 'rgba(37, 99, 235, 0.1)',
+                                  color: '#60a5fa',
                                   fontSize: '0.78rem',
                                   fontWeight: 800,
                                   cursor: 'pointer',
@@ -1971,9 +1929,8 @@ export default function AiLogoCreatorModal({
                               >
                                 🎨 Quick Adjust
                               </button>
-                              <button type="button" onClick={() => void handleDownloadAiLogo(logo)} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#334155', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>Download PNG</button>
-                              <button type="button" onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); setActiveTab('mockups'); }} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#faf5ff', color: '#6d28d9', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>See Mockups</button>
-                              <a href="/dashboard/merchandise" style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid #10b981', background: '#ecfdf5', color: '#047857', fontSize: '0.78rem', fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>👕 Order Merch</a>
+                              <button type="button" onClick={() => void handleDownloadAiLogo(logo)} style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid var(--line, #cbd5e1)', background: 'var(--bg-2, #ffffff)', color: 'var(--text, #334155)', fontSize: '0.78rem', fontWeight: 800, cursor: 'pointer' }}>Download PNG</button>
+                              <a href="/dashboard/merchandise" style={{ padding: '0.58rem 0.7rem', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.4)', background: 'rgba(16, 185, 129, 0.1)', color: '#34d399', fontSize: '0.78rem', fontWeight: 800, textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>👕 Order Merch</a>
                               <button
                                 type="button"
                                 onClick={() => void handleDeleteAiLogo(logo)}
@@ -1981,9 +1938,9 @@ export default function AiLogoCreatorModal({
                                 style={{
                                   padding: '0.58rem 0.7rem',
                                   borderRadius: '8px',
-                                  border: '1px solid #fecaca',
-                                  background: '#fff1f2',
-                                  color: '#dc2626',
+                                  border: '1px solid rgba(248, 113, 113, 0.4)',
+                                  background: 'rgba(239, 68, 68, 0.1)',
+                                  color: '#f87171',
                                   fontSize: '0.78rem',
                                   fontWeight: 800,
                                   cursor: deletingLogoId === logo.id ? 'wait' : 'pointer',
@@ -1994,8 +1951,8 @@ export default function AiLogoCreatorModal({
                               </button>
                             </div>
                             <details style={{ marginTop: '0.6rem' }}>
-                              <summary style={{ cursor: 'pointer', color: '#64748b', fontSize: '0.68rem', fontWeight: 700 }}>View the art-direction prompt</summary>
-                              <pre style={{ margin: '0.45rem 0 0', padding: '0.65rem', maxHeight: '150px', overflow: 'auto', whiteSpace: 'pre-wrap', borderRadius: '8px', background: '#f8fafc', color: '#475569', fontFamily: 'inherit', fontSize: '0.65rem', lineHeight: 1.45 }}>{logo.prompt}</pre>
+                              <summary style={{ cursor: 'pointer', color: 'var(--muted, #64748b)', fontSize: '0.68rem', fontWeight: 700 }}>View the art-direction prompt</summary>
+                              <pre style={{ margin: '0.45rem 0 0', padding: '0.65rem', maxHeight: '150px', overflow: 'auto', whiteSpace: 'pre-wrap', borderRadius: '8px', background: 'var(--bg-3, #f8fafc)', color: 'var(--text, #475569)', border: '1px solid var(--line, transparent)', fontFamily: 'inherit', fontSize: '0.65rem', lineHeight: 1.45 }}>{logo.prompt}</pre>
                             </details>
                           </div>
                         );
@@ -2004,12 +1961,12 @@ export default function AiLogoCreatorModal({
                   ) : null}
 
                   {aiConcepts.length > 0 && (
-                    <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', border: '1px solid #dbeafe', background: '#eff6ff', color: '#1e40af', fontSize: '0.72rem', lineHeight: 1.5 }}>
+                    <div style={{ padding: '0.7rem 0.85rem', borderRadius: '10px', border: '1px solid rgba(59, 130, 246, 0.25)', background: 'rgba(59, 130, 246, 0.08)', color: '#60a5fa', fontSize: '0.72rem', lineHeight: 1.5 }}>
                       AI concepts are high-resolution transparent PNGs. Use <strong>🎨 Quick Adjust</strong> on any concept to shift colors, convert to a white vinyl decal, or download.
                     </div>
                   )}
                 </div>
-              ) : activeTab === 'concepts' ? (
+              ) : (
                 /* Grid of Concepts */
                 <div
                   style={{
@@ -2022,10 +1979,10 @@ export default function AiLogoCreatorModal({
                     <div
                       key={logo.id}
                       style={{
-                        border: '1.5px solid #e2e8f0',
+                        border: '1.5px solid var(--line, #e2e8f0)',
                         borderRadius: '14px',
                         padding: '1.25rem',
-                        background: '#ffffff',
+                        background: 'var(--bg-2, #ffffff)',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'space-between',
@@ -2035,10 +1992,10 @@ export default function AiLogoCreatorModal({
                     >
                       <div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                          <span style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: '#475569' }}>
+                          <span style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text, #475569)' }}>
                             {logo.styleLabel}
                           </span>
-                          <span style={{ fontSize: '0.7rem', background: '#eff6ff', color: '#1d4ed8', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
+                          <span style={{ fontSize: '0.7rem', background: 'rgba(37, 99, 235, 0.15)', color: '#60a5fa', fontWeight: 700, padding: '2px 8px', borderRadius: '4px' }}>
                             Multi-Layer Vector
                           </span>
                         </div>
@@ -2046,13 +2003,13 @@ export default function AiLogoCreatorModal({
                         {/* Vector Preview Box */}
                         <div
                           style={{
-                            background: colorMode === 'dark' || colorMode === 'white_decal' ? '#0f172a' : '#f8fafc',
+                            background: colorMode === 'dark' || colorMode === 'white_decal' ? '#0f172a' : 'var(--bg-3, #f8fafc)',
                             borderRadius: '10px',
                             padding: '1rem',
                             display: 'flex',
                             alignItems: 'center',
                             justifyContent: 'center',
-                            border: '1px solid #e2e8f0',
+                            border: '1px solid var(--line, #e2e8f0)',
                             marginBottom: '1rem',
                             minHeight: '140px',
                           }}
@@ -2093,9 +2050,9 @@ export default function AiLogoCreatorModal({
                           onClick={() => handleDownloadSvg(logo)}
                           style={{
                             padding: '0.55rem 0.75rem',
-                            background: '#ffffff',
-                            color: '#0f172a',
-                            border: '1.5px solid #cbd5e1',
+                            background: 'var(--bg-2, #ffffff)',
+                            color: 'var(--text, #0f172a)',
+                            border: '1.5px solid var(--line, #cbd5e1)',
                             borderRadius: '8px',
                             fontWeight: 700,
                             fontSize: '0.8rem',
@@ -2111,9 +2068,9 @@ export default function AiLogoCreatorModal({
                           onClick={() => handleDownloadPng(logo)}
                           style={{
                             padding: '0.55rem 0.75rem',
-                            background: '#ffffff',
-                            color: '#0f172a',
-                            border: '1.5px solid #cbd5e1',
+                            background: 'var(--bg-2, #ffffff)',
+                            color: 'var(--text, #0f172a)',
+                            border: '1.5px solid var(--line, #cbd5e1)',
                             borderRadius: '8px',
                             fontWeight: 700,
                             fontSize: '0.8rem',
@@ -2130,9 +2087,9 @@ export default function AiLogoCreatorModal({
                           onClick={() => handleDownloadBrandKit(logo)}
                           style={{
                             padding: '0.55rem 0.75rem',
-                            background: 'linear-gradient(135deg, #fef3c7, #fde68a)',
-                            color: '#92400e',
-                            border: '1px solid #fcd34d',
+                            background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(217, 119, 6, 0.2))',
+                            color: '#f59e0b',
+                            border: '1px solid rgba(245, 158, 11, 0.4)',
                             borderRadius: '8px',
                             fontWeight: 800,
                             fontSize: '0.8rem',
@@ -2145,250 +2102,6 @@ export default function AiLogoCreatorModal({
                       </div>
                     </div>
                   ))}
-                </div>
-              ) : (
-                /* Real-World Mockup Proofing Studio */
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-                  {/* Style selector for Mockups */}
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', background: '#ffffff', padding: '0.5rem 0.75rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#334155', alignSelf: 'center' }}>Test Logo Style:</span>
-                    {aiConcepts.slice(0, 3).map((logo, index) => (
-                      <button
-                        key={logo.id}
-                        type="button"
-                        onClick={() => { setSelectedAiLogoId(logo.id); setMockupUsesAi(true); }}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          borderRadius: '6px',
-                          border: mockupUsesAi && activeAiLogo?.id === logo.id ? '1.5px solid #7c3aed' : '1px solid #c4b5fd',
-                          background: mockupUsesAi && activeAiLogo?.id === logo.id ? '#f3e8ff' : '#ffffff',
-                          color: '#6d28d9',
-                          fontSize: '0.75rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        ✦ AI Concept {aiConcepts.length > 1 ? aiConcepts.length - index : ''}
-                      </button>
-                    ))}
-                    {concepts.map((c, idx) => (
-                      <button
-                        key={c.id}
-                        type="button"
-                        onClick={() => { setPreviewLogoIndex(idx); setMockupUsesAi(false); }}
-                        style={{
-                          padding: '0.35rem 0.65rem',
-                          borderRadius: '6px',
-                          border: !mockupUsesAi && previewLogoIndex === idx ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                          background: !mockupUsesAi && previewLogoIndex === idx ? '#eff6ff' : '#ffffff',
-                          color: !mockupUsesAi && previewLogoIndex === idx ? '#1d4ed8' : '#475569',
-                          fontSize: '0.75rem',
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {c.styleLabel}
-                      </button>
-                    ))}
-                    <a
-                      href="/dashboard/merchandise"
-                      style={{
-                        marginLeft: 'auto',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.35rem',
-                        padding: '0.4rem 0.85rem',
-                        borderRadius: '7px',
-                        background: 'linear-gradient(135deg, #059669, #10b981)',
-                        color: '#ffffff',
-                        fontWeight: 800,
-                        fontSize: '0.78rem',
-                        textDecoration: 'none',
-                        boxShadow: '0 2px 6px rgba(16,185,129,0.3)',
-                      }}
-                    >
-                      <span>👕 Order Real Merch &amp; Swag →</span>
-                    </a>
-                  </div>
-
-                  {/* Mockup Canvas */}
-                  <div
-                    style={{
-                      background: '#ffffff',
-                      borderRadius: '14px',
-                      border: '1px solid #e2e8f0',
-                      padding: '2rem',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      minHeight: '420px',
-                      boxShadow: '0 10px 25px -5px rgba(0,0,0,0.05)',
-                    }}
-                  >
-                    {selectedMockup === 'truck' && (
-                      /* Service Van Door Mockup */
-                      <div
-                        style={{
-                          width: '100%',
-                          maxWidth: '700px',
-                          height: '340px',
-                          background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-                          borderRadius: '16px',
-                          position: 'relative',
-                          overflow: 'hidden',
-                          boxShadow: '0 20px 35px -10px rgba(0,0,0,0.4)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          border: '4px solid #334155',
-                        }}
-                      >
-                        {/* Van Door Seams & Handle */}
-                        <div style={{ position: 'absolute', top: 0, bottom: 0, left: '35px', width: '3px', background: 'rgba(255,255,255,0.08)' }} />
-                        <div style={{ position: 'absolute', top: '45px', right: '35px', width: '35px', height: '14px', borderRadius: '4px', background: '#475569', border: '1px solid #64748b' }} />
-                        
-                        {/* Door Decal Logo */}
-                        <div
-                          style={{
-                            maxWidth: '480px',
-                            width: '80%',
-                            filter: 'drop-shadow(0 8px 16px rgba(0,0,0,0.5))',
-                          }}
-                        >
-                          {renderMockupLogo('dark')}
-                        </div>
-
-                        {/* License / Phone Footer on Vehicle */}
-                        <div style={{ marginTop: '1.25rem', display: 'flex', gap: '1.5rem', color: '#94a3b8', fontSize: '0.8rem', fontWeight: 800, letterSpacing: '0.1em' }}>
-                          <span>📞 1-800-PRO-WORK</span>
-                          <span>&bull;</span>
-                          <span>LICENSED & INSURED</span>
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedMockup === 'uniform' && (
-                      /* Embroidered Polo Chest Patch */
-                      <div
-                        style={{
-                          width: '100%',
-                          maxWidth: '560px',
-                          height: '320px',
-                          background: '#0e1726',
-                          borderRadius: '16px',
-                          position: 'relative',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          boxShadow: 'inset 0 0 80px rgba(0,0,0,0.8), 0 15px 30px rgba(0,0,0,0.3)',
-                          border: '2px solid #1e293b',
-                        }}
-                      >
-                        {/* Embroidered Patch Border */}
-                        <div
-                          style={{
-                            padding: '1.5rem 2rem',
-                            borderRadius: '12px',
-                            background: '#090d16',
-                            border: `2px dashed ${secondary}`,
-                            boxShadow: '0 8px 20px rgba(0,0,0,0.6)',
-                          }}
-                        >
-                          <div
-                            style={{
-                              maxWidth: '380px',
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.8))',
-                            }}
-                          >
-                            {renderMockupLogo('dark')}
-                          </div>
-                        </div>
-                        <span style={{ marginTop: '1rem', color: '#64748b', fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.1em' }}>
-                          LEFT CHEST UNIFORM EMBROIDERY
-                        </span>
-                      </div>
-                    )}
-
-                    {selectedMockup === 'invoice' && (
-                      /* Invoice Header Mockup */
-                      <div
-                        style={{
-                          width: '100%',
-                          maxWidth: '650px',
-                          background: '#ffffff',
-                          borderRadius: '12px',
-                          border: '1px solid #cbd5e1',
-                          padding: '1.5rem 2rem',
-                          boxShadow: '0 15px 35px rgba(0,0,0,0.1)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '1.25rem',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-                          <div style={{ width: '340px', maxWidth: '55%' }}>
-                            {renderMockupLogo('color')}
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#0f172a' }}>OFFICIAL ESTIMATE</h3>
-                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>#EST-2026-0842</span>
-                          </div>
-                        </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', fontSize: '0.8rem', color: '#475569' }}>
-                          <div>
-                            <strong>Prepared For:</strong>
-                            <p style={{ margin: '2px 0 0' }}>John & Sarah Miller<br />142 Oakridge Blvd</p>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <strong>Date:</strong> August 25, 2026<br />
-                            <strong>Status:</strong> <span style={{ color: '#16a34a', fontWeight: 700 }}>Approved</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {selectedMockup === 'mobile' && (
-                      /* Mobile Browser Header */
-                      <div
-                        style={{
-                          width: '320px',
-                          height: '380px',
-                          background: '#ffffff',
-                          borderRadius: '24px',
-                          border: '8px solid #1e293b',
-                          boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          overflow: 'hidden',
-                        }}
-                      >
-                        {/* Browser Bar */}
-                        <div style={{ background: '#f8fafc', padding: '8px 12px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444' }} />
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#f59e0b' }} />
-                          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10b981' }} />
-                          <div style={{ flex: 1, background: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '2px 8px', fontSize: '0.65rem', color: '#64748b', textAlign: 'center' }}>
-                            🔒 {name.toLowerCase().replace(/[^a-z0-9]+/g, '')}.com
-                          </div>
-                        </div>
-
-                        {/* Mobile Header Nav */}
-                        <div style={{ padding: '12px 14px', borderBottom: '1px solid #f1f5f9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ width: '160px', maxHeight: '54px', overflow: 'hidden' }}>{renderMockupLogo('color')}</div>
-                          <div style={{ fontSize: '1rem', color: '#0f172a' }}>☰</div>
-                        </div>
-
-                        <div style={{ padding: '14px', flex: 1, background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ height: '60px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                          <div style={{ height: '40px', background: '#ffffff', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
-                        </div>
-                      </div>
-                    )}
-                  </div>
                 </div>
               )}
             </div>
@@ -2405,7 +2118,7 @@ export default function AiLogoCreatorModal({
             left: 0,
             right: 0,
             bottom: 0,
-            background: 'rgba(0, 0, 0, 0.5)',
+            background: 'rgba(0, 0, 0, 0.65)',
             zIndex: 10000,
             display: 'flex',
             alignItems: 'center',
@@ -2419,8 +2132,9 @@ export default function AiLogoCreatorModal({
         >
           <div
             style={{
-              background: '#ffffff',
+              background: 'var(--bg-2, #ffffff)',
               borderRadius: '14px',
+              border: '1px solid var(--line, rgba(255,255,255,0.1))',
               maxWidth: '560px',
               width: '100%',
               maxHeight: '70vh',
@@ -2431,28 +2145,28 @@ export default function AiLogoCreatorModal({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: '#0f172a' }}>Select Trade Emblem</h3>
+            <div style={{ padding: '1rem 1.25rem', borderBottom: '1px solid var(--line, #e2e8f0)', background: 'var(--bg-3, #f8fafc)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text, #0f172a)' }}>Select Trade Emblem</h3>
               <button
                 type="button"
                 onClick={() => setGlyphPickerOpen(false)}
-                style={{ background: '#f1f5f9', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontWeight: 700 }}
+                style={{ background: 'var(--bg-2, #f1f5f9)', border: '1px solid var(--line, transparent)', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontWeight: 700, color: 'var(--text, #0f172a)' }}
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid #f1f5f9' }}>
+            <div style={{ padding: '0.75rem 1.25rem', borderBottom: '1px solid var(--line, #f1f5f9)', background: 'var(--bg-2, #ffffff)' }}>
               <input
                 type="text"
                 value={glyphSearch}
                 placeholder="Search 45+ icons (e.g. wrench, faucet, flame, bolt, tree)..."
                 onChange={(e) => setGlyphSearch(e.target.value)}
-                style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', background: '#ffffff', color: '#0f172a', fontSize: '0.85rem', boxSizing: 'border-box' }}
+                style={{ width: '100%', padding: '0.45rem 0.75rem', borderRadius: '8px', border: '1px solid var(--line, #cbd5e1)', background: 'var(--bg-2, #ffffff)', color: 'var(--text, #0f172a)', fontSize: '0.85rem', boxSizing: 'border-box' }}
               />
             </div>
 
-            <div style={{ padding: '1rem', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '0.6rem' }}>
+            <div style={{ padding: '1rem', overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '0.6rem', background: 'var(--bg-2, #ffffff)' }}>
               {filteredGlyphKeys.map((k) => {
                 const g = SERVICE_ICON_GLYPHS[k];
                 const isSelected = selectedGlyphKey === k;
@@ -2470,8 +2184,8 @@ export default function AiLogoCreatorModal({
                       alignItems: 'center',
                       gap: '4px',
                       padding: '0.6rem 0.4rem',
-                      background: isSelected ? '#eff6ff' : '#ffffff',
-                      border: isSelected ? '2px solid #2563eb' : '1px solid #e2e8f0',
+                      background: isSelected ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-3, #ffffff)',
+                      border: isSelected ? '2px solid #3b82f6' : '1px solid var(--line, #e2e8f0)',
                       borderRadius: '8px',
                       cursor: 'pointer',
                     }}
@@ -2481,7 +2195,7 @@ export default function AiLogoCreatorModal({
                         __html: `<svg width="24" height="24" viewBox="0 0 24 24" fill="${g.mode === 'fill' ? accent : 'none'}" stroke="${g.mode === 'fill' ? 'none' : accent}" stroke-width="2">${g.body}</svg>`,
                       }}
                     />
-                    <span style={{ fontSize: '0.7rem', fontWeight: isSelected ? 800 : 500, color: isSelected ? '#1d4ed8' : '#475569', textTransform: 'capitalize', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
+                    <span style={{ fontSize: '0.7rem', fontWeight: isSelected ? 800 : 500, color: isSelected ? '#60a5fa' : 'var(--text, #475569)', textTransform: 'capitalize', textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', width: '100%' }}>
                       {k}
                     </span>
                   </button>
@@ -2523,8 +2237,9 @@ export default function AiLogoCreatorModal({
             style={{
               width: '100%',
               maxWidth: '560px',
-              background: '#ffffff',
+              background: 'var(--bg-2, #ffffff)',
               borderRadius: '16px',
+              border: '1px solid var(--line, rgba(255,255,255,0.1))',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
               display: 'flex',
               flexDirection: 'column',
@@ -2536,18 +2251,18 @@ export default function AiLogoCreatorModal({
             <div
               style={{
                 padding: '1.1rem 1.25rem',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid var(--line, #e2e8f0)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+                background: 'var(--bg-3, #f8fafc)',
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🪄</span> Tweak Logo with AI
                 </h3>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--muted, #64748b)' }}>
                   Iterate on this concept while preserving its core silhouette & visual metaphor
                 </span>
               </div>
@@ -2555,8 +2270,8 @@ export default function AiLogoCreatorModal({
                 type="button"
                 onClick={() => setRemixingLogo(null)}
                 style={{
-                  background: '#e2e8f0',
-                  border: 'none',
+                  background: 'var(--bg-2, #e2e8f0)',
+                  border: '1px solid var(--line, transparent)',
                   borderRadius: '8px',
                   width: '28px',
                   height: '28px',
@@ -2565,14 +2280,14 @@ export default function AiLogoCreatorModal({
                   justifyContent: 'center',
                   cursor: 'pointer',
                   fontWeight: 800,
-                  color: '#475569',
+                  color: 'var(--text, #475569)',
                 }}
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--bg-2, #ffffff)' }}>
               {/* Reference Logo Preview */}
               <div
                 style={{
@@ -2581,22 +2296,19 @@ export default function AiLogoCreatorModal({
                   gap: '1rem',
                   padding: '0.75rem',
                   borderRadius: '12px',
-                  background: '#f8fafc',
-                  border: '1px solid #e2e8f0',
+                  background: 'var(--bg-3, #f8fafc)',
+                  border: '1px solid var(--line, #e2e8f0)',
                 }}
               >
                 <div
+                  className="ai-logo-studio-checkerboard"
                   style={{
                     width: '80px',
                     height: '60px',
                     position: 'relative',
                     borderRadius: '8px',
                     overflow: 'hidden',
-                    border: '1px solid #cbd5e1',
-                    background: '#f1f5f9',
-                    backgroundImage: 'linear-gradient(45deg, #cbd5e1 25%, transparent 25%), linear-gradient(-45deg, #cbd5e1 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #cbd5e1 75%), linear-gradient(-45deg, transparent 75%, #cbd5e1 75%)',
-                    backgroundSize: '12px 12px',
-                    backgroundPosition: '0 0, 0 6px, 6px -6px, -6px 0px',
+                    border: '1px solid var(--line, #cbd5e1)',
                     flexShrink: 0,
                   }}
                 >
@@ -2609,10 +2321,10 @@ export default function AiLogoCreatorModal({
                   />
                 </div>
                 <div>
-                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#0f172a' }}>
+                  <div style={{ fontSize: '0.8rem', fontWeight: 800, color: 'var(--text, #0f172a)' }}>
                     Reference Concept ({AI_LOGO_DIRECTIONS.find((d) => d.id === remixingLogo.direction)?.label || 'Original'})
                   </div>
-                  <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '2px' }}>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--muted, #64748b)', marginTop: '2px' }}>
                     The art director will use this concept as the structural foundation for your revision.
                   </div>
                 </div>
@@ -2620,7 +2332,7 @@ export default function AiLogoCreatorModal({
 
               {/* 1-Click Suggestion Pills */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Quick Revision Ideas
                 </label>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
@@ -2646,23 +2358,13 @@ export default function AiLogoCreatorModal({
                       style={{
                         padding: '0.35rem 0.65rem',
                         borderRadius: '999px',
-                        border: '1px solid #cbd5e1',
-                        background: '#f8fafc',
-                        color: '#334155',
+                        border: '1px solid var(--line, #cbd5e1)',
+                        background: 'var(--bg-3, #f8fafc)',
+                        color: 'var(--text, #334155)',
                         fontSize: '0.75rem',
                         fontWeight: 600,
                         cursor: 'pointer',
                         transition: 'all 0.15s ease',
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.borderColor = '#7c3aed';
-                        e.currentTarget.style.color = '#7c3aed';
-                        e.currentTarget.style.background = '#faf5ff';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.borderColor = '#cbd5e1';
-                        e.currentTarget.style.color = '#334155';
-                        e.currentTarget.style.background = '#f8fafc';
                       }}
                     >
                       {pill.label}
@@ -2673,7 +2375,7 @@ export default function AiLogoCreatorModal({
 
               {/* Revision Instructions Textarea */}
               <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   Revision Instructions
                 </label>
                 <textarea
@@ -2685,9 +2387,9 @@ export default function AiLogoCreatorModal({
                     width: '100%',
                     padding: '0.65rem 0.75rem',
                     borderRadius: '10px',
-                    border: '1.5px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#0f172a',
+                    border: '1.5px solid var(--line, #cbd5e1)',
+                    background: 'var(--bg-2, #ffffff)',
+                    color: 'var(--text, #0f172a)',
                     fontSize: '0.85rem',
                     lineHeight: 1.45,
                     resize: 'vertical',
@@ -2696,7 +2398,7 @@ export default function AiLogoCreatorModal({
                     fontFamily: 'inherit',
                   }}
                   onFocus={(e) => { e.currentTarget.style.borderColor = '#7c3aed'; }}
-                  onBlur={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--line, #cbd5e1)'; }}
                 />
               </div>
 
@@ -2705,13 +2407,13 @@ export default function AiLogoCreatorModal({
                 style={{
                   padding: '0.65rem 0.85rem',
                   borderRadius: '10px',
-                  background: '#faf5ff',
-                  border: '1px solid #e9d5ff',
+                  background: 'rgba(124, 58, 237, 0.12)',
+                  border: '1px solid rgba(124, 58, 237, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: '8px',
                   fontSize: '0.75rem',
-                  color: '#6b21a8',
+                  color: '#c084fc',
                   fontWeight: 600,
                 }}
               >
@@ -2726,12 +2428,12 @@ export default function AiLogoCreatorModal({
             <div
               style={{
                 padding: '0.85rem 1.25rem',
-                borderTop: '1px solid #e2e8f0',
+                borderTop: '1px solid var(--line, #e2e8f0)',
                 display: 'flex',
                 justifyContent: 'flex-end',
                 alignItems: 'center',
                 gap: '0.65rem',
-                background: '#f8fafc',
+                background: 'var(--bg-3, #f8fafc)',
               }}
             >
               <button
@@ -2740,9 +2442,9 @@ export default function AiLogoCreatorModal({
                 style={{
                   padding: '0.55rem 1rem',
                   borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: '#475569',
+                  border: '1px solid var(--line, #cbd5e1)',
+                  background: 'var(--bg-2, #ffffff)',
+                  color: 'var(--text, #475569)',
                   fontSize: '0.82rem',
                   fontWeight: 700,
                   cursor: 'pointer',
@@ -2759,7 +2461,7 @@ export default function AiLogoCreatorModal({
                   borderRadius: '8px',
                   border: 'none',
                   background: !remixPrompt.trim() || isGenerating
-                    ? '#cbd5e1'
+                    ? 'var(--line, #cbd5e1)'
                     : 'linear-gradient(135deg, #7c3aed, #4f46e5)',
                   color: '#ffffff',
                   fontSize: '0.82rem',
@@ -2809,8 +2511,9 @@ export default function AiLogoCreatorModal({
             style={{
               width: '100%',
               maxWidth: '620px',
-              background: '#ffffff',
+              background: 'var(--bg-2, #ffffff)',
               borderRadius: '16px',
+              border: '1px solid var(--line, rgba(255,255,255,0.1))',
               boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
               display: 'flex',
               flexDirection: 'column',
@@ -2822,18 +2525,18 @@ export default function AiLogoCreatorModal({
             <div
               style={{
                 padding: '1.1rem 1.25rem',
-                borderBottom: '1px solid #e2e8f0',
+                borderBottom: '1px solid var(--line, #e2e8f0)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: 'linear-gradient(135deg, #f8fafc, #f1f5f9)',
+                background: 'var(--bg-3, #f8fafc)',
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <h3 style={{ margin: 0, fontSize: '1.05rem', fontWeight: 900, color: 'var(--text, #0f172a)', display: 'flex', alignItems: 'center', gap: '6px' }}>
                   <span>🎨</span> Quick Adjust & Decal Studio
                 </h3>
-                <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--muted, #64748b)' }}>
                   0 AI credits • Instant color shifts, filters, and white vinyl decal conversion
                 </span>
               </div>
@@ -2842,8 +2545,8 @@ export default function AiLogoCreatorModal({
                 disabled={isSavingAdjusted}
                 onClick={() => setAdjustingLogo(null)}
                 style={{
-                  background: '#e2e8f0',
-                  border: 'none',
+                  background: 'var(--bg-2, #e2e8f0)',
+                  border: '1px solid var(--line, transparent)',
                   borderRadius: '8px',
                   width: '28px',
                   height: '28px',
@@ -2852,21 +2555,21 @@ export default function AiLogoCreatorModal({
                   justifyContent: 'center',
                   cursor: isSavingAdjusted ? 'not-allowed' : 'pointer',
                   fontWeight: 800,
-                  color: '#475569',
+                  color: 'var(--text, #475569)',
                 }}
               >
                 ✕
               </button>
             </div>
 
-            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.15rem' }}>
+            <div style={{ padding: '1.25rem', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.15rem', background: 'var(--bg-2, #ffffff)' }}>
               {/* Canvas Preview Area with Background Selector */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Live Canvas Preview
                   </span>
-                  <div style={{ display: 'flex', gap: '4px', background: '#f1f5f9', padding: '2px', borderRadius: '6px' }}>
+                  <div style={{ display: 'flex', gap: '4px', background: 'var(--bg-3, #f1f5f9)', border: '1px solid var(--line, transparent)', padding: '2px', borderRadius: '6px' }}>
                     <button
                       type="button"
                       onClick={() => setAdjustPreviewBg('checkered')}
@@ -2874,8 +2577,8 @@ export default function AiLogoCreatorModal({
                         padding: '2px 8px',
                         borderRadius: '4px',
                         border: 'none',
-                        background: adjustPreviewBg === 'checkered' ? '#ffffff' : 'transparent',
-                        color: adjustPreviewBg === 'checkered' ? '#0f172a' : '#64748b',
+                        background: adjustPreviewBg === 'checkered' ? 'var(--bg-2, #ffffff)' : 'transparent',
+                        color: adjustPreviewBg === 'checkered' ? 'var(--text, #0f172a)' : 'var(--muted, #64748b)',
                         fontWeight: 700,
                         fontSize: '0.7rem',
                         cursor: 'pointer',
@@ -2892,7 +2595,7 @@ export default function AiLogoCreatorModal({
                         borderRadius: '4px',
                         border: 'none',
                         background: adjustPreviewBg === 'dark' ? '#0f172a' : 'transparent',
-                        color: adjustPreviewBg === 'dark' ? '#ffffff' : '#64748b',
+                        color: adjustPreviewBg === 'dark' ? '#ffffff' : 'var(--muted, #64748b)',
                         fontWeight: 700,
                         fontSize: '0.7rem',
                         cursor: 'pointer',
@@ -2907,8 +2610,8 @@ export default function AiLogoCreatorModal({
                         padding: '2px 8px',
                         borderRadius: '4px',
                         border: 'none',
-                        background: adjustPreviewBg === 'light' ? '#ffffff' : 'transparent',
-                        color: adjustPreviewBg === 'light' ? '#0f172a' : '#64748b',
+                        background: adjustPreviewBg === 'light' ? 'var(--bg-2, #ffffff)' : 'transparent',
+                        color: adjustPreviewBg === 'light' ? 'var(--text, #0f172a)' : 'var(--muted, #64748b)',
                         fontWeight: 700,
                         fontSize: '0.7rem',
                         cursor: 'pointer',
@@ -2926,7 +2629,7 @@ export default function AiLogoCreatorModal({
                     width: '100%',
                     height: '200px',
                     borderRadius: '12px',
-                    border: '1.5px solid #cbd5e1',
+                    border: '1.5px solid var(--line, #cbd5e1)',
                     overflow: 'hidden',
                     display: 'flex',
                     alignItems: 'center',
@@ -2936,10 +2639,10 @@ export default function AiLogoCreatorModal({
                         ? '#090d16'
                         : adjustPreviewBg === 'light'
                         ? '#ffffff'
-                        : '#f8fafc',
+                        : 'var(--bg-3, #f8fafc)',
                     backgroundImage:
                       adjustPreviewBg === 'checkered'
-                        ? 'linear-gradient(45deg, #e2e8f0 25%, transparent 25%), linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e2e8f0 75%), linear-gradient(-45deg, transparent 75%, #e2e8f0 75%)'
+                        ? 'linear-gradient(45deg, rgba(148, 163, 184, 0.2) 25%, transparent 25%), linear-gradient(-45deg, rgba(148, 163, 184, 0.2) 25%, transparent 25%), linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.2) 75%), linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.2) 75%)'
                         : 'none',
                     backgroundSize: '20px 20px',
                     backgroundPosition: '0 0, 0 10px, 10px -10px, -10px 0px',
@@ -2958,7 +2661,7 @@ export default function AiLogoCreatorModal({
 
               {/* 1-Click Preset Modes */}
               <div>
-                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: '#334155', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                <span style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', marginBottom: '0.45rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                   1-Click Presets & Decals
                 </span>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem' }}>
@@ -2972,9 +2675,9 @@ export default function AiLogoCreatorModal({
                     style={{
                       padding: '0.55rem 0.65rem',
                       borderRadius: '8px',
-                      border: isWhiteDecal ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                      background: isWhiteDecal ? '#eff6ff' : '#ffffff',
-                      color: isWhiteDecal ? '#1d4ed8' : '#334155',
+                      border: isWhiteDecal ? '2px solid #2563eb' : '1px solid var(--line, #cbd5e1)',
+                      background: isWhiteDecal ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-3, #ffffff)',
+                      color: isWhiteDecal ? '#60a5fa' : 'var(--text, #334155)',
                       fontWeight: 800,
                       fontSize: '0.75rem',
                       cursor: 'pointer',
@@ -2985,7 +2688,7 @@ export default function AiLogoCreatorModal({
                     }}
                   >
                     <span>⚪ White Vinyl Decal</span>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>For dark glass & trucks</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted, #64748b)', fontWeight: 500 }}>For dark glass & trucks</span>
                   </button>
                   <button
                     type="button"
@@ -2997,9 +2700,9 @@ export default function AiLogoCreatorModal({
                     style={{
                       padding: '0.55rem 0.65rem',
                       borderRadius: '8px',
-                      border: isBlackSilhouette ? '2px solid #2563eb' : '1px solid #cbd5e1',
-                      background: isBlackSilhouette ? '#eff6ff' : '#ffffff',
-                      color: isBlackSilhouette ? '#1d4ed8' : '#334155',
+                      border: isBlackSilhouette ? '2px solid #2563eb' : '1px solid var(--line, #cbd5e1)',
+                      background: isBlackSilhouette ? 'rgba(37, 99, 235, 0.18)' : 'var(--bg-3, #ffffff)',
+                      color: isBlackSilhouette ? '#60a5fa' : 'var(--text, #334155)',
                       fontWeight: 800,
                       fontSize: '0.75rem',
                       cursor: 'pointer',
@@ -3010,7 +2713,7 @@ export default function AiLogoCreatorModal({
                     }}
                   >
                     <span>⚫ Black Silhouette</span>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>Single-color stamp</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted, #64748b)', fontWeight: 500 }}>Single-color stamp</span>
                   </button>
                   <button
                     type="button"
@@ -3026,9 +2729,9 @@ export default function AiLogoCreatorModal({
                     style={{
                       padding: '0.55rem 0.65rem',
                       borderRadius: '8px',
-                      border: '1px solid #cbd5e1',
-                      background: '#ffffff',
-                      color: '#475569',
+                      border: '1px solid var(--line, #cbd5e1)',
+                      background: 'var(--bg-3, #ffffff)',
+                      color: 'var(--text, #475569)',
                       fontWeight: 800,
                       fontSize: '0.75rem',
                       cursor: 'pointer',
@@ -3039,7 +2742,7 @@ export default function AiLogoCreatorModal({
                     }}
                   >
                     <span>↺ Reset to Original</span>
-                    <span style={{ fontSize: '0.65rem', color: '#64748b', fontWeight: 500 }}>Revert all sliders</span>
+                    <span style={{ fontSize: '0.65rem', color: 'var(--muted, #64748b)', fontWeight: 500 }}>Revert all sliders</span>
                   </button>
                 </div>
               </div>
@@ -3051,11 +2754,11 @@ export default function AiLogoCreatorModal({
                 style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', opacity: isWhiteDecal || isBlackSilhouette ? 0.45 : 1 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#334155', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--text, #334155)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
                     Color & Tone Sliders
                   </span>
                   {(isWhiteDecal || isBlackSilhouette) && (
-                    <span style={{ fontSize: '0.68rem', color: '#64748b', fontStyle: 'italic' }}>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--muted, #64748b)', fontStyle: 'italic' }}>
                       (Sliders active when decal preset is off)
                     </span>
                   )}
@@ -3063,7 +2766,7 @@ export default function AiLogoCreatorModal({
 
                 {/* Hue Rotate */}
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text, #475569)', marginBottom: '0.2rem' }}>
                     <span>Hue Shift</span>
                     <span>{adjustHue}°</span>
                   </div>
@@ -3087,7 +2790,7 @@ export default function AiLogoCreatorModal({
 
                 {/* Saturation */}
                 <div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text, #475569)', marginBottom: '0.2rem' }}>
                     <span>Color Saturation</span>
                     <span>{adjustSaturation}%</span>
                   </div>
@@ -3112,7 +2815,7 @@ export default function AiLogoCreatorModal({
                 {/* Brightness & Contrast */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text, #475569)', marginBottom: '0.2rem' }}>
                       <span>Brightness</span>
                       <span>{adjustBrightness}%</span>
                     </div>
@@ -3134,7 +2837,7 @@ export default function AiLogoCreatorModal({
                     />
                   </div>
                   <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: '#475569', marginBottom: '0.2rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text, #475569)', marginBottom: '0.2rem' }}>
                       <span>Contrast</span>
                       <span>{adjustContrast}%</span>
                     </div>
@@ -3163,11 +2866,11 @@ export default function AiLogoCreatorModal({
             <div
               style={{
                 padding: '0.85rem 1.25rem',
-                borderTop: '1px solid #e2e8f0',
+                borderTop: '1px solid var(--line, #e2e8f0)',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                background: '#f8fafc',
+                background: 'var(--bg-3, #f8fafc)',
               }}
             >
               <button
@@ -3177,9 +2880,9 @@ export default function AiLogoCreatorModal({
                 style={{
                   padding: '0.55rem 1rem',
                   borderRadius: '8px',
-                  border: '1px solid #cbd5e1',
-                  background: '#ffffff',
-                  color: '#475569',
+                  border: '1px solid var(--line, #cbd5e1)',
+                  background: 'var(--bg-2, #ffffff)',
+                  color: 'var(--text, #475569)',
                   fontSize: '0.82rem',
                   fontWeight: 700,
                   cursor: isSavingAdjusted ? 'not-allowed' : 'pointer',
@@ -3194,9 +2897,9 @@ export default function AiLogoCreatorModal({
                   style={{
                     padding: '0.55rem 0.95rem',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
-                    background: '#ffffff',
-                    color: '#0f172a',
+                    border: '1px solid var(--line, #cbd5e1)',
+                    background: 'var(--bg-2, #ffffff)',
+                    color: 'var(--text, #0f172a)',
                     fontSize: '0.82rem',
                     fontWeight: 800,
                     cursor: 'pointer',
@@ -3215,7 +2918,7 @@ export default function AiLogoCreatorModal({
                     padding: '0.55rem 1.15rem',
                     borderRadius: '8px',
                     border: 'none',
-                    background: isSavingAdjusted ? '#94a3b8' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
+                    background: isSavingAdjusted ? 'var(--muted, #94a3b8)' : 'linear-gradient(135deg, #2563eb, #1d4ed8)',
                     color: '#ffffff',
                     fontSize: '0.82rem',
                     fontWeight: 800,

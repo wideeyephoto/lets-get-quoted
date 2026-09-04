@@ -25,13 +25,80 @@ export type PricingCalculationResult = {
   grandTotal: number;
 };
 
+export const STATE_SALES_TAX_RATES: Record<string, number> = {
+  AL: 0.04, AK: 0.00, AZ: 0.056, AR: 0.065, CA: 0.0725, CO: 0.029, CT: 0.0635,
+  DE: 0.00, DC: 0.06, FL: 0.06, GA: 0.04, HI: 0.04, ID: 0.06, IL: 0.0625,
+  IN: 0.07, IA: 0.06, KS: 0.065, KY: 0.06, LA: 0.0445, ME: 0.055, MD: 0.06,
+  MA: 0.0625, MI: 0.06, MN: 0.06875, MS: 0.07, MO: 0.04225, MT: 0.00, NE: 0.055,
+  NV: 0.0685, NH: 0.00, NJ: 0.06625, NM: 0.05, NY: 0.08, NC: 0.0475, ND: 0.05,
+  OH: 0.0575, OK: 0.045, OR: 0.00, PA: 0.06, RI: 0.07, SC: 0.06, SD: 0.042,
+  TN: 0.07, TX: 0.0625, UT: 0.061, VT: 0.06, VA: 0.053, WA: 0.065, WV: 0.06,
+  WI: 0.05, WY: 0.04,
+};
+
+export function getSalesTaxRate(stateCode?: string | null): number {
+  if (!stateCode) return 0.065;
+  const cleanState = stateCode.trim().toUpperCase();
+  if (cleanState in STATE_SALES_TAX_RATES) {
+    return STATE_SALES_TAX_RATES[cleanState];
+  }
+  return 0.065;
+}
+
+export function calculateSalesTax(subtotal: number, stateCode?: string | null): number {
+  const rate = getSalesTaxRate(stateCode);
+  return Math.round(subtotal * rate * 100) / 100;
+}
+
+export type ServerItemPricing = {
+  unitPrice: number;
+  totalPrice: number;
+  wholesaleUnitPrice: number;
+  wholesaleTotal: number;
+};
+
+export function resolveServerItemPricing(
+  product: { basePrice: number; pricingTiers: Array<{ quantity: number; unitPrice: number; totalPrice: number }> },
+  quantity: number
+): ServerItemPricing {
+  const qty = Math.max(1, Math.floor(quantity));
+
+  // 1. Check exact tier match
+  const exactTier = product.pricingTiers.find((t) => t.quantity === qty);
+  if (exactTier) {
+    const wholesaleTotal = Math.round(product.basePrice * qty * 100) / 100;
+    return {
+      unitPrice: exactTier.unitPrice,
+      totalPrice: exactTier.totalPrice,
+      wholesaleUnitPrice: product.basePrice,
+      wholesaleTotal,
+    };
+  }
+
+  // 2. Custom or interpolated tier quantity
+  const sortedTiers = [...product.pricingTiers].sort((a, b) => b.quantity - a.quantity);
+  const matchedTier = sortedTiers.find((t) => qty >= t.quantity) || sortedTiers[sortedTiers.length - 1];
+
+  const unitPrice = matchedTier ? matchedTier.unitPrice : Math.round(product.basePrice * 1.65 * 100) / 100;
+  const totalPrice = Math.round(unitPrice * qty * 100) / 100;
+  const wholesaleTotal = Math.round(product.basePrice * qty * 100) / 100;
+
+  return {
+    unitPrice,
+    totalPrice,
+    wholesaleUnitPrice: product.basePrice,
+    wholesaleTotal,
+  };
+}
+
 export function calculateMerchandisePricing(params: {
   wholesaleUnitCost: number;
   quantity: number;
   isEmbroidery?: boolean;
   shippingMethod?: 'standard' | 'rush';
+  stateCode?: string;
 }): PricingCalculationResult {
-  const { wholesaleUnitCost, quantity, isEmbroidery = false, shippingMethod = 'standard' } = params;
+  const { wholesaleUnitCost, quantity, isEmbroidery = false, shippingMethod = 'standard', stateCode } = params;
 
   // Volume discount scale for wholesale markup
   let markupMultiplier = 1.65; // Base retail markup
@@ -73,8 +140,9 @@ export function calculateMerchandisePricing(params: {
   // Shipping calculation (free over $150 standard)
   const shippingCost = shippingMethod === 'rush' ? 24.0 : retailSubtotal >= 150 ? 0.0 : 12.0;
 
-  // Estimated destination sales tax (6.5%)
-  const estimatedTax = Math.round(retailSubtotal * 0.065 * 100) / 100;
+  // Destination sales tax (state-specific lookup)
+  const taxRate = getSalesTaxRate(stateCode);
+  const estimatedTax = Math.round(retailSubtotal * taxRate * 100) / 100;
 
   // Grand total charged to contractor
   const grandTotal = Math.round((retailSubtotal + shippingCost + estimatedTax) * 100) / 100;

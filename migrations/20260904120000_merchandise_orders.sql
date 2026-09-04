@@ -53,6 +53,9 @@ CREATE POLICY "office_users_write_merchandise_orders"
     public.office_can(account_id, 'settings.write')
   );
 
+GRANT SELECT, INSERT, UPDATE ON public.merchandise_orders TO authenticated;
+REVOKE ALL ON public.merchandise_orders FROM anon, public;
+
 -- 2. Merchandise Platform Fee Revenue Ledger (10% Platform Take-Rate)
 CREATE TABLE IF NOT EXISTS public.merchandise_revenue_ledger (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -80,5 +83,8 @@ CREATE POLICY "office_users_read_merchandise_revenue"
   USING (
     public.office_can(account_id, 'settings.read')
   );
+
+GRANT SELECT, INSERT ON public.merchandise_revenue_ledger TO authenticated;
+REVOKE ALL ON public.merchandise_revenue_ledger FROM anon, public;
 
 commit;

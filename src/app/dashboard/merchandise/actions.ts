@@ -12,9 +12,9 @@ import type {
   MerchandiseStudioInitialData,
   MerchandiseOrder,
 } from '@/lib/merchandise/types';
-import { saveMerchandiseOrder, listMerchandiseOrders } from '@/lib/merchandise/orders';
-import { calculateMerchandisePricing } from '@/lib/merchandise/pricing';
-import { createPrintfulOrder, calculatePrintfulShippingRates } from '@/lib/merchandise/printful-client';
+import { saveMerchandiseOrder, listMerchandiseOrders, updateMerchandiseOrder } from '@/lib/merchandise/orders';
+import { calculateMerchandisePricing, resolveServerItemPricing, calculateSalesTax } from '@/lib/merchandise/pricing';
+import { calculatePrintfulShippingRates } from '@/lib/merchandise/printful-client';
 import { getProductById } from '@/lib/merchandise/catalog';
 
 /**
@@ -144,29 +144,38 @@ export async function createMerchandiseCheckoutAction(params: {
       return { ok: false, error: 'Please complete all required shipping address fields.' };
     }
 
-    // Calculate item pricing & 10% platform take-rate
+    // Authoritative Server-Side Pricing Calculation
     let totalWholesale = 0;
     let totalRetail = 0;
+    const validatedItems: MerchandiseOrderItem[] = [];
 
     for (const it of params.items) {
-      const prod = getProductById(it.productId);
-      const wholesaleUnit = prod ? prod.basePrice : it.unitPrice * 0.65;
-      const isEmbroidery = it.customizationDetails.decorationMethod === 'embroidery' || it.customizationDetails.decorationMethod === 'leather_patch';
+      // Must be an active storefront product
+      const prod = getProductById(it.productId, false);
+      if (!prod) {
+        return {
+          ok: false,
+          error: `Product "${it.productName || it.productId}" is no longer available in the active storefront.`,
+        };
+      }
 
-      const pricing = calculateMerchandisePricing({
-        wholesaleUnitCost: wholesaleUnit,
+      const serverPricing = resolveServerItemPricing(prod, it.quantity);
+      totalWholesale += serverPricing.wholesaleTotal;
+      totalRetail += serverPricing.totalPrice;
+
+      validatedItems.push({
+        ...it,
+        productId: prod.id,
+        productName: prod.name,
         quantity: it.quantity,
-        isEmbroidery,
-        shippingMethod: params.shippingMethod,
+        unitPrice: serverPricing.unitPrice,
+        totalPrice: serverPricing.totalPrice,
       });
-
-      totalWholesale += pricing.wholesaleTotal;
-      totalRetail += it.totalPrice;
     }
 
     const subtotal = Math.round(totalRetail * 100) / 100;
     const shippingCost = params.shippingMethod === 'rush' ? 24.0 : subtotal >= 150 ? 0.0 : 12.0;
-    const taxAmount = Math.round(subtotal * 0.065 * 100) / 100;
+    const taxAmount = calculateSalesTax(subtotal, params.shippingAddress.state);
     const totalAmount = Math.round((subtotal + shippingCost + taxAmount) * 100) / 100;
 
     // 10% platform take-rate with $5.00 minimum floor
@@ -182,149 +191,133 @@ export async function createMerchandiseCheckoutAction(params: {
       netProfit,
     };
 
+    const hasStripeKey = Boolean(process.env.STRIPE_SECRET_KEY);
+    if (!hasStripeKey) {
+      return {
+        ok: false,
+        error: 'Stripe payment gateway is not configured for merchandise checkout.',
+      };
+    }
+
     const reqHeaders = await headers();
     const host = reqHeaders.get('host') || 'localhost:3010';
     const proto = reqHeaders.get('x-forwarded-proto') || 'http';
     const origin = `${proto}://${host}`;
 
-    const hasStripeKey = Boolean(process.env.STRIPE_SECRET_KEY);
-
-    // If Stripe is configured and user did not request instant test order
-    if (hasStripeKey && !params.isInstantTestOrder) {
-      try {
-        const stripe = getStripeClient();
-
-        const lineItems = params.items.map((item) => {
-          const detailParts = [
-            `Color: ${item.colorName}`,
-            item.customizationDetails.finish ? `Finish: ${item.customizationDetails.finish}` : '',
-            item.customizationDetails.deviceModel ? `Model: ${item.customizationDetails.deviceModel}` : '',
-            item.customizationDetails.sizeBreakdown
-              ? `Sizes: ${Object.entries(item.customizationDetails.sizeBreakdown)
-                  .filter(([, count]) => count > 0)
-                  .map(([s, c]) => `${s}: ${c}`)
-                  .join(', ')}`
-              : '',
-          ]
-            .filter(Boolean)
-            .join(' | ');
-
-          return {
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: `${item.productName} (Qty: ${item.quantity})`,
-                description: `${detailParts || 'Highest quality contractor print'} | Brand: ${item.customizationDetails.businessName}`,
-                images: item.customizationDetails.logoUrl ? [item.customizationDetails.logoUrl] : undefined,
-              },
-              unit_amount: toCents(item.unitPrice),
-            },
-            quantity: item.quantity,
-          };
-        });
-
-        // Add shipping line item if applicable
-        if (shippingCost > 0) {
-          lineItems.push({
-            price_data: {
-              currency: 'usd',
-              product_data: {
-                name: params.shippingMethod === 'rush' ? 'Rush Priority Air Freight' : 'Tracked Commercial Ground',
-                description: params.shippingMethod === 'rush' ? 'Expedited 2-day transit' : 'Standard 3-5 business day transit',
-                images: undefined,
-              },
-              unit_amount: toCents(shippingCost),
-            },
-            quantity: 1,
-          });
-        }
-
-        const session = await stripe.checkout.sessions.create({
-          mode: 'payment',
-          payment_method_types: ['card'],
-          line_items: lineItems,
-          customer_email: params.shippingAddress.email || undefined,
-          metadata: {
-            account_id: accountId,
-            merchandise_order: 'true',
-            customer_name: params.shippingAddress.fullName,
-            customer_phone: params.shippingAddress.phone,
-            ship_city: params.shippingAddress.city,
-            ship_state: params.shippingAddress.state,
-            platform_cut: platformCutAmount.toString(),
-          },
-          success_url: `${origin}/dashboard/merchandise?order_success=true&session_id={CHECKOUT_SESSION_ID}`,
-          cancel_url: `${origin}/dashboard/merchandise?order_cancelled=true`,
-        });
-
-        // Save order and record 10% platform revenue cut
-        const order = await saveMerchandiseOrder(admin, accountId, {
-          items: params.items,
-          subtotal,
-          shippingCost,
-          taxAmount,
-          totalAmount,
-          shippingAddress: params.shippingAddress,
-          stripeSessionId: session.id,
-          status: 'pending_payment',
-          proofApprovedAt: new Date().toISOString(),
-          proofSnapshotUrl: params.proofSnapshotUrl,
-          revenueBreakdown,
-        });
-
-        // Dispatch to Printful
-        const printfulRes = await createPrintfulOrder({
-          orderNumber: order.orderNumber,
-          items: params.items,
-          shippingAddress: params.shippingAddress,
-          retailTotal: totalAmount,
-          companyName: params.items[0]?.customizationDetails.businessName || 'Contractor Brand',
-        });
-
-        revalidatePath('/dashboard/merchandise');
-        return {
-          ok: true,
-          checkoutUrl: session.url || undefined,
-          orderNumber: order.orderNumber,
-          order: {
-            ...order,
-            printfulOrderId: printfulRes.printfulOrderId,
-          },
-        };
-      } catch (stripeErr) {
-        console.warn('Stripe checkout session failed; falling back to instant direct order:', stripeErr);
+    try {
+      const stripe = getStripeClient();
+      if (!stripe) {
+        return { ok: false, error: 'Stripe is not configured. Payment processing is currently unavailable.' };
       }
+
+      const lineItems = validatedItems.map((item) => {
+        const bizName = item.customizationDetails?.businessName || '';
+        const logoUrl = item.customizationDetails?.logoUrl;
+        const detailParts = [
+          `Color: ${item.colorName}`,
+          item.customizationDetails?.finish ? `Finish: ${item.customizationDetails.finish}` : '',
+          item.customizationDetails?.deviceModel ? `Model: ${item.customizationDetails.deviceModel}` : '',
+          item.customizationDetails?.sizeBreakdown
+            ? `Sizes: ${Object.entries(item.customizationDetails.sizeBreakdown)
+                .filter(([, count]) => count > 0)
+                .map(([s, c]) => `${s}: ${c}`)
+                .join(', ')}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join(' | ');
+
+        return {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${item.productName} (Qty: ${item.quantity})`,
+              description: detailParts
+                ? `${detailParts}${bizName ? ` | Brand: ${bizName}` : ''}`
+                : (bizName ? `Brand: ${bizName}` : 'Commercial contractor print'),
+              images: logoUrl ? [logoUrl] : undefined,
+            },
+            unit_amount: toCents(item.totalPrice),
+          },
+          quantity: 1,
+        };
+      });
+
+      // Add shipping line item if applicable
+      if (shippingCost > 0) {
+        lineItems.push({
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: params.shippingMethod === 'rush' ? 'Rush Priority Air Freight' : 'Tracked Commercial Ground',
+              description: params.shippingMethod === 'rush' ? 'Expedited 2-day transit' : 'Standard 3-5 business day transit',
+              images: undefined,
+            },
+            unit_amount: toCents(shippingCost),
+          },
+          quantity: 1,
+        });
+      }
+
+      // 1. Save initial order as pending_payment (without dispatching to Printful)
+      const order = await saveMerchandiseOrder(admin, accountId, {
+        items: validatedItems,
+        subtotal,
+        shippingCost,
+        taxAmount,
+        totalAmount,
+        shippingAddress: params.shippingAddress,
+        status: 'pending_payment',
+        proofApprovedAt: new Date().toISOString(),
+        proofSnapshotUrl: params.proofSnapshotUrl,
+        revenueBreakdown,
+      });
+
+      // 2. Create Stripe checkout session with order linkage
+      const session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: lineItems,
+        customer_email: params.shippingAddress.email || undefined,
+        client_reference_id: order.orderNumber,
+        metadata: {
+          account_id: accountId,
+          merchandise_order: 'true',
+          order_id: order.id,
+          order_number: order.orderNumber,
+          customer_name: params.shippingAddress.fullName,
+          customer_phone: params.shippingAddress.phone,
+          ship_city: params.shippingAddress.city,
+          ship_state: params.shippingAddress.state,
+          platform_cut: platformCutAmount.toString(),
+          wholesale_cost: totalWholesale.toString(),
+        },
+        success_url: `${origin}/dashboard/merchandise?order_success=true&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/dashboard/merchandise?order_cancelled=true`,
+      });
+
+      // 3. Link stripe session to order
+      await updateMerchandiseOrder(admin, order.id, {
+        stripeSessionId: session.id,
+      });
+
+      revalidatePath('/dashboard/merchandise');
+      return {
+        ok: true,
+        checkoutUrl: session.url || undefined,
+        orderNumber: order.orderNumber,
+        order: {
+          ...order,
+          stripeSessionId: session.id,
+        },
+      };
+    } catch (stripeErr) {
+      console.error('Stripe merchandise checkout failed:', stripeErr);
+      return {
+        ok: false,
+        error: stripeErr instanceof Error ? stripeErr.message : 'Payment gateway checkout failed.',
+      };
     }
-
-    // Direct Instant Order (Test / Sandbox / Offline Mode)
-    const order = await saveMerchandiseOrder(admin, accountId, {
-      items: params.items,
-      subtotal,
-      shippingCost,
-      taxAmount,
-      totalAmount,
-      shippingAddress: params.shippingAddress,
-      status: 'proof_approved',
-      proofApprovedAt: new Date().toISOString(),
-      proofSnapshotUrl: params.proofSnapshotUrl,
-      revenueBreakdown,
-    });
-
-    // Dispatch to Printful fulfillment
-    await createPrintfulOrder({
-      orderNumber: order.orderNumber,
-      items: params.items,
-      shippingAddress: params.shippingAddress,
-      retailTotal: totalAmount,
-      companyName: params.items[0]?.customizationDetails.businessName || 'Contractor Brand',
-    });
-
-    revalidatePath('/dashboard/merchandise');
-    return {
-      ok: true,
-      order,
-      orderNumber: order.orderNumber,
-    };
   } catch (err) {
     console.error('Failed to create merchandise checkout:', err);
     return {
