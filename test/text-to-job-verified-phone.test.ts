@@ -160,16 +160,15 @@ describe('Text-to-Job Verified Phone & Shared Copilot Hotline', () => {
   });
 
   describe('Field Leads Integration & Real Feed Unification', () => {
-    it('queries recent leads alongside exact count in page.tsx', () => {
-      expect(TEXT_TO_JOB_PAGE).toContain(
-        ".select('id, name, phone, address, message, source, status, created_at', { count: 'exact' })"
-      );
+    it('queries correlated field leads via loadSmsFieldLeads alongside exact lead count in page.tsx', () => {
+      expect(TEXT_TO_JOB_PAGE).toContain('loadSmsFieldLeads(accountId)');
+      expect(TEXT_TO_JOB_PAGE).toContain("select('id', { count: 'exact', head: true })");
       expect(TEXT_TO_JOB_PAGE).toContain("console.error('Text-to-Job leads unreadable:', leadError)");
     });
 
     it('maps leads with pillar leads and merges with feed rows chronologically', () => {
       expect(TEXT_TO_JOB_PAGE).toContain("pillar: 'leads'");
-      expect(TEXT_TO_JOB_PAGE).toContain("matchedRef = `New Lead: ${lead.name || 'New Prospect'}`");
+      expect(TEXT_TO_JOB_PAGE).toContain("matchedRef = `New Lead: ${lead.leadName || 'New Prospect'}`");
       expect(TEXT_TO_JOB_PAGE).toContain('[...feedMessages, ...leadMessages]');
     });
 

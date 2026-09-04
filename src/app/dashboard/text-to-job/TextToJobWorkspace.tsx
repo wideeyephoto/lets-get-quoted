@@ -18,6 +18,7 @@ export type ExtractedItem = {
   targetTable: string;
   mutation: string;
   enabled: boolean;
+  targetUrl?: string;
 };
 
 export type InboundMessage = {
@@ -30,6 +31,7 @@ export type InboundMessage = {
   confidence?: number;
   qualityVerdict?: FieldConfidenceVerdict;
   matchedJobRef?: string;
+  targetRecordUrl?: string;
   extractedItems: ExtractedItem[];
 };
 
@@ -1548,11 +1550,17 @@ export default function TextToJobWorkspace({
                 </div>
                 <div className={styles.receiptHeaderRight}>
                   {selectedMessage.extractedItems.some((i) => i.pillar === 'leads') ? (
-                    <Link href="/dashboard/leads" className={styles.openJobLink}>
+                    <Link
+                      href={selectedMessage.targetRecordUrl || '/dashboard/leads'}
+                      className={styles.openJobLink}
+                    >
                       Open Lead ↗
                     </Link>
                   ) : (
-                    <Link href="/dashboard/jobs" className={styles.openJobLink}>
+                    <Link
+                      href={selectedMessage.targetRecordUrl || '/dashboard/jobs'}
+                      className={styles.openJobLink}
+                    >
                       Open Job ↗
                     </Link>
                   )}
@@ -1661,13 +1669,14 @@ export default function TextToJobWorkspace({
                         : '👷';
 
                     const linkHref =
-                      item.pillar === 'jobs'
-                        ? '/dashboard/jobs'
+                      item.targetUrl ||
+                      (item.pillar === 'jobs'
+                        ? selectedMessage.targetRecordUrl || '/dashboard/jobs'
                         : item.pillar === 'leads'
-                        ? '/dashboard/leads'
+                        ? selectedMessage.targetRecordUrl || '/dashboard/leads'
                         : item.pillar === 'schedule'
                         ? '/dashboard/schedule'
-                        : '/dashboard/crew';
+                        : '/dashboard/crew');
 
                     const linkText =
                       item.pillar === 'jobs'
@@ -1718,27 +1727,40 @@ export default function TextToJobWorkspace({
               {/* Actions Footer */}
               <div className={styles.receiptFooter}>
                 <div className={styles.receiptFooterActionRow}>
-                  <button
-                    type="button"
-                    onClick={handleApply}
-                    disabled={selectedMessage.extractedItems.filter((i) => i.enabled).length === 0}
-                    className={`${styles.applyBtn} ${
-                      selectedMessage.extractedItems.filter((i) => i.enabled).length === 0
-                        ? styles.applyBtnDisabled
-                        : ''
-                    }`}
-                  >
-                    {selectedMessage.extractedItems.filter((i) => i.enabled).length === 0
-                      ? 'Select updates above to apply'
-                      : `✓ Apply ${selectedMessage.extractedItems.filter((i) => i.enabled).length} ${
-                          selectedMessage.extractedItems.filter((i) => i.enabled).length === 1
-                            ? 'Update'
-                            : 'Updates'
-                        } to ${selectedMessage.matchedJobRef || 'Job File'}`}
-                  </button>
+                  {selectedMessage.id.startsWith('sim-') ? (
+                    <button
+                      type="button"
+                      onClick={handleApply}
+                      disabled={selectedMessage.extractedItems.filter((i) => i.enabled).length === 0}
+                      className={`${styles.applyBtn} ${
+                        selectedMessage.extractedItems.filter((i) => i.enabled).length === 0
+                          ? styles.applyBtnDisabled
+                          : ''
+                      }`}
+                    >
+                      ⚡ In-Memory Simulation Preview · Test Only
+                    </button>
+                  ) : (
+                    <Link
+                      href={
+                        selectedMessage.targetRecordUrl ||
+                        (selectedMessage.extractedItems.some((i) => i.pillar === 'leads')
+                          ? '/dashboard/leads'
+                          : '/dashboard/jobs')
+                      }
+                      className={styles.applyBtn}
+                      style={{ textAlign: 'center', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                    >
+                      ↗ View in {selectedMessage.extractedItems.some((i) => i.pillar === 'leads') ? 'Lead Record' : 'Job File'}
+                    </Link>
+                  )}
                 </div>
                 <div className={styles.receiptFooterNote}>
-                  <span>🛡️ 15-minute SMS rollback active (Reply <strong>UNDO</strong> to revert)</span>
+                  {selectedMessage.id.startsWith('sim-') ? (
+                    <span>💡 Simulated intake preview — not persisted to database</span>
+                  ) : (
+                    <span>✓ Automatically verified and filed to timeline upon receipt</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -2057,8 +2079,8 @@ export default function TextToJobWorkspace({
               {copiedNumber ? '✓ Copied' : '📋 Copy'}
             </span>
           </button>
-          <span className={styles.unifiedUndoBadge} title="Reply UNDO within 15 minutes to revert any action">
-            ⏱️ 15-Min Undo Active
+          <span className={styles.unifiedUndoBadge} title="Field intake notes and updates are automatically processed">
+            ⚡ Live Field Ingest Active
           </span>
         </div>
 

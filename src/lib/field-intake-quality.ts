@@ -21,6 +21,7 @@ export interface FieldNoteEvaluationOptions {
   matchedJobRef?: string;
   extractedItemsCount?: number;
   isLead?: boolean;
+  hasPhone?: boolean;
 }
 
 const US_PHONE_REGEX = /(?:\+?1[-. ]?)?\(?([2-9][0-9]{2})\)?[-. ]?([2-9][0-9]{2})[-. ]?([0-9]{4})/;
@@ -60,7 +61,7 @@ export function evaluateFieldNoteConfidence(
     lower.includes('prospect');
 
   // 1. Phone number presence
-  const phoneMatch = text.match(US_PHONE_REGEX);
+  const phoneMatch = Boolean(text.match(US_PHONE_REGEX) || options.hasPhone);
   if (phoneMatch) {
     score += 25;
     reasons.push('Verified 10-digit phone number');

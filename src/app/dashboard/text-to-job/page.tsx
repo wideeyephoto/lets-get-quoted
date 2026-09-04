@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import { requireOfficeContext } from '@/lib/auth';
 import { isCrewPhoneVerified, resolveCrewPhoneVerification } from '@/lib/crew-verification';
 import { evaluateFieldNoteConfidence } from '@/lib/field-intake-quality';
+import { loadSmsFieldLeads } from '@/lib/field-intake-leads';
+import { formatFeedTime } from '@/lib/job-detail-labels';
 import { isOwnerFieldLineReady, loadOwnerAlerts } from '@/lib/owner-sms';
 import TextToJobWorkspace, { type InboundMessage, type CrewRow } from './TextToJobWorkspace';
 
@@ -19,9 +21,10 @@ export default async function TextToJobDashboardPage() {
     { data: account, error: accountError },
     { data: crewRows, error: crewError },
     { count: jobCount },
-    { data: leadRows, count: leadCount, error: leadError },
+    { count: leadCount, error: leadError },
     { data: feedRows, error: feedError },
     ownerAlerts,
+    fieldLeads,
   ] = await Promise.all([
     supabase
       .from('accounts')
@@ -40,10 +43,8 @@ export default async function TextToJobDashboardPage() {
       .neq('status', 'archived'),
     supabase
       .from('leads')
-      .select('id, name, phone, address, message, source, status, created_at', { count: 'exact' })
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: false })
-      .limit(20),
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId),
     supabase
       .from('job_feed')
       .select('id, kind, title, body, amount, author, created_at, meta, job_id, jobs(title)')
@@ -52,6 +53,7 @@ export default async function TextToJobDashboardPage() {
       .order('created_at', { ascending: false })
       .limit(20),
     loadOwnerAlerts(accountId),
+    loadSmsFieldLeads(accountId),
   ]);
 
   if (accountError) {
@@ -93,9 +95,10 @@ export default async function TextToJobDashboardPage() {
     const isVoice = row.kind === 'field_voice_note';
     const isCost = row.kind === 'cost_added';
     const createdDate = new Date(row.created_at);
-    const timeFormatted = createdDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    const timeFormatted = formatFeedTime(row.created_at);
     const rawText = row.body || row.title || 'Field update logged';
     const matchedRef = jobTitle ? `Job: ${jobTitle}` : undefined;
+    const targetUrl = row.job_id ? `/dashboard/jobs/${row.job_id}` : '/dashboard/jobs';
     const verdict = evaluateFieldNoteConfidence(rawText, {
       type: isVoice ? 'voice' : isCost ? 'receipt' : 'sms',
       matchedJobRef: matchedRef,
@@ -112,6 +115,7 @@ export default async function TextToJobDashboardPage() {
       confidence: verdict.score,
       qualityVerdict: verdict,
       matchedJobRef: matchedRef,
+      targetRecordUrl: targetUrl,
       extractedItems: [
         {
           id: `item-${row.id}`,
@@ -121,22 +125,25 @@ export default async function TextToJobDashboardPage() {
           targetTable: isCost ? 'costs' : 'job_activity_feed',
           mutation: row.amount ? `+$${Number(row.amount).toFixed(2)} Logged` : 'Record Updated',
           enabled: true,
+          targetUrl,
         },
       ],
       createdAtMs: createdDate.getTime(),
     };
   });
 
-  const leadMessages: InboundMessageWithTime[] = (leadRows || []).map((lead) => {
-    const leadCreatedDate = new Date(lead.created_at);
-    const timeFormatted = leadCreatedDate.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    const rawText = lead.message || `New prospect intake for ${lead.name || 'new client'}`;
-    const matchedRef = `New Lead: ${lead.name || 'New Prospect'}`;
+  const leadMessages: InboundMessageWithTime[] = (fieldLeads || []).map((lead) => {
+    const leadCreatedDate = new Date(lead.createdAt);
+    const timeFormatted = formatFeedTime(lead.createdAt);
+    const rawText = lead.rawSmsText;
+    const matchedRef = `New Lead: ${lead.leadName || 'New Prospect'}`;
+    const targetUrl = lead.leadId ? `/dashboard/leads/${lead.leadId}` : '/dashboard/leads';
     const verdict = evaluateFieldNoteConfidence(rawText, {
       type: 'sms',
       matchedJobRef: matchedRef,
       extractedItemsCount: 1,
       isLead: true,
+      hasPhone: Boolean(lead.phone),
     });
 
     const detailParts: string[] = [];
@@ -146,23 +153,25 @@ export default async function TextToJobDashboardPage() {
     const detail = detailParts.join(' · ') || 'Captured in leads pipeline';
 
     return {
-      id: `lead-${lead.id}`,
-      sender: ownerAlertPhone ? `Owner (${ownerAlertPhone})` : 'Field Lead Intake',
+      id: `lead-${lead.leadId}`,
+      sender: lead.senderPhone || (ownerAlertPhone ? `Owner (${ownerAlertPhone})` : 'Field Lead Intake'),
       type: 'sms' as const,
       time: timeFormatted,
       rawText,
       confidence: verdict.score,
       qualityVerdict: verdict,
       matchedJobRef: matchedRef,
+      targetRecordUrl: targetUrl,
       extractedItems: [
         {
-          id: `item-lead-${lead.id}`,
+          id: `item-lead-${lead.leadId}`,
           pillar: 'leads' as const,
-          title: `New Lead: ${lead.name || 'New Prospect'}`,
+          title: `New Lead: ${lead.leadName || 'New Prospect'}`,
           detail,
           targetTable: 'leads',
-          mutation: 'Lead Created · Ingested from Field',
+          mutation: lead.status === 'new' ? 'Lead Created · Ingested from Field' : `Lead Status: ${lead.status}`,
           enabled: true,
+          targetUrl,
         },
       ],
       createdAtMs: leadCreatedDate.getTime(),
