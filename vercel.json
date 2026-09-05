@@ -159,6 +159,11 @@
     {
       "path": "/api/cron/purge-expired",
       "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/cron/waitlist-sweep",
+      "schedule": "*/5 * * * *"
     }
   ]
 }
+

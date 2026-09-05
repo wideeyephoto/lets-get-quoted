@@ -22,6 +22,7 @@ import { processSmsInboundActionReceipt } from '@/lib/sms-inbound-action-worker'
 import { logWebhookFailure } from '@/lib/webhook-failures';
 import { normalizeUsPhone } from '@/lib/phone';
 import { handleWeatherRescheduleInboundReply } from '@/lib/weather-inbound';
+import { handleWaitlistInboundReply } from '@/lib/waitlist-inbound';
 
 export const runtime = 'nodejs';
 
@@ -353,6 +354,28 @@ export async function POST(request: Request) {
       contentType,
       requestUrl: request.url,
     });
+
+    // Check if this inbound text is a reply to an active cancellation waitlist offer
+    if (
+      !inbound.providerHandledKeyword &&
+      (!inbound.keyword || inbound.keyword === 'other') &&
+      inbound.fromNumber &&
+      inbound.body &&
+      !isAutoResponderText(inbound.body)
+    ) {
+      try {
+        const waitlistResult = await handleWaitlistInboundReply(admin, {
+          accountId: ingress.accountId,
+          fromPhone: inbound.fromNumber,
+          body: inbound.body,
+        });
+        if (waitlistResult.handled) {
+          return emptyTwiml();
+        }
+      } catch (waitlistErr) {
+        console.error('Waitlist inbound reply processing error:', waitlistErr);
+      }
+    }
 
     // `review` still means no human action is taken -- but on LGQ's own lanes it
     // is precisely the unroutable-reply case, the one with no other answer. The

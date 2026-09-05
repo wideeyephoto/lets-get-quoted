@@ -437,27 +437,31 @@ export async function listActiveScheduleRequests(
 ): Promise<Record<string, JobScheduleRequestSummary>> {
   if (jobIds.length === 0) return {};
 
-  const { data, error } = await supabase
-    .from('job_schedule_requests')
-    .select('job_id, status, selected_date, selected_time, client_notes, responded_at, sent_at, created_at')
-    .eq('account_id', accountId)
-    .in('job_id', jobIds)
-    .in('status', ['open', 'needs_more_options', 'selected'])
-    .order('created_at', { ascending: false });
-  if (error) throw error;
-
   const byJob: Record<string, JobScheduleRequestSummary> = {};
-  for (const row of data ?? []) {
-    if (byJob[row.job_id]) continue; // rows are newest-first; keep the latest per job
-    byJob[row.job_id] = {
-      jobId: row.job_id,
-      status: row.status,
-      selectedDate: row.selected_date,
-      selectedTime: row.selected_time,
-      clientNotes: row.client_notes,
-      respondedAt: row.responded_at,
-      sentAt: row.sent_at,
-    };
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < jobIds.length; i += CHUNK_SIZE) {
+    const chunk = jobIds.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from('job_schedule_requests')
+      .select('job_id, status, selected_date, selected_time, client_notes, responded_at, sent_at, created_at')
+      .eq('account_id', accountId)
+      .in('job_id', chunk)
+      .in('status', ['open', 'needs_more_options', 'selected'])
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+
+    for (const row of data ?? []) {
+      if (byJob[row.job_id]) continue; // rows are newest-first; keep the latest per job
+      byJob[row.job_id] = {
+        jobId: row.job_id,
+        status: row.status,
+        selectedDate: row.selected_date,
+        selectedTime: row.selected_time,
+        clientNotes: row.client_notes,
+        respondedAt: row.responded_at,
+        sentAt: row.sent_at,
+      };
+    }
   }
   return byJob;
 }

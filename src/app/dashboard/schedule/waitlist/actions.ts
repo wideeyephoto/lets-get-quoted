@@ -77,16 +77,16 @@ export async function cancelWaitlistOfferAction(offerId: string) {
 }
 
 export async function manualAcceptOfferAction(offerId: string) {
-  const { supabase } = await requireOfficeContext('schedule.write');
-  const result = await resolveWaitlistOfferReply(supabase, offerId, 'YES');
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const result = await resolveWaitlistOfferReply(supabase, offerId, 'YES', accountId);
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/schedule/waitlist');
   return { ok: true, result };
 }
 
 export async function manualDeclineOfferAction(offerId: string) {
-  const { supabase } = await requireOfficeContext('schedule.write');
-  const result = await resolveWaitlistOfferReply(supabase, offerId, 'NO');
+  const { supabase, accountId } = await requireOfficeContext('schedule.write');
+  const result = await resolveWaitlistOfferReply(supabase, offerId, 'NO', accountId);
   revalidatePath('/dashboard/schedule');
   revalidatePath('/dashboard/schedule/waitlist');
   return { ok: true, result };
@@ -137,7 +137,7 @@ export async function searchExistingContactsAction(query: string): Promise<Exist
   if (trimmed.length < 2) return [];
 
   const { supabase, accountId } = await requireOfficeContext('schedule.read');
-  const term = trimmed.replace(/[%_\\]/g, '');
+  const term = trimmed.replace(/[,()"'%_\\]/g, '');
   if (!term) return [];
 
   // 1. Search clients table

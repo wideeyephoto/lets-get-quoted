@@ -335,6 +335,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'housekeeping',
     consequence: 'Soft-deleted entities past retention and closed accounts past their legal hold window stop being permanently purged.',
   },
+  {
+    job: 'waitlist-sweep',
+    label: 'Cancellation waitlist sweep',
+    schedule: '*/5 * * * *',
+    importance: 'customer',
+    consequence: 'Expired cancellation waitlist holds remain pending forever, holding slots open and preventing auto-cascade to the next qualified candidate.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

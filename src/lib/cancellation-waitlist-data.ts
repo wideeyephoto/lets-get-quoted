@@ -341,10 +341,13 @@ export async function createAndSendWaitlistOffer(
   if (offerErr) throw offerErr;
 
   // Update waitlist entry status
-  await supabase
+  const { error: entryStatusErr } = await supabase
     .from('cancellation_waitlist')
     .update({ status: 'offered', updated_at: now.toISOString() })
-    .eq('id', entry.id);
+    .eq('id', entry.id)
+    .eq('account_id', accountId);
+
+  if (entryStatusErr) throw entryStatusErr;
 
   // Send SMS
   const toPhone = normalizeUsPhone(entry.client_phone);
@@ -376,15 +379,21 @@ export async function resolveWaitlistOfferReply(
   supabase: SupabaseClient,
   offerId: string,
   rawReply: string,
+  accountId?: string,
 ): Promise<{ decision: 'accepted' | 'declined' | 'ambiguous'; offer: WaitlistOffer }> {
   const replyDecision = parseWaitlistOfferReply(rawReply);
   const now = new Date().toISOString();
 
-  const { data: offerData, error: fetchErr } = await supabase
+  let offerQuery = supabase
     .from('waitlist_offers')
     .select('*')
-    .eq('id', offerId)
-    .single();
+    .eq('id', offerId);
+
+  if (accountId) {
+    offerQuery = offerQuery.eq('account_id', accountId);
+  }
+
+  const { data: offerData, error: fetchErr } = await offerQuery.single();
 
   if (fetchErr || !offerData) throw new Error('Offer not found.');
   const offer = offerData as unknown as WaitlistOffer;
@@ -395,7 +404,7 @@ export async function resolveWaitlistOfferReply(
 
   if (replyDecision.decision === 'accepted') {
     // 1. Mark offer accepted
-    const { data: updatedOffer } = await supabase
+    const { data: updatedOffer, error: offerUpdateErr } = await supabase
       .from('waitlist_offers')
       .update({
         status: 'accepted',
@@ -404,32 +413,51 @@ export async function resolveWaitlistOfferReply(
         updated_at: now,
       })
       .eq('id', offerId)
+      .eq('account_id', offer.account_id)
       .select('*')
       .single();
 
+    if (offerUpdateErr || !updatedOffer) {
+      throw new Error(`Failed to update waitlist offer: ${offerUpdateErr?.message ?? 'no rows updated'}`);
+    }
+
     // 2. Mark waitlist entry fulfilled
-    await supabase
+    const { data: updatedEntry, error: entryErr } = await supabase
       .from('cancellation_waitlist')
       .update({ status: 'fulfilled', updated_at: now })
-      .eq('id', offer.waitlist_entry_id);
+      .eq('id', offer.waitlist_entry_id)
+      .eq('account_id', offer.account_id)
+      .select('id')
+      .single();
+
+    if (entryErr || !updatedEntry) {
+      throw new Error(`Failed to update waitlist entry: ${entryErr?.message ?? 'no rows updated'}`);
+    }
 
     // 3. If tied to a job, reschedule the job to this new date/time
     if (offer.job_id) {
-      await supabase
+      const { data: updatedJob, error: jobErr } = await supabase
         .from('jobs')
         .update({
           scheduled_for: offer.opened_slot_date,
           scheduled_time: offer.arrival_time,
-          status: 'scheduled',
-          updated_at: now,
+          status: 'in_progress', // JobStatus is 'new_lead' | 'in_progress' | 'complete' | 'archived'. Booked work is in_progress.
+          // Note: `jobs` table does not have an `updated_at` column.
         })
-        .eq('id', offer.job_id);
+        .eq('id', offer.job_id)
+        .eq('account_id', offer.account_id)
+        .select('id')
+        .single();
+
+      if (jobErr || !updatedJob) {
+        throw new Error(`Failed to update job schedule: ${jobErr?.message ?? 'no rows updated'}`);
+      }
     }
 
-    return { decision: 'accepted', offer: (updatedOffer ?? offer) as WaitlistOffer };
+    return { decision: 'accepted', offer: updatedOffer as unknown as WaitlistOffer };
   } else if (replyDecision.decision === 'declined') {
     // Mark offer declined & restore waitlist entry to active
-    const { data: updatedOffer } = await supabase
+    const { data: updatedOffer, error: offerUpdateErr } = await supabase
       .from('waitlist_offers')
       .update({
         status: 'declined',
@@ -438,20 +466,32 @@ export async function resolveWaitlistOfferReply(
         updated_at: now,
       })
       .eq('id', offerId)
+      .eq('account_id', offer.account_id)
       .select('*')
       .single();
 
-    await supabase
+    if (offerUpdateErr || !updatedOffer) {
+      throw new Error(`Failed to update waitlist offer: ${offerUpdateErr?.message ?? 'no rows updated'}`);
+    }
+
+    const { data: updatedEntry, error: entryErr } = await supabase
       .from('cancellation_waitlist')
       .update({ status: 'active', updated_at: now })
-      .eq('id', offer.waitlist_entry_id);
+      .eq('id', offer.waitlist_entry_id)
+      .eq('account_id', offer.account_id)
+      .select('id')
+      .single();
+
+    if (entryErr || !updatedEntry) {
+      throw new Error(`Failed to restore waitlist entry: ${entryErr?.message ?? 'no rows updated'}`);
+    }
 
     // If auto_cascade, cascade to next candidate
     if (offer.auto_cascade) {
       await cascadeToNextCandidate(supabase, offer);
     }
 
-    return { decision: 'declined', offer: (updatedOffer ?? offer) as WaitlistOffer };
+    return { decision: 'declined', offer: updatedOffer as unknown as WaitlistOffer };
   }
 
   return { decision: 'ambiguous', offer };
@@ -487,13 +527,15 @@ export async function expireHoldsAndCascade(
     await supabase
       .from('waitlist_offers')
       .update({ status: 'expired', updated_at: now })
-      .eq('id', offer.id);
+      .eq('id', offer.id)
+      .eq('account_id', offer.account_id);
 
     // Restore waitlist entry to active
     await supabase
       .from('cancellation_waitlist')
       .update({ status: 'active', updated_at: now })
-      .eq('id', offer.waitlist_entry_id);
+      .eq('id', offer.waitlist_entry_id)
+      .eq('account_id', offer.account_id);
 
     expiredCount++;
 
@@ -560,6 +602,7 @@ export async function cancelWaitlistOffer(
     await supabase
       .from('cancellation_waitlist')
       .update({ status: 'active', updated_at: new Date().toISOString() })
-      .eq('id', offer.waitlist_entry_id);
+      .eq('id', offer.waitlist_entry_id)
+      .eq('account_id', accountId);
   }
 }
