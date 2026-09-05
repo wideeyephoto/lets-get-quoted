@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteByCustomDomain } from '@/lib/sites';
+import { getCachedPublicSiteByCustomDomain } from '@/lib/cached-sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 import { getSiteContent } from '@/lib/site-content';
@@ -18,7 +19,7 @@ type Props = {
 };
 
 const loadSite = cache(async (domain: string) => {
-  return getPublicSiteByCustomDomain(createAdminClient(), decodeURIComponent(domain).toLowerCase());
+  return getCachedPublicSiteByCustomDomain(decodeURIComponent(domain).toLowerCase());
 });
 
 export default async function CustomDomainSitePage({ params: paramsPromise }: Props) {
