@@ -41,7 +41,7 @@ export function normalizeAdAccountId(id?: string | null): string | null {
   return `act_${clean}`;
 }
 
-export function isMetaAdsConfigured(adAccountId?: string, config?: MetaAdsConfig): boolean {
+export function isMetaAdsConfigured(adAccountId?: string | null, config?: MetaAdsConfig): boolean {
   const effectiveConfig = config || getMetaAdsConfig();
   const effectiveAdAccount = normalizeAdAccountId(adAccountId || effectiveConfig.adAccountId);
   return Boolean(effectiveConfig.accessToken && effectiveAdAccount);

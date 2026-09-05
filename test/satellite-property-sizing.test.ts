@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateSatellitePropertyDimensions,
+  calculateSatellitePropertyDimensionsFromIntel,
   calculateSatelliteInstantEstimateBracket,
   generateInstantAiEstimateWithClusterDiscount,
   ROOF_PITCH_MULTIPLIERS,
@@ -131,3 +132,57 @@ describe('AI Instant Estimate with Cluster Pricing & Viral Street Sharing', () =
     expect(estimate.summaryMarkdown).toContain('1 more neighbor');
   });
 });
+
+describe('Instant Satellite Property Sizing — Fallback & Confidence Integrity', () => {
+  it('correctly marks confidence as estimated_fallback when footprintSqFt is omitted', () => {
+    const dims = calculateSatellitePropertyDimensions({});
+    expect(dims.footprintSqFt).toBe(1800);
+    expect(dims.confidence).toBe('estimated_fallback');
+    expect(dims.isEstimatedFallback).toBe(true);
+  });
+
+  it('correctly marks confidence as high_satellite when footprintSqFt is explicitly passed', () => {
+    const dims = calculateSatellitePropertyDimensions({ footprintSqFt: 2400 });
+    expect(dims.footprintSqFt).toBe(2400);
+    expect(dims.confidence).toBe('high_satellite');
+    expect(dims.isEstimatedFallback).toBe(false);
+  });
+
+  it('generates truthful copy when dimensions rely on fallback', () => {
+    const estimate = generateInstantAiEstimateWithClusterDiscount({
+      address: '742 Evergreen Terrace, Springfield',
+      trade: 'Roofing',
+      businessName: 'Springfield Roofing',
+      // no footprintSqFt provided
+    });
+
+    expect(estimate.dimensions.isEstimatedFallback).toBe(true);
+    expect(estimate.dimensions.confidence).toBe('estimated_fallback');
+    expect(estimate.summaryMarkdown).toContain('Estimated Property Sizing');
+    expect(estimate.summaryMarkdown).not.toContain('Instant Aerial Satellite Sizing');
+  });
+
+  it('derives sizing dimensions from PropertyIntelligence summary accurately', () => {
+    const fromSolar = calculateSatellitePropertyDimensionsFromIntel({
+      groundFootprintSqFt: 1950,
+      dominantPitch: '6/12',
+      stories: 2,
+    });
+    expect(fromSolar.footprintSqFt).toBe(1950);
+    expect(fromSolar.confidence).toBe('high_satellite');
+    expect(fromSolar.isEstimatedFallback).toBe(false);
+
+    const fromRecords = calculateSatellitePropertyDimensionsFromIntel({
+      livingAreaSqFt: 2400,
+      stories: 2,
+    });
+    expect(fromRecords.footprintSqFt).toBe(1200);
+    expect(fromRecords.confidence).toBe('medium_records');
+    expect(fromRecords.isEstimatedFallback).toBe(false);
+
+    const empty = calculateSatellitePropertyDimensionsFromIntel({});
+    expect(empty.confidence).toBe('estimated_fallback');
+    expect(empty.isEstimatedFallback).toBe(true);
+  });
+});
+

@@ -219,7 +219,7 @@ export async function triggerWonLeadMetaCapiConversion(
     fbclid,
     email,
     phone,
-    trade: lead.service || undefined,
+    trade: lead.project_type || undefined,
   });
 
   const finalStatus = result.success ? 'uploaded' : currentAttempts >= 3 ? 'failed' : 'pending';
