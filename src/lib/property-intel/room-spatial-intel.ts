@@ -1,5 +1,8 @@
+import { getRoomFloorPolygon, polygonArea, type FloorPoint } from './room-scan-geometry';
+export { parseCustomScanJson } from './room-scan-validation';
+
 // 3D Room Spatial Intelligence & LiDAR Geometry Engine
-// Supports Apple RoomPlan LiDAR exports, parametric 3D CAD models, automated trade takeoffs, and vendor-ready supply house pick-lists.
+// Uses normalized room geometry for surface takeoffs and supply house pick-lists.
 
 export type RoomOpeningType = 'door' | 'window' | 'opening';
 
@@ -25,7 +28,7 @@ export type RoomObject3D = {
   category: 'bathtub' | 'shower' | 'vanity' | 'toilet' | 'cabinet' | 'appliance' | 'closet';
   label: string;
   dimensionsInches: { width: number; depth: number; height: number };
-  position: { x: number; y: number; z: number }; // normalized or inches
+  position: { x: number; y: number; z: number }; // inches; footprint center X/Z, base elevation Y
 };
 
 export type RoomSpatialScan = {
@@ -40,6 +43,10 @@ export type RoomSpatialScan = {
   walls: WallSegment[];
   openings: RoomOpening[];
   objects: RoomObject3D[];
+  schemaVersion?: 1;
+  units?: 'inches';
+  floorShape?: 'rectangle';
+  floorPolygon?: FloorPoint[];
   rawUsdzUrl?: string;
   rawJsonUrl?: string;
   isSample?: boolean;
@@ -108,17 +115,7 @@ export type SupplyHouseItem = {
 export function calculateRoomSummary(scan: RoomSpatialScan): RoomDimensionsSummary {
   const ceilingHeightFt = scan.ceilingHeightInches / 12;
 
-  // Approximate floor area from walls polygon assuming rectangular or polygon box
-  let floorAreaSqFt = 0;
-  if (scan.walls.length >= 4) {
-    const l1 = (scan.walls[0]?.lengthInches ?? 0) / 12;
-    const l2 = (scan.walls[1]?.lengthInches ?? 0) / 12;
-    floorAreaSqFt = Math.round(l1 * l2 * 10) / 10;
-  } else {
-    const totalLen = scan.walls.reduce((sum, w) => sum + w.lengthInches, 0) / 12;
-    const side = totalLen / 4;
-    floorAreaSqFt = Math.round(side * side * 10) / 10;
-  }
+  const floorAreaSqFt = Math.round(polygonArea(getRoomFloorPolygon(scan)) / 144 * 10) / 10;
 
   const perimeterLinearFt = Math.round(
     (scan.walls.reduce((sum, w) => sum + w.lengthInches, 0) / 12) * 10
@@ -444,9 +441,11 @@ export function formatSpatialTakeoffReport(
     `  3D LiDAR SPATIAL TAKEOFF REPORT — ${scan.title.toUpperCase()}${isSample ? ' [SAMPLE DEMO]' : ''}`,
     `══════════════════════════════════════════════════════`,
     `Device: ${scan.device}`,
-    `Scan Precision: ${scan.confidenceScore}% (${scan.pointCount.toLocaleString()} points)`,
+    `Source confidence: ${scan.confidenceScore || 'Not provided'}${scan.confidenceScore ? '% (not an accuracy guarantee)' : ''}`,
+    `Source point count: ${scan.pointCount || 'Not provided'}`,
     `Date: ${scan.scannedAt}`,
     ``,
+    `Imported dimensions; confirm critical spans on site before ordering.`,
     `DIMENSIONS & TAKEOFF QUANTITIES:`,
     ` • Floor Surface Area:      ${summary.floorAreaSqFt} sq ft`,
     ` • Room Perimeter:           ${summary.perimeterLinearFt} lin ft`,
@@ -458,7 +457,7 @@ export function formatSpatialTakeoffReport(
 
   if (summary.primaryAlcoveSpanInches) {
     lines.push(` • Shower/Tub Alcove Span:   ${summary.primaryAlcoveSpanInches.toFixed(1)}"`);
-    lines.push(` • Wet Wall Tile Area:       ${summary.tileAreaSqFt} sq ft`);
+    lines.push(` • Estimated Tile Area:      ${summary.tileAreaSqFt} sq ft (floor + assumed three-sided surround)`);
   }
 
   if (costs) {
@@ -668,100 +667,6 @@ export function getWallElevations(scan: RoomSpatialScan): WallElevation[] {
       isWetWall,
     };
   });
-}
-
-/**
- * Validates and parses uploaded Apple RoomPlan / LiDAR JSON scan files into a RoomSpatialScan.
- */
-export function parseCustomScanJson(rawJsonText: string): RoomSpatialScan {
-  let parsed: Record<string, unknown>;
-  try {
-    parsed = JSON.parse(rawJsonText);
-  } catch {
-    throw new Error('Invalid JSON format: Uploaded file is not valid JSON.');
-  }
-
-  if (!parsed || typeof parsed !== 'object') {
-    throw new Error('Invalid JSON structure: Root element must be a scan object.');
-  }
-
-  const wallsRaw = Array.isArray(parsed.walls) ? parsed.walls : [];
-  if (wallsRaw.length === 0) {
-    throw new Error('Invalid scan data: Room must contain at least 3 walls.');
-  }
-
-  const ceilingHeightInches = Number(parsed.ceilingHeightInches) > 0 ? Number(parsed.ceilingHeightInches) : 96;
-
-  const walls: WallSegment[] = wallsRaw.map((w: Record<string, unknown>, idx: number) => ({
-    id: typeof w.id === 'string' ? w.id : `w-${idx + 1}`,
-    label: typeof w.label === 'string' ? w.label : `Wall ${idx + 1}`,
-    lengthInches: Number(w.lengthInches) > 0 ? Number(w.lengthInches) : 120,
-    heightInches: Number(w.heightInches) > 0 ? Number(w.heightInches) : ceilingHeightInches,
-    isExterior: Boolean(w.isExterior),
-  }));
-
-  const openingsRaw = Array.isArray(parsed.openings) ? parsed.openings : [];
-  const openings: RoomOpening[] = openingsRaw.map((op: Record<string, unknown>, idx: number) => ({
-    id: typeof op.id === 'string' ? op.id : `op-${idx + 1}`,
-    type: op.type === 'window' ? 'window' : op.type === 'opening' ? 'opening' : 'door',
-    wallIndex: Number(op.wallIndex) >= 0 ? Number(op.wallIndex) : 0,
-    widthInches: Number(op.widthInches) > 0 ? Number(op.widthInches) : 32,
-    heightInches: Number(op.heightInches) > 0 ? Number(op.heightInches) : 80,
-    offsetInches: Number(op.offsetInches) >= 0 ? Number(op.offsetInches) : 12,
-  }));
-
-  const objectsRaw = Array.isArray(parsed.objects) ? parsed.objects : [];
-  const objects: RoomObject3D[] = objectsRaw.map((obj: Record<string, unknown>, idx: number) => ({
-    id: typeof obj.id === 'string' ? obj.id : `obj-${idx + 1}`,
-    category:
-      obj.category === 'shower' ||
-      obj.category === 'vanity' ||
-      obj.category === 'toilet' ||
-      obj.category === 'cabinet' ||
-      obj.category === 'appliance' ||
-      obj.category === 'closet'
-        ? obj.category
-        : 'bathtub',
-    label: typeof obj.label === 'string' ? obj.label : `Fixture ${idx + 1}`,
-    dimensionsInches:
-      typeof obj.dimensionsInches === 'object' && obj.dimensionsInches !== null
-        ? {
-            width: Number((obj.dimensionsInches as Record<string, unknown>).width) || 36,
-            depth: Number((obj.dimensionsInches as Record<string, unknown>).depth) || 24,
-            height: Number((obj.dimensionsInches as Record<string, unknown>).height) || 30,
-          }
-        : { width: 36, depth: 24, height: 30 },
-    position:
-      typeof obj.position === 'object' && obj.position !== null
-        ? {
-            x: Number((obj.position as Record<string, unknown>).x) || 0,
-            y: Number((obj.position as Record<string, unknown>).y) || 0,
-            z: Number((obj.position as Record<string, unknown>).z) || 0,
-          }
-        : { x: 0, y: 0, z: 0 },
-  }));
-
-  return {
-    id: `custom-scan-${Date.now()}`,
-    title: typeof parsed.title === 'string' ? parsed.title : 'Uploaded Room Scan',
-    roomType:
-      parsed.roomType === 'kitchen' ||
-      parsed.roomType === 'bedroom' ||
-      parsed.roomType === 'living' ||
-      parsed.roomType === 'basement' ||
-      parsed.roomType === 'garage'
-        ? parsed.roomType
-        : 'bathroom',
-    scannedAt: 'Uploaded On-Site Scan',
-    device: typeof parsed.device === 'string' ? parsed.device : 'Custom LiDAR / CAD Export',
-    pointCount: Number(parsed.pointCount) > 0 ? Number(parsed.pointCount) : 125000,
-    confidenceScore: Number(parsed.confidenceScore) > 0 ? Number(parsed.confidenceScore) : 98.5,
-    ceilingHeightInches,
-    walls,
-    openings,
-    objects,
-    isSample: false,
-  };
 }
 
 /**

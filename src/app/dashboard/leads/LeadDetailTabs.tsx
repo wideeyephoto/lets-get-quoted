@@ -473,12 +473,12 @@ export default function LeadDetailTabs({
               scope={leadScope}
             />
             <PermitFeasibilityCard address={detail.address} isLead={true} />
-            <RoomScanViewer scope={leadScope} />
+            <RoomScanViewer key={detail.id} target={{ kind: 'lead', id: detail.id }} scope={leadScope} />
           </>
         ) : (
           <>
             <p className={styles.muted}>No address on file for this lead to fetch exterior property intelligence.</p>
-            <RoomScanViewer scope={leadScope} />
+            <RoomScanViewer key={detail.id} target={{ kind: 'lead', id: detail.id }} scope={leadScope} />
           </>
         )}
       </div>

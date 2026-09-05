@@ -1655,7 +1655,12 @@ export async function draftQuoteAction(jobId: string, refinement?: string): Prom
     return { ok: false, reason: 'busy', message: 'That is a lot of drafts in an hour — give it a few minutes.' };
   }
 
-  const context = await loadDraftContext(supabase, accountId, jobId, refinement);
+  let context: Awaited<ReturnType<typeof loadDraftContext>>;
+  try {
+    context = await loadDraftContext(supabase, accountId, jobId, refinement);
+  } catch {
+    return { ok: false, reason: 'unavailable', message: 'Could not load the job details and saved measurements. Try again in a moment.' };
+  }
   if (!context) return { ok: false, reason: 'unavailable', message: 'That job could not be found.' };
   if (!context.scope) {
     return {

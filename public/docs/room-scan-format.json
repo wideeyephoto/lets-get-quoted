@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "units": "inches",
+  "isSample": true,
+  "title": "FORMAT EXAMPLE ONLY — replace with measured geometry and remove isSample",
+  "floorShape": "rectangle",
+  "ceilingHeightInches": 96,
+  "walls": [
+    { "lengthInches": 120, "heightInches": 96 },
+    { "lengthInches": 144, "heightInches": 96 },
+    { "lengthInches": 120, "heightInches": 96 },
+    { "lengthInches": 144, "heightInches": 96 }
+  ],
+  "openings": [
+    { "type": "door", "wallIndex": 0, "widthInches": 36, "heightInches": 80, "offsetInches": 12 }
+  ],
+  "objects": []
+}

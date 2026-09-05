@@ -231,12 +231,12 @@ export default function JobDetailTabs({
               scope={detail.scope}
             />
             <PermitFeasibilityCard address={detail.address} />
-            <RoomScanViewer scope={detail.scope} />
+            <RoomScanViewer key={detail.id} target={{ kind: 'job', id: detail.id }} scope={detail.scope} />
           </>
         ) : (
           <>
             <p className={styles.muted}>No address on file for this job to fetch exterior property intelligence.</p>
-            <RoomScanViewer scope={detail.scope} />
+            <RoomScanViewer key={detail.id} target={{ kind: 'job', id: detail.id }} scope={detail.scope} />
           </>
         )}
       </div>

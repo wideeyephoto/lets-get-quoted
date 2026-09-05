@@ -93,9 +93,10 @@ describe('Integrity & Privacy Remediations', () => {
       }
     });
 
-    it('marks uploaded custom Apple RoomPlan JSON scans with isSample = false', () => {
+    it('marks uploaded normalized JSON scans with isSample = false', () => {
       const rawJson = JSON.stringify({
         title: 'Job Site Living Room Scan',
+        floorShape: 'rectangle',
         walls: [
           { lengthInches: 180, heightInches: 108 },
           { lengthInches: 144, heightInches: 108 },
@@ -107,7 +108,7 @@ describe('Integrity & Privacy Remediations', () => {
 
       const parsed = parseCustomScanJson(rawJson);
       expect(parsed.isSample).toBe(false);
-      expect(parsed.scannedAt).toBe('Uploaded On-Site Scan');
+      expect(parsed.scannedAt).toBe('Capture time not provided');
       expect(parsed.device).toBe('iPhone 15 Pro LiDAR · Apple RoomPlan');
     });
 

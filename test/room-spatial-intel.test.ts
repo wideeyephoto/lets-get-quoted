@@ -261,9 +261,10 @@ describe('3D LiDAR Room Spatial Intelligence Takeoffs', () => {
     expect(elevations[1].isWetWall).toBe(true);
   });
 
-  it('parses valid custom Apple RoomPlan / LiDAR JSON data', () => {
+  it('parses valid normalized scan JSON data', () => {
     const rawJson = JSON.stringify({
       title: 'Custom Guest Suite Scan',
+      floorShape: 'rectangle',
       roomType: 'bedroom',
       ceilingHeightInches: 100,
       walls: [
