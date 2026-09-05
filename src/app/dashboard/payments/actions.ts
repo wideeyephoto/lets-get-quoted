@@ -8,7 +8,6 @@ import { sendPaymentSmsEvent, sendLienWaiverSms, queueAccountSms } from '@/lib/s
 import { normalizeUsPhone } from '@/lib/phone';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { assembleDisputeEvidence, type DisputeEvidenceBundle } from '@/lib/dispute-evidence';
-import { calculateFinancingOptions, type FinancingTermOption } from '@/lib/financing-calculator';
 import {
   createTerminalConnectionToken,
   listTerminalReaders,
@@ -438,25 +437,6 @@ export async function assembleDisputeEvidenceAction(paymentId: string): Promise<
     return {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to assemble evidence.',
-    };
-  }
-}
-
-/**
- * Generate homeowner financing calculation quote
- */
-export async function generateFinancingQuoteAction(principal: number, customApr?: number): Promise<ActionState<FinancingTermOption[]>> {
-  try {
-    if (!principal || principal <= 0) {
-      return { success: false, error: 'Enter a valid project amount.' };
-    }
-    const options = calculateFinancingOptions(principal, customApr);
-    return { success: true, data: options };
-  } catch (error) {
-    console.error('generateFinancingQuoteAction failed:', error);
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Failed to calculate financing options.',
     };
   }
 }
@@ -1130,6 +1110,5 @@ export async function confirmTerminalPaymentAction(
     };
   }
 }
-
 
 

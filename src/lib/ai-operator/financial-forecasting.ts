@@ -1,3 +1,5 @@
+import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
+
 export interface FinancialForecastMonth {
   monthIndex: number;
   monthName: string;
@@ -74,7 +76,7 @@ export function generateExecutiveFinancialForecast(params: {
 
   const recommendations = [
     'Approve pending First-Quote Activation nudges in the Operator Cockpit to accelerate activation.',
-    'Enable Homeowner BNPL financing option to increase average quote sizes above $5,000.',
+    HOMEOWNER_FINANCING.operatorNextStep,
   ];
 
   return {

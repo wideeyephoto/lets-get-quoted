@@ -1,3 +1,5 @@
+import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
+
 export type FeatureItem = {
   id: string;
   name: string;
@@ -506,12 +508,12 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       },
       {
         id: 'monthly-financing-display',
-        name: 'Integrated Monthly Financing Options',
-        desc: 'Display estimated monthly payment breakdowns next to full totals to close larger jobs.',
-        tags: ['Financing', 'Closing'],
+        name: `${HOMEOWNER_FINANCING.providerName} Financing — ${HOMEOWNER_FINANCING.statusLabel}`,
+        desc: HOMEOWNER_FINANCING.message,
+        tags: ['Financing', 'Planned'],
         subBullets: [
-          'Displays estimated monthly payment breakdowns (e.g., "As low as $89/mo") next to large estimates.',
-          'Helps homeowners comfortably approve high-ticket replacements and extensive remodels.',
+          HOMEOWNER_FINANCING.nextStep,
+          'Financing applications and lender offers are not available in Let’s Get Quoted yet.',
         ],
       },
     ],

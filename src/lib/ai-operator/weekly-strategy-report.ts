@@ -1,3 +1,5 @@
+import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
+
 export interface WeeklyStrategyReport {
   weekEndingDate: string;
   executiveHeadline: string;
@@ -36,7 +38,7 @@ export function generateWeeklyStrategyReport(params?: {
 
   const priorities = [
     'Execute automated First-Quote activation nudges to convert 4 pending signups into active billable contractors.',
-    'Enable 1-tap Homeowner Installment Financing (BNPL) to raise average quote value above $4,500.',
+    HOMEOWNER_FINANCING.operatorNextStep,
     'Deploy speed-to-lead voice call bridge for Austin and Dallas Google Ads pilot accounts.',
   ];
 

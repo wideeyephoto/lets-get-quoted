@@ -10,7 +10,6 @@ import {
   createPaymentPlanScheduleAction,
   assembleDisputeEvidenceAction,
   recordBatchInvoiceSettlementAction,
-  generateFinancingQuoteAction,
   recordPromiseToPayAction,
   sendPaymentReminderAction,
   sendPaymentReceiptSmsAction,
@@ -33,7 +32,7 @@ import {
 import type { TerminalReader, TerminalPaymentStatusResult } from '@/lib/stripe-terminal';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
-import type { FinancingTermOption } from '@/lib/financing-calculator';
+import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
 import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
 import type { NoiDocumentData } from '@/lib/noi-generator';
 import type { LienWaiverDocument, LienWaiverType } from '@/lib/lien-waiver';
@@ -217,11 +216,6 @@ export default function PaymentModals({
   const [batchMethod, setBatchMethod] = useState('Check');
   const [batchInvoices, setBatchInvoices] = useState<Array<{ id: string; ref: string; amount: number }>>([]);
 
-  // Financing State
-  const [financingAmount, setFinancingAmount] = useState('12000');
-  const [financingApr, setFinancingApr] = useState('8.99');
-  const [financingOptions, setFinancingOptions] = useState<FinancingTermOption[] | null>(null);
-
   // Payment Rules State
   const [discountPct, setDiscountPct] = useState(2);
   const [discountDays, setDiscountDays] = useState(5);
@@ -341,13 +335,6 @@ export default function PaymentModals({
         }
       });
     }
-    if (activeModal === 'financing') {
-      const p = Number.parseFloat(financingAmount) || 12000;
-      const apr = Number.parseFloat(financingApr) || 8.99;
-      generateFinancingQuoteAction(p, apr).then((res) => {
-        if (res.success && res.data) setFinancingOptions(res.data);
-      });
-    }
     if (activeModal === 'noi_generator' && selectedPayment) {
       setLoading(true);
       generateNoiNoticeAction({ paymentId: selectedPayment.id, cureDays: noiCureDays }).then((res) => {
@@ -366,7 +353,7 @@ export default function PaymentModals({
         if (res.success && res.data) setWaiverDoc(res.data);
       });
     }
-  }, [activeModal, selectedPayment, financingAmount, financingApr, noiCureDays, waiverType, waiverJobId, waiverAmount, jobs, terminalJobId]);
+  }, [activeModal, selectedPayment, noiCureDays, waiverType, waiverJobId, waiverAmount, jobs, terminalJobId]);
 
   if (!activeModal) return null;
 
@@ -494,7 +481,7 @@ export default function PaymentModals({
       { id: 'draw_calendar' as ModalType, icon: '📅', title: 'Expected Cash Flow Draw Calendar', desc: 'Visualize chronological upcoming milestone draws, retainage releases, and net-30 terms across all jobs.' },
       { id: 'surcharge_lab' as ModalType, icon: '⚖️', title: 'Credit Card Surcharge & Fee Strategy Lab', desc: 'Calculate profit recovery from 3% card surcharging vs 2% prompt cash discounts with compliance rules.' },
       { id: 'tax_vault' as ModalType, icon: '🏛️', title: 'Tax Reserve Vault', desc: 'Isolate 25% income & 15.3% self-employment reserves from gross revenue.' },
-      { id: 'financing' as ModalType, icon: '🏷️', title: 'Homeowner Financing Estimator', desc: 'Calculate monthly payments (12 to 84 months) to help close high-ticket quotes.' },
+      { id: 'financing' as ModalType, icon: '🏷️', title: `${HOMEOWNER_FINANCING.providerName} financing`, desc: HOMEOWNER_FINANCING.message },
       { id: 'payment_rules' as ModalType, icon: '⚙️', title: 'Payment Incentive & Late Rules', desc: 'Configure 2% prompt-pay discounts and 1.5% overdue late fees.' },
       { id: 'tax_export' as ModalType, icon: '📊', title: 'P&L Tax Export (Schedule C / 1099-K)', desc: 'Download complete profit & loss report CSV with categorized revenue, materials, and card processing fee deductions.' },
       { id: 'qr_poster' as ModalType, icon: '🖨️', title: 'Printable Job-Site QR Poster', desc: 'Generate printable yard-sign & truck flyer with payment QR code.' },
@@ -926,79 +913,16 @@ export default function PaymentModals({
   // 6. Financing Modal
   if (activeModal === 'financing') {
     return (
-      <ControlledModal title="💳 Homeowner Financing Estimator" onClose={onClose} maxWidth="600px">
+      <ControlledModal title={`${HOMEOWNER_FINANCING.providerName} financing`} onClose={onClose} maxWidth="600px">
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <p className="eyebrow" style={{ margin: 0 }}>{HOMEOWNER_FINANCING.statusLabel}</p>
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-            Help homeowners afford high-ticket improvements ($3,000–$50,000) with flexible monthly installment estimates.
+            {HOMEOWNER_FINANCING.message}
           </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                Project Total Amount ($)
-              </label>
-              <input
-                type="number"
-                step="100"
-                min="500"
-                value={financingAmount}
-                onChange={(e) => setFinancingAmount(e.target.value)}
-                className="input"
-                style={{ width: '100%' }}
-              />
-            </div>
-            <div>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                Estimated APR (%)
-              </label>
-              <input
-                type="number"
-                step="0.25"
-                min="0"
-                value={financingApr}
-                onChange={(e) => setFinancingApr(e.target.value)}
-                className="input"
-                style={{ width: '100%' }}
-              />
-            </div>
-          </div>
-
-          <div style={{ border: '1px solid var(--border-subtle, #e2e8f0)', borderRadius: '8px', overflow: 'hidden' }}>
-            <table style={{ width: '100%', fontSize: '0.85rem', borderCollapse: 'collapse' }}>
-              <thead style={{ background: 'var(--panel-subtle, rgba(0,0,0,0.02))' }}>
-                <tr>
-                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Loan Term</th>
-                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>APR</th>
-                  <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Est. Monthly Payment</th>
-                </tr>
-              </thead>
-              <tbody>
-                {financingOptions?.map((opt) => (
-                  <tr key={opt.months} style={{ borderTop: '1px solid var(--border-subtle, #e2e8f0)' }}>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{opt.label}</td>
-                    <td style={{ padding: '0.5rem 0.75rem' }}>{opt.apr}%</td>
-                    <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', fontWeight: 700, color: 'var(--primary)' }}>
-                      ${opt.monthlyPayment.toFixed(2)}/mo
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <button
-              type="button"
-              className="btn primary"
-              onClick={() => {
-                const summary = financingOptions?.map((o) => `${o.label}: $${o.monthlyPayment.toFixed(2)}/mo`).join('\n') || '';
-                navigator.clipboard.writeText(`FINANCING ESTIMATE FOR $${financingAmount}:\n${summary}`);
-                setCopied(true);
-                setTimeout(() => setCopied(false), 2000);
-              }}
-            >
-              {copied ? '✓ Copied Financing Summary!' : '📋 Copy Financing Options to Text'}
-            </button>
+          <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>
+            {HOMEOWNER_FINANCING.nextStep}
+          </p>
+          <div>
             <button type="button" className="btn secondary" onClick={onClose}>
               Close
             </button>
