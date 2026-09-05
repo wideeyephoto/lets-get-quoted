@@ -37,7 +37,7 @@ import { SEASONAL_REBOOK_TEMPLATES } from '@/lib/seasonal-rebook-engine';
 import { evaluateMilestoneProgress, REVENUE_MILESTONES } from '@/lib/milestone-referral-engine';
 
 // 13. Homeowner BNPL Financing
-import { evaluateQuoteFinancingEligibility } from '@/lib/bnpl-financing';
+import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
 
 // 14. Milestone Escrow Schedules
 import { generateDefaultMilestoneSchedule, submitMilestonePhotoVerification } from '@/lib/milestone-escrow';
@@ -237,12 +237,10 @@ describe('20 Advanced Platform Features Suite', () => {
   });
 
   // 13. Homeowner BNPL Financing
-  it('13. computes monthly installment financing options via Affirm & Klarna', () => {
-    const financing = evaluateQuoteFinancingEligibility(4800);
-    expect(financing.isFinancingEligible).toBe(true);
-    expect(financing.options.length).toBeGreaterThan(0);
-    expect(financing.options[0].provider).toBe('affirm');
-    expect(financing.options[0].monthlyEstimateDollars).toBeGreaterThan(0);
+  it('13. keeps homeowner financing unavailable while Wisetack approval is pending', () => {
+    expect(HOMEOWNER_FINANCING.provider).toBe('wisetack');
+    expect(HOMEOWNER_FINANCING.available).toBe(false);
+    expect(HOMEOWNER_FINANCING.status).toBe('pending_partner_approval');
   });
 
   // 14. Milestone Escrow Schedules
