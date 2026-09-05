@@ -18,7 +18,7 @@ export type MerchandiseProductId =
   | 'tumblers'
   | 'decals';
 
-export type MockupViewAngle = 'front' | 'back' | 'angle' | 'detail';
+export type MockupViewAngle = 'front' | 'back' | 'angle' | 'detail' | 'duo';
 
 export type DecorationMethod =
   | 'embroidery'
@@ -28,6 +28,13 @@ export type DecorationMethod =
   | 'uv_direct'
   | 'foil_stamp'
   | 'offset_cmyk';
+
+export type CardFinishId =
+  | 'velvet_matte'
+  | 'foil_gold'
+  | 'foil_silver'
+  | 'foil_holo'
+  | 'spot_uv';
 
 export type BusinessCardTemplateId =
   | 'executive'
@@ -164,6 +171,7 @@ export type MerchandiseOrderItem = {
     finish?: string;
     deviceModel?: string;
     cardTemplateId?: BusinessCardTemplateId;
+    cardFinish?: CardFinishId;
   };
 };
 

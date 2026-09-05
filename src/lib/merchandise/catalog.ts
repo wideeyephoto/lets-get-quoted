@@ -37,7 +37,7 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
       { id: 'kraft_earth', name: 'Recycled Kraft Stock', hex: '#d2b48c', darkText: true },
       { id: 'slate_navy', name: 'Deep Midnight Navy', hex: '#0f172a', darkText: false },
     ],
-    supportedViews: ['front', 'back', 'angle'],
+    supportedViews: ['front', 'back', 'angle', 'detail', 'duo'],
     pricingTiers: [
       { quantity: 100, unitPrice: 0.35, totalPrice: 35.0, turnaroundDays: 3 },
       { quantity: 250, unitPrice: 0.24, totalPrice: 60.0, savingsPercent: 31, turnaroundDays: 3 },
@@ -52,7 +52,13 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
       printArea: 'Edge-to-edge full bleed (front & back)',
     },
     options: {
-      finishes: ['Soft-Touch Velvet Matte', 'Gloss UV Protective Coated', 'Uncoated Writable Back'],
+      finishes: [
+        'Soft-Touch Velvet Matte',
+        'Raised Gold Foil Accent',
+        'Raised Silver Chrome Foil',
+        'Raised Clear Spot-UV Gloss',
+        'Holographic Iridescent Foil',
+      ],
     },
   },
 
@@ -223,7 +229,7 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
       { id: 'carbon_black_ink', name: 'Classic Carbon Black', hex: '#0f172a', darkText: false },
       { id: 'brand_accent_ink', name: 'Full Color Brand Header', hex: '#2563eb', darkText: false },
     ],
-    supportedViews: ['front', 'angle', 'detail'],
+    supportedViews: ['front', 'angle', 'detail', 'duo'],
     pricingTiers: [
       { quantity: 5, unitPrice: 12.0, totalPrice: 60.0, turnaroundDays: 4 },
       { quantity: 10, unitPrice: 9.5, totalPrice: 95.0, savingsPercent: 20, turnaroundDays: 4 },
@@ -368,7 +374,7 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
       { id: 'midnight_navy', name: 'Midnight Blue Base', hex: '#0f172a', darkText: false },
       { id: 'charcoal', name: 'Charcoal Blackout', hex: '#18181b', darkText: false },
     ],
-    supportedViews: ['front', 'angle', 'detail'],
+    supportedViews: ['front', 'back', 'angle', 'detail', 'duo'],
     pricingTiers: [
       { quantity: 5, unitPrice: 19.0, totalPrice: 95.0, turnaroundDays: 4 },
       { quantity: 10, unitPrice: 14.5, totalPrice: 145.0, savingsPercent: 23, turnaroundDays: 3 },
@@ -459,7 +465,7 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
       { id: 'fleet_navy', name: 'Fleet Royal Navy', hex: '#1e3a8a', darkText: false },
       { id: 'safety_yellow', name: 'Safety Reflective Yellow', hex: '#facc15', darkText: true },
     ],
-    supportedViews: ['front', 'angle', 'detail'],
+    supportedViews: ['front', 'angle', 'detail', 'duo'],
     pricingTiers: [
       { quantity: 2, unitPrice: 34.0, totalPrice: 68.0, turnaroundDays: 4 },
       { quantity: 4, unitPrice: 28.0, totalPrice: 112.0, savingsPercent: 17, isPopular: true, turnaroundDays: 3 },

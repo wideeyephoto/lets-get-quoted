@@ -110,7 +110,7 @@ export async function POST(req: Request) {
 
     // Build target update query helper
     function getOrderUpdateQuery(updates: Record<string, unknown>) {
-      let query = admin.from('merchandise_orders').update({
+      const query = admin.from('merchandise_orders').update({
         ...updates,
         updated_at: new Date().toISOString(),
       });
