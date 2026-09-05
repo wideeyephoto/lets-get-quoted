@@ -32,7 +32,6 @@ const FEATURE_SLUGS = [
   'recurring',
   'reviews',
   'scheduling',
-  'sparky',
   'text-to-job',
   'website-builder',
 ] as const;

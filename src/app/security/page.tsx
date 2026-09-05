@@ -30,7 +30,7 @@ const pillars = [
     title: 'Your data is isolated',
     // "can never" is a guarantee no software gets to make about itself. What we
     // can say is what we built and what it is for.
-    body: 'Row-level security policies run on every query, so access controls are designed to isolate each business’s leads, jobs, and customers from every other account.',
+    body: 'Row-level security policies run on every query, so access controls isolate each business’s leads, jobs, and customers from every other account.',
   },
   {
     title: 'Passwordless sign-in',

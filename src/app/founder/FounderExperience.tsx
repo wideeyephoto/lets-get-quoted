@@ -50,7 +50,7 @@ const PRINCIPLES = [
   {
     num: '02',
     title: 'Context must travel.',
-    body: 'Information captured once from the homeowner must flow seamlessly to the truck, crew dispatch, and final invoice without double-entry.',
+    body: 'Information captured once from the homeowner must flow directly to the truck, crew dispatch, and final invoice without double-entry.',
   },
   {
     num: '03',

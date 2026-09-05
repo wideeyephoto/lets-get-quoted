@@ -273,7 +273,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
             lgq: 'Included on all plans',
             competitor: 'Requires Connect ($169/mo) or higher',
             advantage: 'lgq',
-            detail: 'Both systems sync invoices and payments seamlessly into QuickBooks.',
+            detail: 'Both systems sync invoices and payments into QuickBooks.',
           },
         ],
       },
@@ -312,7 +312,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
         lgq: 'Included on all plans',
         competitor: 'Included on paid plans ($169+/mo)',
         advantage: 'lgq',
-        detail: 'Both systems sync invoices and payments seamlessly into QuickBooks.',
+        detail: 'Both systems sync invoices and payments into QuickBooks.',
       },
       {
         feature: '2-Way Text Messaging',
@@ -361,7 +361,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
     faqs: [
       {
         q: 'Can I migrate my clients and past jobs from Jobber to Let’s Get Quoted?',
-        a: 'Yes. You can export your client CSV from Jobber and import it into Let’s Get Quoted in one click under Dashboard > Clients > Import. All customer names, phone numbers, addresses, and notes are mapped seamlessly.',
+        a: 'Yes. You can export your client CSV from Jobber and import it into Let’s Get Quoted in one click under Dashboard > Clients > Import. All customer names, phone numbers, addresses, and notes map automatically.',
       },
       {
         q: 'How does Let’s Get Quoted compare on pricing vs. Jobber?',
@@ -563,7 +563,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
         step: 2,
         title: '1-Click import into LGQ',
         description: 'Upload your CSV to populate your clients, addresses, and past records.',
-        note: 'Seamless data mapping.',
+        note: 'Automatic data mapping.',
       },
       {
         step: 3,
@@ -1003,7 +1003,7 @@ export const COMPARISONS: Record<string, CompetitorDetail> = {
       },
       {
         q: 'Can I still use other marketing channels with LGQ?',
-        a: 'Absolutely. You can link your LGQ website to your Google Business Profile, Facebook page, truck wraps, business cards, and local yard signs.',
+        a: 'Yes. You can link your LGQ website to your Google Business Profile, Facebook page, truck wraps, business cards, and local yard signs.',
       },
       {
         q: 'Why are exclusive leads better than shared leads?',

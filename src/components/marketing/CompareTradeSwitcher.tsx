@@ -105,7 +105,7 @@ const TRADES: readonly TradeScenario[] = [
     jobberPain:
       'Jobber requires a separate website to showcase project portfolios and lacks built-in lien waiver and milestone billing workflows.',
     lgqSolution:
-      'Your included marketing website showcases before/after project photos, collects e-signatures, and bills progress milestones seamlessly.',
+      'Your included marketing website showcases before/after project photos, collects e-signatures, and bills progress milestones on completion.',
     features: [
       'Included portfolio website with before-and-after photo galleries',
       'Progress milestone invoicing (Deposit, Tear-off, Final Inspection)',

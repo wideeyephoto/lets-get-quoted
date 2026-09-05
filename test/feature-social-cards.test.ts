@@ -206,6 +206,8 @@ describe('the feature hero CTAs', () => {
 describe('the website builder page', () => {
   const SRC = (readFileSync('src/app/features/website-builder/page.tsx', 'utf8') +
     '\n' +
+    readFileSync('src/app/features/website-builder/website-builder-faq.ts', 'utf8') +
+    '\n' +
     readFileSync('src/app/features/website-builder/WebsiteBuilderExperience.tsx', 'utf8'))
     .replace(/\r\n/g, '\n')
     .replace(/\{\/\*[\s\S]*?\*\/\}/g, '')

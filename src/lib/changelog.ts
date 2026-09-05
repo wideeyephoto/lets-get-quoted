@@ -336,7 +336,7 @@ export const CHANGELOG_RELEASES: ChangelogRelease[] = [
     category: 'AI & Receptionist',
     badge: 'Enhancement',
     summary:
-      'Transformed the primary dashboard into an actionable daily command center with instant action cards and seamless digital deposit workflows.',
+      'Transformed the primary dashboard into an actionable daily command center with instant action cards and digital deposit workflows.',
     highlights: [
       {
         badge: 'New',

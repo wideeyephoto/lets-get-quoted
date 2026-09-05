@@ -36,7 +36,7 @@ const COMPARE_HUB_FAQS = [
   },
   {
     q: 'How long does it take to migrate my clients and past jobs from Jobber, Housecall Pro, or ServiceTitan?',
-    a: 'Less than 15 minutes. Simply export your customer directory CSV from your current software and upload it under Dashboard > Clients > Import. All customer names, phone numbers, addresses, and notes map automatically with zero data loss.',
+    a: 'Less than 15 minutes. Export your customer directory CSV from your current software and upload it under Dashboard > Clients > Import. All customer names, phone numbers, addresses, and notes map automatically with zero data loss.',
   },
   {
     q: 'How do payments and bank payouts work compared to proprietary merchant rails?',
@@ -214,7 +214,7 @@ export default async function CompareHubPage() {
           <div className={styles.sectionHeader}>
             <span className={styles.kicker}>✦ Transparent Answers</span>
             <h2>Frequently Asked Questions</h2>
-            <p>Everything you need to know about switching your business to Let’s Get Quoted.</p>
+            <p>Answers to common questions about switching your business to Let’s Get Quoted.</p>
           </div>
 
           <div className={styles.faqList}>

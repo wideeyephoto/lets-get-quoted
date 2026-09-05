@@ -497,7 +497,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
       {
         title: 'Stripe Connect requirement for sending quotes',
         paragraphs: [
-          'Stripe Connect must be connected before you can send quotes to customers—even for zero-deposit estimates. This ensures seamless payment rails for subsequent milestone and final payments.',
+          'Stripe Connect must be connected before you can send quotes to customers—even for zero-deposit estimates. This ensures reliable payment rails for subsequent milestone and final payments.',
         ],
       },
       {
@@ -1687,7 +1687,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     order: 6,
     title: 'Customize email templates and publish blog content',
     summary: 'Design email layouts, publish SEO blog articles, and understand instant publishing and email suppression.',
-    outcome: 'You will boost website SEO and elevate client communication with rich branding and educational articles.',
+    outcome: 'You will improve website SEO and client communication with rich branding and educational articles.',
     audiences: ['Owner', 'Office staff'],
     readMinutes: 6,
     routes: [{ label: 'Blog & Content', href: '/dashboard/marketing/blog' }],

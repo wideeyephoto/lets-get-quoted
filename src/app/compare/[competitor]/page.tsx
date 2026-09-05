@@ -239,7 +239,7 @@ export default async function CompetitorDetailPage({ params: paramsPromise }: Pr
             <div className={styles.sectionHeader}>
               <span className={styles.kicker}>Why Contractors Switch</span>
               <h2>Built for Contractor Profits, Not Subscription Overhead</h2>
-              <p>See the real product in action. Every tool designed to win jobs, save time, and protect your cash flow.</p>
+              <p>See the real product in action. Every tool built to win jobs, save time, and protect your cash flow.</p>
             </div>
 
             <div className={styles.pillarsGrid}>
@@ -466,7 +466,7 @@ export default async function CompetitorDetailPage({ params: paramsPromise }: Pr
         {/* Trade Solutions Cross-Links */}
         <section className={styles.faqSection} aria-label="Trade-specific solutions">
           <div className={styles.sectionHeader}>
-            <span className={styles.kicker}>Tailored Solutions</span>
+            <span className={styles.kicker}>Trade Workflows</span>
             <h2>Built &amp; Pre-configured for Your Trade</h2>
             <p>
               Explore how Let’s Get Quoted gives contractors in your trade a free marketing website, 24/7 AI scoping,

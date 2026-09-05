@@ -42,7 +42,7 @@ const VIDEO_LAYOUTS: VideoLayoutDef[] = [
     bullets: [
       'The versatile all-rounder: ideal for owner introductions, shop tours, or service overviews.',
       'Includes optional play button with automatic timestamp display.',
-      'Seamlessly links directly into your instant estimate intake form.',
+      'Links directly into your instant estimate intake form.',
     ],
     guardrail: 'Accepts native MP4, MOV, WebM uploads up to 50 MB, plus YouTube video embeds.',
   },

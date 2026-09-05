@@ -354,7 +354,7 @@ export const TRADES: Trade[] = [
     slug: 'gutters',
     name: 'Gutter Companies',
     work: 'gutter install & cleaning',
-    headline: 'Gutter websites that book seamless installs and seasonal cleanings.',
+    headline: 'Gutter websites that book gutter installs and seasonal cleanings.',
     subhead:
       'Quote seamless gutters and guards by the linear foot, fill your fall cleaning route with online booking, and get paid the day the job’s done.',
     pains: [
@@ -943,7 +943,7 @@ export const TRADES: Trade[] = [
     work: 'holiday lighting',
     headline: 'Holiday lighting websites that sell out your season by October.',
     subhead:
-      'Book early installations, quote custom roofline and tree displays on the spot, and manage takedown, storage, and annual renewal billing seamlessly.',
+      'Book early installations, quote custom roofline and tree displays on the spot, and manage takedown, storage, and annual renewal billing on schedule.',
     pains: [
       { title: 'Lock the short booking window', body: 'Early-bird deposits and online scheduling secure your November installation calendar before the rush starts.' },
       { title: 'Quote custom displays on-site', body: 'Itemize roofline footage, tree wraps, and wreath add-ons from your phone and collect e-signatures in minutes.' },
@@ -1429,7 +1429,7 @@ export const TRADES: Trade[] = [
     subhead:
       'Sell monthly, bi-monthly, and quarterly can sanitizing plans that bill cards on file automatically on trash day without administrative headaches.',
     pains: [
-      { title: 'Recurring route billing on autopilot', body: 'Subscribers are auto-charged per visit or monthly, syncing seamlessly with your neighborhood trash route.' },
+      { title: 'Recurring route billing on autopilot', body: 'Subscribers are auto-charged per visit or monthly, syncing with your neighborhood trash route.' },
       { title: 'Curbside instant signups', body: 'Neighborhood homeowners scan a QR code or visit your site to choose their schedule and enter card details in under 2 minutes.' },
       { title: 'Automated service day reminders', body: 'SMS notifications alert homeowners to leave cans out after trash pickup for immediate washing.' },
     ],
@@ -1834,7 +1834,7 @@ export const TRADES: Trade[] = [
     subhead:
       'Quote polished Venetian plaster, limewash, and microcement by the square foot with sample options, collect artisan deposits, and showcase high-end interiors.',
     pains: [
-      { title: 'Quote bespoke artisan finishes', body: 'Itemize surface prep, primer, multiple troweled plaster coats, and burnished wax sealing on site.' },
+      { title: 'Quote specialty artisan finishes', body: 'Itemize surface prep, primer, multiple troweled plaster coats, and burnished wax sealing on site.' },
       { title: 'Deposit on imported Italian plaster', body: 'Collect deposits covering imported lime plaster and custom color tinting before starting application.' },
       { title: 'High-definition luxury portfolio', body: 'Close designers and luxury homeowners with detail-rich photos showing glass-smooth polished walls and fireplace surrounds.' },
     ],
@@ -2254,19 +2254,19 @@ export const TRADES: Trade[] = [
     slug: 'wine-cellars',
     name: 'Custom Wine Cellar Builders',
     work: 'custom wine cellar design & construction',
-    headline: 'Wine cellar websites where bespoke craftsmanship sells luxury storage.',
+    headline: 'Wine cellar websites where custom craftsmanship sells luxury storage.',
     subhead:
       'Quote custom wine racking, climate cooling systems, and insulated frameless glass with 3D options, collect staged deposits, and showcase high-end cellars.',
     pains: [
       { title: 'Quote custom millwork and cooling units', body: 'Combine bottle capacity, mahogany/metal racking, dedicated refrigeration units, and insulated glass doors.' },
-      { title: 'Stage bespoke luxury deposits', body: 'Collect upfront design deposits, followed by milestone payments at vapor barrier prep, racking fabrication, and glass install.' },
+      { title: 'Stage custom luxury deposits', body: 'Collect upfront design deposits, followed by milestone payments at vapor barrier prep, racking fabrication, and glass install.' },
       { title: 'Sell with luxury visual portfolios', body: 'Showcase modern backlit acrylic racks, under-stair wine enclosures, and custom residential tasting rooms.' },
     ],
     services: ['Custom residential wine cellars', 'Under-stair wine displays', 'Dedicated cellar cooling units', 'Frameless insulated glass doors', 'Custom mahogany & metal racking', 'LED backlight display walls'],
     templateIds: ['modern', 'carbon'],
     metaTitle: 'Website & Software for Wine Cellar Builders',
     metaDescription:
-      'A custom wine cellar website with bespoke quotes, cooling options, staged deposits, and Stripe. Plans start at $0/month with Flex.',
+      'A custom wine cellar website with itemized quotes, cooling options, staged deposits, and Stripe. Plans start at $0/month with Flex.',
     relatedSlugs: ['cabinetry', 'glass-and-mirrors', 'remodelers'],
   },
   {
@@ -2296,7 +2296,7 @@ export const TRADES: Trade[] = [
     subhead:
       'Sell weekly, bi-weekly, and one-time yard cleanups that charge cards on file automatically, book online in 60 seconds, and run dense neighborhood routes.',
     pains: [
-      { title: 'Recurring route billing on autopilot', body: 'Weekly subscribers are auto-charged per visit or monthly on saved cards, syncing seamlessly with your geographic route.' },
+      { title: 'Recurring route billing on autopilot', body: 'Weekly subscribers are auto-charged per visit or monthly on saved cards, syncing with your geographic route.' },
       { title: '60-second online signup by dog count', body: 'Homeowners select dog count, visit frequency, and yard size to start service instantly without phone tag.' },
       { title: 'Automated on-the-way and gate-closed texts', body: 'Send automated SMS notifications when arriving and a photo confirmation that the gate is latched shut.' },
     ],

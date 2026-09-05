@@ -163,7 +163,7 @@ const FAQ_GROUPS: FaqGroup[] = [
       {
         id: 'is-my-data-safe',
         q: 'Is my data and my customers’ payment info safe?',
-        a: 'Card payments are handled entirely by Stripe, so sensitive card data never touches our servers. Every request is encrypted in transit using HTTPS/TLS, and row-level security policies are designed to isolate each contractor’s data from every other account.',
+        a: 'Card payments are handled entirely by Stripe, so sensitive card data never touches our servers. Every request is encrypted in transit using HTTPS/TLS, and row-level security policies isolate each contractor’s data from every other account.',
       },
       {
         id: 'how-do-i-get-help',

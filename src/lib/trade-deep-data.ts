@@ -251,7 +251,7 @@ export const TOP_20_DEFINITIVE_TRADES: Record<string, DefinitiveTradeData> = {
       },
       {
         question: 'Does Let’s Get Quoted integrate with QuickBooks Online?',
-        answer: 'Yes. Let’s Get Quoted syncs customers, itemized invoices, sales tax, and Stripe payments seamlessly into QuickBooks Online without manual double entry.',
+        answer: 'Yes. Let’s Get Quoted syncs customers, itemized invoices, sales tax, and Stripe payments into QuickBooks Online without manual double entry.',
       },
       {
         question: 'Can technicians take photos and collect signatures on mobile phones?',

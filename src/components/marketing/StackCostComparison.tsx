@@ -177,7 +177,7 @@ export default function StackCostComparison({
             <div className={styles.cardHeader}>
               <div className={styles.badgeLgq}>Let’s Get Quoted Platform</div>
               <h3 className={styles.cardTitleLgq}>Everything Included in One Login</h3>
-              <p className={styles.cardSubLgq}>Seamless workflows from website visit to Stripe bank payout</p>
+              <p className={styles.cardSubLgq}>Direct workflows from website visit to Stripe bank payout</p>
             </div>
 
             <ul className={styles.stackList}>

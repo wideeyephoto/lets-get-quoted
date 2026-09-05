@@ -245,7 +245,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <div className={guideStyles.sectionHeading}>
               <div className={resourceStyles.eyebrowChip}>
                 <span aria-hidden="true">✦</span>
-                <p className={resourceStyles.eyebrowText}>Trade Solutions</p>
+                <p className={resourceStyles.eyebrowText}>Trade Workflows</p>
               </div>
               <h2 id="trades-playbook-title">Put this playbook to work in your trade</h2>
               <p style={{ color: 'var(--muted)', marginTop: '8px', fontSize: '15px' }}>

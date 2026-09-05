@@ -7,6 +7,7 @@ import WebsiteMediaStudioShowcase from '@/components/marketing/WebsiteMediaStudi
 import WebsiteCapabilityMatrix from '@/components/marketing/WebsiteCapabilityMatrix';
 import { TRADES } from '@/lib/trades';
 import { PUBLIC_PRICING_SUMMARY } from '@/lib/pricing';
+import { WEBSITE_BUILDER_FAQS } from './website-builder-faq';
 import styles from './website-builder-theme.module.css';
 
 const HERO_SIGNUP_URL = 'https://app.letsgetquoted.com/start?goal=build_site&source=website_builder_hero';
@@ -138,33 +139,6 @@ const JOURNEY_STEPS = [
       btnPrimary: '📅 View in Calendar',
       btnSecondary: '💬 Text Customer',
     },
-  },
-];
-
-const FAQ_ITEMS = [
-  {
-    q: 'How much do I need to have ready?',
-    a: 'Your business name is enough to begin. Choose your trade and service area, then review everything we generate before publishing.',
-  },
-  {
-    q: 'Can I change the generated content?',
-    a: 'Yes. You can edit every service, page, FAQ, service area, color and visual detail before publishing and at any time afterward.',
-  },
-  {
-    q: 'Do I need to own a domain already?',
-    a: 'No. Publish immediately on the included letsgetquoted.com subdomain, then connect a domain you own whenever you are ready.',
-  },
-  {
-    q: 'What happens when somebody requests an estimate?',
-    a: 'The job description, intake answers, location, photos and estimate range arrive together in your inbox and dashboard—ready for you to quote, schedule or text.',
-  },
-  {
-    q: 'What kind of video can I add?',
-    a: 'Upload an MP4 or MOV, or add a YouTube link. Choose from six layouts, including hero backgrounds, project stories and vertical-video reels.',
-  },
-  {
-    q: 'What does it cost?',
-    a: `The website builder is included on every base plan. ${PUBLIC_PRICING_SUMMARY} Stripe costs are separate.`,
   },
 ];
 
@@ -444,7 +418,7 @@ export default function WebsiteBuilderExperience() {
                 <span>✦</span> Clear Answers
               </div>
               <h2 id="faq-title" className={styles.sectionTitle}>
-                Everything you need to know about <em>launching your site.</em>
+                Common questions about <em>launching your site.</em>
               </h2>
               <p className={styles.sectionSubtitle}>
                 No complicated hosting setups, no design fees, and no lock-in.
@@ -452,7 +426,7 @@ export default function WebsiteBuilderExperience() {
             </div>
 
             <div className={styles.faqGrid}>
-              {FAQ_ITEMS.map((item, idx) => (
+              {WEBSITE_BUILDER_FAQS.map((item, idx) => (
                 <details key={idx} className={styles.faqItem}>
                   <summary className={styles.faqSummary}>
                     <span>{item.q}</span>

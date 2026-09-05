@@ -11,6 +11,7 @@ import ExampleSiteShowcase from '@/components/marketing/example-site-showcase';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import styles from '@/components/flagship/flagship.module.css';
+import { WEBSITE_BUILDER_FAQS } from './website-builder-faq';
 
 export const metadata: Metadata = {
   title: 'AI Website Builder for Contractors',
@@ -41,33 +42,6 @@ const SUITE = [
   { href: '/features/payments', label: 'payments' },
   { href: '/features/reviews', label: 'reviews' },
   { href: '/features/client-portal', label: 'the client portal' },
-];
-
-const FAQ: { q: string; a: string }[] = [
-  {
-    q: 'How much do I need to have ready?',
-    a: 'Your business name is enough to begin. Choose your trade and service area, then review everything we generate before publishing.',
-  },
-  {
-    q: 'Can I change the generated content?',
-    a: 'Yes. You can edit every service, page, FAQ, service area, color and visual detail before publishing and at any time afterward.',
-  },
-  {
-    q: 'Do I need to own a domain already?',
-    a: 'No. Publish immediately on the included letsgetquoted.com subdomain, then connect a domain you own whenever you are ready.',
-  },
-  {
-    q: 'What happens when somebody requests an estimate?',
-    a: 'The job description, intake answers, location, photos and estimate range arrive together in your inbox and dashboard—ready for you to quote, schedule or text.',
-  },
-  {
-    q: 'What kind of video can I add?',
-    a: 'Upload an MP4 or MOV, or add a YouTube link. Choose from six layouts, including hero backgrounds, project stories and vertical-video reels.',
-  },
-  {
-    q: 'What does it cost?',
-    a: 'The website builder is included on every base plan. Stripe costs are separate.',
-  },
 ];
 
 function SuiteContractAssertions(_props: {
@@ -103,7 +77,7 @@ export default async function WebsiteBuilderPage() {
           __html: JSON.stringify({
             '@context': 'https://schema.org',
             '@type': 'FAQPage',
-            mainEntity: FAQ.map((item) => ({
+            mainEntity: WEBSITE_BUILDER_FAQS.map((item) => ({
               '@type': 'Question',
               name: item.q,
               acceptedAnswer: {

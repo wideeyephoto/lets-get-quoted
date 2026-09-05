@@ -16,7 +16,7 @@ const COMPANION_BADGE_MAP: Record<string, { bg: string; text: string; border: st
 const FAQ = [
   {
     q: 'What is the AI Copilot with Avatars?',
-    a: 'The AI Copilot with Avatars is your intelligent contractor sidekick built directly into Let’s Get Quoted. It allows you to run your estimates, scheduling, job change orders, invoice follow-ups, and photo attachments via simple SMS text, voice calls, or mobile web. Plus, you can choose from specialized trade avatars (Sparky ⚡, Diesel 🔨, Echo 🦉, and Energy Orbit 💡) or customize Sparky into 8+ trade uniforms to match your company style.',
+    a: 'The AI Copilot with Avatars is your contractor sidekick built directly into Let’s Get Quoted. It allows you to run your estimates, scheduling, job change orders, invoice follow-ups, and photo attachments via simple SMS text, voice calls, or mobile web. Plus, you can choose from specialized trade avatars (Sparky ⚡, Diesel 🔨, Echo 🦉, and Energy Orbit 💡) or customize Sparky into 8+ trade uniforms to match your company style.',
   },
   {
     q: 'Do I really not need to open an app to run my business with my AI Copilot?',
@@ -343,7 +343,7 @@ export default function AiCopilotWithAvatarsScreen({
 
       <FaqList
         items={FAQ}
-        eyebrow="Everything you need to know"
+        eyebrow="Common questions"
         title="Frequently asked questions about your AI Copilot with Avatars."
         id="copilot-faq"
       />

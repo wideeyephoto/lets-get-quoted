@@ -378,7 +378,7 @@ export const MANUAL_ARTICLES: ManualArticle[] = [
     stopConditions: ['Account is marked suspended or flagged for fraudulent review.'],
     expectedResult: 'Contractor receives fresh setup credentials and unblocks their setup.',
     impact: {
-      customer: 'Seamless onboarding completion without support tickets.',
+      customer: 'Onboarding completion without support tickets.',
       business: 'Higher conversion and activation rates.',
     },
     evidenceAfterward: ['Updated onboarding email timestamp.'],

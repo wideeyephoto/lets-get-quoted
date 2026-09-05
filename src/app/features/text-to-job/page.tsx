@@ -414,7 +414,7 @@ export default function TextToJobPage() {
         <span className={styles.sectionEyebrow}>Common Questions</span>
         <h3 className={styles.sectionTitle}>Frequently asked questions about Text-to-Job with your AI Copilot.</h3>
         <p className={styles.sectionLede}>
-          Everything you need to know about texting or calling your AI Copilot from the field.
+          How texting and calling your AI Copilot works in the field.
         </p>
 
         <div className={styles.faqList}>

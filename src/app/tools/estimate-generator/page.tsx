@@ -345,7 +345,7 @@ export default async function EstimateGeneratorPage() {
             {/* Trade Solutions Cross-Links */}
             <div className={styles.seoBlock}>
               <div className={styles.seoBlockHeader}>
-                <span className={styles.seoKicker}>Trade Solutions</span>
+                <span className={styles.seoKicker}>By Trade</span>
                 <h2 className={styles.seoTitle}>Pre-Configured Estimate Systems for Your Trade</h2>
                 <p className={styles.seoLead}>
                   Discover dedicated websites, instant pricing calculators, and mobile quoting software tailored to your trade.

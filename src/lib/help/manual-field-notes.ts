@@ -248,7 +248,7 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
   },
   'install-the-field-app-and-work-without-signal': {
     useWhen: 'Setting up the mobile web app on technician phones and working in basements or remote areas with no cell signal.',
-    bestPractice: 'Add the app to the mobile home screen via Safari or Chrome for seamless full-screen operation.',
+    bestPractice: 'Add the app to the mobile home screen via Safari or Chrome for full-screen operation.',
     watchFor: 'Offline queue entries must be synced within 12 hours of creation; older entries are permanently rejected.',
     completionChecks: [
       'Field app is installed on mobile home screen as a Progressive Web App.',
@@ -592,7 +592,7 @@ export const MANUAL_FIELD_NOTES: Record<string, ManualFieldNotes> = {
     watchFor: 'Hard account deletion permanently purges all records immediately without a grace period; soft delete applies only to individual items.',
     completionChecks: [
       'Deleted records appear in the Trash hub with their deletion timestamp and user.',
-      'Restoring a record seamlessly reconnects quotes, jobs, and client histories.',
+      'Restoring a record reconnects quotes, jobs, and client histories.',
       'The Activity Audit Log provides a tamper-evident record of all workspace edits.',
     ],
   },

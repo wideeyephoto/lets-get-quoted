@@ -26,7 +26,7 @@ export default async function ToolsHubPage() {
     '@type': 'CollectionPage',
     name: 'Free Contractor Tools & Calculators',
     description:
-      'Interactive tools designed to help trade contractors price jobs accurately, calculate billable hourly rates, and generate professional estimates.',
+      'Interactive tools to help trade contractors price jobs accurately, calculate billable hourly rates, and generate professional estimates.',
     url: 'https://letsgetquoted.com/tools',
     hasPart: [
       {

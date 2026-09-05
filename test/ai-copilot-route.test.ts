@@ -10,10 +10,10 @@ describe('AI Copilot URL and Route Integrity', () => {
     expect(source).toContain('path="/features/ai-copilot"');
   });
 
-  it('verifies /features/sparky route continues to exist with /features/sparky canonical', () => {
+  it('verifies /features/sparky route continues to exist and canonicalizes to /features/ai-copilot', () => {
     expect(existsSync('src/app/features/sparky/page.tsx')).toBe(true);
     const source = readFileSync('src/app/features/sparky/page.tsx', 'utf8');
-    expect(source).toContain("alternates: { canonical: 'https://letsgetquoted.com/features/sparky' }");
+    expect(source).toContain("alternates: { canonical: 'https://letsgetquoted.com/features/ai-copilot' }");
   });
 
   it('verifies next.config.mjs provides redirects for both /sparky and /ai-copilot shortcuts', () => {
@@ -24,10 +24,10 @@ describe('AI Copilot URL and Route Integrity', () => {
     expect(configSource).toContain("{ source: '/aicopilot', destination: '/features/ai-copilot', permanent: true }");
   });
 
-  it('verifies sitemap includes both ai-copilot and sparky feature slugs', () => {
+  it('verifies sitemap includes canonical ai-copilot feature slug without duplicate sparky', () => {
     const sitemapSource = readFileSync('src/app/sitemap.ts', 'utf8');
     expect(sitemapSource).toContain("'ai-copilot'");
-    expect(sitemapSource).toContain("'sparky'");
+    expect(sitemapSource).not.toContain("'sparky'");
   });
 
   it('verifies FeaturesCatalogExplorer deep links include ai-copilot', () => {

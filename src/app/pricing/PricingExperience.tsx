@@ -64,7 +64,7 @@ const walkthroughSteps = [
   {
     badge: '03 · CASH COLLECTION',
     title: 'Instant Quote-to-Invoice Payment',
-    summary: 'Send Good/Better/Best proposals with online signatures, capture initial deposits, and bill balances seamlessly upon completion.',
+    summary: 'Send Good/Better/Best proposals with online signatures, capture initial deposits, and bill balances upon completion.',
     metric: 'Direct Stripe payout to your bank',
   },
   {

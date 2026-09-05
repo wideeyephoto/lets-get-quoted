@@ -157,7 +157,7 @@ export default function NeighborhoodHaloFeaturePage() {
 
       <section className={`section-block ${styles.faqSection}`} aria-labelledby="halo-faq-title">
         <div>
-          <p className="eyebrow">Everything you need to know</p>
+          <p className="eyebrow">Before you launch</p>
           <h2 id="halo-faq-title">Frequently asked questions about Neighborhood Halo ads.</h2>
         </div>
 

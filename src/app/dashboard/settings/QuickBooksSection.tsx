@@ -58,7 +58,7 @@ export default function QuickBooksSection({
       ) : null}
 
       <p className="workspace-details-copy" style={{ marginTop: '0.5rem', marginBottom: '1rem' }}>
-        Link your QuickBooks company for seamless two-way synchronization. Invoices, customers, and payments created in Let’s Get Quoted are automatically pushed to QuickBooks Online, while customers and payment reconciliations in QuickBooks are pulled back into Let’s Get Quoted overnight. Anything it can&rsquo;t send exactly it leaves alone and tells you why. You can disconnect at any time, and the CSV exports below keep working either way.
+        Link your QuickBooks company for two-way synchronization. Invoices, customers, and payments created in Let’s Get Quoted are automatically pushed to QuickBooks Online, while customers and payment reconciliations in QuickBooks are pulled back into Let’s Get Quoted overnight. Anything it can&rsquo;t send exactly it leaves alone and tells you why. You can disconnect at any time, and the CSV exports below keep working either way.
       </p>
 
       {status.state === 'unconfigured' ? (

@@ -146,7 +146,7 @@ const MATRIX_FEATURES: MatrixFeature[] = [
     desc: 'Draggable comparison sliders allowing homeowners to slide between pre-existing damage and completed work.',
     tags: ['Proof', 'Galleries'],
     subBullets: [
-      'Interactive touch, mouse, and keyboard arrow controls for seamless reveal.',
+      'Interactive touch, mouse, and keyboard arrow controls for side-by-side reveal.',
       '3 project showcase styles: Slideshow Crossfade, Coverflow 3D Carousel, and Spotlight Thumbnail Strip.',
       'Highlight repairs, remodels, restorations, and installations with side-by-side proof.',
     ],
@@ -225,7 +225,7 @@ const MATRIX_FEATURES: MatrixFeature[] = [
     category: 'seo',
     name: 'Automated Local SEO & Rich Structured Data',
     icon: '🔍',
-    desc: 'Pre-configured JSON-LD Schema.org markup designed to help you dominate local "near me" searches.',
+    desc: 'Pre-configured JSON-LD Schema.org markup built to help you dominate local "near me" searches.',
     tags: ['SEO', 'Structured Data'],
     subBullets: [
       'Dynamic Schema.org rich snippets for LocalBusiness, Service, AggregateRating, BreadcrumbList, and VideoObject.',
@@ -336,7 +336,7 @@ const MATRIX_FEATURES: MatrixFeature[] = [
     desc: 'Provide past and active clients with direct access to their quotes, job timeline, photos, and invoices.',
     tags: ['Portal', 'Client Experience'],
     subBullets: [
-      'Seamless "Client Login" button in your website navigation header and footer.',
+      'Dedicated "Client Login" button in your website navigation header and footer.',
       'Homeowners access all their approved quotes, signed agreements, scheduled dates, and payment history.',
       'Zero password friction: secure one-time magic link authentication via email or phone.',
     ],

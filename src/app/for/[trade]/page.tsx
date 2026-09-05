@@ -174,7 +174,7 @@ export default async function TradePage({ params }: { params: Promise<{ trade: s
         <section className="section-block">
           <div className="section-heading">
             <p className="eyebrow">Related trades</p>
-            <h2>Also see solutions for related specialties.</h2>
+            <h2>Also explore related specialties.</h2>
           </div>
           <div className="feature-grid">
             {relatedTrades.map((related) => (
