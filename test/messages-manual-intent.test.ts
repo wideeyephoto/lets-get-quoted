@@ -44,7 +44,7 @@ describe('manual Messages producer identity', () => {
     expect(page).toContain('const contacts = consentPhoneRead.data');
     expect(compose).toContain('<select name="phone"');
     expect(compose).not.toContain('name="phone"\n            type="tel"');
-    expect(compose).toContain('No contacts currently have recorded SMS consent');
+    expect(compose).toContain('No contacts have recorded SMS consent');
   });
 
   it('hides arbitrary URL threads and safely authorizes real replies', () => {

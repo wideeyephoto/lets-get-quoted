@@ -63,7 +63,7 @@ function client(rows: Row[], opts: {
         // `in` and `or` back the platform-lane exclusion: `in` reads the lane
         // list from sms_sender_numbers, `or` applies the null-preserving filter.
         // This stub returns no lanes, so these tests exercise the unfiltered path.
-        eq: self, not: self, order: self, in: self, or: self,
+        eq: self, not: self, order: self, in: self, or: self, range: self,
         limit: () => Promise.resolve(chain.__result),
         then: (resolve: (value: unknown) => unknown) => Promise.resolve(chain.__result).then(resolve),
       });

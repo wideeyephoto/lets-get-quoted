@@ -77,6 +77,7 @@ function inboxClient(options: {
         or: self,
         lte: self,
         order: self,
+        range: self,
         limit: self,
         then(resolveResult: (value: unknown) => unknown, rejectResult?: (reason: unknown) => unknown) {
           return Promise.resolve(result()).then(resolveResult, rejectResult);

@@ -205,12 +205,47 @@ export function mergeManualSmsEventProjection(
     direction * (Date.parse(left.created_at) - Date.parse(right.created_at)));
 }
 
+const MESSAGE_PAGE_SIZE = 500;
+
+async function loadAllMessagePages<Row>(
+  buildPage: (from: number, to: number) => PromiseLike<{
+    data: Row[] | null; error: unknown; count?: number | null;
+  }>,
+): Promise<MessagingReadResult<Row[]>> {
+  const rows: Row[] = [];
+  try {
+    for (;;) {
+      const page = await buildPage(rows.length, rows.length + MESSAGE_PAGE_SIZE - 1);
+      if (page.error) return { kind: 'unavailable', data: [] };
+      const data = page.data ?? [];
+      rows.push(...data);
+      // Count also handles projects whose API row cap is below our page size.
+      if (!data.length || (page.count != null
+        ? rows.length >= page.count
+        : data.length < MESSAGE_PAGE_SIZE)) return { kind: 'ready', data: rows };
+    }
+  } catch {
+    return { kind: 'unavailable', data: [] };
+  }
+}
+
 async function loadManualSmsEvents(
   supabase: SupabaseClient,
   accountId: string,
   phone?: string,
   limit?: number,
 ): Promise<MessagingReadResult<ManualSmsEventProjection[]>> {
+  if (phone && !limit) {
+    return loadAllMessagePages<ManualSmsEventProjection>((from, to) => supabase
+      .from('sms_events')
+      .select('id, account_id, phone_number, body, provider_id, provider, sender_number_id, status, queued_at, created_at', { count: 'exact' })
+      .eq('account_id', accountId)
+      .eq('phone_number', phone)
+      .or('message_kind.eq.inbox-reply,status.in.(failed,undelivered)')
+      .order('created_at', { ascending: true })
+      .order('id', { ascending: true })
+      .range(from, to));
+  }
   try {
     let query = supabase
       .from('sms_events')
@@ -758,19 +793,21 @@ export async function loadConversationMessages(
   // the number most likely to appear in both.
   const platformIds = await platformLaneSenderIds(supabase);
   const [messages, events] = await Promise.all([
-    runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+    loadAllMessagePages<SmsMessage>((from, to) => runSmsInboxVisibleQuery((includeVisibilityFilter) => {
       let query = supabase
         .from('sms_messages')
-        .select('*')
+        .select('*', { count: 'exact' })
         .eq('account_id', accountId)
         .eq('phone_number', phone);
       if (includeVisibilityFilter) query = query.eq('inbox_visible', true);
       return excludePlatformLanes(query, platformIds)
-        .order('created_at', { ascending: true });
-    }),
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to);
+    })),
     loadManualSmsEvents(supabase, accountId, phone),
   ]);
-  if (messages.error || events.kind === 'unavailable') {
+  if (messages.kind === 'unavailable' || events.kind === 'unavailable') {
     return { kind: 'unavailable', data: [] };
   }
   return {

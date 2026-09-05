@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireOfficeContext } from '@/lib/auth';
 import { buildAuthenticatedSmsMediaRequest, type SmsProviderId } from '@/lib/sms-provider';
+import { fetchSmsMedia, SmsMediaBlockedError } from '@/lib/sms-media-fetch';
+
+export const runtime = 'nodejs';
+const MAX_MEDIA_REDIRECTS = 3;
 
 function isPrivateIpOrHost(hostname: string): boolean {
   const host = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
 
   if (
     host === 'localhost' ||
+    host.endsWith('.localhost') || host.endsWith('.local') || host.endsWith('.internal') ||
     host === '127.0.0.1' ||
     host === '0.0.0.0' ||
     host === '::1' ||
@@ -16,7 +21,10 @@ function isPrivateIpOrHost(hostname: string): boolean {
     return true;
   }
 
-  if (host.startsWith('fc') || host.startsWith('fd') || host.startsWith('fe80:')) {
+  if (host.includes(':') && (
+    host.startsWith('fc') || host.startsWith('fd') || /^fe[89ab]/.test(host)
+    || host.startsWith('::ffff:') || host.startsWith('ff')
+  )) {
     return true;
   }
 
@@ -73,63 +81,38 @@ export async function GET(
     const provider = (message.provider ?? 'twilio') as SmsProviderId;
     const authRequest = buildAuthenticatedSmsMediaRequest(rawUrl, provider);
 
+    let target: URL;
+    try {
+      target = new URL(authRequest?.url ?? rawUrl);
+    } catch {
+      return NextResponse.json({ error: 'Invalid media URL' }, { status: 400 });
+    }
+    // One deadline for the entire chain. Every hop is inspected before fetching,
+    // and provider credentials are only ever attached to the initial request.
+    const signal = AbortSignal.timeout(10000);
     let mediaRes: Response;
-    if (authRequest) {
-      const initialRes = await fetch(authRequest.url, {
-        headers: authRequest.headers,
-        redirect: 'manual',
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (initialRes.status >= 300 && initialRes.status < 400) {
-        const location = initialRes.headers.get('location');
-        if (!location) {
-          return NextResponse.json({ error: 'Redirect missing Location header' }, { status: 502 });
-        }
-        const redirectUrl = new URL(location, authRequest.url);
-        if (redirectUrl.protocol !== 'https:' || isPrivateIpOrHost(redirectUrl.hostname)) {
-          return NextResponse.json({ error: 'Disallowed redirect location' }, { status: 403 });
-        }
-        // Fetch redirected resource (e.g. S3 CDN signed URL) without Twilio/SignalWire Basic auth
-        mediaRes = await fetch(redirectUrl.toString(), {
-          redirect: 'follow',
-          signal: AbortSignal.timeout(10000),
-        });
-      } else {
-        mediaRes = initialRes;
+    for (let redirects = 0; ; redirects += 1) {
+      if (target.protocol !== 'https:' || target.username || target.password
+          || (target.port && target.port !== '443') || isPrivateIpOrHost(target.hostname)) {
+        return NextResponse.json({ error: 'Disallowed media location' }, { status: 403 });
       }
-    } else {
-      let parsedUrl: URL;
+      mediaRes = await fetchSmsMedia(target.toString(), {
+        headers: redirects === 0 ? authRequest?.headers : undefined,
+        signal,
+      });
+      if (mediaRes.status < 300 || mediaRes.status >= 400) break;
+      const location = mediaRes.headers.get('location');
+      await mediaRes.body?.cancel();
+      if (!location) {
+        return NextResponse.json({ error: 'Redirect missing Location header' }, { status: 502 });
+      }
+      if (redirects >= MAX_MEDIA_REDIRECTS) {
+        return NextResponse.json({ error: 'Too many media redirects' }, { status: 502 });
+      }
       try {
-        parsedUrl = new URL(rawUrl);
+        target = new URL(location, target);
       } catch {
-        return NextResponse.json({ error: 'Invalid media URL' }, { status: 400 });
-      }
-
-      if (parsedUrl.protocol !== 'https:' || isPrivateIpOrHost(parsedUrl.hostname)) {
-        return NextResponse.json({ error: 'Disallowed media URL' }, { status: 403 });
-      }
-
-      const initialRes = await fetch(parsedUrl.toString(), {
-        redirect: 'manual',
-        signal: AbortSignal.timeout(10000),
-      });
-
-      if (initialRes.status >= 300 && initialRes.status < 400) {
-        const location = initialRes.headers.get('location');
-        if (!location) {
-          return NextResponse.json({ error: 'Redirect missing Location header' }, { status: 502 });
-        }
-        const redirectUrl = new URL(location, parsedUrl);
-        if (redirectUrl.protocol !== 'https:' || isPrivateIpOrHost(redirectUrl.hostname)) {
-          return NextResponse.json({ error: 'Disallowed redirect location' }, { status: 403 });
-        }
-        mediaRes = await fetch(redirectUrl.toString(), {
-          redirect: 'follow',
-          signal: AbortSignal.timeout(10000),
-        });
-      } else {
-        mediaRes = initialRes;
+        return NextResponse.json({ error: 'Invalid media redirect' }, { status: 502 });
       }
     }
 
@@ -161,6 +144,9 @@ export async function GET(
       },
     });
   } catch (error) {
+    if (error instanceof SmsMediaBlockedError) {
+      return NextResponse.json({ error: 'Disallowed media location' }, { status: 403 });
+    }
     console.error('Failed to proxy SMS media:', error);
     return NextResponse.json({ error: 'Failed to retrieve media' }, { status: 500 });
   }

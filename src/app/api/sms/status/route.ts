@@ -9,8 +9,6 @@ import {
   type ParsedStatusWebhook,
 } from '@/lib/sms-webhook-ingress';
 import { logWebhookFailure } from '@/lib/webhook-failures';
-import { normalizeUsPhone } from '@/lib/phone';
-import { getLeadTriage } from '@/lib/leads';
 
 export const runtime = 'nodejs';
 
@@ -74,57 +72,13 @@ export async function POST(request: Request) {
     });
 
     if (ingressResult.smsEventId) {
-      try {
-        const { data: event } = await admin
-          .from('sms_events')
-          .select('account_id, phone_number')
-          .eq('id', ingressResult.smsEventId)
-          .maybeSingle();
-
-        if (event?.account_id && event.phone_number) {
-          const eventPhone = normalizeUsPhone(event.phone_number);
-          const { data: leads } = await admin
-            .from('leads')
-            .select('id, status, triage, phone')
-            .eq('account_id', event.account_id)
-            .not('phone', 'is', null)
-            .order('created_at', { ascending: false });
-
-          const lead = (leads ?? []).find(
-            (l) => l.phone && normalizeUsPhone(l.phone) === eventPhone,
-          );
-
-          if (lead) {
-            const triage = getLeadTriage(lead);
-            if (ingressResult.projectedStatus === 'delivered') {
-              const entry = {
-                at: new Date().toISOString(),
-                label: 'SMS Delivered',
-                note: `Delivered to ${event.phone_number}.`,
-              };
-              const contactLog = [...(triage.contactLog ?? []), entry];
-              // Keep lead status intact — automated delivery does not constitute human contact.
-              await admin
-                .from('leads')
-                .update({ triage: { ...triage, contactLog }, updated_at: new Date().toISOString() })
-                .eq('id', lead.id);
-            } else if (ingressResult.projectedStatus === 'failed') {
-              const entry = {
-                at: new Date().toISOString(),
-                label: 'SMS Delivery Failed',
-                note: `Delivery to ${event.phone_number} failed (${status.providerErrorCode || status.providerStatus || 'undelivered'}).`,
-              };
-              const contactLog = [...(triage.contactLog ?? []), entry];
-              await admin
-                .from('leads')
-                .update({ triage: { ...triage, contactLog }, updated_at: new Date().toISOString() })
-                .eq('id', lead.id);
-            }
-          }
-        }
-      } catch (reconErr) {
-        console.warn('Lead delivery status reconciliation skipped:', reconErr);
-      }
+      // Retry this even for duplicate receipts: ingress may have committed before
+      // a previous history write failed. The RPC deduplicates by canonical event
+      // and appends to the current database value, without stale triage snapshots.
+      const { error } = await admin.rpc('record_sms_lead_delivery_history', {
+        p_sms_event_id: ingressResult.smsEventId,
+      });
+      if (error) throw new Error(`SMS lead history unavailable (${error.code || 'unknown'}).`);
     }
   } catch (error) {
     console.error('SMS status webhook handler threw:', error);
