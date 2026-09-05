@@ -138,7 +138,7 @@ const FAQ = [
   },
   {
     q: 'Do I or my customers need an iPhone with LiDAR to get 3D measurements?',
-    a: 'No. Our AI Vision engine calculates 3D room boundaries, alcove spans, and ceiling clearances from standard video or photos on ANY smartphone (iPhone or Android) with zero app download. If you or your field crew happen to use an iPhone 12–16 Pro or iPad Pro with hardware LiDAR, you can also upload native CAD point clouds (Apple RoomPlan, Polycam, Canvas 3D) for instant millimeter-precision takeoffs.',
+    a: 'Photos and videos can help assess the scope of work, but room takeoffs require measured geometry. LiDAR Studio accepts LGQ normalized scan JSON in inches and calculates floor, wall, and baseboard quantities from it. Native Apple RoomPlan, Polycam, and raw point-cloud files require conversion before import. Confirm critical dimensions on site before ordering materials.',
   },
   {
     q: 'How do roof and exterior 3D measurements work?',
