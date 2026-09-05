@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
+import { Suspense, createContext, useCallback, useContext, useDeferredValue, useEffect, useId, useMemo, useRef, useState, useTransition } from 'react';
 import { useFormState } from 'react-dom';
 import Link from 'next/link';
 import CrewWorkHistory from '@/components/crew-work-history';
@@ -11,7 +11,7 @@ import ViewGear, { type ViewOption } from '@/components/view-gear';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
 import { setCrewOverviewAction, setRosterViewAction } from '@/app/dashboard/view-actions';
 import type { RosterView } from '@/lib/dashboard-views';
-import { rosterNextStep, rosterTotals } from '@/lib/crew-roster';
+import { rosterTotals } from '@/lib/crew-roster';
 import { FIELD_APP_LABEL, FIELD_APP_TITLE, needsInvite, type FieldAppState } from '@/lib/crew-invite';
 import type { PayType } from '@/lib/pay-types';
 import {
@@ -86,9 +86,9 @@ export type CrewRow = {
   initials: string;
   photoUrl: string | null;
   roleLabel: string;
-  hourlyRate: number;
+  hourlyRate: number | null;
   /** How they're paid. rateLabel reads from this, so it says "/yr" for a salary. */
-  payType: PayType;
+  payType: PayType | null;
   annualSalary: number | null;
   dayRate: number | null;
   payrollId: string | null;
@@ -145,8 +145,8 @@ const ROSTER_VIEW_OPTIONS: ViewOption<RosterPick>[] = [
   overviewOption<RosterPick>('One person open beside the list — master-detail'),
 ];
 
-function isSimplifiedRosterView(view: RosterView): view is Extract<RosterView, 'rows' | 'board' | 'table'> {
-  return view === 'rows' || view === 'board' || view === 'table';
+function isSimplifiedRosterView(view: RosterView): view is Extract<RosterView, 'rows' | 'table'> {
+  return view === 'rows' || view === 'table';
 }
 
 function needsFieldAppSetup(row: CrewRow): boolean {
@@ -254,6 +254,7 @@ export default function CrewRoster({
   openAdd?: boolean;
 }) {
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [status, setStatus] = useState<'active' | 'archived'>(initialStatus);
   const [workerType, setWorkerType] = useState<WorkerType | 'all'>(initialWorkerType);
   const [role, setRole] = useState('all');
@@ -310,23 +311,18 @@ export default function CrewRoster({
   // server sets the class from the cookie so the first paint is right; this
   // keeps it in step the moment the view changes rather than making a layout
   // change wait on a round trip.
-  // Overview is capped at the standard width on purpose: a 21rem list beside one
-  // open person does not need 1600px, and letting it have it strands the pane's
-  // buttons a screen-width away from the list.
-  const wide = !overview && (view === 'board' || view === 'table' || view === 'focus');
+  // The table wants more than the 1100px cap, and the shell is rendered by the
+  // page above this component. The server sets the class from the cookie so the
+  // first paint is right; this keeps it in step the moment the view changes.
+  const wide = !overview && view === 'table';
   useEffect(() => {
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
     main.classList.toggle('crew-wide', wide);
-    // Focus is a page theme, so the shell wears it too — toggled here as well as
-    // set server-side from the cookie, or switching view would leave the page
-    // half-dressed until the next navigation.
-    main.classList.toggle('crew-focus', !overview && view === 'focus');
     return () => {
       main.classList.remove('crew-wide');
-      main.classList.remove('crew-focus');
     };
-  }, [wide, view, overview]);
+  }, [wide]);
 
   const roles = useMemo(
     () => [...new Set(rows.map((row) => row.roleLabel).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
@@ -398,7 +394,7 @@ export default function CrewRoster({
   }, [highlight, rows]);
 
   const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = deferredQuery.trim().toLowerCase();
     const filtered = rows.filter((row) => {
       if (status === 'active' ? !row.active : row.active) return false;
       if (workerType !== 'all' && row.workerType !== workerType) return false;
@@ -439,16 +435,13 @@ export default function CrewRoster({
       }
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
-  }, [rows, query, status, workerType, role, jobFilter, appFilter, sort]);
+  }, [rows, deferredQuery, status, workerType, role, jobFilter, appFilter, sort]);
 
   const activeCount = rows.filter((row) => row.active).length;
   const employeeCount = rows.filter((row) => row.workerType === 'employee').length;
   const subCount = rows.length - employeeCount;
   const selected = openId ? rows.find((row) => row.id === openId) ?? null : null;
 
-  // Focus's rail. Derived from every row rather than the filtered ones — what's
-  // wrong with the crew doesn't change because you searched for someone.
-  const nextStep = useMemo(() => rosterNextStep(rows), [rows]);
   const totals = useMemo(() => rosterTotals(rows), [rows]);
   const setup = useMemo(() => {
     const actionable = rows.filter(needsFieldAppSetup);
@@ -547,20 +540,6 @@ export default function CrewRoster({
       })),
     [visible, periodLabel, hoursHrefFor],
   );
-
-  // The board's whole point: who could you send somewhere right now. Archived
-  // people get their own column rather than being called "available", which
-  // they emphatically are not.
-  const columns = useMemo(() => {
-    const free = visible.filter((row) => row.active && !(row.isBusyToday ?? row.jobs.length > 0));
-    const busy = visible.filter((row) => row.active && Boolean(row.isBusyToday ?? row.jobs.length > 0));
-    const archived = visible.filter((row) => !row.active);
-    return [
-      { id: 'free', label: 'Available today', hint: 'No active shift or job scheduled today', rows: free },
-      { id: 'busy', label: 'Assigned today', hint: 'On the clock or scheduled for work today', rows: busy },
-      ...(archived.length > 0 ? [{ id: 'archived', label: 'Archived', hint: 'Not on the crew right now', rows: archived }] : []),
-    ];
-  }, [visible]);
 
   return (
     <RosterMode.Provider value={{ readOnly, basePath }}>
@@ -672,7 +651,7 @@ export default function CrewRoster({
               <button
                 type="button"
                 className="btn secondary sm"
-                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                style={{ fontSize: '0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: '12px' }}
                 onClick={() => setWorkerType('all')}
               >
                 <span>Type: {workerType === 'employee' ? 'Employees' : 'Subcontractors'}</span>
@@ -683,7 +662,7 @@ export default function CrewRoster({
               <button
                 type="button"
                 className="btn secondary sm"
-                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                style={{ fontSize: '0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: '12px' }}
                 onClick={() => setRole('all')}
               >
                 <span>Role: {role}</span>
@@ -694,7 +673,7 @@ export default function CrewRoster({
               <button
                 type="button"
                 className="btn secondary sm"
-                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                style={{ fontSize: '0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: '12px' }}
                 onClick={() => setStatus('active')}
               >
                 <span>Status: Archived</span>
@@ -705,7 +684,7 @@ export default function CrewRoster({
               <button
                 type="button"
                 className="btn secondary sm"
-                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                style={{ fontSize: '0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: '12px' }}
                 onClick={() => setJobFilter('all')}
               >
                 <span>Availability: {jobFilter === 'available' ? 'Available today' : jobFilter === 'assigned' ? 'Assigned today' : 'Filtered Job'}</span>
@@ -716,7 +695,7 @@ export default function CrewRoster({
               <button
                 type="button"
                 className="btn secondary sm"
-                style={{ fontSize: '0.75rem', padding: '2px 8px', borderRadius: '12px' }}
+                style={{ fontSize: '0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '4px 10px', borderRadius: '12px' }}
                 onClick={() => setAppFilter('all')}
               >
                 <span>App: {appFilter}</span>
@@ -726,7 +705,7 @@ export default function CrewRoster({
             <button
               type="button"
               className="btn quiet sm"
-              style={{ fontSize: '0.75rem', color: 'var(--muted)' }}
+              style={{ fontSize: '0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', padding: '4px 10px', color: 'var(--muted)' }}
               onClick={() => {
                 setWorkerType('all');
                 setRole('all');
@@ -833,6 +812,10 @@ export default function CrewRoster({
         ) : null}
       </div>
 
+      <span className="sr-only" role="status" aria-live="polite">
+        Showing {visible.length} of {rows.length} crew members
+      </span>
+
       {rows.length === 0 ? (
         <div className={styles.empty}>
           <h3>Nobody here yet</h3>
@@ -855,180 +838,14 @@ export default function CrewRoster({
             status === 'archived' ? 'No archived crew members match those filters.' : 'No crew members match those filters.'
           }
         />
-      ) : visible.length === 0 && view !== 'focus' ? (
-        // Focus keeps its layout even when nothing matches: the rail is about
-        // the crew, not the filter, and searching for a name nobody has should
-        // not take away what the roster says needs fixing.
+      ) : visible.length === 0 ? (
         <p className="empty-state">
           {status === 'archived' ? 'No archived crew members match those filters.' : 'No crew members match those filters.'}
         </p>
-      ) : view === 'cards' ? (
-        <ul className={styles.cardGrid}>
-          {visible.map((row) => (
-            <CrewCardItem
-              key={row.id}
-              row={row}
-              assignableJobs={assignableJobs}
-              periodLabel={periodLabel}
-              justAdded={row.id === added?.id}
-              onOpen={() => setOpenId(row.id)}
-            />
-          ))}
-        </ul>
-      ) : view === 'board' ? (
-        <div className={styles.board}>
-          {columns.map((column) => (
-            <section key={column.id} className={styles.boardCol} data-col={column.id}>
-              <header>
-                <strong>{column.label}</strong>
-                <span className={styles.boardCount}>{column.rows.length}</span>
-                <small>{column.hint}</small>
-              </header>
-              {column.rows.length === 0 ? (
-                <p className={styles.boardEmpty}>
-                  {column.id === 'free' ? 'Everyone is booked.' : 'Nobody here.'}
-                </p>
-              ) : (
-                <ul>
-                  {column.rows.map((row) => (
-                    <CrewBoardItem
-                      key={row.id}
-                      row={row}
-                      assignableJobs={assignableJobs}
-                      periodLabel={periodLabel}
-                      justAdded={row.id === added?.id}
-                      onOpen={() => setOpenId(row.id)}
-                    />
-                  ))}
-                </ul>
-              )}
-            </section>
-          ))}
-        </div>
-      ) : view === 'focus' ? (
-        <div className={styles.focusLayout}>
-          <div className={styles.focusMain}>
-            {visible.length === 0 ? (
-              <p className="empty-state">
-                {status === 'archived' ? 'No archived crew members match those filters.' : 'No crew members match those filters.'}
-              </p>
-            ) : (
-              <>
-                <div className={styles.rowHead} aria-hidden="true">
-                  <span>Crew member</span>
-                  <span>Contact</span>
-                  <span>Current job</span>
-                  <span className={styles.num}>This period</span>
-                  <span />
-                </div>
-                <ul className={styles.rows}>
-                  {visible.map((row) => (
-                    <CrewRowItem
-                      key={row.id}
-                      row={row}
-                      assignableJobs={assignableJobs}
-                      periodLabel={periodLabel}
-                      justAdded={row.id === added?.id}
-                      onOpen={() => setOpenId(row.id)}
-                    />
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-
-          {/* The rail is about the CREW, not about the filter — so it reads from
-              every row rather than the visible ones. Filtering the list should
-              not change what the roster says is wrong with it. */}
-          <aside className={styles.focusRail}>
-            <section className={styles.focusCard} data-tone={nextStep.tone}>
-              <small>Next step</small>
-              <strong>{nextStep.title}</strong>
-              <p>{nextStep.body}</p>
-              {nextStep.names.length > 0 ? (
-                // Names, not a count: each one opens that person, which is where
-                // the rate is set and the invite is sent. A card that says "3
-                // people" and can't tell you which three is a dead end.
-                <div className={styles.focusNames}>
-                  {rows
-                    .filter((row) => nextStep.names.includes(row.name))
-                    .slice(0, 6)
-                    .map((row) => (
-                      <button key={row.id} type="button" onClick={() => setOpenId(row.id)}>
-                        {row.name}
-                      </button>
-                    ))}
-                </div>
-              ) : null}
-              {nextStep.id === 'invite' || nextStep.id === 'email' ? (
-                <button
-                  type="button"
-                  className="btn secondary"
-                  onClick={() => {
-                    setAppFilter(nextStep.id === 'invite' ? 'invitable' : 'no-email');
-                    setStatus('active');
-                  }}
-                >
-                  Show just these
-                </button>
-              ) : nextStep.id === 'idle' ? (
-                <button type="button" className="btn secondary" onClick={() => { setJobFilter('available'); setStatus('active'); }}>
-                  Show who&apos;s free
-                </button>
-              ) : nextStep.id === 'empty' && !readOnly ? (
-                <Link href={ADD_CREW_HREF} className="btn primary">+ Add crew member</Link>
-              ) : null}
-            </section>
-
-            <section className={styles.focusCard}>
-              <small>{periodLabel}</small>
-              <strong className={styles.focusBig}>{totals.periodPay > 0 ? money(totals.periodPay) : '—'}</strong>
-              <p>
-                {totals.periodHours > 0
-                  ? `${Math.round(totals.periodHours * 10) / 10} hours across your active crew. Estimated — hours × the rate on each entry.`
-                  : 'No hours logged for this period yet.'}
-              </p>
-              <Link href="/dashboard/crew?tab=hours" className="btn secondary">Open Hours &amp; pay</Link>
-            </section>
-
-            <section className={styles.focusCard}>
-              <small>Right now</small>
-              <ul className={styles.focusCounts}>
-                <li>
-                  <button type="button" onClick={() => { setJobFilter('available'); setStatus('active'); }}>
-                    <b>{totals.available}</b> available
-                  </button>
-                </li>
-                <li>
-                  <button type="button" onClick={() => { setJobFilter('assigned'); setStatus('active'); }}>
-                    <b>{totals.onJob}</b> assigned
-                  </button>
-                </li>
-                <li>
-                  <button type="button" onClick={() => setStatus('archived')} disabled={totals.archived === 0}>
-                    <b>{totals.archived}</b> archived
-                  </button>
-                </li>
-              </ul>
-            </section>
-
-            <section className={styles.focusCard}>
-              <small>Quick actions</small>
-              <ul className={styles.focusActions}>
-                <li>{readOnly ? null : <Link href={ADD_CREW_HREF}>Add crew member</Link>}</li>
-                <li><Link href="/dashboard/crew?tab=hours">Review hours &amp; pay</Link></li>
-                <li><Link href="/dashboard/crew?tab=jobs">Labor by job</Link></li>
-                <li><Link href="/dashboard/schedule/plan">Plan today&apos;s route</Link></li>
-                <li style={{ marginTop: '0.5rem' }}>
-                  <SaveFieldContactButton size="small" label="Save Field Line (.vcf)" />
-                </li>
-              </ul>
-            </section>
-          </aside>
-        </div>
       ) : view === 'table' ? (
         <div className={styles.tableWrap}>
           <table className={styles.rosterTable}>
+            <caption className="sr-only">Crew members roster</caption>
             <thead>
               <tr>
                 <th scope="col">Crew member</th>
@@ -1426,7 +1243,7 @@ function CrewRowItem({
           <span className={styles.avatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
             {row.photoUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={row.photoUrl} alt="" />
+              <img src={row.photoUrl} alt="" width={40} height={40} loading="lazy" />
             ) : (
               row.initials
             )}
@@ -1453,134 +1270,7 @@ function CrewRowItem({
 
         <span className={styles.rowPeriod}>
           <strong>{row.periodHours} hrs</strong>
-          <small title={periodTitle(periodLabel)}>{row.periodPayLabel} est.</small>
-        </span>
-      </button>
-
-      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
-
-      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} id={assignId} /> : null}
-    </li>
-  );
-}
-
-// Cards: the roster as people rather than as records. The photo is the point —
-// on a crew of twenty, a face is faster to find than a name.
-function CrewCardItem({
-  row,
-  assignableJobs,
-  periodLabel,
-  justAdded = false,
-  onOpen,
-}: {
-  row: CrewRow;
-  assignableJobs: JobOption[];
-  periodLabel: string;
-  /** Just created from the add drawer — the one the roster scrolled to. */
-  justAdded?: boolean;
-  onOpen: () => void;
-}) {
-  const [assigning, setAssigning] = useState(false);
-  const assignId = useId();
-
-  return (
-    <li className={`${styles.card}${row.active ? '' : ` ${styles.rowArchived}`}${justAdded ? ` ${styles.justAdded}` : ''}`}>
-      <button
-        type="button"
-        className={styles.cardOpen}
-        data-crew-row={row.id}
-        onClick={onOpen}
-        aria-label={`Open ${row.name}'s profile`}
-      >
-        <span className={styles.cardAvatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
-          {row.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={row.photoUrl} alt="" />
-          ) : (
-            row.initials
-          )}
-        </span>
-        <span className={styles.cardNames}>
-          <strong>{row.displayName}</strong>
-          <small>
-            {row.workerType === 'subcontractor'
-              ? row.trades.slice(0, 2).join(' · ') || 'Subcontractor'
-              : `${row.roleLabel} · ${row.rateLabel}`}
-          </small>
-          <WorkerChips row={row} />
-        </span>
-      </button>
-
-      <dl className={styles.cardFacts}>
-        <div>
-          <dt>Current job</dt>
-          <dd><CurrentJob row={row} /></dd>
-        </div>
-        <div>
-          <dt>{periodLabel}</dt>
-          <dd title={periodTitle(periodLabel)}>
-            <strong>{row.periodHours} hrs</strong> <span className={styles.dim}>· {row.periodPayLabel} est.</span>
-          </dd>
-        </div>
-        <div>
-          <dt>Contact</dt>
-          <dd>
-            {row.phoneLabel ?? <span className={styles.dim}>No phone</span>}{' '}
-            <FieldAppChip row={row} />
-          </dd>
-        </div>
-      </dl>
-
-      <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
-
-      {assigning ? <AssignForm row={row} assignableJobs={assignableJobs} id={assignId} /> : null}
-    </li>
-  );
-}
-
-// Board: one question, answered by the shape of the screen — who can I send
-// somewhere right now, and who is already out.
-function CrewBoardItem({
-  row,
-  assignableJobs,
-  periodLabel,
-  justAdded = false,
-  onOpen,
-}: {
-  row: CrewRow;
-  assignableJobs: JobOption[];
-  periodLabel: string;
-  /** Just created from the add drawer — the one the roster scrolled to. */
-  justAdded?: boolean;
-  onOpen: () => void;
-}) {
-  const [assigning, setAssigning] = useState(false);
-  const assignId = useId();
-
-  return (
-    <li className={`${styles.boardCard}${justAdded ? ` ${styles.justAdded}` : ''}`}>
-      <button
-        type="button"
-        className={styles.boardOpen}
-        data-crew-row={row.id}
-        onClick={onOpen}
-        aria-label={`Open ${row.name}'s profile`}
-      >
-        <span className={styles.avatar} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
-          {row.photoUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={row.photoUrl} alt="" />
-          ) : (
-            row.initials
-          )}
-        </span>
-        <span className={styles.rowNames}>
-          <strong>{row.name}</strong>
-          <small>{row.roleLabel} · {row.rateLabel}</small>
-          <small title={periodTitle(periodLabel)}>
-            {row.periodHours} hrs · {row.periodPayLabel} est.
-            {row.jobs.length > 0 ? ` · ${row.jobs[0].ref}` : ''}
-          </small>
+          {row.periodPayLabel ? <small title={periodTitle(periodLabel)}>{row.periodPayLabel} est.</small> : null}
         </span>
       </button>
 
@@ -1618,7 +1308,7 @@ function CrewTableRow({
             <span className={styles.avatarSm} data-avatar-tone={avatarTone(row.name)} aria-hidden="true">
               {row.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={row.photoUrl} alt="" />
+                <img src={row.photoUrl} alt="" width={24} height={24} loading="lazy" />
               ) : (
                 row.initials
               )}
@@ -1634,7 +1324,7 @@ function CrewTableRow({
         </td>
         <td><CurrentJob row={row} /></td>
         <td className={styles.num}>{row.periodHours}</td>
-        <td className={styles.num} title={periodTitle(periodLabel)}>{row.periodPayLabel}</td>
+        <td className={styles.num} title={periodTitle(periodLabel)}>{row.periodPayLabel || '—'}</td>
         <td>
           <CrewActions row={row} assigning={assigning} setAssigning={setAssigning} assignId={assignId} onOpen={onOpen} />
         </td>
@@ -1705,12 +1395,14 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
             <div>
               <small>This pay period</small>
               <strong>{row.periodHours} hours</strong>
-              <span>{row.periodPayLabel} estimated</span>
+              {row.periodPayLabel ? <span>{row.periodPayLabel} estimated</span> : null}
               <em>{periodLabel}</em>
             </div>
-            <Link href={`/dashboard/crew?tab=hours&crew=${row.id}`} className="btn secondary">
-              View hours &amp; pay
-            </Link>
+            {row.rateLabel !== 'Hidden' ? (
+              <Link href={`/dashboard/crew?tab=timecards&crew=${row.id}`} className="btn secondary">
+                View timecards
+              </Link>
+            ) : null}
           </div>
         )}
 
@@ -1794,14 +1486,16 @@ function CrewDrawer({ row, onClose, periodLabel }: { row: CrewRow; onClose: () =
               <label htmlFor={`roleLabel-${row.id}`}>Role</label>
               <input id={`roleLabel-${row.id}`} name="roleLabel" defaultValue={row.roleLabel} />
             </div>
-            <PayTypeFields
-              idPrefix={row.id}
-              payType={row.payType}
-              hourlyRate={row.hourlyRate}
-              annualSalary={row.annualSalary ?? ''}
-              dayRate={row.dayRate ?? ''}
-              payrollId={row.payrollId ?? ''}
-            />
+            {row.rateLabel === 'Hidden' ? null : (
+              <PayTypeFields
+                idPrefix={row.id}
+                payType={row.payType ?? undefined}
+                hourlyRate={row.hourlyRate ?? ''}
+                annualSalary={row.annualSalary ?? ''}
+                dayRate={row.dayRate ?? ''}
+                payrollId={row.payrollId ?? ''}
+              />
+            )}
             <div className="field full">
               <label htmlFor={`startAddress-${row.id}`}>Starts the day at (optional)</label>
               {/* Plan my day measures this person's route from here instead of

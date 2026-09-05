@@ -80,7 +80,7 @@ export default function TimeClockCard({
         {mode !== 'off' ? (
           <p>
             A shift left open overnight becomes a day nobody worked, so open shifts are flagged on{' '}
-            <Link href="/dashboard/crew?tab=hours">Hours &amp; pay</Link> and you can close one at the time they
+            <Link href="/dashboard/crew?tab=timecards">Timecards</Link> and you can close one at the time they
             actually stopped.
             {openShiftCount > 0
               ? ` ${openShiftCount} ${openShiftCount === 1 ? 'shift is' : 'shifts are'} running right now.`

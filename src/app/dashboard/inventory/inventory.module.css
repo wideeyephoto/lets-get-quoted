@@ -2120,7 +2120,7 @@
    ========================================================================== */
 
 @media print {
-  body {
+  .pageContainer {
     background: #ffffff !important;
     color: #000000 !important;
   }
@@ -2164,9 +2164,9 @@
    ========================================================================== */
 
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
+  .pageContainer *,
+  .pageContainer *::before,
+  .pageContainer *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;

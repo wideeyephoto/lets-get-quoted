@@ -202,8 +202,8 @@ export function normalizeRecurringView(value: unknown): RecurringView {
 
 // Which Crew & Labor "Hours & pay" layout the owner last used.
 export const CREW_VIEW_COOKIE = 'lgq_crew_view';
-export type CrewView = 'table' | 'grouped' | 'rail' | 'focus';
-export const CREW_VIEWS: CrewView[] = ['table', 'grouped', 'rail', 'focus'];
+export type CrewView = 'table' | 'grouped';
+export const CREW_VIEWS: CrewView[] = ['table', 'grouped'];
 export function normalizeCrewView(value: unknown): CrewView {
   // Table is what this tab already is, so an owner who never opens the gear
   // sees exactly what they saw yesterday.
@@ -263,10 +263,10 @@ export function normalizeCrewSkin(value: unknown): CrewSkin {
 
 // Which "Crew members" roster layout the owner last used. Its own cookie, not
 // the one above: the roster and the pay table answer different questions, and
-// picking a board on one is no reason to change the other.
+// picking a table on one is no reason to change the other.
 export const CREW_ROSTER_VIEW_COOKIE = 'lgq_crew_roster_view';
-export type RosterView = 'rows' | 'cards' | 'board' | 'table' | 'focus';
-export const ROSTER_VIEWS: RosterView[] = ['rows', 'cards', 'board', 'table', 'focus'];
+export type RosterView = 'rows' | 'table';
+export const ROSTER_VIEWS: RosterView[] = ['rows', 'table'];
 export function normalizeRosterView(value: unknown): RosterView {
   // Rows is what the roster already is, so nobody who never opens the gear
   // finds their team rearranged.

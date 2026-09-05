@@ -90,57 +90,97 @@ export default function OverviewBoard({
 
   if (items.length === 0) return <p className="empty-state">{empty}</p>;
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (items.length === 0) return;
+    const currentIndex = items.findIndex((item) => item.id === (selected?.id ?? items[0].id));
+    let nextIndex = currentIndex;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      nextIndex = currentIndex < items.length - 1 ? currentIndex + 1 : 0;
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      nextIndex = currentIndex > 0 ? currentIndex - 1 : items.length - 1;
+    } else if (e.key === 'Home') {
+      e.preventDefault();
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      e.preventDefault();
+      nextIndex = items.length - 1;
+    } else {
+      return;
+    }
+
+    const nextItem = items[nextIndex];
+    if (nextItem) {
+      setSelectedId(nextItem.id);
+      const targetBtn = listRef.current?.querySelector<HTMLButtonElement>(`[data-item-id="${nextItem.id}"]`);
+      targetBtn?.focus();
+    }
+  };
+
   return (
     <div className={styles.ovLayout}>
-      <div className={styles.ovList} ref={listRef} role="list" aria-label={listLabel}>
-        {items.map((item) => (
-          <button
-            key={item.id}
-            type="button"
-            role="listitem"
-            className={`${styles.ovRow}${selected?.id === item.id ? ` ${styles.ovRowOn}` : ''}`}
-            onClick={() => setSelectedId(item.id)}
-            aria-current={selected?.id === item.id ? 'true' : undefined}
-          >
-            <span className={styles.ovAvatar} data-avatar-tone={avatarTone(item.name)} aria-hidden="true">
-              {item.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.photoUrl} alt="" />
-              ) : (
-                item.initials
-              )}
-            </span>
-            <span className={styles.ovWho}>
-              <strong>{item.name}</strong>
-              <small>{item.sub}</small>
-            </span>
-            <span className={styles.ovAmount} title={item.amountTitle}>{item.amount}</span>
-          </button>
-        ))}
+      <div
+        className={styles.ovList}
+        ref={listRef}
+        role="listbox"
+        aria-label={listLabel}
+        onKeyDown={handleKeyDown}
+      >
+        {items.map((item) => {
+          const isSelected = selected?.id === item.id;
+          return (
+            <button
+              key={item.id}
+              data-item-id={item.id}
+              type="button"
+              role="option"
+              aria-selected={isSelected}
+              tabIndex={isSelected ? 0 : -1}
+              className={`${styles.ovRow}${isSelected ? ` ${styles.ovRowOn}` : ''}`}
+              onClick={() => setSelectedId(item.id)}
+            >
+              <span className={styles.ovAvatar} data-avatar-tone={avatarTone(item.name)} aria-hidden="true">
+                {item.photoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={item.photoUrl} alt="" width={36} height={36} loading="lazy" />
+                ) : (
+                  item.initials
+                )}
+              </span>
+              <span className={styles.ovWho}>
+                <strong>{item.name}</strong>
+                <small>{item.sub}</small>
+              </span>
+              <span className={styles.ovAmount} title={item.amountTitle}>{item.amount}</span>
+            </button>
+          );
+        })}
       </div>
 
       {selected ? (
         // Keyed so switching remounts the pane — the entrance animation is the
         // thing that makes a click feel like it landed.
-        <div className={styles.ovPane} key={selected.id}>
+        <div className={styles.ovPane} key={selected.id} aria-live="polite">
           <div className={styles.ovHead}>
             <span className={`${styles.ovAvatar} ${styles.ovAvatarLg}`} data-avatar-tone={avatarTone(selected.name)} aria-hidden="true">
               {selected.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={selected.photoUrl} alt="" />
+                <img src={selected.photoUrl} alt="" width={54} height={54} loading="lazy" />
               ) : (
                 selected.initials
               )}
             </span>
             <div>
-              <h3>
+              <h2>
                 {selected.name}
                 {selected.badge ? (
                   <span className={styles.ovBadge} data-tone={selected.badge.tone ?? 'muted'} title={selected.badge.title}>
                     {selected.badge.label}
                   </span>
                 ) : null}
-              </h3>
+              </h2>
               <p>{selected.headline}</p>
             </div>
           </div>

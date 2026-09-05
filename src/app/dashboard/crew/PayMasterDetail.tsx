@@ -284,6 +284,7 @@ export default function PayMasterDetail({
           ) : (
             <div className={styles.tableWrap}>
               <table className={styles.mdEntries}>
+                <caption className="sr-only">Pay master detail entries</caption>
                 <thead>
                   <tr>
                     <th scope="col">Logged</th>

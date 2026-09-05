@@ -534,19 +534,23 @@ export async function listCrewAssignmentsForJobs(
 ): Promise<Record<string, string[]>> {
   if (jobIds.length === 0) return {};
 
-  const { data, error } = await supabase
-    .from('crew_assignments')
-    .select('job_id, crew_id')
-    .eq('account_id', accountId)
-    .in('job_id', jobIds);
-
-  if (error) throw error;
-
   const map: Record<string, string[]> = {};
-  for (const row of data ?? []) {
-    const jobId = row.job_id as string;
-    const bucket = map[jobId] ?? (map[jobId] = []);
-    bucket.push(row.crew_id as string);
+  const CHUNK_SIZE = 100;
+  for (let i = 0; i < jobIds.length; i += CHUNK_SIZE) {
+    const chunk = jobIds.slice(i, i + CHUNK_SIZE);
+    const { data, error } = await supabase
+      .from('crew_assignments')
+      .select('job_id, crew_id')
+      .eq('account_id', accountId)
+      .in('job_id', chunk);
+
+    if (error) throw error;
+
+    for (const row of data ?? []) {
+      const jobId = row.job_id as string;
+      const bucket = map[jobId] ?? (map[jobId] = []);
+      bucket.push(row.crew_id as string);
+    }
   }
   return map;
 }

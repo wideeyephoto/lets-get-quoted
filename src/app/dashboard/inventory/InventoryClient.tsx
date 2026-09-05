@@ -72,7 +72,7 @@ import {
   generateDepreciationScheduleCsv,
 } from '@/lib/inventory-tracker';
 import { formatUsdExact } from '@/lib/money-format';
-import { validateToolPhotoFile } from '@/lib/tool-photo-storage';
+import { validateToolPhotoFile } from '@/lib/tool-photo-validation';
 import {
   saveToolAction,
   deleteToolAction,

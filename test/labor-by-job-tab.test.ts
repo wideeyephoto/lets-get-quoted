@@ -22,6 +22,7 @@ const CODE = TAB.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
 const LABOR = read('src', 'lib', 'labor.ts');
 const JOBS = read('src', 'lib', 'jobs.ts');
 const HOURS_TAB = read('src', 'app', 'dashboard', 'crew', 'HoursAndPay.tsx');
+const PERIOD_BAR = read('src', 'app', 'dashboard', 'crew', 'CrewPeriodBar.tsx');
 
 // The tab is a React component in a suite with no DOM, so this asserts against
 // the source the way the other panel tests here do. That is a real limit and
@@ -126,22 +127,16 @@ describe('hours on this tab', () => {
 });
 
 describe('the period selector', () => {
-  it('lives on this tab now, driving the same URL Hours & pay drives', () => {
-    expect(CODE).toMatch(/import \{[\s\S]*?PERIOD_MODES,[\s\S]*?QUICK_PERIODS,[\s\S]*?\} from '@\/lib\/labor'/);
-    expect(CODE).toContain('function periodHref');
-    expect(CODE).toMatch(/query\.set\('tab', 'jobs'\)/);
-    expect(CODE).toMatch(/query\.set\('period', period\.mode\)/);
-    expect(CODE).toContain('aria-label="Previous period"');
-    expect(CODE).toContain('aria-label="Next period"');
-    expect(CODE).toContain('name="from"');
-    expect(CODE).toContain('name="to"');
+  it('lives on the shared period bar now, driving the same URL Hours & pay drives', () => {
+    expect(PERIOD_BAR).toMatch(/import \{[\s\S]*?buildPeriodHref,[\s\S]*?\} from '@\/lib\/labor'/);
+    expect(PERIOD_BAR).toContain('aria-label="Previous period"');
+    expect(PERIOD_BAR).toContain('aria-label="Next period"');
+    expect(PERIOD_BAR).toContain('name="from"');
+    expect(PERIOD_BAR).toContain('name="to"');
   });
 
   it('no longer sends the owner to another tab to change the date range', () => {
     expect(CODE).not.toContain('Date range follows the period on');
-    // It still says the period is one period for the page, which is true and is
-    // why the link is still there.
-    expect(CODE).toContain('One period for the whole page');
   });
 });
 

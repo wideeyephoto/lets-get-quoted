@@ -481,8 +481,8 @@ export default function LaborByJob({
           detail: entryList((entry) => (entry.crewId ?? 'unassigned') === row.id),
           actions:
             row.id === 'unassigned' ? null : (
-              <Link href={`/dashboard/crew?tab=hours&crew=${row.id}`} className="btn primary">
-                View hours &amp; pay
+              <Link href={`/dashboard/crew?tab=timecards&crew=${row.id}`} className="btn primary">
+                View timecards
               </Link>
             ),
         }))
@@ -577,59 +577,6 @@ export default function LaborByJob({
         </div>
       </div>
 
-      {/* The same period selector Hours & pay carries, driving the same URL —
-          arrows step whole periods, the pills change the length, the form takes
-          a custom range. */}
-      <div className={styles.periodBar}>
-        <div className={styles.periodNav}>
-          <Link href={periodHref({ offset: String(period.offset - 1), from: null, to: null })} className={styles.periodArrow} aria-label="Previous period">
-            ←
-          </Link>
-          <div className={styles.periodLabel}>
-            <strong>{period.label}</strong>
-            <small>{period.rangeLabel}</small>
-          </div>
-          <Link href={periodHref({ offset: String(period.offset + 1), from: null, to: null })} className={styles.periodArrow} aria-label="Next period">
-            →
-          </Link>
-        </div>
-
-        <div className={styles.periodModes}>
-          {PERIOD_MODES.filter((mode) => mode.id !== 'custom').map((mode) => (
-            <Link
-              key={mode.id}
-              href={periodHref({ period: mode.id, offset: '0', from: null, to: null })}
-              className={`${styles.periodMode}${period.mode === mode.id ? ` ${styles.periodModeOn}` : ''}`}
-            >
-              {mode.label}
-            </Link>
-          ))}
-          <form className={styles.customRange} action={basePath} method="get">
-            <input type="hidden" name="tab" value="jobs" />
-            <input type="hidden" name="period" value="custom" />
-            <input type="date" name="from" aria-label="Range start" required />
-            <span aria-hidden="true">→</span>
-            <input type="date" name="to" aria-label="Range end" required />
-            <button type="submit" className={styles.periodMode}>Go</button>
-          </form>
-        </div>
-      </div>
-
-      <div className={styles.quickRow}>
-        {QUICK_PERIODS.map((quick) => (
-          <Link
-            key={quick.id}
-            href={`/dashboard/crew?tab=jobs&period=${quick.mode}&offset=${quick.offset}`}
-            className={`${styles.quick}${period.mode === quick.mode && period.offset === quick.offset ? ` ${styles.quickOn}` : ''}`}
-          >
-            {quick.label}
-          </Link>
-        ))}
-        <span className={styles.rangeNote}>
-          One period for the whole page — changing it here changes it on <Link href={periodHref({ tab: 'hours' })}>Hours &amp; pay</Link> too.
-        </span>
-      </div>
-
       <div className={styles.toolbar}>
         <div className={styles.filters}>
           <label className={styles.filter}>
@@ -686,7 +633,7 @@ export default function LaborByJob({
         <div className={styles.empty}>
           <h3>No labor logged in this period</h3>
           <p>Once crew log hours against a job, this is where you&apos;ll see what it cost you against what you quoted.</p>
-          <Link href="/dashboard/crew?tab=hours" className="btn secondary">Go to Hours &amp; pay</Link>
+          <Link href="/dashboard/crew?tab=timecards" className="btn secondary">Go to Timecards</Link>
         </div>
       ) : (
         <>
@@ -741,6 +688,7 @@ export default function LaborByJob({
             <>
               <div className={styles.tableWrap}>
                 <table className={styles.hoursTable}>
+                  <caption className="sr-only">Labor entries by crew member</caption>
                   <thead>
                     <tr>
                       <th>Crew member</th>
@@ -778,6 +726,7 @@ export default function LaborByJob({
               {riskNote}
               <div className={styles.tableWrap}>
                 <table className={styles.hoursTable}>
+                  <caption className="sr-only">Labor entries by job</caption>
                   {/* TWO HEADER ROWS, because the four figures in this table are
                       two different quantities. Hours in one group, money in the
                       other, each column naming which allowance it measures

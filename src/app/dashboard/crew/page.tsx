@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import { requireOfficeContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs } from '@/lib/crew';
 import { fieldAppDetail, fieldAppState } from '@/lib/crew-invite';
@@ -14,7 +15,7 @@ import { CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW
 import { loadCrewPayView } from '@/lib/crew-pay-view';
 import { payBasisFromCrew, payRateLabel } from '@/lib/pay-types';
 import { normalizePayrollProvider } from '@/lib/payroll-export';
-import { laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
+import { isUuid, laborTotalsByCrew, listLaborEntries } from '@/lib/labor-data';
 import { LABOR_RULE_COLUMNS, LABOR_SETTINGS_COOKIE, laborRulesFromAccount, normalizeLaborSettings } from '@/lib/labor-settings';
 import { isTimeClockAvailable, listOpenShifts } from '@/lib/time-clock-data';
 import { loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
@@ -26,6 +27,7 @@ import LaborByJob from './LaborByJob';
 import CrewPeriodBar from './CrewPeriodBar';
 import TimeClockCard from './TimeClockCard';
 import AddPersonMenu from './AddPersonMenu';
+import VoiceHotlineBanner from './VoiceHotlineBanner';
 import FieldIntakeHint from '@/components/field-intake-hint';
 import styles from './crew.module.css';
 
@@ -88,15 +90,40 @@ export default async function CrewLaborPage({
   const canViewPay = role === 'owner' || capabilities.has('crew_pay.read');
   const tab = normalizeTab(resolvedSearchParams.tab);
 
-  const { data: accountRules } = await supabase
-    .from('accounts')
-    .select(`timezone, require_separate_payer, payroll_provider, ${LABOR_RULE_COLUMNS}`)
-    .eq('id', accountId)
-    .maybeSingle();
+  // Gated: Users without crew_pay.read cannot access Timecards or Job labor
+  if (!canViewPay && tab !== 'team') {
+    redirect('/dashboard/crew?tab=team');
+  }
+
+  const cookieStore = await cookies();
+  const crewView = normalizeCrewView(cookieStore.get(CREW_VIEW_COOKIE)?.value);
+  const rosterView = normalizeRosterView(cookieStore.get(CREW_ROSTER_VIEW_COOKIE)?.value);
+  const crewTheme = normalizeCrewTheme(cookieStore.get(CREW_THEME_COOKIE)?.value);
+  const crewSkin = normalizeCrewSkin(cookieStore.get(CREW_SKIN_COOKIE)?.value);
+
+  // Validate crew filter as UUID; ignore non-UUID values to prevent Postgres 22P02 crashes
+  const crewFilter = resolvedSearchParams.crew && isUuid(resolvedSearchParams.crew) ? resolvedSearchParams.crew : null;
+
+  // Parallel initial batch
+  const [accountRulesResult, crew, jobs, timeClockAvailable] = await Promise.all([
+    supabase
+      .from('accounts')
+      .select(`timezone, require_separate_payer, payroll_provider, ${LABOR_RULE_COLUMNS}`)
+      .eq('id', accountId)
+      .maybeSingle(),
+    listCrew(supabase, accountId),
+    listJobs(supabase, accountId, undefined, {
+      select: 'id, ref, client_name, status, scheduled_for, scheduled_until',
+      fetchAll: true,
+    }),
+    tab === 'timecards' && canViewPay ? isTimeClockAvailable(supabase, accountId) : Promise.resolve(false),
+  ]);
+
+  const accountRules = accountRulesResult.data;
   const timeZone = ((accountRules as { timezone?: string } | null)?.timezone) || 'America/New_York';
   const settings = laborRulesFromAccount(
     accountRules as Parameters<typeof laborRulesFromAccount>[0],
-    normalizeLaborSettings((await cookies()).get(LABOR_SETTINGS_COOKIE)?.value),
+    normalizeLaborSettings(cookieStore.get(LABOR_SETTINGS_COOKIE)?.value),
   );
   const requireSeparatePayer = (accountRules as { require_separate_payer?: boolean } | null)?.require_separate_payer === true;
 
@@ -106,132 +133,121 @@ export default async function CrewLaborPage({
     { from: resolvedSearchParams.from, to: resolvedSearchParams.to, timeZone },
   );
 
-  const [crew, jobs] = await Promise.all([listCrew(supabase, accountId), listJobs(supabase, accountId)]);
-  const photoUrls = await createCrewPhotoUrls(
-    accountId,
-    crew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)),
-  );
-
-  const today = todayIn(timeZone);
-  const subs =
-    tab === 'team'
-      ? await loadSubcontractors(supabase, accountId, { today, includeArchived: true })
-      : [];
-  const subsById = new Map(subs.map((sub) => [sub.id, sub]));
-
   const activeCrew = crew.filter((member) => member.active);
   const assignableJobs = jobs.filter((job) => job.status !== 'complete' && job.status !== 'archived');
+  const today = todayIn(timeZone);
 
-  const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, assignableJobs.map((job) => job.id));
-  const jobsById = new Map(assignableJobs.map((job) => [job.id, job]));
+  // Job assignments by crew (used on team and timecards tabs)
   const jobsByCrew: Record<string, { id: string; ref: string; clientName: string }[]> = {};
   const jobsTodayByCrew: Record<string, { id: string; ref: string; clientName: string }[]> = {};
 
-  const isJobScheduledToday = (job: { scheduled_for?: string | null; scheduled_until?: string | null }) => {
-    if (!job.scheduled_for) return false;
-    const start = job.scheduled_for;
-    const end = job.scheduled_until || job.scheduled_for;
-    return start <= today && today <= end;
-  };
+  if (tab === 'team' || tab === 'timecards') {
+    const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, assignableJobs.map((job) => job.id));
+    const jobsById = new Map(assignableJobs.map((job) => [job.id, job]));
 
-  for (const [jobId, crewIds] of Object.entries(assignmentsByJob)) {
-    const job = jobsById.get(jobId);
-    if (!job) continue;
-    const isToday = isJobScheduledToday(job);
-    for (const crewId of crewIds) {
-      const bucket = jobsByCrew[crewId] ?? (jobsByCrew[crewId] = []);
-      bucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
-      if (isToday) {
-        const todayBucket = jobsTodayByCrew[crewId] ?? (jobsTodayByCrew[crewId] = []);
-        todayBucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
+    const isJobScheduledToday = (job: { scheduled_for?: string | null; scheduled_until?: string | null }) => {
+      if (!job.scheduled_for) return false;
+      const start = job.scheduled_for;
+      const end = job.scheduled_until || job.scheduled_for;
+      return start <= today && today <= end;
+    };
+
+    for (const [jobId, crewIds] of Object.entries(assignmentsByJob)) {
+      const job = jobsById.get(jobId);
+      if (!job) continue;
+      const isToday = isJobScheduledToday(job);
+      for (const crewId of crewIds) {
+        const bucket = jobsByCrew[crewId] ?? (jobsByCrew[crewId] = []);
+        bucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
+        if (isToday) {
+          const todayBucket = jobsTodayByCrew[crewId] ?? (jobsTodayByCrew[crewId] = []);
+          todayBucket.push({ id: job.id, ref: job.ref, clientName: job.client_name });
+        }
       }
     }
   }
 
-  const openShiftsList = tab === 'timecards' || tab === 'team' ? await listOpenShifts(supabase, accountId) : [];
-  const openShiftCrewIds = new Set(openShiftsList.map((s) => s.crewId));
+  // Tab-specific reads
+  let crewRows: CrewRow[] = [];
+  if (tab === 'team') {
+    const displayedCrew = resolvedSearchParams.status === 'archived' ? crew.filter((m) => !m.active) : activeCrew;
+    const [photoUrls, subs, openShiftsList, totals] = await Promise.all([
+      createCrewPhotoUrls(
+        accountId,
+        displayedCrew.map((member) => member.photo_path).filter((path): path is string => Boolean(path)),
+      ),
+      loadSubcontractors(supabase, accountId, { today, includeArchived: true }),
+      listOpenShifts(supabase, accountId),
+      laborTotalsByCrew(supabase, accountId, { startIso: period.startIso, endIso: period.endIso }),
+    ]);
 
-  const totals = await laborTotalsByCrew(supabase, accountId, { startIso: period.startIso, endIso: period.endIso });
+    const subsById = new Map(subs.map((sub) => [sub.id, sub]));
+    const openShiftCrewIds = new Set(openShiftsList.map((s) => s.crewId));
 
-  const crewRows: CrewRow[] = crew.map((member) => {
-    const bucket = totals.get(member.id);
-    const sub = subsById.get(member.id) ?? null;
-    return {
-      id: member.id,
-      name: member.name,
-      workerType: normalizeWorkerType((member as unknown as Record<string, unknown>).worker_type),
-      companyName: sub?.profile.companyName ?? null,
-      displayName: sub?.displayName ?? member.name,
-      subStatus: sub?.profile.subStatus ?? null,
-      trades: sub?.profile.trades ?? [],
-      compliance: sub ? { state: sub.compliance.overall, label: sub.compliance.label } : null,
-      subMetrics: sub
-        ? {
-            offered: sub.metrics.offered,
-            accepted: sub.metrics.accepted,
-            completed: sub.metrics.completed,
-            responseMinutes: sub.metrics.responseMinutes,
-            acceptanceRate: sub.metrics.acceptanceRate,
-            rating: sub.metrics.rating,
-          }
-        : null,
-      subProfile: sub?.profile ?? null,
-      initials: initialsFor(member.name),
-      photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
-      roleLabel: member.role_label,
-      hourlyRate: canViewPay ? Number(member.hourly_rate) || 0 : 0,
-      payType: canViewPay ? payBasisFromCrew(member).payType : 'hourly',
-      annualSalary: canViewPay && member.annual_salary != null ? Number(member.annual_salary) : null,
-      dayRate: canViewPay && member.day_rate != null ? Number(member.day_rate) : null,
-      payrollId: canViewPay ? member.payroll_id ?? null : null,
-      rateLabel: canViewPay ? payRateLabel(payBasisFromCrew(member)) : '',
-      phone: member.phone || null,
-      phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
-      phoneVerified: isCrewPhoneVerified(member),
-      email: member.email,
-      startAddress: member.start_address ?? null,
-      permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
-      canShareWorkLocation: member.can_share_work_location !== false,
-      active: member.active,
-      fieldApp: fieldAppState(member),
-      fieldAppDetail: fieldAppDetail(member),
-      jobs: jobsByCrew[member.id] ?? [],
-      jobsToday: jobsTodayByCrew[member.id] ?? [],
-      isBusyToday: openShiftCrewIds.has(member.id) || (jobsTodayByCrew[member.id] ?? []).length > 0,
-      periodHours: bucket?.hours ?? 0,
-      periodPay: canViewPay ? (bucket?.pay ?? 0) : 0,
-      periodPayLabel: canViewPay ? payMoney(bucket?.pay ?? 0) : '',
-      createdAt: member.created_at,
-    };
-  });
+    crewRows = crew.map((member) => {
+      const bucket = totals.get(member.id);
+      const sub = subsById.get(member.id) ?? null;
+      return {
+        id: member.id,
+        name: member.name,
+        workerType: normalizeWorkerType((member as unknown as Record<string, unknown>).worker_type),
+        companyName: sub?.profile.companyName ?? null,
+        displayName: sub?.displayName ?? member.name,
+        subStatus: sub?.profile.subStatus ?? null,
+        trades: sub?.profile.trades ?? [],
+        compliance: sub ? { state: sub.compliance.overall, label: sub.compliance.label } : null,
+        subMetrics: sub ? { ...sub.metrics } : null,
+        subProfile: sub?.profile ?? null,
+        initials: initialsFor(member.name),
+        photoUrl: member.photo_path ? photoUrls[member.photo_path] ?? null : null,
+        roleLabel: member.role_label,
+        hourlyRate: canViewPay ? (Number(member.hourly_rate) || 0) : null,
+        payType: canViewPay ? payBasisFromCrew(member).payType : null,
+        annualSalary: canViewPay && member.annual_salary != null ? Number(member.annual_salary) : null,
+        dayRate: canViewPay && member.day_rate != null ? Number(member.day_rate) : null,
+        payrollId: canViewPay ? member.payroll_id ?? null : null,
+        rateLabel: canViewPay ? payRateLabel(payBasisFromCrew(member)) : 'Hidden',
+        phone: member.phone || null,
+        phoneLabel: member.phone ? formatPhoneDashes(member.phone) : null,
+        phoneVerified: isCrewPhoneVerified(member),
+        email: member.email,
+        startAddress: member.start_address ?? null,
+        permissions: arrivalPermissionsFromCrew(member as unknown as Record<string, unknown>),
+        canShareWorkLocation: member.can_share_work_location !== false,
+        active: member.active,
+        fieldApp: fieldAppState(member),
+        fieldAppDetail: fieldAppDetail(member),
+        jobs: jobsByCrew[member.id] ?? [],
+        jobsToday: jobsTodayByCrew[member.id] ?? [],
+        isBusyToday: openShiftCrewIds.has(member.id) || (jobsTodayByCrew[member.id] ?? []).length > 0,
+        periodHours: bucket?.hours ?? 0,
+        periodPay: canViewPay ? (bucket?.pay ?? 0) : 0,
+        periodPayLabel: canViewPay ? payMoney(bucket?.pay ?? 0) : '',
+        createdAt: member.created_at,
+      };
+    });
+  }
 
   const laborEntries =
-    tab === 'jobs'
+    tab === 'jobs' && canViewPay
       ? await listLaborEntries(supabase, accountId, { startIso: period.startIso, endIso: period.endIso, crewId: null })
       : [];
-  const jobRows = tab === 'jobs' ? summarizeJobLabor(laborEntries, jobs) : [];
-
-  const cookieStore = await cookies();
-  const crewView = normalizeCrewView(cookieStore.get(CREW_VIEW_COOKIE)?.value);
-  const rosterView = normalizeRosterView(cookieStore.get(CREW_ROSTER_VIEW_COOKIE)?.value);
-  const crewTheme = normalizeCrewTheme(cookieStore.get(CREW_THEME_COOKIE)?.value);
-  const crewSkin = normalizeCrewSkin(cookieStore.get(CREW_SKIN_COOKIE)?.value);
+  const jobRows = tab === 'jobs' && canViewPay ? summarizeJobLabor(laborEntries, jobs) : [];
 
   const payView =
-    tab === 'timecards'
+    tab === 'timecards' && canViewPay
       ? await loadCrewPayView(supabase, accountId, {
           period,
           settings,
           timeZone,
           crew,
-          crewId: resolvedSearchParams.crew ?? null,
+          crewId: crewFilter,
           withComparison: crewView === 'grouped',
           searchParams: resolvedSearchParams,
         })
       : null;
 
-  const timeClockAvailable = tab === 'timecards' ? await isTimeClockAvailable(supabase, accountId) : false;
-
+  // Preserve filter params across tab switches
   const tabHref = (next: TabId) => {
     const query = new URLSearchParams();
     query.set('tab', next);
@@ -239,8 +255,15 @@ export default async function CrewLaborPage({
     if (resolvedSearchParams.offset) query.set('offset', resolvedSearchParams.offset);
     if (resolvedSearchParams.from) query.set('from', resolvedSearchParams.from);
     if (resolvedSearchParams.to) query.set('to', resolvedSearchParams.to);
+    if (resolvedSearchParams.status) query.set('status', resolvedSearchParams.status);
+    if (resolvedSearchParams.worker) query.set('worker', resolvedSearchParams.worker);
+    if (crewFilter) query.set('crew', crewFilter);
+    if (resolvedSearchParams.highlight) query.set('highlight', resolvedSearchParams.highlight);
     return `/dashboard/crew?${query.toString()}`;
   };
+
+  // Nav drops pay tabs when canViewPay is false
+  const availableTabs = TABS.filter((item) => item.id === 'team' || canViewPay);
 
   return (
     <main
@@ -253,8 +276,7 @@ export default async function CrewLaborPage({
         crewSkin !== 'standard' ? `crew-skin-${crewSkin}` : '',
         crewTheme !== 'overview' &&
         (crewTheme === 'focus' ||
-          (tab === 'timecards' && crewView === 'rail') ||
-          (tab === 'team' && (rosterView === 'board' || rosterView === 'table')))
+          (tab === 'team' && rosterView === 'table'))
           ? 'crew-wide'
           : '',
       ]
@@ -306,7 +328,7 @@ export default async function CrewLaborPage({
         </header>
 
         <nav className={styles.tabs} aria-label="Crew and labor sections">
-          {TABS.map((item) => (
+          {availableTabs.map((item) => (
             <Link
               key={item.id}
               href={tabHref(item.id)}
@@ -324,113 +346,101 @@ export default async function CrewLaborPage({
             tab={tab}
             basePath="/dashboard/crew"
             extraParams={{
-              crew: resolvedSearchParams.crew,
+              crew: crewFilter,
               risk: resolvedSearchParams.risk,
             }}
           />
         ) : null}
 
-        {tab === 'team' ? (
-          <>
-            <div className={styles.voiceHotlineBanner}>
-              <div className={styles.voiceHotlineContent}>
-                <div className={styles.voiceHotlineHeader}>
-                  <span className={styles.voiceHotlineIcon}>🎙️</span>
-                  <strong className={styles.voiceHotlineTitle}>2-Way Field Voice Hotline Enabled</strong>
-                  <span className={styles.voiceHotlineBadge}>Zero Extra Lines</span>
-                </div>
-                <p className={styles.voiceHotlineDesc}>
-                  Adding a phone number to any crew member allows them to call your main business number from the road to update job scopes, log materials, and record change orders hands-free.
-                </p>
-              </div>
-              <Link href="/dashboard/voice-calls" className={styles.voiceHotlineLink}>
-                View Voice Assistant →
-              </Link>
-            </div>
-            <CrewRoster
-              rows={crewRows}
+        <Suspense fallback={<div className="skeleton-block" style={{ height: '340px', borderRadius: '12px' }} aria-hidden="true" />}>
+          {tab === 'team' ? (
+            <>
+              <VoiceHotlineBanner />
+              <CrewRoster
+                rows={crewRows}
+                assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
+                periodLabel={period.rangeLabel}
+                initialStatus={resolvedSearchParams.status === 'archived' ? 'archived' : 'active'}
+                initialWorkerType={resolvedSearchParams.worker === 'subcontractor' || resolvedSearchParams.worker === 'employee' ? resolvedSearchParams.worker : 'all'}
+                initialView={rosterView === 'table' ? 'table' : 'rows'}
+                initialOverview={crewTheme === 'overview'}
+                highlight={resolvedSearchParams.highlight}
+              />
+            </>
+          ) : null}
+
+          {tab === 'timecards' && canViewPay && payView ? (
+            <HoursAndPay
+              payrollProvider={normalizePayrollProvider((accountRules as { payroll_provider?: string } | null)?.payroll_provider)}
+              rows={payView.rows}
+              totals={payView.totals}
+              periodState={payView.periodState}
+              primaryAction={payView.primaryAction}
+              period={payView.period}
+              periodClosedAt={payView.periodClosedAt}
+              periodReopenReason={payView.periodReopenReason}
+              overlaps={payView.overlaps}
+              events={payView.events}
+              payAvailable={payView.payAvailable}
+              exportBlocked={payView.exportBlocked}
+              crewFilter={crewFilter}
+              crewOptions={activeCrew.map((member) => ({ id: member.id, name: member.name }))}
               assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
-              periodLabel={period.rangeLabel}
-              initialStatus={resolvedSearchParams.status === 'archived' ? 'archived' : 'active'}
-              initialWorkerType={resolvedSearchParams.worker === 'subcontractor' || resolvedSearchParams.worker === 'employee' ? resolvedSearchParams.worker : 'all'}
-              initialView={rosterView === 'table' ? 'table' : 'rows'}
+              jobLookup={Object.fromEntries(jobs.map((job) => [job.id, `${job.ref} · ${job.client_name}`]))}
+              jobsByCrew={Object.fromEntries(
+                Object.entries(jobsByCrew).map(([id, list]) => [id, list.map((job) => ({ ref: job.ref, clientName: job.clientName }))]),
+              )}
+              hoursToday={payView.hoursToday}
+              showTodayColumn={payView.showTodayColumn}
+              todayKey={payView.todayKey}
+              progress={payView.progress}
+              initialView={crewView === 'grouped' ? 'grouped' : 'table'}
+              initialSkin={crewSkin}
               initialOverview={crewTheme === 'overview'}
-              highlight={resolvedSearchParams.highlight}
+              comparison={payView.comparison}
+              payDay={payView.payDay}
+              payDue={payView.payDue}
+              outstanding={payView.outstanding}
+              approvedLines={payView.approvedLines}
+              hoursThisPeriod={payView.hoursThisPeriod}
+              hoursLastPeriod={payView.hoursLastPeriod}
+              previousPayLabel={payView.previousPayLabel}
+              settings={settings}
+              requireSeparatePayer={requireSeparatePayer}
+              timeClockMode={payView.timeClockMode}
+              openShifts={payView.openShifts}
             />
-          </>
-        ) : null}
+          ) : null}
 
-        {tab === 'timecards' && payView ? (
-          <HoursAndPay
-            payrollProvider={normalizePayrollProvider((accountRules as { payroll_provider?: string } | null)?.payroll_provider)}
-            rows={payView.rows}
-            totals={payView.totals}
-            periodState={payView.periodState}
-            primaryAction={payView.primaryAction}
-            period={payView.period}
-            periodClosedAt={payView.periodClosedAt}
-            periodReopenReason={payView.periodReopenReason}
-            overlaps={payView.overlaps}
-            events={payView.events}
-            payAvailable={payView.payAvailable}
-            exportBlocked={payView.exportBlocked}
-            crewFilter={resolvedSearchParams.crew ?? null}
-            crewOptions={activeCrew.map((member) => ({ id: member.id, name: member.name }))}
-            assignableJobs={assignableJobs.map((job) => ({ id: job.id, ref: job.ref, clientName: job.client_name }))}
-            jobLookup={Object.fromEntries(jobs.map((job) => [job.id, `${job.ref} · ${job.client_name}`]))}
-            jobsByCrew={Object.fromEntries(
-              Object.entries(jobsByCrew).map(([crewId, list]) => [crewId, list.map((job) => ({ ref: job.ref, clientName: job.clientName }))]),
-            )}
-            hoursToday={payView.hoursToday}
-            showTodayColumn={payView.showTodayColumn}
-            todayKey={payView.todayKey}
-            progress={payView.progress}
-            initialView={crewView === 'table' ? 'table' : 'grouped'}
-            initialSkin={crewSkin}
-            initialOverview={crewTheme === 'overview'}
-            comparison={payView.comparison}
-            payDay={payView.payDay}
-            payDue={payView.payDue}
-            outstanding={payView.outstanding}
-            approvedLines={payView.approvedLines}
-            hoursThisPeriod={payView.hoursThisPeriod}
-            hoursLastPeriod={payView.hoursLastPeriod}
-            previousPayLabel={payView.previousPayLabel}
-            settings={settings}
-            requireSeparatePayer={requireSeparatePayer}
-            timeClockMode={payView.timeClockMode}
-            openShifts={payView.openShifts}
-          />
-        ) : null}
+          {tab === 'timecards' && canViewPay ? (
+            <TimeClockCard
+              mode={payView?.timeClockMode ?? 'off'}
+              available={timeClockAvailable}
+              crewCount={activeCrew.length}
+              openShiftCount={payView?.openShifts?.length ?? 0}
+            />
+          ) : null}
 
-        {tab === 'timecards' ? (
-          <TimeClockCard
-            mode={payView?.timeClockMode ?? 'off'}
-            available={timeClockAvailable}
-            crewCount={activeCrew.length}
-            openShiftCount={payView?.openShifts?.length ?? 0}
-          />
-        ) : null}
-
-        {tab === 'jobs' ? (
-          <LaborByJob
-            rows={jobRows}
-            period={period}
-            initialSkin={crewSkin}
-            initialOverview={crewTheme === 'overview'}
-            crewOptions={crew.map((member) => ({ id: member.id, name: member.name }))}
-            entries={laborEntries.map((entry) => ({
-              id: entry.id,
-              jobId: entry.job_id,
-              crewId: entry.crew_id,
-              crewName: entry.crew_name || 'Unassigned',
-              description: entry.description || '',
-              hours: Number(entry.hours) || 0,
-              amount: Number(entry.amount) || 0,
-              loggedAt: entry.created_at,
-            }))}
-          />
-        ) : null}
+          {tab === 'jobs' && canViewPay ? (
+            <LaborByJob
+              rows={jobRows}
+              period={period}
+              initialSkin={crewSkin}
+              initialOverview={crewTheme === 'overview'}
+              crewOptions={crew.map((member) => ({ id: member.id, name: member.name }))}
+              entries={laborEntries.map((entry) => ({
+                id: entry.id,
+                jobId: entry.job_id,
+                crewId: entry.crew_id,
+                crewName: entry.crew_name || 'Unassigned',
+                description: entry.description || '',
+                hours: Number(entry.hours) || 0,
+                amount: canViewPay ? (Number(entry.amount) || 0) : 0,
+                loggedAt: entry.created_at,
+              }))}
+            />
+          ) : null}
+        </Suspense>
       </section>
     </main>
   );

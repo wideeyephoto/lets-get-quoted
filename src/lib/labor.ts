@@ -334,9 +334,57 @@ export function normalizeOffset(value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n)) return 0;
   // Clamped: the URL is user-editable and an absurd offset would build dates
-  // far outside anything the account can have data for.
-  return Math.max(-260, Math.min(260, Math.trunc(n)));
+  // far outside anything the account can have data for. Capped at 0 (current period).
+  return Math.max(-260, Math.min(0, Math.trunc(n)));
 }
+
+/**
+ * Shared URL builder for pay period controls.
+ * Canonicalizes tab to timecards, clamps offset to non-future, preserves custom ranges,
+ * and refuses to step offset when viewing a custom range.
+ */
+export function buildPeriodHref(options: {
+  basePath?: string;
+  tab?: string;
+  period: PayPeriod;
+  patch?: Record<string, string | number | null | undefined>;
+  extraParams?: Record<string, string | null | undefined>;
+}): string {
+  const { basePath = '/dashboard/crew', tab = 'timecards', period, patch = {}, extraParams = {} } = options;
+  const query = new URLSearchParams();
+  query.set('tab', tab === 'hours' ? 'timecards' : tab);
+
+  const nextMode = (patch.period !== undefined ? (patch.period ? String(patch.period) : null) : period.mode) ?? 'weekly';
+  if (nextMode) query.set('period', nextMode);
+
+  // If in custom mode and trying to step offset without switching mode, refuse to step
+  const isCustom = (period.mode === 'custom' && (!patch.period || patch.period === 'custom')) || nextMode === 'custom';
+  if (isCustom) {
+    const from = patch.from !== undefined ? patch.from : period.startIso?.slice(0, 10);
+    const to = patch.to !== undefined ? patch.to : (period.endIso ? new Date(new Date(period.endIso).getTime() - 24 * 3600 * 1000).toISOString().slice(0, 10) : undefined);
+    if (from != null && from !== '') query.set('from', String(from));
+    if (to != null && to !== '') query.set('to', String(to));
+    // Refuse to step offset on a custom range
+  } else {
+    let offset = patch.offset !== undefined ? (patch.offset !== null ? normalizeOffset(patch.offset) : 0) : (period.offset ?? 0);
+    offset = normalizeOffset(offset);
+    if (offset !== 0) query.set('offset', String(offset));
+  }
+
+  for (const [key, value] of Object.entries(extraParams)) {
+    if (value != null && value !== '' && !query.has(key)) query.set(key, String(value));
+  }
+
+  for (const [key, value] of Object.entries(patch)) {
+    if (key === 'period' || key === 'offset' || key === 'from' || key === 'to') continue;
+    if (value === null || value === undefined || value === '') query.delete(key);
+    else query.set(key, String(value));
+  }
+
+  const qs = query.toString();
+  return qs ? `${basePath}?${qs}` : basePath;
+}
+
 
 // -- Entry health ------------------------------------------------------------
 

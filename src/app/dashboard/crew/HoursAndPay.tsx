@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject } from 'react';
+import { useEffect, useDeferredValue, useMemo, useRef, useState, useTransition, type ReactNode, type RefObject } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { useFormState } from 'react-dom';
 import {
@@ -60,7 +61,6 @@ import { TIME_CLOCK_MODES, type TimeClockMode } from '@/lib/time-clock';
 import SaveButton from '@/components/save-button';
 import { addLaborEntryAction, closeOpenShiftAction, deleteLaborEntryAction } from './actions';
 import { saveLaborSettingsAction } from './settings-actions';
-import PayMasterDetail from './PayMasterDetail';
 import { WEEKDAY_NAMES, daysWaiting, payDaySentence, waitingLabel, type PayDaySettings, type PayDayView } from '@/lib/pay-day';
 import type { OutstandingPeriod, PayEntryLine } from '@/lib/crew-pay-data';
 import {
@@ -80,7 +80,8 @@ import OverviewBoard, { overviewOption, type OverviewItem } from './OverviewBoar
 import { setCrewOverviewAction, setCrewSkinAction, setCrewViewAction } from '@/app/dashboard/view-actions';
 import type { CrewSkin, CrewView } from '@/lib/dashboard-views';
 import { CREW_SKIN_OPTIONS, applyCrewSkin } from './crew-skins';
-import { PaymentConfirmDialog, ReasonDialog } from './PaymentDialogs';
+const PaymentConfirmDialog = dynamic(() => import('./PaymentDialogs').then((mod) => mod.PaymentConfirmDialog), { ssr: false });
+const ReasonDialog = dynamic(() => import('./PaymentDialogs').then((mod) => mod.ReasonDialog), { ssr: false });
 import { avatarTone } from '@/lib/avatar-tone';
 import styles from './crew.module.css';
 
@@ -127,12 +128,6 @@ const CREW_VIEW_OPTIONS: ViewOption<CrewPick>[] = [
   { id: 'table', label: 'Table', hint: 'Every crew member in one list' },
   overviewOption<CrewPick>('Everyone in a list, one open beside it — master-detail'),
 ];
-
-// Views that put the rail beside the table rather than under it. They need the
-// wide shell, and they move the period's one action into the rail.
-function isRailView(view: CrewView): boolean {
-  return view === 'rail' || view === 'focus';
-}
 
 // The order the sections appear in is the order the work happens in: sort out
 // the exceptions, approve ready shifts, pay who's owed, then everything already settled.
@@ -455,24 +450,16 @@ export default function HoursAndPay({
     });
   }
 
-  // Review needs a wider shell than the 1100px cap, and the shell is rendered
-  // by the page above this component. The server sets the class from the cookie
-  // so the first paint is right; this keeps it in step the moment the view
-  // changes, rather than making a layout change wait on a round trip.
+  // Review needs a wider shell than the 1100px cap on the table layout, and the
+  // shell is rendered by the page above this component.
   useEffect(() => {
     const main = document.querySelector('main.wide-shell');
     if (!main) return;
-    // Overview stays at the standard width: a 21rem list beside one open person
-    // does not need 1600px, and letting it have it strands the pane's buttons a
-    // screen-width away from the list.
-    main.classList.toggle('crew-wide', layout !== 'overview' && isRailView(view));
-    // Focus is a page theme, not just this tab's layout.
-    main.classList.toggle('crew-focus', layout === 'focus');
+    main.classList.toggle('crew-wide', layout === 'table');
     return () => {
       main.classList.remove('crew-wide');
-      main.classList.remove('crew-focus');
     };
-  }, [view, layout]);
+  }, [layout]);
   const [selected, setSelected] = useState<string[]>([]);
   // Which person the master-detail layout is showing. Null until one is picked;
   // the component then falls back to whoever most needs looking at.
@@ -481,6 +468,7 @@ export default function HoursAndPay({
   const [paymentFilter, setPaymentFilter] = useState<PaymentFilter>('all');
   const [flaggedOnly, setFlaggedOnly] = useState(false);
   const [query, setQuery] = useState('');
+  const deferredQuery = useDeferredValue(query);
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'pay', dir: 'desc' });
   const [pageSize, setPageSize] = useState(25);
   const [page, setPage] = useState(1);
@@ -505,6 +493,11 @@ export default function HoursAndPay({
     { result: PayrollExport; amount: number; names: string[]; confirmed: boolean } | null
   >(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Clear bulk selection whenever filters change so hidden rows aren't acted on.
+  useEffect(() => {
+    setSelected([]);
+  }, [statusFilter, paymentFilter, flaggedOnly, deferredQuery]);
 
   /** Fire a pay action. The armed form does the submitting; this is the trigger. */
   function arm(next: NonNullable<Armed>) {
@@ -560,7 +553,7 @@ export default function HoursAndPay({
   }, [drawer]);
 
   const visible = useMemo(() => {
-    const needle = query.trim().toLowerCase();
+    const needle = deferredQuery.trim().toLowerCase();
     const filtered = rows.filter((row) => {
       if (statusFilter !== 'all' && row.review !== statusFilter) return false;
       if (paymentFilter !== 'all' && row.payment !== paymentFilter) return false;
@@ -589,7 +582,7 @@ export default function HoursAndPay({
           return (a.estimatedPay - b.estimatedPay) * direction || a.name.localeCompare(b.name);
       }
     });
-  }, [rows, statusFilter, paymentFilter, flaggedOnly, query, sort, jobsByCrew]);
+  }, [rows, statusFilter, paymentFilter, flaggedOnly, deferredQuery, sort, jobsByCrew]);
 
   const pageCount = Math.max(1, Math.ceil(visible.length / pageSize));
   const currentPage = Math.min(page, pageCount);
@@ -599,7 +592,13 @@ export default function HoursAndPay({
   // filter is on has to mean the rows that filter describes, and the bulk bar
   // says how many that is.
   const selectable = useMemo(() => visible.filter((row) => row.eligible && row.hours > 0 && row.payment !== 'paid'), [visible]);
-  const selectedRows = useMemo(() => selected.map((id) => byKey.get(id)).filter(Boolean) as CrewPayRow[], [selected, byKey]);
+  const selectedRows = useMemo(() => {
+    const visibleKeys = new Set(visible.map(rowKey));
+    return selected
+      .filter((id) => visibleKeys.has(id))
+      .map((id) => byKey.get(id))
+      .filter(Boolean) as CrewPayRow[];
+  }, [selected, visible, byKey]);
   const selectedTotal = selectedRows.reduce((sum, row) => sum + row.estimatedPay, 0);
   const allSelected = selectable.length > 0 && selectable.every((row) => selected.includes(rowKey(row)));
 
@@ -633,7 +632,7 @@ export default function HoursAndPay({
 
   function periodHref(patch: Record<string, string | null>): string {
     const query = new URLSearchParams();
-    query.set('tab', 'hours');
+    query.set('tab', 'timecards');
     query.set('period', period.mode);
     if (period.offset) query.set('offset', String(period.offset));
     if (crewFilter) query.set('crew', crewFilter);
@@ -665,8 +664,12 @@ export default function HoursAndPay({
     const link = document.createElement('a');
     link.href = url;
     link.download = filename;
+    document.body.appendChild(link);
     link.click();
-    URL.revokeObjectURL(url);
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
   }
 
   /**
@@ -910,115 +913,6 @@ export default function HoursAndPay({
 
       {owedLeadsHere ? owedStrip : null}
 
-      {/* ONE period picker.
-          There were four: two arrows, a row of length pills, four quick-filter
-          shortcuts (This week / Last week / This month / Last month) and a
-          from/to form with its own Go button. Every one of them answered the
-          same question — which range am I looking at — and between them they
-          could disagree: "This month" left the pills saying Weekly, the arrows
-          then stepped a week from a month, and the quick row highlighted
-          nothing. Four controls, one question, so: step back, what you're
-          looking at, step forward, come back to now, how long a period is, and
-          jump to any date. */}
-      <div className={styles.periodBar}>
-        <div className={styles.periodNav}>
-          <Link href={periodHref({ offset: String(period.offset - 1), from: null, to: null })} className={styles.periodArrow} aria-label="Previous pay period">
-            ←
-          </Link>
-          <div className={styles.periodLabel}>
-            <strong>{period.label}</strong>
-            <small>{period.rangeLabel}</small>
-          </div>
-          <Link href={periodHref({ offset: String(period.offset + 1), from: null, to: null })} className={styles.periodArrow} aria-label="Next pay period">
-            →
-          </Link>
-        </div>
-
-        <div className={styles.periodModes}>
-          {/* Only offered when it would do something. A "Current period" button
-              that is already the current period is a button that teaches you it
-              does nothing. */}
-          {period.offset !== 0 || period.mode === 'custom' ? (
-            <Link href={periodHref({ offset: '0', period: settings.periodMode, from: null, to: null })} className={styles.periodMode}>
-              Current period
-            </Link>
-          ) : (
-            <span className={`${styles.periodMode} ${styles.periodModeOn}`}>Current period</span>
-          )}
-
-          <label className={styles.filter}>
-            <span>Length</span>
-            <select
-              value={period.mode}
-              onChange={(event) => {
-                const mode = event.target.value as PeriodMode;
-                // Changing the LENGTH keeps the date you were looking at, rather
-                // than snapping to today: switching Weekly → Monthly while
-                // reviewing March has to land on March, and offsetForDate is
-                // what makes that possible.
-                if (mode === 'custom') {
-                  router.push(periodHref({ period: 'custom', from: period.startIso.slice(0, 10), to: periodEndKey(period), offset: '0' }));
-                  return;
-                }
-                router.push(
-                  periodHref({
-                    period: mode,
-                    offset: String(offsetForDate(mode, period.startIso.slice(0, 10))),
-                    from: null,
-                    to: null,
-                  }),
-                );
-              }}
-              aria-label="Pay-period length"
-            >
-              {PERIOD_MODES.map((mode) => (
-                <option key={mode.id} value={mode.id}>{mode.label}</option>
-              ))}
-            </select>
-          </label>
-
-          {period.mode === 'custom' ? (
-            // A custom range is the one shape a single date can't express, so
-            // it keeps two inputs — but no Go button: the range applies as soon
-            // as both ends are set, the same way every other control here does.
-            <span className={styles.customRange}>
-              <input
-                type="date"
-                aria-label="Range start"
-                defaultValue={period.startIso.slice(0, 10)}
-                onChange={(event) => event.target.value && router.push(periodHref({ period: 'custom', from: event.target.value, to: periodEndKey(period) }))}
-              />
-              <span aria-hidden="true">→</span>
-              <input
-                type="date"
-                aria-label="Range end"
-                defaultValue={periodEndKey(period)}
-                onChange={(event) => event.target.value && router.push(periodHref({ period: 'custom', from: period.startIso.slice(0, 10), to: event.target.value }))}
-              />
-            </span>
-          ) : (
-            <label className={styles.filter}>
-              <span>Jump to</span>
-              <input
-                type="date"
-                aria-label="Jump to the pay period containing a date"
-                value=""
-                onChange={(event) => {
-                  if (!event.target.value) return;
-                  router.push(periodHref({ offset: String(offsetForDate(period.mode, event.target.value)), from: null, to: null }));
-                }}
-              />
-            </label>
-          )}
-
-          {filteredName ? (
-            <Link href={periodHref({ crew: null })} className={styles.crewFilterChip}>
-              Showing {filteredName} only ✕
-            </Link>
-          ) : null}
-        </div>
-      </div>
-
       {toast ? (
         <div className={styles.toast} data-ok={toast.ok || undefined} role="status" aria-live="polite">
           <div>
@@ -1127,12 +1021,7 @@ export default function HoursAndPay({
           })}
         </div>
 
-        {/* One primary action. What it is depends entirely on where the period
-            has got to — never two equally loud buttons to choose between. */}
-        {/* Focus moves this into the rail, where it stays in view while you
-            scroll the crew. Leaving a copy here as well would be two equally
-            loud buttons for one decision. */}
-        {payAvailable && primaryAction && layout !== 'focus' ? (
+        {payAvailable && primaryAction ? (
           <div className={styles.periodActions}>
             {primaryActionButton}
             <small>{primaryAction.help}</small>
@@ -1351,7 +1240,7 @@ export default function HoursAndPay({
             {timeClockMode === 'off'
               ? 'Crew type their hours when the work is done. '
               : `Crew ${timeClockMode === 'required' ? 'must clock' : 'can clock'} in and out from the job in the field app. `}
-            <Link href="/dashboard/crew?tab=hours#time-clock">
+            <Link href="/dashboard/crew?tab=timecards#time-clock">
               {timeClockMode === 'off' ? 'Turn on the time clock' : 'Change the time clock'}
             </Link>
             {' · '}
@@ -1378,6 +1267,11 @@ export default function HoursAndPay({
                   aria-label="Search crew"
                 />
               </div>
+              {filteredName ? (
+                <Link href={periodHref({ crew: null })} className={styles.crewFilterChip}>
+                  Showing {filteredName} only ✕
+                </Link>
+              ) : null}
               <label className={styles.filter}>
                 <span>Status</span>
                 <select value={statusFilter} onChange={(event) => applyFilter({ status: event.target.value as StatusFilter })}>
@@ -1417,6 +1311,10 @@ export default function HoursAndPay({
                 Send to {PAYROLL_PROVIDER_LABEL[payrollProvider] === 'A spreadsheet (any provider, or a bookkeeper)' ? 'payroll' : PAYROLL_PROVIDER_LABEL[payrollProvider]}
               </button>
             </div>
+
+            <span className="sr-only" role="status" aria-live="polite">
+              Showing {visible.length} of {rows.length} crew members
+            </span>
 
             {exportBlocked ? <p className={styles.exportBlocked}>Heads up: {exportBlocked}</p> : null}
 
@@ -1538,36 +1436,6 @@ export default function HoursAndPay({
               />
             ) : null}
 
-            {/* --- the crew --- */}
-            {layout === 'focus' ? (
-              <PayMasterDetail
-                rows={visible}
-                groups={groupCrewRows(visible)}
-                selectedKey={detailKey}
-                onSelect={setDetailKey}
-                keyOf={rowKey}
-                jobLookup={jobLookup}
-                jobsByCrew={jobsByCrew}
-                events={events}
-                payAvailable={payAvailable}
-                approving={busy('approve')}
-                onApprove={(crewIds) => arm({ kind: 'approve', crewIds })}
-                onPay={(ids) => setDialog({ kind: 'pay', ids })}
-                onOpenProfile={(key) => setDrawer({ mode: 'crew', crewId: key })}
-                onHistory={() => setDrawer({ mode: 'history' })}
-                periodLabel={period.rangeLabel}
-                approvedLines={approvedLines}
-                periodActionTitle={
-                  primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'Pay this period' : primaryAction?.label ?? null
-                }
-                periodAction={primaryActionButton}
-                periodActionHelp={periodPayBlocked ?? primaryAction?.help ?? null}
-                periodActionTone={
-                  primaryAction?.id === 'approve' || primaryAction?.id === 'pay' || primaryAction?.id === 'finish' ? 'go' : 'todo'
-                }
-              />
-            ) : null}
-
             {layout === 'overview' ? (
               <OverviewBoard items={overviewItems} listLabel="Crew members" empty="No crew members match those filters." />
             ) : null}
@@ -1578,8 +1446,9 @@ export default function HoursAndPay({
                 labor tables and the entries table never flatten, so they keep
                 theirs — without this they lost it too, and a 704px table in a
                 390px page scrolled the whole document sideways. */}
-            <div className={`${styles.tableWrap} ${styles.payWrap}`} hidden={layout !== 'table' && layout !== 'rail'}>
+            <div className={`${styles.tableWrap} ${styles.payWrap}`} hidden={layout !== 'table'}>
               <table className={styles.payTable}>
+                <caption className="sr-only">Hours and pay period breakdown</caption>
                 <thead>
                   <tr>
                     <th className={styles.checkCell}>
@@ -1839,7 +1708,7 @@ export default function HoursAndPay({
             {/* Master-detail pages nothing — the left list is the whole filtered
                 crew, because paging a list you are stepping through one at a
                 time would hide the person you were about to click. */}
-            {(layout === 'table' || layout === 'rail') && visible.length > pageSize ? (
+            {layout === 'table' && visible.length > pageSize ? (
               <div className={styles.pager}>
                 <small>
                   Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, visible.length)} of {visible.length} crew members
@@ -1874,11 +1743,8 @@ export default function HoursAndPay({
               </div>
             ) : null}
 
-            {/* The caveat that keeps "Paid" honest. In Focus it becomes the bar
-                that closes the page, because that's the last thing you read
-                before recording a payment. */}
+            {/* The caveat that keeps "Paid" honest. */}
             <p className={styles.hpNote} data-view={layout}>
-              {layout === 'focus' ? <span className={styles.hpNoteMark} aria-hidden="true">i</span> : null}
               Estimated pay is each entry&apos;s hours × the rate it was logged at — the rate ON THE ENTRY, which is not always the
               rate on that person&apos;s profile today. {OVERTIME_POLICY} Periods are cut on when time was logged — a labor entry has
               no separate &ldquo;worked on&rdquo; date. Marking someone paid records that you paid them: no tax is calculated or
@@ -1886,11 +1752,8 @@ export default function HoursAndPay({
             </p>
           </div>
 
-          {/* --- the rail ---
-              Not rendered under Focus: master-detail carries its own, beside the
-              person it is about, and two rails on one screen is two places to
-              look for the same button. */}
-          <aside className={styles.payRail} hidden={layout === 'focus' || layout === 'overview'}>
+          {/* --- the rail --- */}
+          <aside className={styles.payRail} hidden={layout === 'overview'}>
 
             <section className={styles.railCard}>
               <h3>Pay period summary</h3>
@@ -2063,7 +1926,7 @@ export default function HoursAndPay({
               been logged without it. A pointer rather than a duplicate: two
               controls for one setting can disagree. */}
           <p className={styles.settingHint}>
-            Clock in / clock out is under <Link href="/dashboard/crew?tab=hours#time-clock">Time clock</Link>
+            Clock in / clock out is under <Link href="/dashboard/crew?tab=timecards#time-clock">Time clock</Link>
             {' — currently '}
             <strong>{TIME_CLOCK_MODES.find((mode) => mode.id === timeClockMode)?.label.toLowerCase()}</strong>.
           </p>

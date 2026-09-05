@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   entryIssue,
   exportBlockedReason,
+  buildPeriodHref,
   normalizeOffset,
   normalizePeriodMode,
   resolvePayPeriod,
@@ -80,9 +81,11 @@ describe('pay periods', () => {
     expect(normalizePeriodMode('biweekly')).toBe('biweekly');
     expect(normalizeOffset('abc')).toBe(0);
     expect(normalizeOffset('-3')).toBe(-3);
-    expect(normalizeOffset('99999')).toBe(260);
+    expect(normalizeOffset('99999')).toBe(0);
+    expect(normalizeOffset('5')).toBe(0);
   });
 });
+
 
 describe('overtime', () => {
   it('measures each week on its own', () => {
@@ -236,3 +239,27 @@ describe('labor settings', () => {
     expect(roundHours(8.13, 'none')).toBe(8.13);
   });
 });
+
+describe('buildPeriodHref', () => {
+  it('canonicalizes tab=hours to tab=timecards', () => {
+    const period = resolvePayPeriod('weekly', 0, { now: NOW });
+    const href = buildPeriodHref({ tab: 'hours', period });
+    expect(href).toContain('tab=timecards');
+  });
+
+  it('refuses to step offset on custom range', () => {
+    const period = resolvePayPeriod('custom', 0, { from: '2026-07-01', to: '2026-07-15', now: NOW });
+    const href = buildPeriodHref({ period, patch: { offset: -1 } });
+    expect(href).not.toContain('offset=');
+    expect(href).toContain('from=2026-07-01');
+    expect(href).toContain('to=2026-07-15');
+    expect(href).toContain('period=custom');
+  });
+
+  it('caps future offsets at 0', () => {
+    const period = resolvePayPeriod('weekly', 0, { now: NOW });
+    const href = buildPeriodHref({ period, patch: { offset: 10 } });
+    expect(href).not.toContain('offset=10');
+  });
+});
+

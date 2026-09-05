@@ -2302,155 +2302,6 @@
    than with their little uppercase captions. */
 .filterGear { display: flex; align-items: flex-end; margin-left: auto; padding-bottom: 0.05rem; }
 
-/* --- cards --- */
-
-.cardGrid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-  gap: 0.7rem;
-}
-
-.card {
-  display: grid;
-  gap: 0.55rem;
-  align-content: start;
-  padding: 0.85rem 0.9rem;
-  border: 1px solid var(--edge-g18);
-  border-radius: 14px;
-  background: rgba(var(--tint), 0.028);
-  transition: border-color 0.14s ease, background 0.14s ease;
-}
-.card:hover { border-color: var(--cedge-orange-77); background: rgba(var(--tint), 0.05); }
-
-.cardOpen {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-}
-.cardOpen:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 3px; border-radius: 10px; }
-
-.cardAvatar {
-  flex: none;
-  display: grid;
-  place-items: center;
-  width: 3rem;
-  height: 3rem;
-  border-radius: 50%;
-  overflow: hidden;
-  border: 1px solid var(--avatar-line, var(--edge-g30));
-  background: var(--avatar-bg, rgba(255, 122, 33, 0.16));
-  font-size: 1rem;
-  font-weight: 800;
-  color: var(--avatar-fg, var(--accent-ink));
-}
-.cardAvatar img { width: 100%; height: 100%; object-fit: cover; }
-
-.cardNames { display: grid; gap: 0.1rem; min-width: 0; }
-.cardNames strong { font-size: 0.98rem; font-weight: 750; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cardNames small { font-size: 0.76rem; color: rgba(var(--grey-5), 0.92); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.cardFacts { display: grid; gap: 0.4rem; margin: 0; }
-.cardFacts > div { display: grid; gap: 0.1rem; min-width: 0; }
-.cardFacts dt {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mute-g580);
-}
-.cardFacts dd {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  flex-wrap: wrap;
-  min-width: 0;
-  font-size: 0.82rem;
-  color: var(--muted);
-}
-.cardFacts dd strong { font-variant-numeric: tabular-nums; }
-
-/* --- board --- */
-
-.board {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
-  gap: 0.75rem;
-  align-items: start;
-}
-
-.boardCol {
-  display: grid;
-  gap: 0.45rem;
-  align-content: start;
-  padding: 0.75rem;
-  border: 1px solid var(--edge-g16);
-  border-radius: 14px;
-  background: rgba(var(--tint), 0.02);
-}
-/* Green on the column that means "you can send someone right now" — the one
-   state that is actually good news. The heading says it too. */
-.boardCol[data-col='free'] { border-color: var(--cedge-green-35); }
-.boardCol[data-col='archived'] { opacity: 0.8; }
-
-.boardCol > header { display: grid; grid-template-columns: 1fr max-content; gap: 0.15rem 0.5rem; align-items: center; }
-.boardCol > header strong { font-size: 0.88rem; font-weight: 750; }
-.boardCol > header small { grid-column: 1 / -1; font-size: 0.72rem; color: rgba(var(--grey-5), 0.85); }
-
-.boardCount {
-  justify-self: end;
-  min-width: 1.5rem;
-  padding: 0.05rem 0.4rem;
-  border-radius: 999px;
-  border: 1px solid var(--edge-g30);
-  background: rgba(var(--tint), 0.05);
-  font-size: 0.72rem;
-  font-weight: 800;
-  text-align: center;
-  font-variant-numeric: tabular-nums;
-}
-.boardCol[data-col='free'] .boardCount { border-color: var(--cedge-green-50); background: rgba(72, 199, 142, 0.13); color: var(--good); }
-
-.boardCol > ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
-.boardEmpty { margin: 0; font-size: 0.8rem; color: var(--mute-g575); }
-
-.boardCard {
-  display: grid;
-  gap: 0.45rem;
-  padding: 0.55rem 0.6rem;
-  border: 1px solid var(--edge-g18);
-  border-radius: 11px;
-  background: rgba(var(--tint), 0.035);
-}
-.boardCard:hover { border-color: var(--cedge-orange-77); }
-
-.boardOpen {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  text-align: left;
-  cursor: pointer;
-  min-width: 0;
-}
-.boardOpen:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 3px; border-radius: 9px; }
-.boardCard .rowActions { flex-wrap: wrap; }
-
 /* --- table --- */
 
 /* The table is allowed to scroll sideways inside its own box; the page must
@@ -2527,8 +2378,6 @@
 
 @media (max-width: 760px) {
   .filterGear { margin-left: 0; }
-  .board { grid-template-columns: minmax(0, 1fr); }
-  .cardGrid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ==========================================================================
@@ -2629,96 +2478,6 @@ button.goAction.goAction:disabled {
 .periodCard[data-view='focus'] .periodStat strong { font-size: 1.45rem; }
 .periodCard[data-view='focus'] .periodStat:hover { border-color: var(--cedge-orange-9); }
 
-/* --- roster: Focus -----------------------------------------------------------
-   The everyday Rows list, with one instruction pinned beside it. Same idea as
-   Focus on Hours & pay: the thing to do stays in view while you scroll the crew,
-   so "who isn't set up" and "fix them" are never a scroll apart.
-   -------------------------------------------------------------------------- */
-
-.focusLayout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.9rem; align-items: start; }
-.focusMain { min-width: 0; }
-
-.focusRail { display: grid; gap: 0.6rem; align-content: start; }
-
-@media (min-width: 1100px) {
-  /* Below this the rail would squeeze the roster rows into an unreadable
-     column, so it stacks underneath as a row of cards instead. */
-  .focusLayout { grid-template-columns: minmax(0, 1fr) 19rem; }
-  .focusRail { position: sticky; top: 0.5rem; }
-}
-@media (min-width: 780px) and (max-width: 1099px) {
-  .focusRail { grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr)); }
-}
-
-.focusCard {
-  display: grid;
-  gap: 0.3rem;
-  align-content: start;
-  padding: 0.85rem 0.95rem;
-  border: 1px solid var(--edge-g18);
-  border-radius: 14px;
-  background: rgba(var(--tint), 0.028);
-}
-.focusCard > small {
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.09em;
-  text-transform: uppercase;
-  color: rgba(var(--grey-5), 0.9);
-}
-.focusCard > strong { font-size: 0.98rem; font-weight: 750; line-height: 1.35; }
-.focusCard > p { margin: 0.15rem 0 0; font-size: 0.8rem; line-height: 1.5; color: rgba(var(--grey-5), 0.95); }
-.focusCard .btn { margin-top: 0.55rem; justify-self: start; }
-
-/* The instruction card is toned by how much the gap costs if it's left. Only
-   the one that corrupts the pay numbers gets the alert colour. */
-.focusCard[data-tone='alert'] { border-color: var(--cedge-red-23); background: rgba(255, 107, 107, 0.06); }
-.focusCard[data-tone='alert'] > strong { color: var(--bad); }
-.focusCard[data-tone='warn'] { border-color: var(--cedge-amber-55); background: rgba(255, 209, 102, 0.05); }
-.focusCard[data-tone='warn'] > strong { color: var(--warn); }
-.focusCard[data-tone='ok'] { border-color: var(--cedge-green-55); background: rgba(72, 199, 142, 0.05); }
-.focusCard[data-tone='ok'] > strong { color: var(--good); }
-
-.focusBig { font-size: 1.5rem !important; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-
-/* Names rather than a count — each opens that person, which is where the rate
-   is set and the invite is sent. */
-.focusNames { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.45rem; }
-.focusNames button {
-  padding: 0.16rem 0.5rem;
-  border: 1px solid var(--edge-g30);
-  border-radius: 999px;
-  background: rgba(var(--tint), 0.05);
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.75rem;
-  font-weight: 650;
-  cursor: pointer;
-}
-.focusNames button:hover { border-color: var(--cedge-orange-64); background: rgba(255, 122, 41, 0.12); color: var(--text); }
-.focusNames button:focus-visible { outline: 2px solid rgba(255, 122, 41, 0.75); outline-offset: 1px; }
-
-.focusCounts, .focusActions { list-style: none; margin: 0.3rem 0 0; padding: 0; display: grid; gap: 0.12rem; }
-.focusCounts button, .focusActions button, .focusActions a {
-  display: flex;
-  align-items: baseline;
-  gap: 0.4rem;
-  width: 100%;
-  padding: 0.34rem 0.4rem;
-  border: 0;
-  border-radius: 8px;
-  background: none;
-  color: var(--muted);
-  font: inherit;
-  font-size: 0.83rem;
-  text-align: left;
-  text-decoration: none;
-  cursor: pointer;
-}
-.focusCounts button:hover:not(:disabled), .focusActions button:hover, .focusActions a:hover { background: rgba(var(--tint), 0.07); color: var(--text); }
-.focusCounts button:disabled { opacity: 0.45; cursor: default; }
-.focusCounts b { font-size: 0.95rem; font-weight: 800; font-variant-numeric: tabular-nums; min-width: 1.3rem; }
-
 /* ==========================================================================
    Crew & Labor — the Focus theme.
 
@@ -2751,9 +2510,6 @@ button.goAction.goAction:disabled {
 /* Every major container gets the same thin blue-gray edge and the same radius,
    so the page reads as one surface rather than a stack of different ones. */
 :global(.crew-focus) .tableWrap,
-:global(.crew-focus) .card,
-:global(.crew-focus) .boardCol,
-:global(.crew-focus) .focusCard,
 :global(.crew-focus) .railCard,
 :global(.crew-focus) .periodCard {
   border-radius: 16px;
@@ -2776,8 +2532,7 @@ button.goAction.goAction:disabled {
 
 /* The action column, pulled out with a stronger orange edge — the one piece of
    the page that is instructions rather than information. */
-:global(.crew-focus) .payRail,
-:global(.crew-focus) .focusRail {
+:global(.crew-focus) .payRail {
   padding: 0.55rem;
   border: 1px solid var(--cedge-orange-79);
   border-radius: 18px;
@@ -3120,10 +2875,7 @@ button.goAction.goAction:disabled {
    actually reads down. A skin that dressed the panels and left the rows alone
    would be a theme you can only see in the margins. */
 :global(.crew-skin) .row,
-:global(.crew-skin) .card,
 :global(.crew-skin) .tableWrap,
-:global(.crew-skin) .boardCol,
-:global(.crew-skin) .focusCard,
 :global(.crew-skin) .railCard,
 :global(.crew-skin) .periodCard,
 :global(.crew-skin) .mdList,
@@ -3201,18 +2953,14 @@ button.goAction.goAction:disabled {
 :global(.crew-skin-blueprint) .row { border-radius: 0; border-bottom-width: 0; }
 :global(.crew-skin-blueprint) .rows li:last-child .row { border-bottom-width: 1px; }
 
-:global(.crew-skin-blueprint) .card,
 :global(.crew-skin-blueprint) .railCard,
 :global(.crew-skin-blueprint) .periodCard,
-:global(.crew-skin-blueprint) .boardCol,
 :global(.crew-skin-blueprint) .mdList,
 :global(.crew-skin-blueprint) .mdRail {
   position: relative;
 }
-:global(.crew-skin-blueprint) .card::before,
 :global(.crew-skin-blueprint) .railCard::before,
 :global(.crew-skin-blueprint) .periodCard::before,
-:global(.crew-skin-blueprint) .boardCol::before,
 :global(.crew-skin-blueprint) .mdList::before,
 :global(.crew-skin-blueprint) .mdRail::before {
   content: '';
@@ -3332,6 +3080,7 @@ button.goAction.goAction:disabled {
 }
 
 .ovHead { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.9rem; }
+.ovHead h2,
 .ovHead h3 { margin: 0; font-size: 1.15rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
 .ovHead p { margin: 0.15rem 0 0; font-size: 0.85rem; color: rgba(var(--grey-5), 0.95); }
 

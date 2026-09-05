@@ -169,6 +169,7 @@ describe('Tax Depreciation Engine & Calendar Year Scoping', () => {
         purchasePrice: 600,
         purchaseDate: '2025-01-01',
         depreciationSchedule: 'straight_line_5',
+        status: 'available',
       },
     ];
     const vehicles: FleetVehicle[] = [];
@@ -345,13 +346,13 @@ describe('Van Kit Templates Application', () => {
 });
 
 describe('Store Catalog Search Rate Limiting', () => {
-  it('allows requests within window and limits abusive rates', () => {
+  it('allows requests within window and limits abusive rates', async () => {
     const accountId = 'rate-test-account-hardening';
     // Max 5 requests per 1000ms
     for (let i = 0; i < 5; i++) {
-      expect(() => checkSearchRateLimit(accountId, 5, 1000)).not.toThrow();
+      await expect(checkSearchRateLimit(accountId, 5, 1000)).resolves.not.toThrow();
     }
     // 6th request must throw rate limit error
-    expect(() => checkSearchRateLimit(accountId, 5, 1000)).toThrow(/Search catalog rate limit exceeded/);
+    await expect(checkSearchRateLimit(accountId, 5, 1000)).rejects.toThrow(/Search catalog rate limit exceeded/);
   });
 });

@@ -1,7 +1,7 @@
 'use server';
 
 import { cookies } from 'next/headers';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOwnerContext, requireOfficeContext } from '@/lib/auth';
 import { CALENDAR_VIEW_COOKIE, CALENDAR_WEEKEND_COOKIE, CLIENTS_VIEW_COOKIE, CREW_ROSTER_VIEW_COOKIE, CREW_SKIN_COOKIE, CREW_THEME_COOKIE, CREW_VIEW_COOKIE, JOB_DETAIL_LAYOUT_COOKIE, JOBS_VIEW_COOKIE, MAP_THEME_COOKIE, RECURRING_VIEW_COOKIE, mapViewCookie, normalizeCalendarView, normalizeClientsView, normalizeCrewSkin, normalizeCrewView, normalizeJobDetailLayout, normalizeJobsView, normalizeMapTheme, normalizeCrewTheme, normalizeMapView, normalizeRecurringView, normalizeRosterView, serializeWeekendDays, type CalendarView, type ClientsView, type CrewSkin, type CrewView, type JobDetailLayout, type JobsView, type MapSurface, type MapTheme, type MapView, type RecurringView, type RosterView, type WeekendDays } from '@/lib/dashboard-views';
 
 const YEAR = 60 * 60 * 24 * 365;
@@ -50,9 +50,9 @@ export async function setCalendarWeekendAction(days: WeekendDays) {
   await write(CALENDAR_WEEKEND_COOKIE, serializeWeekendDays(days));
 }
 
-// Remember the owner's chosen Clients layout (List / Cards / Table / Focus).
+// Remember the chosen Clients layout (List / Cards / Table / Focus).
 export async function setClientsViewAction(view: ClientsView) {
-  await requireOwnerContext();
+  await requireOfficeContext('clients.read');
   await write(CLIENTS_VIEW_COOKIE, normalizeClientsView(view));
 }
 
@@ -72,8 +72,8 @@ export async function setRecurringViewAction(view: RecurringView) {
 // still knows which way the page is dressed.
 async function syncCrewFocus(focus: boolean, keep: 'hours' | 'roster'): Promise<void> {
   await write(CREW_THEME_COOKIE, normalizeCrewTheme(focus ? 'focus' : 'standard'));
-  if (keep !== 'hours') await write(CREW_VIEW_COOKIE, focus ? 'focus' : 'table');
-  if (keep !== 'roster') await write(CREW_ROSTER_VIEW_COOKIE, focus ? 'focus' : 'rows');
+  if (keep !== 'hours') await write(CREW_VIEW_COOKIE, 'table');
+  if (keep !== 'roster') await write(CREW_ROSTER_VIEW_COOKIE, 'rows');
 }
 
 /**
@@ -94,20 +94,20 @@ export async function setCrewOverviewAction(on: boolean) {
   await write(CREW_THEME_COOKIE, on ? 'overview' : 'standard');
 }
 
-// Remember the owner's chosen Hours & pay layout (Table / Grouped / Rail / Focus).
+// Remember the owner's chosen Hours & pay layout (Table / Grouped).
 export async function setCrewViewAction(view: CrewView) {
   await requireOwnerContext();
   const next = normalizeCrewView(view);
   await write(CREW_VIEW_COOKIE, next);
-  await syncCrewFocus(next === 'focus', 'hours');
+  await syncCrewFocus(false, 'hours');
 }
 
-// Remember the owner's chosen Crew members layout (Rows / Cards / Board / Table / Focus).
+// Remember the owner's chosen Crew members layout (Rows / Table).
 export async function setRosterViewAction(view: RosterView) {
   await requireOwnerContext();
   const next = normalizeRosterView(view);
   await write(CREW_ROSTER_VIEW_COOKIE, next);
-  await syncCrewFocus(next === 'focus', 'roster');
+  await syncCrewFocus(false, 'roster');
 }
 
 // Remember the Crew & Labor skin (Standard / Daylight / Blueprint).

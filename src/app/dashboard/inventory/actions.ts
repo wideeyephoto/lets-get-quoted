@@ -35,7 +35,7 @@ import { uploadToolPhoto } from '@/lib/tool-photo-storage';
 // ── In-Memory Rate Limiting ─────────────────────────────────────────────────
 const searchRateLimits = new Map<string, number[]>();
 
-export function checkSearchRateLimit(identifier: string, maxReqs = 30, windowMs = 60000): void {
+export async function checkSearchRateLimit(identifier: string, maxReqs = 30, windowMs = 60000): Promise<void> {
   const now = Date.now();
   const timestamps = searchRateLimits.get(identifier) || [];
   const valid = timestamps.filter(t => now - t < windowMs);
