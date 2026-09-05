@@ -86,7 +86,7 @@ export const FEATURE_CATEGORIES: FeatureCategory[] = [
     features: [
       { id: 'quote-forms', name: 'Quote request forms', desc: 'Classic multi-field intake, your fields.' },
       { id: 'ai-smart-intake', name: 'AI Smart Intake', desc: 'A conversational estimator that asks a few questions and returns a real price range, 24/7.', favorite: true },
-      { id: 'satellite-property-sizing', name: 'Instant Satellite Property Sizing', desc: 'Calculates roof squares, pitch, siding area, gutter footage, and HVAC tonnage from aerial footprint data for accurate brackets.', favorite: true },
+      { id: 'satellite-property-sizing', name: 'Property Sizing & Roof Takeoff', desc: 'Calculates roof squares, pitch, siding area, gutter footage, and HVAC tonnage from Google Solar and parcel data for accurate brackets.' },
       { id: 'neighbor-cluster-pricing', name: 'Street Cluster Group Pricing', desc: 'Detects active jobs on the same street and unlocks $100–$500 neighbor discounts with viral sharing and same-day route batching.', favorite: true },
       { id: 'estimate-posture', name: 'Estimate posture', desc: 'Tune the AI from budget to high-margin pricing.' },
       { id: 'lead-triage', name: 'Hot / warm / low triage', desc: 'Every lead auto-scored; junk demoted, never hidden.' },

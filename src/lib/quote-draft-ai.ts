@@ -16,6 +16,7 @@ import {
   resolveProfileFromSummary,
   type PropertyIntelligenceSummary,
 } from '@/lib/property-intel';
+import { calculateSatellitePropertyDimensions } from '@/lib/satellite-property-sizing';
 import type { RoomDimensionsSummary } from '@/lib/property-intel/room-spatial-intel';
 import {
   computeAccountPricingIntelligence,
@@ -256,6 +257,15 @@ export function buildDraftInstructions(context: DraftContext): string {
       }
       if (context.propertyIntel.groundFootprintSqFt) {
         lines.push(`- Building Ground Footprint: ${context.propertyIntel.groundFootprintSqFt.toLocaleString()} sq ft`);
+        const dims = calculateSatellitePropertyDimensions({
+          footprintSqFt: context.propertyIntel.groundFootprintSqFt,
+          roofPitch: context.propertyIntel.dominantPitch,
+          stories: context.propertyIntel.stories,
+          knownLivingAreaSqFt: context.propertyIntel.livingAreaSqFt,
+        });
+        if (dims.gutterLinearFt) {
+          lines.push(`- Estimated Eaves/Gutters: ~${dims.gutterLinearFt} lin ft`);
+        }
       }
     }
 

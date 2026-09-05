@@ -29,6 +29,7 @@ export type SatellitePropertyDimensions = {
   livingAreaSqFt: number;
   hvacRecommendedTons: number;
   confidence: 'high_satellite' | 'medium_records' | 'estimated_fallback';
+  isEstimatedFallback: boolean;
 };
 
 /**
@@ -40,14 +41,14 @@ export function calculateSatellitePropertyDimensions(params: {
   roofPitch?: RoofPitch | string;
   wasteFactorPct?: number;
   knownLivingAreaSqFt?: number;
+  confidence?: 'high_satellite' | 'medium_records' | 'estimated_fallback';
 }): SatellitePropertyDimensions {
-  const {
-    footprintSqFt = 1800,
-    stories = 1.5,
-    roofPitch = '6/12',
-    wasteFactorPct = 12,
-    knownLivingAreaSqFt,
-  } = params;
+  const isEstimatedFallback = params.footprintSqFt == null;
+  const footprintSqFt = params.footprintSqFt ?? 1800;
+  const stories = params.stories ?? 1.5;
+  const roofPitch = params.roofPitch ?? '6/12';
+  const wasteFactorPct = params.wasteFactorPct ?? 12;
+  const knownLivingAreaSqFt = params.knownLivingAreaSqFt;
 
   const validPitch: RoofPitch = (ROOF_PITCH_MULTIPLIERS[roofPitch as RoofPitch] !== undefined)
     ? (roofPitch as RoofPitch)
@@ -76,6 +77,8 @@ export function calculateSatellitePropertyDimensions(params: {
   // HVAC sizing ~ 1 ton per 500-600 sq ft in conditioned climate
   const hvacTons = Math.round((livingAreaSqFt / 550) * 2) / 2; // round to nearest 0.5 ton
 
+  const resolvedConfidence = params.confidence ?? (isEstimatedFallback ? 'estimated_fallback' : 'high_satellite');
+
   return {
     footprintSqFt,
     stories,
@@ -89,8 +92,35 @@ export function calculateSatellitePropertyDimensions(params: {
     sidingWallSqFt,
     livingAreaSqFt,
     hvacRecommendedTons: Math.max(1.5, hvacTons),
-    confidence: footprintSqFt ? 'high_satellite' : 'estimated_fallback',
+    confidence: resolvedConfidence,
+    isEstimatedFallback,
   };
+}
+
+/**
+ * Derives property sizing directly from a resolved PropertyIntelligence or summary object,
+ * grounding dimensions in Google Solar building insights or parcel specs.
+ */
+export function calculateSatellitePropertyDimensionsFromIntel(params: {
+  groundFootprintSqFt?: number;
+  totalRoofAreaSqFt?: number;
+  dominantPitch?: string;
+  stories?: number;
+  livingAreaSqFt?: number;
+  hasSolarCoverage?: boolean;
+}): SatellitePropertyDimensions {
+  const footprint = params.groundFootprintSqFt || (params.livingAreaSqFt && params.stories ? Math.round(params.livingAreaSqFt / Math.max(1, params.stories)) : undefined);
+  const confidence: 'high_satellite' | 'medium_records' | 'estimated_fallback' = params.groundFootprintSqFt
+    ? 'high_satellite'
+    : (params.livingAreaSqFt ? 'medium_records' : 'estimated_fallback');
+
+  return calculateSatellitePropertyDimensions({
+    footprintSqFt: footprint,
+    roofPitch: params.dominantPitch,
+    stories: params.stories,
+    knownLivingAreaSqFt: params.livingAreaSqFt,
+    confidence,
+  });
 }
 
 export type SatelliteEstimateBracket = {
@@ -281,8 +311,12 @@ export function generateInstantAiEstimateWithClusterDiscount(params: {
   const discountedHigh = `$${Math.max(0, bracket.highDollars - (activeDiscount || 100)).toLocaleString()}`;
 
   const summaryMarkdown = [
-    `### 🛰️ Instant Aerial Satellite Sizing for ${addrInfo.streetName}`,
-    `Hi ${firstName}, based on aerial satellite measurements for your property in **${addrInfo.neighborhoodName}**:`,
+    dimensions.isEstimatedFallback
+      ? `### 📐 Estimated Property Sizing for ${addrInfo.streetName}`
+      : `### 🛰️ Instant Aerial Satellite Sizing for ${addrInfo.streetName}`,
+    dimensions.isEstimatedFallback
+      ? `Hi ${firstName}, based on standard property estimation models for your property in **${addrInfo.neighborhoodName}**:`
+      : `Hi ${firstName}, based on aerial satellite measurements for your property in **${addrInfo.neighborhoodName}**:`,
     `- **Property Sizing:** ${bracket.dimensionSummary}`,
     `- **Preliminary Estimate Bracket:** **${formattedLow} – ${formattedHigh}**`,
     '',

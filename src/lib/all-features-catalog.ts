@@ -1522,13 +1522,13 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
       },
       {
         id: 'satellite-property-sizing',
-        name: 'Instant Satellite Property Sizing Engine',
-        desc: 'Calculates true roof squares, pitch multipliers, siding wall area, gutter linear footage, and HVAC tonnage directly from aerial footprint data.',
-        tags: ['Satellite', 'AI Estimating', 'Computer Vision'],
+        name: 'Property Sizing & Roof Takeoff Engine',
+        desc: 'Calculates true roof squares, pitch multipliers, siding wall area, gutter linear footage, and HVAC tonnage directly from Google Solar and parcel data.',
+        tags: ['Roof Takeoff', 'Property Intel', 'AI Estimating'],
         subBullets: [
           'Calculates roof pitch multipliers (flat to 10/12) and true roof surface area in squares (100 sq ft) with standard overhang and waste factors.',
           'Estimates perimeter linear footage for seamless gutters and net wall area for siding replacement.',
-          'Provides instant low-to-high price brackets for homeowners before booking.',
+          'Provides instant low-to-high price brackets with explicit fallback handling when parcel data is unavailable.',
         ],
       },
       {
