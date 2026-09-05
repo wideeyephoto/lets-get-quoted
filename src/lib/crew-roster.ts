@@ -14,7 +14,7 @@ export type RosterMember = {
   id: string;
   name: string;
   active: boolean;
-  hourlyRate: number;
+  hourlyRate: number | null;
   fieldApp: FieldAppState;
   jobs: unknown[];
 };
@@ -63,7 +63,7 @@ export function rosterNextStep(members: RosterMember[]): RosterStep {
     };
   }
 
-  const noRate = active.filter((member) => !(member.hourlyRate > 0));
+  const noRate = active.filter((member) => !(member.hourlyRate != null && member.hourlyRate > 0));
   if (noRate.length > 0) {
     return {
       id: 'rate',

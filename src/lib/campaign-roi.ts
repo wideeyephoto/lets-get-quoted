@@ -1,5 +1,8 @@
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { Lead, LeadAttribution } from '@/lib/leads';
 import { generateQrSvg } from '@/lib/equipment-qr';
+import { applyTestRecordFilter, type TestRecordOptions } from '@/lib/test-records';
+import { fetchAllPages } from '@/lib/pagination';
 
 export type AttributionChannelId =
   | 'google'
@@ -132,12 +135,32 @@ export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionC
   return 'direct';
 }
 
+export type MarketingAttributionLead = {
+  id: string;
+  status: string;
+  triage?: unknown;
+  converted_job?: string | null;
+  created_at?: string;
+};
+
+export type MarketingAttributionJob = {
+  id: string;
+  status: string;
+  quoted_amount: number | string | null;
+  created_at?: string;
+};
+
+export type CalculateCampaignRoiOptions = {
+  actualAdSpend?: number;
+};
+
 /**
  * Calculates closed-loop campaign ROI and conversion performance across all leads and jobs.
  */
 export function calculateCampaignRoi(
-  leads: Lead[],
-  jobLookup: JobFinancialLookup = {}
+  leads: (Lead | MarketingAttributionLead)[],
+  jobLookup: JobFinancialLookup = {},
+  options: CalculateCampaignRoiOptions = {}
 ): OverallRoiSummary {
   const channelStats: Record<
     AttributionChannelId,
@@ -171,7 +194,9 @@ export function calculateCampaignRoi(
   let adRevenue = 0;
 
   for (const lead of leads) {
-    const triage = lead.triage && typeof lead.triage === 'object' ? lead.triage : null;
+    const triage = lead.triage && typeof lead.triage === 'object'
+      ? (lead.triage as { attribution?: LeadAttribution | null; estimate?: { max?: number } | null })
+      : null;
     const attr = triage?.attribution ?? null;
     const channelId = classifyLeadChannel(attr);
     const medium = attr?.medium?.toLowerCase().trim() || '';
@@ -184,14 +209,17 @@ export function calculateCampaignRoi(
     if (lead.status === 'quoted') stats.quotedCount += 1;
 
     let leadRevenue = 0;
-    let isWon = lead.status === 'won';
+    let isWon = false;
 
     if (lead.converted_job && jobLookup[lead.converted_job]) {
       const job = jobLookup[lead.converted_job];
-      leadRevenue = job.total || 0;
-      if (job.isWon) isWon = true;
-    } else if (isWon && triage?.estimate?.max) {
-      leadRevenue = triage.estimate.max;
+      isWon = Boolean(job.isWon);
+      leadRevenue = isWon ? (job.total || 0) : 0;
+    } else if (lead.status === 'won') {
+      isWon = true;
+      if (triage?.estimate?.max) {
+        leadRevenue = triage.estimate.max;
+      }
     }
 
     if (isWon) {
@@ -289,8 +317,9 @@ export function calculateCampaignRoi(
   const overallAvgTicket = totalWonCount > 0 ? Math.round(totalRevenue / totalWonCount) : 0;
   const adAttributedPct = totalLeads > 0 ? Math.round((adLeadsCount / totalLeads) * 100) : 0;
 
-  // Estimated ad spend benchmark ($42/lead industry average across search/social)
-  const totalAdSpend = adLeadsCount * 42;
+  // Ground ad spend in actual wallet spend (options.actualAdSpend).
+  // If no spend is provided or spend is zero, totalAdSpend is 0.
+  const totalAdSpend = options.actualAdSpend !== undefined ? Math.max(0, options.actualAdSpend) : 0;
   const estimatedRoasMultiplier = totalAdSpend > 0 ? Math.round((adRevenue / totalAdSpend) * 10) / 10 : 0;
 
   return {
@@ -473,3 +502,56 @@ export function buildCampaignUrl(options: BuildCampaignUrlOptions): string {
 export function buildCampaignQrSvg(url: string, size = 200): string {
   return generateQrSvg(url, size);
 }
+
+/**
+ * Loads lightweight attribution leads and jobs with pagination to avoid silent truncation under PostgREST max-rows.
+ */
+export async function loadMarketingAttributionData(
+  supabase: SupabaseClient,
+  accountId: string,
+  options: {
+    startDateIso?: string;
+    endDateIso?: string;
+    testOptions?: TestRecordOptions;
+  } = {}
+): Promise<{
+  leads: MarketingAttributionLead[];
+  jobs: MarketingAttributionJob[];
+}> {
+  let leadsQuery = applyTestRecordFilter(
+    supabase
+      .from('leads')
+      .select('id, status, triage, converted_job, created_at')
+      .eq('account_id', accountId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    options.testOptions
+  );
+
+  let jobsQuery = applyTestRecordFilter(
+    supabase
+      .from('jobs')
+      .select('id, status, quoted_amount, created_at')
+      .eq('account_id', accountId)
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false }),
+    options.testOptions
+  );
+
+  if (options.startDateIso) {
+    leadsQuery = leadsQuery.gte('created_at', options.startDateIso);
+    jobsQuery = jobsQuery.gte('created_at', options.startDateIso);
+  }
+  if (options.endDateIso) {
+    leadsQuery = leadsQuery.lte('created_at', options.endDateIso);
+    jobsQuery = jobsQuery.lte('created_at', options.endDateIso);
+  }
+
+  const [leads, jobs] = await Promise.all([
+    fetchAllPages<MarketingAttributionLead>((from, to) => leadsQuery.range(from, to)),
+    fetchAllPages<MarketingAttributionJob>((from, to) => jobsQuery.range(from, to)),
+  ]);
+
+  return { leads, jobs };
+}
+

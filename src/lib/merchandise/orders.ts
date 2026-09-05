@@ -72,160 +72,102 @@ export async function saveMerchandiseOrder(
     updatedAt: now,
   };
 
-  // Attempt to write to dedicated merchandise_orders table
-  try {
-    const { data, error } = await supabase
-      .from('merchandise_orders')
-      .insert({
-        account_id: accountId,
-        order_number: newOrder.orderNumber,
-        status: newOrder.status,
-        items: newOrder.items,
-        subtotal: newOrder.subtotal,
-        shipping_cost: newOrder.shippingCost,
-        tax_amount: newOrder.taxAmount,
-        total_amount: newOrder.totalAmount,
-        shipping_address: newOrder.shippingAddress,
-        stripe_session_id: newOrder.stripeSessionId,
-        stripe_payment_intent_id: newOrder.stripePaymentIntentId,
-        printful_order_id: newOrder.printfulOrderId,
-        tracking_number: newOrder.trackingNumber,
-        tracking_carrier: newOrder.trackingCarrier,
-        estimated_delivery_date: newOrder.estimatedDeliveryDate,
-        proof_approved_at: newOrder.proofApprovedAt,
-        proof_snapshot_url: newOrder.proofSnapshotUrl,
-      })
-      .select('id, order_number, status, items, subtotal, shipping_cost, tax_amount, total_amount, shipping_address, stripe_session_id, stripe_payment_intent_id, printful_order_id, tracking_number, tracking_carrier, estimated_delivery_date, proof_approved_at, proof_snapshot_url, created_at, updated_at')
-      .single();
+  // Persist directly to dedicated merchandise_orders table
+  const { data, error } = await supabase
+    .from('merchandise_orders')
+    .insert({
+      account_id: accountId,
+      order_number: orderNumber,
+      status: params.status || (params.stripeSessionId ? 'pending_payment' : 'proof_approved'),
+      items: params.items,
+      subtotal: params.subtotal,
+      shipping_cost: params.shippingCost,
+      tax_amount: params.taxAmount,
+      total_amount: params.totalAmount,
+      shipping_address: params.shippingAddress,
+      stripe_session_id: params.stripeSessionId || null,
+      stripe_payment_intent_id: params.stripePaymentIntentId || null,
+      printful_order_id: params.printfulOrderId || null,
+      tracking_number: params.trackingNumber || null,
+      tracking_carrier: params.trackingCarrier || null,
+      estimated_delivery_date: params.estimatedDeliveryDate || null,
+      proof_approved_at: params.proofApprovedAt || now,
+      proof_snapshot_url: params.proofSnapshotUrl || null,
+    })
+    .select(
+      'id, order_number, status, items, subtotal, shipping_cost, tax_amount, total_amount, shipping_address, stripe_session_id, stripe_payment_intent_id, printful_order_id, tracking_number, tracking_carrier, estimated_delivery_date, proof_approved_at, proof_snapshot_url, created_at, updated_at'
+    )
+    .single();
 
-    if (!error && data) {
-      return {
-        id: data.id,
-        accountId,
-        orderNumber: data.order_number,
-        status: data.status as MerchandiseOrder['status'],
-        items: data.items as MerchandiseOrderItem[],
-        subtotal: Number(data.subtotal),
-        shippingCost: Number(data.shipping_cost),
-        taxAmount: Number(data.tax_amount),
-        totalAmount: Number(data.total_amount),
-        shippingAddress: data.shipping_address as ShippingAddress,
-        stripeSessionId: data.stripe_session_id,
-        stripePaymentIntentId: data.stripe_payment_intent_id,
-        printfulOrderId: data.printful_order_id,
-        trackingNumber: data.tracking_number,
-        trackingCarrier: data.tracking_carrier,
-        estimatedDeliveryDate: data.estimated_delivery_date,
-        proofApprovedAt: data.proof_approved_at,
-        proofSnapshotUrl: data.proof_snapshot_url,
-        revenueBreakdown: params.revenueBreakdown,
-        createdAt: data.created_at,
-        updatedAt: data.updated_at,
-      };
-    }
-
-    if (error && error.code !== '42P01') {
-      console.error('Database error inserting merchandise order:', error);
-      throw new Error(`Could not insert merchandise order: ${error.message}`);
-    }
-  } catch (err) {
-    if (err instanceof Error && err.message.startsWith('Could not insert merchandise order:')) {
-      throw err;
-    }
-    // Fall back to site content metadata if table does not exist
+  if (error || !data) {
+    console.error('Database error inserting merchandise order:', error);
+    throw new Error(`Could not insert merchandise order: ${error?.message || 'Unknown database error'}`);
   }
 
-  // Graceful fallback: Store in sites.content.merchandise_orders
-  try {
-    const { data: siteRow } = await supabase
-      .from('sites')
-      .select('id, content')
-      .eq('account_id', accountId)
-      .limit(1)
-      .maybeSingle();
-
-    if (siteRow) {
-      const content = (siteRow.content && typeof siteRow.content === 'object' ? siteRow.content : {}) as Record<string, unknown>;
-      const existing = Array.isArray(content.merchandise_orders) ? (content.merchandise_orders as MerchandiseOrder[]) : [];
-      const updated = [newOrder, ...existing];
-
-      await supabase
-        .from('sites')
-        .update({
-          content: {
-            ...content,
-            merchandise_orders: updated,
-          },
-        })
-        .eq('id', siteRow.id);
-    }
-  } catch (err) {
-    console.warn('Could not persist merchandise order to fallback site metadata:', err);
-  }
-
-  return newOrder;
+  return {
+    id: data.id,
+    accountId,
+    orderNumber: data.order_number,
+    status: data.status as MerchandiseOrder['status'],
+    items: data.items as MerchandiseOrderItem[],
+    subtotal: Number(data.subtotal),
+    shippingCost: Number(data.shipping_cost),
+    taxAmount: Number(data.tax_amount),
+    totalAmount: Number(data.total_amount),
+    shippingAddress: data.shipping_address as ShippingAddress,
+    stripeSessionId: data.stripe_session_id,
+    stripePaymentIntentId: data.stripe_payment_intent_id,
+    printfulOrderId: data.printful_order_id,
+    trackingNumber: data.tracking_number,
+    trackingCarrier: data.tracking_carrier,
+    estimatedDeliveryDate: data.estimated_delivery_date,
+    proofApprovedAt: data.proof_approved_at,
+    proofSnapshotUrl: data.proof_snapshot_url,
+    revenueBreakdown: params.revenueBreakdown,
+    createdAt: data.created_at,
+    updatedAt: data.updated_at,
+  };
 }
 
 export async function listMerchandiseOrders(
   supabase: SupabaseClient,
   accountId: string
 ): Promise<MerchandiseOrder[]> {
-  // First attempt table read
-  try {
-    const { data, error } = await supabase
-      .from('merchandise_orders')
-      .select('id, order_number, status, items, subtotal, shipping_cost, tax_amount, total_amount, shipping_address, stripe_session_id, stripe_payment_intent_id, printful_order_id, tracking_number, tracking_carrier, estimated_delivery_date, proof_approved_at, proof_snapshot_url, created_at, updated_at')
-      .eq('account_id', accountId)
-      .order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('merchandise_orders')
+    .select(
+      'id, order_number, status, items, subtotal, shipping_cost, tax_amount, total_amount, shipping_address, stripe_session_id, stripe_payment_intent_id, printful_order_id, tracking_number, tracking_carrier, estimated_delivery_date, proof_approved_at, proof_snapshot_url, created_at, updated_at'
+    )
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      return data.map((d) => ({
-        id: d.id,
-        accountId,
-        orderNumber: d.order_number,
-        status: d.status as MerchandiseOrder['status'],
-        items: d.items as MerchandiseOrderItem[],
-        subtotal: Number(d.subtotal),
-        shippingCost: Number(d.shipping_cost),
-        taxAmount: Number(d.tax_amount),
-        totalAmount: Number(d.total_amount),
-        shippingAddress: d.shipping_address as ShippingAddress,
-        stripeSessionId: d.stripe_session_id,
-        stripePaymentIntentId: d.stripe_payment_intent_id,
-        printfulOrderId: d.printful_order_id,
-        trackingNumber: d.tracking_number,
-        trackingCarrier: d.tracking_carrier,
-        estimatedDeliveryDate: d.estimated_delivery_date,
-        proofApprovedAt: d.proof_approved_at,
-        proofSnapshotUrl: d.proof_snapshot_url,
-        createdAt: d.created_at,
-        updatedAt: d.updated_at,
-      }));
-    }
-  } catch {
-    // Fall back to JSON content
+  if (error || !data) {
+    console.warn('Could not query merchandise_orders:', error);
+    return [];
   }
 
-  // Fallback: Read from sites.content.merchandise_orders
-  try {
-    const { data: siteRow } = await supabase
-      .from('sites')
-      .select('content')
-      .eq('account_id', accountId)
-      .limit(1)
-      .maybeSingle();
-
-    if (siteRow?.content && typeof siteRow.content === 'object') {
-      const content = siteRow.content as Record<string, unknown>;
-      if (Array.isArray(content.merchandise_orders)) {
-        return content.merchandise_orders as MerchandiseOrder[];
-      }
-    }
-  } catch (err) {
-    console.warn('Could not load merchandise orders fallback:', err);
-  }
-
-  return [];
+  return data.map((d) => ({
+    id: d.id,
+    accountId,
+    orderNumber: d.order_number,
+    status: d.status as MerchandiseOrder['status'],
+    items: d.items as MerchandiseOrderItem[],
+    subtotal: Number(d.subtotal),
+    shippingCost: Number(d.shipping_cost),
+    taxAmount: Number(d.tax_amount),
+    totalAmount: Number(d.total_amount),
+    shippingAddress: d.shipping_address as ShippingAddress,
+    stripeSessionId: d.stripe_session_id,
+    stripePaymentIntentId: d.stripe_payment_intent_id,
+    printfulOrderId: d.printful_order_id,
+    trackingNumber: d.tracking_number,
+    trackingCarrier: d.tracking_carrier,
+    estimatedDeliveryDate: d.estimated_delivery_date,
+    proofApprovedAt: d.proof_approved_at,
+    proofSnapshotUrl: d.proof_snapshot_url,
+    createdAt: d.created_at,
+    updatedAt: d.updated_at,
+  }));
 }
 
 /**
@@ -275,12 +217,16 @@ export async function updateMerchandiseOrder(
   orderIdOrNumber: string,
   updates: Partial<{
     status: MerchandiseOrder['status'];
-    stripeSessionId: string | null;
-    stripePaymentIntentId: string | null;
-    printfulOrderId: number | null;
-    trackingNumber: string | null;
-    trackingCarrier: string | null;
-    estimatedDeliveryDate: string | null;
+    stripeSessionId?: string | null;
+    stripePaymentIntentId?: string | null;
+    printfulOrderId?: number | null;
+    trackingNumber?: string | null;
+    trackingCarrier?: string | null;
+    estimatedDeliveryDate?: string | null;
+    taxAmount?: number;
+    shippingCost?: number;
+    totalAmount?: number;
+    shippingAddress?: ShippingAddress;
   }>
 ): Promise<boolean> {
   try {
@@ -295,6 +241,10 @@ export async function updateMerchandiseOrder(
     if (updates.trackingNumber !== undefined) payload.tracking_number = updates.trackingNumber;
     if (updates.trackingCarrier !== undefined) payload.tracking_carrier = updates.trackingCarrier;
     if (updates.estimatedDeliveryDate !== undefined) payload.estimated_delivery_date = updates.estimatedDeliveryDate;
+    if (updates.taxAmount !== undefined) payload.tax_amount = updates.taxAmount;
+    if (updates.shippingCost !== undefined) payload.shipping_cost = updates.shippingCost;
+    if (updates.totalAmount !== undefined) payload.total_amount = updates.totalAmount;
+    if (updates.shippingAddress !== undefined) payload.shipping_address = updates.shippingAddress;
 
     let query = supabase.from('merchandise_orders').update(payload);
     if (orderIdOrNumber.startsWith('LGQ-MRCH-')) {
@@ -314,3 +264,41 @@ export async function updateMerchandiseOrder(
     return false;
   }
 }
+
+/**
+ * Records a fulfillment dispatch attempt (success or dead-letter failure) in merchandise_fulfillment_attempts.
+ */
+export async function recordMerchandiseFulfillmentAttempt(
+  supabase: SupabaseClient,
+  params: {
+    orderId: string;
+    attemptNumber?: number;
+    provider?: string;
+    status: 'pending' | 'succeeded' | 'failed';
+    requestPayload?: unknown;
+    responsePayload?: unknown;
+    errorMessage?: string | null;
+  }
+): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('merchandise_fulfillment_attempts').insert({
+      order_id: params.orderId,
+      attempt_number: params.attemptNumber || 1,
+      provider: params.provider || 'printful',
+      status: params.status,
+      request_payload: params.requestPayload ?? null,
+      response_payload: params.responsePayload ?? null,
+      error_message: params.errorMessage ?? null,
+    });
+
+    if (error) {
+      console.warn('Could not record merchandise fulfillment attempt:', error);
+      return false;
+    }
+    return true;
+  } catch (err) {
+    console.warn('Failed to record merchandise fulfillment attempt:', err);
+    return false;
+  }
+}
+

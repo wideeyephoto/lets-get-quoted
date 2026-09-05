@@ -122,7 +122,11 @@ export type MerchandiseOrderStatus =
   | 'in_production'
   | 'shipped'
   | 'delivered'
-  | 'cancelled';
+  | 'cancelled'
+  | 'failed'
+  | 'on_hold'
+  | 'refunded'
+  | 'disputed';
 
 export type MerchandiseOrderItem = {
   productId: MerchandiseProductId;
@@ -134,10 +138,16 @@ export type MerchandiseOrderItem = {
   totalPrice: number;
   customizationDetails: {
     businessName: string;
+    tagline?: string;
     phone?: string;
     website?: string;
     license?: string;
+    accentColor?: string;
+    secondaryColor?: string;
     logoUrl?: string;
+    customArtworkUrl?: string;
+    includeQrCode?: boolean;
+    backDesign?: string;
     decorationMethod: DecorationMethod;
     placement: string;
     sizeBreakdown?: Record<string, number>;

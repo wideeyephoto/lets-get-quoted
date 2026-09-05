@@ -140,10 +140,10 @@ export default function PerformanceScreen({
   const adLeads = roiSummary?.adAttributedLeads ?? 0;
   const wonJobs = roiSummary?.channels.reduce((sum, ch) => sum + ch.wonCount, 0) ?? 0;
   const attributedRevenue = roiSummary?.adAttributedRevenue ?? 0;
-  const estimatedSpend = roiSummary?.totalAdSpend ?? (adLeads > 0 ? adLeads * 42 : 0);
+  const estimatedSpend = roiSummary?.totalAdSpend ?? 0;
   const roasMultiplier = estimatedSpend > 0 ? Math.round((attributedRevenue / estimatedSpend) * 10) / 10 : 0;
-  const cpl = adLeads > 0 ? Math.round(estimatedSpend / adLeads) : 0;
-  const cac = wonJobs > 0 ? Math.round(estimatedSpend / wonJobs) : 0;
+  const cpl = adLeads > 0 && estimatedSpend > 0 ? Math.round(estimatedSpend / adLeads) : 0;
+  const cac = wonJobs > 0 && estimatedSpend > 0 ? Math.round(estimatedSpend / wonJobs) : 0;
 
   // Funnel steps calculation
   const estimatedVisits = adLeads > 0 ? adLeads * 14 : 0;
@@ -161,14 +161,21 @@ export default function PerformanceScreen({
   const googleLeads = googleChannel?.leadsCount ?? 0;
   const googleWon = googleChannel?.wonCount ?? 0;
   const googleRev = googleChannel?.totalRevenue ?? 0;
-  const googleSpend = googleLeads > 0 ? googleLeads * 42 : 0;
+  const googleSpend = lsaSummary?.costDollars
+    ? Math.round(lsaSummary.costDollars)
+    : estimatedSpend > 0
+      ? Math.round(estimatedSpend * (metaChannel?.leadsCount ? 0.7 : 1))
+      : 0;
   const googleRoas = googleSpend > 0 ? Math.round((googleRev / googleSpend) * 10) / 10 : 0;
 
   const metaLeads = metaChannel?.leadsCount ?? 0;
   const metaWon = metaChannel?.wonCount ?? 0;
   const metaRev = metaChannel?.totalRevenue ?? 0;
-  const metaSpend = metaLeads > 0 ? metaLeads * 42 : 0;
+  const metaSpend = estimatedSpend > 0 && metaLeads > 0
+    ? Math.round(estimatedSpend * 0.3)
+    : 0;
   const metaRoas = metaSpend > 0 ? Math.round((metaRev / metaSpend) * 10) / 10 : 0;
+  const roasColor = estimatedSpend > 0 ? (roasMultiplier >= 1.0 ? '#10b981' : '#f59e0b') : 'var(--muted)';
 
   const printQrLeads = printQrChannel?.leadsCount ?? 0;
   const printQrWon = printQrChannel?.wonCount ?? 0;
@@ -314,8 +321,11 @@ export default function PerformanceScreen({
 
         <article className="panel mkt-tile">
           <span className="mkt-tile-label">Return on Ad Spend</span>
-          <strong className="mkt-tile-value" style={{ color: roasMultiplier > 0 ? '#10b981' : 'var(--muted)' }}>
-            {roasMultiplier > 0 ? `${roasMultiplier}x ROAS` : 'No spend'}
+          <strong
+            className="mkt-tile-value"
+            style={{ color: roasColor }}
+          >
+            {estimatedSpend > 0 ? `${roasMultiplier}x ROAS` : 'No spend'}
           </strong>
           <span className="mkt-tile-note">Revenue / Spend</span>
         </article>

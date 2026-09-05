@@ -73,18 +73,7 @@ CREATE TABLE IF NOT EXISTS public.merchandise_revenue_ledger (
 CREATE INDEX IF NOT EXISTS idx_merchandise_revenue_account ON public.merchandise_revenue_ledger(account_id);
 CREATE INDEX IF NOT EXISTS idx_merchandise_revenue_order ON public.merchandise_revenue_ledger(order_id);
 
-ALTER TABLE public.merchandise_revenue_ledger ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "office_users_read_merchandise_revenue" ON public.merchandise_revenue_ledger;
-CREATE POLICY "office_users_read_merchandise_revenue"
-  ON public.merchandise_revenue_ledger
-  FOR SELECT
-  TO authenticated
-  USING (
-    public.office_can(account_id, 'settings.read')
-  );
-
-GRANT SELECT, INSERT ON public.merchandise_revenue_ledger TO authenticated;
-REVOKE ALL ON public.merchandise_revenue_ledger FROM anon, public;
+-- Service-role only table. No authenticated or public access.
+REVOKE ALL ON public.merchandise_revenue_ledger FROM anon, authenticated, public;
 
 commit;

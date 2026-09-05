@@ -4,8 +4,7 @@ import { MERCHANDISE_PRODUCTS, ALL_MERCHANDISE_PRODUCTS, getProductById } from '
 import {
   calculateMerchandisePricing,
   resolveServerItemPricing,
-  calculateSalesTax,
-  getSalesTaxRate,
+  computePlatformCut,
 } from '@/lib/merchandise/pricing';
 import { createPrintfulOrder } from '@/lib/merchandise/printful-client';
 import { generateOrderNumber, saveMerchandiseOrder } from '@/lib/merchandise/orders';
@@ -22,6 +21,30 @@ vi.mock('next/headers', () => ({
   headers: vi.fn().mockResolvedValue({
     get: (key: string) => (key === 'origin' ? 'https://letsgetquoted.com' : null),
   }),
+}));
+
+vi.mock('@/lib/stripe', () => ({
+  getStripeClient: vi.fn(() => ({
+    paymentIntents: {
+      retrieve: vi.fn().mockResolvedValue({
+        id: 'pi_test_123',
+        latest_charge: {
+          balance_transaction: {
+            id: 'txn_123',
+            fee: 275, // $2.75
+          },
+        },
+      }),
+    },
+    checkout: {
+      sessions: {
+        create: vi.fn().mockResolvedValue({
+          id: 'cs_test_session_123',
+          url: 'https://checkout.stripe.com/pay/cs_test_session_123',
+        }),
+      },
+    },
+  })),
 }));
 
 let mockCreatedOrderData: any = null;
@@ -100,6 +123,11 @@ const mockAdmin = {
         }),
       };
     }
+    if (table === 'merchandise_fulfillment_attempts') {
+      return {
+        insert: vi.fn().mockImplementation(async () => ({ error: null })),
+      };
+    }
     return {
       select: vi.fn().mockReturnThis(),
       eq: vi.fn().mockReturnThis(),
@@ -123,6 +151,9 @@ let mockStripeClient: any = {
     sessions: {
       create: (...args: any[]) => mockStripeSessionsCreate(...args),
     },
+  },
+  balanceTransactions: {
+    retrieve: vi.fn().mockResolvedValue({ fee: 350 }),
   },
 };
 
@@ -267,50 +298,43 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       const tier500 = resolveServerItemPricing(bizCards, 500);
       expect(tier500.unitPrice).toBe(0.17);
       expect(tier500.totalPrice).toBe(85.0);
-      expect(tier500.wholesaleUnitPrice).toBe(0.19);
-      expect(tier500.wholesaleTotal).toBe(95.0);
+      expect(tier500.wholesaleUnitPrice).toBe(0.05);
+      expect(tier500.wholesaleTotal).toBe(25.0);
 
       // 1000 business cards tier
       const tier1000 = resolveServerItemPricing(bizCards, 1000);
       expect(tier1000.unitPrice).toBe(0.12);
       expect(tier1000.totalPrice).toBe(120.0);
-      expect(tier1000.wholesaleUnitPrice).toBe(0.19);
-      expect(tier1000.wholesaleTotal).toBe(190.0);
+      expect(tier1000.wholesaleUnitPrice).toBe(0.05);
+      expect(tier1000.wholesaleTotal).toBe(50.0);
     });
   });
 
-  describe('Destination-Based Sales Tax', () => {
-    it('exempts NOMAD states from sales tax (0%)', () => {
-      const nomadStates = ['OR', 'MT', 'NH', 'DE', 'AK'];
-      for (const state of nomadStates) {
-        expect(getSalesTaxRate(state)).toBe(0);
-        expect(calculateSalesTax(250.0, state)).toBe(0);
+  describe('Catalog Pricing Floor Invariant & Platform Revenue Protection', () => {
+    it('guarantees positive margin (tier.totalPrice > basePrice * quantity * 1.10) across all catalog products and tiers', () => {
+      for (const prod of ALL_MERCHANDISE_PRODUCTS) {
+        expect(prod.basePrice).toBeGreaterThan(0);
+        for (const tier of prod.pricingTiers) {
+          const wholesaleCost = prod.basePrice * tier.quantity;
+          const minRequiredRetail = wholesaleCost * 1.10; // At least 10% margin above wholesale
+          expect(tier.totalPrice).toBeGreaterThan(minRequiredRetail);
+          expect(tier.unitPrice).toBeGreaterThan(prod.basePrice);
+        }
       }
     });
 
-    it('accurately applies state rates for taxable destinations', () => {
-      expect(getSalesTaxRate('CA')).toBe(0.0725);
-      expect(calculateSalesTax(100.0, 'CA')).toBe(7.25);
+    it('computes unified platform cut with $5.00 floor and 10% rate', () => {
+      // Below $50, floor is $5.00
+      expect(computePlatformCut(10.0)).toBe(5.0);
+      expect(computePlatformCut(25.0)).toBe(5.0);
+      expect(computePlatformCut(45.0)).toBe(5.0);
+      expect(computePlatformCut(50.0)).toBe(5.0);
 
-      expect(getSalesTaxRate('NY')).toBe(0.08);
-      expect(calculateSalesTax(100.0, 'NY')).toBe(8.0);
-
-      expect(getSalesTaxRate('TX')).toBe(0.0625);
-      expect(calculateSalesTax(200.0, 'TX')).toBe(12.5);
-
-      expect(getSalesTaxRate('FL')).toBe(0.06);
-      expect(calculateSalesTax(100.0, 'FL')).toBe(6.0);
-    });
-
-    it('normalizes whitespace and case in state codes', () => {
-      expect(getSalesTaxRate('  ca  ')).toBe(0.0725);
-      expect(getSalesTaxRate('Or')).toBe(0);
-      expect(calculateSalesTax(100.0, '  co  ')).toBe(2.9);
-    });
-
-    it('falls back to 6.5% standard rate for unknown states or blank input', () => {
-      expect(getSalesTaxRate('ZZ')).toBe(0.065);
-      expect(getSalesTaxRate('')).toBe(0.065);
+      // Above $50, 10% rate applies
+      expect(computePlatformCut(85.0)).toBe(8.5);
+      expect(computePlatformCut(120.0)).toBe(12.0);
+      expect(computePlatformCut(318.0)).toBe(31.8);
+      expect(computePlatformCut(1250.0)).toBe(125.0);
     });
   });
 
@@ -511,13 +535,17 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       // Verify Stripe line items charge the authoritative $85.00 (8500 cents), not $0.01
       const lastCall = mockStripeSessionsCreate.mock.calls[0][0];
       expect(lastCall).toBeDefined();
+      expect(lastCall.line_items.length).toBe(1);
       const merchandiseLineItem = lastCall.line_items[0];
       expect(merchandiseLineItem.price_data.unit_amount).toBe(8500); // $85.00
+      expect(merchandiseLineItem.price_data.tax_behavior).toBe('exclusive');
       expect(merchandiseLineItem.quantity).toBe(1);
 
-      // Verify shipping line item is $12.00
-      const shippingLineItem = lastCall.line_items[1];
-      expect(shippingLineItem.price_data.unit_amount).toBe(1200); // $12.00
+      // Verify shipping is in shipping_options ($12.00) and Stripe Tax is enabled
+      expect(lastCall.shipping_options).toBeDefined();
+      expect(lastCall.shipping_options[0].shipping_rate_data.fixed_amount.amount).toBe(1200); // $12.00
+      expect(lastCall.automatic_tax?.enabled).toBe(true);
+      expect(lastCall.shipping_address_collection?.allowed_countries).toContain('US');
     });
 
     it('fails safely when Stripe fails, without creating an unpaid fulfillment order', async () => {
@@ -624,6 +652,11 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
               insert: ledgerInsertMock,
             };
           }
+          if (table === 'merchandise_fulfillment_attempts') {
+            return {
+              insert: vi.fn().mockResolvedValue({ error: null }),
+            };
+          }
           return {};
         }),
       } as any;
@@ -636,6 +669,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
             id: 'cs_test_paid_123',
             payment_status: 'paid',
             payment_intent: 'pi_test_123',
+            balance_transaction: 'txn_test_paid_123',
             metadata: {
               merchandise_order: 'true',
               account_id: 'acc_test_1',

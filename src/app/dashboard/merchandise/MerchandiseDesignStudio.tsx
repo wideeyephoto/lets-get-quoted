@@ -1,13 +1,28 @@
 'use client';
 
 import { useState, useMemo, useTransition, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
+import {
+  ShoppingCart,
+  History,
+  Check,
+  X,
+  Upload,
+  Sparkles,
+  FileText,
+  Download,
+  AlertTriangle,
+  RotateCcw,
+  Package,
+  CreditCard,
+  Layers,
+} from 'lucide-react';
 import {
   MERCHANDISE_PRODUCTS,
   MERCHANDISE_CATEGORIES,
   getProductById,
 } from '@/lib/merchandise/catalog';
-import { calculateSalesTax, getSalesTaxRate } from '@/lib/merchandise/pricing';
 import type {
   MerchandiseProduct,
   MerchandiseCategoryId,
@@ -25,7 +40,10 @@ import {
 import { generateLogoSvg } from '@/lib/logo-creator';
 import MarketingNav from '../marketing/MarketingNav';
 import Product3DMockupStage from './Product3DMockupStage';
-import ProductTechnicalSpecsSheet from './ProductTechnicalSpecsSheet';
+
+const ProductTechnicalSpecsSheet = dynamic(() => import('./ProductTechnicalSpecsSheet'), {
+  ssr: false,
+});
 
 interface Props {
   initialData: MerchandiseStudioInitialData;
@@ -68,7 +86,34 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [accentColor, setAccentColor] = useState(initialData.accentColor);
   const [secondaryColor, setSecondaryColor] = useState(initialData.secondaryColor);
 
-  // Draft autosave & restore
+  // Dynamic placement helper for diverse catalog products
+  function getDynamicPlacement(productId: string): string {
+    switch (productId) {
+      case 'biz_cards':
+        return 'Front & Back Velvet Offset Imprint with Dynamic QR';
+      case 'notepads':
+        return 'Personalized Header & 2-Part NCR Carbonless Grid';
+      case 'polos':
+      case 't_shirts':
+        return 'Left Chest High-Density Direct Embroidery';
+      case 'hats':
+        return 'Centered Front Structured 3D Embroidery';
+      case 'yard_signs':
+        return 'Double-Sided High-Visibility Fluted Coroplast UV Print';
+      case 'decals':
+        return 'Contour-Cut Outdoor Vinyl Decal';
+      case 'tumblers':
+        return '360 Laser Engraved Wrap';
+      case 'pens':
+        return 'Barrel Laser Imprint';
+      case 'phone_cases':
+        return 'Edge-to-Edge Tough Armor UV Gloss Wrap';
+      default:
+        return 'Direct Full-Color Production Imprint';
+    }
+  }
+
+  // Draft autosave & restore (debounced 500ms to avoid writing on every keystroke)
   const draftStorageKey = initialData.accountId
     ? `merchandise_draft_${initialData.accountId}`
     : 'merchandise_draft_default';
@@ -94,22 +139,26 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    try {
-      localStorage.setItem(
-        draftStorageKey,
-        JSON.stringify({
-          businessName,
-          tagline,
-          phone,
-          website,
-          license,
-          accentColor,
-          secondaryColor,
-        })
-      );
-    } catch {
-      // Ignore quota exceeded
-    }
+    const timeoutId = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          draftStorageKey,
+          JSON.stringify({
+            businessName,
+            tagline,
+            phone,
+            website,
+            license,
+            accentColor,
+            secondaryColor,
+          })
+        );
+      } catch {
+        // Ignore quota exceeded
+      }
+    }, 500);
+
+    return () => clearTimeout(timeoutId);
   }, [draftStorageKey, businessName, tagline, phone, website, license, accentColor, secondaryColor]);
 
   function handleResetToDefaults() {
@@ -127,13 +176,31 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     }
   }
 
-  // Logo source: 'site' | 'ai' | 'vector'
-  const [logoSource, setLogoSource] = useState<'site' | 'ai' | 'vector'>(
+  // Logo source: 'site' | 'ai' | 'vector' | 'upload'
+  const [logoSource, setLogoSource] = useState<'site' | 'ai' | 'vector' | 'upload'>(
     initialData.aiLogos.length > 0 ? 'ai' : initialData.currentLogoUrl ? 'site' : 'vector'
   );
   const [selectedAiLogoId, setSelectedAiLogoId] = useState<string | null>(
     initialData.aiLogos[0]?.id || null
   );
+  const [customUploadUrl, setCustomUploadUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  function handleLogoFileUpload(file: File) {
+    if (!file.type.startsWith('image/')) {
+      setCheckoutError('Please select a valid image file (PNG, JPG, SVG, WebP).');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      if (result) {
+        setCustomUploadUrl(result);
+        setLogoSource('upload');
+      }
+    };
+    reader.readAsDataURL(file);
+  }
 
   // Modals & Drawers
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -177,19 +244,19 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     };
   }, []);
 
-  // Shipping form state
+  // Shipping form state without fabricated mock address
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
-    fullName: initialData.companyName ? `${initialData.companyName} Operations` : 'Shop Delivery',
-    companyName: initialData.companyName,
-    streetAddress: '104 Industrial Parkway, Suite B',
+    fullName: initialData.companyName ? `${initialData.companyName} Operations` : '',
+    companyName: initialData.companyName || '',
+    streetAddress: '',
     apartmentSuite: '',
-    city: 'Denver',
-    state: 'CO',
-    postalCode: '80202',
+    city: '',
+    state: '',
+    postalCode: '',
     country: 'United States',
-    phone: initialData.phone,
-    email: 'billing@contractor.com',
-    deliveryNotes: 'Leave by shop bay door or reception desk',
+    phone: initialData.phone || '',
+    email: '',
+    deliveryNotes: '',
   });
   const [shippingMethod, setShippingMethod] = useState<'standard' | 'rush'>('standard');
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
@@ -226,17 +293,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   // Active AI logo
   const activeAiLogo = initialData.aiLogos.find((l) => l.id === selectedAiLogoId) || initialData.aiLogos[0];
 
-  // Active Logo Source for Canvas Casting (URL or SVG data URI)
-  const activeLogoSrc = useMemo(() => {
-    if (logoSource === 'ai' && activeAiLogo) {
-      return activeAiLogo.url;
-    }
-    if (logoSource === 'site' && initialData.currentLogoUrl) {
-      return initialData.currentLogoUrl;
-    }
-
-    // Default Vector SVG
-    const svgCode = generateLogoSvg({
+  // Memoized vector mark SVG string
+  const vectorLogoSvg = useMemo(() => {
+    return generateLogoSvg({
       businessName,
       trade: initialData.trade,
       tagline,
@@ -246,22 +305,67 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       style: 'modern_shield',
       colorMode: activeColor.darkText ? 'dark' : 'color',
     });
-
-    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svgCode)}`;
   }, [
-    logoSource,
-    activeAiLogo,
-    initialData.currentLogoUrl,
-    initialData.trade,
     businessName,
+    initialData.trade,
     tagline,
     accentColor,
     secondaryColor,
     activeColor.darkText,
   ]);
 
+  // Active Logo Source for Canvas Casting (URL or SVG data URI)
+  const activeLogoSrc = useMemo(() => {
+    if (logoSource === 'upload' && customUploadUrl) {
+      return customUploadUrl;
+    }
+    if (logoSource === 'ai' && activeAiLogo) {
+      return activeAiLogo.url;
+    }
+    if (logoSource === 'site' && initialData.currentLogoUrl) {
+      return initialData.currentLogoUrl;
+    }
+
+    return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(vectorLogoSvg)}`;
+  }, [
+    logoSource,
+    customUploadUrl,
+    activeAiLogo,
+    initialData.currentLogoUrl,
+    vectorLogoSvg,
+  ]);
+
   const [cart, setCart] = useState<MerchandiseOrderItem[]>([]);
   const [cartToast, setCartToast] = useState<string | null>(null);
+
+  // Cart LocalStorage Persistence
+  const cartStorageKey = initialData.accountId
+    ? `merchandise_cart_${initialData.accountId}`
+    : 'merchandise_cart_default';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const savedCart = localStorage.getItem(cartStorageKey);
+      if (savedCart) {
+        const parsed = JSON.parse(savedCart);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCart(parsed);
+        }
+      }
+    } catch {}
+  }, [cartStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (cart.length > 0) {
+        localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+      } else {
+        localStorage.removeItem(cartStorageKey);
+      }
+    } catch {}
+  }, [cart, cartStorageKey]);
 
   // Return from Stripe Checkout handling & fresh order history sync
   useEffect(() => {
@@ -269,7 +373,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     const params = new URLSearchParams(window.location.search);
     if (params.get('order_success') === 'true') {
       setCart([]);
-      setCartToast('🎉 Order placed successfully! Direct print run queued.');
+      try {
+        localStorage.removeItem(cartStorageKey);
+      } catch {}
+      setCartToast('Order placed successfully! Direct manufacturing print run queued.');
       // Refresh order list directly from server
       getMerchandiseStudioDataAction().then((res) => {
         if (res.ok && res.data?.recentOrders) {
@@ -278,13 +385,22 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       });
       window.history.replaceState({}, '', window.location.pathname);
     } else if (params.get('order_cancelled') === 'true') {
-      setCheckoutError('Payment was cancelled. Your items remain saved in your cart.');
+      setCheckoutError('Payment was cancelled. Your customized items remain saved in your cart.');
       window.history.replaceState({}, '', window.location.pathname);
     }
-  }, []);
+  }, [cartStorageKey]);
 
   // Build current customized item
   function getCurrentOrderItem(): MerchandiseOrderItem {
+    const chosenLogoUrl =
+      logoSource === 'upload' && customUploadUrl
+        ? customUploadUrl
+        : logoSource === 'ai' && activeAiLogo
+        ? activeAiLogo.url
+        : logoSource === 'site' && initialData.currentLogoUrl
+        ? initialData.currentLogoUrl
+        : activeLogoSrc; // Generated SVG data URI so vector orders NEVER ship with files: []
+
     return {
       productId: currentProduct.id,
       productName: currentProduct.name,
@@ -295,20 +411,17 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       totalPrice: activeTier.totalPrice,
       customizationDetails: {
         businessName,
+        tagline,
         phone,
         website,
         license,
-        logoUrl:
-          logoSource === 'ai' && activeAiLogo
-            ? activeAiLogo.url
-            : logoSource === 'site'
-            ? initialData.currentLogoUrl || undefined
-            : undefined,
+        accentColor,
+        secondaryColor,
+        includeQrCode,
+        customArtworkUrl: logoSource === 'upload' && customUploadUrl ? customUploadUrl : undefined,
+        logoUrl: chosenLogoUrl,
         decorationMethod: currentProduct.decorationMethod,
-        placement:
-          currentProduct.id === 'biz_cards'
-            ? 'Front & Back Velvet Offset Imprint with Dynamic QR'
-            : 'Personalized Header & 2-Part NCR Carbonless Grid',
+        placement: getDynamicPlacement(currentProduct.id),
         sizeBreakdown: currentProduct.options?.sizes ? sizeQuantities : undefined,
         finish: selectedFinish || undefined,
         deviceModel: currentProduct.id === 'phone_cases' ? selectedModel : undefined,
@@ -319,12 +432,32 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   // Active items in checkout (cart if populated, else current item)
   const checkoutItems = useMemo(() => {
     return cart.length > 0 ? cart : [getCurrentOrderItem()];
-  }, [cart, currentProduct, activeColor, activeTier, businessName, phone, website, license, logoSource, activeAiLogo, initialData, selectedFinish, selectedModel, sizeQuantities]);
+  }, [
+    cart,
+    currentProduct,
+    activeColor,
+    activeTier,
+    businessName,
+    tagline,
+    phone,
+    website,
+    license,
+    accentColor,
+    secondaryColor,
+    includeQrCode,
+    logoSource,
+    activeAiLogo,
+    customUploadUrl,
+    activeLogoSrc,
+    initialData,
+    selectedFinish,
+    selectedModel,
+    sizeQuantities,
+  ]);
 
   const itemSubtotal = Math.round(checkoutItems.reduce((acc, it) => acc + it.totalPrice, 0) * 100) / 100;
   const estimatedShipping = shippingMethod === 'rush' ? 24.0 : itemSubtotal >= 150 ? 0.0 : 12.0;
-  const estimatedTax = calculateSalesTax(itemSubtotal, shippingAddress.state);
-  const grandTotal = Math.round((itemSubtotal + estimatedShipping + estimatedTax) * 100) / 100;
+  const subtotalWithShipping = Math.round((itemSubtotal + estimatedShipping) * 100) / 100;
 
   // Free shipping threshold calculations ($150+)
   const freeShippingThreshold = 150;
@@ -406,7 +539,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           newQty = tiers[targetTierIndex].quantity;
           newUnitPrice = tiers[targetTierIndex].unitPrice;
         } else {
-          newQty += delta * 100;
+          // Already at highest tier
+          return prev;
         }
       } else {
         newQty = Math.max(0, item.quantity + delta);
@@ -457,12 +591,22 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
     setCheckoutError(null);
     startCheckoutTransition(async () => {
+      let proofSnapshotUrl: string | undefined = undefined;
+      if (canvasProofExportRef.current) {
+        try {
+          proofSnapshotUrl = await canvasProofExportRef.current();
+        } catch {
+          // Non-blocking if canvas export fails
+        }
+      }
+
       const itemsToOrder = cart.length > 0 ? cart : [getCurrentOrderItem()];
       const res = await createMerchandiseCheckoutAction({
         items: itemsToOrder,
         shippingAddress,
         shippingMethod,
         proofApproved: true,
+        proofSnapshotUrl,
       });
 
       if (!res.ok) {
@@ -471,13 +615,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       }
 
       if (res.checkoutUrl) {
-        setCart([]);
+        // Do NOT clear cart before redirecting to Stripe
         window.location.href = res.checkoutUrl;
         return;
       }
 
       if (res.order) {
         setCart([]);
+        try {
+          localStorage.removeItem(cartStorageKey);
+        } catch {}
         setOrders((prev) => [res.order!, ...prev]);
         setOrderSuccessModal(res.order);
         setCheckoutOpen(false);
@@ -489,15 +636,17 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   function handleReorder(orderId: string) {
     startReorderTransition(async () => {
       const res = await reorderMerchandiseAction(orderId);
-      if (res.ok && res.order) {
+      if (res.ok && res.checkoutUrl) {
+        window.location.href = res.checkoutUrl;
+      } else if (res.ok && res.order) {
         setOrders((prev) => [res.order!, ...prev]);
         setOrderSuccessModal(res.order);
       } else {
-        alert(res.error || 'Could not place re-order.');
+        setCheckoutError(res.error || 'Could not place re-order.');
+        setCartToast(res.error || 'Could not place re-order.');
       }
     });
   }
-
   // Download digital proof
   async function handleDownloadProofSheet() {
     setIsGeneratingProof(true);
@@ -516,35 +665,63 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       ctx.fillStyle = '#2563eb';
       ctx.fillRect(0, 0, 1200, 90);
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 32px sans-serif';
+      ctx.font = 'bold 30px sans-serif';
       ctx.fillText(`OFFICIAL PRODUCTION PROOF • ${currentProduct.name.toUpperCase()}`, 40, 56);
 
       // Details panel
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(40, 130, 480, 620);
+
+      const proofId = `PRF-${Date.now().toString(36).toUpperCase()}`;
+      const proofDate = new Date().toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+      });
+
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(`CLIENT / BUSINESS NAME:`, 60, 180);
+      ctx.font = '14px sans-serif';
+      ctx.fillText(`PROOF ID: ${proofId} • DATE: ${proofDate}`, 60, 165);
+
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px sans-serif';
+      ctx.fillText(`CLIENT / BUSINESS NAME:`, 60, 205);
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(businessName, 60, 210);
+      ctx.fillText(businessName || 'Unnamed Business', 60, 235);
+
+      if (tagline) {
+        ctx.fillStyle = '#38bdf8';
+        ctx.font = 'italic 15px sans-serif';
+        ctx.fillText(tagline, 60, 262);
+      }
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(`CONTACT & LICENSE:`, 60, 270);
+      ctx.font = '14px sans-serif';
+      ctx.fillText(`CONTACT & VERIFICATION:`, 60, 310);
       ctx.fillStyle = '#ffffff';
-      ctx.font = '18px sans-serif';
-      ctx.fillText(`${phone} • ${license}`, 60, 298);
+      ctx.font = '16px sans-serif';
+      ctx.fillText(`${phone || 'No phone'} • ${website || 'No website'}`, 60, 336);
+      if (license) {
+        ctx.fillStyle = '#cbd5e1';
+        ctx.font = '15px sans-serif';
+        ctx.fillText(`License: ${license}`, 60, 362);
+      }
 
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(`SPECIFICATION:`, 60, 360);
+      ctx.font = '14px sans-serif';
+      ctx.fillText(`PRODUCTION SPECIFICATIONS:`, 60, 415);
       ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 18px sans-serif';
-      ctx.fillText(`Color: ${activeColor.name}`, 60, 390);
-      ctx.fillText(`Quantity: ${activeTier.quantity} units`, 60, 420);
-      ctx.fillText(`Method: ${currentProduct.decorationLabel}`, 60, 450);
-      ctx.fillText(`Turnaround: ${currentProduct.turnaroundEstimate}`, 60, 480);
+      ctx.font = 'bold 16px sans-serif';
+      ctx.fillText(`Colorway: ${activeColor.name} (${activeColor.hex})`, 60, 445);
+      ctx.fillText(`Run Quantity: ${activeTier.quantity.toLocaleString()} units`, 60, 475);
+      ctx.fillText(`Imprint Method: ${currentProduct.decorationLabel}`, 60, 505);
+      ctx.fillText(`Placement: ${getDynamicPlacement(currentProduct.id)}`, 60, 535);
+      if (selectedFinish) {
+        ctx.fillText(`Finish / Coating: ${selectedFinish}`, 60, 565);
+      }
+      ctx.fillText(`QR Routing: ${includeQrCode ? 'Enabled (Dynamic)' : 'Disabled'}`, 60, 595);
+      ctx.fillText(`Estimated Turnaround: ${currentProduct.turnaroundEstimate}`, 60, 625);
 
       // Right Canvas preview zone: Real Embedded 3D Canvas Render
       ctx.fillStyle = '#0b0f19';
@@ -570,16 +747,38 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       }
 
       if (!renderedSuccessfully) {
-        ctx.fillStyle = 'var(--muted)';
-        ctx.font = 'bold 24px sans-serif';
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'center';
         ctx.fillText('DIGITAL PRINT SPECIFICATION ARCHIVE', 860, 440);
+        ctx.font = '16px sans-serif';
+        ctx.fillText(`${currentProduct.name} • ${activeColor.name}`, 860, 475);
+        ctx.textAlign = 'left';
       }
 
-      const a = document.createElement('a');
-      a.href = canvas.toDataURL('image/png');
-      a.download = `${businessName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-proof-${currentProduct.id}.png`;
-      a.click();
+      // Confidential footer strip
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(0, 765, 1200, 35);
+      ctx.fillStyle = '#64748b';
+      ctx.font = 'bold 11px sans-serif';
+      ctx.fillText(
+        'CONFIDENTIAL COMMERCIAL PRODUCTION PROOF • ALL SPECS STRICTLY CONFIRMED FOR PRINT RUN • LETSGETQUOTED MERCHANDISE STUDIO',
+        40,
+        787
+      );
+
+      try {
+        const a = document.createElement('a');
+        a.href = canvas.toDataURL('image/png');
+        a.download = `${(businessName || 'brand').toLowerCase().replace(/[^a-z0-9]+/g, '-')}-proof-${currentProduct.id}.png`;
+        a.click();
+      } catch (exportErr) {
+        console.error('Failed to export canvas image:', exportErr);
+        setCheckoutError('Could not export canvas image directly due to browser security restrictions on cross-origin assets.');
+      }
+    } catch (err) {
+      console.error('Proof generation error:', err);
+      setCheckoutError('An error occurred while generating the digital proof sheet.');
     } finally {
       setIsGeneratingProof(false);
     }
@@ -587,6 +786,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Render logo inside mockup
   function renderMockupBranding(mode: 'color' | 'dark' | 'white' = 'color', scale = 1) {
+    if (logoSource === 'upload' && customUploadUrl) {
+      return (
+        <div style={{ transform: `scale(${scale})`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+          <img
+            src={customUploadUrl}
+            alt={`${businessName} custom logo`}
+            style={{ objectFit: 'contain', maxWidth: '100%', height: 'auto', maxHeight: '110px' }}
+          />
+        </div>
+      );
+    }
+
     if (logoSource === 'ai' && activeAiLogo) {
       return (
         <div style={{ transform: `scale(${scale})`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -615,22 +826,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       );
     }
 
-    // Default Vector Svg
-    const svgCode = generateLogoSvg({
-      businessName,
-      trade: initialData.trade,
-      tagline,
-      establishedYear: '2026',
-      accentColor,
-      secondaryColor,
-      style: 'modern_shield',
-      colorMode: mode === 'white' ? 'white_decal' : mode === 'dark' ? 'dark' : 'color',
-    });
-
     return (
       <div
         style={{ transform: `scale(${scale})`, width: '100%', maxWidth: '340px' }}
-        dangerouslySetInnerHTML={{ __html: svgCode }}
+        dangerouslySetInnerHTML={{ __html: vectorLogoSvg }}
       />
     );
   }
@@ -653,6 +852,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         .focus-ring:focus-visible {
           outline: 2px solid var(--accent) !important;
           outline-offset: 2px !important;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
         }
       `}</style>
       <MarketingNav basePath="/dashboard" />
@@ -714,7 +921,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   transition: 'all 0.15s ease',
                 }}
               >
-                <span>🛒 Cart</span>
+                <ShoppingCart size={15} />
+                <span>Cart</span>
                 <span
                   style={{
                     background: 'var(--accent)',
@@ -749,7 +957,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 transition: 'all 0.15s ease',
               }}
             >
-              <span>📋 Orders</span>
+              <History size={15} />
+              <span>Orders</span>
               {orders.length > 0 && (
                 <span
                   style={{
@@ -793,6 +1002,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
         {cartToast && (
           <div
+            role="status"
+            aria-live="polite"
             style={{
               position: 'absolute',
               bottom: '-1rem',
@@ -849,30 +1060,33 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       {/* 2. Category Selector Pills (Shown when multiple categories exist) */}
       {MERCHANDISE_CATEGORIES.length > 1 && (
         <div
+          role="tablist"
+          aria-label="Product categories"
           style={{
-            background: 'rgba(var(--tint), 0.025)',
-            borderBottom: '1px solid var(--line)',
-            padding: '0.75rem 1.5rem',
             display: 'flex',
-            alignItems: 'center',
-            gap: '0.55rem',
+            gap: '0.5rem',
+            padding: '0.75rem 1.25rem',
+            borderBottom: '1px solid var(--line)',
+            background: 'rgba(var(--tint), 0.02)',
             overflowX: 'auto',
           }}
         >
           <button
             type="button"
+            role="tab"
+            aria-selected={selectedCategory === 'all'}
             onClick={() => setSelectedCategory('all')}
             style={{
-              padding: '0.45rem 0.95rem',
-              borderRadius: '8px',
-              border: selectedCategory === 'all' ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
-              background: selectedCategory === 'all' ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
-              color: selectedCategory === 'all' ? '#ffffff' : 'var(--muted)',
+              padding: '0.4rem 0.85rem',
+              borderRadius: '999px',
+              border: selectedCategory === 'all' ? '1.5px solid var(--accent)' : '1px solid rgba(var(--tint), 0.1)',
+              background: selectedCategory === 'all' ? 'rgba(255, 122, 33, 0.18)' : 'rgba(var(--tint), 0.03)',
+              color: selectedCategory === 'all' ? 'var(--text)' : 'var(--muted)',
+              fontSize: '0.78rem',
               fontWeight: 800,
-              fontSize: '0.82rem',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
-              boxShadow: selectedCategory === 'all' ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
+              boxShadow: selectedCategory === 'all' ? '0 2px 8px rgba(255, 122, 33, 0.25)' : 'none',
               transition: 'all 0.15s ease',
             }}
           >
@@ -884,19 +1098,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               <button
                 key={cat.id}
                 type="button"
+                role="tab"
+                aria-selected={isSelected}
                 onClick={() => setSelectedCategory(cat.id)}
                 style={{
-                  padding: '0.45rem 0.95rem',
-                  borderRadius: '8px',
-                  border: isSelected ? '1.5px solid var(--nav-grow)' : '1px solid rgba(var(--tint), 0.1)',
-                  background: isSelected ? 'linear-gradient(180deg, rgba(182, 146, 246, 0.22), rgba(139, 92, 246, 0.12))' : 'rgba(var(--tint), 0.04)',
-                  color: isSelected ? '#ffffff' : 'var(--muted)',
-                  fontWeight: 800,
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
+                  gap: '0.35rem',
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '999px',
+                  border: isSelected ? '1.5px solid #a855f7' : '1px solid rgba(var(--tint), 0.1)',
+                  background: isSelected ? 'rgba(168, 85, 247, 0.2)' : 'rgba(var(--tint), 0.03)',
+                  color: isSelected ? '#f3e8ff' : 'var(--muted)',
+                  fontSize: '0.78rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
                   whiteSpace: 'nowrap',
                   boxShadow: isSelected ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
                   transition: 'all 0.15s ease',
@@ -946,6 +1162,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
               {displayedProducts.map((prod) => {
                 const active = prod.id === selectedProductId;
+                const lowestRetailPrice = prod.pricingTiers[prod.pricingTiers.length - 1]?.unitPrice ?? prod.basePrice;
                 return (
                   <button
                     key={prod.id}
@@ -979,7 +1196,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       </span>
                     </div>
                     <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 800, display: 'block', marginTop: '6px' }}>
-                      From ${prod.basePrice < 1 ? prod.basePrice.toFixed(2) : Math.round(prod.basePrice)}/ea
+                      From ${lowestRetailPrice < 1 ? lowestRetailPrice.toFixed(2) : lowestRetailPrice.toFixed(2)}/ea
                     </span>
                   </button>
                 );
@@ -1010,11 +1227,54 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 2. Brand Mark / Artwork Source
               </label>
               <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700 }}>
-                {logoSource === 'ai' ? '✦ AI Generated' : logoSource === 'site' ? 'Website Logo' : 'Vector Crest'}
+                {logoSource === 'upload'
+                  ? 'Custom File'
+                  : logoSource === 'ai'
+                  ? '✦ AI Generated'
+                  : logoSource === 'site'
+                  ? 'Website Logo'
+                  : 'Vector Crest'}
               </span>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.65rem' }}>
+            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                aria-pressed={logoSource === 'upload'}
+                aria-label="Upload custom logo file"
+                className="focus-ring"
+                style={{
+                  flex: '1 1 70px',
+                  padding: '0.45rem',
+                  borderRadius: '7px',
+                  border: logoSource === 'upload' ? '1.5px solid #10b981' : '1px solid rgba(var(--tint), 0.1)',
+                  background: logoSource === 'upload' ? 'rgba(16, 185, 129, 0.22)' : 'rgba(var(--tint), 0.04)',
+                  color: logoSource === 'upload' ? '#a7f3d0' : 'var(--muted)',
+                  fontSize: '0.74rem',
+                  fontWeight: 800,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.25rem',
+                }}
+              >
+                <Upload size={13} />
+                <span>Upload</span>
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleLogoFileUpload(file);
+                }}
+              />
+
               {initialData.aiLogos.length > 0 && (
                 <button
                   type="button"
@@ -1023,7 +1283,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   aria-label="Use AI concept brand mark"
                   className="focus-ring"
                   style={{
-                    flex: 1,
+                    flex: '1 1 70px',
                     padding: '0.45rem',
                     borderRadius: '7px',
                     border: logoSource === 'ai' ? '1.5px solid #a855f7' : '1px solid rgba(var(--tint), 0.1)',
@@ -1033,9 +1293,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     fontWeight: 800,
                     cursor: 'pointer',
                     transition: 'all 0.15s ease',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '0.25rem',
                   }}
                 >
-                  ✦ AI Logos ({initialData.aiLogos.length})
+                  <Sparkles size={13} />
+                  <span>AI ({initialData.aiLogos.length})</span>
                 </button>
               )}
               {initialData.currentLogoUrl && (
@@ -1046,7 +1311,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   aria-label="Use website uploaded logo"
                   className="focus-ring"
                   style={{
-                    flex: 1,
+                    flex: '1 1 70px',
                     padding: '0.45rem',
                     borderRadius: '7px',
                     border: logoSource === 'site' ? '1.5px solid #3b82f6' : '1px solid rgba(var(--tint), 0.1)',
@@ -1068,7 +1333,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 aria-label="Use generated vector mark"
                 className="focus-ring"
                 style={{
-                  flex: 1,
+                  flex: '1 1 70px',
                   padding: '0.45rem',
                   borderRadius: '7px',
                   border: logoSource === 'vector' ? '1.5px solid var(--accent)' : '1px solid rgba(var(--tint), 0.14)',
@@ -1080,9 +1345,51 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   transition: 'all 0.15s ease',
                 }}
               >
-                Vector Mark
+                Vector Crest
               </button>
             </div>
+
+            {/* Custom Uploaded Logo Preview */}
+            {logoSource === 'upload' && customUploadUrl && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.6rem',
+                  padding: '0.45rem 0.65rem',
+                  borderRadius: '8px',
+                  background: 'rgba(var(--tint), 0.05)',
+                  border: '1px solid rgba(var(--tint), 0.12)',
+                  marginBottom: '0.5rem',
+                }}
+              >
+                <img
+                  src={customUploadUrl}
+                  alt="Custom uploaded artwork preview"
+                  style={{ width: '40px', height: '30px', objectFit: 'contain' }}
+                />
+                <span style={{ fontSize: '0.74rem', color: 'var(--text)', flex: 1, fontWeight: 700 }}>
+                  Custom logo loaded
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomUploadUrl(null);
+                    setLogoSource('vector');
+                  }}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ef4444',
+                    fontSize: '0.72rem',
+                    fontWeight: 800,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            )}
 
             {/* AI Logos Selector Carousel */}
             {logoSource === 'ai' && initialData.aiLogos.length > 0 && (
@@ -1140,9 +1447,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   cursor: 'pointer',
                   textDecoration: 'underline',
                   padding: 0,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.2rem',
                 }}
               >
-                ↺ Reset to Defaults
+                <RotateCcw size={12} />
+                <span>Reset to Defaults</span>
               </button>
             </div>
 
@@ -1163,7 +1474,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     gap: '0.45rem',
                   }}
                 >
-                  <span>⚠️</span>
+                  <AlertTriangle size={14} />
                   <span>
                     Print overflow guard: {businessName.length > 30 ? 'Company name' : 'Tagline'} is long and will auto-shrink or wrap on compact print items.
                   </span>
@@ -1173,12 +1484,15 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               {/* Company Name */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Company Name:</span>
+                  <label htmlFor="merch-business-name" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
+                    Company Name:
+                  </label>
                   <span style={{ fontSize: '0.65rem', color: businessName.length > 30 ? 'var(--warn, #eab308)' : 'var(--muted)', fontWeight: 700 }}>
                     {businessName.length}/40
                   </span>
                 </div>
                 <input
+                  id="merch-business-name"
                   type="text"
                   maxLength={40}
                   value={businessName}
@@ -1201,12 +1515,15 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               {/* Tagline */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Tagline / Specialty:</span>
+                  <label htmlFor="merch-tagline" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
+                    Tagline / Specialty:
+                  </label>
                   <span style={{ fontSize: '0.65rem', color: tagline.length > 40 ? 'var(--warn, #eab308)' : 'var(--muted)', fontWeight: 700 }}>
                     {tagline.length}/50
                   </span>
                 </div>
                 <input
+                  id="merch-tagline"
                   type="text"
                   maxLength={50}
                   value={tagline}
@@ -1230,10 +1547,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Phone #:</span>
+                    <label htmlFor="merch-phone" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
+                      Phone #:
+                    </label>
                     <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 700 }}>{phone.length}/20</span>
                   </div>
                   <input
+                    id="merch-phone"
                     type="text"
                     maxLength={20}
                     value={phone}
@@ -1254,10 +1574,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 </div>
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>Website URL:</span>
+                    <label htmlFor="merch-website" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
+                      Website URL:
+                    </label>
                     <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 700 }}>{website.length}/60</span>
                   </div>
                   <input
+                    id="merch-website"
                     type="text"
                     maxLength={60}
                     value={website}
@@ -1282,10 +1605,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               {/* License Line */}
               <div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>License Line:</span>
+                  <label htmlFor="merch-license" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
+                    License Line:
+                  </label>
                   <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 700 }}>{license.length}/30</span>
                 </div>
                 <input
+                  id="merch-license"
                   type="text"
                   maxLength={30}
                   value={license}
@@ -1594,15 +1920,20 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               </span>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}>
+            <div
+              role="radiogroup"
+              aria-label="Quantity and volume pricing tiers"
+              style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
+            >
               {currentProduct.pricingTiers.map((tier) => {
                 const isSelected = tier.quantity === selectedTierQty;
                 return (
                   <button
                     key={tier.quantity}
                     type="button"
+                    role="radio"
+                    aria-checked={isSelected}
                     onClick={() => setSelectedTierQty(tier.quantity)}
-                    aria-pressed={isSelected}
                     aria-label={`${tier.quantity.toLocaleString()} units for $${tier.totalPrice.toFixed(2)}`}
                     className="focus-ring"
                     style={{
@@ -2087,69 +2418,117 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 </label>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label htmlFor="merch-ship-fullname" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        Recipient Name:
+                      </label>
+                      <input
+                        id="merch-ship-fullname"
+                        type="text"
+                        placeholder="Recipient Full Name"
+                        value={shippingAddress.fullName}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="merch-ship-company" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        Company Name (Optional):
+                      </label>
+                      <input
+                        id="merch-ship-company"
+                        type="text"
+                        placeholder="Company Name"
+                        value={shippingAddress.companyName || ''}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, companyName: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label htmlFor="merch-ship-street" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Street Address:
+                    </label>
                     <input
+                      id="merch-ship-street"
                       type="text"
-                      placeholder="Recipient Full Name"
-                      value={shippingAddress.fullName}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="Company Name (Optional)"
-                      value={shippingAddress.companyName || ''}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, companyName: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
+                      placeholder="Street Address (e.g. 100 Main St)"
+                      value={shippingAddress.streetAddress}
+                      onChange={(e) => setShippingAddress({ ...shippingAddress, streetAddress: e.target.value })}
+                      style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
                     />
                   </div>
 
-                  <input
-                    type="text"
-                    placeholder="Street Address (e.g. 100 Main St)"
-                    value={shippingAddress.streetAddress}
-                    onChange={(e) => setShippingAddress({ ...shippingAddress, streetAddress: e.target.value })}
-                    style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                  />
-
                   <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem' }}>
-                    <input
-                      type="text"
-                      placeholder="City"
-                      value={shippingAddress.city}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="State (e.g. CO)"
-                      value={shippingAddress.state}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                    />
-                    <input
-                      type="text"
-                      placeholder="ZIP Code"
-                      value={shippingAddress.postalCode}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, postalCode: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                    />
+                    <div>
+                      <label htmlFor="merch-ship-city" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        City:
+                      </label>
+                      <input
+                        id="merch-ship-city"
+                        type="text"
+                        placeholder="City"
+                        value={shippingAddress.city}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="merch-ship-state" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        State:
+                      </label>
+                      <input
+                        id="merch-ship-state"
+                        type="text"
+                        placeholder="State (e.g. CO)"
+                        value={shippingAddress.state}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="merch-ship-zip" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        ZIP Code:
+                      </label>
+                      <input
+                        id="merch-ship-zip"
+                        type="text"
+                        placeholder="ZIP Code"
+                        value={shippingAddress.postalCode}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, postalCode: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
                   </div>
 
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <input
-                      type="tel"
-                      placeholder="Delivery Phone #"
-                      value={shippingAddress.phone}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                    />
-                    <input
-                      type="email"
-                      placeholder="Receipt Email"
-                      value={shippingAddress.email}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })}
-                      style={{ padding: '0.55rem', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.14)', background: 'rgba(255, 255, 255, 0.06)', color: 'var(--text)', fontSize: '0.84rem', outline: 'none' }}
-                    />
+                    <div>
+                      <label htmlFor="merch-ship-phone" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        Delivery Phone #:
+                      </label>
+                      <input
+                        id="merch-ship-phone"
+                        type="tel"
+                        placeholder="Phone #"
+                        value={shippingAddress.phone}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="merch-ship-email" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                        Order Receipt Email:
+                      </label>
+                      <input
+                        id="merch-ship-email"
+                        type="email"
+                        placeholder="Receipt Email"
+                        value={shippingAddress.email}
+                        onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })}
+                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -2166,8 +2545,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     style={{
                       padding: '0.65rem',
                       borderRadius: '8px',
-                      border: shippingMethod === 'standard' ? '2px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
-                      background: shippingMethod === 'standard' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                      border: shippingMethod === 'standard' ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.12)',
+                      background: shippingMethod === 'standard' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(var(--tint), 0.04)',
                       color: 'var(--text)',
                       textAlign: 'left',
                       cursor: 'pointer',
@@ -2185,8 +2564,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     style={{
                       padding: '0.65rem',
                       borderRadius: '8px',
-                      border: shippingMethod === 'rush' ? '2px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
-                      background: shippingMethod === 'rush' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(255, 255, 255, 0.04)',
+                      border: shippingMethod === 'rush' ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.12)',
+                      background: shippingMethod === 'rush' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(var(--tint), 0.04)',
                       color: 'var(--text)',
                       textAlign: 'left',
                       cursor: 'pointer',
@@ -2203,12 +2582,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 style={{
                   padding: '0.9rem',
                   borderRadius: '10px',
-                  background: proofApproved ? 'rgba(34, 197, 94, 0.12)' : 'rgba(255, 255, 255, 0.04)',
-                  border: proofApproved ? '1.5px solid #22c55e' : '1.5px solid rgba(255, 255, 255, 0.14)',
+                  background: proofApproved ? 'rgba(34, 197, 94, 0.12)' : 'rgba(var(--tint), 0.04)',
+                  border: proofApproved ? '1.5px solid #22c55e' : '1.5px solid rgba(var(--tint), 0.14)',
                   transition: 'all 0.2s ease',
                 }}
               >
                 <label
+                  htmlFor="merchandise-proof-checkbox"
                   style={{
                     display: 'flex',
                     alignItems: 'flex-start',
@@ -2221,19 +2601,38 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   }}
                 >
                   <input
+                    id="merchandise-proof-checkbox"
                     type="checkbox"
                     checked={proofApproved}
                     onChange={(e) => setProofApproved(e.target.checked)}
                     style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
                   />
-                  <span>
-                    I have verified and approve the brand logo, business name ({businessName}), phone number ({phone}), and layout on this proof. I understand custom merchandise goes directly to manufacturing and cannot be returned for typographical errors.
-                  </span>
+                  <div>
+                    <span>
+                      I have verified and approve all customized fields on this production proof: business name (<strong>{businessName}</strong>),
+                      {tagline ? <> tagline (<strong>{tagline}</strong>),</> : null}
+                      {' '}phone number (<strong>{phone}</strong>),
+                      {website ? <> website (<strong>{website}</strong>),</> : null}
+                      {license ? <> license (<strong>{license}</strong>),</> : null}
+                      {' '}and brand colors (<strong>{accentColor}</strong> / <strong>{secondaryColor}</strong>).
+                      I understand custom merchandise goes directly to manufacturing and cannot be refunded for typographical errors.
+                    </span>
+                    <div style={{ marginTop: '0.35rem' }}>
+                      <a
+                        href="/terms"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ color: 'var(--accent)', textDecoration: 'underline', fontSize: '0.78rem' }}
+                      >
+                        View Terms of Sale &amp; Custom Merchandise Order Policy →
+                      </a>
+                    </div>
+                  </div>
                 </label>
               </div>
 
               {/* Cost Breakdown */}
-              <div style={{ borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '0.75rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
+              <div style={{ borderTop: '1px solid rgba(var(--tint), 0.12)', paddingTop: '0.75rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
                   <span>Merchandise Subtotal:</span>
                   <span style={{ color: 'var(--text)', fontWeight: 600 }}>${itemSubtotal.toFixed(2)}</span>
@@ -2245,18 +2644,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   </span>
                 </div>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span>
-                    Estimated Sales Tax
-                    {shippingAddress.state.trim()
-                      ? ` (${(getSalesTaxRate(shippingAddress.state) * 100).toFixed(1)}% • ${shippingAddress.state.trim().toUpperCase()}):`
-                      : ':'}
+                  <span>Sales Tax (Stripe Tax):</span>
+                  <span style={{ color: 'var(--text)', fontWeight: 600, fontStyle: 'italic', fontSize: '0.8rem' }}>
+                    Calculated at Checkout
                   </span>
-                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>${estimatedTax.toFixed(2)}</span>
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(255, 255, 255, 0.1)', paddingTop: '8px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
-                  <span>Total Amount:</span>
-                  <span style={{ color: 'var(--accent)' }}>${grandTotal.toFixed(2)}</span>
+                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(var(--tint), 0.12)', paddingTop: '8px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
+                  <span>Total (before tax):</span>
+                  <span style={{ color: 'var(--accent)' }}>${subtotalWithShipping.toFixed(2)}</span>
                 </div>
+                <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--muted)', textAlign: 'right' }}>
+                  Applicable state and local taxes will be calculated dynamically at secure Stripe checkout.
+                </p>
               </div>
             </div>
 
@@ -2264,8 +2663,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <div
               style={{
                 padding: '1rem 1.5rem',
-                borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                background: '#131924',
+                borderTop: '1px solid rgba(var(--tint), 0.08)',
+                background: 'var(--surface, #131924)',
                 display: 'flex',
                 gap: '0.6rem',
                 justifyContent: 'flex-end',
@@ -2277,8 +2676,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 style={{
                   padding: '0.6rem 1rem',
                   borderRadius: '7px',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(var(--tint), 0.12)',
+                  background: 'rgba(var(--tint), 0.06)',
                   color: 'var(--text)',
                   fontWeight: 700,
                   fontSize: '0.82rem',
@@ -2296,7 +2695,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   padding: '0.6rem 1.35rem',
                   borderRadius: '7px',
                   border: 'none',
-                  background: !proofApproved ? 'rgba(255,255,255,0.1)' : 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
+                  background: !proofApproved ? 'rgba(var(--tint), 0.1)' : 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
                   color: '#ffffff',
                   fontWeight: 900,
                   fontSize: '0.88rem',
@@ -2304,7 +2703,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   boxShadow: !proofApproved ? 'none' : '0 4px 16px rgba(255,122,33,0.35)',
                 }}
               >
-                {isCheckingOut ? 'Processing...' : `Pay $${grandTotal.toFixed(2)} & Order`}
+                {isCheckingOut ? 'Processing...' : `Continue to Stripe Checkout ($${subtotalWithShipping.toFixed(2)} + tax)`}
               </button>
             </div>
           </div>
@@ -2406,7 +2805,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '0.5rem', fontSize: '0.74rem' }}>
                       <span style={{ color: 'var(--muted)' }}>
-                        Tracking: <strong style={{ color: 'var(--gold-ink)' }}>{ord.trackingNumber}</strong>
+                        {ord.trackingNumber ? (
+                          <>
+                            Tracking: <strong style={{ color: 'var(--gold-ink)' }}>{ord.trackingNumber}</strong>
+                            {ord.trackingCarrier ? ` (${ord.trackingCarrier})` : ''}
+                          </>
+                        ) : (
+                          <span style={{ fontStyle: 'italic' }}>Tracking: Pending dispatch</span>
+                        )}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>${ord.totalAmount.toFixed(2)}</strong>
@@ -2476,7 +2882,12 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               Order Confirmed &amp; Dispatched!
             </h3>
             <p style={{ margin: '0 0 1.25rem', color: 'var(--muted)', fontSize: '0.88rem', lineHeight: 1.5 }}>
-              Your order <strong>{orderSuccessModal.orderNumber}</strong> has been routed to Printful high-precision manufacturing. Digital proof approved. Carrier tracking: <strong>{orderSuccessModal.trackingNumber}</strong>.
+              Your order <strong>{orderSuccessModal.orderNumber}</strong> has been routed to commercial manufacturing. Digital proof approved.
+              {orderSuccessModal.trackingNumber ? (
+                <> Carrier tracking: <strong>{orderSuccessModal.trackingNumber}</strong>.</>
+              ) : (
+                <> Carrier tracking will be emailed to <strong>{orderSuccessModal.shippingAddress?.email || 'your email'}</strong> once dispatched.</>
+              )}
             </p>
 
             <button

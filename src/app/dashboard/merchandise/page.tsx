@@ -1,4 +1,5 @@
-import { getMerchandiseStudioDataAction } from './actions';
+import { requireOfficeContext } from '@/lib/auth';
+import { getMerchandiseStudioData } from './actions';
 import MerchandiseDesignStudio from './MerchandiseDesignStudio';
 
 export const metadata = {
@@ -7,21 +8,8 @@ export const metadata = {
 };
 
 export default async function MerchandisePage() {
-  const res = await getMerchandiseStudioDataAction();
-
-  const initialData = res.ok && res.data ? res.data : {
-    companyName: 'Let’s Get Quoted',
-    trade: 'General Contractor',
-    tagline: 'Precision Workmanship & Trusted Service',
-    phone: '(555) 234-5678',
-    website: 'www.letsgetquoted.com',
-    license: 'LIC #109482',
-    accentColor: '#2563eb',
-    secondaryColor: '#f59e0b',
-    currentLogoUrl: null,
-    aiLogos: [],
-    recentOrders: [],
-  };
+  const { accountId } = await requireOfficeContext('settings.read');
+  const initialData = await getMerchandiseStudioData(accountId);
 
   return <MerchandiseDesignStudio initialData={initialData} />;
 }
