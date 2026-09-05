@@ -1,0 +1,377 @@
+/* ==========================================================================
+   Theme Date Picker CSS Module
+   Matches Let's Get Quoted dark-first glassmorphism design system
+   ========================================================================== */
+
+.pickerContainer {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* Trigger Button */
+.triggerBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--inv-border-strong, rgba(255, 255, 255, 0.16));
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.78rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-weight: 500;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.15s ease;
+  user-select: none;
+  white-space: nowrap;
+}
+
+.triggerBtn:hover {
+  border-color: rgba(255, 157, 92, 0.6);
+  background: rgba(0, 0, 0, 0.55);
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.12);
+}
+
+.triggerBtn:focus-visible,
+.triggerBtn[aria-expanded="true"] {
+  border-color: #ff9d5c;
+  background: rgba(0, 0, 0, 0.6);
+  box-shadow: 0 0 0 3px rgba(255, 122, 33, 0.25);
+}
+
+.triggerIcon {
+  color: #ff9d5c;
+  flex-shrink: 0;
+}
+
+/* Floating Calendar Panel */
+.calendarPanel {
+  width: 304px;
+  padding: 0.85rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(26, 33, 48, 0.98) 0%, rgba(13, 17, 26, 0.99) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow:
+    0 22px 50px -10px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 122, 33, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  color: #ffffff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  user-select: none;
+  animation: calendarPop 0.16s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes calendarPop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Header with Navigation and Selects */
+.calendarHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  margin-bottom: 0.75rem;
+}
+
+.navBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.navBtn:hover {
+  background: rgba(255, 122, 33, 0.2);
+  border-color: rgba(255, 157, 92, 0.4);
+  color: #ffffff;
+}
+
+.navBtn:focus-visible {
+  border-color: #ff9d5c;
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.3);
+}
+
+.headerControls {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.selectMonth,
+.selectYear {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 0.22rem 0.45rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.12s ease;
+}
+
+.selectMonth:hover,
+.selectYear:hover {
+  border-color: rgba(255, 157, 92, 0.6);
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.selectMonth:focus-visible,
+.selectYear:focus-visible {
+  border-color: #ff9d5c;
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.25);
+}
+
+.selectMonth option,
+.selectYear option {
+  background: #131824;
+  color: #ffffff;
+}
+
+/* Weekday Columns */
+.weekdaysRow {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px;
+  margin-bottom: 0.4rem;
+}
+
+.weekdayLabel {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  padding: 0.15rem 0;
+  text-transform: uppercase;
+}
+
+/* 42-Cell Days Grid */
+.daysGrid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.dayBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  width: 100%;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: #f8fafc;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.1s ease;
+  position: relative;
+}
+
+.dayBtn:hover {
+  background: rgba(255, 122, 33, 0.16);
+  border-color: rgba(255, 157, 92, 0.45);
+  color: #ffffff;
+}
+
+.dayBtn:focus-visible {
+  border-color: #ff9d5c;
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.3);
+}
+
+/* Day from previous or next month */
+.dayAdjacent {
+  color: rgba(148, 163, 184, 0.38);
+  font-weight: 400;
+}
+
+.dayAdjacent:hover {
+  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Today indicator */
+.dayToday {
+  border-color: rgba(255, 209, 102, 0.65);
+  color: #ffd166;
+  font-weight: 700;
+}
+
+/* Today dot marker */
+.dayToday::after {
+  content: '';
+  position: absolute;
+  bottom: 2px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: #ffd166;
+}
+
+/* Selected Day (Signature Brand Glow) */
+.daySelected,
+.daySelected:hover {
+  background: linear-gradient(135deg, #ff7a21, #ff9d5c) !important;
+  color: #0c121e !important;
+  font-weight: 800 !important;
+  border-color: transparent !important;
+  box-shadow: 0 2px 10px rgba(255, 122, 33, 0.5) !important;
+}
+
+.daySelected::after {
+  background: #0c121e !important;
+}
+
+/* Footer Actions */
+.calendarFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 0.75rem;
+  padding-top: 0.65rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.09);
+}
+
+.clearBtn {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  border-radius: 6px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.12s ease;
+}
+
+.clearBtn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.clearBtn:focus-visible {
+  border-color: rgba(255, 255, 255, 0.4);
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.15);
+}
+
+.todayBtn {
+  background: rgba(255, 122, 33, 0.14);
+  border: 1px solid rgba(255, 122, 33, 0.35);
+  color: #ff9d5c;
+  border-radius: 6px;
+  padding: 0.25rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.12s ease;
+}
+
+.todayBtn:hover {
+  background: rgba(255, 122, 33, 0.26);
+  color: #ffffff;
+  border-color: #ff9d5c;
+}
+
+.todayBtn:focus-visible {
+  border-color: #ff9d5c;
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.3);
+}
+
+/* Light / Sunlight / Parchment Theme Adaptations */
+:global([data-theme='light']) .calendarPanel,
+:global([data-theme='sunlight']) .calendarPanel,
+:global([data-theme='parchment']) .calendarPanel {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.15);
+  box-shadow: 0 16px 40px -10px rgba(0, 0, 0, 0.2), 0 0 0 1px rgba(0, 0, 0, 0.08);
+  color: #0f172a;
+}
+
+:global([data-theme='light']) .triggerBtn,
+:global([data-theme='sunlight']) .triggerBtn,
+:global([data-theme='parchment']) .triggerBtn {
+  background: #ffffff;
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #0f172a;
+}
+
+:global([data-theme='light']) .selectMonth,
+:global([data-theme='light']) .selectYear,
+:global([data-theme='sunlight']) .selectMonth,
+:global([data-theme='sunlight']) .selectYear,
+:global([data-theme='parchment']) .selectMonth,
+:global([data-theme='parchment']) .selectYear {
+  background: #f8fafc;
+  border-color: rgba(0, 0, 0, 0.18);
+  color: #0f172a;
+}
+
+:global([data-theme='light']) .selectMonth option,
+:global([data-theme='light']) .selectYear option,
+:global([data-theme='sunlight']) .selectMonth option,
+:global([data-theme='sunlight']) .selectYear option,
+:global([data-theme='parchment']) .selectMonth option,
+:global([data-theme='parchment']) .selectYear option {
+  background: #ffffff;
+  color: #0f172a;
+}
+
+:global([data-theme='light']) .navBtn,
+:global([data-theme='sunlight']) .navBtn,
+:global([data-theme='parchment']) .navBtn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.12);
+  color: #334155;
+}
+
+:global([data-theme='light']) .dayBtn,
+:global([data-theme='sunlight']) .dayBtn,
+:global([data-theme='parchment']) .dayBtn {
+  color: #1e293b;
+}
+
+:global([data-theme='light']) .dayAdjacent,
+:global([data-theme='sunlight']) .dayAdjacent,
+:global([data-theme='parchment']) .dayAdjacent {
+  color: #94a3b8;
+}
+
+:global([data-theme='light']) .clearBtn,
+:global([data-theme='sunlight']) .clearBtn,
+:global([data-theme='parchment']) .clearBtn {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.15);
+  color: #475569;
+}

@@ -100,6 +100,7 @@ import BarcodeScannerModal from './components/BarcodeScannerModal';
 import PurchaseOrderModal from './components/PurchaseOrderModal';
 import AssetDetailModal from './components/AssetDetailModal';
 import VanKitTemplatesModal from './components/VanKitTemplatesModal';
+import ThemeDatePicker from '@/components/theme-date-picker';
 import styles from './inventory.module.css';
 
 interface InventoryClientProps {
@@ -340,9 +341,14 @@ export default function InventoryClient({
   }, [pathname, router, searchParams]);
 
   const handleAsOfDateChange = useCallback((dateStr: string) => {
-    setAsOfDate(dateStr);
+    const effectiveDate = dateStr || getTodayDateString();
+    setAsOfDate(effectiveDate);
     const params = new URLSearchParams(searchParams.toString());
-    params.set('asOf', dateStr);
+    if (dateStr) {
+      params.set('asOf', dateStr);
+    } else {
+      params.delete('asOf');
+    }
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   }, [pathname, router, searchParams]);
 
@@ -1208,24 +1214,15 @@ export default function InventoryClient({
           <div className={styles.heroActions}>
             {/* As-Of Date selector and Tax Schedule CSV export */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-              <label style={{ fontSize: '0.78rem', color: '#cbd5e1', display: 'flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
+              <span style={{ fontSize: '0.78rem', color: '#cbd5e1', display: 'inline-flex', alignItems: 'center', gap: '0.35rem', fontWeight: 600 }}>
                 <Calendar size={13} style={{ color: '#ff9d5c' }} /> As of:
-                <input
-                  type="date"
-                  value={asOfDate}
-                  onChange={(e) => handleAsOfDateChange(e.target.value)}
-                  style={{
-                    background: 'rgba(0, 0, 0, 0.4)',
-                    border: '1px solid var(--inv-border-strong)',
-                    color: '#ffffff',
-                    borderRadius: '6px',
-                    padding: '0.25rem 0.45rem',
-                    fontSize: '0.78rem',
-                    fontFamily: 'monospace',
-                  }}
-                  title="Select As-Of tax year / date for Section 179 and MACRS depreciation calculation"
-                />
-              </label>
+              </span>
+              <ThemeDatePicker
+                value={asOfDate}
+                onChange={handleAsOfDateChange}
+                title="Select As-Of tax year / date for Section 179 and MACRS depreciation calculation"
+                ariaLabel="As-Of calculation date"
+              />
               <button
                 type="button"
                 onClick={handleExportTaxCsv}
