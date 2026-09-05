@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { randomBytes } from 'crypto';
+import { createAdminClient } from '@/lib/auth';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail, sendReviewRequestEmail } from '@/lib/email';
 import { isEmailSuppressed, resolveMarketingMailingAddress } from '@/lib/email-suppression';
@@ -88,12 +89,24 @@ type ActivityInviteRow = ReviewInviteRow & {
  * Degrades to [] on any error, the same way getReviewsSummary does: an
  * un-migrated database should show an empty page, not a stack trace.
  */
-export async function loadReviewActivity(supabase: SupabaseClient, accountId: string): Promise<ActivityRow[]> {
-  const { data, error } = await supabase
+export async function loadReviewActivity(
+  supabase: SupabaseClient,
+  accountId: string,
+  adminClient?: SupabaseClient,
+  limit = 1000,
+): Promise<ActivityRow[]> {
+  const admin = adminClient ?? (accountId === 'demo-account' ? supabase : createAdminClient());
+  let query = supabase
     .from('review_invites')
     .select(ACTIVITY_FIELDS)
     .eq('account_id', accountId)
     .order('created_at', { ascending: false });
+
+  if (limit > 0) {
+    query = query.limit(limit);
+  }
+
+  const { data, error } = await query;
   if (error || !data) return [];
 
   const invites = data as unknown as ActivityInviteRow[];
@@ -110,7 +123,7 @@ export async function loadReviewActivity(supabase: SupabaseClient, accountId: st
         .select('id, ref, client_id, client_name, client_phone, client_email')
         .eq('account_id', accountId)
         .in('id', jobIds),
-      supabase
+      admin
         .from('job_feed')
         .select('job_id, meta, created_at')
         .eq('account_id', accountId)
@@ -174,9 +187,79 @@ export async function getReviewActivityRow(
   supabase: SupabaseClient,
   accountId: string,
   id: string,
+  adminClient?: SupabaseClient,
 ): Promise<ActivityRow | null> {
-  const rows = await loadReviewActivity(supabase, accountId);
-  return rows.find((row) => row.id === id) ?? null;
+  const admin = adminClient ?? (accountId === 'demo-account' ? supabase : createAdminClient());
+  const { data: invite, error } = await supabase
+    .from('review_invites')
+    .select(ACTIVITY_FIELDS)
+    .eq('id', id)
+    .eq('account_id', accountId)
+    .maybeSingle();
+
+  if (error || !invite) return null;
+
+  const row = invite as unknown as ActivityInviteRow;
+  let job: { ref: string | null; clientId: string | null; name: string | null; phone: string | null; email: string | null } | null = null;
+  let channel: ReviewChannel = 'unknown';
+
+  if (row.job_id) {
+    const [{ data: jobRow }, { data: feedRows }] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('id, ref, client_id, client_name, client_phone, client_email')
+        .eq('account_id', accountId)
+        .eq('id', row.job_id)
+        .maybeSingle(),
+      admin
+        .from('job_feed')
+        .select('job_id, meta, created_at')
+        .eq('account_id', accountId)
+        .eq('kind', 'review_requested')
+        .eq('job_id', row.job_id)
+        .order('created_at', { ascending: false })
+        .limit(1),
+    ]);
+
+    if (jobRow) {
+      const j = jobRow as Record<string, unknown>;
+      job = {
+        ref: (j.ref as string | null) ?? null,
+        clientId: (j.client_id as string | null) ?? null,
+        name: (j.client_name as string | null) ?? null,
+        phone: (j.client_phone as string | null) ?? null,
+        email: (j.client_email as string | null) ?? null,
+      };
+    }
+
+    if (feedRows && feedRows.length > 0) {
+      const meta = ((feedRows[0] as Record<string, unknown>).meta ?? {}) as Record<string, unknown>;
+      const ch = meta.channel;
+      if (ch === 'sms' || ch === 'email') channel = ch;
+    }
+  }
+
+  return {
+    id: row.id,
+    jobId: row.job_id,
+    jobRef: job?.ref ?? null,
+    clientId: job?.clientId ?? null,
+    clientName: row.client_name ?? job?.name ?? null,
+    clientPhone: job?.phone ?? null,
+    clientEmail: job?.email ?? null,
+    rating: row.rating !== null && row.rating >= 1 && row.rating <= 5 ? (row.rating as ActivityRow['rating']) : null,
+    feedback: row.feedback,
+    status: requestStatus(row),
+    channel,
+    sentAt: row.created_at,
+    respondedAt: row.responded_at,
+    googleClickedAt: row.google_clicked_at,
+    feedbackAt: row.feedback_at,
+    remindersSent: row.reminders_sent ?? 0,
+    lastRemindedAt: row.last_reminded_at,
+    remindersStoppedAt: row.reminders_stopped_at,
+    resolvedAt: row.resolved_at,
+  };
 }
 
 /**
@@ -242,8 +325,10 @@ export async function sendReviewReminder(
   accountId: string,
   id: string,
   nowIso = new Date().toISOString(),
+  adminClient?: SupabaseClient,
 ): Promise<ReminderResult> {
-  const row = await getReviewActivityRow(supabase, accountId, id);
+  const admin = adminClient ?? (accountId === 'demo-account' ? supabase : createAdminClient());
+  const row = await getReviewActivityRow(supabase, accountId, id, admin);
   if (!row) return { ok: false, message: 'That review request no longer exists.' };
 
   const block = reminderBlock(row, nowIso);
@@ -258,7 +343,7 @@ export async function sendReviewReminder(
   if (!invite?.token) return { ok: false, message: 'That review request no longer exists.' };
 
   const origin = APP_ORIGIN;
-  const { data: pref } = await supabase
+  const { data: pref } = await admin
     .from('accounts')
     .select('review_feedback_page_enabled')
     .eq('id', accountId)
@@ -273,7 +358,7 @@ export async function sendReviewReminder(
     return { ok: false, message: 'Link your Google Business Profile in the website builder first — the reminder has nowhere to go.' };
   }
 
-  const businessName = await loadBusinessName(supabase, accountId);
+  const businessName = await loadBusinessName(admin, accountId);
   const clientFirstName = (row.clientName || 'there').trim().split(/\s+/)[0] || 'there';
   const normalizedPhone = row.clientPhone ? normalizeUsPhone(row.clientPhone) : null;
 
@@ -302,7 +387,7 @@ export async function sendReviewReminder(
       });
       channel = 'sms';
     } else if (route.channel === 'email' && row.clientEmail) {
-      const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
+      const { data: addressRow } = await admin.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
       const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
       if (!mailingAddress) {
         return { ok: false, message: 'Add your business mailing address in Settings to email review reminders — it’s required by anti-spam law.' };
@@ -327,15 +412,23 @@ export async function sendReviewReminder(
   // one-ask lock prevents a worker retry or an indeterminate provider response
   // from producing a second ask; sms_events owns delivery truth.
   const sent = row.remindersSent + 1;
-  await supabase
+  const { data: updated, error: updateError } = await supabase
     .from('review_invites')
     .update({ reminders_sent: sent, last_reminded_at: nowIso })
     .eq('id', id)
-    .eq('account_id', accountId);
+    .eq('account_id', accountId)
+    .select('id, reminders_sent')
+    .maybeSingle();
+
+  if (updateError || !updated) {
+    const errReason = updateError ? updateError.message : 'Reminder update failed to persist';
+    console.error(`Review reminder update failed for invite ${id}:`, errReason);
+    return { ok: false, message: `The reminder was dispatched, but the reminder counter could not be updated (${errReason}).` };
+  }
 
   if (row.jobId) {
     try {
-      await createJobFeedEvent(supabase, accountId, row.jobId, {
+      await createJobFeedEvent(admin, accountId, row.jobId, {
         kind: 'review_requested',
         title: channel === 'sms' ? 'Review reminder queued' : 'Review reminder emailed',
         body: `Reminder ${sent} of ${MAX_REMINDERS} for the same review link.`,
@@ -469,7 +562,12 @@ export async function recordGoogleClick(admin: SupabaseClient, token: string): P
  * src/app/dashboard/jobs/actions.ts). Two queries regardless of job count,
  * so a recommendation card can show this number without an N+1 per job.
  */
-export async function countCompletedJobsAwaitingReview(supabase: SupabaseClient, accountId: string): Promise<number> {
+export async function countCompletedJobsAwaitingReview(
+  supabase: SupabaseClient,
+  accountId: string,
+  adminClient?: SupabaseClient,
+): Promise<number> {
+  const admin = adminClient ?? (accountId === 'demo-account' ? supabase : createAdminClient());
   const { data: completed, error } = await supabase
     .from('jobs')
     .select('id')
@@ -478,7 +576,7 @@ export async function countCompletedJobsAwaitingReview(supabase: SupabaseClient,
   if (error || !completed || completed.length === 0) return 0;
 
   const completedIds = completed.map((job) => job.id as string);
-  const { data: requested } = await supabase
+  const { data: requested } = await admin
     .from('job_feed')
     .select('job_id')
     .eq('account_id', accountId)

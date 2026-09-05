@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/auth';
 import { PLACEHOLDER_BUSINESS_NAME } from '@/lib/terms';
 
 /**
@@ -61,6 +62,9 @@ export function pickBusinessName(
  *
  * Works with a user-scoped client (RLS keeps it to their own rows) and with the
  * admin client, so webhook and cron paths use the same ladder as the dashboard.
+ * If a session client returns empty (e.g. an office member constrained by
+ * owner-only RLS on accounts and sites), falls back to the service role so
+ * customer messages never introduce the contractor as "Your contractor".
  */
 export async function loadBusinessName(
   client: SupabaseClient,
@@ -71,5 +75,17 @@ export async function loadBusinessName(
     client.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
     client.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
   ]);
-  return pickBusinessName(site as SiteLike, account as AccountLike, fallback);
+  const resolved = pickBusinessName(site as SiteLike, account as AccountLike, '');
+  if (resolved) return resolved;
+
+  try {
+    const admin = createAdminClient();
+    const [{ data: adminSite }, { data: adminAccount }] = await Promise.all([
+      admin.from('sites').select('company_name').eq('account_id', accountId).limit(1).maybeSingle(),
+      admin.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    ]);
+    return pickBusinessName(adminSite as SiteLike, adminAccount as AccountLike, fallback);
+  } catch {
+    return fallback;
+  }
 }

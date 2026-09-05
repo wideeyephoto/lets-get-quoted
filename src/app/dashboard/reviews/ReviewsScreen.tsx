@@ -39,9 +39,14 @@ import styles from './reviews.module.css';
  *      "Google page visits" is the honest name and the note under it says why.
  */
 
-function formatDate(value: string | null): string {
+function formatDate(value: string | null, timeZone = 'America/New_York'): string {
   if (!value) return '—';
-  return new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return new Date(value).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone,
+  });
 }
 
 function stars(rating: number | null): string {
@@ -95,6 +100,7 @@ export type ReviewsScreenProps = {
   basePath?: string;
   /** The demo: the automation toggle is shown as state, not as a control. */
   readOnly?: boolean;
+  timeZone?: string;
 };
 
 export default function ReviewsScreen({
@@ -105,6 +111,7 @@ export default function ReviewsScreen({
   nowIso,
   basePath = '/dashboard',
   readOnly = false,
+  timeZone = 'America/New_York',
 }: ReviewsScreenProps) {
   const { filters, tab, kpis, counts, visible, privateRows, trend, totalEver } = view;
 
@@ -393,7 +400,7 @@ export default function ReviewsScreen({
                               <span className={styles.quiet}>—</span>
                             )}
                           </td>
-                          <td className={styles.num}>{formatDate(row.sentAt)}</td>
+                          <td className={styles.num}>{formatDate(row.sentAt, timeZone)}</td>
                           <td className={styles.quiet}>{CHANNEL_LABEL[row.channel]}</td>
                           <td>
                             <span className={`status-badge ${TONE_CLASS[REQUEST_STATUS_TONE[row.status]]}`}>
@@ -410,7 +417,7 @@ export default function ReviewsScreen({
                               <span className={styles.quiet}>—</span>
                             )}
                           </td>
-                          <td className={styles.num}>{formatDate(row.respondedAt)}</td>
+                          <td className={styles.num}>{formatDate(row.respondedAt, timeZone)}</td>
                           <td className={styles.num}>
                             {row.remindersSent}
                             {row.remindersStoppedAt ? <span className={styles.quiet}> · stopped</span> : null}
@@ -452,7 +459,7 @@ export default function ReviewsScreen({
                           </span>
                         </div>
                         <div className={styles.rowCardMeta}>
-                          <span>{formatDate(row.sentAt)}</span>
+                          <span>{formatDate(row.sentAt, timeZone)}</span>
                           <span>{CHANNEL_LABEL[row.channel]}</span>
                           {row.rating !== null ? (
                             <span>
@@ -502,7 +509,7 @@ export default function ReviewsScreen({
                         {row.rating !== null ? <span className="sr-only">{row.rating} of 5</span> : null}
                       </span>
                       <span className="review-feedback-meta">
-                        {row.clientName || 'A client'} · {formatDate(row.feedbackAt ?? row.respondedAt)}
+                        {row.clientName || 'A client'} · {formatDate(row.feedbackAt ?? row.respondedAt, timeZone)}
                         {row.resolvedAt ? ' · resolved' : ''}
                         {' · '}
                         <Link
@@ -523,7 +530,7 @@ export default function ReviewsScreen({
       )}
 
       <Suspense fallback={null}>
-        <ReviewDrawer row={openRow} basePath={basePath} nowIso={nowIso} readOnly={readOnly} />
+        <ReviewDrawer row={openRow} basePath={basePath} nowIso={nowIso} readOnly={readOnly} timeZone={timeZone} />
       </Suspense>
     </main>
   );

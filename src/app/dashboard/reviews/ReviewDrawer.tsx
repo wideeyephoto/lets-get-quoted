@@ -32,14 +32,15 @@ import styles from './reviews.module.css';
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-function fmt(iso: string | null | undefined): string {
+function fmt(iso: string | null | undefined, timeZone = 'America/New_York'): string {
   if (!iso) return '';
-  return new Date(iso).toLocaleString(undefined, {
+  return new Date(iso).toLocaleString('en-US', {
     month: 'short',
     day: 'numeric',
     year: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
+    timeZone,
   });
 }
 
@@ -57,11 +58,13 @@ export default function ReviewDrawer({
   basePath,
   nowIso,
   readOnly = false,
+  timeZone = 'America/New_York',
 }: {
   row: ActivityRow | null;
   basePath: string;
   nowIso: string;
   readOnly?: boolean;
+  timeZone?: string;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -188,7 +191,7 @@ export default function ReviewDrawer({
                   <span className={styles.eventDot} aria-hidden="true" />
                   <span>
                     {event.what}
-                    <span className={styles.eventWhen}>{fmt(event.when)}</span>
+                    <span className={styles.eventWhen}>{fmt(event.when, timeZone)}</span>
                   </span>
                 </li>
               ))}
@@ -231,7 +234,7 @@ export default function ReviewDrawer({
               <div className={styles.actions}>
                 <RemindForm row={row} block={block} />
                 <StopForm row={row} />
-                <ResolveForm row={row} />
+                <ResolveForm row={row} timeZone={timeZone} />
                 <div className={styles.actionRow}>
                   {/* Rendered, disabled, and explained. There is no assignee
                       model for review requests; a control that looked live and
@@ -303,7 +306,7 @@ function StopForm({ row }: { row: ActivityRow }) {
   );
 }
 
-function ResolveForm({ row }: { row: ActivityRow }) {
+function ResolveForm({ row, timeZone }: { row: ActivityRow; timeZone?: string }) {
   const [state, action] = useFormState(setResolvedAction, REVIEW_ACTION_IDLE);
   const resolved = Boolean(row.resolvedAt);
   // Only meaningful for feedback somebody actually left.
@@ -317,7 +320,7 @@ function ResolveForm({ row }: { row: ActivityRow }) {
           {resolved ? 'Reopen' : 'Mark resolved'}
         </SubmitButton>
       </div>
-      {resolved ? <p className={styles.notBuilt}>Resolved {fmt(row.resolvedAt)}.</p> : null}
+      {resolved ? <p className={styles.notBuilt}>Resolved {fmt(row.resolvedAt, timeZone)}.</p> : null}
       <Result state={state} />
     </form>
   );

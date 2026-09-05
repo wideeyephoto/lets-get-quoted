@@ -2186,14 +2186,22 @@ export async function sendReviewRequestSms(params: {
     clientName: params.clientName,
     reviewUrl: params.reviewUrl,
   });
-  return queueAccountSms({
+  const phoneNumber = normalizeUsPhone(params.phone) ?? params.phone.trim();
+  const queued = await enqueueSmsDelivery({
     accountId: params.accountId,
-    phone: params.phone,
+    phoneNumber,
     body: message,
     messageKind: 'review-request',
-    category: 'customer_message',
+    billingCategory: 'customer_message',
+    context: 'customer',
     idempotencyKey: params.idempotencyKey,
   });
+
+  if (params.idempotencyKey && !queued.created) {
+    throw new Error('This review request has already been queued.');
+  }
+
+  return queued.eventId;
 }
 
 // Instant speed-to-lead auto-SMS response for paid ad-acquired leads.

@@ -504,11 +504,12 @@ export async function markJobCompleteAction(jobId: string, formData?: FormData) 
     // so a job started, paid and completed the day before its own booking left
     // no trace that anything unusual had happened. The confirm dialog names it
     // at the moment of pressing; this is the durable record.
-    const { data: accountClock } = await supabase.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
+    const admin = createAdminClient();
+    const { data: accountClock } = await admin.from('accounts').select('timezone').eq('id', accountId).maybeSingle();
     const todayKey = zonedNowParts(new Date(), (accountClock?.timezone as string) || 'America/New_York').dateKey;
     const completedEarly = Boolean(job.scheduled_for && job.scheduled_for > todayKey);
 
-    await createJobFeedEvent(supabase, accountId, jobId, {
+    await createJobFeedEvent(admin, accountId, jobId, {
       kind: 'job_completed',
       title: 'Job marked complete',
       body: completedEarly
@@ -538,14 +539,14 @@ export async function markJobCompleteAction(jobId: string, formData?: FormData) 
     // missing review link, or the once-per-job check. Those are not
     // preferences.
     try {
-      const { data: settings } = await supabase
+      const { data: settings } = await admin
         .from('accounts')
         .select('auto_review_request')
         .eq('id', accountId)
         .maybeSingle();
       const wantsReview = sendReview ?? Boolean(settings?.auto_review_request);
-      if (wantsReview && !(await reviewAlreadyRequested(supabase, accountId, jobId))) {
-        await deliverJobReviewRequest(supabase, accountId, job);
+      if (wantsReview && !(await reviewAlreadyRequested(supabase, accountId, jobId, admin))) {
+        await deliverJobReviewRequest(supabase, accountId, job, admin);
       }
     } catch (error) {
       console.error(`Auto review request skipped for job ${jobId}:`, error instanceof Error ? error.message : error);
@@ -1703,8 +1704,10 @@ export async function draftQuoteAction(jobId: string, refinement?: string): Prom
 export async function resolveAccountReviewUrl(
   supabase: SupabaseClient,
   accountId: string,
+  adminClient?: SupabaseClient,
 ): Promise<string | null> {
-  const { data: site } = await supabase
+  const admin = adminClient ?? createAdminClient();
+  const { data: site } = await admin
     .from('sites')
     .select('content')
     .eq('account_id', accountId)
@@ -1723,18 +1726,20 @@ async function deliverJobReviewRequest(
   supabase: SupabaseClient,
   accountId: string,
   job: Awaited<ReturnType<typeof getJob>>,
+  adminClient?: SupabaseClient,
 ): Promise<{ ok: boolean; message: string }> {
   if (!job) return { ok: false, message: 'Job not found.' };
 
-  const reviewUrl = await resolveAccountReviewUrl(supabase, accountId);
+  const admin = adminClient ?? createAdminClient();
+  const reviewUrl = await resolveAccountReviewUrl(supabase, accountId, admin);
   if (!reviewUrl) {
     return { ok: false, message: 'Link your Google Business Profile in the website builder first so the review has somewhere to go.' };
   }
 
-  const businessName = await loadBusinessName(supabase, accountId);
+  const businessName = await loadBusinessName(admin, accountId);
   // Defensive: mailing_address may be missing on an un-migrated DB, so read it in
   // its own query that degrades to null rather than failing the review send.
-  const { data: addressRow } = await supabase.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
+  const { data: addressRow } = await admin.from('accounts').select('mailing_address').eq('id', accountId).maybeSingle();
   const mailingAddress = resolveMarketingMailingAddress(addressRow?.mailing_address as string | null);
   const clientFirstName = (job.client_name || 'there').trim().split(/\s+/)[0] || 'there';
 
@@ -1744,7 +1749,7 @@ async function deliverJobReviewRequest(
   // Falls back to the direct Google link if it's switched off or the invite
   // can't be created — a fallback that can only ever widen access, never narrow it.
   let linkUrl = reviewUrl;
-  const { data: pref } = await supabase.from('accounts').select('review_feedback_page_enabled').eq('id', accountId).maybeSingle();
+  const { data: pref } = await admin.from('accounts').select('review_feedback_page_enabled').eq('id', accountId).maybeSingle();
   if (pref?.review_feedback_page_enabled) {
     try {
       const token = await createReviewInvite(supabase, accountId, job.id, job.client_name, reviewUrl);
@@ -1812,7 +1817,7 @@ async function deliverJobReviewRequest(
     return { ok: false, message: reason };
   }
 
-  await createJobFeedEvent(supabase, accountId, job.id, {
+  await createJobFeedEvent(admin, accountId, job.id, {
     kind: 'review_requested',
     title: channel === 'sms' ? 'Review request queued' : 'Review request emailed',
     body: `${channel === 'sms' ? 'Queued a Google review request for' : 'Asked'} ${job.client_name}${channel === 'sms' ? '' : ' for a Google review'}.`,
@@ -1835,8 +1840,14 @@ async function deliverJobReviewRequest(
 // True once a review has already been requested for this job — used to keep
 // auto-send idempotent so a client is never double-texted if a job flips back
 // to in-progress and gets re-completed.
-async function reviewAlreadyRequested(supabase: SupabaseClient, accountId: string, jobId: string): Promise<boolean> {
-  const { data } = await supabase
+async function reviewAlreadyRequested(
+  supabase: SupabaseClient,
+  accountId: string,
+  jobId: string,
+  adminClient?: SupabaseClient,
+): Promise<boolean> {
+  const admin = adminClient ?? createAdminClient();
+  const { data } = await admin
     .from('job_feed')
     .select('id')
     .eq('account_id', accountId)
@@ -1854,7 +1865,8 @@ async function reviewAlreadyRequested(supabase: SupabaseClient, accountId: strin
 export async function requestJobReviewAction(jobId: string): Promise<{ ok: boolean; message: string }> {
   const { supabase, accountId } = await requireOfficeContext('jobs.write');
   const job = await getJob(supabase, accountId, jobId);
-  const result = await deliverJobReviewRequest(supabase, accountId, job);
+  const admin = createAdminClient();
+  const result = await deliverJobReviewRequest(supabase, accountId, job, admin);
   if (result.ok) revalidatePath(`/dashboard/jobs/${jobId}`);
 
   // Receipt to the contractor, if they want one. Never fails the ask itself.
@@ -1863,7 +1875,7 @@ export async function requestJobReviewAction(jobId: string): Promise<{ ok: boole
       if (await wantsConfirmation(supabase, accountId, 'review_confirmation_email')) {
         const [{ data: { user } }, businessName] = await Promise.all([
           supabase.auth.getUser(),
-          loadBusinessName(supabase, accountId, 'Your business'),
+          loadBusinessName(admin, accountId, 'Your business'),
         ]);
         if (user?.email) {
           const origin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');

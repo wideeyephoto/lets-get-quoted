@@ -1,4 +1,4 @@
-import { requireOfficeContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { getReviewActivityRow, loadReviewActivity } from '@/lib/reviews';
 import { buildActivityView } from '@/lib/review-activity';
 import { googleReviewUrl } from '@/lib/review-routing';
@@ -26,12 +26,13 @@ export default async function ReviewsPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContext('jobs.read');
+  const { supabase, accountId, accountTimeZone } = await requireOfficeContext('jobs.read');
+  const admin = createAdminClient();
 
   const [rows, { data: account }, { data: site }] = await Promise.all([
-    loadReviewActivity(supabase, accountId),
-    supabase.from('accounts').select('auto_review_request').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('content').eq('account_id', accountId).maybeSingle(),
+    loadReviewActivity(supabase, accountId, admin),
+    admin.from('accounts').select('auto_review_request').eq('id', accountId).maybeSingle(),
+    admin.from('sites').select('content').eq('account_id', accountId).maybeSingle(),
   ]);
 
   // The link an owner can hand out directly. Null when no Google Business
@@ -60,6 +61,7 @@ export default async function ReviewsPage({
       reviewsOn={Boolean(account?.auto_review_request)}
       publicReviewUrl={publicReviewUrl}
       nowIso={nowIso}
+      timeZone={accountTimeZone}
     />
   );
 }
