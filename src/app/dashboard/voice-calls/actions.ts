@@ -203,7 +203,41 @@ export async function convertVoiceCallToQuoteDraftAction(formData: FormData): Pr
   }
 
   const { convertLeadToJob } = await import('@/lib/leads');
-  const job = await convertLeadToJob(supabase, accountId, leadId, 0, null);
+
+  let jobId: string | null = null;
+  if (leadId) {
+    const { data: leadRow } = await supabase
+      .from('leads')
+      .select('id, converted_job')
+      .eq('id', leadId)
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (leadRow?.converted_job) {
+      jobId = String(leadRow.converted_job);
+    }
+  }
+
+  if (!jobId) {
+    try {
+      const job = await convertLeadToJob(supabase, accountId, leadId, 0, null);
+      jobId = job.id;
+    } catch (err: unknown) {
+      // If concurrent request already converted the lead, retrieve the created job ID
+      const { data: leadRow } = await supabase
+        .from('leads')
+        .select('id, converted_job')
+        .eq('id', leadId)
+        .eq('account_id', accountId)
+        .maybeSingle();
+
+      if (leadRow?.converted_job) {
+        jobId = String(leadRow.converted_job);
+      } else {
+        throw err;
+      }
+    }
+  }
 
   const nowIso = new Date().toISOString();
   await supabase
@@ -220,7 +254,43 @@ export async function convertVoiceCallToQuoteDraftAction(formData: FormData): Pr
   revalidatePath(`/dashboard/voice-calls/${callId}`);
   revalidatePath('/dashboard/leads');
   revalidatePath('/dashboard/jobs');
-  return { jobId: job.id };
+  return { jobId };
+}
+
+export async function bulkUpdateVoiceCallDispositionsAction(formData: FormData): Promise<{ count: number }> {
+  const { supabase, accountId, userId } = await requireOfficeContext('leads.write');
+
+  const disposition = (formData.get('disposition') ?? '').toString().trim() as VoiceCallDisposition;
+  if (!VALID_DISPOSITIONS.has(disposition)) throw new Error('Invalid disposition.');
+
+  const formCallIds = formData.getAll('callIds');
+  const rawIds = formData.get('callIds')?.toString() || '';
+  const callIds = formCallIds.length > 1
+    ? formCallIds.map((s) => s.toString().trim()).filter(Boolean)
+    : rawIds.split(',').map((s) => s.trim()).filter(Boolean);
+
+  if (callIds.length === 0) throw new Error('At least one call ID is required.');
+
+  const nowIso = new Date().toISOString();
+  const upsertRows = callIds.map((callId) => ({
+    call_id: callId,
+    account_id: accountId,
+    disposition,
+    reviewed_at: nowIso,
+    reviewed_by: userId,
+  }));
+
+  const { error } = await supabase
+    .from('voice_call_workflows')
+    .upsert(upsertRows, { onConflict: 'call_id' });
+
+  if (error) {
+    console.error('Failed to bulk update voice call dispositions:', error);
+    throw new Error('Failed to update dispositions.');
+  }
+
+  revalidatePath('/dashboard/voice-calls');
+  return { count: callIds.length };
 }
 
 /**

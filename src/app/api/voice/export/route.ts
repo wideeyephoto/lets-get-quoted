@@ -7,7 +7,11 @@ export const dynamic = 'force-dynamic';
 
 function escapeCsvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const str = String(value);
+  let str = String(value);
+  // Defend against CSV formula injection (Excel/Calc/Sheets command execution)
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = `'${str}`;
+  }
   if (str.includes(',') || str.includes('"') || str.includes('\n') || str.includes('\r')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
@@ -19,12 +23,27 @@ export async function GET(request: Request) {
     const { supabase, accountId } = await requireOfficeContext('leads.read');
 
     const url = new URL(request.url);
-    const dateRangeParam = url.searchParams.get('dateRange') as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month' | null;
+    const dateRangeParam = (url.searchParams.get('dateRange') as 'all' | 'today' | 'yesterday' | '7d' | '30d' | 'month') || 'all';
+    const tabParam = (url.searchParams.get('tab') as 'all' | 'unreviewed' | 'needs_callback' | 'urgent' | 'transferred' | 'completed') || 'all';
+    const queryParam = url.searchParams.get('q') || undefined;
+    const dispositionParam = (url.searchParams.get('disposition') as any) || 'all';
+    const outcomeParam = (url.searchParams.get('outcome') as any) || 'all';
+    const selectedIdsParam = url.searchParams.get('ids');
 
     const queue = await loadVoiceWorkspaceQueue(supabase, accountId, {
-      dateRange: dateRangeParam || 'all',
+      dateRange: dateRangeParam,
+      tab: tabParam,
+      query: queryParam,
+      disposition: dispositionParam,
+      outcome: outcomeParam,
       limit: 1000,
     });
+
+    let itemsToExport = queue.items || [];
+    if (selectedIdsParam) {
+      const idSet = new Set(selectedIdsParam.split(',').map((s) => s.trim()));
+      itemsToExport = itemsToExport.filter((item) => idSet.has(item.id));
+    }
 
     const headers = [
       'Call ID',
@@ -39,7 +58,7 @@ export async function GET(request: Request) {
       'Summary',
     ];
 
-    const rows = (queue.items || []).map((item) => [
+    const rows = itemsToExport.map((item) => [
       escapeCsvCell(item.id),
       escapeCsvCell(item.startedAt),
       escapeCsvCell(item.callerNumber),
@@ -52,7 +71,16 @@ export async function GET(request: Request) {
       escapeCsvCell(item.summary),
     ]);
 
-    const csvContent = [headers.join(','), ...rows.map((r) => r.join(','))].join('\r\n');
+    const lines: string[] = [];
+    if (queue.items.length >= 1000 && queue.counters.totalCount > 1000) {
+      lines.push(`# Warning: Export capped at 1000 rows. Total matching calls in range: ${queue.counters.totalCount}. Refine date or filter criteria to download complete subset.`);
+    }
+    lines.push(headers.join(','));
+    for (const r of rows) {
+      lines.push(r.join(','));
+    }
+
+    const csvContent = lines.join('\r\n');
     const filename = `voice_calls_export_${new Date().toISOString().slice(0, 10)}.csv`;
 
     return new NextResponse(csvContent, {

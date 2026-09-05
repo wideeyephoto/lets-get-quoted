@@ -19,6 +19,7 @@ vi.mock('@/lib/leads', () => ({
 
 import {
   addVoiceCallNoteAction,
+  bulkUpdateVoiceCallDispositionsAction,
   createLeadFromVoiceCallAction,
   convertVoiceCallToQuoteDraftAction,
   scheduleVoiceCallCallbackAction,
@@ -180,5 +181,30 @@ describe('voice call workflow server actions', () => {
     });
     expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/voice-calls');
     expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/jobs');
+  });
+
+  it('bulk updates dispositions across multiple call IDs', async () => {
+    const formData = new FormData();
+    formData.append('callIds', 'call-1');
+    formData.append('callIds', 'call-2');
+    formData.append('disposition', 'resolved');
+
+    const res = await bulkUpdateVoiceCallDispositionsAction(formData);
+
+    expect(res.count).toBe(2);
+    const workflowUpsert = upserts.find((u) => u.table === 'voice_call_workflows');
+    expect(workflowUpsert).toBeDefined();
+    expect(mockRevalidatePath).toHaveBeenCalledWith('/dashboard/voice-calls');
+  });
+
+  it('rejects bulk update with invalid disposition or empty call IDs', async () => {
+    const emptyForm = new FormData();
+    emptyForm.append('disposition', 'resolved');
+    await expect(bulkUpdateVoiceCallDispositionsAction(emptyForm)).rejects.toThrow('At least one call ID is required.');
+
+    const invalidDispForm = new FormData();
+    invalidDispForm.append('callIds', 'call-1');
+    invalidDispForm.append('disposition', 'bad_status');
+    await expect(bulkUpdateVoiceCallDispositionsAction(invalidDispForm)).rejects.toThrow('Invalid disposition.');
   });
 });

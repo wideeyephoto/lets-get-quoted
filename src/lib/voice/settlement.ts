@@ -397,24 +397,29 @@ export async function recordProvisionalVoiceCall(
     providerCallId: string;
     callerNumber: string | null;
     startedAt: string;
+    summary?: string | null;
   }>,
 ): Promise<string | null> {
   let callId: string | null = null;
   try {
+    const upsertPayload: Record<string, unknown> = {
+      account_id: input.accountId,
+      provider: input.provider,
+      provider_call_id: input.providerCallId,
+      caller_number: input.callerNumber,
+      started_at: input.startedAt,
+      outcome: 'in_progress',
+      outcome_source: 'provisional_admission',
+      outcome_observed_at: input.startedAt,
+      is_provisional: true,
+      settlement: 'unsettled',
+    };
+    if (input.summary) {
+      upsertPayload.summary = input.summary;
+    }
     const res = await admin
       .from('voice_calls')
-      .upsert({
-        account_id: input.accountId,
-        provider: input.provider,
-        provider_call_id: input.providerCallId,
-        caller_number: input.callerNumber,
-        started_at: input.startedAt,
-        outcome: 'in_progress',
-        outcome_source: 'provisional_admission',
-        outcome_observed_at: input.startedAt,
-        is_provisional: true,
-        settlement: 'unsettled',
-      }, { onConflict: 'provider,provider_call_id' })
+      .upsert(upsertPayload, { onConflict: 'provider,provider_call_id' })
       .select('id');
     callId = (res?.data as { id?: string }[] | null)?.[0]?.id ?? null;
   } catch {
@@ -423,12 +428,47 @@ export async function recordProvisionalVoiceCall(
 
   if (callId) {
     try {
-      await admin.from('voice_call_workflows').upsert({
-        call_id: callId,
-        account_id: input.accountId,
-        disposition: 'unreviewed',
-        urgency: 'normal',
-      }, { onConflict: 'call_id' });
+      const emergency = input.summary ? detectCallEmergency(input.summary) : null;
+      const urgency = emergency?.isEmergency
+        ? (emergency.severity === 'critical' ? 'emergency' : 'urgent')
+        : 'normal';
+
+      let isUnreviewed = true;
+      let existingUrgency: string | null = null;
+      try {
+        const queryBuilder = admin.from('voice_call_workflows') as unknown as {
+          select?: (cols: string) => { eq: (col: string, val: string) => { maybeSingle: () => Promise<{ data?: { disposition?: string; urgency?: string } | null }> } };
+        };
+        if (typeof queryBuilder.select === 'function') {
+          const { data: existingWorkflow } = await queryBuilder
+            .select('disposition, urgency')
+            .eq('call_id', callId)
+            .maybeSingle();
+          if (existingWorkflow && existingWorkflow.disposition !== 'unreviewed') {
+            isUnreviewed = false;
+          }
+          if (existingWorkflow?.urgency) {
+            existingUrgency = existingWorkflow.urgency;
+          }
+        }
+      } catch {
+        // Non-blocking lookup
+      }
+
+      if (isUnreviewed) {
+        await admin.from('voice_call_workflows').upsert({
+          call_id: callId,
+          account_id: input.accountId,
+          disposition: 'unreviewed',
+          urgency: urgency !== 'normal' ? urgency : (existingUrgency || 'normal'),
+        }, { onConflict: 'call_id' });
+      } else if (urgency !== 'normal') {
+        await admin.from('voice_call_workflows').upsert({
+          call_id: callId,
+          account_id: input.accountId,
+          urgency,
+        }, { onConflict: 'call_id' });
+      }
     } catch {
       // Non-blocking on provisional initialization failure
     }
@@ -516,11 +556,23 @@ export async function recordCallHistory(
       .maybeSingle();
 
     if (callRow?.id) {
+      const { data: existingWorkflow } = await admin
+        .from('voice_call_workflows')
+        .select('disposition, reviewed_at, reviewed_by')
+        .eq('call_id', callRow.id)
+        .maybeSingle();
+
+      // Only write disposition when no row exists, or when the existing one is still unreviewed
+      const isStillUnreviewed = !existingWorkflow || existingWorkflow.disposition === 'unreviewed';
+      const effectiveDisposition = isStillUnreviewed ? disposition : existingWorkflow.disposition;
+
       await admin.from('voice_call_workflows').upsert({
         call_id: callRow.id,
         account_id: facts.accountId,
-        disposition,
+        disposition: effectiveDisposition,
         urgency,
+        ...(existingWorkflow?.reviewed_at ? { reviewed_at: existingWorkflow.reviewed_at } : {}),
+        ...(existingWorkflow?.reviewed_by ? { reviewed_by: existingWorkflow.reviewed_by } : {}),
       }, { onConflict: 'call_id' });
 
       const cPhone = facts.callerNumber ?? callerPhone(receipt);

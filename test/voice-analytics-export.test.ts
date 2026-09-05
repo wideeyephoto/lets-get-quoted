@@ -190,4 +190,47 @@ describe('AI Voice Tier 5 Analytics & Date Range Filtering', () => {
     });
     expect(sevenDaysResult.items).toHaveLength(2); // today + yesterday
   });
+
+  it('computes answeredCount accurately and supports custom historyDays', async () => {
+    let capturedGteStartedAt: string | null = null;
+    const calls = [
+      { id: 'c-1', account_id: ACCOUNT_ID, outcome: 'ai_handled', started_at: '2026-08-25T10:00:00Z', ai_seconds: 30, billed_minutes: 1 },
+      { id: 'c-2', account_id: ACCOUNT_ID, outcome: 'caller_abandoned', started_at: '2026-08-25T11:00:00Z', ai_seconds: 5, billed_minutes: 0 },
+      { id: 'c-3', account_id: ACCOUNT_ID, outcome: 'no_input', started_at: '2026-08-25T12:00:00Z', ai_seconds: 10, billed_minutes: 0 },
+      { id: 'c-4', account_id: ACCOUNT_ID, outcome: 'failed', started_at: '2026-08-25T13:00:00Z', ai_seconds: 0, billed_minutes: 0 },
+      { id: 'c-5', account_id: ACCOUNT_ID, outcome: 'transferred', started_at: '2026-08-25T14:00:00Z', ai_seconds: 45, billed_minutes: 1 },
+    ];
+
+    const mockSupabase = {
+      from: (table: string) => {
+        const chain: Record<string, any> = {};
+        chain.select = () => chain;
+        chain.eq = () => chain;
+        chain.order = () => chain;
+        chain.limit = () => chain;
+        chain.gte = (col: string, val: string) => {
+          if (col === 'started_at') capturedGteStartedAt = val;
+          return chain;
+        };
+        chain.in = () => chain;
+        chain.then = (resolve: any) => resolve({ data: table === 'voice_calls' ? calls : [], error: null });
+        return chain;
+      },
+    } as never;
+
+    const refDate = new Date('2026-08-25T15:00:00Z');
+    const result = await loadVoiceWorkspaceQueue(mockSupabase, ACCOUNT_ID, {
+      historyDays: 90,
+      now: refDate,
+    });
+
+    // 90 days retention clock check
+    const expectedCutoff = new Date(refDate.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString();
+    expect(capturedGteStartedAt).toBe(expectedCutoff);
+
+    // Total = 5, answeredCount = 2 (ai_handled + transferred; caller_abandoned, no_input, failed excluded)
+    expect(result.counters.totalCount).toBe(5);
+    expect(result.counters.answeredCount).toBe(2);
+    expect(result.counters.handledCount).toBe(1); // c-1
+  });
 });

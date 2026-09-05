@@ -30,8 +30,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         : 'Hi there, our AC is blowing warm air. Do you have any open slots to send a technician tomorrow?'
     );
 
-    // 1. Load active grounding context
-    const grounding = await loadVoiceGroundingContext(supabase, accountId, callerPhone);
+    // 1. Load active grounding context and configured receptionist settings
+    const [grounding, { data: voiceSettings }] = await Promise.all([
+      loadVoiceGroundingContext(supabase, accountId, callerPhone),
+      supabase
+        .from('voice_settings')
+        .select('greeting, voice_tone, answer_mode, business_hours')
+        .eq('account_id', accountId)
+        .maybeSingle(),
+    ]);
     const _systemPrompt = buildVoiceSystemPrompt(grounding);
 
     // 2. Emergency Triage Analysis
@@ -45,6 +52,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }> = [];
 
     const lower = testMessage.toLowerCase();
+    const serviceAreaList = grounding.serviceAreas
+      ? grounding.serviceAreas.split(',').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const primaryServiceCity = serviceAreaList[0] || 'Local Area';
 
     // Scheduling / Available Slots Tool Trigger
     if (lower.includes('slot') || lower.includes('appointment') || lower.includes('open') || lower.includes('tomorrow') || lower.includes('available') || lower.includes('schedule') || lower.includes('come out') || lower.includes('book')) {
@@ -107,7 +118,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     if (lower.includes('permit') || lower.includes('inspection') || lower.includes('building code')) {
       try {
         const jurisdiction = resolveJurisdiction(
-          { raw: 'Detroit, MI', city: 'Detroit', state: 'MI', formattedAddress: 'Detroit, MI', isValid: true },
+          { raw: primaryServiceCity, city: primaryServiceCity, state: 'MI', formattedAddress: primaryServiceCity, isValid: true },
           'mechanical',
         );
         const reqResult = evaluatePermitRequirement(jurisdiction.authorityId, {
@@ -117,7 +128,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         });
         toolsExecuted.push({
           tool: 'check_permit_requirement',
-          parameters: { city: 'Detroit, MI', trade: 'mechanical' },
+          parameters: { city: primaryServiceCity, trade: grounding.trade },
           result: {
             status: 'success',
             decision: reqResult.decision,
@@ -139,8 +150,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           severity: 'HIGH_PRIORITY_URGENT',
         },
         result: {
-          status: 'alert_dispatched',
-          owner_sms_alert_queued: true,
+          status: 'alert_dispatched_preview',
+          simulated_owner_sms_alert: '[SIMULATED] Team emergency SMS notification previewed (not sent in sandbox)',
           safety_guidance: emergency.hazardType === 'gas_leak'
             ? 'Advise caller to evacuate immediately and contact utility from outside.'
             : 'Advise caller on main water shutoff if safe to access.',
@@ -150,7 +161,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // 4. Synthesize Spoken Receptionist Response
     let spokenResponse = '';
-    const tonePrefix = grounding.voiceTone === 'friendly'
+    const configuredGreeting = voiceSettings?.greeting?.trim() || null;
+    const tonePrefix = configuredGreeting
+      ? `${configuredGreeting} `
+      : grounding.voiceTone === 'friendly'
       ? `Thanks for reaching out to ${grounding.companyName}! `
       : grounding.voiceTone === 'urgent_dispatcher'
       ? `This is ${grounding.companyName} Dispatch. `
@@ -176,10 +190,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
 
     // 5. Build Structured Post-Call Extraction Preview
+    let detectedName = grounding.recognizedCaller?.clientName || null;
+    if (!detectedName) {
+      const nameMatch = testMessage.match(/(?:my name is|this is|i'm|i am)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+      detectedName = nameMatch ? nameMatch[1]! : 'Simulated Caller';
+    }
+
+    const detectedAddress = grounding.recognizedCaller?.serviceAddress || null;
+
     const extractedIntake = {
-      callerName: grounding.recognizedCaller?.clientName || (lower.includes('rivera') ? 'Rivera' : 'Simulated Caller'),
+      callerName: detectedName,
       callerPhone: callerPhone || '(555) 019-2834',
-      serviceAddress: grounding.recognizedCaller?.serviceAddress || '1420 Maple Ave',
+      serviceAddress: detectedAddress || (serviceAreaList.length > 0 ? `${serviceAreaList[0]} (Address pending caller confirmation)` : 'Address pending caller confirmation'),
       workRequested: testMessage,
       urgency: emergency.isEmergency ? 'critical' : 'normal',
       isEmergency: emergency.isEmergency,

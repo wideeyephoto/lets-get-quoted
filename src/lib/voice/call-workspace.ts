@@ -2,33 +2,20 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { boundedVoiceHistoryDays } from '@/lib/voice/call-history';
+import { detectCallEmergency } from '@/lib/voice/triage';
 
-export type VoiceCallOutcome =
-  | 'in_progress'
-  | 'ai_handled'
-  | 'transfer_attempted'
-  | 'transferred_and_answered'
-  | 'caller_abandoned'
-  | 'no_input'
-  | 'voicemail_fallback'
-  | 'provider_failure'
-  | 'completed'
-  | 'transferred'
-  | 'voicemail'
-  | 'abandoned'
-  | 'failed'
-  | 'unknown';
-
-export type VoiceCallDisposition =
-  | 'unreviewed'
-  | 'needs_callback'
-  | 'callback_scheduled'
-  | 'contacted'
-  | 'qualified'
-  | 'converted'
-  | 'not_a_fit'
-  | 'spam'
-  | 'resolved';
+import type {
+  VoiceCallOutcome,
+  VoiceCallDisposition,
+} from '@/lib/voice/call-formatting';
+export type {
+  VoiceCallOutcome,
+  VoiceCallDisposition,
+};
+export {
+  formatOutcomeLabel,
+  formatDispositionLabel,
+} from '@/lib/voice/call-formatting';
 
 export type VoiceCallUrgency = 'normal' | 'urgent' | 'emergency';
 
@@ -150,6 +137,7 @@ export type VoiceWorkspaceCounters = Readonly<{
   completedToday: number;
   resolvedCount: number;
   totalCount: number;
+  answeredCount: number;
   totalAiMinutes: number;
   avgDurationSeconds: number;
   handledCount: number;
@@ -166,6 +154,7 @@ export const EMPTY_WORKSPACE_COUNTERS: VoiceWorkspaceCounters = {
   completedToday: 0,
   resolvedCount: 0,
   totalCount: 0,
+  answeredCount: 0,
   totalAiMinutes: 0,
   avgDurationSeconds: 0,
   handledCount: 0,
@@ -182,7 +171,9 @@ export type VoiceWorkspaceFilters = Readonly<{
   outcome?: VoiceCallOutcome | 'all';
   urgency?: VoiceCallUrgency | 'all';
   limit?: number;
+  page?: number;
   historyDays?: number;
+  timezone?: string;
   now?: Date;
 }>;
 
@@ -190,59 +181,95 @@ export type VoiceWorkspaceQueueResult = Readonly<{
   available: boolean;
   items: readonly VoiceCallQueueItem[];
   counters: VoiceWorkspaceCounters;
+  totalFiltered: number;
+  page: number;
+  pageSize: number;
 }>;
 
-export function formatOutcomeLabel(outcome: VoiceCallOutcome): string {
-  switch (outcome) {
-    case 'ai_handled':
-      return 'AI Handled';
-    case 'transfer_attempted':
-      return 'Transfer Attempted';
-    case 'transferred_and_answered':
-    case 'transferred':
-      return 'Transferred';
-    case 'caller_abandoned':
-    case 'abandoned':
-      return 'Caller Abandoned';
-    case 'no_input':
-      return 'No Input';
-    case 'voicemail_fallback':
-    case 'voicemail':
-      return 'Voicemail';
-    case 'in_progress':
-      return 'In Progress';
-    case 'provider_failure':
-    case 'failed':
-      return 'Provider Failure';
-    case 'completed':
-      return 'Completed';
-    default:
-      return 'Unknown';
+
+export function getTimezoneDayBoundaries(now: Date, timeZone: string): {
+  todayStartIso: string;
+  yesterdayStartIso: string;
+  monthStartIso: string;
+} {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    });
+    const parts = formatter.formatToParts(now);
+    const getPart = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+    const year = parseInt(getPart('year'), 10);
+    const month = parseInt(getPart('month'), 10);
+    const day = parseInt(getPart('day'), 10);
+
+    const localMidnightAsUtc = new Date(Date.UTC(year, month - 1, day, 0, 0, 0));
+    const probeParts = formatter.formatToParts(localMidnightAsUtc);
+    const pGet = (t: string) => probeParts.find((p) => p.type === t)?.value ?? '00';
+    const pYear = parseInt(pGet('year'), 10);
+    const pMonth = parseInt(pGet('month'), 10);
+    const pDay = parseInt(pGet('day'), 10);
+    const pHour = parseInt(pGet('hour'), 10);
+    const pMin = parseInt(pGet('minute'), 10);
+    const pSec = parseInt(pGet('second'), 10);
+
+    const probeDateInTz = new Date(Date.UTC(pYear, pMonth - 1, pDay, pHour, pMin, pSec));
+    const offsetMs = probeDateInTz.getTime() - localMidnightAsUtc.getTime();
+
+    const todayStart = new Date(localMidnightAsUtc.getTime() - offsetMs);
+    const yesterdayStart = new Date(todayStart.getTime() - 24 * 60 * 60 * 1000);
+
+    const localMonthStartAsUtc = new Date(Date.UTC(year, month - 1, 1, 0, 0, 0));
+    const monthProbeParts = formatter.formatToParts(localMonthStartAsUtc);
+    const mpGet = (t: string) => monthProbeParts.find((p) => p.type === t)?.value ?? '00';
+    const mpYear = parseInt(mpGet('year'), 10);
+    const mpMonth = parseInt(mpGet('month'), 10);
+    const mpDay = parseInt(mpGet('day'), 10);
+    const mpHour = parseInt(mpGet('hour'), 10);
+    const mpMin = parseInt(mpGet('minute'), 10);
+    const mpSec = parseInt(mpGet('second'), 10);
+    const monthProbeInTz = new Date(Date.UTC(mpYear, mpMonth - 1, mpDay, mpHour, mpMin, mpSec));
+    const monthOffsetMs = monthProbeInTz.getTime() - localMonthStartAsUtc.getTime();
+    const monthStart = new Date(localMonthStartAsUtc.getTime() - monthOffsetMs);
+
+    return {
+      todayStartIso: todayStart.toISOString(),
+      yesterdayStartIso: yesterdayStart.toISOString(),
+      monthStartIso: monthStart.toISOString(),
+    };
+  } catch {
+    const today = new Date(now);
+    today.setHours(0, 0, 0, 0);
+    const yest = new Date(today);
+    yest.setDate(yest.getDate() - 1);
+    const month = new Date(now.getFullYear(), now.getMonth(), 1);
+    return {
+      todayStartIso: today.toISOString(),
+      yesterdayStartIso: yest.toISOString(),
+      monthStartIso: month.toISOString(),
+    };
   }
 }
 
-export function formatDispositionLabel(disposition: VoiceCallDisposition): string {
-  switch (disposition) {
-    case 'unreviewed':
-      return 'Unreviewed';
-    case 'needs_callback':
-      return 'Needs Callback';
-    case 'callback_scheduled':
-      return 'Callback Scheduled';
-    case 'contacted':
-      return 'Contacted';
-    case 'qualified':
-      return 'Qualified';
-    case 'converted':
-      return 'Converted';
-    case 'not_a_fit':
-      return 'Not a Fit';
-    case 'spam':
-      return 'Spam';
-    case 'resolved':
-      return 'Resolved';
-    default:
-      return 'Unreviewed';
+export function getLocalHour(isoDate: string, timeZone: string): number | null {
+  const d = new Date(isoDate);
+  if (Number.isNaN(d.getTime())) return null;
+  try {
+    const hourStr = new Intl.DateTimeFormat('en-US', {
+      timeZone,
+      hour: 'numeric',
+      hour12: false,
+    }).format(d);
+    const parsed = parseInt(hourStr, 10);
+    return Number.isFinite(parsed) ? (parsed === 24 ? 0 : parsed) : null;
+  } catch {
+    return d.getHours();
   }
 }
 
@@ -252,35 +279,33 @@ export async function loadVoiceWorkspaceQueue(
   filters: VoiceWorkspaceFilters = {},
 ): Promise<VoiceWorkspaceQueueResult> {
   const limit = Math.min(1000, Math.max(1, filters.limit ?? 100));
+  const page = Math.max(1, filters.page ?? 1);
   const historyDays = boundedVoiceHistoryDays(filters.historyDays);
+  const timezone = filters.timezone || 'America/New_York';
   const now = filters.now ?? new Date();
   const retainedAfter = new Date(
     now.getTime() - historyDays * 24 * 60 * 60 * 1000,
   ).toISOString();
 
-  const todayStart = new Date(now);
-  todayStart.setHours(0, 0, 0, 0);
-  const todayStartIso = todayStart.toISOString();
+  const { todayStartIso, yesterdayStartIso, monthStartIso } = getTimezoneDayBoundaries(now, timezone);
 
   // Date range cutoff determination
   const dateRange = filters.dateRange ?? 'all';
   let startCutoffIso: string | null = null;
+  let endCutoffIso: string | null = null;
   if (dateRange !== 'all') {
     const nowMs = now.getTime();
     if (dateRange === 'today') {
       startCutoffIso = todayStartIso;
     } else if (dateRange === 'yesterday') {
-      const yesterday = new Date(now);
-      yesterday.setDate(yesterday.getDate() - 1);
-      yesterday.setHours(0, 0, 0, 0);
-      startCutoffIso = yesterday.toISOString();
+      startCutoffIso = yesterdayStartIso;
+      endCutoffIso = todayStartIso;
     } else if (dateRange === '7d') {
       startCutoffIso = new Date(nowMs - 7 * 24 * 60 * 60 * 1000).toISOString();
     } else if (dateRange === '30d') {
       startCutoffIso = new Date(nowMs - 30 * 24 * 60 * 60 * 1000).toISOString();
     } else if (dateRange === 'month') {
-      const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-      startCutoffIso = monthStart.toISOString();
+      startCutoffIso = monthStartIso;
     }
   }
 
@@ -307,7 +332,7 @@ export async function loadVoiceWorkspaceQueue(
         recording_duration_seconds
       `)
       .eq('account_id', accountId)
-      .gte('created_at', retainedAfter)
+      .gte('started_at', retainedAfter)
       .order('started_at', { ascending: false, nullsFirst: false });
 
     if (callsError) {
@@ -316,6 +341,9 @@ export async function loadVoiceWorkspaceQueue(
         available: false,
         items: [],
         counters: EMPTY_WORKSPACE_COUNTERS,
+        totalFiltered: 0,
+        page,
+        pageSize: limit,
       };
     }
 
@@ -346,7 +374,7 @@ export async function loadVoiceWorkspaceQueue(
     const allItems: VoiceCallQueueItem[] = callRows.map((row) => {
       const r = row as Record<string, unknown>;
       const id = String(r.id);
-      const workflow = workflowMap.get(id) ?? {
+      const baseWorkflow = workflowMap.get(id) ?? {
         disposition: 'unreviewed' as const,
         urgency: 'normal' as const,
         assignedUserId: null,
@@ -354,6 +382,20 @@ export async function loadVoiceWorkspaceQueue(
         callbackCompletedAt: null,
         reviewedAt: null,
         reviewedBy: null,
+      };
+
+      let urgency = baseWorkflow.urgency;
+      // Live emergency detection: elevate provisional or unflagged emergencies if summary detects emergency
+      if (urgency === 'normal' && r.summary) {
+        const emergency = detectCallEmergency(String(r.summary));
+        if (emergency.isEmergency) {
+          urgency = emergency.severity === 'critical' ? 'emergency' : 'urgent';
+        }
+      }
+
+      const workflow: VoiceCallWorkflowData = {
+        ...baseWorkflow,
+        urgency,
       };
 
       return {
@@ -379,9 +421,12 @@ export async function loadVoiceWorkspaceQueue(
     });
 
     // Apply dateRange filter before computing counters
-    const dateFilteredItems = startCutoffIso
-      ? allItems.filter((i) => i.startedAt && i.startedAt >= startCutoffIso)
-      : allItems;
+    const dateFilteredItems = allItems.filter((i) => {
+      if (!i.startedAt) return !startCutoffIso;
+      if (startCutoffIso && i.startedAt < startCutoffIso) return false;
+      if (endCutoffIso && i.startedAt >= endCutoffIso) return false;
+      return true;
+    });
 
     // Compute top-level counters and analytics on the date-filtered set
     let unreviewed = 0;
@@ -390,13 +435,27 @@ export async function loadVoiceWorkspaceQueue(
     let transferred = 0;
     let completedToday = 0;
     let resolvedCount = 0;
-    let totalAiSeconds = 0;
+    let totalBilledMinutes = 0;
     let handledCount = 0;
     let emergencyCount = 0;
     let leadsGeneratedCount = 0;
+    let answeredCount = 0;
+    let totalCompletedAiSeconds = 0;
+    let completedCallsWithDuration = 0;
     const hourHistogram: Record<number, number> = {};
 
     for (const item of dateFilteredItems) {
+      const isAnswered = Boolean(item.answeredAt) || (
+        item.outcome !== 'caller_abandoned' &&
+        item.outcome !== 'abandoned' &&
+        item.outcome !== 'failed' &&
+        item.outcome !== 'provider_failure' &&
+        item.outcome !== 'no_input'
+      );
+      if (isAnswered) {
+        answeredCount += 1;
+      }
+
       if (item.workflow.disposition === 'unreviewed') unreviewed += 1;
       if (item.workflow.disposition === 'needs_callback') needsCallback += 1;
       if (item.workflow.urgency === 'urgent' || item.workflow.urgency === 'emergency') urgent += 1;
@@ -412,34 +471,45 @@ export async function loadVoiceWorkspaceQueue(
         handledCount += 1;
       }
 
-      if (typeof item.aiSeconds === 'number' && item.aiSeconds > 0) {
-        totalAiSeconds += item.aiSeconds;
+      if (typeof item.billedMinutes === 'number' && item.billedMinutes > 0) {
+        totalBilledMinutes += item.billedMinutes;
+      }
+
+      // Exclude in-progress and zero-duration calls from average calculation
+      if (!item.isProvisional && item.outcome !== 'in_progress' && typeof item.aiSeconds === 'number' && item.aiSeconds > 0) {
+        totalCompletedAiSeconds += item.aiSeconds;
+        completedCallsWithDuration += 1;
       }
 
       if (item.startedAt) {
         if (item.startedAt >= todayStartIso) completedToday += 1;
-        const callDate = new Date(item.startedAt);
-        if (!Number.isNaN(callDate.getTime())) {
-          const hr = callDate.getHours();
+        const hr = getLocalHour(item.startedAt, timezone);
+        if (hr !== null) {
           hourHistogram[hr] = (hourHistogram[hr] ?? 0) + 1;
         }
       }
     }
 
     let peakHourStr: string | null = null;
-    let maxHourCount = 0;
-    for (const [hourStr, count] of Object.entries(hourHistogram)) {
-      if (count > maxHourCount) {
-        maxHourCount = count;
-        const hrNum = Number(hourStr);
+    const callsWithTimestamp = dateFilteredItems.filter((i) => Boolean(i.startedAt)).length;
+    // Minimum sample guard: require at least 3 calls before reporting a peak hour
+    if (callsWithTimestamp >= 3) {
+      const sortedHours = Object.entries(hourHistogram)
+        .map(([h, c]) => ({ hour: Number(h), count: c }))
+        .sort((a, b) => b.count - a.count || a.hour - b.hour);
+
+      if (sortedHours.length > 0 && sortedHours[0]!.count > 0) {
+        const top = sortedHours[0]!;
+        const hrNum = top.hour;
         const ampm = hrNum >= 12 ? 'PM' : 'AM';
         const displayHr = hrNum % 12 === 0 ? 12 : hrNum % 12;
         peakHourStr = `${displayHr} ${ampm}`;
       }
     }
 
-    const totalAiMinutes = Math.ceil(totalAiSeconds / 60);
-    const avgDurationSeconds = dateFilteredItems.length > 0 ? Math.round(totalAiSeconds / dateFilteredItems.length) : 0;
+    const avgDurationSeconds = completedCallsWithDuration > 0
+      ? Math.round(totalCompletedAiSeconds / completedCallsWithDuration)
+      : 0;
 
     const counters: VoiceWorkspaceCounters = {
       unreviewed,
@@ -449,7 +519,8 @@ export async function loadVoiceWorkspaceQueue(
       completedToday,
       resolvedCount,
       totalCount: dateFilteredItems.length,
-      totalAiMinutes,
+      answeredCount,
+      totalAiMinutes: totalBilledMinutes,
       avgDurationSeconds,
       handledCount,
       emergencyCount,
@@ -493,12 +564,16 @@ export async function loadVoiceWorkspaceQueue(
       );
     }
 
-    const pagedItems = filtered.slice(0, limit);
+    const offset = (page - 1) * limit;
+    const pagedItems = filtered.slice(offset, offset + limit);
 
     return {
       available: true,
       items: pagedItems,
       counters,
+      totalFiltered: filtered.length,
+      page,
+      pageSize: limit,
     };
   } catch (error) {
     console.error('loadVoiceWorkspaceQueue unexpected error:', error);
@@ -506,6 +581,9 @@ export async function loadVoiceWorkspaceQueue(
       available: false,
       items: [],
       counters: EMPTY_WORKSPACE_COUNTERS,
+      totalFiltered: 0,
+      page,
+      pageSize: limit,
     };
   }
 }

@@ -76,8 +76,9 @@ export default function VoiceSimulatorSandbox({
 }) {
   const [selectedPreset, setSelectedPreset] = useState('booking');
   const [customPrompt, setCustomPrompt] = useState(PRESETS[0]!.prompt);
-  const [callerPhone] = useState('(555) 019-2834');
+  const [callerPhone, setCallerPhone] = useState('(555) 019-2834');
   const [result, setResult] = useState<SimulationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
 
@@ -89,6 +90,7 @@ export default function VoiceSimulatorSandbox({
 
   function handleRunSimulation() {
     startTransition(async () => {
+      setError(null);
       try {
         const res = await fetch('/api/voice/simulate', {
           method: 'POST',
@@ -101,13 +103,15 @@ export default function VoiceSimulatorSandbox({
         });
 
         if (!res.ok) {
-          throw new Error('Simulation request failed');
+          const errBody = await res.json().catch(() => ({}));
+          throw new Error(errBody.error || `Simulation request failed (${res.status})`);
         }
 
         const data: SimulationResult = await res.json();
         setResult(data);
-      } catch (err) {
+      } catch (err: unknown) {
         console.error('Simulation error:', err);
+        setError(err instanceof Error ? err.message : 'Simulation failed');
       }
     });
   }
@@ -180,6 +184,32 @@ export default function VoiceSimulatorSandbox({
             </div>
           </div>
 
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', margin: '0.75rem 0', flexWrap: 'wrap' }}>
+            <label htmlFor="simulator-caller-phone" style={{ fontSize: '0.82rem', fontWeight: 600, color: 'var(--mute-t62, #94a3b8)' }}>
+              Caller Phone:
+            </label>
+            <input
+              id="simulator-caller-phone"
+              type="tel"
+              value={callerPhone}
+              onChange={(e) => setCallerPhone(e.target.value)}
+              placeholder="(555) 000-0000"
+              style={{
+                padding: '6px 12px',
+                borderRadius: '6px',
+                background: 'rgba(15, 23, 42, 0.6)',
+                border: '1px solid var(--border-color, rgba(255, 255, 255, 0.15))',
+                color: '#f8fafc',
+                fontSize: '0.85rem',
+                width: '170px',
+              }}
+              aria-label="Simulated caller phone number"
+            />
+            <span style={{ fontSize: '0.75rem', color: 'var(--mute-t62, #94a3b8)' }}>
+              Test CRM client matching by entering a real contact number.
+            </span>
+          </div>
+
           <div className={styles.simulatorPromptRow}>
             <div className={styles.simulatorPromptCol}>
               <label htmlFor="simulator-prompt-textarea" className={styles.simulatorTextareaLabel}>
@@ -208,6 +238,41 @@ export default function VoiceSimulatorSandbox({
               </button>
             </div>
           </div>
+
+          {error ? (
+            <div
+              role="alert"
+              style={{
+                padding: '0.75rem 1rem',
+                background: 'rgba(239, 68, 68, 0.15)',
+                border: '1px solid rgba(239, 68, 68, 0.3)',
+                borderRadius: '8px',
+                color: '#f87171',
+                fontSize: '0.85rem',
+                marginTop: '1rem',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+              }}
+            >
+              <span>⚠️ {error}</span>
+              <button
+                type="button"
+                onClick={handleRunSimulation}
+                style={{
+                  background: 'none',
+                  border: '1px solid #f87171',
+                  color: '#f87171',
+                  borderRadius: '4px',
+                  padding: '4px 8px',
+                  fontSize: '0.75rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Retry
+              </button>
+            </div>
+          ) : null}
 
           {/* Simulation Results Display */}
           {result ? (

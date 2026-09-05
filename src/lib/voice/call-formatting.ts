@@ -88,3 +88,84 @@ export function parseVoiceCallSummary(rawSummary: string | null): ParsedVoiceCal
   };
 }
 
+export type VoiceCallOutcome =
+  | 'in_progress'
+  | 'ai_handled'
+  | 'transfer_attempted'
+  | 'transferred_and_answered'
+  | 'caller_abandoned'
+  | 'no_input'
+  | 'voicemail_fallback'
+  | 'provider_failure'
+  | 'completed'
+  | 'transferred'
+  | 'voicemail'
+  | 'abandoned'
+  | 'failed'
+  | 'unknown';
+
+export type VoiceCallDisposition =
+  | 'unreviewed'
+  | 'needs_callback'
+  | 'callback_scheduled'
+  | 'contacted'
+  | 'qualified'
+  | 'converted'
+  | 'not_a_fit'
+  | 'spam'
+  | 'resolved';
+
+export function formatOutcomeLabel(outcome: VoiceCallOutcome): string {
+  switch (outcome) {
+    case 'ai_handled':
+      return 'AI Handled';
+    case 'transfer_attempted':
+      return 'Transfer Attempted';
+    case 'transferred_and_answered':
+    case 'transferred':
+      return 'Transferred';
+    case 'caller_abandoned':
+    case 'abandoned':
+      return 'Caller Abandoned';
+    case 'no_input':
+      return 'No Input';
+    case 'voicemail_fallback':
+    case 'voicemail':
+      return 'Voicemail';
+    case 'in_progress':
+      return 'In Progress';
+    case 'provider_failure':
+    case 'failed':
+      return 'Provider Failure';
+    case 'completed':
+      return 'Completed';
+    default:
+      return 'Unknown';
+  }
+}
+
+export function formatDispositionLabel(disposition: VoiceCallDisposition): string {
+  switch (disposition) {
+    case 'unreviewed':
+      return 'Unreviewed';
+    case 'needs_callback':
+      return 'Needs Callback';
+    case 'callback_scheduled':
+      return 'Callback Scheduled';
+    case 'contacted':
+      return 'Contacted';
+    case 'qualified':
+      return 'Qualified';
+    case 'converted':
+      return 'Converted';
+    case 'not_a_fit':
+      return 'Not a Fit';
+    case 'spam':
+      return 'Spam';
+    case 'resolved':
+      return 'Resolved';
+    default:
+      return 'Unreviewed';
+  }
+}
+
