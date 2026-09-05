@@ -5,6 +5,8 @@
 // windows, customer details, and 1-tap navigation links.
 
 export type CrewBriefingStop = {
+  /** Full assignment identity; the abbreviated display reference is not unique. */
+  jobId?: string;
   jobRef: string;
   clientName: string;
   address: string;
@@ -17,6 +19,14 @@ export type CrewBriefingStop = {
 };
 
 export type NavProvider = 'google' | 'apple' | 'waze';
+
+export function crewBriefingStopsForMember(
+  stops: CrewBriefingStop[],
+  assignmentsByJob: Record<string, string[]>,
+  memberId: string,
+): CrewBriefingStop[] {
+  return stops.filter((stop) => stop.jobId && assignmentsByJob[stop.jobId]?.includes(memberId));
+}
 
 export type CrewDailyBriefing = {
   crewName: string;

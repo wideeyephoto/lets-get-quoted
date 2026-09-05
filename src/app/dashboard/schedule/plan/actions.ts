@@ -15,6 +15,7 @@ import { savePreferredLast } from '@/lib/day-plan-prefs';
 import { listCrew, listJobIdsForCrew } from '@/lib/crew';
 import { loadBusinessName } from '@/lib/business-name';
 import { buildCrewMorningBriefingSms, type CrewBriefingStop, type NavProvider } from '@/lib/crew-briefing';
+import { crewBriefingSendAt } from '@/lib/crew-briefing-dispatch';
 
 // The plan page is force-dynamic, but Next still serves a route's last RSC
 // payload from the client router cache on navigation — so a server action that
@@ -349,14 +350,30 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   const scheduledTiming = (String(formData.get('scheduledTiming') ?? 'now') as 'now' | 'scheduled_7am') || 'now';
   const selectedMemberIds = formData.getAll('memberId').map(String).filter(Boolean);
   const includePortal = formData.get('includePortal') !== '0';
+  const intentId = String(formData.get('intentId') ?? '').trim().toLowerCase();
 
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dateKey)) redirect('/dashboard/schedule');
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(intentId)) {
+    redirect(planUrl(dateKey, crewId, { dispatchError: 'invalid_intent' }));
+  }
 
-  const settings = await getPlanAccountSettings(supabase, accountId);
+  const settings = await getPlanAccountSettings(supabase, accountId, { requireSuccessfulRead: true });
+  let morning: Date;
+  try {
+    morning = crewBriefingSendAt(dateKey, settings.timezone);
+  } catch {
+    redirect(planUrl(dateKey, crewId, { dispatchError: 'invalid_schedule' }));
+  }
+  if (scheduledTiming === 'scheduled_7am' && morning.getTime() <= Date.now()) {
+    redirect(planUrl(dateKey, crewId, { dispatchError: 'past_schedule' }));
+  }
+  const availableAt = scheduledTiming === 'scheduled_7am' ? morning : null;
   const businessName = await loadBusinessName(supabase, accountId);
-  const { jobs } = await listDayJobs(supabase, accountId, dateKey, crewId, {
+  // The screen's crew filter must not hide work assigned to another selected recipient.
+  const { jobs } = await listDayJobs(supabase, accountId, dateKey, null, {
     workDayHours: settings.scheduleDayHours,
     workingWeekdays: settings.workingWeekdays,
+    requireSuccessfulRead: true,
   });
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
@@ -383,15 +400,18 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
       continue;
     }
 
-    // Filter jobs assigned to this crew member
-    let memberJobs = jobs;
-    if (crew.length > 1) {
-      const assignedIds: string[] = await listJobIdsForCrew(supabase, accountId, member.id).catch(() => [] as string[]);
-      if (assignedIds.length > 0) {
-        memberJobs = jobs.filter((j) => assignedIds.includes(j.id));
-      }
+    // An empty assignment list means no work. A failed read must never become
+    // either a whole-day briefing or an urgent "no remaining stops" message.
+    let assignedIds: string[];
+    try {
+      assignedIds = await listJobIdsForCrew(supabase, accountId, member.id);
+    } catch (error) {
+      console.error('Crew briefing assignment lookup failed:', error);
+      failedList.push(member.name);
+      continue;
     }
-    if (memberJobs.length === 0) {
+    const memberJobs = jobs.filter((job) => assignedIds.includes(job.id));
+    if (memberJobs.length === 0 && !isUrgentUpdate) {
       skippedNoJobs += 1;
       continue;
     }
@@ -434,7 +454,8 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
         crewId: member.id,
         senderPurpose: 'lgq_dispatch',
         billingCategory: 'crew_message',
-        idempotencyKey: `crew-briefing:${member.id}:${dateKey}:${Date.now()}`,
+        idempotencyKey: `crew-briefing:${accountId}:${member.id}:${dateKey}:${intentId}:${scheduledTiming}`,
+        availableAt,
       });
       briefedCount += 1;
     } catch (deliveryErr) {
@@ -445,6 +466,8 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
 
   revalidatePlan();
   const queryParams: Record<string, string> = {};
+  queryParams.briefed = String(briefedCount);
+  if (briefedCount > 0 && failedList.length === 0) queryParams.briefingCompleted = intentId;
   if (briefedCount > 0) queryParams.briefed = String(briefedCount);
   if (failedList.length > 0) queryParams.failedDispatch = failedList.join(',');
   if (isUrgentUpdate) queryParams.urgent = '1';

@@ -2058,6 +2058,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Marketing tracking links and collateral attribution
+  marketing_tracking_links: {
+    tableName: 'marketing_tracking_links',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Google Local Services Ads OAuth connections
   google_lsa_connections: {
     tableName: 'google_lsa_connections',

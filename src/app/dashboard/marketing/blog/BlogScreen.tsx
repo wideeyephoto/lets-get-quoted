@@ -43,17 +43,20 @@ export default function BlogScreen({
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <div className="mkt-hero-actions">
             {blog?.publicBase ? (
               <a
                 href={blog.publicBase}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn secondary"
-                style={{ fontSize: '0.82rem' }}
+                className="btn secondary btn-sm"
               >
                 View live blog ↗
               </a>
+            ) : blog ? (
+              <Link href={`${basePath}/sites`} className="btn ghost btn-sm">
+                Your website isn&apos;t published yet →
+              </Link>
             ) : null}
           </div>
         </div>
@@ -61,9 +64,15 @@ export default function BlogScreen({
 
       {!blog ? (
         <section className="panel workspace-section-card">
-          <p className="empty-state">
-            You need a website before you can post to it. <Link href={`${basePath}/sites`}>Set one up →</Link>
-          </p>
+          <div className="empty-state">
+            <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>Your blog lives directly on your contractor website.</p>
+            <p style={{ margin: '0 0 1rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+              Articles published here share your business domain, branding, phone number, and quote forms so reading homeowners can turn into booked jobs. Create your website first to start publishing articles.
+            </p>
+            <Link href={`${basePath}/sites`} className="btn primary">
+              Set up your website first →
+            </Link>
+          </div>
         </section>
       ) : (
         <BlogWorkspace

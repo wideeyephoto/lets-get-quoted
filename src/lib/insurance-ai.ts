@@ -9,6 +9,7 @@ import {
   buildSupplementAnalysis,
   evaluateDamageClaimFeasibilityHeuristic,
   generateAdjusterLetterDraft,
+  parseScopeLineItems,
   HOMEOWNER_CLAIM_FAQS,
   type ClaimFeasibilityAssessment,
   type HomeownerCopilotFaq,
@@ -18,12 +19,23 @@ import {
 import { getInsuranceTradeProfile } from './trade-insurance';
 import { redactSensitiveIdentifiers } from './dlp';
 
+export const INSURANCE_AI_MODEL = process.env.INSURANCE_AI_MODEL || 'gpt-4o-mini';
+
 const VALID_CATEGORIES = new Set<ScopeDiscrepancy['category']>([
   'code_compliance',
   'manufacturer_spec',
   'missed_scope',
   'labor_surcharge',
 ]);
+
+/** Helper to race a promise against a timeout */
+function withTimeout<T>(promise: Promise<T>, timeoutMs = 45000, errorMsg = 'AI provider request timed out'): Promise<T> {
+  let timer: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(errorMsg)), timeoutMs);
+  });
+  return Promise.race([promise, timeoutPromise]).finally(() => clearTimeout(timer));
+}
 
 /**
  * Safely clamps and parses dollar amounts from untrusted AI outputs.
@@ -134,7 +146,6 @@ export async function evaluateDamageClaimFeasibilityWithAi(input: {
 }): Promise<ClaimFeasibilityAssessment> {
   const heuristic = evaluateDamageClaimFeasibilityHeuristic(input);
 
-  // If running in an environment without OpenAI or for fast UI evaluation
   if (!process.env.OPENAI_API_KEY) {
     return heuristic;
   }
@@ -166,25 +177,30 @@ export async function evaluateDamageClaimFeasibilityWithAi(input: {
       `}`,
     ].join('\n');
 
-    const res = await callModel(
-      {
-        model: 'gpt-4o-mini',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert insurance restoration estimator for ${profile.name}. Evaluate damage descriptions honestly, adhering to building code norms without promising policy coverage.`,
-          },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-      },
-      { accountId: input.accountId ?? null, kind: 'insurance_claim_assist' }
+    const res = await withTimeout(
+      callModel(
+        {
+          model: INSURANCE_AI_MODEL,
+          messages: [
+            {
+              role: 'system',
+              content: `You are an expert insurance restoration estimator for ${profile.name}. Evaluate damage descriptions honestly, adhering to building code norms without promising policy coverage.`,
+            },
+            { role: 'user', content: prompt },
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        },
+        { accountId: input.accountId ?? null, kind: 'insurance_claim_assist' }
+      ),
+      45000,
+      'Feasibility AI model call timed out'
     );
 
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = data.choices?.[0]?.message?.content;
     if (!content) return heuristic;
+    if (content.length > 65536) return heuristic;
 
     const parsed = JSON.parse(content) as Partial<ClaimFeasibilityAssessment>;
     const rawScore = typeof parsed.feasibilityScore === 'number' ? parsed.feasibilityScore : heuristic.feasibilityScore;
@@ -211,7 +227,7 @@ export async function evaluateDamageClaimFeasibilityWithAi(input: {
 
 /**
  * Analyzes an adjuster scope text or OCR output with AI to find missing line items & building codes.
- * Enforces DLP redaction, injection guards, and numeric clamping.
+ * Enforces DLP redaction, injection guards, size bounds, and numeric clamping.
  */
 export async function analyzeAdjusterScopeWithAi(input: {
   scopeText: string;
@@ -228,7 +244,9 @@ export async function analyzeAdjusterScopeWithAi(input: {
     const { callModel } = await import('@/lib/ai-model-call');
     const profile = getInsuranceTradeProfile(input.tradeSlug);
 
-    // DLP Sanitization: mask any accidental SSNs, TINs, or card PANs
+    // DLP Sanitization: mask SSNs, TINs, and credit card PANs
+    // Note: Policyholder name, loss address, and claim numbers are intentionally preserved
+    // so the AI model can generate an accurate, carrier-ready dispute letter draft.
     const sanitizedScope = redactSensitiveIdentifiers(input.scopeText.slice(0, 8000));
 
     const messages = [
@@ -265,7 +283,7 @@ export async function analyzeAdjusterScopeWithAi(input: {
           `      "reason": "<Plain English explanation of why this was omitted and why it is mandatory>",`,
           `      "category": "code_compliance" | "manufacturer_spec" | "missed_scope" | "labor_surcharge",`,
           `      "estimatedCost": <number>,`,
-          `      "selected": true`,
+          `      "selected": false`,
           `    }`,
           `  ]`,
           `}`,
@@ -273,19 +291,27 @@ export async function analyzeAdjusterScopeWithAi(input: {
       },
     ];
 
-    const res = await callModel(
-      {
-        model: 'gpt-4o-mini',
-        messages,
-        response_format: { type: 'json_object' },
-        temperature: 0.2,
-      },
-      { accountId: input.accountId ?? null, kind: 'insurance_claim_assist' }
+    const res = await withTimeout(
+      callModel(
+        {
+          model: INSURANCE_AI_MODEL,
+          messages,
+          response_format: { type: 'json_object' },
+          temperature: 0.2,
+        },
+        { accountId: input.accountId ?? null, kind: 'insurance_claim_assist' }
+      ),
+      45000,
+      'Scope analysis AI model call timed out'
     );
 
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
     const content = data.choices?.[0]?.message?.content;
     if (!content) return fallback;
+
+    if (content.length > 65536) {
+      throw new Error('AI response payload exceeded safety limit (64KB)');
+    }
 
     const parsed = JSON.parse(content) as {
       parsedFigures?: { rcv?: unknown; acv?: unknown; depreciation?: unknown; deductible?: unknown; netClaim?: unknown };
@@ -297,6 +323,9 @@ export async function analyzeAdjusterScopeWithAi(input: {
         category?: unknown;
         estimatedCost?: unknown;
         selected?: unknown;
+        quantity?: unknown;
+        unit?: unknown;
+        unitPrice?: unknown;
       }>;
     };
 
@@ -319,22 +348,35 @@ export async function analyzeAdjusterScopeWithAi(input: {
             : 'code_compliance';
 
           return {
-            id: typeof d.id === 'string' && d.id.trim() ? d.id.trim().slice(0, 50) : `supp-${i + 1}`,
+            id: typeof d.id === 'string' && d.id.trim() ? d.id.trim().slice(0, 50) : `supp-ai-${i + 1}`,
             item: typeof d.item === 'string' && d.item.trim() ? d.item.trim().slice(0, 200) : 'Required Code Item',
             codeCitation: typeof d.codeCitation === 'string' && d.codeCitation.trim() ? d.codeCitation.trim().slice(0, 150) : 'IRC Building Code',
             reason: typeof d.reason === 'string' && d.reason.trim() ? d.reason.trim().slice(0, 500) : 'Omitted from initial adjuster scope.',
             category: validCategory,
             estimatedCost: clampDollarAmount(d.estimatedCost, 500, 0, 50000),
-            selected: true,
+            selected: false, // Default to unchecked for affirmative review
+            quantity: typeof d.quantity === 'number' && d.quantity > 0 ? d.quantity : 1,
+            unit: typeof d.unit === 'string' && d.unit.trim() ? d.unit.trim().slice(0, 10) : 'EA',
+            unitPrice: typeof d.unitPrice === 'number' && d.unitPrice > 0 ? d.unitPrice : clampDollarAmount(d.estimatedCost, 500, 0, 50000),
+            confidence: 'high',
+            detectionSource: 'ai_identified',
           };
         })
       : fallback.discrepancies;
 
-    const totalEstimatedSupplement = discrepancies
-      .filter((d) => d.selected)
-      .reduce((sum, d) => sum + d.estimatedCost, 0);
+    const parsedLineItems = parseScopeLineItems(input.scopeText);
 
-    const adjustedTotalRcv = parsedFigures.rcv ? parsedFigures.rcv + totalEstimatedSupplement : null;
+    // Sum in cents
+    const totalEstimatedSupplement = Math.round(
+      discrepancies
+        .filter((d) => d.selected)
+        .reduce((sum, d) => sum + Math.round(d.estimatedCost * 100), 0)
+    ) / 100;
+
+    // Fix: Use != null so 0 is not treated as unparsed
+    const adjustedTotalRcv = parsedFigures.rcv != null
+      ? Math.round((Math.round(parsedFigures.rcv * 100) + Math.round(totalEstimatedSupplement * 100))) / 100
+      : null;
 
     const justificationDraft = generateAdjusterLetterDraft({
       tradeSlug: input.tradeSlug,
@@ -345,14 +387,24 @@ export async function analyzeAdjusterScopeWithAi(input: {
     return {
       tradeSlug: input.tradeSlug || 'roofers',
       parsedFigures,
-      rawScopeSummary: `Analyzed with AI: detected ${discrepancies.length} potential scope items.`,
+      rawScopeSummary: `AI Scan Complete: identified ${discrepancies.length} potential scope items and ${parsedLineItems.length} parsed scope line items.`,
       discrepancies,
       totalEstimatedSupplement,
       adjustedTotalRcv,
       justificationDraft,
+      analysisMethod: 'ai',
+      parsedLineItems,
+      reconciliationWarning: fallback.reconciliationWarning,
     };
-  } catch {
-    return fallback;
+  } catch (err) {
+    const isExhausted = err instanceof Error && (err.name === 'AiDraftsExhaustedError' || err.message.includes('out of AI writing drafts'));
+    return {
+      ...fallback,
+      analysisMethod: 'heuristic',
+      sourceNotice: isExhausted
+        ? 'AI writing drafts allowance exhausted. Using local building code rule heuristics. You can purchase a top-up in Settings.'
+        : 'AI service unavailable or timed out. Switched to building code heuristic detection.',
+    };
   }
 }
 
@@ -389,13 +441,17 @@ export async function getClaimCopilotAnswerWithAi(input: {
       `Provide a friendly, informative 2-3 paragraph answer.`,
     ].join('\n');
 
-    const res = await callModel(
-      {
-        model: 'gpt-4o-mini',
-        messages: [{ role: 'user', content: prompt }],
-        temperature: 0.3,
-      },
-      { accountId: input.accountId ?? null, kind: 'insurance_claim_assist' }
+    const res = await withTimeout(
+      callModel(
+        {
+          model: INSURANCE_AI_MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+        },
+        { accountId: input.accountId ?? null, kind: 'insurance_claim_assist' }
+      ),
+      45000,
+      'Claim copilot AI model call timed out'
     );
 
     const data = (await res.json()) as { choices?: Array<{ message?: { content?: string } }> };
@@ -403,7 +459,11 @@ export async function getClaimCopilotAnswerWithAi(input: {
       data.choices?.[0]?.message?.content ??
       'We will inspect your property, document all damage with photo evidence, and supply an itemized estimate for your adjuster.'
     );
-  } catch {
+  } catch (err) {
+    const isExhausted = err instanceof Error && (err.name === 'AiDraftsExhaustedError' || err.message.includes('out of AI writing drafts'));
+    if (isExhausted) {
+      return 'AI writing allowance has been exhausted for this billing cycle. Please consult your business administrator to add a top-up credit pack.';
+    }
     return (
       'As your contractor, we provide detailed physical damage documentation and itemized repair estimates to support your property restoration. Please consult your insurance adjuster for specific policy coverage limits and endorsements.'
     );

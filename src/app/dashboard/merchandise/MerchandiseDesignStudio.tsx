@@ -1095,7 +1095,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   return (
     <main className="wide-shell workspace-shell" style={{ paddingBottom: '3.5rem' }}>
       <style>{`
-        @media (max-width: 1100px) {
+        @media (max-width: 1180px) {
           .merchandise-workspace-split {
             flex-direction: column-reverse !important;
           }
@@ -1390,16 +1390,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         <div
           className="merchandise-controls-sidebar"
           style={{
-            width: '400px',
-            minWidth: '350px',
-            maxWidth: '430px',
+            width: '390px',
+            minWidth: '320px',
+            maxWidth: '420px',
+            boxSizing: 'border-box',
             borderRight: '1px solid var(--line)',
             background: 'rgba(var(--panel-rgb), 0.98)',
             overflowY: 'auto',
-            padding: '1.35rem',
+            overflowX: 'hidden',
+            padding: '1.25rem 1.15rem',
             display: 'flex',
             flexDirection: 'column',
-            gap: '1.35rem',
+            gap: '1.25rem',
           }}
         >
           {/* Product Picker Grid */}
@@ -1417,7 +1419,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             >
               1. Select Stationery &amp; Form Item
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.65rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.65rem' }}>
               {displayedProducts.map((prod) => {
                 const active = prod.id === selectedProductId;
                 const lowestRetailPrice = prod.pricingTiers[prod.pricingTiers.length - 1]?.unitPrice ?? prod.basePrice;
@@ -1651,7 +1653,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
             {/* AI Logos Selector Carousel */}
             {logoSource === 'ai' && initialData.aiLogos.length > 0 && (
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', minWidth: 0, maxWidth: '100%' }}>
                 {initialData.aiLogos.map((lg, idx) => (
                   <button
                     key={lg.id}
@@ -1699,7 +1701,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 1fr)',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
                 gap: '0.35rem',
               }}
             >
@@ -1790,17 +1792,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '0.45rem',
+                    minWidth: 0,
                   }}
                 >
-                  <AlertTriangle size={14} />
-                  <span>
+                  <AlertTriangle size={14} style={{ flexShrink: 0 }} />
+                  <span style={{ minWidth: 0, wordBreak: 'break-word' }}>
                     Print overflow guard: {businessName.length > 30 ? 'Company name' : 'Tagline'} is long and will auto-shrink or wrap on compact print items.
                   </span>
                 </div>
               )}
 
               {/* Company Name */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                   <label htmlFor="merch-business-name" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
                     Company Name:
@@ -1817,6 +1820,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   onChange={(e) => setBusinessName(e.target.value)}
                   style={{
                     width: '100%',
+                    minWidth: 0,
                     padding: '0.45rem 0.65rem',
                     borderRadius: '7px',
                     border: '1px solid rgba(var(--tint), 0.15)',
@@ -1831,7 +1835,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               </div>
 
               {/* Tagline */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                   <label htmlFor="merch-tagline" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
                     Tagline / Specialty:
@@ -1848,6 +1852,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   onChange={(e) => setTagline(e.target.value)}
                   style={{
                     width: '100%',
+                    minWidth: 0,
                     padding: '0.45rem 0.65rem',
                     borderRadius: '7px',
                     border: '1px solid rgba(var(--tint), 0.15)',
@@ -1862,8 +1867,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               </div>
 
               {/* Phone & Website */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.45rem' }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                     <label htmlFor="merch-phone" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
                       Phone #:
@@ -1878,6 +1883,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     onChange={(e) => setPhone(e.target.value)}
                     style={{
                       width: '100%',
+                      minWidth: 0,
                       padding: '0.45rem 0.65rem',
                       borderRadius: '7px',
                       border: '1px solid rgba(var(--tint), 0.15)',
@@ -1890,7 +1896,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     }}
                   />
                 </div>
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                     <label htmlFor="merch-website" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
                       Website URL:
@@ -1906,6 +1912,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     placeholder="yourcompany.com"
                     style={{
                       width: '100%',
+                      minWidth: 0,
                       padding: '0.45rem 0.65rem',
                       borderRadius: '7px',
                       border: '1px solid rgba(var(--tint), 0.15)',
@@ -1921,7 +1928,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               </div>
 
               {/* License Line */}
-              <div>
+              <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                   <label htmlFor="merch-license" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
                     License Line:
@@ -1936,6 +1943,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   onChange={(e) => setLicense(e.target.value)}
                   style={{
                     width: '100%',
+                    minWidth: 0,
                     padding: '0.45rem 0.65rem',
                     borderRadius: '7px',
                     border: '1px solid rgba(var(--tint), 0.15)',
@@ -1950,12 +1958,12 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               </div>
 
               {/* Brand Accent & Secondary Color Controls */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem', marginTop: '0.15rem' }}>
-                <div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.45rem', marginTop: '0.15rem' }}>
+                <div style={{ minWidth: 0 }}>
                   <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>
                     Accent Color:
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
                     <input
                       type="color"
                       value={accentColor.startsWith('#') ? accentColor : '#2563eb'}
@@ -1965,6 +1973,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       style={{
                         width: '28px',
                         height: '28px',
+                        flexShrink: 0,
                         padding: 0,
                         border: '1px solid rgba(var(--tint), 0.2)',
                         borderRadius: '6px',
@@ -1980,6 +1989,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       aria-label="Accent brand color hex code"
                       style={{
                         flex: 1,
+                        width: 0,
+                        minWidth: 0,
                         padding: '0.42rem 0.5rem',
                         borderRadius: '7px',
                         border: '1px solid rgba(var(--tint), 0.14)',
@@ -1988,16 +1999,17 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                         fontSize: '0.8rem',
                         fontFamily: 'monospace',
                         fontWeight: 700,
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
                 </div>
 
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>
                     Secondary Color:
                   </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
                     <input
                       type="color"
                       value={secondaryColor.startsWith('#') ? secondaryColor : '#f59e0b'}
@@ -2007,6 +2019,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       style={{
                         width: '28px',
                         height: '28px',
+                        flexShrink: 0,
                         padding: 0,
                         border: '1px solid rgba(var(--tint), 0.2)',
                         borderRadius: '6px',
@@ -2022,6 +2035,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       aria-label="Secondary brand color hex code"
                       style={{
                         flex: 1,
+                        width: 0,
+                        minWidth: 0,
                         padding: '0.42rem 0.5rem',
                         borderRadius: '7px',
                         border: '1px solid rgba(var(--tint), 0.14)',
@@ -2030,6 +2045,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                         fontSize: '0.8rem',
                         fontFamily: 'monospace',
                         fontWeight: 700,
+                        boxSizing: 'border-box',
                       }}
                     />
                   </div>
@@ -2126,7 +2142,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     aria-label="Business card templates"
                     style={{
                       display: 'grid',
-                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
                       gap: '0.45rem',
                     }}
                   >
@@ -2292,7 +2308,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                       </button>
                     </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.45rem' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.45rem' }}>
                     {YARD_SIGN_TEMPLATES.map((tmpl) => {
                       const isSelected = selectedYardSignTemplate === tmpl.id;
                       return (
@@ -2588,7 +2604,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   Total: {Object.values(sizeQuantities).reduce((a, b) => a + b, 0)} / {activeTier.quantity} allocated
                 </span>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(currentProduct.options?.sizes?.length || 4, 7)}, 1fr)`, gap: '0.35rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(currentProduct.options?.sizes?.length || 4, 7)}, minmax(0, 1fr))`, gap: '0.35rem' }}>
                 {(currentProduct.options?.sizes || ['S', 'M', 'L', 'XL', '2XL']).map((sz) => (
                   <div key={sz} style={{ textAlign: 'center' }}>
                     <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--muted)', display: 'block' }}>{sz}</span>
@@ -2816,6 +2832,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         <div
           style={{
             flex: 1,
+            minWidth: 0,
             display: 'flex',
             flexDirection: 'column',
             overflowY: 'auto',

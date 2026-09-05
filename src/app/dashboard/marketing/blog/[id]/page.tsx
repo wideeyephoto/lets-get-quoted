@@ -15,8 +15,15 @@ export const metadata = { title: 'Edit post' };
  * That made the list unusable while editing and the editor cramped while
  * listing, and a post is a document — it deserves a page.
  */
-export default async function BlogPostPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
+export default async function BlogPostPage({
+  params: paramsPromise,
+  searchParams: searchParamsPromise,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ blocked?: string }>;
+}) {
   const params = await paramsPromise;
+  const searchParams = searchParamsPromise ? await searchParamsPromise : undefined;
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const rootDomain = process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com';
   const blog = await loadBlogWorkspace(supabase, accountId, rootDomain);
@@ -40,6 +47,7 @@ export default async function BlogPostPage({ params: paramsPromise }: { params: 
         publicBase={blog.publicBase}
         trade={blog.trade}
         sectionEnabled={blog.sectionEnabled}
+        initialBlockedTrade={searchParams?.blocked === 'trade'}
       />
     </main>
   );

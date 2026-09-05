@@ -79,12 +79,12 @@ export async function draftBlogPost(input: {
       ? `The business is a ${trade}. Write the post about that trade and no other — never about a different trade, however related, and never about work this business does not do. `
       : 'Infer the trade (HVAC, plumbing, roofing, cleaning, painting, landscaping, electrical, remodeling, handyman, flooring, etc.) from the business name. ') +
     'The post MUST be helpful and educational — maintenance tips, seasonal advice, how-to guidance, warning signs to watch for, or what to know before hiring — NOT a sales pitch and NOT about the company itself. ' +
-    'Write in a friendly, expert, plain-English tone. Do not use markdown headings, bullet characters, or links. Do not invent specific statistics, studies, prices, or brand names. ' +
+    'Write in a friendly, expert, plain-English tone. Use 2 to 3 section headings formatted with "## " (H2) and optional bullet lists starting with "- " to make the article scannable and search-engine optimized. Do not invent specific statistics, studies, prices, or brand names. ' +
     'Respond with strict JSON only, no other text, in this exact shape: ' +
     '{' +
     '"title":"<a clear, specific, non-clickbait title under 70 characters>",' +
     '"excerpt":"<one sentence summarizing the post, under 160 characters>",' +
-    '"body":"<450 to 650 words as 5 to 7 short paragraphs separated by a blank line (\\n\\n). Plain prose only, no headings.>"' +
+    '"body":"<450 to 650 words separated by blank lines (\\n\\n). Include 2 to 3 section headings formatted as ## Heading, short paragraphs, and optional bullet lists (- item) where helpful.>"' +
     '}';
 
   const userInput =

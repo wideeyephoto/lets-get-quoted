@@ -3,10 +3,12 @@
 import { useCallback, useMemo, useState, useTransition } from 'react';
 import ModalDialog, { CloseOnSuccess } from '@/components/modal-dialog';
 import SaveButton from '@/components/save-button';
+import PersistentMessageIntent from '@/app/dashboard/messages/PersistentMessageIntent';
 import {
   buildCrewMorningBriefingSms,
   buildCrewDailyRunSheetText,
   buildNavUrl,
+  crewBriefingStopsForMember,
   type CrewBriefingStop,
   type NavProvider,
 } from '@/lib/crew-briefing';
@@ -23,6 +25,9 @@ export type CrewBriefMember = {
 };
 
 export type BriefCrewModalProps = {
+  intentId: string;
+  intentStorageKey: string;
+  completedIntentId?: string | null;
   dateKey: string;
   dateLabel: string;
   businessName: string;
@@ -55,6 +60,9 @@ function formatTimeOnly(isoString: string): string {
 }
 
 export default function BriefCrewModal({
+  intentId,
+  intentStorageKey,
+  completedIntentId,
   dateKey,
   dateLabel,
   businessName,
@@ -97,24 +105,9 @@ export default function BriefCrewModal({
   // Filter stops per crew member based on assignment records
   const getMemberStops = useCallback(
     (memberId: string): CrewBriefingStop[] => {
-      if (roster.length <= 1) return stops;
-      const assignedJobIds = new Set(
-        Object.entries(assignmentsByJob)
-          .filter(([, memberIds]) => memberIds.includes(memberId))
-          .map(([jobId]) => jobId)
-      );
-
-      if (assignedJobIds.size > 0) {
-        return stops.filter((stop) => {
-          const idPart = stop.jobRef.replace(/^JOB-/, '').toLowerCase();
-          return Array.from(assignedJobIds).some((jid) =>
-            jid.toLowerCase().startsWith(idPart) || jid.toLowerCase().includes(idPart)
-          );
-        });
-      }
-      return stops;
+      return crewBriefingStopsForMember(stops, assignmentsByJob, memberId);
     },
-    [roster.length, stops, assignmentsByJob]
+    [stops, assignmentsByJob]
   );
 
   // Preview member selection
@@ -399,6 +392,7 @@ export default function BriefCrewModal({
     >
       <form action={sendCrewMorningBriefingAction} className="brief-crew-form">
         <CloseOnSuccess />
+        <PersistentMessageIntent storageKey={intentStorageKey} fallbackId={intentId} resetToken={completedIntentId} />
         <input type="hidden" name="dateKey" value={dateKey} />
         <input type="hidden" name="crewId" value={activeCrewId ?? ''} />
         <input type="hidden" name="customNote" value={customNote} />

@@ -36,6 +36,15 @@ export async function middleware(request: NextRequest) {
     rootDomain,
   );
 
+  // Platform short-link redirects (/r/[code]) must not be rewritten to tenant site subpaths
+  if (request.nextUrl.pathname.startsWith('/r/')) {
+    const requestHeaders = new Headers(request.headers);
+    requestHeaders.set('x-nonce', nonce);
+    requestHeaders.set('content-security-policy', csp);
+    requestHeaders.set(cspHeader, csp);
+    return applyCsp(NextResponse.next({ request: { headers: requestHeaders } }));
+  }
+
   if (tenant.kind === 'subdomain') {
     const subdomain = tenant.subdomain;
     const publicSiteUrl = request.nextUrl.clone();

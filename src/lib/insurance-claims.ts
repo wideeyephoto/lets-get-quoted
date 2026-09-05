@@ -8,6 +8,7 @@ import {
   getInsuranceTradeProfile,
   type InsuranceTradeProfile,
 } from './trade-insurance';
+import { formatMoneyExact } from './jobs';
 
 export type InsuranceClaimStatus =
   | 'draft'
@@ -16,6 +17,13 @@ export type InsuranceClaimStatus =
   | 'approved'
   | 'invoiced'
   | 'closed';
+
+export type InsuranceClaimLetterRevision = {
+  savedAt: string;
+  letter: string;
+  totalSupplement: number;
+  revisedRcv: number | null;
+};
 
 export type InsuranceClaimRecord = {
   id: string;
@@ -36,12 +44,36 @@ export type InsuranceClaimRecord = {
   total_supplement_amount: number;
   revised_rcv_amount: number | null;
   justification_letter: string | null;
+  letter_revisions: InsuranceClaimLetterRevision[];
   status: InsuranceClaimStatus;
   trade_slug: string;
   ai_analyzed_at: string | null;
+  analysis_method: 'ai' | 'heuristic';
+  deleted_at: string | null;
   created_at: string;
   updated_at: string;
 };
+
+export type InsuranceClaimSummary = Pick<
+  InsuranceClaimRecord,
+  | 'id'
+  | 'account_id'
+  | 'client_id'
+  | 'job_id'
+  | 'claim_number'
+  | 'policyholder_name'
+  | 'property_address'
+  | 'carrier_name'
+  | 'adjuster_name'
+  | 'total_supplement_amount'
+  | 'revised_rcv_amount'
+  | 'status'
+  | 'trade_slug'
+  | 'created_at'
+  | 'updated_at'
+  | 'parsed_figures'
+  | 'analysis_method'
+>;
 
 export type InsuranceClaimInput = {
   id?: string;
@@ -61,9 +93,12 @@ export type InsuranceClaimInput = {
   totalSupplementAmount?: number;
   revisedRcvAmount?: number | null;
   justificationLetter?: string | null;
+  letterRevisions?: InsuranceClaimLetterRevision[];
   status?: InsuranceClaimStatus;
   tradeSlug?: string;
   aiAnalyzedAt?: string | null;
+  analysisMethod?: 'ai' | 'heuristic';
+  updatedAt?: string; // For optimistic concurrency checks
 };
 
 export type ClaimFinancialFigures = {
@@ -82,6 +117,20 @@ export type ScopeDiscrepancy = {
   category: 'code_compliance' | 'manufacturer_spec' | 'missed_scope' | 'labor_surcharge';
   estimatedCost: number;
   selected: boolean;
+  quantity?: number;
+  unit?: string;
+  unitPrice?: number;
+  confidence?: 'high' | 'medium' | 'low';
+  detectionSource?: 'code_mandate' | 'omitted_scan' | 'ai_identified' | 'custom';
+};
+
+export type ParsedScopeLineItem = {
+  raw: string;
+  description: string;
+  quantity?: number;
+  unit?: string;
+  unitPrice?: number;
+  total?: number;
 };
 
 export type SupplementAnalysisResult = {
@@ -92,6 +141,10 @@ export type SupplementAnalysisResult = {
   totalEstimatedSupplement: number;
   adjustedTotalRcv: number | null;
   justificationDraft: string;
+  analysisMethod: 'ai' | 'heuristic';
+  reconciliationWarning?: string | null;
+  parsedLineItems?: ParsedScopeLineItem[];
+  sourceNotice?: string;
 };
 
 export type ClaimFeasibilityAssessment = {
@@ -155,35 +208,108 @@ export const HOMEOWNER_CLAIM_FAQS: HomeownerCopilotFaq[] = [
 ];
 
 /**
- * Heuristic parser to extract dollar figures (RCV, ACV, Deductible, Net Claim) from adjuster scope text.
+ * Parses line items (quantity, unit, unit price, total) from adjuster estimate text.
  */
-export function extractClaimFiguresFromText(text: string): ClaimFinancialFigures {
+export function parseScopeLineItems(text: string): ParsedScopeLineItem[] {
+  if (!text || !text.trim()) return [];
+  const lines = text.split(/\r?\n/);
+  const items: ParsedScopeLineItem[] = [];
+
+  // Match lines like:
+  // Line Item 1: Tear off 3-tab shingles (28.33 SQ) - $1,416.50
+  // 1. Tear off existing asphalt composition shingles (32 SQ) - $1,600.00
+  // Line 4: Continuous ridge vent (45 LF) - $495.00
+  const itemRe = /(?:line\s*item\s*\d+[:.]?|\b\d+[\).]|\bline\s*\d+[:.]?)\s*(.+?)(?:\(([0-9,.]+)\s*([A-Za-z]+)\))?(?:\s*[@-]\s*\$?([0-9,.]+))?\s*[-=:]\s*\$?([0-9,.]+(?:\.\d{2})?)/i;
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    const match = trimmed.match(itemRe);
+    if (match) {
+      const description = match[1].replace(/[:\-–—]+$/, '').trim();
+      const qtyStr = match[2]?.replace(/,/g, '');
+      const unit = match[3]?.toUpperCase() || 'EA';
+      const unitPriceStr = match[4]?.replace(/,/g, '');
+      const totalStr = match[5]?.replace(/,/g, '');
+
+      const quantity = qtyStr ? parseFloat(qtyStr) : undefined;
+      const total = totalStr ? parseFloat(totalStr) : undefined;
+      const unitPrice = unitPriceStr
+        ? parseFloat(unitPriceStr)
+        : quantity && total
+        ? Math.round((total / quantity) * 100) / 100
+        : undefined;
+
+      items.push({
+        raw: trimmed,
+        description,
+        quantity: Number.isFinite(quantity) ? quantity : undefined,
+        unit,
+        unitPrice: Number.isFinite(unitPrice) ? unitPrice : undefined,
+        total: Number.isFinite(total) ? total : undefined,
+      });
+    }
+  }
+
+  return items;
+}
+
+/**
+ * Heuristic parser to extract dollar figures (RCV, ACV, Deductible, Net Claim) from adjuster scope text.
+ * Safeguards against capturing stray page numbers (e.g. "see page 3 — $8,799.70") and reconciles math.
+ */
+export function extractClaimFiguresFromText(text: string): ClaimFinancialFigures & { reconciliationWarning?: string | null } {
   if (!text) {
     return { rcv: null, acv: null, depreciation: null, deductible: null, netClaim: null };
   }
 
   const clean = text.replace(/,/g, '');
 
-  const parsePattern = (regex: RegExp): number | null => {
-    const match = clean.match(regex);
-    if (!match || !match[1]) return null;
-    const num = parseFloat(match[1]);
-    return Number.isFinite(num) ? Math.round(num * 100) / 100 : null;
+  const parsePattern = (labelRegex: RegExp): number | null => {
+    // 1. Look for label followed on the same line by a dollar sign and amount
+    const dollarMatch = clean.match(new RegExp(`${labelRegex.source}(?:(?![\r\n]).)*?\\$\\s*(\\d+(?:\\.\\d{2})?)`, 'i'));
+    if (dollarMatch && dollarMatch[1]) {
+      const num = parseFloat(dollarMatch[1]);
+      if (Number.isFinite(num)) return Math.round(num * 100) / 100;
+    }
+    // 2. Look for label followed by colon/dash/parentheses then number (e.g. DEDUCTIBLE: (1500.00))
+    const colonMatch = clean.match(new RegExp(`${labelRegex.source}\\s*[:=–-]\\s*\\(?\\$?(\\d+(?:\\.\\d{2})?)\\)?`, 'i'));
+    if (colonMatch && colonMatch[1]) {
+      const num = parseFloat(colonMatch[1]);
+      if (Number.isFinite(num)) return Math.round(num * 100) / 100;
+    }
+    return null;
   };
 
-  // Common Xactimate / Adjuster text markers (handling parentheses like (RCV), colons, and dollar signs)
-  const rcv = parsePattern(/(?:replacement\s*cost\s*value|total\s*rcv|rcv\s*total|\brcv\b)[^\d\n]*?\$?\s*(\d+(?:\.\d{2})?)/i);
-  const acv = parsePattern(/(?:actual\s*cash\s*value|total\s*acv|acv\s*total|\bacv\b)[^\d\n]*?\$?\s*(\d+(?:\.\d{2})?)/i);
-  const depreciation = parsePattern(/(?:total\s*depreciation|\bdepreciation\b|recov(?:erable)?\s*depr)[^\d\n]*?\$?\s*(\d+(?:\.\d{2})?)/i);
-  const deductible = parsePattern(/(?:policy\s*deductible|net\s*deductible|\bdeductible\b)[^\d\n]*?\$?\s*(\d+(?:\.\d{2})?)/i);
-  const netClaim = parsePattern(/(?:net\s*claim|net\s*payment|net\s*actual\s*cash|check\s*amount)[^\d\n]*?\$?\s*(\d+(?:\.\d{2})?)/i);
+  const rcv = parsePattern(/(?:replacement\s*cost\s*value|total\s*rcv|rcv\s*total|\brcv\b)/);
+  const acv = parsePattern(/(?:actual\s*cash\s*value|total\s*acv|acv\s*total|\bacv\b)/);
+  const depreciation = parsePattern(/(?:total\s*depreciation|\bdepreciation\b|recov(?:erable)?\s*depr)/);
+  const deductible = parsePattern(/(?:policy\s*deductible|net\s*deductible|\bdeductible\b)/);
+  const netClaim = parsePattern(/(?:net\s*claim|net\s*payment|net\s*actual\s*cash|check\s*amount|net\s*payment\s*issued)/);
 
-  return { rcv, acv, depreciation, deductible, netClaim };
+  // Sanity / reconciliation check
+  let reconciliationWarning: string | null = null;
+  if (rcv != null && acv != null && acv > rcv) {
+    reconciliationWarning = `Parsed figures inconsistent: ACV ($${formatMoneyExact(acv)}) cannot exceed RCV ($${formatMoneyExact(rcv)}).`;
+  } else if (rcv != null && depreciation != null && deductible != null && netClaim != null) {
+    const expectedNet = Math.round((rcv - depreciation - deductible) * 100) / 100;
+    if (Math.abs(expectedNet - netClaim) > 1.0) {
+      reconciliationWarning = `Figures do not reconcile: RCV (${formatMoneyExact(rcv)}) − Depreciation (${formatMoneyExact(depreciation)}) − Deductible (${formatMoneyExact(deductible)}) = ${formatMoneyExact(expectedNet)}, but Net Payment is ${formatMoneyExact(netClaim)}.`;
+    }
+  }
+
+  return { rcv, acv, depreciation, deductible, netClaim, reconciliationWarning };
+}
+
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 /**
  * Identifies missing code items and standard supplements by analyzing the scope text
  * against trade-specific building codes.
+ * Uses word-boundary matching and curated aliases so common terms (like "water" or "vent")
+ * do not cause false-positive detections or suppressions.
  */
 export function detectScopeDiscrepancies(
   scopeText: string,
@@ -199,10 +325,16 @@ export function detectScopeDiscrepancies(
 
   for (let i = 0; i < profile.standardSupplements.length; i++) {
     const supp = profile.standardSupplements[i];
-    const itemWords = supp.item.toLowerCase().split(/\s+/).filter((w) => w.length > 3 && !['with', 'along', 'from'].includes(w));
-    
-    // Check if the item appears in the scope text
-    const isPresent = itemWords.some((word) => lowerScope.includes(word));
+    const matchTargets = supp.aliases && supp.aliases.length > 0
+      ? supp.aliases
+      : [supp.item.toLowerCase().replace(/\s*\(.*?\)/, '').trim()];
+
+    // Require full phrase or alias with word-boundary matching
+    const isPresent = matchTargets.some((alias) => {
+      const escaped = escapeRegex(alias.toLowerCase().trim());
+      const re = new RegExp(`\\b${escaped}\\b`, 'i');
+      return re.test(lowerScope);
+    });
 
     // If omitted from the provided scope, flag as a potential supplement
     if (!isPresent) {
@@ -215,7 +347,12 @@ export function detectScopeDiscrepancies(
           ? 'code_compliance'
           : 'missed_scope',
         estimatedCost: supp.defaultEstimatedCost,
-        selected: true,
+        selected: false, // Affirmative contractor review required: default to unchecked
+        quantity: supp.defaultQty ?? 1,
+        unit: supp.unit ?? 'EA',
+        unitPrice: supp.defaultUnitPrice ?? supp.defaultEstimatedCost,
+        confidence: supp.typicalCodeRef ? 'high' : 'medium',
+        detectionSource: 'code_mandate',
       });
     }
   }
@@ -225,6 +362,7 @@ export function detectScopeDiscrepancies(
 
 /**
  * Builds a structured supplement analysis result from scope text and trade.
+ * Sums amounts in integer cents to prevent floating point drift.
  */
 export function buildSupplementAnalysis(
   scopeText: string,
@@ -239,18 +377,36 @@ export function buildSupplementAnalysis(
       totalEstimatedSupplement: 0,
       adjustedTotalRcv: null,
       justificationDraft: 'No scope text provided. Paste an adjuster estimate to identify code omissions and generate a justification draft.',
+      analysisMethod: 'heuristic',
+      parsedLineItems: [],
     };
   }
 
-  const parsedFigures = extractClaimFiguresFromText(scopeText);
+  const figuresWithWarn = extractClaimFiguresFromText(scopeText);
+  const parsedFigures: ClaimFinancialFigures = {
+    rcv: figuresWithWarn.rcv,
+    acv: figuresWithWarn.acv,
+    depreciation: figuresWithWarn.depreciation,
+    deductible: figuresWithWarn.deductible,
+    netClaim: figuresWithWarn.netClaim,
+  };
+
   const discrepancies = detectScopeDiscrepancies(scopeText, tradeSlug);
-  const totalEstimatedSupplement = discrepancies
-    .filter((d) => d.selected)
-    .reduce((sum, d) => sum + d.estimatedCost, 0);
+  const parsedLineItems = parseScopeLineItems(scopeText);
 
-  const adjustedTotalRcv = parsedFigures.rcv ? parsedFigures.rcv + totalEstimatedSupplement : null;
+  // Cent arithmetic to eliminate floating-point drift
+  const totalEstimatedSupplement = Math.round(
+    discrepancies
+      .filter((d) => d.selected)
+      .reduce((sum, d) => sum + Math.round(d.estimatedCost * 100), 0)
+  ) / 100;
 
-  const rawScopeSummary = `Analyzed ${scopeText.split('\n').length} lines of adjuster scope.`;
+  // Use != null so RCV of 0 is not treated as unparsed
+  const adjustedTotalRcv = parsedFigures.rcv != null
+    ? Math.round((Math.round(parsedFigures.rcv * 100) + Math.round(totalEstimatedSupplement * 100))) / 100
+    : null;
+
+  const rawScopeSummary = `Analyzed ${scopeText.split('\n').length} lines of adjuster scope. Detected ${parsedLineItems.length} line items and ${discrepancies.length} potential building code omissions.`;
 
   const justificationDraft = generateAdjusterLetterDraft({
     tradeSlug,
@@ -272,11 +428,15 @@ export function buildSupplementAnalysis(
     totalEstimatedSupplement,
     adjustedTotalRcv,
     justificationDraft,
+    analysisMethod: 'heuristic',
+    reconciliationWarning: figuresWithWarn.reconciliationWarning,
+    parsedLineItems,
   };
 }
 
 /**
  * Generates a formal, UPPA-compliant Adjuster Supplement Justification letter.
+ * Employs formatMoneyExact for all currency amounts to guarantee cent precision for carriers.
  */
 export function generateAdjusterLetterDraft(params: {
   tradeSlug?: string;
@@ -316,7 +476,12 @@ export function generateAdjusterLetterDraft(params: {
   }
 
   const profile = getInsuranceTradeProfile(tradeSlug);
-  const supplementTotal = activeDiscrepancies.reduce((sum, d) => sum + d.estimatedCost, 0);
+  // Sum in cents
+  const supplementTotal = Math.round(
+    activeDiscrepancies.reduce((sum, d) => sum + Math.round(d.estimatedCost * 100), 0)
+  ) / 100;
+
+  const initialRcvText = initialRcv != null ? ` (Initial RCV: ${formatMoneyExact(initialRcv)})` : '';
 
   const lines: string[] = [
     `RE: Desk Scope Review & Contractor Construction Estimate — Building Code Supplements`,
@@ -329,15 +494,18 @@ export function generateAdjusterLetterDraft(params: {
     ``,
     `Dear ${adjusterName},`,
     ``,
-    `We have completed a preliminary contractor desk review of the initial scope of loss for the property at ${propertyAddress}. Based on applicable building codes and manufacturer installation specifications, we have identified several required line items omitted from the initial estimate that are necessary for a code-compliant, workmanlike restoration${initialRcv ? ` (Initial RCV: $${initialRcv.toLocaleString()})` : ''}.`,
+    `We have completed a preliminary contractor desk review of the initial scope of loss for the property at ${propertyAddress}. Based on applicable building codes and manufacturer installation specifications, we have identified several required line items omitted from the initial estimate that are necessary for a code-compliant, workmanlike restoration${initialRcvText}.`,
     ``,
     `### Itemized Scope Adjustments & Code Justifications:`,
     ``,
   ];
 
   activeDiscrepancies.forEach((item, index) => {
+    const qtyNote = item.quantity && item.unit && item.unitPrice
+      ? ` (${item.quantity} ${item.unit} @ ${formatMoneyExact(item.unitPrice)}/${item.unit})`
+      : '';
     lines.push(
-      `${index + 1}. **${item.item}** (Estimated: $${item.estimatedCost.toLocaleString()})`,
+      `${index + 1}. **${item.item}** (Estimated: ${formatMoneyExact(item.estimatedCost)}${qtyNote})`,
       `   - **Authority / Code Ref**: ${item.codeCitation || 'Manufacturer Specification & Building Code'}`,
       `   - **Justification**: ${item.reason}`,
       ``
@@ -346,8 +514,12 @@ export function generateAdjusterLetterDraft(params: {
 
   lines.push(
     `---`,
-    `**Total Supplement Amount Requested**: $${supplementTotal.toLocaleString()}`,
-    initialRcv ? `**Revised Total RCV Scope**: $${(initialRcv + supplementTotal).toLocaleString()}` : '',
+    `**Total Supplement Amount Requested**: ${formatMoneyExact(supplementTotal)}`,
+    initialRcv != null
+      ? `**Revised Total RCV Scope**: ${formatMoneyExact(
+          Math.round(Math.round(initialRcv * 100) + Math.round(supplementTotal * 100)) / 100
+        )}`
+      : '',
     ``,
     `Please review the attached physical photo documentation, manufacturer installation guidelines, and local jurisdiction code requirements. We request that you issue an updated scope reflecting these required items at your earliest convenience so that repairs may proceed without delay.`,
     ``,
@@ -447,7 +619,7 @@ export function evaluateDamageClaimFeasibilityHeuristic(input: {
       ? `Moderate probability. We recommend having our field specialist perform a physical photo inspection to confirm whether damage exceeds your $${knownDeductible} deductible before filing a formal claim.`
       : `Low probability of claim coverage. Damage appears consistent with maintenance or age-related wear, which is typically excluded by homeowner policies. We recommend an out-of-pocket repair quote.`;
 
-  const contractorBrief = `Intake assessment score: ${score}/100 (${probability} likelihood). Estimated scope: $${estMin.toLocaleString()} - $${estMax.toLocaleString()}. Focus on corroborating soft metal damage and secondary water logs.`;
+  const contractorBrief = `Intake assessment score: ${score}/100 (${probability} likelihood). Estimated scope: ${formatMoneyExact(estMin)} - ${formatMoneyExact(estMax)}. Focus on corroborating soft metal damage and secondary water logs.`;
 
   return {
     feasibilityScore: score,
@@ -541,6 +713,9 @@ export function extractClaimMetadataFromText(text: string): {
   };
 }
 
+/**
+ * Fetches all saved claims for the workspace. Does NOT swallow database errors.
+ */
 export async function listInsuranceClaims(
   supabase: SupabaseClient,
   accountId: string,
@@ -549,10 +724,54 @@ export async function listInsuranceClaims(
     .from('insurance_claims')
     .select('*')
     .eq('account_id', accountId)
+    .is('deleted_at', null)
     .order('created_at', { ascending: false });
 
-  if (error || !data) return [];
-  return data.map(mapDbClaimToRecord);
+  if (error) {
+    throw new Error(`Failed to list insurance claims: ${error.message}`);
+  }
+  return (data || []).map(mapDbClaimToRecord);
+}
+
+/**
+ * Lightweight projection for list views and summary cards without loading massive scope_text or justification letters.
+ */
+export async function listInsuranceClaimSummaries(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<InsuranceClaimSummary[]> {
+  const { data, error } = await supabase
+    .from('insurance_claims')
+    .select(
+      'id, account_id, client_id, job_id, claim_number, policyholder_name, property_address, carrier_name, adjuster_name, total_supplement_amount, revised_rcv_amount, status, trade_slug, created_at, updated_at, parsed_figures, analysis_method'
+    )
+    .eq('account_id', accountId)
+    .is('deleted_at', null)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Failed to list insurance claim summaries: ${error.message}`);
+  }
+
+  return (data || []).map((row: Record<string, any>) => ({
+    id: String(row.id),
+    account_id: String(row.account_id),
+    client_id: row.client_id ? String(row.client_id) : null,
+    job_id: row.job_id ? String(row.job_id) : null,
+    claim_number: row.claim_number ?? null,
+    policyholder_name: row.policyholder_name ?? null,
+    property_address: row.property_address ?? null,
+    carrier_name: row.carrier_name ?? null,
+    adjuster_name: row.adjuster_name ?? null,
+    total_supplement_amount: Number(row.total_supplement_amount) || 0,
+    revised_rcv_amount: row.revised_rcv_amount != null ? Number(row.revised_rcv_amount) : null,
+    status: row.status ?? 'draft',
+    trade_slug: row.trade_slug ?? 'roofers',
+    analysis_method: (row.analysis_method as 'ai' | 'heuristic') ?? 'heuristic',
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
+    parsed_figures: row.parsed_figures ?? { rcv: null, acv: null, depreciation: null, deductible: null, netClaim: null },
+  }));
 }
 
 export async function getInsuranceClaim(
@@ -565,18 +784,52 @@ export async function getInsuranceClaim(
     .select('*')
     .eq('account_id', accountId)
     .eq('id', claimId)
+    .is('deleted_at', null)
     .maybeSingle();
 
-  if (error || !data) return null;
+  if (error) {
+    throw new Error(`Failed to fetch insurance claim: ${error.message}`);
+  }
+  if (!data) return null;
   return mapDbClaimToRecord(data);
 }
 
+/**
+ * Saves or updates an insurance claim.
+ * Removes client-side clock overrides (created_at/updated_at) and supports optimistic concurrency.
+ */
 export async function saveInsuranceClaim(
   supabase: SupabaseClient,
   accountId: string,
   input: InsuranceClaimInput,
 ): Promise<InsuranceClaimRecord> {
-  const payload = {
+  // Optimistic concurrency check for updates
+  if (input.id && input.updatedAt) {
+    const { data: existing } = await supabase
+      .from('insurance_claims')
+      .select('updated_at, letter_revisions')
+      .eq('account_id', accountId)
+      .eq('id', input.id)
+      .maybeSingle();
+
+    if (existing && existing.updated_at && existing.updated_at !== input.updatedAt) {
+      throw new Error('This claim was updated by another team member in the meantime. Please reload to review the latest changes.');
+    }
+  }
+
+  // Manage version history for justification letter
+  let letterRevisions: InsuranceClaimLetterRevision[] = input.letterRevisions || [];
+  if (input.justificationLetter) {
+    const revision: InsuranceClaimLetterRevision = {
+      savedAt: new Date().toISOString(),
+      letter: input.justificationLetter,
+      totalSupplement: input.totalSupplementAmount ?? 0,
+      revisedRcv: input.revisedRcvAmount ?? null,
+    };
+    letterRevisions = [...letterRevisions.slice(-9), revision]; // Retain up to 10 revisions
+  }
+
+  const payload: Record<string, any> = {
     account_id: accountId,
     client_id: input.clientId ?? null,
     job_id: input.jobId ?? null,
@@ -594,10 +847,11 @@ export async function saveInsuranceClaim(
     total_supplement_amount: input.totalSupplementAmount ?? 0,
     revised_rcv_amount: input.revisedRcvAmount ?? null,
     justification_letter: input.justificationLetter ?? null,
+    letter_revisions: letterRevisions,
     status: input.status ?? 'draft',
     trade_slug: input.tradeSlug ?? 'roofers',
     ai_analyzed_at: input.aiAnalyzedAt ?? null,
-    updated_at: new Date().toISOString(),
+    analysis_method: input.analysisMethod ?? 'heuristic',
   };
 
   if (input.id) {
@@ -612,9 +866,10 @@ export async function saveInsuranceClaim(
     if (error) throw new Error(`Failed to update insurance claim: ${error.message}`);
     return mapDbClaimToRecord(data);
   } else {
+    // Rely on database defaults clock_timestamp() for created_at and updated_at
     const { data, error } = await supabase
       .from('insurance_claims')
-      .insert({ ...payload, created_at: new Date().toISOString() })
+      .insert(payload)
       .select()
       .single();
 
@@ -623,19 +878,22 @@ export async function saveInsuranceClaim(
   }
 }
 
+/**
+ * Soft deletes an insurance claim by stamping deleted_at.
+ */
 export async function deleteInsuranceClaim(
   supabase: SupabaseClient,
   accountId: string,
   claimId: string,
-): Promise<{ success: boolean }> {
+): Promise<{ success: boolean; deletedId: string }> {
   const { error } = await supabase
     .from('insurance_claims')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('id', claimId);
 
   if (error) throw new Error(`Failed to delete insurance claim: ${error.message}`);
-  return { success: true };
+  return { success: true, deletedId: claimId };
 }
 
 function mapDbClaimToRecord(row: Record<string, any>): InsuranceClaimRecord {
@@ -658,9 +916,12 @@ function mapDbClaimToRecord(row: Record<string, any>): InsuranceClaimRecord {
     total_supplement_amount: Number(row.total_supplement_amount) || 0,
     revised_rcv_amount: row.revised_rcv_amount != null ? Number(row.revised_rcv_amount) : null,
     justification_letter: row.justification_letter ?? null,
+    letter_revisions: Array.isArray(row.letter_revisions) ? row.letter_revisions : [],
     status: row.status ?? 'draft',
     trade_slug: row.trade_slug ?? 'roofers',
     ai_analyzed_at: row.ai_analyzed_at ?? null,
+    analysis_method: (row.analysis_method as 'ai' | 'heuristic') ?? 'heuristic',
+    deleted_at: row.deleted_at ? String(row.deleted_at) : null,
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };

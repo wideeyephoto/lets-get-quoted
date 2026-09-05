@@ -101,14 +101,19 @@ export type PlanAccountSettings = {
 export async function getPlanAccountSettings(
   supabase: SupabaseClient,
   accountId: string,
+  options?: { requireSuccessfulRead?: boolean },
 ): Promise<PlanAccountSettings> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('accounts')
     .select(
       'timezone, workday_start, workday_end, job_buffer_minutes, schedule_day_hours, booking_weekdays, service_center_lat, service_center_lng, instant_book_drive_time, mailing_address, operating_address',
     )
     .eq('id', accountId)
     .maybeSingle();
+
+  if (options?.requireSuccessfulRead && (error || !data)) {
+    throw error ?? new Error('Account schedule settings are unavailable.');
+  }
 
   const homeLat = data?.service_center_lat;
   const homeLng = data?.service_center_lng;
@@ -266,7 +271,7 @@ export async function listDayJobs(
   accountId: string,
   dateKey: string,
   crewId?: string | null,
-  span?: { workDayHours: number; workingWeekdays: number[] | null },
+  span?: { workDayHours: number; workingWeekdays: number[] | null; requireSuccessfulRead?: boolean },
 ): Promise<{ jobs: PlanJobRow[]; filteredOutCount: number; placement: Map<string, JobDayPlacement> }> {
   const query = (fields: string) =>
     supabase
@@ -281,9 +286,9 @@ export async function listDayJobs(
   // Naming a column PostgREST does not know fails the WHOLE select, which here
   // would read as "nothing is scheduled" and hand back an empty day.
   const withEndDate = await query(JOB_FIELDS);
-  const rows = (
-    isMissingColumnError(withEndDate.error) ? (await query(JOB_FIELDS_BASE)).data : withEndDate.data
-  ) as unknown as PlanJobRow[] | null;
+  const result = isMissingColumnError(withEndDate.error) ? await query(JOB_FIELDS_BASE) : withEndDate;
+  if (span?.requireSuccessfulRead && result.error) throw result.error;
+  const rows = result.data as unknown as PlanJobRow[] | null;
 
   const placement = new Map<string, JobDayPlacement>();
   const onThisDay: PlanJobRow[] = [];

@@ -132,3 +132,89 @@ describe('estimateReadingTime', () => {
     expect(estimateReadingTime(fourHundredFiftyWords)).toBe('3 min read');
   });
 });
+
+describe('SiteBlogPost new SEO fields & parseBlogPosts', () => {
+  it('preserves updatedAt, coverAlt, photographerName, photographerUrl, and targetKeyword', () => {
+    const rawContent = {
+      blog: {
+        posts: [
+          {
+            id: 'post-test',
+            title: 'Roofing Guide',
+            date: '2026-08-01',
+            updatedAt: '2026-08-20',
+            coverAlt: 'A clean asphalt shingle roof',
+            photographerName: 'Jane Doe',
+            photographerUrl: 'https://pexels.com/@janedoe',
+            targetKeyword: 'roof replacement',
+            status: 'draft',
+          },
+        ],
+      },
+    };
+
+    const parsed = getSiteContent(rawContent).blog.posts[0];
+    expect(parsed.updatedAt).toBe('2026-08-20');
+    expect(parsed.coverAlt).toBe('A clean asphalt shingle roof');
+    expect(parsed.photographerName).toBe('Jane Doe');
+    expect(parsed.photographerUrl).toBe('https://pexels.com/@janedoe');
+    expect(parsed.targetKeyword).toBe('roof replacement');
+  });
+});
+
+describe('postDateLabel honesty', () => {
+  it('labels creation date vs updated date honestly', async () => {
+    const { postDateLabel } = await import('@/lib/marketing-status');
+
+    // Just created draft
+    const freshDraft = {
+      status: 'draft' as const,
+      date: '2026-08-01',
+      publishAt: '',
+    };
+    expect(postDateLabel(freshDraft, '2026-08-05')).toBe('Created Aug 1');
+
+    // Edited draft
+    const editedDraft = {
+      status: 'draft' as const,
+      date: '2026-08-01',
+      updatedAt: '2026-08-20',
+      publishAt: '',
+    };
+    expect(postDateLabel(editedDraft, '2026-08-25')).toBe('Updated Aug 20');
+
+    // Published without further updates
+    const published = {
+      status: 'published' as const,
+      date: '2026-08-10',
+      publishAt: '',
+    };
+    expect(postDateLabel(published, '2026-08-25')).toBe('Published Aug 10');
+
+    // Published and later updated
+    const publishedAndUpdated = {
+      status: 'published' as const,
+      date: '2026-08-10',
+      updatedAt: '2026-08-22',
+      publishAt: '',
+    };
+    expect(postDateLabel(publishedAndUpdated, '2026-08-25')).toBe('Published Aug 10 · Updated Aug 22');
+
+    // Archived post
+    const archived = {
+      status: 'archived' as const,
+      date: '2026-08-01',
+      updatedAt: '2026-08-15',
+      publishAt: '',
+    };
+    expect(postDateLabel(archived, '2026-08-25')).toBe('Archived · last saved Aug 15');
+
+    // Scheduled post
+    const scheduled = {
+      status: 'ready' as const,
+      date: '2026-08-01',
+      publishAt: '2026-09-01',
+    };
+    expect(postDateLabel(scheduled, '2026-08-25')).toBe('Scheduled for Sep 1');
+  });
+});

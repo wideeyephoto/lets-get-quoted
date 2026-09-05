@@ -19,6 +19,8 @@ export type LeadAttribution = {
   medium?: string;
   /** UTM Campaign name, e.g. 'spring_roofing_promo_2026' */
   campaign?: string;
+  /** On-site promo or discount offer code */
+  promo?: string;
   /** Search term or keyword, e.g. 'emergency roof repair' */
   term?: string;
   /** Ad creative or placement identifier, e.g. 'video_ad_v2', 'hero_cta' */

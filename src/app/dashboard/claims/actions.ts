@@ -1,6 +1,6 @@
 'use server';
 
-import { requireOfficeContext } from '@/lib/auth';
+import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import {
   analyzeAdjusterScopeWithAi,
   evaluateDamageClaimFeasibilityWithAi,
@@ -8,11 +8,14 @@ import {
 } from '@/lib/insurance-ai';
 import {
   listInsuranceClaims,
+  listInsuranceClaimSummaries,
+  getInsuranceClaim,
   saveInsuranceClaim,
   deleteInsuranceClaim,
   type SupplementAnalysisResult,
   type ClaimFeasibilityAssessment,
   type InsuranceClaimRecord,
+  type InsuranceClaimSummary,
   type InsuranceClaimInput,
 } from '@/lib/insurance-claims';
 
@@ -20,7 +23,8 @@ export async function analyzeScopeWithAiAction(input: {
   scopeText: string;
   tradeSlug?: string;
 }): Promise<SupplementAnalysisResult> {
-  const { supabase, accountId } = await requireOfficeContext('jobs.write');
+  // Read-only permission: analyzing text produces no persisted claim state
+  const { accountId } = await requireOfficeContext('jobs.read');
 
   const result = await analyzeAdjusterScopeWithAi({
     scopeText: input.scopeText,
@@ -28,10 +32,12 @@ export async function analyzeScopeWithAiAction(input: {
     accountId,
   });
 
-  // Persist audit record of external AI model scope processing
+  // Persist audit record of external AI model scope processing via service_role
+  // (ai_operator_logs revokes authenticated access for security)
   try {
+    const admin = createAdminClient();
     const auditId = `audit-scope-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-    await supabase.from('ai_operator_logs').insert({
+    await admin.from('ai_operator_logs').insert({
       id: auditId,
       timestamp: new Date().toISOString(),
       category: 'insurance_claim',
@@ -42,18 +48,21 @@ export async function analyzeScopeWithAiAction(input: {
         tradeSlug: input.tradeSlug || 'roofers',
         scopeCharLength: input.scopeText.length,
         scopeLineCount: input.scopeText.split('\n').length,
+        method: result.analysisMethod,
       },
       output_result: {
         discrepanciesCount: result.discrepancies.length,
         totalSupplement: result.totalEstimatedSupplement,
         rcv: result.parsedFigures.rcv,
+        method: result.analysisMethod,
       },
-      reasoning_summary: `Adjuster scope parsed with AI model for account ${accountId}. Detected ${result.discrepancies.length} potential supplements totalling $${result.totalEstimatedSupplement}.`,
+      reasoning_summary: `Adjuster scope parsed (${result.analysisMethod}) for account ${accountId}. Detected ${result.discrepancies.length} potential supplements totalling $${result.totalEstimatedSupplement}.`,
       account_id: accountId,
       status: 'completed',
     });
-  } catch {
+  } catch (err) {
     // Non-blocking audit write failure
+    console.error('Failed to write AI operator audit log:', err);
   }
 
   return result;
@@ -66,7 +75,8 @@ export async function evaluateFeasibilityWithAiAction(input: {
   knownDeductible?: number;
   tradeSlug?: string;
 }): Promise<ClaimFeasibilityAssessment> {
-  const { accountId } = await requireOfficeContext('jobs.write');
+  // Read-only permission: damage viability calculation writes nothing
+  const { accountId } = await requireOfficeContext('jobs.read');
   return evaluateDamageClaimFeasibilityWithAi({
     ...input,
     accountId,
@@ -77,7 +87,8 @@ export async function getClaimCopilotAnswerAction(input: {
   question: string;
   tradeSlug?: string;
 }): Promise<string> {
-  const { accountId } = await requireOfficeContext('jobs.write');
+  // Read-only permission: educational UPPA/claim answering writes nothing
+  const { accountId } = await requireOfficeContext('jobs.read');
   return getClaimCopilotAnswerWithAi({
     question: input.question,
     tradeSlug: input.tradeSlug,
@@ -112,4 +123,32 @@ export async function deleteInsuranceClaimAction(
 export async function listInsuranceClaimsAction(): Promise<InsuranceClaimRecord[]> {
   const { supabase, accountId } = await requireOfficeContext('jobs.read');
   return listInsuranceClaims(supabase, accountId);
+}
+
+export async function listInsuranceClaimSummariesAction(): Promise<InsuranceClaimSummary[]> {
+  const { supabase, accountId } = await requireOfficeContext('jobs.read');
+  return listInsuranceClaimSummaries(supabase, accountId);
+}
+
+export async function loadInsuranceClaimAction(claimId: string): Promise<InsuranceClaimRecord | null> {
+  const { supabase, accountId } = await requireOfficeContext('jobs.read');
+  return getInsuranceClaim(supabase, accountId, claimId);
+}
+
+export async function setSiteInsuranceClaimsEnabledAction(
+  enabled: boolean
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  try {
+    const { accountId } = await requireOfficeContext('jobs.write');
+    const admin = createAdminClient();
+    const { error } = await admin
+      .from('sites')
+      .update({ enable_insurance_intake: enabled })
+      .eq('account_id', accountId);
+
+    if (error) throw error;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, message: err instanceof Error ? err.message : 'Failed to update site settings' };
+  }
 }

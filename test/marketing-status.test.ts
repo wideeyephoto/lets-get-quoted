@@ -13,7 +13,7 @@ import {
 
 const TODAY = '2026-08-05';
 
-function post(over: Partial<StatefulPost & { date: string; title: string }> = {}) {
+function post(over: Partial<StatefulPost & { date: string; title: string; updatedAt?: string }> = {}) {
   return { status: 'draft' as const, publishAt: '', date: TODAY, title: 'A post', ...over };
 }
 
@@ -114,7 +114,8 @@ describe('a date that says which date it is', () => {
   it('names the event, not just the day', () => {
     expect(postDateLabel(post({ status: 'published', date: '2026-07-22' }), TODAY)).toBe('Published Jul 22');
     expect(postDateLabel(post({ status: 'ready', publishAt: '2026-09-12' }), TODAY)).toBe('Scheduled for Sep 12');
-    expect(postDateLabel(post({ status: 'draft', date: '2026-08-04' }), TODAY)).toBe('Updated Aug 4');
+    expect(postDateLabel(post({ status: 'draft', date: '2026-08-04' }), TODAY)).toBe('Created Aug 4');
+    expect(postDateLabel(post({ status: 'draft', date: '2026-08-04', updatedAt: '2026-08-10' }), TODAY)).toBe('Updated Aug 10');
   });
 
   it('survives a post with no date at all', () => {

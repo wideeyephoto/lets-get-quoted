@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { Site } from '@/lib/sites';
 import { estimateReadingTime, getColorScheme, getPublishedFaqs, getPublishedServices, getPublishedShowcase, getPublishedTestimonials, getSiteContent, glyphForContent, type SiteBlogPost } from '@/lib/site-content';
+import { BlogBody } from '@/lib/blog-text';
 import BlogReadingProgress from './BlogReadingProgress';
 import ServiceIcon from './ServiceIcon';
 import SiteFooter from './SiteFooter';
@@ -29,7 +30,6 @@ function formatBlogDate(iso: string): string {
 }
 
 export default async function SiteBlogArticle({ site, post }: { site: Site; post: SiteBlogPost }) {
-  const paragraphs = post.body.split(/\n{2,}/).map((block) => block.trim()).filter(Boolean);
   const content = getSiteContent(site.content);
   const scheme = getColorScheme(content.colorScheme);
   const defaultAccent = '#2563eb';
@@ -82,6 +82,7 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
     headline: post.title,
     description: post.excerpt || undefined,
     datePublished: post.date || undefined,
+    dateModified: (post.updatedAt || post.date) || undefined,
     image: post.coverImage || site.hero_url || undefined,
     author: {
       '@type': 'Organization',
@@ -135,12 +136,32 @@ export default async function SiteBlogArticle({ site, post }: { site: Site; post
               </div>
               <h1>{post.title}</h1>
             </header>
-            {post.coverImage && <img className={styles.blogArticleImg} src={post.coverImage} alt="" />}
-            <div className={styles.blogArticleBody}>
-              {paragraphs.map((block, index) => (
-                <p key={index}>{block}</p>
-              ))}
-            </div>
+            {post.coverImage && (
+              <figure className={styles.blogArticleCoverFigure || 'blog-article-cover-figure'}>
+                <img
+                  className={styles.blogArticleImg}
+                  src={post.coverImage}
+                  alt={post.coverAlt || post.title || 'Blog cover photo'}
+                />
+                {post.photographerName && (
+                  <figcaption className={styles.blogArticlePhotoCredit || 'blog-photo-credit'}>
+                    Photo by{' '}
+                    {post.photographerUrl ? (
+                      <a href={post.photographerUrl} target="_blank" rel="noopener noreferrer">
+                        {post.photographerName}
+                      </a>
+                    ) : (
+                      post.photographerName
+                    )}{' '}
+                    on{' '}
+                    <a href="https://www.pexels.com" target="_blank" rel="noopener noreferrer">
+                      Pexels
+                    </a>
+                  </figcaption>
+                )}
+              </figure>
+            )}
+            <BlogBody body={post.body} className={styles.blogArticleBody} />
           </article>
           <a className={styles.blogBackBottom} href="/">← Back to {site.company_name || 'home'}</a>
         </div>

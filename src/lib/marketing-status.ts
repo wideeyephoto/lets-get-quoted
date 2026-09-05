@@ -103,15 +103,22 @@ export function countStates(posts: StatefulPost[], todayKey: string): PostCounts
  * out, or when it went out, and those mean opposite things.
  */
 export function postDateLabel(
-  post: StatefulPost & { date: string },
+  post: StatefulPost & { date: string; updatedAt?: string },
   todayKey: string,
   format: (key: string) => string = shortDate,
 ): string {
   const state = postState(post, todayKey);
-  if (state === 'published') return post.date ? `Published ${format(post.date)}` : 'Published';
+  const lastSaved = post.updatedAt || post.date;
+  if (state === 'published') {
+    const pub = post.date ? `Published ${format(post.date)}` : 'Published';
+    return post.updatedAt && post.updatedAt !== post.date ? `${pub} · Updated ${format(post.updatedAt)}` : pub;
+  }
   if (state === 'scheduled') return `Scheduled for ${format(post.publishAt)}`;
-  if (state === 'archived') return post.date ? `Archived · last saved ${format(post.date)}` : 'Archived';
-  return post.date ? `Updated ${format(post.date)}` : 'Not saved yet';
+  if (state === 'archived') return lastSaved ? `Archived · last saved ${format(lastSaved)}` : 'Archived';
+  if (post.updatedAt && post.date && post.updatedAt !== post.date) {
+    return `Updated ${format(post.updatedAt)}`;
+  }
+  return lastSaved ? `Created ${format(lastSaved)}` : 'Not saved yet';
 }
 
 /** "Aug 4" / "Sep 12". Local parts — never new Date('YYYY-MM-DD'), which is UTC

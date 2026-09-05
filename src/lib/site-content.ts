@@ -629,6 +629,15 @@ export type SiteBlogPost = {
   // Stored on the post rather than matched on the title, so renaming the post
   // never breaks the link back to the card that offered it.
   beatId?: string;
+  /** Image accessibility alt text for search engine optimization. */
+  coverAlt?: string;
+  /** Photographer attribution (e.g. from Pexels). */
+  photographerName?: string;
+  photographerUrl?: string;
+  /** Focus keyword / phrase for SEO optimization scoring. */
+  targetKeyword?: string;
+  /** Honest last-edited date (YYYY-MM-DD), separate from initial creation date. */
+  updatedAt?: string;
   /**
    * The trade the site was set to when this was drafted.
    *
@@ -2109,6 +2118,11 @@ function parseBlogPosts(value: unknown): SiteBlogPost[] {
       // have looked like the owner's own click not registering.
       status: normalizePostStatus(rawStatus),
       date: toString(item.date),
+      ...(toString(item.updatedAt).trim() ? { updatedAt: toString(item.updatedAt).trim().slice(0, 10) } : {}),
+      ...(toString(item.coverAlt).trim() ? { coverAlt: toString(item.coverAlt).trim().slice(0, 150) } : {}),
+      ...(toString(item.photographerName).trim() ? { photographerName: toString(item.photographerName).trim().slice(0, 120) } : {}),
+      ...(toString(item.photographerUrl).trim() ? { photographerUrl: toString(item.photographerUrl).trim().slice(0, 500) } : {}),
+      ...(toString(item.targetKeyword).trim() ? { targetKeyword: toString(item.targetKeyword).trim().slice(0, 80) } : {}),
       publishAt: /^\d{4}-\d{2}-\d{2}$/.test(toString(item.publishAt)) ? toString(item.publishAt) : '',
       // Parsed, or it would not survive. This function rebuilds every post from
       // named fields, so anything it doesn't read is dropped the next time the

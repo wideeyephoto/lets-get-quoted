@@ -1,3 +1,5 @@
+import QRCode from 'qrcode';
+
 /**
  * Equipment & QR Code Asset Tracking.
  *
@@ -24,24 +26,49 @@ export type EquipmentAsset = {
   portalUrl: string;
 };
 
+export type QrSvgOptions = {
+  title?: string;
+  margin?: number;
+  ecLevel?: 'L' | 'M' | 'Q' | 'H';
+};
+
 /**
- * Generates an SVG string representation of a QR Code.
- * Uses a pure, lightweight matrix generator (Error Correction Level L/M)
- * suitable for high-DPI label printing without external runtime dependencies.
+ * Safely escapes HTML special characters to prevent XSS.
  */
-export function generateQrSvg(text: string, size = 180): string {
-  // Generate a deterministic 21x21 or 25x25 QR-like visual matrix for URL encoding
-  // Clean, standards-compliant SVG rendering
-  const matrix = buildQrMatrix(text);
-  const dimension = matrix.length;
-  const cellSize = size / dimension;
+export function escapeHtml(str: string): string {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+/**
+ * Generates an SVG string representation of a true, standards-compliant QR Code.
+ * Uses ISO/IEC 18004 QR encoding with standard error correction (Level M default)
+ * and an integrated white quiet zone (>=4 modules) for instant camera scannability.
+ */
+export function generateQrSvg(
+  text: string,
+  size = 180,
+  options: QrSvgOptions = {}
+): string {
+  const margin = Math.max(0, options.margin ?? 4);
+  const qr = QRCode.create(text, {
+    errorCorrectionLevel: options.ecLevel ?? 'M',
+  });
+
+  const dimension = qr.modules.size;
+  const totalDimension = dimension + margin * 2;
+  const cellSize = size / totalDimension;
 
   let rects = '';
   for (let r = 0; r < dimension; r++) {
     for (let c = 0; c < dimension; c++) {
-      if (matrix[r][c]) {
-        const x = (c * cellSize).toFixed(2);
-        const y = (r * cellSize).toFixed(2);
+      if (qr.modules.get(r, c)) {
+        const x = ((c + margin) * cellSize).toFixed(2);
+        const y = ((r + margin) * cellSize).toFixed(2);
         const w = (cellSize + 0.05).toFixed(2);
         const h = (cellSize + 0.05).toFixed(2);
         rects += `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="#0f172a" />`;
@@ -49,88 +76,17 @@ export function generateQrSvg(text: string, size = 180): string {
     }
   }
 
-  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges"><rect width="${size}" height="${size}" fill="#ffffff"/>${rects}</svg>`;
-}
+  const titleText = options.title ? escapeHtml(options.title) : 'Scan QR Code';
+  const titleTag = `<title>${titleText}</title>`;
 
-/**
- * Standard QR finder patterns (7x7 squares at 3 corners)
- */
-function buildQrMatrix(data: string): boolean[][] {
-  const size = 25; // Version 2 QR matrix size
-  const matrix: boolean[][] = Array.from({ length: size }, () => Array(size).fill(false));
-
-  // Finder pattern helper
-  function drawFinderPattern(rowStart: number, colStart: number) {
-    for (let r = 0; r < 7; r++) {
-      for (let c = 0; c < 7; c++) {
-        if (
-          r === 0 ||
-          r === 6 ||
-          c === 0 ||
-          c === 6 ||
-          (r >= 2 && r <= 4 && c >= 2 && c <= 4)
-        ) {
-          matrix[rowStart + r][colStart + c] = true;
-        }
-      }
-    }
-  }
-
-  // Draw 3 primary corner finder patterns
-  drawFinderPattern(0, 0); // Top-left
-  drawFinderPattern(0, size - 7); // Top-right
-  drawFinderPattern(size - 7, 0); // Bottom-left
-
-  // Timing patterns
-  for (let i = 8; i < size - 8; i++) {
-    matrix[6][i] = i % 2 === 0;
-    matrix[i][6] = i % 2 === 0;
-  }
-
-  // Alignment pattern (for version 2 at 18, 18)
-  const alignR = 18;
-  const alignC = 18;
-  for (let r = -2; r <= 2; r++) {
-    for (let c = -2; c <= 2; c++) {
-      if (Math.abs(r) === 2 || Math.abs(c) === 2 || (r === 0 && c === 0)) {
-        matrix[alignR + r][alignC + c] = true;
-      }
-    }
-  }
-
-  // Hash-based deterministic payload distribution for remaining data cells
-  let hash = 0;
-  for (let i = 0; i < data.length; i++) {
-    hash = (hash << 5) - hash + data.charCodeAt(i);
-    hash |= 0;
-  }
-
-  for (let r = 0; r < size; r++) {
-    for (let c = 0; c < size; c++) {
-      // Skip finder and timing regions
-      const isTopLeftFinder = r < 8 && c < 8;
-      const isTopRightFinder = r < 8 && c >= size - 8;
-      const isBottomLeftFinder = r >= size - 8 && c < 8;
-      const isTiming = r === 6 || c === 6;
-      const isAlignment = r >= alignR - 2 && r <= alignR + 2 && c >= alignC - 2 && c <= alignC + 2;
-
-      if (isTopLeftFinder || isTopRightFinder || isBottomLeftFinder || isTiming || isAlignment) {
-        continue;
-      }
-
-      const bit = ((hash ^ (r * 31 + c * 17)) & 1) === 1;
-      matrix[r][c] = bit;
-    }
-  }
-
-  return matrix;
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="${size}" height="${size}" shape-rendering="crispEdges">${titleTag}<rect width="${size}" height="${size}" fill="#ffffff"/>${rects}</svg>`;
 }
 
 /**
  * Builds printable HTML snippet for a physical 3x2" equipment sticker label.
  */
 export function buildEquipmentStickerHtml(asset: EquipmentAsset): string {
-  const qrSvg = generateQrSvg(asset.portalUrl, 140);
+  const qrSvg = generateQrSvg(asset.portalUrl, 140, { title: `${asset.name} QR Code` });
 
   return `
 <div class="equipment-sticker" style="width: 320px; padding: 14px; border: 2px solid #0f172a; border-radius: 8px; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #ffffff; color: #0f172a; box-sizing: border-box;">
@@ -161,13 +117,4 @@ export function buildEquipmentStickerHtml(asset: EquipmentAsset): string {
   </div>
 </div>
 `.trim();
-}
-
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
 }

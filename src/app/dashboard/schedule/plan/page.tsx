@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { randomUUID } from 'node:crypto';
 import { requireOfficeContext } from '@/lib/auth';
 import { listCrew, listCrewAssignmentsForJobs, loadLastCrewBriefingHistory } from '@/lib/crew';
 import { getDayPlanPrefs } from '@/lib/day-plan-prefs';
@@ -96,6 +97,8 @@ export default async function PlanDayPage({
     scheduled?: string;
     skippedNoPhone?: string;
     skippedNoJobs?: string;
+    briefingCompleted?: string;
+    dispatchError?: string;
   }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
@@ -119,9 +122,11 @@ export default async function PlanDayPage({
     resolveDayAnchor(supabase, accountId, crewId, settings),
   ]);
 
-  const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, jobs.map((job) => job.id)).catch(
-    () => ({} as Record<string, string[]>),
-  );
+  const briefingJobs = crewId ? (await listDayJobs(supabase, accountId, dateKey, null, {
+    workDayHours: settings.scheduleDayHours, workingWeekdays: settings.workingWeekdays,
+    requireSuccessfulRead: true,
+  })).jobs : jobs;
+  const assignmentsByJob = await listCrewAssignmentsForJobs(supabase, accountId, briefingJobs.map((job) => job.id));
 
   // Supply stops route exactly like jobs — same coordinates, same minutes, same
   // proposed arrival — so from here down there's no distinction to make.
@@ -137,44 +142,19 @@ export default async function PlanDayPage({
   const routable = stops.filter((stop) => stop.lat != null && stop.lng != null);
   const unroutable = stops.filter((stop) => stop.lat == null || stop.lng == null);
 
-  const jobMap = new Map(jobs.map((j) => [j.id, j]));
-  const routeStopMap = new Map(dayRouteStops.map((rs) => [`rs:${rs.id}`, rs]));
-  const briefingStops: CrewBriefingStop[] = routable.map((stop) => {
-    const job = jobMap.get(stop.id);
-    if (job) {
-      return {
-        jobRef: `JOB-${job.id.slice(0, 6).toUpperCase()}`,
-        clientName: job.client_name,
-        address: job.address || '',
-        phone: job.client_phone,
-        scheduledTime: stop.scheduledTime ? formatTimeLabel(parseTimeMinutes(stop.scheduledTime) ?? 0) : null,
-        lat: stop.lat,
-        lng: stop.lng,
-      };
-    }
-    const rs = routeStopMap.get(stop.id);
-    if (rs) {
-      return {
-        jobRef: `STOP-${rs.id.slice(0, 6).toUpperCase()}`,
-        clientName: rs.label || 'Supply Stop',
-        address: rs.address || '',
-        phone: null,
-        scheduledTime: stop.scheduledTime ? formatTimeLabel(parseTimeMinutes(stop.scheduledTime) ?? 0) : null,
-        notes: rs.note,
-        lat: stop.lat,
-        lng: stop.lng,
-      };
-    }
-    return {
-      jobRef: `STOP-${stop.id.slice(0, 6).toUpperCase()}`,
-      clientName: stop.label || 'Stop',
-      address: stop.address || '',
-      phone: null,
-      scheduledTime: stop.scheduledTime ? formatTimeLabel(parseTimeMinutes(stop.scheduledTime) ?? 0) : null,
-      lat: stop.lat,
-      lng: stop.lng,
-    };
-  });
+  // Preview the same assigned job set used by the send action, including jobs
+  // without map coordinates. Display references must never authorize a stop.
+  const briefingStops: CrewBriefingStop[] = briefingJobs.map((job) => ({
+    jobId: job.id,
+    jobRef: `JOB-${job.id.slice(0, 6).toUpperCase()}`,
+    clientName: job.client_name,
+    address: job.address || '',
+    phone: job.client_phone,
+    scheduledTime: job.scheduled_time,
+    scope: job.scope,
+    lat: job.lat,
+    lng: job.lng,
+  }));
 
   // One drive-matrix lookup for the whole day, covering every pair of stops. That
   // single request is what makes dragging free: any order the contractor tries
@@ -479,8 +459,11 @@ export default async function PlanDayPage({
             </Link>
           </div>
           <PlanDayControls dateKey={dateKey} crewId={crewId} crew={crew.map((m) => ({ id: m.id, name: m.name }))} />
-          {routable.length > 0 ? (
+          {crew.length > 0 ? (
             <BriefCrewModal
+              intentId={randomUUID()}
+              intentStorageKey={`crew-briefing:${accountId}:${dateKey}:${crewId ?? 'all'}`}
+              completedIntentId={searchParams.briefingCompleted}
               dateKey={dateKey}
               dateLabel={dayLabel(dateKey)}
               businessName={businessName}
@@ -503,14 +486,23 @@ export default async function PlanDayPage({
         </div>
       </header>
 
+      {searchParams.dispatchError ? (
+        <p className="plan-flash warn" role="alert">
+          {searchParams.dispatchError === 'past_schedule'
+            ? '7:00 AM on this work date has already passed in your account time zone. Choose Send Now or a future work date.'
+            : searchParams.dispatchError === 'invalid_intent'
+            ? 'The dispatch form was not ready. Reopen Brief crew and try again.'
+            : 'Could not schedule this briefing. Check the work date and account time zone.'}
+        </p>
+      ) : null}
       {searchParams.briefed !== undefined || searchParams.failedDispatch !== undefined ? (
         <p className={`plan-flash ${Number(searchParams.briefed) > 0 ? 'good' : 'warn'}`}>
           {Number(searchParams.briefed) > 0
             ? `${
-                searchParams.urgent === '1'
+                searchParams.scheduled === '1'
+                  ? `Scheduled ${searchParams.urgent === '1' ? 'urgent update' : 'morning briefing'} SMS for ${dateKey} at 7:00 AM (${settings.timezone})`
+                  : searchParams.urgent === '1'
                   ? 'Queued URGENT schedule update SMS'
-                  : searchParams.scheduled === '1'
-                  ? 'Scheduled morning dispatch briefing SMS for 7:00 AM'
                   : 'Queued morning dispatch briefing SMS with Google Maps routes'
               } for ${searchParams.briefed} crew ${searchParams.briefed === '1' ? 'member' : 'members'}.${
                 searchParams.failedDispatch
@@ -522,8 +514,10 @@ export default async function PlanDayPage({
                   : ''
               }`
             : searchParams.failedDispatch
-            ? `Dispatch delivery failed for: ${searchParams.failedDispatch}. Please verify valid mobile numbers in Settings → Crew or use the Copy/Print options.`
-            : 'Could not send dispatch SMS: none of the selected crew members have a valid mobile phone number on file. Update phone numbers in Settings → Crew or use the Copy/Print options.'}
+            ? `Could not queue dispatch for: ${searchParams.failedDispatch}. Check assignments, phone numbers, and messaging readiness, then retry.`
+            : Number(searchParams.skippedNoJobs) > 0
+            ? 'No briefing queued: the selected crew have no assigned jobs on this date. Use Urgent Update to tell them there are no remaining stops.'
+            : 'No briefing queued: select crew with valid mobile phone numbers, or update their numbers in Settings → Crew.'}
         </p>
       ) : null}
       {blockedReason ? (

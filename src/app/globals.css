@@ -59195,10 +59195,18 @@ a.mkt-tile:focus-visible {
   background: rgba(var(--tint), 0.03);
 }
 
-.mkt-preview h3 {
-  margin: 0 0 0.5rem;
-  font-size: 1.3rem;
+.mkt-preview h2 {
+  margin: 1.25rem 0 0.4rem;
+  font-size: 1.4rem;
   font-weight: 800;
+  color: var(--text);
+}
+
+.mkt-preview h3 {
+  margin: 1rem 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 750;
+  color: var(--text);
 }
 
 .mkt-preview p {
@@ -59206,6 +59214,25 @@ a.mkt-tile:focus-visible {
   color: var(--muted);
   font-size: 0.92rem;
   line-height: 1.65;
+}
+
+.mkt-preview ul,
+.mkt-preview ol {
+  margin: 0.25rem 0 0.85rem 1.4rem;
+  padding: 0;
+  font-size: 0.92rem;
+  line-height: 1.65;
+  color: var(--muted);
+}
+
+.mkt-preview li {
+  margin-bottom: 0.3rem;
+}
+
+.mkt-preview a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 .mkt-preview-excerpt {
@@ -59219,6 +59246,76 @@ a.mkt-tile:focus-visible {
   height: auto;
   margin-bottom: 1rem;
   border-radius: 10px;
+}
+
+/* --- Google SERP Preview -------------------------------------------------- */
+.mkt-serp-preview {
+  margin-top: 1rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--edge-t12);
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.02);
+}
+
+.mkt-serp-eyebrow {
+  margin: 0 0 0.6rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--mute-t58);
+}
+
+.mkt-serp-box {
+  padding: 0.85rem 1rem;
+  background: var(--surface, #ffffff);
+  border: 1px solid var(--edge-t12);
+  border-radius: 8px;
+  font-family: Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+}
+
+.mkt-serp-url {
+  display: block;
+  font-size: 0.78rem;
+  color: #202124;
+  font-style: normal;
+  margin-bottom: 0.25rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mkt-serp-title {
+  margin: 0 0 0.3rem;
+  font-size: 1.15rem;
+  font-weight: 500;
+  color: #1a0dab;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.mkt-serp-title:hover {
+  text-decoration: underline;
+}
+
+.mkt-serp-snippet {
+  margin: 0;
+  font-size: 0.86rem;
+  color: #4d5156;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.mkt-serp-cut {
+  background: rgba(251, 191, 36, 0.28);
+  border-bottom: 1.5px dashed var(--ink-amber-1, #f59e0b);
+}
+
+.mkt-serp-note {
+  display: block;
+  margin-top: 0.6rem;
+  font-size: 0.76rem;
+  color: var(--muted);
 }
 
 /* Kept apart from the document, with its own heading, so "delete" is never
