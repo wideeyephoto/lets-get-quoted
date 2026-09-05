@@ -68,6 +68,7 @@ vi.mock('@/lib/sms', () => ({
 }));
 
 import { POST } from '@/app/api/voice/swaig/route';
+import { authorizeVoiceToolInvocation } from '@/lib/voice/tool-admission';
 
 const staffIdentity = {
   status: 'staff' as const,
@@ -94,6 +95,7 @@ function request(functionName: string, args: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  vi.mocked(authorizeVoiceToolInvocation).mockResolvedValue(true);
   mocks.resolveIdentity.mockResolvedValue(staffIdentity);
   mocks.getStepUpStatus.mockResolvedValue({
     ok: true,
@@ -104,19 +106,37 @@ beforeEach(() => {
 });
 
 describe('staff-mode SWAIG application gates', () => {
-  it('does not disclose job choices until the signed call is verified', async () => {
-    const response = await POST(request('lookup_jobs', { query: 'Rosa Holbrook' }));
-    await expect(response.json()).resolves.toMatchObject({ response: expect.stringMatching(/six-digit code/i) });
-    expect(mocks.getStepUpStatus).toHaveBeenCalledWith(expect.objectContaining({ providerCallId: 'signed-provider-call-123', signedCallerPhone: '+18103042061' }));
-    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
-  });
-
-  it('routes a verified job lookup without requesting another verification code', async () => {
-    mocks.getStepUpStatus.mockResolvedValueOnce({ verified: true });
+  it('routes registered staff job lookup without a code or challenge lookup', async () => {
     mocks.handleContractorAction.mockResolvedValueOnce({ handled: true, response: 'Option 1: LGQ-1042.' });
     const response = await POST(request('lookup_jobs', { query: 'Rosa Holbrook' }));
     await expect(response.json()).resolves.toMatchObject({ response: 'Option 1: LGQ-1042.' });
-    expect(mocks.handleContractorAction).toHaveBeenCalledWith(expect.objectContaining({ functionName: 'lookup_jobs', stepUpVerified: true, accountId: '11111111-1111-4111-8111-111111111111' }));
+    expect(mocks.handleContractorAction).toHaveBeenCalledWith(expect.objectContaining({ functionName: 'lookup_jobs', caller: staffIdentity.caller, accountId: '11111111-1111-4111-8111-111111111111' }));
+    expect(mocks.getStepUpStatus).not.toHaveBeenCalled();
+    expect(mocks.requestStepUp).not.toHaveBeenCalled();
+  });
+
+  it.each(['request_staff_step_up', 'verify_staff_step_up'])('retires %s without sending or checking a code', async (tool) => {
+    const response = await POST(request(tool, { code: '123456' }));
+    await expect(response.json()).resolves.toMatchObject({ response: expect.stringContaining('Verification codes are not used') });
+    expect(mocks.requestStepUp).not.toHaveBeenCalled();
+    expect(mocks.verifyStepUp).not.toHaveBeenCalled();
+    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
+  });
+
+  it('rejects an ended call before staff lookup or mutation dispatch', async () => {
+    vi.mocked(authorizeVoiceToolInvocation).mockResolvedValueOnce(false);
+    const response = await POST(request('lookup_jobs', { query: 'Rosa Holbrook' }));
+    expect(response.status).toBe(403);
+    expect(mocks.resolveIdentity).not.toHaveBeenCalled();
+    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
+    expect(mocks.requestStepUp).not.toHaveBeenCalled();
+  });
+
+  it.each(['ambiguous', 'unavailable'])('rejects a staff update when identity is %s without offering a code', async (status) => {
+    mocks.resolveIdentity.mockResolvedValueOnce({ status });
+    const response = await POST(request('append_job_caution_or_note', { job_ref_or_client: 'LGQ-1042', note: 'Side gate is locked.' }));
+    await expect(response.json()).resolves.toMatchObject({ response: expect.stringContaining('did not save anything') });
+    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
     expect(mocks.requestStepUp).not.toHaveBeenCalled();
   });
 
@@ -158,33 +178,20 @@ describe('staff-mode SWAIG application gates', () => {
     expect(mocks.sendBookingLink).not.toHaveBeenCalled();
   });
 
-  it('requires a verified live step-up before staff can disclose account-wide inspection status', async () => {
-    const response = await POST(request('check_inspection_status', {
-      customer_name_or_address: 'Rosa Holbrook',
-    }));
-
-    await expect(response.json()).resolves.toMatchObject({
-      response: expect.stringMatching(/six-digit code/i),
-    });
-    expect(mocks.getStepUpStatus).toHaveBeenCalledWith(expect.objectContaining({
-      providerCallId: 'signed-provider-call-123',
-      signedCallerPhone: '+18103042061',
-      identity: staffIdentity,
-    }));
-    expect(mocks.resolveVoiceJob).not.toHaveBeenCalled();
-    expect(mocks.adminFrom).not.toHaveBeenCalled();
+  it('allows registered staff inspection lookup without a verification code', async () => {
+    mocks.resolveVoiceJob.mockResolvedValueOnce({ status: 'not_found' });
+    const response = await POST(request('check_inspection_status', { customer_name_or_address: 'Rosa Holbrook' }));
+    await expect(response.json()).resolves.toMatchObject({ response: expect.stringContaining('could not find a project') });
+    expect(mocks.resolveVoiceJob).toHaveBeenCalledWith(expect.anything(), '11111111-1111-4111-8111-111111111111', 'Rosa Holbrook', { allowedCallerPhone: null });
+    expect(mocks.getStepUpStatus).not.toHaveBeenCalled();
   });
 
-  it('does not dispatch any contractor mutation handler until canonical status is verified', async () => {
-    const response = await POST(request('append_job_caution_or_note', {
-      job_ref_or_client: 'LGQ-1042',
-      note: 'Side gate is locked.',
-    }));
-
-    await expect(response.json()).resolves.toMatchObject({
-      response: expect.stringMatching(/six-digit code/i),
-    });
-    expect(mocks.getStepUpStatus).toHaveBeenCalledTimes(1);
-    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
+  it('dispatches a registered staff update without a verification challenge', async () => {
+    mocks.handleContractorAction.mockResolvedValueOnce({ handled: true, response: 'Saved the note.' });
+    const response = await POST(request('append_job_caution_or_note', { job_ref_or_client: 'LGQ-1042', note: 'Side gate is locked.' }));
+    await expect(response.json()).resolves.toMatchObject({ response: 'Saved the note.' });
+    expect(mocks.handleContractorAction).toHaveBeenCalledWith(expect.objectContaining({ caller: staffIdentity.caller, providerCallId: 'signed-provider-call-123' }));
+    expect(mocks.getStepUpStatus).not.toHaveBeenCalled();
+    expect(mocks.requestStepUp).not.toHaveBeenCalled();
   });
 });

@@ -16,11 +16,6 @@ import {
   handleContractorVoiceAction,
   resolveVoiceJob,
 } from '@/lib/voice/contractor-actions';
-import {
-  getVoiceStaffStepUpStatus,
-  requestVoiceStaffStepUp,
-  verifyVoiceStaffStepUp,
-} from '@/lib/voice/staff-step-up';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -421,18 +416,6 @@ export async function POST(request: Request) {
           response: 'I could not safely verify who is asking for that project status, so I did not disclose it. Please contact the office.',
         });
       }
-      if (identity.status === 'staff') {
-        const stepUp = await getVoiceStaffStepUpStatus({
-          admin,
-          accountId,
-          providerCallId: verifiedProviderCallId,
-          signedCallerPhone: verifiedCallerPhone,
-          identity,
-        });
-        if (!stepUp.verified) {
-          return NextResponse.json({ response: stepUp.response });
-        }
-      }
       const allowedCallerPhone = identity.status === 'customer'
         ? normalizeUsPhone(verifiedCallerPhone || '')
         : null;
@@ -628,27 +611,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ response: 'I do not have verified pricing for this job. Our team needs to review the scope before providing a quote. I can take your project details for an estimate.' });
   }
 
-  if (fnName === 'request_staff_step_up') {
-    const result = await requestVoiceStaffStepUp({
-      admin,
-      accountId,
-      providerCallId: verifiedProviderCallId,
-      signedCallerPhone: verifiedCallerPhone,
-      identity,
+  // Calls that began on an older deployment may still offer these retired
+  // tools. Never send a code or ask the caller to read one back.
+  if (fnName === 'request_staff_step_up' || fnName === 'verify_staff_step_up') {
+    return NextResponse.json({
+      response: 'Verification codes are not used for AI Voice. Do not request or send a code. Continue with the requested tool; registered staff permissions are checked automatically.',
     });
-    return NextResponse.json({ response: result.response });
-  }
-
-  if (fnName === 'verify_staff_step_up') {
-    const result = await verifyVoiceStaffStepUp({
-      admin,
-      accountId,
-      providerCallId: verifiedProviderCallId,
-      signedCallerPhone: verifiedCallerPhone,
-      identity,
-      code: args.code,
-    });
-    return NextResponse.json({ response: result.response });
   }
 
   if (fnName === 'capture_lead' || (fnName === 'create_or_update_lead' && identity.status !== 'staff')) {
@@ -699,18 +667,6 @@ export async function POST(request: Request) {
   const isLeadCreate = fnName === 'create_or_update_lead' && (rawOp === 'create' || rawOp === '');
 
   if (identity.status === 'staff') {
-    const stepUp = CONTRACTOR_VOICE_FUNCTIONS.has(fnName) && !isLeadCreate
-      ? await getVoiceStaffStepUpStatus({
-        admin,
-        accountId,
-        providerCallId: verifiedProviderCallId,
-        signedCallerPhone: verifiedCallerPhone,
-        identity,
-      })
-      : null;
-    if (stepUp && !stepUp.verified) {
-      return NextResponse.json({ response: stepUp.response });
-    }
     const effectiveArgs = { ...args };
     if (isLeadCreate && !effectiveArgs.operation && !effectiveArgs.intent) {
       effectiveArgs.operation = 'create';
@@ -720,7 +676,6 @@ export async function POST(request: Request) {
       accountId,
       providerCallId: verifiedProviderCallId,
       caller: identity.caller,
-      stepUpVerified: stepUp?.verified === true || isLeadCreate,
       functionName: fnName,
       args: effectiveArgs,
     });

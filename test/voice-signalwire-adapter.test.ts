@@ -403,13 +403,8 @@ describe('rendering an answer', () => {
     const functions = ai.SWAIG.functions;
     const tool = (name: string) => functions.find((candidate: { function: string }) => candidate.function === name);
 
-    const requestStepUp = tool('request_staff_step_up');
-    const verifyStepUp = tool('verify_staff_step_up');
-    expect(requestStepUp).toBeDefined();
-    expect(requestStepUp.argument.properties).toEqual({});
-    expect(verifyStepUp.argument.required).toEqual(['code']);
-    expect(verifyStepUp.argument.properties.code.pattern).toBe('^[0-9]{6}$');
-    expect(verifyStepUp.purpose).toMatch(/never repeat the code aloud/i);
+    expect(tool('request_staff_step_up')).toBeUndefined();
+    expect(tool('verify_staff_step_up')).toBeUndefined();
     expect(tool('book_appointment_slot')).toBeUndefined();
     expect(tool('send_booking_link')).toBeUndefined();
     expect(tool('lookup_jobs').purpose).toMatch(/verified owner or office/);
