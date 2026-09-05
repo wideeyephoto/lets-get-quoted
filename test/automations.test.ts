@@ -81,3 +81,60 @@ describe('automations page top banners', () => {
   });
 });
 
+describe('automations page invariants', () => {
+  it('does not couple hasDedicatedNumber for missed calls to customerTextingReady', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const page = readFileSync(join(process.cwd(), 'src', 'app', 'dashboard', 'automations', 'page.tsx'), 'utf8');
+
+    // Coupling customerTextingReady to hasDedicatedNumber disables the customer-facing
+    // number input on workspaces that only have SMS texting configured, leaving them in
+    // an unreachable setup state.
+    expect(page).not.toMatch(/hasDedicatedNumber\s*=\s*.*customerTextingReady/);
+    expect(page).toMatch(/hasDedicatedNumber\s*=\s*voiceRouteReady/);
+  });
+
+  it('uses AutomationTestSend instead of raw form submissions that throw to error boundaries', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const page = readFileSync(join(process.cwd(), 'src', 'app', 'dashboard', 'automations', 'page.tsx'), 'utf8');
+
+    expect(page).not.toMatch(/<form[^>]*action=\{sendFollowupTestAction\}/);
+    expect(page).not.toMatch(/<form[^>]*action=\{sendReminderTestAction\}/);
+    expect(page).not.toMatch(/<form[^>]*action=\{sendTestDigestAction\}/);
+    expect(page).toContain('action={sendFollowupTestAction}');
+    expect(page).toContain('action={sendReminderTestAction}');
+    expect(page).toContain('action={sendTestDigestAction}');
+  });
+});
+
+describe('arrival section SSR/client hydration consistency', () => {
+  it('derives sampleDeparture using zonedInstant to avoid local timezone offset drift', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const section = readFileSync(
+      join(process.cwd(), 'src', 'app', 'dashboard', 'settings', 'ArrivalSettingsSection.tsx'),
+      'utf8',
+    );
+
+    // Bare Date without offset parses in process local time (UTC on server, visitor timezone in browser)
+    expect(section).not.toMatch(/new Date\('2026-01-01T08:45:00'\)/);
+    expect(section).toMatch(/zonedInstant\('2026-01-01',\s*'08:45',\s*timeZone\)/);
+  });
+});
+
+describe('test actions return inline status contracts', () => {
+  it('ensures sendReminderTestAction, sendFollowupTestAction, and sendTestDigestAction return { ok, message }', () => {
+    const { readFileSync } = require('node:fs');
+    const { join } = require('node:path');
+    const actions = readFileSync(
+      join(process.cwd(), 'src', 'app', 'dashboard', 'settings', 'actions.ts'),
+      'utf8',
+    );
+
+    expect(actions).toMatch(/export async function sendReminderTestAction\(\):\s*Promise<\{\s*ok:\s*boolean;\s*message:\s*string\s*\}>/);
+    expect(actions).toMatch(/export async function sendFollowupTestAction\(\):\s*Promise<\{\s*ok:\s*boolean;\s*message:\s*string\s*\}>/);
+    expect(actions).toMatch(/export async function sendTestDigestAction\(\):\s*Promise<\{\s*ok:\s*boolean;\s*message:\s*string\s*\}>/);
+  });
+});
+

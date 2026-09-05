@@ -48,19 +48,29 @@ export default function MissedCallSection({
   // send and a failed one knows what to put back.
   const stored = useRef({ forward: forwardNumber, tracking: trackingNumber });
 
+  useEffect(() => {
+    setForward(forwardNumber);
+    setTracking(trackingNumber);
+    stored.current = { forward: forwardNumber, tracking: trackingNumber };
+  }, [forwardNumber, trackingNumber]);
+
   useEffect(() => () => {
     if (savedTimer.current) clearTimeout(savedTimer.current);
     if (debounce.current) clearTimeout(debounce.current);
   }, []);
 
   function persist(next: { forward: string; tracking: string }) {
-    if (next.forward === stored.current.forward && next.tracking === stored.current.tracking) return;
+    const trackingChanged = !hasDedicatedNumber && next.tracking !== stored.current.tracking;
+    const forwardChanged = next.forward !== stored.current.forward;
+    if (!forwardChanged && !trackingChanged) return;
     const previous = { ...stored.current };
     setSave('saving');
     setProblem(null);
     startSaving(async () => {
       try {
-        await updateMissedCallNumbersAction(next);
+        await updateMissedCallNumbersAction(
+          hasDedicatedNumber ? { forward: next.forward } : next
+        );
         stored.current = next;
         setSave('saved');
         if (savedTimer.current) clearTimeout(savedTimer.current);

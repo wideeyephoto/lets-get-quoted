@@ -406,20 +406,27 @@ export async function enableRecommendedAutomationsAction() {
  * nobody has ever called is exactly the false reassurance the column exists to
  * prevent.
  */
-export async function updateMissedCallNumbersAction(input: { forward: string; tracking: string }) {
+export async function updateMissedCallNumbersAction(input: { forward: string; tracking?: string }) {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const forward = normalizeUsPhone(String(input.forward ?? '')) || null;
-  const tracking = normalizeUsPhone(String(input.tracking ?? '')) || null;
+  const tracking = input.tracking !== undefined ? (normalizeUsPhone(String(input.tracking ?? '')) || null) : undefined;
 
   // Protect dedicated AI Voice provisioned number from being hijacked or desynced
   // by edits in the missed-call settings card.
   const admin = createAdminClient();
-  const { data: dedicatedRows, error: dedicatedError } = await admin
-    .from('voice_number_inventory')
-    .select('e164_number')
-    .eq('account_id', accountId)
-    .eq('provider', 'signalwire')
-    .is('released_at', null);
+  const [{ data: dedicatedRows, error: dedicatedError }, { data: current }] = await Promise.all([
+    admin
+      .from('voice_number_inventory')
+      .select('e164_number')
+      .eq('account_id', accountId)
+      .eq('provider', 'signalwire')
+      .is('released_at', null),
+    supabase
+      .from('accounts')
+      .select('call_tracking_number')
+      .eq('id', accountId)
+      .maybeSingle(),
+  ]);
 
   if (dedicatedError) {
     throw new Error('Could not verify dedicated number status.');
@@ -427,22 +434,22 @@ export async function updateMissedCallNumbersAction(input: { forward: string; tr
 
   const dedicated = dedicatedRows?.[0];
   const dedicatedNumber = dedicated?.e164_number ? normalizeUsPhone(String(dedicated.e164_number)) : null;
+  const currentTracking = normalizeUsPhone(String(current?.call_tracking_number ?? '')) || null;
+
   if ((dedicatedRows && dedicatedRows.length > 0) || dedicatedNumber) {
-    if (tracking && tracking !== dedicatedNumber) {
+    // Block attempts to explicitly change tracking to an unauthorized number.
+    // If tracking was omitted or simply matches the existing account tracking number
+    // (e.g. state drift while the tracking input was disabled), allow the forward update
+    // to proceed and heal the account tracking number to the dedicated inventory line.
+    if (tracking !== undefined && tracking && tracking !== dedicatedNumber && tracking !== currentTracking) {
       throw new Error('This account has a dedicated AI Voice number provisioned. The customer-facing number cannot be changed here.');
     }
   }
 
-  const effectiveTracking = dedicatedNumber || tracking;
-
-  const { data: current } = await supabase
-    .from('accounts')
-    .select('call_tracking_number')
-    .eq('id', accountId)
-    .maybeSingle();
+  const effectiveTracking = dedicatedNumber || (tracking !== undefined ? tracking : currentTracking);
 
   const patch: Record<string, unknown> = { call_forward_number: forward, call_tracking_number: effectiveTracking };
-  if ((current?.call_tracking_number ?? null) !== effectiveTracking) patch.call_tracking_verified_at = null;
+  if (currentTracking !== effectiveTracking) patch.call_tracking_verified_at = null;
 
   const { error } = await supabase.from('accounts').update(patch).eq('id', accountId);
   if (error) {
@@ -765,30 +772,36 @@ export async function updateReminderSettingsAction(formData: FormData) {
  * The body is appointmentReminderText — the same function the real send uses —
  * so this proves the actual message, not a rehearsal of it.
  */
-export async function sendReminderTestAction() {
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
-  const admin = createAdminClient();
+export async function sendReminderTestAction(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
 
-  const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-  if (!ownerEmail) throw new Error('No account email to send a test to.');
+    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+    if (!ownerEmail) return { ok: false, message: 'No account email to send a test to.' };
 
-  const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-  ]);
-  const businessName = site?.company_name || account?.business_name || 'Your business';
+    const [{ data: account }, { data: site }] = await Promise.all([
+      supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+    ]);
+    const businessName = site?.company_name || account?.business_name || 'Your business';
 
-  await sendAppointmentReminderEmail({
-    recipientEmail: ownerEmail,
-    businessName,
-    clientName: 'there',
-    whenLabel: 'tomorrow at 10:00 AM',
-    address: null,
-    jobRef: 'TEST',
-    accountId,
-  });
+    await sendAppointmentReminderEmail({
+      recipientEmail: ownerEmail,
+      businessName,
+      clientName: 'there',
+      whenLabel: 'tomorrow at 10:00 AM',
+      address: null,
+      jobRef: 'TEST',
+      accountId,
+    });
 
-  revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/automations');
+    return { ok: true, message: `Sent to ${ownerEmail}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not send the test.' };
+  }
 }
 
 /**
@@ -937,6 +950,7 @@ export async function sendChoiceReminderTestAction(): Promise<{ ok: boolean; mes
   }
 
   revalidatePath('/dashboard/settings');
+  revalidatePath('/dashboard/automations');
   return { ok: true, message: `Sent to ${ownerEmail}.` };
 }
 
@@ -952,30 +966,36 @@ export async function sendChoiceReminderTestAction(): Promise<{ ok: boolean; mes
  * quoteFollowupEmailPreview — the same function the card previews — so this
  * proves the actual message rather than a rehearsal of it.
  */
-export async function sendFollowupTestAction() {
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
-  const admin = createAdminClient();
+export async function sendFollowupTestAction(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
 
-  const ownerEmail = await getAccountOwnerEmail(admin, accountId);
-  if (!ownerEmail) throw new Error('No account email to send a test to.');
+    const ownerEmail = await getAccountOwnerEmail(admin, accountId);
+    if (!ownerEmail) return { ok: false, message: 'No account email to send a test to.' };
 
-  const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
-    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
-  ]);
-  const businessName = pickBusinessName(site, account);
+    const [{ data: account }, { data: site }] = await Promise.all([
+      supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+      supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+    ]);
+    const businessName = pickBusinessName(site, account);
 
-  await sendQuoteFollowupEmail({
-    recipientEmail: ownerEmail,
-    businessName,
-    clientName: 'there',
-    // A real, resolvable page rather than a dead example link: the point of the
-    // test is that the whole message works, and the button is most of it.
-    url: `${APP_ORIGIN}/dashboard/jobs`,
-    accountId,
-  });
+    await sendQuoteFollowupEmail({
+      recipientEmail: ownerEmail,
+      businessName,
+      clientName: 'there',
+      // A real, resolvable page rather than a dead example link: the point of the
+      // test is that the whole message works, and the button is most of it.
+      url: `${APP_ORIGIN}/dashboard/jobs`,
+      accountId,
+    });
 
-  revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/automations');
+    return { ok: true, message: `Sent to ${ownerEmail}.` };
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not send the test.' };
+  }
 }
 
 // Opt-in: a once-daily digest email to the owner summarizing their business.
@@ -986,13 +1006,19 @@ export async function sendFollowupTestAction() {
 // worth deleting rather than leaving unreferenced.
 
 // Sends the owner a one-off preview of their daily digest so they can see what
-// it looks like without waiting for the cron. Throws (surfacing the reason) if
-// there's no email on file or the send fails.
-export async function sendTestDigestAction() {
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
-  const result = await sendTestDigest(supabase, accountId);
-  if (!result.ok) throw new Error(result.message);
-  revalidatePath('/dashboard/settings');
+// it looks like without waiting for the cron. Returns inline status so failures
+// don't crash the page.
+export async function sendTestDigestAction(): Promise<{ ok: boolean; message: string }> {
+  try {
+    const { supabase, accountId } = await requireOfficeContext('settings.write');
+    const result = await sendTestDigest(supabase, accountId);
+    if (!result.ok) return result;
+    revalidatePath('/dashboard/settings');
+    revalidatePath('/dashboard/automations');
+    return result;
+  } catch (error) {
+    return { ok: false, message: error instanceof Error ? error.message : 'Could not send test digest.' };
+  }
 }
 
 // Requests closure and processes durable closure job immediately

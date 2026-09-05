@@ -200,4 +200,37 @@ describe('updateMissedCallNumbersAction', () => {
       }),
     );
   });
+
+  it('allows updating forward number and heals drift when accounts.call_tracking_number has drifted from inventory', async () => {
+    currentTrackingNumber = '+18105550199'; // Drifted from DEDICATED_LINE
+
+    await updateMissedCallNumbersAction({
+      forward: '+18103042061',
+      tracking: '+18105550199', // Submitting the existing drifted tracking number alongside forward
+    });
+
+    expect(accountsUpdates).toHaveLength(1);
+    expect(accountsUpdates[0]).toEqual(
+      expect.objectContaining({
+        call_forward_number: '+18103042061',
+        call_tracking_number: DEDICATED_LINE, // Heals to provisioned inventory line
+      }),
+    );
+  });
+
+  it('allows updating forward number when tracking is omitted because input was disabled', async () => {
+    currentTrackingNumber = '+18105550199'; // Drifted
+
+    await updateMissedCallNumbersAction({
+      forward: '+18103042061',
+    });
+
+    expect(accountsUpdates).toHaveLength(1);
+    expect(accountsUpdates[0]).toEqual(
+      expect.objectContaining({
+        call_forward_number: '+18103042061',
+        call_tracking_number: DEDICATED_LINE,
+      }),
+    );
+  });
 });

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from 'react';
 import {
   ARRIVAL_WINDOW_CHOICES, arrivalWindowTimes, buildArrivalMessage, DEFAULT_ARRIVAL_TEMPLATE,
-  formatArrivalWindow, TRACKING_LINK_HOURS,
+  formatArrivalWindow, TRACKING_LINK_HOURS, zonedInstant,
 } from '@/lib/arrival';
 import { updateArrivalWindowAction } from './actions';
 
@@ -63,10 +63,9 @@ export default function ArrivalSettingsSection({ businessName, timeZone, windowM
   }
 
   // A worked example on a fixed sample ETA, so the times are stable while the
-  // width changes and the only thing moving is the thing being chosen. Not the
-  // real clock: this is a sample, and a preview that drifts as you read it
-  // implies it is showing a live visit.
-  const sampleDeparture = new Date('2026-01-01T08:45:00');
+  // width changes and the only thing moving is the thing being chosen. Uses zonedInstant
+  // with an explicit UTC fallback so SSR and client hydration parse the exact same moment.
+  const sampleDeparture = zonedInstant('2026-01-01', '08:45', timeZone) ?? new Date('2026-01-01T13:45:00Z');
   const times = arrivalWindowTimes(sampleDeparture, 0, { windowStyle: 'window', windowMinutes: minutes });
   const windowLabel = formatArrivalWindow(times, timeZone) ?? '';
 

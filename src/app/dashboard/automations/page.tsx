@@ -19,6 +19,7 @@ import ReviewRequestSection from '../settings/ReviewRequestSection';
 import IntakePreviewModal from '../sites/IntakePreviewModal';
 import OpenAnchoredCard from './OpenAnchoredCard';
 import OutgoingTextCatalogue from './OutgoingTextCatalogue';
+import AutomationTestSend from './AutomationTestSend';
 import {
   enableRecommendedAutomationsAction,
   sendFollowupTestAction,
@@ -338,17 +339,27 @@ export default async function AutomationsPage() {
     || (voiceSettings?.transfer_number as string | null)
     || '';
   const callForwardNumber = displayPhone(rawForward);
-  const callTrackingNumber = displayPhone(String((account as { call_tracking_number?: string } | null)?.call_tracking_number ?? ''));
-  const callTrackingVerifiedAt = (callVerified?.call_tracking_verified_at as string | null) ?? null;
-  const voiceConfiguredStatus = (voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off';
-  const voiceEntitlementAvailable = voiceEntitlement?.available === true;
   const voiceRouteState = voiceRouteReadiness?.kind === 'ready'
     ? 'ready' as const
     : voiceRouteReadiness?.kind === 'not_ready'
       ? voiceRouteReadiness.reason
       : 'unavailable' as const;
   const voiceRouteReady = voiceRouteState === 'ready';
-  const hasDedicatedNumber = voiceRouteReady || customerTextingReady;
+  const dedicatedVoiceNumber = (voiceRouteReadiness && 'number' in voiceRouteReadiness && voiceRouteReadiness.number)
+    ? voiceRouteReadiness.number
+    : null;
+  const rawTracking = (voiceRouteReady ? dedicatedVoiceNumber : null)
+    || (account as { call_tracking_number?: string } | null)?.call_tracking_number
+    || '';
+  const callTrackingNumber = displayPhone(rawTracking);
+  const callTrackingVerifiedAt = (callVerified?.call_tracking_verified_at as string | null) ?? null;
+  const voiceConfiguredStatus = (voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off';
+  const voiceEntitlementAvailable = voiceEntitlement?.available === true;
+  // A dedicated voice line provisioned for inbound routing disables custom editing.
+  // Must NOT include customerTextingReady: dedicated SMS numbers touch sms_sender_numbers
+  // and never populate accounts.call_tracking_number, so coupling them left workspaces with
+  // a disabled, empty tracking input and an impossible setup state.
+  const hasDedicatedNumber = voiceRouteReady;
   const voiceActivationReady = voiceSettingsAvailable
     && voiceEntitlementAvailable
     && voiceEntitlement?.enabled === true
@@ -804,12 +815,11 @@ export default async function AutomationsPage() {
                   })()}
                 </details>
 
-                <form action={sendFollowupTestAction} className="reminder-test">
-                  <SaveButton className="btn ghost" pendingLabel="Sending…" savedLabel="Test sent ✓">
-                    Send a test
-                  </SaveButton>
-                  <small>Goes to your account email.</small>
-                </form>
+                <AutomationTestSend
+                  action={sendFollowupTestAction}
+                  label="Send a test"
+                  note="Goes to your account email."
+                />
               </div>
             </div>
           </div>
@@ -917,12 +927,11 @@ export default async function AutomationsPage() {
                     </p>
                   </div>
                 </div>
-                <form action={sendReminderTestAction} className="reminder-test">
-                  <SaveButton className="btn ghost" pendingLabel="Sending…" savedLabel="Test sent ✓">
-                    Send a test
-                  </SaveButton>
-                  <small>Goes to your account email.</small>
-                </form>
+                <AutomationTestSend
+                  action={sendReminderTestAction}
+                  label="Send a test"
+                  note="Goes to your account email."
+                />
               </div>
             </div>
           </div>
@@ -1098,11 +1107,12 @@ export default async function AutomationsPage() {
             new leads, quotes approved, today&apos;s schedule, appointment confirmations, new reviews,
             and clients due to rebook. It only sends on days with something to report.
           </p>
-          <form action={sendTestDigestAction}>
-            <SaveButton className="btn secondary" pendingLabel="Sending..." savedLabel="Sent ✓">
-              Send me a test digest
-            </SaveButton>
-          </form>
+          <AutomationTestSend
+            action={sendTestDigestAction}
+            label="Send me a test digest"
+            className="btn secondary"
+            savedLabel="Sent ✓"
+          />
         </AutomationCard>
 
         {/* WHAT THE SWITCHES ABOVE ACTUALLY SAY.
