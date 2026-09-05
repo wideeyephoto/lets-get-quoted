@@ -84,7 +84,6 @@ function actionContext(
     accountId: ACCOUNT_ID,
     providerCallId: PROVIDER_CALL_ID,
     caller: ownerCaller,
-    stepUpVerified: true,
     functionName,
     args,
   };
@@ -203,11 +202,11 @@ describe('AI Voice spoken job choices', () => {
     expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', expect.objectContaining({ p_target_job_id: secondJob.id, p_payload: { note: 'Use the side gate.', is_caution: true } }));
   });
 
-  it('does not disclose jobs before call verification', async () => {
-    const { admin, from, rpc } = mockAdmin({ jobs: [baseJob] });
-    const result = await handleContractorVoiceAction({ ...actionContext(admin, 'lookup_jobs', {}), stepUpVerified: false });
-    expect(result.response).toContain('verify this call');
-    expect(from).not.toHaveBeenCalled();
+  it('reads job choices for registered staff without a verification challenge', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob] });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', {}));
+    expect(result.response).toContain(baseJob.ref);
+    expect(result.response).not.toMatch(/six-digit|verification code/i);
     expect(rpc).not.toHaveBeenCalled();
   });
 
@@ -327,7 +326,6 @@ describe('AI Voice contractor lead intent', () => {
           message: 'Needs inspection Friday',
         },
       ),
-      stepUpVerified: false,
     });
 
     expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', {
@@ -368,7 +366,6 @@ describe('AI Voice contractor lead intent', () => {
           message: 'Water heater leaking',
         },
       ),
-      stepUpVerified: false,
     });
 
     expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', {
@@ -390,24 +387,18 @@ describe('AI Voice contractor lead intent', () => {
 });
 
 describe('AI Voice contractor durable action outcomes', () => {
-  it('prompts for step-up and performs no reads or writes until the call is verified', async () => {
-    const { admin, from, rpc } = mockAdmin({ jobs: [baseJob] });
-
-    const result = await handleContractorVoiceAction({
-      ...actionContext(
-        admin,
-        'append_job_caution_or_note',
-        { job_ref_or_client: baseJob.ref, note: 'Side gate is locked.' },
-      ),
-      stepUpVerified: false,
+  it('saves a registered staff update without a verification challenge', async () => {
+    const { admin, rpc } = mockAdmin({
+      jobs: [baseJob],
+      rpcResults: [{ data: { job_id: JOB_ID, job_ref: baseJob.ref }, error: null }],
     });
-
-    expect(result).toEqual({
-      handled: true,
-      response: 'Before I can save that dispatch change, I need to text a six-digit verification code to the verified phone calling now.',
-    });
-    expect(from).not.toHaveBeenCalled();
-    expect(rpc).not.toHaveBeenCalled();
+    const result = await handleContractorVoiceAction(actionContext(
+      admin, 'append_job_caution_or_note',
+      { job_ref_or_client: baseJob.ref, note: 'Side gate is locked.' },
+    ));
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(result.response).toContain(baseJob.ref);
+    expect(result.response).not.toMatch(/six-digit|verification code/i);
   });
 
   it('confirms a job mutation only after the RPC returns a durable outcome', async () => {

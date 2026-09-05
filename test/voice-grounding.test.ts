@@ -271,11 +271,11 @@ describe('loadVoiceGroundingContext', () => {
     const prompt = buildVoiceSystemPrompt(context);
     expect(prompt).toContain('[ROLE & IDENTITY - CONTRACTOR VOICE ASSISTANT]');
     expect(prompt).toContain('Hey Apex, what job or lead are you updating today?');
-    expect(prompt).toContain('request_staff_step_up');
-    expect(prompt).toContain('verify_staff_step_up');
-    expect(prompt).toContain('Do not call the mutation until this active call is verified.');
-    expect(prompt).toContain('Never repeat the code aloud');
-    expect(prompt).toContain('never counts');
+    expect(prompt).not.toContain('request_staff_step_up');
+    expect(prompt).not.toContain('verify_staff_step_up');
+    expect(prompt).toContain('Never ask for verification codes');
+    expect(prompt).toContain('role permissions are checked automatically');
+    expect(prompt).toContain('Never claim success unless the tool confirms a durable save.');
     expect(prompt).not.toContain('Warmly collect or verify the caller\'s intake details');
 
     // Verify accounts query never queried non-existent columns (e.g. owner_phone, full_name, company_name)

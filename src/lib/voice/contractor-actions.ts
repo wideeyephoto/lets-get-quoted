@@ -21,7 +21,6 @@ type ContractorActionContext = Readonly<{
   accountId: string;
   providerCallId: string;
   caller: VoiceStaffCaller;
-  stepUpVerified: boolean;
   functionName: string;
   args: Record<string, unknown>;
 }>;
@@ -311,18 +310,6 @@ export async function handleContractorVoiceAction(
   if (!CONTRACTOR_VOICE_FUNCTIONS.has(context.functionName)) return { handled: false };
   const fn = canonicalFunction(context.functionName);
   const args = context.args;
-
-  const rawOp = (text(args.operation ?? args.intent, 20) ?? '').toLowerCase();
-  const isLeadCreate = fn === 'create_or_update_lead' && (rawOp === 'create' || rawOp === '');
-
-  if (!isLeadCreate && context.stepUpVerified !== true) {
-    return {
-      handled: true,
-      response: fn === 'lookup_jobs'
-        ? 'Before I can read job details, I need to verify this call with a six-digit code sent to the verified phone calling now.'
-        : 'Before I can save that dispatch change, I need to text a six-digit verification code to the verified phone calling now.',
-    };
-  }
 
   if (!context.providerCallId || !context.caller.normalizedPhone) {
     return { handled: true, response: 'This call is missing its signed dispatch identity, so I did not save anything.' };
