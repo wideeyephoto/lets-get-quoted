@@ -650,6 +650,13 @@ export async function applyQuoteAcceptance(
     } catch (convErr) {
       console.warn('[OfflineConversion] Non-blocking dispatch error in applyQuoteAcceptance:', convErr);
     }
+
+    try {
+      const { triggerWonLeadMetaCapiConversion } = await import('@/lib/meta-capi-outbox');
+      await triggerWonLeadMetaCapiConversion(admin, accountId, { ...lead, status: 'won' }, amount);
+    } catch (metaErr) {
+      console.warn('[MetaCapiConversion] Non-blocking dispatch error in applyQuoteAcceptance:', metaErr);
+    }
   }
 
   return { recorded: true, promoted, leadWon };

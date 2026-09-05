@@ -12,6 +12,8 @@ import { createDepositRequest } from '@/lib/payments';
 import { createPaymentPlan } from '@/lib/payment-plans';
 import { clearLeadQuoteVisit, convertLeadToJob, createLead, getLead, getLeadTriage, LEAD_DECLINE_REASONS, LEAD_LAYOUT_COOKIE, LEADS_VIEW_COOKIE, normalizeLeadLostAfterDays, normalizeLeadsView, scheduleLeadQuoteVisit, unconvertLeadFromJob, updateLeadDetails, updateLeadStatus, type LeadQuoteDraft, type LeadsView, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { syncLeadWonConversion, triggerWonLeadOfflineConversion } from '@/lib/google-ads-conversion-outbox';
+import { triggerWonLeadMetaCapiConversion } from '@/lib/meta-capi-outbox';
+
 import { normalizeClientChannelPreference, resolveClientChannel, smsFailureFallback } from '@/lib/client-channel';
 import { deleteLeadPhotos, uploadLeadPhoto } from '@/lib/lead-photo-storage';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -150,6 +152,11 @@ export async function updateLeadStatusAction(leadId: string, status: LeadStatus)
         await triggerWonLeadOfflineConversion(createAdminClient(), accountId, lead, wonValue);
       } catch (err) {
         console.warn('Offline conversion sync on mark won logged warning:', err);
+      }
+      try {
+        await triggerWonLeadMetaCapiConversion(createAdminClient(), accountId, lead, wonValue);
+      } catch (err) {
+        console.warn('Meta CAPI conversion sync on mark won logged warning:', err);
       }
     }
   }

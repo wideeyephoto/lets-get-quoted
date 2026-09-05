@@ -454,6 +454,17 @@ export type AdBudgetWalletState = {
   googleCampaignResource?: string | null;
   provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
   provisioningMessage?: string | null;
+  metaCampaignId?: string | null;
+  metaAdSetId?: string | null;
+  metaCreativeId?: string | null;
+  metaAdId?: string | null;
+  metaProvisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
+  metaProvisioningMessage?: string | null;
+  channelAllocations?: {
+    googleSpendMonthlyDollars: number;
+    metaSpendMonthlyDollars: number;
+    retargetingMonthlyDollars: number;
+  };
   landingPageUrl?: string | null;
   pendingRefillIdempotencyKey?: string | null;
   pendingRefillAmountCents?: number | null;

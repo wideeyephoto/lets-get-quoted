@@ -184,6 +184,19 @@ export async function createAdBudgetCheckoutSession(params: {
     throw new Error('Google Ads automated provisioning is currently undergoing configuration in this environment. Please contact support.');
   }
 
+  const { getSmartBundle } = await import('@/lib/multi-channel-ads');
+  const smartBundle = bundleId ? getSmartBundle(bundleId) : null;
+  const metaSpendDollars = smartBundle ? smartBundle.metaSpendDollars : 0;
+  const searchSpendDollars = smartBundle ? smartBundle.searchSpendDollars : 0;
+  const retargetingSpendDollars = smartBundle ? smartBundle.retargetingSpendDollars : 0;
+
+  if (process.env.VERCEL_ENV === 'production' && metaSpendDollars > 0) {
+    const { isMetaAdsConfigured } = await import('@/lib/meta-ads-api');
+    if (!isMetaAdsConfigured()) {
+      throw new Error('Meta Ads automated provisioning is currently undergoing configuration in this environment. Please choose a Google Search tier or contact support.');
+    }
+  }
+
   if (monthlyBudgetDollars !== undefined) {
     if (monthlyBudgetDollars < 100) throw new Error('Minimum monthly ad budget is $100.');
     if (monthlyBudgetDollars > 50000) throw new Error('Maximum monthly ad budget is $50,000.');
@@ -374,6 +387,10 @@ export async function createAdBudgetCheckoutSession(params: {
       billing_interval: isWallet ? 'one_time_deposit' : (isWeekly ? 'week' : 'month'),
       account_id: accountId,
       tier_id: weeklyTier ? weeklyTier.id : '',
+      bundle_id: bundleId || '',
+      meta_spend_dollars: String(metaSpendDollars),
+      search_spend_dollars: String(searchSpendDollars),
+      retargeting_spend_dollars: String(retargetingSpendDollars),
       deposit_amount_dollars: isWallet && walletConfig ? String(walletConfig.depositAmountDollars) : '',
       deposit_amount_cents: isWallet && walletConfig ? String(toCents(walletConfig.depositAmountDollars)) : '',
       refill_threshold_dollars: isWallet && walletConfig ? String(walletConfig.refillThresholdDollars) : '',
@@ -501,6 +518,13 @@ export async function atomicCreditAdWalletState(
     googleCampaignResource?: string | null;
     provisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
     provisioningMessage?: string | null;
+    metaCampaignId?: string | null;
+    metaAdSetId?: string | null;
+    metaCreativeId?: string | null;
+    metaAdId?: string | null;
+    metaProvisioningStatus?: 'active' | 'paused' | 'simulated' | 'pending' | 'failed' | 'unconfigured';
+    metaProvisioningMessage?: string | null;
+    channelAllocations?: AdBudgetWalletState['channelAllocations'];
     smsAlertsEnabled?: boolean;
     smsAlertPhone?: string | null;
     stripeCustomerId?: string | null;
@@ -528,6 +552,13 @@ export async function atomicCreditAdWalletState(
     googleCampaignResource,
     provisioningStatus,
     provisioningMessage,
+    metaCampaignId,
+    metaAdSetId,
+    metaCreativeId,
+    metaAdId,
+    metaProvisioningStatus,
+    metaProvisioningMessage,
+    channelAllocations,
     smsAlertsEnabled,
     smsAlertPhone,
     stripeCustomerId,
@@ -621,6 +652,13 @@ export async function atomicCreditAdWalletState(
     ...(googleCampaignResource ? { googleCampaignResource } : {}),
     ...(provisioningStatus ? { provisioningStatus } : {}),
     ...(provisioningMessage !== undefined ? { provisioningMessage } : {}),
+    ...(metaCampaignId ? { metaCampaignId } : {}),
+    ...(metaAdSetId ? { metaAdSetId } : {}),
+    ...(metaCreativeId ? { metaCreativeId } : {}),
+    ...(metaAdId ? { metaAdId } : {}),
+    ...(metaProvisioningStatus ? { metaProvisioningStatus } : {}),
+    ...(metaProvisioningMessage !== undefined ? { metaProvisioningMessage } : {}),
+    ...(channelAllocations ? { channelAllocations } : {}),
     ...(smsAlertsEnabled !== undefined ? { smsAlertsEnabled } : {}),
     ...(smsAlertPhone !== undefined ? { smsAlertPhone } : {}),
     ...(stripeCustomerId ? { stripeCustomerId } : {}),
@@ -964,6 +1002,10 @@ export async function handleAdBudgetWebhookEvent(
     const endHour = session.metadata?.end_hour ? Number(session.metadata.end_hour) : undefined;
     const customFocus = session.metadata?.custom_focus || undefined;
 
+    const metaBudgetDollars = Number(session.metadata?.meta_spend_dollars) || 0;
+    const searchBudgetDollars = Number(session.metadata?.search_spend_dollars) || (monthlyBudgetDollars - metaBudgetDollars);
+    const retargetingBudgetDollars = Number(session.metadata?.retargeting_spend_dollars) || 0;
+
     // Synchronously await and verify campaign provisioning in Google Ads
     const provisioningResult = await provisionManagedSearchCampaign({
       accountId,
@@ -972,7 +1014,7 @@ export async function handleAdBudgetWebhookEvent(
       city: session.metadata?.city || 'Local Area',
       radiusMiles: Number(session.metadata?.radius_miles) || 25,
       services,
-      monthlyBudgetDollars,
+      monthlyBudgetDollars: searchBudgetDollars > 0 ? searchBudgetDollars : monthlyBudgetDollars,
       landingPageUrl,
       scheduleDays,
       startHour,
@@ -980,7 +1022,27 @@ export async function handleAdBudgetWebhookEvent(
       customFocus,
     });
 
-    const isProvisioned = provisioningResult.success;
+    let metaResult: import('./meta-ads-api').ProvisionMetaCampaignResult | null = null;
+    if (metaBudgetDollars > 0) {
+      try {
+        const { provisionManagedMetaCampaign } = await import('@/lib/meta-ads-api');
+        metaResult = await provisionManagedMetaCampaign({
+          accountId,
+          businessName: session.metadata?.business_name || 'Contractor',
+          trade,
+          city: session.metadata?.city || 'Local Area',
+          radiusMiles: Number(session.metadata?.radius_miles) || 25,
+          monthlyBudgetDollars: metaBudgetDollars,
+          landingPageUrl,
+          services,
+          customFocus,
+        });
+      } catch (metaErr) {
+        console.warn('Meta campaign provisioning error in webhook:', metaErr);
+      }
+    }
+
+    const isProvisioned = provisioningResult.success && (!metaResult || metaResult.success);
     const campaignStatus: AdCampaignBillingStatus = isProvisioned ? 'active' : 'pending_provisioning';
 
     await atomicCreditAdWalletState(admin, {
@@ -996,6 +1058,17 @@ export async function handleAdBudgetWebhookEvent(
       googleCampaignResource: provisioningResult.campaignResourceName || null,
       provisioningStatus: provisioningResult.status,
       provisioningMessage: isProvisioned ? null : provisioningResult.message,
+      metaCampaignId: metaResult?.campaignId || null,
+      metaAdSetId: metaResult?.adSetId || null,
+      metaCreativeId: metaResult?.creativeId || null,
+      metaAdId: metaResult?.adId || null,
+      metaProvisioningStatus: metaResult?.status,
+      metaProvisioningMessage: metaResult && !metaResult.success ? metaResult.message : null,
+      channelAllocations: {
+        googleSpendMonthlyDollars: searchBudgetDollars > 0 ? searchBudgetDollars : monthlyBudgetDollars,
+        metaSpendMonthlyDollars: metaBudgetDollars,
+        retargetingMonthlyDollars: retargetingBudgetDollars,
+      },
       smsAlertsEnabled,
       smsAlertPhone,
       stripeCustomerId: customerId,
@@ -1494,30 +1567,72 @@ export async function syncAccountAdSpendUsage(
     return { success: true, spendRecordedCents: 0, message: 'Campaign is inactive.' };
   }
 
+  let googleSpendCents = 0;
+  let googleClicks = 0;
+  let googleImpressions = 0;
+  let googleConversions = 0;
+
   if (adState.googleCampaignId) {
-    const { fetchGoogleAdsCampaignDailySpend } = await import('@/lib/google-ads-api');
-    const googleRes = await fetchGoogleAdsCampaignDailySpend(adState.googleCampaignId);
-    if (googleRes.success && googleRes.data.length > 0) {
-      const todayStr = new Date().toISOString().slice(0, 10);
-      const latest = googleRes.data.find((d) => d.date === todayStr) || googleRes.data[0];
-      if (latest && latest.spendCents > 0) {
-        const res = await recordAdSpendUsage({
-          admin,
-          accountId,
-          spendCents: latest.spendCents,
-          clicks: latest.clicks,
-          impressions: latest.impressions,
-          conversions: latest.conversions,
-          date: latest.date,
-          source: 'google_ads_api',
-        });
-        return { success: true, spendRecordedCents: latest.spendCents, message: res.message };
+    try {
+      const { fetchGoogleAdsCampaignDailySpend } = await import('@/lib/google-ads-api');
+      const googleRes = await fetchGoogleAdsCampaignDailySpend(adState.googleCampaignId);
+      if (googleRes.success && googleRes.data.length > 0) {
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const latest = googleRes.data.find((d) => d.date === todayStr) || googleRes.data[0];
+        if (latest && latest.spendCents > 0) {
+          googleSpendCents = latest.spendCents;
+          googleClicks = latest.clicks;
+          googleImpressions = latest.impressions;
+          googleConversions = latest.conversions;
+        }
       }
+    } catch (err) {
+      console.warn(`[SyncAdSpend] Google Ads query warning for account ${accountId}:`, err);
     }
-    return { success: true, spendRecordedCents: 0, message: 'No new ad spend reported by Google Ads.' };
   }
 
-  return { success: true, spendRecordedCents: 0, message: 'No configured Google Ads campaign to sync.' };
+  let metaSpendCents = 0;
+  let metaClicks = 0;
+  let metaImpressions = 0;
+  let metaConversions = 0;
+
+  if (adState.metaCampaignId) {
+    try {
+      const { fetchMetaCampaignDailySpend } = await import('@/lib/meta-ads-api');
+      const metaRes = await fetchMetaCampaignDailySpend(adState.metaCampaignId);
+      if (metaRes.success && metaRes.spendCents > 0) {
+        metaSpendCents = metaRes.spendCents;
+        metaClicks = metaRes.clicks;
+        metaImpressions = metaRes.impressions;
+        metaConversions = metaRes.conversions;
+      }
+    } catch (err) {
+      console.warn(`[SyncAdSpend] Meta Ads query warning for account ${accountId}:`, err);
+    }
+  }
+
+  const totalDaySpendCents = googleSpendCents + metaSpendCents;
+  if (totalDaySpendCents > 0) {
+    const todayStr = new Date().toISOString().slice(0, 10);
+    const source = metaSpendCents > 0 && googleSpendCents === 0 ? 'meta_ads_api' : 'google_ads_api';
+    const res = await recordAdSpendUsage({
+      admin,
+      accountId,
+      spendCents: totalDaySpendCents,
+      clicks: googleClicks + metaClicks,
+      impressions: googleImpressions + metaImpressions,
+      conversions: googleConversions + metaConversions,
+      date: todayStr,
+      source,
+    });
+    return { success: true, spendRecordedCents: totalDaySpendCents, message: res.message };
+  }
+
+  if (adState.googleCampaignId || adState.metaCampaignId) {
+    return { success: true, spendRecordedCents: 0, message: 'No new ad spend reported by ad networks.' };
+  }
+
+  return { success: true, spendRecordedCents: 0, message: 'No configured ad campaigns to sync.' };
 }
 
 /**
@@ -1621,6 +1736,15 @@ export async function pauseAdCampaign(
     }
   }
 
+  if (adState.metaCampaignId) {
+    try {
+      const { pauseMetaCampaign } = await import('@/lib/meta-ads-api');
+      await pauseMetaCampaign(adState.metaCampaignId);
+    } catch (err) {
+      console.warn('Could not pause Meta campaign:', err);
+    }
+  }
+
   await updateAccountAdBudgetState(admin, accountId, {
     status: 'paused',
     provisioningStatus: 'paused',
@@ -1659,6 +1783,15 @@ export async function resumeAdCampaign(
     } catch (err) {
       console.warn('Could not resume Google Ads campaign:', err);
       return { success: false, message: `Could not resume Google Ads campaign: ${err instanceof Error ? err.message : String(err)}` };
+    }
+  }
+
+  if (adState.metaCampaignId) {
+    try {
+      const { resumeMetaCampaign } = await import('@/lib/meta-ads-api');
+      await resumeMetaCampaign(adState.metaCampaignId);
+    } catch (err) {
+      console.warn('Could not resume Meta campaign:', err);
     }
   }
 
