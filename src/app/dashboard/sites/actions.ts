@@ -1,6 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
+import { revalidatePublicSiteCache } from '@/lib/cached-sites';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { deleteSiteImage, importJobPhotoAsSiteImage, uploadGeneratedSiteImage, uploadSiteImage, listUploadedSiteImages } from '@/lib/site-image-storage';
 import { createSignedVideoUpload, deleteSiteVideo, siteVideoStoragePath, type SignedVideoUpload } from '@/lib/site-video-storage';
@@ -55,7 +56,7 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   // Get current site
   const { data: sites } = await supabase
     .from('sites')
-    .select('id, custom_domain, content, published')
+    .select('id, subdomain, custom_domain, content, published')
     .eq('account_id', accountId)
     .limit(1);
 
@@ -149,6 +150,10 @@ export async function updateSiteAction(updates: SiteEditableInput) {
 
   revalidatePath('/dashboard/sites');
   revalidatePath('/dashboard/settings');
+  revalidatePublicSiteCache({
+    subdomain: site.subdomain || sites[0].subdomain,
+    customDomain: site.custom_domain || sites[0].custom_domain,
+  });
 
   return site;
 }
@@ -184,6 +189,10 @@ export async function publishSiteAction(published: boolean) {
   await publishSite(supabase, accountId, siteId, published);
 
   revalidatePath('/dashboard/sites');
+  revalidatePublicSiteCache({
+    subdomain: sites[0].subdomain,
+    customDomain: sites[0].custom_domain,
+  });
 }
 
 export async function checkSubdomainAvailableAction(subdomain: string): Promise<boolean> {
@@ -613,6 +622,7 @@ export async function verifyCustomDomainAction(domainValue: string) {
   const { error } = await admin.from('sites').update({ custom_domain: domain, custom_domain_verified_at: new Date().toISOString() }).eq('account_id', accountId);
   if (error) throw error;
   revalidatePath('/dashboard/sites');
+  revalidatePublicSiteCache({ customDomain: domain });
   return verification;
 }
 

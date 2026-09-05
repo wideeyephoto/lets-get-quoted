@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import Image from 'next/image';
+import { isOptimizableHost } from './SafeImage';
 import styles from './themes.module.css';
 
 type HeroVideo = { url: string; posterUrl: string };
@@ -55,25 +57,59 @@ function HeroPhotoCycle({ images, className, alt, interval }: Omit<HeroImageCycl
   }, [images.length, interval]);
 
   if (images.length <= 1) {
+    if (isOptimizableHost(images[0])) {
+      return (
+        <Image
+          className={className}
+          src={images[0]}
+          alt={alt}
+          fill
+          priority
+          sizes="100vw"
+          draggable={false}
+        />
+      );
+    }
     return <img className={className} src={images[0]} alt={alt} fetchPriority="high" decoding="async" draggable={false} />;
   }
 
   return (
     <span className={styles.heroCycle}>
-      {images.map((src, index) => (
-        <img
-          key={`${index}-${src}`}
-          className={index === 0 ? className : `${className ? `${className} ` : ''}${styles.heroCycleOverlay}`}
-          src={src}
-          alt={index === 0 ? alt : ''}
-          aria-hidden={index === 0 ? undefined : true}
-          style={index === 0 ? undefined : ({ opacity: active === index ? 1 : 0 } as CSSProperties)}
-          loading={index === 0 ? undefined : 'lazy'}
-          fetchPriority={index === 0 ? 'high' : undefined}
-          decoding="async"
-          draggable={false}
-        />
-      ))}
+      {images.map((src, index) => {
+        const itemClassName = index === 0 ? className : `${className ? `${className} ` : ''}${styles.heroCycleOverlay}`;
+        const itemStyle = index === 0 ? undefined : ({ opacity: active === index ? 1 : 0 } as CSSProperties);
+        if (isOptimizableHost(src)) {
+          return (
+            <Image
+              key={`${index}-${src}`}
+              className={itemClassName}
+              src={src}
+              alt={index === 0 ? alt : ''}
+              aria-hidden={index === 0 ? undefined : true}
+              style={itemStyle}
+              fill
+              priority={index === 0}
+              loading={index === 0 ? undefined : 'lazy'}
+              sizes="100vw"
+              draggable={false}
+            />
+          );
+        }
+        return (
+          <img
+            key={`${index}-${src}`}
+            className={itemClassName}
+            src={src}
+            alt={index === 0 ? alt : ''}
+            aria-hidden={index === 0 ? undefined : true}
+            style={itemStyle}
+            loading={index === 0 ? undefined : 'lazy'}
+            fetchPriority={index === 0 ? 'high' : undefined}
+            decoding="async"
+            draggable={false}
+          />
+        );
+      })}
     </span>
   );
 }

@@ -4,6 +4,7 @@ import { cache } from 'react';
 import { createAdminClient } from '@/lib/auth';
 import { getSiteGallery } from '@/lib/site-images';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
+import { getCachedPublicSiteBySubdomain } from '@/lib/cached-sites';
 import { getTemplate } from '@/lib/templates';
 import SiteStructuredData from '@/lib/templates/SiteStructuredData';
 import { getSiteContent } from '@/lib/site-content';
@@ -18,7 +19,7 @@ type PublicSitePageProps = {
 };
 
 const loadPublicSite = cache(async (subdomain: string) => {
-  return getPublicSiteBySubdomain(createAdminClient(), subdomain);
+  return getCachedPublicSiteBySubdomain(subdomain);
 });
 
 export default async function PublicSitePage({ params: paramsPromise }: PublicSitePageProps) {
