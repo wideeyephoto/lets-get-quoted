@@ -47,6 +47,7 @@ function mockAdmin(options: Readonly<{
     in: vi.fn(),
     order: vi.fn(),
     limit: vi.fn(),
+    range: vi.fn(),
   };
   jobQuery.select.mockReturnValue(jobQuery);
   jobQuery.eq.mockReturnValue(jobQuery);
@@ -54,6 +55,9 @@ function mockAdmin(options: Readonly<{
   jobQuery.in.mockReturnValue(jobQuery);
   jobQuery.order.mockReturnValue(jobQuery);
   jobQuery.limit.mockResolvedValue({ data: jobs, error: options.jobsError ?? null });
+  jobQuery.range.mockImplementation(async (start: number, end: number) => ({
+    data: jobs.slice(start, end + 1), error: options.jobsError ?? null,
+  }));
 
   const from = vi.fn((table: string) => {
     if (table !== 'jobs') throw new Error(`Unexpected table lookup: ${table}`);
@@ -103,7 +107,8 @@ describe('AI Voice contractor job resolution', () => {
     });
     expect(jobQuery.eq).toHaveBeenCalledWith('account_id', ACCOUNT_ID);
     expect(jobQuery.is).toHaveBeenCalledWith('deleted_at', null);
-    expect(jobQuery.limit).toHaveBeenCalledWith(201);
+    expect(jobQuery.range).toHaveBeenCalledWith(0, 199);
+    expect(jobQuery.order).toHaveBeenCalledWith('id', { ascending: false });
   });
 
   it('returns ambiguous when an exact customer name maps to multiple active jobs', async () => {
@@ -117,6 +122,7 @@ describe('AI Voice contractor job resolution', () => {
 
     await expect(resolveVoiceJob(admin, ACCOUNT_ID, 'Rosa Holbrook')).resolves.toEqual({
       status: 'ambiguous',
+      candidates: [baseJob, duplicateName],
     });
   });
 
@@ -126,6 +132,99 @@ describe('AI Voice contractor job resolution', () => {
     await expect(resolveVoiceJob(admin, ACCOUNT_ID, 'LGQ-1042')).resolves.toEqual({
       status: 'unavailable',
     });
+  });
+});
+
+describe('AI Voice spoken job choices', () => {
+  const olderJobs = Array.from({ length: 251 }, (_, index) => ({
+    ...baseJob,
+    id: `other-${index}`,
+    ref: `LGQ-${2000 + index}`,
+    client_name: `Different Customer ${index}`,
+    address: `${index} Other Road`,
+  }));
+  const secondJob = {
+    ...baseJob,
+    id: '44444444-4444-4444-8444-444444444444',
+    ref: 'LGQ-1099',
+    scope: 'Sewer camera inspection',
+    status: 'in_progress',
+    address: '84 Oak Street',
+    scheduled_for: '2026-09-08',
+    scheduled_time: '09:00',
+    quoted_amount: 350,
+  };
+
+  it('finds an older job beyond the former 201-row cutoff', async () => {
+    const { admin, jobQuery } = mockAdmin({ jobs: [...olderJobs, baseJob] });
+    await expect(resolveVoiceJob(admin, ACCOUNT_ID, baseJob.ref)).resolves.toEqual({ status: 'resolved', job: baseJob });
+    expect(jobQuery.range).toHaveBeenCalledWith(200, 399);
+  });
+
+  it('does not invent ambiguity for a missing name in a 252-job workspace', async () => {
+    const { admin } = mockAdmin({ jobs: [...olderJobs, baseJob] });
+    await expect(resolveVoiceJob(admin, ACCOUNT_ID, 'Harry Lou')).resolves.toEqual({ status: 'not_found' });
+  });
+
+  it('checks later pages before treating a client name as unique', async () => {
+    const { admin } = mockAdmin({ jobs: [baseJob, ...olderJobs, secondJob] });
+    await expect(resolveVoiceJob(admin, ACCOUNT_ID, baseJob.client_name)).resolves.toEqual({
+      status: 'ambiguous', candidates: [baseJob, secondJob],
+    });
+  });
+
+  it('fails closed if a later page cannot be read', async () => {
+    const { admin, jobQuery } = mockAdmin({ jobs: [baseJob, ...olderJobs] });
+    jobQuery.range.mockResolvedValueOnce({ data: [baseJob, ...olderJobs].slice(0, 200), error: null });
+    jobQuery.range.mockResolvedValueOnce({ data: null, error: { code: '08006' } });
+    await expect(resolveVoiceJob(admin, ACCOUNT_ID, baseJob.client_name)).resolves.toEqual({ status: 'unavailable' });
+  });
+
+  it('reads both job descriptions and references without applying any action', async () => {
+    const { admin, rpc, jobQuery } = mockAdmin({ jobs: [{ ...baseJob, scope: 'Replace water heater' }, secondJob] });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.client_name }));
+    for (const detail of ['2 matching jobs', baseJob.ref, secondJob.ref, 'Replace water heater', 'Sewer camera inspection', '84 Oak Street', 'in progress', '2026-09-08', '09:00', '$350.00']) {
+      expect(result.response).toContain(detail);
+    }
+    expect(jobQuery.eq).toHaveBeenCalledWith('account_id', ACCOUNT_ID);
+    expect(jobQuery.is).toHaveBeenCalledWith('deleted_at', null);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('returns choices on an ambiguous update, then saves only the chosen exact job', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob, secondJob], rpcResults: [{ data: { job_id: secondJob.id, job_ref: secondJob.ref }, error: null }] });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'append_job_caution_or_note', { job_ref_or_client: baseJob.client_name, note: 'Use the side gate.' }));
+    expect(result.response).toContain(baseJob.ref);
+    expect(result.response).toContain(secondJob.ref);
+    expect(result.response).toContain('description or option number');
+    expect(rpc).not.toHaveBeenCalled();
+    await handleContractorVoiceAction(actionContext(admin, 'append_job_caution_or_note', { job_ref_or_client: secondJob.ref, note: 'Use the side gate.' }));
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', expect.objectContaining({ p_target_job_id: secondJob.id, p_payload: { note: 'Use the side gate.', is_caution: true } }));
+  });
+
+  it('does not disclose jobs before call verification', async () => {
+    const { admin, from, rpc } = mockAdmin({ jobs: [baseJob] });
+    const result = await handleContractorVoiceAction({ ...actionContext(admin, 'lookup_jobs', {}), stepUpVerified: false });
+    expect(result.response).toContain('verify this call');
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('does not expose workspace-wide job lists to crew callers', async () => {
+    const { admin, from } = mockAdmin({ jobs: [baseJob] });
+    const result = await handleContractorVoiceAction({ ...actionContext(admin, 'lookup_jobs', {}), caller: { ...ownerCaller, role: 'crew', crewId: 'crew-1' } });
+    expect(result.response).toContain('owner or office authorization');
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('lists at most five current jobs and asks to narrow larger lists', async () => {
+    const { admin } = mockAdmin({ jobs: [{ ...baseJob, status: 'complete' }, ...olderJobs.slice(0, 6)] });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', {}));
+    expect(result.response).toContain('6 current jobs');
+    expect(result.response).toContain('Showing five of 6');
+    expect(result.response).not.toContain(baseJob.ref);
+    expect(result.response).not.toContain(olderJobs[5].ref);
   });
 });
 
