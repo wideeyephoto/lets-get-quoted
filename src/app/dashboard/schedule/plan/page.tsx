@@ -492,6 +492,8 @@ export default async function PlanDayPage({
             ? '7:00 AM on this work date has already passed in your account time zone. Choose Send Now or a future work date.'
             : searchParams.dispatchError === 'invalid_intent'
             ? 'The dispatch form was not ready. Reopen Brief crew and try again.'
+            : searchParams.dispatchError === 'invalid_recipients'
+            ? 'Select at least one active crew member before sending a briefing.'
             : 'Could not schedule this briefing. Check the work date and account time zone.'}
         </p>
       ) : null}

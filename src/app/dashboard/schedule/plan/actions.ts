@@ -356,6 +356,9 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(intentId)) {
     redirect(planUrl(dateKey, crewId, { dispatchError: 'invalid_intent' }));
   }
+  if (selectedMemberIds.length === 0) {
+    redirect(planUrl(dateKey, crewId, { dispatchError: 'invalid_recipients' }));
+  }
 
   const settings = await getPlanAccountSettings(supabase, accountId, { requireSuccessfulRead: true });
   let morning: Date;
@@ -377,11 +380,9 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   });
 
   const crew = await listCrew(supabase, accountId, { activeOnly: true });
-  let targets = crew;
-  if (selectedMemberIds.length > 0) {
-    targets = crew.filter((c) => selectedMemberIds.includes(c.id));
-  } else if (crewId) {
-    targets = crew.filter((c) => c.id === crewId);
+  const targets = crew.filter((member) => selectedMemberIds.includes(member.id));
+  if (targets.length === 0) {
+    redirect(planUrl(dateKey, crewId, { dispatchError: 'invalid_recipients' }));
   }
 
   let briefedCount = 0;
@@ -465,10 +466,8 @@ export async function sendCrewMorningBriefingAction(formData: FormData) {
   }
 
   revalidatePlan();
-  const queryParams: Record<string, string> = {};
-  queryParams.briefed = String(briefedCount);
-  if (briefedCount > 0 && failedList.length === 0) queryParams.briefingCompleted = intentId;
-  if (briefedCount > 0) queryParams.briefed = String(briefedCount);
+  const queryParams: Record<string, string> = { briefed: String(briefedCount) };
+  if (briefedCount > 0 && failedList.length === 0 && skippedNoPhone === 0) queryParams.briefingCompleted = intentId;
   if (failedList.length > 0) queryParams.failedDispatch = failedList.join(',');
   if (isUrgentUpdate) queryParams.urgent = '1';
   if (scheduledTiming === 'scheduled_7am') queryParams.scheduled = '1';
