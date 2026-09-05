@@ -36,7 +36,7 @@ export const PROVIDERS: Provider[] = [
       'In Name, enter the host below — the prefix only, not the full domain.',
       'In Value, paste the target below (no http://, no trailing slash).',
       'Leave TTL at 1 hour and click Save. Approve any security prompt.',
-      'Come back here and click “Verify DNS”. Changes can take up to an hour.',
+      'Come back here and click “Check connection”. Changes can take up to an hour.',
     ],
     apex: 'GoDaddy can’t point a bare root domain (no www) with a CNAME. On the DNS page open Forwarding → Add Forwarding, and forward the root domain to https://www.yourdomain.com as a Permanent (301) redirect — the www record above carries it the rest of the way.',
   },
@@ -54,7 +54,7 @@ export const PROVIDERS: Provider[] = [
       'Set Type to CNAME.',
       'In Name, enter the host below. In Data, paste the target below.',
       'Click Save. If it says the record conflicts, delete the existing “www” record first, then re-add.',
-      'Come back here and click “Verify DNS”. DNS can take 24–48 hours.',
+      'Come back here and click “Check connection”. DNS can take 24–48 hours.',
     ],
     apex: 'For a bare root domain, add an ALIAS record instead: Type ALIAS, Name @, Data domains.letsgetquoted.com (turn DNSSEC off first and delete any existing apex A records). Or add a Domain Forwarding rule from @ to https://www.yourdomain.com as a 301.',
   },
@@ -73,7 +73,7 @@ export const PROVIDERS: Provider[] = [
       'In Target, paste the value below.',
       'IMPORTANT: Set Proxy status to “DNS only” (Grey cloud) initially so SSL verification completes directly.',
       'Leave TTL at Auto and click Save.',
-      'Come back here and click “Verify DNS”. Changes propagate in minutes.',
+      'Come back here and click “Check connection”. Changes propagate in minutes.',
     ],
     apex: 'Cloudflare supports CNAME flattening at the root domain (@). You can add a CNAME record with Name: @ and Target: domains.letsgetquoted.com with Proxy status set to DNS only.',
   },
@@ -92,7 +92,7 @@ export const PROVIDERS: Provider[] = [
       'In Host, enter the prefix shown below (e.g. www).',
       'In Value, paste the target below.',
       'Set TTL to Automatic and click the green checkmark to save.',
-      'Come back here and click “Verify DNS”.',
+      'Come back here and click “Check connection”.',
     ],
     apex: 'Under Advanced DNS, add a URL Redirect Record with Host: @ and Value: https://www.yourdomain.com (Redirect Type: Permanent 301), and the www CNAME record will serve your site.',
   },
@@ -106,28 +106,27 @@ export const PROVIDERS: Provider[] = [
       'Sign in wherever your domain’s DNS is managed (your registrar or DNS host).',
       'Add a new DNS record of type CNAME.',
       'Set the host/name and value shown below.',
-      'Save, then come back here and click “Verify DNS”. DNS can take up to 48 hours.',
+      'Save, then come back here and click “Check connection”. DNS can take up to 48 hours.',
     ],
     apex: 'A root domain (no www) can’t use a CNAME. Use your provider’s CNAME flattening / ALIAS / ANAME record at @, or redirect the root to https://www.yourdomain.com.',
   },
 ];
 
-export default function DomainConnector({ domain, target }: { domain: string | null | undefined; target: string }) {
+export default function DomainConnector({ domain, target, apexIp = '76.76.21.21', apexDomain }: { domain: string | null | undefined; target: string; apexIp?: string; apexDomain?: string }) {
   const [providerId, setProviderId] = useState('godaddy');
   const [copied, setCopied] = useState<string | null>(null);
 
   const provider = PROVIDERS.find((item) => item.id === providerId) || PROVIDERS[0];
   const cleanedDomain = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
   const parts = cleanedDomain.split('.');
-  const isApex = parts.length === 2 && !cleanedDomain.startsWith('www.');
-  const hostValue = isApex ? '@' : (parts.length > 2 ? parts[0] : 'www');
-  const rootDomain = isApex ? cleanedDomain : (parts.length > 2 ? parts.slice(1).join('.') : cleanedDomain);
+  const rootDomain = apexDomain || (parts.length > 2 ? parts.slice(-2).join('.') : cleanedDomain);
+  const isApex = cleanedDomain === rootDomain && parts.length >= 2;
+  const hostValue = isApex ? '@' : (cleanedDomain.endsWith(`.${rootDomain}`) ? cleanedDomain.slice(0, -(rootDomain.length + 1)) : 'www');
   const openUrl = provider.dnsUrl(rootDomain);
 
   const records = isApex
     ? [
-        { key: 'a-record', type: 'A', hostLabel: provider.hostLabel, host: '@', valueLabel: provider.valueLabel, value: '76.76.21.21', note: 'Points root apex domain' },
-        { key: 'cname-www', type: 'CNAME', hostLabel: provider.hostLabel, host: 'www', valueLabel: provider.valueLabel, value: target, note: 'Points www subdomain' },
+        { key: 'a-record', type: 'A', hostLabel: provider.hostLabel, host: '@', valueLabel: provider.valueLabel, value: apexIp, note: 'Points root apex domain' },
       ]
     : [
         { key: 'cname', type: 'CNAME', hostLabel: provider.hostLabel, host: hostValue, valueLabel: provider.valueLabel, value: target, note: `Points ${cleanedDomain || 'your custom domain'}` },
@@ -193,16 +192,20 @@ export default function DomainConnector({ domain, target }: { domain: string | n
       </div>
 
       <ol className={styles.connectorSteps}>
-        {provider.steps.map((step, index) => <li key={index}>{step}</li>)}
+        {(isApex ? [
+          `Open ${provider.name === 'Other provider' ? 'your DNS provider' : provider.name} DNS settings for your domain.`,
+          `Add an A record with host @ and value ${apexIp}. Replace any conflicting apex A or AAAA records.`,
+          'If your provider offers a proxy, use DNS only while SSL is being set up.',
+          'Save the record, then come back here and click “Check connection”.',
+        ] : provider.steps).map((step, index) => <li key={index}>{step}</li>)}
       </ol>
 
       <details className={styles.connectorApex}>
         <summary>Automatic HTTPS / SSL Certificate</summary>
-        <p>Once your DNS records point to our edge, an SSL certificate is automatically issued within minutes of clicking “Verify DNS”. No manual cert installation required.</p>
+        <p>Click “Check connection” to register your domain and begin SSL setup. If ownership verification records appear, add those too. Keep checking until you see “Connected with active SSL”; your free subdomain remains available while setup is pending.</p>
       </details>
 
       <p className={styles.connectorNote}>If your domain’s nameservers point to another service (e.g. Cloudflare), add this record there instead — records added at your registrar won’t apply.</p>
     </div>
   );
 }
-

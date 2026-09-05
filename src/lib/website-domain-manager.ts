@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { verifyDomain } from '@/lib/domains';
 
 export interface CustomDomainStatus {
   domain: string;
@@ -16,61 +17,35 @@ export interface CustomDomainStatus {
   verifiedAt?: string;
 }
 
-const DEFAULT_CNAME_TARGET = 'custom-sites.letsgetquoted.com';
-const DEFAULT_APEX_IP = '76.76.21.21';
-
-/**
- * Validates domain format (e.g. "austinroofingpro.com" or "estimates.proplumber.com")
- */
 export function isValidDomainFormat(domain: string): boolean {
   if (!domain || domain.length > 253) return false;
-  const clean = domain.trim().toLowerCase();
-  return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/i.test(clean);
+  return /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/i.test(domain.trim());
 }
 
-/**
- * Inspects and returns DNS records and SSL configuration guidance for a contractor's custom domain
- */
+/** Read-only inspection: never fabricate successful DNS or SSL status. */
 export async function checkCustomDomainDnsStatus(
   domain: string,
   accountId: string,
   _supabase?: SupabaseClient,
 ): Promise<CustomDomainStatus> {
   const cleanDomain = domain.trim().toLowerCase();
-  const isSubdomain = cleanDomain.split('.').length > 2;
-
-  const dnsRecords: CustomDomainStatus['dnsRecords'] = isSubdomain
-    ? [
-        {
-          type: 'CNAME',
-          name: cleanDomain.split('.')[0],
-          value: DEFAULT_CNAME_TARGET,
-          status: 'verified',
-        },
-      ]
-    : [
-        {
-          type: 'A',
-          name: '@',
-          value: DEFAULT_APEX_IP,
-          status: 'verified',
-        },
-        {
-          type: 'CNAME',
-          name: 'www',
-          value: DEFAULT_CNAME_TARGET,
-          status: 'verified',
-        },
-      ];
-
+  const result = await verifyDomain(cleanDomain, { provision: false });
+  const recordStatus = result.dnsVerified ? 'verified' : result.records.length ? 'mismatched' : 'missing';
   return {
     domain: cleanDomain,
     accountId,
-    isConfigured: true,
-    sslStatus: 'active',
-    cnameTarget: DEFAULT_CNAME_TARGET,
-    apexRecordIp: DEFAULT_APEX_IP,
-    dnsRecords,
-    verifiedAt: new Date().toISOString(),
+    isConfigured: result.verified,
+    sslStatus: result.sslStatus === 'issued' ? 'active' : result.sslStatus === 'error' ? 'failed' : result.sslStatus,
+    cnameTarget: result.expectedCname,
+    apexRecordIp: result.expectedIp || '',
+    dnsRecords: [
+      result.isApex
+        ? { type: 'A', name: '@', value: result.expectedIp || '', status: recordStatus }
+        : { type: 'CNAME', name: result.subdomain || 'www', value: result.expectedCname, status: recordStatus },
+      ...result.verification.filter((record) => record.type === 'TXT').map((record) => ({
+        type: 'TXT' as const, name: record.domain, value: record.value, status: 'missing' as const,
+      })),
+    ],
+    ...(result.verified ? { verifiedAt: new Date().toISOString() } : {}),
   };
 }
