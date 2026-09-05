@@ -4951,6 +4951,7 @@ h3 {
   color: var(--mute-g260);
   margin: 1.5rem 0 0.55rem;
   padding: 0 0.15rem;
+  line-height: 1.2;
 }
 
 .automation-group:first-child {
@@ -5042,6 +5043,8 @@ h3 {
   align-items: center;
   gap: 0.5rem;
   flex: none;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .automation-switch {
@@ -5061,6 +5064,11 @@ h3 {
 .automation-switch:disabled {
   cursor: progress;
   opacity: 0.65;
+}
+
+.automation-switch[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .automation-switch-track {
@@ -5130,6 +5138,19 @@ h3 {
   font-weight: 700;
   color: var(--bad);
   white-space: nowrap;
+}
+
+.automation-switch-blocked {
+  display: inline-block;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  color: var(--gold-ink);
+  background: rgba(255, 209, 102, 0.12);
+  border: 1px solid var(--cedge-amber-1);
+  padding: 0.28rem 0.6rem;
+  border-radius: 0.45rem;
+  max-width: 22rem;
+  text-align: left;
 }
 
 @media (prefers-reduced-motion: reduce) {

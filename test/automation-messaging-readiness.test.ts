@@ -69,17 +69,19 @@ describe('automation customer-text readiness boundary', () => {
   it('always permits shutdown even while customer texting is unavailable', async () => {
     mocks.requireActiveDedicatedMessagingSender.mockRejectedValue(new Error('unavailable'));
 
-    await expect(toggleAutomationAction('arrival', false)).resolves.toBeUndefined();
+    await expect(toggleAutomationAction('reminders', false)).resolves.toBeUndefined();
     expect(mocks.requireActiveDedicatedMessagingSender).not.toHaveBeenCalled();
-    expect(update).toHaveBeenCalledWith({ arrival_updates_enabled: false });
+    expect(update).toHaveBeenCalledWith({ appointment_reminders_enabled: false });
   });
 
-  it('does not couple non-SMS switches to dedicated-number readiness', async () => {
+  it('does not couple non-SMS and crew-action switches to dedicated-number readiness', async () => {
     mocks.requireActiveDedicatedMessagingSender.mockRejectedValue(new Error('unavailable'));
 
     await expect(toggleAutomationAction('daily-digest', true)).resolves.toBeUndefined();
+    await expect(toggleAutomationAction('arrival', true)).resolves.toBeUndefined();
     expect(mocks.requireActiveDedicatedMessagingSender).not.toHaveBeenCalled();
     expect(update).toHaveBeenCalledWith({ daily_digest_enabled: true });
+    expect(update).toHaveBeenCalledWith({ arrival_updates_enabled: true });
   });
 
   it('does not partially apply the recommended preset before readiness succeeds', async () => {

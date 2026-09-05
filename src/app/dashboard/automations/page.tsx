@@ -97,6 +97,16 @@ export const metadata = { title: 'Automations' };
 
 type AutomationStatus = { label: string; tone: 'on' | 'off' | 'neutral' };
 
+function safeTimeZone(tz: unknown): string {
+  if (typeof tz !== 'string' || !tz.trim()) return 'America/New_York';
+  try {
+    Intl.DateTimeFormat(undefined, { timeZone: tz.trim() });
+    return tz.trim();
+  } catch {
+    return 'America/New_York';
+  }
+}
+
 // One automation in the grouped, collapsible list. Collapsed by default so the
 // page reads as a scannable index (title + one-liner + on/off control); expand
 // to reveal the section's form. The `id` stays on the <details> so deep links
@@ -143,6 +153,9 @@ function AutomationCard({
           <strong>{title}</strong>
           <span className="automation-sub">{subtitle}</span>
         </span>
+        {status ? (
+          <span className={`automation-status ${status.tone}`}>{status.label}</span>
+        ) : null}
         {toggle ? (
           <AutomationSwitch
             label={title}
@@ -153,8 +166,6 @@ function AutomationCard({
             enableBlocked={toggle.enableBlocked}
             blockedReason={toggle.blockedReason}
           />
-        ) : status ? (
-          <span className={`automation-status ${status.tone}`}>{status.label}</span>
         ) : null}
         <svg className="automation-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>
       </summary>
@@ -167,86 +178,85 @@ export default async function AutomationsPage() {
   const { supabase, accountId } = await requireOfficeContext('settings.write');
   const aiVoice = aiVoiceEnabled();
   const admin = createAdminClient();
-  const messagingReadinessPromise = loadDedicatedMessagingReadiness(accountId, admin);
-  const voiceRouteReadinessPromise = aiVoice
-    ? loadVoiceRouteReadiness(admin, accountId)
-    : Promise.resolve(null);
 
-  // READ SEPARATELY AND TOLERANTLY, for the reason the Settings page spells out
-  // beside its own extra read: a `.single()` naming a column or table that does
-  // not exist yet fails the whole query and takes the page down with it. Both of
-  // these land ahead of their migrations, so an unapplied migration must degrade
-  // to "not configured" rather than to a blank Automations tab.
-  const [voiceRead, voiceEntitlement] = aiVoice
-    ? await Promise.all([
-      supabase
-        .from('voice_settings')
-        .select('status, answer_mode, greeting, transfer_number, business_hours')
-        .eq('account_id', accountId)
-        .maybeSingle(),
-      // This uses the internal recurring-capacity ledger as well as the
-      // base-plan flag. `voice_concurrent_calls` by itself is only a capacity
-      // description and is present even for plans that do not include the
-      // product.
-      loadVoiceEntitlement(admin, accountId),
-    ])
-    : [null, null] as const;
+  // Parallelize all independent database and readiness reads in a single round trip.
+  // Each query maintains its defensive tolerance for unapplied migrations/columns,
+  // but running concurrently drops wall-clock latency by ~14 network round trips.
+  const [
+    voiceRead,
+    voiceEntitlement,
+    messagingReadiness,
+    voiceRouteReadiness,
+    { data: account },
+    { data: site },
+    { data: reviewSettings },
+    { data: intakeSettings },
+    ownerAlerts,
+    { data: bookingSettings },
+    { data: quickStopSettings },
+    { data: confirmSettings },
+    settingsHistory,
+    { data: portalSettings },
+    { data: reviewPageSettings },
+    { data: followupRow },
+    { data: reminderSettings },
+    { data: digestSettings },
+    { data: callVerified },
+    { data: selectionSettings },
+    { data: choiceSettingsRow },
+  ] = await Promise.all([
+    aiVoice
+      ? supabase
+          .from('voice_settings')
+          .select('status, answer_mode, greeting, transfer_number, business_hours')
+          .eq('account_id', accountId)
+          .maybeSingle()
+      : Promise.resolve(null),
+    aiVoice ? loadVoiceEntitlement(admin, accountId) : Promise.resolve(null),
+    loadDedicatedMessagingReadiness(accountId, admin),
+    aiVoice ? loadVoiceRouteReadiness(admin, accountId) : Promise.resolve(null),
+    supabase
+      .from('accounts')
+      .select('business_name, timezone, alert_phone, connect_onboarded, call_textback_enabled, call_forward_number, call_tracking_number, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode, workday_start, workday_end, job_buffer_minutes, schedule_day_hours')
+      .eq('id', accountId)
+      .single(),
+    supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
+    supabase.from('accounts').select('auto_review_request').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('estimate_posture, high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone').eq('id', accountId).maybeSingle(),
+    loadOwnerAlerts(accountId),
+    supabase.from('accounts').select('timezone, booking_enabled, booking_weekdays, booking_windows').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select(QUICK_STOP_SETTINGS_COLUMNS).eq('id', accountId).single(),
+    supabase.from('accounts').select('quote_confirmation_email, payment_confirmation_email, review_confirmation_email, reminder_confirmation_email').eq('id', accountId).maybeSingle(),
+    listAccountEvents(supabase, accountId, 8),
+    supabase.from('accounts').select('client_portal_enabled').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('review_feedback_page_enabled').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('quote_followups_enabled, quote_followup_days, quote_followup_hour, quote_followup_channel, quote_followup_skip_weekends').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('appointment_reminders_enabled, appointment_reminder_lead_days, appointment_reminder_hour, timezone').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('daily_digest_enabled').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('call_tracking_verified_at').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('selection_reminders_enabled').eq('id', accountId).maybeSingle(),
+    supabase.from('accounts').select('selection_reminder_offsets, selection_reminder_hour, selection_reminder_template, selection_reminder_grouping').eq('id', accountId).maybeSingle(),
+  ]);
+
   const voiceSettings = voiceRead?.error ? null : (voiceRead?.data ?? null) as Record<string, unknown> | null;
   const voiceSettingsAvailable = Boolean(voiceRead && !voiceRead.error);
   if (voiceRead?.error) console.error('voice settings read failed:', voiceRead.error);
-  const messagingReadiness = await messagingReadinessPromise;
-  const voiceRouteReadiness = await voiceRouteReadinessPromise;
   const customerTextingReady = messagingReadiness.kind === 'ready';
   const customerTextingBlockReason = messagingReadiness.kind === 'unavailable'
     ? 'We could not verify your customer-texting number right now. Try again or contact support.'
     : 'An approved, active dedicated number is required before this automation can text customers.';
-
-  const [{ data: account }, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('business_name, timezone, alert_phone, connect_onboarded, call_textback_enabled, call_forward_number, call_tracking_number, arrival_updates_enabled, arrival_location_policy, arrival_window_minutes, arrival_morning_confirmation, arrival_clock_travel, time_clock_mode, workday_start, workday_end, job_buffer_minutes, schedule_day_hours').eq('id', accountId).single(),
-    // The whole row: the intake preview renders the REAL intake component
-    // against it, so it needs the accent, the template and the rest — a
-    // hand-picked subset would render a preview that isn't what visitors see.
-    supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
-  ]);
 
   const businessName = pickBusinessName(site, account);
   const arrivalSettings = arrivalSettingsFromAccount(account as Record<string, unknown> | null);
   const businessBasics = getSiteContent((site?.content as Record<string, unknown> | null | undefined) ?? null);
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
-  // Read the auto-review toggle separately and defensively: on a DB where the
-  // migration hasn't been applied yet the column is missing, so this degrades
-  // to "off" instead of 500-ing the whole page.
-  const { data: reviewSettings } = await supabase
-    .from('accounts')
-    .select('auto_review_request')
-    .eq('id', accountId)
-    .maybeSingle();
   const autoReviewRequest = Boolean(reviewSettings?.auto_review_request);
-
-  // Smart Intake tuning + lead priority — read defensively so a pre-migration DB
-  // degrades to defaults instead of 500-ing the page.
-  const { data: intakeSettings } = await supabase
-    .from('accounts')
-    .select('estimate_posture, high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone')
-    .eq('id', accountId)
-    .maybeSingle();
   const estimatePosture = normalizeEstimatePosture(intakeSettings?.estimate_posture);
   const highValueLeadAmount = intakeSettings?.high_value_lead_amount ? Number(intakeSettings.high_value_lead_amount) : null;
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
-  /**
-   * WHAT THIS PAGE IS ALLOWED TO SAY ABOUT TEXTING, which is where it stands
-   * and never a form.
-   *
-   * Read through ownerAlertChip so this and the strip on Messages cannot drift
-   * into two opinions about one account. It also means "Ready" carries the same
-   * narrow meaning in both places — a number on file AND no STOP against it,
-   * rather than merely a ticked checkbox.
-   *
-   * `high_value_sms_enabled` and `alert_phone` are still selected above because
-   * loadOwnerAlerts reads them itself; nothing on this page renders them.
-   */
-  const alertChip = ownerAlertChip(await loadOwnerAlerts(accountId));
+
+  const alertChip = ownerAlertChip(ownerAlerts);
   const alertReadiness =
     alertChip.label === 'Ready'
       ? 'Ready — your mobile is on file and confirmed.'
@@ -262,22 +272,10 @@ export default async function AutomationsPage() {
   });
   const reviewFeedbackUrl = `${appOrigin}/review/…`;
 
-  // Online-booking availability — read defensively so a pre-migration DB degrades
-  // to the old-behavior defaults instead of 500-ing the page.
-  const { data: bookingSettings } = await supabase
-    .from('accounts')
-    .select('timezone, booking_enabled, booking_weekdays, booking_windows')
-    .eq('id', accountId)
-    .maybeSingle();
   const booking = bookingAvailabilityFromAccount(bookingSettings);
   const bookingActive = booking.weekdays.length > 0;
   const bookingEnabled = booking.enabled;
 
-  const { data: quickStopSettings } = await supabase
-    .from('accounts')
-    .select(QUICK_STOP_SETTINGS_COLUMNS)
-    .eq('id', accountId)
-    .single();
   const quickStopEnabled = Boolean((quickStopSettings as { extra_stop_enabled?: boolean } | null)?.extra_stop_enabled);
 
   // Smart Intake isn't "always on" — enabling the classic quote form in the website
@@ -285,13 +283,6 @@ export default async function AutomationsPage() {
   // inverse, exactly as getSiteContent derives it.
   const smartIntakeOn = businessBasics.estimateRanges.enabled;
 
-  // Defensive read, like the other automation flags: a pre-migration row has no
-  // column, and the confirmation defaults to on.
-  const { data: confirmSettings } = await supabase
-    .from('accounts')
-    .select('quote_confirmation_email, payment_confirmation_email, review_confirmation_email, reminder_confirmation_email')
-    .eq('id', accountId)
-    .maybeSingle();
   const confirmRow = (confirmSettings ?? {}) as Record<string, boolean | undefined>;
   // Fall back to each column's own default, matching CONFIRMATION_DEFAULTS.
   const confirmOn = (column: string, fallback: boolean) =>
@@ -301,15 +292,6 @@ export default async function AutomationsPage() {
   const reviewConfirmationOn = confirmOn('review_confirmation_email', true);
   const reminderConfirmationOn = confirmOn('reminder_confirmation_email', false);
 
-  // Settings history. Empty (and harmless) until the account_events migration is
-  // applied — listAccountEvents swallows a missing table rather than 500-ing.
-  const settingsHistory = await listAccountEvents(supabase, accountId, 8);
-
-  const { data: portalSettings } = await supabase
-    .from('accounts')
-    .select('client_portal_enabled')
-    .eq('id', accountId)
-    .maybeSingle();
   const clientPortalEnabled = Boolean(portalSettings?.client_portal_enabled);
   // The address a customer actually uses, on the contractor's OWN host — their
   // custom domain if it's verified, otherwise their subdomain. Null until the
@@ -318,18 +300,8 @@ export default async function AutomationsPage() {
   const portalUrl = portalHostOrigin ? `${portalHostOrigin}/portal` : null;
   const portalNav = businessBasics.clientPortal;
 
-  const { data: reviewPageSettings } = await supabase
-    .from('accounts')
-    .select('review_feedback_page_enabled')
-    .eq('id', accountId)
-    .maybeSingle();
   const reviewFeedbackPageEnabled = Boolean(reviewPageSettings?.review_feedback_page_enabled);
 
-  const { data: followupRow } = await supabase
-    .from('accounts')
-    .select('quote_followups_enabled, quote_followup_days, quote_followup_hour, quote_followup_channel, quote_followup_skip_weekends')
-    .eq('id', accountId)
-    .maybeSingle();
   const quoteFollowupsEnabled = Boolean(followupRow?.quote_followups_enabled);
   // Normalised on the way in, so a database built before the schedule migration —
   // where every column reads as undefined — renders the cadence that used to be
@@ -339,20 +311,15 @@ export default async function AutomationsPage() {
   // flipped, because "turn it on and find out" is a bad deal when finding out
   // means texting real people. Only worth the query while it is off — once it is
   // on, the answer is visible in the job feed.
-  const eligibleQuotes = quoteFollowupsEnabled ? 0 : await countEligibleQuotes(supabase, accountId);
+  const eligibleQuotes = quoteFollowupsEnabled ? 0 : await countEligibleQuotes(supabase, accountId, followupSettings);
 
-  const { data: reminderSettings } = await supabase
-    .from('accounts')
-    .select('appointment_reminders_enabled, appointment_reminder_lead_days, appointment_reminder_hour, timezone')
-    .eq('id', accountId)
-    .maybeSingle();
   const appointmentRemindersEnabled = Boolean(reminderSettings?.appointment_reminders_enabled);
   // Normalised on the way in, so a database built before the timing migration —
   // where both columns read as undefined — renders the old behavior's defaults
   // rather than "0 days before at 12:00 AM".
   const reminderLeadDays = normalizeReminderLeadDays(reminderSettings?.appointment_reminder_lead_days);
   const reminderHour = normalizeReminderHour(reminderSettings?.appointment_reminder_hour);
-  const accountTimeZone = (reminderSettings?.timezone as string) || 'America/New_York';
+  const accountTimeZone = safeTimeZone(reminderSettings?.timezone || account?.timezone);
   // One clock for the card: the abbreviation is DST-dependent, so it has to be
   // derived from a moment rather than stored.
   const reminderNow = new Date();
@@ -363,11 +330,6 @@ export default async function AutomationsPage() {
   // lib/quote-followups pure and free of Intl.
   const followupTiming = followupTimingLabel(followupSettings.days, followupSettings.hour, accountTimeZoneLabel);
 
-  const { data: digestSettings } = await supabase
-    .from('accounts')
-    .select('daily_digest_enabled')
-    .eq('id', accountId)
-    .maybeSingle();
   const dailyDigestEnabled = Boolean(digestSettings?.daily_digest_enabled);
   const allEssentialsOn = autoReviewRequest && quoteFollowupsEnabled && appointmentRemindersEnabled && dailyDigestEnabled;
 
@@ -379,13 +341,6 @@ export default async function AutomationsPage() {
     || '';
   const callForwardNumber = displayPhone(rawForward);
   const callTrackingNumber = displayPhone(String((account as { call_tracking_number?: string } | null)?.call_tracking_number ?? ''));
-  // Defensive, like the other automation reads: pre-migration the column is
-  // absent, and the card degrades to "waiting for the first call".
-  const { data: callVerified } = await supabase
-    .from('accounts')
-    .select('call_tracking_verified_at')
-    .eq('id', accountId)
-    .maybeSingle();
   const callTrackingVerifiedAt = (callVerified?.call_tracking_verified_at as string | null) ?? null;
   const voiceConfiguredStatus = (voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off';
   const voiceEntitlementAvailable = voiceEntitlement?.available === true;
@@ -402,25 +357,7 @@ export default async function AutomationsPage() {
     && (voiceEntitlement.concurrentCalls ?? 0) > 0
     && voiceRouteReady;
 
-  // Defensive read: pre-migration the column is absent, and the reminders
-  // default on for the same reason the sweep does — a needed-by date the
-  // contractor typed IS the opt-in.
-  //
-  // Two reads, because the settings columns arrived in a later migration than
-  // the switch did: a database with the switch but not the schedule must still
-  // render the card rather than 500. The normaliser turns "column absent" into
-  // the defaults, which are the behavior that shipped.
-  const { data: selectionSettings } = await supabase
-    .from('accounts')
-    .select('selection_reminders_enabled')
-    .eq('id', accountId)
-    .maybeSingle();
   const selectionRemindersEnabled = selectionSettings?.selection_reminders_enabled !== false;
-  const { data: choiceSettingsRow } = await supabase
-    .from('accounts')
-    .select('selection_reminder_offsets, selection_reminder_hour, selection_reminder_template, selection_reminder_grouping')
-    .eq('id', accountId)
-    .maybeSingle();
   const choiceReminders = choiceReminderSettingsFromAccount({
     ...(choiceSettingsRow ?? {}),
     selection_reminders_enabled: selectionRemindersEnabled,
@@ -462,7 +399,7 @@ export default async function AutomationsPage() {
             <SaveButton>Turn on recommended</SaveButton>
           </form>
         ) : null}
-        <p className="automation-group">Booking &amp; intake</p>
+        <h2 className="automation-group">Booking &amp; intake</h2>
         <AutomationCard
           id="intake-ai"
           group="booking-intake"
@@ -657,7 +594,7 @@ export default async function AutomationsPage() {
           />
         </AutomationCard>
 
-        <p className="automation-group">Customer follow-through</p>
+        <h2 className="automation-group">Customer follow-through</h2>
         <AutomationCard group="follow-through" id="reviews" title="Review requests" subtitle="Auto-ask after a completed job" toggle={{ on: autoReviewRequest, action: toggleAutomationAction.bind(null, 'reviews'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}>
           <ReviewRequestSection
             enabled={autoReviewRequest}
@@ -1003,7 +940,7 @@ export default async function AutomationsPage() {
           id="arrival"
           title="Arrival updates"
           subtitle="Let customers know when you&rsquo;re on the way"
-          toggle={{ on: arrivalSettings.enabled, action: toggleAutomationAction.bind(null, 'arrival'), enableBlocked: !customerTextingReady, blockedReason: customerTextingBlockReason, offLabel: customerTextingReady ? 'Off' : 'Setup required' }}
+          toggle={{ on: arrivalSettings.enabled, action: toggleAutomationAction.bind(null, 'arrival') }}
           status={{ label: `${arrivalSettings.windowMinutes}-min window`, tone: 'neutral' }}
         >
           <p className="workspace-details-copy" style={{ marginTop: 0, marginBottom: '1rem' }}>
@@ -1076,7 +1013,7 @@ export default async function AutomationsPage() {
           />
         </AutomationCard>
 
-        <p className="automation-group">Confirmations to you</p>
+        <h2 className="automation-group">Confirmations to you</h2>
         <AutomationCard
           id="quote-confirmation"
           group="confirmations"
@@ -1139,7 +1076,7 @@ export default async function AutomationsPage() {
           </p>
         </AutomationCard>
 
-        <p className="automation-group">Your briefing</p>
+        <h2 className="automation-group">Your briefing</h2>
         <AutomationCard group="briefing" id="daily-digest" title="Daily digest" subtitle="Your business each morning" toggle={{ on: dailyDigestEnabled, action: toggleAutomationAction.bind(null, 'daily-digest') }}>
           {/* No checkbox. The card's own toggle already IS this setting
               — both wrote accounts.daily_digest_enabled — and two
@@ -1181,16 +1118,16 @@ export default async function AutomationsPage() {
             Kept as a `<details>`, closed. It is long by nature, and the point
             of moving it was to stop a long thing sitting open under a short
             one. */}
-        <p className="automation-group">In your customers&rsquo; words</p>
+        <h2 className="automation-group">In your customers&rsquo; words</h2>
         <OutgoingTextCatalogue />
 
         {settingsHistory.length > 0 ? (
           <>
-            <p className="automation-group">Recent changes</p>
+            <h2 className="automation-group">Recent changes</h2>
             <section className="panel workspace-section-card" id="settings-history">
               <div className="section-heading workspace-section-heading compact-heading">
                 <p className="eyebrow">Settings history</p>
-                <h2>Who changed what</h2>
+                <h3 className="audit-table-title">Who changed what</h3>
               </div>
               <p className="workspace-details-copy" style={{ marginTop: '0.5rem' }}>
                 Switching an automation off can quietly stop work coming in, so every flip is recorded here.
@@ -1205,6 +1142,7 @@ export default async function AutomationsPage() {
                         day: 'numeric',
                         hour: 'numeric',
                         minute: '2-digit',
+                        timeZone: accountTimeZone,
                       })}
                       {event.actor_email ? ` · ${event.actor_email}` : ''}
                     </span>

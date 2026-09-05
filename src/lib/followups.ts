@@ -59,13 +59,19 @@ const FOLLOWUP_SETTINGS_COLUMNS =
 export async function countEligibleQuotes(
   client: SupabaseClient,
   accountId: string,
+  knownSettings?: FollowupSettings,
 ): Promise<number> {
-  const { data: accountRow } = await client
-    .from('accounts')
-    .select(FOLLOWUP_SETTINGS_COLUMNS)
-    .eq('id', accountId)
-    .maybeSingle();
-  const settings = followupSettingsFromAccount(accountRow as Record<string, unknown> | null);
+  const settings =
+    knownSettings ??
+    followupSettingsFromAccount(
+      ((
+        await client
+          .from('accounts')
+          .select(FOLLOWUP_SETTINGS_COLUMNS)
+          .eq('id', accountId)
+          .maybeSingle()
+      ).data) as Record<string, unknown> | null,
+    );
 
   const now = Date.now();
   const nowIso = new Date(now).toISOString();

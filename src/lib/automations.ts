@@ -35,17 +35,17 @@ export type AutomationKey = keyof typeof AUTOMATION_COLUMNS;
  * Keep this policy shared by the page and the Server Action so a crafted action
  * request cannot bypass the disabled control.
  *
- * Online Booking and Quick Stop are intentionally absent: their switches expose
- * useful intake/marketplace surfaces before a later, explicit owner decision to
- * send. Those individual sends still pass through the durable sender-readiness
- * boundary.
+ * Online Booking, Quick Stop, and Arrival Updates are intentionally absent:
+ * their switches expose useful intake/marketplace/field surfaces before a later,
+ * explicit crew or owner decision to send (e.g. crew tapping "I'm on my way").
+ * Those individual sends still pass through the durable sender-readiness
+ * boundary, without trapping the master switch in a one-way lockout.
  */
 export const DEDICATED_MESSAGING_AUTOMATION_KEYS = [
   'missed-call',
   'reviews',
   'followups',
   'reminders',
-  'arrival',
   'selections',
 ] as const satisfies readonly AutomationKey[];
 

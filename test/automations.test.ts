@@ -55,7 +55,7 @@ describe('automation toggle map', () => {
 
   it('identifies every switch that can originate customer SMS without a later owner send', () => {
     expect(DEDICATED_MESSAGING_AUTOMATION_KEYS).toEqual([
-      'missed-call', 'reviews', 'followups', 'reminders', 'arrival', 'selections',
+      'missed-call', 'reviews', 'followups', 'reminders', 'selections',
     ]);
     for (const key of DEDICATED_MESSAGING_AUTOMATION_KEYS) {
       expect(automationRequiresDedicatedMessaging(key)).toBe(true);
@@ -63,6 +63,7 @@ describe('automation toggle map', () => {
     expect(automationRequiresDedicatedMessaging('booking')).toBe(false);
     expect(automationRequiresDedicatedMessaging('extra-stop')).toBe(false);
     expect(automationRequiresDedicatedMessaging('daily-digest')).toBe(false);
+    expect(automationRequiresDedicatedMessaging('arrival')).toBe(false);
   });
 });
 

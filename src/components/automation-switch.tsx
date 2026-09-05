@@ -38,6 +38,7 @@ export default function AutomationSwitch({
   // drops its pending flag at the first await, so the switch would un-disable
   // itself mid-save.
   const [saving, setSaving] = useState(false);
+  const [showBlockedNotice, setShowBlockedNotice] = useState(false);
 
   // The server is the source of truth: once revalidation lands a new `on`, take it.
   useEffect(() => {
@@ -50,6 +51,12 @@ export default function AutomationSwitch({
     ? `${label} — off. ${blockedReason ?? 'Setup is required before this can be turned on.'}`
     : `${label} — currently ${checked ? 'on' : 'off'}`;
 
+  useEffect(() => {
+    if (!activationBlocked) {
+      setShowBlockedNotice(false);
+    }
+  }, [activationBlocked]);
+
   return (
     <span className="automation-switch-wrap">
       <button
@@ -57,13 +64,19 @@ export default function AutomationSwitch({
         role="switch"
         aria-checked={checked}
         aria-label={accessibleState}
+        aria-disabled={activationBlocked ? true : undefined}
         title={activationBlocked ? blockedReason : undefined}
-        className={`automation-switch ${checked ? 'on' : 'off'}`}
-        disabled={saving || activationBlocked}
+        className={`automation-switch ${checked ? 'on' : 'off'}${activationBlocked ? ' is-blocked' : ''}`}
+        disabled={saving}
         onClick={async (event) => {
           // Keep the click off the <summary> so the card doesn't expand.
           event.preventDefault();
           event.stopPropagation();
+          if (activationBlocked) {
+            setShowBlockedNotice((prev) => !prev);
+            return;
+          }
+          setShowBlockedNotice(false);
           const next = !checked;
           setOptimistic(next);
           setFailed(false);
@@ -84,6 +97,11 @@ export default function AutomationSwitch({
         <span className="automation-switch-text">{checked ? onLabel : offLabel}</span>
       </button>
       {failed ? <span className="automation-switch-error">Didn&apos;t save</span> : null}
+      {showBlockedNotice ? (
+        <span className="automation-switch-blocked" role="status">
+          {blockedReason ?? 'Setup is required before this can be turned on.'}
+        </span>
+      ) : null}
     </span>
   );
 }
