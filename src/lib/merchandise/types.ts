@@ -29,6 +29,16 @@ export type DecorationMethod =
   | 'foil_stamp'
   | 'offset_cmyk';
 
+export type BusinessCardTemplateId =
+  | 'executive'
+  | 'modern_split'
+  | 'industrial'
+  | 'blueprint'
+  | 'qr_first'
+  | 'verified_pro'
+  | 'double_sided'
+  | 'traditional';
+
 export type ProductColorOption = {
   id: string;
   name: string;
@@ -153,6 +163,7 @@ export type MerchandiseOrderItem = {
     sizeBreakdown?: Record<string, number>;
     finish?: string;
     deviceModel?: string;
+    cardTemplateId?: BusinessCardTemplateId;
   };
 };
 

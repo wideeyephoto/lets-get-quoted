@@ -9,6 +9,7 @@ import {
 import { createPrintfulOrder } from '@/lib/merchandise/printful-client';
 import { generateOrderNumber, saveMerchandiseOrder } from '@/lib/merchandise/orders';
 import { handleMerchandiseWebhookEvent } from '@/lib/merchandise/stripe-webhook';
+import { BUSINESS_CARD_TEMPLATES, getCardTemplateById } from '@/lib/merchandise/card-templates';
 import type { MerchandiseOrderItem, ShippingAddress } from '@/lib/merchandise/types';
 
 // Mock dependencies for Server Actions & Webhooks
@@ -1094,6 +1095,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
           p.colorHex === item.colorHex &&
           p.customizationDetails.finish === item.customizationDetails.finish &&
           p.customizationDetails.deviceModel === item.customizationDetails.deviceModel &&
+          p.customizationDetails.cardTemplateId === item.customizationDetails.cardTemplateId &&
           p.customizationDetails.businessName === item.customizationDetails.businessName &&
           JSON.stringify(p.customizationDetails.sizeBreakdown) ===
             JSON.stringify(item.customizationDetails.sizeBreakdown)
@@ -1134,6 +1136,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         customizationDetails: {
           businessName: 'Apex Plumbing',
           finish: 'Velvet Matte + Raised Gold Foil',
+          cardTemplateId: 'executive',
           decorationMethod: 'offset_cmyk',
           placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
         },
@@ -1161,6 +1164,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         customizationDetails: {
           businessName: 'Apex Plumbing',
           finish: 'Velvet Matte',
+          cardTemplateId: 'executive',
           decorationMethod: 'offset_cmyk',
           placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
         },
@@ -1177,6 +1181,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         customizationDetails: {
           businessName: 'Apex Plumbing',
           finish: 'Velvet Matte',
+          cardTemplateId: 'executive',
           decorationMethod: 'offset_cmyk',
           placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
         },
@@ -1188,6 +1193,130 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(result.length).toBe(2);
       expect(result[0].colorHex).toBe('#1d4ed8');
       expect(result[1].colorHex).toBe('#0f172a');
+    });
+
+    it('keeps cards with different cardTemplateId as distinct items in cart', () => {
+      const executiveCard: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 250,
+        unitPrice: 0.18,
+        totalPrice: 45.0,
+        colorName: 'Classic Slate',
+        colorHex: '#1e293b',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          cardTemplateId: 'executive',
+          decorationMethod: 'offset_cmyk',
+          placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
+        },
+      };
+
+      const blueprintCard: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 250,
+        unitPrice: 0.18,
+        totalPrice: 45.0,
+        colorName: 'Classic Slate',
+        colorHex: '#1e293b',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          cardTemplateId: 'blueprint',
+          decorationMethod: 'offset_cmyk',
+          placement: 'Front & Back Velvet Offset Imprint with Dynamic QR',
+        },
+      };
+
+      const initialCart = [executiveCard];
+      const result = mergeCartItems(initialCart, blueprintCard);
+
+      expect(result.length).toBe(2);
+      expect(result[0].customizationDetails.cardTemplateId).toBe('executive');
+      expect(result[1].customizationDetails.cardTemplateId).toBe('blueprint');
+    });
+  });
+
+  describe('8 Curated Trade Business Card Templates Registry', () => {
+    it('defines exactly 8 commercial-ready business card templates', () => {
+      expect(BUSINESS_CARD_TEMPLATES).toHaveLength(8);
+    });
+
+    it('contains all 8 required trade styles with unique IDs and rich metadata', () => {
+      const expectedIds = [
+        'executive',
+        'modern_split',
+        'industrial',
+        'blueprint',
+        'qr_first',
+        'verified_pro',
+        'double_sided',
+        'traditional',
+      ];
+
+      const templateIds = BUSINESS_CARD_TEMPLATES.map((t) => t.id);
+      expect(templateIds).toEqual(expectedIds);
+
+      // Verify unique IDs
+      const uniqueIds = new Set(templateIds);
+      expect(uniqueIds.size).toBe(8);
+
+      // Verify metadata schema
+      for (const tmpl of BUSINESS_CARD_TEMPLATES) {
+        expect(tmpl.name).toBeTruthy();
+        expect(tmpl.subtitle).toBeTruthy();
+        expect(tmpl.tag).toBeTruthy();
+        expect(tmpl.tradeFit).toBeTruthy();
+        expect(tmpl.description).toBeTruthy();
+        expect(tmpl.frontFeature).toBeTruthy();
+        expect(tmpl.backFeature).toBeTruthy();
+      }
+    });
+
+    it('retrieves templates by ID accurately with fallback to executive default', () => {
+      const blueprint = getCardTemplateById('blueprint');
+      expect(blueprint.id).toBe('blueprint');
+      expect(blueprint.name).toBe('The Blueprint Technical');
+      expect(blueprint.tag).toBe('Technical / Architectural');
+
+      const industrial = getCardTemplateById('industrial');
+      expect(industrial.id).toBe('industrial');
+      expect(industrial.name).toBe('The Industrial Heavy-Duty');
+
+      // Fallback on unknown or undefined
+      const unknownFallback = getCardTemplateById('non_existent' as any);
+      expect(unknownFallback.id).toBe('executive');
+
+      const nullFallback = getCardTemplateById(null);
+      expect(nullFallback.id).toBe('executive');
+    });
+
+    it('formats checkout detailParts with template information for print line items', () => {
+      const item: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 250,
+        unitPrice: 0.18,
+        totalPrice: 45.0,
+        colorName: 'Classic Slate',
+        colorHex: '#1e293b',
+        customizationDetails: {
+          businessName: 'Vanguard Builders LLC',
+          cardTemplateId: 'industrial',
+          finish: 'Velvet Matte',
+          decorationMethod: 'offset_cmyk',
+        },
+      };
+
+      const detailParts = [
+        `Color: ${item.colorName}`,
+        item.customizationDetails?.cardTemplateId ? `Template: ${item.customizationDetails.cardTemplateId}` : '',
+        item.customizationDetails?.finish ? `Finish: ${item.customizationDetails.finish}` : '',
+      ]
+        .filter(Boolean)
+        .join(' | ');
+
+      expect(detailParts).toBe('Color: Classic Slate | Template: industrial | Finish: Velvet Matte');
     });
   });
 });

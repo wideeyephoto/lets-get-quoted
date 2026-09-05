@@ -31,7 +31,12 @@ import type {
   ShippingAddress,
   MerchandiseStudioInitialData,
   MerchandiseOrder,
+  BusinessCardTemplateId,
 } from '@/lib/merchandise/types';
+import {
+  BUSINESS_CARD_TEMPLATES,
+  getCardTemplateById,
+} from '@/lib/merchandise/card-templates';
 import {
   createMerchandiseCheckoutAction,
   reorderMerchandiseAction,
@@ -60,6 +65,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Customization state
   const [selectedColorId, setSelectedColorId] = useState<string>(() => currentProduct.availableColors[0].id);
+  const [selectedCardTemplate, setSelectedCardTemplate] = useState<BusinessCardTemplateId>('executive');
   const [selectedTierQty, setSelectedTierQty] = useState<number>(() => currentProduct.pricingTiers[0].quantity);
   const [selectedFinish, setSelectedFinish] = useState<string>(() => currentProduct.options?.finishes?.[0] || '');
   const [selectedModel, setSelectedModel] = useState<string>(
@@ -131,6 +137,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         if (typeof parsed.license === 'string') setLicense(parsed.license);
         if (typeof parsed.accentColor === 'string') setAccentColor(parsed.accentColor);
         if (typeof parsed.secondaryColor === 'string') setSecondaryColor(parsed.secondaryColor);
+        if (typeof parsed.selectedCardTemplate === 'string') {
+          setSelectedCardTemplate(parsed.selectedCardTemplate as BusinessCardTemplateId);
+        }
       }
     } catch {
       // Ignore storage errors
@@ -151,6 +160,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             license,
             accentColor,
             secondaryColor,
+            selectedCardTemplate,
           })
         );
       } catch {
@@ -159,7 +169,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [draftStorageKey, businessName, tagline, phone, website, license, accentColor, secondaryColor]);
+  }, [draftStorageKey, businessName, tagline, phone, website, license, accentColor, secondaryColor, selectedCardTemplate]);
 
   function handleResetToDefaults() {
     setBusinessName(initialData.companyName);
@@ -169,6 +179,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setLicense(initialData.license);
     setAccentColor(initialData.accentColor);
     setSecondaryColor(initialData.secondaryColor);
+    setSelectedCardTemplate('executive');
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(draftStorageKey);
@@ -425,6 +436,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         sizeBreakdown: currentProduct.options?.sizes ? sizeQuantities : undefined,
         finish: selectedFinish || undefined,
         deviceModel: currentProduct.id === 'phone_cases' ? selectedModel : undefined,
+        cardTemplateId: currentProduct.id === 'biz_cards' ? selectedCardTemplate : undefined,
       },
     };
   }
@@ -437,6 +449,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     currentProduct,
     activeColor,
     activeTier,
+    selectedCardTemplate,
     businessName,
     tagline,
     phone,
@@ -468,13 +481,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     const item = getCurrentOrderItem();
 
     setCart((prev) => {
-      // Check if identical item already exists (same product, color, finish, model, sizes, name)
+      // Check if identical item already exists (same product, color, finish, model, sizes, name, template)
       const matchIndex = prev.findIndex(
         (p) =>
           p.productId === item.productId &&
           p.colorHex === item.colorHex &&
           p.customizationDetails.finish === item.customizationDetails.finish &&
           p.customizationDetails.deviceModel === item.customizationDetails.deviceModel &&
+          p.customizationDetails.cardTemplateId === item.customizationDetails.cardTemplateId &&
           p.customizationDetails.businessName === item.customizationDetails.businessName &&
           JSON.stringify(p.customizationDetails.sizeBreakdown) ===
             JSON.stringify(item.customizationDetails.sizeBreakdown)
@@ -717,11 +731,19 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       ctx.fillText(`Run Quantity: ${activeTier.quantity.toLocaleString()} units`, 60, 475);
       ctx.fillText(`Imprint Method: ${currentProduct.decorationLabel}`, 60, 505);
       ctx.fillText(`Placement: ${getDynamicPlacement(currentProduct.id)}`, 60, 535);
-      if (selectedFinish) {
-        ctx.fillText(`Finish / Coating: ${selectedFinish}`, 60, 565);
+      let specY = 565;
+      if (currentProduct.id === 'biz_cards') {
+        const tmpl = getCardTemplateById(selectedCardTemplate);
+        ctx.fillText(`Design Template: ${tmpl.name} (${tmpl.subtitle})`, 60, specY);
+        specY += 30;
       }
-      ctx.fillText(`QR Routing: ${includeQrCode ? 'Enabled (Dynamic)' : 'Disabled'}`, 60, 595);
-      ctx.fillText(`Estimated Turnaround: ${currentProduct.turnaroundEstimate}`, 60, 625);
+      if (selectedFinish) {
+        ctx.fillText(`Finish / Coating: ${selectedFinish}`, 60, specY);
+        specY += 30;
+      }
+      ctx.fillText(`QR Routing: ${includeQrCode ? 'Enabled (Dynamic)' : 'Disabled'}`, 60, specY);
+      specY += 30;
+      ctx.fillText(`Estimated Turnaround: ${currentProduct.turnaroundEstimate}`, 60, specY);
 
       // Right Canvas preview zone: Real Embedded 3D Canvas Render
       ctx.fillStyle = '#0b0f19';
@@ -1749,6 +1771,114 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                   />
                 </div>
               )}
+
+              {/* 8 Curated Business Card Templates Grid */}
+              {currentProduct.id === 'biz_cards' && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'baseline',
+                      marginBottom: '0.45rem',
+                    }}
+                  >
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '0.72rem',
+                        fontWeight: 800,
+                        color: 'var(--gold-ink)',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                      }}
+                    >
+                      Card Design Style (8 Curated Styles)
+                    </label>
+                    <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
+                      {getCardTemplateById(selectedCardTemplate).name}
+                    </span>
+                  </div>
+                  <div
+                    role="radiogroup"
+                    aria-label="Business card templates"
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(2, 1fr)',
+                      gap: '0.45rem',
+                    }}
+                  >
+                    {BUSINESS_CARD_TEMPLATES.map((tmpl) => {
+                      const isSelected = selectedCardTemplate === tmpl.id;
+                      return (
+                        <button
+                          key={tmpl.id}
+                          type="button"
+                          role="radio"
+                          aria-checked={isSelected}
+                          onClick={() => setSelectedCardTemplate(tmpl.id)}
+                          className="focus-ring"
+                          style={{
+                            padding: '0.55rem 0.6rem',
+                            borderRadius: '8px',
+                            border: isSelected
+                              ? '1.5px solid var(--accent, #ff7a21)'
+                              : '1px solid rgba(var(--tint), 0.14)',
+                            background: isSelected
+                              ? 'rgba(255, 122, 33, 0.12)'
+                              : 'rgba(var(--tint), 0.035)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                            transition: 'all 0.15s ease',
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            <strong
+                              style={{
+                                fontSize: '0.72rem',
+                                color: isSelected ? 'var(--accent)' : 'var(--text)',
+                                whiteSpace: 'nowrap',
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                              }}
+                            >
+                              {tmpl.name}
+                            </strong>
+                            {isSelected && <span style={{ fontSize: '0.68rem', color: 'var(--accent)', flexShrink: 0 }}>●</span>}
+                          </div>
+                          <span
+                            style={{
+                              fontSize: '0.62rem',
+                              color: 'var(--muted)',
+                              lineHeight: 1.25,
+                              whiteSpace: 'nowrap',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                            }}
+                          >
+                            {tmpl.subtitle}
+                          </span>
+                          <span
+                            style={{
+                              fontSize: '0.56rem',
+                              color: '#60a5fa',
+                              marginTop: '2px',
+                              fontWeight: 700,
+                              textTransform: 'uppercase',
+                              letterSpacing: '0.04em',
+                            }}
+                          >
+                            {tmpl.tag}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -2132,6 +2262,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             secondaryColor={secondaryColor}
             renderBranding={renderMockupBranding}
             logoSrc={activeLogoSrc}
+            cardTemplateId={selectedCardTemplate}
+            onSelectCardTemplate={setSelectedCardTemplate}
             onExportReady={(fn) => {
               canvasProofExportRef.current = fn;
             }}

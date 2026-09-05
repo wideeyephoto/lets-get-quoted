@@ -266,6 +266,7 @@ export async function createMerchandiseCheckoutAction(params: {
         const logoUrl = item.customizationDetails?.logoUrl;
         const detailParts = [
           `Color: ${item.colorName}`,
+          item.customizationDetails?.cardTemplateId ? `Template: ${item.customizationDetails.cardTemplateId}` : '',
           item.customizationDetails?.finish ? `Finish: ${item.customizationDetails.finish}` : '',
           item.customizationDetails?.deviceModel ? `Model: ${item.customizationDetails.deviceModel}` : '',
           item.customizationDetails?.sizeBreakdown

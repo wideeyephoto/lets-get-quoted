@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useId } from 'react';
-import type { MerchandiseProduct, MockupViewAngle } from '@/lib/merchandise/types';
+import type { MerchandiseProduct, MockupViewAngle, BusinessCardTemplateId } from '@/lib/merchandise/types';
+import { BUSINESS_CARD_TEMPLATES } from '@/lib/merchandise/card-templates';
+import BusinessCardMockup from './BusinessCardMockup';
 import ShirtSilhouetteMockup from './ShirtSilhouetteMockup';
 import Html5ProductCanvasCaster from './Html5ProductCanvasCaster';
 import { getProductStudioPhoto } from '@/lib/merchandise/mockup-assets';
@@ -27,6 +29,8 @@ interface Props {
   renderBranding: (mode?: 'color' | 'dark' | 'white', scale?: number) => React.ReactNode;
   logoSrc?: string;
   onExportReady?: (exportFn: () => Promise<string>) => void;
+  cardTemplateId?: BusinessCardTemplateId;
+  onSelectCardTemplate?: (templateId: BusinessCardTemplateId) => void;
 }
 
 export default function Product3DMockupStage({
@@ -50,6 +54,8 @@ export default function Product3DMockupStage({
   renderBranding,
   logoSrc = '',
   onExportReady,
+  cardTemplateId = 'executive',
+  onSelectCardTemplate,
 }: Props) {
   const stageRef = useRef<HTMLDivElement>(null);
   const [tilt, setTilt] = useState<{ rotX: number; rotY: number; glareX: number; glareY: number }>({
@@ -298,6 +304,70 @@ export default function Product3DMockupStage({
         </div>
       </div>
 
+      {/* Quick Template Switcher Bar for Business Cards */}
+      {product.id === 'biz_cards' && (
+        <div
+          role="region"
+          aria-label="Card design templates"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.6rem',
+            overflowX: 'auto',
+            padding: '8px 10px',
+            marginBottom: '0.85rem',
+            background: 'rgba(11, 15, 23, 0.85)',
+            borderRadius: '10px',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            backdropFilter: 'blur(12px)',
+          }}
+        >
+          <span
+            style={{
+              fontSize: '0.68rem',
+              fontWeight: 900,
+              color: 'var(--gold-ink, #f59e0b)',
+              letterSpacing: '0.08em',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+            }}
+          >
+            <span>📇</span> TEMPLATE:
+          </span>
+          <div style={{ display: 'flex', gap: '0.4rem', flexShrink: 0 }}>
+            {BUSINESS_CARD_TEMPLATES.map((tmpl) => {
+              const isSelected = (cardTemplateId || 'executive') === tmpl.id;
+              return (
+                <button
+                  key={tmpl.id}
+                  type="button"
+                  onClick={() => onSelectCardTemplate?.(tmpl.id)}
+                  aria-pressed={isSelected}
+                  title={`${tmpl.name} • ${tmpl.tradeFit}`}
+                  className="focus-ring"
+                  style={{
+                    padding: '4px 10px',
+                    borderRadius: '6px',
+                    border: isSelected ? '1px solid var(--accent, #ff7a21)' : '1px solid rgba(255, 255, 255, 0.08)',
+                    background: isSelected ? 'var(--accent, #ff7a21)' : 'rgba(255, 255, 255, 0.04)',
+                    color: isSelected ? '#ffffff' : 'var(--muted, #94a3b8)',
+                    fontSize: '0.72rem',
+                    fontWeight: isSelected ? 800 : 600,
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  {tmpl.name.replace('The ', '')}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* 2. Interactive 3D Canvas Stage */}
       <div
         ref={stageRef}
@@ -391,251 +461,44 @@ export default function Product3DMockupStage({
           {/* 1. BUSINESS CARDS MOCKUP */}
           {/* ========================================================================= */}
           {product.id === 'biz_cards' && (() => {
-            const renderBleedGuides = () => (
-              <div
-                style={{
-                  position: 'absolute',
-                  inset: 0,
-                  pointerEvents: 'none',
-                  zIndex: 20,
-                  boxSizing: 'border-box',
-                }}
-              >
-                {/* Outer Bleed Margin (0.125" / ~6px outside trim) */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: '2px',
-                    border: '1.5px dashed #ef4444',
-                    borderRadius: '10px',
-                  }}
-                />
-                {/* Trim Cut Line */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: '10px',
-                    border: '1.5px solid #06b6d4',
-                    borderRadius: '7px',
-                  }}
-                />
-                {/* Safe Zone Inset (where critical copy/logos reside) */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    inset: '18px',
-                    border: '1.5px dashed #22c55e',
-                    borderRadius: '5px',
-                  }}
-                />
-                {/* Corner Crop Marks (L-brackets at trim corners) */}
-                <div style={{ position: 'absolute', top: '10px', left: '10px', width: '10px', height: '10px', borderTop: '2px solid #06b6d4', borderLeft: '2px solid #06b6d4' }} />
-                <div style={{ position: 'absolute', top: '10px', right: '10px', width: '10px', height: '10px', borderTop: '2px solid #06b6d4', borderRight: '2px solid #06b6d4' }} />
-                <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '10px', height: '10px', borderBottom: '2px solid #06b6d4', borderLeft: '2px solid #06b6d4' }} />
-                <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '10px', height: '10px', borderBottom: '2px solid #06b6d4', borderRight: '2px solid #06b6d4' }} />
-
-                {/* Guide Legend Tag */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    bottom: '12px',
-                    left: '50%',
-                    transform: 'translateX(-50%)',
-                    background: 'rgba(15, 23, 42, 0.94)',
-                    color: '#ffffff',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    fontSize: '0.62rem',
-                    fontWeight: 800,
-                    whiteSpace: 'nowrap',
-                    display: 'flex',
-                    gap: '8px',
-                    alignItems: 'center',
-                    boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
-                    border: '1px solid rgba(255,255,255,0.15)',
-                  }}
-                >
-                  <span style={{ color: '#ef4444' }}>■ Bleed (0.125&quot;)</span>
-                  <span style={{ color: '#06b6d4' }}>■ Trim Line</span>
-                  <span style={{ color: '#22c55e' }}>■ Safe Zone</span>
-                </div>
-              </div>
-            );
-
             const renderFrontCard = (customStyle?: React.CSSProperties) => (
-              <div
-                style={{
-                  width: '370px',
-                  height: '215px',
-                  borderRadius: '12px',
-                  background: activeColor.hex,
-                  color: activeColor.darkText ? '#0f172a' : '#ffffff',
-                  boxShadow: `
-                    0 25px 50px -12px rgba(0,0,0,0.5),
-                    0 0 0 1px rgba(255,255,255,0.15),
-                    0 4px 0 0 ${accentColor}
-                  `,
-                  padding: '1.5rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxSizing: 'border-box',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  transition: 'box-shadow 0.2s ease, transform 0.3s ease',
-                  ...customStyle,
-                }}
-              >
-                {/* Velvet Lamination Matte Texture & Painted Edge Accent */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: accentColor }} />
-                <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.1)' }} />
-
-                {/* Spot UV Gleam Streak */}
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '-50%',
-                    left: `${tilt.glareX - 25}%`,
-                    width: '60px',
-                    height: '200%',
-                    background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)',
-                    transform: 'rotate(25deg)',
-                    pointerEvents: 'none',
-                  }}
-                />
-
-                {/* Front Branding & Raised Spot UV Finish */}
-                <div style={{ position: 'relative', zIndex: 2 }}>
-                  {renderBranding(activeColor.darkText ? 'color' : 'white', 0.88)}
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 2 }}>
-                  <div>
-                    <strong style={{ fontSize: '0.92rem', display: 'block', letterSpacing: '-0.01em' }}>{businessName}</strong>
-                    <span style={{ fontSize: '0.72rem', opacity: 0.85, fontWeight: 600 }}>{tagline}</span>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.06em', color: accentColor }}>
-                      {license}
-                    </span>
-                    <span style={{ display: 'block', fontSize: '0.62rem', opacity: 0.7, fontWeight: 700 }}>
-                      16PT VELVET FINISH
-                    </span>
-                  </div>
-                </div>
-
-                {showBleedGuides && renderBleedGuides()}
-              </div>
+              <BusinessCardMockup
+                templateId={cardTemplateId}
+                side="front"
+                activeColor={activeColor}
+                accentColor={accentColor}
+                secondaryColor={secondaryColor}
+                businessName={businessName}
+                tagline={tagline}
+                phone={phone}
+                website={website}
+                license={license}
+                includeQrCode={includeQrCode}
+                renderBranding={renderBranding}
+                glareX={tilt.glareX}
+                showBleedGuides={showBleedGuides}
+                customStyle={customStyle}
+              />
             );
 
             const renderBackCard = (customStyle?: React.CSSProperties) => (
-              <div
-                style={{
-                  width: '370px',
-                  height: '215px',
-                  borderRadius: '12px',
-                  background: '#ffffff',
-                  color: '#0f172a',
-                  boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1, 0 4px 0 0 #94a3b8',
-                  padding: '1.4rem',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxSizing: 'border-box',
-                  position: 'relative',
-                  overflow: 'hidden',
-                  transition: 'box-shadow 0.2s ease, transform 0.3s ease',
-                  ...customStyle,
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <strong style={{ fontSize: '1.02rem', color: '#1e3a8a', fontWeight: 900 }}>{businessName}</strong>
-                  <span
-                    style={{
-                      fontSize: '0.72rem',
-                      color: '#16a34a',
-                      fontWeight: 900,
-                      background: '#f0fdf4',
-                      padding: '2px 8px',
-                      borderRadius: '4px',
-                      border: '1px solid #bbf7d0',
-                    }}
-                  >
-                    ⭐ 5.0 RATED CONTRACTOR
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-                  <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#334155', minWidth: 0, flex: 1 }}>
-                    <div style={{ fontWeight: 800 }}>📞 {phone}</div>
-                    <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      🌐 {website}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
-                      Fast Estimates • Licensed &amp; Insured
-                    </div>
-                  </div>
-
-                  {includeQrCode && (
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-                      <div
-                        style={{
-                          width: '74px',
-                          height: '74px',
-                          background: '#0f172a',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#ffffff',
-                          fontSize: '0.62rem',
-                          fontWeight: 900,
-                          textAlign: 'center',
-                          padding: '4px',
-                          boxShadow: '0 4px 10px rgba(0,0,0,0.2)',
-                        }}
-                      >
-                        <span>📱 SCAN TO</span>
-                        <span style={{ color: '#38bdf8' }}>BOOK NOW</span>
-                        <span style={{ fontSize: '0.52rem', opacity: 0.8, marginTop: '2px' }}>INSTANT</span>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '0.52rem',
-                          color: '#475569',
-                          maxWidth: '85px',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          whiteSpace: 'nowrap',
-                          textAlign: 'center',
-                          fontWeight: 700,
-                          display: 'block',
-                        }}
-                        title={website.startsWith('http') ? website : `https://${website}`}
-                      >
-                        {website.replace(/^https?:\/\//, '')}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                <div
-                  style={{
-                    fontSize: '0.68rem',
-                    color: '#64748b',
-                    borderTop: '1px solid #e2e8f0',
-                    paddingTop: '6px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                  }}
-                >
-                  <span>Residential &amp; Commercial Specialist</span>
-                  <span style={{ fontWeight: 800 }}>Free Consultation</span>
-                </div>
-
-                {showBleedGuides && renderBleedGuides()}
-              </div>
+              <BusinessCardMockup
+                templateId={cardTemplateId}
+                side="back"
+                activeColor={activeColor}
+                accentColor={accentColor}
+                secondaryColor={secondaryColor}
+                businessName={businessName}
+                tagline={tagline}
+                phone={phone}
+                website={website}
+                license={license}
+                includeQrCode={includeQrCode}
+                renderBranding={renderBranding}
+                glareX={tilt.glareX}
+                showBleedGuides={showBleedGuides}
+                customStyle={customStyle}
+              />
             );
 
             return (
