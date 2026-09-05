@@ -105,6 +105,7 @@ export async function loadOfferContext(
     .from('leads')
     .select('id, name, phone, address, project_type, lat, lng, status, converted_job, quote_visit, triage, created_at')
     .eq('account_id', accountId)
+    .is('deleted_at', null)
     .in('status', ['new', 'contacted'])
     .not('phone', 'is', null)
     .not('lat', 'is', null)

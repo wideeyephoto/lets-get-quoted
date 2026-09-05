@@ -21,6 +21,7 @@ export const GET = publicApiRoute(
       .from('leads')
       .select('*')
       .eq('account_id', ctx.accountId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .order('id', { ascending: false })
       .limit(limit + 1);

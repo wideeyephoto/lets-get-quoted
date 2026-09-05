@@ -116,6 +116,7 @@ export default async function ReferralsPage() {
         .from('leads')
         .select('id, name, phone, email, status, client_id, created_at, referral_settled_at, triage')
         .eq('account_id', accountId)
+        .is('deleted_at', null)
         .not('triage->>referredBy', 'is', null),
     ).order('created_at', { ascending: false }),
     applyTestRecordFilter(

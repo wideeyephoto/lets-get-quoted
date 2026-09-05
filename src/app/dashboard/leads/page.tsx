@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
+import { listJobs } from '@/lib/jobs';
 import { getAuthoritativeTrade } from '@/lib/workspace-trade';
 import { WorkspaceTradeProvider } from '@/app/dashboard/WorkspaceTradeContext';
 import AddressAutocomplete from '@/components/address-autocomplete';
@@ -26,6 +27,10 @@ export default async function LeadsPage({ searchParams: searchParamsPromise }: {
   const searchParams = (await searchParamsPromise) || {};
   // Reading the board is leads.read. Every write it offers asks for itself.
   const { supabase, accountId, role } = await requireOfficeContext('leads.read');
+
+  // Start independent queries concurrently with the stale-lead expiration and lead fetch
+  const tradePromise = getAuthoritativeTrade(createAdminClient(), accountId);
+  const jobsPromise = listJobs(supabase, accountId);
 
   // Read the window BEFORE expiring, and hand it over, so the number shown in
   // the selector is provably the one that just ran — not a second read that
@@ -90,7 +95,12 @@ export default async function LeadsPage({ searchParams: searchParamsPromise }: {
   // welded above one view. Opening it has to be instant and local — a round
   // trip to fetch pins would make a toggle feel like a navigation, and it is
   // one query on a page that already runs several.
-  const mapPins = await getMapPins(supabase, accountId);
+  const [jobs, authoritativeTrade] = await Promise.all([jobsPromise, tradePromise]);
+
+  // Always fetched now that the map is a toolbar TOGGLE rather than a band
+  // welded above one view. Opening it has to be instant and local — passing
+  // the already-loaded leads and jobs into getMapPins eliminates duplicate queries.
+  const mapPins = await getMapPins(supabase, accountId, { leads: allLeads, jobs });
 
   const toViewItem = (lead: (typeof allLeads)[number]): LeadViewItem => {
     const triage = getLeadTriage(lead);
@@ -166,8 +176,6 @@ export default async function LeadsPage({ searchParams: searchParamsPromise }: {
   const snoozedViewLeads: LeadViewItem[] = setAside
     .filter(({ triage }) => !triage.archived && isLeadSnoozed(triage, now))
     .map(({ lead }) => toViewItem(lead));
-
-  const authoritativeTrade = await getAuthoritativeTrade(createAdminClient(), accountId);
 
   return (
     <main className="wide-shell workspace-shell">

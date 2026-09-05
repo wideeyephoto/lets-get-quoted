@@ -319,6 +319,7 @@ export type Lead = {
   lat: number | null;
   lng: number | null;
   geocoded_at: string | null;
+  deleted_at?: string | null;
   updated_at: string;
   created_at: string;
 };
@@ -629,6 +630,7 @@ export async function backfillLeadCoordinates(
       .from('leads')
       .select('id, address')
       .eq('account_id', accountId)
+      .is('deleted_at', null)
       .is('geocoded_at', null)
       .not('address', 'is', null)
       .limit(limit);
@@ -668,6 +670,7 @@ export async function listLeads(
       .from('leads')
       .select('*')
       .eq('account_id', accountId)
+      .is('deleted_at', null)
       .order('created_at', { ascending: false }),
     options
   );
@@ -681,14 +684,20 @@ export async function listLeads(
 export async function getLead(
   supabase: SupabaseClient,
   accountId: string,
-  leadId: string
+  leadId: string,
+  options?: { includeDeleted?: boolean }
 ): Promise<Lead | null> {
-  const { data, error } = await supabase
+  let query = supabase
     .from('leads')
     .select('*')
     .eq('account_id', accountId)
-    .eq('id', leadId)
-    .maybeSingle();
+    .eq('id', leadId);
+
+  if (!options?.includeDeleted) {
+    query = query.is('deleted_at', null);
+  }
+
+  const { data, error } = await query.maybeSingle();
 
   if (error) throw error;
   return data as Lead | null;
@@ -706,6 +715,7 @@ export async function getLeadByConvertedJob(
     .select('*')
     .eq('account_id', accountId)
     .eq('converted_job', jobId)
+    .is('deleted_at', null)
     .maybeSingle();
 
   if (error) throw error;
@@ -919,11 +929,26 @@ export async function expireStaleLeads(supabase: SupabaseClient, accountId: stri
   if (!(window > 0)) return;
 
   const cutoff = new Date(Date.now() - window * 24 * 60 * 60 * 1000).toISOString();
+
+  // Guard against unnecessary database writes on GET: check if any eligible leads exist first
+  const { data: candidates, error: candidateError } = await supabase
+    .from('leads')
+    .select('id')
+    .eq('account_id', accountId)
+    .in('status', ['new', 'contacted', 'quoted'])
+    .is('deleted_at', null)
+    .lt('created_at', cutoff)
+    .limit(1);
+
+  if (candidateError) throw candidateError;
+  if (!candidates || candidates.length === 0) return;
+
   const { error } = await supabase
     .from('leads')
     .update({ status: 'lost', updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .in('status', ['new', 'contacted', 'quoted'])
+    .is('deleted_at', null)
     .lt('created_at', cutoff);
 
   if (error) throw error;

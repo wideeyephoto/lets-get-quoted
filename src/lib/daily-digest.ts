@@ -96,7 +96,7 @@ export async function buildDailyDigest(supabase: SupabaseClient, accountId: stri
     supabase.from('payments').select('amount').eq('account_id', accountId).eq('status', 'paid').gte('paid_at', cutoff),
     supabase.from('payments').select('amount').eq('account_id', accountId).in('status', ['requested', 'processing']),
     supabase.from('payments').select('amount').eq('account_id', accountId).eq('status', 'failed').gte('requested_at', cutoff),
-    supabase.from('leads').select('id', { count: 'exact', head: true }).eq('account_id', accountId).gte('created_at', cutoff),
+    supabase.from('leads').select('id', { count: 'exact', head: true }).eq('account_id', accountId).is('deleted_at', null).gte('created_at', cutoff),
     supabase.from('job_feed').select('id', { count: 'exact', head: true }).eq('account_id', accountId).eq('kind', 'quote_approved').gte('created_at', cutoff),
     supabase.from('job_feed').select('id', { count: 'exact', head: true }).eq('account_id', accountId).eq('kind', 'appointment_confirmed').gte('created_at', cutoff),
     supabase.from('review_invites').select('rating, routed_to, responded_at').eq('account_id', accountId).gte('responded_at', cutoff),

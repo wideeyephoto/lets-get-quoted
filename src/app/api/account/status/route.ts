@@ -73,6 +73,7 @@ export async function GET() {
         .from('leads')
         .select('id, created_at, status, triage')
         .eq('account_id', membership.accountId)
+        .is('deleted_at', null)
         .eq('status', 'new')
         .order('created_at', { ascending: false })
         .limit(ATTENTION_LEAD_SCAN_LIMIT),
@@ -95,6 +96,7 @@ export async function GET() {
         .from('leads')
         .select('status, source, triage')
         .eq('account_id', membership.accountId)
+        .is('deleted_at', null)
         .not('status', 'in', '("won","lost")'),
     ),
     listJobs(admin, membership.accountId),

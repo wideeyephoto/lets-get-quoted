@@ -827,7 +827,7 @@ export async function buildInsights(
     { data: voiceCallRows },
     { data: reviewInviteRows },
   ] = await Promise.all([
-    supabase.from('leads').select('status, source, created_at, converted_job').eq('account_id', accountId),
+    supabase.from('leads').select('status, source, created_at, converted_job').eq('account_id', accountId).is('deleted_at', null),
     supabase.from('jobs').select('id, ref, client_name, client_id, quoted_amount, status, created_at, scheduled_for, lead_source').eq('account_id', accountId),
     // paid_at, NOT created_at. `payments` has no created_at column at all, so the
     // old query 400'd and the `?? []` below turned that into "you collected $0" —
