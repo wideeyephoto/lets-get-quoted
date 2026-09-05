@@ -32,19 +32,41 @@ async function stampReferral(
 
   // Scoped by account_id as well as id: the ids come from a form the browser
   // posted, so they are not evidence of anything on their own.
+  // We also require that the row is actually a referred row (triage->>referredBy or
+  // intake->>referredBy is not null) so that arbitrary lead IDs cannot be stamped.
   const writes = [];
   if (leadIds.length > 0) {
-    writes.push(supabase.from('leads').update({ referral_settled_at: settledAt }).eq('account_id', accountId).in('id', leadIds));
+    writes.push(
+      supabase
+        .from('leads')
+        .update({ referral_settled_at: settledAt })
+        .eq('account_id', accountId)
+        .in('id', leadIds)
+        .not('triage->>referredBy', 'is', null)
+        .select('id'),
+    );
   }
   if (stopIds.length > 0) {
     writes.push(
-      supabase.from('extra_stop_requests').update({ referral_settled_at: settledAt }).eq('account_id', accountId).in('id', stopIds),
+      supabase
+        .from('extra_stop_requests')
+        .update({ referral_settled_at: settledAt })
+        .eq('account_id', accountId)
+        .in('id', stopIds)
+        .not('intake->>referredBy', 'is', null)
+        .select('id'),
     );
   }
   const results = await Promise.all(writes);
   if (results.some((result) => result.error)) throw new Error(failure);
 
+  const totalUpdated = results.reduce((sum, res) => sum + (Array.isArray(res.data) ? res.data.length : 0), 0);
+  if (totalUpdated === 0) {
+    throw new Error('No eligible referral records were found to update.');
+  }
+
   revalidatePath('/dashboard/marketing/referrals');
+  revalidatePath('/dashboard/clients');
 }
 
 /** As long as a promise needs to be, and short enough to sit in an email. */

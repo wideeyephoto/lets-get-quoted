@@ -71,6 +71,8 @@ export type ReferralQueueLead = {
   client_id: string | null;
   created_at: string;
   referral_settled_at?: string | null;
+  /** Dollar value of won work or quoted job/stop fee. */
+  value?: number | null;
 };
 
 export type ReferralRow = {
@@ -87,10 +89,14 @@ export type ReferralRow = {
   referrerClientId: string;
   referrerName: string;
   referredName: string;
+  referredPhone?: string | null;
+  referredEmail?: string | null;
   stage: ReferralStage;
   /** When they first got in touch. */
   introducedAt: string;
   settledAt: string | null;
+  /** Attributed dollar revenue for this referral group. */
+  value?: number;
 };
 
 export type ReferralQueue = {
@@ -208,6 +214,7 @@ export function buildReferralQueue(
       const closed = ordered.every((lead) => lead.status === 'lost');
       if (!booked && closed && settled.length === 0) continue;
 
+      const totalVal = ordered.reduce((sum, l) => sum + (Number(l.value) || 0), 0);
       rows.push({
         leadIds: ordered.filter((lead) => (lead.source ?? 'lead') === 'lead').map((lead) => lead.id),
         stopIds: ordered.filter((lead) => lead.source === 'quick_stop').map((lead) => lead.id),
@@ -216,11 +223,14 @@ export function buildReferralQueue(
         // debt — the name is what is missing, not the obligation.
         referrerName: nameOf(referrerClientId) || 'A past customer',
         referredName: ordered.find((lead) => lead.name)?.name || 'Someone they sent',
+        referredPhone: ordered.find((lead) => lead.phone)?.phone || null,
+        referredEmail: ordered.find((lead) => lead.email)?.email || null,
         stage: settled.length > 0 ? 'thanked' : booked ? 'booked' : 'introduced',
         introducedAt: ordered[0].created_at,
         // The earliest stamp: a group settled in one shot shares one timestamp,
         // and if they differ the first one is when the debt was actually paid.
         settledAt: settled.slice().sort()[0] ?? null,
+        value: totalVal > 0 ? totalVal : undefined,
       });
     }
   }

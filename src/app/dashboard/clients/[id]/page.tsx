@@ -9,6 +9,9 @@ import ConfirmActionButton from '../../jobs/[id]/ConfirmActionButton';
 import { listPortalLinks } from '@/lib/client-portal-data';
 import { revokeClientPortalAction } from './portal-actions';
 import MailIcon from '@/components/MailIcon';
+import { isReferralConfigured, mintReferralCode, referralLink } from '@/lib/referral';
+import { buildReferralShareText } from '@/lib/referrals';
+import ClientReferralCard from './ClientReferralCard';
 
 export const metadata = { title: 'Client' };
 
@@ -41,7 +44,13 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
 
   const portalLinks = await listPortalLinks(supabase, accountId, client.id);
 
-  const [{ data: jobRows }, { data: leadRows }] = await Promise.all([
+  const [
+    { data: jobRows },
+    { data: leadRows },
+    { data: siteRow },
+    { data: accountRow },
+    { count: referralCount },
+  ] = await Promise.all([
     supabase
       .from('jobs')
       .select('id, ref, status, quoted_amount, scheduled_for, created_at')
@@ -54,7 +63,43 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
       .eq('account_id', accountId)
       .eq('client_id', client.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('sites')
+      .select('published, subdomain')
+      .eq('account_id', accountId)
+      .maybeSingle(),
+    supabase
+      .from('accounts')
+      .select('referral_reward, business_name')
+      .eq('id', accountId)
+      .maybeSingle(),
+    supabase
+      .from('leads')
+      .select('*', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .eq('triage->>referredBy', client.id),
   ]);
+
+  const origin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
+  const bookingUrl = siteRow?.published && siteRow?.subdomain ? `${origin}/book/${siteRow.subdomain}` : null;
+  const configured = isReferralConfigured();
+
+  let clientReferralUrl = '';
+  if (configured && bookingUrl) {
+    try {
+      const code = mintReferralCode(accountId, client.id);
+      clientReferralUrl = referralLink(bookingUrl, code);
+    } catch {
+      // Graceful fallback
+    }
+  }
+
+  const clientShareText = buildReferralShareText({
+    referrerName: client.name,
+    businessName: (accountRow?.business_name as string) || 'our company',
+    shareUrl: clientReferralUrl || bookingUrl || origin,
+  });
+
   const jobs = jobRows ?? [];
   const leads = leadRows ?? [];
   const totalValue = jobs.reduce((sum, job) => sum + (Number(job.quoted_amount) || 0), 0);
@@ -164,6 +209,17 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
         </div>
 
         <div>
+          {clientReferralUrl ? (
+            <ClientReferralCard
+              clientName={client.name}
+              clientPhone={client.phone}
+              referralUrl={clientReferralUrl}
+              shareText={clientShareText}
+              reward={accountRow?.referral_reward as string | null}
+              referralCount={referralCount ?? 0}
+            />
+          ) : null}
+
           {portalLinks.length > 0 ? (
             <div className="panel workspace-section-card">
               <div className="section-heading workspace-section-heading compact-heading">

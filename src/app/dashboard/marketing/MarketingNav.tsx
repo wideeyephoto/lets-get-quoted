@@ -17,6 +17,8 @@ import { usePathname } from 'next/navigation';
  * links do not have.
  */
 
+import { useEffect, useState } from 'react';
+
 const SECTIONS: { path: string; label: string; demo?: boolean }[] = [
   { path: '', label: 'Overview' },
   { path: '/campaigns', label: 'Email & Text' },
@@ -25,12 +27,7 @@ const SECTIONS: { path: string; label: string; demo?: boolean }[] = [
   { path: '/links', label: 'Tracking' },
   { path: '/performance', label: 'Results' },
   { path: '/merchandise', label: 'Merch Studio' },
-  // demo:false because there is no /demo/marketing/referrals route. The "only"
-  // allowlist below would also cover this, but nothing passes it today — so a
-  // tab added here would have appeared in the logged-out demo and 404'd, which
-  // is the exact failure the note on "only" is about. Marking it at the section
-  // is the version nobody has to remember at four call sites.
-  { path: '/referrals', label: 'Referrals', demo: false },
+  { path: '/referrals', label: 'Referrals' },
 ];
 
 export default function MarketingNav({
@@ -42,22 +39,46 @@ export default function MarketingNav({
    * Remove this argument at the demo's call sites as each section lands.
    */
   only,
+  referralsOwedCount,
 }: {
   basePath?: string;
   only?: string[];
+  referralsOwedCount?: number | null;
 }) {
   const pathname = usePathname();
+  const [owedCount, setOwedCount] = useState<number | null>(referralsOwedCount ?? null);
 
-  // Built from basePath rather than hardcoded, so the logged-out demo's nav
-  // links stay inside the demo. Hardcoded, every tab here sent a prospect to
-  // /login — which is the same reason the demo used to have no marketing nav at
-  // all, and therefore no way to see that Marketing has four sections.
   const root = `${basePath}/marketing`;
   const inDemo = basePath !== '/dashboard';
-  const tabs = SECTIONS.filter((section) => (!only || only.includes(section.path)) && !(inDemo && section.demo === false)).map((section) => ({
-    href: section.path === '/merchandise' ? `${basePath}/merchandise` : `${root}${section.path}`,
-    label: section.label,
-  }));
+
+  useEffect(() => {
+    if (referralsOwedCount !== undefined) {
+      setOwedCount(referralsOwedCount);
+      return;
+    }
+    if (inDemo) return;
+    let active = true;
+    fetch('/api/marketing/referrals/count')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (active && data && typeof data.count === 'number') {
+          setOwedCount(data.count);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [referralsOwedCount, inDemo]);
+
+  const tabs = SECTIONS.filter((section) => (!only || only.includes(section.path)) && !(inDemo && section.demo === false)).map((section) => {
+    const isReferrals = section.path === '/referrals';
+    const countSuffix = isReferrals && owedCount && owedCount > 0 ? ` · ${owedCount}` : '';
+    return {
+      href: section.path === '/merchandise' ? `${basePath}/merchandise` : `${root}${section.path}`,
+      label: `${section.label}${countSuffix}`,
+    };
+  });
 
   // Overview is the only exact match. Everything else owns its sub-paths, so a
   // post editor at /blog/<id> keeps Blog lit rather than lighting nothing.

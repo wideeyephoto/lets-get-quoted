@@ -685,6 +685,7 @@ export const DEMO_ACCOUNT_ROW: DemoRow = {
   // blocks sending without one. A demo missing it would open on a warning
   // banner about a setting a visitor cannot reach.
   mailing_address: '4820 Coolidge Hwy, Royal Oak, MI 48073',
+  referral_reward: '$50 off your next service',
   arrival_updates_enabled: true,
   booking_enabled: DEMO_BOOKING.enabled,
   voice_enabled: true,
@@ -759,3 +760,5 @@ export const DEMO_TABLES: DemoTables = {
  * nothing writes, so there is no state to keep apart between visitors.
  */
 export const demoSupabase = createDemoSupabase(DEMO_TABLES);
+
+export { DEMO_LEADS } from '@/lib/demo-data';

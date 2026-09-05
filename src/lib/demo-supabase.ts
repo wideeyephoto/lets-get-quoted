@@ -39,6 +39,11 @@ export type DemoTables = Record<string, DemoRow[]>;
 type Filter = (row: DemoRow) => boolean;
 
 function value(row: DemoRow, column: string): unknown {
+  if (column.includes('->>')) {
+    const [jsonCol, key] = column.split('->>');
+    const obj = row[jsonCol] as Record<string, unknown> | null | undefined;
+    return obj ? obj[key] : null;
+  }
   return row[column];
 }
 
