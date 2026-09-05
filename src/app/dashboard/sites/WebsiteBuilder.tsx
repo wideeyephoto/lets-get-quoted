@@ -371,6 +371,7 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
   );
   const [subdomainStatus, setSubdomainStatus] = useState<'idle' | 'available' | 'taken'>('idle');
   const [domainStatus, setDomainStatus] = useState<'idle' | 'checking' | 'verified' | 'unverified'>(site.custom_domain_verified_at ? 'verified' : 'idle');
+  const [domainVerification, setDomainVerification] = useState<Awaited<ReturnType<typeof verifyCustomDomainAction>> | null>(null);
   const [isGeneratingText, setIsGeneratingText] = useState(false);
   const [isRegeneratingSeo, setIsRegeneratingSeo] = useState(false);
   const [isRegeneratingImages, setIsRegeneratingImages] = useState(false);
@@ -605,7 +606,10 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
     setIsDirty(true);
     setMessage(null);
     if (field === 'subdomain') setSubdomainStatus('idle');
-    if (field === 'custom_domain') setDomainStatus('idle');
+    if (field === 'custom_domain') {
+      setDomainStatus('idle');
+      setDomainVerification(null);
+    }
   }, []);
 
   const toggleSection = useCallback((key: string) => {
@@ -1739,20 +1743,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
       try {
         const saved = await updateSiteAction(siteUpdates(site));
         const result = await verifyCustomDomainAction(site.custom_domain!);
-        setSite(saved);
+        setSite({ ...saved, custom_domain_verified_at: result.verifiedAt });
+        setDomainVerification(result);
+        setIsDirty(false);
         if (result.verified) {
           setDomainStatus('verified');
-          setIsDirty(false);
-          if (result.sslStatus === 'issued') {
-            setMessage({ type: 'success', text: 'Custom domain verified and connected with active SSL.' });
-          } else if (result.sslStatus === 'pending') {
-            setMessage({ type: 'success', text: 'DNS verified. SSL certificate provisioning is in progress (usually takes 1–5 minutes).' });
-          } else {
-            setMessage({ type: 'success', text: 'Custom domain verified and connected.' });
-          }
+          setMessage({ type: 'success', text: result.message });
         } else {
           setDomainStatus('unverified');
-          setMessage({ type: 'error', text: result.records.length ? `DNS currently points to ${result.records.join(', ')}.` : 'No matching DNS record found yet. DNS changes can take up to 48 hours.' });
+          setMessage({ type: 'error', text: result.message });
         }
       } catch (error) {
         setDomainStatus('unverified');
@@ -4059,8 +4058,15 @@ export default function WebsiteBuilder({ site: initialSite, uploadedImages, mess
                     <small>{subdomainStatus === 'available' ? `✓ ${site.subdomain}.${ROOT_DOMAIN} is available` : subdomainStatus === 'taken' ? '✕ That subdomain is already taken — try another' : 'Lowercase letters, numbers, and hyphens.'}</small>
                   </label>
                 </div>
-                <DomainConnector domain={site.custom_domain} target="domains.letsgetquoted.com" />
-                <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Verify DNS'}</button></div><small>{domainStatus === 'verified' ? 'Verified and connected.' : 'Add a CNAME record pointing to domains.letsgetquoted.com.'}</small></label>
+                <DomainConnector domain={site.custom_domain} target={domainVerification?.expectedCname || 'domains.letsgetquoted.com'} apexIp={domainVerification?.expectedIp || '76.76.21.21'} apexDomain={domainVerification?.apexDomain} />
+                <label className={styles.formField}><span>Custom domain</span><div className={styles.domainControl}><input value={site.custom_domain || ''} disabled={isPending} onChange={(event) => handleChange('custom_domain', event.target.value || null)} placeholder="www.yourbusiness.com" /><button type="button" onClick={verifyCustomDomain} disabled={isPending}>{domainStatus === 'checking' ? 'Checking...' : 'Check connection'}</button></div><small role="status">{domainStatus === 'verified' ? 'Connected with active SSL.' : domainVerification?.message || 'Add the DNS records above, then check the connection to set up SSL.'}</small></label>
+                {domainVerification?.verification.map((record) => (
+                  <div key={`${record.type}:${record.domain}:${record.value}`} className={styles.formField}>
+                    <span>Domain ownership verification ({record.type})</span>
+                    <small>Host: <code>{record.domain}</code></small>
+                    <small>Value: <code>{record.value}</code></small>
+                  </div>
+                ))}
 
                 <div className={styles.cardGroupLabel}>Search appearance</div>
                 <SectionCard title="How you show up on Google" description="The page title and description searchers see before they click. Your hero image is used when your site is shared on social." open={openSection === 'seo'} onToggleOpen={() => toggleSection('seo')}>

@@ -10,7 +10,7 @@ import type { Site } from '@/lib/sites';
 import { callImageModel, callModel } from '@/lib/ai-model-call';
 import { buildAiLogoPrompt, isAiLogoDirection, type AiLogoDirection } from '@/lib/logo-image-prompt';
 import { SERVICE_ICON_GLYPHS } from '@/lib/templates/service-icons.data';
-import { normalizeDomain, verifyDomain } from '@/lib/domains';
+import { validateCustomDomain, verifyDomain } from '@/lib/domains';
 import { removeDomainFromVercel } from '@/lib/vercel-domains';
 import { geocodeArea } from '@/lib/geocode';
 import { anchorServiceArea } from '@/lib/site-area';
@@ -100,7 +100,7 @@ export async function updateSiteAction(updates: SiteEditableInput) {
     logo_url: updates.logo_url,
     hero_url: updates.hero_url,
     subdomain: updates.subdomain?.trim().toLowerCase() || null,
-    custom_domain: updates.custom_domain ? normalizeDomain(updates.custom_domain) : null,
+    custom_domain: updates.custom_domain ? validateCustomDomain(updates.custom_domain) : null,
     portal_mode: updates.portal_mode,
     content: contentWithBlogPreserved,
     seo_title: updates.seo_title,
@@ -122,18 +122,15 @@ export async function updateSiteAction(updates: SiteEditableInput) {
 
   const oldDomain = sites[0].custom_domain || null;
   const domainChanged = editableUpdates.custom_domain !== oldDomain;
-  if (domainChanged && oldDomain) {
-    try {
-      await removeDomainFromVercel(oldDomain);
-    } catch {
-      // Best-effort cleanup on Vercel
-    }
-  }
-
   const site = await updateSite(supabase, accountId, siteId, {
     ...editableUpdates,
     ...(domainChanged ? { custom_domain_verified_at: null } : {}),
   });
+
+  // A rejected save must not disconnect the currently live domain.
+  if (domainChanged && oldDomain) {
+    await removeDomainFromVercel(oldDomain);
+  }
 
   if (editableUpdates.company_name?.trim()) {
     const nextBusinessName = editableUpdates.company_name.trim();
@@ -612,18 +609,31 @@ export async function searchPexelsAction(query: string, orientation?: ImageOrien
 
 export async function verifyCustomDomainAction(domainValue: string) {
   const { accountId } = await requireOfficeContext('settings.write');
-  const domain = normalizeDomain(domainValue);
-  const verification = await verifyDomain(domain);
-  if (!verification.verified) return verification;
-
+  const domain = validateCustomDomain(domainValue);
   const admin = createAdminClient();
-  const { data: conflict } = await admin.from('sites').select('account_id').eq('custom_domain', domain).neq('account_id', accountId).maybeSingle();
+  // Authorize the saved domain before any external provisioning. The caller
+  // cannot attach another account's domain or replace their site via Verify.
+  const { data: site, error: siteError } = await admin.from('sites')
+    .select('id').eq('account_id', accountId).eq('custom_domain', domain).maybeSingle();
+  if (siteError) throw siteError;
+  if (!site) throw new Error('Save this custom domain on your website before checking its connection.');
+  const { data: conflict, error: conflictError } = await admin.from('sites').select('account_id').eq('custom_domain', domain).neq('account_id', accountId).maybeSingle();
+  if (conflictError) throw conflictError;
   if (conflict) throw new Error('This custom domain is already connected to another account.');
-  const { error } = await admin.from('sites').update({ custom_domain: domain, custom_domain_verified_at: new Date().toISOString() }).eq('account_id', accountId);
+
+  const verification = await verifyDomain(domain);
+  const verifiedAt = verification.verified && verification.sslStatus === 'issued' ? new Date().toISOString() : null;
+  // Clear stale DNS-only verification on failure, and never resurrect a domain
+  // the owner changed/disconnected while the network checks were running.
+  const { data: updated, error } = await admin.from('sites')
+    .update({ custom_domain_verified_at: verifiedAt })
+    .eq('id', site.id).eq('account_id', accountId).eq('custom_domain', domain)
+    .select('id').maybeSingle();
   if (error) throw error;
+  if (!updated) throw new Error('Your domain changed during verification. Check the saved domain again.');
   revalidatePath('/dashboard/sites');
   revalidatePublicSiteCache({ customDomain: domain });
-  return verification;
+  return { ...verification, verified: Boolean(verifiedAt), verifiedAt };
 }
 
 export async function uploadSiteImageAction(formData: FormData) {

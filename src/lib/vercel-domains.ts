@@ -1,33 +1,18 @@
 import 'server-only';
 
-/**
- * Vercel Edge Domains API client.
- *
- * Provides zero-touch SSL certificate provisioning and edge routing configuration
- * when contractors link custom domains.
- *
- * When VERCEL_AUTH_TOKEN and VERCEL_PROJECT_ID are configured, this client:
- * 1. Registers the domain on the Vercel project (`addDomainToVercel`).
- * 2. Triggers Vercel verification and SSL issuance (`verifyVercelDomain`).
- * 3. Retrieves SSL certificate status and DNS configuration requirements (`getVercelDomainConfig`).
- * 4. Cleans up project domain bindings when a contractor updates or disconnects (`removeDomainFromVercel`).
- *
- * If credentials are not set (e.g. local dev / test), functions return null/safe defaults without failing.
- */
+export type VercelDomainVerification = {
+  type: string;
+  domain: string;
+  value: string;
+  reason?: string;
+};
 
+// DNS/certificate eligibility is not proof that a certificate has been issued.
 export type VercelDomainConfig = {
   configured: boolean;
-  misconfigured?: boolean;
-  ssl?: {
-    status: 'issued' | 'pending' | 'error' | 'none';
-    details?: string;
-  };
-  verification?: Array<{
-    type: string;
-    domain: string;
-    value: string;
-    reason?: string;
-  }>;
+  misconfigured: boolean;
+  recommendedCname?: string;
+  recommendedIp?: string;
 };
 
 export type VercelDomainResponse = {
@@ -35,23 +20,18 @@ export type VercelDomainResponse = {
   apexName: string;
   projectId: string;
   verified: boolean;
-  verification?: Array<{
-    type: string;
-    domain: string;
-    value: string;
-    reason?: string;
-  }>;
-  error?: {
-    code: string;
-    message: string;
-  };
+  verification?: VercelDomainVerification[];
+  redirect?: string | null;
+  gitBranch?: string | null;
+  customEnvironmentId?: string | null;
 };
 
 function getVercelConfig() {
-  const token = process.env.VERCEL_AUTH_TOKEN || process.env.VERCEL_TOKEN || null;
-  const projectId = process.env.VERCEL_PROJECT_ID || null;
-  const teamId = process.env.VERCEL_TEAM_ID || null;
-  return { token, projectId, teamId };
+  return {
+    token: process.env.VERCEL_AUTH_TOKEN || process.env.VERCEL_TOKEN,
+    projectId: process.env.VERCEL_PROJECT_ID,
+    teamId: process.env.VERCEL_TEAM_ID,
+  };
 }
 
 export function isVercelDomainProvisioningConfigured(): boolean {
@@ -59,152 +39,83 @@ export function isVercelDomainProvisioningConfigured(): boolean {
   return Boolean(token && projectId);
 }
 
-function buildUrl(path: string, teamId: string | null): string {
-  const base = `https://api.vercel.com${path}`;
-  if (!teamId) return base;
-  const sep = base.includes('?') ? '&' : '?';
-  return `${base}${sep}teamId=${encodeURIComponent(teamId)}`;
-}
-
-/**
- * Adds a domain to the Vercel project.
- */
-export async function addDomainToVercel(domain: string): Promise<VercelDomainResponse | null> {
+async function domainRequest<T>(path: string, method = 'GET', body?: object): Promise<T | null> {
   const { token, projectId, teamId } = getVercelConfig();
   if (!token || !projectId) return null;
-
-  try {
-    const url = buildUrl(`/v10/projects/${encodeURIComponent(projectId)}/domains`, teamId);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ name: domain }),
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10000),
-    });
-
-    const json = (await res.json()) as VercelDomainResponse;
-    return json;
-  } catch (err) {
-    console.error('Failed to add domain to Vercel:', err);
-    return null;
-  }
+  const url = new URL(path, 'https://api.vercel.com');
+  if (teamId) url.searchParams.set('teamId', teamId);
+  const res = await fetch(url, {
+    method,
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+    cache: 'no-store',
+    signal: AbortSignal.timeout(10000),
+  });
+  if (res.status === 404 && (method === 'GET' || method === 'DELETE')) return null;
+  if (!res.ok) throw new Error(`Domain provider request failed (${res.status}).`);
+  if (res.status === 204) return null;
+  return await res.json() as T;
 }
 
-/**
- * Triggers domain DNS verification on Vercel.
- */
-export async function verifyVercelDomain(domain: string): Promise<VercelDomainResponse | null> {
-  const { token, projectId, teamId } = getVercelConfig();
-  if (!token || !projectId) return null;
-
-  try {
-    const url = buildUrl(`/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}/verify`, teamId);
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10000),
-    });
-
-    const json = (await res.json()) as VercelDomainResponse;
-    return json;
-  } catch (err) {
-    console.error('Failed to verify domain on Vercel:', err);
-    return null;
-  }
+function projectDomainPath(domain?: string) {
+  const { projectId } = getVercelConfig();
+  return `/v9/projects/${encodeURIComponent(projectId || '')}/domains${domain ? `/${encodeURIComponent(domain)}` : ''}`;
 }
 
-/**
- * Inspects domain configuration and SSL certificate status.
- */
-export async function getVercelDomainConfig(domain: string): Promise<VercelDomainConfig | null> {
-  const { token, teamId } = getVercelConfig();
-  if (!token) return null;
-
-  try {
-    const url = buildUrl(`/v6/domains/${encodeURIComponent(domain)}/config`, teamId);
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) return null;
-    const json = (await res.json()) as {
-      misconfigured?: boolean;
-      cnames?: string[];
-      aValues?: string[];
-      ssl?: { status?: string };
-    };
-
-    const sslStatus: 'issued' | 'pending' | 'error' =
-      json.ssl?.status === 'issued' || json.ssl?.status === 'pending' || json.ssl?.status === 'error'
-        ? json.ssl.status
-        : 'pending';
-
-    return {
-      configured: !json.misconfigured,
-      misconfigured: Boolean(json.misconfigured),
-      ssl: {
-        status: sslStatus,
-      },
-    };
-  } catch (err) {
-    console.error('Failed to get domain config from Vercel:', err);
-    return null;
+function validateProjectDomain(result: VercelDomainResponse | null, domain: string) {
+  const { projectId } = getVercelConfig();
+  if (result && (result.name !== domain || result.projectId !== projectId || typeof result.verified !== 'boolean')) {
+    throw new Error('Invalid project domain response.');
   }
+  return result;
 }
 
-/**
- * Retrieves project domain details from Vercel.
- */
 export async function getProjectDomain(domain: string): Promise<VercelDomainResponse | null> {
-  const { token, projectId, teamId } = getVercelConfig();
-  if (!token || !projectId) return null;
+  return validateProjectDomain(await domainRequest<VercelDomainResponse>(projectDomainPath(domain)), domain);
+}
 
+/** Idempotent attachment: retries must inspect the existing project binding. */
+export async function addDomainToVercel(domain: string): Promise<VercelDomainResponse | null> {
+  const existing = await getProjectDomain(domain);
+  if (existing) return existing;
   try {
-    const url = buildUrl(`/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}`, teamId);
-    const res = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10000),
-    });
-
-    if (!res.ok) return null;
-    return (await res.json()) as VercelDomainResponse;
-  } catch (err) {
-    console.error('Failed to get project domain from Vercel:', err);
-    return null;
+    return validateProjectDomain(await domainRequest<VercelDomainResponse>(projectDomainPath().replace('/v9/', '/v10/'), 'POST', { name: domain }), domain);
+  } catch (error) {
+    // Another request can attach between GET and POST. Only an actual binding
+    // on THIS project counts as success; a provider error alone never does.
+    const attached = await getProjectDomain(domain);
+    if (attached) return attached;
+    throw error;
   }
 }
 
-/**
- * Unbinds/removes domain from the Vercel project.
- */
+export async function verifyVercelDomain(domain: string): Promise<VercelDomainResponse | null> {
+  return validateProjectDomain(await domainRequest<VercelDomainResponse>(`${projectDomainPath(domain)}/verify`, 'POST'), domain);
+}
+
+export async function getVercelDomainConfig(domain: string): Promise<VercelDomainConfig | null> {
+  const { projectId } = getVercelConfig();
+  const result = await domainRequest<{
+    misconfigured?: boolean;
+    recommendedCNAME?: Array<{ rank: number; value: string }>;
+    recommendedIPv4?: Array<{ rank: number; value: string[] }>;
+  }>(`/v6/domains/${encodeURIComponent(domain)}/config?projectIdOrName=${encodeURIComponent(projectId || '')}`);
+  if (!result) return null;
+  return {
+    configured: result.misconfigured === false,
+    misconfigured: result.misconfigured !== false,
+    recommendedCname: result.recommendedCNAME?.slice().sort((a, b) => a.rank - b.rank)[0]?.value.replace(/\.$/, ''),
+    recommendedIp: result.recommendedIPv4?.slice().sort((a, b) => a.rank - b.rank)[0]?.value[0],
+  };
+}
+
 export async function removeDomainFromVercel(domain: string): Promise<boolean> {
-  const { token, projectId, teamId } = getVercelConfig();
-  if (!token || !projectId) return true;
-
+  if (!isVercelDomainProvisioningConfigured()) return false;
   try {
-    const url = buildUrl(`/v9/projects/${encodeURIComponent(projectId)}/domains/${encodeURIComponent(domain)}`, teamId);
-    const res = await fetch(url, {
-      method: 'DELETE',
-      headers: { Authorization: `Bearer ${token}` },
-      cache: 'no-store',
-      signal: AbortSignal.timeout(10000),
-    });
-
-    return res.ok;
-  } catch (err) {
-    console.error('Failed to remove domain from Vercel:', err);
+    await domainRequest(projectDomainPath(domain), 'DELETE');
+    return true;
+  } catch (error) {
+    console.error('Failed to remove project domain:', error);
     return false;
   }
 }
-
