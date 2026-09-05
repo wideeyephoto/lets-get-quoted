@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { conversationPreview, groupRuns, initialsFor } from '../src/lib/message-context';
+import { conversationPreview, dayDivider, groupByDay, groupRuns, initialsFor } from '../src/lib/message-context';
 
 const at = (minutes: number, direction: string) => ({
   created_at: new Date(Date.UTC(2026, 7, 3, 9, minutes)).toISOString(),
@@ -115,3 +115,30 @@ describe('conversationPreview', () => {
     expect(conversationPreview('Can you come Tuesday?')).toBe('Can you come Tuesday?');
   });
 });
+
+describe('dayDivider', () => {
+  it('formats dates in the specified timezone', () => {
+    // 2026-08-04T02:00:00Z is 10:00 PM on Monday, August 3 in America/New_York (EDT)
+    const iso = '2026-08-04T02:00:00.000Z';
+    expect(dayDivider(iso, 'America/New_York')).toBe('Monday, August 3');
+    expect(dayDivider(iso, 'UTC')).toBe('Tuesday, August 4');
+  });
+});
+
+describe('groupByDay', () => {
+  it('buckets evening texts into the contractor local day instead of next day UTC', () => {
+    const eveningMsg = { created_at: '2026-08-04T02:30:00.000Z', text: '10:30 PM EST text' };
+    const afternoonMsg = { created_at: '2026-08-03T19:00:00.000Z', text: '3:00 PM EST text' };
+    const morningNextDayMsg = { created_at: '2026-08-04T13:00:00.000Z', text: '9:00 AM EST next day' };
+
+    const grouped = groupByDay([afternoonMsg, eveningMsg, morningNextDayMsg], 'America/New_York');
+    expect(grouped).toHaveLength(2);
+    expect(grouped[0].key).toBe('2026-08-03');
+    expect(grouped[0].label).toBe('Monday, August 3');
+    expect(grouped[0].items).toEqual([afternoonMsg, eveningMsg]);
+    expect(grouped[1].key).toBe('2026-08-04');
+    expect(grouped[1].label).toBe('Tuesday, August 4');
+    expect(grouped[1].items).toEqual([morningNextDayMsg]);
+  });
+});
+

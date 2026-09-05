@@ -26,6 +26,9 @@ import { requireActiveDedicatedMessagingSender } from '@/lib/messaging-number-pr
 import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
 
 
+import { textCreditMode } from '@/lib/billing/text-credit-usage';
+
+
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 
@@ -35,40 +38,70 @@ function messageIntent(formData: FormData): string {
   return value;
 }
 
-export async function sendReplyAction(phone: string, formData: FormData) {
-  const { supabase, accountId } = await requireOfficeContext('messages.send');
-  const body = (formData.get('body') ?? '').toString().trim();
-  const intentId = messageIntent(formData);
-  const normalized = normalizeUsPhone(phone);
-  if (!normalized) throw new Error('This message thread has an invalid phone number.');
-  if (!body) redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}`);
+import type { MessageActionResult } from './types';
+export type { MessageActionResult };
 
-  // A platform/shared number is never a fallback for traffic sent in a
-  // contractor's name. Fail before consent writes or the delivery enqueue.
-  await requireActiveDedicatedMessagingSender(accountId);
+export async function sendReplyAction(
+  phone: string,
+  previousOrFormData: MessageActionResult | FormData,
+  maybeFormData?: FormData,
+): Promise<MessageActionResult> {
+  const formData = (maybeFormData instanceof FormData ? maybeFormData : previousOrFormData) as FormData;
+  try {
+    const { supabase, accountId } = await requireOfficeContext('messages.send');
+    const body = (formData.get('body') ?? '').toString().trim();
+    const intentId = messageIntent(formData);
+    const normalized = normalizeUsPhone(phone);
+    if (!normalized) return { status: 'error', message: 'This message thread has an invalid phone number.' };
+    if (!body) return { status: 'error', message: 'Type a message to send.' };
 
-  // The SAME name every other text in the product signs with. This read
-  // accounts.business_name on its own, which on a live account is the signup
-  // placeholder "My Business" — the owner's real name is in sites.company_name,
-  // where the builder writes it — and fell back to OUR name when even that was
-  // blank. So a customer who booked BrokePipes got a reply from "My Business",
-  // or from "Let's Get Quoted contractor", in the one thread where they are
-  // most likely to reply. See lib/business-name for the ladder.
-  const businessName = await loadBusinessName(supabase, accountId);
+    if (textCreditMode() === 'enforce') {
+      const { data: balanceRow } = await supabase
+        .from('workspace_usage_credit_balances')
+        .select('available_units')
+        .eq('account_id', accountId)
+        .eq('resource_code', 'text_segments')
+        .maybeSingle();
+      if (balanceRow && typeof balanceRow.available_units === 'number' && balanceRow.available_units <= 0) {
+        return { status: 'error', message: 'This workspace is out of text credits. Buy a top-up to keep texting.' };
+      }
+    }
 
-  // Consent and durable-thread evidence are locked and rechecked inside the
-  // enqueue RPC. A hand-edited ?thread= URL can never create consent or work.
-  const eventId = await sendInboxReplySms({
-    phone: normalized,
-    businessName,
-    body,
-    accountId,
-    idempotencyKey: `inbox-reply:${accountId}:${intentId}`,
-    requireExistingThread: true,
-  });
+    // A platform/shared number is never a fallback for traffic sent in a
+    // contractor's name. Fail before consent writes or the delivery enqueue.
+    await requireActiveDedicatedMessagingSender(accountId);
 
-  revalidatePath('/dashboard/messages');
-  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=reply&queued=${encodeURIComponent(eventId)}`);
+    // The SAME name every other text in the product signs with. This read
+    // accounts.business_name on its own, which on a live account is the signup
+    // placeholder "My Business" — the owner's real name is in sites.company_name,
+    // where the builder writes it — and fell back to OUR name when even that was
+    // blank. So a customer who booked BrokePipes got a reply from "My Business",
+    // or from "Let's Get Quoted contractor", in the one thread where they are
+    // most likely to reply. See lib/business-name for the ladder.
+    const businessName = await loadBusinessName(supabase, accountId);
+
+    // Consent and durable-thread evidence are locked and rechecked inside the
+    // enqueue RPC. A hand-edited ?thread= URL can never create consent or work.
+    const eventId = await sendInboxReplySms({
+      phone: normalized,
+      businessName,
+      body,
+      accountId,
+      idempotencyKey: `inbox-reply:${accountId}:${intentId}`,
+      requireExistingThread: true,
+    });
+
+    revalidatePath('/dashboard/messages');
+    redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=reply&queued=${encodeURIComponent(eventId)}`);
+  } catch (err: unknown) {
+    if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return {
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Failed to send reply.',
+    };
+  }
 }
 
 /**
@@ -357,40 +390,69 @@ export async function deleteTemplateAction(templateId: string) {
  * must not be textable from here. The opt-out check below is the same one every
  * other outbound path uses.
  */
-export async function startConversationAction(formData: FormData) {
-  const { supabase, accountId } = await requireOfficeContext('messages.send');
-  const rawPhone = (formData.get('phone') ?? '').toString().trim();
-  const body = (formData.get('body') ?? '').toString().trim();
-  const intentId = messageIntent(formData);
+export async function startConversationAction(
+  previousOrFormData: MessageActionResult | FormData,
+  maybeFormData?: FormData,
+): Promise<MessageActionResult> {
+  const formData = (maybeFormData instanceof FormData ? maybeFormData : previousOrFormData) as FormData;
+  try {
+    const { supabase, accountId } = await requireOfficeContext('messages.send');
+    const rawPhone = (formData.get('phone') ?? '').toString().trim();
+    const body = (formData.get('body') ?? '').toString().trim();
+    const intentId = messageIntent(formData);
 
-  const normalized = normalizeUsPhone(rawPhone);
-  if (!normalized) throw new Error('Enter a 10-digit US mobile number.');
-  if (!body) throw new Error('Type a message to send.');
+    const normalized = normalizeUsPhone(rawPhone);
+    if (!normalized) return { status: 'error', message: 'Enter a 10-digit US mobile number.' };
+    if (!body) return { status: 'error', message: 'Type a message to send.' };
 
-  // The worker also verifies sender readiness, but the owner action must tell
-  // the truth immediately instead of accepting a message that cannot leave.
-  await requireActiveDedicatedMessagingSender(accountId);
+    if (textCreditMode() === 'enforce') {
+      const { data: balanceRow } = await supabase
+        .from('workspace_usage_credit_balances')
+        .select('available_units')
+        .eq('account_id', accountId)
+        .eq('resource_code', 'text_segments')
+        .maybeSingle();
+      if (balanceRow && typeof balanceRow.available_units === 'number' && balanceRow.available_units <= 0) {
+        return { status: 'error', message: 'This workspace is out of text credits. Buy a top-up to keep texting.' };
+      }
+    }
 
-  if (!(await hasCurrentSmsConsent(accountId, normalized))) {
-    throw new Error('We do not have current SMS consent for this contact. Record consent via their Client profile, Job, or Lead record, or have them text your dedicated number first. If they previously opted out, they must text START before you can message them.');
+    // The worker also verifies sender readiness, but the owner action must tell
+    // the truth immediately instead of accepting a message that cannot leave.
+    await requireActiveDedicatedMessagingSender(accountId);
+
+    if (!(await hasCurrentSmsConsent(accountId, normalized))) {
+      return {
+        status: 'error',
+        message: 'We do not have current SMS consent for this contact. Record consent via their Client profile, Job, or Lead record, or have them text your dedicated number first. If they previously opted out, they must text START before you can message them.',
+      };
+    }
+
+    // Same ladder as the reply above — and it matters more here, because this is
+    // a text to somebody who has not messaged first and has only the name at the
+    // top to decide whether it is spam.
+    const businessName = await loadBusinessName(supabase, accountId);
+
+    const eventId = await sendInboxReplySms({
+      phone: normalized,
+      businessName,
+      body,
+      accountId,
+      idempotencyKey: `inbox-reply:${accountId}:${intentId}`,
+      requireExistingThread: false,
+    });
+
+    revalidatePath('/dashboard/messages');
+    redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=compose&queued=${encodeURIComponent(eventId)}`);
+  } catch (err: unknown) {
+    if ((err as { digest?: string })?.digest?.startsWith('NEXT_REDIRECT')) {
+      throw err;
+    }
+    return {
+      status: 'error',
+      message: err instanceof Error ? err.message : 'Failed to send message.',
+    };
   }
-
-  // Same ladder as the reply above — and it matters more here, because this is
-  // a text to somebody who has not messaged first and has only the name at the
-  // top to decide whether it is spam.
-  const businessName = await loadBusinessName(supabase, accountId);
-
-  const eventId = await sendInboxReplySms({
-    phone: normalized,
-    businessName,
-    body,
-    accountId,
-    idempotencyKey: `inbox-reply:${accountId}:${intentId}`,
-    requireExistingThread: false,
-  });
-
-  revalidatePath('/dashboard/messages');
-  redirect(`/dashboard/messages?thread=${encodeURIComponent(normalized)}&sent=compose&queued=${encodeURIComponent(eventId)}`);
 }
 
 /** Opening a thread is what marks it read — see markThreadRead on why "as of now". */

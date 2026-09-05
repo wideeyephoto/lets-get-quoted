@@ -19,21 +19,28 @@ import { listMessageTemplates } from '@/lib/message-templates';
 import { starterRepliesFor } from '@/lib/starter-replies';
 import { loadMessagingSetup } from '@/lib/owner-sms';
 import { getSiteContent } from '@/lib/site-content';
+import { topUpPurchaseEnabled } from '@/lib/billing/top-up-purchase-entrypoint';
 import { sendReplyAction, createTemplateAction, deleteTemplateAction, startConversationAction, addPhoneAsClientAction } from './actions';
 import MessagingSetup from './MessagingSetup';
 import SavedReplies from './SavedReplies';
 import ComposeMessage from './ComposeMessage';
 import PersistentMessageIntent from './PersistentMessageIntent';
+import ReplyForm from './ReplyForm';
 import AddAsCustomer from './AddAsCustomer';
 import ScrollToLatest from './ScrollToLatest';
 import MarkVisibleThreadRead from './MarkVisibleThreadRead';
-import SaveButton from '@/components/save-button';
 import { loadDedicatedMessagingReadiness } from '@/lib/messaging-number-provisioning';
 
 export const metadata = { title: 'Messages' };
 
-function formatTime(value: string): string {
-  return new Date(value).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+function formatTime(value: string, timeZone?: string): string {
+  return new Date(value).toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    ...(timeZone ? { timeZone } : {}),
+  });
 }
 
 const FILTERS = [
@@ -88,12 +95,18 @@ export default async function MessagesPage({
   }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContext('messages.read');
+  const { supabase, accountId, accountTimeZone } = await requireOfficeContext('messages.read');
   // Built ONCE and shared. Both loadConversations and this page need it, and
   // letting each build its own meant six table reads per inbox load.
   const identities = await buildContactIdentityMap(supabase, accountId);
+  const rawQuery = (searchParams.q ?? '').trim();
+  const query = rawQuery.toLowerCase();
+  const filter: InboxFilter = FILTERS.some((option) => option.key === searchParams.filter)
+    ? (searchParams.filter as InboxFilter)
+    : 'all';
+
   const [conversationRead, consentPhoneRead, setup, messagingReadiness, { data: site }, { data: balanceRows }] = await Promise.all([
-    loadConversations(supabase, accountId, identities),
+    loadConversations(supabase, accountId, identities, rawQuery),
     loadCurrentSmsConsentPhones(supabase, accountId),
     // Both setup reads report "unavailable" rather than a default on failure,
     // so the strip can say it could not tell instead of announcing a state.
@@ -104,6 +117,7 @@ export default async function MessagesPage({
   ]);
   const textCreditUnits = balanceRows?.find((r) => r.resource_code === 'text_segments')?.available_units;
   const availableTextCredits = typeof textCreditUnits === 'number' && Number.isFinite(textCreditUnits) ? Math.max(0, textCreditUnits) : null;
+  const topUpHref = topUpPurchaseEnabled() ? '/dashboard/settings#buy-credits' : '/dashboard/settings#usage-balances';
   const siteContent = getSiteContent((site?.content as Record<string, unknown> | null) ?? null);
   const allConversations = conversationRead.data;
   const conversationsAvailable = conversationRead.kind === 'ready';
@@ -115,11 +129,6 @@ export default async function MessagesPage({
 
   // Filtering happens before the active thread is chosen, so opening the page
   // on "Unread" lands you in an unread thread rather than on an empty pane.
-  const rawQuery = (searchParams.q ?? '').trim();
-  const query = rawQuery.toLowerCase();
-  const filter: InboxFilter = FILTERS.some((option) => option.key === searchParams.filter)
-    ? (searchParams.filter as InboxFilter)
-    : 'all';
   const conversations = allConversations.filter((conversation) => {
     if (filter === 'unread' && conversation.unread === 0) return false;
     // "Needs reply" is a thread whose LAST message came from them. Anything
@@ -130,7 +139,14 @@ export default async function MessagesPage({
     // The LABEL too, not just the name: the row may be headed by a street or
     // a town, and searching for the words on screen has to find them.
     const label = conversation.label.toLowerCase();
-    return name.includes(query) || label.includes(query) || conversation.phone.includes(query) || (conversation.lastBody ?? '').toLowerCase().includes(query);
+    const phone = conversation.phone.toLowerCase();
+    const phoneDashes = formatPhoneDashes(conversation.phone).toLowerCase();
+    const phoneDigits = conversation.phone.replace(/\D/g, '');
+    const queryDigits = query.replace(/\D/g, '');
+    const matchesPhone = phone.includes(query)
+      || phoneDashes.includes(query)
+      || (queryDigits.length >= 3 && phoneDigits.includes(queryDigits));
+    return name.includes(query) || label.includes(query) || matchesPhone || (conversation.lastBody ?? '').toLowerCase().includes(query);
   });
 
   const requestedThread = searchParams.thread || searchParams.phone || searchParams.to || null;
@@ -163,7 +179,7 @@ export default async function MessagesPage({
   // Who they are and what this is about — the three tabs you used to have to
   // open to answer a text.
   const context = await messageContext(supabase, accountId, activePhone);
-  const days = groupByDay(messages);
+  const days = groupByDay(messages, accountTimeZone);
   const knownThread = messagesAvailable && messages.length > 0;
   // Bound the read receipt to what this response actually rendered. A new text
   // arriving during hydration must remain unread until it is on screen.
@@ -182,7 +198,7 @@ export default async function MessagesPage({
   const contacts = consentPhoneRead.data
     .map((phone) => ({ phone, name: contactLabel(identities.get(phone) ?? null, phone) }))
     .sort((a, b) => a.name.localeCompare(b.name));
-  const totalUnread = conversations.reduce((sum, conversation) => sum + conversation.unread, 0);
+  const totalUnread = allConversations.reduce((sum, conversation) => sum + conversation.unread, 0);
   const empty = inboxEmptyState({ total: allConversations.length, filter, query: rawQuery });
 
   return (
@@ -312,7 +328,7 @@ export default async function MessagesPage({
             <div className="inbox-thread-list">
               {conversations.map((conversation) => {
                 const name = conversation.label;
-                const when = formatTime(conversation.lastAt);
+                const when = formatTime(conversation.lastAt, accountTimeZone);
                 return (
                   <Link
                     key={conversation.phone}
@@ -433,15 +449,18 @@ export default async function MessagesPage({
                                     {message.body ? <MessageBody body={message.body} /> : null}
                                     {(message.media_urls ?? []).length > 0 ? (
                                       <div className="inbox-bubble-media">
-                                        {(message.media_urls ?? []).map((url) => (
-                                          // Opens full size in a new tab; the thumbnail stays
-                                          // small so a thread of photos still scans as a
-                                          // conversation rather than a gallery.
-                                          <a key={url} href={url} target="_blank" rel="noopener noreferrer">
-                                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                                            <img src={url} alt="Photo from the customer" loading="lazy" />
-                                          </a>
-                                        ))}
+                                        {(message.media_urls ?? []).map((_url, mediaIndex) => {
+                                          const mediaSrc = `/api/messages/media/${encodeURIComponent(message.id)}?index=${mediaIndex}`;
+                                          return (
+                                            // Opens full size in a new tab; the thumbnail stays
+                                            // small so a thread of photos still scans as a
+                                            // conversation rather than a gallery.
+                                            <a key={`${message.id}-${mediaIndex}`} href={mediaSrc} target="_blank" rel="noopener noreferrer">
+                                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                                              <img src={mediaSrc} alt="Photo from the customer" loading="lazy" />
+                                            </a>
+                                          );
+                                        })}
                                       </div>
                                     ) : null}
                                     {showIntermediateWarning ? <span className="inbox-bubble-status">{statusLabel}</span> : null}
@@ -449,7 +468,7 @@ export default async function MessagesPage({
                                 );
                               })}
                               <span className="inbox-run-time">
-                                {formatTime(last.created_at)}
+                                {formatTime(last.created_at, accountTimeZone)}
                                 {run.direction === 'outbound' ? <> · {outboundDeliveryLabel(last.delivery_status)}</> : null}
                               </span>
                             </div>
@@ -478,27 +497,17 @@ export default async function MessagesPage({
                   canInsert={customerMessagingReady && knownThread}
                 />
                 {customerMessagingReady && knownThread ? (
-                  <form action={sendReplyAction.bind(null, activePhone)} className="inbox-reply">
+                  <ReplyForm
+                    action={sendReplyAction.bind(null, activePhone)}
+                    availableTextCredits={availableTextCredits}
+                    topUpHref={topUpHref}
+                  >
                     <PersistentMessageIntent
                       storageKey={`lgq:messages:reply:${accountId}:${activePhone}`}
                       fallbackId={replyIntentId}
                       resetToken={searchParams.sent === 'reply' ? searchParams.queued : null}
                     />
-                    <textarea id="reply-body" name="body" rows={2} placeholder="Type a reply…" required aria-label="Reply message" />
-                    <div className="inbox-reply-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', marginTop: '0.5rem', flexWrap: 'wrap' }}>
-                      {availableTextCredits !== null ? (
-                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: availableTextCredits <= 25 ? 'var(--amber-10, #f59e0b)' : 'var(--text-muted, #94a3b8)', fontWeight: 500 }}>
-                          <span>💬 {availableTextCredits.toLocaleString('en-US')} text credits remaining</span>
-                          {availableTextCredits <= 25 ? (
-                            <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline' }}>
-                              + Top up
-                            </Link>
-                          ) : null}
-                        </div>
-                      ) : <span />}
-                      <SaveButton className="btn primary" pendingLabel="Queueing…" savedLabel="Queued ✓">Send</SaveButton>
-                    </div>
-                  </form>
+                  </ReplyForm>
                 ) : !messagesAvailable ? (
                   <p className="empty-state">Messaging is disabled until this conversation can be checked safely.</p>
                 ) : !customerMessagingReady ? (

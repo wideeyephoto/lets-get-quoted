@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useActionState } from 'react';
 import SaveButton from '@/components/save-button';
 import ModalDialog from '@/components/modal-dialog';
-import { CloseOnSuccess } from '@/components/modal-dialog';
 import PersistentMessageIntent from './PersistentMessageIntent';
+import type { MessageActionResult } from './types';
 
 // Starting a conversation with somebody who hasn't texted first.
 //
@@ -27,23 +27,44 @@ export default function ComposeMessage({
   availableCredits,
 }: {
   contacts: Contact[];
-  action: (formData: FormData) => void | Promise<void>;
+  action: (state: MessageActionResult, formData: FormData) => Promise<MessageActionResult>;
   fallbackIntentId: string;
   intentStorageKey: string;
   resetToken?: string | null;
   availableCredits?: number | null;
 }) {
+  const [state, formAction] = useActionState(action, { status: 'idle' });
   const [phone, setPhone] = useState('');
+  const [body, setBody] = useState('');
 
   return (
     <ModalDialog triggerLabel="New message" triggerClassName="btn primary" title="New message">
-      <form action={action} className="cash-bill-form">
+      <form action={formAction} className="cash-bill-form">
         <PersistentMessageIntent
           storageKey={intentStorageKey}
           fallbackId={fallbackIntentId}
           resetToken={resetToken}
         />
         <p className="cash-bill-form-head">Text a customer</p>
+
+        {state.status === 'error' ? (
+          <div
+            className="alert alert-error"
+            role="alert"
+            style={{
+              padding: '0.625rem 0.75rem',
+              backgroundColor: 'var(--red-2, #fef2f2)',
+              border: '1px solid var(--red-6, #fca5a5)',
+              color: 'var(--red-11, #b91c1c)',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              marginBottom: '0.75rem',
+              lineHeight: 1.4,
+            }}
+          >
+            {state.message}
+          </div>
+        ) : null}
 
         {contacts.length > 0 ? (
           <label className="cash-bill-field wide">
@@ -67,7 +88,14 @@ export default function ComposeMessage({
 
         <label className="cash-bill-field wide">
           <span>Message</span>
-          <textarea name="body" rows={4} placeholder="Hi — quick update on your job…" required />
+          <textarea
+            name="body"
+            rows={4}
+            placeholder="Hi — quick update on your job…"
+            required
+            value={body}
+            onChange={(event) => setBody(event.target.value)}
+          />
         </label>
 
         <div className="cash-bill-form-actions" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -85,7 +113,6 @@ export default function ComposeMessage({
             >
               Send text
             </SaveButton>
-            <CloseOnSuccess />
           </div>
         </div>
       </form>

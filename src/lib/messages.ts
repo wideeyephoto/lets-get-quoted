@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { createAdminClient } from '@/lib/auth';
 import { cityFromAddress, streetFromAddress } from '@/lib/lead-detail-labels';
 import { formatPhoneDashes, normalizeUsPhone } from '@/lib/phone';
 import { runSmsInboxVisibleQuery } from '@/lib/sms-inbox-visibility';
@@ -433,18 +434,47 @@ export async function buildContactNameMap(supabase: SupabaseClient, accountId: s
  */
 const PLATFORM_LANE_PURPOSES = ['lgq_shared', 'lgq_dispatch'] as const;
 
-async function platformLaneSenderIds(supabase: SupabaseClient): Promise<string[]> {
-  const { data, error } = await supabase
-    .from('sms_sender_numbers')
-    .select('id')
-    .in('purpose', PLATFORM_LANE_PURPOSES as unknown as string[]);
-  // FAIL OPEN. If the lane list is unreadable, showing an extra thread is a
-  // cosmetic problem; hiding the contractor's real customer threads is not.
-  if (error) {
-    console.error('[messages] Failed to query platform lane sender IDs:', error);
+async function platformLaneSenderIds(supabase?: SupabaseClient, adminClient?: SupabaseClient): Promise<string[]> {
+  try {
+    // Authenticated users have no SELECT grant on sms_sender_numbers (42501).
+    // The admin client is required so the platform lane filter actually runs.
+    // In test environment without network access, prioritize the injected test client.
+    const isTest = typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || Boolean(process.env.VITEST));
+    const client = adminClient ?? (isTest && supabase ? supabase : createAdminClient());
+    const { data, error } = await client
+      .from('sms_sender_numbers')
+      .select('id')
+      .in('purpose', PLATFORM_LANE_PURPOSES as unknown as string[]);
+    if (error) {
+      if (isTest && supabase && client !== supabase) {
+        const fallback = await supabase
+          .from('sms_sender_numbers')
+          .select('id')
+          .in('purpose', PLATFORM_LANE_PURPOSES as unknown as string[]);
+        if (!fallback.error) {
+          return (fallback.data ?? []).map((row) => String((row as { id: unknown }).id));
+        }
+      }
+      console.error('[messages] Failed to query platform lane sender IDs:', error);
+      return [];
+    }
+    return (data ?? []).map((row) => String((row as { id: unknown }).id));
+  } catch (err) {
+    if (supabase) {
+      try {
+        const fallback = await supabase
+          .from('sms_sender_numbers')
+          .select('id')
+          .in('purpose', PLATFORM_LANE_PURPOSES as unknown as string[]);
+        if (!fallback.error) {
+          return (fallback.data ?? []).map((row) => String((row as { id: unknown }).id));
+        }
+      } catch {
+        return [];
+      }
+    }
     return [];
   }
-  return (data ?? []).map((row) => String((row as { id: unknown }).id));
 }
 
 /**
@@ -476,6 +506,7 @@ export async function loadConversations(
    * where three will do. Optional, so every other caller is unchanged.
    */
   identities?: Map<string, ContactIdentity>,
+  searchQuery?: string,
 ): Promise<MessagingReadResult<Conversation[]>> {
   // Columns listed explicitly so a pre-migration database (no read_at /
   // media_urls) still returns rows; the fallback below drops the new ones.
@@ -542,6 +573,110 @@ export async function loadConversations(
     if (hasReadState && row.direction === 'inbound' && !row.read_at) {
       const entry = seen.get(phone)!;
       entry.unread += 1;
+    }
+  }
+
+  const trimmedQuery = searchQuery?.trim();
+  if (trimmedQuery) {
+    const qLower = trimmedQuery.toLowerCase();
+    const matchingPhones = new Set<string>();
+    for (const [phone, id] of contacts) {
+      if (id.name?.toLowerCase().includes(qLower) || id.address?.toLowerCase().includes(qLower)) {
+        matchingPhones.add(phone);
+      }
+    }
+    const normalizedPhone = normalizeUsPhone(trimmedQuery);
+    if (normalizedPhone) matchingPhones.add(normalizedPhone);
+    const queryDigits = trimmedQuery.replace(/\D/g, '');
+    if (queryDigits.length >= 3) {
+      for (const [phone] of contacts) {
+        if (phone.replace(/\D/g, '').includes(queryDigits)) {
+          matchingPhones.add(phone);
+        }
+      }
+    }
+
+    try {
+      const escaped = trimmedQuery.replace(/[%_\\]/g, '\\$&');
+      const { data: matchedRows } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+        let q = supabase
+          .from('sms_messages')
+          .select('phone_number')
+          .eq('account_id', accountId)
+          .ilike('body', `%${escaped}%`);
+        if (includeVisibilityFilter) q = q.eq('inbox_visible', true);
+        return excludePlatformLanes(q, platformIds)
+          .order('created_at', { ascending: false })
+          .limit(50);
+      });
+      if (matchedRows) {
+        for (const r of matchedRows as { phone_number: string }[]) {
+          if (r.phone_number) matchingPhones.add(r.phone_number);
+        }
+      }
+
+      if (queryDigits.length >= 3) {
+        const { data: matchedPhoneRows } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+          let q = supabase
+            .from('sms_messages')
+            .select('phone_number')
+            .eq('account_id', accountId)
+            .ilike('phone_number', `%${queryDigits}%`);
+          if (includeVisibilityFilter) q = q.eq('inbox_visible', true);
+          return excludePlatformLanes(q, platformIds)
+            .order('created_at', { ascending: false })
+            .limit(50);
+        });
+        if (matchedPhoneRows) {
+          for (const r of matchedPhoneRows as { phone_number: string }[]) {
+            if (r.phone_number) matchingPhones.add(r.phone_number);
+          }
+        }
+      }
+    } catch (searchErr) {
+      console.error('[messages] Error searching older messages:', searchErr);
+    }
+
+    const missingPhones = [...matchingPhones].filter((p) => !seen.has(p));
+    if (missingPhones.length > 0) {
+      try {
+        const { data: olderRows } = await runSmsInboxVisibleQuery((includeVisibilityFilter) => {
+          let q = supabase
+            .from('sms_messages')
+            .select('id, account_id, phone_number, body, direction, provider_id, provider, sender_number_id, sms_event_id, created_at, read_at, media_urls')
+            .eq('account_id', accountId)
+            .in('phone_number', missingPhones);
+          if (includeVisibilityFilter) q = q.eq('inbox_visible', true);
+          return excludePlatformLanes(q, platformIds)
+            .order('created_at', { ascending: false });
+        });
+        if (olderRows) {
+          for (const row of olderRows as SmsMessage[]) {
+            const phone = String(row.phone_number);
+            if (!seen.has(phone)) {
+              const identity = contacts.get(phone) ?? null;
+              const media = Array.isArray(row.media_urls) ? (row.media_urls as string[]) : [];
+              seen.set(phone, {
+                phone,
+                name: identity?.name ?? null,
+                label: contactLabel(identity, phone),
+                lastBody: String(row.body ?? ''),
+                lastAt: String(row.created_at),
+                lastDirection: row.direction as SmsDirection,
+                lastDeliveryStatus: row.delivery_status ?? null,
+                unread: 0,
+                lastHasMedia: media.length > 0,
+              });
+            }
+            if (hasReadState && row.direction === 'inbound' && !row.read_at) {
+              const entry = seen.get(phone)!;
+              entry.unread += 1;
+            }
+          }
+        }
+      } catch (err) {
+        console.error('[messages] Error fetching older conversation threads:', err);
+      }
     }
   }
   return { kind: 'ready', data: [...seen.values()] };

@@ -134,11 +134,12 @@ export async function messageContext(
 }
 
 /** "Tuesday, August 3" — the divider between one day's texts and the next. */
-export function dayDivider(iso: string): string {
+export function dayDivider(iso: string, timeZone?: string): string {
   return new Date(iso).toLocaleDateString('en-US', {
     weekday: 'long',
     month: 'long',
     day: 'numeric',
+    ...(timeZone ? { timeZone } : {}),
   });
 }
 
@@ -216,13 +217,26 @@ export function initialsFor(name: string | null | undefined): string {
 }
 
 /** Group consecutive messages by calendar day, preserving order. */
-export function groupByDay<T extends { created_at: string }>(messages: T[]): { key: string; label: string; items: T[] }[] {
+export function groupByDay<T extends { created_at: string }>(
+  messages: T[],
+  timeZone?: string,
+): { key: string; label: string; items: T[] }[] {
   const out: { key: string; label: string; items: T[] }[] = [];
   for (const message of messages) {
-    const key = new Date(message.created_at).toISOString().slice(0, 10);
+    let key: string;
+    try {
+      key = new Intl.DateTimeFormat('en-CA', {
+        timeZone: timeZone || undefined,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(new Date(message.created_at));
+    } catch {
+      key = new Date(message.created_at).toISOString().slice(0, 10);
+    }
     const last = out[out.length - 1];
     if (last && last.key === key) last.items.push(message);
-    else out.push({ key, label: dayDivider(message.created_at), items: [message] });
+    else out.push({ key, label: dayDivider(message.created_at, timeZone), items: [message] });
   }
   return out;
 }
