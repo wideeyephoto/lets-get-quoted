@@ -39,7 +39,7 @@ const SECURITY_HEADERS = [
   // serves all of these over HTTPS, so this only closes a downgrade path we
   // never use.
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
-  { key: 'Permissions-Policy', value: 'camera=(), microphone=()' },
+  { key: 'Permissions-Policy', value: 'camera=(self), microphone=(self)' },
 ];
 
 const nextConfig = {
@@ -122,7 +122,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'files.cdn.printful.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.unsplash.com', pathname: '/**' },
       { protocol: 'https', hostname: 'images.pexels.com', pathname: '/**' },
-      { protocol: 'https', hostname: supabaseImageHost(), pathname: '/storage/v1/object/public/site-images/**' },
+      { protocol: 'https', hostname: supabaseImageHost(), pathname: '/storage/v1/object/public/**' },
     ],
   },
 };

@@ -137,4 +137,103 @@ describe('insurance-claims.ts', () => {
       expect(deductibleFaq?.detailedExplanation).toContain('illegal');
     });
   });
+
+  describe('extractClaimMetadataFromText', () => {
+    it('extracts claim number, policyholder, address, carrier, and date of loss from scope header', async () => {
+      const { extractClaimMetadataFromText } = await import('@/lib/insurance-claims');
+      const scope = `
+        STATE FARM FIRE AND CASUALTY COMPANY
+        CLAIM NUMBER: 49-8821-X01
+        INSURED: Robert & Sarah Jenkins
+        LOSS LOCATION: 1422 Meadowbrook Lane
+        DATE OF LOSS: 08/14/2026 - Hail & Wind Storm
+        ADJUSTER: Desk Adjuster John Smith
+      `;
+
+      const meta = extractClaimMetadataFromText(scope);
+      expect(meta.claimNumber).toBe('49-8821-X01');
+      expect(meta.policyholderName).toBe('Robert & Sarah Jenkins');
+      expect(meta.propertyAddress).toBe('1422 Meadowbrook Lane');
+      expect(meta.carrierName).toBe('State Farm');
+      expect(meta.dateOfLoss).toContain('08/14/2026');
+      expect(meta.adjusterName).toBe('Desk Adjuster John Smith');
+    });
+
+    it('returns null fields on empty scope text', async () => {
+      const { extractClaimMetadataFromText } = await import('@/lib/insurance-claims');
+      const meta = extractClaimMetadataFromText('');
+      expect(meta.claimNumber).toBeNull();
+      expect(meta.policyholderName).toBeNull();
+      expect(meta.propertyAddress).toBeNull();
+    });
+  });
+
+  describe('matchHomeownerFaq (P2 fix)', () => {
+    it('matches natural user queries for RCV vs ACV', async () => {
+      const { matchHomeownerFaq } = await import('@/lib/insurance-ai');
+      expect(matchHomeownerFaq('What is the difference between RCV and ACV?')?.question).toContain('RCV and ACV');
+      expect(matchHomeownerFaq('explain difference between rcv and acv')?.question).toContain('RCV and ACV');
+      expect(matchHomeownerFaq('what is actual cash value?')?.question).toContain('RCV and ACV');
+      expect(matchHomeownerFaq('how does replacement cost value work?')?.question).toContain('RCV and ACV');
+    });
+
+    it('matches queries about contractor choice / preferred contractor', async () => {
+      const { matchHomeownerFaq } = await import('@/lib/insurance-ai');
+      expect(matchHomeownerFaq('Do I have to use their preferred contractor?')?.question).toContain('preferred contractor');
+      expect(matchHomeownerFaq('Can I choose my own contractor?')?.question).toContain('preferred contractor');
+      expect(matchHomeownerFaq('is an insurance contractor required?')?.question).toContain('preferred contractor');
+    });
+
+    it('matches queries about deductible waiving', async () => {
+      const { matchHomeownerFaq } = await import('@/lib/insurance-ai');
+      expect(matchHomeownerFaq('Can a contractor waive my deductible?')?.question).toContain('waive');
+      expect(matchHomeownerFaq('Will you pay my deductible?')?.question).toContain('waive');
+      expect(matchHomeownerFaq('can you cover my deductible?')?.question).toContain('waive');
+      expect(matchHomeownerFaq('free deductible offer?')?.question).toContain('waive');
+    });
+
+    it('matches queries about rate increases', async () => {
+      const { matchHomeownerFaq } = await import('@/lib/insurance-ai');
+      expect(matchHomeownerFaq('Will this claim raise my rates?')?.question).toContain('raise my insurance rates');
+      expect(matchHomeownerFaq('Will my insurance rates go up after hail?')?.question).toContain('raise my insurance rates');
+      expect(matchHomeownerFaq('Will filing a claim increase premiums?')?.question).toContain('raise my insurance rates');
+    });
+
+    it('matches queries defining supplements', async () => {
+      const { matchHomeownerFaq } = await import('@/lib/insurance-ai');
+      expect(matchHomeownerFaq('What is an insurance supplement?')?.question).toContain('insurance supplement');
+      expect(matchHomeownerFaq('what is a supplement')?.question).toContain('insurance supplement');
+      expect(matchHomeownerFaq('explain what supplement means')?.question).toContain('insurance supplement');
+    });
+
+    it('returns null for unrelated questions to fall through to AI', async () => {
+      const { matchHomeownerFaq } = await import('@/lib/insurance-ai');
+      expect(matchHomeownerFaq('What color shingles should I choose?')).toBeNull();
+      expect(matchHomeownerFaq('Do you work on Saturdays?')).toBeNull();
+    });
+  });
+
+  describe('Model output dollar clamping (P2 fix)', () => {
+    it('clamps negative, non-finite, and arbitrarily large numbers', async () => {
+      const { clampDollarAmount, clampNullableDollarAmount } = await import('@/lib/insurance-ai');
+
+      // Rejects negatives
+      expect(clampDollarAmount(-500, 500, 0, 50000)).toBe(0);
+      expect(clampNullableDollarAmount(-1000)).toBeNull();
+
+      // Clamps arbitrarily large numbers
+      expect(clampDollarAmount(999999999, 500, 0, 50000)).toBe(50000);
+      expect(clampNullableDollarAmount(99999999999, 10000000)).toBe(10000000);
+
+      // Accepts valid finite dollar numbers
+      expect(clampDollarAmount(1250.555, 0, 0, 50000)).toBe(1250.56);
+      expect(clampNullableDollarAmount(14250.5)).toBe(14250.5);
+
+      // Handles non-number strings safely
+      expect(clampDollarAmount('$4,250.00')).toBe(4250);
+      expect(clampDollarAmount('invalid', 500)).toBe(500);
+      expect(clampNullableDollarAmount(null)).toBeNull();
+    });
+  });
 });
+

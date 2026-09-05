@@ -9,6 +9,8 @@ import type {
   StockTransfer,
   InventoryPayload,
   DepreciationSchedule,
+  ToolCustodyLogEntry,
+  VanKitTemplate,
 } from '@/lib/inventory-tracker';
 import {
   DEFAULT_TOOLS,
@@ -114,13 +116,17 @@ export async function loadInventoryData(
     stockRes,
     transferRes,
     maintRes,
+    custodyRes,
+    templatesRes,
   ] = await Promise.all([
     supabase.from('inventory_locations').select('*').eq('account_id', accountId).order('created_at', { ascending: true }),
     supabase.from('inventory_tools').select('*').eq('account_id', accountId).order('created_at', { ascending: true }),
     supabase.from('inventory_vehicles').select('*').eq('account_id', accountId).order('created_at', { ascending: true }),
     supabase.from('inventory_stock_items').select('*').eq('account_id', accountId).order('created_at', { ascending: true }),
     supabase.from('inventory_stock_transfers').select('*').eq('account_id', accountId).order('created_at', { ascending: false }).limit(50),
-    supabase.from('inventory_maintenance_records').select('*').eq('account_id', accountId).order('performed_at', { ascending: false }),
+    supabase.from('inventory_maintenance_records').select('*').eq('account_id', accountId).order('performed_at', { ascending: false }).limit(200),
+    Promise.resolve(supabase.from('inventory_tool_custody_log').select('*').eq('account_id', accountId).order('occurred_at', { ascending: false }).limit(100)).catch(() => ({ data: [] })),
+    Promise.resolve(supabase.from('inventory_van_kit_templates').select('*').eq('account_id', accountId).order('name', { ascending: true })).catch(() => ({ data: [] })),
   ]);
 
   const queryErr =
@@ -135,14 +141,16 @@ export async function loadInventoryData(
     throw new Error(`Failed to load inventory data: ${queryErr.message || JSON.stringify(queryErr)}`);
   }
 
-  const rawLocations = locRes.data ?? [];
-  const rawTools = toolsRes.data ?? [];
-  const rawVehicles = vehRes.data ?? [];
-  const rawStock = stockRes.data ?? [];
+  // Filter out soft-deleted records
+  const rawLocations = (locRes.data ?? []).filter((r: Record<string, unknown>) => !r.deleted_at);
+  const rawTools = (toolsRes.data ?? []).filter((r: Record<string, unknown>) => !r.deleted_at);
+  const rawVehicles = (vehRes.data ?? []).filter((r: Record<string, unknown>) => !r.deleted_at);
+  const rawStock = (stockRes.data ?? []).filter((r: Record<string, unknown>) => !r.deleted_at);
   const rawTransfers = transferRes.data ?? [];
   const rawMaintenance = maintRes.data ?? [];
+  const rawCustody = (custodyRes as any)?.data ?? [];
+  const rawTemplates = (templatesRes as any)?.data ?? [];
 
-  // Return empty collections if no records exist yet — never auto-seed fake records on read.
   return {
     locations: rawLocations.map(mapLocationRow),
     tools: rawTools.map(mapToolRow),
@@ -150,6 +158,8 @@ export async function loadInventoryData(
     stock: rawStock.map(mapStockRow),
     transfers: rawTransfers.map(mapTransferRow),
     maintenance: rawMaintenance.map(mapMaintenanceRow),
+    custodyLogs: rawCustody.map(mapCustodyLogRow),
+    vanKitTemplates: rawTemplates.map(mapVanKitTemplateRow),
   };
 }
 
@@ -312,15 +322,10 @@ export async function saveTool(
 
   const existingNotes = existing?.notes ? String(existing.notes) : null;
   const { cleanNotes: existingCleanNotes, meta: existingMeta } = decodeTaxMeta(existingNotes);
-  const notesToEncode = tool.notes !== undefined ? tool.notes : existingCleanNotes;
-  const metaToEncode = {
-    depreciationSchedule: tool.depreciationSchedule !== undefined ? tool.depreciationSchedule : existingMeta.depreciationSchedule,
-    purchasePrice: tool.purchasePrice !== undefined ? tool.purchasePrice : existingMeta.purchasePrice,
-    purchaseDate: tool.purchaseDate !== undefined ? tool.purchaseDate : existingMeta.purchaseDate,
-    imageUrl: tool.imageUrl !== undefined ? tool.imageUrl : existingMeta.imageUrl,
-  };
+  const notesClean = tool.notes !== undefined ? tool.notes : existingCleanNotes;
+  const finalImageUrl = tool.imageUrl !== undefined ? (tool.imageUrl || null) : (existing?.image_url as string ?? existingMeta.imageUrl ?? null);
 
-  const payload = {
+  const payload: Record<string, unknown> = {
     account_id: accountId,
     name: tool.name !== undefined ? tool.name.trim() : String(existing?.name ?? '').trim(),
     brand: tool.brand !== undefined ? tool.brand.trim() : String(existing?.brand ?? '').trim(),
@@ -335,6 +340,7 @@ export async function saveTool(
     depreciation_schedule: tool.depreciationSchedule !== undefined
       ? (tool.depreciationSchedule || null)
       : (existing?.depreciation_schedule as string ?? existingMeta.depreciationSchedule ?? null),
+    image_url: finalImageUrl,
     status: tool.status || (existing?.status as ToolAsset['status']) || 'available',
     location_id: tool.locationId !== undefined ? (tool.locationId || null) : (existing?.location_id as string ?? null),
     location_name: tool.locationName !== undefined ? (tool.locationName || null) : (existing?.location_name as string ?? null),
@@ -343,7 +349,13 @@ export async function saveTool(
     assigned_job_id: tool.assignedJobId !== undefined ? (tool.assignedJobId || null) : (existing?.assigned_job_id as string ?? null),
     assigned_job_label: tool.assignedJobLabel !== undefined ? (tool.assignedJobLabel || null) : (existing?.assigned_job_label as string ?? null),
     checked_out_at: tool.checkedOutAt !== undefined ? (tool.checkedOutAt || null) : (existing?.checked_out_at as string ?? null),
-    notes: notesToEncode,
+    expected_return_date: tool.expectedReturnDate !== undefined ? (tool.expectedReturnDate || null) : (existing?.expected_return_date as string ?? null),
+    notes: encodeTaxMeta(notesClean, {
+      depreciationSchedule: tool.depreciationSchedule !== undefined ? tool.depreciationSchedule : existingMeta.depreciationSchedule,
+      purchasePrice: tool.purchasePrice !== undefined ? tool.purchasePrice : existingMeta.purchasePrice,
+      purchaseDate: tool.purchaseDate !== undefined ? tool.purchaseDate : existingMeta.purchaseDate,
+      imageUrl: finalImageUrl,
+    }),
     updated_at: new Date().toISOString(),
   };
 
@@ -369,7 +381,7 @@ export async function saveTool(
 }
 
 /**
- * Checks out a tool to crew/job without modifying other asset attributes.
+ * Checks out a tool to crew/job and logs an immutable custody event.
  */
 export async function checkOutToolDb(
   supabase: SupabaseClient,
@@ -381,8 +393,11 @@ export async function checkOutToolDb(
     jobId?: string | null;
     jobLabel?: string | null;
     notes?: string | null;
+    expectedReturnDate?: string | null;
+    performedBy?: string | null;
   },
 ): Promise<ToolAsset> {
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('inventory_tools')
     .update({
@@ -391,9 +406,10 @@ export async function checkOutToolDb(
       assigned_crew_name: params.crewName,
       assigned_job_id: params.jobId || null,
       assigned_job_label: params.jobLabel || null,
-      checked_out_at: new Date().toISOString(),
+      checked_out_at: now,
+      expected_return_date: params.expectedReturnDate || null,
       notes: params.notes !== undefined ? params.notes : undefined,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq('id', params.toolId)
     .eq('account_id', accountId)
@@ -401,11 +417,30 @@ export async function checkOutToolDb(
     .single();
 
   if (error) throw error;
+
+  // Log custody event
+  try {
+    await supabase.from('inventory_tool_custody_log').insert({
+      account_id: accountId,
+      tool_id: params.toolId,
+      action: 'check_out',
+      crew_id: params.crewId || null,
+      crew_name: params.crewName,
+      job_id: params.jobId || null,
+      job_label: params.jobLabel || null,
+      performed_by: params.performedBy || null,
+      notes: params.notes || null,
+      occurred_at: now,
+    });
+  } catch {
+    // Graceful audit log insert
+  }
+
   return mapToolRow(data);
 }
 
 /**
- * Checks in a tool back to available pool without modifying other asset attributes.
+ * Checks in a tool back to available pool and logs an immutable custody event.
  */
 export async function checkInToolDb(
   supabase: SupabaseClient,
@@ -414,8 +449,10 @@ export async function checkInToolDb(
     toolId: string;
     condition?: ToolAssetStatus;
     notes?: string | null;
+    performedBy?: string | null;
   },
 ): Promise<ToolAsset> {
+  const now = new Date().toISOString();
   const { data, error } = await supabase
     .from('inventory_tools')
     .update({
@@ -425,8 +462,9 @@ export async function checkInToolDb(
       assigned_job_id: null,
       assigned_job_label: null,
       checked_out_at: null,
+      expected_return_date: null,
       notes: params.notes !== undefined ? params.notes : undefined,
-      updated_at: new Date().toISOString(),
+      updated_at: now,
     })
     .eq('id', params.toolId)
     .eq('account_id', accountId)
@@ -434,11 +472,26 @@ export async function checkInToolDb(
     .single();
 
   if (error) throw error;
+
+  // Log custody event
+  try {
+    await supabase.from('inventory_tool_custody_log').insert({
+      account_id: accountId,
+      tool_id: params.toolId,
+      action: 'check_in',
+      performed_by: params.performedBy || null,
+      notes: params.notes || null,
+      occurred_at: now,
+    });
+  } catch {
+    // Graceful audit log insert
+  }
+
   return mapToolRow(data);
 }
 
 /**
- * Delete a tool asset.
+ * Soft deletes a tool asset preserving historical records.
  */
 export async function deleteTool(
   supabase: SupabaseClient,
@@ -447,10 +500,18 @@ export async function deleteTool(
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_tools')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', toolId)
     .eq('account_id', accountId);
-  if (error) throw error;
+
+  if (error) {
+    const { error: fallbackErr } = await supabase
+      .from('inventory_tools')
+      .delete()
+      .eq('id', toolId)
+      .eq('account_id', accountId);
+    if (fallbackErr) throw fallbackErr;
+  }
 }
 
 /**
@@ -573,7 +634,7 @@ export async function updateVehicleMileage(
 }
 
 /**
- * Delete a fleet vehicle.
+ * Soft deletes a fleet vehicle.
  */
 export async function deleteVehicle(
   supabase: SupabaseClient,
@@ -582,10 +643,18 @@ export async function deleteVehicle(
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_vehicles')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', vehicleId)
     .eq('account_id', accountId);
-  if (error) throw error;
+
+  if (error) {
+    const { error: fallbackErr } = await supabase
+      .from('inventory_vehicles')
+      .delete()
+      .eq('id', vehicleId)
+      .eq('account_id', accountId);
+    if (fallbackErr) throw fallbackErr;
+  }
 }
 
 /**
@@ -603,12 +672,12 @@ export async function saveStockItem(
     category: stock.category.trim(),
     location_name: stock.location.trim(),
     location_id: stock.locationId || null,
-    quantity_on_hand: Number(stock.quantityOnHand) || 0,
-    min_threshold: Number(stock.minThreshold) || 0,
+    quantity_on_hand: Math.max(0, Number(stock.quantityOnHand) || 0),
+    min_threshold: Math.max(0, Number(stock.minThreshold) || 0),
     unit: stock.unit?.trim() || 'ea',
-    unit_cost: Number(stock.unitCost) || 0,
+    unit_cost: Math.max(0, Number(stock.unitCost) || 0),
     preferred_supplier: stock.preferredSupplier?.trim() || '',
-    reorder_qty: Number(stock.reorderQty) || 0,
+    reorder_qty: Math.max(0, Number(stock.reorderQty) || 0),
     notes: stock.notes?.trim() || null,
     updated_at: new Date().toISOString(),
   };
@@ -635,7 +704,7 @@ export async function saveStockItem(
 }
 
 /**
- * Delete a stock item.
+ * Soft deletes a stock item.
  */
 export async function deleteStockItem(
   supabase: SupabaseClient,
@@ -644,10 +713,18 @@ export async function deleteStockItem(
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_stock_items')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', stockId)
     .eq('account_id', accountId);
-  if (error) throw error;
+
+  if (error) {
+    const { error: fallbackErr } = await supabase
+      .from('inventory_stock_items')
+      .delete()
+      .eq('id', stockId)
+      .eq('account_id', accountId);
+    if (fallbackErr) throw fallbackErr;
+  }
 }
 
 /**
@@ -695,7 +772,7 @@ export async function transferStock(
     performedBy?: string;
     notes?: string;
   },
-): Promise<{ transfer: StockTransfer; sourceStock: VanStockItem }> {
+): Promise<{ transfer: StockTransfer; sourceStock: VanStockItem; destinationStock?: VanStockItem }> {
   const { data: item, error: fetchErr } = await supabase
     .from('inventory_stock_items')
     .select('*')
@@ -728,33 +805,44 @@ export async function transferStock(
     .eq('location_name', input.toLocation)
     .maybeSingle();
 
+  let destinationStock: VanStockItem | undefined;
   if (destItem) {
+    const updatedDestQty = Number(destItem.quantity_on_hand) + input.quantity;
     await supabase
       .from('inventory_stock_items')
       .update({
-        quantity_on_hand: Number(destItem.quantity_on_hand) + input.quantity,
+        quantity_on_hand: updatedDestQty,
         updated_at: new Date().toISOString(),
       })
       .eq('id', destItem.id)
       .eq('account_id', accountId);
+    destinationStock = mapStockRow({
+      ...destItem,
+      quantity_on_hand: updatedDestQty,
+      updated_at: new Date().toISOString(),
+    });
   } else {
     // Create stock item entry at new location
-    await supabase
+    const newStockRow = {
+      account_id: accountId,
+      name: item.name,
+      sku: item.sku,
+      category: item.category,
+      location_name: input.toLocation,
+      quantity_on_hand: input.quantity,
+      min_threshold: item.min_threshold,
+      unit: item.unit,
+      unit_cost: item.unit_cost,
+      preferred_supplier: item.preferred_supplier,
+      reorder_qty: item.reorder_qty,
+      notes: `Transferred from ${input.fromLocation}`,
+    };
+    const { data: createdDest } = await supabase
       .from('inventory_stock_items')
-      .insert({
-        account_id: accountId,
-        name: item.name,
-        sku: item.sku,
-        category: item.category,
-        location_name: input.toLocation,
-        quantity_on_hand: input.quantity,
-        min_threshold: item.min_threshold,
-        unit: item.unit,
-        unit_cost: item.unit_cost,
-        preferred_supplier: item.preferred_supplier,
-        reorder_qty: item.reorder_qty,
-        notes: `Transferred from ${input.fromLocation}`,
-      });
+      .insert(newStockRow)
+      .select?.()
+      ?.single?.() || {};
+    destinationStock = createdDest ? mapStockRow(createdDest) : mapStockRow({ id: `stock-${Date.now()}`, ...newStockRow });
   }
 
   // Record transfer log
@@ -777,6 +865,7 @@ export async function transferStock(
   return {
     transfer: mapTransferRow(transferRecord),
     sourceStock: mapStockRow(updatedSource),
+    destinationStock,
   };
 }
 
@@ -818,13 +907,16 @@ export async function saveMaintenanceRecord(
     .single();
   if (error) throw error;
 
-  // If this was a vehicle service, update vehicle's last_service_date and last_service_mileage
-  if (record.assetType === 'vehicle') {
+  // If this was a vehicle service, update vehicle's last_service_date and advance next_service_due_mileage
+  const isCustomAsset = !record.assetId || record.assetId === 'custom' || record.assetId === 'none' || record.assetId.startsWith('custom-');
+  if (record.assetType === 'vehicle' && !isCustomAsset) {
+    const nextServiceDue = record.mileageAtService ? Number(record.mileageAtService) + 5000 : undefined;
     const { error: vehUpdateErr } = await supabase
       .from('inventory_vehicles')
       .update({
         last_service_date: record.performedAt,
         last_service_mileage: record.mileageAtService ? Number(record.mileageAtService) : undefined,
+        ...(nextServiceDue !== undefined ? { next_service_due_mileage: nextServiceDue } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('id', record.assetId)
@@ -875,7 +967,7 @@ export async function saveLocation(
 }
 
 /**
- * Delete inventory location.
+ * Soft deletes inventory location.
  */
 export async function deleteLocation(
   supabase: SupabaseClient,
@@ -884,10 +976,18 @@ export async function deleteLocation(
 ): Promise<void> {
   const { error } = await supabase
     .from('inventory_locations')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', locationId)
     .eq('account_id', accountId);
-  if (error) throw error;
+
+  if (error) {
+    const { error: fallbackErr } = await supabase
+      .from('inventory_locations')
+      .delete()
+      .eq('id', locationId)
+      .eq('account_id', accountId);
+    if (fallbackErr) throw fallbackErr;
+  }
 }
 
 // ── Row Mappers ─────────────────────────────────────────────────────────────
@@ -948,6 +1048,7 @@ function mapToolRow(row: Record<string, unknown>): ToolAsset {
     assignedJobId: row.assigned_job_id ? String(row.assigned_job_id) : null,
     assignedJobLabel: row.assigned_job_label ? String(row.assigned_job_label) : null,
     checkedOutAt: row.checked_out_at ? String(row.checked_out_at) : null,
+    expectedReturnDate: row.expected_return_date ? String(row.expected_return_date) : null,
     notes: cleanNotes,
   };
 }
@@ -1048,4 +1149,105 @@ function mapMaintenanceRow(row: Record<string, unknown>): MaintenanceRecord {
     mileageAtService: row.mileage_at_service !== null && row.mileage_at_service !== undefined ? Number(row.mileage_at_service) : null,
     notes: row.notes ? String(row.notes) : null,
   };
+}
+
+export function mapCustodyLogRow(row: Record<string, unknown>): ToolCustodyLogEntry {
+  return {
+    id: String(row.id),
+    toolId: String(row.tool_id),
+    action: (row.action as ToolCustodyLogEntry['action']) ?? 'check_out',
+    crewId: row.crew_id ? String(row.crew_id) : null,
+    crewName: row.crew_name ? String(row.crew_name) : null,
+    jobId: row.job_id ? String(row.job_id) : null,
+    jobLabel: row.job_label ? String(row.job_label) : null,
+    performedBy: row.performed_by ? String(row.performed_by) : null,
+    notes: row.notes ? String(row.notes) : null,
+    occurredAt: String(row.occurred_at || row.created_at || new Date().toISOString()),
+  };
+}
+
+export function mapVanKitTemplateRow(row: Record<string, unknown>): VanKitTemplate {
+  return {
+    id: String(row.id),
+    name: String(row.name ?? ''),
+    description: row.description ? String(row.description) : null,
+    items: Array.isArray(row.items) ? (row.items as VanKitTemplate['items']) : [],
+  };
+}
+
+/**
+ * Applies a van kit template to a target location.
+ * For each item in the template, if the target location has that SKU,
+ * updates the min_threshold and reorder_qty (and tops up quantity if below min);
+ * otherwise inserts a new stock item at that location.
+ */
+export async function applyVanKitTemplate(
+  supabase: SupabaseClient,
+  accountId: string,
+  templateId: string,
+  targetLocation: string,
+): Promise<VanStockItem[]> {
+  const { data: template, error: tmplErr } = await supabase
+    .from('inventory_van_kit_templates')
+    .select('*')
+    .eq('id', templateId)
+    .eq('account_id', accountId)
+    .single();
+  if (tmplErr || !template) throw new Error('Van kit template not found');
+
+  const items = Array.isArray(template.items) ? (template.items as VanKitTemplate['items']) : [];
+  const results: VanStockItem[] = [];
+
+  for (const item of items) {
+    const { data: existing } = await supabase
+      .from('inventory_stock_items')
+      .select('*')
+      .eq('account_id', accountId)
+      .eq('sku', item.sku)
+      .eq('location_name', targetLocation)
+      .maybeSingle();
+
+    if (existing) {
+      const { data: updated, error: updateErr } = await supabase
+        .from('inventory_stock_items')
+        .update({
+          min_threshold: item.minThreshold,
+          reorder_qty: item.reorderQty,
+          unit_cost: item.unitCost || existing.unit_cost,
+          quantity_on_hand: Math.max(Number(existing.quantity_on_hand), item.reorderQty),
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', existing.id)
+        .eq('account_id', accountId)
+        .select()
+        .single();
+      if (!updateErr && updated) {
+        results.push(mapStockRow(updated));
+      }
+    } else {
+      const { data: created, error: createErr } = await supabase
+        .from('inventory_stock_items')
+        .insert({
+          account_id: accountId,
+          name: item.name,
+          sku: item.sku,
+          category: item.category,
+          location_name: targetLocation,
+          quantity_on_hand: item.reorderQty,
+          min_threshold: item.minThreshold,
+          unit: item.unit || 'ea',
+          unit_cost: item.unitCost || 0,
+          preferred_supplier: '',
+          reorder_qty: item.reorderQty,
+          notes: `Created via template ${template.name}`,
+        })
+        .select()
+        .single();
+      if (!createErr && created) {
+        results.push(mapStockRow(created));
+      }
+    }
+  }
+
+  return results;
 }

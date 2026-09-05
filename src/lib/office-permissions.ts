@@ -77,6 +77,16 @@ export const OFFICE_CAPABILITIES: readonly OfficeCapability[] = Object.freeze([
     grants: 'Text conversations with customers, including anything already sent.' },
   { key: 'messages.send', label: 'Send messages', band: 'work',
     grants: 'Text customers from the business number. Recipients cannot tell who typed it.' },
+  { key: 'inventory.read', label: 'See inventory & fleet', band: 'work',
+    grants: 'Every tool, fleet vehicle, stock level, depot location, and maintenance schedule.' },
+  { key: 'inventory.custody', label: 'Manage tool custody & transfers', band: 'work',
+    grants: 'Sign tools in and out to crew or jobs, transfer van stock, and log vehicle maintenance.' },
+  { key: 'inventory.write', label: 'Manage inventory & fleet equipment', band: 'work',
+    grants: 'Add, edit, retire, and remove tools, fleet vehicles, catalog stock, and depot locations.' },
+  { key: 'marketing.read', label: 'See marketing & campaigns', band: 'work',
+    grants: 'Campaign history, attribution, marketing performance and the seasonal calendar.' },
+  { key: 'marketing.write', label: 'Run marketing campaigns', band: 'work',
+    grants: 'Compose and send email and text campaigns, write blog posts, and configure ad campaigns.' },
 
   // ── Money they can see ───────────────────────────────────────────────────
   { key: 'quotes.read', label: 'See quotes', band: 'money_visible',

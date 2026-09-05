@@ -11,6 +11,9 @@ export interface StoreAutofillResult {
   sku: string | null;
   assetTagSuggestion: string;
   purchasePrice: number | null;
+  isPriceEstimated?: boolean;
+  isDateEstimated?: boolean;
+  source?: 'catalog' | 'url_slug_parsed';
   purchaseDate: string; // Defaults to today's date YYYY-MM-DD
   depreciationSchedule: DepreciationSchedule;
   imageUrl: string | null;
@@ -74,6 +77,9 @@ function catalogItemToAutofillResult(item: StoreProductCatalogItem): StoreAutofi
     sku: item.sku,
     assetTagSuggestion: `TAG-${brandPrefix}-${item.sku.slice(-4)}`,
     purchasePrice: item.price,
+    isPriceEstimated: false,
+    isDateEstimated: false,
+    source: 'catalog',
     purchaseDate: today,
     depreciationSchedule: item.price < 2500 ? 'de_minimis' : 'section_179',
     imageUrl: item.imageUrl,
@@ -318,6 +324,9 @@ export function parseStoreProductUrl(rawInput: string): StoreAutofillResult {
     sku: skuFromUrl,
     assetTagSuggestion,
     purchasePrice: suggestedPrice,
+    isPriceEstimated: true,
+    isDateEstimated: true,
+    source: 'url_slug_parsed',
     purchaseDate: today,
     depreciationSchedule: suggestedPrice < 2500 ? 'de_minimis' : 'section_179',
     imageUrl,

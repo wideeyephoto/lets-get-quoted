@@ -3,6 +3,7 @@
  * for Homeowner Insurance Claims.
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   getInsuranceTradeProfile,
   type InsuranceTradeProfile,
@@ -10,12 +11,60 @@ import {
 
 export type InsuranceClaimStatus =
   | 'draft'
-  | 'intake_assessment'
   | 'scope_received'
   | 'supplement_pending'
   | 'approved'
   | 'invoiced'
   | 'closed';
+
+export type InsuranceClaimRecord = {
+  id: string;
+  account_id: string;
+  client_id: string | null;
+  job_id: string | null;
+  claim_number: string | null;
+  policyholder_name: string | null;
+  property_address: string | null;
+  carrier_name: string | null;
+  adjuster_name: string | null;
+  adjuster_email: string | null;
+  adjuster_phone: string | null;
+  date_of_loss: string | null;
+  scope_text: string | null;
+  parsed_figures: ClaimFinancialFigures;
+  discrepancies: ScopeDiscrepancy[];
+  total_supplement_amount: number;
+  revised_rcv_amount: number | null;
+  justification_letter: string | null;
+  status: InsuranceClaimStatus;
+  trade_slug: string;
+  ai_analyzed_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InsuranceClaimInput = {
+  id?: string;
+  clientId?: string | null;
+  jobId?: string | null;
+  claimNumber?: string | null;
+  policyholderName?: string | null;
+  propertyAddress?: string | null;
+  carrierName?: string | null;
+  adjusterName?: string | null;
+  adjusterEmail?: string | null;
+  adjusterPhone?: string | null;
+  dateOfLoss?: string | null;
+  scopeText?: string | null;
+  parsedFigures?: ClaimFinancialFigures;
+  discrepancies?: ScopeDiscrepancy[];
+  totalSupplementAmount?: number;
+  revisedRcvAmount?: number | null;
+  justificationLetter?: string | null;
+  status?: InsuranceClaimStatus;
+  tradeSlug?: string;
+  aiAnalyzedAt?: string | null;
+};
 
 export type ClaimFinancialFigures = {
   rcv: number | null; // Replacement Cost Value
@@ -410,5 +459,209 @@ export function evaluateDamageClaimFeasibilityHeuristic(input: {
     riskFactors,
     homeownerSummary,
     contractorBrief,
+  };
+}
+
+/**
+ * Extracts claim metadata fields (claim #, policyholder, address, carrier, date of loss, adjuster)
+ * from pasted scope text or OCR headers.
+ */
+export function extractClaimMetadataFromText(text: string): {
+  claimNumber: string | null;
+  policyholderName: string | null;
+  propertyAddress: string | null;
+  carrierName: string | null;
+  dateOfLoss: string | null;
+  adjusterName: string | null;
+} {
+  if (!text || !text.trim()) {
+    return {
+      claimNumber: null,
+      policyholderName: null,
+      propertyAddress: null,
+      carrierName: null,
+      dateOfLoss: null,
+      adjusterName: null,
+    };
+  }
+
+  const findPattern = (regex: RegExp): string | null => {
+    const match = text.match(regex);
+    if (!match || !match[1]) return null;
+    const val = match[1].trim();
+    return val.length > 0 ? val : null;
+  };
+
+  const claimNumber = findPattern(/(?:claim\s*(?:number|no\.?|#)?)\s*[:#]?\s*([A-Za-z0-9-]+)/i);
+  const policyholderName = findPattern(/(?:insured|policyholder|named\s*insured|customer)\s*[:#]\s*([^\n\r]+)/i);
+  const propertyAddress = findPattern(/(?:loss\s*location|property\s*address|risk\s*location|loss\s*address)\s*[:#]\s*([^\n\r]+)/i);
+  const dateOfLoss = findPattern(/(?:date\s*of\s*loss|loss\s*date|dol)\s*[:#]\s*([^\n\r]+)/i);
+  const adjusterName = findPattern(/(?:adjuster(?:\s*name)?|claim\s*rep|estimator)\s*[:#]\s*([^\n\r]+)/i);
+
+  // Detect Carrier
+  let carrierName = findPattern(/(?:carrier|insurance\s*company|insurer)\s*[:#]\s*([^\n\r]+)/i);
+  if (!carrierName) {
+    const KNOWN_CARRIERS = [
+      'State Farm',
+      'Allstate',
+      'Travelers',
+      'Liberty Mutual',
+      'USAA',
+      'Farmers',
+      'Nationwide',
+      'Chubb',
+      'Progressive',
+      'American Family',
+      'Erie Insurance',
+      'Auto-Owners',
+      'Hartford',
+      'Safeco',
+    ];
+    for (const c of KNOWN_CARRIERS) {
+      if (new RegExp(`\\b${c}\\b`, 'i').test(text)) {
+        carrierName = c;
+        break;
+      }
+    }
+    if (!carrierName) {
+      const firstLine = text.trim().split('\n')[0]?.trim();
+      if (firstLine && /(?:insurance|casualty|underwriters|mutual|fire)/i.test(firstLine) && firstLine.length < 60) {
+        carrierName = firstLine;
+      }
+    }
+  }
+
+  return {
+    claimNumber,
+    policyholderName,
+    propertyAddress,
+    carrierName,
+    dateOfLoss,
+    adjusterName,
+  };
+}
+
+export async function listInsuranceClaims(
+  supabase: SupabaseClient,
+  accountId: string,
+): Promise<InsuranceClaimRecord[]> {
+  const { data, error } = await supabase
+    .from('insurance_claims')
+    .select('*')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false });
+
+  if (error || !data) return [];
+  return data.map(mapDbClaimToRecord);
+}
+
+export async function getInsuranceClaim(
+  supabase: SupabaseClient,
+  accountId: string,
+  claimId: string,
+): Promise<InsuranceClaimRecord | null> {
+  const { data, error } = await supabase
+    .from('insurance_claims')
+    .select('*')
+    .eq('account_id', accountId)
+    .eq('id', claimId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return mapDbClaimToRecord(data);
+}
+
+export async function saveInsuranceClaim(
+  supabase: SupabaseClient,
+  accountId: string,
+  input: InsuranceClaimInput,
+): Promise<InsuranceClaimRecord> {
+  const payload = {
+    account_id: accountId,
+    client_id: input.clientId ?? null,
+    job_id: input.jobId ?? null,
+    claim_number: input.claimNumber ?? null,
+    policyholder_name: input.policyholderName ?? null,
+    property_address: input.propertyAddress ?? null,
+    carrier_name: input.carrierName ?? null,
+    adjuster_name: input.adjusterName ?? null,
+    adjuster_email: input.adjusterEmail ?? null,
+    adjuster_phone: input.adjusterPhone ?? null,
+    date_of_loss: input.dateOfLoss ?? null,
+    scope_text: input.scopeText ?? null,
+    parsed_figures: input.parsedFigures ?? { rcv: null, acv: null, depreciation: null, deductible: null, netClaim: null },
+    discrepancies: input.discrepancies ?? [],
+    total_supplement_amount: input.totalSupplementAmount ?? 0,
+    revised_rcv_amount: input.revisedRcvAmount ?? null,
+    justification_letter: input.justificationLetter ?? null,
+    status: input.status ?? 'draft',
+    trade_slug: input.tradeSlug ?? 'roofers',
+    ai_analyzed_at: input.aiAnalyzedAt ?? null,
+    updated_at: new Date().toISOString(),
+  };
+
+  if (input.id) {
+    const { data, error } = await supabase
+      .from('insurance_claims')
+      .update(payload)
+      .eq('account_id', accountId)
+      .eq('id', input.id)
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to update insurance claim: ${error.message}`);
+    return mapDbClaimToRecord(data);
+  } else {
+    const { data, error } = await supabase
+      .from('insurance_claims')
+      .insert({ ...payload, created_at: new Date().toISOString() })
+      .select()
+      .single();
+
+    if (error) throw new Error(`Failed to create insurance claim: ${error.message}`);
+    return mapDbClaimToRecord(data);
+  }
+}
+
+export async function deleteInsuranceClaim(
+  supabase: SupabaseClient,
+  accountId: string,
+  claimId: string,
+): Promise<{ success: boolean }> {
+  const { error } = await supabase
+    .from('insurance_claims')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('id', claimId);
+
+  if (error) throw new Error(`Failed to delete insurance claim: ${error.message}`);
+  return { success: true };
+}
+
+function mapDbClaimToRecord(row: Record<string, any>): InsuranceClaimRecord {
+  return {
+    id: String(row.id),
+    account_id: String(row.account_id),
+    client_id: row.client_id ? String(row.client_id) : null,
+    job_id: row.job_id ? String(row.job_id) : null,
+    claim_number: row.claim_number ?? null,
+    policyholder_name: row.policyholder_name ?? null,
+    property_address: row.property_address ?? null,
+    carrier_name: row.carrier_name ?? null,
+    adjuster_name: row.adjuster_name ?? null,
+    adjuster_email: row.adjuster_email ?? null,
+    adjuster_phone: row.adjuster_phone ?? null,
+    date_of_loss: row.date_of_loss ?? null,
+    scope_text: row.scope_text ?? null,
+    parsed_figures: row.parsed_figures ?? { rcv: null, acv: null, depreciation: null, deductible: null, netClaim: null },
+    discrepancies: Array.isArray(row.discrepancies) ? row.discrepancies : [],
+    total_supplement_amount: Number(row.total_supplement_amount) || 0,
+    revised_rcv_amount: row.revised_rcv_amount != null ? Number(row.revised_rcv_amount) : null,
+    justification_letter: row.justification_letter ?? null,
+    status: row.status ?? 'draft',
+    trade_slug: row.trade_slug ?? 'roofers',
+    ai_analyzed_at: row.ai_analyzed_at ?? null,
+    created_at: String(row.created_at),
+    updated_at: String(row.updated_at),
   };
 }

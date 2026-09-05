@@ -13,7 +13,7 @@ export const metadata = {
 export const dynamic = 'force-dynamic';
 
 export default async function InventoryPage() {
-  const { supabase, accountId, account } = await requireOfficeContext('jobs.read');
+  const { supabase, accountId, account, capabilities, role } = await requireOfficeContext('inventory.read');
   const admin = createAdminClient();
 
   const [{ data: site }, inventoryPayload, crewList, jobsList] = await Promise.all([
@@ -39,6 +39,9 @@ export default async function InventoryPage() {
     status: j.status,
   }));
 
+  const canWrite = role === 'owner' || capabilities.has('inventory.write') || capabilities.has('jobs.write');
+  const canCustody = role === 'owner' || capabilities.has('inventory.custody') || capabilities.has('inventory.write') || capabilities.has('jobs.write');
+
   return (
     <main className="wide-shell workspace-shell">
       <InventoryClient
@@ -46,6 +49,8 @@ export default async function InventoryPage() {
         initialPayload={inventoryPayload}
         crewMembers={crewMembers}
         activeJobs={activeJobs}
+        canWrite={canWrite}
+        canCustody={canCustody}
       />
     </main>
   );

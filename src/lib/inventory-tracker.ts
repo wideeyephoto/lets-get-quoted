@@ -41,8 +41,39 @@ export type ToolAsset = {
   assignedJobId?: string | null;
   assignedJobLabel?: string | null;
   checkedOutAt?: string | null;
+  expectedReturnDate?: string | null;
   imageUrl?: string | null;
   notes?: string | null;
+};
+
+export type ToolCustodyLogEntry = {
+  id: string;
+  toolId: string;
+  action: 'check_out' | 'check_in' | 'relocate' | 'maintenance_sent' | 'maintenance_returned';
+  crewId?: string | null;
+  crewName?: string | null;
+  jobId?: string | null;
+  jobLabel?: string | null;
+  performedBy?: string | null;
+  notes?: string | null;
+  occurredAt: string;
+};
+
+export type VanKitTemplateItem = {
+  sku: string;
+  name: string;
+  category: string;
+  minThreshold: number;
+  reorderQty: number;
+  unit: string;
+  unitCost: number;
+};
+
+export type VanKitTemplate = {
+  id: string;
+  name: string;
+  description?: string | null;
+  items: VanKitTemplateItem[];
 };
 
 export type FleetVehicle = {
@@ -103,6 +134,8 @@ export type InventoryPayload = {
   stock: VanStockItem[];
   transfers: StockTransfer[];
   maintenance: MaintenanceRecord[];
+  custodyLogs?: ToolCustodyLogEntry[];
+  vanKitTemplates?: VanKitTemplate[];
 };
 
 export type MaintenanceRecord = {
@@ -149,6 +182,7 @@ export function checkOutTool(
     jobLabel?: string | null;
     notes?: string | null;
     checkedOutAt?: string;
+    expectedReturnDate?: string | null;
   }
 ): ToolAsset {
   return {
@@ -159,6 +193,7 @@ export function checkOutTool(
     assignedJobId: params.jobId ?? null,
     assignedJobLabel: params.jobLabel ?? null,
     checkedOutAt: params.checkedOutAt || new Date().toISOString(),
+    expectedReturnDate: params.expectedReturnDate !== undefined ? params.expectedReturnDate : tool.expectedReturnDate,
     notes: params.notes !== undefined ? params.notes : tool.notes,
   };
 }
@@ -181,8 +216,21 @@ export function checkInTool(
     assignedJobId: null,
     assignedJobLabel: null,
     checkedOutAt: null,
+    expectedReturnDate: null,
     notes: params?.notes !== undefined ? params?.notes : tool.notes,
   };
+}
+
+/**
+ * Returns true if a tool is checked out past its agreed expected return date.
+ */
+export function isToolOverdue(
+  tool: ToolAsset,
+  today: string = new Date().toISOString().split('T')[0]
+): boolean {
+  if (tool.status !== 'checked_out') return false;
+  if (!tool.expectedReturnDate) return false;
+  return tool.expectedReturnDate < today;
 }
 
 /**
@@ -192,6 +240,19 @@ export function auditVehicleMaintenance(
   vehicle: FleetVehicle,
   today: string = new Date().toISOString().split('T')[0]
 ): VehicleMaintenanceAudit {
+  // Retired vehicles do not trigger service due alarms or safety inspections
+  if (vehicle.status === 'retired') {
+    return {
+      isServiceOverdue: false,
+      isServiceDueSoon: false,
+      isInspectionExpired: false,
+      isInsuranceExpired: false,
+      milesUntilService: null,
+      statusTone: 'success',
+      summaryAlert: 'Retired from active fleet service',
+    };
+  }
+
   let milesUntilService: number | null = null;
   let isServiceOverdue = false;
   let isServiceDueSoon = false;
@@ -383,10 +444,23 @@ export type AssetDepreciationResult = {
   currentBookValue: number;
   accumulatedDepreciation: number;
   percentDepreciated: number;
+  gaapCarryingValue: number;
+  taxBasis: number;
+  remainingTaxBasis: number;
+  accumulatedTaxDeduction: number;
   statusText: string;
   scheduleBadge: string;
   scheduleTitle: string;
 };
+
+export function getSection179Cap(taxYear: number): number {
+  if (taxYear <= 2023) return 1160000;
+  if (taxYear === 2024) return 1220000;
+  if (taxYear === 2025) return 1250000;
+  return 1290000;
+}
+
+const roundCents = (val: number) => Math.round(val * 100) / 100;
 
 /**
  * Calculates current tax book value and accumulated depreciation for an asset.
@@ -395,11 +469,14 @@ export function calculateAssetDepreciation(
   purchasePrice?: number | null,
   purchaseDate?: string | null,
   schedule?: DepreciationSchedule | null,
-  asOfDate: Date = new Date()
+  asOfDate: Date | string = new Date()
 ): AssetDepreciationResult {
   const cost = Math.max(0, Number(purchasePrice) || 0);
   const selectedSchedule = schedule || 'none';
   const info = TAX_GUIDANCE_SCHEDULES[selectedSchedule] || TAX_GUIDANCE_SCHEDULES.none;
+
+  const parsedAsOf = typeof asOfDate === 'string' ? new Date(asOfDate) : asOfDate;
+  const effectiveAsOf = isNaN(parsedAsOf.getTime()) ? new Date() : parsedAsOf;
 
   if (cost === 0) {
     return {
@@ -407,6 +484,10 @@ export function calculateAssetDepreciation(
       currentBookValue: 0,
       accumulatedDepreciation: 0,
       percentDepreciated: 0,
+      gaapCarryingValue: 0,
+      taxBasis: 0,
+      remainingTaxBasis: 0,
+      accumulatedTaxDeduction: 0,
       statusText: 'No cost basis entered',
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -419,6 +500,10 @@ export function calculateAssetDepreciation(
       currentBookValue: cost,
       accumulatedDepreciation: 0,
       percentDepreciated: 0,
+      gaapCarryingValue: cost,
+      taxBasis: cost,
+      remainingTaxBasis: cost,
+      accumulatedTaxDeduction: 0,
       statusText: 'Held at cost ($' + cost.toLocaleString() + ')',
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -429,19 +514,49 @@ export function calculateAssetDepreciation(
   const pDate = purchaseDate ? new Date(purchaseDate) : new Date();
   const validDate = isNaN(pDate.getTime()) ? new Date() : pDate;
 
+  const purchaseYear = validDate.getFullYear();
+  const asOfYear = effectiveAsOf.getFullYear();
+
+  // If purchase date is in a calendar year after effectiveAsOf, the asset was not yet placed in service
+  if (purchaseYear > asOfYear) {
+    return {
+      originalCost: cost,
+      currentBookValue: cost,
+      accumulatedDepreciation: 0,
+      percentDepreciated: 0,
+      gaapCarryingValue: cost,
+      taxBasis: cost,
+      remainingTaxBasis: cost,
+      accumulatedTaxDeduction: 0,
+      statusText: `Placed in service ${purchaseYear} (Not yet depreciable as of TY${asOfYear})`,
+      scheduleBadge: info.badge,
+      scheduleTitle: info.title,
+    };
+  }
+
   // Calculate approximate months elapsed
   const monthsElapsed = Math.max(
     0,
-    (asOfDate.getFullYear() - validDate.getFullYear()) * 12 +
-      (asOfDate.getMonth() - validDate.getMonth())
+    (effectiveAsOf.getFullYear() - validDate.getFullYear()) * 12 +
+      (effectiveAsOf.getMonth() - validDate.getMonth())
   );
 
   if (selectedSchedule === 'section_179' || selectedSchedule === 'de_minimis') {
+    // Section 179 and De Minimis write off 100% in the placed-in-service year
+    // GAAP book value (for economic fleet valuation) uses conservative 5-year straight line:
+    const gaapFraction = Math.min(1, monthsElapsed / 60);
+    const gaapAccum = roundCents(cost * gaapFraction);
+    const gaapBook = roundCents(Math.max(0, cost - gaapAccum));
+
     return {
       originalCost: cost,
       currentBookValue: 0,
       accumulatedDepreciation: cost,
       percentDepreciated: 100,
+      gaapCarryingValue: gaapBook,
+      taxBasis: 0,
+      remainingTaxBasis: 0,
+      accumulatedTaxDeduction: cost,
       statusText: selectedSchedule === 'section_179' ? '100% Expensed (Sec 179)' : '100% Written Off (Safe Harbor)',
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -450,8 +565,8 @@ export function calculateAssetDepreciation(
 
   if (selectedSchedule === 'straight_line_3') {
     const fraction = Math.min(1, monthsElapsed / 36);
-    const accum = Math.round(cost * fraction);
-    const book = Math.max(0, cost - accum);
+    const accum = roundCents(cost * fraction);
+    const book = roundCents(Math.max(0, cost - accum));
     const pct = Math.round(fraction * 100);
     const yearNum = Math.min(3, Math.floor(monthsElapsed / 12) + 1);
     return {
@@ -459,6 +574,10 @@ export function calculateAssetDepreciation(
       currentBookValue: book,
       accumulatedDepreciation: accum,
       percentDepreciated: pct,
+      gaapCarryingValue: book,
+      taxBasis: book,
+      remainingTaxBasis: book,
+      accumulatedTaxDeduction: accum,
       statusText: pct >= 100 ? 'Fully Depreciated (3 Yrs)' : `${pct}% Depreciated (Yr ${yearNum} of 3)`,
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -467,8 +586,8 @@ export function calculateAssetDepreciation(
 
   if (selectedSchedule === 'straight_line_5') {
     const fraction = Math.min(1, monthsElapsed / 60);
-    const accum = Math.round(cost * fraction);
-    const book = Math.max(0, cost - accum);
+    const accum = roundCents(cost * fraction);
+    const book = roundCents(Math.max(0, cost - accum));
     const pct = Math.round(fraction * 100);
     const yearNum = Math.min(5, Math.floor(monthsElapsed / 12) + 1);
     return {
@@ -476,6 +595,10 @@ export function calculateAssetDepreciation(
       currentBookValue: book,
       accumulatedDepreciation: accum,
       percentDepreciated: pct,
+      gaapCarryingValue: book,
+      taxBasis: book,
+      remainingTaxBasis: book,
+      accumulatedTaxDeduction: accum,
       statusText: pct >= 100 ? 'Fully Depreciated (5 Yrs)' : `${pct}% Depreciated (Yr ${yearNum} of 5)`,
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -485,17 +608,26 @@ export function calculateAssetDepreciation(
   if (selectedSchedule === 'macrs_5') {
     // Half-year convention rates: Yr 1: 20%, Yr 2: 32%, Yr 3: 19.2%, Yr 4: 11.52%, Yr 5: 11.52%, Yr 6: 5.76%
     const rates = [0.20, 0.32, 0.192, 0.1152, 0.1152, 0.0576];
-    const yearsElapsed = Math.max(0, asOfDate.getFullYear() - validDate.getFullYear());
+    const yearsElapsed = Math.max(0, effectiveAsOf.getFullYear() - validDate.getFullYear());
     const sumRate = rates.slice(0, Math.min(rates.length, yearsElapsed + 1)).reduce((a, b) => a + b, 0);
     const fraction = Math.min(1, sumRate);
-    const accum = Math.round(cost * fraction);
-    const book = Math.max(0, cost - accum);
+    const accum = roundCents(cost * fraction);
+    const book = roundCents(Math.max(0, cost - accum));
     const pct = Math.round(fraction * 100);
+
+    // GAAP carrying value for standard 5-year equipment
+    const gaapFraction = Math.min(1, monthsElapsed / 60);
+    const gaapBook = roundCents(Math.max(0, cost - roundCents(cost * gaapFraction)));
+
     return {
       originalCost: cost,
       currentBookValue: book,
       accumulatedDepreciation: accum,
       percentDepreciated: pct,
+      gaapCarryingValue: gaapBook,
+      taxBasis: book,
+      remainingTaxBasis: book,
+      accumulatedTaxDeduction: accum,
       statusText: pct >= 100 ? 'Fully Depreciated (MACRS 5)' : `${pct}% Depreciated (Yr ${Math.min(6, yearsElapsed + 1)}/5)`,
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -505,17 +637,25 @@ export function calculateAssetDepreciation(
   if (selectedSchedule === 'macrs_7') {
     // 7-year rates: Yr 1: 14.29%, Yr 2: 24.49%, Yr 3: 17.49%, Yr 4: 12.49%, Yr 5: 8.93%, Yr 6: 8.92%, Yr 7: 8.93%, Yr 8: 4.46%
     const rates = [0.1429, 0.2449, 0.1749, 0.1249, 0.0893, 0.0892, 0.0893, 0.0446];
-    const yearsElapsed = Math.max(0, asOfDate.getFullYear() - validDate.getFullYear());
+    const yearsElapsed = Math.max(0, effectiveAsOf.getFullYear() - validDate.getFullYear());
     const sumRate = rates.slice(0, Math.min(rates.length, yearsElapsed + 1)).reduce((a, b) => a + b, 0);
     const fraction = Math.min(1, sumRate);
-    const accum = Math.round(cost * fraction);
-    const book = Math.max(0, cost - accum);
+    const accum = roundCents(cost * fraction);
+    const book = roundCents(Math.max(0, cost - accum));
     const pct = Math.round(fraction * 100);
+
+    const gaapFraction = Math.min(1, monthsElapsed / 84);
+    const gaapBook = roundCents(Math.max(0, cost - roundCents(cost * gaapFraction)));
+
     return {
       originalCost: cost,
       currentBookValue: book,
       accumulatedDepreciation: accum,
       percentDepreciated: pct,
+      gaapCarryingValue: gaapBook,
+      taxBasis: book,
+      remainingTaxBasis: book,
+      accumulatedTaxDeduction: accum,
       statusText: pct >= 100 ? 'Fully Depreciated (MACRS 7)' : `${pct}% Depreciated (Yr ${Math.min(8, yearsElapsed + 1)}/7)`,
       scheduleBadge: info.badge,
       scheduleTitle: info.title,
@@ -527,8 +667,71 @@ export function calculateAssetDepreciation(
     currentBookValue: cost,
     accumulatedDepreciation: 0,
     percentDepreciated: 0,
+    gaapCarryingValue: cost,
+    taxBasis: cost,
+    remainingTaxBasis: cost,
+    accumulatedTaxDeduction: 0,
     statusText: 'Active',
     scheduleBadge: info.badge,
     scheduleTitle: info.title,
   };
 }
+
+/**
+ * Compiles an audit-ready CSV schedule of all fleet equipment for CPA return preparation.
+ */
+export function generateDepreciationScheduleCsv(
+  tools: ToolAsset[],
+  vehicles: FleetVehicle[],
+  asOfDate: Date | string = new Date()
+): string {
+  const headers = [
+    'Asset Type',
+    'Identifier',
+    'Description',
+    'Purchase Date',
+    'Original Cost Basis',
+    'Depreciation Schedule',
+    'Accumulated Depreciation',
+    'Net Tax Basis',
+    'GAAP Carrying Value',
+    'Status',
+  ];
+
+  const rows: string[][] = [];
+
+  for (const t of tools) {
+    const d = calculateAssetDepreciation(t.purchasePrice, t.purchaseDate, t.depreciationSchedule, asOfDate);
+    rows.push([
+      'Tool / Equipment',
+      `"${(t.assetTag || '').replace(/"/g, '""')}"`,
+      `"${(t.name || '').replace(/"/g, '""')}"`,
+      t.purchaseDate || 'N/A',
+      d.originalCost.toFixed(2),
+      t.depreciationSchedule || 'none',
+      d.accumulatedDepreciation.toFixed(2),
+      d.taxBasis.toFixed(2),
+      d.gaapCarryingValue.toFixed(2),
+      `"${d.statusText.replace(/"/g, '""')}"`,
+    ]);
+  }
+
+  for (const v of vehicles) {
+    const d = calculateAssetDepreciation(v.purchasePrice, v.purchaseDate, v.depreciationSchedule, asOfDate);
+    rows.push([
+      'Fleet Vehicle',
+      `"${(v.licensePlate || '').replace(/"/g, '""')}"`,
+      `"${(v.name || '').replace(/"/g, '""')}"`,
+      v.purchaseDate || 'N/A',
+      d.originalCost.toFixed(2),
+      v.depreciationSchedule || 'none',
+      d.accumulatedDepreciation.toFixed(2),
+      d.taxBasis.toFixed(2),
+      d.gaapCarryingValue.toFixed(2),
+      `"${d.statusText.replace(/"/g, '""')}"`,
+    ]);
+  }
+
+  return [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+}
+

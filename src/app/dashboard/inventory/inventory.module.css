@@ -2022,5 +2022,157 @@
   }
 }
 
+/* ==========================================================================
+   Light, Sunlight & Parchment Themes Support
+   ========================================================================== */
+
+:global(:root[data-theme='light']) .pageContainer,
+:global([data-theme='light']) .pageContainer {
+  --inv-text-primary: #0f172a;
+  --inv-text-body: #1e293b;
+  --inv-text-muted: #475569;
+  --inv-text-caption: #64748b;
+  --inv-border-strong: rgba(15, 23, 42, 0.2);
+  --inv-border-subtle: rgba(15, 23, 42, 0.1);
+  --inv-surface-elevated: #ffffff;
+  --inv-surface-subtle: #f8fafc;
+  --inv-surface-hover: #f1f5f9;
+}
+
+:global(:root[data-theme='sunlight']) .pageContainer,
+:global([data-theme='sunlight']) .pageContainer {
+  --inv-text-primary: #1c1917;
+  --inv-text-body: #292524;
+  --inv-text-muted: #57534e;
+  --inv-text-caption: #78716c;
+  --inv-border-strong: rgba(28, 25, 23, 0.22);
+  --inv-border-subtle: rgba(28, 25, 23, 0.12);
+  --inv-surface-elevated: #fefce8;
+  --inv-surface-subtle: #fef9c3;
+  --inv-surface-hover: #fef08a;
+}
+
+:global(:root[data-theme='parchment']) .pageContainer,
+:global([data-theme='parchment']) .pageContainer {
+  --inv-text-primary: #292524;
+  --inv-text-body: #44403c;
+  --inv-text-muted: #78716c;
+  --inv-text-caption: #a8a29e;
+  --inv-border-strong: rgba(41, 37, 36, 0.2);
+  --inv-border-subtle: rgba(41, 37, 36, 0.1);
+  --inv-surface-elevated: #fafaf9;
+  --inv-surface-subtle: #f5f5f4;
+  --inv-surface-hover: #e7e5e4;
+}
+
+/* ==========================================================================
+   Special Status Badges: Retired & Overdue
+   ========================================================================== */
+
+.statusRetired {
+  background: rgba(148, 163, 184, 0.15);
+  color: var(--inv-text-muted);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+.statusOverdue {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  animation: pulseWarning 2s infinite ease-in-out;
+}
+
+@keyframes pulseWarning {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* ==========================================================================
+   Mobile Responsive Cards (< 768px)
+   ========================================================================== */
+
+@media (max-width: 768px) {
+  .heroTop {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .kpiRow {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .cardsGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .tableWrap {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* ==========================================================================
+   Print Stylesheet
+   ========================================================================== */
+
+@media print {
+  body {
+    background: #ffffff !important;
+    color: #000000 !important;
+  }
+
+  .hero,
+  .tabNav,
+  .controlsBar,
+  .btnPrimary,
+  .btnSecondary,
+  .btnGhostIcon,
+  .toast,
+  .photoUploadActions {
+    display: none !important;
+  }
+
+  .modalBackdrop {
+    position: static !important;
+    background: none !important;
+    padding: 0 !important;
+  }
+
+  .modalContent {
+    box-shadow: none !important;
+    border: none !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    color: #000000 !important;
+    background: #ffffff !important;
+  }
+
+  .stockTable,
+  .stockTable th,
+  .stockTable td {
+    color: #000000 !important;
+    border-color: #cccccc !important;
+  }
+}
+
+/* ==========================================================================
+   Reduced Motion
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 
 

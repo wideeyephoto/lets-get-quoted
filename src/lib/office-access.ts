@@ -154,7 +154,7 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
   Object.freeze({
     href: '/dashboard/marketing',
     label: 'Marketing',
-    requires: Object.freeze(['settings.write']),
+    requires: Object.freeze(['marketing.read']),
   }),
   Object.freeze({
     href: '/dashboard/import',
@@ -175,6 +175,11 @@ export const OFFICE_ROUTES: readonly OfficeRoute[] = Object.freeze([
     href: '/dashboard/voice-calls',
     label: 'Voice Calls',
     requires: Object.freeze(['leads.read']),
+  }),
+  Object.freeze({
+    href: '/dashboard/inventory',
+    label: 'Inventory & Fleet',
+    requires: Object.freeze(['inventory.read']),
   }),
 ]);
 

@@ -1114,3 +1114,158 @@
   border-color: #cbd5e1;
   color: #334155;
 }
+
+/* ---- Saved Claims List & Management Styles ---- */
+.claimsListContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.claimsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.claimCard {
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 1.15rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
+}
+
+.claimCard:hover {
+  transform: translateY(-2px);
+  border-color: var(--accent);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+.claimCardHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.claimCardTitle {
+  font-size: 1rem;
+  font-weight: 750;
+  color: var(--text);
+  margin: 0;
+}
+
+.claimCardSub {
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
+.claimBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.badgeDraft {
+  background: rgba(148, 163, 184, 0.15);
+  color: #94a3b8;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+}
+
+.badgePending {
+  background: rgba(253, 176, 34, 0.15);
+  color: #fdb022;
+  border: 1px solid rgba(253, 176, 34, 0.35);
+}
+
+.badgeApproved {
+  background: rgba(61, 214, 140, 0.15);
+  color: #3dd68c;
+  border: 1px solid rgba(61, 214, 140, 0.35);
+}
+
+.claimMetaRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  font-size: 0.82rem;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  padding-top: 0.65rem;
+}
+
+.claimMetaItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.saveBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+
+.saveBarActions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.select {
+  width: 100%;
+  padding: 0.55rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(var(--tint), 0.04);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 0.85rem;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+  box-sizing: border-box;
+  min-height: 38px;
+}
+
+.select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.25);
+  background: rgba(var(--tint), 0.07);
+}
+
+.select option {
+  background: var(--bg-1, #18181b);
+  color: var(--text, #f4f4f5);
+}
+
+.emptyClaims {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding: 3rem 1.5rem;
+  text-align: center;
+  background: var(--bg-2);
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  color: var(--muted);
+}
+

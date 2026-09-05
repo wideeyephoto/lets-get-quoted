@@ -43,6 +43,11 @@
 --                    is dangerous but because a plan screen that can be read and
 --                    not acted on is a support ticket.
 --   billing.manage   can cancel the subscription and end the business's access.
+--   inventory.read   view inventory register, tools, vehicles, and stock.
+--   inventory.custody check tools in/out and transfer stock.
+--   inventory.write  create, edit, and retire equipment and stock.
+--   marketing.read   view marketing attribution, campaigns, and performance.
+--   marketing.write  compose and send campaigns, write blog posts, configure ads.
 --
 -- Six of those twelve are named in OFFICE_CAPABILITIES_REQUIRING_DELIBERATION in
 -- src/lib/office-permissions.ts as capabilities that must never be on by

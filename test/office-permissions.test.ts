@@ -143,7 +143,7 @@ describe('the v1 grant: which thirteen, and why the other twelve wait', () => {
     // afterwards. Every one of the twelve is named in the header with its cost.
     const sql = grantMigration();
     const off = OFFICE_CAPABILITY_KEYS.filter((key) => !grantedKeys().includes(key));
-    expect(off).toHaveLength(12);
+    expect(off).toHaveLength(17);
     for (const key of off) {
       expect(sql, key).toContain(key);
     }
