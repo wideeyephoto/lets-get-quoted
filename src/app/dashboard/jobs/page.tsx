@@ -14,6 +14,8 @@ import { INVOICE_STATUS_LABEL } from '@/lib/job-detail-labels';
 import { listJobs, formatJobTime, formatMoney, type Job } from '@/lib/jobs';
 import { listLeads, type Lead } from '@/lib/leads';
 import type { Payment } from '@/lib/payments';
+import { fetchAllPages } from '@/lib/pagination';
+import { paidTowardInvoice, paymentsForInvoice } from '@/lib/invoice-pay';
 import { cookies } from 'next/headers';
 import { createJobAction } from './actions';
 import { shouldAutoOpenCreate } from '@/lib/nav-helpers';
@@ -139,34 +141,55 @@ export default async function JobsPage({
   searchParams: Promise<{ status?: string; new?: string; owing?: string }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContext('jobs.read', 'clients.read');
+  const { supabase, accountId, role, capabilities, account } = await requireOfficeContext('jobs.read', 'clients.read');
+  const canCreate = role === 'owner' || capabilities.has('jobs.write');
 
   const [allJobs, leads] = await Promise.all([
-    listJobs(supabase, accountId),
+    listJobs(supabase, accountId, undefined, { fetchAll: true }),
     listLeads(supabase, accountId),
   ]);
   const pastClients = buildPastClients(allJobs, leads);
   const jobIds = allJobs.map((job) => job.id);
-  const [{ data: invoiceRows, error: invoiceError }, { data: paymentRows, error: paymentError }, { data: clientAccessRows, error: clientAccessError }] =
+  const [invoiceRows, paymentRows, clientAccessRows] =
     jobIds.length > 0
       ? await Promise.all([
-          supabase.from('invoices').select('*').eq('account_id', accountId).in('job_id', jobIds).order('created_at', { ascending: false }),
-          supabase.from('payments').select('*').eq('account_id', accountId).in('job_id', jobIds).order('requested_at', { ascending: false }),
-          supabase.from('client_job_access').select('job_id').eq('account_id', accountId).in('job_id', jobIds).is('revoked_at', null),
+          fetchAllPages<Invoice>((from, to) =>
+            supabase
+              .from('invoices')
+              .select('*')
+              .eq('account_id', accountId)
+              .in('job_id', jobIds)
+              .order('created_at', { ascending: false })
+              .range(from, to),
+          ),
+          fetchAllPages<Payment>((from, to) =>
+            supabase
+              .from('payments')
+              .select('*')
+              .eq('account_id', accountId)
+              .in('job_id', jobIds)
+              .order('requested_at', { ascending: false })
+              .range(from, to),
+          ),
+          fetchAllPages<{ job_id: string }>((from, to) =>
+            supabase
+              .from('client_job_access')
+              .select('job_id')
+              .eq('account_id', accountId)
+              .in('job_id', jobIds)
+              .is('revoked_at', null)
+              .range(from, to),
+          ),
         ])
       : [
-          { data: [] as Invoice[] | null, error: null },
-          { data: [] as Payment[] | null, error: null },
-          { data: [] as Array<{ job_id: string }> | null, error: null },
+          [] as Invoice[],
+          [] as Payment[],
+          [] as Array<{ job_id: string }>,
         ];
 
-  if (invoiceError) throw invoiceError;
-  if (paymentError) throw paymentError;
-  if (clientAccessError) throw clientAccessError;
-
-  const invoicesByJob = groupByJobId((invoiceRows ?? []) as Invoice[]);
-  const paymentsByJob = groupByJobId((paymentRows ?? []) as Payment[]);
-  const clientAccessCountByJob = (clientAccessRows ?? []).reduce<Record<string, number>>((counts, row) => {
+  const invoicesByJob = groupByJobId(invoiceRows);
+  const paymentsByJob = groupByJobId(paymentRows);
+  const clientAccessCountByJob = clientAccessRows.reduce<Record<string, number>>((counts, row) => {
     counts[row.job_id] = (counts[row.job_id] ?? 0) + 1;
     return counts;
   }, {});
@@ -188,10 +211,9 @@ export default async function JobsPage({
     const displayTotal = primaryInvoice
       ? Math.max(Number(primaryInvoice.total), Number(job.quoted_amount))
       : Number(job.quoted_amount);
-    const paidTotal = (primaryInvoice
-      ? jobPayments.filter((p) => p.invoice_id === primaryInvoice.id && p.status === 'paid')
-      : jobPayments.filter((p) => p.status === 'paid')
-    ).reduce((sum, p) => sum + Number(p.amount), 0);
+    const paidTotal = primaryInvoice
+      ? paidTowardInvoice(paymentsForInvoice(jobPayments, primaryInvoice.id))
+      : paidTowardInvoice(jobPayments);
 
     return {
       id: job.id,
@@ -225,19 +247,31 @@ export default async function JobsPage({
   const mapView = normalizeMapView(cookieStore.get(mapViewCookie('jobs'))?.value);
   const mapTheme = normalizeMapTheme(cookieStore.get(MAP_THEME_COOKIE)?.value);
   const jobsView = normalizeJobsView(cookieStore.get(JOBS_VIEW_COOKIE)?.value);
-  // Always fetched, not only when the embedded map is on: Smoothie's Map pane
-  // is a switch inside the view, and a switch that needs a round trip to the
-  // server before it can draw anything is a page refresh wearing a button.
-  const mapPins = await getMapPins(supabase, accountId);
+
   // Today, decided here so "Soonest first" cannot disagree with the clock the
   // rest of the page rendered against, and so the sort is stable across a
   // hydration boundary.
   const now = new Date();
   const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  const { data: jobsAcct } = await supabase.from('accounts').select('quote_followups_enabled').eq('id', accountId).maybeSingle();
-  const followupsOn = Boolean(jobsAcct?.quote_followups_enabled);
 
-  const authoritativeTrade = await getAuthoritativeTrade(createAdminClient(), accountId);
+  // Always fetched, not only when the embedded map is on: Smoothie's Map pane
+  // is a switch inside the view, and a switch that needs a round trip to the
+  // server before it can draw anything is a page refresh wearing a button.
+  //
+  // Folded with the account lookup and authoritative trade into one concurrent
+  // await, passing the already-loaded jobs and leads into getMapPins to avoid
+  // duplicate table scans.
+  const [mapPins, authoritativeTrade, jobsAcct] = await Promise.all([
+    getMapPins(supabase, accountId, { leads, jobs: allJobs }),
+    getAuthoritativeTrade(createAdminClient(), accountId),
+    (account as { quote_followups_enabled?: boolean } | null)?.quote_followups_enabled !== undefined
+      ? Promise.resolve({ data: { quote_followups_enabled: (account as { quote_followups_enabled?: boolean }).quote_followups_enabled } })
+      : supabase.from('accounts').select('quote_followups_enabled').eq('id', accountId).maybeSingle(),
+  ]);
+  const followupsOn = Boolean(
+    (account as { quote_followups_enabled?: boolean } | null)?.quote_followups_enabled ??
+    jobsAcct?.data?.quote_followups_enabled
+  );
 
   return (
     <main className="wide-shell workspace-shell">
@@ -259,6 +293,7 @@ export default async function JobsPage({
             mapTheme={mapTheme}
             mapPins={mapPins}
             todayKey={todayKey}
+            canCreate={canCreate}
             toolbarAccessory={
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Link
@@ -291,13 +326,14 @@ export default async function JobsPage({
         </div>
       </div>
 
-      <WorkspaceDisclosure
-        id="new-job"
-        eyebrow="Direct intake"
-        title="Create a new job"
-        summary="Create a job for approved work."
-        defaultOpen={shouldAutoOpenCreate(allJobs.length, searchParams.new)}
-      >
+      {canCreate ? (
+        <WorkspaceDisclosure
+          id="new-job"
+          eyebrow="Direct intake"
+          title="Create a new job"
+          summary="Create a job for approved work."
+          defaultOpen={shouldAutoOpenCreate(allJobs.length, searchParams.new)}
+        >
         <div style={{ marginBottom: '1rem', padding: '0.65rem 0.85rem', background: 'var(--bg-2, #f8fafc)', border: '1px solid var(--line, #e2e8f0)', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.86rem' }}>📱 <strong>Text or dictate from the road:</strong> Voice notes &amp; text descriptions automatically attach to job files.</span>
           <Link href="/dashboard/text-to-job" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.65rem' }}>
@@ -370,6 +406,7 @@ export default async function JobsPage({
           </div>
         </form>
       </WorkspaceDisclosure>
+      ) : null}
 
       {/* The Import & migrate accordion used to sit here. It moved to
           Settings → Business → Import & data, where every other importer

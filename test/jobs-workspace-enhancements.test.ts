@@ -90,4 +90,45 @@ describe('Jobs Workspace Enhancements', () => {
       expect(shouldTrigger('BODY', false)).toBe(true);
     });
   });
+
+  describe('TableView and Workspace Hardening', () => {
+    it('sorts scheduled column by scheduledFor date in JobsWorkspace', async () => {
+      const { readFileSync } = await import('node:fs');
+      const src = readFileSync('src/app/dashboard/jobs/JobsWorkspace.tsx', 'utf8');
+      expect(src).toContain("sortKey === 'scheduled'");
+      expect(src).toContain('a.scheduledFor && b.scheduledFor');
+      expect(src).toContain('a.scheduledFor.localeCompare(b.scheduledFor)');
+      expect(src).not.toContain('(a.scheduledLabel ? 1 : 0) - (b.scheduledLabel ? 1 : 0)');
+    });
+
+    it('removes dead realtime channels from JobsWorkspace and LeadsWorkspace', async () => {
+      const { readFileSync } = await import('node:fs');
+      const jobsSrc = readFileSync('src/app/dashboard/jobs/JobsWorkspace.tsx', 'utf8');
+      const leadsSrc = readFileSync('src/app/dashboard/leads/LeadsWorkspace.tsx', 'utf8');
+      expect(jobsSrc).not.toContain('jobs-realtime-feed');
+      expect(jobsSrc).not.toContain("from '@/lib/supabase'");
+      expect(leadsSrc).not.toContain('leads-realtime-feed');
+      expect(leadsSrc).not.toContain("from '@/lib/supabase'");
+    });
+
+    it('gates job creation behind canCreate / jobs.write permission', async () => {
+      const { readFileSync } = await import('node:fs');
+      const jobsSrc = readFileSync('src/app/dashboard/jobs/JobsWorkspace.tsx', 'utf8');
+      const pageSrc = readFileSync('src/app/dashboard/jobs/page.tsx', 'utf8');
+      expect(jobsSrc).toContain('canCreate?: boolean');
+      expect(jobsSrc).toContain('{canCreate ? (');
+      expect(jobsSrc).toContain('if (!canCreate) return;');
+      expect(pageSrc).toContain("const canCreate = role === 'owner' || capabilities.has('jobs.write')");
+      expect(pageSrc).toContain('{canCreate ? (');
+    });
+
+    it('prevents truncation and duplicate round trips on jobs page', async () => {
+      const { readFileSync } = await import('node:fs');
+      const pageSrc = readFileSync('src/app/dashboard/jobs/page.tsx', 'utf8');
+      expect(pageSrc).toContain('fetchAll: true');
+      expect(pageSrc).toContain('fetchAllPages<Invoice>');
+      expect(pageSrc).toContain('fetchAllPages<Payment>');
+      expect(pageSrc).toContain('getMapPins(supabase, accountId, { leads, jobs: allJobs })');
+    });
+  });
 });

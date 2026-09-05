@@ -86,6 +86,8 @@ export type Job = {
   recurring_visit_date?: string | null;
   /** Stable signed AI Voice call identity for replay-safe in-call booking. */
   source_voice_provider_call_id?: string | null;
+  /** When the appointment was confirmed by client text reply */
+  appointment_confirmed_at?: string | null;
   created_at: string;
 };
 
@@ -155,6 +157,8 @@ export type JobInput = {
 export type ListJobsOptions = {
   includeLeadQuotes?: boolean;
   fetchAll?: boolean;
+  select?: string;
+  limit?: number;
 };
 
 export type CostInput =
@@ -540,12 +544,16 @@ export async function listJobs(
   statusFilter?: JobStatus,
   options: ListJobsOptions = {}
 ): Promise<Job[]> {
-  let query = supabase
-    .from('jobs')
-    .select('*')
+  let query: any = (supabase
+    .from('jobs') as any)
+    .select(options.select || '*')
     .eq('account_id', accountId)
     .is('deleted_at', null)
     .order('created_at', { ascending: false });
+
+  if (options.limit && !options.fetchAll) {
+    query = query.limit(options.limit);
+  }
 
   if (statusFilter) {
     query = query.eq('status', statusFilter);
@@ -554,13 +562,13 @@ export async function listJobs(
   let jobs: Job[];
   if (options.fetchAll) {
     const { fetchAllPages } = await import('@/lib/pagination');
-    jobs = await fetchAllPages<Job>((from, to) => query.range(from, to));
+    jobs = await fetchAllPages<Job>((from, to) => query.range(from, to) as any);
   } else {
     const { data, error } = await query;
     if (error) {
       throw error;
     }
-    jobs = (data ?? []) as Job[];
+    jobs = (data ?? []) as unknown as Job[];
   }
 
   if (!options.includeLeadQuotes && jobs.length > 0) {
@@ -569,6 +577,7 @@ export async function listJobs(
       .select('converted_job')
       .eq('account_id', accountId)
       .in('status', ['quoted', 'lost'])
+      .is('deleted_at', null)
       .in('converted_job', jobs.map((job) => job.id));
 
     if (quoteLeadError) {

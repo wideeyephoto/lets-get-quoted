@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useMemo, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import type { JobStatus } from '@/lib/jobs';
 import type { QueueSort, StageFilter } from '@/lib/job-queue';
 import { setJobsViewAction, setMapThemeAction, setMapViewAction } from '@/app/dashboard/view-actions';
@@ -97,6 +96,7 @@ export default function JobsWorkspace({
   toolbarAccessory,
   basePath = '/dashboard',
   readOnly = false,
+  canCreate = true,
   details,
   initialStatus = 'all',
   initialSort = 'soonest',
@@ -105,6 +105,7 @@ export default function JobsWorkspace({
   headingTag?: 'h1' | 'h2';
   eyebrow?: string;
   jobs: JobViewItem[];
+  canCreate?: boolean;
   /**
    * Pre-loaded job detail, keyed by id. Supplying it makes the Focus and
    * Smoothie panes read from memory instead of calling /api/jobs/[id]/detail —
@@ -169,6 +170,7 @@ export default function JobsWorkspace({
 
   // Global 'J' shortcut to open new job drawer / form
   useEffect(() => {
+    if (!canCreate) return;
     const onGlobalKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'j' || e.key === 'J') {
         const target = e.target as HTMLElement | null;
@@ -190,30 +192,7 @@ export default function JobsWorkspace({
     };
     window.addEventListener('keydown', onGlobalKeyDown);
     return () => window.removeEventListener('keydown', onGlobalKeyDown);
-  }, []);
-
-  // Real-time job status updates via Supabase Realtime channel
-  useEffect(() => {
-    if (readOnly) return;
-    try {
-      const channel = supabase
-        .channel('jobs-realtime-feed')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'jobs' },
-          () => {
-            router.refresh();
-          },
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.warn('Jobs realtime subscription error:', err);
-    }
-  }, [router, readOnly]);
+  }, [canCreate]);
 
   // Local layout state, so the demo's pickers work without a cookie to write.
   const [localMapView, setLocalMapView] = useState<MapView>(mapView);
@@ -303,20 +282,22 @@ export default function JobsWorkspace({
         {eyebrow && <p className="eyebrow">{eyebrow}</p>}
         <div className={styles.headingTitleRow}>
           <HeadingTag>{headingTitle}</HeadingTag>
-          <a
-            className={styles.newJobBtn}
-            href="#new-job"
-            onClick={(event) => {
-              const target = document.getElementById('new-job');
-              if (!(target instanceof HTMLDetailsElement)) return;
-              event.preventDefault();
-              target.open = true;
-              target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              target.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
-            }}
-          >
-            + New job
-          </a>
+          {canCreate ? (
+            <a
+              className={styles.newJobBtn}
+              href="#new-job"
+              onClick={(event) => {
+                const target = document.getElementById('new-job');
+                if (!(target instanceof HTMLDetailsElement)) return;
+                event.preventDefault();
+                target.open = true;
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                target.querySelector<HTMLInputElement>('input[name="clientName"], input[name="clientPhone"]')?.focus({ preventScroll: true });
+              }}
+            >
+              + New job
+            </a>
+          ) : null}
         </div>
       </div>
       <div className={styles.headerActions}>
@@ -477,7 +458,17 @@ function TableView({ jobs, basePath }: { jobs: JobViewItem[]; basePath: string }
       if (sortKey === 'ref') cmp = a.ref.localeCompare(b.ref);
       else if (sortKey === 'client') cmp = a.clientName.localeCompare(b.clientName);
       else if (sortKey === 'status') cmp = a.status.localeCompare(b.status);
-      else if (sortKey === 'scheduled') cmp = (a.scheduledLabel ? 1 : 0) - (b.scheduledLabel ? 1 : 0) || a.createdAt.localeCompare(b.createdAt);
+      else if (sortKey === 'scheduled') {
+        if (a.scheduledFor && b.scheduledFor) {
+          cmp = a.scheduledFor.localeCompare(b.scheduledFor) || a.createdAt.localeCompare(b.createdAt);
+        } else if (a.scheduledFor) {
+          cmp = -1;
+        } else if (b.scheduledFor) {
+          cmp = 1;
+        } else {
+          cmp = a.createdAt.localeCompare(b.createdAt);
+        }
+      }
       else if (sortKey === 'value') cmp = a.quotedAmount - b.quotedAmount;
       return asc ? cmp : -cmp;
     });

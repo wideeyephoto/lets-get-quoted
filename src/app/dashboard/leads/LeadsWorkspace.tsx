@@ -22,7 +22,6 @@ import QuickAddLeadModal from './QuickAddLeadModal';
 import AiLeadAdvisor from '@/components/leads/AiLeadAdvisor';
 import FieldIntakeHint from '@/components/field-intake-hint';
 import type { LogisticalPreset, StageFilter } from '@/lib/lead-queue';
-import { supabase } from '@/lib/supabase';
 import styles from './leads.module.css';
 
 // Display-ready lead shape, built server-side in page.tsx so this client
@@ -272,29 +271,6 @@ export default function LeadsWorkspace({
     window.addEventListener('keydown', onGlobalKeyDown);
     return () => window.removeEventListener('keydown', onGlobalKeyDown);
   }, []);
-
-  // Real-time intake updates via Supabase Realtime channel
-  useEffect(() => {
-    if (readOnly) return;
-    try {
-      const channel = supabase
-        .channel('leads-realtime-feed')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'leads' },
-          () => {
-            router.refresh();
-          },
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.warn('Leads realtime subscription error:', err);
-    }
-  }, [router, readOnly]);
 
   function run(fn: () => Promise<unknown>) {
     // The one chokepoint every lead action goes through. Swallowed rather than

@@ -72,16 +72,25 @@ describe('paidTowardInvoice nets refunds', () => {
 });
 
 describe('both surfaces use the one implementation', () => {
-  const jobPage = readFileSync(
+  const jobDetailPage = readFileSync(
     join(process.cwd(), 'src', 'app', 'dashboard', 'jobs', '[id]', 'page.tsx'), 'utf8',
   );
+  const jobsListPage = readFileSync(
+    join(process.cwd(), 'src', 'app', 'dashboard', 'jobs', 'page.tsx'), 'utf8',
+  );
 
-  it('the job page calls the shared helpers instead of its own reduce', () => {
-    expect(jobPage).toContain('paidTowardInvoice(paymentsForInvoice(payments, jobInvoice.id))');
+  it('the job detail page calls the shared helpers instead of its own reduce', () => {
+    expect(jobDetailPage).toContain('paidTowardInvoice(paymentsForInvoice(payments, jobInvoice.id))');
   });
 
-  it('the job page no longer sums payment amounts by hand', () => {
-    // The specific shape that was gross of refunds.
-    expect(jobPage).not.toMatch(/payment\.status === 'paid'\)\.reduce\(\(sum, payment\) => sum \+ Number\(payment\.amount\)/);
+  it('the jobs list page calls the shared helpers instead of its own reduce', () => {
+    expect(jobsListPage).toContain('paidTowardInvoice(paymentsForInvoice(jobPayments, primaryInvoice.id))');
+  });
+
+  it('neither page sums payment amounts by hand gross of refunds', () => {
+    // Neither (sum, payment) nor (sum, p) hand-rolling reduce over paid amounts
+    const handRolledPattern = /\.status === 'paid'\)\.reduce\(\((?:sum, payment|sum, p)\) => sum \+ Number\(/;
+    expect(jobDetailPage).not.toMatch(handRolledPattern);
+    expect(jobsListPage).not.toMatch(handRolledPattern);
   });
 });
