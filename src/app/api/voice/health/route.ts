@@ -7,6 +7,10 @@ import { CUSTOMER_SWAIG_TOOLS } from '@/lib/voice/signalwire';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+// Older provisioned numbers already target this URL for provider POST recovery.
+// Keep their signed callback working; dashboard GET still requires its session.
+export { handleVoiceProviderFallback as POST } from '@/lib/voice/fallback';
+
 export async function GET() {
   const start = performance.now();
   const { accountId } = await requireOfficeContext('leads.read');

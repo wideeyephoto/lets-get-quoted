@@ -888,6 +888,8 @@ const SIGNED_PROVIDER_CALLBACK_PATHS: ReadonlySet<string> = new Set([
   '/api/voice/ai',
   '/api/voice/ai/status',
   '/api/voice/provider-status',
+  '/api/voice/fallback',
+  '/api/voice/health',
 ]);
 
 /**

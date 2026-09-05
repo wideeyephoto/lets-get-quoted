@@ -798,12 +798,13 @@ export async function configureVoiceNumberInbound(input: Readonly<{
     provider_number_id: providerNumberId,
     number,
     friendly_name: friendlyName,
-    call_handler: 'laml_webhooks',
+    call_handler: 'relay_script',
+    call_relay_script_url: inboundUrl,
     call_request_url: inboundUrl,
     call_request_method: 'POST',
     call_status_callback_url: statusUrl,
     call_status_callback_method: 'POST',
-    call_fallback_url: `${origin}/api/voice/health`,
+    call_fallback_url: `${origin}/api/voice/fallback`,
     call_fallback_method: 'POST',
   };
   const configurationKey = operationFingerprint(payload).slice(0, 16);
@@ -822,7 +823,7 @@ export async function configureVoiceNumberInbound(input: Readonly<{
       friendlyName,
       inboundWebhookUrl: inboundUrl,
       statusCallbackUrl: statusUrl,
-      fallbackUrl: `${origin}/api/voice/health`,
+      fallbackUrl: `${origin}/api/voice/fallback`,
     }),
     validate: (phone) => requireExactConfiguredVoicePhone(phone, {
       providerNumberId, number, inboundUrl, statusUrl,
@@ -907,7 +908,7 @@ function requireExactConfiguredVoicePhone(
     phone.id !== expected.providerNumberId
     || phone.number !== expected.number
     || !phone.capabilities.includes('voice')
-    || phone.callHandler?.toLowerCase() !== 'laml_webhooks'
+    || !['laml_webhooks', 'relay_script'].includes(phone.callHandler?.toLowerCase() ?? '')
     || phone.callRequestUrl !== expected.inboundUrl
     || phone.callRequestMethod?.toUpperCase() !== 'POST'
     || phone.callStatusCallbackUrl !== expected.statusUrl

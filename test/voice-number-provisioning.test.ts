@@ -419,12 +419,12 @@ describe('AI Voice number provisioning service', () => {
     });
   });
 
-  it('configures voice inventory against /api/voice/ai and the distinct provider-status route', async () => {
+  it.each(['laml_webhooks', 'relay_script'])('configures voice inventory with a callable fallback and accepts %s', async (callHandler) => {
     enableMutations();
     productionOrigin();
     const store = operationStore();
     const updateVoicePhoneNumber = vi.fn(async () => phone({
-      callHandler: 'laml_webhooks',
+      callHandler,
       callRequestUrl: 'https://app.letsgetquoted.com/api/voice/ai',
       callRequestMethod: 'POST',
       callStatusCallbackUrl: 'https://app.letsgetquoted.com/api/voice/provider-status',
@@ -444,19 +444,25 @@ describe('AI Voice number provisioning service', () => {
       operationType: 'configure_voice',
       payload: expect.objectContaining({
         voice_number_id: INVENTORY_ID,
-        call_handler: 'laml_webhooks',
+        call_handler: 'relay_script',
+        call_relay_script_url: 'https://app.letsgetquoted.com/api/voice/ai',
         call_request_url: 'https://app.letsgetquoted.com/api/voice/ai',
         call_request_method: 'POST',
         call_status_callback_url: 'https://app.letsgetquoted.com/api/voice/provider-status',
         call_status_callback_method: 'POST',
+        call_fallback_url: 'https://app.letsgetquoted.com/api/voice/fallback',
+        call_fallback_method: 'POST',
       }),
+    }));
+    expect(updateVoicePhoneNumber).toHaveBeenCalledWith(expect.objectContaining({
+      fallbackUrl: 'https://app.letsgetquoted.com/api/voice/fallback',
     }));
     expect(store.complete).toHaveBeenCalledWith(OPERATION, CLAIM, PHONE_ID, {
       provider: 'signalwire',
       id: PHONE_ID,
       number: NUMBER,
       voice_capable: true,
-      call_handler: 'laml_webhooks',
+      call_handler: callHandler,
       call_request_url: 'https://app.letsgetquoted.com/api/voice/ai',
       call_request_method: 'POST',
       call_status_callback_url: 'https://app.letsgetquoted.com/api/voice/provider-status',

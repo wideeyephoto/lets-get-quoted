@@ -515,7 +515,10 @@ describe('rendering an answer', () => {
     expect(fSwml.sections.main[0].connect.timeout).toBe(20);
     expect(fSwml.sections.main[0].connect.call_state_url).toBe('https://x.test/s');
     expect(fSwml.sections.main[1].play.url).toContain('say:');
-    expect(fSwml.sections.main[2].record_call).toBeDefined();
+    expect(fSwml.sections.main[2]).toEqual({ record: expect.objectContaining({
+      beep: true, max_length: 120, direction: 'speak',
+    }) });
+    expect(fSwml.sections.main[3]).toEqual({ hangup: {} });
 
     const decline = provider.renderAnswer({
       kind: 'unavailable', message: 'Sorry, we are closed.',
@@ -531,7 +534,10 @@ describe('rendering an answer', () => {
     expect(voicemail.contentType).toBe('application/json');
     const vSwml = JSON.parse(voicemail.body);
     expect(vSwml.sections.main[1].play.url).toBe('say: Please leave a message.');
-    expect(vSwml.sections.main[2].record_call).toBeDefined();
+    expect(vSwml.sections.main[2]).toEqual({ record: expect.objectContaining({
+      beep: true, max_length: 120, direction: 'speak',
+    }) });
+    expect(vSwml.sections.main[3]).toEqual({ hangup: {} });
   });
 
   it('renders transfer_to_business with whisper confirm, timeout, and voicemail fallback', () => {
@@ -555,7 +561,10 @@ describe('rendering an answer', () => {
     expect(transferMain[0].connect.timeout).toBe(25);
     expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
     expect(transferMain[1].play.url).toContain('say:');
-    expect(transferMain[2].record_call).toBeDefined();
+    expect(transferMain[2]).toEqual({ record: expect.objectContaining({
+      beep: true, max_length: 120, direction: 'speak',
+    }) });
+    expect(transferMain[3]).toEqual({ hangup: {} });
   });
 
   it('parses structured JSON post prompt data into receipt.structuredPostPrompt', () => {

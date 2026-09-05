@@ -135,6 +135,20 @@ const CONTRACTOR_JOB_TARGET_DESCRIPTION = 'The exact job reference or job UUID. 
   + 'If the caller does not know it, collect the full client name and service address, '
   + 'then ask a clarifying question before using this tool whenever more than one job could match. Never guess.';
 
+// `record` blocks SWML until the caller finishes. `record_call` starts a
+// background recording and would let the following hangup cut voicemail off.
+// https://signalwire.com/docs/swml/reference/calling/record
+const VOICEMAIL_RECORDING = {
+  format: 'mp3',
+  stereo: false,
+  direction: 'speak',
+  beep: true,
+  max_length: 120,
+  initial_timeout: 10,
+  end_silence_timeout: 5,
+  terminators: '#',
+} as const;
+
 export function structuredPostPromptFrom(payload: Record<string, unknown>): Readonly<Record<string, unknown>> | null {
   const post = record(payload.post_prompt_data);
   if (!post) return null;
@@ -267,7 +281,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                         },
                       },
                       { play: { url: 'say: Our office staff is currently unavailable to take your call. Please leave a message after the beep.' } },
-                      { record_call: { format: 'mp3', stereo: false } },
+                      { record: VOICEMAIL_RECORDING },
                       { hangup: {} },
                     ],
                   },
@@ -838,7 +852,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                   },
                 },
                 { play: { url: "say: We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep." } },
-                { record_call: { format: 'mp3', stereo: false } },
+                { record: VOICEMAIL_RECORDING },
                 { hangup: {} },
               ],
             },
@@ -854,7 +868,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
             main: [
               { answer: {} },
               { play: { url: `say: ${message}` } },
-              ...(plan.kind === 'voicemail' ? [{ record_call: { format: 'mp3', stereo: false } }] : []),
+              ...(plan.kind === 'voicemail' ? [{ record: VOICEMAIL_RECORDING }] : []),
               { hangup: {} },
             ],
           },

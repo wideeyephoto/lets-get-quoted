@@ -12,6 +12,25 @@ below to safely stage, canary, and launch live AI voice lines.
 
 Read §0 before anything else. It is why the flag order is what it is.
 
+## Call recovery update — 2026-09-05
+
+- SWML voicemail after a declined call, an unanswered forward, or an unanswered
+  AI transfer uses foreground `record`: play a beep, wait for the caller, and
+  record for up to 120 seconds before hanging up. `#` or five seconds of silence
+  ends the recording; the initial speech timeout is ten seconds.
+- New number configurations set the provider fallback URL to
+  `/api/voice/fallback` with POST. Previously configured `/api/voice/health`
+  POST callbacks use the same recovery handler. The health dashboard's GET
+  remains session-protected.
+- Both recovery URLs require a valid SignalWire signature for the exact URL
+  and body, return LaML or SWML to match the callback, and work without database
+  or session lookups. The emergency fallback recording stays with SignalWire;
+  this path does not create an AI session or a dashboard call-history entry.
+- After deployment, use an unpublished test number to verify a declined call,
+  an unanswered transfer, and a provider fallback. Speak a complete message,
+  confirm the beep and recording duration, then listen to the saved recording
+  in SignalWire. Automated callback tests do not replace this carrier check.
+
 ---
 
 ## 0. Metering & Allowance Foundation
