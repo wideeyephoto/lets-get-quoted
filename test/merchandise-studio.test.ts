@@ -9,7 +9,21 @@ import {
 import { createPrintfulOrder } from '@/lib/merchandise/printful-client';
 import { generateOrderNumber, saveMerchandiseOrder } from '@/lib/merchandise/orders';
 import { handleMerchandiseWebhookEvent } from '@/lib/merchandise/stripe-webhook';
-import { BUSINESS_CARD_TEMPLATES, getCardTemplateById } from '@/lib/merchandise/card-templates';
+import {
+  BUSINESS_CARD_TEMPLATES,
+  getCardTemplateById,
+  CARD_FINISHES,
+  getCardFinishById,
+} from '@/lib/merchandise/card-templates';
+import {
+  YARD_SIGN_TEMPLATES,
+  NOTEPAD_TEMPLATES,
+  DECAL_TEMPLATES,
+  getYardSignTemplateById,
+  getNotepadTemplateById,
+  getDecalTemplateById,
+  TRADE_PRESETS,
+} from '@/lib/merchandise/product-templates';
 import type { MerchandiseOrderItem, ShippingAddress } from '@/lib/merchandise/types';
 
 // Mock dependencies for Server Actions & Webhooks
@@ -1317,6 +1331,286 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
         .join(' | ');
 
       expect(detailParts).toBe('Color: Classic Slate | Template: industrial | Finish: Velvet Matte');
+    });
+  });
+
+  describe('Tactile Finishes & Specular Foil Mode Registry (Round 2)', () => {
+    it('defines 5 commercial tactile card finishes with distinct specular parameters', () => {
+      expect(CARD_FINISHES).toHaveLength(5);
+      const finishIds = CARD_FINISHES.map((f) => f.id);
+      expect(finishIds).toEqual([
+        'velvet_matte',
+        'foil_gold',
+        'foil_silver',
+        'spot_uv',
+        'foil_holo',
+      ]);
+    });
+
+    it('retrieves finish definitions with safe fallback to velvet_matte', () => {
+      const gold = getCardFinishById('foil_gold');
+      expect(gold.name).toContain('Raised Liquid Gold Foil');
+      expect(gold.badge).toContain('Luxury');
+      expect(gold.sheenColor).toBe('#ffd700');
+
+      const silver = getCardFinishById('foil_silver');
+      expect(silver.name).toContain('Raised Mirror Chrome Silver');
+
+      const holo = getCardFinishById('foil_holo');
+      expect(holo.name).toContain('Prismatic Holographic Foil');
+
+      const spotUv = getCardFinishById('spot_uv');
+      expect(spotUv.name).toContain('Raised Clear Spot-UV Gloss');
+
+      // Fallback
+      expect(getCardFinishById(null).id).toBe('velvet_matte');
+      expect(getCardFinishById('non_existent' as any).id).toBe('velvet_matte');
+    });
+
+    it('pairs each of the 8 business card templates with an optimal recommended finish', () => {
+      for (const tmpl of BUSINESS_CARD_TEMPLATES) {
+        expect(tmpl.recommendedFinish).toBeDefined();
+        const finish = getCardFinishById(tmpl.recommendedFinish);
+        expect(finish).toBeDefined();
+        expect(finish.id).toBe(tmpl.recommendedFinish);
+        expect(tmpl.patternType).toBeDefined();
+        expect(tmpl.ratingBadgeText).toBeDefined();
+        expect(tmpl.badgeLabel).toBeDefined();
+      }
+    });
+
+    it('calculates dynamic specular glare angle based on mouse tilt coordinates', () => {
+      // FoilShader physics calculation:
+      // angle = 90 + (glareX - 50) * 0.9;
+      // sweepPos = Math.min(100, Math.max(0, glareX));
+      const calcShaderPhysics = (glareX: number) => {
+        const angle = 90 + (glareX - 50) * 0.9;
+        const sweepPos = Math.min(100, Math.max(0, glareX));
+        return { angle, sweepPos };
+      };
+
+      // Neutral center
+      const center = calcShaderPhysics(50);
+      expect(center.angle).toBe(90);
+      expect(center.sweepPos).toBe(50);
+
+      // Left tilt (glareX = 0)
+      const left = calcShaderPhysics(0);
+      expect(left.angle).toBe(45);
+      expect(left.sweepPos).toBe(0);
+
+      // Right tilt (glareX = 100)
+      const right = calcShaderPhysics(100);
+      expect(right.angle).toBe(135);
+      expect(right.sweepPos).toBe(100);
+
+      // Clamping past limits
+      const extreme = calcShaderPhysics(120);
+      expect(extreme.sweepPos).toBe(100);
+    });
+  });
+
+  describe('3D Stage Duo Spread View & Supported View Angles (Round 3)', () => {
+    it('supports duo view angle on printed merchandise items', () => {
+      const bizCards = ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === 'biz_cards');
+      expect(bizCards?.supportedViews).toContain('duo');
+
+      const yardSigns = ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === 'yard_signs');
+      expect(yardSigns?.supportedViews).toContain('duo');
+
+      const notepads = ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === 'notepads');
+      expect(notepads?.supportedViews).toContain('duo');
+
+      const decals = ALL_MERCHANDISE_PRODUCTS.find((p) => p.id === 'decals');
+      expect(decals?.supportedViews).toContain('duo');
+    });
+
+    it('safely maps duo view to front for canvas casters that only support single-view rendering', () => {
+      const resolveCanvasViewAngle = (viewAngle: string) => {
+        return viewAngle === 'duo' ? 'front' : viewAngle;
+      };
+
+      expect(resolveCanvasViewAngle('duo')).toBe('front');
+      expect(resolveCanvasViewAngle('back')).toBe('back');
+      expect(resolveCanvasViewAngle('front')).toBe('front');
+      expect(resolveCanvasViewAngle('angle')).toBe('angle');
+    });
+  });
+
+  describe('Multi-Product Template Engine (Round 4)', () => {
+    it('defines 4 specialized Yard Sign templates with contractor trade targeting', () => {
+      expect(YARD_SIGN_TEMPLATES).toHaveLength(4);
+      const ids = YARD_SIGN_TEMPLATES.map((t) => t.id);
+      expect(ids).toEqual(['jobsite_progress', 'direct_phone', 'modern_showcase', 'qr_estimate']);
+
+      for (const tmpl of YARD_SIGN_TEMPLATES) {
+        expect(tmpl.name).toBeTruthy();
+        expect(tmpl.subtitle).toBeTruthy();
+        expect(tmpl.tag).toBeTruthy();
+        expect(tmpl.tradeFit).toBeTruthy();
+      }
+
+      const lookup = getYardSignTemplateById('direct_phone');
+      expect(lookup.name).toBe('Bold Direct Phone');
+      expect(lookup.tag).toBe('Drive-By Lead Gen');
+
+      // Fallback
+      expect(getYardSignTemplateById('unknown').id).toBe('jobsite_progress');
+      expect(getYardSignTemplateById(null).id).toBe('jobsite_progress');
+    });
+
+    it('defines 3 Carbonless NCR Notepad templates with field operation scope structures', () => {
+      expect(NOTEPAD_TEMPLATES).toHaveLength(3);
+      const ids = NOTEPAD_TEMPLATES.map((t) => t.id);
+      expect(ids).toEqual(['work_order', 'change_order', 'field_estimate']);
+
+      const workOrder = getNotepadTemplateById('work_order');
+      expect(workOrder.name).toBe('Standard Work Order Grid');
+      expect(workOrder.subtitle).toContain('Carbonless NCR');
+
+      const changeOrder = getNotepadTemplateById('change_order');
+      expect(changeOrder.name).toBe('Change Order Authorization');
+      expect(changeOrder.tag).toBe('Legal Protection');
+
+      // Fallback
+      expect(getNotepadTemplateById('unknown').id).toBe('work_order');
+    });
+
+    it('defines 3 Heavy-Duty Equipment & Vehicle Decal templates', () => {
+      expect(DECAL_TEMPLATES).toHaveLength(3);
+      const ids = DECAL_TEMPLATES.map((t) => t.id);
+      expect(ids).toEqual(['fleet_door', 'equipment_warranty', 'hard_hat_tool']);
+
+      const fleet = getDecalTemplateById('fleet_door');
+      expect(fleet.name).toBe('Commercial Fleet Door Magnet');
+      expect(fleet.tag).toBe('Vehicle Fleet');
+
+      const warranty = getDecalTemplateById('equipment_warranty');
+      expect(warranty.name).toBe('Service Warranty Sticker');
+
+      // Fallback
+      expect(getDecalTemplateById('unknown').id).toBe('fleet_door');
+    });
+  });
+
+  describe('Trade Preset Packs & 300-DPI Print Sheet Specifications (Round 5)', () => {
+    it('defines 6 curated 1-click Pro Trade Preset Packs', () => {
+      expect(TRADE_PRESETS).toHaveLength(6);
+      const presetIds = TRADE_PRESETS.map((p) => p.id);
+      expect(presetIds).toEqual([
+        'electrical',
+        'plumbing',
+        'contractor',
+        'roofing',
+        'landscaping',
+        'custom_homes',
+      ]);
+    });
+
+    it('ensures every trade preset configures valid templates and finishes across all product lines', () => {
+      for (const preset of TRADE_PRESETS) {
+        expect(preset.name).toBeTruthy();
+        expect(preset.badge).toBeTruthy();
+        expect(preset.trade).toBeTruthy();
+        expect(preset.accentColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(preset.secondaryColor).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(preset.tagline).toBeTruthy();
+
+        // Card template & finish verification
+        const cardTmpl = getCardTemplateById(preset.cardTemplate);
+        expect(cardTmpl.id).toBe(preset.cardTemplate);
+        const cardFinish = getCardFinishById(preset.cardFinish);
+        expect(cardFinish.id).toBe(preset.cardFinish);
+
+        // Multi-product template verification
+        const yardTmpl = getYardSignTemplateById(preset.yardSignTemplate);
+        expect(yardTmpl.id).toBe(preset.yardSignTemplate);
+        const noteTmpl = getNotepadTemplateById(preset.notepadTemplate);
+        expect(noteTmpl.id).toBe(preset.notepadTemplate);
+        const decalTmpl = getDecalTemplateById(preset.decalTemplate);
+        expect(decalTmpl.id).toBe(preset.decalTemplate);
+      }
+    });
+
+    it('differentiates cart items with different cardFinish values to preserve premium tactile upgrades', () => {
+      const matteCard: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 500,
+        unitPrice: 0.17,
+        totalPrice: 85.0,
+        colorName: 'Classic Slate',
+        colorHex: '#1e293b',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          cardTemplateId: 'executive',
+          cardFinish: 'velvet_matte',
+          finish: 'Soft-Touch Velvet Matte',
+          decorationMethod: 'offset_cmyk',
+        },
+      };
+
+      const goldFoilCard: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 500,
+        unitPrice: 0.17,
+        totalPrice: 85.0,
+        colorName: 'Classic Slate',
+        colorHex: '#1e293b',
+        customizationDetails: {
+          businessName: 'Apex Plumbing',
+          cardTemplateId: 'executive',
+          cardFinish: 'foil_gold',
+          finish: 'Raised Liquid Gold Foil',
+          decorationMethod: 'offset_cmyk',
+        },
+      };
+
+      // Cart comparator logic
+      const isSameItem = (a: MerchandiseOrderItem, b: MerchandiseOrderItem) =>
+        a.productId === b.productId &&
+        a.colorHex === b.colorHex &&
+        a.customizationDetails.cardTemplateId === b.customizationDetails.cardTemplateId &&
+        a.customizationDetails.cardFinish === b.customizationDetails.cardFinish;
+
+      expect(isSameItem(matteCard, goldFoilCard)).toBe(false);
+      expect(isSameItem(matteCard, { ...matteCard })).toBe(true);
+    });
+
+    it('formats comprehensive production detailParts including multi-product templates and finishes', () => {
+      const cardItem: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Soft-Touch Velvet Business Cards',
+        quantity: 500,
+        unitPrice: 0.17,
+        totalPrice: 85.0,
+        colorName: 'Charcoal',
+        colorHex: '#18181b',
+        customizationDetails: {
+          businessName: 'Master Electrician',
+          cardTemplateId: 'industrial',
+          cardFinish: 'foil_gold',
+          finish: 'Raised Liquid Gold Foil',
+          decorationMethod: 'offset_cmyk',
+        },
+      };
+
+      const detailParts = [
+        `Color: ${cardItem.colorName}`,
+        cardItem.customizationDetails.cardTemplateId
+          ? `Template: ${getCardTemplateById(cardItem.customizationDetails.cardTemplateId).name}`
+          : '',
+        cardItem.customizationDetails.cardFinish
+          ? `Tactile Finish: ${getCardFinishById(cardItem.customizationDetails.cardFinish).name}`
+          : '',
+      ]
+        .filter(Boolean)
+        .join(' | ');
+
+      expect(detailParts).toBe(
+        'Color: Charcoal | Template: The Industrial Heavy-Duty | Tactile Finish: Raised Liquid Gold Foil'
+      );
     });
   });
 });

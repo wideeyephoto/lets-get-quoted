@@ -32,11 +32,25 @@ import type {
   MerchandiseStudioInitialData,
   MerchandiseOrder,
   BusinessCardTemplateId,
+  CardFinishId,
 } from '@/lib/merchandise/types';
 import {
   BUSINESS_CARD_TEMPLATES,
   getCardTemplateById,
+  CARD_FINISHES,
+  getCardFinishById,
 } from '@/lib/merchandise/card-templates';
+import {
+  YARD_SIGN_TEMPLATES,
+  NOTEPAD_TEMPLATES,
+  DECAL_TEMPLATES,
+  getYardSignTemplateById,
+  getNotepadTemplateById,
+  getDecalTemplateById,
+  TradePreset,
+  TRADE_PRESETS,
+} from '@/lib/merchandise/product-templates';
+import BusinessCardMockup from './BusinessCardMockup';
 import {
   createMerchandiseCheckoutAction,
   reorderMerchandiseAction,
@@ -66,6 +80,12 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   // Customization state
   const [selectedColorId, setSelectedColorId] = useState<string>(() => currentProduct.availableColors[0].id);
   const [selectedCardTemplate, setSelectedCardTemplate] = useState<BusinessCardTemplateId>('executive');
+  const [selectedCardFinish, setSelectedCardFinish] = useState<CardFinishId>('velvet_matte');
+  const [selectedYardSignTemplate, setSelectedYardSignTemplate] = useState<string>('jobsite_progress');
+  const [selectedNotepadTemplate, setSelectedNotepadTemplate] = useState<string>('work_order');
+  const [selectedDecalTemplate, setSelectedDecalTemplate] = useState<string>('fleet_door');
+  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState<boolean>(false);
+  const [galleryTab, setGalleryTab] = useState<'biz_cards' | 'yard_signs' | 'notepads' | 'decals'>('biz_cards');
   const [selectedTierQty, setSelectedTierQty] = useState<number>(() => currentProduct.pricingTiers[0].quantity);
   const [selectedFinish, setSelectedFinish] = useState<string>(() => currentProduct.options?.finishes?.[0] || '');
   const [selectedModel, setSelectedModel] = useState<string>(
@@ -74,6 +94,24 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [viewAngle, setViewAngle] = useState<MockupViewAngle>('front');
   const [backdropTheme, setBackdropTheme] = useState<'clean' | 'dark' | 'jobsite'>('clean');
   const [includeQrCode, setIncludeQrCode] = useState<boolean>(true);
+
+  // Apply Trade Preset Pack
+  function handleApplyTradePreset(preset: TradePreset) {
+    setAccentColor(preset.accentColor);
+    setSecondaryColor(preset.secondaryColor);
+    setTagline(preset.tagline);
+    setSelectedCardTemplate(preset.cardTemplate);
+    setSelectedCardFinish(preset.cardFinish);
+    setSelectedYardSignTemplate(preset.yardSignTemplate);
+    setSelectedNotepadTemplate(preset.notepadTemplate);
+    setSelectedDecalTemplate(preset.decalTemplate);
+    if (cartToastTimeoutRef.current) clearTimeout(cartToastTimeoutRef.current);
+    setCartToast(`Applied ${preset.badge} ${preset.name} Pro Trade Style Pack!`);
+    cartToastTimeoutRef.current = setTimeout(() => {
+      setCartToast(null);
+      cartToastTimeoutRef.current = null;
+    }, 3200);
+  }
 
   // Apparel sizing state
   const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({
@@ -140,6 +178,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         if (typeof parsed.selectedCardTemplate === 'string') {
           setSelectedCardTemplate(parsed.selectedCardTemplate as BusinessCardTemplateId);
         }
+        if (typeof parsed.selectedCardFinish === 'string') {
+          setSelectedCardFinish(parsed.selectedCardFinish as CardFinishId);
+        }
+        if (typeof parsed.selectedYardSignTemplate === 'string') {
+          setSelectedYardSignTemplate(parsed.selectedYardSignTemplate);
+        }
+        if (typeof parsed.selectedNotepadTemplate === 'string') {
+          setSelectedNotepadTemplate(parsed.selectedNotepadTemplate);
+        }
+        if (typeof parsed.selectedDecalTemplate === 'string') {
+          setSelectedDecalTemplate(parsed.selectedDecalTemplate);
+        }
       }
     } catch {
       // Ignore storage errors
@@ -161,6 +211,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             accentColor,
             secondaryColor,
             selectedCardTemplate,
+            selectedCardFinish,
+            selectedYardSignTemplate,
+            selectedNotepadTemplate,
+            selectedDecalTemplate,
           })
         );
       } catch {
@@ -169,7 +223,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     }, 500);
 
     return () => clearTimeout(timeoutId);
-  }, [draftStorageKey, businessName, tagline, phone, website, license, accentColor, secondaryColor, selectedCardTemplate]);
+  }, [
+    draftStorageKey,
+    businessName,
+    tagline,
+    phone,
+    website,
+    license,
+    accentColor,
+    secondaryColor,
+    selectedCardTemplate,
+    selectedCardFinish,
+    selectedYardSignTemplate,
+    selectedNotepadTemplate,
+    selectedDecalTemplate,
+  ]);
 
   function handleResetToDefaults() {
     setBusinessName(initialData.companyName);
@@ -180,6 +248,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setAccentColor(initialData.accentColor);
     setSecondaryColor(initialData.secondaryColor);
     setSelectedCardTemplate('executive');
+    setSelectedCardFinish('velvet_matte');
+    setSelectedYardSignTemplate('jobsite_progress');
+    setSelectedNotepadTemplate('work_order');
+    setSelectedDecalTemplate('fleet_door');
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(draftStorageKey);
@@ -225,7 +297,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Modal Escape key handling & body scroll locking
   useEffect(() => {
-    const isAnyModalOpen = checkoutOpen || ordersDrawerOpen || !!orderSuccessModal;
+    const isAnyModalOpen = checkoutOpen || ordersDrawerOpen || !!orderSuccessModal || isTemplateGalleryOpen;
     if (isAnyModalOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -235,6 +307,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           if (checkoutOpen) setCheckoutOpen(false);
           if (ordersDrawerOpen) setOrdersDrawerOpen(false);
           if (orderSuccessModal) setOrderSuccessModal(null);
+          if (isTemplateGalleryOpen) setIsTemplateGalleryOpen(false);
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -244,7 +317,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [checkoutOpen, ordersDrawerOpen, orderSuccessModal]);
+  }, [checkoutOpen, ordersDrawerOpen, orderSuccessModal, isTemplateGalleryOpen]);
 
   // Cleanup cart toast timer on unmount
   useEffect(() => {
@@ -434,7 +507,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         decorationMethod: currentProduct.decorationMethod,
         placement: getDynamicPlacement(currentProduct.id),
         sizeBreakdown: currentProduct.options?.sizes ? sizeQuantities : undefined,
-        finish: selectedFinish || undefined,
+        finish: currentProduct.id === 'biz_cards' ? selectedCardFinish : selectedFinish || undefined,
+        cardFinish: currentProduct.id === 'biz_cards' ? selectedCardFinish : undefined,
         deviceModel: currentProduct.id === 'phone_cases' ? selectedModel : undefined,
         cardTemplateId: currentProduct.id === 'biz_cards' ? selectedCardTemplate : undefined,
       },
@@ -450,6 +524,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     activeColor,
     activeTier,
     selectedCardTemplate,
+    selectedCardFinish,
     businessName,
     tagline,
     phone,
@@ -487,6 +562,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           p.productId === item.productId &&
           p.colorHex === item.colorHex &&
           p.customizationDetails.finish === item.customizationDetails.finish &&
+          p.customizationDetails.cardFinish === item.customizationDetails.cardFinish &&
           p.customizationDetails.deviceModel === item.customizationDetails.deviceModel &&
           p.customizationDetails.cardTemplateId === item.customizationDetails.cardTemplateId &&
           p.customizationDetails.businessName === item.customizationDetails.businessName &&
@@ -666,25 +742,94 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setIsGeneratingProof(true);
     try {
       const canvas = document.createElement('canvas');
-      canvas.width = 1200;
-      canvas.height = 800;
+      canvas.width = 1300;
+      canvas.height = 860;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Background
-      ctx.fillStyle = '#0f172a';
-      ctx.fillRect(0, 0, 1200, 800);
+      // Helper for CMYK registration mark
+      const drawRegistrationMark = (x: number, y: number) => {
+        ctx.save();
+        ctx.strokeStyle = '#64748b';
+        ctx.lineWidth = 1;
+        // Outer circle
+        ctx.beginPath();
+        ctx.arc(x, y, 9, 0, Math.PI * 2);
+        ctx.stroke();
+        // Crosshair lines
+        ctx.beginPath();
+        ctx.moveTo(x - 14, y);
+        ctx.lineTo(x + 14, y);
+        ctx.moveTo(x, y - 14);
+        ctx.lineTo(x, y + 14);
+        ctx.stroke();
+        // Center pin
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.arc(x, y, 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      };
 
-      // Title banner
-      ctx.fillStyle = '#2563eb';
-      ctx.fillRect(0, 0, 1200, 90);
+      // 1. Dark Offset Print Background
+      ctx.fillStyle = '#080c14';
+      ctx.fillRect(0, 0, 1300, 860);
+
+      // 2. Registration Marks at 4 corners
+      drawRegistrationMark(25, 25);
+      drawRegistrationMark(1275, 25);
+      drawRegistrationMark(25, 835);
+      drawRegistrationMark(1275, 835);
+
+      // 3. Top Header Bar
+      const headerGrad = ctx.createLinearGradient(0, 0, 1300, 0);
+      headerGrad.addColorStop(0, '#1e3a8a');
+      headerGrad.addColorStop(0.5, '#1d4ed8');
+      headerGrad.addColorStop(1, '#0f172a');
+      ctx.fillStyle = headerGrad;
+      ctx.fillRect(40, 30, 1220, 85);
+
+      // Top Header text
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 30px sans-serif';
-      ctx.fillText(`OFFICIAL PRODUCTION PROOF • ${currentProduct.name.toUpperCase()}`, 40, 56);
+      ctx.font = 'bold 26px sans-serif';
+      ctx.fillText(`OFFICIAL COMMERCIAL PRODUCTION PROOF • ${currentProduct.name.toUpperCase()}`, 65, 72);
+      ctx.fillStyle = '#93c5fd';
+      ctx.font = 'bold 12px monospace';
+      ctx.fillText('LETSGETQUOTED PRINT LABS • AUTOMATED OFFSET GANG-RUN MANUFACTURING • SPEC ISO 12647-2', 65, 96);
 
-      // Details panel
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(40, 130, 480, 620);
+      // CMYK Density Calibration Swatch Bar (Top Right)
+      const swatches = [
+        { label: 'C', hex: '#00ffff' },
+        { label: 'M', hex: '#ff00ff' },
+        { label: 'Y', hex: '#ffff00' },
+        { label: 'K', hex: '#000000' },
+        { label: '75', hex: '#404040' },
+        { label: '50', hex: '#808080' },
+        { label: '25', hex: '#c0c0c0' },
+        { label: 'W', hex: '#ffffff' },
+      ];
+      const swatchStartX = 940;
+      const swatchY = 48;
+      const swatchW = 32;
+      const swatchH = 24;
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
+      ctx.fillRect(swatchStartX - 8, swatchY - 6, swatches.length * (swatchW + 4) + 12, swatchH + 28);
+      ctx.font = 'bold 9px monospace';
+      swatches.forEach((sw, i) => {
+        const sx = swatchStartX + i * (swatchW + 4);
+        ctx.fillStyle = sw.hex;
+        ctx.fillRect(sx, swatchY, swatchW, swatchH);
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.strokeRect(sx, swatchY, swatchW, swatchH);
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillText(sw.label, sx + (sw.label.length === 2 ? 8 : 12), swatchY + swatchH + 14);
+      });
+
+      // 4. Details panel (Left Column)
+      ctx.fillStyle = '#0f172a';
+      ctx.fillRect(40, 130, 500, 680);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.strokeRect(40, 130, 500, 680);
 
       const proofId = `PRF-${Date.now().toString(36).toUpperCase()}`;
       const proofDate = new Date().toLocaleDateString('en-US', {
@@ -693,61 +838,152 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         day: 'numeric',
       });
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px sans-serif';
-      ctx.fillText(`PROOF ID: ${proofId} • DATE: ${proofDate}`, 60, 165);
+      // Proof badge
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+      ctx.fillRect(60, 150, 460, 32);
+      ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
+      ctx.strokeRect(60, 150, 460, 32);
+      ctx.fillStyle = '#86efac';
+      ctx.font = 'bold 11px monospace';
+      ctx.fillText(`✓ PRE-FLIGHT PASS: 300 DPI OFFSET CMYK • +0.125" BLEED TOLERANCE`, 72, 170);
 
+      // Proof ID & Date
       ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px sans-serif';
-      ctx.fillText(`CLIENT / BUSINESS NAME:`, 60, 205);
+      ctx.font = '12px monospace';
+      ctx.fillText(`PROOF ID: ${proofId}   DATE: ${proofDate}`, 60, 204);
+
+      // Section: Client Identity
+      ctx.fillStyle = '#38bdf8';
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`1. CONTRACTOR BRANDING`, 60, 230);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(60, 236);
+      ctx.lineTo(500, 236);
+      ctx.stroke();
+
       ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 22px sans-serif';
-      ctx.fillText(businessName || 'Unnamed Business', 60, 235);
+      ctx.font = 'bold 20px sans-serif';
+      ctx.fillText(businessName || 'Unnamed Business', 60, 264);
 
       if (tagline) {
-        ctx.fillStyle = '#38bdf8';
-        ctx.font = 'italic 15px sans-serif';
-        ctx.fillText(tagline, 60, 262);
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = 'italic 13px sans-serif';
+        ctx.fillText(tagline.length > 55 ? tagline.slice(0, 52) + '...' : tagline, 60, 286);
       }
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px sans-serif';
-      ctx.fillText(`CONTACT & VERIFICATION:`, 60, 310);
-      ctx.fillStyle = '#ffffff';
-      ctx.font = '16px sans-serif';
-      ctx.fillText(`${phone || 'No phone'} • ${website || 'No website'}`, 60, 336);
+      ctx.fillStyle = '#cbd5e1';
+      ctx.font = '13px monospace';
+      ctx.fillText(`TEL: ${phone || 'N/A'} • WEB: ${website || 'N/A'}`, 60, 310);
       if (license) {
-        ctx.fillStyle = '#cbd5e1';
-        ctx.font = '15px sans-serif';
-        ctx.fillText(`License: ${license}`, 60, 362);
+        ctx.fillText(`LIC: ${license}`, 60, 328);
       }
 
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px sans-serif';
-      ctx.fillText(`PRODUCTION SPECIFICATIONS:`, 60, 415);
+      // Section: Production Specifications
       ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 16px sans-serif';
-      ctx.fillText(`Colorway: ${activeColor.name} (${activeColor.hex})`, 60, 445);
-      ctx.fillText(`Run Quantity: ${activeTier.quantity.toLocaleString()} units`, 60, 475);
-      ctx.fillText(`Imprint Method: ${currentProduct.decorationLabel}`, 60, 505);
-      ctx.fillText(`Placement: ${getDynamicPlacement(currentProduct.id)}`, 60, 535);
-      let specY = 565;
+      ctx.font = 'bold 12px sans-serif';
+      ctx.fillText(`2. PRODUCTION SPECIFICATIONS`, 60, 360);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
+      ctx.beginPath();
+      ctx.moveTo(60, 366);
+      ctx.lineTo(500, 366);
+      ctx.stroke();
+
+      let specY = 390;
+      const addSpecRow = (label: string, value: string, valColor = '#ffffff') => {
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '12px sans-serif';
+        ctx.fillText(label, 60, specY);
+        ctx.fillStyle = valColor;
+        ctx.font = 'bold 12px sans-serif';
+        ctx.fillText(value, 210, specY);
+        specY += 24;
+      };
+
+      addSpecRow('Product Line:', currentProduct.name);
+      addSpecRow('Colorway:', `${activeColor.name} (${activeColor.hex})`);
+      addSpecRow('Run Quantity:', `${activeTier.quantity.toLocaleString()} units ($${activeTier.unitPrice.toFixed(2)}/ea)`);
+      addSpecRow('Decoration Method:', currentProduct.decorationLabel);
+      addSpecRow('Imprint Placement:', getDynamicPlacement(currentProduct.id));
+
       if (currentProduct.id === 'biz_cards') {
         const tmpl = getCardTemplateById(selectedCardTemplate);
-        ctx.fillText(`Design Template: ${tmpl.name} (${tmpl.subtitle})`, 60, specY);
-        specY += 30;
+        addSpecRow('Card Template:', `${tmpl.name}`, '#38bdf8');
+        addSpecRow('Layout Style:', `${tmpl.subtitle}`);
+        const finishDef = getCardFinishById(selectedCardFinish);
+        addSpecRow('Tactile Finish:', `${finishDef.name}`, '#f59e0b');
+        addSpecRow('Paper Stock:', '16pt Heavy Silk Cover + Aqueous Barrier');
+      } else if (currentProduct.id === 'yard_signs') {
+        const tmpl = getYardSignTemplateById(selectedYardSignTemplate);
+        addSpecRow('Sign Template:', `${tmpl.name} (${tmpl.tag})`, '#38bdf8');
+        addSpecRow('Material:', '4mm Weatherproof Fluted Coroplast');
+      } else if (currentProduct.id === 'notepads') {
+        const tmpl = getNotepadTemplateById(selectedNotepadTemplate);
+        addSpecRow('NCR Form Template:', `${tmpl.name}`, '#38bdf8');
+        addSpecRow('Stock Format:', '2-Part Carbonless NCR (White / Canary Yellow)');
+      } else if (currentProduct.id === 'decals') {
+        const tmpl = getDecalTemplateById(selectedDecalTemplate);
+        addSpecRow('Decal Layout:', `${tmpl.name}`, '#38bdf8');
+        addSpecRow('Vinyl Grade:', '6-Mil Heavy Duty Contour Cast Laminated Vinyl');
+      } else if (selectedFinish) {
+        addSpecRow('Finish / Coating:', selectedFinish);
       }
-      if (selectedFinish) {
-        ctx.fillText(`Finish / Coating: ${selectedFinish}`, 60, specY);
-        specY += 30;
-      }
-      ctx.fillText(`QR Routing: ${includeQrCode ? 'Enabled (Dynamic)' : 'Disabled'}`, 60, specY);
-      specY += 30;
-      ctx.fillText(`Estimated Turnaround: ${currentProduct.turnaroundEstimate}`, 60, specY);
 
-      // Right Canvas preview zone: Real Embedded 3D Canvas Render
+      addSpecRow('Dynamic QR Booking:', includeQrCode ? 'Enabled (Lead Router)' : 'Disabled');
+      addSpecRow('Est. Manufacturing:', currentProduct.turnaroundEstimate);
+
+      // Section: Simulated Optical Barcode & Gang-Run Stamp
+      ctx.fillStyle = '#1e293b';
+      ctx.fillRect(60, 680, 460, 60);
+      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+      ctx.strokeRect(60, 680, 460, 60);
+
+      // Barcode bars simulation
+      ctx.fillStyle = '#ffffff';
+      let bx = 75;
+      const barPattern = [2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 3, 1, 2, 1, 3, 1, 4, 2, 1, 3, 2, 1, 2, 3, 1, 4, 1, 2, 3];
+      barPattern.forEach((w) => {
+        ctx.fillRect(bx, 690, w, 28);
+        bx += w + 2;
+      });
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = 'bold 9px monospace';
+      ctx.fillText(`LGQ-${proofId}-AUTO-DISPATCH-VERIFIED`, 230, 706);
+      ctx.fillText(`CMYK DENSITY: 100% C • 100% M • 100% Y • 100% K • +0.125" BLEED`, 75, 730);
+
+      // 5. Right Preview Zone: Embedded 3D Canvas Render
       ctx.fillStyle = '#0b0f19';
-      ctx.fillRect(560, 130, 600, 620);
+      ctx.fillRect(560, 130, 700, 680);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.strokeRect(560, 130, 700, 680);
+
+      // Corner crop markers inside preview zone
+      ctx.strokeStyle = '#38bdf8';
+      ctx.lineWidth = 1.5;
+      // Top Left
+      ctx.beginPath();
+      ctx.moveTo(570, 150);
+      ctx.lineTo(570, 140);
+      ctx.lineTo(580, 140);
+      ctx.stroke();
+      // Top Right
+      ctx.beginPath();
+      ctx.moveTo(1240, 140);
+      ctx.lineTo(1250, 140);
+      ctx.lineTo(1250, 150);
+      ctx.stroke();
+      // Bottom Left
+      ctx.beginPath();
+      ctx.moveTo(570, 790);
+      ctx.lineTo(570, 800);
+      ctx.lineTo(580, 800);
+      ctx.stroke();
+      // Bottom Right
+      ctx.beginPath();
+      ctx.moveTo(1240, 800);
+      ctx.lineTo(1250, 800);
+      ctx.lineTo(1250, 790);
+      ctx.stroke();
 
       let renderedSuccessfully = false;
       if (canvasProofExportRef.current) {
@@ -760,8 +996,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             renderImg.onerror = reject;
             renderImg.src = renderDataUrl;
           });
-          // Center the 1040x1040 square canvas render inside the 600x620 preview box
-          ctx.drawImage(renderImg, 570, 140, 580, 580);
+          // Draw image centered in 700x680 area
+          ctx.drawImage(renderImg, 580, 145, 660, 650);
           renderedSuccessfully = true;
         } catch (err) {
           console.warn('Could not embed live canvas render into proof sheet:', err);
@@ -772,21 +1008,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         ctx.fillStyle = '#94a3b8';
         ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'center';
-        ctx.fillText('DIGITAL PRINT SPECIFICATION ARCHIVE', 860, 440);
+        ctx.fillText('DIGITAL PRINT SPECIFICATION ARCHIVE', 910, 450);
         ctx.font = '16px sans-serif';
-        ctx.fillText(`${currentProduct.name} • ${activeColor.name}`, 860, 475);
+        ctx.fillText(`${currentProduct.name} • ${activeColor.name}`, 910, 485);
         ctx.textAlign = 'left';
       }
 
-      // Confidential footer strip
-      ctx.fillStyle = '#090d16';
-      ctx.fillRect(0, 765, 1200, 35);
+      // 6. Confidential footer strip
+      ctx.fillStyle = '#06090f';
+      ctx.fillRect(0, 825, 1300, 35);
       ctx.fillStyle = '#64748b';
       ctx.font = 'bold 11px sans-serif';
       ctx.fillText(
         'CONFIDENTIAL COMMERCIAL PRODUCTION PROOF • ALL SPECS STRICTLY CONFIRMED FOR PRINT RUN • LETSGETQUOTED MERCHANDISE STUDIO',
         40,
-        787
+        846
       );
 
       try {
@@ -1440,6 +1676,66 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             )}
           </div>
 
+          {/* Trade Style Presets */}
+          <div style={{ marginBottom: '0.85rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+              <label
+                style={{
+                  fontSize: '0.72rem',
+                  fontWeight: 800,
+                  color: 'var(--gold-ink)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  margin: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
+              >
+                <span>⚡</span> 1-Click Pro Trade Style Packs
+              </label>
+              <span style={{ fontSize: '0.66rem', color: 'var(--muted)', fontWeight: 600 }}>Matching design themes</span>
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, 1fr)',
+                gap: '0.35rem',
+              }}
+            >
+              {TRADE_PRESETS.map((preset) => (
+                <button
+                  key={preset.id}
+                  type="button"
+                  onClick={() => handleApplyTradePreset(preset)}
+                  className="focus-ring"
+                  title={`${preset.name} (${preset.trade}): Applies matching colors, tagline, template & finish`}
+                  style={{
+                    padding: '6px 6px',
+                    borderRadius: '7px',
+                    border: '1px solid rgba(var(--tint), 0.14)',
+                    background: 'rgba(var(--tint), 0.04)',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '2px',
+                    transition: 'all 0.15s ease',
+                  }}
+                >
+                  <span style={{ fontSize: '1rem' }}>{preset.badge}</span>
+                  <strong style={{ fontSize: '0.68rem', color: 'var(--text)', whiteSpace: 'nowrap' }}>
+                    {preset.name}
+                  </strong>
+                  <div style={{ display: 'flex', gap: '3px', marginTop: '1px' }}>
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: preset.accentColor }} />
+                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: preset.secondaryColor }} />
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Business Details Customizer */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -1779,7 +2075,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                     style={{
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'baseline',
+                      alignItems: 'center',
                       marginBottom: '0.45rem',
                     }}
                   >
@@ -1793,11 +2089,37 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                         letterSpacing: '0.08em',
                       }}
                     >
-                      Card Design Style (8 Curated Styles)
+                      Card Design Style
                     </label>
-                    <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
-                      {getCardTemplateById(selectedCardTemplate).name}
-                    </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
+                        {getCardTemplateById(selectedCardTemplate).name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGalleryTab('biz_cards');
+                          setIsTemplateGalleryOpen(true);
+                        }}
+                        className="focus-ring"
+                        title="Compare all 8 templates in full detail"
+                        style={{
+                          background: 'rgba(255, 122, 33, 0.15)',
+                          border: '1px solid var(--accent)',
+                          color: '#ff9d5c',
+                          borderRadius: '6px',
+                          padding: '2px 7px',
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <span>🖼️</span> Compare
+                      </button>
+                    </div>
                   </div>
                   <div
                     role="radiogroup"
@@ -1873,6 +2195,273 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                           >
                             {tmpl.tag}
                           </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Tactile Card Finish Selector in Sidebar */}
+                  <div style={{ marginTop: '0.65rem' }}>
+                    <label
+                      style={{
+                        display: 'block',
+                        fontSize: '0.7rem',
+                        fontWeight: 800,
+                        color: '#38bdf8',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.08em',
+                        marginBottom: '0.35rem',
+                      }}
+                    >
+                      Tactile Finish: <span style={{ color: '#ffffff' }}>{getCardFinishById(selectedCardFinish).name}</span>
+                    </label>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.35rem' }}>
+                      {CARD_FINISHES.map((fin) => {
+                        const isFinSelected = selectedCardFinish === fin.id;
+                        return (
+                          <button
+                            key={fin.id}
+                            type="button"
+                            onClick={() => setSelectedCardFinish(fin.id)}
+                            className="focus-ring"
+                            style={{
+                              padding: '5px 8px',
+                              borderRadius: '7px',
+                              border: isFinSelected ? '1.5px solid #38bdf8' : '1px solid rgba(var(--tint), 0.12)',
+                              background: isFinSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(var(--tint), 0.03)',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'space-between',
+                              textAlign: 'left',
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <span>{fin.badge}</span>
+                              <div>
+                                <strong style={{ fontSize: '0.72rem', color: isFinSelected ? '#38bdf8' : 'var(--text)', display: 'block' }}>
+                                  {fin.name}
+                                </strong>
+                                <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{fin.description}</span>
+                              </div>
+                            </div>
+                            {isFinSelected && <span style={{ fontSize: '0.7rem', color: '#38bdf8' }}>●</span>}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Yard Sign Templates */}
+              {currentProduct.id === 'yard_signs' && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.45rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Yard Sign Layout Style
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
+                        {getYardSignTemplateById(selectedYardSignTemplate).name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGalleryTab('yard_signs');
+                          setIsTemplateGalleryOpen(true);
+                        }}
+                        className="focus-ring"
+                        title="Compare all yard sign templates in full detail"
+                        style={{
+                          background: 'rgba(255, 122, 33, 0.15)',
+                          border: '1px solid var(--accent)',
+                          color: '#ff9d5c',
+                          borderRadius: '6px',
+                          padding: '2px 7px',
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <span>🖼️</span> Compare
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.45rem' }}>
+                    {YARD_SIGN_TEMPLATES.map((tmpl) => {
+                      const isSelected = selectedYardSignTemplate === tmpl.id;
+                      return (
+                        <button
+                          key={tmpl.id}
+                          type="button"
+                          onClick={() => setSelectedYardSignTemplate(tmpl.id)}
+                          className="focus-ring"
+                          style={{
+                            padding: '0.55rem 0.6rem',
+                            borderRadius: '8px',
+                            border: isSelected ? '1.5px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.14)',
+                            background: isSelected ? 'rgba(255, 122, 33, 0.12)' : 'rgba(var(--tint), 0.035)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '2px',
+                          }}
+                        >
+                          <strong style={{ fontSize: '0.72rem', color: isSelected ? 'var(--accent)' : 'var(--text)' }}>
+                            {tmpl.name}
+                          </strong>
+                          <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{tmpl.subtitle}</span>
+                          <span style={{ fontSize: '0.56rem', color: '#60a5fa', fontWeight: 700 }}>{tmpl.tag}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Notepad Templates */}
+              {currentProduct.id === 'notepads' && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.45rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Carbonless Scope Template
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
+                        {getNotepadTemplateById(selectedNotepadTemplate).name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGalleryTab('notepads');
+                          setIsTemplateGalleryOpen(true);
+                        }}
+                        className="focus-ring"
+                        title="Compare all notepad templates in full detail"
+                        style={{
+                          background: 'rgba(255, 122, 33, 0.15)',
+                          border: '1px solid var(--accent)',
+                          color: '#ff9d5c',
+                          borderRadius: '6px',
+                          padding: '2px 7px',
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <span>🖼️</span> Compare
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.45rem' }}>
+                    {NOTEPAD_TEMPLATES.map((tmpl) => {
+                      const isSelected = selectedNotepadTemplate === tmpl.id;
+                      return (
+                        <button
+                          key={tmpl.id}
+                          type="button"
+                          onClick={() => setSelectedNotepadTemplate(tmpl.id)}
+                          className="focus-ring"
+                          style={{
+                            padding: '0.55rem 0.75rem',
+                            borderRadius: '8px',
+                            border: isSelected ? '1.5px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.14)',
+                            background: isSelected ? 'rgba(255, 122, 33, 0.12)' : 'rgba(var(--tint), 0.035)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div>
+                            <strong style={{ fontSize: '0.74rem', color: isSelected ? 'var(--accent)' : 'var(--text)', display: 'block' }}>
+                              {tmpl.name}
+                            </strong>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)' }}>{tmpl.subtitle} • {tmpl.tradeFit}</span>
+                          </div>
+                          {isSelected && <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>●</span>}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Decal Templates */}
+              {currentProduct.id === 'decals' && (
+                <div style={{ marginTop: '0.85rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.45rem' }}>
+                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      Decal &amp; Magnet Application
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
+                        {getDecalTemplateById(selectedDecalTemplate).name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setGalleryTab('decals');
+                          setIsTemplateGalleryOpen(true);
+                        }}
+                        className="focus-ring"
+                        title="Compare all decal templates in full detail"
+                        style={{
+                          background: 'rgba(255, 122, 33, 0.15)',
+                          border: '1px solid var(--accent)',
+                          color: '#ff9d5c',
+                          borderRadius: '6px',
+                          padding: '2px 7px',
+                          fontSize: '0.66rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '3px',
+                        }}
+                      >
+                        <span>🖼️</span> Compare
+                      </button>
+                    </div>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.45rem' }}>
+                    {DECAL_TEMPLATES.map((tmpl) => {
+                      const isSelected = selectedDecalTemplate === tmpl.id;
+                      return (
+                        <button
+                          key={tmpl.id}
+                          type="button"
+                          onClick={() => setSelectedDecalTemplate(tmpl.id)}
+                          className="focus-ring"
+                          style={{
+                            padding: '0.55rem 0.75rem',
+                            borderRadius: '8px',
+                            border: isSelected ? '1.5px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.14)',
+                            background: isSelected ? 'rgba(255, 122, 33, 0.12)' : 'rgba(var(--tint), 0.035)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                          }}
+                        >
+                          <div>
+                            <strong style={{ fontSize: '0.74rem', color: isSelected ? 'var(--accent)' : 'var(--text)', display: 'block' }}>
+                              {tmpl.name}
+                            </strong>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)' }}>{tmpl.subtitle} • {tmpl.tradeFit}</span>
+                          </div>
+                          {isSelected && <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>●</span>}
                         </button>
                       );
                     })}
@@ -2264,6 +2853,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             logoSrc={activeLogoSrc}
             cardTemplateId={selectedCardTemplate}
             onSelectCardTemplate={setSelectedCardTemplate}
+            cardFinish={selectedCardFinish}
+            onSelectCardFinish={setSelectedCardFinish}
+            yardSignTemplateId={selectedYardSignTemplate}
+            onSelectYardSignTemplate={setSelectedYardSignTemplate}
+            notepadTemplateId={selectedNotepadTemplate}
+            onSelectNotepadTemplate={setSelectedNotepadTemplate}
+            decalTemplateId={selectedDecalTemplate}
+            onSelectDecalTemplate={setSelectedDecalTemplate}
             onExportReady={(fn) => {
               canvasProofExportRef.current = fn;
             }}
@@ -2973,6 +3570,690 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 ))}
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Template Comparison Gallery Modal */}
+      {isTemplateGalleryOpen && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Print Merchandise Template Comparison Gallery"
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(8, 12, 20, 0.88)',
+            backdropFilter: 'blur(8px)',
+            zIndex: 10000,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '1.5rem',
+          }}
+          onClick={() => setIsTemplateGalleryOpen(false)}
+        >
+          <div
+            style={{
+              background: '#0e1422',
+              border: '1px solid rgba(255, 255, 255, 0.14)',
+              color: 'var(--text)',
+              borderRadius: '20px',
+              maxWidth: '1240px',
+              width: '100%',
+              maxHeight: '92vh',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 25px 80px rgba(0,0,0,0.95)',
+              overflow: 'hidden',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Modal Header */}
+            <div
+              style={{
+                padding: '1.25rem 1.75rem',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+              }}
+            >
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: '#ffffff' }}>
+                    Print Merchandise Template Architecture &amp; Comparison
+                  </h3>
+                  <span
+                    style={{
+                      background: 'rgba(255, 122, 33, 0.15)',
+                      color: 'var(--accent)',
+                      border: '1px solid rgba(255, 122, 33, 0.3)',
+                      borderRadius: '999px',
+                      padding: '2px 9px',
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                    }}
+                  >
+                    Commercial Print Specs
+                  </span>
+                </div>
+                <p style={{ margin: '0.35rem 0 0', color: 'var(--muted)', fontSize: '0.8rem' }}>
+                  Engineered specifically for contractor brand authority, roadside readability, and tactile finishing.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsTemplateGalleryOpen(false)}
+                className="focus-ring"
+                aria-label="Close template comparison modal"
+                style={{
+                  background: 'rgba(255, 255, 255, 0.08)',
+                  color: '#ffffff',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  fontSize: '1.1rem',
+                  fontWeight: 700,
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Product Category Tabs */}
+            <div
+              style={{
+                display: 'flex',
+                gap: '0.5rem',
+                padding: '0.75rem 1.75rem',
+                background: 'rgba(15, 23, 42, 0.5)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                overflowX: 'auto',
+              }}
+            >
+              {[
+                { id: 'biz_cards', label: '📇 Business Cards (8)', count: 8 },
+                { id: 'yard_signs', label: '🪧 Yard Signs (4)', count: 4 },
+                { id: 'notepads', label: '📋 Carbonless Notepads (3)', count: 3 },
+                { id: 'decals', label: '🛡️ Equipment Decals (3)', count: 3 },
+              ].map((tab) => {
+                const isActive = galleryTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setGalleryTab(tab.id as any)}
+                    className="focus-ring"
+                    style={{
+                      padding: '0.45rem 0.95rem',
+                      borderRadius: '8px',
+                      border: isActive ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.08)',
+                      background: isActive ? 'rgba(255, 122, 33, 0.16)' : 'rgba(255, 255, 255, 0.03)',
+                      color: isActive ? 'var(--accent)' : 'var(--muted)',
+                      fontSize: '0.8rem',
+                      fontWeight: isActive ? 800 : 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      transition: 'all 0.15s ease',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Template Gallery Content */}
+            <div
+              style={{
+                padding: '1.5rem 1.75rem',
+                overflowY: 'auto',
+                flex: 1,
+              }}
+            >
+              {/* 1. Business Cards Tab */}
+              {galleryTab === 'biz_cards' && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '1.25rem',
+                  }}
+                >
+                  {BUSINESS_CARD_TEMPLATES.map((tmpl) => {
+                    const isSelected = selectedCardTemplate === tmpl.id;
+                    const recFinish = getCardFinishById(tmpl.recommendedFinish);
+                    return (
+                      <div
+                        key={tmpl.id}
+                        style={{
+                          borderRadius: '14px',
+                          border: isSelected
+                            ? '2px solid var(--accent, #ff7a21)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                          background: isSelected
+                            ? 'rgba(255, 122, 33, 0.06)'
+                            : 'rgba(255, 255, 255, 0.025)',
+                          padding: '1.2rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
+                          transition: 'all 0.2s ease',
+                        }}
+                      >
+                        <div>
+                          {/* Header tags */}
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
+                                color: '#ffffff',
+                              }}
+                            >
+                              {tmpl.tag}
+                            </span>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
+                              {tmpl.tradeFit.split(',')[0]}
+                            </span>
+                          </div>
+
+                          {/* Mini visual mockup box */}
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '145px',
+                              borderRadius: '8px',
+                              overflow: 'hidden',
+                              background: '#080c14',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              position: 'relative',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginBottom: '0.85rem',
+                            }}
+                          >
+                            <div
+                              style={{
+                                transform: 'scale(0.62)',
+                                transformOrigin: 'center center',
+                                pointerEvents: 'none',
+                              }}
+                            >
+                              <BusinessCardMockup
+                                templateId={tmpl.id}
+                                side="front"
+                                activeColor={activeColor}
+                                accentColor={accentColor}
+                                secondaryColor={secondaryColor}
+                                businessName={businessName}
+                                tagline={tagline}
+                                phone={phone}
+                                website={website}
+                                license={license}
+                                includeQrCode={includeQrCode}
+                                renderBranding={renderMockupBranding}
+                                finish={selectedCardFinish}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Name & Subtitle */}
+                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
+                            {tmpl.name}
+                          </h4>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            {tmpl.subtitle}
+                          </div>
+
+                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.75rem', lineHeight: 1.45 }}>
+                            {tmpl.description}
+                          </p>
+
+                          {/* Recommended Finish Pill */}
+                          <div
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              background: 'rgba(255, 255, 255, 0.04)',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              borderRadius: '6px',
+                              padding: '4px 8px',
+                              marginBottom: '0.85rem',
+                            }}
+                          >
+                            <span style={{ fontSize: '0.62rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>
+                              Recommended:
+                            </span>
+                            <span style={{ fontSize: '0.68rem', color: '#60a5fa', fontWeight: 700 }}>
+                              {recFinish.name}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Action Button */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedCardTemplate(tmpl.id);
+                            if (tmpl.recommendedFinish) {
+                              setSelectedCardFinish(tmpl.recommendedFinish);
+                            }
+                            setCartToast(`Applied ${tmpl.name} with ${recFinish.name}!`);
+                            setIsTemplateGalleryOpen(false);
+                          }}
+                          className="focus-ring"
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.8rem',
+                            borderRadius: '8px',
+                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+                            background: isSelected
+                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
+                              : 'rgba(255, 255, 255, 0.07)',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '6px',
+                          }}
+                        >
+                          {isSelected ? '✓ Active Template' : 'Apply This Template'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 2. Yard Signs Tab */}
+              {galleryTab === 'yard_signs' && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '1.25rem',
+                  }}
+                >
+                  {YARD_SIGN_TEMPLATES.map((tmpl) => {
+                    const isSelected = selectedYardSignTemplate === tmpl.id;
+                    return (
+                      <div
+                        key={tmpl.id}
+                        style={{
+                          borderRadius: '14px',
+                          border: isSelected
+                            ? '2px solid var(--accent, #ff7a21)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                          background: isSelected
+                            ? 'rgba(255, 122, 33, 0.06)'
+                            : 'rgba(255, 255, 255, 0.025)',
+                          padding: '1.2rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
+                                color: '#ffffff',
+                              }}
+                            >
+                              {tmpl.tag}
+                            </span>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
+                              {tmpl.tradeFit.split(',')[0]}
+                            </span>
+                          </div>
+
+                          {/* Mini visual mockup box */}
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '145px',
+                              borderRadius: '8px',
+                              background: '#090d16',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '1rem',
+                              boxSizing: 'border-box',
+                              marginBottom: '0.85rem',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: '1.8rem', marginBottom: '4px' }}>🪧</div>
+                            <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>{businessName || 'CONTRACTOR PRO'}</strong>
+                            <span style={{ fontSize: '0.68rem', color: accentColor, fontWeight: 700 }}>{phone || '(555) 019-2834'}</span>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '2px' }}>18&quot; &times; 24&quot; Coroplast</span>
+                          </div>
+
+                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
+                            {tmpl.name}
+                          </h4>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            {tmpl.subtitle}
+                          </div>
+                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
+                            Optimized for {tmpl.tradeFit}. High-contrast lettering tested for 35 MPH street readability.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedYardSignTemplate(tmpl.id);
+                            setCartToast(`Applied ${tmpl.name} Yard Sign!`);
+                            setIsTemplateGalleryOpen(false);
+                          }}
+                          className="focus-ring"
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.8rem',
+                            borderRadius: '8px',
+                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+                            background: isSelected
+                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
+                              : 'rgba(255, 255, 255, 0.07)',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {isSelected ? '✓ Active Sign Template' : 'Apply Sign Template'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 3. Notepads Tab */}
+              {galleryTab === 'notepads' && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '1.25rem',
+                  }}
+                >
+                  {NOTEPAD_TEMPLATES.map((tmpl) => {
+                    const isSelected = selectedNotepadTemplate === tmpl.id;
+                    return (
+                      <div
+                        key={tmpl.id}
+                        style={{
+                          borderRadius: '14px',
+                          border: isSelected
+                            ? '2px solid var(--accent, #ff7a21)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                          background: isSelected
+                            ? 'rgba(255, 122, 33, 0.06)'
+                            : 'rgba(255, 255, 255, 0.025)',
+                          padding: '1.2rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
+                                color: '#ffffff',
+                              }}
+                            >
+                              {tmpl.tag}
+                            </span>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
+                              {tmpl.tradeFit.split(',')[0]}
+                            </span>
+                          </div>
+
+                          {/* Mini visual mockup box */}
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '145px',
+                              borderRadius: '8px',
+                              background: '#090d16',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '1rem',
+                              boxSizing: 'border-box',
+                              marginBottom: '0.85rem',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: '1.8rem', marginBottom: '4px' }}>📋</div>
+                            <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>2-Part Carbonless NCR</strong>
+                            <span style={{ fontSize: '0.68rem', color: '#fef08a', fontWeight: 700 }}>White / Canary Yellow Duplicate</span>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '2px' }}>Legal Sign-Off Scope Format</span>
+                          </div>
+
+                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
+                            {tmpl.name}
+                          </h4>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            {tmpl.subtitle}
+                          </div>
+                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
+                            Standardized field operations scope format tailored for {tmpl.tradeFit}.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedNotepadTemplate(tmpl.id);
+                            setCartToast(`Applied ${tmpl.name} Scope Form!`);
+                            setIsTemplateGalleryOpen(false);
+                          }}
+                          className="focus-ring"
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.8rem',
+                            borderRadius: '8px',
+                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+                            background: isSelected
+                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
+                              : 'rgba(255, 255, 255, 0.07)',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {isSelected ? '✓ Active Notepad Template' : 'Apply Notepad Template'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 4. Decals Tab */}
+              {galleryTab === 'decals' && (
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                    gap: '1.25rem',
+                  }}
+                >
+                  {DECAL_TEMPLATES.map((tmpl) => {
+                    const isSelected = selectedDecalTemplate === tmpl.id;
+                    return (
+                      <div
+                        key={tmpl.id}
+                        style={{
+                          borderRadius: '14px',
+                          border: isSelected
+                            ? '2px solid var(--accent, #ff7a21)'
+                            : '1px solid rgba(255, 255, 255, 0.1)',
+                          background: isSelected
+                            ? 'rgba(255, 122, 33, 0.06)'
+                            : 'rgba(255, 255, 255, 0.025)',
+                          padding: '1.2rem',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'space-between',
+                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
+                        }}
+                      >
+                        <div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+                            <span
+                              style={{
+                                fontSize: '0.66rem',
+                                fontWeight: 800,
+                                padding: '2px 8px',
+                                borderRadius: '6px',
+                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
+                                color: '#ffffff',
+                              }}
+                            >
+                              {tmpl.tag}
+                            </span>
+                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
+                              {tmpl.tradeFit.split(',')[0]}
+                            </span>
+                          </div>
+
+                          {/* Mini visual mockup box */}
+                          <div
+                            style={{
+                              width: '100%',
+                              height: '145px',
+                              borderRadius: '8px',
+                              background: '#090d16',
+                              border: '1px solid rgba(255, 255, 255, 0.08)',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '1rem',
+                              boxSizing: 'border-box',
+                              marginBottom: '0.85rem',
+                              textAlign: 'center',
+                            }}
+                          >
+                            <div style={{ fontSize: '1.8rem', marginBottom: '4px' }}>🛡️</div>
+                            <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>6-Mil Cast Vinyl</strong>
+                            <span style={{ fontSize: '0.68rem', color: '#60a5fa', fontWeight: 700 }}>UV Weatherproof &amp; Oil-Resistant</span>
+                            <span style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '2px' }}>Contour-Cut Tool &amp; Fleet Decals</span>
+                          </div>
+
+                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
+                            {tmpl.name}
+                          </h4>
+                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
+                            {tmpl.subtitle}
+                          </div>
+                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
+                            Industrial-grade vinyl branding for {tmpl.tradeFit}.
+                          </p>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedDecalTemplate(tmpl.id);
+                            setCartToast(`Applied ${tmpl.name} Decal!`);
+                            setIsTemplateGalleryOpen(false);
+                          }}
+                          className="focus-ring"
+                          style={{
+                            width: '100%',
+                            padding: '0.6rem 0.8rem',
+                            borderRadius: '8px',
+                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
+                            background: isSelected
+                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
+                              : 'rgba(255, 255, 255, 0.07)',
+                            color: '#ffffff',
+                            fontWeight: 800,
+                            fontSize: '0.78rem',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {isSelected ? '✓ Active Decal Template' : 'Apply Decal Template'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* Footer */}
+            <div
+              style={{
+                padding: '1rem 1.75rem',
+                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                background: 'rgba(255, 255, 255, 0.02)',
+              }}
+            >
+              <span style={{ fontSize: '0.76rem', color: 'var(--muted)' }}>
+                Tip: Applying a template automatically pre-configures matching design specs. You can still adjust finishes and colors anytime.
+              </span>
+              <button
+                type="button"
+                onClick={() => setIsTemplateGalleryOpen(false)}
+                className="focus-ring"
+                style={{
+                  padding: '0.5rem 1.2rem',
+                  borderRadius: '7px',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  background: 'rgba(255, 255, 255, 0.05)',
+                  color: '#ffffff',
+                  fontWeight: 700,
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Close Gallery
+              </button>
+            </div>
           </div>
         </div>
       )}

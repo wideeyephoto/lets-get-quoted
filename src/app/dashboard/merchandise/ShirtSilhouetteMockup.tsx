@@ -2,11 +2,12 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
+import type { MockupViewAngle } from '@/lib/merchandise/types';
 import { getProductStudioPhoto } from '@/lib/merchandise/mockup-assets';
 
 interface Props {
   type: 't_shirt' | 'polo';
-  viewAngle: 'front' | 'back' | 'detail' | 'angle';
+  viewAngle: MockupViewAngle;
   colorHex: string;
   colorId?: string;
   darkText?: boolean;
@@ -42,7 +43,8 @@ export default function ShirtSilhouetteMockup({
   const isAngleView = viewAngle === 'angle';
 
   const productId = isPolo ? 'polos' : 't_shirts';
-  const { photoUrl } = getProductStudioPhoto(productId, colorId, viewAngle);
+  const casterAngle = viewAngle === 'duo' ? 'front' : viewAngle;
+  const { photoUrl } = getProductStudioPhoto(productId, colorId, casterAngle);
 
   // Determine imprint color mode based on fabric darkness
   const imprintMode = darkText ? 'color' : 'white';

@@ -21,7 +21,8 @@ import { getProductById } from '@/lib/merchandise/catalog';
  * Server-side data loader for initial page render in page.tsx.
  * Called directly in SSR without uncacheable POST action overhead.
  */
-export async function getMerchandiseStudioData(accountId: string): Promise<MerchandiseStudioInitialData> {
+export async function getMerchandiseStudioData(): Promise<MerchandiseStudioInitialData> {
+  const { accountId } = await requireOfficeContext('settings.read');
   const admin = createAdminClient();
 
   // Fetch site record
@@ -110,8 +111,7 @@ export async function getMerchandiseStudioDataAction(): Promise<{
   error?: string;
 }> {
   try {
-    const { accountId } = await requireOfficeContext('settings.read');
-    const data = await getMerchandiseStudioData(accountId);
+    const data = await getMerchandiseStudioData();
     return { ok: true, data };
   } catch (err) {
     console.error('Failed to load merchandise studio data:', err);

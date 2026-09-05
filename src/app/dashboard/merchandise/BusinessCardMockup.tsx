@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import type { BusinessCardTemplateId } from '@/lib/merchandise/types';
+import type { BusinessCardTemplateId, CardFinishId } from '@/lib/merchandise/types';
+import { getCardTemplateById } from '@/lib/merchandise/card-templates';
 
 export interface BusinessCardMockupProps {
   templateId?: BusinessCardTemplateId;
@@ -20,6 +21,107 @@ export interface BusinessCardMockupProps {
   showBleedGuides?: boolean;
   customStyle?: React.CSSProperties;
   scale?: number;
+  finish?: CardFinishId | string;
+}
+
+/**
+ * Dynamic Metallic Foil & Gloss Shader Overlay.
+ * Reacts to mouse tilt / lighting angle with authentic specular highlights.
+ */
+function FoilShader({
+  finish = 'velvet_matte',
+  glareX = 50,
+  isDark = false,
+}: {
+  finish?: CardFinishId | string;
+  glareX?: number;
+  isDark?: boolean;
+}) {
+  const angle = 90 + (glareX - 50) * 0.9;
+  const sweepPos = Math.min(100, Math.max(0, glareX));
+
+  if (finish === 'foil_gold') {
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 6,
+          background: `linear-gradient(${angle}deg, transparent ${sweepPos - 28}%, rgba(255, 235, 140, 0.45) ${sweepPos - 8}%, rgba(255, 255, 255, 0.75) ${sweepPos}%, rgba(212, 175, 55, 0.55) ${sweepPos + 10}%, transparent ${sweepPos + 32}%)`,
+          mixBlendMode: isDark ? 'color-dodge' : 'overlay',
+          transition: 'background 0.05s ease',
+        }}
+      />
+    );
+  }
+
+  if (finish === 'foil_silver') {
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 6,
+          background: `linear-gradient(${angle}deg, transparent ${sweepPos - 25}%, rgba(220, 235, 255, 0.5) ${sweepPos - 7}%, rgba(255, 255, 255, 0.85) ${sweepPos}%, rgba(180, 205, 230, 0.5) ${sweepPos + 8}%, transparent ${sweepPos + 28}%)`,
+          mixBlendMode: isDark ? 'color-dodge' : 'overlay',
+          transition: 'background 0.05s ease',
+        }}
+      />
+    );
+  }
+
+  if (finish === 'foil_holo') {
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 6,
+          background: `linear-gradient(${angle}deg, transparent ${sweepPos - 35}%, rgba(255, 105, 180, 0.35) ${sweepPos - 20}%, rgba(255, 215, 0, 0.4) ${sweepPos - 7}%, rgba(0, 255, 200, 0.45) ${sweepPos}%, rgba(30, 144, 255, 0.4) ${sweepPos + 8}%, rgba(186, 85, 211, 0.35) ${sweepPos + 22}%, transparent ${sweepPos + 38}%)`,
+          mixBlendMode: 'overlay',
+          transition: 'background 0.05s ease',
+        }}
+      />
+    );
+  }
+
+  if (finish === 'spot_uv') {
+    return (
+      <div
+        aria-hidden="true"
+        style={{
+          position: 'absolute',
+          inset: 0,
+          pointerEvents: 'none',
+          zIndex: 6,
+          background: `linear-gradient(${angle}deg, transparent ${sweepPos - 20}%, rgba(255, 255, 255, 0.28) ${sweepPos}%, transparent ${sweepPos + 20}%)`,
+          mixBlendMode: 'soft-light',
+          transition: 'background 0.05s ease',
+        }}
+      />
+    );
+  }
+
+  // Default Velvet Matte: subtle soft-focus ambient light
+  return (
+    <div
+      aria-hidden="true"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        pointerEvents: 'none',
+        zIndex: 5,
+        background: `radial-gradient(circle at ${sweepPos}% 30%, rgba(255, 255, 255, 0.12) 0%, transparent 60%)`,
+        mixBlendMode: 'screen',
+      }}
+    />
+  );
 }
 
 /**
@@ -62,6 +164,7 @@ function CardQrVisual({
         height="100%"
         viewBox="0 0 48 48"
         style={{ position: 'absolute', inset: 0, padding: '4px', boxSizing: 'border-box' }}
+        aria-hidden="true"
       >
         {/* Top-Left Finder */}
         <rect x="2" y="2" width="14" height="14" fill="none" stroke="#ffffff" strokeWidth="2.5" rx="1.5" />
@@ -98,7 +201,7 @@ function CardQrVisual({
           justifyContent: 'center',
           width: '100%',
           height: '100%',
-          background: 'rgba(15, 23, 42, 0.72)',
+          background: 'rgba(15, 23, 42, 0.76)',
           borderRadius: '4px',
           backdropFilter: 'blur(1px)',
         }}
@@ -128,40 +231,13 @@ function BleedGuides() {
         boxSizing: 'border-box',
       }}
     >
-      {/* Outer Bleed Margin (0.125" / ~6px outside trim) */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: '2px',
-          border: '1.5px dashed #ef4444',
-          borderRadius: '10px',
-        }}
-      />
-      {/* Trim Cut Line */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: '10px',
-          border: '1.5px solid #06b6d4',
-          borderRadius: '7px',
-        }}
-      />
-      {/* Safe Zone Inset (where critical copy/logos reside) */}
-      <div
-        style={{
-          position: 'absolute',
-          inset: '18px',
-          border: '1.5px dashed #22c55e',
-          borderRadius: '5px',
-        }}
-      />
-      {/* Corner Crop Marks */}
+      <div style={{ position: 'absolute', inset: '2px', border: '1.5px dashed #ef4444', borderRadius: '10px' }} />
+      <div style={{ position: 'absolute', inset: '10px', border: '1.5px solid #06b6d4', borderRadius: '7px' }} />
+      <div style={{ position: 'absolute', inset: '18px', border: '1.5px dashed #22c55e', borderRadius: '5px' }} />
       <div style={{ position: 'absolute', top: '10px', left: '10px', width: '10px', height: '10px', borderTop: '2px solid #06b6d4', borderLeft: '2px solid #06b6d4' }} />
       <div style={{ position: 'absolute', top: '10px', right: '10px', width: '10px', height: '10px', borderTop: '2px solid #06b6d4', borderRight: '2px solid #06b6d4' }} />
       <div style={{ position: 'absolute', bottom: '10px', left: '10px', width: '10px', height: '10px', borderBottom: '2px solid #06b6d4', borderLeft: '2px solid #06b6d4' }} />
       <div style={{ position: 'absolute', bottom: '10px', right: '10px', width: '10px', height: '10px', borderBottom: '2px solid #06b6d4', borderRight: '2px solid #06b6d4' }} />
-
-      {/* Guide Legend Tag */}
       <div
         style={{
           position: 'absolute',
@@ -195,7 +271,7 @@ export default function BusinessCardMockup({
   side,
   activeColor,
   accentColor,
-  secondaryColor,
+  secondaryColor = '#3b82f6',
   businessName,
   tagline = 'Commercial & Residential Contractor',
   phone = '(555) 019-2834',
@@ -207,9 +283,11 @@ export default function BusinessCardMockup({
   showBleedGuides = false,
   customStyle = {},
   scale = 1,
+  finish = 'velvet_matte',
 }: BusinessCardMockupProps) {
   const cardW = 370;
   const cardH = 215;
+  const templateDef = getCardTemplateById(templateId);
 
   const baseContainerStyle: React.CSSProperties = {
     width: `${cardW}px`,
@@ -221,29 +299,15 @@ export default function BusinessCardMockup({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    padding: '1.4rem',
+    padding: '1.35rem',
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     transformOrigin: 'center center',
     transition: 'box-shadow 0.2s ease, transform 0.3s ease',
     ...customStyle,
   };
 
-  // Spot UV Gleam overlay
-  const spotUvGleam = (
-    <div
-      style={{
-        position: 'absolute',
-        top: '-50%',
-        left: `${glareX - 25}%`,
-        width: '60px',
-        height: '200%',
-        background: 'linear-gradient(90deg, transparent, rgba(255,255,255,0.16), transparent)',
-        transform: 'rotate(25deg)',
-        pointerEvents: 'none',
-        zIndex: 5,
-      }}
-    />
-  );
+  const isDarkCard = side === 'front' ? !activeColor.darkText : false;
+  const foilEffect = <FoilShader finish={finish} glareX={glareX} isDark={isDarkCard} />;
 
   // =========================================================================
   // 1. THE EXECUTIVE TRADESMAN
@@ -259,12 +323,29 @@ export default function BusinessCardMockup({
             boxShadow: `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.15), 0 4px 0 0 ${accentColor}`,
           }}
         >
+          {/* Executive Metallic Hairline Accent Rules */}
           <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: accentColor }} />
+          <div style={{ position: 'absolute', top: '10px', left: '16px', right: '16px', height: '1px', background: 'rgba(255,255,255,0.08)' }} />
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.1)' }} />
-          {spotUvGleam}
+          {foilEffect}
 
           <div style={{ position: 'relative', zIndex: 2 }}>
-            {renderBranding(activeColor.darkText ? 'color' : 'white', 0.88)}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>{renderBranding(activeColor.darkText ? 'color' : 'white', 0.88)}</div>
+              <span
+                style={{
+                  fontSize: '0.58rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.12em',
+                  color: accentColor,
+                  border: `1px solid ${accentColor}`,
+                  padding: '2px 6px',
+                  borderRadius: '3px',
+                }}
+              >
+                {templateDef.badgeLabel}
+              </span>
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 2 }}>
@@ -278,7 +359,7 @@ export default function BusinessCardMockup({
               <span style={{ fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.06em', color: accentColor }}>
                 {license}
               </span>
-              <span style={{ display: 'block', fontSize: '0.62rem', opacity: 0.7, fontWeight: 700 }}>
+              <span style={{ display: 'block', fontSize: '0.6rem', opacity: 0.75, fontWeight: 700 }}>
                 16PT VELVET SOFT-TOUCH
               </span>
             </div>
@@ -298,6 +379,7 @@ export default function BusinessCardMockup({
           boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1, 0 4px 0 0 #94a3b8',
         }}
       >
+        {foilEffect}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <strong style={{ fontSize: '1.05rem', color: '#0f172a', fontWeight: 900, letterSpacing: '-0.01em' }}>
             {businessName}
@@ -313,26 +395,21 @@ export default function BusinessCardMockup({
               border: '1px solid #bbf7d0',
             }}
           >
-            ⭐ 5.0 RATED CONTRACTOR
+            {templateDef.ratingBadgeText}
           </span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#334155', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800 }}>📞 {phone}</div>
-            <div style={{ color: accentColor || '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               🌐 {website}
             </div>
-            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '4px' }}>
-              Direct Owner Scheduling • {license}
+            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
+              Fast Estimates • Licensed &amp; Bonded
             </div>
           </div>
-
-          {includeQrCode && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', flexShrink: 0 }}>
-              <CardQrVisual accentColor={accentColor} label="SCAN TO BOOK" sublabel="DIRECT" />
-            </div>
-          )}
+          {includeQrCode && <CardQrVisual accentColor={accentColor} />}
         </div>
 
         <div
@@ -345,8 +422,8 @@ export default function BusinessCardMockup({
             justifyContent: 'space-between',
           }}
         >
-          <span>Licensed • Bonded • Fully Insured</span>
-          <span style={{ fontWeight: 800, color: accentColor }}>Free On-Site Consultation</span>
+          <span>Luxury Residential &amp; Commercial</span>
+          <span style={{ fontWeight: 800, color: '#0f172a' }}>Direct Dispatch</span>
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -354,7 +431,7 @@ export default function BusinessCardMockup({
   }
 
   // =========================================================================
-  // 2. THE MODERN SPLIT (High Contrast Dual-Tone)
+  // 2. THE MODERN SPLIT
   // =========================================================================
   if (templateId === 'modern_split') {
     if (side === 'front') {
@@ -362,63 +439,72 @@ export default function BusinessCardMockup({
         <div
           style={{
             ...baseContainerStyle,
-            background: activeColor.hex,
-            color: activeColor.darkText ? '#0f172a' : '#ffffff',
+            background: '#ffffff',
+            color: '#0f172a',
             padding: 0,
-            display: 'flex',
-            flexDirection: 'row',
-            boxShadow: `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.15)`,
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1',
           }}
         >
-          {spotUvGleam}
-          {/* Left 35% Accent Block */}
-          <div
-            style={{
-              width: '35%',
-              height: '100%',
-              background: accentColor,
-              color: '#ffffff',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              padding: '1.25rem 0.75rem',
-              boxSizing: 'border-box',
-              position: 'relative',
-              boxShadow: 'inset -2px 0 6px rgba(0,0,0,0.2)',
-            }}
-          >
-            <div style={{ transform: 'scale(0.85)' }}>{renderBranding('white', 0.8)}</div>
-            <span style={{ fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.12em', opacity: 0.9 }}>
-              EST. PRO
-            </span>
-          </div>
+          <div style={{ display: 'flex', height: '100%' }}>
+            {/* Left 35% Accent Block */}
+            <div
+              style={{
+                width: '35%',
+                background: activeColor.hex,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '1.2rem',
+                position: 'relative',
+                color: activeColor.darkText ? '#0f172a' : '#ffffff',
+              }}
+            >
+              <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: '4px', background: accentColor }} />
+              <div style={{ transform: 'scale(0.95)' }}>
+                {renderBranding(activeColor.darkText ? 'color' : 'white', 0.9)}
+              </div>
+            </div>
 
-          {/* Right 65% Main Details */}
-          <div
-            style={{
-              width: '65%',
-              height: '100%',
-              padding: '1.4rem',
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              boxSizing: 'border-box',
-            }}
-          >
-            <div>
-              <strong style={{ fontSize: '1.08rem', display: 'block', fontWeight: 900, letterSpacing: '-0.02em', lineHeight: 1.15 }}>
-                {businessName}
-              </strong>
-              <span style={{ fontSize: '0.72rem', opacity: 0.8, fontWeight: 600, marginTop: '4px', display: 'block' }}>
-                {tagline}
-              </span>
-            </div>
-            <div style={{ borderTop: `2px solid ${accentColor}`, paddingTop: '8px' }}>
-              <div style={{ fontSize: '0.7rem', fontWeight: 800 }}>{license}</div>
-              <div style={{ fontSize: '0.64rem', opacity: 0.75 }}>CERTIFIED TRADE CONTRACTOR</div>
+            {/* Right 65% Information Block */}
+            <div
+              style={{
+                width: '65%',
+                padding: '1.4rem',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'space-between',
+                position: 'relative',
+              }}
+            >
+              <div>
+                <span
+                  style={{
+                    fontSize: '0.62rem',
+                    color: accentColor,
+                    fontWeight: 900,
+                    letterSpacing: '0.1em',
+                    textTransform: 'uppercase',
+                    display: 'block',
+                    marginBottom: '2px',
+                  }}
+                >
+                  {templateDef.badgeLabel}
+                </span>
+                <strong style={{ fontSize: '1.1rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0f172a', display: 'block' }}>
+                  {businessName}
+                </strong>
+                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{tagline}</span>
+              </div>
+
+              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
+                <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#475569' }}>
+                  {license} • Insured
+                </span>
+              </div>
             </div>
           </div>
+          {foilEffect}
           {showBleedGuides && <BleedGuides />}
         </div>
       );
@@ -429,41 +515,34 @@ export default function BusinessCardMockup({
       <div
         style={{
           ...baseContainerStyle,
-          background: '#ffffff',
+          background: '#f8fafc',
           color: '#0f172a',
-          padding: 0,
-          display: 'flex',
-          flexDirection: 'row',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1',
+          borderLeft: `8px solid ${accentColor}`,
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.3), 0 0 0 1px #cbd5e1',
         }}
       >
-        {/* Left accent strip */}
-        <div style={{ width: '8px', height: '100%', background: accentColor }} />
-
-        <div style={{ flex: 1, padding: '1.35rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+        {foilEffect}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <strong style={{ fontSize: '0.98rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-              <span style={{ fontSize: '0.62rem', fontWeight: 800, color: accentColor, textTransform: 'uppercase' }}>
-                PRO SERVICE
-              </span>
-            </div>
-            <p style={{ margin: '2px 0 0 0', fontSize: '0.7rem', color: '#64748b' }}>{tagline}</p>
+            <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>{tagline}</span>
           </div>
+          <span style={{ fontSize: '0.68rem', fontWeight: 900, color: accentColor }}>
+            {templateDef.ratingBadgeText}
+          </span>
+        </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ fontSize: '0.8rem', lineHeight: 1.6 }}>
-              <div style={{ fontWeight: 800, color: '#0f172a' }}>📞 {phone}</div>
-              <div style={{ fontWeight: 700, color: accentColor }}>🌐 {website}</div>
-              <div style={{ fontSize: '0.68rem', color: '#64748b' }}>{license}</div>
-            </div>
-            {includeQrCode && <CardQrVisual accentColor={accentColor} label="QUICK BOOK" sublabel="ONLINE" />}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.84rem', lineHeight: 1.6, color: '#334155' }}>
+            <div style={{ fontWeight: 800 }}>📞 {phone}</div>
+            <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Fast Quotes • Direct Booking</div>
           </div>
+          {includeQrCode && <CardQrVisual accentColor={accentColor} />}
+        </div>
 
-          <div style={{ fontSize: '0.64rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
-            <span>Prompt, Professional &amp; Insured</span>
-            <span style={{ fontWeight: 800 }}>Satisfaction Guaranteed</span>
-          </div>
+        <div style={{ fontSize: '0.64rem', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
+          Commercial &amp; Residential Specialists • Free Estimates
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -471,10 +550,10 @@ export default function BusinessCardMockup({
   }
 
   // =========================================================================
-  // 3. THE INDUSTRIAL HEAVY-DUTY (Carbon Slate & Hazard Accent)
+  // 3. THE INDUSTRIAL HEAVY-DUTY
   // =========================================================================
   if (templateId === 'industrial') {
-    const hazardStripe = `repeating-linear-gradient(-45deg, ${accentColor || '#f59e0b'}, ${accentColor || '#f59e0b'} 7px, #18181b 7px, #18181b 14px)`;
+    const hazardStripe = `repeating-linear-gradient(45deg, ${accentColor}, ${accentColor} 8px, transparent 8px, transparent 16px)`;
 
     if (side === 'front') {
       return (
@@ -482,45 +561,62 @@ export default function BusinessCardMockup({
           style={{
             ...baseContainerStyle,
             background: '#18181b',
-            color: '#f8fafc',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.1)',
-            backgroundImage: 'radial-gradient(circle, rgba(255,255,255,0.06) 1px, transparent 1px)',
-            backgroundSize: '12px 12px',
+            color: '#ffffff',
+            boxShadow: `0 25px 50px -12px rgba(0,0,0,0.6), 0 0 0 1px #3f3f46, 0 4px 0 0 ${accentColor}`,
           }}
         >
-          {/* Top Hazard Accent Bar */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: hazardStripe }} />
-          {spotUvGleam}
+          {/* Carbon Fiber Micro Texture SVG */}
+          <svg style={{ position: 'absolute', inset: 0, opacity: 0.16, pointerEvents: 'none' }} width="100%" height="100%">
+            <defs>
+              <pattern id="carbonTile" width="6" height="6" patternUnits="userSpaceOnUse">
+                <rect width="6" height="6" fill="#000000" />
+                <rect width="3" height="3" fill="#ffffff" />
+                <rect x="3" y="3" width="3" height="3" fill="#ffffff" />
+              </pattern>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#carbonTile)" />
+          </svg>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginTop: '4px' }}>
-            <div>{renderBranding('white', 0.85)}</div>
-            <span
-              style={{
-                fontSize: '0.58rem',
-                fontWeight: 900,
-                background: 'rgba(255,255,255,0.12)',
-                padding: '3px 8px',
-                borderRadius: '3px',
-                letterSpacing: '0.08em',
-                color: accentColor || '#f59e0b',
-              }}
-            >
-              HEAVY-DUTY GRADE
-            </span>
+          {/* Top Hazard Stripe Bar */}
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: hazardStripe }} />
+          {foilEffect}
+
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>{renderBranding('white', 0.9)}</div>
+              <span
+                style={{
+                  background: 'rgba(234, 88, 12, 0.2)',
+                  border: `1px solid ${accentColor}`,
+                  color: accentColor,
+                  fontSize: '0.6rem',
+                  fontWeight: 900,
+                  letterSpacing: '0.08em',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+              >
+                {templateDef.badgeLabel}
+              </span>
+            </div>
           </div>
 
-          <div style={{ borderLeft: `3px solid ${accentColor || '#f59e0b'}`, paddingLeft: '10px' }}>
-            <strong style={{ fontSize: '1.18rem', fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', lineHeight: 1.05 }}>
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <strong style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', color: '#ffffff' }}>
               {businessName}
             </strong>
-            <span style={{ fontSize: '0.74rem', color: '#cbd5e1', fontWeight: 700, marginTop: '3px', display: 'block' }}>
+            <span style={{ fontSize: '0.74rem', color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
               {tagline}
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '6px' }}>
-            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: accentColor || '#f59e0b' }}>{license}</span>
-            <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#94a3b8' }}>COMMERCIAL &amp; INDUSTRIAL</span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 2, borderTop: '1px solid #27272a', paddingTop: '6px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 900, color: accentColor, letterSpacing: '0.06em' }}>
+              {license}
+            </span>
+            <span style={{ fontSize: '0.62rem', color: '#71717a', fontWeight: 800 }}>
+              HEAVY-DUTY COMMERCIAL SPEC
+            </span>
           </div>
           {showBleedGuides && <BleedGuides />}
         </div>
@@ -532,82 +628,103 @@ export default function BusinessCardMockup({
       <div
         style={{
           ...baseContainerStyle,
-          background: '#0f172a',
-          color: '#f8fafc',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.1)',
+          background: '#09090b',
+          color: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.6), 0 0 0 1px #27272a',
         }}
       >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(255,255,255,0.1)', paddingBottom: '6px' }}>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', background: hazardStripe }} />
+        {foilEffect}
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <span style={{ fontSize: '0.62rem', fontWeight: 900, color: accentColor || '#f59e0b', letterSpacing: '0.08em' }}>
-              ⚡ 24/7 PRIORITY DISPATCH
+            <strong style={{ fontSize: '1.08rem', fontWeight: 900, color: '#ffffff', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+              {businessName}
+            </strong>
+            <span style={{ display: 'block', fontSize: '0.68rem', color: accentColor, fontWeight: 800 }}>
+              {templateDef.ratingBadgeText}
             </span>
-            <strong style={{ display: 'block', fontSize: '0.98rem', fontWeight: 900 }}>{businessName}</strong>
           </div>
-          <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94a3b8' }}>BONDED &amp; INSURED</span>
+          <span style={{ background: '#27272a', color: '#e4e4e7', fontSize: '0.62rem', fontWeight: 800, padding: '2px 6px', borderRadius: '3px' }}>
+            24/7 DISPATCH
+          </span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.85rem', lineHeight: 1.6 }}>
+          <div style={{ fontSize: '0.86rem', lineHeight: 1.6, color: '#d4d4d8' }}>
             <div style={{ fontWeight: 900, color: '#ffffff' }}>📞 {phone}</div>
-            <div style={{ fontWeight: 800, color: accentColor || '#38bdf8' }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>{license} • Certified Heavy Trade</div>
+            <div style={{ color: accentColor, fontWeight: 800 }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.7rem', color: '#a1a1aa' }}>Fully Licensed, Bonded &amp; Insured</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor={accentColor || '#f59e0b'} label="DISPATCH" sublabel="NOW" />}
+          {includeQrCode && <CardQrVisual accentColor={accentColor} label="QUICK ESTIMATE" sublabel="24/7" />}
         </div>
 
-        {/* Bottom Hazard Accent Bar */}
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '6px', background: hazardStripe }} />
+        <div style={{ fontSize: '0.62rem', color: '#71717a', borderTop: '1px solid #18181b', paddingTop: '4px' }}>
+          Commercial Grade Heavy Equipment &amp; Field Specialists
+        </div>
         {showBleedGuides && <BleedGuides />}
       </div>
     );
   }
 
   // =========================================================================
-  // 4. THE BLUEPRINT TECHNICAL (Architectural CAD Grid)
+  // 4. THE BLUEPRINT TECHNICAL
   // =========================================================================
   if (templateId === 'blueprint') {
-    const blueprintGrid = {
-      backgroundImage: 'linear-gradient(rgba(56, 189, 248, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(56, 189, 248, 0.12) 1px, transparent 1px)',
-      backgroundSize: '14px 14px',
-    };
+    const cadGrid = (
+      <svg style={{ position: 'absolute', inset: 0, opacity: 0.22, pointerEvents: 'none' }} width="100%" height="100%">
+        <defs>
+          <pattern id="cadGridPat" width="16" height="16" patternUnits="userSpaceOnUse">
+            <path d="M 16 0 L 0 0 0 16" fill="none" stroke="#38bdf8" strokeWidth="0.5" />
+          </pattern>
+        </defs>
+        <rect width="100%" height="100%" fill="url(#cadGridPat)" />
+      </svg>
+    );
 
     if (side === 'front') {
       return (
         <div
           style={{
             ...baseContainerStyle,
-            background: '#07162c',
-            color: '#e0f2fe',
-            border: '1.5px solid rgba(56, 189, 248, 0.35)',
-            boxShadow: '0 25px 50px -12px rgba(7, 22, 44, 0.7)',
-            ...blueprintGrid,
+            background: '#0c2d48',
+            color: '#ffffff',
+            border: '2px solid #38bdf8',
+            boxShadow: '0 25px 50px -12px rgba(12, 45, 72, 0.6), inset 0 0 0 1px rgba(56, 189, 248, 0.4)',
           }}
         >
-          {/* 4 Corner Crosshairs */}
-          <span style={{ position: 'absolute', top: '6px', left: '8px', fontSize: '0.75rem', color: '#38bdf8', opacity: 0.6 }}>+</span>
-          <span style={{ position: 'absolute', top: '6px', right: '8px', fontSize: '0.75rem', color: '#38bdf8', opacity: 0.6 }}>+</span>
-          <span style={{ position: 'absolute', bottom: '6px', left: '8px', fontSize: '0.75rem', color: '#38bdf8', opacity: 0.6 }}>+</span>
-          <span style={{ position: 'absolute', bottom: '6px', right: '8px', fontSize: '0.75rem', color: '#38bdf8', opacity: 0.6 }}>+</span>
+          {cadGrid}
+          {foilEffect}
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.12em', color: '#38bdf8' }}>
-              DWG. REF: ARCH-01
+          {/* Precision Architectural Title Block */}
+          <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontSize: '0.58rem', fontFamily: 'monospace', letterSpacing: '0.1em', color: '#38bdf8' }}>
+              DWG: {templateDef.badgeLabel}
             </span>
-            <span style={{ fontSize: '0.58rem', fontWeight: 700, color: '#94a3b8' }}>SCALE: 1:1 FIELD SPEC</span>
+            <span style={{ fontSize: '0.56rem', fontFamily: 'monospace', color: '#93c5fd' }}>
+              SCALE: 1:1 • 88.9 × 50.8mm
+            </span>
           </div>
 
-          <div>
-            <div style={{ marginBottom: '6px' }}>{renderBranding('white', 0.85)}</div>
-            <strong style={{ fontSize: '1.1rem', fontWeight: 900, letterSpacing: '0.02em', color: '#ffffff', display: 'block' }}>
-              {businessName}
-            </strong>
-            <span style={{ fontSize: '0.72rem', color: '#38bdf8', fontWeight: 600 }}>{tagline}</span>
+          <div style={{ position: 'relative', zIndex: 2 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              {renderBranding('white', 0.85)}
+              <div>
+                <strong style={{ fontSize: '1.14rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', color: '#ffffff' }}>
+                  {businessName}
+                </strong>
+                <span style={{ fontSize: '0.72rem', color: '#7dd3fc', fontWeight: 600 }}>{tagline}</span>
+              </div>
+            </div>
           </div>
 
-          <div style={{ background: 'rgba(56, 189, 248, 0.08)', border: '1px solid rgba(56, 189, 248, 0.25)', padding: '4px 8px', borderRadius: '4px', display: 'flex', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#e0f2fe' }}>PROJECT SPECIFICATION</span>
-            <span style={{ fontSize: '0.64rem', fontWeight: 900, color: '#38bdf8' }}>{license}</span>
+          <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(56, 189, 248, 0.4)', paddingTop: '4px' }}>
+            <span style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 800 }}>
+              {license}
+            </span>
+            <span style={{ fontSize: '0.6rem', color: '#93c5fd', opacity: 0.85 }}>
+              ARCHITECTURAL SPECIFICATION
+            </span>
           </div>
           {showBleedGuides && <BleedGuides />}
         </div>
@@ -619,30 +736,38 @@ export default function BusinessCardMockup({
       <div
         style={{
           ...baseContainerStyle,
-          background: '#07162c',
-          color: '#e0f2fe',
-          border: '1.5px solid rgba(56, 189, 248, 0.35)',
-          boxShadow: '0 25px 50px -12px rgba(7, 22, 44, 0.7)',
-          ...blueprintGrid,
+          background: '#071e33',
+          color: '#ffffff',
+          border: '2px solid rgba(56, 189, 248, 0.7)',
+          boxShadow: '0 25px 50px -12px rgba(7, 30, 51, 0.6)',
         }}
       >
-        <div style={{ borderBottom: '1px solid rgba(56, 189, 248, 0.25)', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between' }}>
-          <strong style={{ fontSize: '0.96rem', fontWeight: 900, color: '#ffffff' }}>{businessName}</strong>
-          <span style={{ fontSize: '0.62rem', color: '#38bdf8', fontWeight: 800 }}>ESTIMATE DISPATCH SPEC</span>
-        </div>
+        {cadGrid}
+        {foilEffect}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.8rem', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 800, color: '#ffffff' }}>📞 {phone}</div>
-            <div style={{ fontWeight: 700, color: '#38bdf8' }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.68rem', color: '#94a3b8' }}>Lic: {license} • Insured</div>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>
+            <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#ffffff' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.65rem', color: '#7dd3fc', fontFamily: 'monospace' }}>
+              FIELD OPERATIONS DESK
+            </span>
           </div>
-          {includeQrCode && <CardQrVisual accentColor="#38bdf8" label="CAD STAMP" sublabel="VERIFIED" />}
+          <span style={{ fontSize: '0.62rem', color: '#38bdf8', fontFamily: 'monospace', border: '1px solid #38bdf8', padding: '1px 6px', borderRadius: '3px' }}>
+            VERIFIED GC
+          </span>
         </div>
 
-        <div style={{ fontSize: '0.62rem', color: '#7dd3fc', borderTop: '1px solid rgba(56, 189, 248, 0.2)', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
-          <span>APPROVED FOR IMMEDIATE FIELD ESTIMATING</span>
-          <span style={{ fontWeight: 800 }}>REV 2.0</span>
+        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#e0f2fe' }}>
+            <div style={{ fontWeight: 800 }}>TEL: {phone}</div>
+            <div style={{ color: '#38bdf8', fontWeight: 700 }}>WEB: {website}</div>
+            <div style={{ fontSize: '0.68rem', color: '#93c5fd' }}>{templateDef.ratingBadgeText}</div>
+          </div>
+          {includeQrCode && <CardQrVisual accentColor="#38bdf8" label="FIELD PORTAL" sublabel="DIRECT" />}
+        </div>
+
+        <div style={{ position: 'relative', zIndex: 2, fontSize: '0.62rem', color: '#7dd3fc', opacity: 0.8, borderTop: '1px solid rgba(56, 189, 248, 0.3)', paddingTop: '4px' }}>
+          Precision Design-Build • General Contracting • Commercial Framing
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -650,7 +775,7 @@ export default function BusinessCardMockup({
   }
 
   // =========================================================================
-  // 5. THE HIGH-IMPACT QR FIRST (Lead Generation Hero)
+  // 5. THE HIGH-IMPACT QR FIRST
   // =========================================================================
   if (templateId === 'qr_first') {
     if (side === 'front') {
@@ -658,39 +783,43 @@ export default function BusinessCardMockup({
         <div
           style={{
             ...baseContainerStyle,
-            background: activeColor.hex,
-            color: activeColor.darkText ? '#0f172a' : '#ffffff',
-            boxShadow: `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 2px ${accentColor}`,
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            gap: '1rem',
+            background: '#ffffff',
+            color: '#0f172a',
+            border: `2px solid ${accentColor}`,
+            boxShadow: `0 25px 50px -12px rgba(0,0,0,0.35), 0 0 0 1px ${accentColor}`,
           }}
         >
-          {spotUvGleam}
-          {/* Left 60% Company Info */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', height: '100%' }}>
-            <div>
-              {renderBranding(activeColor.darkText ? 'color' : 'white', 0.82)}
-              <strong style={{ fontSize: '1.02rem', fontWeight: 900, display: 'block', marginTop: '6px', lineHeight: 1.15 }}>
-                {businessName}
-              </strong>
-              <span style={{ fontSize: '0.7rem', opacity: 0.85, fontWeight: 600 }}>{tagline}</span>
+          {foilEffect}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              {renderBranding('dark', 0.75)}
+              <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
             </div>
-            <div>
-              <div style={{ fontSize: '0.78rem', fontWeight: 800 }}>📞 {phone}</div>
-              <span style={{ fontSize: '0.64rem', color: accentColor, fontWeight: 800 }}>
-                Point camera at QR code ➜
+            <span style={{ fontSize: '0.64rem', color: '#16a34a', fontWeight: 900, background: '#f0fdf4', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+              INSTANT ESTIMATE
+            </span>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+            <div style={{ flex: 1 }}>
+              <span style={{ fontSize: '0.65rem', color: accentColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }}>
+                {templateDef.badgeLabel}
               </span>
+              <strong style={{ fontSize: '0.98rem', display: 'block', color: '#0f172a', margin: '2px 0' }}>
+                Scan with Phone Camera
+              </strong>
+              <p style={{ fontSize: '0.72rem', color: '#475569', margin: 0, lineHeight: 1.35 }}>
+                Get an instant estimate &amp; book appointment directly on our calendar.
+              </p>
+            </div>
+            <div style={{ transform: 'scale(1.15)', flexShrink: 0 }}>
+              <CardQrVisual size={80} accentColor={accentColor} label="SCAN TO BOOK" sublabel="2 MIN" />
             </div>
           </div>
 
-          {/* Right 40% Oversized Hero QR */}
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <CardQrVisual size={86} accentColor={accentColor} label="SCAN TO BOOK" sublabel="INSTANT ESTIMATE" />
-            <span style={{ fontSize: '0.55rem', fontWeight: 800, marginTop: '3px', color: accentColor }}>
-              CAMERA READY
-            </span>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
+            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#0f172a' }}>📞 {phone}</span>
+            <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{website}</span>
           </div>
           {showBleedGuides && <BleedGuides />}
         </div>
@@ -702,29 +831,32 @@ export default function BusinessCardMockup({
       <div
         style={{
           ...baseContainerStyle,
-          background: '#ffffff',
-          color: '#0f172a',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1',
+          background: '#0f172a',
+          color: '#ffffff',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
         }}
       >
+        {foilEffect}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#16a34a' }}>⚡ SAME-DAY RESPONSE</span>
-        </div>
-
-        {/* 4-Item Credentials Checklist */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', margin: '6px 0' }}>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>✓ Free Written Quotes</div>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>✓ Transparent Pricing</div>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>✓ {license}</div>
-          <div style={{ fontSize: '0.68rem', fontWeight: 700, color: '#334155' }}>✓ Fully Insured</div>
-        </div>
-
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
-          <div style={{ fontSize: '0.78rem' }}>
-            <strong>📞 {phone}</strong> · <span style={{ color: accentColor }}>{website}</span>
+          <div>
+            <strong style={{ fontSize: '1.05rem', color: '#ffffff', fontWeight: 900 }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8' }}>{tagline}</span>
           </div>
-          <span style={{ fontSize: '0.64rem', fontWeight: 800, color: '#64748b' }}>Residential &amp; Commercial</span>
+          <span style={{ fontSize: '0.66rem', color: accentColor, fontWeight: 900 }}>
+            {license}
+          </span>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.72rem', color: '#cbd5e1' }}>
+          <div>✓ Free On-Site Inspection</div>
+          <div>✓ 100% Upfront Pricing</div>
+          <div>✓ Licensed &amp; Bonded</div>
+          <div>✓ Emergency 24/7 Crew</div>
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '6px' }}>
+          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#38bdf8' }}>📞 {phone}</div>
+          <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>{website}</div>
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -732,7 +864,7 @@ export default function BusinessCardMockup({
   }
 
   // =========================================================================
-  // 6. THE VERIFIED PRO (Trust Shield & 5-Star Rating)
+  // 6. THE VERIFIED PRO
   // =========================================================================
   if (templateId === 'verified_pro') {
     if (side === 'front') {
@@ -742,43 +874,49 @@ export default function BusinessCardMockup({
             ...baseContainerStyle,
             background: activeColor.hex,
             color: activeColor.darkText ? '#0f172a' : '#ffffff',
-            boxShadow: `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.15)`,
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.15)',
           }}
         >
-          {spotUvGleam}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+          {foilEffect}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>{renderBranding(activeColor.darkText ? 'color' : 'white', 0.85)}</div>
-            {/* Trust Shield Badge */}
             <div
               style={{
-                background: 'rgba(22, 163, 74, 0.15)',
-                border: '1px solid #16a34a',
-                padding: '3px 8px',
-                borderRadius: '6px',
-                textAlign: 'right',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: 'rgba(22, 163, 74, 0.2)',
+                border: '1px solid #22c55e',
+                borderRadius: '999px',
+                padding: '2px 8px',
+                color: '#4ade80',
+                fontSize: '0.64rem',
+                fontWeight: 900,
               }}
             >
-              <span style={{ fontSize: '0.58rem', fontWeight: 900, color: '#22c55e', display: 'block' }}>
-                🛡️ VERIFIED CONTRACTOR
-              </span>
-              <span style={{ fontSize: '0.52rem', color: '#86efac', fontWeight: 700 }}>
-                BONDED &amp; $2M INSURED
-              </span>
+              <span>🛡️</span>
+              <span>{templateDef.badgeLabel}</span>
             </div>
           </div>
 
           <div>
-            <strong style={{ fontSize: '1.08rem', fontWeight: 900, letterSpacing: '-0.01em', display: 'block' }}>
+            <strong style={{ fontSize: '1.14rem', fontWeight: 900, letterSpacing: '-0.01em', display: 'block' }}>
               {businessName}
             </strong>
-            <span style={{ fontSize: '0.72rem', opacity: 0.85, fontWeight: 600 }}>{tagline}</span>
+            <span style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600 }}>{tagline}</span>
+            <div style={{ marginTop: '4px', display: 'flex', gap: '8px', fontSize: '0.68rem', color: '#fbbf24', fontWeight: 800 }}>
+              <span>★★★★★ 5.0 Rating</span>
+              <span style={{ color: activeColor.darkText ? '#475569' : '#cbd5e1' }}>• 100% Guaranteed</span>
+            </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '6px' }}>
-            <span style={{ fontSize: '0.72rem', color: '#fbbf24', fontWeight: 800 }}>
-              ★★★★★ 5.0 GOOGLE REVIEWS
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: accentColor }}>
+              {license}
             </span>
-            <span style={{ fontSize: '0.68rem', fontWeight: 900, color: accentColor }}>{license}</span>
+            <span style={{ fontSize: '0.64rem', opacity: 0.75 }}>
+              HOMEOWNER TRUSTED
+            </span>
           </div>
           {showBleedGuides && <BleedGuides />}
         </div>
@@ -792,30 +930,34 @@ export default function BusinessCardMockup({
           ...baseContainerStyle,
           background: '#ffffff',
           color: '#0f172a',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35), 0 0 0 1px #cbd5e1',
         }}
       >
-        <div style={{ borderBottom: '2px solid #16a34a', paddingBottom: '4px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        {foilEffect}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <strong style={{ fontSize: '1rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-            <span style={{ display: 'block', fontSize: '0.62rem', color: '#16a34a', fontWeight: 800 }}>
-              HOMEOWNER PEACE-OF-MIND PROMISE
+            <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.68rem', color: '#16a34a', fontWeight: 800 }}>
+              {templateDef.ratingBadgeText}
             </span>
           </div>
-          <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#64748b' }}>{license}</span>
+          <span style={{ fontSize: '0.64rem', color: '#2563eb', fontWeight: 800, background: '#eff6ff', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+            LOCAL CONTRACTOR
+          </span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 800, color: '#0f172a' }}>📞 {phone}</div>
-            <div style={{ fontWeight: 700, color: accentColor || '#2563eb' }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Background Checked · 100% Guaranteed</div>
+          <div style={{ fontSize: '0.82rem', lineHeight: 1.6, color: '#334155' }}>
+            <div style={{ fontWeight: 900, color: '#0f172a' }}>📞 {phone}</div>
+            <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>License: {license}</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor="#16a34a" label="VERIFIED" sublabel="BOOKING" />}
+          {includeQrCode && <CardQrVisual accentColor="#16a34a" label="VERIFY PRO" sublabel="ONLINE" />}
         </div>
 
-        <div style={{ fontSize: '0.64rem', color: '#64748b', background: '#f8fafc', padding: '4px 8px', borderRadius: '4px', textAlign: 'center', fontWeight: 700 }}>
-          Direct Dispatch to Your Neighborhood • Free Written Estimate
+        <div style={{ fontSize: '0.64rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Clean Background Checked Crews</span>
+          <span style={{ fontWeight: 800 }}>Free Consultation</span>
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -823,7 +965,7 @@ export default function BusinessCardMockup({
   }
 
   // =========================================================================
-  // 7. THE DOUBLE-SIDED SHOWCASE (Minimalist Identity Front, Structured Back)
+  // 7. THE DOUBLE-SIDED SHOWCASE
   // =========================================================================
   if (templateId === 'double_sided') {
     if (side === 'front') {
@@ -833,61 +975,72 @@ export default function BusinessCardMockup({
             ...baseContainerStyle,
             background: activeColor.hex,
             color: activeColor.darkText ? '#0f172a' : '#ffffff',
-            boxShadow: `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.15)`,
+            display: 'flex',
+            flexDirection: 'column',
             alignItems: 'center',
             justifyContent: 'center',
             textAlign: 'center',
-            gap: '0.5rem',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.15)',
           }}
         >
-          {spotUvGleam}
-          <div style={{ transform: 'scale(1.15)' }}>{renderBranding(activeColor.darkText ? 'color' : 'white', 1.0)}</div>
-          <div>
-            <strong style={{ fontSize: '1.22rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block' }}>
-              {businessName}
-            </strong>
-            <span style={{ fontSize: '0.74rem', opacity: 0.8, fontWeight: 600 }}>{tagline}</span>
+          {foilEffect}
+          <div style={{ marginBottom: '0.6rem' }}>
+            {renderBranding(activeColor.darkText ? 'color' : 'white', 1.05)}
           </div>
-          <div style={{ position: 'absolute', bottom: '12px', left: 0, right: 0, display: 'flex', justifyContent: 'center' }}>
-            <span style={{ fontSize: '0.62rem', fontWeight: 800, color: accentColor, letterSpacing: '0.08em' }}>
-              {license}
-            </span>
+          <strong style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.01em', textTransform: 'uppercase' }}>
+            {businessName}
+          </strong>
+          <span style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600, marginTop: '2px', display: 'block' }}>
+            {tagline}
+          </span>
+          <div
+            style={{
+              position: 'absolute',
+              bottom: '12px',
+              fontSize: '0.64rem',
+              letterSpacing: '0.08em',
+              fontWeight: 800,
+              opacity: 0.75,
+              color: accentColor,
+            }}
+          >
+            {license}
           </div>
           {showBleedGuides && <BleedGuides />}
         </div>
       );
     }
 
-    // Double Sided Back
+    // Double Sided Back (Functional utility)
     return (
       <div
         style={{
           ...baseContainerStyle,
           background: '#ffffff',
           color: '#0f172a',
-          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35), 0 0 0 1px #cbd5e1',
         }}
       >
-        <div style={{ borderBottom: `2px solid ${accentColor}`, paddingBottom: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong style={{ fontSize: '1.05rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-            <span style={{ display: 'block', fontSize: '0.68rem', color: '#64748b', fontWeight: 600 }}>{tagline}</span>
-          </div>
-          <span style={{ fontSize: '0.66rem', fontWeight: 800, color: accentColor }}>{license}</span>
+        {foilEffect}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
+          <strong style={{ fontSize: '0.98rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
+          <span style={{ fontSize: '0.68rem', color: '#2563eb', fontWeight: 800 }}>
+            {templateDef.ratingBadgeText}
+          </span>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.6 }}>
-            <div style={{ fontWeight: 800, color: '#0f172a' }}>📞 {phone}</div>
-            <div style={{ fontWeight: 700, color: accentColor }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Custom Contractor Services</div>
+          <div style={{ fontSize: '0.82rem', lineHeight: 1.6, color: '#334155' }}>
+            <div style={{ fontWeight: 800 }}>📞 {phone}</div>
+            <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Custom Craftsmanship</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor={accentColor} label="ONLINE" sublabel="BOOKING" />}
+          {includeQrCode && <CardQrVisual accentColor={accentColor} />}
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem', color: '#94a3b8', borderTop: '1px solid #f1f5f9', paddingTop: '4px' }}>
-          <span>Residential &amp; Commercial</span>
-          <span style={{ fontWeight: 800 }}>Free Consultation</span>
+        <div style={{ fontSize: '0.64rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+          <span>Residential &amp; Commercial Installation</span>
+          <span style={{ fontWeight: 800 }}>{license}</span>
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -895,7 +1048,7 @@ export default function BusinessCardMockup({
   }
 
   // =========================================================================
-  // 8. THE TIMELESS TRADITIONAL (Heritage Double Pinstripe Frame)
+  // 8. THE TIMELESS TRADITIONAL
   // =========================================================================
   return (
     <div
@@ -903,39 +1056,28 @@ export default function BusinessCardMockup({
         ...baseContainerStyle,
         background: side === 'front' ? activeColor.hex : '#ffffff',
         color: side === 'front' ? (activeColor.darkText ? '#0f172a' : '#ffffff') : '#0f172a',
-        boxShadow: side === 'front'
-          ? `0 25px 50px -12px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.15)`
-          : '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px #cbd5e1',
-        fontFamily: 'Georgia, serif',
+        border: `3px double ${accentColor || '#c5a059'}`,
+        boxShadow: '0 25px 50px -12px rgba(0,0,0,0.4), 0 0 0 1px rgba(0,0,0,0.1)',
       }}
     >
-      {/* Concentric Double Pinstripe Frame */}
+      {/* Concentric Traditional Hairline Inset Border */}
       <div
         style={{
           position: 'absolute',
-          inset: '8px',
+          inset: '6px',
           border: `1px solid ${accentColor || '#c5a059'}`,
-          borderRadius: '6px',
+          borderRadius: '7px',
+          opacity: 0.65,
           pointerEvents: 'none',
         }}
       />
-      <div
-        style={{
-          position: 'absolute',
-          inset: '12px',
-          border: `0.75px solid ${accentColor || '#c5a059'}`,
-          borderRadius: '4px',
-          pointerEvents: 'none',
-          opacity: 0.6,
-        }}
-      />
-      {side === 'front' && spotUvGleam}
+      {foilEffect}
 
       {side === 'front' ? (
         <>
-          <div style={{ textAlign: 'center', marginTop: '4px' }}>
-            <span style={{ fontSize: '0.58rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: accentColor || '#c5a059', fontWeight: 700 }}>
-              ESTABLISHED CRAFTSMANSHIP
+          <div style={{ textAlign: 'center', marginTop: '2px' }}>
+            <span style={{ fontSize: '0.58rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: accentColor || '#c5a059', fontWeight: 800 }}>
+              {templateDef.badgeLabel}
             </span>
           </div>
 
@@ -950,7 +1092,7 @@ export default function BusinessCardMockup({
             <span style={{ fontSize: '0.72rem', fontStyle: 'italic', opacity: 0.85 }}>{tagline}</span>
           </div>
 
-          <div style={{ textAlign: 'center', marginBottom: '4px' }}>
+          <div style={{ textAlign: 'center', marginBottom: '2px' }}>
             <span style={{ fontSize: '0.64rem', letterSpacing: '0.08em', opacity: 0.8 }}>
               {license} • MASTER TRADESMAN
             </span>
@@ -975,7 +1117,7 @@ export default function BusinessCardMockup({
           </div>
 
           <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#64748b', fontStyle: 'italic' }}>
-            Fine Residential &amp; Commercial Craftsmanship • Fully Insured
+            {templateDef.ratingBadgeText} • Fully Insured
           </div>
         </>
       )}

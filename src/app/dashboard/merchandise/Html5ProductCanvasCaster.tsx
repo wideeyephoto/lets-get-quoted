@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import type { MockupViewAngle } from '@/lib/merchandise/types';
 import { getProductStudioPhoto } from '@/lib/merchandise/mockup-assets';
 
 export interface Html5ProductCanvasCasterProps {
   productId: string;
-  viewAngle: 'front' | 'back' | 'detail' | 'angle';
+  viewAngle: MockupViewAngle;
   colorHex: string;
   colorId: string;
   darkText?: boolean;
@@ -150,8 +151,9 @@ export default function Html5ProductCanvasCaster({
   const blankImgRef = useRef<HTMLImageElement | null>(null);
   const logoImgRef = useRef<HTMLImageElement | null>(null);
 
-  const spec = getPrintAreaSpec(productId, viewAngle);
-  const { photoUrl } = getProductStudioPhoto(productId, colorId, viewAngle);
+  const casterAngle = viewAngle === 'duo' ? 'front' : viewAngle;
+  const spec = getPrintAreaSpec(productId, casterAngle);
+  const { photoUrl } = getProductStudioPhoto(productId, colorId, casterAngle);
 
   // Resolve proxy URL for blank photo to guarantee CORS clean canvas
   const proxiedPhotoUrl = photoUrl
