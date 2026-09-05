@@ -1,76 +1,49 @@
-import { describe, it, expect } from 'vitest';
-import {
-  isValidDomainFormat,
-  checkCustomDomainDnsStatus,
-} from '@/lib/website-domain-manager';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { isValidDomainFormat, checkCustomDomainDnsStatus } from '@/lib/website-domain-manager';
+import { verifyDomain, type DomainVerification } from '@/lib/domains';
 import { resolveTenantHost } from '@/lib/tenant-host';
 
-describe('Custom-Domain Lifecycle & Tenant Isolation Audit', () => {
-  describe('1. Domain Format & Syntax Validation', () => {
-    it('accepts valid apex and subdomain contractor custom domains', () => {
-      expect(isValidDomainFormat('austinroofingpro.com')).toBe(true);
-      expect(isValidDomainFormat('estimates.proplumber.com')).toBe(true);
-      expect(isValidDomainFormat('clean-coat-painting.co')).toBe(true);
-      expect(isValidDomainFormat('texas-hvac.build')).toBe(true);
-    });
+vi.mock('@/lib/domains', () => ({ verifyDomain: vi.fn() }));
+const pending: DomainVerification = {
+  verified: false, dnsVerified: false, records: [], expectedCname: 'domains.letsgetquoted.com',
+  expectedIp: '76.76.21.21', isApex: true, apexDomain: 'austinroofingpro.com', subdomain: null,
+  sslStatus: 'pending', vercelConfigured: true, verification: [], message: 'Pending',
+};
+beforeEach(() => { vi.mocked(verifyDomain).mockReset().mockResolvedValue(pending); });
 
-    it('rejects invalid, malformed, or malicious domain inputs', () => {
-      expect(isValidDomainFormat('')).toBe(false);
-      expect(isValidDomainFormat('invalid_domain')).toBe(false);
-      expect(isValidDomainFormat('http://austinroofingpro.com')).toBe(false);
-      expect(isValidDomainFormat('austinroofingpro.com/path')).toBe(false);
-      expect(isValidDomainFormat('-leadinghyphen.com')).toBe(false);
-      expect(isValidDomainFormat('trailinghyphen-.com')).toBe(false);
-      expect(isValidDomainFormat('a'.repeat(255) + '.com')).toBe(false);
-    });
+describe('Custom-Domain Lifecycle & Tenant Isolation', () => {
+  it.each(['austinroofingpro.com', 'estimates.proplumber.com', 'clean-coat-painting.co', 'texas-hvac.build'])('accepts domain format %s', (domain) => {
+    expect(isValidDomainFormat(domain)).toBe(true);
+  });
+  it.each(['', 'invalid_domain', 'http://austinroofingpro.com', 'austinroofingpro.com/path', '-leadinghyphen.com', 'trailinghyphen-.com', 'a'.repeat(255) + '.com'])('rejects invalid format %s', (domain) => {
+    expect(isValidDomainFormat(domain)).toBe(false);
   });
 
-  describe('2. DNS Record Generation & Status Inspection', () => {
-    it('generates A and CNAME record requirements for apex domains', async () => {
-      const status = await checkCustomDomainDnsStatus('austinroofingpro.com', 'acc_123456');
-
-      expect(status.domain).toBe('austinroofingpro.com');
-      expect(status.isConfigured).toBe(true);
-      expect(status.sslStatus).toBe('active');
-      expect(status.dnsRecords.length).toBe(2);
-
-      const aRecord = status.dnsRecords.find(r => r.type === 'A');
-      const cnameRecord = status.dnsRecords.find(r => r.type === 'CNAME');
-
-      expect(aRecord).toBeDefined();
-      expect(aRecord?.value).toBe('76.76.21.21');
-      expect(cnameRecord).toBeDefined();
-      expect(cnameRecord?.value).toBe('custom-sites.letsgetquoted.com');
-    });
-
-    it('generates CNAME record requirements for subdomain custom domains', async () => {
-      const status = await checkCustomDomainDnsStatus('quotes.austinroofingpro.com', 'acc_123456');
-
-      expect(status.domain).toBe('quotes.austinroofingpro.com');
-      expect(status.dnsRecords.length).toBe(1);
-
-      const cname = status.dnsRecords[0];
-      expect(cname?.type).toBe('CNAME');
-      expect(cname?.name).toBe('quotes');
-      expect(cname?.value).toBe('custom-sites.letsgetquoted.com');
-    });
+  it('reports missing apex DNS and pending SSL without fabricating verification', async () => {
+    const status = await checkCustomDomainDnsStatus('austinroofingpro.com', 'acc_123');
+    expect(status).toMatchObject({ isConfigured: false, sslStatus: 'pending', dnsRecords: [{ type: 'A', name: '@', value: '76.76.21.21', status: 'missing' }] });
+    expect(status.verifiedAt).toBeUndefined();
+    expect(verifyDomain).toHaveBeenCalledWith('austinroofingpro.com', { provision: false });
   });
 
-  describe('3. Edge Tenant Host Isolation & Hijack Resistance', () => {
-    it('classifies custom contractor domains as customDomain', () => {
-      const tenant = resolveTenantHost('austinroofingpro.com', 'letsgetquoted.com');
-      expect(tenant.kind).toBe('customDomain');
-      if (tenant.kind === 'customDomain') {
-        expect(tenant.domain).toBe('austinroofingpro.com');
-      }
-    });
+  it('reports a checked subdomain and current CNAME recommendation', async () => {
+    vi.mocked(verifyDomain).mockResolvedValue({ ...pending, isApex: false, subdomain: 'quotes', expectedCname: 'project.vercel-dns.com', dnsVerified: true, verified: true, sslStatus: 'issued' });
+    const status = await checkCustomDomainDnsStatus('quotes.austinroofingpro.com', 'acc_123');
+    expect(status).toMatchObject({ isConfigured: true, sslStatus: 'active', dnsRecords: [{ type: 'CNAME', name: 'quotes', value: 'project.vercel-dns.com', status: 'verified' }] });
+    expect(status.verifiedAt).toBeDefined();
+  });
 
-    it('protects platform apex, app, and Vercel preview domains from customDomain shadowing', () => {
-      expect(resolveTenantHost('letsgetquoted.com', 'letsgetquoted.com').kind).toBe('platform');
-      expect(resolveTenantHost('www.letsgetquoted.com', 'letsgetquoted.com').kind).toBe('platform');
-      expect(resolveTenantHost('app.letsgetquoted.com', 'letsgetquoted.com').kind).toBe('platform');
-      expect(resolveTenantHost('preview-1234.vercel.app', 'letsgetquoted.com').kind).toBe('platform');
-      expect(resolveTenantHost('localhost', 'letsgetquoted.com').kind).toBe('platform');
-    });
+  it('keeps DNS success separate from a pending certificate', async () => {
+    vi.mocked(verifyDomain).mockResolvedValue({ ...pending, dnsVerified: true });
+    expect(await checkCustomDomainDnsStatus('austinroofingpro.com', 'acc_123')).toMatchObject({ isConfigured: false, sslStatus: 'pending' });
+  });
+
+  it('classifies custom domains and preserves the subdomain route', () => {
+    expect(resolveTenantHost('austinroofingpro.com', 'letsgetquoted.com')).toEqual({ kind: 'customDomain', domain: 'austinroofingpro.com' });
+    expect(resolveTenantHost('contractor.letsgetquoted.com', 'letsgetquoted.com')).toEqual({ kind: 'subdomain', subdomain: 'contractor' });
+  });
+
+  it.each(['letsgetquoted.com', 'www.letsgetquoted.com', 'app.letsgetquoted.com', 'preview-1234.vercel.app', 'localhost'])('protects platform host %s', (domain) => {
+    expect(resolveTenantHost(domain, 'letsgetquoted.com').kind).toBe('platform');
   });
 });
