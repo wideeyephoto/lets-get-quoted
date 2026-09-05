@@ -1406,3 +1406,20 @@
   border-color: rgba(239, 68, 68, 0.55);
   color: #ffffff;
 }
+
+.scanLauncher { width: 100%; text-align: left; color: inherit; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; font: inherit; }
+.scanLauncher:focus-visible { outline: 2px solid #38bdf8; outline-offset: 4px; }
+.scanEmpty { padding: 2.5rem 1.5rem; text-align: center; border: 1px dashed var(--border, #64748b); margin: 1rem; border-radius: 12px; }
+.scanEmpty p { max-width: 550px; margin: 1rem auto; line-height: 1.6; }
+.scanNotice { padding: 0.5rem 1rem; font-size: 0.85rem; line-height: 1.6; overflow-wrap: anywhere; }
+.scanNotice a { color: inherit; text-decoration: underline; }
+.scanError { margin: 1rem; padding: 1rem; border: 1px solid #ef4444; border-radius: 8px; }
+.scanScene { display: block; width: 100%; max-height: 55vh; background: #0b1220; border-radius: 8px; }
+.scanScene circle[role='button'] { cursor: pointer; stroke: #0b1220; stroke-width: 2; }
+.scanScene circle[role='button']:focus { outline: none; stroke: white; stroke-width: 4; }
+.sceneControl { display: inline-flex; align-items: center; gap: 0.5rem; padding: 0.4rem; font-size: 0.8rem; }
+.sceneControl input { max-width: 110px; }
+
+.scanNotice { margin: 0; }
+.scanLauncher { align-items: flex-start; }
+.scanScene { flex-shrink: 0; }

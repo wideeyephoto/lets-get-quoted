@@ -17,7 +17,8 @@ import {
   type PropertyIntelligenceSummary,
 } from '@/lib/property-intel';
 import { calculateSatellitePropertyDimensions } from '@/lib/satellite-property-sizing';
-import type { RoomDimensionsSummary } from '@/lib/property-intel/room-spatial-intel';
+import { loadRoomScan } from '@/lib/property-intel/room-scan-store';
+import { calculateRoomSummary, type RoomDimensionsSummary } from '@/lib/property-intel/room-spatial-intel';
 import {
   computeAccountPricingIntelligence,
   formatPricingIntelligenceForPrompt,
@@ -44,7 +45,7 @@ export type DraftContext = {
   history: HistoricalQuote[];
   refinement?: string | null;
   propertyIntel?: PropertyIntelligenceSummary | null;
-  /** Verified 3D LiDAR room takeoffs (floor sqft, paintable wall sqft, ceiling, trim) */
+  /** Validated imported room takeoffs; source accuracy is not independently verified. */
   roomSpatialScan?: RoomDimensionsSummary | null;
   /** Signed URLs or data URLs of job/lead photos to visually ground the quote */
   photos?: string[];
@@ -78,7 +79,7 @@ export async function loadDraftContext(
   if (!job) return null;
 
   const admin = createAdminClient();
-  const [services, trade, { data: past }, propertyIntel] = await Promise.all([
+  const [services, trade, { data: past }, propertyIntel, savedRoom] = await Promise.all([
     listServices(supabase, accountId, { activeOnly: true }),
     getAuthoritativeTrade(admin, accountId),
     // Recent priced work, newest first — what this business actually charges,
@@ -95,6 +96,7 @@ export async function loadDraftContext(
     typeof job.address === 'string' && job.address.trim().length >= 5
       ? getPropertyIntelligence({ address: job.address.trim() }).catch(() => null)
       : Promise.resolve(null),
+    loadRoomScan(supabase, accountId, { kind: 'job', id: jobId }),
   ]);
 
   let photoUrls: string[] = [];
@@ -173,6 +175,7 @@ export async function loadDraftContext(
     history,
     refinement: refinement?.trim() || null,
     propertyIntel: summarizePropertyIntelligence(propertyIntel),
+    roomSpatialScan: savedRoom?.scan ? calculateRoomSummary(savedRoom.scan) : null,
     photos: photoUrls.slice(0, 4),
     pricingIntel,
     targetZip,
@@ -278,7 +281,7 @@ export function buildDraftInstructions(context: DraftContext): string {
   if (context.roomSpatialScan) {
     const scan = context.roomSpatialScan;
     const rLines = [
-      `VERIFIED 3D LIDAR ROOM MEASUREMENTS:`,
+      `IMPORTED ROOM MEASUREMENTS (one room only; verify critical dimensions on site):`,
       `- Floor Area: ${scan.floorAreaSqFt} sq ft (use directly for flooring/tile/carpet quantities)`,
       `- Net Paintable Wall Area: ${scan.netPaintableWallSqFt} sq ft (excl. ${scan.openingsAreaSqFt} sq ft doors/windows; use for paint/drywall quantities)`,
       `- Ceiling Height: ${scan.ceilingHeightFt} ft`,
@@ -286,7 +289,7 @@ export function buildDraftInstructions(context: DraftContext): string {
     ];
     if (scan.primaryAlcoveSpanInches) {
       rLines.push(`- Shower/Tub Alcove Span: ${scan.primaryAlcoveSpanInches.toFixed(1)}" (indicates standard 60" vs custom pan fit)`);
-      rLines.push(`- Total Tile Takeoff (Floor + Wet Walls): ${scan.tileAreaSqFt} sq ft`);
+      rLines.push(`- Estimated Tile Area: ${scan.tileAreaSqFt} sq ft (floor plus assumed three-sided surround; verify coverage before quoting)`);
     }
     roomScanLines = rLines.join('\n');
   }
@@ -321,7 +324,7 @@ export function buildDraftInstructions(context: DraftContext): string {
     '  * Reflect seasonal demand posture: in peak seasons, quote full rates without undercutting; in shoulder/off-peak seasons, emphasize clear value and high-conversion base pricing.',
     '  * When historical comps marked [Same ZIP] are available, give them strong weighting for localized labor and material scale.',
     '- SCOPE-CONSCIOUS MEASUREMENT APPLICATION:',
-    '  * When verified 3D LiDAR room measurements are provided above, snap relevant line-item quantities DIRECTLY to these numbers:',
+    '  * When imported room measurements are provided above, snap relevant line-item quantities DIRECTLY to these numbers:',
     '    - Flooring/tile lines MUST use the Floor Area.',
     '    - Wall painting/drywall lines MUST use the Net Paintable Wall Area.',
     '    - Baseboard/trim lines MUST use the Baseboard Perimeter Trim linear feet.',
