@@ -4,9 +4,14 @@ import { useState, useTransition } from 'react';
 
 import type { OfficeTeam } from '@/lib/office-team';
 import {
+  OFFICE_CAPABILITIES_REQUIRING_DELIBERATION,
+  officeCapabilitiesByBand,
+} from '@/lib/office-permissions';
+import {
   inviteOfficeUserAction,
   removeOfficeUserAction,
   revokeOfficeInvitationAction,
+  updateOfficeMemberCapabilitiesAction,
 } from './office-team-actions';
 
 /**
@@ -18,12 +23,41 @@ import {
  * displayed it casually, or let it scroll away without saying so, would produce
  * a support conversation nobody can resolve.
  *
- * NOBODY HAS ANY PERMISSIONS YET, and the card says that rather than implying a
- * working feature. Inviting somebody today connects their account and gives them
- * nothing to do, which is a strange thing to let an owner discover afterwards.
+ * Granular permissions can be assigned to each office user from the roster below.
  */
 
 type SaveState = 'idle' | 'working' | 'error';
+
+const PRESETS: Record<string, string[]> = {
+  'Leads Only': ['leads.read', 'leads.write'],
+  'Front Office': [
+    'leads.read',
+    'leads.write',
+    'schedule.write',
+    'jobs.read',
+    'jobs.write',
+    'messages.read',
+    'messages.send',
+    'clients.read',
+    'clients.write',
+  ],
+  'Billing & Invoices': ['quotes.read', 'invoices.read', 'invoices.write', 'payments.read'],
+  'All Operational': [
+    'leads.read',
+    'leads.write',
+    'clients.read',
+    'clients.write',
+    'jobs.read',
+    'jobs.write',
+    'schedule.write',
+    'messages.read',
+    'messages.send',
+    'quotes.read',
+    'invoices.read',
+    'payments.read',
+    'crew.read',
+  ],
+};
 
 export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
   const [email, setEmail] = useState('');
@@ -31,9 +65,55 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
   const [problem, setProblem] = useState<string | null>(null);
   const [issued, setIssued] = useState<{ email: string; link: string; emailed: boolean } | null>(null);
   const [copied, setCopied] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
+  const [selectedCaps, setSelectedCaps] = useState<Set<string>>(new Set());
   const [, startWork] = useTransition();
 
+  const bands = officeCapabilitiesByBand();
+
   const full = team.seatLimit !== null && team.seatsUsed >= team.seatLimit;
+
+  function applyPreset(presetCaps: string[]) {
+    setSelectedCaps(new Set(presetCaps));
+  }
+
+  function toggleCap(key: string) {
+    setSelectedCaps((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function toggleEditing(memberId: string, currentCaps: readonly string[]) {
+    if (editingUserId === memberId) {
+      setEditingUserId(null);
+    } else {
+      setEditingUserId(memberId);
+      setSelectedCaps(new Set(currentCaps));
+      setProblem(null);
+    }
+  }
+
+  function savePermissions(userId: string) {
+    setProblem(null);
+    startWork(async () => {
+      try {
+        const result = await updateOfficeMemberCapabilitiesAction({
+          targetUserId: userId,
+          capabilities: Array.from(selectedCaps),
+        });
+        if (!result.ok) {
+          setProblem(result.message);
+          return;
+        }
+        setEditingUserId(null);
+      } catch {
+        setProblem('That permission change could not be saved. Try again in a moment.');
+      }
+    });
+  }
 
   function invite() {
     const value = email.trim();
@@ -105,8 +185,8 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
           describes. Say what the seat grants; do not round it to zero. */}
       <p className="office-team-state">
         An office user gets your <strong>leads board</strong>: they can see every lead,
-        reply, triage and edit it. That is the whole of it for now — they cannot open
-        clients, jobs, invoices or payments, and they cannot see billing or settings.
+        reply, triage and edit it. That is the whole of it by default — unless granted custom permissions below,
+        they cannot open clients, jobs, invoices or payments, and they cannot see billing or settings.
       </p>
 
       <div className="office-team-seats">
@@ -126,16 +206,111 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
           <li key={member.membershipId}>
             <span>{member.email ?? 'Account with no email on file'}</span>
             <span className="office-team-role">{member.role === 'owner' ? 'Owner' : 'Office'}</span>
+            {member.role === 'owner' ? (
+              <span className="office-caps-tag">Full access</span>
+            ) : (
+              <span className="office-caps-tag">
+                {member.capabilities.length === 0
+                  ? 'No permissions'
+                  : `${member.capabilities.length} ${member.capabilities.length === 1 ? 'permission' : 'permissions'}`}
+              </span>
+            )}
             {/* Owners get no button. The database refuses to remove one through
                 this path anyway, and a control that always errors is worse than
                 no control -- it invites the click and then explains. */}
             {member.role === 'office' ? (
-              <button
-                type="button"
-                onClick={() => remove(member.userId, member.email ?? 'this person')}
-              >
-                Remove
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="office-btn-perm"
+                  onClick={() => toggleEditing(member.userId, member.capabilities)}
+                >
+                  {editingUserId === member.userId ? 'Close' : 'Permissions'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => remove(member.userId, member.email ?? 'this person')}
+                >
+                  Remove
+                </button>
+              </>
+            ) : null}
+
+            {editingUserId === member.userId && member.role === 'office' ? (
+              <div className="office-permissions-editor">
+                <div className="office-perm-header">
+                  <h4>Custom Permissions · {member.email ?? 'Office User'}</h4>
+                  <div className="office-presets">
+                    <span className="office-presets-label">Presets:</span>
+                    {Object.entries(PRESETS).map(([name, pCaps]) => (
+                      <button
+                        key={name}
+                        type="button"
+                        className="office-preset-btn"
+                        onClick={() => applyPreset(pCaps)}
+                      >
+                        {name}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      className="office-preset-btn"
+                      onClick={() => setSelectedCaps(new Set())}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                </div>
+
+                <div className="office-bands-grid">
+                  {bands.map((band) => (
+                    <div key={band.band} className="office-band-card">
+                      <div className="office-band-title">{band.label}</div>
+                      <div className="office-caps-list">
+                        {band.capabilities.map((cap) => {
+                          const isDeliberation = OFFICE_CAPABILITIES_REQUIRING_DELIBERATION.includes(cap.key);
+                          const checked = selectedCaps.has(cap.key);
+                          return (
+                            <label key={cap.key} className="office-cap-item">
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={() => toggleCap(cap.key)}
+                              />
+                              <div className="office-cap-content">
+                                <div className="office-cap-label-row">
+                                  <span className="office-cap-name">{cap.label}</span>
+                                  {isDeliberation ? (
+                                    <span className="office-deliberation-badge">⚠️ High Consequence</span>
+                                  ) : null}
+                                </div>
+                                <span className="office-cap-desc">{cap.grants}</span>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="office-perm-actions">
+                  <button
+                    type="button"
+                    className="office-perm-cancel-btn"
+                    onClick={() => setEditingUserId(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="office-perm-save-btn"
+                    onClick={() => savePermissions(member.userId)}
+                  >
+                    Save Permissions
+                  </button>
+                </div>
+              </div>
             ) : null}
           </li>
         ))}

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { requireOfficeContext } from '@/lib/auth';
+import { OFFICE_CAPABILITY_KEYS } from '@/lib/office-permissions';
 import { recordAccountEvent } from '@/lib/account-events';
 import { APP_ORIGIN } from '@/lib/app-origin';
 import { pickBusinessName } from '@/lib/business-name';
@@ -240,4 +241,103 @@ export async function removeOfficeUserAction(
 
   revalidatePath('/dashboard/settings');
   return { ok: true, removed: data === true };
+}
+
+export type UpdateMemberCapabilitiesResult =
+  | { ok: true; capabilities: string[] }
+  | { ok: false; message: string };
+
+/**
+ * Assign custom granular capabilities to an office team member.
+ *
+ * Enforces team.manage authority (held by owner and authorized office managers).
+ * Restricts updates strictly to members with role 'office' in the caller's account.
+ * Owners cannot be restricted; strangers or crew members are refused.
+ */
+export async function updateOfficeMemberCapabilitiesAction(input: {
+  targetUserId: string;
+  capabilities: string[];
+}): Promise<UpdateMemberCapabilitiesResult> {
+  const { supabase, accountId, userId: callerUserId } = await requireOfficeContext('team.manage');
+
+  const targetUserId = String(input?.targetUserId ?? '').trim();
+  if (!targetUserId) {
+    return { ok: false, message: 'Select a team member to update.' };
+  }
+
+  // Ensure target user belongs to this account
+  const { data: member, error: memberError } = await supabase
+    .from('memberships')
+    .select('role')
+    .eq('account_id', accountId)
+    .eq('user_id', targetUserId)
+    .maybeSingle();
+
+  if (memberError || !member) {
+    return { ok: false, message: 'That person is not a member of your workspace.' };
+  }
+
+  if (member.role === 'owner') {
+    return { ok: false, message: 'Account owners hold all workspace permissions unconditionally.' };
+  }
+
+  if (member.role !== 'office') {
+    return { ok: false, message: 'Permissions can only be customized for office team members.' };
+  }
+
+  // Filter requested capabilities against the valid catalog
+  const requested = Array.isArray(input?.capabilities) ? input.capabilities : [];
+  const validCaps = Array.from(
+    new Set(
+      requested
+        .map((c) => String(c).trim())
+        .filter((c) => OFFICE_CAPABILITY_KEYS.includes(c)),
+    ),
+  );
+
+  // Clear existing grants for this member
+  const { error: deleteError } = await supabase
+    .from('office_member_capabilities')
+    .delete()
+    .eq('account_id', accountId)
+    .eq('user_id', targetUserId);
+
+  if (deleteError) {
+    console.error('Failed to clear existing office capabilities:', deleteError);
+    return { ok: false, message: 'Failed to update capabilities. Try again in a moment.' };
+  }
+
+  // Insert new grants if any
+  if (validCaps.length > 0) {
+    const rows = validCaps.map((capability) => ({
+      account_id: accountId,
+      user_id: targetUserId,
+      capability,
+      granted_by: callerUserId,
+    }));
+
+    const { error: insertError } = await supabase
+      .from('office_member_capabilities')
+      .insert(rows);
+
+    if (insertError) {
+      console.error('Failed to grant office capabilities:', insertError);
+      return { ok: false, message: 'Failed to save updated capabilities. Try again.' };
+    }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  await recordAccountEvent({
+    accountId,
+    kind: 'office_permissions_updated',
+    summary: `Updated office permissions (${validCaps.length} granted)`,
+    actorEmail: user?.email ?? null,
+    meta: {
+      target_user_id: targetUserId,
+      capabilities: validCaps,
+    },
+  });
+
+  revalidatePath('/dashboard/settings');
+  return { ok: true, capabilities: validCaps };
 }
