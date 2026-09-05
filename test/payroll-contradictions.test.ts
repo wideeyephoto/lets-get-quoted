@@ -44,6 +44,7 @@ const HOURS_AND_PAY = read('src', 'app', 'dashboard', 'crew', 'HoursAndPay.tsx')
 const HOURS_CODE = strip(HOURS_AND_PAY);
 const DETAIL_CODE = strip(read('src', 'app', 'dashboard', 'crew', 'PayMasterDetail.tsx'));
 const ACTIONS_CODE = strip(read('src', 'app', 'dashboard', 'crew', 'pay-actions.ts'));
+const PERIOD_BAR_CODE = strip(read('src', 'app', 'dashboard', 'crew', 'CrewPeriodBar.tsx'));
 
 // Monday of the week containing NOW.
 const NOW = new Date(2026, 6, 29, 12, 0, 0);
@@ -333,9 +334,9 @@ describe('the one period picker', () => {
   });
 
   it('replaces the duplicated arrows, shortcuts and Go control with one bar', () => {
-    expect(HOURS_CODE).toContain('offsetForDate');
-    expect(HOURS_CODE).toContain('Current period');
-    expect(HOURS_CODE).toContain('Jump to');
+    expect(PERIOD_BAR_CODE).toContain('offsetForDate');
+    expect(PERIOD_BAR_CODE).toContain('Current period');
+    expect(PERIOD_BAR_CODE).toContain('Jump to');
     // The quick-filter strip and the custom-range Go button are gone.
     expect(HOURS_CODE).not.toContain('QUICK_PERIODS');
     expect(HOURS_CODE).not.toContain('>Go<');

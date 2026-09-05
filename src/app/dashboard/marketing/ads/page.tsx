@@ -7,11 +7,13 @@ import ManagedAdsScreen from './ManagedAdsScreen';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Google Search Ads Autopilot' };
 
-export default async function ManagedAdsPage(props: {
+export default async function ManagedAdsPage({
+  searchParams,
+}: {
   searchParams?: Promise<{ tab?: string }>;
 }) {
-  const searchParams = props.searchParams ? await props.searchParams : undefined;
-  const initialTab = typeof searchParams?.tab === 'string' ? searchParams.tab : undefined;
+  const resolvedParams = searchParams ? await searchParams : undefined;
+  const initialTab = typeof resolvedParams?.tab === 'string' ? resolvedParams.tab : undefined;
   const { supabase, accountId } = await requireOfficeContext('marketing.read');
 
   const [{ data: accountRow }, { data: siteRow }, trade] = await Promise.all([

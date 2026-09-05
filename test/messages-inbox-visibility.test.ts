@@ -154,7 +154,7 @@ describe('sms customer-inbox visibility boundary', () => {
 
 describe('every customer-facing direct sms_messages read', () => {
   const expectedFilters = new Map([
-    ['src/lib/messages.ts', 4],
+    ['src/lib/messages.ts', 7],
     ['src/app/dashboard/messages/actions.ts', 1],
     ['src/lib/client-portal-data.ts', 1],
     ['src/lib/dashboard/system-status-loader.ts', 1],

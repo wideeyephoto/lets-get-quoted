@@ -31,14 +31,17 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
 
     // 1. Load active grounding context and configured receptionist settings
-    const [grounding, { data: voiceSettings }] = await Promise.all([
+    const [grounding, voiceSettingsRes] = await Promise.all([
       loadVoiceGroundingContext(supabase, accountId, callerPhone),
-      supabase
-        .from('voice_settings')
-        .select('greeting, voice_tone, answer_mode, business_hours')
-        .eq('account_id', accountId)
-        .maybeSingle(),
+      typeof supabase?.from === 'function'
+        ? supabase
+            .from('voice_settings')
+            .select('greeting, voice_tone, answer_mode, business_hours')
+            .eq('account_id', accountId)
+            .maybeSingle()
+        : Promise.resolve({ data: null, error: null }),
     ]);
+    const voiceSettings = voiceSettingsRes?.data;
     const _systemPrompt = buildVoiceSystemPrompt(grounding);
 
     // 2. Emergency Triage Analysis

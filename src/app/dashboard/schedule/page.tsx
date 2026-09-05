@@ -210,6 +210,7 @@ export default async function SchedulePage({
   const appOrigin = (process.env.NEXT_PUBLIC_APP_URL || `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'}`).replace(/\/$/, '');
   const bookingSubdomain = site?.published ? site?.subdomain ?? null : null;
   const bookingUrl = bookingSubdomain ? `${appOrigin}/book/${bookingSubdomain}` : null;
+  const bookingDays = bookingUrl ? await getAvailableBookingDays(supabase, accountId) : [];
 
   const activeJobs = jobs.filter((job) => job.status !== 'archived');
   const scheduledJobs = activeJobs.filter((job) => job.scheduled_for);
@@ -264,7 +265,6 @@ export default async function SchedulePage({
 
   // Single concurrent batch for all secondary queries
   const [
-    bookingDays,
     crew,
     assignmentsByJob,
     scheduleRequestByJob,
@@ -277,11 +277,6 @@ export default async function SchedulePage({
     clientAccessRows,
     weatherByDay,
   ] = await Promise.all([
-    /* Still read here, and ONLY for the booking-requests panel below: it needs to
-       know whether a customer's second choice is still free. The folded "N open
-       windows" header this also fed has moved to /dashboard/schedule/settings,
-       which computes its own. */
-    bookingUrl ? getAvailableBookingDays(supabase, accountId) : Promise.resolve([]),
     listCrew(supabase, accountId, { activeOnly: true }),
     listCrewAssignmentsForJobs(supabase, accountId, activeJobIds),
     listActiveScheduleRequests(supabase, accountId, unscheduledJobIds),

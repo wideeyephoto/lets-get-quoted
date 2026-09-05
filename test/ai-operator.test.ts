@@ -434,6 +434,7 @@ describe('Human-in-the-Loop (HITL) Action Approvals & Safety Guards', () => {
       actionType: 'support_impersonate',
       payload: { accountId: 'acc-600' },
       expiresInHours: 2,
+      createdAt: now,
     });
 
     expect(isHitlActionExpired(action, now)).toBe(false);

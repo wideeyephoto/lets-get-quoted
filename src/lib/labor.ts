@@ -334,8 +334,8 @@ export function normalizeOffset(value: unknown): number {
   const n = Number(value);
   if (!Number.isFinite(n)) return 0;
   // Clamped: the URL is user-editable and an absurd offset would build dates
-  // far outside anything the account can have data for. Capped at 0 (current period).
-  return Math.max(-260, Math.min(0, Math.trunc(n)));
+  // far outside anything the account can have data for.
+  return Math.max(-260, Math.min(260, Math.trunc(n)));
 }
 
 /**
@@ -367,7 +367,7 @@ export function buildPeriodHref(options: {
     // Refuse to step offset on a custom range
   } else {
     let offset = patch.offset !== undefined ? (patch.offset !== null ? normalizeOffset(patch.offset) : 0) : (period.offset ?? 0);
-    offset = normalizeOffset(offset);
+    offset = Math.min(0, normalizeOffset(offset));
     if (offset !== 0) query.set('offset', String(offset));
   }
 

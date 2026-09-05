@@ -176,8 +176,8 @@ describe('saving from the drawer', () => {
     expect(ROSTER_CODE).toContain('node.focus({ preventScroll: true })');
     // Every layout can be the one on screen, so every layout carries the hook
     // and the highlight.
-    expect(ROSTER_CODE.match(/data-crew-row=\{row\.id\}/g)?.length).toBe(4);
-    expect(ROSTER_CODE.match(/justAdded=\{row\.id === added\?\.id\}/g)?.length).toBe(5);
+    expect(ROSTER_CODE.match(/data-crew-row=\{row\.id\}/g)?.length).toBe(2);
+    expect(ROSTER_CODE.match(/justAdded=\{row\.id === added\?\.id\}/g)?.length).toBe(2);
     expect(CSS).toContain('.justAdded {');
   });
 

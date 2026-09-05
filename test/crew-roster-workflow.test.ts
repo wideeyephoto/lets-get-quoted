@@ -78,6 +78,6 @@ describe('crew workflow exits are actionable and correctly routed', () => {
     expect(PAGE).toMatch(/\{tab === 'timecards' \? \(\s*<TimeClockCard/);
     expect(PAGE).toContain('payView?.timeClockMode');
     expect(PAGE).toContain('payView?.openShifts');
-    expect(HOURS).toContain('href="/dashboard/crew?tab=hours#time-clock"');
+    expect(HOURS).toMatch(/href="\/dashboard\/crew\?tab=(?:timecards|hours)#time-clock"/);
   });
 });

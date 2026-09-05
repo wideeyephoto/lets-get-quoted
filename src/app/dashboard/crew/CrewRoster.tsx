@@ -394,7 +394,7 @@ export default function CrewRoster({
   }, [highlight, rows]);
 
   const visible = useMemo(() => {
-    const needle = deferredQuery.trim().toLowerCase();
+    const needle = query.trim().toLowerCase();
     const filtered = rows.filter((row) => {
       if (status === 'active' ? !row.active : row.active) return false;
       if (workerType !== 'all' && row.workerType !== workerType) return false;
@@ -435,7 +435,7 @@ export default function CrewRoster({
       }
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
-  }, [rows, deferredQuery, status, workerType, role, jobFilter, appFilter, sort]);
+  }, [rows, query, status, workerType, role, jobFilter, appFilter, sort]);
 
   const activeCount = rows.filter((row) => row.active).length;
   const employeeCount = rows.filter((row) => row.workerType === 'employee').length;
@@ -443,6 +443,7 @@ export default function CrewRoster({
   const selected = openId ? rows.find((row) => row.id === openId) ?? null : null;
 
   const totals = useMemo(() => rosterTotals(rows), [rows]);
+  const periodPayHeadline = totals.periodPay > 0 ? money(totals.periodPay) : '—';
   const setup = useMemo(() => {
     const actionable = rows.filter(needsFieldAppSetup);
     return {
@@ -821,7 +822,7 @@ export default function CrewRoster({
           <h3>Nobody here yet</h3>
           <p>
             Add the people who work with you — employees whose hours roll up here, and the subcontractors you send job
-            offers to.
+            offers to. Or view hours by job in <Link href="/dashboard/crew?tab=jobs">Labor by job</Link>.
           </p>
           {readOnly ? null : (
             <div className={styles.emptyActions}>

@@ -412,7 +412,7 @@ export default async function CrewLaborPage({
             />
           ) : null}
 
-          {tab === 'timecards' && canViewPay ? (
+          {tab === 'timecards' ? (
             <TimeClockCard
               mode={payView?.timeClockMode ?? 'off'}
               available={timeClockAvailable}

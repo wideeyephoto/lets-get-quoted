@@ -1319,6 +1319,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
           cardTemplateId: 'industrial',
           finish: 'Velvet Matte',
           decorationMethod: 'offset_cmyk',
+          placement: 'front_card',
         },
       };
 
@@ -1547,6 +1548,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
           cardFinish: 'velvet_matte',
           finish: 'Soft-Touch Velvet Matte',
           decorationMethod: 'offset_cmyk',
+          placement: 'front_card',
         },
       };
 
@@ -1564,6 +1566,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
           cardFinish: 'foil_gold',
           finish: 'Raised Liquid Gold Foil',
           decorationMethod: 'offset_cmyk',
+          placement: 'front_card',
         },
       };
 
@@ -1593,6 +1596,7 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
           cardFinish: 'foil_gold',
           finish: 'Raised Liquid Gold Foil',
           decorationMethod: 'offset_cmyk',
+          placement: 'front_card',
         },
       };
 

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import type { VanKitTemplate, InventoryLocation, VanStockItem } from '@/lib/inventory-tracker';
@@ -103,6 +103,7 @@ export default function VanKitTemplatesModal({
               value={selectedTemplate?.id}
               onChange={(e) => setSelectedTemplateId(e.target.value)}
               className={styles.fieldSelect}
+              aria-label="Select Van Kit Template"
               style={{ marginTop: '0.25rem' }}
             >
               {activeTemplates.map((t) => (
@@ -121,6 +122,7 @@ export default function VanKitTemplatesModal({
               value={targetLocation}
               onChange={(e) => setTargetLocation(e.target.value)}
               className={styles.fieldSelect}
+              aria-label="Target Vehicle / Depot Location"
               style={{ marginTop: '0.25rem' }}
             >
               {locations.map((loc) => (

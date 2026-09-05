@@ -27,18 +27,16 @@ const { mockAdmin } = vi.hoisted(() => {
         };
       }
       if (table === 'sms_consent_scopes') {
+        const queryChain: Record<string, unknown> = {
+          range: vi.fn().mockResolvedValue({
+            data: [{ phone_number: '+15551234567', consent_scope: 'customer' }],
+            error: null,
+          }),
+        };
+        queryChain.order = vi.fn().mockReturnValue(queryChain);
         return {
           select: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockReturnValue({
-                order: vi.fn().mockReturnValue({
-                  range: vi.fn().mockResolvedValue({
-                    data: [{ phone_number: '+15551234567', consent_scope: 'customer' }],
-                    error: null,
-                  }),
-                }),
-              }),
-            }),
+            eq: vi.fn().mockReturnValue(queryChain),
           }),
         };
       }
@@ -47,24 +45,35 @@ const { mockAdmin } = vi.hoisted(() => {
           insert: vi.fn().mockResolvedValue({ data: null, error: null }),
         };
       }
+      const queryBuilder: Record<string, unknown> = {
+        limit: vi.fn().mockResolvedValue({
+          data: [{ id: 'row-1', name: 'Sample Item' }],
+          error: null,
+        }),
+        range: vi.fn().mockResolvedValue({
+          data: [{ id: 'row-1', name: 'Sample Item' }],
+          error: null,
+        }),
+      };
+      queryBuilder.order = vi.fn().mockReturnValue(queryBuilder);
+      queryBuilder.gt = vi.fn().mockReturnValue(queryBuilder);
+
+      const inQueryBuilder: Record<string, unknown> = {
+        limit: vi.fn().mockResolvedValue({
+          data: [{ id: 'item-1', invoice_id: 'row-1', description: 'Item 1', amount: 100 }],
+          error: null,
+        }),
+        range: vi.fn().mockResolvedValue({
+          data: [{ id: 'item-1', invoice_id: 'row-1', description: 'Item 1', amount: 100 }],
+          error: null,
+        }),
+      };
+      inQueryBuilder.order = vi.fn().mockReturnValue(inQueryBuilder);
+
       return {
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: [{ id: 'row-1', name: 'Sample Item' }],
-                error: null,
-              }),
-            }),
-          }),
-          in: vi.fn().mockReturnValue({
-            order: vi.fn().mockReturnValue({
-              limit: vi.fn().mockResolvedValue({
-                data: [{ id: 'item-1', invoice_id: 'row-1', description: 'Item 1', amount: 100 }],
-                error: null,
-              }),
-            }),
-          }),
+          eq: vi.fn().mockReturnValue(queryBuilder),
+          in: vi.fn().mockReturnValue(inQueryBuilder),
         }),
       };
 

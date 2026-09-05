@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7bd89f7e01c3ccf1
+   source-sha256: 4b761687d5196fb0
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -30840,6 +30840,221 @@ select optgroup {
      under a form that is 100% of it reads as an afterthought. */
   .msg-setup-submit {
     width: 100%;
+  }
+}
+
+/* ── AI receptionist ─────────────────────────────────────────────────────────
+   Fourth card in this shape, and scoped under .voice-card for the same reason
+   the missed-call and portal cards are: `voice-field` and `voice-label` are
+   exactly the kind of generic names that collide silently in a 10k-line sheet,
+   and a collision here would be discovered by a contractor rather than by us. */
+.voice-card {
+  padding: 1.05rem 1.1rem;
+  border-radius: 20px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.03);
+}
+
+.voice-card .voice-unsold {
+  margin: 0 0 1rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 12px;
+  background: rgba(var(--tint), 0.06);
+  font-size: 0.86rem;
+  line-height: 1.5;
+  color: var(--mute-t60);
+}
+
+.voice-card .voice-field {
+  display: grid;
+  gap: 0.35rem;
+  margin-bottom: 1.05rem;
+}
+
+.voice-card .voice-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.voice-card .voice-field small {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--mute-t50);
+}
+
+.voice-card .voice-field input[type='tel'],
+.voice-card .voice-field textarea {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+}
+
+.voice-card .voice-field textarea {
+  resize: vertical;
+  min-height: 4.5rem;
+}
+
+.voice-card .voice-choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
+.voice-card .voice-choices button {
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: transparent;
+  color: var(--mute-t60);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.voice-card .voice-choices button[aria-pressed='true'] {
+  border-color: transparent;
+  background: rgba(var(--tint), 0.14);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.voice-card .voice-hours {
+  display: grid;
+  gap: 0.45rem;
+  margin-bottom: 1.05rem;
+}
+
+.voice-card .voice-hours-row {
+  display: grid;
+  grid-template-columns: 6.5rem 1fr auto 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.voice-card .voice-hours-row label {
+  font-size: 0.86rem;
+  color: var(--mute-t60);
+}
+
+.voice-card .voice-hours-row input[type='time'] {
+  padding: 0.4rem 0.55rem;
+  border-radius: 9px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+}
+
+.voice-card .voice-hours-row span {
+  font-size: 0.8rem;
+  color: var(--mute-t50);
+}
+
+.voice-card .voice-clear {
+  padding: 0.32rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--edge-t14);
+  background: transparent;
+  color: var(--mute-t50);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.voice-card .voice-check {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.55rem;
+  align-items: start;
+}
+
+.voice-card .voice-check span {
+  font-size: 0.83rem;
+  line-height: 1.5;
+  color: var(--mute-t60);
+}
+
+.voice-card .voice-recording-toggle {
+  justify-self: start;
+  margin-top: 0.6rem;
+  padding: 0.45rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.86rem;
+  cursor: pointer;
+}
+
+.voice-card .voice-recording-toggle:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.voice-card .voice-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.7rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid var(--edge-t14);
+}
+
+.voice-card .voice-foot-note {
+  flex: 1 1 12rem;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--ink-orange-1);
+}
+
+.voice-card .voice-save {
+  font-size: 0.82rem;
+  color: var(--mute-t50);
+}
+
+.voice-card .voice-save-saved {
+  color: var(--ink-green-1, var(--mute-t60));
+}
+
+.voice-card .voice-save-error {
+  color: var(--ink-orange-1);
+}
+
+.voice-card .voice-submit {
+  padding: 0.5rem 1rem;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: rgba(var(--tint), 0.16);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  font-size: 0.88rem;
+  cursor: pointer;
+}
+
+.voice-card .voice-submit:disabled {
+  opacity: 0.5;
+  cursor: progress;
+}
+
+@media (max-width: 640px) {
+  .voice-card .voice-hours-row {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .voice-card .voice-hours-row label {
+    grid-column: 1 / -1;
+  }
+
+  .voice-card .voice-hours-row span {
+    display: none;
   }
 }
 

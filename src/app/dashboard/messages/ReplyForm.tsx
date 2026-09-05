@@ -9,11 +9,13 @@ export default function ReplyForm({
   action,
   availableTextCredits,
   topUpHref,
+  id = 'reply-body',
   children,
 }: {
   action: (previousOrFormData: any, maybeFormData?: any) => Promise<MessageActionResult>;
   availableTextCredits: number | null;
   topUpHref: string;
+  id?: string;
   children: ReactNode;
 }) {
   const [state, formAction] = useActionState(action, { status: 'idle' });

@@ -296,8 +296,8 @@ export default async function VoiceCallsPage({
       {/* Dedicated 2-Way Number strip */}
       <MessagingSetup
         setup={messagingSetup}
-        openOnLoad={searchParams.setup === '1' || messagingSetup?.registration?.kind !== 'ok'}
-        sharedPhoneNumber={process.env.SIGNALWIRE_FROM_NUMBER || dedicatedNumber || ''}
+        openOnLoad={searchParams.setup === '1'}
+        sharedPhoneNumber={process.env.SIGNALWIRE_FROM_NUMBER || '+19479412323'}
         title="Dedicated 2-Way Number"
         subtitle="Your shared phone line for AI voice and customer texting"
       />
@@ -558,35 +558,37 @@ export default async function VoiceCallsPage({
             </div>
 
             {/* Working Call Queue or Error State */}
-            {!queue.available ? (
-              <div className={styles.errorState} role="alert" aria-live="assertive">
-                <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }} aria-hidden="true">
-                  ⚠️
-                </span>
-                <h3>Unable to load call history</h3>
-                <p>
-                  We encountered a temporary issue communicating with the voice database. Please refresh or try again in a few moments.
-                </p>
-                <div style={{ marginTop: '1rem' }}>
-                  <Link href="/dashboard/voice-calls" className={styles.actionBtnSecondary}>
-                    ↻ Retry
-                  </Link>
+            <div id="call-queue-list">
+              {!queue.available ? (
+                <div className={styles.errorState} role="alert" aria-live="assertive">
+                  <span style={{ fontSize: '2rem', display: 'block', marginBottom: '0.5rem' }} aria-hidden="true">
+                    ⚠️
+                  </span>
+                  <h3>Unable to load call history</h3>
+                  <p>
+                    We encountered a temporary issue communicating with the voice database. Please refresh or try again in a few moments.
+                  </p>
+                  <div style={{ marginTop: '1rem' }}>
+                    <Link href="/dashboard/voice-calls" className={styles.actionBtnSecondary}>
+                      ↻ Retry
+                    </Link>
+                  </div>
                 </div>
-              </div>
-            ) : (
-              <VoiceCallQueueList
-                items={items}
-                timezone={timezone}
-                currentTab={currentTab}
-                currentDateRange={currentDateRange}
-                currentDisposition={currentDisposition}
-                currentOutcome={currentOutcome}
-                searchQuery={searchQuery}
-                totalFiltered={queue.totalFiltered}
-                currentPage={currentPage}
-                pageSize={queue.pageSize}
-              />
-            )}
+              ) : (
+                <VoiceCallQueueList
+                  items={items}
+                  timezone={timezone}
+                  currentTab={currentTab}
+                  currentDateRange={currentDateRange}
+                  currentDisposition={currentDisposition}
+                  currentOutcome={currentOutcome}
+                  searchQuery={searchQuery}
+                  totalFiltered={queue.totalFiltered}
+                  currentPage={currentPage}
+                  pageSize={queue.pageSize}
+                />
+              )}
+            </div>
 
             {/* Live Polling & Focus-Regained Refresher */}
             <VoiceCallsLiveRefresher

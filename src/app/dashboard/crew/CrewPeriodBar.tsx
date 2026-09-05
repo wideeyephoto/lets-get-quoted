@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { PERIOD_MODES, buildPeriodHref, type PayPeriod } from '@/lib/labor';
+import { PERIOD_MODES, buildPeriodHref, offsetForDate, type PayPeriod } from '@/lib/labor';
 import styles from './crew.module.css';
 
 export default function CrewPeriodBar({
@@ -96,8 +96,29 @@ export default function CrewPeriodBar({
             className="btn quiet sm"
             style={{ fontSize: '0.78rem' }}
           >
-            Reset to current
+            Current period
           </Link>
+        ) : null}
+        {!isCustom ? (
+          <label className={styles.filter} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+            <span style={{ fontSize: '0.78rem' }}>Jump to</span>
+            <input
+              type="date"
+              aria-label="Jump to the pay period containing a date"
+              style={{ fontSize: '0.78rem', padding: '2px 6px' }}
+              onChange={(e) => {
+                if (!e.target.value) return;
+                const targetOffset = offsetForDate(period.mode, e.target.value);
+                window.location.href = buildPeriodHref({
+                  basePath,
+                  tab: canonicalTab,
+                  period,
+                  patch: { offset: targetOffset, from: null, to: null },
+                  extraParams,
+                });
+              }}
+            />
+          </label>
         ) : null}
       </div>
 

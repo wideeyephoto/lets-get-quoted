@@ -567,6 +567,7 @@ export default function InsuranceClaimsClient({
                 value={claimStatus}
                 onChange={(e) => setClaimStatus(e.target.value as InsuranceClaimStatus)}
                 className={styles.select}
+                aria-label="Claim status"
                 style={{ width: 'auto', minWidth: '150px', height: '34px', padding: '0.2rem 0.6rem' }}
               >
                 <option value="draft">Draft</option>

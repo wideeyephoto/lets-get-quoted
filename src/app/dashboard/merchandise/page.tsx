@@ -1,3 +1,4 @@
+import { requireOfficeContext } from '@/lib/auth';
 import { getMerchandiseStudioData } from './actions';
 import MerchandiseDesignStudio from './MerchandiseDesignStudio';
 
@@ -7,7 +8,8 @@ export const metadata = {
 };
 
 export default async function MerchandisePage() {
-  const initialData = await getMerchandiseStudioData();
+  const { accountId } = await requireOfficeContext('settings.read');
+  const initialData = await getMerchandiseStudioData(accountId);
 
   return <MerchandiseDesignStudio initialData={initialData} />;
 }

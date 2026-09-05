@@ -81,8 +81,8 @@ describe('pay periods', () => {
     expect(normalizePeriodMode('biweekly')).toBe('biweekly');
     expect(normalizeOffset('abc')).toBe(0);
     expect(normalizeOffset('-3')).toBe(-3);
-    expect(normalizeOffset('99999')).toBe(0);
-    expect(normalizeOffset('5')).toBe(0);
+    expect(normalizeOffset('99999')).toBe(260);
+    expect(normalizeOffset('5')).toBe(5);
   });
 });
 

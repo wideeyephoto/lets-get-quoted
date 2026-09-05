@@ -498,6 +498,7 @@ export default async function MessagesPage({
                 />
                 {customerMessagingReady && knownThread ? (
                   <ReplyForm
+                    id="reply-body"
                     action={sendReplyAction.bind(null, activePhone)}
                     availableTextCredits={availableTextCredits}
                     topUpHref={topUpHref}

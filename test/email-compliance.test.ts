@@ -166,6 +166,7 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
           is: vi.fn().mockReturnThis(),
           order: vi.fn().mockReturnThis(),
           limit: vi.fn().mockImplementation(() => Promise.resolve(terminalValue)),
+          range: vi.fn().mockImplementation(() => Promise.resolve(terminalValue)),
           then: (resolve: (val: unknown) => unknown) => Promise.resolve(terminalValue).then(resolve),
         };
         return chain;

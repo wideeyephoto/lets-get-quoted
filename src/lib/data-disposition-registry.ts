@@ -1924,6 +1924,28 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Tool custody and assignment audit trail
+  inventory_tool_custody_log: {
+    tableName: 'inventory_tool_custody_log',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Field restock and van kit templates
+  inventory_van_kit_templates: {
+    tableName: 'inventory_van_kit_templates',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Municipal permit application dossiers
   job_permit_cases: {
     tableName: 'job_permit_cases',
@@ -2364,6 +2386,18 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'stripe',
   },
 
+  // Merchandise fulfillment attempts and dead-letter queue
+  merchandise_fulfillment_attempts: {
+    tableName: 'merchandise_fulfillment_attempts',
+    relationship: 'fk_chain',
+    primaryKeyColumn: 'id',
+    fkPath: ['order_id', 'merchandise_orders.account_id'],
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Merchandise platform fee and revenue split ledger
   merchandise_revenue_ledger: {
     tableName: 'merchandise_revenue_ledger',
@@ -2394,6 +2428,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     localAction: 'retain_immutable',
     portability: 'internal_system',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Homeowner insurance claims and adjuster scopes
+  insurance_claims: {
+    tableName: 'insurance_claims',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'job_completed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 };

@@ -299,11 +299,12 @@ export function createHitlAction(
   params: Omit<OperatorHitlActionRequest, 'id' | 'status' | 'createdAt'> & {
     id?: string;
     expiresInHours?: number;
+    createdAt?: string | Date;
   },
   supabase?: SupabaseClient,
 ): OperatorHitlActionRequest {
   const id = params.id || `hitl-${randomUUID()}`;
-  const now = new Date();
+  const now = params.createdAt ? new Date(params.createdAt) : new Date();
   const expiresAt = params.expiresInHours
     ? new Date(now.getTime() + params.expiresInHours * 3600 * 1000).toISOString()
     : undefined;

@@ -191,7 +191,6 @@ export default async function AutomationsPage() {
     { data: site },
     { data: reviewSettings },
     { data: intakeSettings },
-    ownerAlerts,
     { data: bookingSettings },
     { data: quickStopSettings },
     { data: confirmSettings },
@@ -223,7 +222,6 @@ export default async function AutomationsPage() {
     supabase.from('sites').select('*').eq('account_id', accountId).maybeSingle(),
     supabase.from('accounts').select('auto_review_request').eq('id', accountId).maybeSingle(),
     supabase.from('accounts').select('estimate_posture, high_value_lead_amount, mute_low_quality_leads, high_value_sms_enabled, alert_phone').eq('id', accountId).maybeSingle(),
-    loadOwnerAlerts(accountId),
     supabase.from('accounts').select('timezone, booking_enabled, booking_weekdays, booking_windows').eq('id', accountId).maybeSingle(),
     supabase.from('accounts').select(QUICK_STOP_SETTINGS_COLUMNS).eq('id', accountId).single(),
     supabase.from('accounts').select('quote_confirmation_email, payment_confirmation_email, review_confirmation_email, reminder_confirmation_email').eq('id', accountId).maybeSingle(),
@@ -256,7 +254,7 @@ export default async function AutomationsPage() {
   const highValueLeadAmount = intakeSettings?.high_value_lead_amount ? Number(intakeSettings.high_value_lead_amount) : null;
   const muteLowQualityLeads = intakeSettings?.mute_low_quality_leads !== false; // default on
 
-  const alertChip = ownerAlertChip(ownerAlerts);
+  const alertChip = ownerAlertChip(await loadOwnerAlerts(accountId));
   const alertReadiness =
     alertChip.label === 'Ready'
       ? 'Ready — your mobile is on file and confirmed.'
