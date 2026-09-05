@@ -94,7 +94,7 @@ function RoomScanSession({ scan: initialScan, target, className = '', mode = 'po
     importingRef.current = true;
     setError(null); setMessage(null); setBusy('importing');
     try {
-      if (!file.name.toLowerCase().endsWith('.json')) throw new Error('Choose an LGQ normalized scan JSON file.');
+      if (!file.name.toLowerCase().endsWith('.json')) throw new Error('Choose an Apple RoomPlan or LGQ scan JSON file.');
       if (file.size > MAX_ROOM_SCAN_BYTES) throw new Error('Scan JSON must be 1 MB or smaller.');
       const raw = await file.text();
       let imported = parseCustomScanJson(raw);
@@ -171,7 +171,7 @@ function RoomScanSession({ scan: initialScan, target, className = '', mode = 'po
       <p>Import measured room geometry to view the room and calculate flooring, wall area, and baseboard quantities.</p>
       {importButton}
     </div>}
-    <p className={styles.scanNotice}>Accepts LGQ normalized scan JSON (inches, up to 1 MB). Native Apple RoomPlan, Polycam, USDZ, and raw point clouds need conversion before import. <a href="/docs/room-scan-format.json" download>Download format example</a></p>
+    <p className={styles.scanNotice}>Import Apple RoomPlan CapturedRoom JSON or LGQ scan JSON (up to 1 MB). RoomPlan converts automatically for a single closed room with straight walls and a flat ceiling. USDZ, Polycam, and raw point clouds need conversion. <a href="/docs/room-scan-format.json" download>Download LGQ format example</a></p>
     {scan && summary && <>
       <h4 className={styles.scanNotice}>{scan.title}</h4>
       <RoomScanScene key={JSON.stringify(scan)} scan={scan} />
@@ -179,7 +179,7 @@ function RoomScanSession({ scan: initialScan, target, className = '', mode = 'po
         {[
           ['Floor Surface', summary.floorAreaSqFt, 'sq ft', 'Imported floor polygon'],
           ['Net Paintable Walls', summary.netPaintableWallSqFt, 'sq ft', `Excludes ${summary.openingsAreaSqFt} sq ft openings`],
-          ['Baseboard Trim', summary.baseboardLinearFt, 'lin ft', 'Door and passage widths deducted'],
+          ['Baseboard Trim', summary.baseboardLinearFt, 'lin ft', 'Floor-level door and passage widths deducted'],
           ['Ceiling Height', summary.ceilingHeightFt, 'ft', 'Flat ceiling'],
         ].map(([label, value, unit, note]) => <div className={styles.metricCard} key={label}><span className={styles.metricLabel}>{label}</span><div className={styles.metricValue}>{value} <span className={styles.metricUnit}>{unit}</span></div><span className={styles.metricSubtext}>{note}</span></div>)}
       </div>

@@ -138,7 +138,7 @@ const FAQ = [
   },
   {
     q: 'Do I or my customers need an iPhone with LiDAR to get 3D measurements?',
-    a: 'Photos and videos can help assess the scope of work, but room takeoffs require measured geometry. LiDAR Studio accepts LGQ normalized scan JSON in inches and calculates floor, wall, and baseboard quantities from it. Native Apple RoomPlan, Polycam, and raw point-cloud files require conversion before import. Confirm critical dimensions on site before ordering materials.',
+    a: 'Photos and videos can help assess the scope of work, but room takeoffs require measured geometry. LiDAR Studio imports Apple RoomPlan CapturedRoom JSON automatically for a single closed room with straight walls and a flat ceiling. It also accepts LGQ scan JSON in inches and calculates floor, wall, and baseboard quantities. USDZ, Polycam, and raw point-cloud files require conversion. Confirm critical dimensions on site before ordering materials.',
   },
   {
     q: 'How do roof and exterior 3D measurements work?',

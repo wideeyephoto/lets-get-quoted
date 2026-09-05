@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { measuredRoom } from './fixtures/room-scan';
+import { nativeRoom } from './fixtures/roomplan/native-room';
 import { parseCustomScanJson } from '@/lib/property-intel/room-scan-validation';
 
 const mocks = vi.hoisted(() => ({ membership: vi.fn(), client: vi.fn(), getUser: vi.fn() }));
@@ -52,6 +53,26 @@ describe('room scan persistence API', () => {
     expect(scan.floorPolygon).toHaveLength(4);
     expect(scan.confidenceScore).toBe(0);
     expect(queries[0]).toEqual({ table: 'jobs', filters: [['account_id', 'account-a'], ['id', id], ['deleted_at', null]], update: { room_spatial_scan: scan } });
+  });
+
+  it('adapts raw RoomPlan requests and preserves their canonical metadata on reload', async () => {
+    replies.push({ data: { id } });
+    const response = await PUT(new Request(url, { method: 'PUT', body: JSON.stringify(nativeRoom()) }));
+    expect(response.status).toBe(200);
+    const { scan } = await response.json();
+    expect(scan).toMatchObject({ sourceFormat: 'apple-roomplan', sourceVersion: 2, units: 'inches' });
+    expect(scan.walls[0]).toMatchObject({ id: 'south', sourceConfidence: 'medium' });
+    expect(scan.openings[0].widthInches).toBeCloseTo(36);
+    expect(queries[0].update).toEqual({ room_spatial_scan: scan });
+    replies.push({ data: { room_spatial_scan: scan, lead_id: null } });
+    expect(await (await GET(new Request(url))).json()).toEqual({ scan });
+  });
+
+  it('rejects a malformed native scan before any database write', async () => {
+    const room = nativeRoom();
+    room.walls[0].dimensions[0] -= 0.1;
+    expect((await PUT(new Request(url, { method: 'PUT', body: JSON.stringify(room) }))).status).toBe(400);
+    expect(queries).toHaveLength(0);
   });
 
   it('does not report a successful save when the target belongs to another account or was deleted', async () => {
