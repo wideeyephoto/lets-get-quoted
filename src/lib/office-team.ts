@@ -26,6 +26,7 @@ export type OfficeTeamMember = Readonly<{
   email: string | null;
   role: 'owner' | 'office';
   joinedAt: string;
+  capabilities: readonly string[];
 }>;
 
 export type OfficeTeamInvitation = Readonly<{
@@ -60,7 +61,7 @@ export async function loadOfficeTeam(
   });
 
   try {
-    const [memberships, invitations, entitlement] = await Promise.all([
+    const [memberships, invitations, entitlement, memberCapsResult] = await Promise.all([
       admin.from('memberships')
         .select('id, user_id, role, created_at')
         .eq('account_id', accountId)
@@ -76,6 +77,9 @@ export async function loadOfficeTeam(
         .select('feature_limits')
         .eq('account_id', accountId)
         .maybeSingle(),
+      admin.from('office_member_capabilities')
+        .select('user_id, capability')
+        .eq('account_id', accountId),
     ]);
 
     if (memberships.error) {
@@ -102,13 +106,30 @@ export async function loadOfficeTeam(
       }
     }));
 
-    const members = rows.map((row) => Object.freeze({
-      membershipId: String(row.id),
-      userId: String(row.user_id),
-      email: emails.get(String(row.user_id)) ?? null,
-      role: (row.role === 'owner' ? 'owner' : 'office') as 'owner' | 'office',
-      joinedAt: String(row.created_at),
-    }));
+    const userCapsMap = new Map<string, string[]>();
+    if (!memberCapsResult.error && memberCapsResult.data) {
+      for (const row of memberCapsResult.data as Array<{ user_id?: string; capability?: string }>) {
+        const uid = String(row.user_id ?? '');
+        const cap = String(row.capability ?? '');
+        if (uid && cap) {
+          const list = userCapsMap.get(uid) ?? [];
+          list.push(cap);
+          userCapsMap.set(uid, list);
+        }
+      }
+    }
+
+    const members = rows.map((row) => {
+      const uId = String(row.user_id);
+      return Object.freeze({
+        membershipId: String(row.id),
+        userId: uId,
+        email: emails.get(uId) ?? null,
+        role: (row.role === 'owner' ? 'owner' : 'office') as 'owner' | 'office',
+        joinedAt: String(row.created_at),
+        capabilities: Object.freeze(userCapsMap.get(uId) ?? []),
+      });
+    });
 
     const pending = ((invitations.error ? [] : invitations.data ?? []) as Array<Record<string, unknown>>)
       .map((row): OfficeInvitationRow => ({
