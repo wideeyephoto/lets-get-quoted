@@ -250,7 +250,7 @@ export type UpdateMemberCapabilitiesResult =
 /**
  * Assign custom granular capabilities to an office team member.
  *
- * Enforces team.manage authority (held by owner and authorized office managers).
+ * Only owners may assign capabilities, matching the table's RLS policy.
  * Restricts updates strictly to members with role 'office' in the caller's account.
  * Owners cannot be restricted; strangers or crew members are refused.
  */
@@ -258,7 +258,11 @@ export async function updateOfficeMemberCapabilitiesAction(input: {
   targetUserId: string;
   capabilities: string[];
 }): Promise<UpdateMemberCapabilitiesResult> {
-  const { supabase, accountId, userId: callerUserId } = await requireOfficeContext('team.manage');
+  const { supabase, accountId, role } = await requireOfficeContext('team.manage');
+
+  if (role !== 'owner') {
+    return { ok: false, message: 'Only the account owner can assign office permissions.' };
+  }
 
   const targetUserId = String(input?.targetUserId ?? '').trim();
   if (!targetUserId) {
@@ -295,35 +299,14 @@ export async function updateOfficeMemberCapabilitiesAction(input: {
     ),
   );
 
-  // Clear existing grants for this member
-  const { error: deleteError } = await supabase
-    .from('office_member_capabilities')
-    .delete()
-    .eq('account_id', accountId)
-    .eq('user_id', targetUserId);
-
-  if (deleteError) {
-    console.error('Failed to clear existing office capabilities:', deleteError);
-    return { ok: false, message: 'Failed to update capabilities. Try again in a moment.' };
-  }
-
-  // Insert new grants if any
-  if (validCaps.length > 0) {
-    const rows = validCaps.map((capability) => ({
-      account_id: accountId,
-      user_id: targetUserId,
-      capability,
-      granted_by: callerUserId,
-    }));
-
-    const { error: insertError } = await supabase
-      .from('office_member_capabilities')
-      .insert(rows);
-
-    if (insertError) {
-      console.error('Failed to grant office capabilities:', insertError);
-      return { ok: false, message: 'Failed to save updated capabilities. Try again.' };
-    }
+  const { error } = await supabase.rpc('replace_office_member_capabilities', {
+    p_account_id: accountId,
+    p_user_id: targetUserId,
+    p_capabilities: validCaps,
+  });
+  if (error) {
+    console.error('Failed to replace office capabilities:', error);
+    return { ok: false, message: 'Permissions were not changed. Try again in a moment.' };
   }
 
   const { data: { user } } = await supabase.auth.getUser();

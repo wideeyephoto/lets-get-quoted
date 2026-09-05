@@ -1,4 +1,13 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+
+// Provider behavior is covered by domains.test; this suite checks the status adapter.
+vi.mock('@/lib/domains', () => ({
+  verifyDomain: vi.fn().mockResolvedValue({
+    verified: true, dnsVerified: true, sslStatus: 'issued', records: ['76.76.21.21'],
+    expectedCname: 'domains.letsgetquoted.com', expectedIp: '76.76.21.21',
+    isApex: true, subdomain: null, verification: [],
+  }),
+}));
 
 // 1. Voice Call Bridge
 import { generateContractorCallBridgeTwiml, initiateSpeedToLeadCallBridge } from '@/lib/voice-call-bridge';

@@ -431,7 +431,7 @@ export default async function SettingsPage({
             content: (
               <section id="office-team" className="settings-card">
                 <h2>Office team</h2>
-                <OfficeTeamSection team={officeTeam} />
+                <OfficeTeamSection team={officeTeam} canAssignPermissions={role === 'owner'} />
               </section>
             ),
           }] : []),

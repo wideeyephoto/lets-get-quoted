@@ -105,9 +105,17 @@ const mockSupabase = {
       ),
     },
   },
-  rpc: vi.fn().mockImplementation((fn: string) => {
+  rpc: vi.fn().mockImplementation((fn: string, args: Record<string, any>) => {
     if (fn === 'office_seat_usage') {
       return { maybeSingle: () => Promise.resolve({ data: { office_limit: 5 }, error: null }) };
+    }
+    if (fn === 'replace_office_member_capabilities') {
+      mockDb.office_member_capabilities = mockDb.office_member_capabilities.filter(
+        (row) => row.account_id !== args.p_account_id || row.user_id !== args.p_user_id,
+      );
+      mockDb.office_member_capabilities.push(...args.p_capabilities.map((capability: string) => ({
+        account_id: args.p_account_id, user_id: args.p_user_id, capability,
+      })));
     }
     return Promise.resolve({ data: true, error: null });
   }),
@@ -142,6 +150,7 @@ const { loadOfficeTeam } = await import('@/lib/office-team');
 
 describe('Office Permissions Assignment', () => {
   beforeEach(() => {
+    vi.clearAllMocks();
     mockDb.memberships = [
       { id: 'm-owner', account_id: ACCOUNT_ID, user_id: OWNER_USER_ID, role: 'owner', created_at: '2026-01-01' },
       { id: 'm-office', account_id: ACCOUNT_ID, user_id: OFFICE_USER_ID, role: 'office', created_at: '2026-02-01' },
@@ -236,6 +245,28 @@ describe('Office Permissions Assignment', () => {
       (r) => r.account_id === ACCOUNT_ID && r.user_id === OFFICE_USER_ID,
     );
     expect(rows).toHaveLength(0);
+  });
+
+  it('returns a save failure without reporting success or changing existing grants', async () => {
+    mockSupabase.rpc.mockResolvedValueOnce({ data: null, error: { message: 'transaction failed' } });
+    const result = await updateOfficeMemberCapabilitiesAction({
+      targetUserId: OFFICE_USER_ID, capabilities: ['jobs.read'],
+    });
+    expect(result.ok).toBe(false);
+    expect(mockDb.office_member_capabilities.map((row) => row.capability)).toEqual(['leads.read']);
+    expect(mockDb.account_events).toHaveLength(0);
+  });
+
+  it('refuses permission assignment by an office manager', async () => {
+    const { requireOfficeContext } = await import('@/lib/auth');
+    vi.mocked(requireOfficeContext).mockResolvedValueOnce({
+      supabase: mockSupabase, accountId: ACCOUNT_ID, userId: OFFICE_USER_ID, role: 'office',
+    } as any);
+    const result = await updateOfficeMemberCapabilitiesAction({
+      targetUserId: OFFICE_USER_ID, capabilities: ['team.manage'],
+    });
+    expect(result).toEqual({ ok: false, message: 'Only the account owner can assign office permissions.' });
+    expect(mockSupabase.rpc).not.toHaveBeenCalled();
   });
 
   it('loadOfficeTeam loads member capabilities accurately', async () => {

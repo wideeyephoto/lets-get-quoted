@@ -59,7 +59,7 @@ const PRESETS: Record<string, string[]> = {
   ],
 };
 
-export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
+export default function OfficeTeamSection({ team, canAssignPermissions = false }: { team: OfficeTeam; canAssignPermissions?: boolean }) {
   const [email, setEmail] = useState('');
   const [state, setState] = useState<SaveState>('idle');
   const [problem, setProblem] = useState<string | null>(null);
@@ -220,13 +220,13 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
                 no control -- it invites the click and then explains. */}
             {member.role === 'office' ? (
               <>
-                <button
+                {canAssignPermissions ? <button
                   type="button"
                   className="office-btn-perm"
                   onClick={() => toggleEditing(member.userId, member.capabilities)}
                 >
                   {editingUserId === member.userId ? 'Close' : 'Permissions'}
-                </button>
+                </button> : null}
                 <button
                   type="button"
                   onClick={() => remove(member.userId, member.email ?? 'this person')}
@@ -236,7 +236,7 @@ export default function OfficeTeamSection({ team }: { team: OfficeTeam }) {
               </>
             ) : null}
 
-            {editingUserId === member.userId && member.role === 'office' ? (
+            {canAssignPermissions && editingUserId === member.userId && member.role === 'office' ? (
               <div className="office-permissions-editor">
                 <div className="office-perm-header">
                   <h4>Custom Permissions · {member.email ?? 'Office User'}</h4>
