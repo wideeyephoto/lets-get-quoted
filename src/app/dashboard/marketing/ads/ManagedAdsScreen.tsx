@@ -44,6 +44,7 @@ type Props = {
   initialWalletState?: AdBudgetWalletState;
   leadFilters?: Record<string, unknown>;
   basePath?: string;
+  initialTab?: string;
 };
 
 const COMPARISON_ROWS = [
@@ -155,6 +156,7 @@ export default function ManagedAdsScreen({
   initialWalletState,
   leadFilters,
   basePath = '/dashboard',
+  initialTab,
 }: Props) {
   // Step 1: Selected Smart Bundle & Funding Model
   const [fundingModel, setFundingModel] = useState<'weekly_drip' | 'auto_refill_wallet'>('weekly_drip');
@@ -164,8 +166,31 @@ export default function ManagedAdsScreen({
   const [previewPlatform, setPreviewPlatform] = useState<
     'mobile' | 'desktop' | 'meta' | 'retargeting' | 'sms' | 'keywords'
   >('mobile');
-  const [managementTab, setManagementTab] = useState<'overview' | 'targeting' | 'creative' | 'billing' | 'halo'>('overview');
-  const [showManagementConsole, setShowManagementConsole] = useState<boolean>(Boolean(initialWalletState?.status === 'active' || initialWalletState?.status === 'paused'));
+  const isManagementTab =
+    initialTab === 'overview' ||
+    initialTab === 'targeting' ||
+    initialTab === 'creative' ||
+    initialTab === 'billing' ||
+    initialTab === 'halo';
+  const [managementTab, setManagementTab] = useState<'overview' | 'targeting' | 'creative' | 'billing' | 'halo'>(
+    isManagementTab ? initialTab : 'overview'
+  );
+  const [showManagementConsole, setShowManagementConsole] = useState<boolean>(
+    Boolean(isManagementTab || initialWalletState?.status === 'active' || initialWalletState?.status === 'paused')
+  );
+
+  useEffect(() => {
+    if (
+      initialTab === 'overview' ||
+      initialTab === 'targeting' ||
+      initialTab === 'creative' ||
+      initialTab === 'billing' ||
+      initialTab === 'halo'
+    ) {
+      setManagementTab(initialTab);
+      setShowManagementConsole(true);
+    }
+  }, [initialTab]);
   const [currentStatus, setCurrentStatus] = useState<string>(initialWalletState?.status || 'inactive');
   const [isCancelScheduled, setIsCancelScheduled] = useState<boolean>(Boolean(initialWalletState?.cancelAtPeriodEnd));
   const [actionLoading, setActionLoading] = useState<'pause' | 'resume' | 'cancel' | null>(null);

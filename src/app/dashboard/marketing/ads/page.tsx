@@ -7,8 +7,12 @@ import ManagedAdsScreen from './ManagedAdsScreen';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Google Search Ads Autopilot' };
 
-export default async function ManagedAdsPage() {
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
+export default async function ManagedAdsPage(props: {
+  searchParams?: Promise<{ tab?: string }>;
+}) {
+  const searchParams = props.searchParams ? await props.searchParams : undefined;
+  const initialTab = typeof searchParams?.tab === 'string' ? searchParams.tab : undefined;
+  const { supabase, accountId } = await requireOfficeContext('marketing.read');
 
   const [{ data: accountRow }, { data: siteRow }, trade] = await Promise.all([
     supabase.from('accounts').select('business_name, mailing_address, phone').eq('id', accountId).maybeSingle(),
@@ -51,6 +55,7 @@ export default async function ManagedAdsPage() {
       availableServices={fallbackServices}
       initialWalletState={(content as Record<string, unknown>).adCampaign as never}
       leadFilters={content.leadFilters}
+      initialTab={initialTab}
     />
   );
 }

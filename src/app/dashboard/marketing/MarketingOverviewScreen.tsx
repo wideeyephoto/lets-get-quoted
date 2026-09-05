@@ -32,6 +32,8 @@ type Props = {
   rebookDue: number;
   emailTheme?: { currentTheme: string | null };
   roiSummary?: OverallRoiSummary;
+  roiSummaryByRange?: { month: OverallRoiSummary; '30d': OverallRoiSummary };
+  sentCampaignsCount?: number;
   campaigns?: Campaign[];
   basePath?: string;
   navOnly?: string[];
@@ -48,6 +50,8 @@ export default function MarketingOverviewScreen({
   hasBlog,
   rebookDue,
   roiSummary,
+  roiSummaryByRange,
+  sentCampaignsCount,
   campaigns = [],
   basePath = '/dashboard',
   navOnly,
@@ -104,15 +108,27 @@ export default function MarketingOverviewScreen({
     hasBlog,
   });
 
-  // Calculate metrics
-  const marketingLeads = roiSummary?.adAttributedLeads ?? 0;
-  const wonJobs = roiSummary?.channels.reduce((sum, ch) => sum + ch.wonCount, 0) ?? 0;
-  const attributedRevenue = roiSummary?.adAttributedRevenue ?? 0;
-  const roasMultiplier = roiSummary?.estimatedRoasMultiplier ?? 0;
-  const hasAdSpend = roasMultiplier > 0;
+  // Calculate metrics based on selected date range
+  const activeSummary = (dateRange === 'month' ? roiSummaryByRange?.month : roiSummaryByRange?.['30d']) ?? roiSummary;
+  const marketingLeads = activeSummary?.adAttributedLeads ?? 0;
+  const wonJobs = activeSummary?.channels.reduce((sum, ch) => sum + ch.wonCount, 0) ?? 0;
+  const attributedRevenue = activeSummary?.adAttributedRevenue ?? 0;
+  const totalAdSpend = activeSummary?.totalAdSpend ?? 0;
+  const roasMultiplier = activeSummary?.estimatedRoasMultiplier ?? 0;
+  const hasAdSpend = totalAdSpend > 0;
 
-  // Recent winners (campaigns with actual activity or conversions)
-  const recentWinners = campaigns.slice(0, 2);
+  // Active channels sorted to find genuine top channel
+  const activeChannels = [...(activeSummary?.channels ?? [])].filter((c) => c.leadsCount > 0);
+  const topChannel = activeChannels.sort((a, b) => b.totalRevenue - a.totalRevenue || b.wonCount - a.wonCount || b.leadsCount - a.leadsCount)[0] ?? null;
+
+  // Campaigns sent metrics
+  const sentCampaigns = campaigns.filter((c) => (c.email_sent || 0) + (c.sms_sent || 0) > 0);
+  const totalDelivered = campaigns.reduce((sum, c) => sum + (c.email_sent || 0) + (c.sms_sent || 0), 0);
+  const displaySentCount = sentCampaignsCount ?? sentCampaigns.length;
+
+  // Real winners (campaigns with won jobs or conversions)
+  const winningCampaigns = (activeSummary?.topCampaigns ?? []).filter((c) => c.wonCount > 0 || c.leadsCount > 0).slice(0, 2);
+  const recentDispatchedCampaigns = sentCampaigns.slice(0, 2);
 
   return (
     <main className="wide-shell workspace-shell">
@@ -272,22 +288,36 @@ export default function MarketingOverviewScreen({
           <article className="panel mkt-tile">
             <span className="mkt-tile-label">Booked &amp; Won Jobs</span>
             <strong className="mkt-tile-value">{wonJobs}</strong>
-            <span className="mkt-tile-note">Closed revenue clients</span>
+            <span className="mkt-tile-note">Booked &amp; completed work</span>
           </article>
 
           <article className="panel mkt-tile">
             <span className="mkt-tile-label">Attributed Revenue</span>
             <strong className="mkt-tile-value">${attributedRevenue.toLocaleString()}</strong>
-            <span className="mkt-tile-note">Tracked project sales</span>
+            <span className="mkt-tile-note">Booked &amp; completed quote value</span>
           </article>
 
           <article className="panel mkt-tile">
             <span className="mkt-tile-label">Return on Ad Spend</span>
-            <strong className="mkt-tile-value" style={{ fontSize: hasAdSpend ? '1.5rem' : '1.05rem', color: hasAdSpend ? '#10b981' : 'var(--muted)' }}>
+            <strong
+              className="mkt-tile-value"
+              style={{
+                fontSize: hasAdSpend ? '1.5rem' : '1.05rem',
+                color: hasAdSpend
+                  ? roasMultiplier >= 1.0
+                    ? '#10b981'
+                    : '#f59e0b'
+                  : 'var(--muted)',
+              }}
+            >
               {hasAdSpend ? `${roasMultiplier}x ROAS` : 'No ad spend yet'}
             </strong>
             <span className="mkt-tile-note">
-              {hasAdSpend ? 'Revenue / Ad investment' : <Link href={at('/dashboard/marketing/ads')}>Launch Paid Ads →</Link>}
+              {hasAdSpend ? (
+                `Revenue / Ad investment ($${Math.round(totalAdSpend).toLocaleString()} spent)`
+              ) : (
+                <Link href={at('/dashboard/marketing/ads')}>Launch Paid Ads →</Link>
+              )}
             </span>
           </article>
         </div>
@@ -327,7 +357,7 @@ export default function MarketingOverviewScreen({
             <p className="eyebrow">Marketing Systems</p>
             <h2 style={{ fontSize: '1.2rem' }}>Channel Health</h2>
           </div>
-          <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>All channels synchronized</span>
+          <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>Multi-channel performance</span>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '0.75rem' }}>
@@ -340,10 +370,14 @@ export default function MarketingOverviewScreen({
               </span>
             </div>
             <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
-              {campaigns.length} Sent
+              {displaySentCount} Sent
             </strong>
             <span className="mkt-tile-note">
-              {campaigns[0] ? `Last send: ${shortDate(campaigns[0].created_at)}` : 'Ready to compose'}
+              {totalDelivered > 0
+                ? `${totalDelivered.toLocaleString()} messages delivered`
+                : campaigns[0]
+                  ? `Last send: ${shortDate(campaigns[0].created_at)}`
+                  : 'Ready to compose'}
             </span>
           </Link>
 
@@ -359,7 +393,9 @@ export default function MarketingOverviewScreen({
               {hasAdSpend ? `${roasMultiplier}x ROAS` : 'Autopilot Ready'}
             </strong>
             <span className="mkt-tile-note">
-              {hasAdSpend ? `$${attributedRevenue.toLocaleString()} revenue` : 'Launch with zero retainer'}
+              {hasAdSpend
+                ? `$${attributedRevenue.toLocaleString()} revenue ($${Math.round(totalAdSpend).toLocaleString()} spend)`
+                : 'Launch with zero retainer'}
             </span>
           </Link>
 
@@ -404,10 +440,10 @@ export default function MarketingOverviewScreen({
               </span>
             </div>
             <strong style={{ fontSize: '1.15rem', color: 'var(--text)', display: 'block', margin: '0.2rem 0' }}>
-              Active Radius
+              1-Mile Geo-Fencing
             </strong>
             <span className="mkt-tile-note">
-              Target homes around current jobs
+              Target homes around active jobs
             </span>
           </Link>
         </div>
@@ -487,7 +523,7 @@ export default function MarketingOverviewScreen({
       </section>
 
       {/* 6. Recent Winners & Top Performing Sources */}
-      {recentWinners.length > 0 || marketingLeads > 0 ? (
+      {winningCampaigns.length > 0 || recentDispatchedCampaigns.length > 0 || topChannel ? (
         <section className="panel workspace-section-card">
           <div className="section-heading workspace-section-heading compact-heading mkt-section-head">
             <div>
@@ -500,29 +536,45 @@ export default function MarketingOverviewScreen({
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '0.75rem', marginTop: '0.65rem' }}>
-            {recentWinners.map((c) => (
-              <div key={c.id} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.75rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <strong style={{ fontSize: '0.85rem' }}>{c.subject || 'Direct Client Campaign'}</strong>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>{shortDate(c.created_at)}</span>
+            {winningCampaigns.length > 0 ? (
+              winningCampaigns.map((c) => (
+                <div key={c.campaign} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <strong style={{ fontSize: '0.85rem' }}>{c.campaign || 'Direct Campaign'}</strong>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>{c.channelName}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
+                    <span>{c.leadsCount} leads</span>
+                    <span>{c.wonCount} won</span>
+                    <span style={{ color: '#10b981', fontWeight: 600 }}>${c.totalRevenue.toLocaleString()}</span>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
-                  <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><MailIcon /> {c.email_sent || 0} emails</span>
-                  <span>💬 {c.sms_sent || 0} texts</span>
-                  <span style={{ color: '#10b981', fontWeight: 600 }}>Active</span>
+              ))
+            ) : (
+              recentDispatchedCampaigns.map((c) => (
+                <div key={c.id} style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.75rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                    <strong style={{ fontSize: '0.85rem' }}>{c.subject || 'Direct Client Campaign'}</strong>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--muted)' }}>{shortDate(c.created_at)}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}><MailIcon /> {c.email_sent || 0} emails</span>
+                    <span>💬 {c.sms_sent || 0} texts</span>
+                    <span style={{ color: 'var(--muted)', fontWeight: 600 }}>Sent</span>
+                  </div>
                 </div>
-              </div>
-            ))}
-            {marketingLeads > 0 ? (
+              ))
+            )}
+            {topChannel ? (
               <div style={{ background: 'rgba(16, 185, 129, 0.05)', border: '1px solid rgba(16, 185, 129, 0.2)', borderRadius: '8px', padding: '0.75rem' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
-                  <strong style={{ fontSize: '0.85rem', color: '#10b981' }}>🎯 Search &amp; Social Ads</strong>
+                  <strong style={{ fontSize: '0.85rem', color: '#10b981' }}>{topChannel.icon} {topChannel.name}</strong>
                   <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 700 }}>Top Channel</span>
                 </div>
                 <div style={{ display: 'flex', gap: '1rem', fontSize: '0.78rem', color: 'var(--text)', marginTop: '0.35rem' }}>
-                  <span>{marketingLeads} Leads</span>
-                  <span>{wonJobs} Won Jobs</span>
-                  <span style={{ fontWeight: 700 }}>${attributedRevenue.toLocaleString()}</span>
+                  <span>{topChannel.leadsCount} Leads</span>
+                  <span>{topChannel.wonCount} Won Jobs</span>
+                  <span style={{ fontWeight: 700 }}>${topChannel.totalRevenue.toLocaleString()}</span>
                 </div>
               </div>
             ) : null}

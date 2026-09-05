@@ -2,9 +2,12 @@ import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { listCampaigns } from '@/lib/campaigns';
 import { loadBlogWorkspace } from '@/lib/site-blog';
 import { countStates, todayKeyOf } from '@/lib/marketing-status';
-import { listLeads } from '@/lib/leads';
-import { listJobs } from '@/lib/jobs';
-import { calculateCampaignRoi, type JobFinancialLookup } from '@/lib/campaign-roi';
+import {
+  calculateCampaignRoi,
+  loadMarketingAttributionData,
+  type JobFinancialLookup,
+} from '@/lib/campaign-roi';
+import type { AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import { getGoogleLsaReportingSummary } from '@/lib/google-lsa/reporting';
 import PerformanceScreen from './PerformanceScreen';
 
@@ -12,15 +15,19 @@ export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Marketing performance & ROI' };
 
 export default async function MarketingPerformancePage() {
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const { supabase, accountId } = await requireOfficeContext('marketing.read');
   const admin = createAdminClient();
   const today = todayKeyOf();
 
-  const [campaigns, blogData, leads, jobs, lsaSummary] = await Promise.all([
+  const [campaigns, blogData, { leads, jobs }, { data: siteRow }, lsaSummary] = await Promise.all([
     listCampaigns(supabase, accountId),
     loadBlogWorkspace(supabase, accountId, process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com'),
-    listLeads(supabase, accountId),
-    listJobs(supabase, accountId),
+    loadMarketingAttributionData(supabase, accountId),
+    supabase
+      .from('sites')
+      .select('content')
+      .eq('account_id', accountId)
+      .maybeSingle(),
     getGoogleLsaReportingSummary(admin, accountId).catch((error) => {
       console.error(
         `Google LSA performance reporting failed for account ${accountId}:`,
@@ -32,11 +39,16 @@ export default async function MarketingPerformancePage() {
 
   const jobLookup: JobFinancialLookup = {};
   for (const job of jobs) {
-    const isWon = job.status === 'in_progress' || job.status === 'complete' || job.status === 'archived';
+    const isWon = job.status === 'in_progress' || job.status === 'complete';
     jobLookup[job.id] = { total: Number(job.quoted_amount) || 0, isWon };
   }
 
-  const roiSummary = calculateCampaignRoi(leads, jobLookup);
+  const adWallet = ((siteRow?.content as Record<string, unknown> | null | undefined)?.adCampaign as Partial<AdBudgetWalletState> | undefined) || {};
+  const walletSpendDollars = (adWallet.totalSpendAllTimeCents ?? adWallet.spendThisMonthCents ?? 0) / 100;
+  const lsaSpendDollars = lsaSummary?.costDollars ?? 0;
+  const totalAdSpend = walletSpendDollars + lsaSpendDollars;
+
+  const roiSummary = calculateCampaignRoi(leads, jobLookup, { actualAdSpend: totalAdSpend });
 
   return (
     <PerformanceScreen

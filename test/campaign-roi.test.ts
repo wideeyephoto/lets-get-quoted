@@ -216,6 +216,40 @@ describe('calculateCampaignRoi', () => {
     expect(roi.overallWinRatePct).toBe(0);
     expect(roi.channels.length).toBeGreaterThan(0);
   });
+
+  it('computes ROAS from actual ad spend when provided', () => {
+    const roi = calculateCampaignRoi(dummyLeads, jobLookup, { actualAdSpend: 1000 });
+    expect(roi.totalAdSpend).toBe(1000);
+    expect(roi.estimatedRoasMultiplier).toBe(5.7);
+  });
+
+  it('accurately reports losing campaign when ad spend exceeds revenue', () => {
+    const roi = calculateCampaignRoi(dummyLeads, jobLookup, { actualAdSpend: 10000 });
+    expect(roi.totalAdSpend).toBe(10000);
+    expect(roi.estimatedRoasMultiplier).toBe(0.6);
+    expect(roi.estimatedRoasMultiplier).toBeLessThan(1.0);
+  });
+
+  it('does not invent fake ad spend benchmark when no ad spend is recorded', () => {
+    const roi = calculateCampaignRoi(dummyLeads, jobLookup);
+    expect(roi.totalAdSpend).toBe(0);
+    expect(roi.estimatedRoasMultiplier).toBe(0);
+
+    const roiZero = calculateCampaignRoi(dummyLeads, jobLookup, { actualAdSpend: 0 });
+    expect(roiZero.totalAdSpend).toBe(0);
+    expect(roiZero.estimatedRoasMultiplier).toBe(0);
+  });
+
+  it('ignores jobs that are not won (e.g. archived or cancelled)', () => {
+    const unwonLookup: JobFinancialLookup = {
+      'job-1': { total: 4500, isWon: false },
+      'job-2': { total: 1200, isWon: true },
+    };
+    const roi = calculateCampaignRoi(dummyLeads, unwonLookup);
+    expect(roi.totalRevenue).toBe(1200);
+    expect(roi.adAttributedRevenue).toBe(1200);
+    expect(roi.overallWinRatePct).toBe(25);
+  });
 });
 
 describe('buildCampaignUrl', () => {

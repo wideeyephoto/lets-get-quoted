@@ -6,16 +6,19 @@ import { listRebookCandidates, DEFAULT_REBOOK_DAYS } from '@/lib/rebook';
 import { countStates, needsAttention, postState, shortDate, todayKeyOf } from '@/lib/marketing-status';
 import { overviewSummary, prepareRecommendations, type Recommendation } from '@/lib/marketing-overview';
 import { buildCalendarView } from '@/lib/marketing-calendar-data';
-import { listLeads } from '@/lib/leads';
-import { listJobs } from '@/lib/jobs';
-import { calculateCampaignRoi, type JobFinancialLookup } from '@/lib/campaign-roi';
+import {
+  calculateCampaignRoi,
+  loadMarketingAttributionData,
+  type JobFinancialLookup,
+} from '@/lib/campaign-roi';
+import type { AdBudgetWalletState } from '@/lib/ad-billing-shared';
 import MarketingOverviewScreen from './MarketingOverviewScreen';
 
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'Marketing' };
 
 export default async function MarketingPage() {
-  const { supabase, accountId } = await requireOfficeContext('settings.write');
+  const { supabase, accountId } = await requireOfficeContext('marketing.read');
   const today = todayKeyOf();
 
   const [
@@ -27,9 +30,9 @@ export default async function MarketingPage() {
     { data: serviceRows },
     sentBeats,
     { data: userData },
-    leads,
-    jobs,
+    { leads, jobs },
     campaigns,
+    { count: sentCampaignsCount },
   ] = await Promise.all([
     loadRecipients(supabase, accountId),
     supabase.from('accounts').select('business_name, mailing_address, reply_to_email').eq('id', accountId).maybeSingle(),
@@ -43,18 +46,51 @@ export default async function MarketingPage() {
     supabase.from('services').select('name').eq('account_id', accountId).eq('active', true),
     loadSentBeats(supabase, accountId),
     supabase.auth.getUser(),
-    listLeads(supabase, accountId),
-    listJobs(supabase, accountId),
+    loadMarketingAttributionData(supabase, accountId),
     listCampaigns(supabase, accountId),
+    supabase
+      .from('campaigns')
+      .select('id', { count: 'exact', head: true })
+      .eq('account_id', accountId)
+      .or('email_sent.gt.0,sms_sent.gt.0'),
   ]);
 
-  const jobLookup: JobFinancialLookup = {};
-  for (const job of jobs) {
-    const isWon = job.status === 'in_progress' || job.status === 'complete' || job.status === 'archived';
-    jobLookup[job.id] = { total: Number(job.quoted_amount) || 0, isWon };
+  const adWallet = ((siteRow?.content as Record<string, unknown> | null | undefined)?.adCampaign as Partial<AdBudgetWalletState> | undefined) || {};
+  const spendThisMonthDollars = (adWallet.spendThisMonthCents ?? 0) / 100;
+
+  const now = new Date();
+  const thirtyDaysAgoIso = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString();
+  const thirtyDaysAgoKey = thirtyDaysAgoIso.slice(0, 10);
+  const currentMonthPrefix = today.slice(0, 7);
+
+  let spendLast30dDollars = spendThisMonthDollars;
+  if (Array.isArray(adWallet.dailySpendHistory) && adWallet.dailySpendHistory.length > 0) {
+    const recentSpendCents = adWallet.dailySpendHistory
+      .filter((entry) => entry.date >= thirtyDaysAgoKey)
+      .reduce((sum, entry) => sum + (entry.spendCents || 0), 0);
+    spendLast30dDollars = recentSpendCents / 100;
   }
 
-  const roiSummary = calculateCampaignRoi(leads, jobLookup);
+  const jobLookupMonth: JobFinancialLookup = {};
+  const jobLookup30d: JobFinancialLookup = {};
+
+  for (const job of jobs) {
+    const isWon = job.status === 'in_progress' || job.status === 'complete';
+    const total = Number(job.quoted_amount) || 0;
+    const createdAt = job.created_at || '';
+    if (createdAt.startsWith(currentMonthPrefix)) {
+      jobLookupMonth[job.id] = { total, isWon };
+    }
+    if (createdAt >= thirtyDaysAgoIso) {
+      jobLookup30d[job.id] = { total, isWon };
+    }
+  }
+
+  const leadsMonth = leads.filter((l) => (l.created_at || '').startsWith(currentMonthPrefix));
+  const leads30d = leads.filter((l) => (l.created_at || '') >= thirtyDaysAgoIso);
+
+  const roiSummaryMonth = calculateCampaignRoi(leadsMonth, jobLookupMonth, { actualAdSpend: spendThisMonthDollars });
+  const roiSummary30d = calculateCampaignRoi(leads30d, jobLookup30d, { actualAdSpend: spendLast30dDollars });
 
   const replyEmailReady = Boolean(
     ((accountRow?.reply_to_email as string | null) ?? '').trim() ||
@@ -122,7 +158,9 @@ export default async function MarketingPage() {
       emailTheme={{
         currentTheme: (siteRow?.email_theme as string | null) ?? null,
       }}
-      roiSummary={roiSummary}
+      roiSummary={roiSummaryMonth}
+      roiSummaryByRange={{ month: roiSummaryMonth, '30d': roiSummary30d }}
+      sentCampaignsCount={sentCampaignsCount ?? undefined}
       campaigns={campaigns}
     />
   );
