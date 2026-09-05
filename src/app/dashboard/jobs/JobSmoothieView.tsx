@@ -396,7 +396,7 @@ export default function JobSmoothieView({
                 </p>
               ) : (
                 <p style={{ margin: 0 }}>
-                  No jobs currently in <strong>{jobStageLabel(stage)}</strong>.{' '}
+                  No jobs in <strong>{jobStageLabel(stage)}</strong>.{' '}
                   <button type="button" className={styles.clearBtn} onClick={() => setStage('all')}>
                     Show all jobs
                   </button>

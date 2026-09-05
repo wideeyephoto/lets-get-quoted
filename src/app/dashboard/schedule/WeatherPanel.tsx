@@ -238,7 +238,7 @@ export default function WeatherPanel({
       });
       const res = await batchSendWeatherRescheduleSmsAction(items);
       setBatchSummary(
-        `Batch finished: ${res.sentCount} text${res.sentCount === 1 ? '' : 's'} queued successfully.${
+        `Batch finished: ${res.sentCount} text${res.sentCount === 1 ? '' : 's'} queued.${
           res.failedCount > 0 ? ` (${res.failedCount} failed)` : ''
         }`
       );

@@ -303,7 +303,7 @@ export default function GoogleReviewImport({
   function handleManualConnect() {
     const extracted = extractPlaceId(manualInputValue);
     if (!extracted) {
-      setError('Please enter a valid Google Place ID (e.g. ChIJ...) or full Google Maps review link.');
+      setError('Enter a valid Google Place ID (e.g. ChIJ...) or full Google Maps review link.');
       return;
     }
     setError(null);

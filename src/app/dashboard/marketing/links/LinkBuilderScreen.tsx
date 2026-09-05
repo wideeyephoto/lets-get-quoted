@@ -241,7 +241,7 @@ export default function LinkBuilderScreen({
       setCopiedId(idToMark);
       setTimeout(() => setCopiedId(null), 2500);
     } else {
-      setAlertMessage('Could not copy automatically. Please copy the link manually.');
+      setAlertMessage('Copy the link manually.');
     }
   };
 
@@ -300,7 +300,7 @@ export default function LinkBuilderScreen({
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      setAlertMessage('Print window was blocked by your browser. Please allow popups for this site to print signs.');
+      setAlertMessage('Print window was blocked by your browser. Allow popups for this site to print signs.');
       return;
     }
 
@@ -447,12 +447,12 @@ export default function LinkBuilderScreen({
   const handleSaveCampaign = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!isBaseUrlValid) {
-      setAlertMessage('Please provide a valid destination URL.');
+      setAlertMessage('Enter a valid destination URL.');
       return;
     }
 
     if (!name.trim()) {
-      setAlertMessage('Please enter a campaign display name.');
+      setAlertMessage('Enter a campaign display name.');
       return;
     }
 
@@ -978,7 +978,7 @@ export default function LinkBuilderScreen({
                   />
                   {!isBaseUrlValid && baseUrl.trim() && (
                     <span className={styles.errorText}>
-                      Please enter a valid website URL starting with https:// or http://
+                      Enter a valid website URL starting with https:// or http://
                     </span>
                   )}
                 </div>

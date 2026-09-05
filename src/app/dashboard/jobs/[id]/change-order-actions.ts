@@ -43,7 +43,7 @@ export async function draftChangeOrderAction(
   ]);
   if (!order || !job) return { ok: false, message: 'That change order could not be found.' };
   if (!order.fieldNote.trim()) {
-    return { ok: false, message: 'There is no note from the field to draft from. Describe what was found first.' };
+    return { ok: false, message: 'No note from the field to draft from. Describe what was found first.' };
   }
 
   const [services, { data: site }, photoLinks] = await Promise.all([

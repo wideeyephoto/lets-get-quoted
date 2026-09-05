@@ -163,7 +163,7 @@ export default function JobRequests({
               </Link>
             </>
           ) : assignableJobs.length === 0 ? (
-            <p>There are no open jobs to request cover for.</p>
+            <p>No open jobs to request cover for.</p>
           ) : (
             <Link href="/dashboard/crew/requests/new" className="btn primary">
               Create a job request

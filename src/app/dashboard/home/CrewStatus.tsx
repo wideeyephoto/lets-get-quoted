@@ -29,7 +29,7 @@ export default function CrewStatus({
       {clockedIn.length === 0 ? (
         <div style={{ padding: '0.65rem 0.85rem', background: 'var(--bg-soft)', borderRadius: '6px', border: '1px solid var(--line)' }}>
           <strong style={{ fontSize: '0.92rem', color: 'var(--text)' }}>
-            No crew currently clocked in
+            No crew clocked in
           </strong>
           <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
             {activeRosterCount} active team member{activeRosterCount === 1 ? '' : 's'} on roster.

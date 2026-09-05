@@ -460,7 +460,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       try {
         localStorage.removeItem(cartStorageKey);
       } catch {}
-      setCartToast('Order placed successfully! Direct manufacturing print run queued.');
+      setCartToast('Order placed. Direct manufacturing print run queued.');
       // Refresh order list directly from server
       getMerchandiseStudioDataAction().then((res) => {
         if (res.ok && res.data?.recentOrders) {
@@ -4280,7 +4280,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         <div
           role="dialog"
           aria-modal="true"
-          aria-label="Order Placed Successfully"
+          aria-label="Order Placed"
           style={{
             position: 'fixed',
             inset: 0,

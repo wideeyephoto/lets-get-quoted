@@ -563,7 +563,7 @@ export default function PaymentModals({
             const res = await recordManualPaymentAction(formData);
             setLoading(false);
             if (res.success) {
-              onSuccess(res.message || 'Payment recorded successfully.');
+              onSuccess(res.message || 'Payment recorded.');
               onClose();
             } else {
               setError(res.error || 'Failed to record payment.');
@@ -1277,11 +1277,11 @@ export default function PaymentModals({
           onSubmit={async (e) => {
             e.preventDefault();
             if (!planJobId) {
-              setError('Please select a job.');
+              setError('Select a job.');
               return;
             }
             if (totalNum <= 0) {
-              setError('Please enter a valid job total.');
+              setError('Enter a valid job total.');
               return;
             }
 
@@ -1627,7 +1627,7 @@ export default function PaymentModals({
           onSubmit={async (e) => {
             e.preventDefault();
             if (!batchJobId) {
-              setError('Please select a job.');
+              setError('Select a job.');
               return;
             }
             setLoading(true);
@@ -1638,7 +1638,7 @@ export default function PaymentModals({
             );
             setLoading(false);
             if (res.success) {
-              onSuccess(res.message || 'Batch settled successfully.');
+              onSuccess(res.message || 'Batch settled.');
               onClose();
             } else {
               setError(res.error || 'Failed to record batch settlement.');
@@ -2125,11 +2125,11 @@ export default function PaymentModals({
           onSubmit={async (e) => {
             e.preventDefault();
             if (!fieldJobId) {
-              setError('Please select a job.');
+              setError('Select a job.');
               return;
             }
             if (numericDue <= 0) {
-              setError('Please enter a valid amount.');
+              setError('Enter a valid amount.');
               return;
             }
             if (fieldMethod === 'Cash' && numericTendered < numericDue) {
@@ -2660,7 +2660,7 @@ export default function PaymentModals({
                   style={{ fontSize: '0.82rem' }}
                   onClick={() => {
                     if (!noiTrackingNumber) {
-                      alert('Please enter a tracking number.');
+                      alert('Enter a tracking number.');
                       return;
                     }
                     onSuccess(`Logged USPS Certified Mail Tracking #${noiTrackingNumber}`);
@@ -3733,11 +3733,11 @@ export default function PaymentModals({
                 onClick={async () => {
                   setError(null);
                   if (!terminalJobId) {
-                    setError('Please select a customer and job.');
+                    setError('Select a customer and job.');
                     return;
                   }
                   if (parsedAmount <= 0) {
-                    setError('Please enter a charge amount greater than $0.');
+                    setError('Enter a charge amount greater than $0.');
                     return;
                   }
                   setLoading(true);
@@ -3841,7 +3841,7 @@ export default function PaymentModals({
                         setTerminalPaymentStatus(confirmRes.data);
                         setTerminalStep('approved');
                       } else {
-                        setError(confirmRes.error || 'Payment not settled yet. Please try again.');
+                        setError(confirmRes.error || 'Payment not settled yet. Try again.');
                       }
                     } else {
                       setTerminalSimulating(false);

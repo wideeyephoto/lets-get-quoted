@@ -178,7 +178,7 @@ function balanceNote(balance: Extract<WorkspacePlanUsage['balances'], { kind: 'r
   if (balance.availableUnits === 0) {
     return balance.resourceCode === 'ai_intake_threads'
       ? 'The standard quote form stays available.'
-      : 'No credits are currently available.';
+      : 'No credits available.';
   }
   return 'Credits never expire.';
 }

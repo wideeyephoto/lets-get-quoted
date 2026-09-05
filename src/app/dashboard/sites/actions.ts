@@ -1409,7 +1409,7 @@ export async function suggestNearbyCitiesAction(options: {
   const { accountId } = await requireOfficeContext('settings.read');
   const base = (options.baseLocation || '').trim();
   if (!base) {
-    return { ok: false, cities: [], candidates: [], message: 'Please provide a base city or ZIP code.' };
+    return { ok: false, cities: [], candidates: [], message: 'Provide a base city or ZIP code.' };
   }
 
   const radiusMiles = options.radiusMiles && Number.isFinite(options.radiusMiles)
@@ -1527,7 +1527,7 @@ export async function testIntakeLocationAction(params: {
     return { ok: false, matched: false, locationLabel: '', message: 'Enter a city or ZIP code to test.' };
   }
   if (served.length === 0) {
-    return { ok: true, matched: false, locationLabel: query, message: 'No cities currently configured in your service area.' };
+    return { ok: true, matched: false, locationLabel: query, message: 'No cities configured in your service area.' };
   }
 
   // 1. Direct match check

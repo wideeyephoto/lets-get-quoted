@@ -172,7 +172,7 @@ export default function ReviewsScreen({
 
         {!readOnly && !publicReviewUrl ? (
           <p className={styles.notBuilt} id="no-review-link">
-            There is no review link to copy yet — link your Google Business Profile in the website
+            No review link to copy yet — link your Google Business Profile in the website
             builder and it will appear here.
           </p>
         ) : null}
@@ -307,7 +307,7 @@ export default function ReviewsScreen({
             </div>
             {trend.length === 0 ? (
               <p className="empty-state">
-                Nothing was sent in this period, so there is no trend to draw.
+                Nothing sent in this period; no trend to draw.
               </p>
             ) : (
               <>

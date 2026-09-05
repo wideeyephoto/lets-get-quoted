@@ -242,7 +242,7 @@ export default function AiReceptionistSection(props: Props) {
 
   async function handleSendCode() {
     if (!newPhoneInput.trim()) {
-      setOtpError('Please enter a valid phone number.');
+      setOtpError('Enter a valid phone number.');
       return;
     }
     setOtpState('sending');
@@ -266,7 +266,7 @@ export default function AiReceptionistSection(props: Props) {
   async function handleVerifyCode() {
     if (!verificationData || !newPhoneInput.trim()) return;
     if (otpCode.trim().length !== 6) {
-      setOtpError('Please enter the full 6-digit confirmation code.');
+      setOtpError('Enter the full 6-digit confirmation code.');
       return;
     }
     setOtpState('verifying');
@@ -1241,7 +1241,7 @@ export default function AiReceptionistSection(props: Props) {
             {save === 'saving' ? (
               <>⏳ Saving…</>
             ) : save === 'saved' ? (
-              <>✓ Saved Successfully</>
+              <>✓ Saved</>
             ) : save === 'error' ? (
               <>❌ Retry Save</>
             ) : (

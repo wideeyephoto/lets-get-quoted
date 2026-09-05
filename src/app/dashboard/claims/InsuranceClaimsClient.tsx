@@ -518,7 +518,7 @@ export default function InsuranceClaimsClient({
   // Run Scope Analysis (Preserves prior user edits and custom items across scans)
   const runScopeAnalysis = async () => {
     if (!scopeInput.trim()) {
-      pushToast('Please paste or upload adjuster scope text first.', 'error');
+      pushToast('Paste or upload adjuster scope text first.', 'error');
       return;
     }
 
@@ -561,7 +561,7 @@ export default function InsuranceClaimsClient({
         if (res.sourceNotice) {
           pushToast(res.sourceNotice, 'info');
         } else {
-          pushToast('Scope parsed successfully with AI model.', 'success');
+          pushToast('Scope parsed with AI model.', 'success');
         }
 
         // Transition status suggestion
@@ -631,7 +631,7 @@ export default function InsuranceClaimsClient({
   // Run Feasibility Evaluation (jobs.read)
   const runFeasibilityEvaluation = async () => {
     if (!damageDesc.trim()) {
-      pushToast('Please enter a brief damage description first.', 'error');
+      pushToast('Enter a brief damage description first.', 'error');
       return;
     }
 
@@ -700,7 +700,7 @@ export default function InsuranceClaimsClient({
         setClaimStatus('supplement_pending');
       }
     } catch {
-      pushToast('Unable to copy automatically. Please select text and press Ctrl+C.', 'error');
+      pushToast('Unable to copy automatically. Select text and press Ctrl+C.', 'error');
     }
   };
 
@@ -808,7 +808,7 @@ export default function InsuranceClaimsClient({
           return [summaryItem, ...prev];
         });
 
-        pushToast('Claim saved successfully!', 'success');
+        pushToast('Claim saved.', 'success');
       } else {
         pushToast(res.message, 'error');
       }

@@ -54,7 +54,7 @@ export default function NavBrandingCustomization({
         const res = await uploadContractorLogoAction(formData);
         if (res.ok && res.logoUrl) {
           setLogoUrl(res.logoUrl);
-          setUploadSuccess('Logo uploaded successfully! Your navigation has been updated.');
+          setUploadSuccess('Logo uploaded. Your navigation has been updated.');
           // Also dispatch event to notify any listeners
           window.dispatchEvent(new CustomEvent('lgq-nav-customization-change', { detail: { logoUrl: res.logoUrl } }));
         }

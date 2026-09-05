@@ -166,31 +166,31 @@ export async function createMerchandiseCheckoutAction(params: {
     const admin = createAdminClient();
 
     if (!params.items || params.items.length === 0) {
-      return { ok: false, error: 'Please select at least one merchandise item to order.' };
+      return { ok: false, error: 'Select at least one merchandise item to order.' };
     }
 
     if (!params.proofApproved) {
       return {
         ok: false,
-        error: 'Please verify and sign off on your digital proof approval checkbox before ordering.',
+        error: 'Verify and sign off on your digital proof approval checkbox before ordering.',
       };
     }
 
     const addr = params.shippingAddress;
     if (!addr.fullName?.trim() || addr.fullName.trim().length < 2) {
-      return { ok: false, error: 'Please provide a valid recipient full name.' };
+      return { ok: false, error: 'Enter a valid recipient full name.' };
     }
     if (!addr.streetAddress?.trim() || addr.streetAddress.trim().length < 3) {
-      return { ok: false, error: 'Please provide a valid street address.' };
+      return { ok: false, error: 'Enter a valid street address.' };
     }
     if (!addr.city?.trim() || addr.city.trim().length < 2) {
-      return { ok: false, error: 'Please provide a valid city.' };
+      return { ok: false, error: 'Enter a valid city.' };
     }
     if (!addr.state?.trim() || !/^[A-Za-z]{2}$/.test(addr.state.trim())) {
-      return { ok: false, error: 'Please provide a valid 2-letter US state code.' };
+      return { ok: false, error: 'Enter a valid 2-letter US state code.' };
     }
     if (!addr.postalCode?.trim() || !/^\d{5}(-\d{4})?$/.test(addr.postalCode.trim())) {
-      return { ok: false, error: 'Please provide a valid 5-digit US ZIP code.' };
+      return { ok: false, error: 'Enter a valid 5-digit US ZIP code.' };
     }
     if (!addr.phone?.trim() || addr.phone.replace(/\D/g, '').length < 10) {
       return { ok: false, error: 'Please provide a valid 10-digit telephone number.' };

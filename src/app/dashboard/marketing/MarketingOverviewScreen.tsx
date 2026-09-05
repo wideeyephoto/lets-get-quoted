@@ -497,7 +497,7 @@ export default function MarketingOverviewScreen({
             {upcoming.length === 0 ? (
               <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.08)', borderRadius: '8px', padding: '0.85rem' }}>
                 <p style={{ fontSize: '0.82rem', color: 'var(--muted)', margin: '0 0 0.5rem' }}>
-                  No posts or campaigns are currently scheduled.
+                  No posts or campaigns scheduled.
                 </p>
                 <Link href={at('/dashboard/marketing/blog')} className="btn secondary" style={{ fontSize: '0.74rem' }}>
                   Schedule a draft →

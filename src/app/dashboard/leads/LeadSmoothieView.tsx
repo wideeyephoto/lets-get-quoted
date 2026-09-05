@@ -581,7 +581,7 @@ export default function LeadSmoothieView({
                 </p>
               ) : stage !== 'open' ? (
                 <p style={{ margin: 0 }}>
-                  No leads currently in <strong>{queueStageLabel(stage)}</strong>.
+                  No leads in <strong>{queueStageLabel(stage)}</strong>.
                   {' '}
                   <button type="button" className={styles.clearBtn} onClick={() => setStage('open')}>
                     Show all open leads

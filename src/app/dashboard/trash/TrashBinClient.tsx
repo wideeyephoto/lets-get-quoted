@@ -156,7 +156,7 @@ export default function TrashBinClient({ initialItems }: TrashBinClientProps) {
           <p className="text-sm text-slate-400 max-w-md mx-auto mt-1">
             {search
               ? 'No deleted records matched your search query.'
-              : 'No records are currently pending deletion. Deleted leads, crew, services, and jobs will appear here for 30 days.'}
+              : 'No records pending deletion. Deleted leads, crew, services, and jobs will appear here for 30 days.'}
           </p>
         </div>
       ) : (

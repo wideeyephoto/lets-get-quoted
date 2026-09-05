@@ -557,7 +557,7 @@ export default function WaitlistManager({
             <div className={styles.emptyStateTitle}>No waitlist entries found</div>
             <p className={styles.emptyStateDesc}>
               {activeTab === 'active'
-                ? 'There are no active customers waiting for an earlier window.'
+                ? 'No active customers waiting for an earlier window.'
                 : 'No records matching your search criteria.'}
             </p>
             <button

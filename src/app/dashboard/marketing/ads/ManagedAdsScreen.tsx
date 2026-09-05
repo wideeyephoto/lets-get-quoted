@@ -88,7 +88,7 @@ const COMPARISON_ROWS = [
 const FAQS = [
   {
     q: 'Why do you use Weekly Drip Billing instead of a monthly invoice?',
-    a: 'Weekly drip billing lowers your initial out-of-pocket cash commitment by over 75% (starting at just $168 to get live) without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, but bill your card once every 7 days so you avoid dozens of separate daily credit card transactions.',
+    a: 'Weekly drip billing lowers your initial out-of-pocket cash commitment by over 75% (starting at $168 to get live) without starving your campaign momentum. We deploy your ad spend into Google & Meta daily, but bill your card once every 7 days so you avoid dozens of separate daily credit card transactions.',
   },
   {
     q: 'How is this different from hiring a local marketing agency?',
@@ -100,7 +100,7 @@ const FAQS = [
   },
   {
     q: 'How does the Auto-Refill Advertising Wallet option work?',
-    a: 'The Auto-Refill Wallet allows you to start with a smaller initial deposit today (e.g. $250). As your ads run on Google and Meta, clicks are deducted from your balance. Whenever your balance drops below $75, the wallet automatically triggers a $250 top-up so your campaigns stay live without interruption. You set a hard MAX Monthly Spend limit (e.g. $1,000/mo) so you are 100% guaranteed to never be charged more than your approved monthly ceiling.',
+    a: 'The Auto-Refill Wallet starts with a smaller initial deposit today (e.g. $250). As your ads run on Google and Meta, clicks are deducted from your balance. Whenever your balance drops below $75, the wallet automatically triggers a $250 top-up so your campaigns stay live without interruption. You set a hard MAX Monthly Spend limit (e.g. $1,000/mo) so you are 100% guaranteed to never be charged more than your approved monthly ceiling.',
   },
   {
     q: 'How fast will my campaigns go live after subscribing?',
@@ -120,7 +120,7 @@ const FAQS = [
   },
   {
     q: 'What is 60-Second Speed-to-Lead Auto-SMS?',
-    a: 'When an ad visitor submits a quote request, our AI instantly sends a personalized, trade-specific SMS within 60 seconds (typically under 15 seconds) to qualify the homeowner and book an appointment slot on your schedule before competitors pick up the phone.',
+    a: 'When an ad visitor submits a quote request, our AI sends a personalized, trade-specific SMS within 60 seconds (typically under 15 seconds) to qualify the homeowner and book an appointment slot on your schedule before competitors pick up the phone.',
   },
   {
     q: 'Can I customize which services or cities are targeted?',
@@ -240,7 +240,7 @@ export default function ManagedAdsScreen({
       }
     } catch {
       setSms2faStatus('idle');
-      setSms2faError('Failed to send verification text. Please check your number.');
+      setSms2faError('Failed to send verification text. Check your number.');
     }
   };
 
@@ -547,7 +547,7 @@ export default function ManagedAdsScreen({
     }
 
     if (smsAlertsEnabled && smsAlertPhone.trim() && !isPhoneVerified) {
-      alert('Please complete 2FA phone verification for your SMS billing alert number before proceeding to launch.');
+      alert('Complete 2FA phone verification for your SMS billing alert number before proceeding to launch.');
       if (sms2faStatus === 'idle') {
         void handleSend2faCode();
       }
@@ -1321,7 +1321,7 @@ export default function ManagedAdsScreen({
                   </div>
                 ) : (
                   <p style={{ fontSize: '0.78rem', color: 'var(--muted)', margin: 0, padding: '0.65rem', background: 'rgba(255, 255, 255, 0.02)', borderRadius: '6px' }}>
-                    Daily click consumption is logged in real-time as Google and Meta report search clicks.
+                    Daily click consumption is logged as Google and Meta report search clicks.
                   </p>
                 )}
               </div>
@@ -1344,7 +1344,7 @@ export default function ManagedAdsScreen({
                   <div>
                     <strong style={{ fontSize: '0.86rem', display: 'block' }}>📱 SMS Billing &amp; Refill Alerts</strong>
                     <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block', marginTop: '0.2rem' }}>
-                      Sends a text 24 hours before weekly renewals and instantly when ad wallet auto-refills occur.
+                      Sends a text 24 hours before weekly renewals and when ad wallet auto-refills occur.
                     </span>
                   </div>
                   <button
@@ -2697,7 +2697,7 @@ export default function ManagedAdsScreen({
             </span>
             <span className={styles.livePreviewPulsePill}>
               <span className={styles.livePreviewDot} />
-              <span>Real-Time Updates Active</span>
+              <span>Live Updates Active</span>
             </span>
           </div>
 

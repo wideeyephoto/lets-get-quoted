@@ -257,7 +257,7 @@ export const PRODUCT_DEEP_SPECS: Record<string, ProductDeepSpecs> = {
       { label: 'Drop Rating', value: 'MIL-STD-810G 516.6 Certified', subtext: 'Tested for 26 consecutive 12-foot drops onto solid concrete' },
       { label: 'Grip Texture', value: 'Tire-Tread Grooved Edges', subtext: 'Provides secure one-handed grip even with wet or grease-covered gloves' },
       { label: 'Charging Compatibility', value: 'Wireless Qi & MagSafe Ready', subtext: 'Charges through case without removing device' },
-      { label: 'Port Precision', value: 'Oversized Cable Cutouts', subtext: 'Accommodates bulky heavy-duty jobsite charging cables effortlessly' },
+      { label: 'Port Precision', value: 'Oversized Cable Cutouts', subtext: 'Accommodates bulky heavy-duty jobsite charging cables' },
     ],
     manufacturingLogistics: [
       { label: 'Model Customization', value: 'All Modern iPhone & Galaxy', subtext: 'Custom tooling for iPhone 16/15/14 and Galaxy S25/S24 series' },
@@ -279,10 +279,10 @@ export const PRODUCT_DEEP_SPECS: Record<string, ProductDeepSpecs> = {
       { label: 'Panel Substrate', value: '4mm Fluted Coroplast', subtext: 'High-density extruded polypropylene with vertical structural flutes' },
       { label: 'Material Density', value: '1,000 GSM Heavyweight Plastic', subtext: 'Double the density of cheap consumer promotional signs' },
       { label: 'Included Hardware', value: '9-Gauge Galvanized H-Stakes', subtext: '10" × 30" welded zinc-coated steel wire step stakes included' },
-      { label: 'Edge Treatment', value: 'Clean Guillotine Cut', subtext: 'Smooth burr-free edges that slide easily into vehicle trunks' },
+      { label: 'Edge Treatment', value: 'Clean Guillotine Cut', subtext: 'Smooth burr-free edges that fit into vehicle trunks' },
     ],
     imprintPhysics: [
-      { label: 'Print Technology', value: 'Flatbed UV-Curable Inkjet', subtext: 'High-output LED photopolymerization cures ink instantly' },
+      { label: 'Print Technology', value: 'Flatbed UV-Curable Inkjet', subtext: 'High-output LED photopolymerization cures ink during print' },
       { label: 'Print Resolution', value: '1200 × 1200 True DPI', subtext: 'Razor-sharp phone numbers and logos visible from vehicles at 35 MPH' },
       { label: 'Sides Printed', value: 'Double-Sided 360° Visibility', subtext: 'Identical high-contrast layout on both sides for two-way street traffic' },
       { label: 'Color Saturation', value: 'High-Opacity Outdoor UV Inks', subtext: 'Maximum color vibrancy that cuts through cloudy or rainy weather' },
@@ -291,7 +291,7 @@ export const PRODUCT_DEEP_SPECS: Record<string, ProductDeepSpecs> = {
       { label: 'Wind Resistance', value: 'Rated to 45+ MPH Gusts', subtext: 'Vertical fluting channels provide structural rigidity in high winds' },
       { label: 'Weather & Water', value: '100% Waterproof & Frost-Proof', subtext: 'Functions from -20°F up to 140°F without warping or delamination' },
       { label: 'Sun Fade Barrier', value: '2-Year Outdoor UV Inhibitors', subtext: 'Resists ultraviolet degradation, yellowing, and fading in full sun' },
-      { label: 'Lawn Insertion', value: 'Step-Stake Easy Installation', subtext: 'Welded crossbar allows effortless foot-pressure insertion into firm turf' },
+      { label: 'Lawn Insertion', value: 'Step-Stake Easy Installation', subtext: 'Welded crossbar allows foot-pressure insertion into firm turf' },
     ],
     manufacturingLogistics: [
       { label: 'Production Hub', value: 'Dallas, TX & Charlotte, NC', subtext: 'Direct wide-format flatbed production facilities' },

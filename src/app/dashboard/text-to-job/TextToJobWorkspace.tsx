@@ -950,7 +950,7 @@ export default function TextToJobWorkspace({
 
   function handleCopyNumber() {
     if (!isQualified) {
-      setNotification('⚠️ Please add your cell phone in Settings first to unlock your field hotline number.');
+      setNotification('⚠️ Add your cell phone in Settings first to unlock your field hotline number.');
       setTimeout(() => setNotification(null), 4000);
       return;
     }

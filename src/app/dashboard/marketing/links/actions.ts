@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import { randomBytes } from 'node:crypto';
 import { revalidatePath } from 'next/cache';
@@ -62,7 +62,7 @@ export async function saveTrackingCampaignAction(
 
   const rawDestUrl = (input.destinationUrl || '').trim();
   if (!rawDestUrl || !isValidHttpUrl(rawDestUrl)) {
-    return { success: false, error: 'Please enter a valid destination website URL (e.g. https://yourbusiness.com/estimate).' };
+    return { success: false, error: 'Enter a valid destination website URL (e.g. https://yourbusiness.com/estimate).' };
   }
 
   const campaignSlug = slugifyCampaign(input.campaign) || slugifyCampaign(name);

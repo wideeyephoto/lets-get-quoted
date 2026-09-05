@@ -160,7 +160,7 @@ export async function approveHoursAction(_prev: PayActionState, formData: FormDa
             : 'These hours are already approved and nothing has changed since.',
         );
       }
-      return FAIL('There are no hours here left to approve.');
+      return FAIL('No hours left to approve.');
     }
 
     const periodRow = await ensurePayPeriodRow(supabase, accountId, period);
@@ -464,7 +464,7 @@ export async function undoPaidAction(_prev: PayActionState, formData: FormData):
     if (!reason) return FAIL('Say why this payment status is being undone. It stays in the history.');
 
     const row = state.rows.find((candidate) => candidate.crewId === crewId);
-    if (!row || !row.record) return FAIL('There is no payment record here to undo.');
+    if (!row || !row.record) return FAIL('No payment record to undo.');
     if (row.payment !== 'paid') return FAIL(`${row.name} isn’t marked paid for this period.`);
 
     await undoPaid(supabase, accountId, row.record.id);
@@ -497,7 +497,7 @@ export async function setEntryLockAction(_prev: PayActionState, formData: FormDa
     const locked = text(formData, 'locked') === '1';
     const reason = text(formData, 'reason');
     const row = state.rows.find((candidate) => candidate.crewId === crewId);
-    if (!row?.record) return FAIL('There is nothing to lock here yet.');
+    if (!row?.record) return FAIL('Nothing to lock yet.');
     if (!locked && !reason) return FAIL('Say why this paid entry is being unlocked.');
 
     await setEntryLocked(supabase, accountId, row.record.id, locked);

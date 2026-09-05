@@ -625,7 +625,7 @@ export default function BriefCrewModal({
             </div>
           ) : (
             <div className="brief-crew-empty-roster">
-              <p>No crew members are currently registered in your roster.</p>
+              <p>No crew members registered in your roster.</p>
               <p className="subtext">
                 You can still copy or print the daily run-sheet above, or add crew members under{' '}
                 <a href="/dashboard/crew" className="link" target="_blank" rel="noreferrer">

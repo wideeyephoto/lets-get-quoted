@@ -153,7 +153,7 @@ export async function sendLeadPrivateSmsAction(
   if (!phone) return { success: false, error: 'Invalid phone number.' };
 
   const cleanBody = body.trim();
-  if (!cleanBody) return { success: false, error: 'Please enter a message.' };
+  if (!cleanBody) return { success: false, error: 'Enter a message.' };
 
   // Require dedicated sender
   try {

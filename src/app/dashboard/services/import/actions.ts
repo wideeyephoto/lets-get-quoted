@@ -50,7 +50,7 @@ export async function commitServicesImport(text: string, sources: FieldSources, 
 export async function ocrPriceBookAction(dataUrl: string): Promise<{ ok: true; csv: string; count: number } | { ok: false; error: string }> {
   await requireOwnerContext();
   if (!dataUrl || !dataUrl.startsWith('data:image/')) {
-    return { ok: false, error: 'Please select a valid image file (JPG, PNG, WebP).' };
+    return { ok: false, error: 'Select a valid image file (JPG, PNG, WebP).' };
   }
 
   const { readPriceBookOcr } = await import('@/lib/price-book-ocr');

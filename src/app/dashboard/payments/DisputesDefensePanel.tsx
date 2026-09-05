@@ -41,7 +41,7 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
             </strong>
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
               {disputedPayments.length > 0
-                ? 'Generate comprehensive audit counter-evidence packages from signed agreements, photos, and client SMS.'
+                ? 'Generate audit counter-evidence packages from signed agreements, photos, and client SMS.'
                 : 'Your merchant account has 0 chargebacks. Defense tools stand ready if a dispute is ever initiated.'}
             </p>
           </div>

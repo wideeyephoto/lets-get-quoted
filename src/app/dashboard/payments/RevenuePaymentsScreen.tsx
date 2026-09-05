@@ -133,7 +133,7 @@ export default function RevenuePaymentsScreen({
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-    handleShowToast('Payments ledger CSV exported successfully');
+    handleShowToast('Payments ledger CSV exported');
   }
 
   const failedPayments = initialPayments.filter((p) => p.status === 'failed');

@@ -47,10 +47,10 @@ export async function recordManualPaymentAction(formData: FormData): Promise<Act
 
     const amount = Number.parseFloat(amountStr);
     if (!jobId) {
-      return { success: false, error: 'Please select a job.' };
+      return { success: false, error: 'Select a job.' };
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      return { success: false, error: 'Please enter a valid amount greater than $0.' };
+      return { success: false, error: 'Enter a valid amount greater than $0.' };
     }
 
     const paymentLabel = note ? `${label} (${method} - ${note})` : `${label} (${method})`;
@@ -154,7 +154,7 @@ export async function recordBatchInvoiceSettlementAction(
     revalidatePath('/dashboard/cash-flow');
     return {
       success: true,
-      message: `Successfully settled ${settledCount} invoices for a total of $${totalSettled.toFixed(2)}.`,
+      message: `Settled ${settledCount} invoices for a total of $${totalSettled.toFixed(2)}.`,
     };
   } catch (error) {
     console.error('recordBatchInvoiceSettlementAction failed:', error);
@@ -188,7 +188,7 @@ export async function sendPaymentReminderAction(formData: FormData): Promise<Act
     }
 
     revalidatePath('/dashboard/payments');
-    return { success: true, message: 'Payment reminder sent successfully.' };
+    return { success: true, message: 'Payment reminder sent.' };
   } catch (error) {
     console.error('sendPaymentReminderAction failed:', error);
     return {
@@ -217,7 +217,7 @@ export async function sendPaymentReceiptSmsAction(paymentId: string): Promise<Ac
       return { success: false, error: smsErr instanceof Error ? smsErr.message : 'Could not dispatch receipt SMS.' };
     }
 
-    return { success: true, message: 'Payment receipt sent successfully via SMS.' };
+    return { success: true, message: 'Payment receipt sent via SMS.' };
   } catch (error) {
     console.error('sendPaymentReceiptSmsAction failed:', error);
     return {
@@ -261,7 +261,7 @@ export async function batchSendOverdueRemindersAction(_formData?: FormData): Pro
     revalidatePath('/dashboard/payments');
     return {
       success: true,
-      message: `Successfully broadcast reminders to ${sentCount} ${sentCount === 1 ? 'customer' : 'customers'}.`,
+      message: `Broadcast reminders to ${sentCount} ${sentCount === 1 ? 'customer' : 'customers'}.`,
     };
   } catch (error) {
     console.error('batchSendOverdueRemindersAction failed:', error);
@@ -296,7 +296,7 @@ export async function issueRefundAction(formData: FormData): Promise<ActionState
     revalidatePath('/dashboard/cash-flow');
     return {
       success: true,
-      message: `Successfully issued ${result.isFull ? 'full' : 'partial'} refund of $${result.amount.toFixed(2)}.`,
+      message: `Issued ${result.isFull ? 'full' : 'partial'} refund of $${result.amount.toFixed(2)}.`,
     };
   } catch (error) {
     console.error('issueRefundAction failed:', error);
@@ -322,10 +322,10 @@ export async function createInstantPayLinkAction(formData: FormData): Promise<Ac
 
     const amount = Number.parseFloat(amountStr);
     if (!jobId) {
-      return { success: false, error: 'Please select a job.' };
+      return { success: false, error: 'Select a job.' };
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      return { success: false, error: 'Please enter a valid amount greater than $0.' };
+      return { success: false, error: 'Enter a valid amount greater than $0.' };
     }
 
     const { data: payment, error: insertError } = await supabase
@@ -411,7 +411,7 @@ export async function createPaymentPlanScheduleAction(
     revalidatePath(`/dashboard/jobs/${jobId}`);
     return {
       success: true,
-      message: `Created ${milestones.length}-part payment plan successfully.`,
+      message: `Created ${milestones.length}-part payment plan.`,
     };
   } catch (error) {
     console.error('createPaymentPlanScheduleAction failed:', error);

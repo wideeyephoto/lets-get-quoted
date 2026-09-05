@@ -93,7 +93,7 @@ export async function updateBusinessBasicsAction(formData: FormData) {
   if (rawReplyTo) {
     // Basic email format validation
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawReplyTo)) {
-      throw new Error('Please enter a valid email address for customer replies.');
+      throw new Error('Enter a valid email address for customer replies.');
     }
     replyToEmail = rawReplyTo.toLowerCase().slice(0, 255);
   }

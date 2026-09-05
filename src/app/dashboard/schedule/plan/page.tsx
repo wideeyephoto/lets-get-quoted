@@ -595,7 +595,7 @@ export default async function PlanDayPage({
           <p>
             {unroutable.length > 0
               ? 'The jobs on this day have no address we could put on a map. Add a street address to each job and come back.'
-              : 'There are no active jobs scheduled for this day yet.'}
+              : 'No active jobs scheduled for this day yet.'}
           </p>
           <p className="form-actions">
             {nearestWorkDay ? (

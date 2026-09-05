@@ -187,7 +187,7 @@ export async function verifyOwnerPhoneVerificationCodeAction(
   }
   const cleanCode = code.trim().replace(/\D/g, '');
   if (cleanCode.length !== 6) {
-    return { status: 'error', message: 'Please enter the full 6-digit confirmation code.' };
+    return { status: 'error', message: 'Enter the full 6-digit confirmation code.' };
   }
 
   try {

@@ -154,7 +154,7 @@ describe('every control is either real or visibly disabled with a reason', () =>
   it('copy review link is disabled with copy when there is no link to copy', () => {
     expect(SCREEN).toContain('aria-describedby="no-review-link"');
     expect(SCREEN).toMatch(/id="no-review-link"/);
-    expect(SCREEN).toMatch(/no review link to copy yet/);
+    expect(SCREEN).toMatch(/no review link to copy yet/i);
   });
 
   it('the three live actions exist and each re-derives the account', () => {

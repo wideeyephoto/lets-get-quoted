@@ -80,7 +80,7 @@ export default function ComposeMessage({
           </label>
         ) : (
           <p className="cash-bill-note" role="status">
-            No contacts currently have recorded SMS consent. Capture consent through the customer workflow,
+            No contacts have recorded SMS consent. Capture consent through the customer workflow,
             or have the customer send your business a message. If they previously opted out, they must text
             START before you can reply.
           </p>

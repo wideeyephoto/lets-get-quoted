@@ -66,7 +66,7 @@ export default function FailedPaymentsRecoveryPanel({
             <p style={{ margin: '0.2rem 0 0', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
               {failedPayments.length > 0
                 ? 'Smart dunning automations retry cards and text customers a secure portal to update payment methods.'
-                : 'All scheduled subscription milestones and charges have cleared successfully.'}
+                : 'All scheduled subscription milestones and charges have cleared.'}
             </p>
           </div>
         </div>
