@@ -89,17 +89,29 @@ export type LeadViewItem = {
   campaignName?: string | null;
 };
 
-export type ChannelFilter = 'all' | 'google' | 'meta' | 'tiktok' | 'local' | 'print_qr' | 'promo' | 'direct';
+export type ChannelFilter =
+  | 'all'
+  | 'google'
+  | 'meta'
+  | 'tiktok'
+  | 'local'
+  | 'print_qr'
+  | 'email_sms'
+  | 'promo'
+  | 'organic_search'
+  | 'direct';
 
 export const CHANNEL_FILTER_OPTIONS: { id: ChannelFilter; label: string }[] = [
   { id: 'all', label: 'All sources' },
-  { id: 'google', label: '🎯 Google Ads' },
+  { id: 'google', label: '🎯 Google Ads & LSA' },
   { id: 'meta', label: '📱 Meta / Instagram' },
   { id: 'tiktok', label: '🎵 TikTok Ads' },
-  { id: 'local', label: '🏡 Nextdoor & Local' },
-  { id: 'print_qr', label: '🪧 Print & QR Signs' },
+  { id: 'local', label: '🏡 Local & Referrals' },
+  { id: 'print_qr', label: '🪧 Yard Signs & QR' },
+  { id: 'email_sms', label: '✉️ Email & Text' },
   { id: 'promo', label: '🏷️ Website Promos' },
-  { id: 'direct', label: '🌐 Direct / Organic' },
+  { id: 'organic_search', label: '✍️ Organic Search & Blog' },
+  { id: 'direct', label: '📞 Direct / Phone-Ins' },
 ];
 
 // Three layouts with distinct jobs. The legacy Focus, Split and Priority views
@@ -157,6 +169,7 @@ export default function LeadsWorkspace({
   basePath = '/dashboard',
   readOnly = false,
   ownerControls = true,
+  initialChannelFilter,
 }: {
   headingTitle?: string;
   headingTag?: 'h1' | 'h2';
@@ -196,6 +209,8 @@ export default function LeadsWorkspace({
    * control certain to fail is worse than a control that is absent.
    */
   ownerControls?: boolean;
+  /** Initial acquisition channel filter, e.g. from marketing performance drill-through */
+  initialChannelFilter?: ChannelFilter;
 }) {
   const [view, setView] = useState<LeadsView>(initialView);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
@@ -232,7 +247,7 @@ export default function LeadsWorkspace({
   const [localMapTheme, setLocalMapTheme] = useState<MapTheme>(mapTheme);
   const effectiveMapTheme = readOnly ? localMapTheme : mapTheme;
 
-  const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
+  const [channelFilter, setChannelFilter] = useState<ChannelFilter>(initialChannelFilter ?? 'all');
 
   const filteredLeads = useMemo(() => {
     if (channelFilter === 'all') return leads;

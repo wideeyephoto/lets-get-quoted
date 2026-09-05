@@ -10,7 +10,9 @@ export type AttributionChannelId =
   | 'tiktok'
   | 'local'
   | 'print_qr'
+  | 'email_sms'
   | 'promo'
+  | 'organic_search'
   | 'direct';
 
 export type ChannelRoiSummary = {
@@ -26,6 +28,7 @@ export type ChannelRoiSummary = {
   totalRevenue: number;
   avgTicket: number;
   topCampaign: string | null;
+  defaultSetupHref?: string;
 };
 
 export type CampaignBreakdown = {
@@ -43,11 +46,16 @@ export type OverallRoiSummary = {
   totalLeads: number;
   adAttributedLeads: number;
   adAttributedPct: number;
+  totalQuotedCount: number;
+  adQuotedCount: number;
+  totalWonCount: number;
+  adWonCount: number;
   totalRevenue: number;
   adAttributedRevenue: number;
   overallWinRatePct: number;
   adWinRatePct: number;
   overallAvgTicket: number;
+  adAvgTicket: number;
   totalAdSpend: number;
   estimatedRoasMultiplier: number;
   channels: ChannelRoiSummary[];
@@ -58,30 +66,96 @@ export type JobFinancialLookup = Record<string, { total: number; isWon: boolean 
 
 export const CHANNEL_DEFINITIONS: Record<
   AttributionChannelId,
-  { name: string; icon: string; isPaid: boolean }
+  { name: string; icon: string; isPaid: boolean; defaultSetupHref: string }
 > = {
-  google: { name: 'Google Ads & Search', icon: '🎯', isPaid: true },
-  meta: { name: 'Meta (Facebook & Instagram)', icon: '📱', isPaid: true },
-  tiktok: { name: 'TikTok Ads', icon: '🎵', isPaid: true },
-  local: { name: 'Local & Referrals (Nextdoor/Yelp)', icon: '🏡', isPaid: false },
-  print_qr: { name: 'Print & Offline QR Collateral', icon: '🪧', isPaid: false },
-  promo: { name: 'Intra-Site Promos & Offers', icon: '🏷️', isPaid: false },
-  direct: { name: 'Direct & Organic Website', icon: '🌐', isPaid: false },
+  google: { name: 'Google Ads & Local Services', icon: '🎯', isPaid: true, defaultSetupHref: '/dashboard/marketing/ads' },
+  meta: { name: 'Meta / Instagram Ads', icon: '📱', isPaid: true, defaultSetupHref: '/dashboard/marketing/ads' },
+  tiktok: { name: 'TikTok Ads', icon: '🎵', isPaid: true, defaultSetupHref: '/dashboard/marketing/links' },
+  local: { name: 'Local & Referrals (Nextdoor/Yelp/Angi)', icon: '🏡', isPaid: false, defaultSetupHref: '/dashboard/marketing/links' },
+  print_qr: { name: 'Yard Signs & Offline QR', icon: '🪧', isPaid: false, defaultSetupHref: '/dashboard/marketing/links' },
+  email_sms: { name: 'Email & Text Campaigns', icon: '✉️', isPaid: false, defaultSetupHref: '/dashboard/marketing/campaigns' },
+  promo: { name: 'On-Site Promos & Banners', icon: '🏷️', isPaid: false, defaultSetupHref: '/dashboard/marketing/links' },
+  organic_search: { name: 'Organic Search & Blog SEO', icon: '✍️', isPaid: false, defaultSetupHref: '/dashboard/marketing/blog' },
+  direct: { name: 'Direct, Phone & Walk-Ins', icon: '📞', isPaid: false, defaultSetupHref: '/dashboard/leads' },
 };
 
 /**
- * Categorize a lead into a standardized acquisition channel based on its attribution metadata.
+ * Categorize a lead into a standardized acquisition channel based on its attribution metadata and CRM source.
  */
-export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionChannelId {
-  if (!attr) return 'direct';
+export function classifyLeadChannel(
+  attr?: LeadAttribution | null,
+  leadSource?: string | null,
+): AttributionChannelId {
+  const normalizedLeadSource = (leadSource || '').toLowerCase().trim();
 
-  const source = (attr.source || '').toLowerCase();
-  const medium = (attr.medium || '').toLowerCase();
-  const clickIdType = (attr.clickIdType || '').toLowerCase();
-
-  if (clickIdType === 'gclid' || source === 'google' || source === 'adwords' || source === 'google_ads') {
+  // 1. Direct CRM lead source overrides
+  if (normalizedLeadSource === 'google_lsa') {
     return 'google';
   }
+  if (normalizedLeadSource === 'meta_lead_ads') {
+    return 'meta';
+  }
+  if (
+    normalizedLeadSource === 'angi' ||
+    normalizedLeadSource === 'thumbtack' ||
+    normalizedLeadSource === 'marketplace' ||
+    normalizedLeadSource === 'referral'
+  ) {
+    return 'local';
+  }
+  if (
+    normalizedLeadSource === 'missed_call' ||
+    normalizedLeadSource === 'ai_voice' ||
+    normalizedLeadSource === 'manual'
+  ) {
+    return 'direct';
+  }
+
+  if (!attr) return 'direct';
+
+  const source = (attr.source || '').toLowerCase().trim();
+  const medium = (attr.medium || '').toLowerCase().trim();
+  const clickIdType = (attr.clickIdType || '').toLowerCase().trim();
+
+  // 2. Offline Print & QR Collateral
+  if (
+    medium.includes('qr') ||
+    medium.includes('print') ||
+    source.includes('yard_sign') ||
+    source.includes('truck') ||
+    source.includes('door_hanger') ||
+    source.includes('flyer')
+  ) {
+    return 'print_qr';
+  }
+
+  // 3. Email & SMS broadcast campaigns
+  if (
+    medium === 'email' ||
+    medium === 'sms' ||
+    medium === 'broadcast' ||
+    source === 'email' ||
+    source === 'sms' ||
+    source === 'campaign' ||
+    source === 'newsletter'
+  ) {
+    return 'email_sms';
+  }
+
+  // 4. Google Local Services Ads & Google Search Ads
+  if (
+    clickIdType === 'gclid' ||
+    clickIdType === 'gbraid' ||
+    clickIdType === 'wbraid' ||
+    source === 'adwords' ||
+    source === 'google_ads' ||
+    source === 'google_lsa' ||
+    source === 'google_local_services'
+  ) {
+    return 'google';
+  }
+
+  // 5. Meta (Facebook / Instagram Ads & Organic Social)
   if (
     clickIdType === 'fbclid' ||
     source === 'facebook' ||
@@ -94,19 +168,29 @@ export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionC
   ) {
     return 'meta';
   }
+
+  // 6. TikTok Ads
   if (clickIdType === 'ttclid' || source === 'tiktok' || medium.includes('tiktok')) {
     return 'tiktok';
   }
+
+  // 7. Organic Search & Blog SEO (must precede generic google/bing checks)
   if (
-    medium.includes('qr') ||
-    medium.includes('print') ||
-    source.includes('yard_sign') ||
-    source.includes('truck') ||
-    source.includes('door_hanger') ||
-    source.includes('flyer')
+    medium === 'organic' ||
+    source === 'seo' ||
+    source === 'blog' ||
+    (source === 'google' && medium === 'organic') ||
+    (source === 'bing' && medium === 'organic')
   ) {
-    return 'print_qr';
+    return 'organic_search';
   }
+
+  // 8. Google source without explicit organic medium (e.g. cpc, search ad)
+  if (source === 'google') {
+    return 'google';
+  }
+
+  // 9. Local Aggregators & Home Improvement Directories
   if (
     source === 'nextdoor' ||
     source === 'yelp' ||
@@ -120,14 +204,18 @@ export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionC
   ) {
     return 'local';
   }
-  if (attr.campaign && (medium === 'onsite' || medium === 'promo' || !attr.source)) {
+
+  // 10. On-Site Promos & Header Banners
+  if ((attr as { promo?: string }).promo || (attr.campaign && (medium === 'onsite' || medium === 'promo' || !attr.source))) {
     return 'promo';
   }
 
+  // 11. Generic Paid Clicks (unclassified paid traffic defaults to Meta)
   if (Boolean(attr.clickId) || medium === 'cpc' || medium === 'paid_social' || medium === 'paid_video') {
-    return 'meta'; // Default paid to meta if unclassified
+    return 'meta';
   }
 
+  // 12. External Referrers
   if (attr.source || attr.referrer) {
     return 'local';
   }
@@ -137,6 +225,7 @@ export function classifyLeadChannel(attr?: LeadAttribution | null): AttributionC
 
 export type MarketingAttributionLead = {
   id: string;
+  source?: string | null;
   status: string;
   triage?: unknown;
   converted_job?: string | null;
@@ -178,7 +267,9 @@ export function calculateCampaignRoi(
     tiktok: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
     local: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
     print_qr: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
+    email_sms: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
     promo: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
+    organic_search: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
     direct: { leadsCount: 0, contactedCount: 0, quotedCount: 0, wonCount: 0, totalRevenue: 0, campaignCounts: {} },
   };
 
@@ -189,24 +280,24 @@ export function calculateCampaignRoi(
 
   let totalWonCount = 0;
   let totalRevenue = 0;
+  let totalQuotedCount = 0;
   let adLeadsCount = 0;
   let adWonCount = 0;
   let adRevenue = 0;
+  let adQuotedCount = 0;
 
   for (const lead of leads) {
     const triage = lead.triage && typeof lead.triage === 'object'
       ? (lead.triage as { attribution?: LeadAttribution | null; estimate?: { max?: number } | null })
       : null;
     const attr = triage?.attribution ?? null;
-    const channelId = classifyLeadChannel(attr);
+    const leadSource = (lead as { source?: string | null }).source ?? null;
+    const channelId = classifyLeadChannel(attr, leadSource);
     const medium = attr?.medium?.toLowerCase().trim() || '';
     const isPaid = CHANNEL_DEFINITIONS[channelId].isPaid || Boolean(attr?.clickId || medium === 'cpc' || medium === 'paid_social' || medium === 'paid_video');
 
     const stats = channelStats[channelId];
     stats.leadsCount += 1;
-
-    if (lead.status === 'contacted') stats.contactedCount += 1;
-    if (lead.status === 'quoted') stats.quotedCount += 1;
 
     let leadRevenue = 0;
     let isWon = false;
@@ -217,9 +308,19 @@ export function calculateCampaignRoi(
       leadRevenue = isWon ? (job.total || 0) : 0;
     } else if (lead.status === 'won') {
       isWon = true;
-      if (triage?.estimate?.max) {
-        leadRevenue = triage.estimate.max;
-      }
+      // Do not count estimate ceilings or speculative max estimates in closed revenue.
+      // Verified ledger amount requires a converted or signed job.
+      leadRevenue = 0;
+    }
+
+    const isContacted = lead.status === 'contacted' || lead.status === 'quoted' || isWon || Boolean(lead.converted_job);
+    if (isContacted) stats.contactedCount += 1;
+
+    const isQuoted = lead.status === 'quoted' || isWon || Boolean(lead.converted_job);
+    if (isQuoted) {
+      stats.quotedCount += 1;
+      totalQuotedCount += 1;
+      if (isPaid) adQuotedCount += 1;
     }
 
     if (isWon) {
@@ -294,6 +395,7 @@ export function calculateCampaignRoi(
         totalRevenue: data.totalRevenue,
         avgTicket,
         topCampaign,
+        defaultSetupHref: def.defaultSetupHref,
       };
     })
     .filter((c) => c.leadsCount > 0 || c.isPaid); // Keep active channels or core paid channels
@@ -315,6 +417,7 @@ export function calculateCampaignRoi(
   const overallWinRatePct = totalLeads > 0 ? Math.round((totalWonCount / totalLeads) * 100) : 0;
   const adWinRatePct = adLeadsCount > 0 ? Math.round((adWonCount / adLeadsCount) * 100) : 0;
   const overallAvgTicket = totalWonCount > 0 ? Math.round(totalRevenue / totalWonCount) : 0;
+  const adAvgTicket = adWonCount > 0 ? Math.round(adRevenue / adWonCount) : 0;
   const adAttributedPct = totalLeads > 0 ? Math.round((adLeadsCount / totalLeads) * 100) : 0;
 
   // Ground ad spend in actual wallet spend (options.actualAdSpend).
@@ -326,11 +429,16 @@ export function calculateCampaignRoi(
     totalLeads,
     adAttributedLeads: adLeadsCount,
     adAttributedPct,
+    totalQuotedCount,
+    adQuotedCount,
+    totalWonCount,
+    adWonCount,
     totalRevenue,
     adAttributedRevenue: adRevenue,
     overallWinRatePct,
     adWinRatePct,
     overallAvgTicket,
+    adAvgTicket,
     totalAdSpend,
     estimatedRoasMultiplier,
     channels,
@@ -469,11 +577,50 @@ export type BuildCampaignUrlOptions = {
 };
 
 /**
+ * Normalizes a campaign name into a clean, lowercased, URL-safe slug.
+ * e.g. "Spring Yard Signs 2026" -> "spring_yard_signs_2026"
+ */
+export function slugifyCampaign(name: string): string {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^[_-]+|[_-]+$/g, '');
+}
+
+/**
+ * Validates whether an input string is a valid HTTP/HTTPS URL with a hostname.
+ */
+export function isValidHttpUrl(str: string): boolean {
+  if (!str || typeof str !== 'string') return false;
+  const trimmed = str.trim();
+  if (!trimmed) return false;
+  if (/^(javascript|data|vbscript|file):/i.test(trimmed)) return false;
+  let candidate = trimmed;
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+  try {
+    const parsed = new URL(candidate);
+    return Boolean(
+      (parsed.protocol === 'http:' || parsed.protocol === 'https:') &&
+      parsed.hostname &&
+      parsed.hostname.includes('.') &&
+      !/\s/.test(parsed.hostname)
+    );
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Builds a clean, correctly encoded marketing URL with UTM parameters or promo tag.
+ * Returns empty string if base URL is invalid or malformed.
  */
 export function buildCampaignUrl(options: BuildCampaignUrlOptions): string {
   const rawBase = (options.baseUrl || '').trim();
-  if (!rawBase) return '';
+  if (!rawBase || /^(javascript|data|vbscript|file):/i.test(rawBase)) return '';
 
   let urlStr = rawBase;
   if (!/^https?:\/\//i.test(urlStr)) {
@@ -482,25 +629,31 @@ export function buildCampaignUrl(options: BuildCampaignUrlOptions): string {
 
   try {
     const url = new URL(urlStr);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+      return '';
+    }
 
     if (options.source?.trim()) url.searchParams.set('utm_source', options.source.trim());
     if (options.medium?.trim()) url.searchParams.set('utm_medium', options.medium.trim());
-    if (options.campaign?.trim()) url.searchParams.set('utm_campaign', options.campaign.trim());
+    if (options.campaign?.trim()) {
+      const normalized = slugifyCampaign(options.campaign) || options.campaign.trim();
+      url.searchParams.set('utm_campaign', normalized);
+    }
     if (options.content?.trim()) url.searchParams.set('utm_content', options.content.trim());
     if (options.term?.trim()) url.searchParams.set('utm_term', options.term.trim());
     if (options.promo?.trim()) url.searchParams.set('promo', options.promo.trim());
 
     return url.toString();
   } catch {
-    return rawBase;
+    return '';
   }
 }
 
 /**
  * Generates an SVG QR code for any campaign URL using our lightweight crisp-matrix generator.
  */
-export function buildCampaignQrSvg(url: string, size = 200): string {
-  return generateQrSvg(url, size);
+export function buildCampaignQrSvg(url: string, size = 200, title?: string): string {
+  return generateQrSvg(url, size, { title: title || 'Campaign QR Code' });
 }
 
 /**
@@ -521,7 +674,7 @@ export async function loadMarketingAttributionData(
   let leadsQuery = applyTestRecordFilter(
     supabase
       .from('leads')
-      .select('id, status, triage, converted_job, created_at')
+      .select('id, source, status, triage, converted_job, created_at')
       .eq('account_id', accountId)
       .is('deleted_at', null)
       .order('created_at', { ascending: false }),
@@ -554,4 +707,105 @@ export async function loadMarketingAttributionData(
 
   return { leads, jobs };
 }
+
+export type CampaignMetrics = {
+  visits: number;
+  leads: number;
+  wonJobs: number;
+  revenue: number;
+  adSpend: number;
+  roas: number;
+};
+
+export type TargetCampaignInfo = {
+  id: string;
+  name: string;
+  campaign: string;
+  shortCode?: string;
+  content?: string;
+  scanCount?: number;
+  adSpend?: number;
+};
+
+/**
+ * Aggregates lead attribution and won job outcomes for individual tracking campaigns.
+ */
+export function aggregateCampaignAttribution(
+  campaigns: TargetCampaignInfo[],
+  leads: MarketingAttributionLead[],
+  jobLookup: JobFinancialLookup
+): Record<string, CampaignMetrics> {
+  const result: Record<string, CampaignMetrics> = {};
+
+  for (const camp of campaigns) {
+    result[camp.id] = {
+      visits: camp.scanCount || 0,
+      leads: 0,
+      wonJobs: 0,
+      revenue: 0,
+      adSpend: camp.adSpend || 0,
+      roas: 0,
+    };
+  }
+
+  const campLookup = campaigns.map((c) => ({
+    id: c.id,
+    slug: slugifyCampaign(c.campaign),
+    nameSlug: slugifyCampaign(c.name),
+    shortCode: (c.shortCode || '').toLowerCase().trim(),
+    content: (c.content || '').toLowerCase().trim(),
+  }));
+
+  for (const lead of leads) {
+    const triage = lead.triage && typeof lead.triage === 'object'
+      ? (lead.triage as { attribution?: LeadAttribution | null; estimate?: { max?: number } | null })
+      : null;
+    const attr = triage?.attribution;
+    if (!attr) continue;
+
+    const leadCampSlug = slugifyCampaign(attr.campaign || '');
+    const leadContent = (attr.content || '').toLowerCase().trim();
+    const leadLanding = (attr.landingPage || '').toLowerCase();
+
+    const matched = campLookup.find((c) => {
+      if (c.slug && leadCampSlug && (c.slug === leadCampSlug || leadCampSlug.includes(c.slug))) return true;
+      if (c.nameSlug && leadCampSlug && (c.nameSlug === leadCampSlug || leadCampSlug.includes(c.nameSlug))) return true;
+      if (c.shortCode && leadLanding.includes(`/r/${c.shortCode}`)) return true;
+      if (c.content && leadContent && c.content === leadContent) return true;
+      return false;
+    });
+
+    if (matched) {
+      const stats = result[matched.id];
+      if (!stats) continue;
+
+      stats.leads += 1;
+
+      let leadRevenue = 0;
+      let isWon = false;
+
+      if (lead.converted_job && jobLookup[lead.converted_job]) {
+        const job = jobLookup[lead.converted_job];
+        isWon = Boolean(job.isWon);
+        leadRevenue = isWon ? (job.total || 0) : 0;
+      } else if (lead.status === 'won') {
+        isWon = true;
+        leadRevenue = triage?.estimate?.max || 0;
+      }
+
+      if (isWon) {
+        stats.wonJobs += 1;
+        stats.revenue += leadRevenue;
+      }
+    }
+  }
+
+  for (const id of Object.keys(result)) {
+    const m = result[id];
+    m.roas = m.adSpend > 0 ? Number((m.revenue / m.adSpend).toFixed(1)) : 0;
+  }
+
+  return result;
+}
+
 

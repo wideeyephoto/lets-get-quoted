@@ -23,7 +23,7 @@ import styles from './leads.module.css';
 export const metadata = { title: 'Leads' };
 
 
-export default async function LeadsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ add?: string }> }) {
+export default async function LeadsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ add?: string; channel?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   // Reading the board is leads.read. Every write it offers asks for itself.
   const { supabase, accountId, role } = await requireOfficeContext('leads.read');
@@ -204,6 +204,7 @@ export default async function LeadsPage({ searchParams: searchParamsPromise }: {
               mapTheme={mapTheme}
               mapPins={mapPins}
               ownerControls={role === 'owner'}
+              initialChannelFilter={searchParams.channel as import('./LeadsWorkspace').ChannelFilter | undefined}
             />
           </WorkspaceTradeProvider>
         )}

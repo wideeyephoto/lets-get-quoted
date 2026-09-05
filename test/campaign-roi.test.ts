@@ -39,6 +39,23 @@ describe('classifyLeadChannel', () => {
     expect(classifyLeadChannel(null)).toBe('direct');
     expect(classifyLeadChannel(undefined)).toBe('direct');
   });
+
+  it('identifies Google Local Services Ads as google channel', () => {
+    expect(classifyLeadChannel({ source: 'google_local_services', medium: 'paid' })).toBe('google');
+    expect(classifyLeadChannel({ source: 'google_lsa' })).toBe('google');
+    expect(classifyLeadChannel(null, 'google_lsa')).toBe('google');
+  });
+
+  it('identifies organic search vs paid search', () => {
+    expect(classifyLeadChannel({ source: 'google', medium: 'organic' })).toBe('organic_search');
+    expect(classifyLeadChannel({ source: 'bing', medium: 'organic' })).toBe('organic_search');
+    expect(classifyLeadChannel({ source: 'seo' })).toBe('organic_search');
+  });
+
+  it('identifies email and text campaigns', () => {
+    expect(classifyLeadChannel({ source: 'campaign', medium: 'sms' })).toBe('email_sms');
+    expect(classifyLeadChannel({ source: 'newsletter', medium: 'email' })).toBe('email_sms');
+  });
 });
 
 describe('calculateCampaignRoi', () => {
@@ -249,6 +266,55 @@ describe('calculateCampaignRoi', () => {
     expect(roi.totalRevenue).toBe(1200);
     expect(roi.adAttributedRevenue).toBe(1200);
     expect(roi.overallWinRatePct).toBe(25);
+  });
+
+  it('accurately tracks quote counts across won and quoted leads', () => {
+    const roi = calculateCampaignRoi(dummyLeads, jobLookup);
+    // lead-1 is won (job-1), lead-3 is won (job-2) -> 2 quotes
+    expect(roi.totalQuotedCount).toBe(2);
+    expect(roi.adQuotedCount).toBe(2);
+  });
+
+  it('does not book triage.estimate.max into closed revenue when won lead has no converted job', () => {
+    const leadWonNoJob: Lead[] = [
+      {
+        id: 'lead-unconverted-won',
+        account_id: 'acc-1',
+        source: 'website_form',
+        status: 'won',
+        name: 'Eve',
+        phone: '555-5555',
+        email: 'eve@example.com',
+        address: '500 Main St',
+        project_type: 'Roof repair',
+        estimated_hours: null,
+        message: '',
+        photo_paths: [],
+        source_page: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        quote_visit: null,
+        client_id: null,
+        lat: null,
+        lng: null,
+        geocoded_at: null,
+        converted_job: null,
+        triage: {
+          score: 'hot',
+          flags: [],
+          estimate: { min: 1000, max: 8000 },
+          attribution: {
+            source: 'google',
+            medium: 'cpc',
+          },
+        },
+      },
+    ];
+
+    const roi = calculateCampaignRoi(leadWonNoJob, {});
+    expect(roi.totalWonCount).toBe(1);
+    expect(roi.totalRevenue).toBe(0); // Never books $8,000 estimate max!
+    expect(roi.adAttributedRevenue).toBe(0);
   });
 });
 
