@@ -99,7 +99,8 @@ describe('20 Advanced Platform Features Suite', () => {
       projectType: 'roof repair',
     });
     expect(result.bridgeId).toBeDefined();
-    expect(result.status).toBe('initiated');
+    expect(result.status).toBe('failed');
+    expect(result.contractorDialStatus).toBe('not_configured');
   });
 
   // 2. Google Ads Offline Conversions

@@ -311,36 +311,34 @@ describe('the failure posture: answer the call', () => {
     ]]);
   });
 
-  it('answers anyway when the ledger throws', async () => {
-    // A receptionist that fails closed sends every caller to voicemail during an
-    // outage, for a product sold as "your phone keeps working". The exposure is
-    // bounded by the cap and recoverable, because the receipt still arrives.
+  it('uses fallback when the ledger throws', async () => {
+    // Enforced mode cannot admit AI cost without a confirmed reservation.
     setRpc('reserve_usage_credits', new Error('connection reset'));
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
-      .toMatchObject({ outcome: 'admitted_unmetered', reason: 'ledger_unavailable' });
+      .toMatchObject({ outcome: 'refused', reason: 'admission_unavailable' });
   });
 
-  it('answers anyway on an error that is not a definite shortfall', async () => {
+  it('uses fallback on an error that is not a definite shortfall', async () => {
     setRpc('reserve_usage_credits', {
       data: null, error: { code: '57014', message: 'canceling statement' },
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
-      .toMatchObject({ outcome: 'admitted_unmetered', reason: 'ledger_unavailable' });
+      .toMatchObject({ outcome: 'refused', reason: 'admission_unavailable' });
   });
 
-  it('answers anyway when the reservation id comes back unusable', async () => {
+  it('uses fallback when the reservation id comes back unusable', async () => {
     for (const data of [null, '', 42, {}]) {
       setRpc('reserve_usage_credits', { data, error: null });
       expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
-        .toMatchObject({ outcome: 'admitted_unmetered', reason: 'ledger_unavailable' });
+        .toMatchObject({ outcome: 'refused', reason: 'admission_unavailable' });
     }
   });
 
-  it('still records the admission when it could not meter', async () => {
+  it('still records measurement-mode admission when it could not meter', async () => {
     // The receipt for THIS call still has to be attributable to a workspace, or
     // it arrives looking exactly like a forgery.
     setRpc('reserve_usage_credits', new Error('down'));
-    await admitVoiceCall(admin, input, { mode: 'enforce' });
+    await admitVoiceCall(admin, input, { mode: 'measure' });
     expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission', expect.objectContaining({
       p_provider_call_id: CALL, p_reservation_id: null, p_reserved_minutes: 0,
     }));

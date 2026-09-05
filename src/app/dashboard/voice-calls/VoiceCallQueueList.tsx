@@ -378,9 +378,10 @@ export default function VoiceCallQueueList({
               <div className={styles.cardFooter}>
                 <div className={styles.footerLeft}>
                   <span>Duration: {formatCallLength(call.aiSeconds)}</span>
-                  {call.billedMinutes !== null ? (
-                    <span>({call.billedMinutes} min billed)</span>
+                  {['allowance', 'overage'].includes(call.settlement) && call.billedMinutes !== null ? (
+                    <span>({call.billedMinutes} AI min billed)</span>
                   ) : null}
+                  {typeof call.forwardingSeconds === 'number' ? <span>{call.forwardingSeconds}s forwarded</span> : null}
                   {call.recordingStatus === 'ready' ? (
                     <span className={styles.audioReadyPill}>
                       <span aria-hidden="true">🎙️</span> Audio Ready

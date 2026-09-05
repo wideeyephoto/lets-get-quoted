@@ -25,19 +25,9 @@ import {
  * while the call is still running: two concurrent calls cannot each believe the
  * last minute is theirs.
  *
- * WHY IT FAILS OPEN, WHERE AI WRITING FAILS CLOSED. When the ledger cannot
- * answer, this admits the call unmetered and says so.
- *
- * A draft that fails closed costs somebody a retry. A receptionist that fails
- * closed sends every caller to voicemail during the outage — for a product whose
- * whole promise is "your phone keeps working when you can't answer", bought for
- * $55–69 a month. And the exposure from failing open is bounded and recoverable
- * in a way the other meters' is not: bounded, because a call cannot exceed the
- * 60-minute cap and concurrency is capped per plan; recoverable, because the
- * receipt still arrives, so an unmetered admission can be reconciled afterwards
- * from evidence rather than guessed at. Text credits fail open for a different
- * reason and AI writing fails closed for a third; the disagreement is why these
- * are still four files.
+ * Enforced mode requires a confirmed allowance or overage reservation. Ledger
+ * outages use the configured forwarding/voicemail fallback. Measurement mode
+ * can admit without a reservation; those calls remain explicitly unmetered.
  *
  * An exhausted allowance is NOT uncertainty. That refuses — and refusing here
  * means the caller follows the contractor's own forwarding or voicemail rule,
@@ -242,6 +232,10 @@ export async function admitVoiceCall(
     reservationId = result.data;
     reserveError = result.error;
   } catch {
+    if (mode === 'enforce') {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
@@ -305,6 +299,10 @@ export async function admitVoiceCall(
       return Object.freeze({ outcome: 'refused' as const, reason: 'no_allowance' as const });
     }
     console.error('voice minute reservation failed:', reserveError);
+    if (mode === 'enforce') {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
@@ -315,6 +313,10 @@ export async function admitVoiceCall(
   }
 
   if (typeof reservationId !== 'string' || !reservationId) {
+    if (mode === 'enforce') {
+      await releaseAdmissionClaim(admin, slot.admissionId, input);
+      return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+    }
     if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });

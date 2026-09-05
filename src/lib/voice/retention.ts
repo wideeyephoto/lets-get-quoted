@@ -3,7 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
-import { signalWireVoiceScope } from '@/lib/voice/auth';
+import { isSignalWireHostname } from '@/lib/sms-provider';
 
 export const VOICE_RETENTION_BATCH_SIZE = 500;
 export const VOICE_RETENTION_MAX_BATCHES = 50;
@@ -81,13 +81,30 @@ export async function runVoiceRetentionBatch(
     batches += 1;
   }
 
+  const { error: orphanError } = await admin.rpc('queue_expired_voice_recording_observations');
+  if (orphanError) throw new Error('Expired recording observation cleanup failed');
+  const { data: deletions, error: deletionError, count: deletionCount } = await admin.from('voice_recording_deletions')
+    .select('id, storage_path', { count: 'exact' }).order('created_at').limit(Math.min(batchSize, 10));
+  if (deletionError) throw new Error('Recording deletion queue read failed');
+  let recordingFailures = 0;
+  let recordingsDeleted = 0;
+  const deletionDeadline = Date.now() + 20000;
+  for (const job of deletions ?? []) {
+    if (Date.now() >= deletionDeadline) break;
+    const result = await purgeProviderVoiceRecording(job.storage_path);
+    if (!result.ok) { recordingFailures += 1; continue; }
+    const { error } = await admin.from('voice_recording_deletions').delete().eq('id', job.id);
+    if (error) recordingFailures += 1;
+    else recordingsDeleted += 1;
+  }
+  moreDue = moreDue || (deletionCount ?? deletions?.length ?? 0) > recordingsDeleted;
   return Object.freeze({
     requestedBatchSize: batchSize,
     batches,
     voiceCallsDeleted,
     voiceEventsDeleted,
     moreDue,
-    failed: moreDue ? 1 : 0,
+    failed: recordingFailures + (moreDue ? 1 : 0),
   });
 }
 
@@ -108,45 +125,28 @@ export async function purgeProviderVoiceRecording(
     return { ok: true, skipped: true };
   }
 
-  const urlStr = storagePath.trim();
-
-  const PROVIDER_HOST = ['signal', 'wire.com'].join('');
-
-  // If it's a SignalWire recording URL
-  if (urlStr.toLowerCase().includes(PROVIDER_HOST)) {
-    // Extract recording sid from URL (e.g. /recordings/RE123456... or /Recordings/RE123456...)
-    const match = /(?:recordings\/)([a-zA-Z0-9_-]+)/i.exec(urlStr);
-    const recordingSid = match ? match[1].replace(/\.[^.]+$/, '') : null;
-
-    const scope = signalWireVoiceScope();
-    const space = options.spaceUrl || (scope?.spaceId ? `https://${scope.spaceId}.${PROVIDER_HOST}` : undefined);
-    const project = options.projectId || scope?.projectId;
-    const token = options.apiToken;
-    const customFetch = options.fetchImpl || fetch;
-
-    if (recordingSid && space && project && token) {
-      try {
-        const cleanSpace = space.replace(/^https?:\/\//, '').replace(/\/$/, '');
-        const deleteUrl = `https://${cleanSpace}/api/laml/2010-04-01/Accounts/${project}/Recordings/${recordingSid}.json`;
-        const authHeader = `Basic ${Buffer.from(`${project}:${token}`).toString('base64')}`;
-
-        const res = await customFetch(deleteUrl, {
-          method: 'DELETE',
-          headers: {
-            Authorization: authHeader,
-          },
-        });
-
-        if (res.ok || res.status === 404) {
-          return { ok: true };
-        }
-        return { ok: false, error: `SignalWire recording delete returned HTTP ${res.status}` };
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
-        return { ok: false, error: msg };
-      }
-    }
-  }
-
-  return { ok: true, skipped: true };
+  let mediaUrl: URL;
+  let space: URL;
+  try {
+    mediaUrl = new URL(storagePath);
+    const configured = options.spaceUrl || process.env.SIGNALWIRE_SPACE_URL || '';
+    space = new URL(configured.startsWith('https://') ? configured : `https://${configured}`);
+    if (space.protocol !== 'https:' || !isSignalWireHostname(space.hostname) || space.username || space.password || space.port) throw new Error('Invalid provider host');
+    if (mediaUrl.protocol !== 'https:' || !isSignalWireHostname(mediaUrl.hostname) || mediaUrl.username || mediaUrl.password) throw new Error('Unsupported recording host');
+  } catch { return { ok: false, error: 'Unsupported recording location; manual cleanup required' }; }
+  const match = /\/recordings\/([a-zA-Z0-9_-]+)(?:\.(?:mp3|wav|json))?(?:\/download)?$/i.exec(mediaUrl.pathname);
+  const project = options.projectId || process.env.SIGNALWIRE_PROJECT_ID;
+  const token = options.apiToken || process.env.SIGNALWIRE_API_TOKEN;
+  if (!match || !project || !token) return { ok: false, error: 'Recording deletion is not configured' };
+  const compatibility = /\/api\/laml\//i.test(mediaUrl.pathname) || /^RE/i.test(match[1]);
+  const path = compatibility
+    ? `/api/laml/2010-04-01/Accounts/${encodeURIComponent(project)}/Recordings/${match[1]}.json`
+    : `/api/relay/rest/recordings/${match[1]}`;
+  try {
+    const response = await (options.fetchImpl || fetch)(new URL(path, space.origin).toString(), {
+      method: 'DELETE', redirect: 'error', signal: AbortSignal.timeout(10000),
+      headers: { Authorization: `Basic ${Buffer.from(`${project}:${token}`).toString('base64')}` },
+    });
+    return response.ok || response.status === 404 ? { ok: true } : { ok: false, error: `Recording deletion returned HTTP ${response.status}` };
+  } catch { return { ok: false, error: 'Recording deletion request failed' }; }
 }

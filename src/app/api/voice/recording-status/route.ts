@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
-import { verifyVoiceReceiptAuthorization, isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
+import { verifyVoiceReceiptAuthorization, verifySignedVoiceWebhook, isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
 
 function text(value: unknown): string | null {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -18,11 +18,13 @@ function isValidRecordingUrl(urlStr: string): boolean {
 
 export async function POST(req: Request) {
   try {
+    const rawBody = await req.clone().text();
+    const signature = verifySignedVoiceWebhook(req, rawBody);
     const authCheck = verifyVoiceReceiptAuthorization(req);
-    if (!authCheck.ok && authCheck.reason === 'not_configured') {
+    if (!signature.ok && !authCheck.ok && authCheck.reason === 'not_configured') {
       return NextResponse.json({ error: 'not_configured' }, { status: 503 });
     }
-    if (!authCheck.ok) {
+    if (!signature.ok && !authCheck.ok) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -40,37 +42,38 @@ export async function POST(req: Request) {
       }
     }
 
+    const params = payload.params && typeof payload.params === 'object' && !Array.isArray(payload.params) ? payload.params as Record<string, unknown> : {};
+    payload = { ...payload, ...params };
     const providerCallId = text(payload.call_id) ?? text(payload.CallSid) ?? text(payload.call_sid);
     if (!providerCallId) {
       return NextResponse.json({ error: 'missing_call_id' }, { status: 400 });
     }
 
-    const statusRaw = (text(payload.recording_status) ?? text(payload.RecordingStatus) ?? 'completed').toLowerCase();
-    const isCompleted = statusRaw === 'completed' || statusRaw === 'ready';
+    const statusRaw = (text(payload.recording_status) ?? text(payload.RecordingStatus) ?? text(payload.state) ?? 'unknown').toLowerCase();
+    const isCompleted = statusRaw === 'completed' || statusRaw === 'ready' || statusRaw === 'finished';
 
-    const recordingUrl = text(payload.recording_url) ?? text(payload.RecordingUrl);
+    const recordingUrl = text(payload.recording_url) ?? text(payload.RecordingUrl) ?? text(payload.url);
     if (recordingUrl && !isValidRecordingUrl(recordingUrl)) {
       return NextResponse.json({ error: 'invalid_recording_url' }, { status: 400 });
     }
 
-    const durationSeconds = integer(payload.recording_duration) ?? integer(payload.RecordingDuration);
-    const sizeBytes = integer(payload.recording_size) ?? integer(payload.RecordingSize);
+    if (isCompleted && !recordingUrl) return NextResponse.json({ error: 'missing_recording_url' }, { status: 400 });
+    const pending = ['recording', 'paused', 'in-progress', 'pending'].includes(statusRaw);
+    if (!isCompleted && !pending && !['failed', 'error', 'no_input', 'absent'].includes(statusRaw)) return NextResponse.json({ error: 'invalid_recording_status' }, { status: 400 });
+    const durationSeconds = integer(payload.recording_duration) ?? integer(payload.RecordingDuration) ?? (typeof payload.duration === 'number' && Number.isFinite(payload.duration) && payload.duration >= 0 ? Math.ceil(payload.duration) : null);
+    const sizeBytes = integer(payload.recording_size) ?? integer(payload.RecordingSize) ?? integer(payload.size);
 
     const admin = createAdminClient();
-    const nowIso = new Date().toISOString();
-
-    const { error } = await admin
-      .from('voice_calls')
-      .update({
-        recording_status: isCompleted ? 'ready' : 'failed',
-        recording_storage_path: isCompleted ? recordingUrl : null,
-        recording_duration_seconds: durationSeconds,
-        recording_size_bytes: sizeBytes,
-        recording_content_type: 'audio/mp3',
-        recording_captured_at: nowIso,
-      })
-      .eq('provider', 'signalwire')
-      .eq('provider_call_id', providerCallId);
+    const callbackUrl = new URL(req.url);
+    const { error } = await admin.rpc('apply_voice_recording_observation', {
+      p_call_id: providerCallId,
+      p_status: isCompleted ? 'ready' : pending ? 'pending' : 'failed',
+      p_url: isCompleted ? recordingUrl : null,
+      p_duration: durationSeconds, p_size: sizeBytes,
+      // Only provider-signed recovery URLs can supply inventory attribution.
+      p_to_number: signature.ok ? callbackUrl.searchParams.get('to') : null,
+      p_caller: signature.ok ? callbackUrl.searchParams.get('from') : null,
+    });
 
     if (error) {
       console.error('Failed to update voice recording status:', error);

@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockCreateAdminClient = vi.fn();
@@ -22,6 +23,7 @@ describe('voice recording status ingest webhook (/api/voice/recording-status)', 
   let updates: Record<string, unknown>[] = [];
 
   const mockAdmin = {
+    rpc: async (_name: string, args: Record<string, unknown>) => { updates.push(args); return { error: null }; },
     from() {
       const chain: Record<string, unknown> = {};
       chain.update = (row: Record<string, unknown>) => {
@@ -118,11 +120,10 @@ describe('voice recording status ingest webhook (/api/voice/recording-status)', 
 
     expect(updates).toHaveLength(1);
     expect(updates[0]).toMatchObject({
-      recording_status: 'ready',
-      recording_storage_path: 'https://cdn.signalwire.com/recordings/audio123.mp3',
-      recording_duration_seconds: 45,
-      recording_size_bytes: 360000,
-      recording_content_type: 'audio/mp3',
+      p_status: 'ready',
+      p_url: 'https://cdn.signalwire.com/recordings/audio123.mp3',
+      p_duration: 45,
+      p_size: 360000,
     });
   });
 
@@ -201,7 +202,8 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
     expect(data.error).toBe('untrusted_storage_host');
   });
 
-  it('redirects with private no-store headers when audio is ready', async () => {
+  it('streams audio with private no-store headers without disclosing its provider URL', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('audio', { status: 200 })));
     const mockSupabase = {
       from() {
         const chain: Record<string, unknown> = {};
@@ -228,8 +230,44 @@ describe('authenticated voice recording playback endpoint (/api/voice/recordings
     const req = new Request(`http://localhost/api/voice/recordings/${CALL_ID}`);
     const res = await recordingPlaybackHandler(req, { params: Promise.resolve({ recordingId: CALL_ID }) });
 
-    expect(res.status).toBe(307);
-    expect(res.headers.get('location')).toBe('https://cdn.signalwire.com/recordings/audio123.mp3');
-    expect(res.headers.get('cache-control')).toBe('private, no-store, max-age=0');
+    expect(res.status).toBe(200);
+    expect(res.headers.get('location')).toBeNull();
+    expect(await res.text()).toBe('audio');
+    vi.unstubAllGlobals();
+    expect(res.headers.get('cache-control')).toBe('private, no-store');
+  });
+});
+
+
+describe('native recording callback hardening', () => {
+  const origin = 'https://app.letsgetquoted.com';
+  function callback(payload: unknown) {
+    const url = origin + '/api/voice/recording-status';
+    const body = JSON.stringify(payload);
+    return new Request(url, { method: 'POST', body, headers: {
+      'Content-Type': 'application/json',
+      'x-signalwire-signature': createHmac('sha1','native-key').update(url+body).digest('hex'),
+    } });
+  }
+  beforeEach(() => {
+    process.env.SIGNALWIRE_WEBHOOK_ORIGIN = origin;
+    process.env.NEXT_PUBLIC_ROOT_DOMAIN = 'letsgetquoted.com';
+    process.env.SIGNALWIRE_SIGNING_KEY = 'native-key';
+  });
+  it('accepts the signed native nested payload without receipt Basic credentials', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null }); mockCreateAdminClient.mockReturnValue({ rpc });
+    const res = await recordingStatusHandler(callback({ event_type: 'calling.call.record', params: {
+      call_id: 'native-call', state: 'finished', url: 'https://example.signalwire.com/api/v1/recordings/r1/download', duration: 15.2, size: 99,
+    } }));
+    expect(res.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('apply_voice_recording_observation',expect.objectContaining({p_call_id:'native-call',p_status:'ready',p_duration:16}));
+  });
+  it('does not acknowledge a lost database write', async () => {
+    mockCreateAdminClient.mockReturnValue({ rpc: async () => ({ error: { code: 'offline' } }) });
+    expect((await recordingStatusHandler(callback({ params: { call_id:'c',state:'recording' } }))).status).toBe(500);
+  });
+  it('rejects completed callbacks without media and unknown states', async () => {
+    expect((await recordingStatusHandler(callback({ params: { call_id:'c',state:'finished' } }))).status).toBe(400);
+    expect((await recordingStatusHandler(callback({ params: { call_id:'c',state:'surprise' } }))).status).toBe(400);
   });
 });

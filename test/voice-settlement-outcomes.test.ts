@@ -31,6 +31,7 @@ vi.mock('@/lib/voice/post-call-sms', () => ({
 
 import {
   inferProviderOutcome,
+  recordCallHistory,
   recordProvisionalVoiceCall,
   settleVoiceReceipt,
 } from '@/lib/voice/settlement';
@@ -389,5 +390,33 @@ describe('settling voice receipt updates outcome and workflow urgency', () => {
       'Jane Doe',
       'call-row-cust',
     );
+  });
+});
+
+
+describe('durable voice notification retries', () => {
+  const admin = { from: (table: string) => {
+    const chain: any = { select: () => chain, eq: () => chain,
+      upsert: async () => ({ error: null }),
+      maybeSingle: async () => ({ data: table === 'voice_calls' ? { id: 'call-row' } : null, error: null }) };
+    return chain;
+  } } as never;
+  const facts = { accountId: ACCOUNT, minutes: 1, unmetered: false, overage: false,
+    unbillable: false, leadId: null, voiceEventId: null, staffCaller: false, callerNumber: '+15559876543' };
+  it('propagates owner notification failure so the receipt is retried', async () => {
+    const { notifyOrdinaryCall } = await import('@/lib/voice/triage');
+    vi.mocked(notifyOrdinaryCall).mockRejectedValueOnce(new Error('queue unavailable'));
+    await expect(recordCallHistory(admin,baseReceipt,facts)).rejects.toThrow('queue unavailable');
+  });
+  it('propagates unsuccessful caller follow-up enqueue results', async () => {
+    const { triggerVoicePostCallFollowup } = await import('@/lib/voice/post-call-sms');
+    vi.mocked(triggerVoicePostCallFollowup).mockResolvedValueOnce({ok:false,error:'offline'});
+    await expect(recordCallHistory(admin,baseReceipt,facts)).rejects.toThrow('not queued');
+  });
+  it('dispatches structured emergencies even without a keyword match in the summary', async () => {
+    const { notifyEmergencyCall } = await import('@/lib/voice/triage');
+    await recordCallHistory(admin,{...baseReceipt,structuredPostPrompt:{is_emergency:true,hazard_type:'custom_hazard'}},facts);
+    expect(notifyEmergencyCall).toHaveBeenLastCalledWith(admin,ACCOUNT,expect.anything(),expect.anything(),
+      expect.objectContaining({isEmergency:true,hazardType:'custom_hazard'}),'call-row');
   });
 });

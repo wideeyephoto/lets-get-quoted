@@ -114,6 +114,7 @@ export type VoiceAnswerPlan =
   }>
   | Readonly<{
     kind: 'forward';
+    recordingStatusUrl?: string;
     /** The contractor's real line. */
     number: string;
     /** Shown to the contractor, so it stays their own number and not the caller's. */
@@ -122,7 +123,7 @@ export type VoiceAnswerPlan =
     /** Where the provider reports how the forward ended. */
     actionUrl: string;
   }>
-  | Readonly<{ kind: 'voicemail'; message: string }>
+  | Readonly<{ kind: 'voicemail'; message: string; recordingStatusUrl?: string }>
   | Readonly<{ kind: 'unavailable'; message: string }>;
 
 /** A rendered answer, ready to return to the provider's own request. */

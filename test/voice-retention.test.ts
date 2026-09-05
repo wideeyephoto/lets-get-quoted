@@ -11,6 +11,7 @@ import {
 
 function adminResult(data: unknown, error: unknown = null) {
   return {
+    from: () => ({ select: () => ({ order: () => ({ limit: async () => ({ data: [], error: null }) }) }) }),
     rpc: vi.fn(async () => ({ data, error })),
   } as unknown as SupabaseClient & { rpc: ReturnType<typeof vi.fn> };
 }
@@ -60,16 +61,16 @@ describe('the voice retention worker', () => {
       .mockResolvedValueOnce({
         data: [{ voice_calls_deleted: 9, voice_events_deleted: 4, more_due: false }],
         error: null,
-      });
+      }).mockResolvedValue({ data: null, error: null });
 
-    await expect(runVoiceRetentionBatch({}, { admin: { rpc } as never })).resolves.toMatchObject({
+    await expect(runVoiceRetentionBatch({}, { admin: { ...adminResult(null), rpc } as never })).resolves.toMatchObject({
       batches: 2,
       voiceCallsDeleted: 509,
       voiceEventsDeleted: 504,
       moreDue: false,
       failed: 0,
     });
-    expect(rpc).toHaveBeenCalledTimes(2);
+    expect(rpc).toHaveBeenCalledTimes(3);
   });
 
   it('surfaces a backlog as failed when the bounded drain cannot catch up', async () => {
@@ -81,7 +82,7 @@ describe('the voice retention worker', () => {
       moreDue: true,
       failed: 1,
     });
-    expect(admin.rpc).toHaveBeenCalledTimes(2);
+    expect(admin.rpc).toHaveBeenCalledTimes(3);
   });
 
   it('logs no provider or database message through its thrown error', async () => {
@@ -102,8 +103,8 @@ describe('the voice retention worker', () => {
       join(process.cwd(), 'src', 'app', 'api', 'cron', 'voice-retention', 'route.ts'),
       'utf8',
     );
-    expect(source).not.toMatch(/process\.env|workerEnabled|_ENABLED/);
-    expect(route).not.toMatch(/process\.env|workerEnabled|_ENABLED/);
+    expect(source).not.toMatch(/workerEnabled|_ENABLED/);
+    expect(route).not.toMatch(/workerEnabled|_ENABLED/);
     expect(route).toContain("cronRoute('voice-retention'");
   });
 

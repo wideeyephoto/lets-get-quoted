@@ -890,6 +890,8 @@ const SIGNED_PROVIDER_CALLBACK_PATHS: ReadonlySet<string> = new Set([
   '/api/voice/provider-status',
   '/api/voice/fallback',
   '/api/voice/health',
+  '/api/voice/recording-status',
+  '/api/voice/bridge-connect',
 ]);
 
 /**
@@ -979,4 +981,9 @@ export function smsProviderSummary(): SmsProviderSummary {
     acceptedSignatureHeaders,
     statusCallbacksEnabled: trustedProviderCallbackOrigin() !== null,
   };
+}
+
+/** Exact DNS boundary for provider media and authenticated API requests. */
+export function isSignalWireHostname(hostname: string): boolean {
+  return hostname.toLowerCase().endsWith('.signalwire.com');
 }

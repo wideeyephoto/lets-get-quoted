@@ -322,7 +322,7 @@ export function verifyVoiceToolToken(
 export function isTrustedVoiceMediaUrl(urlStr: string): boolean {
   try {
     const parsed = new URL(urlStr);
-    if (parsed.protocol !== 'https:') return false;
+    if (parsed.protocol !== 'https:' || parsed.username || parsed.password || (parsed.port && parsed.port !== '443')) return false;
     const trustedDomains = ['signal' + 'wire.com', 'storage.googleapis.com', 'supabase.co'];
     return trustedDomains.some((h) => parsed.hostname === h || parsed.hostname.endsWith(`.${h}`));
   } catch {

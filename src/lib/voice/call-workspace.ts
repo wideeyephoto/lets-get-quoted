@@ -38,6 +38,7 @@ export type VoiceCallQueueItem = Readonly<{
   endedAt: string | null;
   aiSeconds: number | null;
   billedMinutes: number | null;
+  forwardingSeconds?: number | null;
   settlement: string;
   outcome: VoiceCallOutcome;
   outcomeSource: string | null;
@@ -114,6 +115,7 @@ export type VoiceCallDetail = Readonly<{
   endedAt: string | null;
   aiSeconds: number | null;
   billedMinutes: number | null;
+  forwardingSeconds?: number | null;
   settlement: string;
   outcome: VoiceCallOutcome;
   outcomeSource: string | null;
@@ -321,6 +323,7 @@ export async function loadVoiceWorkspaceQueue(
         ended_at,
         ai_seconds,
         billed_minutes,
+        forwarding_seconds,
         settlement,
         outcome,
         outcome_source,
@@ -406,6 +409,7 @@ export async function loadVoiceWorkspaceQueue(
         answeredAt: (r.answered_at as string | null) ?? null,
         endedAt: (r.ended_at as string | null) ?? null,
         aiSeconds: typeof r.ai_seconds === 'number' ? r.ai_seconds : null,
+        forwardingSeconds: typeof r.forwarding_seconds === 'number' ? r.forwarding_seconds : null,
         billedMinutes: typeof r.billed_minutes === 'number' ? r.billed_minutes : null,
         settlement: String(r.settlement ?? 'unsettled'),
         outcome: (r.outcome as VoiceCallOutcome) ?? 'completed',
@@ -471,7 +475,7 @@ export async function loadVoiceWorkspaceQueue(
         handledCount += 1;
       }
 
-      if (typeof item.billedMinutes === 'number' && item.billedMinutes > 0) {
+      if (['allowance', 'overage'].includes(item.settlement) && typeof item.billedMinutes === 'number' && item.billedMinutes > 0) {
         totalBilledMinutes += item.billedMinutes;
       }
 
@@ -778,6 +782,7 @@ export async function loadVoiceCallDetail(
       answeredAt: (callRow.answered_at as string | null) ?? null,
       endedAt: (callRow.ended_at as string | null) ?? null,
       aiSeconds: typeof callRow.ai_seconds === 'number' ? callRow.ai_seconds : null,
+      forwardingSeconds: typeof callRow.forwarding_seconds === 'number' ? callRow.forwarding_seconds : null,
       billedMinutes: typeof callRow.billed_minutes === 'number' ? callRow.billed_minutes : null,
       settlement: String(callRow.settlement ?? 'unsettled'),
       outcome: (callRow.outcome as VoiceCallOutcome) ?? 'completed',

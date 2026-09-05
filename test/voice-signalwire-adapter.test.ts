@@ -513,7 +513,7 @@ describe('rendering an answer', () => {
     expect(fSwml.sections.main[0].connect.to).toBe('+15551230000');
     expect(fSwml.sections.main[0].connect.from).toBe('+15559876543');
     expect(fSwml.sections.main[0].connect.timeout).toBe(20);
-    expect(fSwml.sections.main[0].connect.call_state_url).toBe('https://x.test/s');
+    expect(fSwml.sections.main[0].connect.status_url).toBe('https://x.test/s');
     expect(fSwml.sections.main[1].play.url).toContain('say:');
     expect(fSwml.sections.main[2]).toEqual({ record: expect.objectContaining({
       beep: true, max_length: 120, direction: 'speak',

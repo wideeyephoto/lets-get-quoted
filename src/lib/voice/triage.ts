@@ -70,17 +70,19 @@ export async function notifyEmergencyCall(
   if (!emergency.isEmergency) return false;
 
   // Find account alert phone or transfer number or phone
-  const { data: account } = await admin
+  const { data: account, error: accountError } = await admin
     .from('accounts')
     .select('company_name, business_name, alert_phone, phone, call_forward_number')
     .eq('id', accountId)
     .maybeSingle();
 
-  const { data: voiceSettings } = await admin
+  const { data: voiceSettings, error: settingsError } = await admin
     .from('voice_settings')
     .select('transfer_number')
     .eq('account_id', accountId)
     .maybeSingle();
+
+  if (accountError || settingsError) throw new Error('Voice notification settings read failed');
 
   const targetPhone = normalizeUsPhone(
     account?.alert_phone || voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
@@ -117,10 +119,11 @@ export async function notifyEmergencyCall(
       senderPurpose: 'lgq_dispatch',
       idempotencyKey: callId ? `voice-emergency:${accountId}:${callId}` : undefined,
     }, admin);
-    return Boolean(queued?.eventId);
+    if (!queued?.eventId) throw new Error('Voice notification was not durably queued');
+    return true;
   } catch (error) {
-    console.error('[AI Voice Emergency] Failed to send emergency SMS alert:', error);
-    return false;
+    console.error('[AI Voice Emergency] Failed to queue emergency SMS alert:', error);
+    throw error;
   }
 }
 
@@ -135,21 +138,24 @@ export async function notifyOrdinaryCall(
   callerName?: string | null,
   callId?: string | null,
 ): Promise<boolean> {
-  const { data: voiceSettings } = await admin
+  const { data: voiceSettings, error: settingsError } = await admin
     .from('voice_settings')
     .select('transfer_number, contractor_notifications_enabled, contractor_notification_channel')
     .eq('account_id', accountId)
     .maybeSingle();
 
+  if (settingsError) throw new Error('Voice notification settings read failed');
   if (voiceSettings && voiceSettings.contractor_notifications_enabled === false) {
     return false;
   }
 
-  const { data: account } = await admin
+  const { data: account, error: accountError } = await admin
     .from('accounts')
     .select('company_name, business_name, alert_phone, phone, call_forward_number')
     .eq('id', accountId)
     .maybeSingle();
+
+  if (accountError || settingsError) throw new Error('Voice notification settings read failed');
 
   const targetPhone = normalizeUsPhone(
     account?.alert_phone || voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
@@ -184,9 +190,10 @@ export async function notifyOrdinaryCall(
       senderPurpose: 'lgq_dispatch',
       idempotencyKey: callId ? `voice-call-notify:${accountId}:${callId}` : undefined,
     }, admin);
-    return Boolean(queued?.eventId);
+    if (!queued?.eventId) throw new Error('Voice notification was not durably queued');
+    return true;
   } catch (error) {
-    console.error('[AI Voice Notification] Failed to send ordinary call SMS notification:', error);
-    return false;
+    console.error('[AI Voice Notification] Failed to queue ordinary call SMS notification:', error);
+    throw error;
   }
 }

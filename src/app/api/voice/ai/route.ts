@@ -205,7 +205,8 @@ export async function POST(request: Request) {
       console.info('AI voice declined:', { reason: declineReason, accountId, call: call.providerCallId });
     }
 
-    const answer = provider.renderAnswer(plan, { format: isJson ? 'swml' : 'laml' });
+    const renderedPlan = plan.kind === 'voicemail' || plan.kind === 'forward' ? { ...plan, recordingStatusUrl: `${callbackOrigin}/api/voice/recording-status?to=${encodeURIComponent(call.toNumber)}&from=${encodeURIComponent(call.fromNumber || '')}` } : plan;
+    const answer = provider.renderAnswer(renderedPlan, { format: isJson ? 'swml' : 'laml' });
     return new NextResponse(answer.body, {
       status: 200,
       headers: { 'Content-Type': answer.contentType },

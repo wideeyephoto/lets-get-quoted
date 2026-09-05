@@ -36,7 +36,7 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
     };
 
     const mockSupabase = {
-      rpc: async () => ({ data: null, error: null }),
+      rpc: async () => ({ data: [{ sms_event_id: '11111111-1111-4111-8111-111111111111', task_state: 'queued', created: true }], error: null }),
       from(table: string) {
         const chain: Record<string, unknown> = {};
         for (const m of ['select', 'order', 'limit', 'gte', 'in', 'neq']) {

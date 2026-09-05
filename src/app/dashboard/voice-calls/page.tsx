@@ -97,10 +97,11 @@ export default async function VoiceCallsPage({
     { data: account },
     { data: site },
     voiceSettingsResult,
-    { data: balanceRows },
+    { data: balanceRows, error: balanceError },
     messagingSetup,
     voiceEntitlement,
     liveActiveCalls,
+    forwardingUsageResult,
   ] = await Promise.all([
     supabase
       .from('accounts')
@@ -124,8 +125,10 @@ export default async function VoiceCallsPage({
     loadMessagingSetup(accountId),
     loadVoiceEntitlement(admin, accountId),
     countOpenAiCalls(admin, accountId, 10).catch(() => 0),
+    admin.rpc('voice_forwarding_usage_summary', { p_account_id: accountId }),
   ]);
 
+  const forwardingUsage = !forwardingUsageResult.error && Array.isArray(forwardingUsageResult.data) ? forwardingUsageResult.data[0] : null;
   const timezone = (account?.timezone as string) || 'America/New_York';
   const voiceSettings = voiceSettingsResult?.error ? null : ((voiceSettingsResult?.data ?? null) as Record<string, unknown> | null);
   const voiceSettingsAvailable = Boolean(voiceSettingsResult && !voiceSettingsResult.error);
@@ -170,9 +173,8 @@ export default async function VoiceCallsPage({
     || account?.call_tracking_number
     || null;
 
-  const aiIntakeUnits = balanceRows?.find((r) => r.resource_code === 'ai_intake_threads')?.available_units;
-  const aiWritingUnits = balanceRows?.find((r) => r.resource_code === 'ai_writing_drafts')?.available_units;
-  const hasAiBalance = typeof aiIntakeUnits === 'number' || typeof aiWritingUnits === 'number';
+  const voiceMinutes = balanceError ? null : Number(balanceRows?.find((r) => r.resource_code === 'voice_minutes')?.available_units ?? 0);
+  const hasVoiceBalance = typeof voiceMinutes === 'number' && Number.isFinite(voiceMinutes);
 
   const resolvedBusinessName = site?.company_name || account?.business_name || account?.company_name || null;
   const siteContent = site ? getSiteContent(site.content as Record<string, unknown> | null) : null;
@@ -243,19 +245,22 @@ export default async function VoiceCallsPage({
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
           <FieldIntakeHint page="voice" />
 
-          {/* Separated AI Credit SKUs: Intake vs Writing */}
-          {hasAiBalance ? (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', background: 'var(--bg-card, rgba(255,255,255,0.04))', border: '1px solid var(--rule-t12, rgba(255,255,255,0.08))', borderRadius: '6px', fontSize: '0.8125rem', color: (typeof aiIntakeUnits === 'number' && aiIntakeUnits <= 25) ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)', fontWeight: 500 }}>
-              <span>⚡ <strong>{typeof aiIntakeUnits === 'number' ? aiIntakeUnits.toLocaleString('en-US') : 0}</strong> intake units</span>
-              <span style={{ opacity: 0.5 }}>|</span>
-              <span><strong>{typeof aiWritingUnits === 'number' ? aiWritingUnits.toLocaleString('en-US') : 0}</strong> draft units</span>
-              {(typeof aiIntakeUnits === 'number' && aiIntakeUnits <= 25) ? (
-                <Link href="/dashboard/settings#buy-credits" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline', marginLeft: '0.25rem' }}>
-                  Low Balance • Top up
+          <span style={{ fontSize: '0.8125rem' }}>
+            {forwardingUsage?.period_start && forwardingUsage?.period_end
+              ? `Recorded forwarding: ${forwardingUsage.minutes} / ${forwardingUsage.included_minutes} included minutes this billing period${Number(forwardingUsage.unresolved_calls) ? ` (${forwardingUsage.unresolved_calls} calls awaiting duration)` : ''}`
+              : 'Forwarding usage unavailable'}
+          </span>
+          {/* AI-connected minute allowance */}
+          {hasVoiceBalance ? (
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', padding: '0.35rem 0.75rem', background: 'var(--bg-card, rgba(255,255,255,0.04))', border: '1px solid var(--rule-t12, rgba(255,255,255,0.08))', borderRadius: '6px', fontSize: '0.8125rem', color: (typeof voiceMinutes === 'number' && voiceMinutes < 60) ? 'var(--amber-10, #f59e0b)' : 'var(--text-secondary, #94a3b8)', fontWeight: 500 }}>
+              <span>⚡ <strong>{typeof voiceMinutes === 'number' ? voiceMinutes.toLocaleString('en-US') : 0}</strong> AI minutes available</span>
+              {(typeof voiceMinutes === 'number' && voiceMinutes < 60) ? (
+                <Link href="/dashboard/settings#voice-assistant" style={{ color: 'var(--amber-11, #d97706)', fontWeight: 600, textDecoration: 'underline', marginLeft: '0.25rem' }}>
+                  Low Balance • Review voice plan
                 </Link>
               ) : null}
             </div>
-          ) : null}
+          ) : <span>AI minute balance unavailable</span>}
 
           {counters.totalCount > 0 ? (
             <a
@@ -624,7 +629,7 @@ export default async function VoiceCallsPage({
       {currentView === 'analytics' && (
         <div id="tabpanel-analytics" role="tabpanel" aria-labelledby="tab-analytics" className={styles.tabViewContent}>
           {/* Live Carrier SignalWire Engine & Webhook Latency Health Widget */}
-          <VoiceHealthWidget availableCredits={hasAiBalance ? (aiIntakeUnits ?? null) : null} />
+          <VoiceHealthWidget availableMinutes={hasVoiceBalance ? (voiceMinutes ?? null) : null} />
 
           {/* AI Voice Intelligence & Performance Analytics */}
           <section aria-label="AI Voice Performance Analytics">

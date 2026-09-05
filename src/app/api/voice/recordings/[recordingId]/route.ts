@@ -38,12 +38,35 @@ export async function GET(
         return NextResponse.json({ error: 'untrusted_storage_host' }, { status: 403 });
       }
 
-      return NextResponse.redirect(storageUrl, {
-        status: 307,
-        headers: {
-          'Cache-Control': 'private, no-store, max-age=0',
-        },
-      });
+      const media = new URL(storageUrl);
+      const configured = process.env.SIGNALWIRE_SPACE_URL || '';
+      const providerHost = configured.replace(/^https?:\/\//, '').replace(/\/$/, '').toLowerCase();
+      const headers: Record<string, string> = {};
+      if (media.hostname === providerHost && process.env.SIGNALWIRE_PROJECT_ID && process.env.SIGNALWIRE_API_TOKEN) {
+        headers.Authorization = `Basic ${Buffer.from(`${process.env.SIGNALWIRE_PROJECT_ID}:${process.env.SIGNALWIRE_API_TOKEN}`).toString('base64')}`;
+      }
+      const range = req.headers.get('range');
+      if (range && /^bytes=\d*-\d*$/.test(range)) headers.Range = range;
+      // Do not disclose permanent provider URLs or forward credentials through redirects.
+      let currentUrl = storageUrl;
+      let audio: Response | null = null;
+      for (let hop = 0; hop < 4; hop += 1) {
+        const hopHeaders = { ...headers };
+        if (new URL(currentUrl).origin !== media.origin) delete hopHeaders.Authorization;
+        audio = await fetch(currentUrl, { headers: hopHeaders, redirect: 'manual', signal: AbortSignal.timeout(15000), cache: 'no-store' });
+        if (![301, 302, 303, 307, 308].includes(audio.status)) break;
+        const location = audio.headers.get('location');
+        await audio.body?.cancel();
+        if (!location) return NextResponse.json({ error: 'invalid_media_redirect' }, { status: 502 });
+        currentUrl = new URL(location, currentUrl).toString();
+        if (!isTrustedVoiceMediaUrl(currentUrl)) return NextResponse.json({ error: 'untrusted_media_redirect' }, { status: 502 });
+      }
+      if (!audio?.ok || !audio.body) return NextResponse.json({ error: 'recording_provider_unavailable' }, { status: 502 });
+      const responseHeaders = new Headers({ 'Content-Type': 'audio/mpeg', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff' });
+      for (const name of ['content-length', 'content-range', 'accept-ranges']) {
+        const value = audio.headers.get(name); if (value) responseHeaders.set(name, value);
+      }
+      return new Response(audio.body, { status: audio.status, headers: responseHeaders });
     }
 
     return NextResponse.json({ error: 'unsupported_storage_format' }, { status: 500 });

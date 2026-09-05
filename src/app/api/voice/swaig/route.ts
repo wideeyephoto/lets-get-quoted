@@ -8,6 +8,7 @@ import { evaluatePermitRequirement } from '@/lib/permit-intel/requirement-engine
 import { calculateCleanEnergyRebates, type CleanEnergyWorkCategory } from '@/lib/rebates/clean-energy-rebate-engine';
 import { createLead } from '@/lib/leads';
 import type { JurisdictionDiscipline } from '@/lib/location-context/types';
+import { authorizeVoiceToolInvocation } from '@/lib/voice/tool-admission';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
 import {
@@ -63,6 +64,9 @@ export async function POST(request: Request) {
     : {};
 
   const admin = createAdminClient();
+  if (!await authorizeVoiceToolInvocation(admin, accountId, verifiedProviderCallId, verifiedCallerPhone)) {
+    return NextResponse.json({ response: 'This call is no longer authorized for tools. Please call again or contact the office.' }, { status: 403 });
+  }
   const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
 
   if (fnName === 'send_booking_link') {
@@ -227,7 +231,7 @@ export async function POST(request: Request) {
     const bookingDays = await getAvailableBookingDays(admin, accountId).catch(() => []);
     if (!bookingDays || bookingDays.length === 0) {
       return NextResponse.json({
-        response: 'I have recorded your appointment request for our team to review and confirm the earliest dispatch time.',
+        response: 'I cannot confirm an available appointment right now. No appointment has been booked. Please contact our office or try again later.',
       });
     }
 
@@ -236,12 +240,6 @@ export async function POST(request: Request) {
       d.dateKey === requestedDateRaw
       || d.dayLabel.toLowerCase().includes(requestedDateRaw.toLowerCase()),
     );
-
-    if (!matchedDay && requestedDateRaw.toLowerCase().includes('tomorrow') && bookingDays.length > 1) {
-      matchedDay = bookingDays[1];
-    } else if (!matchedDay && requestedDateRaw.toLowerCase().includes('today') && bookingDays.length > 0) {
-      matchedDay = bookingDays[0];
-    }
 
     if (!matchedDay) {
       return NextResponse.json({
@@ -596,92 +594,38 @@ export async function POST(request: Request) {
   }
 
   if (fnName === 'cancel_or_reschedule_appointment') {
-    const customerPhone = String(args.customer_phone || verifiedCallerPhone || '').trim();
+    // Caller ID and model arguments are not proof of appointment ownership.
+    // The office must verify the booking and update capacity and calendars.
     const action = String(args.action || 'reschedule').toLowerCase();
-    const newDate = String(args.new_date || '').trim();
-    const newTime = String(args.new_time || '').trim();
-    const reason = String(args.reason || '').trim();
-
+    if (!['cancel', 'reschedule'].includes(action)) {
+      return NextResponse.json({ response: 'Please specify cancellation or rescheduling.' });
+    }
     try {
-      const normalizedPhone = customerPhone ? normalizeUsPhone(customerPhone) : null;
-      let leadRow: Record<string, unknown> | null = null;
-      if (normalizedPhone) {
-        const { data } = await admin
-          .from('leads')
-          .select('id, name, scheduled_date, scheduled_time, address')
-          .eq('account_id', accountId)
-          .eq('phone', normalizedPhone)
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-        leadRow = data as Record<string, unknown> | null;
-      }
-
-      if (action === 'cancel') {
-        if (leadRow?.id) {
-          await admin
-            .from('leads')
-            .update({
-              status: 'canceled',
-              notes: reason ? `Canceled via AI voice: ${reason}` : 'Canceled via AI voice phone request',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', leadRow.id);
-        }
-        return NextResponse.json({
-          response: 'I have noted the cancellation on your appointment. Our office dispatch team will confirm and follow up if you need to rebook in the future.',
-        });
-      }
-
-      if (newDate) {
-        if (leadRow?.id) {
-          await admin
-            .from('leads')
-            .update({
-              scheduled_date: newDate,
-              scheduled_time: newTime || (leadRow.scheduled_time as string | null) || 'Morning',
-              notes: reason ? `Rescheduled via AI voice: ${reason}` : 'Rescheduled via AI voice phone request',
-              updated_at: new Date().toISOString(),
-            })
-            .eq('id', leadRow.id);
-        }
-        const timeClause = newTime ? ` at ${newTime}` : '';
-        return NextResponse.json({
-          response: `I have updated your appointment request to ${newDate}${timeClause}. Our team will review the calendar and text you a confirmation shortly.`,
-        });
-      }
-
-      return NextResponse.json({
-        response: 'What date and time would you prefer to reschedule your appointment to?',
+      const requestDetails = JSON.stringify({ action, requestedDate: String(args.new_date || '').slice(0, 100),
+        requestedTime: String(args.new_time || '').slice(0, 100), reason: String(args.reason || '').slice(0, 1000) });
+      const lead = await createLead(admin, accountId, {
+        source: 'ai_voice',
+        name: 'Appointment change request',
+        phone: normalizeUsPhone(verifiedCallerPhone || '') || null,
+        projectType: 'Appointment change - office verification required',
+        message: requestDetails,
+        sourcePage: '/call',
+        sourceVoiceProviderCallId: verifiedProviderCallId,
       });
+      if (!lead?.id) throw new Error('Appointment request was not saved');
+      const { data: saved, error: saveError } = await admin.rpc('append_voice_appointment_request', {
+        p_account_id: accountId, p_lead_id: lead.id, p_call_id: verifiedProviderCallId, p_request: requestDetails,
+      });
+      if (saveError || saved !== true) throw new Error('Appointment request was not persisted');
+      return NextResponse.json({ response: 'I saved your request for our office to verify and review. Your appointment has not changed yet; please keep the existing time until the office confirms.' });
     } catch (err) {
-      console.error('Error in cancel_or_reschedule_appointment SWAIG tool:', err);
-      return NextResponse.json({
-        response: 'I have noted your schedule change request. Our office staff will follow up directly with you to confirm the timing.',
-      });
+      console.error('Appointment change request failed:', err);
+      return NextResponse.json({ response: 'I could not save your request. Your appointment has not changed. Please contact the office directly.' });
     }
   }
 
   if (fnName === 'get_service_quote_range') {
-    const serviceType = String(args.service_type || '').toLowerCase();
-
-    let estimateGuidance = '';
-    if (serviceType.includes('water heater') || serviceType.includes('tankless')) {
-      estimateGuidance = 'Standard tank water heater replacements typically range from $1,500 to $2,800 installed, while high-efficiency tankless units generally range from $3,000 to $5,000 including venting and gas lines.';
-    } else if (serviceType.includes('drain') || serviceType.includes('clog') || serviceType.includes('sewer')) {
-      estimateGuidance = 'Standard drain clearing typically ranges from $175 to $450 depending on access and severity, while main sewer line hydro-jetting or repairs range higher based on depth.';
-    } else if (serviceType.includes('panel') || serviceType.includes('200 amp') || serviceType.includes('breaker')) {
-      estimateGuidance = 'Standard 200-amp electrical service panel upgrades typically range from $2,200 to $3,800 depending on utility coordination and grounding requirements.';
-    } else if (serviceType.includes('roof') || serviceType.includes('leak') || serviceType.includes('shingle')) {
-      estimateGuidance = 'Minor roof leak repairs typically range from $350 to $1,200, while complete architectural shingle roof replacements generally range from $6,500 to $15,000+ depending on square footage and pitch.';
-    } else if (serviceType.includes('hvac') || serviceType.includes('furnace') || serviceType.includes('ac') || serviceType.includes('heat pump')) {
-      estimateGuidance = 'Complete heating and cooling system replacements typically range from $6,500 to $14,000 depending on equipment efficiency and sizing, while seasonal tune-ups range from $99 to $189.';
-    } else {
-      estimateGuidance = 'Pricing varies depending on project scope, accessibility, and material requirements.';
-    }
-
-    const spokenResponse = `${estimateGuidance} Every home is unique, so our technician provides an exact, written quote on-site before any work begins. Would you like me to reserve an estimate appointment for you?`;
-    return NextResponse.json({ response: spokenResponse });
+    return NextResponse.json({ response: 'I do not have verified pricing for this job. Our team needs to review the scope before providing a quote. I can take your project details for an estimate.' });
   }
 
   if (fnName === 'request_staff_step_up') {
@@ -727,7 +671,7 @@ export async function POST(request: Request) {
     const finalName = callerName || (phone ? `AI call — ${phone}` : 'AI Phone Caller');
 
     try {
-      await createLead(admin, accountId, {
+      const savedLead = await createLead(admin, accountId, {
         source: 'ai_voice',
         name: finalName,
         phone,
@@ -739,13 +683,14 @@ export async function POST(request: Request) {
         sourceVoiceProviderCallId: verifiedProviderCallId,
       });
 
+      if (!savedLead?.id) throw new Error('Lead was not saved');
       return NextResponse.json({
         response: `I've saved your request for ${finalName}${address ? ` at ${address}` : ''}. Our team will review the details and follow up with you.`,
       });
     } catch (err) {
       console.error('Error in capture_lead SWAIG handler:', err);
       return NextResponse.json({
-        response: 'I have recorded your information for our team to follow up on shortly.',
+        response: 'I could not save your information. Please try again or contact our office directly.',
       });
     }
   }

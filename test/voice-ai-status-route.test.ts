@@ -77,11 +77,13 @@ describe('AI voice fallback status callback', () => {
     }
   });
 
-  it('keeps completed callbacks as inert acknowledgements without RPC call', async () => {
+  it('persists completed forwarding duration before acknowledging', async () => {
     const { POST } = await import('@/app/api/voice/ai/status/route');
-    const response = await POST(callback({ DialCallStatus: 'completed' }));
+    const rpc = vi.fn().mockResolvedValue({ error: null });
+    mocks.createAdminClient.mockReturnValue({ rpc });
+    const response = await POST(callback({ DialCallStatus: 'completed', DialCallDuration: '61' }));
     expect(response.status).toBe(200);
-    expect(mocks.createAdminClient).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith('record_voice_forwarding_usage', expect.objectContaining({ p_seconds: 61 }));
   });
 
   it('returns 400 when missing required call identity fields on missed call', async () => {

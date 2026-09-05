@@ -43,7 +43,7 @@ export function generateContractorCallBridgeTwiml(config: VoiceCallBridgeConfig)
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   <Say voice="Polly.Matthew">Let's Get Quoted speed-to-lead alert. You have a new ${cleanProjectType} lead from ${cleanHomeowner}${cleanCity}. Press 1 to connect instantly with this homeowner.</Say>
-  <Gather numDigits="1" action="/api/voice/bridge-connect?leadId=${encodeURIComponent(config.leadId)}" method="POST" timeout="10">
+  <Gather numDigits="1" action="/api/voice/bridge-connect?leadId=${encodeURIComponent(config.leadId)}&amp;expires=${Math.floor(Date.now() / 1000) + 300}" method="POST" timeout="10">
     <Say voice="Polly.Matthew">Press 1 now to connect.</Say>
   </Gather>
   <Say voice="Polly.Matthew">No input received. We will text you the lead details immediately. Goodbye.</Say>
@@ -87,16 +87,16 @@ export async function initiateSpeedToLeadCallBridge(
   const bridgeId = `bridge_${Date.now()}_${randomUUID().slice(0, 8)}`;
   const reqDetails = buildTwilioCallRequest(config);
 
-  // In test environment or when credentials are dummy/unconfigured, return simulated success without making live egress
+  // Missing credentials must never be reported as a successfully queued call.
   if (
-    process.env.NODE_ENV === 'test' ||
+    !process.env.TWILIO_AUTH_TOKEN || !process.env.TWILIO_PHONE_NUMBER ||
     !process.env.TWILIO_ACCOUNT_SID ||
     process.env.TWILIO_ACCOUNT_SID.startsWith('AC000000')
   ) {
     return {
       bridgeId,
-      status: 'initiated',
-      contractorDialStatus: 'queued',
+      status: 'failed',
+      contractorDialStatus: 'not_configured',
       twimlPrompt: reqDetails.twimlPrompt,
       initiatedAt: new Date().toISOString(),
     };
@@ -127,7 +127,7 @@ export async function initiateSpeedToLeadCallBridge(
     const data = (await response.json()) as { sid?: string; status?: string };
     return {
       bridgeId: data.sid || bridgeId,
-      status: 'connected',
+      status: 'initiated',
       contractorDialStatus: data.status || 'queued',
       twimlPrompt: reqDetails.twimlPrompt,
       initiatedAt: new Date().toISOString(),

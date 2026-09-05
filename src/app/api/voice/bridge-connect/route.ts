@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { escapeXml } from '@/lib/voice-call-bridge';
 import { normalizeUsPhone } from '@/lib/phone';
+import { validateWebhookSignature } from '@/lib/sms-provider';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -19,16 +20,25 @@ function twimlResponse(content: string, status = 200) {
  * Connects the contractor leg directly to the homeowner.
  */
 export async function POST(request: Request) {
+  const rawBody = await request.clone().text();
+  const signature = validateWebhookSignature(request, rawBody);
+  if (!signature.ok || signature.provider !== 'twilio') return twimlResponse('  <Hangup/>', 403);
   const url = new URL(request.url);
   const leadId = url.searchParams.get('leadId');
+  const expires = Number(url.searchParams.get('expires'));
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isSafeInteger(expires) || expires < now || expires > now + 300) return twimlResponse('  <Hangup/>', 403);
 
   let digits = '';
+  let contractorPhone: string | null = null;
+  let callId = '';
   try {
     const formData = await request.formData();
     digits = String(formData.get('Digits') ?? '').trim();
+    contractorPhone = normalizeUsPhone(String(formData.get('To') ?? ''));
+    callId = String(formData.get('CallSid') ?? '').trim();
   } catch {
-    // If not formData, fallback to query param
-    digits = url.searchParams.get('Digits') || '';
+    return twimlResponse('  <Hangup/>', 400);
   }
 
   if (digits !== '1' || !leadId) {
@@ -51,6 +61,14 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: account, error: accountError } = await admin.from('accounts')
+      .select('phone, alert_phone, call_forward_number').eq('id', lead.account_id).maybeSingle();
+    const allowedPhones = [account?.phone, account?.alert_phone, account?.call_forward_number]
+      .map((phone) => normalizeUsPhone(phone || '')).filter(Boolean);
+    if (accountError || !callId || !contractorPhone || !allowedPhones.includes(contractorPhone)) {
+      return twimlResponse('  <Hangup/>', 403);
+    }
+
     const homeownerPhone = normalizeUsPhone(lead.phone);
     if (!homeownerPhone) {
       return twimlResponse(
@@ -59,7 +77,7 @@ export async function POST(request: Request) {
     }
 
     // Attempt to locate the contractor's dedicated number or fallback to TWILIO_PHONE_NUMBER
-    let callerId = process.env.TWILIO_PHONE_NUMBER || '+18005550199';
+    let callerId = process.env.TWILIO_PHONE_NUMBER || '';
     if (lead.account_id) {
       const { data: phoneRow } = await admin
         .from('signalwire_phone_numbers')
@@ -73,6 +91,7 @@ export async function POST(request: Request) {
       }
     }
 
+    if (!normalizeUsPhone(callerId)) return twimlResponse('  <Hangup/>', 503);
     const cleanNumber = escapeXml(homeownerPhone);
     const cleanCallerId = escapeXml(callerId);
 

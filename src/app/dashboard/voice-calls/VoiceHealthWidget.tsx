@@ -7,6 +7,7 @@ import styles from './voice-calls.module.css';
 
 type HealthData = {
   ok: boolean;
+  meteringMode?: 'off' | 'measure' | 'enforce';
   status: 'healthy' | 'not_ready' | 'degraded' | 'unavailable';
   latencyMs: number;
   engine: string;
@@ -19,7 +20,7 @@ type HealthData = {
   checkedAt: string;
 };
 
-export default function VoiceHealthWidget({ availableCredits }: { availableCredits?: number | null }) {
+export default function VoiceHealthWidget({ availableMinutes }: { availableMinutes?: number | null }) {
   const [health, setHealth] = useState<HealthData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -168,11 +169,12 @@ export default function VoiceHealthWidget({ availableCredits }: { availableCredi
           </strong>
         </div>
 
-        {typeof availableCredits === 'number' ? (
+        <div className={styles.healthItem}>AI metering: {health.meteringMode === 'enforce' ? 'Enforced' : health.meteringMode === 'measure' ? 'Measuring; some calls may be unbilled' : health.meteringMode === 'off' ? 'Off — calls are not billed' : 'Unknown'}</div>
+        {typeof availableMinutes === 'number' ? (
           <div className={styles.healthItem}>
-            <span>Voice Intake Credits:</span>
-            <strong style={{ color: availableCredits <= 25 ? '#fbbf24' : '#60a5fa' }}>
-              <span aria-hidden="true">⚡</span> {availableCredits.toLocaleString('en-US')}
+            <span>AI Minutes Available:</span>
+            <strong style={{ color: availableMinutes < 60 ? '#fbbf24' : '#60a5fa' }}>
+              <span aria-hidden="true">⚡</span> {availableMinutes.toLocaleString('en-US')}
             </strong>
           </div>
         ) : null}

@@ -45,6 +45,8 @@ export async function POST(request: Request) {
   let callId: string | null = null;
   let dialStatus = 'unknown';
   let caller: string | null = null;
+  let forwardingSeconds: number | null = null;
+  let observedAt = new Date().toISOString();
 
   const contentType = request.headers.get('content-type') || '';
   if (contentType.includes('application/json')) {
@@ -52,7 +54,10 @@ export async function POST(request: Request) {
       const json = JSON.parse(rawBody) as Record<string, unknown>;
       const params = (json.params ?? {}) as Record<string, unknown>;
       callId = String(json.CallSid ?? json.call_id ?? params.call_id ?? queryCallId ?? '').trim() || null;
-      dialStatus = String(json.DialCallStatus ?? json.dial_status ?? params.call_state ?? 'no-answer').trim();
+      dialStatus = String(json.DialCallStatus ?? json.dial_status ?? params.connect_state ?? params.call_state ?? 'unknown').trim();
+      if (typeof json.timestamp === 'number' && Number.isFinite(json.timestamp)) observedAt = new Date(json.timestamp * 1000).toISOString();
+      const duration = Number(json.DialCallDuration ?? params.duration);
+      if (Number.isFinite(duration) && duration >= 0 && duration <= 86400) forwardingSeconds = Math.ceil(duration);
       caller = normalizeUsPhone(String(json.From ?? json.from ?? params.from ?? queryFrom ?? ''));
     } catch {
       // fallback to query params
@@ -62,6 +67,8 @@ export async function POST(request: Request) {
       const data = await request.formData();
       callId = String(data.get('CallSid') ?? queryCallId ?? '').trim() || null;
       dialStatus = String(data.get('DialCallStatus') ?? 'unknown').trim();
+      const duration = data.get('DialCallDuration');
+      if (duration !== null && /^\d+$/.test(String(duration)) && Number(duration) <= 86400) forwardingSeconds = Number(duration);
       caller = normalizeUsPhone(String(data.get('From') ?? queryFrom ?? ''));
     } catch {
       // fallback to query params
@@ -79,6 +86,20 @@ export async function POST(request: Request) {
     dialStatus,
   });
 
+  if (accountId && callId && (forwardingSeconds !== null || ['connected', 'disconnected', 'completed'].includes(dialStatus) || (caller && MISSED.has(dialStatus)))) {
+    try {
+      const { error } = await createAdminClient().rpc('record_voice_forwarding_usage', {
+        p_account_id: accountId, p_call_id: queryCallId || callId, p_caller: caller,
+        p_state: dialStatus, p_seconds: forwardingSeconds ?? (['no-answer', 'busy', 'failed', 'canceled'].includes(dialStatus) ? 0 : null),
+        p_observed_at: observedAt,
+      });
+      if (error) throw new Error('Forwarding usage persistence failed');
+    } catch {
+      await logWebhookFailure({ source: 'ai_voice', eventType: dialStatus, referenceId: callId,
+        errorMessage: 'Forwarding usage persistence failed' });
+      return xml(500);
+    }
+  }
   if (!MISSED.has(dialStatus)) return xml();
 
   // A missed callback is not accepted until its provider call identity, lead,

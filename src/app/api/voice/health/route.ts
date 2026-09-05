@@ -1,3 +1,4 @@
+import { voiceMinuteMode } from '@/lib/billing/voice-minute-usage';
 import { NextResponse } from 'next/server';
 import { createAdminClient, requireOfficeContext } from '@/lib/auth';
 import { loadVoiceRouteReadiness } from '@/lib/voice/route-readiness';
@@ -47,6 +48,7 @@ export async function GET() {
   return NextResponse.json({
     ok: true,
     status,
+    meteringMode: voiceMinuteMode(),
     latencyMs: Math.max(1, elapsedMs),
     engine: 'SignalWire SWML',
     activeNumber,

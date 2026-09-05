@@ -1,3 +1,4 @@
+vi.mock('@/lib/voice/tool-admission', () => ({ authorizeVoiceToolInvocation: vi.fn().mockResolvedValue(true) }));
 import { describe, expect, it, vi } from 'vitest';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 import type { VoiceAnswerPlan } from '@/lib/voice/provider';
@@ -246,5 +247,47 @@ describe('AI Voice Tier 3 Live SWAIG Tools & In-Call Scheduling', () => {
     const data = await res.json();
     expect(data.response).toContain('Sarah Connor');
     expect(data.response).toContain('123 Resistance Way');
+  });
+});
+
+
+describe('voice tool truthfulness and appointment safety', () => {
+  async function invoke(fn: string, argument: Record<string, unknown> = {}) {
+    process.env.LGQ_VOICE_RECEIPT_BASIC = 'test-user:test-password';
+    process.env.SIGNALWIRE_SIGNING_KEY = 'test-secret';
+    const { signVoiceToolToken } = await import('@/lib/voice/auth');
+    const { POST } = await import('@/app/api/voice/swaig/route');
+    const token = signVoiceToolToken({ accountId: 'acc-123', providerCallId: 'call-xyz', callerPhone: '+12485550199' });
+    return POST(new Request(`https://example.com/api/voice/swaig?token=${token}`, { method: 'POST', headers: {
+      'Content-Type': 'application/json', Authorization: `Basic ${Buffer.from('test-user:test-password').toString('base64')}`,
+    }, body: JSON.stringify({ function: fn, argument }) }));
+  }
+  it('saves an office-review request using signed caller identity without mutating an appointment', async () => {
+    const { createAdminClient } = await import('@/lib/auth');
+    const { createLead } = await import('@/lib/leads');
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null });
+    const from = vi.fn(); vi.mocked(createAdminClient).mockReturnValue({ rpc, from } as never);
+    const res = await invoke('cancel_or_reschedule_appointment',{action:'cancel',customer_phone:'+15559999999'});
+    expect((await res.json()).response).toContain('has not changed');
+    expect(createLead).toHaveBeenLastCalledWith(expect.anything(),'acc-123',expect.objectContaining({phone:'+12485550199'}));
+    expect(from).not.toHaveBeenCalled();
+    expect(rpc).toHaveBeenCalledWith('append_voice_appointment_request',expect.objectContaining({p_call_id:'call-xyz'}));
+  });
+  it('does not announce success after request persistence fails', async () => {
+    const { createAdminClient } = await import('@/lib/auth');
+    vi.mocked(createAdminClient).mockReturnValue({ rpc: async () => ({data:false,error:null}) } as never);
+    const res = await invoke('cancel_or_reschedule_appointment',{action:'cancel'});
+    expect((await res.json()).response).toContain('could not save');
+  });
+  it('does not announce lead capture success after a failed write', async () => {
+    const { createLead } = await import('@/lib/leads');
+    vi.mocked(createLead).mockRejectedValueOnce(new Error('offline'));
+    const res = await invoke('capture_lead',{name:'Caller'});
+    expect((await res.json()).response).toContain('could not save');
+  });
+  it('blocks tools after admission revocation', async () => {
+    const { authorizeVoiceToolInvocation } = await import('@/lib/voice/tool-admission');
+    vi.mocked(authorizeVoiceToolInvocation).mockResolvedValueOnce(false);
+    expect((await invoke('capture_lead')).status).toBe(403);
   });
 });

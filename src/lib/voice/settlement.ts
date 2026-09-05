@@ -548,25 +548,27 @@ export async function recordCallHistory(
     : 'unreviewed';
 
   try {
-    const { data: callRow } = await admin
+    const { data: callRow, error: callReadError } = await admin
       .from('voice_calls')
       .select('id')
       .eq('provider', receipt.provider)
       .eq('provider_call_id', receipt.providerCallId)
       .maybeSingle();
 
+    if (callReadError) throw new Error('Voice workflow call read failed');
     if (callRow?.id) {
-      const { data: existingWorkflow } = await admin
+      const { data: existingWorkflow, error: workflowReadError } = await admin
         .from('voice_call_workflows')
         .select('disposition, reviewed_at, reviewed_by')
         .eq('call_id', callRow.id)
         .maybeSingle();
 
+      if (workflowReadError) throw new Error('Voice workflow read failed');
       // Only write disposition when no row exists, or when the existing one is still unreviewed
       const isStillUnreviewed = !existingWorkflow || existingWorkflow.disposition === 'unreviewed';
       const effectiveDisposition = isStillUnreviewed ? disposition : existingWorkflow.disposition;
 
-      await admin.from('voice_call_workflows').upsert({
+      const { error: workflowWriteError } = await admin.from('voice_call_workflows').upsert({
         call_id: callRow.id,
         account_id: facts.accountId,
         disposition: effectiveDisposition,
@@ -575,6 +577,7 @@ export async function recordCallHistory(
         ...(existingWorkflow?.reviewed_by ? { reviewed_by: existingWorkflow.reviewed_by } : {}),
       }, { onConflict: 'call_id' });
 
+      if (workflowWriteError) throw new Error('Voice workflow write failed');
       const cPhone = facts.callerNumber ?? callerPhone(receipt);
 
       if (isEmergency && !facts.staffCaller) {
@@ -584,11 +587,11 @@ export async function recordCallHistory(
             facts.accountId,
             cPhone,
             summaryLine(receipt) || emergency.reason,
-            emergency,
+            { ...emergency, isEmergency: true, hazardType: typeof structured?.hazard_type === 'string' ? structured.hazard_type : emergency.hazardType },
             callRow.id,
           );
         } catch (emergencyError) {
-          console.error('[AI Voice Settlement] Emergency alert dispatch failed:', emergencyError);
+          throw emergencyError;
         }
       } else if (!facts.staffCaller && outcome !== 'caller_abandoned') {
         try {
@@ -601,7 +604,7 @@ export async function recordCallHistory(
             callRow.id,
           );
         } catch (notifyError) {
-          console.error('[AI Voice Settlement] Ordinary call notification dispatch failed:', notifyError);
+          throw notifyError;
         }
       }
 
@@ -611,7 +614,7 @@ export async function recordCallHistory(
           const issueSummary = typeof structured?.issue_summary === 'string'
             ? structured.issue_summary
             : (summaryLine(receipt) || null);
-          await triggerVoicePostCallFollowup(
+          const followupResult = await triggerVoicePostCallFollowup(
             admin,
             facts.accountId,
             callRow.id,
@@ -621,12 +624,13 @@ export async function recordCallHistory(
               issueSummary,
             },
           );
+          if (!followupResult.ok) throw new Error('Post-call follow-up was not queued');
         } catch (smsError) {
-          console.error('[AI Voice Settlement] Post-call SMS dispatch failed:', smsError);
+          throw smsError;
         }
       }
     }
   } catch (error) {
-    console.error('[AI Voice Settlement] Workflow/notification sync failed:', error);
+    throw error;
   }
 }

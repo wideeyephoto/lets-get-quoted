@@ -34,17 +34,18 @@ export async function triggerVoicePostCallFollowup(
   // Check voice_settings if not explicitly provided
   if (options.postCallSmsEnabled === undefined) {
     try {
-      const { data: settings } = await _supabase
+      const { data: settings, error: settingsError } = await _supabase
         .from('voice_settings')
         .select('post_call_sms_enabled')
         .eq('account_id', accountId)
         .maybeSingle();
 
+      if (settingsError) return { ok: false, error: 'Post-call SMS settings unavailable' };
       if (settings && settings.post_call_sms_enabled === false) {
         return { ok: true, skipped: true };
       }
     } catch (err) {
-      console.warn('[triggerVoicePostCallFollowup] Could not verify post_call_sms_enabled:', err);
+      return { ok: false, error: 'Post-call SMS settings unavailable' };
     }
   }
 

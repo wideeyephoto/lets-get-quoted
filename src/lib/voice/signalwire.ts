@@ -281,7 +281,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                         },
                       },
                       { play: { url: 'say: Our office staff is currently unavailable to take your call. Please leave a message after the beep.' } },
-                      { record: VOICEMAIL_RECORDING },
+                      { record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } },
                       { hangup: {} },
                     ],
                   },
@@ -847,12 +847,11 @@ export const signalwireVoiceProvider: VoiceProvider = {
                     to: plan.number,
                     from: plan.callerId,
                     timeout: plan.timeoutSeconds,
-                    call_state_url: plan.actionUrl,
-                    call_state_events: ['ended'],
+                    status_url: plan.actionUrl,
                   },
                 },
                 { play: { url: "say: We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep." } },
-                { record: VOICEMAIL_RECORDING },
+                { record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } },
                 { hangup: {} },
               ],
             },
@@ -868,7 +867,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
             main: [
               { answer: {} },
               { play: { url: `say: ${message}` } },
-              ...(plan.kind === 'voicemail' ? [{ record: VOICEMAIL_RECORDING }] : []),
+              ...(plan.kind === 'voicemail' ? [{ record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } }] : []),
               { hangup: {} },
             ],
           },
@@ -897,7 +896,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       contentType: 'text/xml',
       body: '<?xml version="1.0" encoding="UTF-8"?><Response>'
         + `<Say voice="man">${escapeXml(message)}</Say>`
-        + (plan.kind === 'voicemail' ? '<Record maxLength="120" playBeep="true" />' : '')
+        + (plan.kind === 'voicemail' ? `<Record maxLength="120" playBeep="true"${plan.recordingStatusUrl ? ` recordingStatusCallback="${escapeXml(plan.recordingStatusUrl)}" recordingStatusCallbackMethod="POST"` : ''} />` : '')
         + '</Response>',
     });
   },

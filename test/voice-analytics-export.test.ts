@@ -15,7 +15,7 @@ describe('AI Voice Tier 5 Analytics & Date Range Filtering', () => {
           caller_number: '+12485550101',
           started_at: '2026-08-25T14:30:00Z',
           ai_seconds: 60,
-          billed_minutes: 1,
+          billed_minutes: 1, settlement: 'allowance',
           outcome: 'completed',
           summary: 'HVAC tuneup inquiry',
           lead_id: 'lead-1',
@@ -28,7 +28,7 @@ describe('AI Voice Tier 5 Analytics & Date Range Filtering', () => {
           caller_number: '+12485550102',
           started_at: '2026-08-25T14:45:00Z',
           ai_seconds: 120,
-          billed_minutes: 2,
+          billed_minutes: 2, settlement: 'allowance',
           outcome: 'transferred',
           summary: 'Caller requested live dispatcher for emergency gas leak',
           lead_id: null,
@@ -41,7 +41,7 @@ describe('AI Voice Tier 5 Analytics & Date Range Filtering', () => {
           caller_number: '+12485550103',
           started_at: '2026-08-20T09:00:00Z',
           ai_seconds: 30,
-          billed_minutes: 1,
+          billed_minutes: 1, settlement: 'allowance',
           outcome: 'ai_handled',
           summary: 'Inquired about weekend hours',
           lead_id: null,
@@ -109,7 +109,7 @@ describe('AI Voice Tier 5 Analytics & Date Range Filtering', () => {
 
     expect(result.available).toBe(true);
     expect(result.counters.totalCount).toBe(3);
-    expect(result.counters.totalAiMinutes).toBe(4); // (60 + 120 + 30) = 210s -> ceil(210/60) = 4 min
+    expect(result.counters.totalAiMinutes).toBe(4); // Settled per-call billing: 1 + 2 + 1 minutes
     expect(result.counters.avgDurationSeconds).toBe(70); // 210 / 3 = 70s
     expect(result.counters.handledCount).toBe(2); // call-1 (completed) + call-3 (ai_handled)
     expect(result.counters.transferred).toBe(1); // call-2 (transferred)

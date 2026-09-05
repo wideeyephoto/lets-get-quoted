@@ -1,3 +1,4 @@
+vi.mock('@/lib/voice/tool-admission', () => ({ authorizeVoiceToolInvocation: vi.fn().mockResolvedValue(true) }));
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 vi.mock('@/lib/auth', () => ({

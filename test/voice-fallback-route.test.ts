@@ -60,7 +60,7 @@ describe.each([
     expect(unavailableDependency).not.toHaveBeenCalled();
     if (format === 'laml') {
       expect(response.headers.get('content-type')).toContain('text/xml');
-      expect(await response.text()).toContain('<Record maxLength="120" playBeep="true" />');
+      expect(await response.text()).toContain('<Record maxLength="120" playBeep="true"');
     } else {
       expect(response.headers.get('content-type')).toContain('application/json');
       const { sections: { main } } = await response.json();

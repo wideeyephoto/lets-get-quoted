@@ -29,7 +29,7 @@ export default function VoiceInsightsCard({
         <div className="ins-figure">
           <span className="ins-figure-label">Calls handled</span>
           <strong className="ins-figure-value">{answeredCalls}</strong>
-          <span className="ins-sub">{totalCalls} total calls ({totalMinutes} mins)</span>
+          <span className="ins-sub">{totalCalls} total calls ({totalMinutes} conversation mins)</span>
         </div>
         <div className="ins-figure">
           <span className="ins-figure-label">Leads created</span>
