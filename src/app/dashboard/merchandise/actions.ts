@@ -16,6 +16,17 @@ import { saveMerchandiseOrder, listMerchandiseOrders, updateMerchandiseOrder } f
 import { resolveServerItemPricing, computePlatformCut } from '@/lib/merchandise/pricing';
 import { calculatePrintfulShippingRates } from '@/lib/merchandise/printful-client';
 import { getProductById } from '@/lib/merchandise/catalog';
+import { randomBytes } from 'node:crypto';
+import {
+  calculateCardQuoteCents,
+  validateQuoteIntegrity,
+  generateOperationKey,
+  computeApprovalHash,
+  centsToDollars,
+  type CardQuoteRecord,
+} from '@/lib/merchandise/card-operations';
+import { computeArtworkHash } from '@/lib/merchandise/card-renderer';
+import { generateOrderNumber } from '@/lib/merchandise/orders';
 
 /**
  * Server-side data loader for initial page render in page.tsx.
@@ -193,10 +204,10 @@ export async function createMerchandiseCheckoutAction(params: {
       return { ok: false, error: 'Enter a valid 5-digit US ZIP code.' };
     }
     if (!addr.phone?.trim() || addr.phone.replace(/\D/g, '').length < 10) {
-      return { ok: false, error: 'Please provide a valid 10-digit telephone number.' };
+      return { ok: false, error: 'Enter a valid 10-digit telephone number.' };
     }
     if (!addr.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.email.trim())) {
-      return { ok: false, error: 'Please provide a valid email address for delivery tracking.' };
+      return { ok: false, error: 'Enter a valid email address for delivery tracking.' };
     }
 
     // Authoritative Server-Side Pricing Calculation
@@ -480,6 +491,337 @@ export async function getMerchandiseOrdersAction(): Promise<{
       ok: false,
       orders: [],
       error: err instanceof Error ? err.message : 'Could not fetch merchandise orders.',
+    };
+  }
+}
+
+/**
+ * Authoritative Server Quote Action for Business Cards
+ * Validates shipping address and resolves integer-cents quote with TTL.
+ */
+export async function createCardQuoteAction(params: {
+  cardCount: number;
+  shippingAddress: ShippingAddress;
+  proofId?: string;
+}): Promise<{
+  ok: boolean;
+  quote?: CardQuoteRecord;
+  error?: string;
+}> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.read');
+    const admin = createAdminClient();
+
+    const addr = params.shippingAddress;
+    if (!addr.fullName?.trim() || addr.fullName.trim().length < 2) {
+      return { ok: false, error: 'Enter a valid recipient full name.' };
+    }
+    if (!addr.streetAddress?.trim() || addr.streetAddress.trim().length < 3) {
+      return { ok: false, error: 'Enter a valid street address.' };
+    }
+    if (!addr.city?.trim() || addr.city.trim().length < 2) {
+      return { ok: false, error: 'Enter a valid city.' };
+    }
+    if (!addr.state?.trim() || !/^[A-Za-z]{2}$/.test(addr.state.trim())) {
+      return { ok: false, error: 'Enter a valid 2-letter US state code.' };
+    }
+    if (!addr.postalCode?.trim() || !/^\d{5}(-\d{4})?$/.test(addr.postalCode.trim())) {
+      return { ok: false, error: 'Enter a valid 5-digit US ZIP code.' };
+    }
+    if (!addr.phone?.trim() || addr.phone.replace(/\D/g, '').length < 10) {
+      return { ok: false, error: 'Enter a valid 10-digit telephone number.' };
+    }
+    if (!addr.email?.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr.email.trim())) {
+      return { ok: false, error: 'Enter a valid email address for delivery tracking.' };
+    }
+
+    const quoteRes = calculateCardQuoteCents({
+      accountId,
+      proofId: params.proofId || null,
+      cardCount: params.cardCount,
+      shippingAddress: params.shippingAddress,
+    });
+
+    if (!quoteRes.ok) {
+      return { ok: false, error: quoteRes.error };
+    }
+
+    const q = quoteRes.quote;
+
+    // Persist quote into merchandise_order_quotes
+    const { error: dbError } = await admin.from('merchandise_order_quotes').insert({
+      id: q.id,
+      account_id: accountId,
+      proof_id: q.proofId,
+      card_count: q.cardCount,
+      pack_plan: q.packPlan,
+      currency: q.currency,
+      subtotal_cents: q.subtotalCents,
+      shipping_cost_cents: q.shippingCostCents,
+      estimated_tax_cents: q.estimatedTaxCents,
+      total_cents: q.totalCents,
+      wholesale_cost_cents: q.wholesaleCostCents,
+      platform_fee_cents: q.platformFeeCents,
+      destination_fingerprint: q.destinationFingerprint,
+      selected_shipping_rate_id: q.selectedShippingRateId,
+      expires_at: q.expiresAt,
+    });
+
+    if (dbError) {
+      console.error('Failed to persist merchandise quote:', dbError);
+    }
+
+    return { ok: true, quote: q };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Could not generate authoritative card quote.',
+    };
+  }
+}
+
+/**
+ * Persists an approved digital proof and generates an immutable approval hash.
+ */
+export async function saveCardProofAction(params: {
+  designId?: string;
+  designRevision?: number;
+  frontSvg: string;
+  backSvg: string;
+}): Promise<{
+  ok: boolean;
+  proofId?: string;
+  approvalHash?: string;
+  error?: string;
+}> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+
+    if (!params.frontSvg?.trim() || !params.backSvg?.trim()) {
+      return { ok: false, error: 'Both front and back artwork files are required.' };
+    }
+
+    const frontHash = computeArtworkHash(params.frontSvg);
+    const backHash = computeArtworkHash(params.backSvg);
+    const revision = params.designRevision || 1;
+    const approvalHash = computeApprovalHash({
+      frontAssetHash: frontHash,
+      backAssetHash: backHash,
+      designRevision: revision,
+      userId: accountId,
+    });
+
+    const proofId = `proof_${Date.now()}_${randomBytes(4).toString('hex')}`;
+
+    const { error: dbError } = await admin.from('merchandise_card_proofs').insert({
+      id: proofId,
+      account_id: accountId,
+      design_id: params.designId || null,
+      design_revision: revision,
+      product_capability_version: 1,
+      front_asset_key: `card_proofs/${accountId}/${proofId}_front.svg`,
+      front_asset_hash: frontHash,
+      back_asset_key: `card_proofs/${accountId}/${proofId}_back.svg`,
+      back_asset_hash: backHash,
+      approval_hash: approvalHash,
+      is_approved: true,
+      approved_at: new Date().toISOString(),
+      preflight_passed: true,
+    });
+
+    if (dbError) {
+      console.warn('Could not insert card proof into database:', dbError);
+    }
+
+    return { ok: true, proofId, approvalHash };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Failed to record digital card proof sign-off.',
+    };
+  }
+}
+
+/**
+ * Creates an idempotent Stripe Checkout session for business card ordering.
+ * Enforces authoritative quote validation, single confirmed address, and operation leasing.
+ */
+export async function createCardCheckoutSessionAction(params: {
+  quote: CardQuoteRecord;
+  proofId: string;
+  approvalHash: string;
+  shippingAddress: ShippingAddress;
+  companyName?: string;
+}): Promise<{
+  ok: boolean;
+  checkoutUrl?: string;
+  orderNumber?: string;
+  operationKey?: string;
+  error?: string;
+}> {
+  try {
+    const { accountId } = await requireOfficeContext('settings.write');
+    const admin = createAdminClient();
+
+    const quote = params.quote;
+    if (!quote || !quote.id || !quote.totalCents) {
+      return { ok: false, error: 'Valid order quote is required.' };
+    }
+
+    // Validate quote expiration and destination fingerprint
+    const integrity = validateQuoteIntegrity(quote, params.shippingAddress);
+    if (!integrity.valid) {
+      return { ok: false, error: integrity.reason || 'Invalid or expired order quote.' };
+    }
+
+    const operationKey = generateOperationKey(accountId, quote.id);
+
+    // Check for existing pending checkout operation for idempotency
+    const { data: existingOp } = await admin
+      .from('merchandise_checkout_operations')
+      .select('id, status, stripe_session_id, order_id')
+      .eq('operation_key', operationKey)
+      .maybeSingle();
+
+    if (existingOp && existingOp.stripe_session_id && existingOp.status === 'pending') {
+      return {
+        ok: true,
+        checkoutUrl: `https://checkout.stripe.com/pay/${existingOp.stripe_session_id}`,
+        operationKey,
+      };
+    }
+
+    const orderNumber = generateOrderNumber();
+    const subtotalDollars = centsToDollars(quote.subtotalCents);
+    const shippingDollars = centsToDollars(quote.shippingCostCents);
+    const totalDollars = centsToDollars(quote.totalCents);
+
+    // Create pending order record in merchandise_orders
+    const { data: orderData, error: orderError } = await admin
+      .from('merchandise_orders')
+      .insert({
+        account_id: accountId,
+        order_number: orderNumber,
+        proof_id: params.proofId,
+        quote_id: quote.id,
+        status: 'pending_payment',
+        payment_status: 'pending',
+        fulfillment_status: 'not_submitted',
+        items: [
+          {
+            productId: 'biz_cards',
+            productName: 'Set of Business Cards',
+            quantity: quote.cardCount,
+            unitPrice: subtotalDollars / quote.cardCount,
+            totalPrice: subtotalDollars,
+            colorName: 'Bright Arctic White',
+            colorHex: '#ffffff',
+            customizationDetails: {
+              businessName: params.companyName || params.shippingAddress.companyName || 'Contractor Brand',
+              decorationMethod: 'offset_cmyk',
+              placement: 'front_and_back',
+            },
+          },
+        ],
+        subtotal: subtotalDollars,
+        shipping_cost: shippingDollars,
+        tax_amount: 0.0,
+        total_amount: totalDollars,
+        shipping_address: params.shippingAddress,
+      })
+      .select('id, order_number')
+      .single();
+
+    if (orderError || !orderData) {
+      console.error('Failed to create pending merchandise order:', orderError);
+      return {
+        ok: false,
+        error: `Could not initialize order: ${orderError?.message || 'Database error'}`,
+      };
+    }
+
+    // Insert operation record
+    await admin.from('merchandise_checkout_operations').insert({
+      operation_key: operationKey,
+      account_id: accountId,
+      order_id: orderData.id,
+      quote_id: quote.id,
+      status: 'processing',
+    });
+
+    const reqHeaders = await headers();
+    const host = reqHeaders.get('host') || 'localhost:3010';
+    const proto = reqHeaders.get('x-forwarded-proto') || 'http';
+    const origin = `${proto}://${host}`;
+
+    const stripe = getStripeClient();
+    if (!stripe) {
+      return { ok: false, error: 'Stripe client unavailable.' };
+    }
+
+    const session = await stripe.checkout.sessions.create({
+      mode: 'payment',
+      payment_method_types: ['card'],
+      line_items: [
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: `${quote.cardCount} Business Cards (Printful Mohawk Uncoated)`,
+              description: 'Double-sided full color with dynamic QR booking code direct to your site.',
+            },
+            unit_amount: quote.subtotalCents,
+          },
+          quantity: 1,
+        },
+        {
+          price_data: {
+            currency: 'usd',
+            product_data: {
+              name: 'Tracked Ground Shipping (US)',
+              description: 'Commercial carrier tracking via UPS Ground (2–3 business days).',
+            },
+            unit_amount: quote.shippingCostCents,
+          },
+          quantity: 1,
+        },
+      ],
+      customer_email: params.shippingAddress.email,
+      metadata: {
+        merchandise_order: 'true',
+        account_id: accountId,
+        order_id: orderData.id,
+        order_number: orderData.order_number,
+        quote_id: quote.id,
+        operation_key: operationKey,
+        shipping_method: 'standard',
+      },
+      success_url: `${origin}/dashboard/merchandise?order_success=true&order_number=${orderData.order_number}&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${origin}/dashboard/merchandise?order_cancelled=true`,
+    });
+
+    // Update order and operation with stripe_session_id
+    await admin
+      .from('merchandise_orders')
+      .update({ stripe_session_id: session.id })
+      .eq('id', orderData.id);
+
+    await admin
+      .from('merchandise_checkout_operations')
+      .update({ stripe_session_id: session.id, status: 'pending' })
+      .eq('operation_key', operationKey);
+
+    return {
+      ok: true,
+      checkoutUrl: session.url || undefined,
+      orderNumber: orderData.order_number,
+      operationKey,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : 'Stripe checkout session creation failed.',
     };
   }
 }

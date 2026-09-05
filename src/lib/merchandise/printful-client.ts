@@ -10,6 +10,11 @@
  */
 
 import type { MerchandiseOrderItem, ShippingAddress } from './types';
+import {
+  resolveCardPackPlan,
+  isSupportedCardFinish,
+  PRINTFUL_CARD_VARIANTS,
+} from './card-catalog-types';
 
 export type PrintfulOrderResult = {
   ok: boolean;
@@ -53,7 +58,7 @@ function getPrintfulHeaders(): Record<string, string> {
 /**
  * Known Printful catalog catalog variant IDs for standard apparel and promotional items.
  */
-const PRINTFUL_DEFAULT_VARIANT_MAP: Record<string, number> = {
+export const PRINTFUL_DEFAULT_VARIANT_MAP: Record<string, number> = {
   t_shirts: 4014, // Bella + Canvas 3001 L Black
   polos: 11021, // Port Authority Dry Zone Polo L Black
   hats: 8857, // Richardson 112 Trucker Cap One Size
@@ -63,6 +68,109 @@ const PRINTFUL_DEFAULT_VARIANT_MAP: Record<string, number> = {
   decals: 16101, // 12x24 Heavy Magnet
   pens: 17101, // Laser Engraved Gel Pen
 };
+
+/**
+ * Validates and converts merchandise order items into Printful API item payloads.
+ * Strictly checks that card quantities match verified pack sizes (50, 100, 250, 500)
+ * and maps them to physical pack line items rather than raw card unit counts.
+ * Stops checkout if an unknown or unmapped product is encountered.
+ */
+export function buildPrintfulOrderItems(items: MerchandiseOrderItem[]):
+  | { ok: true; printfulItems: any[] }
+  | { ok: false; error: string } {
+  const printfulItems: any[] = [];
+  let lineIndex = 1;
+
+  for (const item of items) {
+    if (item.productId === 'biz_cards') {
+      const packPlan = resolveCardPackPlan(item.quantity);
+      if (!packPlan) {
+        return {
+          ok: false,
+          error: `Invalid or unsupported business card quantity: ${item.quantity}. Supported quantities are 50, 100, 250, and 500 cards.`,
+        };
+      }
+
+      const requestedFinish = item.customizationDetails?.finish || item.customizationDetails?.cardFinish;
+      if (!isSupportedCardFinish(requestedFinish)) {
+        return {
+          ok: false,
+          error: `Requested card finish "${requestedFinish}" is not supported for physical Printful business card manufacturing. Printful Set of Business Cards requires uncoated/matte stock.`,
+        };
+      }
+
+      for (const pack of packPlan.packs) {
+        const files: Array<{ type: string; url: string }> = [];
+        const frontUrl =
+          item.customizationDetails?.customArtworkUrl ||
+          item.customizationDetails?.logoUrl;
+        if (frontUrl) {
+          files.push({ type: 'front', url: frontUrl });
+        }
+        const backUrl = item.customizationDetails?.backDesign;
+        if (backUrl) {
+          files.push({ type: 'back', url: backUrl });
+        }
+
+        const packRetailPrice = (
+          (item.totalPrice * (pack.cardsInPackItem / packPlan.totalCards)) /
+          pack.packCount
+        ).toFixed(2);
+
+        printfulItems.push({
+          id: lineIndex++,
+          variant_id: pack.variantId,
+          quantity: pack.packCount, // Physical pack count, not card units!
+          retail_price: packRetailPrice,
+          name: `Set of Business Cards (${pack.packSize}pk) - ${item.customizationDetails?.businessName || 'Custom'}`,
+          files,
+        });
+      }
+    } else if (item.productId === 'notepads') {
+      // Notepads are handled via commercial broker routing
+      continue;
+    } else {
+      const variantId = PRINTFUL_DEFAULT_VARIANT_MAP[item.productId];
+      if (!variantId) {
+        return {
+          ok: false,
+          error: `No verified Printful variant mapping for product "${item.productId}". Missing mappings stop checkout.`,
+        };
+      }
+
+      const isEmbroidery =
+        item.customizationDetails?.decorationMethod === 'embroidery' ||
+        item.customizationDetails?.decorationMethod === 'leather_patch';
+      const placement = isEmbroidery ? 'embroidery_chest_left' : 'front';
+
+      printfulItems.push({
+        id: lineIndex++,
+        variant_id: variantId,
+        quantity: item.quantity,
+        retail_price: item.unitPrice.toFixed(2),
+        name: `${item.productName} - ${item.colorName}`,
+        files: item.customizationDetails?.logoUrl
+          ? [
+              {
+                type: placement,
+                url: item.customizationDetails.logoUrl,
+                position: {
+                  area_width: isEmbroidery ? 1200 : 1800,
+                  area_height: isEmbroidery ? 1200 : 2400,
+                  width: isEmbroidery ? 1000 : 1600,
+                  height: isEmbroidery ? 800 : 1400,
+                  top: 200,
+                  left: 100,
+                },
+              },
+            ]
+          : [],
+      });
+    }
+  }
+
+  return { ok: true, printfulItems };
+}
 
 /**
  * Dispatches an order to commercial trade print manufacturing or Printful automated fulfillment.
@@ -81,23 +189,19 @@ export async function createPrintfulOrder(params: {
     process.env.MERCHANDISE_SIMULATE_FULFILLMENT === 'true' ||
     process.env.NODE_ENV === 'test';
 
-  // Strict simulation gate: Never silently simulate just because an API key is missing.
-  // In production without a key, fail safely so orders aren't falsely recorded as shipped.
-  if (!apiKey && !isSimulation) {
-    return {
-      ok: false,
-      error: 'Printful fulfillment API is not configured (missing PRINTFUL_API_KEY). Enable MERCHANDISE_SIMULATE_FULFILLMENT=1 for development/testing sandbox.',
-    };
+  if (!params.items || params.items.length === 0) {
+    return { ok: false, error: 'Cannot create fulfillment order: no items provided.' };
   }
 
-  // Check if order consists exclusively of commercial paper print items (cards / NCR pads)
-  // Printful does not print 16pt cardstock or 2-part carbonless NCR forms; those require commercial trade brokers.
-  const hasCommercialPrintItems = params.items.some(
-    (it) => it.productId === 'biz_cards' || it.productId === 'notepads'
-  );
+  // Pre-flight validate item variants and capabilities before attempting dispatch or simulation
+  const built = buildPrintfulOrderItems(params.items);
+  if (!built.ok) {
+    return { ok: false, error: built.error };
+  }
 
-  if (hasCommercialPrintItems) {
-    // Commercial trade print broker routing
+  // Commercial trade print broker routing for notepads
+  const hasNotepads = params.items.some((it) => it.productId === 'notepads');
+  if (hasNotepads && params.items.every((it) => it.productId === 'notepads')) {
     if (isSimulation || !apiKey) {
       const brokerOrderId = Math.floor(2000000 + Math.random() * 8000000);
       const deliveryDays = params.shippingMethod === 'rush' ? 2 : 4;
@@ -115,6 +219,15 @@ export async function createPrintfulOrder(params: {
         provider: 'commercial_print_broker',
       };
     }
+  }
+
+  // Strict simulation gate: Never silently simulate just because an API key is missing.
+  // In production without a key, fail safely so orders aren't falsely recorded as shipped.
+  if (!apiKey && !isSimulation) {
+    return {
+      ok: false,
+      error: 'Printful fulfillment API is not configured (missing PRINTFUL_API_KEY). Enable MERCHANDISE_SIMULATE_FULFILLMENT=1 for development/testing sandbox.',
+    };
   }
 
   if (isSimulation || apiKey?.startsWith('test_')) {
@@ -137,37 +250,7 @@ export async function createPrintfulOrder(params: {
   }
 
   try {
-    const printfulItems = params.items.map((item, index) => {
-      const isEmbroidery =
-        item.customizationDetails.decorationMethod === 'embroidery' ||
-        item.customizationDetails.decorationMethod === 'leather_patch';
-      const placement = isEmbroidery ? 'embroidery_chest_left' : 'front';
-      const variantId = PRINTFUL_DEFAULT_VARIANT_MAP[item.productId] || 4014;
-
-      return {
-        id: index + 1,
-        variant_id: variantId,
-        quantity: item.quantity,
-        retail_price: item.unitPrice.toFixed(2),
-        name: `${item.productName} - ${item.colorName}`,
-        files: item.customizationDetails.logoUrl
-          ? [
-              {
-                type: placement,
-                url: item.customizationDetails.logoUrl,
-                position: {
-                  area_width: isEmbroidery ? 1200 : 1800,
-                  area_height: isEmbroidery ? 1200 : 2400,
-                  width: isEmbroidery ? 1000 : 1600,
-                  height: isEmbroidery ? 800 : 1400,
-                  top: 200,
-                  left: 100,
-                },
-              },
-            ]
-          : [],
-      };
-    });
+    const printfulItems = built.printfulItems;
 
     const shippingCode = params.shippingMethod === 'rush' ? 'EXPRESS' : 'STANDARD';
 
@@ -282,9 +365,23 @@ export async function calculatePrintfulShippingRates(params: {
           country_code: 'US',
           zip: params.shippingAddress.postalCode,
         },
-        items: params.items.map((it) => ({
-          quantity: it.quantity,
-        })),
+        items: params.items.flatMap((it) => {
+          if (it.productId === 'biz_cards') {
+            const plan = resolveCardPackPlan(it.quantity);
+            if (!plan) return [{ quantity: 1 }];
+            return plan.packs.map((p) => ({
+              variant_id: p.variantId,
+              quantity: p.packCount,
+            }));
+          }
+          const variantId = PRINTFUL_DEFAULT_VARIANT_MAP[it.productId];
+          return [
+            {
+              variant_id: variantId || 4014,
+              quantity: it.quantity,
+            },
+          ];
+        }),
       }),
     });
 

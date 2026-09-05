@@ -43,10 +43,11 @@ function verifyPrintfulAuth(req: Request, rawBody: string): boolean {
     return true;
   }
 
-  // 2. Check HMAC signature (X-Printful-Signature)
-  const signature = req.headers.get('x-printful-signature');
+  // 2. Check HMAC signature (X-Printful-Signature or v2 X-PF-Webhook-Signature)
+  const signature = req.headers.get('x-pf-webhook-signature') || req.headers.get('x-printful-signature');
   if (signature) {
     try {
+      // Try UTF-8 secret first
       const hmac = createHmac('sha256', secret);
       hmac.update(rawBody, 'utf8');
       const expected = hmac.digest('hex');
@@ -55,6 +56,17 @@ function verifyPrintfulAuth(req: Request, rawBody: string): boolean {
       const expBuf = Buffer.from(expected.toLowerCase());
       if (sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf)) {
         return true;
+      }
+
+      // If secret is 64-hex chars (Printful v2 secret hex format), try binary decoding
+      if (/^[0-9a-fA-F]{64}$/.test(secret)) {
+        const hmacHex = createHmac('sha256', Buffer.from(secret, 'hex'));
+        hmacHex.update(rawBody, 'utf8');
+        const expectedHex = hmacHex.digest('hex');
+        const expHexBuf = Buffer.from(expectedHex.toLowerCase());
+        if (sigBuf.length === expHexBuf.length && timingSafeEqual(sigBuf, expHexBuf)) {
+          return true;
+        }
       }
     } catch (err) {
       console.warn('Printful signature calculation error:', err);
@@ -128,6 +140,7 @@ export async function POST(req: Request) {
 
       const { error } = await getOrderUpdateQuery({
         status: 'shipped',
+        fulfillment_status: 'shipped',
         tracking_number: trackingNumber,
         tracking_carrier: carrier,
         estimated_delivery_date: estimatedDelivery,
@@ -139,28 +152,34 @@ export async function POST(req: Request) {
     } else if (eventType === 'order_updated') {
       const pfStatus = data.order?.status;
       let status: MerchandiseOrderStatus = 'in_production';
+      let fulfillmentStatus = 'in_production';
 
       if (pfStatus === 'fulfilled') {
-        status = 'delivered';
+        status = 'shipped';
+        fulfillmentStatus = 'shipped';
       } else if (pfStatus === 'canceled') {
         status = 'cancelled';
+        fulfillmentStatus = 'cancelled';
       } else if (pfStatus === 'failed') {
         status = 'failed';
+        fulfillmentStatus = 'failed';
       } else if (pfStatus === 'onhold') {
         status = 'on_hold';
+        fulfillmentStatus = 'on_hold';
       } else if (pfStatus === 'inprocess') {
         status = 'in_production';
+        fulfillmentStatus = 'in_production';
       }
 
-      await getOrderUpdateQuery({ status });
+      await getOrderUpdateQuery({ status, fulfillment_status: fulfillmentStatus });
     } else if (eventType === 'order_failed') {
-      await getOrderUpdateQuery({ status: 'failed' });
+      await getOrderUpdateQuery({ status: 'failed', fulfillment_status: 'failed' });
     } else if (eventType === 'order_canceled') {
-      await getOrderUpdateQuery({ status: 'cancelled' });
+      await getOrderUpdateQuery({ status: 'cancelled', fulfillment_status: 'cancelled' });
     } else if (eventType === 'order_put_hold') {
-      await getOrderUpdateQuery({ status: 'on_hold' });
+      await getOrderUpdateQuery({ status: 'on_hold', fulfillment_status: 'on_hold' });
     } else if (eventType === 'order_refunded') {
-      await getOrderUpdateQuery({ status: 'refunded' });
+      await getOrderUpdateQuery({ status: 'refunded', payment_status: 'refunded', fulfillment_status: 'cancelled' });
     }
 
     return NextResponse.json({ ok: true });

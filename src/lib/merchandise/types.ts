@@ -180,6 +180,8 @@ export type MerchandiseOrder = {
   accountId: string;
   orderNumber: string;
   status: MerchandiseOrderStatus;
+  paymentStatus?: 'pending' | 'paid' | 'failed' | 'cancelled' | 'partially_refunded' | 'refunded' | 'disputed' | string | null;
+  fulfillmentStatus?: 'not_submitted' | 'queued' | 'submitting' | 'provider_draft' | 'accepted' | 'in_production' | 'partially_shipped' | 'shipped' | 'delivered' | 'on_hold' | 'failed' | 'cancelled' | string | null;
   items: MerchandiseOrderItem[];
   subtotal: number;
   shippingCost: number;
@@ -189,6 +191,8 @@ export type MerchandiseOrder = {
   stripeSessionId?: string | null;
   stripePaymentIntentId?: string | null;
   printfulOrderId?: number | null;
+  printfulExternalId?: string | null;
+  confirmedAt?: string | null;
   trackingNumber?: string | null;
   trackingCarrier?: string | null;
   estimatedDeliveryDate?: string | null;

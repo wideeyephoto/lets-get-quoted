@@ -58,8 +58,8 @@ export async function handleMerchandiseWebhookEvent(
       return true; // Mark handled so event doesn't retry endlessly
     }
 
-    // Idempotency guard: If order is not pending_payment, it has already been processed
-    if (order.status !== 'pending_payment') {
+    // Idempotency guard: If order is not pending_payment or already paid, it has already been processed
+    if (order.status !== 'pending_payment' || order.payment_status === 'paid') {
       return true;
     }
 
@@ -158,10 +158,29 @@ export async function handleMerchandiseWebhookEvent(
         errorMessage: printfulRes.ok ? null : printfulRes.error,
       });
 
-      // Update order status with captured Stripe numbers and fulfillment result
-      const newStatus = printfulRes.ok ? 'in_production' : 'proof_approved';
+      // Update checkout operation if operation_key was recorded
+      const opKey = session.metadata?.operation_key;
+      if (opKey) {
+        await admin
+          .from('merchandise_checkout_operations')
+          .update({
+            status: printfulRes.ok ? 'completed' : 'failed',
+            last_error: printfulRes.ok ? null : (printfulRes.error || 'Fulfillment dispatch failed'),
+          })
+          .eq('operation_key', opKey);
+      }
+
+      // Update order status with captured Stripe numbers and fulfillment result.
+      // Payment is verified and recorded as 'paid'. If fulfillment fails, status becomes 'failed'
+      // to surface to operator support, rather than resetting to 'proof_approved'.
+      const newStatus = printfulRes.ok ? 'in_production' : 'failed';
+      const newFulfillmentStatus = printfulRes.ok ? 'in_production' : 'failed';
       await updateMerchandiseOrder(admin, order.id, {
         status: newStatus,
+        paymentStatus: 'paid',
+        fulfillmentStatus: newFulfillmentStatus,
+        printfulExternalId: order.order_number,
+        confirmedAt: printfulRes.ok ? new Date().toISOString() : null,
         stripePaymentIntentId: paymentIntentId,
         printfulOrderId: printfulRes.printfulOrderId || null,
         trackingNumber: printfulRes.trackingNumber || null,
@@ -199,12 +218,12 @@ export async function handleMerchandiseWebhookEvent(
       };
 
       // Send customer confirmation email & digital proof receipt
-      const customerEmail = shippingAddress.email || session.customer_details?.email;
+      const customerEmail = shippingAddress?.email || session.customer_details?.email;
       if (customerEmail) {
         await sendCustomerMerchandiseReceipt({
           order: updatedOrderRecord,
           customerEmail,
-          customerName: shippingAddress.fullName,
+          customerName: shippingAddress?.fullName || 'Valued Customer',
           shippingAddress,
         });
       }
@@ -243,7 +262,15 @@ export async function handleMerchandiseWebhookEvent(
     if (order && order.status === 'pending_payment') {
       await updateMerchandiseOrder(admin, order.id, {
         status: 'cancelled',
+        paymentStatus: 'cancelled',
+        fulfillmentStatus: 'cancelled',
       });
+      if (session.metadata?.operation_key) {
+        await admin
+          .from('merchandise_checkout_operations')
+          .update({ status: 'expired' })
+          .eq('operation_key', session.metadata.operation_key);
+      }
     }
 
     return true;
@@ -264,6 +291,7 @@ export async function handleMerchandiseWebhookEvent(
       if (order) {
         await updateMerchandiseOrder(admin, order.id, {
           status: 'refunded',
+          paymentStatus: 'refunded',
         });
 
         const refundAmount = charge.amount_refunded ? charge.amount_refunded / 100 : Number(order.subtotal);
@@ -298,6 +326,7 @@ export async function handleMerchandiseWebhookEvent(
       if (order) {
         await updateMerchandiseOrder(admin, order.id, {
           status: 'disputed',
+          paymentStatus: 'disputed',
         });
         return true;
       }

@@ -2452,6 +2452,73 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
     vendorDependency: 'stripe',
   },
+
+  // Business card designs and layout revisions
+  merchandise_card_designs: {
+    tableName: 'merchandise_card_designs',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 1460, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Immutable approved production card proofs with asset checksums
+  merchandise_card_proofs: {
+    tableName: 'merchandise_card_proofs',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Authoritative server quotes in integer cents with TTL expiration
+  merchandise_order_quotes: {
+    tableName: 'merchandise_order_quotes',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Durable checkout and fulfillment operation state machine
+  merchandise_checkout_operations: {
+    tableName: 'merchandise_checkout_operations',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
+  // Neighborhood Halo micro-ads workspace settings
+  neighborhood_halo_settings: {
+    tableName: 'neighborhood_halo_settings',
+    relationship: 'account_primary_key',
+    primaryKeyColumn: 'account_id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Neighborhood Halo 1-mile geofenced ad campaigns
+  neighborhood_halo_campaigns: {
+    tableName: 'neighborhood_halo_campaigns',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
   // Autonomous operator audit and decision logs
   ai_operator_logs: {
     tableName: 'ai_operator_logs',
