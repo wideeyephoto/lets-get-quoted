@@ -412,6 +412,9 @@ describe('rendering an answer', () => {
     expect(verifyStepUp.purpose).toMatch(/never repeat the code aloud/i);
     expect(tool('book_appointment_slot')).toBeUndefined();
     expect(tool('send_booking_link')).toBeUndefined();
+    expect(tool('lookup_jobs').purpose).toMatch(/verified owner or office/);
+    expect(tool('lookup_jobs').argument.properties.query).toBeDefined();
+    expect(tool('lookup_jobs').argument.required).toBeUndefined();
 
     for (const name of [
       'append_job_caution_or_note',
@@ -453,6 +456,7 @@ describe('rendering an answer', () => {
     const names = ai.SWAIG.functions.map((candidate: { function: string }) => candidate.function);
     expect(names).not.toContain('request_staff_step_up');
     expect(names).not.toContain('verify_staff_step_up');
+    expect(names).not.toContain('lookup_jobs');
   });
 
   it('omits the transfer function entirely when there is nowhere to transfer', () => {

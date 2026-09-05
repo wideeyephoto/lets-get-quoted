@@ -133,7 +133,7 @@ function escapeXml(value: string): string {
 
 const CONTRACTOR_JOB_TARGET_DESCRIPTION = 'The exact job reference or job UUID. '
   + 'If the caller does not know it, collect the full client name and service address, '
-  + 'then ask a clarifying question before using this tool whenever more than one job could match. Never guess.';
+  + 'then use lookup_jobs to read the available choices and ask a clarifying question before using this tool whenever more than one job could match. Map the caller\'s chosen description or option to the returned exact reference. Never guess.';
 
 // `record` blocks SWML until the caller finishes. `record_call` starts a
 // background recording and would let the following hangup cut voicemail off.
@@ -576,8 +576,25 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
       if (plan.swaigUrl && plan.contractorMode) {
         swaigFunctions.push({
+          function: 'lookup_jobs',
+          purpose: 'Read existing jobs for a verified owner or office caller. Use when asked what jobs exist, for job details, or to list choices before an update when the caller does not know a job reference. Returns references, scope, address, status, schedule, and recorded quote. Requires this call to pass staff verification. Does not create or update anything.',
+          argument: {
+            type: 'object',
+            properties: {
+              query: {
+                type: 'string',
+                description: 'Client name, service address, exact job reference, or job UUID. Omit to list current jobs. After listing choices, pass the reference for the option the caller chose.',
+              },
+            },
+          },
+          web_hook_url: plan.swaigUrl,
+          web_hook_auth_user: plan.receiptAuthorization.username,
+          web_hook_auth_password: plan.receiptAuthorization.password,
+        });
+
+        swaigFunctions.push({
           function: 'request_staff_step_up',
-          purpose: 'Send a one-time authorization code only to the verified staff phone that placed this active call. Use before every contractor mutation unless the call is already verified.',
+          purpose: 'Send a one-time authorization code only to the verified staff phone that placed this active call. Use before reading private job details or a privileged contractor mutation unless the call is already verified. Creating a new lead does not require verification.',
           argument: {
             type: 'object',
             properties: {},

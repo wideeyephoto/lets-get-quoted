@@ -43,6 +43,7 @@ vi.mock('@/lib/voice/staff-step-up', () => ({
 
 vi.mock('@/lib/voice/contractor-actions', () => ({
   CONTRACTOR_VOICE_FUNCTIONS: new Set([
+    'lookup_jobs',
     'update_job_details',
     'update_job_scope',
     'create_or_update_lead',
@@ -103,6 +104,29 @@ beforeEach(() => {
 });
 
 describe('staff-mode SWAIG application gates', () => {
+  it('does not disclose job choices until the signed call is verified', async () => {
+    const response = await POST(request('lookup_jobs', { query: 'Rosa Holbrook' }));
+    await expect(response.json()).resolves.toMatchObject({ response: expect.stringMatching(/six-digit code/i) });
+    expect(mocks.getStepUpStatus).toHaveBeenCalledWith(expect.objectContaining({ providerCallId: 'signed-provider-call-123', signedCallerPhone: '+18103042061' }));
+    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
+  });
+
+  it('routes a verified job lookup without requesting another verification code', async () => {
+    mocks.getStepUpStatus.mockResolvedValueOnce({ verified: true });
+    mocks.handleContractorAction.mockResolvedValueOnce({ handled: true, response: 'Option 1: LGQ-1042.' });
+    const response = await POST(request('lookup_jobs', { query: 'Rosa Holbrook' }));
+    await expect(response.json()).resolves.toMatchObject({ response: 'Option 1: LGQ-1042.' });
+    expect(mocks.handleContractorAction).toHaveBeenCalledWith(expect.objectContaining({ functionName: 'lookup_jobs', stepUpVerified: true, accountId: '11111111-1111-4111-8111-111111111111' }));
+    expect(mocks.requestStepUp).not.toHaveBeenCalled();
+  });
+
+  it('rejects customer attempts to call the hidden staff lookup tool', async () => {
+    mocks.resolveIdentity.mockResolvedValueOnce({ status: 'customer' });
+    const response = await POST(request('lookup_jobs', { query: 'Rosa Holbrook' }));
+    await expect(response.json()).resolves.toMatchObject({ response: expect.stringMatching(/restricted to verified team members/i) });
+    expect(mocks.handleContractorAction).not.toHaveBeenCalled();
+  });
+
   it('rejects a direct hidden customer-booking payload before any booking read or write', async () => {
     const response = await POST(request('book_appointment_slot', {
       caller_name: 'Injected Customer',
