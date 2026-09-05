@@ -1893,6 +1893,7 @@ export default function InsuranceClaimsClient({
               </div>
 
               <select
+                aria-label="Sort insurance claims"
                 className={styles.select}
                 style={{ width: '160px', height: '34px', minHeight: '34px', fontSize: '0.82rem', padding: '0.2rem 0.5rem' }}
                 value={sortBy}

@@ -1242,6 +1242,38 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'signalwire',
   },
 
+  // Callback observations expire with recordings; the deletion outbox stays
+  // available until provider cleanup succeeds.
+  voice_recording_observations: {
+    tableName: 'voice_recording_observations',
+    relationship: 'system_global',
+    primaryKeyColumn: 'provider_call_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'voice_quality_review', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+  voice_recording_deletions: {
+    tableName: 'voice_recording_deletions',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'signalwire',
+  },
+  voice_forwarding_usage: {
+    tableName: 'voice_forwarding_usage',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'provider_call_id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // AI voice receptionist configuration
   voice_settings: {
     tableName: 'voice_settings',

@@ -236,7 +236,7 @@ export async function POST(request: Request) {
     }
 
     // Match day
-    let matchedDay = bookingDays.find((d) =>
+    const matchedDay = bookingDays.find((d) =>
       d.dateKey === requestedDateRaw
       || d.dayLabel.toLowerCase().includes(requestedDateRaw.toLowerCase()),
     );

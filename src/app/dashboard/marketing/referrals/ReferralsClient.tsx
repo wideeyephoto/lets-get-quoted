@@ -774,8 +774,7 @@ export default function ReferralsClient({
         <section className="panel workspace-section-card">
           <div
             className="section-heading workspace-section-heading compact-heading"
-            style={{ cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
-            onClick={() => setShowThanked((prev) => !prev)}
+            style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}
           >
             <h2>Thanked ({queue.thanked.length})</h2>
             <button
@@ -783,12 +782,14 @@ export default function ReferralsClient({
               className="btn secondary"
               style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem' }}
               aria-expanded={showThanked}
+              aria-controls="thanked-referrals-history"
+              onClick={() => setShowThanked((prev) => !prev)}
             >
               {showThanked ? 'Hide history ▲' : 'Show history ▼'}
             </button>
           </div>
 
-          {showThanked ? (
+          <div id="thanked-referrals-history" hidden={!showThanked}>
             <div className="mkt-perf-table-wrap" style={{ marginTop: '1rem' }}>
               <table className="mkt-perf-table">
                 <caption className="sr-only">Thanked and settled referrals history</caption>
@@ -846,7 +847,7 @@ export default function ReferralsClient({
                 </tbody>
               </table>
             </div>
-          ) : null}
+          </div>
         </section>
       ) : null}
     </>

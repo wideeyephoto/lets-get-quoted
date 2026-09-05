@@ -378,9 +378,10 @@ describe('the video studio is in the catalog and on the page', () => {
     // the whole story band — see the website-builder block in
     // feature-social-cards.test — so the answer is where the claim lives, which
     // is the position this test was written to protect in the first place.
-    const faq = WEBSITE.slice(WEBSITE.indexOf('const FAQ'), WEBSITE.indexOf('export default'));
+    const faq = readFileSync('src/app/features/website-builder/website-builder-faq.ts', 'utf8');
     expect(faq).toMatch(/video/i);
-    expect(WEBSITE).toContain('What kind of video can I add?');
+    expect(faq).toContain('What kind of video can I add?');
+    expect(WEBSITE).toContain('WEBSITE_BUILDER_FAQS.map');
   });
 
   it('counts the six layouts the product actually has', () => {
@@ -390,7 +391,7 @@ describe('the video studio is in the catalog and on the page', () => {
     const block = styles.slice(styles.indexOf('VIDEO_SECTION_STYLES'), styles.indexOf('const VIDEO_STYLE_KEYS'));
     expect([...block.matchAll(/\{ key: '/g)]).toHaveLength(6);
     expect(site.features.find((f) => f.id === 'video-sections')?.desc).toContain('Six layouts');
-    expect(WEBSITE).toMatch(/six layouts/);
+    expect(readFileSync('src/app/features/website-builder/website-builder-faq.ts', 'utf8')).toMatch(/six layouts/);
   });
 
   it('promises nothing about video the product does not do', () => {

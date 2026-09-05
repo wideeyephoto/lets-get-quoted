@@ -161,9 +161,10 @@ describe('/features comprehensive audit & remediation verification', () => {
   });
 
   describe('9. XML Sitemap inclusions', () => {
-    it('includes ai-ads and sparky in FEATURE_SLUGS', () => {
+    it('includes ai-ads and the canonical ai-copilot in FEATURE_SLUGS', () => {
       expect(SITEMAP).toContain("'ai-ads'");
-      expect(SITEMAP).toContain("'sparky'");
+      expect(SITEMAP).toContain("'ai-copilot'");
+      expect(SITEMAP).not.toContain("'sparky'");
     });
   });
 });

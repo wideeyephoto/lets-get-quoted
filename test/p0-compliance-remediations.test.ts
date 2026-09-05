@@ -34,8 +34,8 @@ describe('P0 Compliance & Migration Remediations', () => {
     });
 
     it('migration file defines owner_read policies with for select', () => {
-      expect(migrationSql).toContain('create policy sms_consent_owner_read on public.sms_consent\n  for select');
-      expect(migrationSql).toContain('create policy email_suppression_owner_read on public.email_suppression\n  for select');
+      expect(migrationSql).toMatch(/create policy sms_consent_owner_read on public\.sms_consent\s+for select/);
+      expect(migrationSql).toMatch(/create policy email_suppression_owner_read on public\.email_suppression\s+for select/);
     });
   });
 
