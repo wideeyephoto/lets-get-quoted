@@ -1,23 +1,16 @@
 'use client';
 
-import { useEffect, useRef, useState, useMemo, useCallback, useId } from 'react';
+import React, { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  type RoomSpatialScan,
-  type RoomDimensionsSummary,
-  type CustomTradeRates,
-  type RoomObject3D,
-  SAMPLE_ROOM_SCANS,
-  calculateRoomSummary,
-  formatSpatialTakeoffReport,
-  parseCustomScanJson,
-  matchScanToScope,
-} from '@/lib/property-intel/room-spatial-intel';
+import { calculateRoomSummary, formatSpatialTakeoffReport, type RoomSpatialScan, type RoomDimensionsSummary, type CustomTradeRates } from '@/lib/property-intel/room-spatial-intel';
+import { MAX_ROOM_SCAN_BYTES, parseCustomScanJson } from '@/lib/property-intel/room-scan-validation';
+import { RoomScanScene } from './RoomScanScene';
 import { modalStackFor } from '@/components/modal-stack';
 import styles from './room-scan-viewer.module.css';
 
 export type RoomScanViewerProps = {
   scan?: RoomSpatialScan;
+  target?: { kind: 'job' | 'lead'; id: string };
   className?: string;
   scope?: string | null;
   trade?: string | null;
@@ -29,1141 +22,187 @@ export type RoomScanViewerProps = {
   onOpenChange?: (open: boolean) => void;
   mode?: 'popup' | 'inline';
   isPromoted?: boolean;
-  onApplyDimensions?: (summary: RoomDimensionsSummary) => void;
+  onApplyDimensions?: (summary: RoomDimensionsSummary) => void | Promise<void>;
 };
 
-export function RoomScanViewer({
-  scan: initialScan,
-  className = '',
-  scope,
-  trade: _trade,
-  customRates: _customRates,
-  collapsible = false,
-  defaultCollapsed = false,
-  defaultOpen = false,
-  isOpen: controlledIsOpen,
-  onOpenChange,
-  mode = 'popup',
-  isPromoted: _isPromoted,
-  onApplyDimensions,
-}: RoomScanViewerProps) {
-  const defaultScan = useMemo(() => {
-    if (initialScan) return initialScan;
-    if (scope) return matchScanToScope(scope);
-    return SAMPLE_ROOM_SCANS[0];
-  }, [initialScan, scope]);
+export function RoomScanViewer(props: RoomScanViewerProps) {
+  // Reset local state on navigation even when a parent reuses this component.
+  const identity = props.target ? `${props.target.kind}:${props.target.id}` : JSON.stringify(props.scan ?? null);
+  return <RoomScanSession key={identity} {...props} />;
+}
 
-  const [customScans, setCustomScans] = useState<RoomSpatialScan[]>([]);
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(
-    Boolean(collapsible && defaultCollapsed)
-  );
-
-  const [internalIsOpen, setInternalIsOpen] = useState<boolean>(defaultOpen);
-  const isStudioOpen = controlledIsOpen !== undefined ? controlledIsOpen : internalIsOpen;
+function RoomScanSession({ scan: initialScan, target, className = '', mode = 'popup', defaultOpen = false,
+  isOpen: controlledIsOpen, onOpenChange, onApplyDimensions, collapsible = false, defaultCollapsed = false }: RoomScanViewerProps) {
+  const [scan, setScan] = useState<RoomSpatialScan | null>(() => {
+    if (target || !initialScan) return null;
+    try { return parseCustomScanJson(JSON.stringify(initialScan)); } catch { return null; }
+  });
+  const [internalOpen, setInternalOpen] = useState(defaultOpen);
+  const [collapsed, setCollapsed] = useState(collapsible && defaultCollapsed);
   const [mounted, setMounted] = useState(false);
+  const [busy, setBusy] = useState<'loading' | 'importing' | 'applying' | null>(target ? 'loading' : null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<string | null>(null);
+  const [retry, setRetry] = useState(0);
+  const [loadFailed, setLoadFailed] = useState(false);
+  const [fullscreen, setFullscreen] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const backdropRef = useRef<HTMLDivElement>(null);
+  const mountedRef = useRef(true);
+  const importingRef = useRef(false);
   const dialogId = useId();
-
-  // Active scan is either the uploaded custom scan or the scope-matched scan
-  const activeScan = customScans[0] || initialScan || defaultScan;
-
-  // Viewport & CAD tool state
-  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
-  const [measureMode, setMeasureMode] = useState(false);
-  const [measurePoints, setMeasurePoints] = useState<{ x: number; y: number; z: number }[]>([]);
-  const [measureDistance, setMeasureDistance] = useState<number | null>(null);
-  const [selectedObject, setSelectedObject] = useState<RoomObject3D | null>(null);
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  // Download & streaming progress visible over 3D rendering
-  const [downloadProgress, setDownloadProgress] = useState<number>(0);
-  const [isDownloading, setIsDownloading] = useState<boolean>(true);
-
-  // Upload modal state
-  const [showUploadModal, setShowUploadModal] = useState(false);
-  const [isDraggingFile, setIsDraggingFile] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mode === 'popup' && !isStudioOpen) {
-      setIsDownloading(true);
-      setDownloadProgress(0);
-      return;
-    }
-    if (mode === 'inline' && isCollapsed) return;
-
-    setIsDownloading(true);
-    setDownloadProgress(12);
-
-    let progress = 12;
-    const interval = setInterval(() => {
-      progress += Math.floor(Math.random() * 18) + 16;
-      if (progress >= 100) {
-        progress = 100;
-        setDownloadProgress(100);
-        clearInterval(interval);
-        setTimeout(() => {
-          setIsDownloading(false);
-        }, 280);
-      } else {
-        setDownloadProgress(progress);
-      }
-    }, 60);
-
-    return () => clearInterval(interval);
-  }, [isStudioOpen, mode, isCollapsed, activeScan.id]);
-
-  const openStudio = useCallback(() => {
-    if (controlledIsOpen === undefined) {
-      setInternalIsOpen(true);
-    }
-    onOpenChange?.(true);
+  const isStudioOpen = controlledIsOpen ?? internalOpen;
+  const endpoint = target ? `/api/room-scans?kind=${target.kind}&id=${encodeURIComponent(target.id)}` : null;
+  const summary = useMemo(() => scan ? calculateRoomSummary(scan) : null, [scan]);
+  const changeOpen = useCallback((open: boolean) => {
+    if (controlledIsOpen === undefined) setInternalOpen(open);
+    onOpenChange?.(open);
   }, [controlledIsOpen, onOpenChange]);
+  const closeStudio = useCallback(() => changeOpen(false), [changeOpen]);
 
-  const closeStudio = useCallback(() => {
-    if (controlledIsOpen === undefined) {
-      setInternalIsOpen(false);
-    }
-    onOpenChange?.(false);
-  }, [controlledIsOpen, onOpenChange]);
+  useEffect(() => { mountedRef.current = true; setMounted(true); return () => { mountedRef.current = false; }; }, []);
+  useEffect(() => {
+    if (!endpoint) return;
+    const controller = new AbortController();
+    setBusy('loading');
+    setLoadFailed(false);
+    setError(null);
+    void (async () => {
+      try {
+        const response = await fetch(endpoint, { signal: controller.signal, cache: 'no-store' });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Could not load the saved scan.');
+        const loaded = body.scan ? parseCustomScanJson(JSON.stringify(body.scan)) : null;
+        if (!controller.signal.aborted) setScan(loaded);
+      } catch (e) {
+        if (!controller.signal.aborted) { setError(e instanceof Error ? e.message : 'Could not load the saved scan.'); setLoadFailed(true); }
+      } finally { if (!controller.signal.aborted) setBusy(null); }
+    })();
+    return () => controller.abort();
+  }, [endpoint, retry]);
 
   useEffect(() => {
-    if (!isStudioOpen || !mounted || mode !== 'popup') return;
-    const backdrop = backdropRef.current;
-    if (!backdrop) return;
-    return modalStackFor(document).register({
-      id: dialogId,
-      backdrop,
-      trigger: triggerRef.current,
-      requestClose: closeStudio,
-      focusInitial: () => {},
-      setTopmost: () => {},
-    });
-  }, [isStudioOpen, mounted, mode, closeStudio, dialogId]);
+    if (!isStudioOpen || !mounted || mode !== 'popup' || !backdropRef.current) return;
+    return modalStackFor(document).register({ id: dialogId, backdrop: backdropRef.current,
+      trigger: triggerRef.current, requestClose: closeStudio,
+      focusInitial: () => backdropRef.current?.querySelector<HTMLButtonElement>('button')?.focus(), setTopmost: () => {} });
+  }, [isStudioOpen, mounted, mode, dialogId, closeStudio]);
 
-  const summary = useMemo(() => calculateRoomSummary(activeScan), [activeScan]);
-
-  // Canvas ref & interaction state
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-
-  // ESC key for Fullscreen, dialogs, and studio popup
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isFullscreen) {
-          setIsFullscreen(false);
-          return;
-        }
-        if (showUploadModal) {
-          setShowUploadModal(false);
-          return;
-        }
-        if (selectedObject) {
-          setSelectedObject(null);
-          return;
-        }
-        if (isStudioOpen && mode === 'popup') {
-          closeStudio();
-          return;
-        }
+  async function importFile(file: File) {
+    if (busy || importingRef.current || loadFailed) return;
+    importingRef.current = true;
+    setError(null); setMessage(null); setBusy('importing');
+    try {
+      if (!file.name.toLowerCase().endsWith('.json')) throw new Error('Choose an LGQ normalized scan JSON file.');
+      if (file.size > MAX_ROOM_SCAN_BYTES) throw new Error('Scan JSON must be 1 MB or smaller.');
+      const raw = await file.text();
+      let imported = parseCustomScanJson(raw);
+      if (endpoint) {
+        const response = await fetch(endpoint, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(imported) });
+        const body = await response.json();
+        if (!response.ok) throw new Error(body.error || 'Could not save this scan.');
+        imported = parseCustomScanJson(JSON.stringify(body.scan));
       }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isFullscreen, showUploadModal, selectedObject, isStudioOpen, mode, closeStudio]);
-
-  // Orbit camera state
-  const cameraRef = useRef({
-    rotX: 25,
-    rotY: -35,
-    zoom: 1.0,
-    isDragging: false,
-    startX: 0,
-    startY: 0,
-    laserY: 0,
-  });
-
-  const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    cameraRef.current.isDragging = true;
-    cameraRef.current.startX = e.clientX;
-    cameraRef.current.startY = e.clientY;
-  };
-
-  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    if (!cameraRef.current.isDragging) return;
-    const dx = e.clientX - cameraRef.current.startX;
-    const dy = e.clientY - cameraRef.current.startY;
-    cameraRef.current.startX = e.clientX;
-    cameraRef.current.startY = e.clientY;
-
-    if (viewMode === '3d') {
-      cameraRef.current.rotY += dx * 0.5;
-      cameraRef.current.rotX = Math.max(5, Math.min(80, cameraRef.current.rotX + dy * 0.4));
+      if (mountedRef.current) {
+        setScan(imported);
+        setMessage(target?.kind === 'lead'
+          ? 'Scan saved to this lead. AI quote drafts can use it after conversion to a job.'
+          : endpoint ? 'Scan saved. The next AI quote draft will use these room measurements.' : 'Scan loaded for this session.');
+      }
+    } catch (e) {
+      if (mountedRef.current) setError(e instanceof Error ? e.message : 'Could not import this scan.');
+    } finally {
+      importingRef.current = false;
+      if (mountedRef.current) { setBusy(null); if (fileRef.current) fileRef.current.value = ''; }
     }
-  };
+  }
 
-  const handleMouseUp = () => {
-    cameraRef.current.isDragging = false;
-  };
+  async function copyReport() {
+    if (!scan || !summary) return;
+    setError(null);
+    try { await navigator.clipboard.writeText(formatSpatialTakeoffReport(scan, summary)); setMessage('Dimensions copied.'); }
+    catch { setError('Clipboard access failed. Download the CSV instead.'); }
+  }
 
-  const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.08 : 0.92;
-    cameraRef.current.zoom = Math.max(0.5, Math.min(2.5, cameraRef.current.zoom * zoomFactor));
-  };
-
-  const resetCamera = () => {
-    cameraRef.current.rotX = 25;
-    cameraRef.current.rotY = -35;
-    cameraRef.current.zoom = 1.0;
-  };
-
-  // Canvas Click: Laser Tape Measurement vs Object Raycast
-  const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const clickX = e.clientX - rect.left - rect.width / 2;
-    const clickZ = e.clientY - rect.top - rect.height / 2;
-
-    if (measureMode) {
-      const newPt = { x: clickX, y: 0, z: clickZ };
-
-      if (measurePoints.length === 0 || measurePoints.length === 2) {
-        setMeasurePoints([newPt]);
-        setMeasureDistance(null);
-      } else if (measurePoints.length === 1) {
-        const p1 = measurePoints[0];
-        const p2 = newPt;
-        setMeasurePoints([p1, p2]);
-
-        const dx = p2.x - p1.x;
-        const dz = p2.z - p1.z;
-        const pixelDist = Math.sqrt(dx * dx + dz * dz);
-        const inches = Math.round((pixelDist / (cameraRef.current.zoom * 1.6)) * 10) / 10;
-        setMeasureDistance(inches);
-      }
-      return;
-    }
-
-    // Fixture click inspection in 3D
-    if (viewMode === '3d' && activeScan.objects.length > 0) {
-      const clicked = activeScan.objects[0];
-      if (Math.abs(clickX) < 100 && Math.abs(clickZ) < 80) {
-        setSelectedObject(clicked);
-        return;
-      }
-    }
-    setSelectedObject(null);
-  };
-
-  // 3D/2D Canvas Rendering Loop
-  useEffect(() => {
-    if (mode === 'popup' && !isStudioOpen) return;
-    if (mode === 'inline' && isCollapsed) return;
-
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let isMounted = true;
-
-    const render = () => {
-      if (!isMounted) return;
-
-      const dpr = window.devicePixelRatio || 1;
-      const width = canvas.clientWidth;
-      const height = canvas.clientHeight;
-
-      // Guard against 0 or unmeasured dimensions during modal animation or initial layout
-      if (width <= 0 || height <= 0 || !Number.isFinite(width) || !Number.isFinite(height)) {
-        animationFrameRef.current = requestAnimationFrame(render);
-        return;
-      }
-
-      if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
-        canvas.width = width * dpr;
-        canvas.height = height * dpr;
-      }
-
-      ctx.save();
-      ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, width, height);
-
-      // Animate laser sweep
-      cameraRef.current.laserY += 0.015;
-      if (cameraRef.current.laserY > 1) cameraRef.current.laserY = 0;
-
-      const centerX = width / 2;
-      const centerY = height / 2 + (viewMode === '3d' ? 20 : 0);
-
-      const wall1Len = Math.max(12, Number(activeScan.walls[0]?.lengthInches) || 120);
-      const wall2Len = Math.max(12, Number(activeScan.walls[1]?.lengthInches) || 120);
-      const roomH = Math.max(12, Number(activeScan.ceilingHeightInches) || 96);
-
-      const baseScale = Math.min(width, height) / 280;
-      const zoom = Math.max(0.1, Number(cameraRef.current.zoom) || 1.0);
-      const scale = baseScale * zoom;
-
-      const wX = (wall1Len / 2) * scale;
-      const wZ = (wall2Len / 2) * scale;
-      const wY = roomH * scale;
-
-      const radX = (viewMode === '3d' ? cameraRef.current.rotX : 90) * (Math.PI / 180);
-      const radY = (viewMode === '3d' ? cameraRef.current.rotY : 0) * (Math.PI / 180);
-
-      const project = (x: number, y: number, z: number) => {
-        if (viewMode === '2d') {
-          return { px: centerX + x, py: centerY + z };
-        }
-        const x1 = x * Math.cos(radY) + z * Math.sin(radY);
-        const z1 = -x * Math.sin(radY) + z * Math.cos(radY);
-
-        const y2 = y * Math.cos(radX) - z1 * Math.sin(radX);
-        const z2 = y * Math.sin(radX) + z1 * Math.cos(radX);
-
-        const fov = 600;
-        const denom = fov + z2;
-        const pScale = fov / (denom > 1 ? denom : 1);
-
-        return {
-          px: centerX + x1 * pScale,
-          py: centerY - y2 * pScale,
-        };
-      };
-
-      const primaryColor = '#38bdf8';
-      const gridColor = 'rgba(56, 189, 248, 0.12)';
-      const wallFill = 'rgba(14, 165, 233, 0.08)';
-
-      // 1. Draw Grid
-      const gridSteps = 8;
-      ctx.strokeStyle = gridColor;
-      ctx.lineWidth = 1;
-
-      for (let i = -gridSteps; i <= gridSteps; i++) {
-        const gx = (i / gridSteps) * wX * 1.3;
-        const gz = (i / gridSteps) * wZ * 1.3;
-
-        const pA = project(-wX * 1.3, 0, gz);
-        const pB = project(wX * 1.3, 0, gz);
-        ctx.beginPath();
-        ctx.moveTo(pA.px, pA.py);
-        ctx.lineTo(pB.px, pB.py);
-        ctx.stroke();
-
-        const pC = project(gx, 0, -wZ * 1.3);
-        const pD = project(gx, 0, wZ * 1.3);
-        ctx.beginPath();
-        ctx.moveTo(pC.px, pC.py);
-        ctx.lineTo(pD.px, pD.py);
-        ctx.stroke();
-      }
-
-      // Point cloud dots - bounded index steps prevent zero-step / subpixel infinite loops
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.5)';
-      const ptSteps = 4;
-      if (wX > 0 && wZ > 0) {
-        for (let ix = -ptSteps; ix <= ptSteps; ix++) {
-          for (let iz = -ptSteps; iz <= ptSteps; iz++) {
-            const px = (ix / ptSteps) * wX * 0.9;
-            const pz = (iz / ptSteps) * wZ * 0.9;
-            const pt = project(px, 0, pz);
-            ctx.fillRect(pt.px - 1, pt.py - 1, 2, 2);
-          }
-        }
-      }
-
-      // 2. Corner Floor Coordinates
-      const c00 = project(-wX, 0, -wZ);
-      const c10 = project(wX, 0, -wZ);
-      const c11 = project(wX, 0, wZ);
-      const c01 = project(-wX, 0, wZ);
-
-      // Floor polygon
-      ctx.beginPath();
-      ctx.moveTo(c00.px, c00.py);
-      ctx.lineTo(c10.px, c10.py);
-      ctx.lineTo(c11.px, c11.py);
-      ctx.lineTo(c01.px, c01.py);
-      ctx.closePath();
-      ctx.fillStyle = wallFill;
-      ctx.fill();
-      ctx.strokeStyle = primaryColor;
-      ctx.lineWidth = 2;
-      ctx.stroke();
-
-      // 3. In 3D mode: Upper Ceiling Corners & Wall Columns
-      if (viewMode === '3d') {
-        const u00 = project(-wX, wY, -wZ);
-        const u10 = project(wX, wY, -wZ);
-        const u11 = project(wX, wY, wZ);
-        const u01 = project(-wX, wY, wZ);
-
-        // Ceiling outline
-        ctx.beginPath();
-        ctx.moveTo(u00.px, u00.py);
-        ctx.lineTo(u10.px, u10.py);
-        ctx.lineTo(u11.px, u11.py);
-        ctx.lineTo(u01.px, u01.py);
-        ctx.closePath();
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.35)';
-        ctx.setLineDash([4, 4]);
-        ctx.stroke();
-        ctx.setLineDash([]);
-
-        // Vertical corner pillars
-        ctx.strokeStyle = 'rgba(56, 189, 248, 0.45)';
-        ctx.lineWidth = 1.5;
-        [[c00, u00], [c10, u10], [c11, u11], [c01, u01]].forEach(([pB, pT]) => {
-          ctx.beginPath();
-          ctx.moveTo(pB.px, pB.py);
-          ctx.lineTo(pT.px, pT.py);
-          ctx.stroke();
-        });
-
-        // Laser scan line
-        const curY = cameraRef.current.laserY * wY;
-        const l0 = project(-wX, curY, -wZ);
-        const l1 = project(wX, curY, -wZ);
-        const l2 = project(wX, curY, wZ);
-        const l3 = project(-wX, curY, wZ);
-        ctx.beginPath();
-        ctx.moveTo(l0.px, l0.py);
-        ctx.lineTo(l1.px, l1.py);
-        ctx.lineTo(l2.px, l2.py);
-        ctx.lineTo(l3.px, l3.py);
-        ctx.closePath();
-        ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-      }
-
-      // 4. Fixtures & Objects
-      activeScan.objects.forEach((obj) => {
-        const oX = (obj.position.x - wall1Len / 2) * scale;
-        const oZ = (obj.position.z - wall2Len / 2) * scale;
-        const oW = (obj.dimensionsInches.width / 2) * scale;
-        const oD = (obj.dimensionsInches.depth / 2) * scale;
-        const oH = viewMode === '3d' ? obj.dimensionsInches.height * scale : 0;
-
-        const p1 = project(oX - oW, 0, oZ - oD);
-        const p2 = project(oX + oW, 0, oZ - oD);
-        const p3 = project(oX + oW, 0, oZ + oD);
-        const p4 = project(oX - oW, 0, oZ + oD);
-
-        ctx.beginPath();
-        ctx.moveTo(p1.px, p1.py);
-        ctx.lineTo(p2.px, p2.py);
-        ctx.lineTo(p3.px, p3.py);
-        ctx.lineTo(p4.px, p4.py);
-        ctx.closePath();
-        ctx.fillStyle = selectedObject?.id === obj.id ? 'rgba(56, 189, 248, 0.3)' : 'rgba(56, 189, 248, 0.15)';
-        ctx.fill();
-        ctx.strokeStyle = selectedObject?.id === obj.id ? '#38bdf8' : 'rgba(56, 189, 248, 0.6)';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-
-        if (viewMode === '3d' && oH > 0) {
-          const t1 = project(oX - oW, oH, oZ - oD);
-          const t2 = project(oX + oW, oH, oZ - oD);
-          const t3 = project(oX + oW, oH, oZ + oD);
-          const t4 = project(oX - oW, oH, oZ + oD);
-
-          ctx.beginPath();
-          ctx.moveTo(t1.px, t1.py);
-          ctx.lineTo(t2.px, t2.py);
-          ctx.lineTo(t3.px, t3.py);
-          ctx.lineTo(t4.px, t4.py);
-          ctx.closePath();
-          ctx.stroke();
-
-          [[p1, t1], [p2, t2], [p3, t3], [p4, t4]].forEach(([b, t]) => {
-            ctx.beginPath();
-            ctx.moveTo(b.px, b.py);
-            ctx.lineTo(t.px, t.py);
-            ctx.stroke();
-          });
-        }
-
-        // Label
-        const center = project(oX, oH, oZ);
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '10px Inter, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(obj.label, center.px, center.py - 4);
-      });
-
-      // 5. Openings (Doors & Windows)
-      activeScan.openings.forEach((op) => {
-        let opX = 0;
-        let opZ = 0;
-        if (op.wallIndex === 0) {
-          opX = (-wall1Len / 2 + op.offsetInches) * scale;
-          opZ = (wall2Len / 2) * scale;
-        } else if (op.wallIndex === 1) {
-          opX = (wall1Len / 2) * scale;
-          opZ = (wall2Len / 2 - op.offsetInches) * scale;
-        } else if (op.wallIndex === 2) {
-          opX = (wall1Len / 2 - op.offsetInches) * scale;
-          opZ = (-wall2Len / 2) * scale;
-        } else {
-          opX = (-wall1Len / 2) * scale;
-          opZ = (-wall2Len / 2 + op.offsetInches) * scale;
-        }
-        const opW = (op.widthInches / 2) * scale;
-
-        const pA = project(opX - opW, 0, opZ);
-        const pB = project(opX + opW, 0, opZ);
-
-        ctx.strokeStyle = op.type === 'door' ? '#f59e0b' : '#38bdf8';
-        ctx.lineWidth = 3;
-        ctx.beginPath();
-        ctx.moveTo(pA.px, pA.py);
-        ctx.lineTo(pB.px, pB.py);
-        ctx.stroke();
-      });
-
-      // 6. Laser Tape Measuring Line
-      if (measurePoints.length > 0) {
-        ctx.strokeStyle = '#ef4444';
-        ctx.fillStyle = '#ef4444';
-        ctx.lineWidth = 2;
-
-        measurePoints.forEach((pt) => {
-          ctx.beginPath();
-          ctx.arc(centerX + pt.x, centerY + pt.z, 4, 0, Math.PI * 2);
-          ctx.fill();
-        });
-
-        if (measurePoints.length === 2) {
-          const ptA = measurePoints[0];
-          const ptB = measurePoints[1];
-          ctx.beginPath();
-          ctx.moveTo(centerX + ptA.x, centerY + ptA.z);
-          ctx.lineTo(centerX + ptB.x, centerY + ptB.z);
-          ctx.stroke();
-
-          if (measureDistance != null) {
-            const midX = centerX + (ptA.x + ptB.x) / 2;
-            const midY = centerY + (ptA.z + ptB.z) / 2;
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 12px Inter, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText(`${measureDistance}" (${(measureDistance / 12).toFixed(1)} ft)`, midX, midY - 8);
-          }
-        }
-      }
-
-      ctx.restore();
-      animationFrameRef.current = requestAnimationFrame(render);
-    };
-
-    render();
-
-    return () => {
-      isMounted = false;
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
-    };
-  }, [isStudioOpen, mode, isCollapsed, activeScan, viewMode, measurePoints, measureDistance, selectedObject]);
-
-  const handleApply = (metric: 'floor' | 'wall' | 'all') => {
-    if (onApplyDimensions) {
-      onApplyDimensions(summary);
-    }
-    const label =
-      metric === 'floor'
-        ? `${summary.floorAreaSqFt} sq ft flooring`
-        : metric === 'wall'
-        ? `${summary.netPaintableWallSqFt} sq ft wall area`
-        : `All 3D Dimensions (${summary.floorAreaSqFt} sq ft)`;
-    setToastMessage(`✓ Applied ${label} to AI Quote`);
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  const handleCopyReport = () => {
-    const reportText = formatSpatialTakeoffReport(activeScan, summary);
-    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(reportText);
-      setToastMessage('✓ Copied Spatial Takeoff Report!');
-      setTimeout(() => setToastMessage(null), 3000);
-    }
-  };
-
-  const handleDownloadCsv = () => {
-    const csvRows = [
-      'Room Spatial Takeoff Report',
-      `Room Name,${activeScan.title}`,
-      `Device,${activeScan.device || 'LiDAR'}`,
-      `Date,${activeScan.scannedAt}`,
-      '',
-      'Metric,Quantity,Unit,Notes',
-      `Floor Area,${summary.floorAreaSqFt},sq ft,Net usable horizontal area`,
-      `Net Paintable Wall Area,${summary.netPaintableWallSqFt},sq ft,Excluding doors and windows`,
-      `Perimeter Trim,${summary.perimeterLinearFt},lin ft,Baseboard and shoe molding`,
-      `Ceiling Height,${summary.ceilingHeightFt},ft,${activeScan.ceilingHeightInches} inches clearance`,
-      `Gross Wall Area,${summary.grossWallAreaSqFt},sq ft,Total vertical envelope`,
-      `Openings Cutout Area,${summary.openingsAreaSqFt},sq ft,${summary.doorsCount} doors and ${summary.windowsCount} windows`,
-      `Fixtures Count,${activeScan.objects.length},count,Architectural objects`,
+  function downloadCsv() {
+    if (!scan || !summary) return;
+    const cell = (value: string | number) => `"${String(value).replace(/^[=+@\-\t\r]/, "'$&").replace(/"/g, '""')}"`;
+    const rows = [
+      ['Room', scan.title], ['Source', scan.device], ['Capture time', scan.scannedAt],
+      ['Note', 'Imported dimensions; confirm critical spans on site before ordering.'],
+      ['Metric', 'Quantity', 'Unit'], ['Floor Area', summary.floorAreaSqFt, 'sq ft'],
+      ['Net Paintable Walls', summary.netPaintableWallSqFt, 'sq ft'],
+      ['Baseboard Trim', summary.baseboardLinearFt, 'lin ft'], ['Perimeter', summary.perimeterLinearFt, 'lin ft'],
+      ['Ceiling Height', summary.ceilingHeightFt, 'ft'], ['Openings Area', summary.openingsAreaSqFt, 'sq ft'],
     ];
-    const csv = csvRows.join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `${activeScan.title.toLowerCase().replace(/[^a-z0-9]+/g, '_')}_takeoff.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    setToastMessage('✓ Downloaded Spatial Takeoff CSV!');
-    setTimeout(() => setToastMessage(null), 3000);
-  };
-
-  const handleFileDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    setIsDraggingFile(false);
-    if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-      const file = e.dataTransfer.files[0];
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const content = event.target?.result as string;
-          const parsed = parseCustomScanJson(content);
-          setCustomScans((prev) => [parsed, ...prev]);
-          setShowUploadModal(false);
-          setToastMessage(`✓ Loaded 3D Scan: ${parsed.title}`);
-          setTimeout(() => setToastMessage(null), 3000);
-        } catch (err: unknown) {
-          const msg = err instanceof Error ? err.message : 'Invalid format';
-          alert(`Could not parse 3D room scan JSON: ${msg}`);
-        }
-      };
-      reader.readAsText(file);
-    }
-  };
-
-  if (mode === 'inline' && isCollapsed) {
-    return (
-      <div
-        className={`${styles.collapsedContainer} ${className}`}
-        onClick={() => setIsCollapsed(false)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setIsCollapsed(false);
-          }
-        }}
-        aria-label="Expand 3D LiDAR Room Scan & Spatial CAD Viewer"
-      >
-        <div className={styles.collapsedLeft}>
-          <span className={styles.pulseDot} />
-          <span className={styles.studioBadge}>✦ LiDAR Studio</span>
-          <span className={styles.collapsedTitle}>
-            3D Room Spatial Intel &amp; LiDAR Takeoffs
-          </span>
-          <span className={styles.badgeOptional}>Spatial Tool</span>
-          <span className={styles.collapsedSubtext}>
-            Interactive 3D CAD modeling, laser tape measure &amp; verified trade takeoffs
-          </span>
-        </div>
-        <button
-          type="button"
-          className={styles.expandBtn}
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsCollapsed(false);
-          }}
-        >
-          ▼ Expand Spatial Viewer
-        </button>
-      </div>
-    );
+    const url = URL.createObjectURL(new Blob([rows.map(row => row.map(cell).join(',')).join('\r\n')], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'room-takeoff.csv';
+    document.body.appendChild(link); link.click(); link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    setMessage('CSV downloaded.');
   }
 
-  const popupLinkCard = (
-    <div
-      className={`${styles.studioPopupLinkCard} ${className}`}
-      onClick={openStudio}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          openStudio();
-        }
-      }}
-      aria-label="Open LiDAR Studio: 3D Room Spatial Intel & LiDAR Takeoffs"
-      aria-haspopup="dialog"
-      aria-expanded={isStudioOpen}
-      aria-controls={dialogId}
-    >
-      <div className={styles.cardGlowBar} aria-hidden="true" />
-      <div className={styles.popupHeaderRow}>
-        <div className={styles.popupTitleWrap}>
-          <span className={styles.pulseDot} />
-          <span className={styles.studioBadge}>✦ LiDAR Studio</span>
-          <h4 className={styles.popupTitle}>
-            3D Room Spatial Intel &amp; LiDAR Takeoffs
-          </h4>
-          <span className={styles.badgeConfidence}>
-            {activeScan.confidenceScore}% CAD Precision
-          </span>
-        </div>
-        <button
-          ref={triggerRef}
-          type="button"
-          className={styles.popupActionBtn}
-          onClick={(e) => {
-            e.stopPropagation();
-            openStudio();
-          }}
-          aria-haspopup="dialog"
-          aria-expanded={isStudioOpen}
-          aria-controls={dialogId}
-        >
-          Launch LiDAR Studio ↗
-        </button>
-      </div>
+  async function applyDimensions() {
+    if (!summary || !onApplyDimensions) return;
+    setBusy('applying'); setError(null);
+    try { await onApplyDimensions(summary); if (mountedRef.current) setMessage('Dimensions applied.'); }
+    catch { if (mountedRef.current) setError('Could not apply dimensions. Try again.'); }
+    finally { if (mountedRef.current) setBusy(null); }
+  }
 
-      <p className={styles.popupSubtext}>
-        Interactive 3D CAD modeling, laser tape measure &amp; verified room takeoffs for {activeScan.title}.
-      </p>
-
-      <div className={styles.specPillRow}>
-        <span className={`${styles.specPill} ${styles.specPillActive}`}>
-          📐 {activeScan.title}
-        </span>
-        <span className={styles.specPill}>
-          🏠 {summary.floorAreaSqFt} sq ft Floor
-        </span>
-        <span className={styles.specPill}>
-          🧱 {summary.netPaintableWallSqFt} sq ft Walls
-        </span>
-        <span className={styles.specPill}>
-          📏 {summary.perimeterLinearFt} ft Perimeter
-        </span>
-        <span className={styles.specPill}>
-          ⬆️ {(activeScan.ceilingHeightInches / 12).toFixed(1)} ft Ceiling
-        </span>
-        <span className={styles.specPill}>
-          📦 {activeScan.objects.length} Fixtures
-        </span>
-      </div>
-
-      <div className={styles.popupFooterHint}>
-        <span>Millimeter-accurate spatial takeoffs, trade dimensions &amp; quote sync</span>
-        <span className={styles.popupFooterLink}>
-          Open in LiDAR Studio ↗
-        </span>
+  const importButton = <button type="button" className={styles.btnSecondary} disabled={Boolean(busy) || loadFailed} onClick={() => fileRef.current?.click()}>{scan ? 'Replace Scan' : '📁 Import Scan'}</button>;
+  const content = <div className={`${mode === 'popup' ? styles.studioInnerContent : styles.container} ${className}`}>
+    <div className={styles.header}>
+      <div className={styles.headerLeft}><span className={styles.studioBadge}>✦ LiDAR Studio</span><h3 id={`${dialogId}-title`} className={styles.headerTitle}>Room measurements</h3></div>
+      <div className={styles.controlsWrap}>
+        {importButton}
+        {mode === 'popup' && <button type="button" className={styles.btnSecondary} onClick={() => setFullscreen(!fullscreen)}>{fullscreen ? 'Exit Fullscreen' : '⛶ Fullscreen'}</button>}
+        {mode === 'popup' ? <button type="button" className={styles.studioCloseBtn} onClick={closeStudio}>✕ Close Studio</button>
+          : collapsible && <button type="button" className={styles.btnSecondary} onClick={() => setCollapsed(true)}>Collapse</button>}
       </div>
     </div>
-  );
-
-  const mainContent = (
-    <div className={`${mode === 'popup' ? styles.studioInnerContent : styles.container} ${className} ${isFullscreen ? styles.fullscreenModal : ''}`}>
-      {/* Header Bar */}
-      <div className={styles.header}>
-        <div className={styles.headerLeft}>
-          <span className={styles.pulseDot} />
-          <span className={styles.studioBadge}>✦ LiDAR Studio</span>
-          <span id={`${dialogId}-title`} className={styles.headerTitle}>
-            3D Room Spatial Intel &amp; LiDAR Takeoffs
-          </span>
-          <span className={styles.badgeConfidence}>
-            {activeScan.title} · {activeScan.confidenceScore}% Precision
-          </span>
-        </div>
-
-        <div className={styles.controlsWrap}>
-          {/* 3D vs 2D CAD Toggle */}
-          <div className={styles.toggleGroup} role="group" aria-label="View Mode">
-            <button
-              type="button"
-              className={`${styles.toggleBtn} ${viewMode === '3d' ? styles.toggleBtnActive : ''}`}
-              onClick={() => setViewMode('3d')}
-            >
-              3D CAD
-            </button>
-            <button
-              type="button"
-              className={`${styles.toggleBtn} ${viewMode === '2d' ? styles.toggleBtnActive : ''}`}
-              onClick={() => setViewMode('2d')}
-            >
-              2D Floor
-            </button>
-          </div>
-
-          {/* Laser Measure Button */}
-          <button
-            type="button"
-            className={`${styles.iconBtn} ${measureMode ? styles.iconBtnActive : ''}`}
-            onClick={() => {
-              setMeasureMode(!measureMode);
-              setMeasurePoints([]);
-              setMeasureDistance(null);
-            }}
-            title="Laser Tape: Click two points to measure exact span"
-          >
-            📐 Laser Tape
-          </button>
-
-          {/* Import Scan Button */}
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => setShowUploadModal(true)}
-            title="Import custom RoomPlan or LiDAR JSON scan"
-          >
-            📁 Import Scan
-          </button>
-
-          {/* Fullscreen Button */}
-          <button
-            type="button"
-            className={styles.iconBtn}
-            onClick={() => setIsFullscreen((prev) => !prev)}
-            title={isFullscreen ? 'Exit Fullscreen (ESC)' : 'Expand Fullscreen'}
-          >
-            {isFullscreen ? '✕ Exit' : '⛶ Fullscreen'}
-          </button>
-
-          {collapsible && mode === 'inline' && !isFullscreen && (
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={() => setIsCollapsed(true)}
-              style={{ fontSize: '0.72rem', padding: '0.22rem 0.5rem' }}
-              title="Collapse 3D LiDAR Viewer"
-            >
-              ▲ Collapse
-            </button>
-          )}
-
-          {mode === 'popup' && (
-            <button
-              type="button"
-              className={styles.studioCloseBtn}
-              onClick={closeStudio}
-              aria-label="Close LiDAR Studio"
-              title="Close LiDAR Studio (ESC)"
-            >
-              ✕ Close Studio
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Active CAD Viewport */}
-      <div
-        className={styles.viewportArea}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-        onWheel={handleWheel}
-        onClick={handleCanvasClick}
-      >
-        <canvas ref={canvasRef} className={styles.canvas} />
-
-        {/* Loading % Overlay visible over rendering when downloading */}
-        {isDownloading && (
-          <div
-            className={styles.loadingOverlay}
-            role="status"
-            aria-live="polite"
-            aria-label={`Downloading 3D LiDAR scan: ${downloadProgress}%`}
-          >
-            <div className={styles.loadingSpinnerWrap}>
-              <div className={styles.loadingSpinnerRing} />
-              <span className={styles.loadingPercentCenter}>{downloadProgress}%</span>
-            </div>
-            <div className={styles.loadingTitle}>
-              <span>✦ Downloading 3D LiDAR Scan</span>
-            </div>
-            <div className={styles.loadingProgressBar}>
-              <div
-                className={styles.loadingProgressFill}
-                style={{ width: `${downloadProgress}%` }}
-              />
-            </div>
-            <div className={styles.loadingSubtext}>
-              {activeScan.pointCount ? (
-                <>
-                  {Math.round((activeScan.pointCount * downloadProgress) / 100).toLocaleString()} / {activeScan.pointCount.toLocaleString()} points · {downloadProgress}%
-                </>
-              ) : (
-                `Loading spatial geometry · ${downloadProgress}%`
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* HUD Overlay */}
-        <div className={styles.hudOverlay}>
-          <div className={styles.hudChip}>
-            <span>{viewMode === '3d' ? '3D Isometric Orbit' : '2D Floor Plan'}</span>
-          </div>
-
-          {measureMode && (
-            <div className={styles.measureAlert}>
-              <span>
-                {measurePoints.length === 0 && 'Click first point on floor or wall'}
-                {measurePoints.length === 1 && 'Click second point to measure span'}
-                {measurePoints.length === 2 && measureDistance != null && (
-                  <strong>
-                    Span: {measureDistance}&quot; ({(measureDistance / 12).toFixed(2)} ft)
-                  </strong>
-                )}
-              </span>
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setMeasurePoints([]);
-                  setMeasureDistance(null);
-                }}
-                style={{ background: 'none', border: 'none', color: '#38bdf8', cursor: 'pointer', fontSize: '0.74rem' }}
-              >
-                Reset
-              </button>
-            </div>
-          )}
-
-          <div className={styles.hudRightControls}>
-            <button
-              type="button"
-              className={styles.iconBtn}
-              onClick={(e) => {
-                e.stopPropagation();
-                resetCamera();
-              }}
-              title="Reset Camera"
-            >
-              ↺ Reset View
-            </button>
-          </div>
-        </div>
-
-        <div className={styles.canvasHint}>
-          Drag to orbit · Scroll to zoom · Click fixture to inspect
-        </div>
-
-        {/* Fixture Details Tooltip */}
-        {selectedObject && (
-          <div className={styles.fixtureDrawer}>
-            <div className={styles.fixtureHeader}>
-              <span className={styles.fixtureTitle}>
-                📦 {selectedObject.label}
-              </span>
-              <button
-                type="button"
-                className={styles.fixtureCloseBtn}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setSelectedObject(null);
-                }}
-              >
-                ✕
-              </button>
-            </div>
-            <div className={styles.fixtureDims}>
-              {selectedObject.dimensionsInches.width}&quot; W × {selectedObject.dimensionsInches.depth}&quot; D × {selectedObject.dimensionsInches.height}&quot; H
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Calculated Takeoff Metrics Grid */}
+    <input ref={fileRef} type="file" accept=".json,application/json" hidden aria-label="Import room scan JSON" onChange={e => { const file = e.target.files?.[0]; if (file) void importFile(file); }} />
+    {busy && <p className={styles.scanNotice} role="status">{busy === 'loading' ? 'Loading saved scan…' : busy === 'importing' ? 'Validating and saving scan…' : 'Applying dimensions…'}</p>}
+    {error && <div className={styles.scanError} role="alert">{error} {loadFailed && <button type="button" className={styles.btnSecondary} onClick={() => setRetry(value => value + 1)}>Retry</button>}</div>}
+    {message && <p className={styles.scanNotice} role="status">{message}</p>}
+    {!scan && !busy && !loadFailed && <div className={styles.scanEmpty} onDragOver={e => e.preventDefault()} onDrop={e => { e.preventDefault(); const file = e.dataTransfer.files[0]; if (file) void importFile(file); }}>
+      <h4>No room scan attached</h4>
+      <p>Import measured room geometry to view the room and calculate flooring, wall area, and baseboard quantities.</p>
+      {importButton}
+    </div>}
+    <p className={styles.scanNotice}>Accepts LGQ normalized scan JSON (inches, up to 1 MB). Native Apple RoomPlan, Polycam, USDZ, and raw point clouds need conversion before import. <a href="/docs/room-scan-format.json" download>Download format example</a></p>
+    {scan && summary && <>
+      <h4 className={styles.scanNotice}>{scan.title}</h4>
+      <RoomScanScene key={JSON.stringify(scan)} scan={scan} />
       <div className={styles.metricsGrid}>
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Floor Surface</span>
-          <div className={styles.metricValue}>
-            {summary.floorAreaSqFt} <span className={styles.metricUnit}>sq ft</span>
-          </div>
-          <span className={styles.metricSubtext}>Flooring / tile takeoff</span>
-        </div>
-
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Net Paintable Walls</span>
-          <div className={styles.metricValue}>
-            {summary.netPaintableWallSqFt} <span className={styles.metricUnit}>sq ft</span>
-          </div>
-          <span className={styles.metricSubtext}>Excl. {summary.openingsAreaSqFt} sq ft doors/windows</span>
-        </div>
-
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Baseboard Trim</span>
-          <div className={styles.metricValue}>
-            {summary.perimeterLinearFt} <span className={styles.metricUnit}>lin ft</span>
-          </div>
-          <span className={styles.metricSubtext}>{summary.doorsCount} doors deducted</span>
-        </div>
-
-        <div className={styles.metricCard}>
-          <span className={styles.metricLabel}>Ceiling Height</span>
-          <div className={styles.metricValue}>
-            {summary.ceilingHeightFt} <span className={styles.metricUnit}>ft</span>
-          </div>
-          <span className={styles.metricSubtext}>{activeScan.ceilingHeightInches}&quot; clearance</span>
-        </div>
-
-        {summary.primaryAlcoveSpanInches != null && (
-          <div className={styles.metricCard}>
-            <span className={styles.metricLabel}>Alcove Span</span>
-            <div className={styles.metricValue} style={{ color: '#38bdf8' }}>
-              {summary.primaryAlcoveSpanInches.toFixed(1)}&quot;
-            </div>
-            <span className={styles.metricSubtext}>Tub / shower alcove</span>
-          </div>
-        )}
+        {[
+          ['Floor Surface', summary.floorAreaSqFt, 'sq ft', 'Imported floor polygon'],
+          ['Net Paintable Walls', summary.netPaintableWallSqFt, 'sq ft', `Excludes ${summary.openingsAreaSqFt} sq ft openings`],
+          ['Baseboard Trim', summary.baseboardLinearFt, 'lin ft', 'Door and passage widths deducted'],
+          ['Ceiling Height', summary.ceilingHeightFt, 'ft', 'Flat ceiling'],
+        ].map(([label, value, unit, note]) => <div className={styles.metricCard} key={label}><span className={styles.metricLabel}>{label}</span><div className={styles.metricValue}>{value} <span className={styles.metricUnit}>{unit}</span></div><span className={styles.metricSubtext}>{note}</span></div>)}
       </div>
+      <p className={styles.scanNotice}>{scan.device} · {scan.scannedAt}. Imported measurements; confirm critical spans on site before ordering. {target?.kind === 'lead' ? 'Saved to this lead for the linked job.' : target ? 'Saved for the next AI quote draft.' : 'Session preview; this scan is not saved to a job.'}</p>
+      <div className={styles.actionsBar}><div className={styles.actionsRight}>
+        <button type="button" className={styles.btnSecondary} onClick={() => void copyReport()}>📋 Copy Dimensions</button>
+        <button type="button" className={styles.btnSecondary} onClick={downloadCsv}>📥 Download CSV</button>
+        {onApplyDimensions && <button type="button" className={styles.btnApply} disabled={Boolean(busy)} onClick={() => void applyDimensions()}>Apply Dimensions</button>}
+      </div></div>
+    </>}
+  </div>;
 
-      {/* Quote Integration & Actions Bar */}
-      <div className={styles.actionsBar}>
-        <div className={styles.actionsLeft}>
-          <span>
-            Scanned via {activeScan.device || 'LiDAR'} · {activeScan.confidenceScore}% CAD precision
-          </span>
-          {toastMessage && <span className={styles.toast}>{toastMessage}</span>}
-        </div>
-
-        <div className={styles.actionsRight}>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={handleCopyReport}
-            title="Copy formatted takeoff dimensions to clipboard"
-          >
-            📋 Copy Dimensions
-          </button>
-          <button
-            type="button"
-            className={styles.btnSecondary}
-            onClick={handleDownloadCsv}
-            title="Download CSV for spreadsheets and ordering"
-          >
-            📥 Download CSV
-          </button>
-          <button
-            type="button"
-            className={styles.btnApply}
-            onClick={() => handleApply('all')}
-            title="Feed exact 3D dimensions to AI Quote Generator"
-          >
-            ⚡ Sync to AI Quote Draft
-          </button>
-          {mode === 'popup' && (
-            <button
-              type="button"
-              className={styles.btnSecondary}
-              onClick={closeStudio}
-              style={{ fontSize: '0.74rem', padding: '0.35rem 0.8rem' }}
-            >
-              Done / Close Studio
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* Upload Modal Dialog */}
-      {showUploadModal && (
-        <div className={styles.modalBackdrop} onClick={() => setShowUploadModal(false)}>
-          <div className={styles.modalCard} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
-            <div className={styles.modalHeader}>
-              <span className={styles.modalTitle}>📁 Import 3D LiDAR / CAD Scan</span>
-              <button type="button" className={styles.modalClose} onClick={() => setShowUploadModal(false)}>✕</button>
-            </div>
-
-            <div
-              className={`${styles.dropzone} ${isDraggingFile ? styles.dropzoneActive : ''}`}
-              onDragOver={(e) => {
-                e.preventDefault();
-                setIsDraggingFile(true);
-              }}
-              onDragLeave={() => setIsDraggingFile(false)}
-              onDrop={handleFileDrop}
-            >
-              <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>📐</div>
-              <div className={styles.dropzoneText}>Drag &amp; Drop RoomPlan / LiDAR JSON file</div>
-              <div className={styles.dropzoneSubtext}>Supports Apple RoomPlan (.json) and spatial scan exports</div>
-              <input
-                type="file"
-                accept=".json"
-                style={{ display: 'none' }}
-                id="lidar-file-upload-input"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  const reader = new FileReader();
-                  reader.onload = (event) => {
-                    try {
-                      const content = event.target?.result as string;
-                      const parsed = parseCustomScanJson(content);
-                      setCustomScans((prev) => [parsed, ...prev]);
-                      setShowUploadModal(false);
-                      setToastMessage(`✓ Loaded 3D Scan: ${parsed.title}`);
-                      setTimeout(() => setToastMessage(null), 3000);
-                    } catch (err: unknown) {
-                      const msg = err instanceof Error ? err.message : 'Invalid format';
-                      alert(`Could not parse 3D room scan JSON: ${msg}`);
-                    }
-                  };
-                  reader.readAsText(file);
-                }}
-              />
-              <label
-                htmlFor="lidar-file-upload-input"
-                className={styles.btnSecondary}
-                style={{ display: 'inline-block', marginTop: '0.8rem', cursor: 'pointer' }}
-              >
-                Browse File
-              </label>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-
-  if (mode === 'popup') {
-    return (
-      <>
-        {popupLinkCard}
-        {isStudioOpen && mounted && createPortal(
-          <div
-            ref={backdropRef}
-            className={styles.studioModalBackdrop}
-            onClick={(e) => {
-              if (e.target === e.currentTarget) {
-                closeStudio();
-              }
-            }}
-            role="presentation"
-          >
-            <div
-              id={dialogId}
-              className={`${styles.studioModalDialog} ${isFullscreen ? styles.fullscreenModal : ''}`}
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby={`${dialogId}-title`}
-            >
-              {mainContent}
-            </div>
-          </div>,
-          document.body
-        )}
-      </>
-    );
-  }
-
-  return mainContent;
+  if (mode === 'inline') return collapsed ? <button type="button" className={styles.btnSecondary} onClick={() => setCollapsed(false)}>Open LiDAR Studio</button> : content;
+  return <>
+    <button type="button" ref={triggerRef} className={`${styles.studioPopupLinkCard} ${styles.scanLauncher} ${className}`} onClick={() => changeOpen(true)}
+      aria-haspopup="dialog" aria-expanded={isStudioOpen} aria-controls={dialogId}>
+      <span className={styles.studioBadge}>✦ LiDAR Studio</span>
+      <strong>3D Room Spatial Intel &amp; LiDAR Takeoffs</strong>
+      <span>{busy === 'loading' ? 'Loading saved scan…' : loadFailed ? 'Saved scan unavailable — open to retry' : scan && summary ? `${scan.title} · ${summary.floorAreaSqFt} sq ft floor` : 'No room scan attached — import measured geometry'}</span>
+      <span>Launch LiDAR Studio ↗</span>
+    </button>
+    {isStudioOpen && mounted && createPortal(<div ref={backdropRef} className={styles.studioModalBackdrop} onClick={e => { if (e.target === e.currentTarget) closeStudio(); }} role="presentation">
+      <div id={dialogId} className={`${styles.studioModalDialog} ${fullscreen ? styles.fullscreenModal : ''}`} role="dialog" aria-modal="true" aria-labelledby={`${dialogId}-title`}>{content}</div>
+    </div>, document.body)}
+  </>;
 }
