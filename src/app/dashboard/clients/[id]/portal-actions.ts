@@ -1,7 +1,7 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import { revokePortalLinks } from '@/lib/client-portal-data';
 
 /**
@@ -16,7 +16,7 @@ import { revokePortalLinks } from '@/lib/client-portal-data';
  * for this wants the door shut, not a list to work through.
  */
 export async function revokeClientPortalAction(clientId: string) {
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContext('clients.write');
   await revokePortalLinks(supabase, accountId, clientId);
   revalidatePath(`/dashboard/clients/${clientId}`);
 }

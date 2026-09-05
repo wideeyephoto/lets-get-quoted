@@ -81,7 +81,7 @@ export default function DuplicateGroupForm({
                 name="survivorId"
                 value={member.id}
                 defaultChecked={member.id === suggestedId}
-                required
+                required={Boolean(action)}
               />
               <span className="dupe-member-body">
                 <strong>{member.name || 'Unnamed'}</strong>
@@ -100,11 +100,15 @@ export default function DuplicateGroupForm({
         ))}
       </ul>
 
-      {action ? (
+      {action || dismissAction ? (
         <div className="dupe-group-actions">
-          <SaveButton className="btn secondary" pendingLabel="Merging…" savedLabel="Merged ✓">
-            Merge into the selected record
-          </SaveButton>
+          {action ? (
+            <SaveButton className="btn secondary" pendingLabel="Merging…" savedLabel="Merged ✓">
+              Merge into the selected record
+            </SaveButton>
+          ) : (
+            <span className="dupe-demo-note">Merging requires owner access.</span>
+          )}
           {/* THE OTHER ANSWER, and the one this panel never had.
               A landlord and their tenant on one number, a father and son at one
               address — correctly grouped, permanently wrong, and back at the top

@@ -25,7 +25,7 @@ function formatDate(value: string): string {
 
 export default async function ClientDetailPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = await paramsPromise;
-  const { supabase, accountId, role } = await requireOfficeContext('clients.read');
+  const { supabase, accountId, role, capabilities } = await requireOfficeContext('clients.read');
   const client = await getClient(supabase, accountId, params.id);
 
   if (!client) {
@@ -58,7 +58,8 @@ export default async function ClientDetailPage({ params: paramsPromise }: { para
   const jobs = jobRows ?? [];
   const leads = leadRows ?? [];
   const totalValue = jobs.reduce((sum, job) => sum + (Number(job.quoted_amount) || 0), 0);
-  const statement = role === 'owner' ? await getClientStatement(supabase, accountId, client.id) : null;
+  const canSeeStatement = role === 'owner' || capabilities.has('payments.read') || capabilities.has('reports.read');
+  const statement = canSeeStatement ? await getClientStatement(supabase, accountId, client.id) : null;
   const boundUpdate = updateClientAction.bind(null, client.id);
 
   return (

@@ -82,20 +82,24 @@ export async function listClientsWithStats(
   let clients: Client[];
   let jobs: { client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }[];
 
-  if (options?.fetchAll) {
+  const fetchAll = options?.fetchAll ?? true;
+
+  if (fetchAll) {
     const { fetchAllPages } = await import('@/lib/pagination');
-    const clientsQuery = applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options);
-    const jobsQuery = applyTestRecordFilter(
-      supabase
-        .from('jobs')
-        .select('client_id, quoted_amount, created_at, scheduled_for')
-        .eq('account_id', accountId)
-        .not('client_id', 'is', null),
-      options,
-    );
     [clients, jobs] = await Promise.all([
-      fetchAllPages<Client>((from, to) => clientsQuery.range(from, to)),
-      fetchAllPages<{ client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }>((from, to) => jobsQuery.range(from, to)),
+      fetchAllPages<Client>((from, to) =>
+        applyTestRecordFilter(supabase.from('clients').select('*').eq('account_id', accountId), options).range(from, to),
+      ),
+      fetchAllPages<{ client_id: string; quoted_amount: number | null; created_at: string; scheduled_for: string | null }>((from, to) =>
+        applyTestRecordFilter(
+          supabase
+            .from('jobs')
+            .select('client_id, quoted_amount, created_at, scheduled_for')
+            .eq('account_id', accountId)
+            .not('client_id', 'is', null),
+          options,
+        ).range(from, to),
+      ),
     ]);
   } else {
     const [clientsRes, jobsRes] = await Promise.all([
@@ -222,12 +226,21 @@ export async function getClientStatement(supabase: SupabaseClient, accountId: st
    */
   const feePaymentIds = new Set<string>();
   if (payments.length > 0) {
-    const { data: feeRows } = await supabase
-      .from('extra_stop_requests')
-      .select('payment_id')
-      .eq('account_id', accountId)
-      .not('payment_id', 'is', null);
-    for (const row of feeRows ?? []) feePaymentIds.add(String((row as { payment_id: unknown }).payment_id));
+    const paymentIds = payments.map((p) => p.id).filter(Boolean);
+    const chunkSize = 200;
+    for (let i = 0; i < paymentIds.length; i += chunkSize) {
+      const chunk = paymentIds.slice(i, i + chunkSize);
+      const { data: feeRows } = await supabase
+        .from('extra_stop_requests')
+        .select('payment_id')
+        .eq('account_id', accountId)
+        .in('payment_id', chunk);
+      for (const row of feeRows ?? []) {
+        if (row && (row as { payment_id: unknown }).payment_id) {
+          feePaymentIds.add(String((row as { payment_id: unknown }).payment_id));
+        }
+      }
+    }
   }
 
   const paidByJob = new Map<string, number>();

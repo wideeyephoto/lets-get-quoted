@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContextAny } from '@/lib/auth';
 import { pickBusinessName } from '@/lib/business-name';
 import { getClient, getClientStatement } from '@/lib/clients';
 // formatMoneyExact, not formatMoney. The latter documents itself as rounding
@@ -50,7 +50,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default async function ClientStatementPage({ params: paramsPromise }: { params: Promise<{ id: string }> }) {
   const params = await paramsPromise;
-  const { supabase, accountId } = await requireOwnerContext();
+  const { supabase, accountId } = await requireOfficeContextAny('payments.read', 'reports.read');
   const client = await getClient(supabase, accountId, params.id);
 
   if (!client) {

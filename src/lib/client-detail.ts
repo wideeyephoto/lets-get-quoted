@@ -75,25 +75,54 @@ export async function loadClientDetail(
   supabase: SupabaseClient,
   accountId: string,
   clientId: string,
+  options?: { isOwner?: boolean },
 ): Promise<ClientDetailDto | null> {
   const client = await getClient(supabase, accountId, clientId);
   if (!client) return null;
 
-  const [statement, { count: requestCount }] = await Promise.all([
-    getClientStatement(supabase, accountId, clientId),
+  const isOwner = options?.isOwner !== false;
+
+  const [statement, jobRowsRes, { count: requestCount }] = await Promise.all([
+    isOwner ? getClientStatement(supabase, accountId, clientId) : Promise.resolve(null),
+    !isOwner
+      ? supabase
+          .from('jobs')
+          .select('id, ref, status, quoted_amount, created_at, scheduled_for')
+          .eq('account_id', accountId)
+          .eq('client_id', clientId)
+          .order('created_at', { ascending: false })
+      : Promise.resolve({ data: null }),
     supabase
       .from('leads')
       .select('id', { count: 'exact', head: true })
       .eq('account_id', accountId)
       .eq('client_id', clientId)
+      .is('deleted_at', null)
       .not('status', 'in', '("won","lost")'),
   ]);
+
+  const jobRows = (jobRowsRes?.data ?? []) as Array<{
+    id: string;
+    ref: string | null;
+    status: string;
+    quoted_amount: number | null;
+    created_at: string;
+    scheduled_for: string | null;
+  }>;
 
   // To the cent. These are the amounts a customer has paid and still owes, read
   // off the same payments the pay page and the invoice state exactly. The
   // rounding formatMoney is right for a summary and wrong for a balance, and
   // lib/jobs says so where it is defined.
   const money = (value: number) => formatMoneyExact(value);
+
+  const quotedTotal = isOwner && statement
+    ? statement.totalQuoted
+    : jobRows.reduce((sum, j) => sum + (Number(j.quoted_amount) || 0), 0);
+  const jobCount = isOwner && statement ? statement.jobCount : jobRows.length;
+  const openJobCount = isOwner && statement
+    ? statement.jobs.filter((job) => OPEN_STATUSES.has(job.status)).length
+    : jobRows.filter((job) => OPEN_STATUSES.has(job.status)).length;
 
   return {
     id: client.id,
@@ -108,37 +137,51 @@ export async function loadClientDetail(
     city: cityFromAddress(client.address),
     notes: client.notes,
     customerSinceLabel: formatLeadDate(client.created_at),
-    jobCount: statement.jobCount,
-    openJobCount: statement.jobs.filter((job) => OPEN_STATUSES.has(job.status)).length,
+    jobCount,
+    openJobCount,
     totals: {
-      quoted: statement.totalQuoted,
-      paid: statement.totalPaid,
-      outstanding: statement.outstanding,
-      quotedLabel: money(statement.totalQuoted),
-      paidLabel: money(statement.totalPaid),
-      outstandingLabel: money(statement.outstanding),
+      quoted: quotedTotal,
+      paid: isOwner && statement ? statement.totalPaid : 0,
+      outstanding: isOwner && statement ? statement.outstanding : 0,
+      quotedLabel: money(quotedTotal),
+      paidLabel: isOwner && statement ? money(statement.totalPaid) : '—',
+      outstandingLabel: isOwner && statement ? money(statement.outstanding) : '—',
     },
     // Capped: the pane is a summary with a way through to the full profile, and
     // a customer with sixty jobs should not ship sixty rows to render eight.
-    jobs: statement.jobs.slice(0, 12).map((job) => ({
-      id: job.id,
-      ref: job.ref,
-      status: job.status,
-      statusLabel: JOB_STATUS_LABEL[job.status as JobStatus] ?? job.status,
-      dateLabel: formatLeadDate(job.date),
-      quotedLabel: money(job.quoted),
-      paidLabel: money(job.paid),
-      balance: job.balance,
-      balanceLabel: money(job.balance),
-    })),
-    payments: statement.payments.slice(0, 12).map((payment) => ({
-      id: payment.id,
-      jobRef: payment.jobRef,
-      label: payment.label || payment.kind,
-      amountLabel: money(payment.amount),
-      status: payment.status,
-      dateLabel: formatLeadDate(payment.at),
-    })),
+    jobs: isOwner && statement
+      ? statement.jobs.slice(0, 12).map((job) => ({
+          id: job.id,
+          ref: job.ref,
+          status: job.status,
+          statusLabel: JOB_STATUS_LABEL[job.status as JobStatus] ?? job.status,
+          dateLabel: formatLeadDate(job.date),
+          quotedLabel: money(job.quoted),
+          paidLabel: money(job.paid),
+          balance: job.balance,
+          balanceLabel: money(job.balance),
+        }))
+      : jobRows.slice(0, 12).map((job) => ({
+          id: job.id,
+          ref: job.ref ?? '',
+          status: job.status,
+          statusLabel: JOB_STATUS_LABEL[job.status as JobStatus] ?? job.status,
+          dateLabel: formatLeadDate(job.created_at),
+          quotedLabel: money(Number(job.quoted_amount) || 0),
+          paidLabel: '—',
+          balance: 0,
+          balanceLabel: '—',
+        })),
+    payments: isOwner && statement
+      ? statement.payments.slice(0, 12).map((payment) => ({
+          id: payment.id,
+          jobRef: payment.jobRef,
+          label: payment.label || payment.kind,
+          amountLabel: money(payment.amount),
+          status: payment.status,
+          dateLabel: formatLeadDate(payment.at),
+        }))
+      : [],
     openRequestCount: requestCount ?? 0,
     lastInvitedLabel: client.last_rebook_invite_at ? formatLeadDate(client.last_rebook_invite_at) : null,
   };

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { requireOwnerContext } from '@/lib/auth';
+import { requireOfficeContext } from '@/lib/auth';
 import ClientImport from './ClientImport';
 
 export const metadata = { title: 'Import customers' };
@@ -7,7 +7,7 @@ export const metadata = { title: 'Import customers' };
 export const dynamic = 'force-dynamic';
 
 export default async function ImportClientsPage() {
-  await requireOwnerContext();
+  await requireOfficeContext('clients.write');
 
   return (
     <main className="wide-shell workspace-shell">

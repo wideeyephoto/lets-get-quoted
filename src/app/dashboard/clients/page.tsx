@@ -20,7 +20,7 @@ export const metadata = { title: 'Clients' };
  */
 export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ created?: string; existing?: string; add?: string; merged?: string; dismissed?: string; dismissError?: string }> }) {
   const resolvedSearchParams = (await searchParams) || {};
-  const { supabase, accountId, accountTimeZone } = await requireOfficeContext('clients.read');
+  const { supabase, accountId, accountTimeZone, role } = await requireOfficeContext('clients.read');
   const todayKey = todayIn(accountTimeZone);
   // One query for the whole book's coordinates, not one per customer.
   const [clients, pinsByClient, dismissed] = await Promise.all([
@@ -56,7 +56,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
     <ClientsScreen
       rows={toClientRows(clients)}
       duplicateGroups={duplicateGroups}
-      mergeAction={mergeClientsAction}
+      mergeAction={role === 'owner' ? mergeClientsAction : undefined}
       dismissDuplicateAction={dismissDuplicateGroupAction}
       dismissError={resolvedSearchParams.dismissError === 'schema'}
       mergedCount={Number(resolvedSearchParams.merged) || 0}
