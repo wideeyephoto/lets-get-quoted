@@ -38,6 +38,7 @@ export type AccountEventKind =
   | 'office_invitation_sent'
   | 'office_invitation_revoked'
   | 'office_access_removed'
+  | 'office_permissions_updated'
   // The plan a visitor chose on /pricing before they had an account. Recorded at
   // first run because it is the only moment it is still in hand: paid checkout
   // is dark, so there is nothing to charge yet, and without a row here the

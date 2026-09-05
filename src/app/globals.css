@@ -68282,6 +68282,187 @@ a.sms-cat-switch:focus-visible {
   color: var(--ink-orange-1);
 }
 
+.office-team .office-caps-tag {
+  font-size: 0.74rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 6px;
+  background: rgba(var(--tint), 0.08);
+  border: 1px solid var(--edge-t14);
+  color: var(--text);
+  font-weight: 550;
+}
+
+.office-team .office-team-list .office-btn-perm {
+  border-color: #cbd5e1;
+  color: var(--text);
+  font-weight: 600;
+}
+
+.office-team .office-team-list .office-btn-perm:hover {
+  background: rgba(var(--tint), 0.08);
+}
+
+.office-team .office-permissions-editor {
+  flex: 1 1 100%;
+  margin-top: 0.6rem;
+  padding: 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+  display: grid;
+  gap: 0.85rem;
+}
+
+.office-team .office-perm-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--edge-t14);
+  padding-bottom: 0.5rem;
+}
+
+.office-team .office-perm-header h4 {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.office-team .office-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.office-team .office-presets-label {
+  font-size: 0.78rem;
+  color: var(--mute-t50);
+  margin-right: 0.2rem;
+}
+
+.office-team .office-preset-btn {
+  padding: 0.25rem 0.55rem;
+  border-radius: 6px;
+  border: 1px solid var(--edge-t14);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.75rem;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.office-team .office-preset-btn:hover {
+  border-color: #94a3b8;
+  background: rgba(var(--tint), 0.05);
+}
+
+.office-team .office-bands-grid {
+  display: grid;
+  gap: 0.8rem;
+  max-height: 24rem;
+  overflow-y: auto;
+  padding-right: 0.4rem;
+}
+
+.office-team .office-band-card {
+  padding: 0.65rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--edge-t14);
+  background: rgba(var(--tint), 0.02);
+}
+
+.office-team .office-band-title {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--mute-t60);
+}
+
+.office-team .office-caps-list {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.office-team .office-cap-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.office-team .office-cap-item input[type='checkbox'] {
+  margin-top: 0.15rem;
+  cursor: pointer;
+}
+
+.office-team .office-cap-content {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.office-team .office-cap-label-row {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+}
+
+.office-team .office-cap-name {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.office-team .office-deliberation-badge {
+  font-size: 0.68rem;
+  font-weight: 650;
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  background: rgba(234, 88, 12, 0.12);
+  border: 1px solid rgba(234, 88, 12, 0.3);
+  color: #c2410c;
+}
+
+.office-team .office-cap-desc {
+  font-size: 0.76rem;
+  color: var(--mute-t50);
+}
+
+.office-team .office-perm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  border-top: 1px solid var(--edge-t14);
+  padding-top: 0.6rem;
+}
+
+.office-team .office-perm-actions button {
+  padding: 0.4rem 0.9rem;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.office-team .office-perm-save-btn {
+  background: #ea580c !important;
+  color: #ffffff !important;
+  border: 1px solid #c2410c !important;
+}
+
+.office-team .office-perm-cancel-btn {
+  background: transparent !important;
+  color: var(--mute-t60) !important;
+  border: 1px solid var(--edge-t14) !important;
+}
+
 /* ── Extra usage (overage) ───────────────────────────────────────────────────
    Scoped under #overage, which is a panel/workspace-section-card like its
    neighbours -- only the three elements unique to it are styled here. */
