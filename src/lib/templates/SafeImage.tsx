@@ -6,7 +6,7 @@ import Image from 'next/image';
 // today, but a stray or legacy URL must degrade to a broken <img>, never take
 // the page down. So optimize known-good hosts and pass anything else through
 // as a plain <img> (which the surrounding descendant CSS styles identically).
-function isOptimizableHost(src: string): boolean {
+export function isOptimizableHost(src: string): boolean {
   try {
     const { hostname } = new URL(src);
     return hostname === 'images.unsplash.com' || hostname === 'images.pexels.com' || hostname.endsWith('.supabase.co');
