@@ -1,6 +1,6 @@
-﻿'use client';
+'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ToolAsset,
   FleetVehicle,
@@ -9,9 +9,9 @@ import {
   calculateAssetDepreciation,
   describeToolStatus,
   describeVehicleStatus,
+  formatDueBackLabel,
 } from '@/lib/inventory-tracker';
 import { formatUsdExact } from '@/lib/money-format';
-import AccessibleModal from './AccessibleModal';
 import styles from '../inventory.module.css';
 import {
   Wrench,
@@ -20,12 +20,15 @@ import {
   DollarSign,
   User,
   Clock,
-  FileText,
-  ShieldCheck,
   Check,
   AlertTriangle,
   History,
   Tag,
+  ArrowRight,
+  ArrowRightLeft,
+  Edit2,
+  X,
+  MapPin,
 } from 'lucide-react';
 
 interface AssetDetailModalProps {
@@ -36,6 +39,11 @@ interface AssetDetailModalProps {
   custodyLogs?: ToolCustodyLogEntry[];
   maintenanceRecords?: MaintenanceRecord[];
   asOfDate?: string;
+  onCheckOut?: (tool: ToolAsset) => void;
+  onReturn?: (tool: ToolAsset) => void;
+  onTransfer?: (tool: ToolAsset) => void;
+  onSendMaintenance?: (asset: ToolAsset | FleetVehicle) => void;
+  onEdit?: (asset: ToolAsset | FleetVehicle) => void;
 }
 
 export default function AssetDetailModal({
@@ -46,10 +54,31 @@ export default function AssetDetailModal({
   custodyLogs = [],
   maintenanceRecords = [],
   asOfDate,
+  onCheckOut,
+  onReturn,
+  onTransfer,
+  onSendMaintenance,
+  onEdit,
 }: AssetDetailModalProps) {
   const [activeTab, setActiveTab] = useState<'details' | 'custody' | 'maintenance' | 'tax'>('details');
 
-  if (!asset) return null;
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape' && isOpen) {
+        onClose();
+      }
+    }
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = 'hidden';
+    }
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, onClose]);
+
+  if (!isOpen || !asset) return null;
 
   const isTool = assetType === 'tool';
   const tool = isTool ? (asset as ToolAsset) : null;
@@ -70,22 +99,159 @@ export default function AssetDetailModal({
     asOfDate
   );
 
+  const dueInfo = tool ? formatDueBackLabel(tool.expectedReturnDate) : null;
+  const statusDesc = isTool ? describeToolStatus(tool!.status) : describeVehicleStatus(vehicle!.status);
+
   return (
-    <AccessibleModal
-      isOpen={isOpen}
-      onClose={onClose}
-      title={asset.name}
-      subtitle={isTool ? `Tool Asset Tag: ${tool?.assetTag}` : `Fleet Unit: ${vehicle?.licensePlate}`}
-      maxWidth="780px"
+    <div
+      className={styles.drawerBackdrop}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${asset.name} details drawer`}
     >
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem' }}>
-        {/* Sub-navigation tabs */}
-        <div style={{ display: 'flex', gap: '0.5rem', borderBottom: '1px solid var(--inv-border-subtle)', paddingBottom: '0.5rem' }}>
+      <div className={styles.drawerPanel}>
+        {/* Header */}
+        <div className={styles.drawerHeader}>
+          <div className={styles.drawerHeaderInfo}>
+            <div className={styles.drawerSubtitleRow}>
+              <span className={styles.compactTag}>
+                {isTool ? tool?.assetTag : vehicle?.licensePlate}
+              </span>
+              <span
+                className={`${styles.statusBadge} ${
+                  asset.status === 'available' || asset.status === 'active'
+                    ? styles.statusAvailable
+                    : asset.status === 'checked_out' || asset.status === 'in_shop'
+                    ? styles.statusCheckedOut
+                    : styles.statusMaintenance
+                }`}
+              >
+                {statusDesc.label}
+              </span>
+              {dueInfo?.isOverdue && (
+                <span className={styles.statusOverdue}>
+                  <Clock size={11} /> Overdue
+                </span>
+              )}
+            </div>
+            <h2 className={styles.drawerTitle}>{asset.name}</h2>
+            <div style={{ fontSize: '0.8rem', color: '#94a3b8' }}>
+              {isTool ? `${tool?.brand} • ${tool?.category}` : `${vehicle?.year} ${vehicle?.make} ${vehicle?.model}`}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className={styles.drawerCloseBtn}
+            aria-label="Close drawer"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Persistent Action Bar */}
+        <div className={styles.drawerActionBar}>
+          {isTool && tool && (
+            <>
+              {tool.status === 'available' && onCheckOut && (
+                <button
+                  type="button"
+                  onClick={() => onCheckOut(tool)}
+                  className={styles.btnActionCompactCheckOut}
+                >
+                  <ArrowRight size={13} /> Check Out Tool
+                </button>
+              )}
+
+              {tool.status === 'checked_out' && onReturn && (
+                <button
+                  type="button"
+                  onClick={() => onReturn(tool)}
+                  className={styles.btnActionCompactReturn}
+                >
+                  <Check size={13} /> Return Tool
+                </button>
+              )}
+
+              {tool.status === 'checked_out' && onTransfer && (
+                <button
+                  type="button"
+                  onClick={() => onTransfer(tool)}
+                  className={styles.btnActionCompactTransfer}
+                >
+                  <ArrowRightLeft size={13} /> Transfer to Tech
+                </button>
+              )}
+
+              {tool.status === 'in_maintenance' && onReturn && (
+                <button
+                  type="button"
+                  onClick={() => onReturn(tool)}
+                  className={styles.btnActionCompactReturn}
+                >
+                  <Check size={13} /> Return to Service
+                </button>
+              )}
+
+              {onSendMaintenance && (
+                <button
+                  type="button"
+                  onClick={() => onSendMaintenance(tool)}
+                  className={styles.btnSecondary}
+                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
+                >
+                  <Wrench size={13} /> {tool.status === 'in_maintenance' ? 'Log Service' : 'Send for Service'}
+                </button>
+              )}
+
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(tool)}
+                  className={styles.btnSecondary}
+                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
+                >
+                  <Edit2 size={13} /> Edit
+                </button>
+              )}
+            </>
+          )}
+
+          {!isTool && vehicle && (
+            <>
+              {onSendMaintenance && (
+                <button
+                  type="button"
+                  onClick={() => onSendMaintenance(vehicle)}
+                  className={styles.btnActionCompactCheckOut}
+                >
+                  <Wrench size={13} /> Log Maintenance
+                </button>
+              )}
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={() => onEdit(vehicle)}
+                  className={styles.btnSecondary}
+                  style={{ fontSize: '0.76rem', padding: '0.3rem 0.65rem' }}
+                >
+                  <Edit2 size={13} /> Edit Vehicle
+                </button>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Sub-nav tabs */}
+        <div style={{ display: 'flex', gap: '0.5rem', padding: '0.5rem 1.25rem 0', borderBottom: '1px solid rgba(255, 255, 255, 0.08)' }}>
           <button
             type="button"
             onClick={() => setActiveTab('details')}
             className={activeTab === 'details' ? styles.tabBtnActive : styles.tabBtn}
-            style={{ fontSize: '0.84rem', padding: '0.4rem 0.85rem' }}
+            style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem' }}
           >
             Overview
           </button>
@@ -94,7 +260,7 @@ export default function AssetDetailModal({
               type="button"
               onClick={() => setActiveTab('custody')}
               className={activeTab === 'custody' ? styles.tabBtnActive : styles.tabBtn}
-              style={{ fontSize: '0.84rem', padding: '0.4rem 0.85rem' }}
+              style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem' }}
             >
               Custody History ({relevantCustody.length})
             </button>
@@ -103,7 +269,7 @@ export default function AssetDetailModal({
             type="button"
             onClick={() => setActiveTab('maintenance')}
             className={activeTab === 'maintenance' ? styles.tabBtnActive : styles.tabBtn}
-            style={{ fontSize: '0.84rem', padding: '0.4rem 0.85rem' }}
+            style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem' }}
           >
             Service History ({relevantMaintenance.length})
           </button>
@@ -111,235 +277,361 @@ export default function AssetDetailModal({
             type="button"
             onClick={() => setActiveTab('tax')}
             className={activeTab === 'tax' ? styles.tabBtnActive : styles.tabBtn}
-            style={{ fontSize: '0.84rem', padding: '0.4rem 0.85rem' }}
+            style={{ fontSize: '0.82rem', padding: '0.4rem 0.75rem' }}
           >
-            Depreciation &amp; Tax Basis
+            Accounting
           </button>
         </div>
 
-        {/* Tab 1: Overview */}
-        {activeTab === 'details' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-              {isTool && tool?.imageUrl && (
-                <div style={{ width: '160px', height: '160px', borderRadius: '10px', overflow: 'hidden', border: '1px solid var(--inv-border-strong)', flexShrink: 0 }}>
-                  <img
-                    src={tool.imageUrl}
-                    alt={tool.name}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
+        {/* Drawer Body */}
+        <div className={styles.drawerBody}>
+          {/* TAB 1: OVERVIEW */}
+          {activeTab === 'details' && (
+            <>
+              {/* Custody Card */}
+              {isTool && tool && (
+                <div
+                  style={{
+                    background: tool.status === 'checked_out' ? 'rgba(56, 189, 248, 0.08)' : 'rgba(52, 211, 153, 0.08)',
+                    border: `1px solid ${tool.status === 'checked_out' ? 'rgba(56, 189, 248, 0.3)' : 'rgba(52, 211, 153, 0.3)'}`,
+                    borderRadius: '10px',
+                    padding: '1rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.65rem',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '0.74rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: '#94a3b8', fontWeight: 700 }}>
+                      Current Custody &amp; Status
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '0.74rem',
+                        fontWeight: 700,
+                        color: tool.status === 'checked_out' ? '#38bdf8' : '#34d399',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.3rem',
+                      }}
+                    >
+                      {tool.status === 'checked_out' ? <User size={13} /> : <Check size={13} />}
+                      {tool.status === 'checked_out' ? 'In Field Custody' : 'Available in Pool'}
+                    </span>
+                  </div>
+
+                  {tool.status === 'checked_out' ? (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Assigned Technician</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#ffffff', marginTop: '0.15rem' }}>
+                          {tool.assignedCrewName || 'Assigned Crew'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Due Back</div>
+                        <div
+                          style={{
+                            fontSize: '0.95rem',
+                            fontWeight: 800,
+                            color: dueInfo?.tone === 'danger' ? '#f87171' : dueInfo?.tone === 'warn' ? '#fbbf24' : '#ffffff',
+                            marginTop: '0.15rem',
+                          }}
+                        >
+                          {dueInfo?.label || '—'}
+                        </div>
+                      </div>
+                      {tool.assignedJobLabel && (
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Assigned Job Site</div>
+                          <div style={{ fontSize: '0.85rem', color: '#cbd5e1', marginTop: '0.15rem' }}>
+                            {tool.assignedJobLabel}
+                          </div>
+                        </div>
+                      )}
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Checked Out Since</div>
+                        <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginTop: '0.15rem' }}>
+                          {tool.checkedOutAt ? new Date(tool.checkedOutAt).toLocaleDateString() : 'Recent'}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Home Base Depot</div>
+                        <div style={{ fontSize: '0.82rem', color: '#cbd5e1', marginTop: '0.15rem' }}>
+                          {tool.locationName || 'Main Shop & Warehouse'}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <div>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8' }}>Current Stored Location</div>
+                        <div style={{ fontSize: '0.95rem', fontWeight: 700, color: '#ffffff', marginTop: '0.15rem' }}>
+                          <MapPin size={13} style={{ display: 'inline', marginRight: '0.3rem', color: '#34d399' }} />
+                          {tool.locationName || 'Main Shop & Warehouse'}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.78rem', color: '#34d399', fontWeight: 600 }}>Ready for dispatch</span>
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div style={{ flex: 1, minWidth: '240px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '0.75rem' }}>
-                <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                  <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Status</span>
-                  <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--inv-text-primary)' }}>
-                    {isTool ? describeToolStatus(tool!.status).label : describeVehicleStatus(vehicle!.status).label}
+              {/* Photo & Technical Specs */}
+              <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+                {isTool && tool?.imageUrl && (
+                  <div
+                    style={{
+                      width: '110px',
+                      height: '110px',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      flexShrink: 0,
+                      background: '#1a2233',
+                    }}
+                  >
+                    <img
+                      src={tool.imageUrl}
+                      alt={tool.name}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
                   </div>
-                </div>
-
-                {isTool ? (
-                  <>
-                    <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Brand / Category</span>
-                      <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--inv-text-primary)' }}>{tool!.brand} • {tool!.category}</div>
-                    </div>
-                    <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Current Custody</span>
-                      <div style={{ fontWeight: 700, marginTop: '0.2rem', color: tool!.assignedCrewName ? '#38bdf8' : '#34d399' }}>
-                        {tool!.assignedCrewName ? `${tool!.assignedCrewName}${tool!.assignedJobLabel ? ` (${tool!.assignedJobLabel})` : ''}` : 'Shop Pool / Available'}
-                      </div>
-                    </div>
-                    {tool!.expectedReturnDate && (
-                      <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Expected Return</span>
-                        <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--inv-text-primary)' }}>{tool!.expectedReturnDate}</div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <>
-                    <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Make / Model / Year</span>
-                      <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--inv-text-primary)' }}>{vehicle!.year} {vehicle!.make} {vehicle!.model}</div>
-                    </div>
-                    <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Odometer Mileage</span>
-                      <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--inv-text-primary)', fontFamily: 'monospace' }}>{vehicle!.currentMileage.toLocaleString()} mi</div>
-                    </div>
-                    {vehicle!.vin && (
-                      <div style={{ padding: '0.65rem 0.85rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                        <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>VIN</span>
-                        <div style={{ fontWeight: 700, marginTop: '0.2rem', color: 'var(--inv-text-primary)', fontFamily: 'monospace', fontSize: '0.84rem' }}>{vehicle!.vin}</div>
-                      </div>
-                    )}
-                  </>
                 )}
-              </div>
-            </div>
 
-            {asset.notes && (
-              <div style={{ padding: '0.85rem', borderRadius: '8px', background: 'var(--inv-surface-subtle)', border: '1px solid var(--inv-border-subtle)' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Notes</span>
-                <p style={{ fontSize: '0.85rem', color: 'var(--inv-text-body)', marginTop: '0.25rem', whiteSpace: 'pre-wrap' }}>
-                  {asset.notes}
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Tab 2: Custody History */}
-        {activeTab === 'custody' && isTool && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '340px', overflowY: 'auto' }}>
-            {relevantCustody.length === 0 ? (
-              <p style={{ color: 'var(--inv-text-caption)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem 0' }}>
-                No past check-out or check-in custody events recorded for this tool.
-              </p>
-            ) : (
-              relevantCustody.map((log) => (
-                <div
-                  key={log.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.75rem',
-                    padding: '0.75rem 0.95rem',
-                    borderRadius: '8px',
-                    background: 'var(--inv-surface-subtle)',
-                    border: '1px solid var(--inv-border-subtle)',
-                  }}
-                >
-                  <div style={{ marginTop: '0.15rem' }}>
-                    {log.action === 'check_out' ? (
-                      <Clock size={16} style={{ color: '#38bdf8' }} />
-                    ) : (
-                      <Check size={16} style={{ color: '#34d399' }} />
-                    )}
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong style={{ fontSize: '0.85rem', color: 'var(--inv-text-primary)' }}>
-                        {log.action === 'check_out' ? `Checked out to ${log.crewName || 'Crew'}` : 'Returned to Shop Pool'}
-                      </strong>
-                      <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', fontFamily: 'monospace' }}>
-                        {new Date(log.occurredAt).toLocaleDateString()} {new Date(log.occurredAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '0.65rem' }}>
+                  <div style={{ padding: '0.6rem 0.75rem', background: '#171d2b', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase' }}>Brand</span>
+                    <div style={{ fontWeight: 700, marginTop: '0.15rem', color: '#ffffff' }}>
+                      {isTool ? tool!.brand : vehicle!.make}
                     </div>
-                    {log.jobLabel && (
-                      <div style={{ fontSize: '0.8rem', color: 'var(--inv-text-muted)', marginTop: '0.15rem' }}>
-                        Job: {log.jobLabel}
-                      </div>
-                    )}
-                    {log.notes && (
-                      <div style={{ fontSize: '0.78rem', color: 'var(--inv-text-caption)', marginTop: '0.25rem', fontStyle: 'italic' }}>
-                        &ldquo;{log.notes}&rdquo;
-                      </div>
-                    )}
+                  </div>
+
+                  <div style={{ padding: '0.6rem 0.75rem', background: '#171d2b', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase' }}>Model Number</span>
+                    <div style={{ fontWeight: 700, marginTop: '0.15rem', color: '#ffffff' }}>
+                      {isTool ? tool!.modelNumber || 'None' : vehicle!.model}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '0.6rem 0.75rem', background: '#171d2b', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase' }}>Serial Number</span>
+                    <div style={{ fontWeight: 700, marginTop: '0.15rem', color: '#38bdf8', fontFamily: 'monospace' }}>
+                      {isTool ? tool!.serialNumber || 'Not recorded' : vehicle!.vin || 'None'}
+                    </div>
+                  </div>
+
+                  <div style={{ padding: '0.6rem 0.75rem', background: '#171d2b', borderRadius: '7px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                    <span style={{ fontSize: '0.7rem', color: '#94a3b8', textTransform: 'uppercase' }}>Category</span>
+                    <div style={{ fontWeight: 700, marginTop: '0.15rem', color: '#ffffff' }}>
+                      {isTool ? tool!.category : 'Fleet Transport'}
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        )}
+              </div>
 
-        {/* Tab 3: Maintenance History */}
-        {activeTab === 'maintenance' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '340px', overflowY: 'auto' }}>
-            {relevantMaintenance.length === 0 ? (
-              <p style={{ color: 'var(--inv-text-caption)', fontSize: '0.85rem', textAlign: 'center', padding: '2rem 0' }}>
-                No maintenance or repair records logged for this asset.
-              </p>
-            ) : (
-              relevantMaintenance.map((m) => (
-                <div
-                  key={m.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.75rem',
-                    padding: '0.75rem 0.95rem',
-                    borderRadius: '8px',
-                    background: 'var(--inv-surface-subtle)',
-                    border: '1px solid var(--inv-border-subtle)',
-                  }}
-                >
-                  <Wrench size={16} style={{ color: '#fbbf24', marginTop: '0.15rem' }} />
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <strong style={{ fontSize: '0.85rem', color: 'var(--inv-text-primary)' }}>
-                        {m.serviceType}
-                      </strong>
-                      <span style={{ fontSize: '0.9rem', color: '#34d399', fontWeight: 700, fontFamily: 'monospace' }}>
-                        {formatUsdExact(m.cost)}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: '0.78rem', color: 'var(--inv-text-muted)', marginTop: '0.2rem' }}>
-                      Performed by {m.performedBy} on {m.performedAt}
-                      {m.mileageAtService ? ` at ${m.mileageAtService.toLocaleString()} mi` : ''}
-                    </div>
-                    {m.notes && (
-                      <div style={{ fontSize: '0.78rem', color: 'var(--inv-text-caption)', marginTop: '0.2rem' }}>
-                        {m.notes}
-                      </div>
-                    )}
+              {/* Notes */}
+              {asset.notes && (
+                <div style={{ padding: '0.75rem', background: 'rgba(255, 255, 255, 0.03)', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '0.25rem' }}>
+                    Notes &amp; Equipment Details
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: '#cbd5e1', whiteSpace: 'pre-wrap' }}>
+                    {asset.notes}
                   </div>
                 </div>
-              ))
-            )}
-          </div>
-        )}
+              )}
+            </>
+          )}
 
-        {/* Tab 4: Depreciation & Tax Basis */}
-        {activeTab === 'tax' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '0.75rem' }}>
-              <div style={{ padding: '0.75rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase' }}>Purchase Price</span>
-                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--inv-text-primary)', fontFamily: 'monospace', marginTop: '0.2rem' }}>
-                  {asset.purchasePrice ? formatUsdExact(asset.purchasePrice) : 'Not recorded'}
+          {/* TAB 2: CUSTODY HISTORY */}
+          {activeTab === 'custody' && isTool && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {relevantCustody.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8' }}>
+                  <History size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                  <p style={{ fontWeight: 600 }}>No custody transitions recorded yet</p>
+                  <p style={{ fontSize: '0.78rem', marginTop: '0.2rem' }}>
+                    Every checkout, return, and technician transfer creates an audit trail event here.
+                  </p>
+                </div>
+              ) : (
+                relevantCustody.map((log) => {
+                  const isCheckOut = log.action === 'check_out';
+                  const isCheckIn = log.action === 'check_in';
+                  const isTransfer = log.action === 'transfer';
+
+                  return (
+                    <div
+                      key={log.id}
+                      style={{
+                        display: 'flex',
+                        gap: '0.75rem',
+                        alignItems: 'flex-start',
+                        padding: '0.75rem 0.95rem',
+                        background: '#161c28',
+                        border: '1px solid rgba(255, 255, 255, 0.08)',
+                        borderRadius: '8px',
+                      }}
+                    >
+                      <div
+                        style={{
+                          width: '28px',
+                          height: '28px',
+                          borderRadius: '6px',
+                          background: isCheckOut
+                            ? 'rgba(255, 122, 33, 0.16)'
+                            : isCheckIn
+                            ? 'rgba(52, 211, 153, 0.16)'
+                            : 'rgba(56, 189, 248, 0.16)',
+                          color: isCheckOut ? '#ff9d5c' : isCheckIn ? '#34d399' : '#38bdf8',
+                          display: 'grid',
+                          placeItems: 'center',
+                          flexShrink: 0,
+                          marginTop: '0.1rem',
+                        }}
+                      >
+                        {isCheckOut ? <ArrowRight size={14} /> : isCheckIn ? <Check size={14} /> : <ArrowRightLeft size={14} />}
+                      </div>
+
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#ffffff' }}>
+                            {isCheckOut
+                              ? `Checked out to ${log.crewName || 'Technician'}`
+                              : isCheckIn
+                              ? 'Returned to Shop / Pool'
+                              : isTransfer
+                              ? `Transferred to ${log.crewName || 'Technician'}`
+                              : log.action.replace('_', ' ')}
+                          </span>
+                          <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                            {new Date(log.occurredAt).toLocaleString(undefined, {
+                              month: 'short',
+                              day: 'numeric',
+                              hour: 'numeric',
+                              minute: '2-digit',
+                            })}
+                          </span>
+                        </div>
+
+                        {log.jobLabel && (
+                          <div style={{ fontSize: '0.78rem', color: '#cbd5e1', marginTop: '0.2rem' }}>
+                            Job: {log.jobLabel}
+                          </div>
+                        )}
+
+                        {log.notes && (
+                          <div style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '0.25rem', fontStyle: 'italic' }}>
+                            &ldquo;{log.notes}&rdquo;
+                          </div>
+                        )}
+
+                        {log.performedBy && (
+                          <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '0.25rem' }}>
+                            Logged by: {log.performedBy}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+
+          {/* TAB 3: SERVICE HISTORY */}
+          {activeTab === 'maintenance' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+              {relevantMaintenance.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '2.5rem 1rem', color: '#94a3b8' }}>
+                  <Wrench size={36} style={{ margin: '0 auto 0.5rem', opacity: 0.5 }} />
+                  <p style={{ fontWeight: 600 }}>No service records logged</p>
+                  <p style={{ fontSize: '0.78rem', marginTop: '0.2rem' }}>
+                    Routine service, calibration, and repair tickets will display here.
+                  </p>
+                </div>
+              ) : (
+                relevantMaintenance.map((m) => (
+                  <div
+                    key={m.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.75rem',
+                      padding: '0.75rem 0.95rem',
+                      borderRadius: '8px',
+                      background: '#161c28',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    <Wrench size={16} style={{ color: '#fbbf24', marginTop: '0.15rem' }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>{m.serviceType}</strong>
+                        <span style={{ fontSize: '0.88rem', color: '#34d399', fontWeight: 700, fontFamily: 'monospace' }}>
+                          {formatUsdExact(m.cost)}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: '0.76rem', color: '#cbd5e1', marginTop: '0.2rem' }}>
+                        Performed by {m.performedBy} on {m.performedAt}
+                        {m.mileageAtService ? ` at ${m.mileageAtService.toLocaleString()} mi` : ''}
+                      </div>
+                      {m.notes && (
+                        <div style={{ fontSize: '0.74rem', color: '#94a3b8', marginTop: '0.2rem' }}>
+                          {m.notes}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* TAB 4: TAX & ACCOUNTING */}
+          {activeTab === 'tax' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
+                <div style={{ padding: '0.75rem', background: '#161c28', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Acquisition Cost</span>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#ffffff', fontFamily: 'monospace', marginTop: '0.2rem' }}>
+                    {asset.purchasePrice ? formatUsdExact(asset.purchasePrice) : 'Not recorded'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#161c28', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Tax Election</span>
+                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#ff9d5c', marginTop: '0.2rem' }}>
+                    {asset.depreciationSchedule || 'None'}
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#161c28', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Carrying Book Value</span>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#34d399', fontFamily: 'monospace', marginTop: '0.2rem' }}>
+                    {formatUsdExact(dep.currentBookValue)}
+                  </div>
+                </div>
+
+                <div style={{ padding: '0.75rem', background: '#161c28', borderRadius: '8px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                  <span style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase' }}>Tax Basis Remaining</span>
+                  <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#38bdf8', fontFamily: 'monospace', marginTop: '0.2rem' }}>
+                    {formatUsdExact(dep.remainingTaxBasis)}
+                  </div>
                 </div>
               </div>
 
-              <div style={{ padding: '0.75rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase' }}>Tax Election</span>
-                <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#ff9d5c', marginTop: '0.2rem' }}>
-                  {asset.depreciationSchedule || 'None'}
-                </div>
-              </div>
-
-              <div style={{ padding: '0.75rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase' }}>Current GAAP Carrying Value</span>
-                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#34d399', fontFamily: 'monospace', marginTop: '0.2rem' }}>
-                  {formatUsdExact(dep.currentBookValue)}
-                </div>
-              </div>
-
-              <div style={{ padding: '0.75rem', background: 'var(--inv-surface-subtle)', borderRadius: '8px', border: '1px solid var(--inv-border-subtle)' }}>
-                <span style={{ fontSize: '0.74rem', color: 'var(--inv-text-caption)', textTransform: 'uppercase' }}>Remaining Tax Basis</span>
-                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#38bdf8', fontFamily: 'monospace', marginTop: '0.2rem' }}>
-                  {formatUsdExact(dep.remainingTaxBasis)}
-                </div>
+              <div style={{ padding: '0.75rem', background: 'rgba(56, 189, 248, 0.08)', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)', fontSize: '0.8rem', color: '#bae6fd' }}>
+                <strong>Accounting Note:</strong> Placed in service: {asset.purchaseDate || 'Unknown'}. Accumulated tax write-off: {formatUsdExact(dep.accumulatedTaxDeduction)} ({dep.percentDepreciated}%).
               </div>
             </div>
-
-            <div style={{ padding: '0.85rem', background: 'rgba(56, 189, 248, 0.08)', borderRadius: '8px', border: '1px solid rgba(56, 189, 248, 0.25)', fontSize: '0.82rem', color: '#bae6fd' }}>
-              <strong>Tax Planning Note:</strong> Placed in service: {asset.purchaseDate || 'Unknown'}. Accumulated tax write-off: {formatUsdExact(dep.accumulatedTaxDeduction)} ({dep.percentDepreciated}% of initial basis).
-            </div>
-
-            <p className={styles.taxPopoverDisclaimer} style={{ marginTop: '0.5rem' }}>
-              * Tax schedules and GAAP book values for informational managerial planning only. Consult your certified CPA for deduction elections.
-            </p>
-          </div>
-        )}
-
-        <div className={styles.modalFooter} style={{ marginTop: '0.5rem' }}>
-          <button type="button" onClick={onClose} className={styles.btnPrimary}>
-            Close
-          </button>
+          )}
         </div>
       </div>
-    </AccessibleModal>
+    </div>
   );
 }

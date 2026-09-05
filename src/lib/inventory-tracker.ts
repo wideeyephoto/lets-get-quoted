@@ -49,7 +49,7 @@ export type ToolAsset = {
 export type ToolCustodyLogEntry = {
   id: string;
   toolId: string;
-  action: 'check_out' | 'check_in' | 'relocate' | 'maintenance_sent' | 'maintenance_returned';
+  action: 'check_out' | 'check_in' | 'transfer' | 'relocate' | 'maintenance_sent' | 'maintenance_returned';
   crewId?: string | null;
   crewName?: string | null;
   jobId?: string | null;
@@ -199,18 +199,22 @@ export function checkOutTool(
 }
 
 /**
- * Returns a tool to the available pool.
+ * Returns a tool to the available pool, optionally capturing the return location.
  */
 export function checkInTool(
   tool: ToolAsset,
   params?: {
     condition?: 'available' | 'in_maintenance' | 'lost_damaged';
+    locationName?: string | null;
+    locationId?: string | null;
     notes?: string | null;
   }
 ): ToolAsset {
   return {
     ...tool,
     status: params?.condition || 'available',
+    locationName: params?.locationName !== undefined ? params.locationName : tool.locationName,
+    locationId: params?.locationId !== undefined ? params.locationId : tool.locationId,
     assignedCrewId: null,
     assignedCrewName: null,
     assignedJobId: null,
@@ -219,6 +223,79 @@ export function checkInTool(
     expectedReturnDate: null,
     notes: params?.notes !== undefined ? params?.notes : tool.notes,
   };
+}
+
+/**
+ * Directly transfers custody of a tool from one technician to another in the field.
+ */
+export function transferTool(
+  tool: ToolAsset,
+  params: {
+    toCrewId?: string | null;
+    toCrewName: string;
+    jobId?: string | null;
+    toJobId?: string | null;
+    jobLabel?: string | null;
+    toJobLabel?: string | null;
+    toLocationName?: string | null;
+    toLocationId?: string | null;
+    expectedReturnDate?: string | null;
+    notes?: string | null;
+  }
+): ToolAsset {
+  return {
+    ...tool,
+    status: 'checked_out',
+    assignedCrewId: params.toCrewId ?? null,
+    assignedCrewName: params.toCrewName,
+    assignedJobId: params.toJobId ?? params.jobId ?? null,
+    assignedJobLabel: params.toJobLabel ?? params.jobLabel ?? null,
+    locationName: params.toLocationName !== undefined ? params.toLocationName : tool.locationName,
+    locationId: params.toLocationId !== undefined ? params.toLocationId : tool.locationId,
+    expectedReturnDate: params.expectedReturnDate !== undefined ? params.expectedReturnDate : tool.expectedReturnDate,
+    notes: params.notes !== undefined ? params.notes : tool.notes,
+  };
+}
+
+/**
+ * Human-readable due-back status and color tone.
+ */
+export function formatDueBackLabel(
+  expectedReturnDate?: string | null,
+  today: string = new Date().toISOString().split('T')[0]
+): { label: string; tone: 'danger' | 'warn' | 'neutral' | 'muted'; isOverdue: boolean } {
+  if (!expectedReturnDate) {
+    return { label: '—', tone: 'muted', isOverdue: false };
+  }
+
+  const [tY, tM, tD] = today.split('-').map(Number);
+  const [eY, eM, eD] = expectedReturnDate.split('-').map(Number);
+  const todayUtc = Date.UTC(tY, tM - 1, tD);
+  const dueUtc = Date.UTC(eY, eM - 1, eD);
+  const diffDays = Math.round((dueUtc - todayUtc) / 86400000);
+
+  if (diffDays < 0) {
+    const daysOverdue = Math.abs(diffDays);
+    return {
+      label: daysOverdue === 1 ? '1d overdue' : `${daysOverdue}d overdue`,
+      tone: 'danger',
+      isOverdue: true,
+    };
+  }
+
+  if (diffDays === 0) {
+    return { label: 'Due today', tone: 'warn', isOverdue: false };
+  }
+
+  if (diffDays === 1) {
+    return { label: 'Due tomorrow', tone: 'neutral', isOverdue: false };
+  }
+
+  if (diffDays <= 7) {
+    return { label: `Due in ${diffDays}d`, tone: 'neutral', isOverdue: false };
+  }
+
+  return { label: expectedReturnDate, tone: 'muted', isOverdue: false };
 }
 
 /**

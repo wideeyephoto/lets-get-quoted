@@ -17,6 +17,7 @@ import {
   DEFAULT_VEHICLES,
   DEFAULT_VAN_STOCK,
   DEFAULT_MAINTENANCE,
+  DEFAULT_CUSTODY_LOGS,
 } from '@/lib/inventory-data';
 
 /**
@@ -290,6 +291,50 @@ export async function seedInitialInventory(
     .insert(maintInserts)
     .select();
 
+  // Seed initial custody events for pre-checked-out tools
+  let insertedCustody: any[] = [];
+  try {
+    const toolsList = insertedTools || [];
+    const ridgidTool = toolsList.find((t: any) => t.asset_tag === 'TAG-PLUMB-01');
+    const milwaukeeTool = toolsList.find((t: any) => t.asset_tag === 'TAG-CUT-04');
+
+    const custodyInserts: any[] = [];
+    if (ridgidTool) {
+      custodyInserts.push({
+        account_id: accountId,
+        tool_id: ridgidTool.id,
+        action: 'check_out',
+        crew_name: 'Jake Martinez',
+        job_label: 'Water Heater Replacement (142 Ridgewood Rd)',
+        performed_by: 'Dispatch / Office Staff',
+        notes: 'Checked out with 1/2" to 2" ProPress copper jaws.',
+        occurredAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+      });
+    }
+    if (milwaukeeTool) {
+      custodyInserts.push({
+        account_id: accountId,
+        tool_id: milwaukeeTool.id,
+        action: 'check_out',
+        crew_name: 'Dave Cooper',
+        job_label: 'Water Heater Replacement (142 Ridgewood Rd)',
+        performed_by: 'Dispatch / Office Staff',
+        notes: 'Checked out with two M18 5.0Ah batteries and bi-metal blades.',
+        occurredAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+      });
+    }
+
+    if (custodyInserts.length > 0) {
+      const { data } = await supabase
+        .from('inventory_tool_custody_log')
+        .insert(custodyInserts)
+        .select();
+      insertedCustody = data || [];
+    }
+  } catch {
+    // Non-blocking custody log seeding
+  }
+
   return {
     locations: (insertedLocations ?? []).map(mapLocationRow),
     tools: (insertedTools ?? []).map(mapToolRow),
@@ -297,6 +342,7 @@ export async function seedInitialInventory(
     stock: (insertedStock ?? []).map(mapStockRow),
     transfers: [],
     maintenance: (insertedMaintenance ?? []).map(mapMaintenanceRow),
+    custodyLogs: (insertedCustody ?? []).map(mapCustodyLogRow),
   };
 }
 
@@ -448,24 +494,30 @@ export async function checkInToolDb(
   params: {
     toolId: string;
     condition?: ToolAssetStatus;
+    locationName?: string | null;
+    locationId?: string | null;
     notes?: string | null;
     performedBy?: string | null;
   },
 ): Promise<ToolAsset> {
   const now = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = {
+    status: params.condition || 'available',
+    assigned_crew_id: null,
+    assigned_crew_name: null,
+    assigned_job_id: null,
+    assigned_job_label: null,
+    checked_out_at: null,
+    expected_return_date: null,
+    updated_at: now,
+  };
+  if (params.locationName !== undefined) updatePayload.location_name = params.locationName;
+  if (params.locationId !== undefined) updatePayload.location_id = params.locationId;
+  if (params.notes !== undefined) updatePayload.notes = params.notes;
+
   const { data, error } = await supabase
     .from('inventory_tools')
-    .update({
-      status: params.condition || 'available',
-      assigned_crew_id: null,
-      assigned_crew_name: null,
-      assigned_job_id: null,
-      assigned_job_label: null,
-      checked_out_at: null,
-      expected_return_date: null,
-      notes: params.notes !== undefined ? params.notes : undefined,
-      updated_at: now,
-    })
+    .update(updatePayload)
     .eq('id', params.toolId)
     .eq('account_id', accountId)
     .select()
@@ -480,7 +532,71 @@ export async function checkInToolDb(
       tool_id: params.toolId,
       action: 'check_in',
       performed_by: params.performedBy || null,
-      notes: params.notes || null,
+      notes: params.notes || (params.locationName ? `Returned to ${params.locationName}` : null),
+      occurred_at: now,
+    });
+  } catch {
+    // Graceful audit log insert
+  }
+
+  return mapToolRow(data);
+}
+
+/**
+ * Directly transfers custody of a tool from one technician to another in the field.
+ */
+export async function transferToolDb(
+  supabase: SupabaseClient,
+  accountId: string,
+  params: {
+    toolId: string;
+    toCrewId?: string | null;
+    toCrewName: string;
+    toJobId?: string | null;
+    toJobLabel?: string | null;
+    toLocationName?: string | null;
+    toLocationId?: string | null;
+    expectedReturnDate?: string | null;
+    notes?: string | null;
+    performedBy?: string | null;
+  },
+): Promise<ToolAsset> {
+  const now = new Date().toISOString();
+  const updatePayload: Record<string, unknown> = {
+    status: 'checked_out',
+    assigned_crew_id: params.toCrewId || null,
+    assigned_crew_name: params.toCrewName,
+    assigned_job_id: params.toJobId || null,
+    assigned_job_label: params.toJobLabel || null,
+    expected_return_date: params.expectedReturnDate || null,
+    updated_at: now,
+  };
+  if (params.toLocationName !== undefined) updatePayload.location_name = params.toLocationName;
+  if (params.toLocationId !== undefined) updatePayload.location_id = params.toLocationId;
+  if (params.notes !== undefined) updatePayload.notes = params.notes;
+
+  const { data, error } = await supabase
+    .from('inventory_tools')
+    .update(updatePayload)
+    .eq('id', params.toolId)
+    .eq('account_id', accountId)
+    .select()
+    .single();
+
+  if (error) throw error;
+
+  // Log custody event
+  try {
+    await supabase.from('inventory_tool_custody_log').insert({
+      account_id: accountId,
+      tool_id: params.toolId,
+      action: 'transfer',
+      crew_id: params.toCrewId || null,
+      crew_name: params.toCrewName,
+      job_id: params.toJobId || null,
+      job_label: params.toJobLabel || null,
+      performed_by: params.performedBy || null,
+      notes: params.notes || `Transferred custody to ${params.toCrewName}`,
       occurred_at: now,
     });
   } catch {

@@ -5,6 +5,8 @@ import {
   type VanStockItem,
   checkOutTool,
   checkInTool,
+  transferTool,
+  formatDueBackLabel,
   auditVehicleMaintenance,
   auditLowStockItems,
   describeToolStatus,
@@ -55,16 +57,63 @@ describe('Tool Check-In and Check-Out Life Cycle', () => {
     expect(returned.checkedOutAt).toBeNull();
   });
 
-  it('checks in tool flagged for maintenance', () => {
+  it('checks in tool with destination location and accessories return notes', () => {
     const activeTool: ToolAsset = {
       ...sampleTool,
       status: 'checked_out',
       assignedCrewId: 'c1',
+      assignedCrewName: 'Carlos Ramirez',
+      locationName: 'Main Shop & Warehouse',
     };
 
-    const returned = checkInTool(activeTool, { condition: 'in_maintenance', notes: 'Needs calibration' });
-    expect(returned.status).toBe('in_maintenance');
-    expect(returned.notes).toBe('Needs calibration');
+    const returned = checkInTool(activeTool, {
+      locationName: 'Van #2 - Jake Martinez',
+      condition: 'available',
+      notes: 'Returned directly to Van 2 rack with all jaws',
+    });
+
+    expect(returned.status).toBe('available');
+    expect(returned.locationName).toBe('Van #2 - Jake Martinez');
+    expect(returned.assignedCrewId).toBeNull();
+    expect(returned.assignedCrewName).toBeNull();
+    expect(returned.notes).toBe('Returned directly to Van 2 rack with all jaws');
+  });
+
+  it('transfers tool directly between technicians in the field', () => {
+    const activeTool: ToolAsset = {
+      ...sampleTool,
+      status: 'checked_out',
+      assignedCrewId: 'c1',
+      assignedCrewName: 'Carlos Ramirez',
+      assignedJobLabel: '142 Ridgewood Rd',
+      expectedReturnDate: '2026-09-10',
+    };
+
+    const transferred = transferTool(activeTool, {
+      toCrewId: 'c2',
+      toCrewName: 'Tyler Vance',
+      jobLabel: '88 Elm St Boiler Project',
+      expectedReturnDate: '2026-09-15',
+      notes: 'Handoff on site with extra battery',
+    });
+
+    expect(transferred.status).toBe('checked_out');
+    expect(transferred.assignedCrewId).toBe('c2');
+    expect(transferred.assignedCrewName).toBe('Tyler Vance');
+    expect(transferred.assignedJobLabel).toBe('88 Elm St Boiler Project');
+    expect(transferred.expectedReturnDate).toBe('2026-09-15');
+    expect(transferred.notes).toBe('Handoff on site with extra battery');
+  });
+
+  it('formats human-readable relative due back labels', () => {
+    const asOf = '2026-09-05';
+    expect(formatDueBackLabel(undefined, asOf).label).toBe('—');
+    expect(formatDueBackLabel('2026-09-05', asOf).label).toBe('Due today');
+    expect(formatDueBackLabel('2026-09-06', asOf).label).toBe('Due tomorrow');
+    expect(formatDueBackLabel('2026-09-08', asOf).label).toBe('Due in 3d');
+    expect(formatDueBackLabel('2026-09-04', asOf).label).toBe('1d overdue');
+    expect(formatDueBackLabel('2026-09-04', asOf).isOverdue).toBe(true);
+    expect(formatDueBackLabel('2026-09-01', asOf).label).toBe('4d overdue');
   });
 });
 

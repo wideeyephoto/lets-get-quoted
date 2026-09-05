@@ -26,6 +26,7 @@ import {
   deleteLocation,
   checkOutToolDb,
   checkInToolDb,
+  transferToolDb,
   updateVehicleMileage,
   seedInitialInventory,
   applyVanKitTemplate,
@@ -163,6 +164,8 @@ export async function bulkCheckOutToolsAction(params: {
 export async function checkInToolAction(params: {
   toolId: string;
   condition?: ToolAssetStatus;
+  locationName?: string | null;
+  locationId?: string | null;
   notes?: string | null;
 }): Promise<ToolAsset> {
   const { supabase, accountId, userEmail } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
@@ -171,6 +174,37 @@ export async function checkInToolAction(params: {
   return checkInToolDb(supabase, accountId, {
     toolId: sanitizeString(params.toolId, 100),
     condition: params.condition,
+    locationName: params.locationName ? sanitizeString(params.locationName, 100) : null,
+    locationId: params.locationId ? sanitizeString(params.locationId, 100) : null,
+    notes: params.notes ? sanitizeString(params.notes, 1000) : null,
+    performedBy: userEmail || 'Office Staff',
+  });
+}
+
+export async function transferToolAction(params: {
+  toolId: string;
+  toCrewId?: string | null;
+  toCrewName: string;
+  toJobId?: string | null;
+  toJobLabel?: string | null;
+  toLocationName?: string | null;
+  toLocationId?: string | null;
+  expectedReturnDate?: string | null;
+  notes?: string | null;
+}): Promise<ToolAsset> {
+  const { supabase, accountId, userEmail } = await requireOfficeContextAny('inventory.custody', 'inventory.write', 'jobs.write');
+  if (!params.toolId) throw new Error('Tool ID is required');
+  if (!params.toCrewName?.trim()) throw new Error('Transfer recipient technician is required');
+
+  return transferToolDb(supabase, accountId, {
+    toolId: sanitizeString(params.toolId, 100),
+    toCrewId: params.toCrewId ? sanitizeString(params.toCrewId, 100) : null,
+    toCrewName: sanitizeString(params.toCrewName, 100),
+    toJobId: params.toJobId ? sanitizeString(params.toJobId, 100) : null,
+    toJobLabel: params.toJobLabel ? sanitizeString(params.toJobLabel, 150) : null,
+    toLocationName: params.toLocationName ? sanitizeString(params.toLocationName, 100) : null,
+    toLocationId: params.toLocationId ? sanitizeString(params.toLocationId, 100) : null,
+    expectedReturnDate: params.expectedReturnDate ? sanitizeString(params.expectedReturnDate, 20) : null,
     notes: params.notes ? sanitizeString(params.notes, 1000) : null,
     performedBy: userEmail || 'Office Staff',
   });

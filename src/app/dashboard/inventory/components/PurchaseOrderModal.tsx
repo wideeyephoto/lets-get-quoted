@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { Copy, Download, Printer, Check, ShoppingBag } from 'lucide-react';
@@ -131,7 +131,7 @@ export default function PurchaseOrderModal({
             <Check size={40} style={{ color: '#34d399' }} />
             <h3 className={styles.emptyStateTitle}>All stock levels healthy</h3>
             <p className={styles.emptyStateCopy}>
-              No items across any depot or service van are currently below their minimum threshold.
+              No items across any depot or service van below their minimum threshold.
             </p>
           </div>
         ) : (

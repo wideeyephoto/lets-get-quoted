@@ -3,6 +3,7 @@ import type {
   FleetVehicle,
   VanStockItem,
   MaintenanceRecord,
+  ToolCustodyLogEntry,
 } from '@/lib/inventory-tracker';
 
 export const DEFAULT_TOOLS: ToolAsset[] = [
@@ -24,6 +25,7 @@ export const DEFAULT_TOOLS: ToolAsset[] = [
     assignedJobId: 'job-101',
     assignedJobLabel: 'Water Heater Replacement (142 Ridgewood Rd)',
     checkedOutAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+    expectedReturnDate: new Date(Date.now() + 3 * 86400000).toISOString().split('T')[0],
     notes: 'Includes 1/2" to 2" ProPress copper jaws.',
   },
   {
@@ -74,6 +76,8 @@ export const DEFAULT_TOOLS: ToolAsset[] = [
     assignedJobId: 'job-101',
     assignedJobLabel: 'Water Heater Replacement (142 Ridgewood Rd)',
     checkedOutAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+    expectedReturnDate: new Date(Date.now() - 1 * 86400000).toISOString().split('T')[0],
+    notes: 'Checked out with two M18 5.0Ah batteries and bi-metal blades.',
   },
   {
     id: 'tool-5',
@@ -254,5 +258,32 @@ export const DEFAULT_MAINTENANCE: MaintenanceRecord[] = [
     performedAt: '2026-01-15',
     nextDueAt: '2027-01-15',
     notes: 'Passed high-pressure crimp tolerance test with certification stamp.',
+  },
+];
+
+export const DEFAULT_CUSTODY_LOGS: ToolCustodyLogEntry[] = [
+  {
+    id: 'custody-log-1',
+    toolId: 'tool-1',
+    action: 'check_out',
+    crewId: 'c1',
+    crewName: 'Jake Martinez',
+    jobId: 'job-101',
+    jobLabel: 'Water Heater Replacement (142 Ridgewood Rd)',
+    performedBy: 'Dispatch / Office Staff',
+    notes: 'Checked out with 1/2" to 2" ProPress copper jaws.',
+    occurredAt: new Date(Date.now() - 4 * 3600000).toISOString(),
+  },
+  {
+    id: 'custody-log-2',
+    toolId: 'tool-4',
+    action: 'check_out',
+    crewId: 'c2',
+    crewName: 'Dave Cooper',
+    jobId: 'job-101',
+    jobLabel: 'Water Heater Replacement (142 Ridgewood Rd)',
+    performedBy: 'Dispatch / Office Staff',
+    notes: 'Checked out with two M18 5.0Ah batteries and bi-metal blades.',
+    occurredAt: new Date(Date.now() - 4 * 3600000).toISOString(),
   },
 ];

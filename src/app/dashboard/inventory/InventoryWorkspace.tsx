@@ -675,7 +675,7 @@ export default function InventoryWorkspace({
           <div style={{ background: '#fff', borderRadius: '12px', padding: '24px', maxWidth: '520px', width: '90%', maxHeight: '80vh', overflowY: 'auto' }}>
             <h3 style={{ margin: '0 0 8px', fontSize: '1.15rem' }}>📦 Stock Replenishment Purchase Order</h3>
             <p style={{ fontSize: '0.82rem', color: '#64748b', margin: '0 0 16px' }}>
-              Compiled for items currently below minimum van stock thresholds.
+              Compiled for items below minimum van stock thresholds.
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>

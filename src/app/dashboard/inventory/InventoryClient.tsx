@@ -183,7 +183,7 @@ function TaxHelpBubble({
             ) : (
               <div>
                 <p className={styles.taxPopoverText}>
-                  Trade businesses can leverage accelerated tax write-offs for field equipment & fleet assets:
+                  Trade businesses can use accelerated tax write-offs for field equipment & fleet assets:
                 </p>
                 <div className={styles.taxPopoverList}>
                   <div className={styles.taxPopoverItem}>
@@ -557,7 +557,7 @@ export default function InventoryClient({
   async function handleAutofillStore(urlToUse?: string) {
     const raw = (urlToUse || storeAutofillUrl).trim();
     if (!raw) {
-      showToast('Please enter a tool keyword or paste a product link', 'error');
+      showToast('Enter a tool keyword or paste a product link', 'error');
       return;
     }
     setShowStoreDropdown(false);
@@ -693,7 +693,7 @@ export default function InventoryClient({
   function handleSaveTool(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (isPriceEstimated && !priceConfirmed) {
-      showToast('Please verify or confirm the estimated purchase price before saving', 'error');
+      showToast('Verify or confirm the estimated purchase price before saving', 'error');
       return;
     }
     const fd = new FormData(e.currentTarget);
@@ -901,7 +901,7 @@ export default function InventoryClient({
     const notes = transferModal.notes;
 
     if (quantity <= 0 || quantity > item.quantityOnHand) {
-      alert(`Please choose a transfer quantity between 1 and ${item.quantityOnHand}`);
+      alert(`Choose a transfer quantity between 1 and ${item.quantityOnHand}`);
       return;
     }
 
@@ -1129,7 +1129,7 @@ export default function InventoryClient({
       }
       return merged;
     });
-    showToast('Van kit stock template successfully provisioned');
+    showToast('Van kit stock template provisioned');
   }
 
   // Filtered views
@@ -1666,7 +1666,7 @@ export default function InventoryClient({
               <p className={styles.emptyStateCopy}>
                 {toolSearch
                   ? `No tools match "${toolSearch}". Clear search or adjust filter.`
-                  : 'No serialized tools are currently registered under this filter.'}
+                  : 'No serialized tools registered under this filter.'}
               </p>
               <button
                 type="button"
@@ -3482,9 +3482,9 @@ export default function InventoryClient({
             >
               <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
               <div>
-                <div style={{ fontWeight: 700 }}>Estimated Purchase Price: Please Verify</div>
+                <div style={{ fontWeight: 700 }}>Estimated Purchase Price: Verify</div>
                 <div style={{ color: '#cbd5e1', marginTop: '0.2rem', fontSize: '0.8rem' }}>
-                  This purchase price was estimated based on tool category averages. Please check your actual purchase receipt or invoice before filing tax deductions.
+                  This purchase price was estimated based on tool category averages. Check your actual purchase receipt or invoice before filing tax deductions.
                 </div>
                 <label
                   style={{

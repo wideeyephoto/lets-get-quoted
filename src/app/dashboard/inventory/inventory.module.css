@@ -2174,5 +2174,468 @@
   }
 }
 
+/* ==========================================================================
+   Compact Operational Working View & Actionable Side Drawer
+   ========================================================================== */
+
+/* Tool-specific interactive attention KPI cards */
+.toolsKpiGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 0.25rem;
+}
+
+.toolKpiCard {
+  background: #141923;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  position: relative;
+}
+
+.toolKpiCard:hover {
+  background: #192130;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+.toolKpiCardActive {
+  background: #1e2638 !important;
+  border-color: var(--inv-accent, #ff7a21) !important;
+  box-shadow: 0 0 0 1px var(--inv-accent, #ff7a21);
+}
+
+.toolKpiHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.toolKpiLabel {
+  font-size: 0.74rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--inv-text-caption, #94a3b8);
+}
+
+.toolKpiValue {
+  font-size: 1.45rem;
+  font-weight: 800;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #ffffff;
+  line-height: 1.2;
+}
+
+.toolKpiSub {
+  font-size: 0.72rem;
+  color: var(--inv-text-muted, #cbd5e1);
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+/* Compact Table Layout */
+.compactTableWrapper {
+  width: 100%;
+  overflow-x: auto;
+  background: #121722;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+}
+
+.compactTable {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 0.85rem;
+}
+
+.compactTh {
+  padding: 0.65rem 0.9rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #94a3b8;
+  background: #0f131c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  white-space: nowrap;
+}
+
+.compactTr {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  transition: background 0.1s ease;
+  cursor: pointer;
+}
+
+.compactTr:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.compactTd {
+  padding: 0.65rem 0.9rem;
+  vertical-align: middle;
+  color: #f8fafc;
+}
+
+.compactToolCell {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 220px;
+}
+
+.compactToolThumb {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #1e293b;
+  flex-shrink: 0;
+}
+
+.compactToolThumbFallback {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  background: #1a2233;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  display: grid;
+  place-items: center;
+  color: #ff9d5c;
+  flex-shrink: 0;
+}
+
+.compactToolInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.compactToolName {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 320px;
+}
+
+.compactToolMeta {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.72rem;
+  color: #94a3b8;
+}
+
+.compactTag {
+  font-family: ui-monospace, monospace;
+  font-weight: 700;
+  color: #ff9d5c;
+  background: rgba(255, 122, 33, 0.12);
+  padding: 0.1rem 0.35rem;
+  border-radius: 4px;
+  border: 1px solid rgba(255, 122, 33, 0.25);
+}
+
+.compactActionsGroup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.btnActionCompactCheckOut {
+  background: #ff7a21;
+  color: #ffffff;
+  border: 1px solid #ff9d5c;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: background 0.15s ease;
+}
+
+.btnActionCompactCheckOut:hover {
+  background: #e66610;
+}
+
+.btnActionCompactReturn {
+  background: #065f46;
+  color: #ecfdf5;
+  border: 1px solid #10b981;
+  padding: 0.3rem 0.65rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: background 0.15s ease;
+}
+
+.btnActionCompactReturn:hover {
+  background: #047857;
+}
+
+.btnActionCompactTransfer {
+  background: #1e293b;
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  padding: 0.3rem 0.6rem;
+  border-radius: 6px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+}
+
+.btnActionCompactTransfer:hover {
+  background: rgba(56, 189, 248, 0.15);
+  border-color: #38bdf8;
+}
+
+/* Slide-over Drawer */
+.drawerBackdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  animation: fadeIn 0.15s ease;
+}
+
+.drawerPanel {
+  width: 100%;
+  max-width: 580px;
+  height: 100%;
+  background: #131823;
+  border-left: 1px solid rgba(255, 255, 255, 0.14);
+  display: flex;
+  flex-direction: column;
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.7);
+  animation: slideLeft 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+@keyframes slideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+.drawerHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #0f131c;
+}
+
+.drawerHeaderInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  min-width: 0;
+}
+
+.drawerTitle {
+  font-size: 1.1rem;
+  font-weight: 800;
+  color: #ffffff;
+  line-height: 1.3;
+}
+
+.drawerSubtitleRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.drawerCloseBtn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #94a3b8;
+  border-radius: 6px;
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.drawerCloseBtn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.drawerActionBar {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.25rem;
+  background: #171d2c;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.drawerBody {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+/* Accessory Checklist */
+.accessoryChecklist {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 0.75rem;
+}
+
+.accessoryCheckItem {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-size: 0.82rem;
+  color: #e2e8f0;
+  cursor: pointer;
+}
+
+.accessoryCheckItem input[type="checkbox"] {
+  accent-color: #ff7a21;
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+
+/* Date Preset Buttons */
+.datePresetGroup {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.35rem;
+  flex-wrap: wrap;
+}
+
+.datePresetBtn {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 0.25rem 0.55rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.datePresetBtn:hover {
+  background: rgba(255, 122, 33, 0.15);
+  border-color: rgba(255, 122, 33, 0.4);
+  color: #ff9d5c;
+}
+
+/* Progressive disclosure collapsible details */
+.progressiveSection {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+.progressiveSummary {
+  padding: 0.65rem 0.85rem;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #94a3b8;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.progressiveSummary:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.progressiveBody {
+  padding: 0.85rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+/* Enhanced search & filter toolbar */
+.toolbarSearchWrap {
+  flex: 1;
+  min-width: 260px;
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.toolbarSearchClear {
+  position: absolute;
+  right: 0.65rem;
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  font-size: 0.75rem;
+  padding: 0.2rem;
+}
+
+.toolbarSearchClear:hover {
+  color: #ffffff;
+}
+
+.filterSelectCompact {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+  border-radius: 7px;
+  padding: 0.4rem 0.65rem;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
 
 
