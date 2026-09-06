@@ -31,7 +31,7 @@ export async function diagnoseContractorOnboarding(
   const [accountRes, senderRes, quotesRes, jobsRes] = await Promise.all([
     supabase
       .from('accounts')
-      .select('id, name, business_name, connect_onboarded, connect_disabled_at, stripe_connect_id, created_at')
+      .select('id, business_name, connect_onboarded, connect_disabled_at, stripe_connect_id, created_at')
       .eq('id', accountId)
       .maybeSingle(),
     supabase
@@ -51,7 +51,7 @@ export async function diagnoseContractorOnboarding(
   ]);
 
   const account = accountRes.data;
-  const name = account?.business_name || account?.name || 'Contractor';
+  const name = account?.business_name || 'Contractor';
   
   // Stripe connection check: either stripe_connected_accounts row has charges enabled OR account has connect_onboarded = true
   const isStripe = Boolean(

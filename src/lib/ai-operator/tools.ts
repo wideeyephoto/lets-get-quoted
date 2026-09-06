@@ -448,12 +448,19 @@ export async function executeOperatorTool(
       }
 
       try {
-        const [accountRes, staffRes, numbersRes, supportRes, diagnosis] = await Promise.all([
+        const [accountRes, staffRes, numbersRes, supportRes, diagnosis, entitlementRes] = await Promise.all([
           supabase.from('accounts').select('*').eq('id', accountId).maybeSingle(),
           supabase.from('account_staff').select('id, user_id, role').eq('account_id', accountId),
           supabase.from('sms_sender_numbers').select('*').eq('account_id', accountId),
           supabase.from('support_cases').select('*').eq('account_id', accountId).limit(5),
           diagnoseContractorOnboarding(supabase, accountId).catch(() => null),
+          Promise.resolve(
+            supabase
+              .from('workspace_entitlements')
+              .select('plan_code, billing_status, entitlement_state')
+              .eq('account_id', accountId)
+              .maybeSingle(),
+          ).catch(() => ({ data: null })),
         ]);
 
         const account = accountRes.data;
@@ -463,9 +470,11 @@ export async function executeOperatorTool(
 
         const details = {
           id: account.id,
-          name: account.business_name || account.name || 'Unnamed Contractor',
-          status: account.status || 'active',
-          planTier: account.plan_tier || 'solo',
+          name: account.business_name || 'Unnamed Contractor',
+          status: account.suspended_at
+            ? 'suspended'
+            : (entitlementRes?.data?.billing_status || account.subscription_status || 'active'),
+          planTier: entitlementRes?.data?.plan_code || account.plan || 'solo',
           createdAt: account.created_at,
           staffCount: staffRes.data?.length ?? 0,
           senderNumbersCount: numbersRes.data?.length ?? 0,

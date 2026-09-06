@@ -38,6 +38,8 @@ function createMockSupabase(overrides?: {
   stripeConnected?: any;
   smsSenderNumbers?: any[];
   jobsCount?: number;
+  accountsWithPlan?: Array<{ plan: string }>;
+  workspaceEntitlements?: any;
 }): any {
   return {
     from: (table: string) => {
@@ -91,19 +93,27 @@ function createMockSupabase(overrides?: {
                 }),
             };
           }
+          if (table === 'workspace_entitlements' && col === 'account_id') {
+            return {
+              maybeSingle: () =>
+                Promise.resolve({
+                  data: overrides?.workspaceEntitlements !== undefined ? overrides.workspaceEntitlements : null,
+                }),
+            };
+          }
           if (table === 'accounts' && col === 'id') {
             return {
               maybeSingle: () =>
                 Promise.resolve({
                   data:
                     overrides?.accountRow !== undefined
-                      ? { id: val, ...overrides.accountRow }
+                      ? (overrides.accountRow ? { id: val, ...overrides.accountRow } : null)
                       : {
                           id: val,
-                          name: 'Apex Roofing LLC',
                           business_name: 'Apex Roofing Pro',
-                          plan_tier: 'crew',
-                          status: 'active',
+                          plan: 'crew_plus',
+                          subscription_status: 'active',
+                          suspended_at: null,
                           connect_onboarded: true,
                           created_at: '2026-08-01T00:00:00Z',
                         },
@@ -139,6 +149,19 @@ function createMockSupabase(overrides?: {
                   error: null,
                 }),
             };
+          }
+          if (table === 'accounts' && col === 'plan') {
+            return Promise.resolve({
+              data:
+                overrides?.accountsWithPlan !== undefined
+                  ? overrides.accountsWithPlan
+                  : [
+                      { plan: 'solo' },
+                      { plan: 'growth' },
+                      { plan: 'scale' },
+                    ],
+              error: null,
+            });
           }
           return builder;
         },
@@ -180,6 +203,78 @@ describe('AI Operator Framework - Tool Declarations & Schemas', () => {
       'actionType',
       'payloadJson',
     ]);
+  });
+
+  it('correctly maps get_contractor_account_360 using real accounts columns without phantom fields', async () => {
+    const mockSupabase = createMockSupabase({
+      accountRow: {
+        business_name: 'Acme Heating & Cooling',
+        plan: 'crew_plus',
+        subscription_status: 'active',
+        suspended_at: null,
+        created_at: '2026-08-01T00:00:00Z',
+      },
+    });
+
+    const ctx: OperatorExecutionContext = {
+      supabase: mockSupabase,
+      source: 'admin_dashboard',
+      adminUserId: 'admin-usr-1',
+    };
+
+    const res = await executeOperatorTool('get_contractor_account_360', { accountId: 'acc_123' }, ctx);
+    expect(res.data).toBeDefined();
+    expect((res.data as any).name).toBe('Acme Heating & Cooling');
+    expect((res.data as any).status).toBe('active');
+    expect((res.data as any).planTier).toBe('crew_plus');
+  });
+
+  it('correctly reports suspended status when account has suspended_at set', async () => {
+    const mockSupabase = createMockSupabase({
+      accountRow: {
+        business_name: 'Suspended Contractor',
+        plan: 'pro',
+        subscription_status: 'active',
+        suspended_at: '2026-09-01T12:00:00Z',
+        created_at: '2026-08-01T00:00:00Z',
+      },
+    });
+
+    const ctx: OperatorExecutionContext = {
+      supabase: mockSupabase,
+      source: 'admin_dashboard',
+      adminUserId: 'admin-usr-1',
+    };
+
+    const res = await executeOperatorTool('get_contractor_account_360', { accountId: 'acc_susp' }, ctx);
+    expect((res.data as any).status).toBe('suspended');
+    expect((res.data as any).planTier).toBe('pro');
+  });
+
+  it('prefers canonical workspace_entitlements plan and billing_status when available', async () => {
+    const mockSupabase = createMockSupabase({
+      accountRow: {
+        business_name: 'Entitled Contractor',
+        plan: 'free',
+        subscription_status: null,
+        suspended_at: null,
+      },
+      workspaceEntitlements: {
+        plan_code: 'scale',
+        billing_status: 'active',
+        entitlement_state: 'active',
+      },
+    });
+
+    const ctx: OperatorExecutionContext = {
+      supabase: mockSupabase,
+      source: 'admin_dashboard',
+      adminUserId: 'admin-usr-1',
+    };
+
+    const res = await executeOperatorTool('get_contractor_account_360', { accountId: 'acc_ent' }, ctx);
+    expect((res.data as any).planTier).toBe('scale');
+    expect((res.data as any).status).toBe('active');
   });
 });
 
@@ -226,6 +321,28 @@ describe('Executive Morning Briefing & Autonomous 24h Roll-Up', () => {
     expect(briefing.operations.queueHealth).toBe('healthy');
     expect(briefing.operations.cronStatus).toBe('ok');
     expect(briefing.headline).toContain('Running Smoothly & Healthy');
+  });
+
+  it('calculates MRR fallback 3 correctly from accounts.plan when subscription tables are empty', async () => {
+    const mockSupabase = createMockSupabase({
+      subscriptions: [],
+      accountsWithPlan: [
+        { plan: 'solo' },
+        { plan: 'growth' },
+        { plan: 'crew_plus' },
+      ],
+      accountsCount: 10,
+      newAccountsCount: 2,
+      onboardedCount: 3,
+    });
+
+    const briefing = await generateExecutiveBriefing(mockSupabase, { periodLabel: 'Last 24 Hours' });
+    // solo ($39) + growth ($129) + crew_plus/scale ($329) = $497
+    expect(briefing.revenue.mrrEstimated).toBe(497);
+    expect(briefing.revenue.activeSubscriptions).toBe(3);
+    expect(briefing.revenue.paidPlanCounts.solo).toBe(1);
+    expect(briefing.revenue.paidPlanCounts.growth).toBe(1);
+    expect(briefing.revenue.paidPlanCounts.scale).toBe(1);
   });
 });
 

@@ -90,18 +90,19 @@ export async function calculatePlatformRevenueMetrics(supabase: SupabaseClient):
   }
 
   try {
-    // 3. Fallback: inspect accounts.plan_tier
+    // 3. Fallback: inspect accounts.plan
     const accRes = await supabase
       .from('accounts')
-      .select('plan_tier')
+      .select('plan')
       .is('test_marker', null)
-      .in('plan_tier', ['solo', 'growth', 'scale', 'pro', 'crew']);
+      .is('suspended_at', null)
+      .in('plan', ['solo', 'growth', 'scale', 'pro', 'crew', 'crew_plus']);
 
     if (accRes.data && accRes.data.length > 0) {
       for (const row of accRes.data) {
         let plan: BillingPlanId = 'solo';
-        if (row.plan_tier === 'growth' || row.plan_tier === 'pro') plan = 'growth';
-        else if (row.plan_tier === 'scale' || row.plan_tier === 'crew') plan = 'scale';
+        if (row.plan === 'growth' || row.plan === 'pro') plan = 'growth';
+        else if (row.plan === 'scale' || row.plan === 'crew' || row.plan === 'crew_plus') plan = 'scale';
 
         mrrEstimated += PLAN_MRR_WEIGHTS[plan].monthly;
         activeSubscriptions++;
