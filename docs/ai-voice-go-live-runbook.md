@@ -380,6 +380,13 @@ anything outstanding within the 90-minute hold.
 
 ## Known traps, each already paid for once
 
+- **Dispatch transcript timestamps are not silence measurements.** Use the
+  backend timing events and a live audio canary to distinguish lookup delays
+  from speech endpointing and provider generation. Follow the
+  [dispatch latency acceptance checks](voice-dispatch-latency-2026-09-06.md)
+  after changing voice settings. A lost write response is an unknown outcome
+  until the action receipt confirms it; never retry by guessing.
+
 - **Vercel bakes env at build.** A flag set in the dashboard does nothing until a
   redeploy. This made two billing workers look like they had stopped.
 - **Preview writes Production Supabase.** A variable set only in Production makes

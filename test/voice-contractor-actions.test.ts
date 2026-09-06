@@ -40,37 +40,21 @@ function mockAdmin(options: Readonly<{
   rpcResults?: RpcResult[];
 }> = {}) {
   const jobs = options.jobs ?? [];
-  const jobQuery = {
-    select: vi.fn(),
-    eq: vi.fn(),
-    is: vi.fn(),
-    in: vi.fn(),
-    order: vi.fn(),
-    limit: vi.fn(),
-    range: vi.fn(),
-  };
-  jobQuery.select.mockReturnValue(jobQuery);
-  jobQuery.eq.mockReturnValue(jobQuery);
-  jobQuery.is.mockReturnValue(jobQuery);
-  jobQuery.in.mockReturnValue(jobQuery);
-  jobQuery.order.mockReturnValue(jobQuery);
-  jobQuery.limit.mockResolvedValue({ data: jobs, error: options.jobsError ?? null });
-  jobQuery.range.mockImplementation(async (start: number, end: number) => ({
-    data: jobs.slice(start, end + 1), error: options.jobsError ?? null,
-  }));
-
-  const from = vi.fn((table: string) => {
-    if (table !== 'jobs') throw new Error(`Unexpected table lookup: ${table}`);
-    return jobQuery;
+  // Search is a separate read-only RPC. Its SQL matching/limits are exercised
+  // against PostgreSQL by verify-voice-dispatch-latency.mjs.
+  const search = vi.fn(async (_name: string, params: { p_query: string | null }) => {
+    const candidates = params.p_query === null ? jobs.filter(j => j.status !== 'complete' && j.status !== 'archived') : jobs;
+    return { data: { jobs: candidates, total_count: candidates.length }, error: options.jobsError ?? null };
   });
+  const from = vi.fn(() => { throw new Error('Job lookup must not scan pages over HTTP'); });
   const rpc = vi.fn();
-  for (const result of options.rpcResults ?? []) rpc.mockResolvedValueOnce(result);
-
+  for (const result of options.rpcResults ?? []) {
+    const addId = (data: unknown): unknown => data && typeof data === 'object' ? { action_id: 'saved-action', ...data } : data;
+    rpc.mockResolvedValueOnce({ ...result, data: Array.isArray(result.data) ? result.data.map(addId) : addId(result.data) });
+  }
   return {
-    admin: { from, rpc } as unknown as SupabaseClient,
-    from,
-    jobQuery,
-    rpc,
+    admin: { from, rpc: (name: string, params: { p_query: string | null }) => name === 'search_voice_jobs' ? search(name, params) : rpc(name, params) } as unknown as SupabaseClient,
+    from, rpc, search,
   };
 }
 
@@ -98,16 +82,15 @@ describe('AI Voice contractor job resolution', () => {
       client_name: 'Rosa Holbrook',
       address: '84 Oak Street',
     };
-    const { admin, jobQuery } = mockAdmin({ jobs: [other, baseJob] });
+    const { admin, search, from } = mockAdmin({ jobs: [other, baseJob] });
 
     await expect(resolveVoiceJob(admin, ACCOUNT_ID, 'job LGQ-1042')).resolves.toEqual({
       status: 'resolved',
       job: baseJob,
     });
-    expect(jobQuery.eq).toHaveBeenCalledWith('account_id', ACCOUNT_ID);
-    expect(jobQuery.is).toHaveBeenCalledWith('deleted_at', null);
-    expect(jobQuery.range).toHaveBeenCalledWith(0, 199);
-    expect(jobQuery.order).toHaveBeenCalledWith('id', { ascending: false });
+    expect(search).toHaveBeenCalledTimes(1);
+    expect(search).toHaveBeenCalledWith('search_voice_jobs', { p_account_id: ACCOUNT_ID, p_query: 'job LGQ-1042', p_phone_candidates: null });
+    expect(from).not.toHaveBeenCalled();
   });
 
   it('returns ambiguous when an exact customer name maps to multiple active jobs', async () => {
@@ -135,6 +118,14 @@ describe('AI Voice contractor job resolution', () => {
 });
 
 describe('AI Voice spoken job choices', () => {
+  it('only returns schedule and quote detail when one selected job is explicitly requested', async () => {
+    const { admin } = mockAdmin({ jobs: [{ ...baseJob, status: 'in_progress', scheduled_for: '2026-09-08', quoted_amount: 2300 }] });
+    const brief = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.ref }));
+    expect(brief.response).not.toContain('$2300.00');
+    const full = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.ref, include_details: true }));
+    expect(full.response).toContain('$2300.00');
+    expect(full.response).toContain('2026-09-08');
+  });
   const olderJobs = Array.from({ length: 251 }, (_, index) => ({
     ...baseJob,
     id: `other-${index}`,
@@ -155,9 +146,9 @@ describe('AI Voice spoken job choices', () => {
   };
 
   it('finds an older job beyond the former 201-row cutoff', async () => {
-    const { admin, jobQuery } = mockAdmin({ jobs: [...olderJobs, baseJob] });
+    const { admin, search } = mockAdmin({ jobs: [...olderJobs, baseJob] });
     await expect(resolveVoiceJob(admin, ACCOUNT_ID, baseJob.ref)).resolves.toEqual({ status: 'resolved', job: baseJob });
-    expect(jobQuery.range).toHaveBeenCalledWith(200, 399);
+    expect(search).toHaveBeenCalledTimes(1);
   });
 
   it('does not invent ambiguity for a missing name in a 252-job workspace', async () => {
@@ -172,21 +163,21 @@ describe('AI Voice spoken job choices', () => {
     });
   });
 
-  it('fails closed if a later page cannot be read', async () => {
-    const { admin, jobQuery } = mockAdmin({ jobs: [baseJob, ...olderJobs] });
-    jobQuery.range.mockResolvedValueOnce({ data: [baseJob, ...olderJobs].slice(0, 200), error: null });
-    jobQuery.range.mockResolvedValueOnce({ data: null, error: { code: '08006' } });
+  it('fails closed when the bounded search cannot be completed', async () => {
+    const { admin, search } = mockAdmin({ jobs: [baseJob] });
+    search.mockRejectedValueOnce(new Error('network timeout'));
     await expect(resolveVoiceJob(admin, ACCOUNT_ID, baseJob.client_name)).resolves.toEqual({ status: 'unavailable' });
   });
 
   it('reads both job descriptions and references without applying any action', async () => {
-    const { admin, rpc, jobQuery } = mockAdmin({ jobs: [{ ...baseJob, scope: 'Replace water heater' }, secondJob] });
+    const { admin, rpc, search } = mockAdmin({ jobs: [{ ...baseJob, scope: 'Replace water heater' }, secondJob] });
     const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.client_name }));
-    for (const detail of ['2 matching jobs', baseJob.ref, secondJob.ref, 'Replace water heater', 'Sewer camera inspection', '84 Oak Street', 'in progress', '2026-09-08', '09:00', '$350.00']) {
+    for (const detail of ['2 matching jobs', baseJob.ref, secondJob.ref, 'Replace water heater', 'Sewer camera inspection', '84 Oak Street']) {
       expect(result.response).toContain(detail);
     }
-    expect(jobQuery.eq).toHaveBeenCalledWith('account_id', ACCOUNT_ID);
-    expect(jobQuery.is).toHaveBeenCalledWith('deleted_at', null);
+    expect(search).toHaveBeenCalledWith('search_voice_jobs', expect.objectContaining({ p_account_id: ACCOUNT_ID }));
+    expect(result.response).not.toContain('$350.00');
+    expect(result.response).not.toContain('2026-09-08');
     expect(rpc).not.toHaveBeenCalled();
   });
 
@@ -217,13 +208,58 @@ describe('AI Voice spoken job choices', () => {
     expect(from).not.toHaveBeenCalled();
   });
 
-  it('lists at most five current jobs and asks to narrow larger lists', async () => {
+  it('lists at most three current jobs and asks to narrow larger lists', async () => {
     const { admin } = mockAdmin({ jobs: [{ ...baseJob, status: 'complete' }, ...olderJobs.slice(0, 6)] });
     const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', {}));
     expect(result.response).toContain('6 current jobs');
-    expect(result.response).toContain('Showing five of 6');
+    expect(result.response).toContain('Showing three of 6');
     expect(result.response).not.toContain(baseJob.ref);
-    expect(result.response).not.toContain(olderJobs[5].ref);
+    expect(result.response).not.toContain(olderJobs[3].ref);
+  });
+});
+
+describe('AI Voice uncertain saves', () => {
+  const args = { job_ref_or_client: baseJob.ref, status: 'in_progress' };
+
+  it('recovers a committed action after a transport failure without resubmitting it', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob] });
+    rpc.mockRejectedValueOnce(new Error('connection reset after commit'));
+    rpc.mockResolvedValueOnce({ data: { action_id: 'saved-action', replayed: true, saved: { status: 'in_progress' } }, error: null });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'update_job_details', args));
+    expect(result.response).toContain('already saved');
+    expect(result.response).toContain('status is in progress');
+    expect(rpc.mock.calls.map(call => call[0])).toEqual(['apply_voice_contractor_action', 'get_voice_contractor_action_status']);
+    expect(rpc.mock.calls[1][1]).toEqual(rpc.mock.calls[0][1]);
+  });
+
+  it('keeps a missing status unknown because the original write may still commit', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob] });
+    rpc.mockResolvedValueOnce({ data: null, error: { code: '504' } });
+    rpc.mockResolvedValueOnce({ data: null, error: null });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'update_job_details', args));
+    expect(result.response).toContain('could not confirm whether');
+    expect(result.response).toContain('Do not repeat this update');
+    expect(result.response).not.toContain('I updated');
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('fails safely if both the write response and status read are lost', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob] });
+    rpc.mockRejectedValue(new Error('network unavailable'));
+    const result = await handleContractorVoiceAction(actionContext(admin, 'update_job_details', args));
+    expect(result.response).toContain('before trying again');
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it('reads back the committed schedule rather than echoing the requested value', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob] });
+    rpc.mockResolvedValueOnce({ data: { action_id: 'saved-action', saved: { scheduled_date: '2026-09-09', scheduled_time: '10:30:00' } }, error: null });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'update_job_details', {
+      job_ref_or_client: baseJob.ref, scheduled_date: '2026-09-08', scheduled_time: '09:00',
+    }));
+    expect(result.response).toContain('2026-09-09');
+    expect(result.response).toContain('10:30');
+    expect(result.response).not.toContain('2026-09-08');
   });
 });
 

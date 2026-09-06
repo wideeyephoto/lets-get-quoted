@@ -11,6 +11,7 @@ import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { authorizeVoiceToolInvocation } from '@/lib/voice/tool-admission';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { VoiceToolTiming, voiceReadDeadline } from '@/lib/voice/timing';
 import {
   CONTRACTOR_VOICE_FUNCTIONS,
   handleContractorVoiceAction,
@@ -21,6 +22,18 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const timing = new VoiceToolTiming();
+  let status = 500;
+  try {
+    const response = await handleRequest(request, timing);
+    status = response.status;
+    return response;
+  } finally {
+    timing.finish(status);
+  }
+}
+
+async function handleRequest(request: Request, timing: VoiceToolTiming) {
   if (!verifyVoiceReceiptAuthorization(request).ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -39,6 +52,8 @@ export async function POST(request: Request) {
   const accountId = tokenCheck.payload.accountId;
   const verifiedCallerPhone = tokenCheck.payload.callerPhone;
   const verifiedProviderCallId = tokenCheck.payload.providerCallId;
+  timing.accountId = accountId;
+  timing.providerCallId = verifiedProviderCallId;
 
   let body: Record<string, unknown> = {};
   try {
@@ -48,6 +63,7 @@ export async function POST(request: Request) {
   }
 
   const fnName = String(body.function || body.action || '').trim();
+  timing.functionName = /^[a-z_]{1,80}$/.test(fnName) ? fnName : 'invalid';
 
   // Extract arguments from SWAIG format (which can be inside argument.parsed[0] or direct object)
   const rawArg = body.argument as Record<string, unknown> | undefined;
@@ -59,10 +75,12 @@ export async function POST(request: Request) {
     : {};
 
   const admin = createAdminClient();
-  if (!await authorizeVoiceToolInvocation(admin, accountId, verifiedProviderCallId, verifiedCallerPhone)) {
+  if (!await timing.measure('authorize', () => authorizeVoiceToolInvocation(admin, accountId, verifiedProviderCallId, verifiedCallerPhone))) {
     return NextResponse.json({ response: 'This call is no longer authorized for tools. Please call again or contact the office.' }, { status: 403 });
   }
-  const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
+  const identity = await timing.measure('identity', () => voiceReadDeadline(
+    resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone), 4000,
+  ).catch(() => ({ status: 'unavailable' as const })));
 
   if (fnName === 'send_booking_link') {
     if (identity.status === 'staff') {
@@ -676,14 +694,14 @@ export async function POST(request: Request) {
     if (isLeadCreate && !effectiveArgs.operation && !effectiveArgs.intent) {
       effectiveArgs.operation = 'create';
     }
-    const action = await handleContractorVoiceAction({
+    const action = await timing.measure('dispatch', () => handleContractorVoiceAction({
       admin,
       accountId,
       providerCallId: verifiedProviderCallId,
       caller: identity.caller,
       functionName: fnName,
       args: effectiveArgs,
-    });
+    }));
     if (action.handled) return NextResponse.json({ response: action.response });
   } else if (CONTRACTOR_VOICE_FUNCTIONS.has(fnName)) {
     return NextResponse.json({

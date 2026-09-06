@@ -594,6 +594,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
                 type: 'string',
                 description: 'Client name, service address, exact job reference, or job UUID. Omit to list current jobs. After listing choices, pass the reference for the option the caller chose.',
               },
+              include_details: {
+                type: 'boolean',
+                description: 'True only when the caller asks for full details of one selected job. Choices stay brief.',
+              },
             },
           },
           web_hook_url: plan.swaigUrl,
@@ -769,6 +773,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
         }
       }
 
+      // SignalWire requires a language-keyed object, not a plain phrase array.
+      // Fillers run concurrently with the webhook so they cannot delay the save.
+      for (const fn of swaigFunctions) {
+        if (!fn.web_hook_url) continue;
+        fn.fillers = Array.isArray(fn.fillers)
+          ? { default: fn.fillers }
+          : fn.fillers ?? { default: [fn.function === 'lookup_jobs' ? 'Let me check those jobs.' : 'One moment while I check that.'] };
+        fn.wait_for_fillers = false;
+      }
+
       mainSection.push({
         ai: {
           post_prompt_url: plan.receiptUrl,
@@ -779,7 +793,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
-            end_of_speech_timeout: 1000,
+            end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
+            enable_turn_detection: true,
+            turn_detection_timeout: 250,
+            function_wait_for_talking: false,
             hard_stop_time: `${maxDurationSeconds - 15}s`,
             hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can

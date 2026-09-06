@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { normalizeUsPhone } from '@/lib/phone';
 import type { VoiceStaffCaller } from '@/lib/voice/caller-identity';
+import { voiceRequestDeadline } from '@/lib/voice/timing';
 
 export const CONTRACTOR_VOICE_FUNCTIONS = new Set([
   'lookup_jobs',
@@ -46,7 +47,7 @@ export type VoiceJobCandidate = {
 export type VoiceJobResolution =
   | { status: 'resolved'; job: VoiceJobCandidate }
   | { status: 'not_found'; job?: never }
-  | { status: 'ambiguous'; candidates: VoiceJobCandidate[]; job?: never }
+  | { status: 'ambiguous'; candidates: VoiceJobCandidate[]; totalCount?: number; job?: never }
   | { status: 'unavailable'; job?: never };
 
 type RpcOutcome = {
@@ -61,6 +62,7 @@ type RpcOutcome = {
   hours?: number;
   material_cost?: number;
   is_caution?: boolean;
+  saved?: { scope_append?: string; status?: string; scheduled_date?: string; scheduled_time?: string };
 };
 
 function canonicalFunction(name: string): string {
@@ -84,6 +86,7 @@ function numberValue(value: unknown): number | null {
 function normalizeLookup(value: string): string {
   return value
     .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\b(?:job|project|customer|client)\b/g, ' ')
@@ -118,35 +121,28 @@ function phoneCandidates(phone: string): string[] {
   ].filter(Boolean)));
 }
 
-const JOB_LOOKUP_PAGE_SIZE = 200;
-const JOB_LOOKUP_MAX_PAGES = 20;
-
 async function loadVoiceJobs(
   admin: SupabaseClient,
   accountId: string,
+  target: string | null,
   options: Readonly<{ allowedCallerPhone?: string | null }> = {},
-): Promise<VoiceJobCandidate[] | null> {
-  const jobs: VoiceJobCandidate[] = [];
-  for (let page = 0; page < JOB_LOOKUP_MAX_PAGES; page += 1) {
-    let query = admin
-      .from('jobs')
-      .select('id, ref, client_name, client_phone, address, scope, status, scheduled_for, scheduled_time, quoted_amount')
-      .eq('account_id', accountId)
-      .is('deleted_at', null);
-    if (options.allowedCallerPhone) {
-      query = query.in('client_phone', phoneCandidates(options.allowedCallerPhone));
-    }
-    const { data, error } = await query
-      .order('created_at', { ascending: false })
-      .order('id', { ascending: false })
-      .range(page * JOB_LOOKUP_PAGE_SIZE, (page + 1) * JOB_LOOKUP_PAGE_SIZE - 1);
-    if (error || !Array.isArray(data)) return null;
-    jobs.push(...data as VoiceJobCandidate[]);
-    if (data.length < JOB_LOOKUP_PAGE_SIZE) return jobs;
+): Promise<{ jobs: VoiceJobCandidate[]; totalCount: number } | null> {
+  const started = performance.now();
+  try {
+    const { data, error } = await voiceRequestDeadline(admin.rpc('search_voice_jobs', {
+      p_account_id: accountId,
+      p_query: target,
+      p_phone_candidates: options.allowedCallerPhone ? phoneCandidates(options.allowedCallerPhone) : null,
+    }), 4000);
+    if (error || !data || !Array.isArray(data.jobs)
+        || !Number.isSafeInteger(data.total_count) || data.total_count < data.jobs.length
+        || (data.total_count > 1 && data.jobs.length < 2)) return null;
+    return { jobs: data.jobs as VoiceJobCandidate[], totalCount: data.total_count };
+  } catch {
+    return null;
+  } finally {
+    console.info('voice_dispatch_lookup_timing', { accountId, durationMs: Math.round(performance.now() - started) });
   }
-  // A partial scan cannot prove either uniqueness or absence. Fail closed
-  // instead of inventing multiple matches merely because a page was full.
-  return null;
 }
 
 function matchVoiceJobs(jobs: VoiceJobCandidate[], target: string): VoiceJobResolution {
@@ -206,24 +202,33 @@ export async function resolveVoiceJob(
 ): Promise<VoiceJobResolution> {
   const target = rawTarget.trim();
   if (!target) return { status: 'not_found' };
-  const jobs = await loadVoiceJobs(admin, accountId, options);
-  return jobs ? matchVoiceJobs(jobs, target) : { status: 'unavailable' };
+  const result = await loadVoiceJobs(admin, accountId, target, options);
+  if (!result) return { status: 'unavailable' };
+  const match = matchVoiceJobs(result.jobs, target);
+  if (match.status === 'resolved' && result.totalCount > result.jobs.length) {
+    // A bounded response cannot contradict the database's ambiguity evidence.
+    return { status: 'ambiguous', candidates: result.jobs, totalCount: result.totalCount };
+  }
+  if (match.status === 'ambiguous' && result.totalCount > result.jobs.length) {
+    return { ...match, totalCount: result.totalCount };
+  }
+  return match;
 }
 
-function jobChoices(jobs: VoiceJobCandidate[]): string {
-  const choices = jobs.slice(0, 5).map((job, index) => {
+function jobChoices(jobs: VoiceJobCandidate[], detailsRequested = false, totalCount = jobs.length): string {
+  const choices = jobs.slice(0, 3).map((job, index) => {
     const details = [
       `Option ${index + 1}: ${job.ref}, ${job.client_name}`,
-      job.scope ? `work: ${job.scope.slice(0, 240)}` : 'scope not recorded',
+      job.scope ? `work: ${job.scope.slice(0, detailsRequested ? 240 : 70)}` : null,
       job.address ? `address: ${job.address}` : null,
-      job.status ? `status: ${job.status.replace(/_/g, ' ')}` : null,
-      job.scheduled_for ? `scheduled: ${job.scheduled_for}${job.scheduled_time ? ` at ${job.scheduled_time}` : ''}` : 'not scheduled',
-      job.quoted_amount != null && numberValue(job.quoted_amount) !== null
+      detailsRequested && job.status ? `status: ${job.status.replace(/_/g, ' ')}` : null,
+      detailsRequested ? (job.scheduled_for ? `scheduled: ${job.scheduled_for}${job.scheduled_time ? ` at ${job.scheduled_time}` : ''}` : 'not scheduled') : null,
+      detailsRequested && job.quoted_amount != null && numberValue(job.quoted_amount) !== null
         ? `recorded quote: $${Number(job.quoted_amount).toFixed(2)}` : null,
     ];
     return details.filter(Boolean).join('; ');
   });
-  return `${choices.join('. ')}.${jobs.length > 5 ? ` Showing five of ${jobs.length} matches; ask for a client name or address to narrow the list.` : ''}`;
+  return `${choices.join('. ')}.${totalCount > 3 ? ` Showing three of ${totalCount} matches; ask for a client name or address to narrow the list.` : ''}`;
 }
 
 async function resolveCrewForLabor(
@@ -265,7 +270,7 @@ async function applyAction(
   targetLeadId: string | null,
   payload: Record<string, unknown>,
 ): Promise<{ outcome: RpcOutcome | null; code: string | null }> {
-  const res = await context.admin.rpc('apply_voice_contractor_action', {
+  const params = {
     p_account_id: context.accountId,
     p_provider_call_id: context.providerCallId,
     p_caller_number: context.caller.normalizedPhone,
@@ -273,21 +278,33 @@ async function applyAction(
     p_target_job_id: targetJobId,
     p_target_lead_id: targetLeadId,
     p_payload: payload,
-  });
-
-  const data = res?.data;
-  const error = res?.error;
-
-  if (error) {
-    const code = typeof error.code === 'string' ? error.code : 'unknown';
-    console.error('AI Voice contractor action failed:', { functionName, code });
-    return { outcome: null, code };
-  }
-  const raw = Array.isArray(data) ? data[0] : data;
-  return {
-    outcome: raw && typeof raw === 'object' ? raw as RpcOutcome : null,
-    code: raw && typeof raw === 'object' ? null : 'empty_result',
   };
+  const started = performance.now();
+  let code = 'unknown';
+  try {
+    const res = await voiceRequestDeadline(context.admin.rpc('apply_voice_contractor_action', params), 6000);
+    const raw = Array.isArray(res?.data) ? res.data[0] : res?.data;
+    if (!res?.error && raw && typeof raw === 'object' && raw.action_id) {
+      return { outcome: raw as RpcOutcome, code: null };
+    }
+    code = typeof res?.error?.code === 'string' ? res.error.code : 'empty_result';
+    // These PostgreSQL errors confirm that the atomic transaction was rejected.
+    if (['42501', '28000', 'P0002', '22023', '23514', '23503'].includes(code)) return { outcome: null, code };
+  } catch {
+    code = 'transport_error';
+  } finally {
+    console.info('voice_dispatch_write_timing', {
+      accountId: context.accountId, providerCallId: context.providerCallId,
+      functionName, durationMs: Math.round(performance.now() - started),
+    });
+  }
+  // Never repeat a write here. A timeout can race with a successful commit.
+  try {
+    const status = await voiceRequestDeadline(context.admin.rpc('get_voice_contractor_action_status', params), 2500);
+    if (!status?.error && status?.data?.action_id) return { outcome: status.data as RpcOutcome, code: null };
+  } catch { /* Keep the outcome explicitly unknown. */ }
+  console.warn('voice_dispatch_save_unconfirmed', { functionName, code });
+  return { outcome: null, code };
 }
 
 function failedResponse(code: string | null): string {
@@ -297,7 +314,8 @@ function failedResponse(code: string | null): string {
   if (code === 'P0002') {
     return 'That record is no longer available, so I did not change anything. Please give me its current exact reference.';
   }
-  return 'I could not safely save that change, and nothing was confirmed. Please try again.';
+  if (['22023', '23514', '23503'].includes(code ?? '')) return 'The change was rejected and was not saved. Please check the details in the dashboard.';
+  return 'I could not confirm whether that change saved. Do not repeat this update on this call or claim that nothing changed. Please check the job or lead in the dashboard before trying again.';
 }
 
 function replayPrefix(outcome: RpcOutcome): string {
@@ -341,8 +359,9 @@ export async function handleContractorVoiceAction(
 
   if (fn === 'lookup_jobs') {
     const query = text(args.query ?? args.job_ref_or_client ?? args.client_name, 500);
-    const jobs = await loadVoiceJobs(context.admin, context.accountId);
-    if (!jobs) return { handled: true, response: 'I could not finish a reliable job lookup. Please try again or open the jobs dashboard; I did not change anything.' };
+    const found = await loadVoiceJobs(context.admin, context.accountId, query);
+    if (!found) return { handled: true, response: 'I could not finish a reliable job lookup. Please try again or open the jobs dashboard; I did not change anything.' };
+    const { jobs } = found;
     const resolution = query ? matchVoiceJobs(jobs, query) : null;
     const matches = resolution?.status === 'resolved' ? [resolution.job]
       : resolution?.status === 'ambiguous' ? resolution.candidates
@@ -355,7 +374,7 @@ export async function handleContractorVoiceAction(
     };
     return {
       handled: true,
-      response: `I found ${matches.length} ${query ? 'matching' : 'current'} job${matches.length === 1 ? '' : 's'}. ${jobChoices(matches)} ${matches.length > 1 ? 'Read these choices to the caller and ask which job they mean. Map their choice to the exact job reference shown here.' : 'Use this exact job reference for any requested update.'} This lookup did not change anything.`,
+      response: `I found ${found.totalCount} ${query ? 'matching' : 'current'} job${found.totalCount === 1 ? '' : 's'}. ${jobChoices(matches, args.include_details === true && matches.length === 1, found.totalCount)} ${matches.length > 1 ? 'Read at most three short choices and ask which job they mean. Map their choice to the exact job reference shown here.' : 'Use this exact job reference for any requested update.'} This lookup did not change anything.`,
     };
   }
 
@@ -438,7 +457,7 @@ export async function handleContractorVoiceAction(
     if (context.caller.role !== 'crew') {
       return {
         handled: true,
-        response: `I found ${resolution.candidates.length} possible jobs for “${target}.” ${jobChoices(resolution.candidates)} Read the choices to the caller and ask which job to update. They can choose by description or option number; use that option's exact job reference when retrying the requested change. Nothing was changed.`,
+        response: `I found ${resolution.totalCount ?? resolution.candidates.length} possible jobs for “${target}.” ${jobChoices(resolution.candidates, false, resolution.totalCount)} Read the choices to the caller and ask which job to update. They can choose by description or option number; use that option's exact job reference when retrying the requested change. Nothing was changed.`,
       };
     }
     return { handled: true, response: `I found more than one possible job for “${target}.” Please give me the exact job reference.` };
@@ -474,9 +493,16 @@ export async function handleContractorVoiceAction(
     if (scheduledTime) payload.scheduled_time = scheduledTime;
     const result = await applyAction(context, fn, job.id, null, payload);
     if (!result.outcome) return { handled: true, response: failedResponse(result.code) };
+    const saved = result.outcome.saved;
+    const changes = saved ? [
+      saved.scope_append ? `added scope: ${saved.scope_append.slice(0, 160)}` : null,
+      saved.status ? `status is ${saved.status.replace(/_/g, ' ')}` : null,
+      saved.scheduled_date ? `scheduled for ${saved.scheduled_date}` : null,
+      saved.scheduled_time ? `time is ${saved.scheduled_time.slice(0, 5)}` : null,
+    ].filter(Boolean).join('; ') : '';
     return {
       handled: true,
-      response: `${replayPrefix(result.outcome)}I updated ${job.client_name}'s job (${job.ref}).`,
+      response: `${replayPrefix(result.outcome)}I updated ${job.client_name}'s job (${job.ref})${changes ? `: ${changes}` : ''}.`,
     };
   }
 
