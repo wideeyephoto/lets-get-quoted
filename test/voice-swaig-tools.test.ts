@@ -31,7 +31,7 @@ vi.mock('@/lib/booking', () => ({
 vi.mock('@/lib/sms', () => ({
   sendCallerVoiceBookingLinkSms: vi.fn().mockResolvedValue({ ok: true }),
   sendCallerVoiceBookingConfirmationSms: vi.fn().mockResolvedValue({ ok: true }),
-  ensureSmsConsentBaseline: vi.fn().mockResolvedValue({ status: 'opted_in' }),
+  ensureSmsConsentBaseline: vi.fn().mockResolvedValue(true),
 }));
 
 vi.mock('@/lib/voice/caller-identity', () => ({

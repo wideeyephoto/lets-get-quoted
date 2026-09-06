@@ -1,10 +1,17 @@
 # SignalWire Messaging Cutover Runbook
 
 **Owner:** LGQ Operations<br>
-**Last updated:** 2026-08-26<br>
+**Last updated:** 2026-09-05<br>
 **Default state:** dark; do not activate from this document alone
 
 This is the controlled handoff for LGQ operational messaging. Supabase Auth phone login remains on Twilio. The kill switch is always `LGQ_DISABLE_OUTBOUND_SMS=1`.
+
+Current evidence and remaining blockers are recorded in
+[the September 5 readiness report](texting-release-readiness-2026-09-05.md).
+Shared delivery and keywords have live evidence; dispatch still has no number.
+The pilot dedicated number is assigned to the support campaign, which does not
+cover contractor-to-customer traffic. Historical activation statements below do
+not supersede that carrier mismatch.
 
 ## Provider cost record
 
@@ -20,7 +27,8 @@ Campaign. SignalWire created Campaign
 | Campaign vetting | One time | $7.50 | Purchased 2026-08-26; review pending |
 | **Campaign checkout total** | **At submission** | **$12.00** | **Incurred 2026-08-26** |
 | Campaign re-vetting | Per additional review, if required | $7.50 | Contingent; do not book unless incurred |
-| Proposed dispatch number `+1 (947) 257-6777` | Monthly | $0.50 | Available candidate; not yet purchased |
+| Original candidate `+1 (947) 257-6777` | Monthly | $0.50 | Not purchased; unavailable on 2026-09-05 |
+| Replacement candidate `+1 (947) 262-4739` | Monthly | $0.50 | Quoted 2026-09-05; purchase approval pending |
 
 Provider cost incurred to date for this dispatch Campaign is **$12.00**. If the
 proposed number is purchased, the known first-three-month provider cost becomes
@@ -39,8 +47,8 @@ the confirmation screen.
 
 No lane inherits another lane's Campaign, number, consent, or release decision.
 
-The contractor lane is blocked and has never run. Its gate list — carrier,
-commercial, engineering and compliance — is in
+The contractor lane has historical test deliveries, but its current carrier
+assignment does not cover customer traffic. Its gate list is in
 [Two-Way Messaging Readiness](two-way-messaging-readiness.md).
 
 ### Who can receive from the shared number
@@ -144,16 +152,14 @@ Eleven documented fields, none of them a failure reason, and the delivery is
 and never **why**; support is the only path to a cause. `failed` may also be
 transient. Do not build logic that expects a reason to arrive.
 
-### The campaign itself has no status callback
+### Campaign status callbacks
 
-Registered 2026-08-22 on the assignment ORDER, which is why assignment state
-changes now arrive. The **campaign** object still carries no
-`status_callback_url`, so a campaign-level change — suspension, expiry, a
-carrier revoking the use case — delivers nothing anywhere. `npm run
-verify:signalwire` reports it as a carrier blocker.
-
-Registering one needs a valid `LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN`, so it is
-naturally sequenced with the outstanding rotation above.
+Both active platform campaigns now have the production registry receiver. On
+2026-09-05, the dispatch campaign's missing `status_callback_url` was set to the
+existing support campaign receiver and verified by a fresh provider GET. No token
+rotation or number reassignment was needed. The assignment orders retain their
+own callbacks. Use `scripts/inspect-sms-provider.mjs` to inspect current state;
+never print the callback token in operator reports.
 
 ### verify:signalwire mixes two sources
 

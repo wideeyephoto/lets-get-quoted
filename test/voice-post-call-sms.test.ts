@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { callerVoicePostCallFollowupText } from '@/lib/sms-templates';
+import { sendCallerVoicePostCallFollowupSms, ensureSmsConsentBaseline } from '@/lib/sms';
 import { triggerVoicePostCallFollowup } from '@/lib/voice/post-call-sms';
 
 vi.mock('@/lib/sms', () => ({
@@ -95,48 +96,43 @@ describe('AI Voice Post-Call SMS Follow-up Engine', () => {
     expect(result.skipped).toBe(true);
   });
 
-  it('records sms_consent baseline and sms_consent_scopes upon triggering follow-up', async () => {
-    const insertedRows: Record<string, unknown[]> = {};
-    const mockAdmin = {
-      from: (table: string) => ({
-        select: () => ({
-          eq: () => ({
-            maybeSingle: async () => ({
-              data: { post_call_sms_enabled: true },
-              error: null,
-            }),
-          }),
-        }),
-        insert: async (row: unknown) => {
-          insertedRows[table] = insertedRows[table] || [];
-          insertedRows[table].push(row);
-          return { error: null };
-        },
-      }),
-    } as never;
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(ensureSmsConsentBaseline).mockResolvedValue(true);
+  });
 
-    const result = await triggerVoicePostCallFollowup(
-      mockAdmin,
-      'acc-456',
-      'call-789',
-      '+12485550122',
-      { callerName: 'Alice Green' }
-    );
-
+  it('uses the atomic consent boundary before sending and reuses the supplied client', async () => {
+    const admin = { rpc: vi.fn(), from: vi.fn() } as never;
+    const result = await triggerVoicePostCallFollowup(admin, 'acc-456', 'call-789', '2485550122',
+      { postCallSmsEnabled: true });
     expect(result.ok).toBe(true);
-    expect(insertedRows.sms_consent).toBeDefined();
-    expect(insertedRows.sms_consent[0]).toMatchObject({
-      account_id: 'acc-456',
-      phone_number: '+12485550122',
-      status: 'opted_in',
-      source: 'missed_call_text_back',
-    });
-    expect(insertedRows.sms_consent_scopes).toBeDefined();
-    expect(insertedRows.sms_consent_scopes[0]).toMatchObject({
-      account_id: 'acc-456',
-      phone_number: '+12485550122',
-      consent_scope: 'customer',
-      evidence_source: 'missed_call_text_back',
-    });
+    expect(ensureSmsConsentBaseline).toHaveBeenCalledWith('acc-456', '+12485550122', 'missed_call_text_back', admin);
+    expect(sendCallerVoicePostCallFollowupSms).toHaveBeenCalledWith(expect.objectContaining({
+      callerPhone: '+12485550122', idempotencyKey: 'voice-post-call-followup-call-789',
+    }));
+  });
+
+  it('treats STOP as a terminal skip instead of enqueueing or retrying', async () => {
+    vi.mocked(ensureSmsConsentBaseline).mockResolvedValue(false);
+    const result = await triggerVoicePostCallFollowup({} as never, 'acc-456', 'call-789', '+12485550122',
+      { postCallSmsEnabled: true });
+    expect(result).toEqual({ ok: true, skipped: true });
+    expect(sendCallerVoicePostCallFollowupSms).not.toHaveBeenCalled();
+  });
+
+  it('reports a storage failure for settlement retry without enqueueing a doomed text', async () => {
+    vi.mocked(ensureSmsConsentBaseline).mockRejectedValue(new Error('consent storage unavailable'));
+    const result = await triggerVoicePostCallFollowup({} as never, 'acc-456', 'call-789', '+12485550122',
+      { postCallSmsEnabled: true });
+    expect(result).toEqual({ ok: false, error: 'consent storage unavailable' });
+    expect(sendCallerVoicePostCallFollowupSms).not.toHaveBeenCalled();
+  });
+
+  it('rejects an invalid nonempty phone before attempting consent', async () => {
+    const result = await triggerVoicePostCallFollowup({} as never, 'acc-456', 'call-789', 'not-a-phone',
+      { postCallSmsEnabled: true });
+    expect(result.ok).toBe(false);
+    expect(ensureSmsConsentBaseline).not.toHaveBeenCalled();
+    expect(sendCallerVoicePostCallFollowupSms).not.toHaveBeenCalled();
   });
 });

@@ -51,57 +51,19 @@ export async function triggerVoicePostCallFollowup(
 
   const idempotencyKey = `voice-post-call-followup-${callId}`;
 
-  const normalizedPhone = normalizeUsPhone(callerPhone);
-  if (normalizedPhone) {
-    const nowIso = new Date().toISOString();
-    try {
-      if (typeof _supabase?.rpc === 'function') {
-        await _supabase.rpc('ensure_sms_consent_baseline_scope', {
-          p_account_id: accountId,
-          p_phone_number: normalizedPhone,
-          p_source: 'missed_call_text_back',
-        });
-      } else {
-        await ensureSmsConsentBaseline(accountId, normalizedPhone, 'missed_call_text_back');
-      }
-    } catch (err) {
-      console.warn('[triggerVoicePostCallFollowup] Error logging consent baseline via rpc:', err);
-    }
-
-    if (typeof _supabase?.from === 'function') {
-      try {
-        const consentTable = _supabase.from('sms_consent');
-        if (typeof consentTable?.insert === 'function') {
-          await consentTable.insert({
-            account_id: accountId,
-            phone_number: normalizedPhone,
-            status: 'opted_in',
-            source: 'missed_call_text_back',
-            consented_at: nowIso,
-            updated_at: nowIso,
-          });
-        }
-
-        const scopeTable = _supabase.from('sms_consent_scopes');
-        if (typeof scopeTable?.insert === 'function') {
-          await scopeTable.insert({
-            account_id: accountId,
-            phone_number: normalizedPhone,
-            consent_scope: 'customer',
-            evidence_source: 'missed_call_text_back',
-            established_at: nowIso,
-          });
-        }
-      } catch (err) {
-        console.warn('[triggerVoicePostCallFollowup] Error in fallback consent table insert:', err);
-      }
-    }
-  }
-
   try {
+    const normalizedPhone = normalizeUsPhone(callerPhone);
+    if (!normalizedPhone) return { ok: false, error: 'Invalid or missing caller phone' };
+    // The atomic boundary preserves STOP and reports both false and storage errors.
+    // Never replace it with partial, best-effort writes to the consent tables.
+    const consent = await ensureSmsConsentBaseline(
+      accountId, normalizedPhone, 'missed_call_text_back', _supabase,
+    );
+    if (!consent) return { ok: true, skipped: true };
+
     const result = await sendCallerVoicePostCallFollowupSms({
       accountId,
-      callerPhone,
+      callerPhone: normalizedPhone,
       callerName: options.callerName,
       scheduledTime: options.scheduledTime,
       portalUrl: options.portalUrl,
