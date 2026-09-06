@@ -1609,7 +1609,11 @@ export async function sendCrewWelcomeSms(params: {
       eventType: 'crew_welcome',
       crewId: params.crewId,
       senderPurpose: 'lgq_dispatch',
-      idempotencyKey: `crew-welcome:${params.crewId}:${normalized}`,
+      // SMS delivery keys deliberately exclude "+" even though destinations
+      // are stored as E.164. Keep the destination in the key so a phone change
+      // can receive its own welcome, but encode it as digits for both the
+      // application and PostgreSQL validators.
+      idempotencyKey: `crew-welcome:${params.crewId}:${normalized.replace(/^\+/, '')}`,
     });
     return { status: 'queued', eventId };
   } catch (sendError) {
