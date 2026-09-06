@@ -6,26 +6,13 @@ import Image from 'next/image';
 import {
   ShoppingCart,
   History,
-  Check,
-  X,
-  Upload,
-  Sparkles,
-  FileText,
-  Download,
-  AlertTriangle,
-  RotateCcw,
-  Package,
-  CreditCard,
-  Layers,
 } from 'lucide-react';
 import {
   MERCHANDISE_PRODUCTS,
-  MERCHANDISE_CATEGORIES,
   getProductById,
 } from '@/lib/merchandise/catalog';
 import type {
   MerchandiseProduct,
-  MerchandiseCategoryId,
   MockupViewAngle,
   MerchandiseOrderItem,
   ShippingAddress,
@@ -35,22 +22,13 @@ import type {
   CardFinishId,
 } from '@/lib/merchandise/types';
 import {
-  BUSINESS_CARD_TEMPLATES,
   getCardTemplateById,
-  CARD_FINISHES,
   getCardFinishById,
 } from '@/lib/merchandise/card-templates';
 import {
-  YARD_SIGN_TEMPLATES,
-  NOTEPAD_TEMPLATES,
-  DECAL_TEMPLATES,
-  getYardSignTemplateById,
   getNotepadTemplateById,
-  getDecalTemplateById,
   TradePreset,
-  TRADE_PRESETS,
 } from '@/lib/merchandise/product-templates';
-import BusinessCardMockup from './BusinessCardMockup';
 import {
   createMerchandiseCheckoutAction,
   reorderMerchandiseAction,
@@ -59,6 +37,9 @@ import {
 import { generateLogoSvg } from '@/lib/logo-creator';
 import MarketingNav from '../marketing/MarketingNav';
 import Product3DMockupStage from './Product3DMockupStage';
+import StudioConfigurator from './StudioConfigurator';
+import CheckoutModal from './CheckoutModal';
+import OrdersDrawer from './OrdersDrawer';
 
 const ProductTechnicalSpecsSheet = dynamic(() => import('./ProductTechnicalSpecsSheet'), {
   ssr: false,
@@ -69,8 +50,7 @@ interface Props {
 }
 
 export default function MerchandiseDesignStudio({ initialData }: Props) {
-  // Active product & category
-  const [selectedCategory, setSelectedCategory] = useState<MerchandiseCategoryId | 'all'>('all');
+  // Active product
   const [selectedProductId, setSelectedProductId] = useState<string>('biz_cards');
   const currentProduct = useMemo(
     () => getProductById(selectedProductId) || MERCHANDISE_PRODUCTS[0],
@@ -81,45 +61,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [selectedColorId, setSelectedColorId] = useState<string>(() => currentProduct.availableColors[0].id);
   const [selectedCardTemplate, setSelectedCardTemplate] = useState<BusinessCardTemplateId>('executive');
   const [selectedCardFinish, setSelectedCardFinish] = useState<CardFinishId>('velvet_matte');
-  const [selectedYardSignTemplate, setSelectedYardSignTemplate] = useState<string>('jobsite_progress');
   const [selectedNotepadTemplate, setSelectedNotepadTemplate] = useState<string>('work_order');
-  const [selectedDecalTemplate, setSelectedDecalTemplate] = useState<string>('fleet_door');
-  const [isTemplateGalleryOpen, setIsTemplateGalleryOpen] = useState<boolean>(false);
-  const [galleryTab, setGalleryTab] = useState<'biz_cards' | 'yard_signs' | 'notepads' | 'decals'>('biz_cards');
   const [selectedTierQty, setSelectedTierQty] = useState<number>(() => currentProduct.pricingTiers[0].quantity);
-  const [selectedFinish, setSelectedFinish] = useState<string>(() => currentProduct.options?.finishes?.[0] || '');
-  const [selectedModel, setSelectedModel] = useState<string>(
-    () => currentProduct.options?.deviceModels?.[0] || 'iPhone 16 Pro Max'
-  );
   const [viewAngle, setViewAngle] = useState<MockupViewAngle>('front');
-  const [backdropTheme, setBackdropTheme] = useState<'clean' | 'dark' | 'jobsite'>('clean');
   const [includeQrCode, setIncludeQrCode] = useState<boolean>(true);
-
-  // Apply Trade Preset Pack
-  function handleApplyTradePreset(preset: TradePreset) {
-    setAccentColor(preset.accentColor);
-    setSecondaryColor(preset.secondaryColor);
-    setTagline(preset.tagline);
-    setSelectedCardTemplate(preset.cardTemplate);
-    setSelectedCardFinish(preset.cardFinish);
-    setSelectedYardSignTemplate(preset.yardSignTemplate);
-    setSelectedNotepadTemplate(preset.notepadTemplate);
-    setSelectedDecalTemplate(preset.decalTemplate);
-    if (cartToastTimeoutRef.current) clearTimeout(cartToastTimeoutRef.current);
-    setCartToast(`Applied ${preset.badge} ${preset.name} Pro Trade Style Pack!`);
-    cartToastTimeoutRef.current = setTimeout(() => {
-      setCartToast(null);
-      cartToastTimeoutRef.current = null;
-    }, 3200);
-  }
-
-  // Apparel sizing state
-  const [sizeQuantities, setSizeQuantities] = useState<Record<string, number>>({
-    M: 2,
-    L: 4,
-    XL: 4,
-    '2XL': 2,
-  });
 
   // Brand data state (pre-filled from initialData)
   const [businessName, setBusinessName] = useState(initialData.companyName);
@@ -130,34 +75,23 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [accentColor, setAccentColor] = useState(initialData.accentColor);
   const [secondaryColor, setSecondaryColor] = useState(initialData.secondaryColor);
 
-  // Dynamic placement helper for diverse catalog products
-  function getDynamicPlacement(productId: string): string {
-    switch (productId) {
-      case 'biz_cards':
-        return 'Front & Back Velvet Offset Imprint with Dynamic QR';
-      case 'notepads':
-        return 'Personalized Header & 2-Part NCR Carbonless Grid';
-      case 'polos':
-      case 't_shirts':
-        return 'Left Chest High-Density Direct Embroidery';
-      case 'hats':
-        return 'Centered Front Structured 3D Embroidery';
-      case 'yard_signs':
-        return 'Double-Sided High-Visibility Fluted Coroplast UV Print';
-      case 'decals':
-        return 'Contour-Cut Outdoor Vinyl Decal';
-      case 'tumblers':
-        return '360 Laser Engraved Wrap';
-      case 'pens':
-        return 'Barrel Laser Imprint';
-      case 'phone_cases':
-        return 'Edge-to-Edge Tough Armor UV Gloss Wrap';
-      default:
-        return 'Direct Full-Color Production Imprint';
-    }
+  // Apply Trade Preset Pack
+  function handleApplyTradePreset(preset: TradePreset) {
+    setAccentColor(preset.accentColor);
+    setSecondaryColor(preset.secondaryColor);
+    setTagline(preset.tagline);
+    setSelectedCardTemplate(preset.cardTemplate);
+    setSelectedCardFinish(preset.cardFinish);
+    setSelectedNotepadTemplate(preset.notepadTemplate);
+    if (cartToastTimeoutRef.current) clearTimeout(cartToastTimeoutRef.current);
+    setCartToast(`Applied ${preset.badge} ${preset.name} Pro Trade Style Pack!`);
+    cartToastTimeoutRef.current = setTimeout(() => {
+      setCartToast(null);
+      cartToastTimeoutRef.current = null;
+    }, 3200);
   }
 
-  // Draft autosave & restore (debounced 500ms to avoid writing on every keystroke)
+  // Draft autosave & restore (debounced 500ms)
   const draftStorageKey = initialData.accountId
     ? `merchandise_draft_${initialData.accountId}`
     : 'merchandise_draft_default';
@@ -181,14 +115,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         if (typeof parsed.selectedCardFinish === 'string') {
           setSelectedCardFinish(parsed.selectedCardFinish as CardFinishId);
         }
-        if (typeof parsed.selectedYardSignTemplate === 'string') {
-          setSelectedYardSignTemplate(parsed.selectedYardSignTemplate);
-        }
         if (typeof parsed.selectedNotepadTemplate === 'string') {
           setSelectedNotepadTemplate(parsed.selectedNotepadTemplate);
-        }
-        if (typeof parsed.selectedDecalTemplate === 'string') {
-          setSelectedDecalTemplate(parsed.selectedDecalTemplate);
         }
       }
     } catch {
@@ -212,9 +140,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             secondaryColor,
             selectedCardTemplate,
             selectedCardFinish,
-            selectedYardSignTemplate,
             selectedNotepadTemplate,
-            selectedDecalTemplate,
           })
         );
       } catch {
@@ -234,9 +160,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     secondaryColor,
     selectedCardTemplate,
     selectedCardFinish,
-    selectedYardSignTemplate,
     selectedNotepadTemplate,
-    selectedDecalTemplate,
   ]);
 
   function handleResetToDefaults() {
@@ -249,9 +173,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setSecondaryColor(initialData.secondaryColor);
     setSelectedCardTemplate('executive');
     setSelectedCardFinish('velvet_matte');
-    setSelectedYardSignTemplate('jobsite_progress');
     setSelectedNotepadTemplate('work_order');
-    setSelectedDecalTemplate('fleet_door');
     if (typeof window !== 'undefined') {
       try {
         localStorage.removeItem(draftStorageKey);
@@ -267,7 +189,6 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     initialData.aiLogos[0]?.id || null
   );
   const [customUploadUrl, setCustomUploadUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   function handleLogoFileUpload(file: File) {
     if (!file.type.startsWith('image/')) {
@@ -297,7 +218,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Modal Escape key handling & body scroll locking
   useEffect(() => {
-    const isAnyModalOpen = checkoutOpen || ordersDrawerOpen || !!orderSuccessModal || isTemplateGalleryOpen;
+    const isAnyModalOpen = checkoutOpen || ordersDrawerOpen || !!orderSuccessModal;
     if (isAnyModalOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
@@ -307,7 +228,6 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           if (checkoutOpen) setCheckoutOpen(false);
           if (ordersDrawerOpen) setOrdersDrawerOpen(false);
           if (orderSuccessModal) setOrderSuccessModal(null);
-          if (isTemplateGalleryOpen) setIsTemplateGalleryOpen(false);
         }
       };
       window.addEventListener('keydown', handleKeyDown);
@@ -317,7 +237,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         window.removeEventListener('keydown', handleKeyDown);
       };
     }
-  }, [checkoutOpen, ordersDrawerOpen, orderSuccessModal, isTemplateGalleryOpen]);
+  }, [checkoutOpen, ordersDrawerOpen, orderSuccessModal]);
 
   // Cleanup cart toast timer on unmount
   useEffect(() => {
@@ -328,7 +248,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     };
   }, []);
 
-  // Shipping form state without fabricated mock address
+  // Shipping form state
   const [shippingAddress, setShippingAddress] = useState<ShippingAddress>({
     fullName: initialData.companyName ? `${initialData.companyName} Operations` : '',
     companyName: initialData.companyName || '',
@@ -347,18 +267,11 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [isCheckingOut, startCheckoutTransition] = useTransition();
   const [isReordering, startReorderTransition] = useTransition();
 
-  // Filtered product catalog
-  const displayedProducts = useMemo(() => {
-    if (selectedCategory === 'all') return MERCHANDISE_PRODUCTS;
-    return MERCHANDISE_PRODUCTS.filter((p) => p.category === selectedCategory);
-  }, [selectedCategory]);
-
-  // When switching products, reset color & tier to defaults of that product
+  // Switch products
   function handleSelectProduct(prod: MerchandiseProduct) {
     setSelectedProductId(prod.id);
     setSelectedColorId(prod.availableColors[0]?.id || 'default');
     setSelectedTierQty(prod.pricingTiers[0]?.quantity || prod.minQuantity);
-    setSelectedFinish(prod.options?.finishes?.[0] || '');
     if (!prod.supportedViews.includes(viewAngle)) {
       setViewAngle(prod.supportedViews[0] || 'front');
     }
@@ -461,7 +374,6 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         localStorage.removeItem(cartStorageKey);
       } catch {}
       setCartToast('Order placed. Direct manufacturing print run queued.');
-      // Refresh order list directly from server
       getMerchandiseStudioDataAction().then((res) => {
         if (res.ok && res.data?.recentOrders) {
           setOrders(res.data.recentOrders);
@@ -483,7 +395,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         ? activeAiLogo.url
         : logoSource === 'site' && initialData.currentLogoUrl
         ? initialData.currentLogoUrl
-        : activeLogoSrc; // Generated SVG data URI so vector orders NEVER ship with files: []
+        : activeLogoSrc;
 
     return {
       productId: currentProduct.id,
@@ -501,107 +413,30 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         license,
         accentColor,
         secondaryColor,
-        includeQrCode,
-        customArtworkUrl: logoSource === 'upload' && customUploadUrl ? customUploadUrl : undefined,
-        logoUrl: chosenLogoUrl,
-        decorationMethod: currentProduct.decorationMethod,
-        placement: getDynamicPlacement(currentProduct.id),
-        sizeBreakdown: currentProduct.options?.sizes ? sizeQuantities : undefined,
-        finish: currentProduct.id === 'biz_cards' ? selectedCardFinish : selectedFinish || undefined,
-        cardFinish: currentProduct.id === 'biz_cards' ? selectedCardFinish : undefined,
-        deviceModel: currentProduct.id === 'phone_cases' ? selectedModel : undefined,
         cardTemplateId: currentProduct.id === 'biz_cards' ? selectedCardTemplate : undefined,
+        cardFinish: currentProduct.id === 'biz_cards' ? selectedCardFinish : undefined,
+        finish: currentProduct.id === 'biz_cards' ? selectedCardFinish : undefined,
+        includeQrCode,
+        decorationMethod: currentProduct.decorationMethod,
+        placement:
+          currentProduct.id === 'biz_cards'
+            ? 'Front & Back Velvet Offset Imprint with Dynamic QR'
+            : 'Personalized Header & 2-Part NCR Carbonless Grid',
+        logoUrl: chosenLogoUrl,
+        customArtworkUrl: logoSource === 'upload' && customUploadUrl ? customUploadUrl : undefined,
       },
     };
   }
 
-  // Active items in checkout (cart if populated, else current item)
-  const checkoutItems = useMemo(() => {
-    return cart.length > 0 ? cart : [getCurrentOrderItem()];
-  }, [
-    cart,
-    currentProduct,
-    activeColor,
-    activeTier,
-    selectedCardTemplate,
-    selectedCardFinish,
-    businessName,
-    tagline,
-    phone,
-    website,
-    license,
-    accentColor,
-    secondaryColor,
-    includeQrCode,
-    logoSource,
-    activeAiLogo,
-    customUploadUrl,
-    activeLogoSrc,
-    initialData,
-    selectedFinish,
-    selectedModel,
-    sizeQuantities,
-  ]);
-
-  const itemSubtotal = Math.round(checkoutItems.reduce((acc, it) => acc + it.totalPrice, 0) * 100) / 100;
-  const estimatedShipping = shippingMethod === 'rush' ? 24.0 : itemSubtotal >= 150 ? 0.0 : 12.0;
-  const subtotalWithShipping = Math.round((itemSubtotal + estimatedShipping) * 100) / 100;
-
-  // Free shipping threshold calculations ($150+)
-  const freeShippingThreshold = 150;
-  const amountToFreeShipping = Math.max(0, Math.round((freeShippingThreshold - itemSubtotal) * 100) / 100);
-  const freeShippingPercent = Math.min(100, Math.round((itemSubtotal / freeShippingThreshold) * 100));
-
   function handleAddToCart() {
-    const item = getCurrentOrderItem();
-
-    setCart((prev) => {
-      // Check if identical item already exists (same product, color, finish, model, sizes, name, template)
-      const matchIndex = prev.findIndex(
-        (p) =>
-          p.productId === item.productId &&
-          p.colorHex === item.colorHex &&
-          p.customizationDetails.finish === item.customizationDetails.finish &&
-          p.customizationDetails.cardFinish === item.customizationDetails.cardFinish &&
-          p.customizationDetails.deviceModel === item.customizationDetails.deviceModel &&
-          p.customizationDetails.cardTemplateId === item.customizationDetails.cardTemplateId &&
-          p.customizationDetails.businessName === item.customizationDetails.businessName &&
-          JSON.stringify(p.customizationDetails.sizeBreakdown) ===
-            JSON.stringify(item.customizationDetails.sizeBreakdown)
-      );
-
-      if (matchIndex > -1) {
-        const next = [...prev];
-        const existing = next[matchIndex];
-        const newQty = existing.quantity + item.quantity;
-        const productDef = getProductById(item.productId);
-        // Find best pricing tier for aggregated quantity
-        const tier =
-          productDef?.pricingTiers
-            .slice()
-            .reverse()
-            .find((t) => newQty >= t.quantity) || productDef?.pricingTiers[0];
-        const unitPrice = tier ? tier.unitPrice : existing.unitPrice;
-        next[matchIndex] = {
-          ...existing,
-          quantity: newQty,
-          unitPrice,
-          totalPrice: Math.round(newQty * unitPrice * 100) / 100,
-        };
-        return next;
-      }
-
-      return [...prev, item];
-    });
-
-    if (cartToastTimeoutRef.current) {
-      clearTimeout(cartToastTimeoutRef.current);
-    }
-    setCartToast(`Added ${item.quantity} × ${item.productName} to your order!`);
+    const newItem = getCurrentOrderItem();
+    setCart((prev) => [...prev, newItem]);
+    if (cartToastTimeoutRef.current) clearTimeout(cartToastTimeoutRef.current);
+    setCartToast(`Added ${newItem.quantity}× ${newItem.productName} to your order!`);
     cartToastTimeoutRef.current = setTimeout(() => {
       setCartToast(null);
       cartToastTimeoutRef.current = null;
-    }, 4500);
+    }, 3200);
   }
 
   function handleRemoveFromCart(index: number) {
@@ -610,134 +445,100 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   function handleUpdateCartItemQuantity(index: number, delta: number) {
     setCart((prev) => {
-      const item = prev[index];
+      const copy = [...prev];
+      const item = copy[index];
       if (!item) return prev;
-      const productDef = getProductById(item.productId);
-      const tiers = productDef?.pricingTiers || [];
-      const currentTierIndex = tiers.findIndex((t) => t.quantity === item.quantity);
+      const targetProd = getProductById(item.productId);
+      if (!targetProd) return prev;
 
-      let newQty = item.quantity;
-      let newUnitPrice = item.unitPrice;
-
-      if (currentTierIndex > -1) {
-        const targetTierIndex = currentTierIndex + delta;
-        if (targetTierIndex < 0) {
-          // Remove if reducing below smallest tier
-          return prev.filter((_, i) => i !== index);
-        }
-        if (targetTierIndex < tiers.length) {
-          newQty = tiers[targetTierIndex].quantity;
-          newUnitPrice = tiers[targetTierIndex].unitPrice;
-        } else {
-          // Already at highest tier
-          return prev;
-        }
-      } else {
-        newQty = Math.max(0, item.quantity + delta);
-        if (newQty === 0) {
-          return prev.filter((_, i) => i !== index);
-        }
+      const currentTierIndex = targetProd.pricingTiers.findIndex((t) => t.quantity === item.quantity);
+      let newTierIndex = currentTierIndex !== -1 ? currentTierIndex + delta : 0;
+      if (newTierIndex < 0) newTierIndex = 0;
+      if (newTierIndex >= targetProd.pricingTiers.length) {
+        newTierIndex = targetProd.pricingTiers.length - 1;
       }
 
-      const next = [...prev];
-      next[index] = {
+      const newTier = targetProd.pricingTiers[newTierIndex];
+      copy[index] = {
         ...item,
-        quantity: newQty,
-        unitPrice: newUnitPrice,
-        totalPrice: Math.round(newQty * newUnitPrice * 100) / 100,
+        quantity: newTier.quantity,
+        unitPrice: newTier.unitPrice,
+        totalPrice: newTier.totalPrice,
       };
-      return next;
+      return copy;
     });
   }
+
+  // Active items in checkout
+  const checkoutItems = useMemo(() => {
+    if (cart.length > 0) return cart;
+    return [getCurrentOrderItem()];
+  }, [cart, currentProduct, activeColor, activeTier, businessName, tagline, phone, website, license, accentColor, secondaryColor, selectedCardTemplate, selectedCardFinish, selectedNotepadTemplate, includeQrCode, logoSource, activeLogoSrc, customUploadUrl, activeAiLogo, initialData.currentLogoUrl]);
 
   function handleOpenCheckout() {
     setCheckoutError(null);
-    if (currentProduct.options?.sizes && cart.length === 0) {
-      const allocated = Object.values(sizeQuantities).reduce((a, b) => a + b, 0);
-      if (allocated !== activeTier.quantity) {
-        setCheckoutError(
-          `Please allocate all ${activeTier.quantity} items across sizes before checking out (currently ${allocated} allocated).`
-        );
-        return; // Halt modal opening on validation failure
-      }
-    }
+    setProofApproved(false);
     setCheckoutOpen(true);
   }
 
-  // Trigger Instant Checkout via Stripe
   function handleExecuteCheckout() {
+    if (!shippingAddress.fullName || !shippingAddress.streetAddress || !shippingAddress.city || !shippingAddress.state || !shippingAddress.postalCode) {
+      setCheckoutError('Please provide a complete shipping address (Recipient Name, Street, City, State, ZIP).');
+      return;
+    }
+    if (!shippingAddress.email || !shippingAddress.email.includes('@')) {
+      setCheckoutError('Please provide a valid email address to receive proof confirmation and tracking notifications.');
+      return;
+    }
     if (!proofApproved) {
-      setCheckoutError('Please check the digital proof approval box before completing your order.');
+      setCheckoutError('You must review and approve the digital production proof before proceeding.');
       return;
     }
 
-    if (currentProduct.options?.sizes && cart.length === 0) {
-      const allocated = Object.values(sizeQuantities).reduce((a, b) => a + b, 0);
-      if (allocated !== activeTier.quantity) {
-        setCheckoutError(`Please allocate all ${activeTier.quantity} items across sizes before checking out (currently ${allocated} allocated).`);
-        return;
-      }
-    }
-
-    setCheckoutError(null);
     startCheckoutTransition(async () => {
-      let proofSnapshotUrl: string | undefined = undefined;
-      if (canvasProofExportRef.current) {
-        try {
-          proofSnapshotUrl = await canvasProofExportRef.current();
-        } catch {
-          // Non-blocking if canvas export fails
+      try {
+        const res = await createMerchandiseCheckoutAction({
+          items: checkoutItems,
+          shippingAddress,
+          shippingMethod,
+          proofApproved: true,
+        });
+
+        if (!res.ok) {
+          setCheckoutError(res.error || 'Failed to initialize checkout session. Please try again.');
+          return;
         }
-      }
 
-      const itemsToOrder = cart.length > 0 ? cart : [getCurrentOrderItem()];
-      const res = await createMerchandiseCheckoutAction({
-        items: itemsToOrder,
-        shippingAddress,
-        shippingMethod,
-        proofApproved: true,
-        proofSnapshotUrl,
-      });
-
-      if (!res.ok) {
-        setCheckoutError(res.error || 'Checkout could not be completed.');
-        return;
-      }
-
-      if (res.checkoutUrl) {
-        // Do NOT clear cart before redirecting to Stripe
-        window.location.href = res.checkoutUrl;
-        return;
-      }
-
-      if (res.order) {
-        setCart([]);
-        try {
-          localStorage.removeItem(cartStorageKey);
-        } catch {}
-        setOrders((prev) => [res.order!, ...prev]);
-        setOrderSuccessModal(res.order);
-        setCheckoutOpen(false);
+        if (res.checkoutUrl) {
+          window.location.href = res.checkoutUrl;
+        } else {
+          setCheckoutError('Checkout session URL was not returned by the payment gateway.');
+        }
+      } catch (err: any) {
+        console.error('Checkout error:', err);
+        setCheckoutError(err?.message || 'An unexpected error occurred during checkout setup.');
       }
     });
   }
 
-  // 1-Click Reorder
   function handleReorder(orderId: string) {
     startReorderTransition(async () => {
-      const res = await reorderMerchandiseAction(orderId);
-      if (res.ok && res.checkoutUrl) {
-        window.location.href = res.checkoutUrl;
-      } else if (res.ok && res.order) {
-        setOrders((prev) => [res.order!, ...prev]);
-        setOrderSuccessModal(res.order);
-      } else {
-        setCheckoutError(res.error || 'Could not place re-order.');
-        setCartToast(res.error || 'Could not place re-order.');
+      try {
+        const res = await reorderMerchandiseAction(orderId);
+        if (!res.ok) {
+          alert(res.error || 'Could not place repeat order.');
+          return;
+        }
+        if (res.checkoutUrl) {
+          window.location.href = res.checkoutUrl;
+        }
+      } catch (err: any) {
+        alert(err?.message || 'Reorder failed.');
       }
     });
   }
-  // Download digital proof
+
+  // Generate proof sheet PNG
   async function handleDownloadProofSheet() {
     setIsGeneratingProof(true);
     try {
@@ -747,243 +548,91 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Helper for CMYK registration mark
-      const drawRegistrationMark = (x: number, y: number) => {
-        ctx.save();
-        ctx.strokeStyle = '#64748b';
-        ctx.lineWidth = 1;
-        // Outer circle
-        ctx.beginPath();
-        ctx.arc(x, y, 9, 0, Math.PI * 2);
-        ctx.stroke();
-        // Crosshair lines
-        ctx.beginPath();
-        ctx.moveTo(x - 14, y);
-        ctx.lineTo(x + 14, y);
-        ctx.moveTo(x, y - 14);
-        ctx.lineTo(x, y + 14);
-        ctx.stroke();
-        // Center pin
-        ctx.fillStyle = '#64748b';
-        ctx.beginPath();
-        ctx.arc(x, y, 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-      };
-
-      // 1. Dark Offset Print Background
-      ctx.fillStyle = '#080c14';
+      // Dark proof canvas background
+      ctx.fillStyle = '#0b0f19';
       ctx.fillRect(0, 0, 1300, 860);
 
-      // 2. Registration Marks at 4 corners
-      drawRegistrationMark(25, 25);
-      drawRegistrationMark(1275, 25);
-      drawRegistrationMark(25, 835);
-      drawRegistrationMark(1275, 835);
+      // Top header banner
+      ctx.fillStyle = '#131924';
+      ctx.fillRect(0, 0, 1300, 95);
+      ctx.fillStyle = '#ff7a21';
+      ctx.fillRect(0, 92, 1300, 3);
 
-      // 3. Top Header Bar
-      const headerGrad = ctx.createLinearGradient(0, 0, 1300, 0);
-      headerGrad.addColorStop(0, '#1e3a8a');
-      headerGrad.addColorStop(0.5, '#1d4ed8');
-      headerGrad.addColorStop(1, '#0f172a');
-      ctx.fillStyle = headerGrad;
-      ctx.fillRect(40, 30, 1220, 85);
-
-      // Top Header text
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 26px sans-serif';
-      ctx.fillText(`OFFICIAL COMMERCIAL PRODUCTION PROOF • ${currentProduct.name.toUpperCase()}`, 65, 72);
-      ctx.fillStyle = '#93c5fd';
-      ctx.font = 'bold 12px monospace';
-      ctx.fillText('LETSGETQUOTED PRINT LABS • AUTOMATED OFFSET GANG-RUN MANUFACTURING • SPEC ISO 12647-2', 65, 96);
+      ctx.fillText('OFFICIAL DIGITAL PRODUCTION PROOF', 40, 48);
 
-      // CMYK Density Calibration Swatch Bar (Top Right)
-      const swatches = [
-        { label: 'C', hex: '#00ffff' },
-        { label: 'M', hex: '#ff00ff' },
-        { label: 'Y', hex: '#ffff00' },
-        { label: 'K', hex: '#000000' },
-        { label: '75', hex: '#404040' },
-        { label: '50', hex: '#808080' },
-        { label: '25', hex: '#c0c0c0' },
-        { label: 'W', hex: '#ffffff' },
-      ];
-      const swatchStartX = 940;
-      const swatchY = 48;
-      const swatchW = 32;
-      const swatchH = 24;
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.7)';
-      ctx.fillRect(swatchStartX - 8, swatchY - 6, swatches.length * (swatchW + 4) + 12, swatchH + 28);
-      ctx.font = 'bold 9px monospace';
-      swatches.forEach((sw, i) => {
-        const sx = swatchStartX + i * (swatchW + 4);
-        ctx.fillStyle = sw.hex;
-        ctx.fillRect(sx, swatchY, swatchW, swatchH);
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        ctx.strokeRect(sx, swatchY, swatchW, swatchH);
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillText(sw.label, sx + (sw.label.length === 2 ? 8 : 12), swatchY + swatchH + 14);
-      });
+      ctx.fillStyle = '#94a3b8';
+      ctx.font = '14px sans-serif';
+      const proofId = Math.random().toString(36).substring(2, 9).toUpperCase();
+      ctx.fillText(
+        `LETSGETQUOTED COMMERCIAL PRINT RUN • PROOF #${proofId} • GENERATED ${new Date().toLocaleDateString()}`,
+        40,
+        75
+      );
 
-      // 4. Details panel (Left Column)
-      ctx.fillStyle = '#0f172a';
+      // Left column: Specifications
+      ctx.fillStyle = '#131924';
       ctx.fillRect(40, 130, 500, 680);
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
       ctx.strokeRect(40, 130, 500, 680);
 
-      const proofId = `PRF-${Date.now().toString(36).toUpperCase()}`;
-      const proofDate = new Date().toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-      });
-
-      // Proof badge
-      ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
-      ctx.fillRect(60, 150, 460, 32);
-      ctx.strokeStyle = 'rgba(34, 197, 94, 0.4)';
-      ctx.strokeRect(60, 150, 460, 32);
-      ctx.fillStyle = '#86efac';
-      ctx.font = 'bold 11px monospace';
-      ctx.fillText(`✓ PRE-FLIGHT PASS: 300 DPI OFFSET CMYK • +0.125" BLEED TOLERANCE`, 72, 170);
-
-      // Proof ID & Date
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '12px monospace';
-      ctx.fillText(`PROOF ID: ${proofId}   DATE: ${proofDate}`, 60, 204);
-
-      // Section: Client Identity
-      ctx.fillStyle = '#38bdf8';
+      ctx.fillStyle = '#f59e0b';
       ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(`1. CONTRACTOR BRANDING`, 60, 230);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.beginPath();
-      ctx.moveTo(60, 236);
-      ctx.lineTo(500, 236);
-      ctx.stroke();
+      ctx.fillText('COMMERCIAL PRODUCTION SPECIFICATIONS', 60, 160);
 
-      ctx.fillStyle = '#ffffff';
-      ctx.font = 'bold 20px sans-serif';
-      ctx.fillText(businessName || 'Unnamed Business', 60, 264);
-
-      if (tagline) {
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = 'italic 13px sans-serif';
-        ctx.fillText(tagline.length > 55 ? tagline.slice(0, 52) + '...' : tagline, 60, 286);
-      }
-
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = '13px monospace';
-      ctx.fillText(`TEL: ${phone || 'N/A'} • WEB: ${website || 'N/A'}`, 60, 310);
-      if (license) {
-        ctx.fillText(`LIC: ${license}`, 60, 328);
-      }
-
-      // Section: Production Specifications
-      ctx.fillStyle = '#38bdf8';
-      ctx.font = 'bold 12px sans-serif';
-      ctx.fillText(`2. PRODUCTION SPECIFICATIONS`, 60, 360);
-      ctx.strokeStyle = 'rgba(56, 189, 248, 0.25)';
-      ctx.beginPath();
-      ctx.moveTo(60, 366);
-      ctx.lineTo(500, 366);
-      ctx.stroke();
-
-      let specY = 390;
-      const addSpecRow = (label: string, value: string, valColor = '#ffffff') => {
-        ctx.fillStyle = '#94a3b8';
-        ctx.font = '12px sans-serif';
-        ctx.fillText(label, 60, specY);
-        ctx.fillStyle = valColor;
-        ctx.font = 'bold 12px sans-serif';
-        ctx.fillText(value, 210, specY);
+      let specY = 195;
+      const addSpecRow = (lbl: string, val: string, color = '#ffffff') => {
+        ctx.fillStyle = '#64748b';
+        ctx.font = 'bold 11px sans-serif';
+        ctx.fillText(lbl.toUpperCase(), 60, specY);
+        ctx.fillStyle = color;
+        ctx.font = 'bold 13px sans-serif';
+        ctx.fillText(val, 210, specY);
         specY += 24;
       };
+
+      addSpecRow('Company Name:', businessName || 'N/A');
+      if (tagline) addSpecRow('Tagline:', tagline);
+      addSpecRow('Phone Number:', phone || 'N/A');
+      if (website) addSpecRow('Website:', website);
+      if (license) addSpecRow('License Line:', license);
+      addSpecRow('Accent Hex:', accentColor, accentColor);
+      addSpecRow('Secondary Hex:', secondaryColor, secondaryColor);
+      specY += 12;
 
       addSpecRow('Product Line:', currentProduct.name);
       addSpecRow('Colorway:', `${activeColor.name} (${activeColor.hex})`);
       addSpecRow('Run Quantity:', `${activeTier.quantity.toLocaleString()} units ($${activeTier.unitPrice.toFixed(2)}/ea)`);
       addSpecRow('Decoration Method:', currentProduct.decorationLabel);
-      addSpecRow('Imprint Placement:', getDynamicPlacement(currentProduct.id));
 
       if (currentProduct.id === 'biz_cards') {
         const tmpl = getCardTemplateById(selectedCardTemplate);
-        addSpecRow('Card Template:', `${tmpl.name}`, '#38bdf8');
-        addSpecRow('Layout Style:', `${tmpl.subtitle}`);
+        addSpecRow('Card Template:', tmpl.name, '#38bdf8');
         const finishDef = getCardFinishById(selectedCardFinish);
-        addSpecRow('Tactile Finish:', `${finishDef.name}`, '#f59e0b');
+        addSpecRow('Tactile Finish:', finishDef.name, '#f59e0b');
         addSpecRow('Paper Stock:', '16pt Heavy Silk Cover + Aqueous Barrier');
-      } else if (currentProduct.id === 'yard_signs') {
-        const tmpl = getYardSignTemplateById(selectedYardSignTemplate);
-        addSpecRow('Sign Template:', `${tmpl.name} (${tmpl.tag})`, '#38bdf8');
-        addSpecRow('Material:', '4mm Weatherproof Fluted Coroplast');
       } else if (currentProduct.id === 'notepads') {
         const tmpl = getNotepadTemplateById(selectedNotepadTemplate);
-        addSpecRow('NCR Form Template:', `${tmpl.name}`, '#38bdf8');
+        addSpecRow('NCR Form Template:', tmpl.name, '#38bdf8');
         addSpecRow('Stock Format:', '2-Part Carbonless NCR (White / Canary Yellow)');
-      } else if (currentProduct.id === 'decals') {
-        const tmpl = getDecalTemplateById(selectedDecalTemplate);
-        addSpecRow('Decal Layout:', `${tmpl.name}`, '#38bdf8');
-        addSpecRow('Vinyl Grade:', '6-Mil Heavy Duty Contour Cast Laminated Vinyl');
-      } else if (selectedFinish) {
-        addSpecRow('Finish / Coating:', selectedFinish);
       }
 
-      addSpecRow('Dynamic QR Booking:', includeQrCode ? 'Enabled (Lead Router)' : 'Disabled');
+      addSpecRow('Dynamic QR Booking:', includeQrCode ? 'Enabled' : 'Disabled');
       addSpecRow('Est. Manufacturing:', currentProduct.turnaroundEstimate);
 
-      // Section: Simulated Optical Barcode & Gang-Run Stamp
+      // Section: Simulated Optical Barcode
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(60, 680, 460, 60);
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.strokeRect(60, 680, 460, 60);
-
-      // Barcode bars simulation
-      ctx.fillStyle = '#ffffff';
-      let bx = 75;
-      const barPattern = [2, 1, 3, 1, 2, 4, 1, 2, 1, 3, 2, 1, 4, 1, 2, 3, 1, 2, 1, 3, 1, 4, 2, 1, 3, 2, 1, 2, 3, 1, 4, 1, 2, 3];
-      barPattern.forEach((w) => {
-        ctx.fillRect(bx, 690, w, 28);
-        bx += w + 2;
-      });
       ctx.fillStyle = '#94a3b8';
       ctx.font = 'bold 9px monospace';
-      ctx.fillText(`LGQ-${proofId}-AUTO-DISPATCH-VERIFIED`, 230, 706);
-      ctx.fillText(`CMYK DENSITY: 100% C • 100% M • 100% Y • 100% K • +0.125" BLEED`, 75, 730);
+      ctx.fillText(`LGQ-${proofId}-AUTO-DISPATCH-VERIFIED`, 140, 715);
 
-      // 5. Right Preview Zone: Embedded 3D Canvas Render
+      // Right Preview Zone: Embedded 3D Canvas Render
       ctx.fillStyle = '#0b0f19';
       ctx.fillRect(560, 130, 700, 680);
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
       ctx.strokeRect(560, 130, 700, 680);
-
-      // Corner crop markers inside preview zone
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 1.5;
-      // Top Left
-      ctx.beginPath();
-      ctx.moveTo(570, 150);
-      ctx.lineTo(570, 140);
-      ctx.lineTo(580, 140);
-      ctx.stroke();
-      // Top Right
-      ctx.beginPath();
-      ctx.moveTo(1240, 140);
-      ctx.lineTo(1250, 140);
-      ctx.lineTo(1250, 150);
-      ctx.stroke();
-      // Bottom Left
-      ctx.beginPath();
-      ctx.moveTo(570, 790);
-      ctx.lineTo(570, 800);
-      ctx.lineTo(580, 800);
-      ctx.stroke();
-      // Bottom Right
-      ctx.beginPath();
-      ctx.moveTo(1240, 800);
-      ctx.lineTo(1250, 800);
-      ctx.lineTo(1250, 790);
-      ctx.stroke();
 
       let renderedSuccessfully = false;
       if (canvasProofExportRef.current) {
@@ -996,7 +645,6 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             renderImg.onerror = reject;
             renderImg.src = renderDataUrl;
           });
-          // Draw image centered in 700x680 area
           ctx.drawImage(renderImg, 580, 145, 660, 650);
           renderedSuccessfully = true;
         } catch (err) {
@@ -1014,7 +662,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         ctx.textAlign = 'left';
       }
 
-      // 6. Confidential footer strip
+      // Confidential footer strip
       ctx.fillStyle = '#06090f';
       ctx.fillRect(0, 825, 1300, 35);
       ctx.fillStyle = '#64748b';
@@ -1042,15 +690,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     }
   }
 
-  // Render logo inside mockup
+  // Render logo inside mockup with strict height and width bounds
   function renderMockupBranding(mode: 'color' | 'dark' | 'white' = 'color', scale = 1) {
+    const isNotepad = selectedProductId === 'notepads';
+    const baseH = isNotepad ? 40 : 32;
+    const baseW = isNotepad ? 180 : 130;
+    const maxH = Math.max(20, Math.round(baseH * scale));
+    const maxW = Math.max(75, Math.round(baseW * scale));
+
     if (logoSource === 'upload' && customUploadUrl) {
       return (
-        <div style={{ transform: `scale(${scale})`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: `${maxH}px`, maxWidth: `${maxW}px` }}>
           <img
             src={customUploadUrl}
             alt={`${businessName} custom logo`}
-            style={{ objectFit: 'contain', maxWidth: '100%', height: 'auto', maxHeight: '110px' }}
+            style={{ objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
           />
         </div>
       );
@@ -1058,13 +712,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
     if (logoSource === 'ai' && activeAiLogo) {
       return (
-        <div style={{ transform: `scale(${scale})`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: `${maxH}px`, maxWidth: `${maxW}px` }}>
           <Image
             src={activeAiLogo.url}
             alt={`${businessName} logo`}
             width={320}
             height={200}
-            style={{ objectFit: 'contain', maxWidth: '100%', height: 'auto', maxHeight: '110px' }}
+            style={{ objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
           />
         </div>
       );
@@ -1072,13 +726,13 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
     if (logoSource === 'site' && initialData.currentLogoUrl) {
       return (
-        <div style={{ transform: `scale(${scale})`, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: `${maxH}px`, maxWidth: `${maxW}px` }}>
           <Image
             src={initialData.currentLogoUrl}
             alt={`${businessName} logo`}
             width={320}
             height={200}
-            style={{ objectFit: 'contain', maxWidth: '100%', height: 'auto', maxHeight: '110px' }}
+            style={{ objectFit: 'contain', maxWidth: '100%', maxHeight: '100%', width: 'auto', height: 'auto' }}
           />
         </div>
       );
@@ -1086,7 +740,14 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
     return (
       <div
-        style={{ transform: `scale(${scale})`, width: '100%', maxWidth: '340px' }}
+        className="mockup-svg-logo-wrapper"
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          height: `${maxH}px`,
+          maxWidth: `${maxW}px`,
+          overflow: 'hidden',
+        }}
         dangerouslySetInnerHTML={{ __html: vectorLogoSvg }}
       />
     );
@@ -1103,7 +764,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             width: 100% !important;
             max-width: 100% !important;
             min-width: 0 !important;
-            border-right: none !important;
+            border-left: none !important;
             border-top: 1px solid var(--line) !important;
           }
         }
@@ -1111,18 +772,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           outline: 2px solid var(--accent) !important;
           outline-offset: 2px !important;
         }
-        @media (prefers-reduced-motion: reduce) {
-          *, *::before, *::after {
-            animation-duration: 0.01ms !important;
-            animation-iteration-count: 1 !important;
-            transition-duration: 0.01ms !important;
-            scroll-behavior: auto !important;
-          }
+        .mockup-svg-logo-wrapper svg {
+          height: 100% !important;
+          width: auto !important;
+          max-height: 100% !important;
+          max-width: 100% !important;
+          display: block;
         }
       `}</style>
+
       <MarketingNav basePath="/dashboard" />
 
-      {/* 1. Header Hero Banner matching marketing theme */}
+      {/* Header Hero Banner */}
       <section className="workspace-hero panel marketing-hero" style={{ position: 'relative', marginBottom: '1.25rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem', width: '100%' }}>
           <div className="workspace-hero-copy" style={{ margin: 0, flex: '1 1 360px', minWidth: '280px' }}>
@@ -1248,60 +909,44 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
                 fontWeight: 800,
                 fontSize: '0.88rem',
                 cursor: 'pointer',
-                boxShadow: '0 4px 16px rgba(255,122,33,0.35)',
+                boxShadow: '0 4px 14px rgba(255, 122, 33, 0.35)',
               }}
             >
-              <span>⚡ Review Order ({activeTier.quantity})</span>
-              <span>&bull;</span>
-              <span>${activeTier.totalPrice.toFixed(2)}</span>
+              <span>Review Proof &amp; Checkout</span>
+              <span>&rarr;</span>
             </button>
           </div>
         </div>
 
         {cartToast && (
           <div
-            role="status"
-            aria-live="polite"
             style={{
-              position: 'absolute',
-              bottom: '-1rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              background: 'var(--good, #16a34a)',
-              color: '#ffffff',
-              padding: '0.45rem 1.2rem',
-              borderRadius: '999px',
+              marginTop: '1rem',
+              padding: '0.65rem 1rem',
+              borderRadius: '8px',
+              background: 'rgba(34, 197, 94, 0.15)',
+              border: '1px solid rgba(34, 197, 94, 0.3)',
+              color: '#86efac',
               fontSize: '0.82rem',
               fontWeight: 800,
-              boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
-              zIndex: 10,
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem',
+              justifyContent: 'space-between',
             }}
           >
             <span>{cartToast}</span>
             <button
               type="button"
-              onClick={handleOpenCheckout}
-              style={{
-                background: '#ffffff',
-                color: '#16a34a',
-                border: 'none',
-                borderRadius: '6px',
-                padding: '2px 8px',
-                fontSize: '0.74rem',
-                fontWeight: 900,
-                cursor: 'pointer',
-              }}
+              onClick={() => setCartToast(null)}
+              style={{ background: 'transparent', border: 'none', color: '#86efac', cursor: 'pointer', fontWeight: 900 }}
             >
-              Checkout Now
+              ✕
             </button>
           </div>
         )}
       </section>
 
-      {/* Main Studio Frame */}
+      {/* Main Studio Frame: 2-Column Split Workspace */}
       <div
         style={{
           borderRadius: '16px',
@@ -1314,2968 +959,146 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           minHeight: '780px',
         }}
       >
-
-      {/* 2. Category Selector Pills (Shown when multiple categories exist) */}
-      {MERCHANDISE_CATEGORIES.length > 1 && (
-        <div
-          role="tablist"
-          aria-label="Product categories"
-          style={{
-            display: 'flex',
-            gap: '0.5rem',
-            padding: '0.75rem 1.25rem',
-            borderBottom: '1px solid var(--line)',
-            background: 'rgba(var(--tint), 0.02)',
-            overflowX: 'auto',
-          }}
-        >
-          <button
-            type="button"
-            role="tab"
-            aria-selected={selectedCategory === 'all'}
-            onClick={() => setSelectedCategory('all')}
-            style={{
-              padding: '0.4rem 0.85rem',
-              borderRadius: '999px',
-              border: selectedCategory === 'all' ? '1.5px solid var(--accent)' : '1px solid rgba(var(--tint), 0.1)',
-              background: selectedCategory === 'all' ? 'rgba(255, 122, 33, 0.18)' : 'rgba(var(--tint), 0.03)',
-              color: selectedCategory === 'all' ? 'var(--text)' : 'var(--muted)',
-              fontSize: '0.78rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              whiteSpace: 'nowrap',
-              boxShadow: selectedCategory === 'all' ? '0 2px 8px rgba(255, 122, 33, 0.25)' : 'none',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            All Products ({MERCHANDISE_PRODUCTS.length})
-          </button>
-          {MERCHANDISE_CATEGORIES.map((cat) => {
-            const isSelected = selectedCategory === cat.id;
-            return (
-              <button
-                key={cat.id}
-                type="button"
-                role="tab"
-                aria-selected={isSelected}
-                onClick={() => setSelectedCategory(cat.id)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.35rem',
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '999px',
-                  border: isSelected ? '1.5px solid #a855f7' : '1px solid rgba(var(--tint), 0.1)',
-                  background: isSelected ? 'rgba(168, 85, 247, 0.2)' : 'rgba(var(--tint), 0.03)',
-                  color: isSelected ? '#f3e8ff' : 'var(--muted)',
-                  fontSize: '0.78rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  boxShadow: isSelected ? '0 2px 10px rgba(182, 146, 246, 0.25)' : 'none',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                <span>{cat.icon}</span>
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* 3. Main Split-Pane Workspace */}
-      <div className="merchandise-workspace-split" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        {/* Left Controls Sidebar */}
-        <div
-          className="merchandise-controls-sidebar"
-          style={{
-            width: '390px',
-            minWidth: '320px',
-            maxWidth: '420px',
-            boxSizing: 'border-box',
-            borderRight: '1px solid var(--line)',
-            background: 'rgba(var(--panel-rgb), 0.98)',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: '1.25rem 1.15rem',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '1.25rem',
-          }}
-        >
-          {/* Product Picker Grid */}
-          <div>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                color: 'var(--gold-ink)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                marginBottom: '0.5rem',
-              }}
-            >
-              1. Select Stationery &amp; Form Item
-            </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.65rem' }}>
-              {displayedProducts.map((prod) => {
-                const active = prod.id === selectedProductId;
-                const lowestRetailPrice = prod.pricingTiers[prod.pricingTiers.length - 1]?.unitPrice ?? prod.basePrice;
-                return (
-                  <button
-                    key={prod.id}
-                    type="button"
-                    onClick={() => handleSelectProduct(prod)}
-                    style={{
-                      textAlign: 'left',
-                      padding: '0.75rem 0.85rem',
-                      borderRadius: '10px',
-                      border: active ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.08)',
-                      background: active ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.2), rgba(255, 122, 33, 0.05))' : 'rgba(var(--tint), 0.035)',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      boxShadow: active ? '0 4px 14px rgba(255, 122, 33, 0.25)' : 'none',
-                    }}
-                  >
-                    <div>
-                      <strong
-                        style={{
-                          fontSize: '0.84rem',
-                          color: active ? '#ffffff' : 'var(--text)',
-                          fontWeight: 800,
-                          lineHeight: 1.25,
-                          display: 'block',
-                        }}
-                      >
-                        {prod.id === 'biz_cards' ? '📇 Business Cards' : '📝 Job Order Notepads'}
-                      </strong>
-                      <span style={{ fontSize: '0.68rem', color: active ? '#38bdf8' : 'var(--muted)', display: 'block', marginTop: '3px', fontWeight: 600 }}>
-                        {prod.id === 'biz_cards' ? '16pt Velvet & Spot-UV' : '2-Part NCR Carbonless'}
-                      </span>
-                    </div>
-                    <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 800, display: 'block', marginTop: '6px' }}>
-                      From ${lowestRetailPrice < 1 ? lowestRetailPrice.toFixed(2) : lowestRetailPrice.toFixed(2)}/ea
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Brand Logo Source Picker */}
+        <div className="merchandise-workspace-split" style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+          {/* Left: Photorealistic Live Preview Canvas */}
           <div
             style={{
-              padding: '0.9rem',
-              borderRadius: '12px',
-              background: 'rgba(var(--tint), 0.025)',
-              border: '1px solid rgba(var(--tint), 0.08)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  color: 'var(--gold-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  margin: 0,
-                }}
-              >
-                2. Brand Mark / Artwork Source
-              </label>
-              <span style={{ fontSize: '0.7rem', color: '#2563eb', fontWeight: 700 }}>
-                {logoSource === 'upload'
-                  ? 'Custom File'
-                  : logoSource === 'ai'
-                  ? '✦ AI Generated'
-                  : logoSource === 'site'
-                  ? 'Website Logo'
-                  : 'Vector Crest'}
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.4rem', marginBottom: '0.65rem', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => fileInputRef.current?.click()}
-                aria-pressed={logoSource === 'upload'}
-                aria-label="Upload custom logo file"
-                className="focus-ring"
-                style={{
-                  flex: '1 1 70px',
-                  padding: '0.45rem',
-                  borderRadius: '7px',
-                  border: logoSource === 'upload' ? '1.5px solid #10b981' : '1px solid rgba(var(--tint), 0.1)',
-                  background: logoSource === 'upload' ? 'rgba(16, 185, 129, 0.22)' : 'rgba(var(--tint), 0.04)',
-                  color: logoSource === 'upload' ? '#a7f3d0' : 'var(--muted)',
-                  fontSize: '0.74rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '0.25rem',
-                }}
-              >
-                <Upload size={13} />
-                <span>Upload</span>
-              </button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleLogoFileUpload(file);
-                }}
-              />
-
-              {initialData.aiLogos.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setLogoSource('ai')}
-                  aria-pressed={logoSource === 'ai'}
-                  aria-label="Use AI concept brand mark"
-                  className="focus-ring"
-                  style={{
-                    flex: '1 1 70px',
-                    padding: '0.45rem',
-                    borderRadius: '7px',
-                    border: logoSource === 'ai' ? '1.5px solid #a855f7' : '1px solid rgba(var(--tint), 0.1)',
-                    background: logoSource === 'ai' ? 'rgba(124, 58, 237, 0.22)' : 'rgba(var(--tint), 0.04)',
-                    color: logoSource === 'ai' ? '#f3e8ff' : 'var(--muted)',
-                    fontSize: '0.74rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.25rem',
-                  }}
-                >
-                  <Sparkles size={13} />
-                  <span>AI ({initialData.aiLogos.length})</span>
-                </button>
-              )}
-              {initialData.currentLogoUrl && (
-                <button
-                  type="button"
-                  onClick={() => setLogoSource('site')}
-                  aria-pressed={logoSource === 'site'}
-                  aria-label="Use website uploaded logo"
-                  className="focus-ring"
-                  style={{
-                    flex: '1 1 70px',
-                    padding: '0.45rem',
-                    borderRadius: '7px',
-                    border: logoSource === 'site' ? '1.5px solid #3b82f6' : '1px solid rgba(var(--tint), 0.1)',
-                    background: logoSource === 'site' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(var(--tint), 0.04)',
-                    color: logoSource === 'site' ? '#bfdbfe' : 'var(--muted)',
-                    fontSize: '0.74rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  Site Logo
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setLogoSource('vector')}
-                aria-pressed={logoSource === 'vector'}
-                aria-label="Use generated vector mark"
-                className="focus-ring"
-                style={{
-                  flex: '1 1 70px',
-                  padding: '0.45rem',
-                  borderRadius: '7px',
-                  border: logoSource === 'vector' ? '1.5px solid var(--accent)' : '1px solid rgba(var(--tint), 0.14)',
-                  background: logoSource === 'vector' ? 'rgba(255, 122, 33, 0.18)' : 'rgba(var(--tint), 0.04)',
-                  color: logoSource === 'vector' ? '#ffffff' : 'var(--muted)',
-                  fontSize: '0.74rem',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                Vector Crest
-              </button>
-            </div>
-
-            {/* Custom Uploaded Logo Preview */}
-            {logoSource === 'upload' && customUploadUrl && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.6rem',
-                  padding: '0.45rem 0.65rem',
-                  borderRadius: '8px',
-                  background: 'rgba(var(--tint), 0.05)',
-                  border: '1px solid rgba(var(--tint), 0.12)',
-                  marginBottom: '0.5rem',
-                }}
-              >
-                <img
-                  src={customUploadUrl}
-                  alt="Custom uploaded artwork preview"
-                  style={{ width: '40px', height: '30px', objectFit: 'contain' }}
-                />
-                <span style={{ fontSize: '0.74rem', color: 'var(--text)', flex: 1, fontWeight: 700 }}>
-                  Custom logo loaded
-                </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setCustomUploadUrl(null);
-                    setLogoSource('vector');
-                  }}
-                  style={{
-                    background: 'transparent',
-                    border: 'none',
-                    color: '#ef4444',
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Remove
-                </button>
-              </div>
-            )}
-
-            {/* AI Logos Selector Carousel */}
-            {logoSource === 'ai' && initialData.aiLogos.length > 0 && (
-              <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '4px', minWidth: 0, maxWidth: '100%' }}>
-                {initialData.aiLogos.map((lg, idx) => (
-                  <button
-                    key={lg.id}
-                    type="button"
-                    onClick={() => setSelectedAiLogoId(lg.id)}
-                    style={{
-                      position: 'relative',
-                      width: '64px',
-                      height: '52px',
-                      borderRadius: '8px',
-                      border: selectedAiLogoId === lg.id ? '2px solid #a855f7' : '1px solid rgba(var(--tint), 0.12)',
-                      background: '#101520',
-                      cursor: 'pointer',
-                      padding: '4px',
-                      flexShrink: 0,
-                    }}
-                  >
-                    <Image src={lg.url} alt={`AI concept ${idx + 1}`} fill sizes="64px" style={{ objectFit: 'contain', padding: '2px' }} />
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Trade Style Presets */}
-          <div style={{ marginBottom: '0.85rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
-              <label
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  color: 'var(--gold-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  margin: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                }}
-              >
-                <span>⚡</span> 1-Click Pro Trade Style Packs
-              </label>
-              <span style={{ fontSize: '0.66rem', color: 'var(--muted)', fontWeight: 600 }}>Matching design themes</span>
-            </div>
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-                gap: '0.35rem',
-              }}
-            >
-              {TRADE_PRESETS.map((preset) => (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => handleApplyTradePreset(preset)}
-                  className="focus-ring"
-                  title={`${preset.name} (${preset.trade}): Applies matching colors, tagline, template & finish`}
-                  style={{
-                    padding: '6px 6px',
-                    borderRadius: '7px',
-                    border: '1px solid rgba(var(--tint), 0.14)',
-                    background: 'rgba(var(--tint), 0.04)',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    alignItems: 'center',
-                    gap: '2px',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  <span style={{ fontSize: '1rem' }}>{preset.badge}</span>
-                  <strong style={{ fontSize: '0.68rem', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                    {preset.name}
-                  </strong>
-                  <div style={{ display: 'flex', gap: '3px', marginTop: '1px' }}>
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: preset.accentColor }} />
-                    <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: preset.secondaryColor }} />
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Business Details Customizer */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  color: 'var(--gold-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  margin: 0,
-                }}
-              >
-                3. Imprint Text &amp; Identity
-              </label>
-              <button
-                type="button"
-                onClick={handleResetToDefaults}
-                className="focus-ring"
-                title="Reset to brand profile defaults"
-                style={{
-                  background: 'transparent',
-                  border: 'none',
-                  color: 'var(--muted)',
-                  fontSize: '0.68rem',
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  textDecoration: 'underline',
-                  padding: 0,
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.2rem',
-                }}
-              >
-                <RotateCcw size={12} />
-                <span>Reset to Defaults</span>
-              </button>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-              {/* Overflow Guard Alert */}
-              {(businessName.length > 30 || tagline.length > 40) && (
-                <div
-                  style={{
-                    padding: '0.45rem 0.75rem',
-                    borderRadius: '7px',
-                    background: 'rgba(234, 179, 8, 0.14)',
-                    border: '1px solid rgba(234, 179, 8, 0.35)',
-                    color: '#fef08a',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.45rem',
-                    minWidth: 0,
-                  }}
-                >
-                  <AlertTriangle size={14} style={{ flexShrink: 0 }} />
-                  <span style={{ minWidth: 0, wordBreak: 'break-word' }}>
-                    Print overflow guard: {businessName.length > 30 ? 'Company name' : 'Tagline'} is long and will auto-shrink or wrap on compact print items.
-                  </span>
-                </div>
-              )}
-
-              {/* Company Name */}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <label htmlFor="merch-business-name" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
-                    Company Name:
-                  </label>
-                  <span style={{ fontSize: '0.65rem', color: businessName.length > 30 ? 'var(--warn, #eab308)' : 'var(--muted)', fontWeight: 700 }}>
-                    {businessName.length}/40
-                  </span>
-                </div>
-                <input
-                  id="merch-business-name"
-                  type="text"
-                  maxLength={40}
-                  value={businessName}
-                  onChange={(e) => setBusinessName(e.target.value)}
-                  style={{
-                    width: '100%',
-                    minWidth: 0,
-                    padding: '0.45rem 0.65rem',
-                    borderRadius: '7px',
-                    border: '1px solid rgba(var(--tint), 0.15)',
-                    background: 'rgba(var(--tint), 0.055)',
-                    color: 'var(--text)',
-                    fontSize: '0.84rem',
-                    fontWeight: 600,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              {/* Tagline */}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <label htmlFor="merch-tagline" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
-                    Tagline / Specialty:
-                  </label>
-                  <span style={{ fontSize: '0.65rem', color: tagline.length > 40 ? 'var(--warn, #eab308)' : 'var(--muted)', fontWeight: 700 }}>
-                    {tagline.length}/50
-                  </span>
-                </div>
-                <input
-                  id="merch-tagline"
-                  type="text"
-                  maxLength={50}
-                  value={tagline}
-                  onChange={(e) => setTagline(e.target.value)}
-                  style={{
-                    width: '100%',
-                    minWidth: 0,
-                    padding: '0.45rem 0.65rem',
-                    borderRadius: '7px',
-                    border: '1px solid rgba(var(--tint), 0.15)',
-                    background: 'rgba(var(--tint), 0.055)',
-                    color: 'var(--text)',
-                    fontSize: '0.84rem',
-                    fontWeight: 600,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              {/* Phone & Website */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.45rem' }}>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                    <label htmlFor="merch-phone" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
-                      Phone #:
-                    </label>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 700 }}>{phone.length}/20</span>
-                  </div>
-                  <input
-                    id="merch-phone"
-                    type="text"
-                    maxLength={20}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    style={{
-                      width: '100%',
-                      minWidth: 0,
-                      padding: '0.45rem 0.65rem',
-                      borderRadius: '7px',
-                      border: '1px solid rgba(var(--tint), 0.15)',
-                      background: 'rgba(var(--tint), 0.055)',
-                      color: 'var(--text)',
-                      fontSize: '0.84rem',
-                      fontWeight: 600,
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                    <label htmlFor="merch-website" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
-                      Website URL:
-                    </label>
-                    <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 700 }}>{website.length}/60</span>
-                  </div>
-                  <input
-                    id="merch-website"
-                    type="text"
-                    maxLength={60}
-                    value={website}
-                    onChange={(e) => setWebsite(e.target.value)}
-                    placeholder="yourcompany.com"
-                    style={{
-                      width: '100%',
-                      minWidth: 0,
-                      padding: '0.45rem 0.65rem',
-                      borderRadius: '7px',
-                      border: '1px solid rgba(var(--tint), 0.15)',
-                      background: 'rgba(var(--tint), 0.055)',
-                      color: 'var(--text)',
-                      fontSize: '0.84rem',
-                      fontWeight: 600,
-                      boxSizing: 'border-box',
-                      outline: 'none',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* License Line */}
-              <div style={{ minWidth: 0 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
-                  <label htmlFor="merch-license" style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700 }}>
-                    License Line:
-                  </label>
-                  <span style={{ fontSize: '0.65rem', color: 'var(--muted)', fontWeight: 700 }}>{license.length}/30</span>
-                </div>
-                <input
-                  id="merch-license"
-                  type="text"
-                  maxLength={30}
-                  value={license}
-                  onChange={(e) => setLicense(e.target.value)}
-                  style={{
-                    width: '100%',
-                    minWidth: 0,
-                    padding: '0.45rem 0.65rem',
-                    borderRadius: '7px',
-                    border: '1px solid rgba(var(--tint), 0.15)',
-                    background: 'rgba(var(--tint), 0.055)',
-                    color: 'var(--text)',
-                    fontSize: '0.84rem',
-                    fontWeight: 600,
-                    boxSizing: 'border-box',
-                    outline: 'none',
-                  }}
-                />
-              </div>
-
-              {/* Brand Accent & Secondary Color Controls */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '0.45rem', marginTop: '0.15rem' }}>
-                <div style={{ minWidth: 0 }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>
-                    Accent Color:
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-                    <input
-                      type="color"
-                      value={accentColor.startsWith('#') ? accentColor : '#2563eb'}
-                      onChange={(e) => setAccentColor(e.target.value)}
-                      aria-label="Accent brand color picker"
-                      className="focus-ring"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        flexShrink: 0,
-                        padding: 0,
-                        border: '1px solid rgba(var(--tint), 0.2)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        background: 'transparent',
-                      }}
-                    />
-                    <input
-                      type="text"
-                      maxLength={10}
-                      value={accentColor}
-                      onChange={(e) => setAccentColor(e.target.value)}
-                      aria-label="Accent brand color hex code"
-                      style={{
-                        flex: 1,
-                        width: 0,
-                        minWidth: 0,
-                        padding: '0.42rem 0.5rem',
-                        borderRadius: '7px',
-                        border: '1px solid rgba(var(--tint), 0.14)',
-                        background: 'rgba(var(--tint), 0.055)',
-                        color: 'var(--text)',
-                        fontSize: '0.8rem',
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                </div>
-
-                <div style={{ minWidth: 0 }}>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>
-                    Secondary Color:
-                  </span>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 0 }}>
-                    <input
-                      type="color"
-                      value={secondaryColor.startsWith('#') ? secondaryColor : '#f59e0b'}
-                      onChange={(e) => setSecondaryColor(e.target.value)}
-                      aria-label="Secondary brand color picker"
-                      className="focus-ring"
-                      style={{
-                        width: '28px',
-                        height: '28px',
-                        flexShrink: 0,
-                        padding: 0,
-                        border: '1px solid rgba(var(--tint), 0.2)',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        background: 'transparent',
-                      }}
-                    />
-                    <input
-                      type="text"
-                      maxLength={10}
-                      value={secondaryColor}
-                      onChange={(e) => setSecondaryColor(e.target.value)}
-                      aria-label="Secondary brand color hex code"
-                      style={{
-                        flex: 1,
-                        width: 0,
-                        minWidth: 0,
-                        padding: '0.42rem 0.5rem',
-                        borderRadius: '7px',
-                        border: '1px solid rgba(var(--tint), 0.14)',
-                        background: 'rgba(var(--tint), 0.055)',
-                        color: 'var(--text)',
-                        fontSize: '0.8rem',
-                        fontFamily: 'monospace',
-                        fontWeight: 700,
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Dynamic Contractor Booking QR Code Switch */}
-              {(currentProduct.id === 'biz_cards' || currentProduct.id === 'yard_signs' || currentProduct.id === 'notepads') && (
-                <div
-                  style={{
-                    marginTop: '0.35rem',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.6rem 0.75rem',
-                    borderRadius: '8px',
-                    background: 'rgba(59, 130, 246, 0.1)',
-                    border: '1px solid rgba(59, 130, 246, 0.25)',
-                  }}
-                >
-                  <div>
-                    <strong style={{ display: 'block', fontSize: '0.76rem', color: '#93c5fd' }}>
-                      Dynamic Booking QR Code
-                    </strong>
-                    <span style={{ fontSize: '0.68rem', color: '#60a5fa' }}>
-                      Sends homeowners straight to your booking page
-                    </span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={includeQrCode}
-                    onChange={(e) => setIncludeQrCode(e.target.checked)}
-                    aria-label="Toggle dynamic booking QR code"
-                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                  />
-                </div>
-              )}
-
-              {/* 8 Curated Business Card Templates Grid */}
-              {currentProduct.id === 'biz_cards' && (
-                <div style={{ marginTop: '0.85rem' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      marginBottom: '0.45rem',
-                    }}
-                  >
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: '0.72rem',
-                        fontWeight: 800,
-                        color: 'var(--gold-ink)',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                      }}
-                    >
-                      Card Design Style
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
-                        {getCardTemplateById(selectedCardTemplate).name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGalleryTab('biz_cards');
-                          setIsTemplateGalleryOpen(true);
-                        }}
-                        className="focus-ring"
-                        title="Compare all 8 templates in full detail"
-                        style={{
-                          background: 'rgba(255, 122, 33, 0.15)',
-                          border: '1px solid var(--accent)',
-                          color: '#ff9d5c',
-                          borderRadius: '6px',
-                          padding: '2px 7px',
-                          fontSize: '0.66rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                        }}
-                      >
-                        <span>🖼️</span> Compare
-                      </button>
-                    </div>
-                  </div>
-                  <div
-                    role="radiogroup"
-                    aria-label="Business card templates"
-                    style={{
-                      display: 'grid',
-                      gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-                      gap: '0.45rem',
-                    }}
-                  >
-                    {BUSINESS_CARD_TEMPLATES.map((tmpl) => {
-                      const isSelected = selectedCardTemplate === tmpl.id;
-                      return (
-                        <button
-                          key={tmpl.id}
-                          type="button"
-                          role="radio"
-                          aria-checked={isSelected}
-                          onClick={() => setSelectedCardTemplate(tmpl.id)}
-                          className="focus-ring"
-                          style={{
-                            padding: '0.55rem 0.6rem',
-                            borderRadius: '8px',
-                            border: isSelected
-                              ? '1.5px solid var(--accent, #ff7a21)'
-                              : '1px solid rgba(var(--tint), 0.14)',
-                            background: isSelected
-                              ? 'rgba(255, 122, 33, 0.12)'
-                              : 'rgba(var(--tint), 0.035)',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px',
-                            transition: 'all 0.15s ease',
-                          }}
-                        >
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                            <strong
-                              style={{
-                                fontSize: '0.72rem',
-                                color: isSelected ? 'var(--accent)' : 'var(--text)',
-                                whiteSpace: 'nowrap',
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                              }}
-                            >
-                              {tmpl.name}
-                            </strong>
-                            {isSelected && <span style={{ fontSize: '0.68rem', color: 'var(--accent)', flexShrink: 0 }}>●</span>}
-                          </div>
-                          <span
-                            style={{
-                              fontSize: '0.62rem',
-                              color: 'var(--muted)',
-                              lineHeight: 1.25,
-                              whiteSpace: 'nowrap',
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                            }}
-                          >
-                            {tmpl.subtitle}
-                          </span>
-                          <span
-                            style={{
-                              fontSize: '0.56rem',
-                              color: '#60a5fa',
-                              marginTop: '2px',
-                              fontWeight: 700,
-                              textTransform: 'uppercase',
-                              letterSpacing: '0.04em',
-                            }}
-                          >
-                            {tmpl.tag}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-
-                  {/* Tactile Card Finish Selector in Sidebar */}
-                  <div style={{ marginTop: '0.65rem' }}>
-                    <label
-                      style={{
-                        display: 'block',
-                        fontSize: '0.7rem',
-                        fontWeight: 800,
-                        color: '#38bdf8',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.08em',
-                        marginBottom: '0.35rem',
-                      }}
-                    >
-                      Tactile Finish: <span style={{ color: '#ffffff' }}>{getCardFinishById(selectedCardFinish).name}</span>
-                    </label>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.35rem' }}>
-                      {CARD_FINISHES.map((fin) => {
-                        const isFinSelected = selectedCardFinish === fin.id;
-                        return (
-                          <button
-                            key={fin.id}
-                            type="button"
-                            onClick={() => setSelectedCardFinish(fin.id)}
-                            className="focus-ring"
-                            style={{
-                              padding: '5px 8px',
-                              borderRadius: '7px',
-                              border: isFinSelected ? '1.5px solid #38bdf8' : '1px solid rgba(var(--tint), 0.12)',
-                              background: isFinSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(var(--tint), 0.03)',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'space-between',
-                              textAlign: 'left',
-                              transition: 'all 0.15s ease',
-                            }}
-                          >
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                              <span>{fin.badge}</span>
-                              <div>
-                                <strong style={{ fontSize: '0.72rem', color: isFinSelected ? '#38bdf8' : 'var(--text)', display: 'block' }}>
-                                  {fin.name}
-                                </strong>
-                                <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{fin.description}</span>
-                              </div>
-                            </div>
-                            {isFinSelected && <span style={{ fontSize: '0.7rem', color: '#38bdf8' }}>●</span>}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Yard Sign Templates */}
-              {currentProduct.id === 'yard_signs' && (
-                <div style={{ marginTop: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.45rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      Yard Sign Layout Style
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
-                        {getYardSignTemplateById(selectedYardSignTemplate).name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGalleryTab('yard_signs');
-                          setIsTemplateGalleryOpen(true);
-                        }}
-                        className="focus-ring"
-                        title="Compare all yard sign templates in full detail"
-                        style={{
-                          background: 'rgba(255, 122, 33, 0.15)',
-                          border: '1px solid var(--accent)',
-                          color: '#ff9d5c',
-                          borderRadius: '6px',
-                          padding: '2px 7px',
-                          fontSize: '0.66rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                        }}
-                      >
-                        <span>🖼️</span> Compare
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.45rem' }}>
-                    {YARD_SIGN_TEMPLATES.map((tmpl) => {
-                      const isSelected = selectedYardSignTemplate === tmpl.id;
-                      return (
-                        <button
-                          key={tmpl.id}
-                          type="button"
-                          onClick={() => setSelectedYardSignTemplate(tmpl.id)}
-                          className="focus-ring"
-                          style={{
-                            padding: '0.55rem 0.6rem',
-                            borderRadius: '8px',
-                            border: isSelected ? '1.5px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.14)',
-                            background: isSelected ? 'rgba(255, 122, 33, 0.12)' : 'rgba(var(--tint), 0.035)',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '2px',
-                          }}
-                        >
-                          <strong style={{ fontSize: '0.72rem', color: isSelected ? 'var(--accent)' : 'var(--text)' }}>
-                            {tmpl.name}
-                          </strong>
-                          <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{tmpl.subtitle}</span>
-                          <span style={{ fontSize: '0.56rem', color: '#60a5fa', fontWeight: 700 }}>{tmpl.tag}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Notepad Templates */}
-              {currentProduct.id === 'notepads' && (
-                <div style={{ marginTop: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.45rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      Carbonless Scope Template
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
-                        {getNotepadTemplateById(selectedNotepadTemplate).name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGalleryTab('notepads');
-                          setIsTemplateGalleryOpen(true);
-                        }}
-                        className="focus-ring"
-                        title="Compare all notepad templates in full detail"
-                        style={{
-                          background: 'rgba(255, 122, 33, 0.15)',
-                          border: '1px solid var(--accent)',
-                          color: '#ff9d5c',
-                          borderRadius: '6px',
-                          padding: '2px 7px',
-                          fontSize: '0.66rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                        }}
-                      >
-                        <span>🖼️</span> Compare
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.45rem' }}>
-                    {NOTEPAD_TEMPLATES.map((tmpl) => {
-                      const isSelected = selectedNotepadTemplate === tmpl.id;
-                      return (
-                        <button
-                          key={tmpl.id}
-                          type="button"
-                          onClick={() => setSelectedNotepadTemplate(tmpl.id)}
-                          className="focus-ring"
-                          style={{
-                            padding: '0.55rem 0.75rem',
-                            borderRadius: '8px',
-                            border: isSelected ? '1.5px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.14)',
-                            background: isSelected ? 'rgba(255, 122, 33, 0.12)' : 'rgba(var(--tint), 0.035)',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                          }}
-                        >
-                          <div>
-                            <strong style={{ fontSize: '0.74rem', color: isSelected ? 'var(--accent)' : 'var(--text)', display: 'block' }}>
-                              {tmpl.name}
-                            </strong>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)' }}>{tmpl.subtitle} • {tmpl.tradeFit}</span>
-                          </div>
-                          {isSelected && <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>●</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Decal Templates */}
-              {currentProduct.id === 'decals' && (
-                <div style={{ marginTop: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: '0.45rem' }}>
-                    <label style={{ display: 'block', fontSize: '0.72rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                      Decal &amp; Magnet Application
-                    </label>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '0.68rem', color: 'var(--accent)', fontWeight: 700 }}>
-                        {getDecalTemplateById(selectedDecalTemplate).name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setGalleryTab('decals');
-                          setIsTemplateGalleryOpen(true);
-                        }}
-                        className="focus-ring"
-                        title="Compare all decal templates in full detail"
-                        style={{
-                          background: 'rgba(255, 122, 33, 0.15)',
-                          border: '1px solid var(--accent)',
-                          color: '#ff9d5c',
-                          borderRadius: '6px',
-                          padding: '2px 7px',
-                          fontSize: '0.66rem',
-                          fontWeight: 800,
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '3px',
-                        }}
-                      >
-                        <span>🖼️</span> Compare
-                      </button>
-                    </div>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(1, 1fr)', gap: '0.45rem' }}>
-                    {DECAL_TEMPLATES.map((tmpl) => {
-                      const isSelected = selectedDecalTemplate === tmpl.id;
-                      return (
-                        <button
-                          key={tmpl.id}
-                          type="button"
-                          onClick={() => setSelectedDecalTemplate(tmpl.id)}
-                          className="focus-ring"
-                          style={{
-                            padding: '0.55rem 0.75rem',
-                            borderRadius: '8px',
-                            border: isSelected ? '1.5px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.14)',
-                            background: isSelected ? 'rgba(255, 122, 33, 0.12)' : 'rgba(var(--tint), 0.035)',
-                            textAlign: 'left',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                          }}
-                        >
-                          <div>
-                            <strong style={{ fontSize: '0.74rem', color: isSelected ? 'var(--accent)' : 'var(--text)', display: 'block' }}>
-                              {tmpl.name}
-                            </strong>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)' }}>{tmpl.subtitle} • {tmpl.tradeFit}</span>
-                          </div>
-                          {isSelected && <span style={{ fontSize: '0.7rem', color: 'var(--accent)' }}>●</span>}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Color & Finish Selection */}
-          <div>
-            <label
-              style={{
-                display: 'block',
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                color: 'var(--gold-ink)',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                marginBottom: '0.5rem',
-              }}
-            >
-              4. Item Base Color: <span style={{ color: 'var(--accent)' }}>{activeColor.name}</span>
-            </label>
-            <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
-              {currentProduct.availableColors.map((clr) => {
-                const isSelected = clr.id === selectedColorId;
-                return (
-                  <button
-                    key={clr.id}
-                    type="button"
-                    onClick={() => setSelectedColorId(clr.id)}
-                    aria-label={clr.name}
-                    aria-pressed={isSelected}
-                    title={clr.name}
-                    className="focus-ring"
-                    style={{
-                      width: '36px',
-                      height: '36px',
-                      borderRadius: '50%',
-                      background: clr.hex,
-                      border: isSelected ? '3px solid var(--accent)' : '2px solid rgba(255, 255, 255, 0.2)',
-                      boxShadow: isSelected ? '0 0 0 2px rgba(255, 122, 33, 0.4)' : 'none',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: clr.darkText ? '#0f172a' : '#ffffff',
-                      fontSize: '0.9rem',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {isSelected ? '✓' : ''}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Device Model (Phone Cases only) */}
-          {currentProduct.options?.deviceModels && (
-            <div>
-              <label
-                htmlFor="smartphoneModel"
-                style={{
-                  display: 'block',
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  color: 'var(--gold-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  marginBottom: '0.4rem',
-                }}
-              >
-                Smartphone Model
-              </label>
-              <select
-                id="smartphoneModel"
-                aria-label="Smartphone Model"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                style={{
-                  width: '100%',
-                  padding: '0.5rem 0.65rem',
-                  borderRadius: '7px',
-                  border: '1px solid rgba(var(--tint), 0.14)',
-                  background: 'rgba(var(--tint), 0.06)',
-                  color: 'var(--text)',
-                  fontSize: '0.84rem',
-                  fontWeight: 700,
-                }}
-              >
-                {currentProduct.options.deviceModels.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Apparel Sizing Distribution (Polos & T-Shirts) */}
-          {currentProduct.options?.sizes && (
-            <div
-              style={{
-                padding: '0.8rem',
-                borderRadius: '10px',
-                background: 'rgba(var(--tint), 0.025)',
-                border: '1px solid rgba(var(--tint), 0.08)',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem' }}>
-                <label style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)' }}>Size Quantities</label>
-                <span
-                  style={{
-                    fontSize: '0.7rem',
-                    color:
-                      Object.values(sizeQuantities).reduce((a, b) => a + b, 0) === activeTier.quantity
-                        ? 'var(--good, #16a34a)'
-                        : 'var(--warn, #eab308)',
-                    fontWeight: 700,
-                  }}
-                >
-                  Total: {Object.values(sizeQuantities).reduce((a, b) => a + b, 0)} / {activeTier.quantity} allocated
-                </span>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(currentProduct.options?.sizes?.length || 4, 7)}, minmax(0, 1fr))`, gap: '0.35rem' }}>
-                {(currentProduct.options?.sizes || ['S', 'M', 'L', 'XL', '2XL']).map((sz) => (
-                  <div key={sz} style={{ textAlign: 'center' }}>
-                    <span style={{ fontSize: '0.68rem', fontWeight: 800, color: 'var(--muted)', display: 'block' }}>{sz}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      value={sizeQuantities[sz] ?? 0}
-                      onChange={(e) => {
-                        const val = Math.max(0, parseInt(e.target.value) || 0);
-                        setSizeQuantities((prev) => ({ ...prev, [sz]: val }));
-                      }}
-                      style={{
-                        width: '100%',
-                        textAlign: 'center',
-                        padding: '0.3rem',
-                        borderRadius: '6px',
-                        border: '1px solid var(--line)',
-                        background: 'rgba(var(--tint), 0.08)',
-                        color: 'var(--text)',
-                        fontWeight: 800,
-                        fontSize: '0.8rem',
-                        boxSizing: 'border-box',
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Volume Tiers & Quantity Selector */}
-          <div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <label
-                style={{
-                  fontSize: '0.72rem',
-                  fontWeight: 800,
-                  color: 'var(--gold-ink)',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  margin: 0,
-                }}
-              >
-                5. Quantity &amp; Volume Pricing
-              </label>
-              <span style={{ fontSize: '0.7rem', color: '#16a34a', fontWeight: 800 }}>
-                {activeTier.savingsPercent ? `Save ${activeTier.savingsPercent}%` : 'Direct Wholesale'}
-              </span>
-            </div>
-
-            <div
-              role="radiogroup"
-              aria-label="Quantity and volume pricing tiers"
-              style={{ display: 'flex', flexDirection: 'column', gap: '0.45rem' }}
-            >
-              {currentProduct.pricingTiers.map((tier) => {
-                const isSelected = tier.quantity === selectedTierQty;
-                return (
-                  <button
-                    key={tier.quantity}
-                    type="button"
-                    role="radio"
-                    aria-checked={isSelected}
-                    onClick={() => setSelectedTierQty(tier.quantity)}
-                    aria-label={`${tier.quantity.toLocaleString()} units for $${tier.totalPrice.toFixed(2)}`}
-                    className="focus-ring"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '0.6rem 0.85rem',
-                      borderRadius: '8px',
-                      border: isSelected ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.08)',
-                      background: isSelected ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.18), rgba(255, 122, 33, 0.04))' : 'rgba(var(--tint), 0.035)',
-                      cursor: 'pointer',
-                      textAlign: 'left',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    <div>
-                      <strong style={{ fontSize: '0.84rem', color: isSelected ? '#ffffff' : 'var(--text)' }}>
-                        {tier.quantity.toLocaleString()} units
-                      </strong>
-                      <span style={{ fontSize: '0.72rem', color: 'var(--muted)', marginLeft: '0.45rem' }}>
-                        (${tier.unitPrice.toFixed(2)}/unit)
-                      </span>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
-                      <strong style={{ fontSize: '0.88rem', color: isSelected ? '#ffffff' : 'var(--text)' }}>
-                        ${tier.totalPrice.toFixed(2)}
-                      </strong>
-                      {tier.isPopular && (
-                        <span
-                          style={{
-                            display: 'block',
-                            fontSize: '0.65rem',
-                            fontWeight: 800,
-                            color: '#2563eb',
-                            textTransform: 'uppercase',
-                          }}
-                        >
-                          Most Popular
-                        </span>
-                      )}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Free Shipping Progress Indicator */}
-          <div
-            style={{
-              padding: '0.65rem 0.85rem',
-              borderRadius: '8px',
-              background: amountToFreeShipping === 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-              border: amountToFreeShipping === 0 ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.25)',
+              flex: 1,
+              minWidth: 0,
               display: 'flex',
               flexDirection: 'column',
-              gap: '4px',
+              overflowY: 'auto',
+              padding: '1.75rem',
+              background: 'radial-gradient(ellipse 90% 70% at 50% 30%, #151c2a 0%, #0d121c 65%, #070a10 100%)',
+              backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px)',
+              backgroundSize: '24px 24px',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.74rem', fontWeight: 800 }}>
-              <span style={{ color: amountToFreeShipping === 0 ? '#86efac' : '#93c5fd' }}>
-                {amountToFreeShipping === 0
-                  ? '🎉 FREE Standard Shipping Unlocked!'
-                  : `📦 Add $${amountToFreeShipping.toFixed(2)} more for FREE shipping`}
-              </span>
-              <span style={{ color: 'var(--muted)', fontSize: '0.68rem' }}>${itemSubtotal.toFixed(2)} / $150</span>
-            </div>
-            <div style={{ width: '100%', height: '4px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-              <div
-                style={{
-                  width: `${freeShippingPercent}%`,
-                  height: '100%',
-                  background: amountToFreeShipping === 0 ? '#22c55e' : 'var(--accent)',
-                  borderRadius: '2px',
-                  transition: 'width 0.3s ease',
-                }}
-              />
-            </div>
+            <Product3DMockupStage
+              product={currentProduct}
+              activeColor={activeColor}
+              activeTier={activeTier}
+              viewAngle={viewAngle}
+              setViewAngle={setViewAngle}
+              includeQrCode={includeQrCode}
+              businessName={businessName}
+              tagline={tagline}
+              phone={phone}
+              website={website}
+              license={license}
+              accentColor={accentColor}
+              secondaryColor={secondaryColor}
+              renderBranding={renderMockupBranding}
+              logoSrc={activeLogoSrc}
+              cardTemplateId={selectedCardTemplate}
+              onSelectCardTemplate={setSelectedCardTemplate}
+              cardFinish={selectedCardFinish}
+              onSelectCardFinish={setSelectedCardFinish}
+              notepadTemplateId={selectedNotepadTemplate}
+              onSelectNotepadTemplate={setSelectedNotepadTemplate}
+              onExportReady={(fn) => {
+                canvasProofExportRef.current = fn;
+              }}
+            />
+
+            {/* Compact Craftsmanship & Paper Specs Card */}
+            <ProductTechnicalSpecsSheet
+              product={currentProduct}
+              businessName={businessName}
+              activeColorName={activeColor.name}
+              onDownloadProof={handleDownloadProofSheet}
+            />
           </div>
 
-          {/* Action Buttons */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: 'auto', paddingTop: '0.5rem' }}>
-            <button
-              type="button"
-              onClick={handleOpenCheckout}
-              className="focus-ring"
-              style={{
-                width: '100%',
-                padding: '0.85rem 1rem',
-                borderRadius: '10px',
-                border: 'none',
-                background: 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
-                color: '#ffffff',
-                fontWeight: 900,
-                fontSize: '0.94rem',
-                cursor: 'pointer',
-                boxShadow: '0 6px 20px rgba(255,122,33,0.38)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem',
-              }}
-            >
-              <span>⚡ Review Proof &amp; Checkout</span>
-              <span>&bull;</span>
-              <span>${activeTier.totalPrice.toFixed(2)}</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              className="focus-ring"
-              style={{
-                width: '100%',
-                padding: '0.68rem 1rem',
-                borderRadius: '8px',
-                border: '1.5px solid var(--accent)',
-                background: 'rgba(255, 122, 33, 0.12)',
-                color: 'var(--text)',
-                fontWeight: 800,
-                fontSize: '0.84rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.4rem',
-              }}
-            >
-              <span>🛒 Add to Order &amp; Keep Designing</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleDownloadProofSheet}
-              disabled={isGeneratingProof}
-              className="focus-ring"
-              style={{
-                width: '100%',
-                padding: '0.65rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid rgba(var(--tint), 0.14)',
-                background: 'rgba(var(--tint), 0.05)',
-                color: 'var(--text)',
-                fontWeight: 800,
-                fontSize: '0.82rem',
-                cursor: isGeneratingProof ? 'wait' : 'pointer',
-                opacity: isGeneratingProof ? 0.7 : 1,
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.4rem',
-              }}
-            >
-              <span>{isGeneratingProof ? '⏳ Generating Official Proof...' : '🖼️ Download High-Res Proof (PNG)'}</span>
-            </button>
-          </div>
-        </div>
-
-        {/* Right Interactive Mockup Canvas */}
-        <div
-          style={{
-            flex: 1,
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            overflowY: 'auto',
-            padding: '1.75rem',
-            background:
-              backdropTheme === 'dark'
-                ? 'radial-gradient(ellipse 90% 70% at 50% 30%, #101520 0%, #080b11 65%, #040508 100%)'
-                : backdropTheme === 'jobsite'
-                ? 'radial-gradient(ellipse 90% 70% at 50% 30%, #1f1b17 0%, #120f0d 65%, #070504 100%)'
-                : 'radial-gradient(ellipse 90% 70% at 50% 30%, #151c2a 0%, #0d121c 65%, #070a10 100%)',
-            backgroundImage: 'radial-gradient(circle, rgba(255, 255, 255, 0.05) 1px, transparent 1px)',
-            backgroundSize: '24px 24px',
-          }}
-        >
-          {/* 3D Photorealistic Interactive Mockup Stage */}
-          <Product3DMockupStage
-            product={currentProduct}
-            activeColor={activeColor}
-            activeTier={activeTier}
-            viewAngle={viewAngle}
-            setViewAngle={setViewAngle}
-            backdropTheme={backdropTheme}
-            setBackdropTheme={setBackdropTheme}
-            includeQrCode={includeQrCode}
-            selectedFinish={selectedFinish}
-            selectedModel={selectedModel}
-            businessName={businessName}
-            tagline={tagline}
-            phone={phone}
-            website={website}
-            license={license}
-            accentColor={accentColor}
-            secondaryColor={secondaryColor}
-            renderBranding={renderMockupBranding}
-            logoSrc={activeLogoSrc}
-            cardTemplateId={selectedCardTemplate}
+          {/* Right: Fast 4-Step Configurator Panel */}
+          <StudioConfigurator
+            currentProduct={currentProduct}
+            displayedProducts={MERCHANDISE_PRODUCTS}
+            onSelectProduct={handleSelectProduct}
+            selectedCardTemplate={selectedCardTemplate}
             onSelectCardTemplate={setSelectedCardTemplate}
-            cardFinish={selectedCardFinish}
+            selectedCardFinish={selectedCardFinish}
             onSelectCardFinish={setSelectedCardFinish}
-            yardSignTemplateId={selectedYardSignTemplate}
-            onSelectYardSignTemplate={setSelectedYardSignTemplate}
-            notepadTemplateId={selectedNotepadTemplate}
+            selectedNotepadTemplate={selectedNotepadTemplate}
             onSelectNotepadTemplate={setSelectedNotepadTemplate}
-            decalTemplateId={selectedDecalTemplate}
-            onSelectDecalTemplate={setSelectedDecalTemplate}
-            onExportReady={(fn) => {
-              canvasProofExportRef.current = fn;
-            }}
-          />
-
-          {/* Master Craftsmanship & Deep Technical Specifications */}
-          <ProductTechnicalSpecsSheet
-            product={currentProduct}
+            selectedColorId={selectedColorId}
+            onSelectColorId={setSelectedColorId}
+            activeColor={activeColor}
+            selectedTierQty={selectedTierQty}
+            onSelectTierQty={setSelectedTierQty}
+            activeTier={activeTier}
             businessName={businessName}
-            activeColorName={activeColor.name}
+            setBusinessName={setBusinessName}
+            tagline={tagline}
+            setTagline={setTagline}
+            phone={phone}
+            setPhone={setPhone}
+            website={website}
+            setWebsite={setWebsite}
+            license={license}
+            setLicense={setLicense}
+            accentColor={accentColor}
+            setAccentColor={setAccentColor}
+            secondaryColor={secondaryColor}
+            setSecondaryColor={setSecondaryColor}
+            onApplyTradePreset={handleApplyTradePreset}
+            onResetToDefaults={handleResetToDefaults}
+            logoSource={logoSource}
+            setLogoSource={setLogoSource}
+            customUploadUrl={customUploadUrl}
+            onLogoFileUpload={handleLogoFileUpload}
+            onRemoveCustomLogo={() => {
+              setCustomUploadUrl(null);
+              setLogoSource('vector');
+            }}
+            aiLogos={initialData.aiLogos}
+            selectedAiLogoId={selectedAiLogoId}
+            onSelectAiLogoId={setSelectedAiLogoId}
+            siteLogoUrl={initialData.currentLogoUrl}
+            onOpenCheckout={handleOpenCheckout}
+            onAddToCart={handleAddToCart}
             onDownloadProof={handleDownloadProofSheet}
+            isGeneratingProof={isGeneratingProof}
           />
         </div>
       </div>
 
-      {/* 4. Instant Purchasing Checkout Modal */}
-      {checkoutOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Instant Purchasing Checkout"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.75)',
-            backdropFilter: 'blur(6px)',
-            zIndex: 9999,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.25rem',
-          }}
-          onClick={() => setCheckoutOpen(false)}
-        >
-          <div
-            style={{
-              background: '#0e1219',
-              border: '1px solid rgba(255, 255, 255, 0.14)',
-              color: 'var(--text)',
-              borderRadius: '16px',
-              maxWidth: '680px',
-              width: '100%',
-              maxHeight: '92vh',
-              overflowY: 'auto',
-              boxShadow: '0 25px 70px rgba(0,0,0,0.8)',
-              display: 'flex',
-              flexDirection: 'column',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                padding: '1.25rem 1.5rem',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: '#131924',
-              }}
-            >
-              <div>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', fontWeight: 900, color: '#ffffff' }}>
-                  Instant Purchasing Checkout
-                </h3>
-                <span style={{ fontSize: '0.78rem', color: 'var(--muted)' }}>
-                  Direct print run for {businessName}
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCheckoutOpen(false)}
-                aria-label="Close checkout modal"
-                className="focus-ring"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.1)',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '4px 8px',
-                  color: '#ffffff',
-                  fontWeight: 800,
-                  cursor: 'pointer',
-                }}
-              >
-                ✕
-              </button>
-            </div>
+      {/* Checkout Modal */}
+      <CheckoutModal
+        isOpen={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        checkoutItems={checkoutItems}
+        businessName={businessName}
+        tagline={tagline}
+        phone={phone}
+        website={website}
+        license={license}
+        accentColor={accentColor}
+        secondaryColor={secondaryColor}
+        shippingAddress={shippingAddress}
+        setShippingAddress={setShippingAddress}
+        shippingMethod={shippingMethod}
+        setShippingMethod={setShippingMethod}
+        proofApproved={proofApproved}
+        setProofApproved={setProofApproved}
+        checkoutError={checkoutError}
+        isCheckingOut={isCheckingOut}
+        onExecuteCheckout={handleExecuteCheckout}
+        onUpdateCartItemQuantity={handleUpdateCartItemQuantity}
+        onRemoveFromCart={handleRemoveFromCart}
+        cart={cart}
+      />
 
-            {/* Modal Body */}
-            <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-              {checkoutError && (
-                <div
-                  style={{
-                    padding: '0.75rem',
-                    borderRadius: '8px',
-                    background: 'rgba(239, 68, 68, 0.15)',
-                    border: '1px solid rgba(239, 68, 68, 0.35)',
-                    color: '#fca5a5',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  {checkoutError}
-                </div>
-              )}
+      {/* Orders Drawer */}
+      <OrdersDrawer
+        isOpen={ordersDrawerOpen}
+        onClose={() => setOrdersDrawerOpen(false)}
+        orders={orders}
+        onReorder={handleReorder}
+        isReordering={isReordering}
+      />
 
-              {/* Free Shipping Progress Banner in Checkout */}
-              <div
-                style={{
-                  padding: '0.65rem 0.85rem',
-                  borderRadius: '8px',
-                  background: amountToFreeShipping === 0 ? 'rgba(34, 197, 94, 0.12)' : 'rgba(59, 130, 246, 0.12)',
-                  border: amountToFreeShipping === 0 ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.25)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '4px',
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.78rem', fontWeight: 800 }}>
-                  <span style={{ color: amountToFreeShipping === 0 ? '#86efac' : '#93c5fd' }}>
-                    {amountToFreeShipping === 0
-                      ? '🎉 Free Standard Shipping Unlocked ($12.00 savings)'
-                      : `📦 Add $${amountToFreeShipping.toFixed(2)} more for FREE shipping`}
-                  </span>
-                  <span style={{ color: 'var(--muted)', fontSize: '0.72rem' }}>
-                    ${itemSubtotal.toFixed(2)} / $150
-                  </span>
-                </div>
-                <div style={{ width: '100%', height: '4px', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '2px', overflow: 'hidden' }}>
-                  <div
-                    style={{
-                      width: `${freeShippingPercent}%`,
-                      height: '100%',
-                      background: amountToFreeShipping === 0 ? '#22c55e' : 'var(--accent)',
-                      borderRadius: '2px',
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Order Items Summary */}
-              <div
-                style={{
-                  borderRadius: '10px',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  overflow: 'hidden',
-                }}
-              >
-                <div
-                  style={{
-                    padding: '0.65rem 1rem',
-                    background: 'rgba(255, 255, 255, 0.05)',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                  }}
-                >
-                  <span style={{ fontSize: '0.78rem', fontWeight: 800, textTransform: 'uppercase', color: 'var(--muted)', letterSpacing: '0.05em' }}>
-                    Order Items ({checkoutItems.reduce((acc, it) => acc + it.quantity, 0)} units total)
-                  </span>
-                  <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--accent)' }}>
-                    {checkoutItems.length} {checkoutItems.length === 1 ? 'line item' : 'line items'}
-                  </span>
-                </div>
-
-                <div style={{ display: 'flex', flexDirection: 'column' }}>
-                  {checkoutItems.map((item, idx) => (
-                    <div
-                      key={`${item.productId}-${idx}`}
-                      style={{
-                        padding: '0.85rem 1rem',
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                        gap: '0.75rem',
-                        borderBottom: idx < checkoutItems.length - 1 ? '1px solid rgba(255, 255, 255, 0.06)' : 'none',
-                      }}
-                    >
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <strong style={{ fontSize: '0.92rem', color: 'var(--text)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                            {item.productName}
-                          </strong>
-                          <span
-                            style={{
-                              fontSize: '0.72rem',
-                              padding: '1px 6px',
-                              borderRadius: '4px',
-                              background: 'rgba(var(--tint), 0.1)',
-                              color: 'var(--muted)',
-                              fontWeight: 700,
-                            }}
-                          >
-                            ×{item.quantity}
-                          </span>
-                        </div>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--muted)', display: 'block', marginTop: '2px' }}>
-                          Color: {item.colorName}
-                          {item.customizationDetails?.finish ? ` • Finish: ${item.customizationDetails.finish}` : ''}
-                          {item.customizationDetails?.deviceModel ? ` • Model: ${item.customizationDetails.deviceModel}` : ''}
-                          {item.customizationDetails?.sizeBreakdown ? ` • Sizes: ${Object.entries(item.customizationDetails.sizeBreakdown).map(([s, q]) => `${s}:${q}`).join(', ')}` : ''}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                        <strong style={{ fontSize: '1rem', color: 'var(--text)', whiteSpace: 'nowrap' }}>
-                          ${item.totalPrice.toFixed(2)}
-                        </strong>
-                        {cart.length > 0 && (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateCartItemQuantity(idx, -1)}
-                              aria-label="Decrease quantity"
-                              style={{
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '4px',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                background: 'rgba(255, 255, 255, 0.08)',
-                                color: '#ffffff',
-                                fontSize: '0.8rem',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              -
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleUpdateCartItemQuantity(idx, 1)}
-                              aria-label="Increase quantity"
-                              style={{
-                                width: '24px',
-                                height: '24px',
-                                borderRadius: '4px',
-                                border: '1px solid rgba(255, 255, 255, 0.15)',
-                                background: 'rgba(255, 255, 255, 0.08)',
-                                color: '#ffffff',
-                                fontSize: '0.8rem',
-                                fontWeight: 800,
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center',
-                              }}
-                            >
-                              +
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleRemoveFromCart(idx)}
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.12)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                color: '#ef4444',
-                                borderRadius: '5px',
-                                padding: '3px 7px',
-                                fontSize: '0.72rem',
-                                cursor: 'pointer',
-                                fontWeight: 700,
-                                marginLeft: '0.2rem',
-                              }}
-                              title="Remove from order"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Shipping Address Inputs */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Shipping &amp; Delivery Address
-                </label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <div>
-                      <label htmlFor="merch-ship-fullname" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        Recipient Name:
-                      </label>
-                      <input
-                        id="merch-ship-fullname"
-                        type="text"
-                        placeholder="Recipient Full Name"
-                        value={shippingAddress.fullName}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, fullName: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="merch-ship-company" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        Company Name (Optional):
-                      </label>
-                      <input
-                        id="merch-ship-company"
-                        type="text"
-                        placeholder="Company Name"
-                        value={shippingAddress.companyName || ''}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, companyName: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label htmlFor="merch-ship-street" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                      Street Address:
-                    </label>
-                    <input
-                      id="merch-ship-street"
-                      type="text"
-                      placeholder="Street Address (e.g. 100 Main St)"
-                      value={shippingAddress.streetAddress}
-                      onChange={(e) => setShippingAddress({ ...shippingAddress, streetAddress: e.target.value })}
-                      style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                    />
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.5rem' }}>
-                    <div>
-                      <label htmlFor="merch-ship-city" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        City:
-                      </label>
-                      <input
-                        id="merch-ship-city"
-                        type="text"
-                        placeholder="City"
-                        value={shippingAddress.city}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, city: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="merch-ship-state" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        State:
-                      </label>
-                      <input
-                        id="merch-ship-state"
-                        type="text"
-                        placeholder="State (e.g. CO)"
-                        value={shippingAddress.state}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, state: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="merch-ship-zip" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        ZIP Code:
-                      </label>
-                      <input
-                        id="merch-ship-zip"
-                        type="text"
-                        placeholder="ZIP Code"
-                        value={shippingAddress.postalCode}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, postalCode: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                  </div>
-
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                    <div>
-                      <label htmlFor="merch-ship-phone" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        Delivery Phone #:
-                      </label>
-                      <input
-                        id="merch-ship-phone"
-                        type="tel"
-                        placeholder="Phone #"
-                        value={shippingAddress.phone}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, phone: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                    <div>
-                      <label htmlFor="merch-ship-email" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                        Order Receipt Email:
-                      </label>
-                      <input
-                        id="merch-ship-email"
-                        type="email"
-                        placeholder="Receipt Email"
-                        value={shippingAddress.email}
-                        onChange={(e) => setShippingAddress({ ...shippingAddress, email: e.target.value })}
-                        style={{ width: '100%', padding: '0.55rem', borderRadius: '7px', border: '1px solid var(--line, rgba(var(--tint), 0.14))', background: 'var(--input-bg, rgba(var(--tint), 0.05))', color: 'var(--text)', fontSize: '0.84rem', outline: 'none', boxSizing: 'border-box' }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Shipping Speed Radio */}
-              <div>
-                <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 800, color: 'var(--muted)', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-                  Delivery Speed
-                </label>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => setShippingMethod('standard')}
-                    style={{
-                      padding: '0.65rem',
-                      borderRadius: '8px',
-                      border: shippingMethod === 'standard' ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.12)',
-                      background: shippingMethod === 'standard' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(var(--tint), 0.04)',
-                      color: 'var(--text)',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <strong style={{ fontSize: '0.82rem', display: 'block' }}>Standard Tracked Ground</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>
-                      {itemSubtotal >= 150 ? 'FREE (Orders $150+)' : '$12.00 • 3–5 days'}
-                    </span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setShippingMethod('rush')}
-                    style={{
-                      padding: '0.65rem',
-                      borderRadius: '8px',
-                      border: shippingMethod === 'rush' ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.12)',
-                      background: shippingMethod === 'rush' ? 'rgba(255, 122, 33, 0.15)' : 'rgba(var(--tint), 0.04)',
-                      color: 'var(--text)',
-                      textAlign: 'left',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <strong style={{ fontSize: '0.82rem', display: 'block' }}>Rush Priority Air Freight</strong>
-                    <span style={{ fontSize: '0.72rem', color: 'var(--muted)' }}>$24.00 • 2-day priority</span>
-                  </button>
-                </div>
-              </div>
-
-              {/* MANDATORY DIGITAL PROOF SIGN-OFF GATE */}
-              <div
-                style={{
-                  padding: '0.9rem',
-                  borderRadius: '10px',
-                  background: proofApproved ? 'rgba(34, 197, 94, 0.12)' : 'rgba(var(--tint), 0.04)',
-                  border: proofApproved ? '1.5px solid #22c55e' : '1.5px solid rgba(var(--tint), 0.14)',
-                  transition: 'all 0.2s ease',
-                }}
-              >
-                <label
-                  htmlFor="merchandise-proof-checkbox"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '0.65rem',
-                    cursor: 'pointer',
-                    fontSize: '0.82rem',
-                    fontWeight: 700,
-                    color: 'var(--text)',
-                    lineHeight: 1.45,
-                  }}
-                >
-                  <input
-                    id="merchandise-proof-checkbox"
-                    type="checkbox"
-                    checked={proofApproved}
-                    onChange={(e) => setProofApproved(e.target.checked)}
-                    style={{ width: '18px', height: '18px', marginTop: '2px', cursor: 'pointer', flexShrink: 0 }}
-                  />
-                  <div>
-                    <span>
-                      I have verified and approve all customized fields on this production proof: business name (<strong>{businessName}</strong>),
-                      {tagline ? <> tagline (<strong>{tagline}</strong>),</> : null}
-                      {' '}phone number (<strong>{phone}</strong>),
-                      {website ? <> website (<strong>{website}</strong>),</> : null}
-                      {license ? <> license (<strong>{license}</strong>),</> : null}
-                      {' '}and brand colors (<strong>{accentColor}</strong> / <strong>{secondaryColor}</strong>).
-                      I understand custom merchandise goes directly to manufacturing and cannot be refunded for typographical errors.
-                    </span>
-                    <div style={{ marginTop: '0.35rem' }}>
-                      <a
-                        href="/terms"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: 'var(--accent)', textDecoration: 'underline', fontSize: '0.78rem' }}
-                      >
-                        View Terms of Sale &amp; Custom Merchandise Order Policy →
-                      </a>
-                    </div>
-                  </div>
-                </label>
-              </div>
-
-              {/* Cost Breakdown */}
-              <div style={{ borderTop: '1px solid rgba(var(--tint), 0.12)', paddingTop: '0.75rem', fontSize: '0.84rem', color: 'var(--muted)' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>Merchandise Subtotal:</span>
-                  <span style={{ color: 'var(--text)', fontWeight: 600 }}>${itemSubtotal.toFixed(2)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span>Shipping ({shippingMethod === 'rush' ? 'Rush Priority' : 'Standard Ground'}):</span>
-                  <span style={{ color: estimatedShipping === 0 ? 'var(--good, #22c55e)' : 'var(--text)', fontWeight: 600 }}>
-                    {estimatedShipping === 0 ? 'FREE' : `$${estimatedShipping.toFixed(2)}`}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                  <span>Sales Tax (Stripe Tax):</span>
-                  <span style={{ color: 'var(--text)', fontWeight: 600, fontStyle: 'italic', fontSize: '0.8rem' }}>
-                    Calculated at Checkout
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid rgba(var(--tint), 0.12)', paddingTop: '8px', fontSize: '1.1rem', fontWeight: 900, color: 'var(--text)' }}>
-                  <span>Total (before tax):</span>
-                  <span style={{ color: 'var(--accent)' }}>${subtotalWithShipping.toFixed(2)}</span>
-                </div>
-                <p style={{ margin: '4px 0 0', fontSize: '0.72rem', color: 'var(--muted)', textAlign: 'right' }}>
-                  Applicable state and local taxes will be calculated dynamically at secure Stripe checkout.
-                </p>
-              </div>
-            </div>
-
-            {/* Modal Footer Actions */}
-            <div
-              style={{
-                padding: '1rem 1.5rem',
-                borderTop: '1px solid rgba(var(--tint), 0.08)',
-                background: 'var(--surface, #131924)',
-                display: 'flex',
-                gap: '0.6rem',
-                justifyContent: 'flex-end',
-              }}
-            >
-              <button
-                type="button"
-                onClick={() => setCheckoutOpen(false)}
-                style={{
-                  padding: '0.6rem 1rem',
-                  borderRadius: '7px',
-                  border: '1px solid rgba(var(--tint), 0.12)',
-                  background: 'rgba(var(--tint), 0.06)',
-                  color: 'var(--text)',
-                  fontWeight: 700,
-                  fontSize: '0.82rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-
-              <button
-                type="button"
-                onClick={handleExecuteCheckout}
-                disabled={isCheckingOut || !proofApproved}
-                style={{
-                  padding: '0.6rem 1.35rem',
-                  borderRadius: '7px',
-                  border: 'none',
-                  background: !proofApproved ? 'rgba(var(--tint), 0.1)' : 'linear-gradient(180deg, #ff8a3d, #ff7a21)',
-                  color: '#ffffff',
-                  fontWeight: 900,
-                  fontSize: '0.88rem',
-                  cursor: isCheckingOut ? 'wait' : !proofApproved ? 'not-allowed' : 'pointer',
-                  boxShadow: !proofApproved ? 'none' : '0 4px 16px rgba(255,122,33,0.35)',
-                }}
-              >
-                {isCheckingOut ? 'Processing...' : `Continue to Stripe Checkout ($${subtotalWithShipping.toFixed(2)} + tax)`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 5. Orders History Drawer with 1-Click Reorder */}
-      {ordersDrawerOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Merchandise Order History"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(15, 23, 42, 0.65)',
-            backdropFilter: 'blur(4px)',
-            zIndex: 9999,
-            display: 'flex',
-            justifyContent: 'flex-end',
-          }}
-          onClick={() => setOrdersDrawerOpen(false)}
-        >
-          <div
-            style={{
-              width: '100%',
-              maxWidth: '520px',
-              height: '100%',
-              background: '#0e1219',
-              borderLeft: '1px solid rgba(255, 255, 255, 0.12)',
-              color: 'var(--text)',
-              boxShadow: '-15px 0 40px rgba(0,0,0,0.6)',
-              display: 'flex',
-              flexDirection: 'column',
-              padding: '1.5rem',
-              boxSizing: 'border-box',
-              overflowY: 'auto',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 900, color: '#ffffff' }}>
-                Merchandise Order History
-              </h3>
-              <button
-                type="button"
-                onClick={() => setOrdersDrawerOpen(false)}
-                className="focus-ring"
-                aria-label="Close order history"
-                style={{ background: 'rgba(255, 255, 255, 0.1)', color: '#ffffff', border: 'none', borderRadius: '6px', padding: '4px 8px', cursor: 'pointer', fontWeight: 800 }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {orders.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--muted)' }}>
-                <p style={{ fontSize: '1.5rem', margin: '0 0 0.5rem' }}>📦</p>
-                <strong style={{ display: 'block', color: 'var(--text)' }}>No merchandise orders yet</strong>
-                <span style={{ fontSize: '0.8rem' }}>Customize an item above and place your first instant order!</span>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                {orders.map((ord) => (
-                  <div
-                    key={ord.id}
-                    style={{
-                      border: '1px solid rgba(255, 255, 255, 0.08)',
-                      borderRadius: '10px',
-                      padding: '1rem',
-                      background: 'rgba(255, 255, 255, 0.035)',
-                      boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                      <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>{ord.orderNumber}</strong>
-                      <span
-                        style={{
-                          fontSize: '0.7rem',
-                          fontWeight: 800,
-                          padding: '3px 9px',
-                          borderRadius: '999px',
-                          background: ord.status === 'delivered' ? 'rgba(34, 197, 94, 0.15)' : 'rgba(59, 130, 246, 0.15)',
-                          color: ord.status === 'delivered' ? '#86efac' : '#93c5fd',
-                          border: ord.status === 'delivered' ? '1px solid rgba(34, 197, 94, 0.3)' : '1px solid rgba(59, 130, 246, 0.3)',
-                        }}
-                      >
-                        {ord.status.toUpperCase().replace('_', ' ')}
-                      </span>
-                    </div>
-
-                    <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginBottom: '0.5rem' }}>
-                      {ord.items.map((it, idx) => (
-                        <div key={idx}>
-                          &bull; {it.productName} ({it.quantity}x) &ndash; {it.colorName}
-                        </div>
-                      ))}
-                    </div>
-
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(255, 255, 255, 0.08)', paddingTop: '0.5rem', fontSize: '0.74rem' }}>
-                      <span style={{ color: 'var(--muted)' }}>
-                        {ord.trackingNumber ? (
-                          <>
-                            Tracking: <strong style={{ color: 'var(--gold-ink)' }}>{ord.trackingNumber}</strong>
-                            {ord.trackingCarrier ? ` (${ord.trackingCarrier})` : ''}
-                          </>
-                        ) : (
-                          <span style={{ fontStyle: 'italic' }}>Tracking: Pending dispatch</span>
-                        )}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <strong style={{ fontSize: '0.88rem', color: '#ffffff' }}>${ord.totalAmount.toFixed(2)}</strong>
-                        <button
-                          type="button"
-                          onClick={() => handleReorder(ord.id)}
-                          disabled={isReordering}
-                          className="focus-ring"
-                          style={{
-                            padding: '3px 8px',
-                            borderRadius: '5px',
-                            border: '1px solid var(--accent)',
-                            background: 'rgba(255, 122, 33, 0.15)',
-                            color: '#ff9d5c',
-                            fontSize: '0.7rem',
-                            fontWeight: 800,
-                            cursor: isReordering ? 'wait' : 'pointer',
-                          }}
-                          title="Instant 1-click reorder of this exact design"
-                        >
-                          ⚡ Reorder
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Template Comparison Gallery Modal */}
-      {isTemplateGalleryOpen && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Print Merchandise Template Comparison Gallery"
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(8, 12, 20, 0.88)',
-            backdropFilter: 'blur(8px)',
-            zIndex: 10000,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            padding: '1.5rem',
-          }}
-          onClick={() => setIsTemplateGalleryOpen(false)}
-        >
-          <div
-            style={{
-              background: '#0e1422',
-              border: '1px solid rgba(255, 255, 255, 0.14)',
-              color: 'var(--text)',
-              borderRadius: '20px',
-              maxWidth: '1240px',
-              width: '100%',
-              maxHeight: '92vh',
-              display: 'flex',
-              flexDirection: 'column',
-              boxShadow: '0 25px 80px rgba(0,0,0,0.95)',
-              overflow: 'hidden',
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Modal Header */}
-            <div
-              style={{
-                padding: '1.25rem 1.75rem',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'rgba(255, 255, 255, 0.02)',
-              }}
-            >
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1.35rem', fontWeight: 900, color: '#ffffff' }}>
-                    Print Merchandise Template Architecture &amp; Comparison
-                  </h3>
-                  <span
-                    style={{
-                      background: 'rgba(255, 122, 33, 0.15)',
-                      color: 'var(--accent)',
-                      border: '1px solid rgba(255, 122, 33, 0.3)',
-                      borderRadius: '999px',
-                      padding: '2px 9px',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                    }}
-                  >
-                    Commercial Print Specs
-                  </span>
-                </div>
-                <p style={{ margin: '0.35rem 0 0', color: 'var(--muted)', fontSize: '0.8rem' }}>
-                  Engineered specifically for contractor brand authority, roadside readability, and tactile finishing.
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsTemplateGalleryOpen(false)}
-                className="focus-ring"
-                aria-label="Close template comparison modal"
-                style={{
-                  background: 'rgba(255, 255, 255, 0.08)',
-                  color: '#ffffff',
-                  border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: '8px',
-                  width: '36px',
-                  height: '36px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  cursor: 'pointer',
-                  fontSize: '1.1rem',
-                  fontWeight: 700,
-                }}
-              >
-                ✕
-              </button>
-            </div>
-
-            {/* Product Category Tabs */}
-            <div
-              style={{
-                display: 'flex',
-                gap: '0.5rem',
-                padding: '0.75rem 1.75rem',
-                background: 'rgba(15, 23, 42, 0.5)',
-                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                overflowX: 'auto',
-              }}
-            >
-              {[
-                { id: 'biz_cards', label: '📇 Business Cards (8)', count: 8 },
-                { id: 'yard_signs', label: '🪧 Yard Signs (4)', count: 4 },
-                { id: 'notepads', label: '📋 Carbonless Notepads (3)', count: 3 },
-                { id: 'decals', label: '🛡️ Equipment Decals (3)', count: 3 },
-              ].map((tab) => {
-                const isActive = galleryTab === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    type="button"
-                    onClick={() => setGalleryTab(tab.id as any)}
-                    className="focus-ring"
-                    style={{
-                      padding: '0.45rem 0.95rem',
-                      borderRadius: '8px',
-                      border: isActive ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.08)',
-                      background: isActive ? 'rgba(255, 122, 33, 0.16)' : 'rgba(255, 255, 255, 0.03)',
-                      color: isActive ? 'var(--accent)' : 'var(--muted)',
-                      fontSize: '0.8rem',
-                      fontWeight: isActive ? 800 : 600,
-                      cursor: 'pointer',
-                      whiteSpace: 'nowrap',
-                      transition: 'all 0.15s ease',
-                    }}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Template Gallery Content */}
-            <div
-              style={{
-                padding: '1.5rem 1.75rem',
-                overflowY: 'auto',
-                flex: 1,
-              }}
-            >
-              {/* 1. Business Cards Tab */}
-              {galleryTab === 'biz_cards' && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '1.25rem',
-                  }}
-                >
-                  {BUSINESS_CARD_TEMPLATES.map((tmpl) => {
-                    const isSelected = selectedCardTemplate === tmpl.id;
-                    const recFinish = getCardFinishById(tmpl.recommendedFinish);
-                    return (
-                      <div
-                        key={tmpl.id}
-                        style={{
-                          borderRadius: '14px',
-                          border: isSelected
-                            ? '2px solid var(--accent, #ff7a21)'
-                            : '1px solid rgba(255, 255, 255, 0.1)',
-                          background: isSelected
-                            ? 'rgba(255, 122, 33, 0.06)'
-                            : 'rgba(255, 255, 255, 0.025)',
-                          padding: '1.2rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
-                          transition: 'all 0.2s ease',
-                        }}
-                      >
-                        <div>
-                          {/* Header tags */}
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                            <span
-                              style={{
-                                fontSize: '0.66rem',
-                                fontWeight: 800,
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
-                                color: '#ffffff',
-                              }}
-                            >
-                              {tmpl.tag}
-                            </span>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
-                              {tmpl.tradeFit.split(',')[0]}
-                            </span>
-                          </div>
-
-                          {/* Mini visual mockup box */}
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '145px',
-                              borderRadius: '8px',
-                              overflow: 'hidden',
-                              background: '#080c14',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              position: 'relative',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              marginBottom: '0.85rem',
-                            }}
-                          >
-                            <div
-                              style={{
-                                transform: 'scale(0.62)',
-                                transformOrigin: 'center center',
-                                pointerEvents: 'none',
-                              }}
-                            >
-                              <BusinessCardMockup
-                                templateId={tmpl.id}
-                                side="front"
-                                activeColor={activeColor}
-                                accentColor={accentColor}
-                                secondaryColor={secondaryColor}
-                                businessName={businessName}
-                                tagline={tagline}
-                                phone={phone}
-                                website={website}
-                                license={license}
-                                includeQrCode={includeQrCode}
-                                renderBranding={renderMockupBranding}
-                                finish={selectedCardFinish}
-                              />
-                            </div>
-                          </div>
-
-                          {/* Name & Subtitle */}
-                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                            {tmpl.name}
-                          </h4>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            {tmpl.subtitle}
-                          </div>
-
-                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.75rem', lineHeight: 1.45 }}>
-                            {tmpl.description}
-                          </p>
-
-                          {/* Recommended Finish Pill */}
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              background: 'rgba(255, 255, 255, 0.04)',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              borderRadius: '6px',
-                              padding: '4px 8px',
-                              marginBottom: '0.85rem',
-                            }}
-                          >
-                            <span style={{ fontSize: '0.62rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 700 }}>
-                              Recommended:
-                            </span>
-                            <span style={{ fontSize: '0.68rem', color: '#60a5fa', fontWeight: 700 }}>
-                              {recFinish.name}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Action Button */}
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedCardTemplate(tmpl.id);
-                            if (tmpl.recommendedFinish) {
-                              setSelectedCardFinish(tmpl.recommendedFinish);
-                            }
-                            setCartToast(`Applied ${tmpl.name} with ${recFinish.name}!`);
-                            setIsTemplateGalleryOpen(false);
-                          }}
-                          className="focus-ring"
-                          style={{
-                            width: '100%',
-                            padding: '0.6rem 0.8rem',
-                            borderRadius: '8px',
-                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
-                            background: isSelected
-                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
-                              : 'rgba(255, 255, 255, 0.07)',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: '0.78rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '6px',
-                          }}
-                        >
-                          {isSelected ? '✓ Active Template' : 'Apply This Template'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 2. Yard Signs Tab */}
-              {galleryTab === 'yard_signs' && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '1.25rem',
-                  }}
-                >
-                  {YARD_SIGN_TEMPLATES.map((tmpl) => {
-                    const isSelected = selectedYardSignTemplate === tmpl.id;
-                    return (
-                      <div
-                        key={tmpl.id}
-                        style={{
-                          borderRadius: '14px',
-                          border: isSelected
-                            ? '2px solid var(--accent, #ff7a21)'
-                            : '1px solid rgba(255, 255, 255, 0.1)',
-                          background: isSelected
-                            ? 'rgba(255, 122, 33, 0.06)'
-                            : 'rgba(255, 255, 255, 0.025)',
-                          padding: '1.2rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
-                        }}
-                      >
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                            <span
-                              style={{
-                                fontSize: '0.66rem',
-                                fontWeight: 800,
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
-                                color: '#ffffff',
-                              }}
-                            >
-                              {tmpl.tag}
-                            </span>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
-                              {tmpl.tradeFit.split(',')[0]}
-                            </span>
-                          </div>
-
-                          {/* Mini visual mockup box */}
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '145px',
-                              borderRadius: '8px',
-                              background: '#090d16',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '1rem',
-                              boxSizing: 'border-box',
-                              marginBottom: '0.85rem',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '1.8rem', marginBottom: '4px' }}>🪧</div>
-                            <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>{businessName || 'CONTRACTOR PRO'}</strong>
-                            <span style={{ fontSize: '0.68rem', color: accentColor, fontWeight: 700 }}>{phone || '(555) 019-2834'}</span>
-                            <span style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '2px' }}>18&quot; &times; 24&quot; Coroplast</span>
-                          </div>
-
-                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                            {tmpl.name}
-                          </h4>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            {tmpl.subtitle}
-                          </div>
-                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
-                            Optimized for {tmpl.tradeFit}. High-contrast lettering tested for 35 MPH street readability.
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedYardSignTemplate(tmpl.id);
-                            setCartToast(`Applied ${tmpl.name} Yard Sign!`);
-                            setIsTemplateGalleryOpen(false);
-                          }}
-                          className="focus-ring"
-                          style={{
-                            width: '100%',
-                            padding: '0.6rem 0.8rem',
-                            borderRadius: '8px',
-                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
-                            background: isSelected
-                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
-                              : 'rgba(255, 255, 255, 0.07)',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: '0.78rem',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {isSelected ? '✓ Active Sign Template' : 'Apply Sign Template'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 3. Notepads Tab */}
-              {galleryTab === 'notepads' && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '1.25rem',
-                  }}
-                >
-                  {NOTEPAD_TEMPLATES.map((tmpl) => {
-                    const isSelected = selectedNotepadTemplate === tmpl.id;
-                    return (
-                      <div
-                        key={tmpl.id}
-                        style={{
-                          borderRadius: '14px',
-                          border: isSelected
-                            ? '2px solid var(--accent, #ff7a21)'
-                            : '1px solid rgba(255, 255, 255, 0.1)',
-                          background: isSelected
-                            ? 'rgba(255, 122, 33, 0.06)'
-                            : 'rgba(255, 255, 255, 0.025)',
-                          padding: '1.2rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
-                        }}
-                      >
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                            <span
-                              style={{
-                                fontSize: '0.66rem',
-                                fontWeight: 800,
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
-                                color: '#ffffff',
-                              }}
-                            >
-                              {tmpl.tag}
-                            </span>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
-                              {tmpl.tradeFit.split(',')[0]}
-                            </span>
-                          </div>
-
-                          {/* Mini visual mockup box */}
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '145px',
-                              borderRadius: '8px',
-                              background: '#090d16',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '1rem',
-                              boxSizing: 'border-box',
-                              marginBottom: '0.85rem',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '1.8rem', marginBottom: '4px' }}>📋</div>
-                            <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>2-Part Carbonless NCR</strong>
-                            <span style={{ fontSize: '0.68rem', color: '#fef08a', fontWeight: 700 }}>White / Canary Yellow Duplicate</span>
-                            <span style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '2px' }}>Legal Sign-Off Scope Format</span>
-                          </div>
-
-                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                            {tmpl.name}
-                          </h4>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            {tmpl.subtitle}
-                          </div>
-                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
-                            Standardized field operations scope format tailored for {tmpl.tradeFit}.
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedNotepadTemplate(tmpl.id);
-                            setCartToast(`Applied ${tmpl.name} Scope Form!`);
-                            setIsTemplateGalleryOpen(false);
-                          }}
-                          className="focus-ring"
-                          style={{
-                            width: '100%',
-                            padding: '0.6rem 0.8rem',
-                            borderRadius: '8px',
-                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
-                            background: isSelected
-                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
-                              : 'rgba(255, 255, 255, 0.07)',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: '0.78rem',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {isSelected ? '✓ Active Notepad Template' : 'Apply Notepad Template'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {/* 4. Decals Tab */}
-              {galleryTab === 'decals' && (
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                    gap: '1.25rem',
-                  }}
-                >
-                  {DECAL_TEMPLATES.map((tmpl) => {
-                    const isSelected = selectedDecalTemplate === tmpl.id;
-                    return (
-                      <div
-                        key={tmpl.id}
-                        style={{
-                          borderRadius: '14px',
-                          border: isSelected
-                            ? '2px solid var(--accent, #ff7a21)'
-                            : '1px solid rgba(255, 255, 255, 0.1)',
-                          background: isSelected
-                            ? 'rgba(255, 122, 33, 0.06)'
-                            : 'rgba(255, 255, 255, 0.025)',
-                          padding: '1.2rem',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'space-between',
-                          boxShadow: isSelected ? '0 0 24px rgba(255, 122, 33, 0.22)' : 'none',
-                        }}
-                      >
-                        <div>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                            <span
-                              style={{
-                                fontSize: '0.66rem',
-                                fontWeight: 800,
-                                padding: '2px 8px',
-                                borderRadius: '6px',
-                                background: isSelected ? 'var(--accent)' : 'rgba(255, 255, 255, 0.1)',
-                                color: '#ffffff',
-                              }}
-                            >
-                              {tmpl.tag}
-                            </span>
-                            <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600 }}>
-                              {tmpl.tradeFit.split(',')[0]}
-                            </span>
-                          </div>
-
-                          {/* Mini visual mockup box */}
-                          <div
-                            style={{
-                              width: '100%',
-                              height: '145px',
-                              borderRadius: '8px',
-                              background: '#090d16',
-                              border: '1px solid rgba(255, 255, 255, 0.08)',
-                              display: 'flex',
-                              flexDirection: 'column',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '1rem',
-                              boxSizing: 'border-box',
-                              marginBottom: '0.85rem',
-                              textAlign: 'center',
-                            }}
-                          >
-                            <div style={{ fontSize: '1.8rem', marginBottom: '4px' }}>🛡️</div>
-                            <strong style={{ fontSize: '0.85rem', color: '#ffffff' }}>6-Mil Cast Vinyl</strong>
-                            <span style={{ fontSize: '0.68rem', color: '#60a5fa', fontWeight: 700 }}>UV Weatherproof &amp; Oil-Resistant</span>
-                            <span style={{ fontSize: '0.6rem', color: 'var(--muted)', marginTop: '2px' }}>Contour-Cut Tool &amp; Fleet Decals</span>
-                          </div>
-
-                          <h4 style={{ margin: '0 0 4px', fontSize: '0.98rem', fontWeight: 800, color: '#ffffff' }}>
-                            {tmpl.name}
-                          </h4>
-                          <div style={{ fontSize: '0.74rem', color: 'var(--gold-ink)', fontWeight: 700, marginBottom: '0.5rem' }}>
-                            {tmpl.subtitle}
-                          </div>
-                          <p style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0 0 0.85rem', lineHeight: 1.45 }}>
-                            Industrial-grade vinyl branding for {tmpl.tradeFit}.
-                          </p>
-                        </div>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedDecalTemplate(tmpl.id);
-                            setCartToast(`Applied ${tmpl.name} Decal!`);
-                            setIsTemplateGalleryOpen(false);
-                          }}
-                          className="focus-ring"
-                          style={{
-                            width: '100%',
-                            padding: '0.6rem 0.8rem',
-                            borderRadius: '8px',
-                            border: isSelected ? 'none' : '1px solid rgba(255, 255, 255, 0.15)',
-                            background: isSelected
-                              ? 'linear-gradient(180deg, #ff8a3d, #ff7a21)'
-                              : 'rgba(255, 255, 255, 0.07)',
-                            color: '#ffffff',
-                            fontWeight: 800,
-                            fontSize: '0.78rem',
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {isSelected ? '✓ Active Decal Template' : 'Apply Decal Template'}
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Footer */}
-            <div
-              style={{
-                padding: '1rem 1.75rem',
-                borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                background: 'rgba(255, 255, 255, 0.02)',
-              }}
-            >
-              <span style={{ fontSize: '0.76rem', color: 'var(--muted)' }}>
-                Tip: Applying a template automatically pre-configures matching design specs. You can still adjust finishes and colors anytime.
-              </span>
-              <button
-                type="button"
-                onClick={() => setIsTemplateGalleryOpen(false)}
-                className="focus-ring"
-                style={{
-                  padding: '0.5rem 1.2rem',
-                  borderRadius: '7px',
-                  border: '1px solid rgba(255, 255, 255, 0.18)',
-                  background: 'rgba(255, 255, 255, 0.05)',
-                  color: '#ffffff',
-                  fontWeight: 700,
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Close Gallery
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 6. Order Success Confirmation Modal */}
+      {/* Order Success Confirmation Modal */}
       {orderSuccessModal && (
         <div
           role="dialog"
@@ -4340,7 +1163,6 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           </div>
         </div>
       )}
-      </div>
     </main>
   );
 }

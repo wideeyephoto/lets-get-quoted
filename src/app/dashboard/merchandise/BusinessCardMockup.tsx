@@ -266,6 +266,34 @@ function BleedGuides() {
   );
 }
 
+function getBusinessNameFontSize(name: string, defaultSizeRem = 1.1): string {
+  const len = name ? name.trim().length : 0;
+  if (len > 30) return `${(defaultSizeRem * 0.74).toFixed(2)}rem`;
+  if (len > 22) return `${(defaultSizeRem * 0.82).toFixed(2)}rem`;
+  if (len > 15) return `${(defaultSizeRem * 0.9).toFixed(2)}rem`;
+  return `${defaultSizeRem}rem`;
+}
+
+function getTaglineStyle(tagline?: string, options?: { uppercase?: boolean; customFontSize?: string }): React.CSSProperties {
+  const len = tagline ? tagline.trim().length : 0;
+  const fontSize = options?.customFontSize || (len > 70 ? '0.62rem' : len > 45 ? '0.66rem' : '0.70rem');
+
+  return {
+    fontSize,
+    lineHeight: 1.25,
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    wordBreak: 'break-word',
+    opacity: 0.88,
+    fontWeight: 600,
+    textTransform: options?.uppercase ? 'uppercase' : undefined,
+    letterSpacing: options?.uppercase ? '0.03em' : undefined,
+  };
+}
+
 export default function BusinessCardMockup({
   templateId = 'executive',
   side,
@@ -285,8 +313,8 @@ export default function BusinessCardMockup({
   scale = 1,
   finish = 'velvet_matte',
 }: BusinessCardMockupProps) {
-  const cardW = 370;
-  const cardH = 215;
+  const cardW = 385;
+  const cardH = 220;
   const templateDef = getCardTemplateById(templateId);
 
   const baseContainerStyle: React.CSSProperties = {
@@ -299,7 +327,7 @@ export default function BusinessCardMockup({
     display: 'flex',
     flexDirection: 'column',
     justifyContent: 'space-between',
-    padding: '1.35rem',
+    padding: '1.05rem 1.25rem',
     transform: scale !== 1 ? `scale(${scale})` : undefined,
     transformOrigin: 'center center',
     transition: 'box-shadow 0.2s ease, transform 0.3s ease',
@@ -329,37 +357,45 @@ export default function BusinessCardMockup({
           <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '2px', background: 'rgba(255,255,255,0.1)' }} />
           {foilEffect}
 
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>{renderBranding(activeColor.darkText ? 'color' : 'white', 0.88)}</div>
-              <span
-                style={{
-                  fontSize: '0.58rem',
-                  fontWeight: 900,
-                  letterSpacing: '0.12em',
-                  color: accentColor,
-                  border: `1px solid ${accentColor}`,
-                  padding: '2px 6px',
-                  borderRadius: '3px',
-                }}
-              >
-                {templateDef.badgeLabel}
-              </span>
+          {/* Top Row: Logo + Badge */}
+          <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+            <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', maxHeight: '34px', maxWidth: '130px' }}>
+              {renderBranding(activeColor.darkText ? 'color' : 'white', 0.85)}
             </div>
+            <span
+              style={{
+                fontSize: '0.58rem',
+                fontWeight: 900,
+                letterSpacing: '0.12em',
+                color: accentColor,
+                border: `1px solid ${accentColor}`,
+                padding: '2px 6px',
+                borderRadius: '3px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              {templateDef.badgeLabel}
+            </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 2 }}>
+          {/* Middle Content */}
+          <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, margin: '4px 0' }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.05), display: 'block', letterSpacing: '0.02em', textTransform: 'uppercase', lineHeight: 1.2 }}>
+              {businessName}
+            </strong>
+            <span style={getTaglineStyle(tagline)}>{tagline}</span>
+          </div>
+
+          {/* Bottom Row */}
+          <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.12)', paddingTop: '4px' }}>
             <div>
-              <strong style={{ fontSize: '0.96rem', display: 'block', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
-                {businessName}
-              </strong>
-              <span style={{ fontSize: '0.72rem', opacity: 0.85, fontWeight: 600 }}>{tagline}</span>
-            </div>
-            <div style={{ textAlign: 'right' }}>
               <span style={{ fontSize: '0.68rem', fontWeight: 900, letterSpacing: '0.06em', color: accentColor }}>
                 {license}
               </span>
-              <span style={{ display: 'block', fontSize: '0.6rem', opacity: 0.75, fontWeight: 700 }}>
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ display: 'block', fontSize: '0.6rem', opacity: 0.75, fontWeight: 700, whiteSpace: 'nowrap' }}>
                 16PT VELVET SOFT-TOUCH
               </span>
             </div>
@@ -380,44 +416,51 @@ export default function BusinessCardMockup({
         }}
       >
         {foilEffect}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <strong style={{ fontSize: '1.05rem', color: '#0f172a', fontWeight: 900, letterSpacing: '-0.01em' }}>
+        {/* Top Row */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+          <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.02), color: '#0f172a', fontWeight: 900, letterSpacing: '-0.01em', lineHeight: 1.2, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {businessName}
           </strong>
           <span
             style={{
-              fontSize: '0.7rem',
+              fontSize: '0.68rem',
               color: '#16a34a',
               fontWeight: 800,
               background: '#f0fdf4',
-              padding: '2px 8px',
+              padding: '2px 6px',
               borderRadius: '4px',
               border: '1px solid #bbf7d0',
+              whiteSpace: 'nowrap',
+              flexShrink: 0,
             }}
           >
             {templateDef.ratingBadgeText}
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#334155', minWidth: 0, flex: 1 }}>
+        {/* Middle Content */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ fontSize: '0.8rem', lineHeight: 1.45, color: '#334155', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800 }}>📞 {phone}</div>
             <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               🌐 {website}
             </div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b', marginTop: '4px' }}>
+            <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
               Fast Estimates • Licensed &amp; Bonded
             </div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor={accentColor} />}
+          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} />}
         </div>
 
+        {/* Bottom Row */}
         <div
           style={{
-            fontSize: '0.68rem',
+            flexShrink: 0,
+            marginTop: 'auto',
+            fontSize: '0.66rem',
             color: '#64748b',
             borderTop: '1px solid #e2e8f0',
-            paddingTop: '6px',
+            paddingTop: '4px',
             display: 'flex',
             justifyContent: 'space-between',
           }}
@@ -455,14 +498,14 @@ export default function BusinessCardMockup({
                 flexDirection: 'column',
                 alignItems: 'center',
                 justifyContent: 'center',
-                padding: '1.2rem',
+                padding: '1rem',
                 position: 'relative',
                 color: activeColor.darkText ? '#0f172a' : '#ffffff',
               }}
             >
               <div style={{ position: 'absolute', top: 0, bottom: 0, right: 0, width: '4px', background: accentColor }} />
-              <div style={{ transform: 'scale(0.95)' }}>
-                {renderBranding(activeColor.darkText ? 'color' : 'white', 0.9)}
+              <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxHeight: '42px', maxWidth: '100px' }}>
+                {renderBranding(activeColor.darkText ? 'color' : 'white', 0.85)}
               </div>
             </div>
 
@@ -470,17 +513,19 @@ export default function BusinessCardMockup({
             <div
               style={{
                 width: '65%',
-                padding: '1.4rem',
+                padding: '1rem 1.15rem',
                 display: 'flex',
                 flexDirection: 'column',
                 justifyContent: 'space-between',
                 position: 'relative',
+                minWidth: 0,
+                overflow: 'hidden',
               }}
             >
-              <div>
+              <div style={{ flexShrink: 0 }}>
                 <span
                   style={{
-                    fontSize: '0.62rem',
+                    fontSize: '0.6rem',
                     color: accentColor,
                     fontWeight: 900,
                     letterSpacing: '0.1em',
@@ -491,13 +536,15 @@ export default function BusinessCardMockup({
                 >
                   {templateDef.badgeLabel}
                 </span>
-                <strong style={{ fontSize: '1.1rem', fontWeight: 900, letterSpacing: '-0.02em', color: '#0f172a', display: 'block' }}>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, margin: '4px 0' }}>
+                <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.08), fontWeight: 900, letterSpacing: '-0.02em', color: '#0f172a', display: 'block', lineHeight: 1.2 }}>
                   {businessName}
                 </strong>
-                <span style={{ fontSize: '0.72rem', color: '#64748b', fontWeight: 600 }}>{tagline}</span>
+                <span style={getTaglineStyle(tagline, { customFontSize: '0.68rem' })}>{tagline}</span>
               </div>
 
-              <div style={{ borderTop: '1px solid #e2e8f0', paddingTop: '6px' }}>
+              <div style={{ flexShrink: 0, marginTop: 'auto', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
                 <span style={{ fontSize: '0.68rem', fontWeight: 800, color: '#475569' }}>
                   {license} • Insured
                 </span>
@@ -522,26 +569,29 @@ export default function BusinessCardMockup({
         }}
       >
         {foilEffect}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-            <span style={{ display: 'block', fontSize: '0.7rem', color: '#64748b' }}>{tagline}</span>
+        {/* Top Row */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.0), fontWeight: 900, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.66rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tagline}</span>
           </div>
-          <span style={{ fontSize: '0.68rem', fontWeight: 900, color: accentColor }}>
+          <span style={{ fontSize: '0.66rem', fontWeight: 900, color: accentColor, whiteSpace: 'nowrap', flexShrink: 0 }}>
             {templateDef.ratingBadgeText}
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.84rem', lineHeight: 1.6, color: '#334155' }}>
+        {/* Middle Content */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: '#334155', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800 }}>📞 {phone}</div>
-            <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Fast Quotes • Direct Booking</div>
+            <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Fast Quotes • Direct Booking</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor={accentColor} />}
+          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} />}
         </div>
 
-        <div style={{ fontSize: '0.64rem', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
+        {/* Bottom Row */}
+        <div style={{ flexShrink: 0, marginTop: 'auto', fontSize: '0.64rem', color: '#94a3b8', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
           Commercial &amp; Residential Specialists • Free Estimates
         </div>
         {showBleedGuides && <BleedGuides />}
@@ -578,40 +628,45 @@ export default function BusinessCardMockup({
           </svg>
 
           {/* Top Hazard Stripe Bar */}
-          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: hazardStripe }} />
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: hazardStripe }} />
           {foilEffect}
 
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div>{renderBranding('white', 0.9)}</div>
-              <span
-                style={{
-                  background: 'rgba(234, 88, 12, 0.2)',
-                  border: `1px solid ${accentColor}`,
-                  color: accentColor,
-                  fontSize: '0.6rem',
-                  fontWeight: 900,
-                  letterSpacing: '0.08em',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                }}
-              >
-                {templateDef.badgeLabel}
-              </span>
+          {/* Top Row: Logo + Badge */}
+          <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', maxHeight: '34px', maxWidth: '130px' }}>
+              {renderBranding('white', 0.85)}
             </div>
+            <span
+              style={{
+                background: 'rgba(234, 88, 12, 0.2)',
+                border: `1px solid ${accentColor}`,
+                color: accentColor,
+                fontSize: '0.58rem',
+                fontWeight: 900,
+                letterSpacing: '0.08em',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+              }}
+            >
+              {templateDef.badgeLabel}
+            </span>
           </div>
 
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <strong style={{ fontSize: '1.25rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', color: '#ffffff' }}>
+          {/* Middle Content: Name + Tagline */}
+          <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, margin: '4px 0' }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.12), fontWeight: 900, letterSpacing: '0.03em', textTransform: 'uppercase', display: 'block', color: '#ffffff', lineHeight: 1.2 }}>
               {businessName}
             </strong>
-            <span style={{ fontSize: '0.74rem', color: '#a1a1aa', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+            <span style={getTaglineStyle(tagline, { uppercase: true })}>
               {tagline}
             </span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 2, borderTop: '1px solid #27272a', paddingTop: '6px' }}>
-            <span style={{ fontSize: '0.74rem', fontWeight: 900, color: accentColor, letterSpacing: '0.06em' }}>
+          {/* Bottom Row: License + Spec */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', position: 'relative', zIndex: 2, flexShrink: 0, marginTop: 'auto', borderTop: '1px solid #27272a', paddingTop: '4px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 900, color: accentColor, letterSpacing: '0.06em' }}>
               {license}
             </span>
             <span style={{ fontSize: '0.62rem', color: '#71717a', fontWeight: 800 }}>
@@ -636,30 +691,33 @@ export default function BusinessCardMockup({
         <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '4px', background: hazardStripe }} />
         {foilEffect}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong style={{ fontSize: '1.08rem', fontWeight: 900, color: '#ffffff', letterSpacing: '0.02em', textTransform: 'uppercase' }}>
+        {/* Top Row */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.05), fontWeight: 900, color: '#ffffff', letterSpacing: '0.02em', textTransform: 'uppercase', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {businessName}
             </strong>
-            <span style={{ display: 'block', fontSize: '0.68rem', color: accentColor, fontWeight: 800 }}>
+            <span style={{ display: 'block', fontSize: '0.66rem', color: accentColor, fontWeight: 800 }}>
               {templateDef.ratingBadgeText}
             </span>
           </div>
-          <span style={{ background: '#27272a', color: '#e4e4e7', fontSize: '0.62rem', fontWeight: 800, padding: '2px 6px', borderRadius: '3px' }}>
+          <span style={{ background: '#27272a', color: '#e4e4e7', fontSize: '0.6rem', fontWeight: 800, padding: '2px 6px', borderRadius: '3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
             24/7 DISPATCH
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.86rem', lineHeight: 1.6, color: '#d4d4d8' }}>
+        {/* Middle Content */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ fontSize: '0.82rem', lineHeight: 1.5, color: '#d4d4d8', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 900, color: '#ffffff' }}>📞 {phone}</div>
-            <div style={{ color: accentColor, fontWeight: 800 }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.7rem', color: '#a1a1aa' }}>Fully Licensed, Bonded &amp; Insured</div>
+            <div style={{ color: accentColor, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.68rem', color: '#a1a1aa' }}>Fully Licensed, Bonded &amp; Insured</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor={accentColor} label="QUICK ESTIMATE" sublabel="24/7" />}
+          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} label="QUICK ESTIMATE" sublabel="24/7" />}
         </div>
 
-        <div style={{ fontSize: '0.62rem', color: '#71717a', borderTop: '1px solid #18181b', paddingTop: '4px' }}>
+        {/* Bottom Row */}
+        <div style={{ flexShrink: 0, marginTop: 'auto', fontSize: '0.62rem', color: '#71717a', borderTop: '1px solid #18181b', paddingTop: '4px' }}>
           Commercial Grade Heavy Equipment &amp; Field Specialists
         </div>
         {showBleedGuides && <BleedGuides />}
@@ -697,7 +755,7 @@ export default function BusinessCardMockup({
           {foilEffect}
 
           {/* Precision Architectural Title Block */}
-          <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <span style={{ fontSize: '0.58rem', fontFamily: 'monospace', letterSpacing: '0.1em', color: '#38bdf8' }}>
               DWG: {templateDef.badgeLabel}
             </span>
@@ -706,19 +764,23 @@ export default function BusinessCardMockup({
             </span>
           </div>
 
-          <div style={{ position: 'relative', zIndex: 2 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              {renderBranding('white', 0.85)}
-              <div>
-                <strong style={{ fontSize: '1.14rem', fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', color: '#ffffff' }}>
+          {/* Middle Content */}
+          <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', alignItems: 'center', minHeight: 0, margin: '4px 0' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', width: '100%', minWidth: 0 }}>
+              <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', maxHeight: '34px', maxWidth: '90px' }}>
+                {renderBranding('white', 0.8)}
+              </div>
+              <div style={{ minWidth: 0, flex: 1 }}>
+                <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.05), fontWeight: 900, letterSpacing: '0.04em', textTransform: 'uppercase', display: 'block', color: '#ffffff', lineHeight: 1.2 }}>
                   {businessName}
                 </strong>
-                <span style={{ fontSize: '0.72rem', color: '#7dd3fc', fontWeight: 600 }}>{tagline}</span>
+                <span style={getTaglineStyle(tagline, { customFontSize: '0.68rem' })}>{tagline}</span>
               </div>
             </div>
           </div>
 
-          <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(56, 189, 248, 0.4)', paddingTop: '4px' }}>
+          {/* Bottom Row */}
+          <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(56, 189, 248, 0.4)', paddingTop: '4px' }}>
             <span style={{ fontSize: '0.7rem', fontFamily: 'monospace', color: '#38bdf8', fontWeight: 800 }}>
               {license}
             </span>
@@ -745,28 +807,31 @@ export default function BusinessCardMockup({
         {cadGrid}
         {foilEffect}
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#ffffff' }}>{businessName}</strong>
-            <span style={{ display: 'block', fontSize: '0.65rem', color: '#7dd3fc', fontFamily: 'monospace' }}>
+        {/* Top Row */}
+        <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.02), fontWeight: 900, color: '#ffffff', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.62rem', color: '#7dd3fc', fontFamily: 'monospace' }}>
               FIELD OPERATIONS DESK
             </span>
           </div>
-          <span style={{ fontSize: '0.62rem', color: '#38bdf8', fontFamily: 'monospace', border: '1px solid #38bdf8', padding: '1px 6px', borderRadius: '3px' }}>
+          <span style={{ fontSize: '0.6rem', color: '#38bdf8', fontFamily: 'monospace', border: '1px solid #38bdf8', padding: '1px 6px', borderRadius: '3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
             VERIFIED GC
           </span>
         </div>
 
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.55, color: '#e0f2fe' }}>
+        {/* Middle Content */}
+        <div style={{ position: 'relative', zIndex: 2, flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: '#e0f2fe', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800 }}>TEL: {phone}</div>
-            <div style={{ color: '#38bdf8', fontWeight: 700 }}>WEB: {website}</div>
-            <div style={{ fontSize: '0.68rem', color: '#93c5fd' }}>{templateDef.ratingBadgeText}</div>
+            <div style={{ color: '#38bdf8', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>WEB: {website}</div>
+            <div style={{ fontSize: '0.66rem', color: '#93c5fd' }}>{templateDef.ratingBadgeText}</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor="#38bdf8" label="FIELD PORTAL" sublabel="DIRECT" />}
+          {includeQrCode && <CardQrVisual size={66} accentColor="#38bdf8" label="FIELD PORTAL" sublabel="DIRECT" />}
         </div>
 
-        <div style={{ position: 'relative', zIndex: 2, fontSize: '0.62rem', color: '#7dd3fc', opacity: 0.8, borderTop: '1px solid rgba(56, 189, 248, 0.3)', paddingTop: '4px' }}>
+        {/* Bottom Row */}
+        <div style={{ position: 'relative', zIndex: 2, flexShrink: 0, marginTop: 'auto', fontSize: '0.62rem', color: '#7dd3fc', opacity: 0.8, borderTop: '1px solid rgba(56, 189, 248, 0.3)', paddingTop: '4px' }}>
           Precision Design-Build • General Contracting • Commercial Framing
         </div>
         {showBleedGuides && <BleedGuides />}
@@ -790,36 +855,41 @@ export default function BusinessCardMockup({
           }}
         >
           {foilEffect}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              {renderBranding('dark', 0.75)}
-              <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
+          {/* Top Row */}
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', minWidth: 0, flex: 1 }}>
+              <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', maxHeight: '28px', maxWidth: '80px' }}>
+                {renderBranding('dark', 0.75)}
+              </div>
+              <strong style={{ fontSize: getBusinessNameFontSize(businessName, 0.98), fontWeight: 900, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{businessName}</strong>
             </div>
-            <span style={{ fontSize: '0.64rem', color: '#16a34a', fontWeight: 900, background: '#f0fdf4', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bbf7d0' }}>
+            <span style={{ fontSize: '0.62rem', color: '#16a34a', fontWeight: 900, background: '#f0fdf4', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bbf7d0', whiteSpace: 'nowrap', flexShrink: 0 }}>
               INSTANT ESTIMATE
             </span>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
-            <div style={{ flex: 1 }}>
-              <span style={{ fontSize: '0.65rem', color: accentColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }}>
+          {/* Middle Content */}
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', minHeight: 0, margin: '4px 0' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={{ fontSize: '0.62rem', color: accentColor, fontWeight: 900, textTransform: 'uppercase', letterSpacing: '0.06em', display: 'block' }}>
                 {templateDef.badgeLabel}
               </span>
-              <strong style={{ fontSize: '0.98rem', display: 'block', color: '#0f172a', margin: '2px 0' }}>
+              <strong style={{ fontSize: '0.92rem', display: 'block', color: '#0f172a', margin: '2px 0' }}>
                 Scan with Phone Camera
               </strong>
-              <p style={{ fontSize: '0.72rem', color: '#475569', margin: 0, lineHeight: 1.35 }}>
+              <p style={{ fontSize: '0.68rem', color: '#475569', margin: 0, lineHeight: 1.3, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                 Get an instant estimate &amp; book appointment directly on our calendar.
               </p>
             </div>
-            <div style={{ transform: 'scale(1.15)', flexShrink: 0 }}>
-              <CardQrVisual size={80} accentColor={accentColor} label="SCAN TO BOOK" sublabel="2 MIN" />
+            <div style={{ flexShrink: 0 }}>
+              <CardQrVisual size={68} accentColor={accentColor} label="SCAN TO BOOK" sublabel="2 MIN" />
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
-            <span style={{ fontSize: '0.74rem', fontWeight: 800, color: '#0f172a' }}>📞 {phone}</span>
-            <span style={{ fontSize: '0.65rem', color: '#64748b' }}>{website}</span>
+          {/* Bottom Row */}
+          <div style={{ flexShrink: 0, marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #e2e8f0', paddingTop: '4px' }}>
+            <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#0f172a' }}>📞 {phone}</span>
+            <span style={{ fontSize: '0.65rem', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{website}</span>
           </div>
           {showBleedGuides && <BleedGuides />}
         </div>
@@ -837,26 +907,31 @@ export default function BusinessCardMockup({
         }}
       >
         {foilEffect}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong style={{ fontSize: '1.05rem', color: '#ffffff', fontWeight: 900 }}>{businessName}</strong>
-            <span style={{ display: 'block', fontSize: '0.68rem', color: '#94a3b8' }}>{tagline}</span>
+        {/* Top Row */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.05), color: '#ffffff', fontWeight: 900, display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.66rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tagline}</span>
           </div>
-          <span style={{ fontSize: '0.66rem', color: accentColor, fontWeight: 900 }}>
+          <span style={{ fontSize: '0.66rem', color: accentColor, fontWeight: 900, whiteSpace: 'nowrap', flexShrink: 0 }}>
             {license}
           </span>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', fontSize: '0.72rem', color: '#cbd5e1' }}>
-          <div>✓ Free On-Site Inspection</div>
-          <div>✓ 100% Upfront Pricing</div>
-          <div>✓ Licensed &amp; Bonded</div>
-          <div>✓ Emergency 24/7 Crew</div>
+        {/* Middle Content */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px', fontSize: '0.7rem', color: '#cbd5e1' }}>
+            <div>✓ Free On-Site Inspection</div>
+            <div>✓ 100% Upfront Pricing</div>
+            <div>✓ Licensed &amp; Bonded</div>
+            <div>✓ Emergency 24/7 Crew</div>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '6px' }}>
-          <div style={{ fontSize: '0.8rem', fontWeight: 800, color: '#38bdf8' }}>📞 {phone}</div>
-          <div style={{ fontSize: '0.74rem', color: '#94a3b8' }}>{website}</div>
+        {/* Bottom Row */}
+        <div style={{ flexShrink: 0, marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid #334155', paddingTop: '4px' }}>
+          <div style={{ fontSize: '0.78rem', fontWeight: 800, color: '#38bdf8' }}>📞 {phone}</div>
+          <div style={{ fontSize: '0.72rem', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{website}</div>
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -878,8 +953,11 @@ export default function BusinessCardMockup({
           }}
         >
           {foilEffect}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>{renderBranding(activeColor.darkText ? 'color' : 'white', 0.85)}</div>
+          {/* Top Row: Logo + Trust Shield Badge */}
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', maxHeight: '34px', maxWidth: '130px' }}>
+              {renderBranding(activeColor.darkText ? 'color' : 'white', 0.85)}
+            </div>
             <div
               style={{
                 display: 'flex',
@@ -890,8 +968,10 @@ export default function BusinessCardMockup({
                 borderRadius: '999px',
                 padding: '2px 8px',
                 color: '#4ade80',
-                fontSize: '0.64rem',
+                fontSize: '0.62rem',
                 fontWeight: 900,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
               <span>🛡️</span>
@@ -899,22 +979,24 @@ export default function BusinessCardMockup({
             </div>
           </div>
 
-          <div>
-            <strong style={{ fontSize: '1.14rem', fontWeight: 900, letterSpacing: '-0.01em', display: 'block' }}>
+          {/* Middle Content: Name + Tagline + Rating */}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: 0, margin: '4px 0' }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.1), fontWeight: 900, letterSpacing: '-0.01em', display: 'block', lineHeight: 1.2 }}>
               {businessName}
             </strong>
-            <span style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600 }}>{tagline}</span>
-            <div style={{ marginTop: '4px', display: 'flex', gap: '8px', fontSize: '0.68rem', color: '#fbbf24', fontWeight: 800 }}>
+            <span style={getTaglineStyle(tagline)}>{tagline}</span>
+            <div style={{ marginTop: '4px', display: 'flex', gap: '8px', fontSize: '0.66rem', color: '#fbbf24', fontWeight: 800, whiteSpace: 'nowrap' }}>
               <span>★★★★★ 5.0 Rating</span>
               <span style={{ color: activeColor.darkText ? '#475569' : '#cbd5e1' }}>• 100% Guaranteed</span>
             </div>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
+          {/* Bottom Row: License + HOMEOWNER TRUSTED */}
+          <div style={{ flexShrink: 0, marginTop: 'auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', borderTop: '1px solid rgba(255,255,255,0.15)', paddingTop: '4px' }}>
             <span style={{ fontSize: '0.72rem', fontWeight: 800, color: accentColor }}>
               {license}
             </span>
-            <span style={{ fontSize: '0.64rem', opacity: 0.75 }}>
+            <span style={{ fontSize: '0.62rem', opacity: 0.75, fontWeight: 700 }}>
               HOMEOWNER TRUSTED
             </span>
           </div>
@@ -934,28 +1016,31 @@ export default function BusinessCardMockup({
         }}
       >
         {foilEffect}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <strong style={{ fontSize: '1.02rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-            <span style={{ display: 'block', fontSize: '0.68rem', color: '#16a34a', fontWeight: 800 }}>
+        {/* Top Row */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '8px' }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.02), fontWeight: 900, color: '#0f172a', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{businessName}</strong>
+            <span style={{ display: 'block', fontSize: '0.66rem', color: '#16a34a', fontWeight: 800 }}>
               {templateDef.ratingBadgeText}
             </span>
           </div>
-          <span style={{ fontSize: '0.64rem', color: '#2563eb', fontWeight: 800, background: '#eff6ff', padding: '2px 8px', borderRadius: '4px', border: '1px solid #bfdbfe' }}>
+          <span style={{ fontSize: '0.62rem', color: '#2563eb', fontWeight: 800, background: '#eff6ff', padding: '2px 6px', borderRadius: '4px', border: '1px solid #bfdbfe', whiteSpace: 'nowrap', flexShrink: 0 }}>
             LOCAL CONTRACTOR
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.6, color: '#334155' }}>
+        {/* Middle Content */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: '#334155', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 900, color: '#0f172a' }}>📞 {phone}</div>
-            <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>License: {license}</div>
+            <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>License: {license}</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor="#16a34a" label="VERIFY PRO" sublabel="ONLINE" />}
+          {includeQrCode && <CardQrVisual size={66} accentColor="#16a34a" label="VERIFY PRO" sublabel="ONLINE" />}
         </div>
 
-        <div style={{ fontSize: '0.64rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+        {/* Bottom Row */}
+        <div style={{ flexShrink: 0, marginTop: 'auto', fontSize: '0.62rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
           <span>Clean Background Checked Crews</span>
           <span style={{ fontWeight: 800 }}>Free Consultation</span>
         </div>
@@ -984,19 +1069,19 @@ export default function BusinessCardMockup({
           }}
         >
           {foilEffect}
-          <div style={{ marginBottom: '0.6rem' }}>
-            {renderBranding(activeColor.darkText ? 'color' : 'white', 1.05)}
+          <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxHeight: '42px', maxWidth: '140px', marginBottom: '0.4rem' }}>
+            {renderBranding(activeColor.darkText ? 'color' : 'white', 0.95)}
           </div>
-          <strong style={{ fontSize: '1.2rem', fontWeight: 900, letterSpacing: '-0.01em', textTransform: 'uppercase' }}>
+          <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.15), fontWeight: 900, letterSpacing: '-0.01em', textTransform: 'uppercase', lineHeight: 1.2 }}>
             {businessName}
           </strong>
-          <span style={{ fontSize: '0.74rem', opacity: 0.85, fontWeight: 600, marginTop: '2px', display: 'block' }}>
-            {tagline}
-          </span>
+          <div style={{ maxWidth: '290px', marginTop: '3px' }}>
+            <span style={getTaglineStyle(tagline)}>{tagline}</span>
+          </div>
           <div
             style={{
               position: 'absolute',
-              bottom: '12px',
+              bottom: '8px',
               fontSize: '0.64rem',
               letterSpacing: '0.08em',
               fontWeight: 800,
@@ -1011,7 +1096,7 @@ export default function BusinessCardMockup({
       );
     }
 
-    // Double Sided Back (Functional utility)
+    // Double Sided Back
     return (
       <div
         style={{
@@ -1022,23 +1107,28 @@ export default function BusinessCardMockup({
         }}
       >
         {foilEffect}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px' }}>
-          <strong style={{ fontSize: '0.98rem', fontWeight: 900, color: '#0f172a' }}>{businessName}</strong>
-          <span style={{ fontSize: '0.68rem', color: '#2563eb', fontWeight: 800 }}>
+        {/* Top Row */}
+        <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0', paddingBottom: '4px', gap: '8px' }}>
+          <strong style={{ fontSize: getBusinessNameFontSize(businessName, 0.98), fontWeight: 900, color: '#0f172a', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }}>
+            {businessName}
+          </strong>
+          <span style={{ fontSize: '0.66rem', color: '#2563eb', fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>
             {templateDef.ratingBadgeText}
           </span>
         </div>
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: '0.82rem', lineHeight: 1.6, color: '#334155' }}>
+        {/* Middle Content */}
+        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem', minHeight: 0, margin: '4px 0' }}>
+          <div style={{ fontSize: '0.8rem', lineHeight: 1.5, color: '#334155', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 800 }}>📞 {phone}</div>
-            <div style={{ color: '#2563eb', fontWeight: 700 }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.72rem', color: '#64748b' }}>Custom Craftsmanship</div>
+            <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
+            <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Custom Craftsmanship</div>
           </div>
-          {includeQrCode && <CardQrVisual accentColor={accentColor} />}
+          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} />}
         </div>
 
-        <div style={{ fontSize: '0.64rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
+        {/* Bottom Row */}
+        <div style={{ flexShrink: 0, marginTop: 'auto', fontSize: '0.64rem', color: '#64748b', borderTop: '1px solid #e2e8f0', paddingTop: '4px', display: 'flex', justifyContent: 'space-between' }}>
           <span>Residential &amp; Commercial Installation</span>
           <span style={{ fontWeight: 800 }}>{license}</span>
         </div>
@@ -1075,48 +1165,50 @@ export default function BusinessCardMockup({
 
       {side === 'front' ? (
         <>
-          <div style={{ textAlign: 'center', marginTop: '2px' }}>
-            <span style={{ fontSize: '0.58rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: accentColor || '#c5a059', fontWeight: 800 }}>
+          <div style={{ flexShrink: 0, textAlign: 'center' }}>
+            <span style={{ fontSize: '0.56rem', letterSpacing: '0.16em', textTransform: 'uppercase', color: accentColor || '#c5a059', fontWeight: 800 }}>
               {templateDef.badgeLabel}
             </span>
           </div>
 
-          <div style={{ textAlign: 'center', position: 'relative', zIndex: 2 }}>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '4px' }}>
-              {renderBranding(activeColor.darkText ? 'color' : 'white', 0.85)}
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 0, textAlign: 'center', position: 'relative', zIndex: 2, margin: '2px 0' }}>
+            <div style={{ flexShrink: 0, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxHeight: '32px', maxWidth: '120px', marginBottom: '2px' }}>
+              {renderBranding(activeColor.darkText ? 'color' : 'white', 0.82)}
             </div>
-            <strong style={{ fontSize: '1.16rem', fontWeight: 700, letterSpacing: '0.04em', display: 'block', textTransform: 'uppercase' }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.1), fontWeight: 700, letterSpacing: '0.04em', display: 'block', textTransform: 'uppercase', lineHeight: 1.2 }}>
               {businessName}
             </strong>
-            <div style={{ fontSize: '0.68rem', color: accentColor || '#c5a059', margin: '2px 0' }}>♦ ♦ ♦</div>
-            <span style={{ fontSize: '0.72rem', fontStyle: 'italic', opacity: 0.85 }}>{tagline}</span>
+            <div style={{ fontSize: '0.62rem', color: accentColor || '#c5a059', margin: '2px 0' }}>♦ ♦ ♦</div>
+            <div style={{ maxWidth: '280px' }}>
+              <span style={getTaglineStyle(tagline, { customFontSize: '0.68rem' })}>{tagline}</span>
+            </div>
           </div>
 
-          <div style={{ textAlign: 'center', marginBottom: '2px' }}>
-            <span style={{ fontSize: '0.64rem', letterSpacing: '0.08em', opacity: 0.8 }}>
+          <div style={{ flexShrink: 0, marginTop: 'auto', textAlign: 'center' }}>
+            <span style={{ fontSize: '0.62rem', letterSpacing: '0.08em', opacity: 0.8 }}>
               {license} • MASTER TRADESMAN
             </span>
           </div>
         </>
       ) : (
         <>
-          <div style={{ textAlign: 'center', borderBottom: `1px solid ${accentColor || '#c5a059'}`, paddingBottom: '4px' }}>
-            <strong style={{ fontSize: '1.05rem', fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+          <div style={{ flexShrink: 0, textAlign: 'center', borderBottom: `1px solid ${accentColor || '#c5a059'}`, paddingBottom: '3px' }}>
+            <strong style={{ fontSize: getBusinessNameFontSize(businessName, 1.02), fontWeight: 700, color: '#0f172a', textTransform: 'uppercase', letterSpacing: '0.04em', display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {businessName}
             </strong>
-            <span style={{ display: 'block', fontSize: '0.68rem', fontStyle: 'italic', color: '#64748b' }}>{tagline}</span>
+            <span style={{ display: 'block', fontSize: '0.64rem', fontStyle: 'italic', color: '#64748b', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{tagline}</span>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.5rem' }}>
-            <div style={{ fontSize: '0.82rem', lineHeight: 1.6, color: '#334155' }}>
+          <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0 0.5rem', minHeight: 0, margin: '4px 0' }}>
+            <div style={{ fontSize: '0.78rem', lineHeight: 1.5, color: '#334155', minWidth: 0, flex: 1 }}>
               <div style={{ fontWeight: 700 }}>Tel. {phone}</div>
-              <div style={{ color: accentColor || '#c5a059', fontWeight: 700 }}>{website}</div>
-              <div style={{ fontSize: '0.68rem', fontStyle: 'italic', color: '#64748b' }}>{license}</div>
+              <div style={{ color: accentColor || '#c5a059', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{website}</div>
+              <div style={{ fontSize: '0.66rem', fontStyle: 'italic', color: '#64748b' }}>{license}</div>
             </div>
-            {includeQrCode && <CardQrVisual accentColor={accentColor || '#c5a059'} label="ESTIMATE" sublabel="DIRECT" />}
+            {includeQrCode && <CardQrVisual size={66} accentColor={accentColor || '#c5a059'} label="ESTIMATE" sublabel="DIRECT" />}
           </div>
 
-          <div style={{ textAlign: 'center', fontSize: '0.62rem', color: '#64748b', fontStyle: 'italic' }}>
+          <div style={{ flexShrink: 0, marginTop: 'auto', textAlign: 'center', fontSize: '0.6rem', color: '#64748b', fontStyle: 'italic' }}>
             {templateDef.ratingBadgeText} • Fully Insured
           </div>
         </>
