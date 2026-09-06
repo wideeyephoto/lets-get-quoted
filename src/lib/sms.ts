@@ -311,7 +311,6 @@ export async function sendOwnerVoiceCallNotificationSms(input: {
       messageKind: 'owner-voice-call-notification',
       category: 'owner_alert',
       context: 'owner',
-      senderPurpose: 'lgq_dispatch',
       idempotencyKey: input.idempotencyKey,
     });
   } catch (error) {
@@ -1609,7 +1608,7 @@ export async function sendCrewWelcomeSms(params: {
       context: 'crew',
       eventType: 'crew_welcome',
       crewId: params.crewId,
-      senderPurpose: 'lgq_shared',
+      senderPurpose: 'lgq_dispatch',
       idempotencyKey: `crew-welcome:${params.crewId}:${normalized}`,
     });
     return { status: 'queued', eventId };

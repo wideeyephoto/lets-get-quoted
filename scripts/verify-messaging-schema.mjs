@@ -140,13 +140,26 @@ try {
     'utf8',
   ));
   // Those historical follow-ups replace inbound and delivery functions. Reapply
-  // the current Campaign-wide suppression boundary last so this harness checks
-  // the same final definitions that production receives from schema.sql.
+  // the current Campaign-wide suppression, dispatch sender registration,
+  // purpose boundary, and registry callback quarantine so this harness checks
+  // the final production definitions.
   await client.query(readFileSync(
     join(process.cwd(), 'migrations/20260906120000_sms_campaign_wide_stop.sql'),
     'utf8',
   ));
-  check('SMS durability, purpose-routing, and Campaign STOP follow-ups reapply', true);
+  await client.query(readFileSync(
+    join(process.cwd(), 'migrations/20260906121036_register_signalwire_dispatch_sender.sql'),
+    'utf8',
+  ));
+  await client.query(readFileSync(
+    join(process.cwd(), 'migrations/20260906130000_sms_campaign_purpose_boundary.sql'),
+    'utf8',
+  ));
+  await client.query(readFileSync(
+    join(process.cwd(), 'migrations/20260906131500_messaging_registry_callback_fail_closed.sql'),
+    'utf8',
+  ));
+  check('SMS durability, routing, Campaign STOP, dispatch sender, purpose boundary, and callback quarantine reapply', true);
 
   const tables = await client.query(
     `select tablename from pg_catalog.pg_tables
@@ -169,6 +182,46 @@ try {
   check('all critical messaging and voice RPCs exist',
     requiredFunctions.every((name) => foundFunctions.has(name)),
     requiredFunctions.filter((name) => !foundFunctions.has(name)).join(', '));
+
+  const dispatchSender = await client.query(
+    `select provider_number_id,purpose,account_id,brand_id,campaign_id,
+            assignment_id,assignment_state,inbound_resource_id,
+            inbound_webhook_url,provisioning_status,inbound_ready,activated_at,
+            last_verified_at,provider_brand_state,provider_campaign_state,
+            provider_verified_at,provider_phone_verified_at,provider_sms_capable,
+            inbound_request_method,inbound_message_handler,suspended_at,
+            provisioning_application_id
+       from public.sms_sender_numbers
+      where provider='signalwire' and e164_number='+18103208333'`,
+  );
+  const dispatch = dispatchSender.rows[0];
+  check(
+    'carrier-verified LGQ dispatch sender is active with exact identity and ingress proof',
+    dispatchSender.rowCount === 1
+      && dispatch?.provider_number_id === 'b28fc2e0-3a92-43f0-a817-923defaf9c4c'
+      && dispatch?.purpose === 'lgq_dispatch'
+      && dispatch?.account_id === null
+      && dispatch?.brand_id === '4a09f38f-2de4-48b7-aba5-dac76a398ccf'
+      && dispatch?.campaign_id === '19e7c875-3611-4b40-8429-7dae3b5e6553'
+      && dispatch?.assignment_id === '5d101ac6-955f-40cf-a0b8-18b5b5121a4b'
+      && dispatch?.assignment_state === 'assigned'
+      && dispatch?.inbound_resource_id === '53ae4e4a-d03f-426b-9983-b09ba496fc43'
+      && dispatch?.inbound_webhook_url === 'https://app.letsgetquoted.com/api/sms/inbound'
+      && dispatch?.provisioning_status === 'active'
+      && dispatch?.inbound_ready === true
+      && dispatch?.activated_at !== null
+      && dispatch?.last_verified_at !== null
+      && dispatch?.provider_brand_state === 'complete'
+      && dispatch?.provider_campaign_state === 'complete'
+      && dispatch?.provider_verified_at !== null
+      && dispatch?.provider_phone_verified_at !== null
+      && dispatch?.provider_sms_capable === true
+      && dispatch?.inbound_request_method === 'POST'
+      && dispatch?.inbound_message_handler === 'laml_webhooks'
+      && dispatch?.suspended_at === null
+      && dispatch?.provisioning_application_id === null,
+    JSON.stringify(dispatch ?? null),
+  );
 
   concurrentClient = new Client({
     host: '127.0.0.1', port: PORT, user: 'postgres', password: 'postgres',
