@@ -58,6 +58,18 @@ export type ConnectedPaymentLateSuccessObservation = Readonly<{
   observed_at: string;
 }>;
 
+function isLateSuccessSessionStatus(
+  value: unknown,
+): value is ConnectedPaymentLateSuccessObservation['session_status'] {
+  return value === 'open' || value === 'complete' || value === 'expired';
+}
+
+function isLateSuccessPaymentStatus(
+  value: unknown,
+): value is ConnectedPaymentLateSuccessObservation['payment_status'] {
+  return value === 'paid' || value === 'unpaid' || value === 'no_payment_required';
+}
+
 export type ConnectedPaymentLateSuccessResult = Readonly<{
   status: 'manual_reconciliation';
   billingEventId: string;
@@ -455,19 +467,17 @@ function observation(
   source: ConnectedPaymentLateSuccessObservation['source'],
   now: Date,
 ): ConnectedPaymentLateSuccessObservation {
-  if (
-    !session.status
-    || !['open', 'complete', 'expired'].includes(session.status)
-    || !['paid', 'unpaid', 'no_payment_required'].includes(session.payment_status)
-  ) {
+  const sessionStatus = session.status;
+  const paymentStatus = session.payment_status;
+  if (!isLateSuccessSessionStatus(sessionStatus) || !isLateSuccessPaymentStatus(paymentStatus)) {
     throw new Error('Late-success successor status is invalid.');
   }
   return Object.freeze({
     schema: LATE_SUCCESS_OBSERVATION_SCHEMA,
     source,
     checkout_session_id: session.id,
-    session_status: session.status,
-    payment_status: session.payment_status,
+    session_status: sessionStatus,
+    payment_status: paymentStatus,
     payment_intent_id: paymentIntentId(session),
     observed_at: now.toISOString(),
   });

@@ -10,12 +10,13 @@ const initialState: ClaimFormState = {
 
 type Props = {
   campaignId: string;
+  claimToken: string;
   streetName: string;
   city: string;
   businessName: string;
 };
 
-export default function HaloClaimForm({ campaignId, streetName, city, businessName }: Props) {
+export default function HaloClaimForm({ campaignId, claimToken, streetName, city, businessName }: Props) {
   const [state, formAction, isPending] = useActionState(submitNeighborHaloClaimAction, initialState);
 
   if (state.success) {
@@ -37,6 +38,7 @@ export default function HaloClaimForm({ campaignId, streetName, city, businessNa
   return (
     <form action={formAction} className={styles.formCard}>
       <input type="hidden" name="campaignId" value={campaignId} />
+      <input type="hidden" name="claimToken" value={claimToken} />
       <h3 className={styles.formTitle}>Claim Your Neighbor Discount</h3>
       <p className={styles.formSubtitle}>
         While our trucks and crews are staged on {streetName}, lock in your group rate estimate with zero obligation.

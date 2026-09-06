@@ -101,6 +101,19 @@ function successor(overrides: Partial<Stripe.Checkout.Session> = {}): Stripe.Che
   } as Stripe.Checkout.Session;
 }
 
+function successorWithUnrecognizedWireStatus(
+  field: 'status' | 'payment_status',
+): Stripe.Checkout.Session {
+  const session = successor();
+  Object.defineProperty(session, field, {
+    value: 'future_provider_status',
+    enumerable: true,
+    configurable: true,
+    writable: true,
+  });
+  return session;
+}
+
 function setup(options: {
   action?: 'retrieve_then_expire' | 'successor_neutralized' | 'manual_review';
 } = {}) {
@@ -280,6 +293,21 @@ describe('connected payment late-success reconciliation', () => {
       retryable: true,
     } satisfies Partial<ConnectedPaymentLateSuccessProviderError>);
     expect(dependencies.store.finalize).not.toHaveBeenCalled();
+  });
+
+  it('fails closed on unrecognized future provider status values', async () => {
+    for (const field of ['status', 'payment_status'] as const) {
+      const dependencies = setup();
+      dependencies.provider.retrieve.mockResolvedValue(
+        successorWithUnrecognizedWireStatus(field),
+      );
+
+      await expect(reconcile(dependencies)).rejects.toThrow(
+        'Late-success successor status is invalid.',
+      );
+      expect(dependencies.provider.expire).not.toHaveBeenCalled();
+      expect(dependencies.store.finalize).not.toHaveBeenCalled();
+    }
   });
 
   it('performs no provider work for a database-neutralized or manual successor', async () => {

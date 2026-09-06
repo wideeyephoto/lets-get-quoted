@@ -1,8 +1,11 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
 import { createLead } from '@/lib/leads';
+import { verifyHaloClaimToken } from '@/lib/neighborhood-halo-claim-token';
 import { getHaloCampaignById } from '@/lib/neighborhood-halo-service';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 import { sendSpeedToLeadSms, sendContractorAdLeadSms } from '@/lib/sms';
 
 export type ClaimFormState = {
@@ -15,9 +18,8 @@ export async function submitNeighborHaloClaimAction(
   prevState: ClaimFormState,
   formData: FormData
 ): Promise<ClaimFormState> {
-  const admin = createAdminClient();
-
   const campaignId = String(formData.get('campaignId') || '').trim();
+  const claimToken = String(formData.get('claimToken') || '').trim();
   const name = String(formData.get('name') || '').trim();
   const phone = String(formData.get('phone') || '').trim();
   const address = String(formData.get('address') || '').trim();
@@ -34,8 +36,30 @@ export async function submitNeighborHaloClaimAction(
     return { success: false, error: 'Please provide a valid phone number for SMS confirmation.' };
   }
 
+  // This is a public Server Action backed by a client that bypasses RLS. The
+  // signed, short-lived capability must be verified before that client exists;
+  // a posted campaign UUID by itself is not authorization.
+  const authorizedClaim = verifyHaloClaimToken(claimToken, campaignId);
+  if (!authorizedClaim) {
+    return { success: false, error: 'This campaign link is invalid or has expired. Please reload the page.' };
+  }
+
+  const admin = createAdminClient();
+  const ip = clientIpFrom(await headers());
+  if (!(await checkRateLimitStrict(admin, `halo-claim:${campaignId}:ip:${ip}`, 5, 60 * 60))) {
+    return { success: false, error: 'Too many claim attempts. Please wait a while and try again.' };
+  }
+
   const campaign = await getHaloCampaignById(admin, campaignId);
-  if (!campaign) {
+  const campaignExpiry = campaign?.expiresAt ? Date.parse(campaign.expiresAt) : null;
+  const campaignExpired = campaignExpiry !== null
+    && (!Number.isFinite(campaignExpiry) || campaignExpiry <= Date.now());
+  if (
+    !campaign
+    || campaign.accountId !== authorizedClaim.accountId
+    || !['active', 'simulated_sandbox'].includes(campaign.status)
+    || campaignExpired
+  ) {
     return { success: false, error: 'Neighborhood offer not found or has expired.' };
   }
 

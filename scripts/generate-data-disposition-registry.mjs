@@ -266,8 +266,10 @@ add('permit_code_amendments', 'system_global', 'id', undefined, 'retain_immutabl
 add('permit_requirement_rules', 'system_global', 'id', undefined, 'retain_immutable', undefined, 'internal_system', undefined, 'GENERAL', 'contractual_fulfillment', 2555, 'immediate', undefined, 'Trade permit threshold determination rules');
 add('permit_sources', 'system_global', 'id', undefined, 'retain_immutable', undefined, 'internal_system', undefined, 'GENERAL', 'contractual_fulfillment', 2555, 'immediate', undefined, 'Official municipal building department portals');
 
-// 7. Marketing, Ads & External Integrations (15)
+// 7. Marketing, Ads & External Integrations (17)
 add('campaigns', 'direct_account_id', 'id', undefined, 'anonymize_columns', ['subject', 'body'], 'full', undefined, 'GENERAL', 'transient_operational', 365, 'account_closed', undefined, 'Outbound marketing campaigns and dispatches');
+add('neighborhood_halo_settings', 'direct_account_id', 'account_id', undefined, 'delete', undefined, 'full', undefined, 'GENERAL', 'transient_operational', 0, 'account_closed', undefined, 'Per-workspace Neighborhood Halo launch and budget preferences');
+add('neighborhood_halo_campaigns', 'direct_account_id', 'id', undefined, 'delete', undefined, 'full', undefined, 'GENERAL', 'transient_operational', 365, 'account_closed', undefined, 'Neighborhood Halo micro-ad campaign operations and results');
 add('google_lsa_connections', 'direct_account_id', 'account_id', undefined, 'delete', undefined, 'internal_system', undefined, 'GENERAL', 'contractual_fulfillment', 0, 'account_closed', undefined, 'Google Local Services Ads OAuth connections');
 add('google_lsa_leads', 'direct_account_id', 'id', undefined, 'anonymize_columns', ['consumer_name', 'consumer_phone', 'note'], 'full', undefined, 'GENERAL', 'transient_operational', 365, 'account_closed', undefined, 'Inbound phone and message leads from Google LSA');
 add('google_lsa_conversations', 'direct_account_id', 'id', undefined, 'anonymize_columns', ['message_text'], 'full', undefined, 'GENERAL', 'transient_operational', 365, 'account_closed', undefined, 'Google LSA direct message transcripts');
