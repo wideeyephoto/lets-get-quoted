@@ -40,7 +40,7 @@ lines.forEach((line, i) => {
   const alter = line.match(/^\s*alter table (?:public\.)?([a-z_][a-z0-9_]*)/i);
   if (alter) currentTable = alter[1];
 
-  for (const m of line.matchAll(/references\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/gi)) {
+  for (const m of line.matchAll(/\breferences\s+(?:public\.)?([a-z_][a-z0-9_]*)\s*\(/gi)) {
     const target = m[1];
     if (target.startsWith('auth.') || target === 'users') continue;
     const targetLine = createdAt.get(target);

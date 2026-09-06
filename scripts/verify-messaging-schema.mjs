@@ -66,6 +66,7 @@ alter default privileges in schema public
 const requiredTables = [
   'sms_events',
   'sms_sender_numbers',
+  'sms_campaign_keyword_preferences',
   'sms_delivery_tasks',
   'sms_webhook_receipts',
   'sms_inbound_action_tasks',
@@ -96,6 +97,8 @@ const requiredFunctions = [
   'settle_usage_overage_result',
   'ingest_messaging_registry_callback',
   'record_sms_shared_notice_reply',
+  'sms_recipient_keyword_opted_out',
+  'sms_account_recipient_opted_out',
 ];
 
 const pg = new EmbeddedPostgres({
@@ -136,7 +139,14 @@ try {
     join(process.cwd(), 'migrations/20260821210500_sms_purpose_aware_inbound_routing.sql'),
     'utf8',
   ));
-  check('SMS durability and purpose-routing follow-ups reapply with explicit postconditions', true);
+  // Those historical follow-ups replace inbound and delivery functions. Reapply
+  // the current Campaign-wide suppression boundary last so this harness checks
+  // the same final definitions that production receives from schema.sql.
+  await client.query(readFileSync(
+    join(process.cwd(), 'migrations/20260906120000_sms_campaign_wide_stop.sql'),
+    'utf8',
+  ));
+  check('SMS durability, purpose-routing, and Campaign STOP follow-ups reapply', true);
 
   const tables = await client.query(
     `select tablename from pg_catalog.pg_tables

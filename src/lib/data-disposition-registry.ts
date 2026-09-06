@@ -1565,6 +1565,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Campaign-wide STOP and START suppression state
+  sms_campaign_keyword_preferences: {
+    tableName: 'sms_campaign_keyword_preferences',
+    relationship: 'system_global',
+    primaryKeyColumn: 'phone_number',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'dispute_limitation', durationDays: 1460, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Queued SMS delivery workers
   sms_delivery_tasks: {
     tableName: 'sms_delivery_tasks',

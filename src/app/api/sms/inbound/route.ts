@@ -187,14 +187,15 @@ async function sharedNoticeRecipientOptedOut(
   if (!normalizedPhone) return true;
 
   try {
-    const { data, error } = await admin
-      .from('sms_sender_keyword_preferences')
-      .select('status, opted_out_at')
-      .eq('sender_number_id', ingress.senderNumberId)
-      .eq('phone_number', normalizedPhone)
-      .maybeSingle();
-    if (error) return true;
-    if (data?.status === 'opted_out' || data?.opted_out_at != null) return true;
+    const { data: optedOut, error } = await admin.rpc(
+      'sms_recipient_keyword_opted_out',
+      {
+        p_sender_number_id: ingress.senderNumberId,
+        p_phone_number: normalizedPhone,
+      },
+    );
+    if (error || typeof optedOut !== 'boolean') return true;
+    if (optedOut) return true;
 
     if (ingress.accountId) {
       const { data: consent, error: consentError } = await admin
