@@ -1334,4 +1334,66 @@ textarea.input {
   border-color: var(--accent, #ff7a21);
   box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.2);
 }
+.mfaBadgeVerified {
+  color: #34d399;
+  font-weight: 600;
+}
+.mfaBadgeUnverified {
+  color: #fbbf24;
+  font-weight: 600;
+}
+.mfaBtnSmall {
+  font-size: 0.75rem !important;
+  padding: 0.2rem 0.55rem !important;
+  min-height: auto !important;
+}
+.mfaQrCard {
+  background: #ffffff;
+  padding: 0.65rem;
+  border-radius: 0.65rem;
+  display: inline-block;
+  line-height: 0;
+  margin: 0.6rem 0;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+}
+.mfaQrImg {
+  display: block;
+  width: 200px;
+  height: 200px;
+}
+.mfaCancelRow {
+  display: flex;
+  gap: 0.6rem;
+  margin-top: 0.4rem;
+  flex-wrap: wrap;
+}
+.mfaNoticeBox {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  background: rgba(var(--tint, 255, 255, 255), 0.04);
+  border-radius: 0.6rem;
+  border: 1px solid rgba(var(--tint, 255, 255, 255), 0.1);
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+.mfaNoticeBox.error {
+  background: rgba(239, 68, 68, 0.08);
+  border-color: rgba(239, 68, 68, 0.28);
+}
+.mfaNoticeTitle {
+  font-weight: 700;
+  font-size: 0.88rem;
+  color: var(--text, #eef1f6);
+}
+.mfaNoticeBox.error .mfaNoticeTitle {
+  color: #f87171;
+}
+.mfaNoticeText {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted, rgba(247, 245, 239, 0.75));
+}
+
 

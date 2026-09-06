@@ -8,37 +8,41 @@ type Factor = {
   id: string;
   status: 'verified' | 'unverified' | string;
   friendly_name?: string;
-  factor_type?: 'totp' | 'phone' | 'webauthn' | string;
+  factor_type: 'totp' | 'webauthn' | 'phone' | string;
+  created_at?: string;
+  updated_at?: string;
 };
 
-type PasskeyItem = {
-  id: string;
-  friendly_name?: string;
-  created_at: string;
-  last_used_at?: string;
-};
+interface WebAuthnMfaClient {
+  register: (options: {
+    friendlyName?: string;
+    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
+  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
+  authenticate: (options: {
+    factorId: string;
+    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
+  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
+}
 
 export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
   const [factors, setFactors] = useState<Factor[]>([]);
-  const [passkeys, setPasskeys] = useState<PasskeyItem[]>([]);
   const [level, setLevel] = useState<string>('checking');
   const [qr, setQr] = useState<string | null>(null);
   const [secret, setSecret] = useState<string | null>(null);
   const [totpFactorId, setTotpFactorId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
+  const [enrollNotice, setEnrollNotice] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(true);
 
   async function refresh() {
-    const [{ data: factorsData }, { data: assurance }, passkeysResult] = await Promise.all([
+    const [{ data: factorsData }, { data: assurance }] = await Promise.all([
       supabase.auth.mfa.listFactors(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-      supabase.auth.passkey.list().catch(() => ({ data: null })),
     ]);
     const all = (factorsData?.all ?? []) as Factor[];
     setFactors(all);
-    setPasskeys(((passkeysResult?.data as PasskeyItem[]) ?? []));
     setLevel(assurance?.currentLevel ?? 'aal1');
   }
 
@@ -52,13 +56,27 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
   async function enrollPasskey() {
     setBusy(true);
     setMessage('');
+    setEnrollNotice(null);
     try {
-      const { error } = await supabase.auth.registerPasskey();
+      const webauthn = (supabase.auth.mfa as unknown as { webauthn?: WebAuthnMfaClient })?.webauthn;
+      if (!webauthn?.register) {
+        throw new Error('WebAuthn MFA is not available on this client.');
+      }
+      const { error } = await webauthn.register({
+        friendlyName: 'Passkey',
+      });
       if (error) {
-        setMessage(error.message || 'Passkey setup was cancelled or failed.');
+        const errMsg = error.message || '';
+        if (errMsg.toLowerCase().includes('disabled for webauthn') || errMsg.toLowerCase().includes('mfa enroll is disabled')) {
+          setEnrollNotice(
+            'WebAuthn MFA enrollment is disabled in your Supabase project settings. In your Supabase Dashboard, navigate to Authentication → Multi-Factor Authentication and enable WebAuthn / Security Keys.'
+          );
+        } else {
+          setMessage(errMsg || 'Passkey setup was cancelled or failed.');
+        }
         return;
       }
-      setMessage('Passkey registered and saved to your device / password manager!');
+      setMessage('Passkey registered and verified! High-impact actions are unlocked for this session.');
       setQr(null);
       setSecret(null);
       setTotpFactorId(null);
@@ -70,15 +88,34 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
     }
   }
 
-  async function verifyPasskey() {
+  async function verifyPasskey(factorId?: string) {
     setBusy(true);
     setMessage('');
+    setEnrollNotice(null);
     try {
-      const { error } = await supabase.auth.signInWithPasskey();
+      const targetFactor = factorId
+        ? factors.find((f) => f.id === factorId && f.factor_type === 'webauthn')
+        : factors.find((f) => f.factor_type === 'webauthn' && f.status === 'verified');
+
+      if (!targetFactor) {
+        setMessage('No verified passkey factor found.');
+        return;
+      }
+
+      const webauthn = (supabase.auth.mfa as unknown as { webauthn?: WebAuthnMfaClient })?.webauthn;
+      if (!webauthn?.authenticate) {
+        throw new Error('WebAuthn MFA is not available on this client.');
+      }
+
+      const { error } = await webauthn.authenticate({
+        factorId: targetFactor.id,
+      });
+
       if (error) {
         setMessage(error.message || 'Passkey verification was cancelled or failed.');
         return;
       }
+
       setMessage('Verified with passkey. High-impact actions are unlocked for this session.');
       await refresh();
     } catch (err: unknown) {
@@ -88,82 +125,90 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
     }
   }
 
-  async function removePasskey(passkeyId: string) {
-    setBusy(true);
-    setMessage('');
-    try {
-      const { error } = await supabase.auth.passkey.delete({ passkeyId });
-      setBusy(false);
-      if (error) return setMessage(error.message);
-      setMessage('Passkey removed.');
-      await refresh();
-    } catch (err: unknown) {
-      setBusy(false);
-      setMessage(err instanceof Error ? err.message : 'Could not remove passkey.');
-    }
-  }
-
   async function enrollTotp() {
     setBusy(true);
     setMessage('');
-    const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: 'totp',
-      friendlyName: 'LGQ staff console',
-    });
-    setBusy(false);
-    if (error || !data) {
-      return setMessage(error?.message ?? 'Could not start TOTP enrollment.');
+    setEnrollNotice(null);
+    try {
+      const { data, error } = await supabase.auth.mfa.enroll({
+        factorType: 'totp',
+        friendlyName: 'Authenticator app',
+      });
+      if (error || !data) {
+        setMessage(error?.message ?? 'Could not start TOTP enrollment.');
+        return;
+      }
+      setTotpFactorId(data.id);
+      setQr(data.totp.qr_code);
+      setSecret(data.totp.secret);
+      await refresh();
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : 'TOTP enrollment error.');
+    } finally {
+      setBusy(false);
     }
-    setTotpFactorId(data.id);
-    setQr(data.totp.qr_code);
-    setSecret(data.totp.secret);
-    await refresh();
   }
 
   async function verifyTotp(factorId: string) {
     if (code.length !== 6) return;
     setBusy(true);
     setMessage('');
-    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
-    if (challengeError || !challenge) {
+    try {
+      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
+      if (challengeError || !challenge) {
+        setMessage(challengeError?.message ?? 'Could not start verification challenge.');
+        return;
+      }
+      const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+      setMessage('Verified with authenticator app. High-impact actions are unlocked for this session.');
+      setQr(null);
+      setSecret(null);
+      setCode('');
+      setTotpFactorId(null);
+      await refresh();
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : 'TOTP verification failed.');
+    } finally {
       setBusy(false);
-      return setMessage(challengeError?.message ?? 'Could not start verification.');
     }
-    const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
-    setBusy(false);
-    if (error) return setMessage(error.message);
-    setMessage('Verified. High-impact actions are unlocked for this session.');
-    setQr(null);
-    setSecret(null);
-    setCode('');
-    setTotpFactorId(null);
-    await refresh();
   }
 
   async function removeFactor(factorId: string) {
     setBusy(true);
     setMessage('');
-    const { error } = await supabase.auth.mfa.unenroll({ factorId });
-    setBusy(false);
-    if (error) return setMessage(error.message);
-    if (totpFactorId === factorId) {
-      setTotpFactorId(null);
-      setQr(null);
-      setSecret(null);
+    try {
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) {
+        setMessage(error.message);
+        return;
+      }
+      if (totpFactorId === factorId) {
+        setTotpFactorId(null);
+        setQr(null);
+        setSecret(null);
+      }
+      setMessage('Authenticator removed.');
+      await refresh();
+    } catch (err: unknown) {
+      setMessage(err instanceof Error ? err.message : 'Could not remove authenticator.');
+    } finally {
+      setBusy(false);
     }
-    setMessage('Authenticator removed.');
-    await refresh();
   }
 
+  const verifiedFactors = factors.filter((f) => f.status === 'verified');
   const verifiedTotp = factors.find((f) => f.factor_type === 'totp' && f.status === 'verified');
+  const verifiedWebAuthn = factors.find((f) => f.factor_type === 'webauthn' && f.status === 'verified');
   const unverifiedTotp = factors.find((f) => f.factor_type === 'totp' && f.status === 'unverified');
-  const hasPasskeys = passkeys.length > 0;
-  const hasVerified = Boolean(hasPasskeys || verifiedTotp);
+  const hasVerified = verifiedFactors.length > 0;
 
-  const enrolledLabels = [
-    ...passkeys.map((p) => p.friendly_name || 'Passkey (active)'),
-    ...factors.map((f) => `${f.friendly_name || 'TOTP'} (${f.status})`),
-  ];
+  const enrolledLabels = factors.map(
+    (f) => `${f.friendly_name || (f.factor_type === 'webauthn' ? 'Passkey' : 'TOTP')} (${f.status})`
+  );
 
   return (
     <section className={styles.panel}>
@@ -190,17 +235,14 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
 
       {/* Step-up verification for verified factors when session is AAL1 */}
       {hasVerified && level !== 'aal2' ? (
-        <div style={{ marginTop: '1.2rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-          {hasPasskeys ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'flex-start' }}>
-              <p style={{ margin: 0, fontSize: '0.88rem' }}>
-                Verify with your passkey, biometrics, or security key:
-              </p>
+        <div className={styles.mfaStepUpPrompt}>
+          {verifiedWebAuthn ? (
+            <div className={styles.mfaActionGroup}>
               <button
                 type="button"
                 className="btn primary"
                 disabled={busy}
-                onClick={verifyPasskey}
+                onClick={() => verifyPasskey(verifiedWebAuthn.id)}
               >
                 {busy ? 'Verifying…' : '🔑 Verify with Passkey'}
               </button>
@@ -209,11 +251,15 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
 
           {verifiedTotp ? (
             <div className={styles.formStack}>
-              {hasPasskeys ? (
-                <p className={styles.muted} style={{ margin: '0.2rem 0' }}>
+              {verifiedWebAuthn ? (
+                <p className={styles.muted}>
                   — or enter a six-digit code from your authenticator app —
                 </p>
-              ) : null}
+              ) : (
+                <p className={styles.mfaPromptText}>
+                  Enter a six-digit code from your authenticator app:
+                </p>
+              )}
               <label htmlFor="mfa-code">Six-digit authenticator code</label>
               <input
                 id="mfa-code"
@@ -239,10 +285,14 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
 
       {/* Active TOTP QR enrollment */}
       {qr ? (
-        <div className={styles.mfaSetup} style={{ marginTop: '1.2rem' }}>
-          <p>Scan this QR code with your authenticator app, then enter its six-digit code.</p>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={qr} alt="Authenticator enrollment QR code" width={220} height={220} />
+        <div className={styles.mfaSetup}>
+          <p className={styles.mfaPromptText}>
+            Scan this QR code with your authenticator app, then enter its six-digit code.
+          </p>
+          <div className={styles.mfaQrCard}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={qr} alt="Authenticator enrollment QR code" className={styles.mfaQrImg} />
+          </div>
           <p className={styles.muted}>
             Manual key: <code>{secret}</code>
           </p>
@@ -257,7 +307,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
               autoComplete="one-time-code"
               placeholder="000000"
             />
-            <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.4rem' }}>
+            <div className={styles.mfaCancelRow}>
               <button
                 type="button"
                 className="btn primary"
@@ -287,18 +337,10 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         </div>
       ) : null}
 
-      {/* Unverified factor cleanup prompt (e.g. if page reloaded during enrollment) */}
+      {/* Incomplete setup cleanup prompt */}
       {unverifiedTotp && !qr ? (
-        <div
-          style={{
-            marginTop: '1rem',
-            padding: '0.8rem 1rem',
-            background: 'rgba(255, 255, 255, 0.03)',
-            borderRadius: '0.6rem',
-            border: '1px solid rgba(255, 255, 255, 0.08)',
-          }}
-        >
-          <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem' }}>
+        <div className={styles.mfaWarningCard}>
+          <p className={styles.mfaPromptText}>
             You have an incomplete authenticator setup ({unverifiedTotp.friendly_name ?? 'TOTP'} · unverified).
           </p>
           <button
@@ -312,13 +354,21 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         </div>
       ) : null}
 
+      {/* Enrollment error notice (e.g. if WebAuthn MFA is disabled in project settings) */}
+      {enrollNotice ? (
+        <div className={`${styles.mfaNoticeBox} ${styles.error}`}>
+          <div className={styles.mfaNoticeTitle}>⚠️ Action required in Supabase Dashboard</div>
+          <p className={styles.mfaNoticeText}>{enrollNotice}</p>
+        </div>
+      ) : null}
+
       {/* Enrollment buttons (when no QR code is active) */}
       {!qr ? (
-        <div style={{ marginTop: '1.2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-          <p style={{ margin: 0, fontSize: '0.88rem', fontWeight: 600 }}>
+        <div className={styles.mfaStack}>
+          <p className={styles.mfaPromptText} style={{ fontWeight: 600 }}>
             {hasVerified ? 'Add another authenticator' : 'Set up two-factor authentication'}
           </p>
-          <div style={{ display: 'flex', gap: '0.65rem', flexWrap: 'wrap' }}>
+          <div className={styles.mfaActionGroup}>
             <button
               type="button"
               className="btn primary"
@@ -332,7 +382,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
             </button>
           </div>
           {!supportsWebAuthn ? (
-            <p className={styles.muted} style={{ fontSize: '0.78rem' }}>
+            <p className={styles.muted}>
               Passkeys / WebAuthn are not supported by this browser.
             </p>
           ) : null}
@@ -340,85 +390,28 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
       ) : null}
 
       {/* Configured Authenticators List & Management */}
-      {factors.length > 0 || passkeys.length > 0 ? (
-        <div style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)' }}>
-          <h3
-            style={{
-              fontSize: '0.72rem',
-              fontWeight: 800,
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
-              color: 'rgba(247, 245, 239, 0.65)',
-              margin: '0 0 0.75rem',
-            }}
-          >
+      {factors.length > 0 ? (
+        <div className={styles.mfaSection}>
+          <h3 className={styles.mfaSectionTitle}>
             Enrolled Authenticators
           </h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {passkeys.map((pk) => (
-              <div
-                key={pk.id}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '0.6rem 0.85rem',
-                  background: 'rgba(255, 255, 255, 0.025)',
-                  borderRadius: '0.55rem',
-                  border: '1px solid rgba(255, 255, 255, 0.06)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                  <span style={{ fontSize: '1.15rem' }}>🔑</span>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
-                      {pk.friendly_name || 'Passkey'}
-                    </div>
-                    <div style={{ fontSize: '0.72rem', color: 'rgba(247, 245, 239, 0.5)' }}>
-                      FIDO2 / WebAuthn · <span style={{ color: '#34d399' }}>active</span>
-                    </div>
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  className="btn secondary"
-                  style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
-                  disabled={busy}
-                  onClick={() => removePasskey(pk.id)}
-                >
-                  Remove
-                </button>
-              </div>
-            ))}
-
+          <div className={styles.mfaList}>
             {factors.map((f) => {
               const isWebAuthn = f.factor_type === 'webauthn';
               const isVerified = f.status === 'verified';
               const canRemove = !isVerified || level === 'aal2';
 
               return (
-                <div
-                  key={f.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    padding: '0.6rem 0.85rem',
-                    background: 'rgba(255, 255, 255, 0.025)',
-                    borderRadius: '0.55rem',
-                    border: '1px solid rgba(255, 255, 255, 0.06)',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <span style={{ fontSize: '1.15rem' }}>{isWebAuthn ? '🔑' : '📱'}</span>
+                <div key={f.id} className={styles.mfaItem}>
+                  <div className={styles.mfaItemLead}>
+                    <span className={styles.mfaItemIcon}>{isWebAuthn ? '🔑' : '📱'}</span>
                     <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.85rem' }}>
+                      <div className={styles.mfaItemName}>
                         {f.friendly_name || (isWebAuthn ? 'Passkey' : 'Authenticator app')}
                       </div>
-                      <div style={{ fontSize: '0.72rem', color: 'rgba(247, 245, 239, 0.5)' }}>
-                        {isWebAuthn ? 'WebAuthn / Passkey' : 'TOTP 6-digit code'} ·{' '}
-                        <span style={{ color: isVerified ? '#34d399' : '#fbbf24' }}>
+                      <div className={styles.mfaItemMeta}>
+                        {isWebAuthn ? 'FIDO2 / WebAuthn' : 'TOTP 6-digit code'} ·{' '}
+                        <span className={isVerified ? styles.mfaBadgeVerified : styles.mfaBadgeUnverified}>
                           {isVerified ? 'verified' : 'unverified'}
                         </span>
                       </div>
@@ -428,8 +421,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
                   {canRemove ? (
                     <button
                       type="button"
-                      className="btn secondary"
-                      style={{ fontSize: '0.75rem', padding: '0.2rem 0.55rem' }}
+                      className={`btn secondary ${styles.mfaBtnSmall}`}
                       disabled={busy}
                       onClick={() => removeFactor(f.id)}
                     >
@@ -441,8 +433,8 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
             })}
           </div>
 
-          {factors.some((f) => f.status === 'verified') && level !== 'aal2' ? (
-            <p className={styles.muted} style={{ marginTop: '0.65rem', fontSize: '0.75rem' }}>
+          {verifiedFactors.length > 0 && level !== 'aal2' ? (
+            <p className={styles.muted} style={{ marginTop: '0.65rem' }}>
               Verify this session before removing an enrolled authenticator.
             </p>
           ) : null}
@@ -457,3 +449,4 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
     </section>
   );
 }
+
