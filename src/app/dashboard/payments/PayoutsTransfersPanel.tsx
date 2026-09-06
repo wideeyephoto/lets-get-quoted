@@ -23,10 +23,10 @@ function formatDate(iso: string): string {
 export default function PayoutsTransfersPanel({ payouts }: Props) {
   if (!payouts.connected) {
     return (
-      <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', background: 'var(--panel-bg, #fff)', borderRadius: '8px', border: '1px solid var(--border-subtle, #e2e8f0)' }}>
+      <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)' }}>
         <div style={{ fontSize: '2.2rem', marginBottom: '0.75rem' }}>🏦</div>
-        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem' }}>Connect Stripe to Enable Automatic Bank Payouts</h3>
-        <p style={{ maxWidth: '480px', margin: '0 auto 1.25rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', color: 'var(--text)' }}>Connect Stripe to Enable Automatic Bank Payouts</h3>
+        <p style={{ maxWidth: '480px', margin: '0 auto 1.25rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
           Connect your bank account through Stripe Connect so homeowner payments, deposits, and invoice balances land safely in your checking account.
         </p>
         <Link href="/dashboard/settings#payments" className="btn primary">
@@ -40,14 +40,14 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Payout Pause Alert Banner if applicable */}
       {payouts.payoutsPaused && (
-        <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid #ef4444', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <div style={{ padding: '1rem', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
-            <strong style={{ color: '#dc2626' }}>⚠️ Payouts Temporarily Paused by Stripe</strong>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            <strong style={{ color: 'var(--bad, #f87171)' }}>⚠️ Payouts Temporarily Paused by Stripe</strong>
+            <p style={{ margin: '0.2rem 0 0', fontSize: '0.85rem', color: 'var(--muted)' }}>
               Stripe requires updated business identity or tax verification before releasing bank transfers.
             </p>
           </div>
-          <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn primary" style={{ background: '#dc2626', borderColor: '#dc2626' }}>
+          <a href="/api/stripe/express-dashboard" target="_blank" rel="noopener noreferrer" className="btn primary" style={{ background: '#dc2626', borderColor: '#dc2626', color: '#ffffff' }}>
             Verify on Stripe →
           </a>
         </div>
@@ -95,7 +95,7 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
       {/* Instant Payout & Tax 1099-K Hub */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '0.85rem' }}>
         {/* Instant Payout Liquidity Card */}
-        <div style={{ padding: '1rem 1.25rem', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.05) 0%, rgba(16, 185, 129, 0.05) 100%)', borderRadius: '8px', border: '1px solid rgba(59, 130, 246, 0.2)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ padding: '1rem 1.25rem', background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.07) 0%, rgba(16, 185, 129, 0.07) 100%), var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <strong style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text)' }}>
               <span>⚡</span> Instant Payout (Emergency Liquidity)
@@ -105,7 +105,7 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
                 fontSize: '0.75rem',
                 fontWeight: 600,
                 background: payouts.instantPayoutEligible ? 'rgba(16, 185, 129, 0.15)' : 'rgba(156, 163, 175, 0.15)',
-                color: payouts.instantPayoutEligible ? 'var(--good, #047857)' : 'var(--muted, #64748b)',
+                color: payouts.instantPayoutEligible ? 'var(--good, #10b981)' : 'var(--muted, #64748b)',
                 padding: '0.15rem 0.5rem',
                 borderRadius: '999px',
               }}
@@ -115,19 +115,23 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: 'var(--muted)' }}>
             {payouts.instantPayoutEligible
-              ? 'Need material funds before banks open? Transfer available funds directly to your linked debit card via Stripe Express.'
+              ? 'Need material funds before banks open? Transfer available funds directly to your linked debit card in your Stripe Express dashboard.'
               : 'Standard automatic daily ACH transfers (1–2 business days) are active. Instant 30-minute transfers require linking an eligible business debit card in Stripe Express.'}
           </p>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem', padding: '0.5rem 0.75rem', background: 'var(--bg-3)', borderRadius: '6px', border: '1px solid var(--line)', fontSize: '0.84rem' }}>
             <div>
-              <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Available Balance</span>
-              <strong style={{ color: 'var(--text)' }}>{formatUsd(payouts.availableBalanceDollars)}</strong>
+              <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>
+                {payouts.instantPayoutEligible ? 'Instant Transfer Available' : 'Available Balance'}
+              </span>
+              <strong style={{ color: 'var(--text)' }}>
+                {formatUsd(payouts.instantPayoutEligible ? payouts.instantAvailableDollars : payouts.availableBalanceDollars)}
+              </strong>
             </div>
             {payouts.instantPayoutEligible ? (
               <div style={{ textAlign: 'right' }}>
                 <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Net After 1.5% Fee</span>
-                <strong style={{ color: 'var(--good, #047857)' }}>
-                  {formatUsd(Math.max(0, payouts.availableBalanceDollars * 0.985))}
+                <strong style={{ color: 'var(--good, #10b981)' }}>
+                  {formatUsd(Math.max(0, payouts.instantAvailableDollars * 0.985))}
                 </strong>
               </div>
             ) : (
@@ -139,11 +143,11 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
           </div>
           <div style={{ marginTop: '0.35rem' }}>
             <a
-              href="https://dashboard.stripe.com"
+              href="/api/stripe/express-dashboard"
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className={payouts.instantPayoutEligible ? 'btn primary' : 'btn secondary'}
-              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
+              style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem', minHeight: '36px', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
             >
               {payouts.instantPayoutEligible ? '⚡ Transfer via Stripe Express ↗' : 'Manage Payout Methods in Stripe ↗'}
             </a>
@@ -156,7 +160,7 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
             <strong style={{ fontSize: '0.92rem', display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text)' }}>
               <span>📋</span> IRS Form 1099-K Information
             </strong>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--info, #2563eb)', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, background: 'rgba(59, 130, 246, 0.12)', color: 'var(--info, #3b82f6)', padding: '0.15rem 0.5rem', borderRadius: '999px' }}>
               Stripe Connect Auto-Issue
             </span>
           </div>
@@ -176,11 +180,11 @@ export default function PayoutsTransfersPanel({ payouts }: Props) {
             </p>
           </div>
           <a
-            href="https://dashboard.stripe.com"
+            href="/api/stripe/express-dashboard"
             target="_blank"
-            rel="noreferrer"
+            rel="noopener noreferrer"
             className="btn secondary"
-            style={{ fontSize: '0.8rem' }}
+            style={{ fontSize: '0.8rem', padding: '0.35rem 0.75rem', minHeight: '34px', display: 'inline-flex', alignItems: 'center' }}
           >
             Stripe Portal ↗
           </a>

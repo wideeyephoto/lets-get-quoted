@@ -21,6 +21,7 @@ export type PayoutsAccountOverview = {
   payoutsPaused: boolean;
   availableBalanceDollars: number;
   pendingBalanceDollars: number;
+  instantAvailableDollars: number;
   instantPayoutEligible: boolean;
   recentPayouts: StripePayoutItem[];
   available: boolean;
@@ -44,6 +45,7 @@ export async function loadStripePayoutsOverview(
         payoutsPaused: Boolean(account?.connect_disabled_at),
         availableBalanceDollars: 0,
         pendingBalanceDollars: 0,
+        instantAvailableDollars: 0,
         instantPayoutEligible: false,
         recentPayouts: [],
         available: true,
@@ -61,6 +63,7 @@ export async function loadStripePayoutsOverview(
 
     let availableDollars = 0;
     let pendingDollars = 0;
+    let instantAvailableDollars = 0;
     let instantEligible = false;
 
     if (balanceRes.status === 'fulfilled') {
@@ -71,6 +74,7 @@ export async function loadStripePayoutsOverview(
 
       availableDollars = availCents / 100;
       pendingDollars = pendCents / 100;
+      instantAvailableDollars = instantCents / 100;
       instantEligible = instantCents > 0;
     }
 
@@ -104,6 +108,7 @@ export async function loadStripePayoutsOverview(
       payoutsPaused: Boolean(account.connect_disabled_at),
       availableBalanceDollars: Math.round(availableDollars * 100) / 100,
       pendingBalanceDollars: Math.round(pendingDollars * 100) / 100,
+      instantAvailableDollars: Math.round(instantAvailableDollars * 100) / 100,
       instantPayoutEligible: instantEligible,
       recentPayouts,
       available: true,
@@ -116,6 +121,7 @@ export async function loadStripePayoutsOverview(
       payoutsPaused: false,
       availableBalanceDollars: 0,
       pendingBalanceDollars: 0,
+      instantAvailableDollars: 0,
       instantPayoutEligible: false,
       recentPayouts: [],
       available: false,
