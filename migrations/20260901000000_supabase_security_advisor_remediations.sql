@@ -1,6 +1,9 @@
 -- Migration: 20260901000000_supabase_security_advisor_remediations.sql
 -- Description: Remediate SECURITY DEFINER mutable search_path warnings and add covering indexes for all unindexed foreign keys
 
+begin;
+set local lock_timeout = '5s';
+
 -- ============================================================================
 -- 1. Remediate SECURITY DEFINER functions with immutable search paths
 -- ============================================================================
@@ -522,3 +525,5 @@ create index if not exists idx_voice_call_notes_author_user_id on public.voice_c
 create index if not exists idx_sms_events_crew_id on public.sms_events (crew_id);
 create index if not exists idx_payments_recurring_plan_id on public.payments (recurring_plan_id);
 create index if not exists idx_subcontractor_requests_claimed_offer_id on public.subcontractor_requests (claimed_offer_id);
+
+commit;
