@@ -75,13 +75,12 @@ describe('shared-number notice wiring', () => {
     expect(fn).toContain('outboundSmsLaneSuppression');
   });
 
-  it('checks the exact sender-specific STOP ledger before courtesy egress', () => {
+  it('checks the effective sender-or-campaign STOP ledger before courtesy egress', () => {
     const fn = route.slice(route.indexOf('async function sharedNoticeRecipientOptedOut'));
-    expect(fn).toContain(".from('sms_sender_keyword_preferences')");
-    expect(fn).toContain(".eq('sender_number_id', ingress.senderNumberId)");
-    expect(fn).toContain(".eq('phone_number', normalizedPhone)");
-    expect(fn).toContain("data?.status === 'opted_out'");
-    expect(fn).toContain('data?.opted_out_at != null');
+    expect(fn).toContain("'sms_recipient_keyword_opted_out'");
+    expect(fn).toContain('p_sender_number_id: ingress.senderNumberId');
+    expect(fn).toContain('p_phone_number: normalizedPhone');
+    expect(fn).toContain("typeof optedOut !== 'boolean'");
     expect(fn).toContain(".from('sms_consent')");
     expect(fn).toContain(".eq('account_id', ingress.accountId)");
     expect(fn).toContain("consent?.status === 'opted_out'");

@@ -1,7 +1,7 @@
 # SignalWire Messaging Cutover Runbook
 
 **Owner:** LGQ Operations<br>
-**Last updated:** 2026-09-05<br>
+**Last updated:** 2026-09-06<br>
 **Default state:** dark; do not activate from this document alone
 
 This is the controlled handoff for LGQ operational messaging. Supabase Auth phone login remains on Twilio. The kill switch is always `LGQ_DISABLE_OUTBOUND_SMS=1`.
@@ -13,25 +13,31 @@ The pilot dedicated number is assigned to the support campaign, which does not
 cover contractor-to-customer traffic. Historical activation statements below do
 not supersede that carrier mismatch.
 
+SignalWire Carrier Operations approved and activated **Let’s Get Quoted Crew &
+Subcontractor Dispatch** (`19e7c875-3611-4b40-8429-7dae3b5e6553`) on
+2026-09-04. That is carrier authorization for the dispatch use case, not lane
+activation: no fresh dispatch number has been purchased or assigned, no
+`lgq_dispatch` sender is ready, and the release gate must remain dark.
+
 ## Provider cost record
 
-Purchased from SignalWire on 2026-08-26 for the LGQ crew/subcontractor dispatch
-Campaign. SignalWire created Campaign
-`19e7c875-3611-4b40-8429-7dae3b5e6553` at 20:57 UTC; its carrier status was
-`Pending` immediately after submission.
+Campaign registration and vetting were purchased from SignalWire on 2026-08-26
+for the LGQ crew/subcontractor dispatch Campaign. SignalWire created Campaign
+`19e7c875-3611-4b40-8429-7dae3b5e6553` at 20:57 UTC. Carrier Operations
+confirmed it approved, active, and registered with carriers on 2026-09-04.
 
 | Item | Timing | Amount | Status / note |
 |---|---:|---:|---|
 | Campaign registration | Initial three months | $4.50 | Purchased 2026-08-26 |
 | Carrier setup | One time | $0.00 | Included in the registration checkout |
-| Campaign vetting | One time | $7.50 | Purchased 2026-08-26; review pending |
+| Campaign vetting | One time | $7.50 | Purchased 2026-08-26; approved 2026-09-04 |
 | **Campaign checkout total** | **At submission** | **$12.00** | **Incurred 2026-08-26** |
 | Campaign re-vetting | Per additional review, if required | $7.50 | Contingent; do not book unless incurred |
-| Original candidate `+1 (947) 257-6777` | Monthly | $0.50 | Not purchased; unavailable on 2026-09-05 |
-| Replacement candidate `+1 (947) 262-4739` | Monthly | $0.50 | Quoted 2026-09-05; purchase approval pending |
+| Fresh dispatch number | Monthly | $0.50 at last quote | Required; not purchased, reserved, or assigned |
 
-Provider cost incurred to date for this dispatch Campaign is **$12.00**. If the
-proposed number is purchased, the known first-three-month provider cost becomes
+Provider cost incurred to date for this dispatch Campaign is **$12.00**. If a
+fresh number is purchased at the last quoted price, the known first-three-month
+provider cost becomes
 **$13.50**: the $12.00 Campaign checkout plus three months of number rental.
 Usage, carrier pass-through, messaging segments, taxes, and Campaign pricing
 after the initial three months are not included because they were not quoted on
@@ -42,10 +48,31 @@ the confirmation screen.
 | Lane | Sender purpose | Release gate | Allowed traffic |
 |---|---|---|---|
 | LGQ shared | `lgq_shared` | `LGQ_SMS_SHARED_ENABLED=1` | LGQ-branded account, billing, support, and approved quote-request notifications to opted-in account holders |
-| LGQ dispatch | `lgq_dispatch` | `LGQ_SMS_DISPATCH_ENABLED=1` | Crew/subcontractor dispatch only after written carrier confirmation or separate Campaign approval |
+| LGQ dispatch | `lgq_dispatch` | `LGQ_SMS_DISPATCH_ENABLED=1` | Approved crew/subcontractor dispatch only; remains dark until a fresh number is purchased, assigned, configured, registered, and verified |
 | Contractor dedicated | `contractor_dedicated` | `LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED=1` | One vetted contractor's homeowner traffic from that contractor's active assigned number |
 
 No lane inherits another lane's Campaign, number, consent, or release decision.
+
+### Dispatch throughput and campaign-wide STOP
+
+The approved dispatch Campaign is **Low Volume Mixed**. Carrier Operations
+reported the following ceilings:
+
+- AT&T: 75 SMS messages per minute;
+- AT&T MMS: 50 messages per minute;
+- T-Mobile: 2,000 messages per day for the brand.
+
+The use case cannot be changed after registration; volume beyond these limits
+requires a new standard-use-case Campaign rather than widening this one.
+
+Carrier Operations also requires `STOP` to apply across the **entire dispatch
+Campaign**. A recipient who sends `STOP` to any number assigned to Campaign
+`19e7c875-3611-4b40-8429-7dae3b5e6553` must be suppressed from every other
+number on that Campaign, including dispatch from another contractor. The
+sender-number preference ledger may remain as evidence, but it cannot be the
+effective authorization boundary for this Campaign. Do not activate the lane
+until campaign-wide suppression is applied and proven for enqueue, final
+pre-send recheck, synchronous replies, and queued-work cancellation.
 
 The contractor lane has historical test deliveries, but its current carrier
 assignment does not cover customer traffic. Its gate list is in
@@ -80,7 +107,9 @@ sender:
   shared, `crew` for dispatch) that is `opted_in`, with `opted_out_at` null;
 - **STOP/START/HELP on shared** cannot use consent (START must work *after*
   STOP revoked it), so they use accepted delivery history instead;
-- **STOP/START on dispatch** use crew scope plus a live roster match.
+- **STOP/START on dispatch** use crew scope plus a live roster match; the
+  resulting effective keyword state is shared across every number assigned to
+  the dispatch Campaign.
 
 Every path requires **exactly one** matching account. Zero and multiple both
 fail closed — there is deliberately no recency ordering and no `LIMIT`, because
@@ -158,7 +187,9 @@ Both active platform campaigns now have the production registry receiver. On
 2026-09-05, the dispatch campaign's missing `status_callback_url` was set to the
 existing support campaign receiver and verified by a fresh provider GET. No token
 rotation or number reassignment was needed. The assignment orders retain their
-own callbacks. Use `scripts/inspect-sms-provider.mjs` to inspect current state;
+own callbacks. The dispatch Campaign was carrier-approved on 2026-09-04 but still
+has no number assignment. Use `scripts/inspect-sms-provider.mjs` to inspect
+current state;
 never print the callback token in operator reports.
 
 ### verify:signalwire mixes two sources
@@ -201,7 +232,8 @@ Stop if any answer is no or unknown:
 - [ ] `SIGNALWIRE_SIGNING_KEY` is the Dashboard Signing Key, not the API token.
 - [ ] The individual number assignment is `assigned`; an order marked `Processed` is not enough.
 - [ ] The number inventory row is `active`, `assigned`, `inbound_ready`, not suspended, and has the expected Campaign and production webhook URL.
-- [ ] SignalWire has confirmed the Campaign covers the exact lane being enabled.
+- [x] SignalWire Carrier Operations confirmed on 2026-09-04 that Campaign `19e7c875-3611-4b40-8429-7dae3b5e6553` covers LGQ crew/subcontractor dispatch.
+- [ ] Campaign-wide STOP suppression is applied and proven across every number assigned to the dispatch Campaign.
 - [ ] `LGQ_LEAD_VERIFICATION_SECRET` is present before removing any Vercel Twilio operational secret.
 - [ ] Supabase Auth's Twilio configuration is unchanged and a phone-login test succeeds.
 - [ ] Operations can open `/admin/messaging` and see queue, review, sender, and gate state.
@@ -239,8 +271,10 @@ Use a non-production number and a canary workspace. Keep all three traffic-lane 
    - one actionable inbound receipt produces one leased action task and exactly
      one domain mutation across duplicate delivery and crash/retry;
    - duplicate and out-of-order callbacks do not regress state or duplicate the inbox;
-   - STOP cancels queued work and future sends for the correct sender/account scope;
-   - START/UNSTOP restores only that scope;
+   - STOP cancels queued work and future sends across every sender record for the
+     dispatch Campaign, using controlled fixtures when only one carrier number exists;
+   - START/UNSTOP restores only the valid Campaign scope after current consent
+     and roster authority are rechecked;
    - HELP is handled without changing consent;
    - stale owner/crew phone evidence routes to review, and zero or multiple
      current-authority matches never select an account;
@@ -266,7 +300,8 @@ Use a non-production number and a canary workspace. Keep all three traffic-lane 
 7. Enable the worker and exactly one approved traffic lane, then remove the kill switch.
 8. Send one opted-in canary. Require a SignalWire provider ID and then `delivered` evidence.
 9. Reply once. Require exactly one inbound row in the correct tenant.
-10. Exercise STOP and START and inspect queue cancellation/restoration.
+10. Exercise STOP and START on the dispatch number; verify the Campaign-level
+    preference and prove a same-Campaign sender fixture cannot bypass suppression.
 11. Observe for at least one full automation interval. Check oldest queue age,
     failed, indeterminate, review, signature-failure, and text-usage
     reconciliation-failure counts.

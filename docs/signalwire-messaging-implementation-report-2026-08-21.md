@@ -24,13 +24,30 @@ schema-order check reports no foreign-key forward references. `git diff --check`
 also passes. These results prove the local artifact, not deployment or carrier
 behavior.
 
+### Carrier-status addendum — 2026-09-06
+
+SignalWire Carrier Operations approved and activated the **Let’s Get Quoted Crew
+& Subcontractor Dispatch** Campaign
+(`19e7c875-3611-4b40-8429-7dae3b5e6553`) on 2026-09-04. It is registered as
+Low Volume Mixed, with reported limits of 75 AT&T SMS messages per minute, 50
+AT&T MMS messages per minute, and 2,000 T-Mobile messages per day at the brand
+level.
+
+This carrier approval does not activate LGQ dispatch. A separate fresh dispatch
+number has not been purchased or assigned, the application sender is not ready,
+and the lane must remain dark. Carrier Operations also requires `STOP` to apply
+across every number on this Campaign. The sender-number-only behavior described
+in this historical snapshot is insufficient for this Campaign until the
+campaign-wide suppression boundary is applied and proven.
+
 ## Non-negotiable invariants
 
 - Supabase Auth phone login and verification remain on Twilio. Nothing in these phases changes that integration.
 - LGQ application SMS and Supabase Auth OTP are separate rails. The app's public lead-verification message is not Supabase Auth OTP.
 - The existing shared LGQ Campaign/number is for approved LGQ-branded account, billing, and support traffic to opted-in account holders. It is **not** for contractor-branded homeowner traffic.
 - Homeowner conversations require the contractor's vetted, active, dedicated number. A shared-number reply may never be assigned by “latest conversation,” “latest consent,” or another tenant guess.
-- Crew/subcontractor dispatch stays dark until SignalWire confirms the exact traffic in writing or a separate LGQ dispatch Campaign is approved.
+- Crew/subcontractor dispatch stays dark until its approved Campaign has a fresh,
+  completed number assignment and campaign-wide STOP suppression is proven.
 - Dedicated contractor numbers are currently unpriced private-beta infrastructure. There is no sellable entitlement, included allowance, or active billing product yet.
 - A Campaign assignment order marked `Processed` is not activation. The last recorded external state for **+1 (947) 941-2323** is an individually **Failed** assignment; that is a release blocker until reverified successful.
 - The SignalWire **Messaging** signature contract still requires a staging capture. AI Agent JSON receipts authenticated with dedicated HTTP Basic credentials are a different contract and cannot be used as evidence for Messaging callbacks.
@@ -114,7 +131,9 @@ Concrete implementation:
   - creates deduplicated `sms_webhook_receipts` and service-only `sms_operator_review_items`;
   - implements `ingest_sms_inbound_webhook`, `apply_sms_delivery_status_webhook`, `record_sms_webhook_review`, `resolve_sms_operator_review_item`, and `reconcile_sms_unmatched_status`;
   - routes by authenticated provider plus exact active `To` number, never recency;
-  - scopes STOP/START to sender number and safe account association;
+  - retains STOP/START sender-number evidence and safe account association; for
+    the approved dispatch Campaign, effective suppression must additionally apply
+    across every number assigned to the Campaign;
   - applies provider-scoped monotonic status, closes terminal/indeterminate tasks from authoritative facts, and safely re-applies an early unmatched status without duplicate review rows.
 - `src/lib/sms-webhook-ingress.ts`: raw-body hashing/parsing, provider-native IDs, stable callback and reply identity, and exact-sender queued replies.
 - `src/app/api/sms/inbound/route.ts` and `src/app/api/sms/status/route.ts`: authenticate before parsing/mutation and return provider-compatible markup.
@@ -134,8 +153,9 @@ Concrete implementation:
   and `lgq_dispatch` requires a current active, nondeleted crew phone. Zero or
   multiple accounts fail closed to review.
 - Dispatch STOP/START resolves that same current crew authority. A unique match
-  updates the exact-sender preference and account consent ledger; ambiguity keeps
-  the sender blocked, leaves account consent untouched, and creates review work.
+  retains exact-sender evidence and must update the effective Campaign preference;
+  ambiguity keeps the Campaign blocked, leaves account consent untouched, and
+  creates review work.
 - YES/NO domain effects require the exact linked outbound `sms_events` row to be
   provider-accepted (`sent` or `delivered`) with matching account, recipient,
   purpose, sender, provider identity, and pre-reply chronology. Queued, failed,
@@ -215,7 +235,8 @@ Concrete implementation/readiness assets:
   never receive or make lead submission enforce a different answer.
 - `docs/signalwire-messaging-cutover-runbook.md`: kill-switch-first deployment, signed-callback proof, one-account canary, delivery/inbound/keyword evidence, gradual expansion, and rollback.
 
-External blockers:
+External blockers at the 2026-08-21 snapshot (historical; use the 2026-09-06
+carrier-status addendum above for current dispatch state):
 
 - Resolve and reverify the failed individual assignment for **+1 (947) 941-2323**.
 - Obtain written Campaign approval for the exact first production lane.
@@ -226,7 +247,11 @@ External blockers:
 
 ### Phase 7 — LGQ contractor dispatch Campaign
 
-**Local status:** the secure dispatch product workflow and isolated `lgq_dispatch` queue lane exist; carrier authorization, Campaign/number provisioning, and live lane activation do not.
+**Current status (2026-09-06):** the secure dispatch product workflow and isolated
+`lgq_dispatch` queue lane exist. Carrier authorization was granted on 2026-09-04
+for **Let’s Get Quoted Crew & Subcontractor Dispatch**
+(`19e7c875-3611-4b40-8429-7dae3b5e6553`), but number provisioning and live lane
+activation are incomplete.
 
 Concrete implementation:
 
@@ -239,8 +264,11 @@ Concrete implementation:
 
 Remaining/dark:
 
-- SignalWire must confirm in writing that the current LGQ Brand/Campaign covers this traffic, or approve a separate dispatch Campaign.
-- Provision and verify a separate dispatch sender if required, then complete Phase 5 evidence for this lane.
+- Purchase and provision a fresh, separate dispatch sender, complete its individual
+  Campaign assignment, configure its inbound webhook, register it in application
+  inventory, and then complete Phase 5 evidence for this lane.
+- Prove that `STOP` on any number assigned to the dispatch Campaign suppresses
+  queued and future sends from every number on that Campaign.
 - Never place homeowner messaging on this lane or infer that the existing shared LGQ Campaign authorizes it.
 
 ### Phase 8 — dedicated contractor numbers
@@ -411,10 +439,14 @@ select id, account_id, direction, provider, provider_id,
 from public.sms_messages
 where provider = 'signalwire' and provider_id = '<provider message id>';
 
--- STOP/START must affect only the exact sender-number scope.
+-- Preserve exact-sender evidence and inspect the effective Campaign preference.
 select sender_number_id, phone_number, status, source, opted_out_at, updated_at
 from public.sms_sender_keyword_preferences
 where sender_number_id = '<sender uuid>' and phone_number = '<recipient E.164>';
+
+select provider, campaign_id, phone_number, status, source, opted_out_at, updated_at
+from public.sms_campaign_keyword_preferences
+where campaign_id = '<campaign id>' and phone_number = '<recipient E.164>';
 ```
 
 Acceptance evidence must demonstrate:
@@ -427,7 +459,9 @@ Acceptance evidence must demonstrate:
 - no status regression from `delivered` or another terminal fact;
 - terminal carrier facts close an indeterminate task without making it retryable;
 - unknown/ambiguous shared routing creates review rather than a tenant row;
-- STOP cancels queued/future sends for the correct sender scope, START/UNSTOP restores only valid prior consent, and HELP does not mutate consent;
+- STOP cancels queued/future sends across the entire dispatch Campaign,
+  START/UNSTOP restores only valid prior consent for that Campaign, and HELP does
+  not mutate consent;
 - dedicated routing resolves only through that account's active `contractor_dedicated` inventory row;
 - compliance verification exists for the current registration revision before approval, without exporting or logging a full EIN.
 

@@ -1,10 +1,15 @@
 # Texting readiness: September 5, 2026
 
+**Carrier-status update:** 2026-09-06
+
 Texting is partially verified. Shared account notifications have current live
-delivery and keyword evidence. Dispatch has no sender, and the pilot contractor's
-dedicated number is assigned to the platform support campaign instead of a campaign
-covering contractor-to-customer messages. Do not interpret local canary checks as
-carrier approval or end-to-end delivery evidence.
+delivery and keyword evidence. SignalWire Carrier Operations approved and
+activated **Let’s Get Quoted Crew & Subcontractor Dispatch**
+(`19e7c875-3611-4b40-8429-7dae3b5e6553`) on 2026-09-04, but dispatch still has
+no sender. A separate fresh dispatch number has not been purchased or assigned.
+The pilot contractor's dedicated number remains assigned to the platform support
+campaign instead of a campaign covering contractor-to-customer messages. Do not
+interpret Campaign approval as lane activation or end-to-end delivery evidence.
 
 ## Code fixes
 
@@ -65,10 +70,22 @@ The active dispatch campaign's missing status callback was repaired and verified
 through a fresh provider GET. Both campaign state and the existing production
 receiver were preserved.
 
-Dispatch still needs a separately purchased number, inbound webhook configuration,
-completed carrier assignment, and verified application sender registration. A
-SignalWire number was quoted at $0.50/month; purchase is pending explicit approval.
-Do not mark the lane active before the carrier confirms assignment.
+The Campaign is the approved **Low Volume Mixed** use case for LGQ crew and
+subcontractor dispatch. Carrier Operations reported throughput limits of 75 AT&T
+SMS messages per minute, 50 AT&T MMS messages per minute, and a T-Mobile daily
+brand limit of 2,000 messages. The registered use case cannot be changed; a
+higher-volume rollout requires a new standard-use-case Campaign.
+
+Carrier Operations also requires `STOP` to suppress a recipient across the entire
+dispatch Campaign, not only the number that received the keyword. The application
+must enforce that rule across all Campaign numbers and cancel/reject queued and
+future dispatch from any of them before the lane opens.
+
+Dispatch still needs a separately purchased fresh number, inbound webhook
+configuration, completed carrier assignment, and verified application sender
+registration. A SignalWire number was quoted at $0.50/month, but no number has
+been purchased, reserved, or assigned. Do not mark the lane active before the
+individual carrier assignment is complete and campaign-wide STOP is proven.
 
 The user confirmed BrokePipes is only a test workspace; no real-business registration
 was invented or submitted. The pilot dedicated number is attached to the support campaign. That campaign's
@@ -81,7 +98,9 @@ dispatch campaign or alter its voice routing.
 
 1. Completed: handset opt-in restored through START; ordinary inbound reply stored,
    routed to the expected workspace, and handled without business changes.
-2. Complete dispatch provisioning and verify a consented crew send and reply.
+2. Complete dispatch provisioning and verify a consented crew send and reply,
+   including Campaign-level STOP and a controlled same-Campaign sender fixture
+   before production expansion.
 3. Correct the dedicated customer campaign, then exercise a real booking or post-call
    flow through the released producer, queue, carrier callback, and inbox.
 4. Exercise quiet hours, rejected destinations, retries, duplicate callbacks, and

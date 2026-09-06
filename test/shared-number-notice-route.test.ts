@@ -66,27 +66,20 @@ function callback() {
 function admin(
   claimed: boolean,
   error: { message?: string } | null = null,
-  preference: { status: string; opted_out_at: string | null } | null = null,
-  preferenceError: { message?: string } | null = null,
+  keywordOptedOut = false,
+  keywordError: { message?: string } | null = null,
   consent: { status: string; opted_out_at: string | null } | null = null,
   consentError: { message?: string } | null = null,
 ) {
-  const rpc = vi.fn().mockResolvedValue({ data: claimed, error });
+  const rpc = vi.fn(async (name: string) => name === 'sms_recipient_keyword_opted_out'
+    ? { data: keywordOptedOut, error: keywordError }
+    : { data: claimed, error });
   const maybeSingle = vi.fn().mockResolvedValue({
     data: { business_name: 'BrokePipes' },
     error: null,
   });
   const eq = vi.fn().mockReturnValue({ maybeSingle });
   const select = vi.fn().mockReturnValue({ eq });
-  const preferenceMaybeSingle = vi.fn().mockResolvedValue({
-    data: preference,
-    error: preferenceError,
-  });
-  const preferenceBuilder: Record<string, unknown> = {};
-  const preferenceEq = vi.fn().mockReturnValue(preferenceBuilder);
-  preferenceBuilder.select = vi.fn().mockReturnValue(preferenceBuilder);
-  preferenceBuilder.eq = preferenceEq;
-  preferenceBuilder.maybeSingle = preferenceMaybeSingle;
   const consentMaybeSingle = vi.fn().mockResolvedValue({
     data: consent,
     error: consentError,
@@ -99,11 +92,9 @@ function admin(
   return {
     rpc,
     from: vi.fn((table: string) => {
-      if (table === 'sms_sender_keyword_preferences') return preferenceBuilder;
       if (table === 'sms_consent') return consentBuilder;
       return { select };
     }),
-    preferenceEq,
     consentEq,
   };
 }
@@ -247,11 +238,8 @@ describe('the shared number stays silent when it must', () => {
     }));
   });
 
-  it('suppresses a review/courtesy reply after STOP for the exact sender and recipient', async () => {
-    const client = admin(true, null, {
-      status: 'opted_out',
-      opted_out_at: '2026-09-03T18:00:00.000Z',
-    });
+  it('suppresses a review/courtesy reply after STOP for the effective campaign and recipient', async () => {
+    const client = admin(true, null, true);
     mocks.createAdminClient.mockReturnValue(client);
     mocks.ingestInboundWebhook.mockResolvedValue(ingress({
       disposition: 'review',
@@ -262,8 +250,10 @@ describe('the shared number stays silent when it must', () => {
 
     expect(response.status).toBe(200);
     expect(await response.text()).toBe(EMPTY_TWIML);
-    expect(client.preferenceEq).toHaveBeenNthCalledWith(1, 'sender_number_id', 'sender-1');
-    expect(client.preferenceEq).toHaveBeenNthCalledWith(2, 'phone_number', '+12485550101');
+    expect(client.rpc).toHaveBeenCalledWith('sms_recipient_keyword_opted_out', {
+      p_sender_number_id: 'sender-1',
+      p_phone_number: '+12485550101',
+    });
     expect(client.rpc).toHaveBeenCalledWith('record_sms_shared_notice_reply', expect.objectContaining({
       p_webhook_receipt_id: RECEIPT_ID,
       p_egress_result: 'suppressed',
@@ -271,8 +261,8 @@ describe('the shared number stays silent when it must', () => {
     expect(mocks.processSmsInboundActionReceipt).not.toHaveBeenCalled();
   });
 
-  it('fails closed when the exact sender preference cannot be read', async () => {
-    const client = admin(true, null, null, { message: 'preference unavailable' });
+  it('fails closed when the effective campaign preference cannot be read', async () => {
+    const client = admin(true, null, false, { message: 'preference unavailable' });
     mocks.createAdminClient.mockReturnValue(client);
     mocks.ingestInboundWebhook.mockResolvedValue(ingress({ senderPurpose: 'lgq_dispatch' }));
 
@@ -288,7 +278,7 @@ describe('the shared number stays silent when it must', () => {
     const client = admin(
       true,
       null,
-      { status: 'opted_in', opted_out_at: null },
+      false,
       null,
       { status: 'opted_out', opted_out_at: '2026-09-03T18:00:00.000Z' },
     );
