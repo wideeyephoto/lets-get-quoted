@@ -27,7 +27,7 @@
 
 import { mkdtempSync, rmSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -62,14 +62,14 @@ function liftTable(name) {
   return LEDGER.slice(start, end + 3);
 }
 
-function liftFunction(name) {
-  const start = LEDGER.search(new RegExp(`create or replace function public\\.${name}\\(`));
+function liftFunction(name, source = LEDGER) {
+  const start = source.search(new RegExp(`create or replace function public\\.${name}\\(`));
   if (start < 0) throw new Error(`function ${name} not found`);
-  const tag = LEDGER.slice(start).match(/\nas (\$\$)\n/);
+  const tag = source.slice(start).match(/\nas (\$\$)\n/);
   if (!tag) throw new Error(`function ${name} has no $$ body`);
-  const close = LEDGER.indexOf('\n$$;', start + tag.index + tag[0].length);
+  const close = source.indexOf('\n$$;', start + tag.index + tag[0].length);
   if (close < 0) throw new Error(`function ${name} unterminated`);
-  return LEDGER.slice(start, close + 4);
+  return source.slice(start, close + 4);
 }
 
 const R = [];
@@ -113,6 +113,7 @@ try {
   for (const f of ['grant_usage_credits', 'reserve_usage_credits', 'commit_usage_reservation', 'release_usage_reservation']) {
     await q(liftFunction(f));
   }
+  await q(liftFunction('reserve_usage_credits', m('20260904160000_credits_never_expire.sql')));
   await q('insert into public.accounts (id) values ($1)', [ACCOUNT]);
   await q(PARTIAL);
   ck('the partial-commit migration applies on top of the real ledger', true);
@@ -167,6 +168,30 @@ try {
     JSON.stringify(await totals()));
 
   // -------------------------------------------------------------------
+  // Low-balance admission: a failed cap hold leaves no partial reservation,
+  // and the same key can safely reserve the smaller amount afterwards.
+  await q('delete from public.usage_reservation_allocations');
+  await q('delete from public.usage_reservations');
+  await q('delete from public.usage_credit_lots');
+  await grant('small-balance', 2);
+  let shortfall;
+  try { await reserve('small-call', 10); } catch (error) { shortfall = error; }
+  ck('a ten-minute request reports the exact shortfall on two available minutes',
+    shortfall?.code === 'P0001' && /missing 8 units/.test(shortfall.message));
+  ck('a failed reservation returns all partial allocations',
+    (await totals()).reserved === 0 && (await totals()).available === 2
+    && Number((await q('select count(*) as n from public.usage_reservations')).rows[0].n) === 0);
+  const smaller = (await reserve('small-call', 2)).rows[0].id;
+  ck('the same idempotency key accepts the smaller successful hold', typeof smaller === 'string');
+  await settle(smaller, 'small-call:settle', 1);
+  await settle(smaller, 'small-call:settle', 1);
+  ck('retrying partial settlement consumes once and frees the unused minute',
+    (await totals()).consumed === 1 && (await totals()).reserved === 0 && (await totals()).available === 1);
+  const lastMinute = (await reserve('last-minute', 1)).rows[0].id;
+  await settle(lastMinute, 'last-minute:settle', 1);
+  ck('the final available minute remains usable without a ten-minute minimum',
+    (await totals()).consumed === 2 && (await totals()).reserved === 0 && (await totals()).available === 0);
+
   // 2. Across several lots, which is where split arithmetic goes wrong.
   // -------------------------------------------------------------------
   await q('delete from public.usage_reservation_allocations');
@@ -288,7 +313,9 @@ try {
   ck('harness ran to completion', false, error.message ?? String(error));
 } finally {
   try { await pg.stop(); } catch { /* already down */ }
-  try { rmSync(dataDir, { recursive: true, force: true }); } catch { /* leave it */ }
+  if (dirname(resolve(dataDir)) === resolve(tmpdir()) && basename(dataDir).startsWith('lgq-pg17-partial-')) {
+    try { rmSync(dataDir, { recursive: true, force: true }); } catch { /* leave it */ }
+  }
 }
 
 let failed = 0;

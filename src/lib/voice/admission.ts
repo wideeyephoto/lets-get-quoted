@@ -179,7 +179,7 @@ export async function resolveVoiceWorkspace(
  * Counted as admissions inside the cap window with no receipt yet. There is no
  * call-started or call-ended event to maintain a live count from — the provider
  * sends one callback, at the end — so the window IS the liveness signal, and it
- * is the published 60-minute cap because no call may outlive that.
+ * follows the maximum call duration.
  *
  * Errs toward refusing: an unreadable count returns the limit itself, so an
  * outage sheds AI calls to voicemail rather than admitting an unbounded number
@@ -401,7 +401,12 @@ export async function planInboundCall(
       ),
       systemPrompt,
       postPrompt,
-      capMinutes: VOICE_CALL_CAP_MINUTES,
+      capMinutes: decision.outcome === 'admitted'
+        ? decision.lease.reservedMinutes
+        : decision.outcome === 'admitted_overage'
+          ? decision.overage.units
+          : decision.outcome === 'admitted_existing'
+            ? decision.capMinutes : VOICE_CALL_CAP_MINUTES,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
       transferTo: settings.transferNumber || workspace.callForwardNumber,

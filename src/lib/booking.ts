@@ -584,11 +584,9 @@ export async function createBooking(admin: SupabaseClient, accountId: string, in
     try {
       const withinSmsCap = await checkRateLimitStrict(admin, `bookconfirm:sms:${input.phone}`, 3, 3600);
       if (withinSmsCap) {
-        if (input.sourceVoiceProviderCallId) {
-          await ensureSmsConsentBaseline(accountId, input.phone, 'missed_call_text_back').catch(() => {});
-        } else {
-          await ensureSmsConsentBaseline(accountId, input.phone, 'portal_link_request').catch(() => {});
-        }
+        const consent = await ensureSmsConsentBaseline(accountId, input.phone,
+          input.sourceVoiceProviderCallId ? 'missed_call_text_back' : 'portal_link_request', admin);
+        if (!consent) return lead;
         await sendBookingRequestCustomerConfirmationSms({
           accountId,
           phone: input.phone,
@@ -678,6 +676,8 @@ export async function createBookingRequestLead(
     if (input.phone) {
       const withinSmsCap = await checkRateLimitStrict(admin, `bookconfirm:sms:${input.phone}`, 3, 3600);
       if (withinSmsCap) {
+        const consent = await ensureSmsConsentBaseline(accountId, input.phone, 'portal_link_request', admin);
+        if (!consent) return lead;
         await sendBookingRequestCustomerConfirmationSms({
           accountId,
           phone: input.phone,

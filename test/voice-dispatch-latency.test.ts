@@ -1,0 +1,75 @@
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
+import { buildVoiceSystemPrompt, type VoiceGroundingContext } from '@/lib/voice/grounding';
+import { VoiceToolTiming, voiceReadDeadline, voiceRequestDeadline } from '@/lib/voice/timing';
+
+afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); });
+
+describe('Dispatch latency contract', () => {
+  for (const contractorMode of [true, false]) it(`emits asynchronous language-keyed fillers (staff=${contractorMode})`, () => {
+    const answer = signalwireVoiceProvider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://example.com/receipt',
+      receiptAuthorization: { scheme: 'basic', username: 'fixture', password: 'fixture' },
+      greeting: 'Hello', capMinutes: 60, transferTo: null,
+      swaigUrl: 'https://example.com/swaig', contractorMode,
+    });
+    const main = JSON.parse(answer.body).sections.main;
+    const ai = main.find((item: { ai?: unknown }) => item.ai).ai;
+    expect(main.find((item: { answer?: unknown }) => item.answer).answer.max_duration).toBe(600);
+    expect(ai.params.end_of_speech_timeout).toBe(contractorMode ? 700 : 1000);
+    expect(ai.params.enable_turn_detection).toBe(true);
+    expect(ai.params.turn_detection_timeout).toBe(250);
+    expect(ai.params.function_wait_for_talking).toBe(false);
+    expect(ai.params.redact_prompt).toContain('verification codes');
+    for (const fn of ai.SWAIG.functions.filter((f: { web_hook_url?: string }) => f.web_hook_url)) {
+      expect(fn.fillers.default.length).toBeGreaterThan(0);
+      expect(fn.wait_for_fillers).toBe(false);
+      expect(Array.isArray(fn.fillers)).toBe(false);
+    }
+  });
+
+  const context: VoiceGroundingContext = {
+    companyName: 'Fixture', trade: 'plumbing', serviceNames: [], serviceAreas: '', availableSlots: [],
+    contractorStaffCaller: { name: 'Brett', role: 'owner' },
+    timezone: 'America/New_York', referenceTime: '2026-09-06T01:30:00.000Z',
+  };
+  it('anchors relative dates to the business calendar across UTC midnight', () => {
+    const prompt = buildVoiceSystemPrompt(context);
+    expect(prompt).toContain('Saturday, September 5, 2026');
+    expect(prompt).toContain('America/New_York');
+    expect(prompt).toContain('Keep jobs and leads distinct');
+    expect(prompt).toContain('Preserve the selected exact job reference');
+  });
+  it('requires an explicit date if the business timezone is missing or invalid', () => {
+    for (const timezone of [null, 'Invalid/Zone']) {
+      expect(buildVoiceSystemPrompt({ ...context, timezone })).toContain('Ask for an explicit calendar date');
+    }
+  });
+  it('bounds a hung identity read and cleans up successful read timers', async () => {
+    vi.useFakeTimers();
+    const pending = voiceReadDeadline(new Promise<never>(() => undefined), 4000);
+    const rejected = expect(pending).rejects.toThrow('deadline exceeded');
+    await vi.advanceTimersByTimeAsync(4000);
+    await rejected;
+    await expect(voiceReadDeadline(Promise.resolve('found'), 4000)).resolves.toBe('found');
+    expect(vi.getTimerCount()).toBe(0);
+  });
+  it('passes an actual abort signal to the database transport', async () => {
+    const abortSignal = vi.fn().mockResolvedValue({ data: true });
+    const request = Object.assign(Promise.resolve({ data: false }), { abortSignal });
+    await expect(voiceRequestDeadline(request, 4000)).resolves.toEqual({ data: true });
+    expect(abortSignal.mock.calls[0][0]).toBeInstanceOf(AbortSignal);
+  });
+  it('reports server timing using only operational metadata', async () => {
+    const log = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const timing = new VoiceToolTiming();
+    timing.accountId = 'fixture-account'; timing.providerCallId = 'fixture-call'; timing.functionName = 'lookup_jobs';
+    await timing.measure('authorize', async () => true);
+    await timing.measure('identity', async () => 'staff');
+    timing.finish(200);
+    expect(log).toHaveBeenCalledWith('voice_tool_timing', {
+      accountId: 'fixture-account', providerCallId: 'fixture-call', functionName: 'lookup_jobs',
+      status: 200, durationMs: expect.any(Number), stagesMs: { authorize: expect.any(Number), identity: expect.any(Number) },
+    });
+  });
+});

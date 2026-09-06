@@ -1,4 +1,5 @@
 import { greetingWithAiDisclosure } from '@/lib/voice/provider';
+import { VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import type {
   InboundCall,
   VoiceAnswer,
@@ -231,7 +232,15 @@ export const signalwireVoiceProvider: VoiceProvider = {
       const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
         recordingEnabled: recordCall,
       });
-      const mainSection: Record<string, unknown>[] = [{ answer: {} }];
+      const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
+        ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
+      const maxDurationSeconds = capMinutes * 60;
+      // answer.max_duration bounds the whole answered call, including greeting
+      // and transfers. AI hard_stop_time leaves time for a brief closing line.
+      // ai.params.max_duration is not a documented SignalWire duration control.
+      const mainSection: Record<string, unknown>[] = [{
+        answer: { max_duration: maxDurationSeconds },
+      }];
       // The deterministic disclosure must finish before recording begins. The
       // AI instruction that follows cannot substitute for audio the caller has
       // actually heard.
@@ -585,6 +594,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
                 type: 'string',
                 description: 'Client name, service address, exact job reference, or job UUID. Omit to list current jobs. After listing choices, pass the reference for the option the caller chose.',
               },
+              include_details: {
+                type: 'boolean',
+                description: 'True only when the caller asks for full details of one selected job. Choices stay brief.',
+              },
             },
           },
           web_hook_url: plan.swaigUrl,
@@ -620,9 +633,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'update_job_details',
-          purpose: 'Update active job details, quote line items, schedule date/time, or status.',
+          purpose: 'Update active job scope, schedule date/time, or status. Cannot change quote prices, totals, discounts, or priced line items. Direct price changes to the signed-in job quote editor; never claim a price was changed.',
           argument: {
             type: 'object',
+            additionalProperties: false,
             properties: {
               job_ref_or_client: {
                 type: 'string',
@@ -643,14 +657,6 @@ export const signalwireVoiceProvider: VoiceProvider = {
               scheduled_time: {
                 type: 'string',
                 description: 'Arrival time (e.g. 08:00, 14:00).',
-              },
-              line_item_label: {
-                type: 'string',
-                description: 'Name of added quote item or fixture (e.g. 4 Recessed Lights).',
-              },
-              line_item_price: {
-                type: 'number',
-                description: 'Dollar amount for the added line item (e.g. 650).',
               },
             },
             required: ['job_ref_or_client'],
@@ -767,6 +773,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
         }
       }
 
+      // SignalWire requires a language-keyed object, not a plain phrase array.
+      // Fillers run concurrently with the webhook so they cannot delay the save.
+      for (const fn of swaigFunctions) {
+        if (!fn.web_hook_url) continue;
+        fn.fillers = Array.isArray(fn.fillers)
+          ? { default: fn.fillers }
+          : fn.fillers ?? { default: [fn.function === 'lookup_jobs' ? 'Let me check those jobs.' : 'One moment while I check that.'] };
+        fn.wait_for_fillers = false;
+      }
+
       mainSection.push({
         ai: {
           post_prompt_url: plan.receiptUrl,
@@ -777,10 +793,12 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
-            // The published safety cap, expressed to the provider so it
-            // holds even if LGQ's own settlement never runs.
-            end_of_speech_timeout: 1000,
-            max_duration: plan.capMinutes * 60,
+            end_of_speech_timeout: plan.contractorMode ? 700 : 1000,
+            enable_turn_detection: true,
+            turn_detection_timeout: 250,
+            function_wait_for_talking: false,
+            hard_stop_time: `${maxDurationSeconds - 15}s`,
+            hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can
             // still retain originals, so the receipt boundary redacts again.
             redact_prompt: 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
@@ -806,6 +824,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
           ...(swaigFunctions.length > 0 ? { SWAIG: { functions: swaigFunctions } } : {}),
         },
       });
+
+      mainSection.push({ hangup: {} });
 
       return Object.freeze({
         contentType: 'application/json',

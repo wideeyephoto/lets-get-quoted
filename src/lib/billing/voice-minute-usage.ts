@@ -19,10 +19,11 @@ import {
  * runs, and the provider's receipt arrives only when it is over
  * (docs/ai-voice-v1-decisions.md §11).
  *
- * So this meter reserves the published 60-minute safety cap and settles the
+ * So this meter reserves up to the ten-minute safety cap and settles the
  * truth afterwards through `commit_usage_reservation_partial`, which exists for
- * exactly this. Reserving the cap is what makes a spending limit mean something
- * while the call is still running: two concurrent calls cannot each believe the
+ * exactly this. The provider duration is bounded by the actual reservation,
+ * including when fewer than ten minutes remain. Reserving that duration keeps
+ * the spending limit effective: two concurrent calls cannot each believe the
  * last minute is theirs.
  *
  * Enforced mode requires a confirmed allowance or overage reservation. Ledger
@@ -40,19 +41,13 @@ export const VOICE_MINUTE_GATE_FLAG = 'LGQ_VOICE_MINUTE_GATE_ENABLED';
 export const VOICE_MINUTE_RESOURCE_CODE = 'voice_minutes';
 export const VOICE_MINUTE_OPERATION_TYPE = 'ai_voice_minute';
 
-/** Published in the pricing FAQ: no single call may run longer than this. */
-export const VOICE_CALL_CAP_MINUTES = 60;
+/** Owner-selected maximum for reception and dispatch calls. */
+export const VOICE_CALL_CAP_MINUTES = 10;
 
 /**
  * A hold must outlive the longest call it could be covering, or the expiry
- * sweeper releases a live call's minutes mid-conversation. 90 = the 60-minute
- * cap plus room for clock skew and a late receipt.
- *
- * KNOWN CONSEQUENCE, see §11: `reserve_usage_credits` only draws on credit lots
- * that outlive the reservation, so in the last 90 minutes of a billing period a
- * plan-period lot expiring at period end is ineligible and a call refuses while
- * the credits are visibly there. The fix is a tail on the lot, not a shorter
- * hold — a shorter hold would trade a monthly refusal for a mid-call release.
+ * sweeper releases a live call's minutes mid-conversation. Keep the existing
+ * 90-minute receipt grace period; it is not the permitted call duration.
  */
 const RESERVATION_TTL_MS = 90 * 60 * 1000;
 
@@ -78,7 +73,6 @@ export type VoiceMinuteLease = Readonly<{
 
 export type VoiceAdmission =
   | 'not_metered'
-  | 'existing_admission'
   /** The ledger could not answer. Recoverable: the receipt still arrives. */
   | 'ledger_unavailable'
   | 'exhausted_not_enforced';
@@ -97,6 +91,7 @@ export type { UsageOverageHold };
 
 export type VoiceMinuteDecision =
   | Readonly<{ outcome: 'admitted'; lease: VoiceMinuteLease }>
+  | Readonly<{ outcome: 'admitted_existing'; capMinutes: number }>
   | Readonly<{ outcome: 'admitted_overage'; overage: UsageOverageHold }>
   | Readonly<{ outcome: 'admitted_unmetered'; reason: VoiceAdmission }>
   /** Follow the contractor's forwarding or voicemail rule. Not an error. */
@@ -184,13 +179,31 @@ export async function admitVoiceCall(
 ): Promise<VoiceMinuteDecision> {
   const mode = options.mode ?? voiceMinuteMode();
   const cap = options.capMinutes ?? VOICE_CALL_CAP_MINUTES;
+  if (!Number.isSafeInteger(cap) || cap < 1 || cap > VOICE_CALL_CAP_MINUTES) {
+    return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
+  }
   const concurrencyLimit = options.concurrencyLimit ?? 1;
 
   const slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
   if (slot.outcome === 'existing') {
-    return Object.freeze({
-      outcome: 'admitted_unmetered' as const, reason: 'existing_admission' as const,
-    });
+    // A retried webhook must keep a low-balance call's original shorter limit.
+    // Failure to read it must not silently restore the full duration.
+    try {
+      const { data, error } = await admin.from('voice_call_admissions')
+        .select('reserved_minutes')
+        .eq('account_id', input.accountId)
+        .eq('provider', 'signalwire')
+        .eq('provider_call_id', input.providerCallId)
+        .maybeSingle();
+      const reserved = data?.reserved_minutes;
+      if (!error && Number.isSafeInteger(reserved) && reserved >= 0) {
+        return Object.freeze({
+          outcome: 'admitted_existing' as const,
+          capMinutes: reserved > 0 ? Math.min(cap, reserved) : cap,
+        });
+      }
+    } catch { /* Use the normal line when the persisted limit cannot be read. */ }
+    return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
   }
   if (slot.outcome === 'at_capacity') {
     return Object.freeze({ outcome: 'refused' as const, reason: 'at_capacity' as const });
@@ -219,18 +232,29 @@ export async function admitVoiceCall(
 
   let reservationId: unknown = null;
   let reserveError: { code?: string; message?: string } | null = null;
+  let reservedMinutes = cap;
   try {
-    const result = await admin.rpc('reserve_usage_credits', {
-      p_account_id: input.accountId,
-      p_resource_code: VOICE_MINUTE_RESOURCE_CODE,
-      p_units: cap,
-      p_idempotency_key: idempotencyKey,
-      p_operation_type: VOICE_MINUTE_OPERATION_TYPE,
-      p_expires_at: new Date(now.getTime() + RESERVATION_TTL_MS).toISOString(),
-      p_metadata: { schema: 'ai-voice.v1', claim_nonce: randomUUID().toLowerCase() },
-    });
-    reservationId = result.data;
-    reserveError = result.error;
+    // A definite shortfall rolls the entire RPC transaction back. Retry only
+    // that error with a smaller hold; never retry ambiguous network failures.
+    // The ledger's missing-unit count skips directly to the usable balance.
+    // Generic shortfalls still converge in at most ten attempts.
+    while (reservedMinutes > 0) {
+      const result = await admin.rpc('reserve_usage_credits', {
+        p_account_id: input.accountId,
+        p_resource_code: VOICE_MINUTE_RESOURCE_CODE,
+        p_units: reservedMinutes,
+        p_idempotency_key: idempotencyKey,
+        p_operation_type: VOICE_MINUTE_OPERATION_TYPE,
+        p_expires_at: new Date(now.getTime() + RESERVATION_TTL_MS).toISOString(),
+        p_metadata: { schema: 'ai-voice.v1', claim_nonce: randomUUID().toLowerCase() },
+      });
+      reservationId = result.data;
+      reserveError = result.error;
+      if (!insufficientCredits(reserveError)) break;
+      const missing = Number(reserveError?.message?.match(/\(missing (\d+) units\)/i)?.[1]);
+      reservedMinutes -= Number.isSafeInteger(missing) && missing > 0
+        ? Math.min(reservedMinutes, missing) : 1;
+    }
   } catch {
     if (mode === 'enforce') {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
@@ -271,7 +295,7 @@ export async function admitVoiceCall(
       if (overage.outcome === 'accrued') {
         // reserved_minutes carries the CAP that was charged, not zero: it is
         // what the settlement trues down from, and what a human reading the row
-        // needs to see to understand a $21 line.
+        // needs to see to understand the initial overage hold.
         if (!await finalizeAdmission(
           admin, slot.admissionId, input, null, cap, overage.idempotencyKey,
         )) {
@@ -331,10 +355,10 @@ export async function admitVoiceCall(
     finalizationKey,
     accountId: input.accountId,
     providerCallId: input.providerCallId,
-    reservedMinutes: cap,
+    reservedMinutes,
     ownsReservation: true,
   });
-  if (!await finalizeAdmission(admin, slot.admissionId, input, reservationId, cap)) {
+  if (!await finalizeAdmission(admin, slot.admissionId, input, reservationId, reservedMinutes)) {
     await releaseVoiceCall(admin, lease, 'admission_record_failed');
     await releaseAdmissionClaim(admin, slot.admissionId, input);
     return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });

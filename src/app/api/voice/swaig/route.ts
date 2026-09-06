@@ -11,6 +11,7 @@ import type { JurisdictionDiscipline } from '@/lib/location-context/types';
 import { authorizeVoiceToolInvocation } from '@/lib/voice/tool-admission';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveVoiceCallerIdentity } from '@/lib/voice/caller-identity';
+import { VoiceToolTiming, voiceReadDeadline } from '@/lib/voice/timing';
 import {
   CONTRACTOR_VOICE_FUNCTIONS,
   handleContractorVoiceAction,
@@ -21,6 +22,18 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  const timing = new VoiceToolTiming();
+  let status = 500;
+  try {
+    const response = await handleRequest(request, timing);
+    status = response.status;
+    return response;
+  } finally {
+    timing.finish(status);
+  }
+}
+
+async function handleRequest(request: Request, timing: VoiceToolTiming) {
   if (!verifyVoiceReceiptAuthorization(request).ok) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -39,6 +52,8 @@ export async function POST(request: Request) {
   const accountId = tokenCheck.payload.accountId;
   const verifiedCallerPhone = tokenCheck.payload.callerPhone;
   const verifiedProviderCallId = tokenCheck.payload.providerCallId;
+  timing.accountId = accountId;
+  timing.providerCallId = verifiedProviderCallId;
 
   let body: Record<string, unknown> = {};
   try {
@@ -48,6 +63,7 @@ export async function POST(request: Request) {
   }
 
   const fnName = String(body.function || body.action || '').trim();
+  timing.functionName = /^[a-z_]{1,80}$/.test(fnName) ? fnName : 'invalid';
 
   // Extract arguments from SWAIG format (which can be inside argument.parsed[0] or direct object)
   const rawArg = body.argument as Record<string, unknown> | undefined;
@@ -59,10 +75,12 @@ export async function POST(request: Request) {
     : {};
 
   const admin = createAdminClient();
-  if (!await authorizeVoiceToolInvocation(admin, accountId, verifiedProviderCallId, verifiedCallerPhone)) {
+  if (!await timing.measure('authorize', () => authorizeVoiceToolInvocation(admin, accountId, verifiedProviderCallId, verifiedCallerPhone))) {
     return NextResponse.json({ response: 'This call is no longer authorized for tools. Please call again or contact the office.' }, { status: 403 });
   }
-  const identity = await resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone);
+  const identity = await timing.measure('identity', () => voiceReadDeadline(
+    resolveVoiceCallerIdentity(admin, accountId, verifiedCallerPhone), 4000,
+  ).catch(() => ({ status: 'unavailable' as const })));
 
   if (fnName === 'send_booking_link') {
     if (identity.status === 'staff') {
@@ -98,9 +116,13 @@ export async function POST(request: Request) {
       bookingUrl = `https://${site.subdomain}.letsgetquoted.com/quote`;
     }
 
-    await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back').catch((err) => {
+    const consent = await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back', admin).catch((err) => {
       console.warn('[swaig:send_booking_link] Failed to establish caller SMS consent baseline:', err);
+      return false;
     });
+    if (!consent) {
+      return NextResponse.json({ response: 'I could not confirm permission to text this number, so I have not queued a message. We can continue over the phone.' });
+    }
 
     const sendResult = await sendCallerVoiceBookingLinkSms({
       accountId,
@@ -116,7 +138,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      response: "I've just texted a direct booking link to your mobile phone. You can use it anytime to choose an appointment slot, or we can continue our conversation right now.",
+      response: "I've queued a text with your booking link. Delivery can take a little time; we can continue our conversation while you wait.",
     });
   }
 
@@ -285,8 +307,9 @@ export async function POST(request: Request) {
 
     // Create the booking lead and pending job in database
     try {
-      await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back').catch((err) => {
+      const consent = await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back', admin).catch((err) => {
         console.warn('[swaig:book_appointment_slot] Failed to establish caller SMS consent baseline:', err);
+        return false;
       });
 
       await createBooking(admin, accountId, {
@@ -305,16 +328,16 @@ export async function POST(request: Request) {
         sourceVoiceProviderCallId: verifiedProviderCallId,
       });
 
-      const confirmation = await sendCallerVoiceBookingConfirmationSms({
+      const confirmation = consent ? await sendCallerVoiceBookingConfirmationSms({
         accountId,
         callerPhone,
         whenLabel: `${matchedDay.dayLabel} (${matchedSlot.label})`,
         serviceAddress,
         idempotencyKey: `voice-booking-sms:${accountId}:${verifiedProviderCallId}`,
-      });
+      }) : { ok: false };
 
       return NextResponse.json({
-        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' I also texted a confirmation to your mobile phone.' : ' The request is saved, but the confirmation text could not be delivered.'} Our team will review and confirm the appointment.`,
+        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' A confirmation text is queued for your mobile phone.' : ' The request is saved, but the confirmation text could not be queued.'} Our team will review and confirm the appointment.`,
       });
     } catch (err) {
       console.error('Error creating in-call booking:', err);
@@ -671,14 +694,14 @@ export async function POST(request: Request) {
     if (isLeadCreate && !effectiveArgs.operation && !effectiveArgs.intent) {
       effectiveArgs.operation = 'create';
     }
-    const action = await handleContractorVoiceAction({
+    const action = await timing.measure('dispatch', () => handleContractorVoiceAction({
       admin,
       accountId,
       providerCallId: verifiedProviderCallId,
       caller: identity.caller,
       functionName: fnName,
       args: effectiveArgs,
-    });
+    }));
     if (action.handled) return NextResponse.json({ response: action.response });
   } else if (CONTRACTOR_VOICE_FUNCTIONS.has(fnName)) {
     return NextResponse.json({
