@@ -1,9 +1,11 @@
 'use server';
 
+import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
 import { createLead } from '@/lib/leads';
 import { getHaloCampaignById } from '@/lib/neighborhood-halo-service';
 import { sendSpeedToLeadSms, sendContractorAdLeadSms } from '@/lib/sms';
+import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
 
 export type ClaimFormState = {
   success: boolean;
@@ -16,6 +18,20 @@ export async function submitNeighborHaloClaimAction(
   formData: FormData
 ): Promise<ClaimFormState> {
   const admin = createAdminClient();
+
+  let isAllowed = true;
+  try {
+    const ip = clientIpFrom(await headers());
+    if (typeof admin?.rpc === 'function') {
+      isAllowed = await checkRateLimitStrict(admin, `halo_claim:${ip}`, 10, 3600);
+    }
+  } catch {
+    // Non-request context (e.g. test environment)
+  }
+
+  if (!isAllowed) {
+    return { success: false, error: 'Too many claim attempts. Please try again later.' };
+  }
 
   const campaignId = String(formData.get('campaignId') || '').trim();
   const name = String(formData.get('name') || '').trim();

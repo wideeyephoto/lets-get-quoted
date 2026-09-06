@@ -417,10 +417,15 @@ export default function NeighborhoodHaloDashboardTab({
             ) : null}
 
             <div style={{ marginBottom: '1.25rem' }}>
-              <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem' }}>
+              <label
+                htmlFor="neighborhood-halo-job-select"
+                style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.4rem' }}
+              >
                 Select Completed Jobsite
               </label>
               <select
+                id="neighborhood-halo-job-select"
+                aria-label="Select Completed Jobsite"
                 value={selectedJobId}
                 onChange={(e) => handleSelectJob(e.target.value)}
                 style={{ width: '100%', padding: '0.6rem 0.75rem', borderRadius: '6px', background: 'rgba(0,0,0,0.4)', border: '1px solid rgba(255,255,255,0.2)', color: '#fff', fontSize: '0.88rem' }}

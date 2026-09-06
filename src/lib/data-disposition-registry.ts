@@ -2112,6 +2112,29 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Neighborhood Halo contractor ad settings
+  neighborhood_halo_settings: {
+    tableName: 'neighborhood_halo_settings',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'account_id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Neighborhood Halo 1-mile hyper-local ad campaigns
+  neighborhood_halo_campaigns: {
+    tableName: 'neighborhood_halo_campaigns',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'anonymize_columns',
+    targetColumns: ['street_name', 'neighborhood_name', 'city', 'state', 'zip'],
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Google Local Services Ads OAuth connections
   google_lsa_connections: {
     tableName: 'google_lsa_connections',
