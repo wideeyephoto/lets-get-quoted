@@ -15,10 +15,12 @@ export const metadata = {
 export default async function PaymentsRevenuePage({
   searchParams: searchParamsPromise,
 }: {
-  searchParams: Promise<{ range?: string }>;
+  searchParams: Promise<{ range?: string; error?: string }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { supabase, accountId } = await requireOfficeContextAny('reports.read', 'payments.read', 'payments.collect');
+  const { supabase, accountId, role } = await requireOfficeContextAny('reports.read', 'payments.read', 'payments.collect');
+  const isOwner = role === 'owner';
+  const stripeError = searchParams.error;
 
   const selectedRange = (searchParams.range || '30d') as NonNullable<LedgerFilterOptions['range']>;
 
@@ -46,6 +48,8 @@ export default async function PaymentsRevenuePage({
       analytics={analyticsRes}
       jobs={mappedJobs}
       selectedRange={selectedRange}
+      isOwner={isOwner}
+      stripeError={stripeError}
     />
   );
 }

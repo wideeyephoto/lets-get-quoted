@@ -111,7 +111,7 @@ export default function MerchantOnboardingSection({
                 </button>
               </form>
             ) : surface.status === 'ready' ? (
-              <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn secondary">
+              <a href="/api/stripe/express-dashboard" target="_blank" rel="noopener noreferrer" className="btn secondary">
                 Manage on Stripe
               </a>
             ) : null}

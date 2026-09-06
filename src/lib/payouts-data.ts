@@ -23,6 +23,7 @@ export type PayoutsAccountOverview = {
   pendingBalanceDollars: number;
   instantAvailableDollars: number;
   instantPayoutEligible: boolean;
+  payoutSchedule: string;
   recentPayouts: StripePayoutItem[];
   available: boolean;
 };
@@ -31,12 +32,15 @@ export async function loadStripePayoutsOverview(
   supabase: SupabaseClient,
   accountId: string,
 ): Promise<PayoutsAccountOverview> {
+  let knownAccount: { stripe_connect_id: string | null; connect_onboarded: boolean | null; connect_disabled_at: string | null } | null = null;
   try {
     const { data: account } = await supabase
       .from('accounts')
       .select('stripe_connect_id, connect_onboarded, connect_disabled_at')
       .eq('id', accountId)
       .maybeSingle();
+
+    knownAccount = account;
 
     if (!account?.stripe_connect_id || !account.connect_onboarded) {
       return {
@@ -47,6 +51,7 @@ export async function loadStripePayoutsOverview(
         pendingBalanceDollars: 0,
         instantAvailableDollars: 0,
         instantPayoutEligible: false,
+        payoutSchedule: 'Daily Automatic',
         recentPayouts: [],
         available: true,
       };
@@ -55,18 +60,20 @@ export async function loadStripePayoutsOverview(
     const stripe = getStripeClient();
     const connectId = account.stripe_connect_id;
 
-    // Fetch live balance and recent payouts from Stripe
-    const [balanceRes, payoutsRes] = await Promise.allSettled([
+    // Fetch live balance, recent payouts, and account settings from Stripe
+    const [balanceRes, payoutsRes, accountRes] = await Promise.allSettled([
       stripe.balance.retrieve({}, { stripeAccount: connectId }),
       stripe.payouts.list({ limit: 25 }, { stripeAccount: connectId }),
+      stripe.accounts.retrieve(connectId),
     ]);
 
     let availableDollars = 0;
     let pendingDollars = 0;
     let instantAvailableDollars = 0;
     let instantEligible = false;
+    const isBalanceFulfilled = balanceRes.status === 'fulfilled';
 
-    if (balanceRes.status === 'fulfilled') {
+    if (isBalanceFulfilled) {
       const b = balanceRes.value;
       const availCents = b.available?.reduce((sum, item) => sum + (item.currency === 'usd' ? item.amount : 0), 0) ?? 0;
       const pendCents = b.pending?.reduce((sum, item) => sum + (item.currency === 'usd' ? item.amount : 0), 0) ?? 0;
@@ -76,6 +83,17 @@ export async function loadStripePayoutsOverview(
       pendingDollars = pendCents / 100;
       instantAvailableDollars = instantCents / 100;
       instantEligible = instantCents > 0;
+    } else {
+      console.warn('Stripe balance retrieval failed for account:', connectId, balanceRes.reason);
+    }
+
+    let payoutSchedule = 'Daily Automatic';
+    if (accountRes.status === 'fulfilled' && accountRes.value) {
+      const interval = accountRes.value.settings?.payouts?.schedule?.interval;
+      if (interval === 'manual') payoutSchedule = 'Manual';
+      else if (interval === 'weekly') payoutSchedule = 'Weekly Automatic';
+      else if (interval === 'monthly') payoutSchedule = 'Monthly Automatic';
+      else if (interval === 'daily') payoutSchedule = 'Daily Automatic';
     }
 
     const recentPayouts: StripePayoutItem[] = [];
@@ -110,19 +128,22 @@ export async function loadStripePayoutsOverview(
       pendingBalanceDollars: Math.round(pendingDollars * 100) / 100,
       instantAvailableDollars: Math.round(instantAvailableDollars * 100) / 100,
       instantPayoutEligible: instantEligible,
+      payoutSchedule,
       recentPayouts,
-      available: true,
+      available: isBalanceFulfilled,
     };
   } catch (error) {
     console.error('Failed to load Stripe payouts overview:', error);
+    const wasConnected = Boolean(knownAccount?.stripe_connect_id && knownAccount?.connect_onboarded);
     return {
-      connected: false,
-      stripeAccountId: null,
-      payoutsPaused: false,
+      connected: wasConnected,
+      stripeAccountId: knownAccount?.stripe_connect_id ?? null,
+      payoutsPaused: Boolean(knownAccount?.connect_disabled_at),
       availableBalanceDollars: 0,
       pendingBalanceDollars: 0,
       instantAvailableDollars: 0,
       instantPayoutEligible: false,
+      payoutSchedule: 'Daily Automatic',
       recentPayouts: [],
       available: false,
     };

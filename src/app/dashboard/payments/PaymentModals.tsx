@@ -1388,9 +1388,9 @@ export default function PaymentModals({
                     {copied ? '✓ Copied Evidence Statement!' : '📋 Copy Evidence to Clipboard'}
                   </button>
                   <a
-                    href="https://dashboard.stripe.com/disputes"
+                    href="/api/stripe/express-dashboard"
                     target="_blank"
-                    rel="noreferrer"
+                    rel="noopener noreferrer"
                     className="btn secondary"
                     style={{ fontSize: '0.85rem' }}
                   >

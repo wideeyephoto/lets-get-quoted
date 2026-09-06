@@ -23,6 +23,8 @@ interface Props {
   analytics: RevenueAnalyticsData;
   jobs: Array<{ id: string; ref: string; clientName: string }>;
   selectedRange: string;
+  isOwner?: boolean;
+  stripeError?: string;
 }
 
 const TABS = [
@@ -55,8 +57,10 @@ export default function RevenuePaymentsScreen({
   analytics,
   jobs,
   selectedRange,
+  isOwner = true,
+  stripeError,
 }: Props) {
-  const [activeTab, setActiveTab] = useState('ledger');
+  const [activeTab, setActiveTab] = useState(stripeError ? 'payouts' : 'ledger');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
   const [selectedPayment, setSelectedPayment] = useState<PaymentLedgerItem | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -716,7 +720,7 @@ export default function RevenuePaymentsScreen({
         )}
 
         {activeTab === 'payouts' && (
-          <PayoutsTransfersPanel payouts={payouts} />
+          <PayoutsTransfersPanel payouts={payouts} isOwner={isOwner} stripeError={stripeError} />
         )}
 
         {activeTab === 'analytics' && (

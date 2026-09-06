@@ -7,13 +7,17 @@ import { loadStripePayoutsOverview } from '../src/lib/payouts-data';
 const mockRetrieve = vi.fn();
 const mockPayoutsList = vi.fn();
 const mockCreateLoginLink = vi.fn();
+const mockAccountsRetrieve = vi.fn();
 const mockCreateOnboardingLink = vi.fn();
 
 vi.mock('../src/lib/stripe', () => ({
   getStripeClient: () => ({
     balance: { retrieve: mockRetrieve },
     payouts: { list: mockPayoutsList },
-    accounts: { createLoginLink: mockCreateLoginLink },
+    accounts: {
+      createLoginLink: mockCreateLoginLink,
+      retrieve: mockAccountsRetrieve,
+    },
   }),
 }));
 
@@ -123,39 +127,88 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
       expect(overview.instantPayoutEligible).toBe(false);
       expect(mockRetrieve).not.toHaveBeenCalled();
     });
+
+    it('handles balance retrieval failure gracefully by preserving connection and marking available: false', async () => {
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  stripe_connect_id: 'acct_123',
+                  connect_onboarded: true,
+                  connect_disabled_at: null,
+                },
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      mockRetrieve.mockRejectedValue(new Error('Stripe API 500 error'));
+      mockPayoutsList.mockResolvedValue({ data: [] });
+      mockAccountsRetrieve.mockResolvedValue({
+        settings: { payouts: { schedule: { interval: 'weekly' } } },
+      });
+
+      const overview = await loadStripePayoutsOverview(mockSupabase, 'acc_test');
+
+      expect(overview.connected).toBe(true);
+      expect(overview.available).toBe(false);
+      expect(overview.payoutSchedule).toBe('Weekly Automatic');
+      expect(overview.availableBalanceDollars).toBe(0);
+    });
   });
 
-  describe('2. PayoutsTransfersPanel UI Integrity', () => {
-    it('has zero dead links to https://dashboard.stripe.com and routes through /api/stripe/express-dashboard', () => {
+  describe('2. UI Integrity across Payouts, Settings & Modals', () => {
+    it('has zero dead links to https://dashboard.stripe.com across contractor surfaces', () => {
+      const filesToCheck = [
+        'src/app/dashboard/payments/PayoutsTransfersPanel.tsx',
+        'src/app/dashboard/settings/PayoutAccount.tsx',
+        'src/app/dashboard/settings/MerchantOnboardingSection.tsx',
+        'src/app/dashboard/payments/PaymentModals.tsx',
+      ];
+
+      for (const relativePath of filesToCheck) {
+        const content = readFileSync(join(process.cwd(), relativePath), 'utf8');
+        expect(content).not.toContain('https://dashboard.stripe.com');
+        expect(content).toContain('/api/stripe/express-dashboard');
+      }
+    });
+
+    it('enforces role gating, $0.50 min fee math, and error alerts in PayoutsTransfersPanel', () => {
       const panelCode = readFileSync(
         join(process.cwd(), 'src/app/dashboard/payments/PayoutsTransfersPanel.tsx'),
         'utf8'
       );
 
-      // Verify no unauthenticated dashboard.stripe.com links remain
-      expect(panelCode).not.toContain('https://dashboard.stripe.com');
+      // Verify role gating and error banner
+      expect(panelCode).toContain('isOwner');
+      expect(panelCode).toContain('stripeError');
+      expect(panelCode).toContain('stripe_login_failed');
+      expect(panelCode).toContain('Unable to Open Stripe Express Portal');
+      expect(panelCode).toContain('🔒 Workspace owner verification required');
+      expect(panelCode).toContain('🔒 Owner Authorization Required');
 
-      // Verify all 3 action destinations point to /api/stripe/express-dashboard
-      const expressLinks = panelCode.match(/href="\/api\/stripe\/express-dashboard"/g);
-      expect(expressLinks).not.toBeNull();
-      expect(expressLinks?.length).toBe(3);
+      // Verify minimum $0.50 fee math & label
+      expect(panelCode).toContain('Math.max(0.5, instantAvailable * 0.015)');
+      expect(panelCode).toContain('Est. Net After Fee (1.5%, min $0.50)');
 
-      // Verify instant payout calculations reference instantAvailableDollars
-      expect(panelCode).toContain('payouts.instantAvailableDollars');
-      expect(panelCode).toContain('Instant Transfer Available');
-      expect(panelCode).toContain('rel="noopener noreferrer"');
+      // Verify copy alignment
+      expect(panelCode).toContain('⚡ 30-Min Transfer Available');
+      expect(panelCode).toContain('payouts.payoutSchedule');
     });
   });
 
   describe('3. /api/stripe/express-dashboard Route Handler', () => {
-    it('redirects authenticated owner to Stripe Express single-use login link', async () => {
+    it('redirects authenticated owner to Stripe Express single-use login link with no-store headers', async () => {
       const { GET } = await import('../src/app/api/stripe/express-dashboard/route');
 
       const mockSupabase = {
         from: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   stripe_connect_id: 'acct_express_123',
                   connect_onboarded: true,
@@ -180,7 +233,21 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
 
       expect(res.status).toBe(303);
       expect(res.headers.get('location')).toBe('https://connect.stripe.com/express/single-use-session-token');
+      expect(res.headers.get('cache-control')).toBe('no-store, no-cache, must-revalidate');
       expect(mockCreateLoginLink).toHaveBeenCalledWith('acct_express_123');
+    });
+
+    it('re-throws NEXT_REDIRECT error when requireOwnerContext redirects non-owner', async () => {
+      const { GET } = await import('../src/app/api/stripe/express-dashboard/route');
+
+      const redirectError = new Error('NEXT_REDIRECT');
+      (redirectError as any).digest = 'NEXT_REDIRECT;replace;/office-access;307';
+
+      mockRequireOwnerContext.mockRejectedValue(redirectError);
+
+      const req = new Request('https://app.letsgetquoted.com/api/stripe/express-dashboard');
+
+      await expect(GET(req)).rejects.toThrow('NEXT_REDIRECT');
     });
 
     it('redirects to onboarding if account is not yet onboarded', async () => {
@@ -190,7 +257,7 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
         from: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   stripe_connect_id: 'acct_express_123',
                   connect_onboarded: false,
@@ -222,7 +289,7 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
         from: vi.fn().mockReturnValue({
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({
+              maybeSingle: vi.fn().mockResolvedValue({
                 data: {
                   stripe_connect_id: null,
                   connect_onboarded: false,

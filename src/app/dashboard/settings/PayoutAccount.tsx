@@ -87,7 +87,7 @@ export default function PayoutAccount({ stripeOnboarded, payoutsPaused = false, 
               ) : null}
               {stripeOnboarded || payoutsPaused ? (
                 <>
-                  <a href="https://dashboard.stripe.com" target="_blank" rel="noreferrer" className="btn secondary">Manage on Stripe</a>
+                  <a href="/api/stripe/express-dashboard" target="_blank" rel="noopener noreferrer" className="btn secondary">Manage on Stripe</a>
                   <button type="button" className="btn danger" disabled={disconnectingStripe} onClick={handleDisconnectStripe}>
                     {disconnectingStripe ? 'Disconnecting…' : 'Disconnect'}
                   </button>
