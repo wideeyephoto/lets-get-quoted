@@ -207,17 +207,17 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
   // 5. Notepads & Order Forms
   {
     id: 'notepads',
-    name: 'Carbonless NCR Job Order Pads & Pocket Field Books',
-    tagline: 'Professional 2-part NCR work order forms and spiral estimator pads',
+    name: 'Carbonless NCR Job Order Pads & Field Books',
+    tagline: 'Professional 2-part NCR work order forms and field estimator pads',
     category: 'print',
     description:
-      'Never lose an on-site change order or scope note. 2-part carbonless NCR forms produce an immediate copy for the customer and an archive copy for billing. Pocket-sized wire-o spiral notebooks keep job specs waterproof and organized.',
+      'Never lose an on-site change order or scope note. 2-part carbonless NCR forms produce an immediate copy for the customer and an archive copy for billing. Padded in convenient 8.5" × 5.5" half-letter sets with wrap-around manifold writing shield.',
     bulletPoints: [
       'Pre-numbered 2-part NCR paper (White customer copy + Yellow technician copy)',
       'Heavy chipboard backing for effortless writing on ladders or hoods',
-      'Personalized with your brand logo, legal contract terms, and customer signature line',
-      'Pocket spiral notebooks with grid paper for field sketches & measurements',
-      'Padded in sets of 50 serialized leaves with wrap-around manifold shield',
+      'Personalized with your brand logo, business contact info, and customer signature line',
+      'Standard 8.5" × 5.5" half-letter trade format for easy field handling',
+      'Padded in sets of 50 serialized 2-part sets with wrap-around manifold writing shield',
     ],
     basePrice: 2.2,
     minQuantity: 5,
@@ -238,13 +238,13 @@ export const ALL_MERCHANDISE_PRODUCTS: MerchandiseProduct[] = [
       { quantity: 100, unitPrice: 3.75, totalPrice: 375.0, savingsPercent: 68, turnaroundDays: 3 },
     ],
     specs: {
-      dimensions: '8.5" × 11" Letter or 5.5" × 8.5" Pocket Wire-O',
+      dimensions: '8.5" × 5.5" Half-Letter (Padded in sets of 50)',
       material: '20 lb Superior Carbonless NCR Paper + 50pt Stiff Chipboard Backing',
       finish: 'Edge-glued padded top with wrap-around cover insert',
       printArea: 'Header branding + customized line-item estimate grid',
     },
     options: {
-      finishes: ['2-Part NCR Carbonless Forms (8.5"x11")', 'Wire-O Spiral Pocket Field Book (5.5"x8.5")', 'Padded Estimating Grid Scratchpad'],
+      finishes: ['2-Part NCR Carbonless Forms (8.5"x5.5")', '1-Part Field Estimator Scratchpad (8.5"x5.5")'],
     },
   },
 

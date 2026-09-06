@@ -42,7 +42,7 @@ export async function sendCustomerMerchandiseReceipt(params: {
       </div>
       <div style="padding: 24px; border: 1px solid #e2e8f0; border-top: none; border-radius: 0 0 8px 8px; background: #ffffff;">
         <p>Hi ${params.customerName},</p>
-        <p>Thank you for your order! Your digital proof has been approved and your custom contractor merchandise has been routed to high-precision manufacturing.</p>
+        <p>Thank you for your order! Your digital proof has been approved and your custom contractor stationery has been queued for commercial trade print production.</p>
         
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 14px;">
           <thead>
@@ -82,7 +82,15 @@ export async function sendCustomerMerchandiseReceipt(params: {
           <div>${params.shippingAddress.city}, ${params.shippingAddress.state} ${params.shippingAddress.postalCode}</div>
         </div>
 
-        <p style="font-size: 13px; color: #64748b;">You will receive another update with carrier tracking as soon as your order ships from production.</p>
+        ${params.order.trackingNumber ? `
+        <div style="background: #ecfdf5; border: 1px solid #a7f3d0; padding: 14px; border-radius: 6px; margin: 20px 0; font-size: 13px; color: #065f46;">
+          <h4 style="margin: 0 0 6px 0;">Carrier Tracking:</h4>
+          <div><strong>Carrier:</strong> ${params.order.trackingCarrier || 'Standard Ground'}</div>
+          <div><strong>Tracking Number:</strong> ${params.order.trackingNumber}</div>
+        </div>
+        ` : `
+        <p style="font-size: 13px; color: #64748b;">You will receive another update with carrier tracking details as soon as your order is dispatched from production.</p>
+        `}
         <p style="font-size: 13px; color: #64748b; margin-top: 24px;">— The Let's Get Quoted Production Team</p>
       </div>
     </div>

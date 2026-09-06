@@ -814,7 +814,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               }}
               className="hidden md:flex"
             >
-              <span style={{ color: 'var(--good)' }}>⚡ 2–3 Day Dispatch</span>
+              <span style={{ color: 'var(--good)' }}>⚡ {currentProduct.turnaroundEstimate} Dispatch</span>
               <span style={{ opacity: 0.3 }}>&bull;</span>
               <span style={{ color: 'var(--gold-ink)' }}>📝 2-Part Carbonless NCR &amp; 16pt Velvet</span>
               <span style={{ opacity: 0.3 }}>&bull;</span>

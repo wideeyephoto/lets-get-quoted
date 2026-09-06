@@ -88,10 +88,10 @@ export default function ProductTechnicalSpecsSheet({
           </div>
           <div>
             <strong style={{ fontSize: '0.78rem', color: '#ffffff', display: 'block' }}>
-              100% Reprint Guarantee
+              Proof Fidelity Guarantee
             </strong>
             <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>
-              Exact match to your approved proof
+              Printed to your exact approved digital proof
             </span>
           </div>
         </div>
@@ -121,7 +121,7 @@ export default function ProductTechnicalSpecsSheet({
         </button>
 
         <span style={{ fontSize: '0.68rem', color: 'var(--muted)' }}>
-          Domestic USA Manufacturing • 2–3 Day Turnaround
+          Domestic USA Manufacturing • {product.turnaroundEstimate} Turnaround
         </span>
       </div>
 
@@ -144,7 +144,7 @@ export default function ProductTechnicalSpecsSheet({
                   <>
                     <div><strong>Structure:</strong> 2-Part NCR (White Original / Canary Duplicate)</div>
                     <div><strong>Dimensions:</strong> Standard 8.5&quot; × 5.5&quot; Half-Letter</div>
-                    <div><strong>Binding:</strong> Heavy leatherette glued spine + perforation</div>
+                    <div><strong>Binding:</strong> Padded chipboard spine with wrap-around manifold writing shield</div>
                   </>
                 )}
               </div>
@@ -155,9 +155,9 @@ export default function ProductTechnicalSpecsSheet({
                 Print Physics &amp; QC
               </span>
               <div style={{ color: 'var(--text)', lineHeight: 1.4 }}>
-                <div><strong>Print Engine:</strong> Heidelberg 4-Color Offset Litho</div>
-                <div><strong>Resolution:</strong> 2400 × 2400 DPI true raster screening</div>
-                <div><strong>Tolerance:</strong> ±0.015&quot; laser optical registration cut</div>
+                <div><strong>Print Engine:</strong> Commercial CMYK Offset &amp; Digital Litho</div>
+                <div><strong>Resolution:</strong> 300+ DPI high-density print reproduction</div>
+                <div><strong>Tolerance:</strong> Standard commercial guillotine precision trim</div>
               </div>
             </div>
 

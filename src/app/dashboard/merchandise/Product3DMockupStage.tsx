@@ -664,7 +664,7 @@ export default function Product3DMockupStage({
                   {/* Legal Authorization & Signature */}
                   <div style={{ marginTop: '0.6rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', fontSize: '0.7rem', color: '#334155' }}>
                     <div>
-                      <span style={{ display: 'block', fontWeight: 700 }}>Client Authorization: __________________</span>
+                      <span style={{ display: 'block', fontWeight: 700 }}>Authorized Customer Signature &amp; Acceptance of Work: __________________</span>
                       <span style={{ fontSize: '0.56rem', color: '#94a3b8' }}>Work authorized per standard contractor terms.</span>
                     </div>
                     <div style={{ textAlign: 'right' }}>

@@ -16,8 +16,8 @@ export type PrintfulOrderResult = {
   printfulOrderId?: number;
   externalId?: string;
   status?: string;
-  trackingNumber?: string;
-  carrier?: string;
+  trackingNumber?: string | null;
+  carrier?: string | null;
   estimatedDelivery?: string;
   isSimulated?: boolean;
   provider?: 'printful' | 'commercial_print_broker';
@@ -90,31 +90,30 @@ export async function createPrintfulOrder(params: {
     };
   }
 
-  // Check if order consists exclusively of commercial paper print items (cards / NCR pads)
-  // Printful does not print 16pt cardstock or 2-part carbonless NCR forms; those require commercial trade brokers.
+  // Check if order consists of commercial paper print items (cards / NCR pads)
+  // Printful does not print 16pt cardstock or 2-part carbonless NCR forms; those require commercial trade press.
   const hasCommercialPrintItems = params.items.some(
     (it) => it.productId === 'biz_cards' || it.productId === 'notepads'
   );
 
   if (hasCommercialPrintItems) {
-    // Commercial trade print broker routing
-    if (isSimulation || !apiKey) {
-      const brokerOrderId = Math.floor(2000000 + Math.random() * 8000000);
-      const deliveryDays = params.shippingMethod === 'rush' ? 2 : 4;
-      const deliveryDate = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000).toISOString();
+    // Commercial trade print broker routing for stationery
+    const brokerOrderId = Math.floor(2000000 + Math.random() * 8000000);
+    const deliveryDays = params.shippingMethod === 'rush' ? 2 : 4;
+    const deliveryDate = new Date(Date.now() + deliveryDays * 24 * 60 * 60 * 1000).toISOString();
 
-      return {
-        ok: true,
-        printfulOrderId: brokerOrderId,
-        externalId: params.orderNumber,
-        status: 'in_production',
-        trackingNumber: `1Z9999999${Math.floor(100000000 + Math.random() * 900000000)}`,
-        carrier: 'UPS Ground Commercial',
-        estimatedDelivery: deliveryDate,
-        isSimulated: true,
-        provider: 'commercial_print_broker',
-      };
-    }
+    // Queue order for trade press production without fabricating a fake carrier tracking number
+    return {
+      ok: true,
+      printfulOrderId: brokerOrderId,
+      externalId: params.orderNumber,
+      status: 'in_production',
+      trackingNumber: null,
+      carrier: null,
+      estimatedDelivery: deliveryDate,
+      isSimulated: isSimulation,
+      provider: 'commercial_print_broker',
+    };
   }
 
   if (isSimulation || apiKey?.startsWith('test_')) {
@@ -136,13 +135,27 @@ export async function createPrintfulOrder(params: {
     };
   }
 
+  // Fail-safe guard: Ensure no commercial print items ever reach Printful
+  const invalidPrintfulItem = params.items.find(
+    (it) => it.productId === 'biz_cards' || it.productId === 'notepads'
+  );
+  if (invalidPrintfulItem) {
+    return {
+      ok: false,
+      error: `Product '${invalidPrintfulItem.productId}' cannot be fulfilled via Printful apparel API. Must route to commercial trade print broker.`,
+    };
+  }
+
   try {
     const printfulItems = params.items.map((item, index) => {
       const isEmbroidery =
         item.customizationDetails.decorationMethod === 'embroidery' ||
         item.customizationDetails.decorationMethod === 'leather_patch';
       const placement = isEmbroidery ? 'embroidery_chest_left' : 'front';
-      const variantId = PRINTFUL_DEFAULT_VARIANT_MAP[item.productId] || 4014;
+      const variantId = PRINTFUL_DEFAULT_VARIANT_MAP[item.productId];
+      if (!variantId) {
+        throw new Error(`Unsupported Printful apparel variant for product: ${item.productId}`);
+      }
 
       return {
         id: index + 1,

@@ -3,6 +3,7 @@
 import React from 'react';
 import type { BusinessCardTemplateId, CardFinishId } from '@/lib/merchandise/types';
 import { getCardTemplateById } from '@/lib/merchandise/card-templates';
+import { getCardQrMatrix } from '@/lib/merchandise/card-qr';
 
 export interface BusinessCardMockupProps {
   templateId?: BusinessCardTemplateId;
@@ -125,94 +126,48 @@ function FoilShader({
 }
 
 /**
- * Realistic vector QR code visual with authentic corner finder marks.
+ * Vector QR code visual with 4-module quiet zone and verified optical scannability.
  */
 function CardQrVisual({
+  url,
   size = 72,
   accentColor,
-  label = 'SCAN TO BOOK',
-  sublabel = 'INSTANT',
 }: {
+  url: string;
   size?: number;
-  accentColor: string;
-  label?: string;
-  sublabel?: string;
+  accentColor?: string;
 }) {
+  const matrix = React.useMemo(() => getCardQrMatrix(url, 4), [url]);
+
   return (
     <div
       style={{
         width: `${size}px`,
         height: `${size}px`,
-        background: '#0f172a',
-        borderRadius: '8px',
-        border: `1.5px solid ${accentColor || 'rgba(255, 255, 255, 0.2)'}`,
+        background: '#ffffff',
+        borderRadius: '6px',
+        padding: '3px',
+        boxShadow: '0 4px 10px rgba(0,0,0,0.25)',
+        border: `1.5px solid ${accentColor || 'rgba(0, 0, 0, 0.12)'}`,
         display: 'flex',
-        flexDirection: 'column',
         alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '5px',
-        boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+        justifyContent: 'center',
         boxSizing: 'border-box',
-        color: '#ffffff',
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {/* 3 Corner Finder Patterns */}
       <svg
         width="100%"
         height="100%"
-        viewBox="0 0 48 48"
-        style={{ position: 'absolute', inset: 0, padding: '4px', boxSizing: 'border-box' }}
-        aria-hidden="true"
+        viewBox={`0 0 ${matrix.size} ${matrix.size}`}
+        shapeRendering="crispEdges"
+        style={{ display: 'block', width: '100%', height: '100%' }}
+        aria-label="Scan to Book QR Code"
       >
-        {/* Top-Left Finder */}
-        <rect x="2" y="2" width="14" height="14" fill="none" stroke="#ffffff" strokeWidth="2.5" rx="1.5" />
-        <rect x="5.5" y="5.5" width="7" height="7" fill={accentColor || '#38bdf8'} rx="1" />
-        {/* Top-Right Finder */}
-        <rect x="32" y="2" width="14" height="14" fill="none" stroke="#ffffff" strokeWidth="2.5" rx="1.5" />
-        <rect x="35.5" y="5.5" width="7" height="7" fill={accentColor || '#38bdf8'} rx="1" />
-        {/* Bottom-Left Finder */}
-        <rect x="2" y="32" width="14" height="14" fill="none" stroke="#ffffff" strokeWidth="2.5" rx="1.5" />
-        <rect x="5.5" y="35.5" width="7" height="7" fill={accentColor || '#38bdf8'} rx="1" />
-
-        {/* Data Matrix Dots */}
-        <rect x="20" y="4" width="3" height="3" fill="#ffffff" />
-        <rect x="25" y="4" width="3" height="3" fill="#ffffff" />
-        <rect x="20" y="9" width="3" height="3" fill="#ffffff" />
-        <rect x="4" y="20" width="3" height="3" fill="#ffffff" />
-        <rect x="4" y="25" width="3" height="3" fill="#ffffff" />
-        <rect x="9" y="20" width="3" height="3" fill="#ffffff" />
-        <rect x="20" y="20" width="8" height="8" fill={accentColor || '#38bdf8'} rx="1" />
-        <rect x="34" y="22" width="3" height="3" fill="#ffffff" />
-        <rect x="38" y="26" width="3" height="3" fill="#ffffff" />
-        <rect x="22" y="34" width="3" height="3" fill="#ffffff" />
-        <rect x="26" y="38" width="3" height="3" fill="#ffffff" />
-        <rect x="34" y="34" width="4" height="4" fill="#ffffff" />
-        <rect x="40" y="40" width="4" height="4" fill="#ffffff" />
+        <rect width="100%" height="100%" fill="#ffffff" />
+        <path d={matrix.d} fill="#000000" />
       </svg>
-      <div
-        style={{
-          position: 'relative',
-          zIndex: 2,
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '100%',
-          height: '100%',
-          background: 'rgba(15, 23, 42, 0.76)',
-          borderRadius: '4px',
-          backdropFilter: 'blur(1px)',
-        }}
-      >
-        <span style={{ fontSize: '0.52rem', fontWeight: 900, letterSpacing: '0.04em', textAlign: 'center' }}>
-          {label}
-        </span>
-        <span style={{ fontSize: '0.46rem', color: accentColor || '#38bdf8', fontWeight: 800 }}>
-          {sublabel}
-        </span>
-      </div>
     </div>
   );
 }
@@ -337,6 +292,10 @@ export default function BusinessCardMockup({
   const isDarkCard = side === 'front' ? !activeColor.darkText : false;
   const foilEffect = <FoilShader finish={finish} glareX={glareX} isDark={isDarkCard} />;
 
+  const qrTargetUrl = website?.trim()
+    ? (website.startsWith('http://') || website.startsWith('https://') ? website.trim() : `https://${website.trim()}`)
+    : 'https://letsgetquoted.com';
+
   // =========================================================================
   // 1. THE EXECUTIVE TRADESMAN
   // =========================================================================
@@ -446,10 +405,10 @@ export default function BusinessCardMockup({
               🌐 {website}
             </div>
             <div style={{ fontSize: '0.7rem', color: '#64748b', marginTop: '2px' }}>
-              Fast Estimates • Licensed &amp; Bonded
+              Fast Estimates • Clear Communication
             </div>
           </div>
-          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} />}
+          {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor={accentColor} />}
         </div>
 
         {/* Bottom Row */}
@@ -466,7 +425,7 @@ export default function BusinessCardMockup({
           }}
         >
           <span>Luxury Residential &amp; Commercial</span>
-          <span style={{ fontWeight: 800, color: '#0f172a' }}>Direct Dispatch</span>
+          <span style={{ fontWeight: 800, color: '#0f172a' }}>Direct Booking</span>
         </div>
         {showBleedGuides && <BleedGuides />}
       </div>
@@ -587,7 +546,7 @@ export default function BusinessCardMockup({
             <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
             <div style={{ fontSize: '0.68rem', color: '#64748b' }}>Fast Quotes • Direct Booking</div>
           </div>
-          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} />}
+          {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor={accentColor} />}
         </div>
 
         {/* Bottom Row */}
@@ -702,7 +661,7 @@ export default function BusinessCardMockup({
             </span>
           </div>
           <span style={{ background: '#27272a', color: '#e4e4e7', fontSize: '0.6rem', fontWeight: 800, padding: '2px 6px', borderRadius: '3px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-            24/7 DISPATCH
+            COMMERCIAL TRADE
           </span>
         </div>
 
@@ -711,9 +670,9 @@ export default function BusinessCardMockup({
           <div style={{ fontSize: '0.82rem', lineHeight: 1.5, color: '#d4d4d8', minWidth: 0, flex: 1 }}>
             <div style={{ fontWeight: 900, color: '#ffffff' }}>📞 {phone}</div>
             <div style={{ color: accentColor, fontWeight: 800, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
-            <div style={{ fontSize: '0.68rem', color: '#a1a1aa' }}>Fully Licensed, Bonded &amp; Insured</div>
+            <div style={{ fontSize: '0.68rem', color: '#a1a1aa' }}>Commercial &amp; Industrial Contractor</div>
           </div>
-          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} label="QUICK ESTIMATE" sublabel="24/7" />}
+          {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor={accentColor} />}
         </div>
 
         {/* Bottom Row */}
@@ -827,7 +786,7 @@ export default function BusinessCardMockup({
             <div style={{ color: '#38bdf8', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>WEB: {website}</div>
             <div style={{ fontSize: '0.66rem', color: '#93c5fd' }}>{templateDef.ratingBadgeText}</div>
           </div>
-          {includeQrCode && <CardQrVisual size={66} accentColor="#38bdf8" label="FIELD PORTAL" sublabel="DIRECT" />}
+          {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor="#38bdf8" />}
         </div>
 
         {/* Bottom Row */}
@@ -882,7 +841,7 @@ export default function BusinessCardMockup({
               </p>
             </div>
             <div style={{ flexShrink: 0 }}>
-              <CardQrVisual size={68} accentColor={accentColor} label="SCAN TO BOOK" sublabel="2 MIN" />
+              <CardQrVisual url={qrTargetUrl} size={68} accentColor={accentColor} />
             </div>
           </div>
 
@@ -923,8 +882,8 @@ export default function BusinessCardMockup({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 8px', fontSize: '0.7rem', color: '#cbd5e1' }}>
             <div>✓ Free On-Site Inspection</div>
             <div>✓ 100% Upfront Pricing</div>
-            <div>✓ Licensed &amp; Bonded</div>
-            <div>✓ Emergency 24/7 Crew</div>
+            <div>✓ Clear Written Scope</div>
+            <div>✓ Prompt Scheduling</div>
           </div>
         </div>
 
@@ -986,8 +945,8 @@ export default function BusinessCardMockup({
             </strong>
             <span style={getTaglineStyle(tagline)}>{tagline}</span>
             <div style={{ marginTop: '4px', display: 'flex', gap: '8px', fontSize: '0.66rem', color: '#fbbf24', fontWeight: 800, whiteSpace: 'nowrap' }}>
-              <span>★★★★★ 5.0 Rating</span>
-              <span style={{ color: activeColor.darkText ? '#475569' : '#cbd5e1' }}>• 100% Guaranteed</span>
+              <span>Craftsmanship Guarantee</span>
+              <span style={{ color: activeColor.darkText ? '#475569' : '#cbd5e1' }}>• Upfront Estimates</span>
             </div>
           </div>
 
@@ -1036,7 +995,7 @@ export default function BusinessCardMockup({
             <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
             <div style={{ fontSize: '0.7rem', color: '#64748b' }}>License: {license}</div>
           </div>
-          {includeQrCode && <CardQrVisual size={66} accentColor="#16a34a" label="VERIFY PRO" sublabel="ONLINE" />}
+          {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor="#16a34a" />}
         </div>
 
         {/* Bottom Row */}
@@ -1124,7 +1083,7 @@ export default function BusinessCardMockup({
             <div style={{ color: '#2563eb', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>🌐 {website}</div>
             <div style={{ fontSize: '0.7rem', color: '#64748b' }}>Custom Craftsmanship</div>
           </div>
-          {includeQrCode && <CardQrVisual size={66} accentColor={accentColor} />}
+          {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor={accentColor} />}
         </div>
 
         {/* Bottom Row */}
@@ -1205,11 +1164,11 @@ export default function BusinessCardMockup({
               <div style={{ color: accentColor || '#c5a059', fontWeight: 700, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{website}</div>
               <div style={{ fontSize: '0.66rem', fontStyle: 'italic', color: '#64748b' }}>{license}</div>
             </div>
-            {includeQrCode && <CardQrVisual size={66} accentColor={accentColor || '#c5a059'} label="ESTIMATE" sublabel="DIRECT" />}
+            {includeQrCode && <CardQrVisual url={qrTargetUrl} size={66} accentColor={accentColor || '#c5a059'} />}
           </div>
 
           <div style={{ flexShrink: 0, marginTop: 'auto', textAlign: 'center', fontSize: '0.6rem', color: '#64748b', fontStyle: 'italic' }}>
-            {templateDef.ratingBadgeText} • Fully Insured
+            {templateDef.ratingBadgeText} • Quality Craftsmanship
           </div>
         </>
       )}

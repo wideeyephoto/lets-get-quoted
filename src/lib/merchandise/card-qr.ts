@@ -74,6 +74,44 @@ export async function generateCardQrDataUrl(
   });
 }
 
+export interface QrMatrixData {
+  size: number;
+  margin: number;
+  d: string;
+}
+
+/**
+ * Synchronously generates an SVG path definition and grid size for a given URL.
+ * Strictly adheres to DENSO standard with a 4-module quiet zone.
+ */
+export function getCardQrMatrix(url: string, margin = 4): QrMatrixData {
+  const safeUrl =
+    url && typeof url === 'string' && url.trim().length > 0
+      ? url.trim()
+      : 'https://letsgetquoted.com';
+
+  const qr = QRCode.create(safeUrl, {
+    errorCorrectionLevel: 'M',
+  });
+
+  const moduleCount = qr.modules.size;
+  let d = '';
+
+  for (let r = 0; r < moduleCount; r++) {
+    for (let c = 0; c < moduleCount; c++) {
+      if (qr.modules.get(r, c)) {
+        d += `M${c + margin},${r + margin}h1v1h-1z`;
+      }
+    }
+  }
+
+  return {
+    size: moduleCount + margin * 2,
+    margin,
+    d,
+  };
+}
+
 /**
  * Generates raw RGBA image buffer for testing and preflight verification.
  */
@@ -88,25 +126,26 @@ export async function generateCardQrRawBuffer(
   });
 
   const moduleCount = qr.modules.size;
-  const scale = Math.floor(sizePx / moduleCount);
-  const actualSize = moduleCount * scale;
+  const totalModules = moduleCount + margin * 2;
+  const scale = Math.max(1, Math.floor(sizePx / totalModules));
+  const actualSize = totalModules * scale;
 
   const buffer = new Uint8ClampedArray(actualSize * actualSize * 4);
+  buffer.fill(255); // initialize with white background & quiet zone
 
   for (let r = 0; r < moduleCount; r++) {
     for (let c = 0; c < moduleCount; c++) {
-      const isDark = qr.modules.get(r, c);
-      const colorVal = isDark ? 0 : 255;
-
-      for (let y = 0; y < scale; y++) {
-        for (let x = 0; x < scale; x++) {
-          const px = c * scale + x;
-          const py = r * scale + y;
-          const idx = (py * actualSize + px) * 4;
-          buffer[idx] = colorVal; // R
-          buffer[idx + 1] = colorVal; // G
-          buffer[idx + 2] = colorVal; // B
-          buffer[idx + 3] = 255; // A
+      if (qr.modules.get(r, c)) {
+        for (let y = 0; y < scale; y++) {
+          for (let x = 0; x < scale; x++) {
+            const px = (c + margin) * scale + x;
+            const py = (r + margin) * scale + y;
+            const idx = (py * actualSize + px) * 4;
+            buffer[idx] = 0; // R
+            buffer[idx + 1] = 0; // G
+            buffer[idx + 2] = 0; // B
+            buffer[idx + 3] = 255; // A
+          }
         }
       }
     }

@@ -24,6 +24,11 @@ import {
   getDecalTemplateById,
   TRADE_PRESETS,
 } from '@/lib/merchandise/product-templates';
+import {
+  getCardQrMatrix,
+  generateCardQrRawBuffer,
+  verifyQrDecode,
+} from '@/lib/merchandise/card-qr';
 import type { MerchandiseOrderItem, ShippingAddress } from '@/lib/merchandise/types';
 
 // Mock dependencies for Server Actions & Webhooks
@@ -1615,6 +1620,92 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(detailParts).toBe(
         'Color: Charcoal | Template: The Industrial Heavy-Duty | Tactile Finish: Raised Liquid Gold Foil'
       );
+    });
+  });
+
+  describe('Merchandise & Stationery Studio Truth & Fidelity Audit (2026-09-05)', () => {
+    it('guarantees stationery items (biz_cards, notepads) route to commercial print broker and NEVER invoke Printful apparel variants', async () => {
+      const fetchSpy = vi.spyOn(global, 'fetch');
+
+      const cardsResult = await createPrintfulOrder({
+        orderNumber: 'LGQ-TEST-CARDS',
+        items: [
+          {
+            productId: 'biz_cards',
+            productName: 'Business Cards',
+            quantity: 500,
+            unitPrice: 0.17,
+            totalPrice: 85.0,
+            colorName: 'Matte White',
+            colorHex: '#ffffff',
+            customizationDetails: {
+              businessName: 'Apex Roofing',
+              cardTemplateId: 'executive',
+              cardFinish: 'velvet_matte',
+              decorationMethod: 'offset_cmyk',
+              placement: 'front_card',
+            },
+          },
+        ],
+        shippingAddress: {
+          fullName: 'John Doe',
+          streetAddress: '123 Main St',
+          city: 'Austin',
+          state: 'TX',
+          postalCode: '78701',
+          country: 'US',
+          phone: '(555) 019-2834',
+          email: 'john@example.com',
+        },
+        retailTotal: 85.0,
+        companyName: 'Apex Roofing',
+      });
+
+      expect(cardsResult.ok).toBe(true);
+      expect(cardsResult.provider).toBe('commercial_print_broker');
+      // In honest fulfillment before actual carrier dispatch, trackingNumber is null
+      expect(cardsResult.trackingNumber).toBeNull();
+      // Ensure Printful API was NEVER called with variant 4014
+      expect(fetchSpy).not.toHaveBeenCalledWith(
+        expect.stringContaining('api.printful.com'),
+        expect.anything()
+      );
+
+      fetchSpy.mockRestore();
+    });
+
+    it('generates mathematically accurate and optically verifiable QR code vectors with DENSO quiet zone', async () => {
+      const testUrl = 'https://app.letsgetquoted.com/quote/apex-roofing';
+      const matrix = getCardQrMatrix(testUrl, 4);
+
+      expect(matrix.margin).toBe(4);
+      expect(matrix.size).toBeGreaterThan(25);
+      expect(matrix.d).toContain('M');
+
+      // Optical read verification via jsQR
+      const rawBuffer = await generateCardQrRawBuffer(testUrl, 250, 4);
+      const decodeResult = verifyQrDecode(rawBuffer.data, rawBuffer.width, rawBuffer.height);
+
+      expect(decodeResult.ok).toBe(true);
+      expect(decodeResult.decodedUrl).toBe(testUrl);
+    });
+
+    it('verifies all 8 card templates contain no unearned trust claims or false safety certifications', () => {
+      for (const template of BUSINESS_CARD_TEMPLATES) {
+        expect(template.ratingBadgeText).not.toContain('180+ Local Reviews');
+        expect(template.ratingBadgeText).not.toContain('OSHA 30');
+        expect(template.ratingBadgeText).not.toContain('5.0 ★★★★★');
+        expect(template.ratingBadgeText).not.toContain('4.9 ★★★★★');
+        expect(template.badgeLabel).not.toContain('100% BONDED & INSURED');
+        expect(template.badgeLabel).not.toContain('EST. 2026 TRADESMAN');
+      }
+    });
+
+    it('verifies catalog specifications for notepads are honest half-letter 2-part NCR format', () => {
+      const notepads = getProductById('notepads');
+      expect(notepads).toBeDefined();
+      expect(notepads!.specs.dimensions).toContain('8.5" × 5.5"');
+      expect(notepads!.turnaroundEstimate).toBe('3–4 business days');
     });
   });
 });
