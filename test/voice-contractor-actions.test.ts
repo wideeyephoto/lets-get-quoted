@@ -387,6 +387,51 @@ describe('AI Voice contractor lead intent', () => {
 });
 
 describe('AI Voice contractor durable action outcomes', () => {
+  it.each([
+    { line_item_label: 'Reduction', line_item_price: 2300 },
+    { line_item_label: 'New fixture', line_item_price: 650 },
+    { quoted_amount: 2300 },
+    { quote_total: 2300 },
+    { discount_amount: 75 },
+    { quoted_amount: 0 },
+    { quote_items: [{ label: 'Replacement', amount: 2300 }] },
+  ])('rejects voice quote mutations before any write: %j', async (priceArgs) => {
+    const { admin, rpc, from } = mockAdmin({ jobs: [baseJob] });
+    const result = await handleContractorVoiceAction(actionContext(
+      admin, 'update_job_details',
+      { job_ref_or_client: baseJob.ref, ...priceArgs },
+    ));
+    expect(result.response).toContain('cannot change quote prices by phone');
+    expect(result.response).toContain('Nothing in this request was saved');
+    expect(rpc).not.toHaveBeenCalled();
+    expect(from).not.toHaveBeenCalled();
+  });
+
+  it('does not partially save a mixed price and schedule request from an older call', async () => {
+    const { admin, rpc } = mockAdmin({ jobs: [baseJob] });
+    const result = await handleContractorVoiceAction(actionContext(
+      admin, 'update_job_scope',
+      { job_ref_or_client: baseJob.ref, scheduled_date: '2026-09-08', line_item_price: 2300 },
+    ));
+    expect(result.response).toContain('Nothing in this request was saved');
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it('continues saving a schedule update when unused legacy price fields are null', async () => {
+    const { admin, rpc } = mockAdmin({
+      jobs: [baseJob],
+      rpcResults: [{ data: { job_id: JOB_ID, job_ref: baseJob.ref, target_name: baseJob.client_name }, error: null }],
+    });
+    const result = await handleContractorVoiceAction(actionContext(
+      admin, 'update_job_details',
+      { job_ref_or_client: baseJob.ref, scheduled_date: '2026-09-08', line_item_label: null, line_item_price: null },
+    ));
+    expect(rpc).toHaveBeenCalledWith('apply_voice_contractor_action', expect.objectContaining({
+      p_payload: { scheduled_date: '2026-09-08' },
+    }));
+    expect(result.response).toContain('I updated');
+  });
+
   it('saves a registered staff update without a verification challenge', async () => {
     const { admin, rpc } = mockAdmin({
       jobs: [baseJob],

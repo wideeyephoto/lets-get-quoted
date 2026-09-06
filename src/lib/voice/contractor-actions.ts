@@ -325,6 +325,20 @@ export async function handleContractorVoiceAction(
     };
   }
 
+  // The legacy RPC appends a positive price rather than replacing a total, and
+  // writes unit_price items that the quote editor does not recognize. Refuse
+  // price mutations at the tool boundary, including callbacks from older calls.
+  if (fn === 'update_job_details' && [
+    'line_item_label', 'line_item_price', 'quote_total', 'quoted_amount',
+    'quotedAmount', 'quote_amount', 'quote_items', 'quoteItems',
+    'discount', 'discount_amount', 'discount_percent', 'total', 'price', 'amount',
+  ].some((key) => args[key] !== undefined && args[key] !== null && args[key] !== '')) {
+    return {
+      handled: true,
+      response: 'I cannot change quote prices by phone. Nothing in this request was saved. Please open this job in the dashboard and use its quote editor to change the total, add priced items, or apply a discount. Do not describe the quote as changed.',
+    };
+  }
+
   if (fn === 'lookup_jobs') {
     const query = text(args.query ?? args.job_ref_or_client ?? args.client_name, 500);
     const jobs = await loadVoiceJobs(context.admin, context.accountId);
@@ -439,8 +453,6 @@ export async function handleContractorVoiceAction(
     const status = text(args.status, 30);
     const scheduledDate = text(args.scheduled_date, 20);
     const scheduledTime = text(args.scheduled_time, 20);
-    const lineItemLabel = text(args.line_item_label, 300);
-    const lineItemPrice = numberValue(args.line_item_price);
 
     if (status && !['new_lead', 'in_progress', 'complete'].includes(status)) {
       return { handled: true, response: 'That job status is not supported, so I did not change the job.' };
@@ -451,11 +463,7 @@ export async function handleContractorVoiceAction(
     if (scheduledTime && !isClockTime(scheduledTime)) {
       return { handled: true, response: 'That schedule time was not valid, so I did not change the job.' };
     }
-    if ((lineItemLabel === null) !== (lineItemPrice === null)
-        || (lineItemPrice !== null && (lineItemPrice <= 0 || lineItemPrice > 1_000_000))) {
-      return { handled: true, response: 'A quote item needs both a label and a positive dollar amount, so I did not change the quote.' };
-    }
-    if (!scope && !status && !scheduledDate && !scheduledTime && !lineItemLabel) {
+    if (!scope && !status && !scheduledDate && !scheduledTime) {
       return { handled: true, response: 'What detail should I change on that job?' };
     }
 
@@ -464,10 +472,6 @@ export async function handleContractorVoiceAction(
     if (status) payload.status = status;
     if (scheduledDate) payload.scheduled_date = scheduledDate;
     if (scheduledTime) payload.scheduled_time = scheduledTime;
-    if (lineItemLabel && lineItemPrice !== null) {
-      payload.line_item_label = lineItemLabel;
-      payload.line_item_price = Math.round(lineItemPrice * 100) / 100;
-    }
     const result = await applyAction(context, fn, job.id, null, payload);
     if (!result.outcome) return { handled: true, response: failedResponse(result.code) };
     return {

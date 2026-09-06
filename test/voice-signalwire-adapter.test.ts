@@ -411,6 +411,14 @@ describe('rendering an answer', () => {
     expect(tool('lookup_jobs').argument.properties.query).toBeDefined();
     expect(tool('lookup_jobs').argument.required).toBeUndefined();
 
+    const jobUpdate = tool('update_job_details');
+    expect(jobUpdate.purpose).toMatch(/cannot change quote prices/i);
+    expect(jobUpdate.argument.additionalProperties).toBe(false);
+    expect(jobUpdate.argument.properties.line_item_label).toBeUndefined();
+    expect(jobUpdate.argument.properties.line_item_price).toBeUndefined();
+    expect(jobUpdate.argument.properties.scope).toBeDefined();
+    expect(jobUpdate.argument.properties.scheduled_date).toBeDefined();
+
     for (const name of [
       'append_job_caution_or_note',
       'update_job_details',

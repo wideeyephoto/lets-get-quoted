@@ -620,9 +620,10 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'update_job_details',
-          purpose: 'Update active job details, quote line items, schedule date/time, or status.',
+          purpose: 'Update active job scope, schedule date/time, or status. Cannot change quote prices, totals, discounts, or priced line items. Direct price changes to the signed-in job quote editor; never claim a price was changed.',
           argument: {
             type: 'object',
+            additionalProperties: false,
             properties: {
               job_ref_or_client: {
                 type: 'string',
@@ -643,14 +644,6 @@ export const signalwireVoiceProvider: VoiceProvider = {
               scheduled_time: {
                 type: 'string',
                 description: 'Arrival time (e.g. 08:00, 14:00).',
-              },
-              line_item_label: {
-                type: 'string',
-                description: 'Name of added quote item or fixture (e.g. 4 Recessed Lights).',
-              },
-              line_item_price: {
-                type: 'number',
-                description: 'Dollar amount for the added line item (e.g. 650).',
               },
             },
             required: ['job_ref_or_client'],

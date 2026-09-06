@@ -254,7 +254,7 @@ export function ContractorHotlineShowcase({ dedicatedNumber }: { dedicatedNumber
             <strong style={{ color: '#f3f4f6', fontSize: '0.9rem' }}>Instant CRM Updates</strong>
           </div>
           <p style={{ margin: 0, fontSize: '0.82rem', color: '#9ca3af', lineHeight: 1.45 }}>
-            Speak scope changes, quote prices, hours, or materials. AI commits updates and confirms back in 1 sentence.
+            Speak scope changes, schedule updates, hours, or materials. Use the job&apos;s quote editor for price changes.
           </p>
         </div>
       </div>
@@ -262,7 +262,7 @@ export function ContractorHotlineShowcase({ dedicatedNumber }: { dedicatedNumber
       {/* Examples & Links */}
       <div style={{ marginTop: '1.5rem', paddingTop: '1.25rem', borderTop: '1px solid rgba(255, 255, 255, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ fontSize: '0.82rem', color: '#d1d5db' }}>
-          <strong style={{ color: '#c084fc' }}>Example Spoken Commands:</strong> &quot;Add 4 recessed LED lights on Miller&apos;s job for $650&quot; · &quot;Take a new lead for Bob on Elm St&quot; · &quot;Log 4 hrs and $180 materials for J-104&quot;
+          <strong style={{ color: '#c084fc' }}>Example Spoken Commands:</strong> &quot;Add a side-gate access note on Miller&apos;s job&quot; · &quot;Take a new lead for Bob on Elm St&quot; · &quot;Log 4 hrs and $180 materials for J-104&quot;
         </div>
         <div style={{ display: 'flex', gap: '0.75rem' }}>
           <Link
