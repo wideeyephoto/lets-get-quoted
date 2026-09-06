@@ -1696,7 +1696,8 @@ export async function cancelAdCampaign(
       const { cancelAdCampaignSubscription } = await import('@/lib/billing/subscription-cancellation');
       await cancelAdCampaignSubscription(adState.stripeSubscriptionId, cancelImmediately);
     } catch (err) {
-      console.warn('Stripe subscription cancellation notice:', err);
+      console.error('Stripe subscription cancellation failed:', err);
+      return { success: false, message: `Could not cancel Stripe subscription: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 

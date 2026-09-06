@@ -648,6 +648,95 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
       expect(cancel2.success).toBe(true);
       expect(state.status).toBe('inactive');
     });
+
+    it('fails closed and reports success: false when Stripe refuses subscription cancellation (period end)', async () => {
+      let state: AdBudgetWalletState = {
+        ...DEFAULT_AD_WALLET_STATE,
+        status: 'active',
+        googleCampaignId: 'gads_test_cycle',
+        stripeSubscriptionId: 'sub_test_cycle',
+        cancelAtPeriodEnd: false,
+      };
+
+      const mockAdmin: any = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: {
+                  id: 'site_cycle',
+                  account_id: 'acc_cycle',
+                  content: { adCampaign: state },
+                },
+              }),
+            }),
+          }),
+          update: (payload: any) => ({
+            eq: async () => {
+              state = { ...state, ...payload.content.adCampaign };
+              return { error: null };
+            },
+          }),
+        }),
+      };
+
+      const subCancellation = await import('@/lib/billing/subscription-cancellation');
+      vi.mocked(subCancellation.cancelAdCampaignSubscription).mockRejectedValueOnce(
+        new Error('Stripe cardholder authorization revoked')
+      );
+
+      const res = await cancelAdCampaign(mockAdmin, 'acc_cycle', false);
+      expect(res.success).toBe(false);
+      expect(res.message).toContain('Could not cancel Stripe subscription: Stripe cardholder authorization revoked');
+      // Must not fall through to schedule cancellation or mutate state
+      expect(state.cancelAtPeriodEnd).toBe(false);
+      expect(state.status).toBe('active');
+      expect(state.stripeSubscriptionId).toBe('sub_test_cycle');
+    });
+
+    it('fails closed and reports success: false when Stripe refuses immediate cancellation', async () => {
+      let state: AdBudgetWalletState = {
+        ...DEFAULT_AD_WALLET_STATE,
+        status: 'active',
+        googleCampaignId: 'gads_test_cycle',
+        stripeSubscriptionId: 'sub_test_cycle',
+        cancelAtPeriodEnd: false,
+      };
+
+      const mockAdmin: any = {
+        from: () => ({
+          select: () => ({
+            eq: () => ({
+              maybeSingle: async () => ({
+                data: {
+                  id: 'site_cycle',
+                  account_id: 'acc_cycle',
+                  content: { adCampaign: state },
+                },
+              }),
+            }),
+          }),
+          update: (payload: any) => ({
+            eq: async () => {
+              state = { ...state, ...payload.content.adCampaign };
+              return { error: null };
+            },
+          }),
+        }),
+      };
+
+      const subCancellation = await import('@/lib/billing/subscription-cancellation');
+      vi.mocked(subCancellation.cancelAdCampaignSubscription).mockRejectedValueOnce(
+        new Error('Stripe connection timeout')
+      );
+
+      const res = await cancelAdCampaign(mockAdmin, 'acc_cycle', true);
+      expect(res.success).toBe(false);
+      expect(res.message).toContain('Could not cancel Stripe subscription: Stripe connection timeout');
+      // Must not fall through to inactive status or clearing subscription ID
+      expect(state.status).toBe('active');
+      expect(state.stripeSubscriptionId).toBe('sub_test_cycle');
+    });
   });
 
   describe('7. Parallel Concurrency & Race Condition Hardening', () => {
