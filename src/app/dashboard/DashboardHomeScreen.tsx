@@ -70,6 +70,7 @@ export default function DashboardHomeScreen({
     crewStatus,
     communications,
     opportunity,
+    opportunities,
   } = home;
 
   const priorityCount = topPriorities.length + restPriorities.length;
@@ -141,8 +142,8 @@ export default function DashboardHomeScreen({
         </section>
       ) : null}
 
-      {/* Best next opportunity recommendation */}
-      <BestNextOpportunity opportunity={opportunity} />
+      {/* 'Next' suggestions scroller / Best next opportunity recommendation */}
+      <BestNextOpportunity opportunity={opportunity} opportunities={opportunities} />
 
       {/* ACT NOW — Needs your attention */}
       <section className="panel workspace-section-card priority-panel" data-tour-id="dashboard:needs-attention">

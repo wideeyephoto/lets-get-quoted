@@ -5,7 +5,7 @@ import { buildTodaySchedule, extractCity, initials } from '@/lib/dashboard/sched
 import { buildBusinessPulse } from '@/lib/dashboard/pulse-loader';
 import { buildCapacitySummary } from '@/lib/dashboard/capacity-loader';
 import { buildJobReadiness } from '@/lib/dashboard/readiness-loader';
-import { findBestOpportunity } from '@/lib/dashboard/opportunity-loader';
+import { findBestOpportunity, findOpportunities } from '@/lib/dashboard/opportunity-loader';
 import { buildPipelineSummary } from '@/lib/dashboard/pipeline-loader';
 import { buildCashPreview } from '@/lib/dashboard/cash-preview-loader';
 import { buildAutomationSummary } from '@/lib/dashboard/automation-loader';
@@ -221,6 +221,71 @@ describe('Deterministic Best Opportunity ranking', () => {
     if (opp.kind === 'ready') {
       expect(opp.data?.type).toBe('high_value_lead');
       expect(opp.data?.headline).toContain('Sarah Connor');
+    }
+  });
+
+  it('collects all ranked opportunities into a suggestions list for the scroller', () => {
+    const jobs: Partial<Job>[] = [
+      { id: 'j-quote', status: 'new_lead', quoted_amount: 5200, client_name: 'Oakcrest Villa' },
+      { id: 'j-approved', status: 'in_progress', quoted_amount: 3400, client_name: 'Maple Lane', scheduled_for: null },
+    ];
+    const leads: Partial<Lead>[] = [
+      { id: 'l1', status: 'new', name: 'Cindy Louville', created_at: new Date(Date.now() - 1000).toISOString() },
+      { id: 'l2', status: 'new', name: 'David Martinez', created_at: new Date(Date.now() - 5000).toISOString() },
+    ];
+
+    const opps = findOpportunities({
+      jobs: jobs as Job[],
+      leads: leads as Lead[],
+      outstandingTotal: 4500,
+      rebookCount: 3,
+    });
+
+    expect(opps.kind).toBe('ready');
+    if (opps.kind === 'ready') {
+      expect(opps.data.length).toBeGreaterThanOrEqual(4);
+
+      // Slide 1: High value quote
+      expect(opps.data[0].type).toBe('viewed_quote');
+      expect(opps.data[0].headline).toContain('Oakcrest Villa');
+      expect(opps.data[0].actionLabel).toBe('Follow up on quote');
+
+      // Slide 2 & 3: New leads (Cindy Louville first due to recency)
+      expect(opps.data[1].type).toBe('high_value_lead');
+      expect(opps.data[1].headline).toContain('Cindy Louville');
+      expect(opps.data[1].actionLabel).toBe('Respond to lead');
+
+      expect(opps.data[2].type).toBe('high_value_lead');
+      expect(opps.data[2].headline).toContain('David Martinez');
+
+      // Slide 4: Approved unscheduled job
+      expect(opps.data[3].type).toBe('schedule_approved');
+      expect(opps.data[3].headline).toContain('Maple Lane');
+      expect(opps.data[3].actionLabel).toBe('Schedule job');
+
+      // Slide 5: Overdue balance
+      const balanceOpp = opps.data.find((o) => o.type === 'chase_balance');
+      expect(balanceOpp).toBeDefined();
+      expect(balanceOpp?.headline).toContain('$4,500');
+
+      // Slide 6: Rebook candidates
+      const rebookOpp = opps.data.find((o) => o.type === 'rebook');
+      expect(rebookOpp).toBeDefined();
+      expect(rebookOpp?.headline).toContain('3 past customers');
+    }
+  });
+
+  it('returns empty array when no opportunities exist', () => {
+    const opps = findOpportunities({
+      jobs: [],
+      leads: [],
+      outstandingTotal: 0,
+      rebookCount: 0,
+    });
+
+    expect(opps.kind).toBe('ready');
+    if (opps.kind === 'ready') {
+      expect(opps.data).toHaveLength(0);
     }
   });
 });

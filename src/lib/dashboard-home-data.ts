@@ -33,7 +33,7 @@ import { buildJobReadiness } from '@/lib/dashboard/readiness-loader';
 import { loadCrewStatus } from '@/lib/dashboard/crew-status-loader';
 import { loadCommunications } from '@/lib/dashboard/communications-loader';
 import { buildAutomationSummary } from '@/lib/dashboard/automation-loader';
-import { findBestOpportunity } from '@/lib/dashboard/opportunity-loader';
+import { findBestOpportunity, findOpportunities } from '@/lib/dashboard/opportunity-loader';
 import { buildPipelineSummary } from '@/lib/dashboard/pipeline-loader';
 import { buildCashPreview } from '@/lib/dashboard/cash-preview-loader';
 
@@ -296,6 +296,14 @@ export async function buildDashboardHome(
     basePath,
   });
 
+  const opportunities = findOpportunities({
+    jobs,
+    leads,
+    outstandingTotal: outstanding.total,
+    rebookCount: rebookDue,
+    basePath,
+  });
+
   const opportunity = findBestOpportunity({
     jobs,
     leads,
@@ -333,6 +341,7 @@ export async function buildDashboardHome(
     communications,
     automations,
     opportunity,
+    opportunities,
 
     // Core state & backward compatibility
     jobs,

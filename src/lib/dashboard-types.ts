@@ -273,6 +273,7 @@ export type BestOpportunity = {
   estimatedValue?: number | null;
   actionLabel: string;
   actionHref: string;
+  badgeLabel?: string;
 };
 
 /* --------------------------------------------------------------------------
@@ -321,6 +322,7 @@ export type DashboardHome = {
   communications: Loadable<CommunicationSummary>;
   automations: Loadable<AutomationSummary>;
   opportunity: Loadable<BestOpportunity | null>;
+  opportunities?: Loadable<BestOpportunity[]>;
 
   // Backwards compatibility for existing components / demo
   jobs: Job[];
