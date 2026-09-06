@@ -990,6 +990,22 @@
   width: 2rem !important;
   height: 2rem !important;
 }
+.recordHeadLayout :global(figure[data-empty]) :global(svg) {
+  width: 1.65rem !important;
+  height: 1.65rem !important;
+  transform: translateY(-0.36rem);
+}
+.recordHeadLayout :global(figure[data-empty]) figcaption {
+  left: 50% !important;
+  right: auto !important;
+  bottom: 0.22rem !important;
+  transform: translateX(-50%) !important;
+  white-space: nowrap !important;
+  font-size: 0.54rem !important;
+  padding: 0.08rem 0.32rem !important;
+  line-height: 1.2 !important;
+  letter-spacing: -0.01em;
+}
 .recordHeadCopy { min-width: 0; flex: 1; }
 
 @media (max-width: 560px) {

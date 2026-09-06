@@ -62,6 +62,7 @@ export default function RecordCover({
       className={styles.cover}
       style={{ '--cover-hue': hue } as React.CSSProperties}
       data-awaiting={awaitingPhoto || undefined}
+      data-empty={!showPhoto && !awaitingPhoto ? 'true' : undefined}
     >
       <span className={styles.coverArt} aria-hidden="true">
         <ServiceIcon name={glyph} className={styles.coverGlyph} />

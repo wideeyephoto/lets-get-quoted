@@ -207,6 +207,10 @@
    white ink — and a scrim that lightened with the theme would leave white text
    on a pale wash over a bright photo. The surface it belongs to is the picture,
    which does not have a light mode. */
+.cover[data-empty] .coverGlyph {
+  transform: translateY(-0.55rem);
+}
+
 .coverCount {
   position: absolute;
   right: 0.45rem;
@@ -221,7 +225,15 @@
   color: #fff;
 }
 
-.coverCount[data-empty] { font-weight: 600; color: var(--ink-mod-grey-16); }
+.coverCount[data-empty] {
+  left: 50%;
+  right: auto;
+  bottom: 0.35rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--ink-mod-grey-16);
+}
 
 .heroTag {
   margin: 0 0 0.45rem;
