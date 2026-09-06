@@ -13,15 +13,42 @@ type Factor = {
   updated_at?: string;
 };
 
-interface WebAuthnMfaClient {
-  register: (options: {
+export interface WebAuthnMfaClient {
+  _register?: (options: {
     friendlyName?: string;
     webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
   }) => Promise<{ data: unknown; error: { message?: string } | null }>;
-  authenticate: (options: {
+  register?: (options: {
+    friendlyName?: string;
+    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
+  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
+  _authenticate?: (options: {
     factorId: string;
     webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
   }) => Promise<{ data: unknown; error: { message?: string } | null }>;
+  authenticate?: (options: {
+    factorId: string;
+    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
+  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
+}
+
+export function getWebAuthnMfaClient(authClient = supabase.auth) {
+  const mfa = authClient?.mfa as unknown as { webauthn?: WebAuthnMfaClient } | undefined;
+  const webauthn = mfa?.webauthn;
+  if (!webauthn) {
+    throw new Error('WebAuthn MFA is not available: supabase.auth.mfa.webauthn is undefined.');
+  }
+
+  const registerFn = (webauthn._register ?? webauthn.register)?.bind(webauthn);
+  const authenticateFn = (webauthn._authenticate ?? webauthn.authenticate)?.bind(webauthn);
+
+  if (!registerFn || !authenticateFn) {
+    throw new Error(
+      `WebAuthn MFA methods missing on SDK client: register=${Boolean(registerFn)}, authenticate=${Boolean(authenticateFn)}`
+    );
+  }
+
+  return { webauthn, registerFn, authenticateFn };
 }
 
 export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
@@ -58,11 +85,8 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
     setMessage('');
     setEnrollNotice(null);
     try {
-      const webauthn = (supabase.auth.mfa as unknown as { webauthn?: WebAuthnMfaClient })?.webauthn;
-      if (!webauthn?.register) {
-        throw new Error('WebAuthn MFA is not available on this client.');
-      }
-      const { error } = await webauthn.register({
+      const { registerFn } = getWebAuthnMfaClient();
+      const { error } = await registerFn({
         friendlyName: 'Passkey',
       });
       if (error) {
@@ -102,12 +126,8 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         return;
       }
 
-      const webauthn = (supabase.auth.mfa as unknown as { webauthn?: WebAuthnMfaClient })?.webauthn;
-      if (!webauthn?.authenticate) {
-        throw new Error('WebAuthn MFA is not available on this client.');
-      }
-
-      const { error } = await webauthn.authenticate({
+      const { authenticateFn } = getWebAuthnMfaClient();
+      const { error } = await authenticateFn({
         factorId: targetFactor.id,
       });
 
@@ -365,7 +385,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
       {/* Enrollment buttons (when no QR code is active) */}
       {!qr ? (
         <div className={styles.mfaStack}>
-          <p className={styles.mfaPromptText} style={{ fontWeight: 600 }}>
+          <p className={styles.mfaPromptHeading}>
             {hasVerified ? 'Add another authenticator' : 'Set up two-factor authentication'}
           </p>
           <div className={styles.mfaActionGroup}>
@@ -434,7 +454,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
           </div>
 
           {verifiedFactors.length > 0 && level !== 'aal2' ? (
-            <p className={styles.muted} style={{ marginTop: '0.65rem' }}>
+            <p className={styles.mfaMutedNote}>
               Verify this session before removing an enrolled authenticator.
             </p>
           ) : null}
@@ -442,7 +462,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
       ) : null}
 
       {message ? (
-        <p role="status" className={styles.muted} style={{ marginTop: '1rem' }}>
+        <p role="status" className={styles.mfaStatusMessage}>
           {message}
         </p>
       ) : null}

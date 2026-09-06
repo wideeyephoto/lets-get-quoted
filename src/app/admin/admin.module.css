@@ -1395,5 +1395,22 @@ textarea.input {
   line-height: 1.45;
   color: var(--muted, rgba(247, 245, 239, 0.75));
 }
+.mfaPromptHeading {
+  margin: 0;
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: var(--text, #eef1f6);
+}
+.mfaMutedNote {
+  font-size: 0.75rem;
+  color: var(--muted, rgba(247, 245, 239, 0.65));
+  margin-top: 0.65rem;
+}
+.mfaStatusMessage {
+  font-size: 0.85rem;
+  color: var(--muted, rgba(247, 245, 239, 0.85));
+  margin-top: 1rem;
+}
+
 
 
