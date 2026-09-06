@@ -124,4 +124,11 @@ describe('Site Builder Phase 2: Custom Domain Providers', () => {
     expect(ids).toContain('namecheap');
     expect(ids).toContain('other');
   });
+
+  it('exports SquarespaceDnsModal and has screenshot asset', async () => {
+    const { default: SquarespaceDnsModal } = await import('../src/app/dashboard/sites/SquarespaceDnsModal');
+    expect(typeof SquarespaceDnsModal).toBe('function');
+    const { existsSync } = await import('fs');
+    expect(existsSync('public/help/squarespace-dns-settings.jpg')).toBe(true);
+  });
 });
