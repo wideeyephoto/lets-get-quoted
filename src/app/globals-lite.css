@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: ce2cb2f7d405c64d
+   source-sha256: c37fbf5739737a4c
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -4642,7 +4642,7 @@ h3 {
   /* Collapsed sidebar layout */
   .sidenav.collapsed {
     padding: 1.1rem 0.5rem 1rem;
-    overflow-x: hidden;
+    overflow: visible;
   }
 
   .sidenav.collapsed .sidenav-topbar {
@@ -4651,6 +4651,7 @@ h3 {
     align-items: center;
     gap: 0.5rem;
     padding: 0 0 0.4rem;
+    margin-bottom: 0.4rem;
   }
 
   .sidenav.collapsed .sidenav-topbar .sidenav-brand {
@@ -4695,11 +4696,19 @@ h3 {
     height: 34px;
   }
 
+  .sidenav.collapsed .sidenav-lead {
+    gap: 0.4rem;
+    margin-bottom: 0.4rem;
+  }
+
   /* Smart search collapsed */
   .sidenav.collapsed [class*="railTrigger"] {
+    width: 100%;
     justify-content: center;
     padding: 0.55rem 0;
     min-height: 44px;
+    margin: 0;
+    box-sizing: border-box;
   }
 
   .sidenav.collapsed [class*="triggerText"] {
@@ -4709,23 +4718,37 @@ h3 {
   /* Plan day & New actions collapsed */
   .sidenav.collapsed .sidenav-actions {
     flex-direction: column;
-    gap: 0.35rem;
+    gap: 0.4rem;
+    width: 100%;
   }
 
+  .sidenav.collapsed .sidenav-actions .sidenav-plan,
   .sidenav.collapsed .sidenav-plan {
+    width: 100% !important;
+    min-height: 44px;
     justify-content: center;
     padding: 0.55rem 0;
     font-size: 0;
+    box-sizing: border-box;
   }
 
   .sidenav.collapsed .sidenav-plan .sidenav-action-label {
     display: none;
   }
 
+  .sidenav.collapsed .sidenav-actions .sidenav-new-wrap {
+    width: 100%;
+    flex: 0 0 auto;
+  }
+
+  .sidenav.collapsed .sidenav-actions .sidenav-new,
   .sidenav.collapsed .sidenav-new {
+    width: 100% !important;
+    min-height: 44px;
     padding: 0.55rem 0;
     justify-content: center;
     font-size: 0;
+    box-sizing: border-box;
   }
 
   .sidenav.collapsed .sidenav-new .sidenav-new-text,
@@ -4734,7 +4757,11 @@ h3 {
   }
 
   .sidenav.collapsed .sidenav-new .sidenav-new-plus {
-    font-size: 1.25rem;
+    font-size: 1.35rem;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .sidenav.collapsed .sidenav-new-menu {
@@ -4745,22 +4772,59 @@ h3 {
 
   /* Website badge collapsed */
   .sidenav.collapsed .website-nav-badge.sidenav-website {
+    width: 100%;
     justify-content: center;
     padding: 0.5rem 0;
     font-size: 0;
     min-height: 44px;
+    margin: 0 0 0.4rem;
+    box-sizing: border-box;
   }
 
   .sidenav.collapsed .website-nav-badge .website-nav-live-text {
     display: none;
   }
 
+  /* Group containers collapsed: remove card chrome so items sit cleanly in the column */
+  .sidenav.collapsed .sidenav-group {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin-top: 0.35rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+  }
+
+  /* Nav list collapsed: sleek, centered, no native scrollbar gutter */
+  .sidenav.collapsed .sidenav-nav {
+    margin: 0;
+    padding: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+
+  .sidenav.collapsed .sidenav-nav::-webkit-scrollbar {
+    display: none;
+    width: 0;
+    height: 0;
+  }
+
   /* Navigation links collapsed */
   .sidenav.collapsed .sidenav-link {
+    width: 100%;
     justify-content: center;
-    padding: 0.5rem 0;
+    padding: 0.55rem 0;
+    min-height: 44px;
     position: relative;
     border-radius: 10px;
+    box-sizing: border-box;
+  }
+
+  .sidenav.collapsed .sidenav-link .sidenav-ic {
+    width: 1.25rem;
+    height: 1.25rem;
   }
 
   .sidenav.collapsed .sidenav-link .sidenav-label,
@@ -4772,9 +4836,9 @@ h3 {
   /* Sleek divider line replacing group label when collapsed */
   .sidenav.collapsed .sidenav-glabel {
     height: 1px;
-    margin: 0.55rem 0.25rem;
+    margin: 0.45rem 0.35rem 0.3rem;
     padding: 0;
-    background: var(--edge-t08);
+    background: var(--edge-t10);
     font-size: 0;
     color: transparent;
     overflow: hidden;
@@ -4783,6 +4847,10 @@ h3 {
 
   .sidenav.collapsed .sidenav-group:first-child .sidenav-glabel {
     display: none;
+  }
+
+  .sidenav.collapsed .sidenav-bottom {
+    margin-top: 0.4rem;
   }
 
   /* Unread / Attention count badge becomes a glowing notification dot */
@@ -4799,7 +4867,7 @@ h3 {
     padding: 0;
     font-size: 0;
     line-height: 0;
-    border: 1px solid var(--chrome-rgb, #0d1520);
+    border: 1px solid rgb(var(--chrome-rgb));
     margin: 0;
   }
 
@@ -4824,6 +4892,9 @@ h3 {
     align-items: center;
     gap: 0.45rem;
     padding-top: 0.6rem;
+    margin-top: auto;
+    border-top: 1px solid var(--rule-t06);
+    flex-shrink: 0;
   }
 
   .sidenav.collapsed .sidenav-foot > .sidenav-account,
@@ -4832,6 +4903,7 @@ h3 {
     justify-content: center;
     padding: 0.5rem 0;
     min-height: 44px;
+    box-sizing: border-box;
   }
 
   .sidenav.collapsed .sidenav-account .sidenav-account-name,
@@ -33979,34 +34051,4 @@ select optgroup {
   to {
     transform: rotate(360deg);
   }
-}
-
-/* Merchandise Studio Imprint Inputs */
-.merch-studio-input {
-  width: 100%;
-  padding: 0.48rem 0.65rem;
-  border-radius: 7px;
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  background: rgba(15, 23, 42, 0.72);
-  color: #f8fafc;
-  font-size: 0.8rem;
-  font-weight: 600;
-  box-sizing: border-box;
-  outline: none;
-  transition: border-color 0.15s ease, background-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.merch-studio-input:hover {
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.merch-studio-input:focus {
-  border-color: #ff7a21;
-  background: rgba(15, 23, 42, 0.92);
-  box-shadow: 0 0 0 3px rgba(255, 122, 33, 0.18);
-}
-
-.merch-studio-input::placeholder {
-  color: #64748b;
-  font-weight: 500;
 }

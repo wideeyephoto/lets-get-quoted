@@ -21,7 +21,7 @@
   text-align: left;
   transition: all 0.15s ease;
   user-select: none;
-  margin: 0.25rem 0 0.5rem 0;
+  margin: 0;
 }
 
 .railTrigger:hover {
