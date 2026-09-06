@@ -16,7 +16,8 @@ import PublicGridBackground from '@/components/marketing/PublicGridBackground';
 import SparkyCopilot from '@/components/marketing/SparkyCopilot';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 import { attentionBadgeLabel } from '@/lib/lead-queue';
-import { useNavCustomization } from '@/lib/nav-customization';
+import { useNavCustomization, useNavCollapsed } from '@/lib/nav-customization';
+import { useNavVisibility } from '@/lib/nav-visibility-client';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
 // see the status route), so it is the only one whose digits can run away from
@@ -200,6 +201,7 @@ type AccountStatus = {
   bookingState: NavState;
   /** Whether any communication or AI credit balance is low. */
   lowCreditAlert?: boolean;
+  nav?: { visible: string[]; demoted: string[]; hiddenCount: number } | null;
 };
 
 // Whether an automation is actually accepting work right now. 'paused' is the
@@ -324,6 +326,34 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
   const { contractorLogoTop } = useNavCustomization();
+  const { isCollapsed, toggleCollapsed } = useNavCollapsed();
+  const { nav, setNav } = useNavVisibility();
+
+  // Keyboard shortcut to quick-collapse/expand the desktop navigation rail:
+  // '[' or 'Ctrl+B' / 'Cmd+B' when not typing in an input/textarea/editable.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (typeof window !== 'undefined' && window.innerWidth <= 1080) return;
+      const target = e.target as HTMLElement | null;
+      const isInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable);
+      if (isInput) return;
+
+      if (
+        (e.key === '[' && !e.ctrlKey && !e.metaKey && !e.altKey) ||
+        ((e.ctrlKey || e.metaKey) && (e.key === 'b' || e.key === 'B'))
+      ) {
+        e.preventDefault();
+        toggleCollapsed();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [toggleCollapsed]);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [stripeOnboarded, setStripeOnboarded] = useState<boolean | null>(null);
   const [sitePublished, setSitePublished] = useState(false);
@@ -709,6 +739,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setQuickStopState(navState(data.quickStopState));
             setBookingState(navState(data.bookingState));
             setLowCreditAlert(Boolean(data.lowCreditAlert));
+            if (data.nav) {
+              setNav(data.nav);
+            }
           }
         })
         .catch(() => {});
@@ -724,7 +757,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       window.clearInterval(interval);
       window.removeEventListener('focus', onFocus);
     };
-  }, [showAppRail, pathname]);
+  }, [showAppRail, pathname, setNav]);
 
   useEffect(() => {
     if (!isDashboard || !isLoggedIn) return;
@@ -904,7 +937,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           // the state's color without CSS having to reach into a child with
           // :has() — which not every browser this ships to supports.
           data-state={state !== 'unknown' && NAV_STATE_PILL[href] ? state : undefined}
-          title={item.hint}
+          title={isCollapsed ? `${item.label}${item.hint ? ` — ${item.hint}` : ''}` : item.hint}
         >
           <NavIcon href={href} />
           <span className="sidenav-label">{item.label}</span>
@@ -942,7 +975,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     const contractorInitials = (businessName || 'HQ').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
 
     return (
-      <div className="chrome-shell chrome-shell-sidenav">
+      <div className={`chrome-shell chrome-shell-sidenav${isCollapsed ? ' sidenav-is-collapsed' : ''}`}>
         <header className="sidenav-mobilebar" ref={mobileBarRef}>
           {contractorLogoTop ? (
             <Link
@@ -1019,30 +1052,52 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
-        <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}`} aria-label="Primary">
-          {contractorLogoTop ? (
-            <Link
-              href="/dashboard"
-              className="sidenav-brand sidenav-brand--contractor"
-              aria-label={businessName ? `${businessName} dashboard` : 'Dashboard'}
-            >
-              {contractorLogoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={contractorLogoUrl} alt="" className="sidenav-contractor-logo" />
-              ) : (
-                <span className="sidenav-contractor-mark" aria-hidden="true">
-                  <span className="sidenav-contractor-monogram">{contractorInitials}</span>
+        <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}${isCollapsed ? ' collapsed' : ''}`} aria-label="Primary">
+          <div className="sidenav-topbar">
+            {contractorLogoTop ? (
+              <Link
+                href="/dashboard"
+                className="sidenav-brand sidenav-brand--contractor"
+                aria-label={businessName ? `${businessName} dashboard` : 'Dashboard'}
+                title={isCollapsed ? (businessName || 'Dashboard') : undefined}
+              >
+                {contractorLogoUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={contractorLogoUrl} alt="" className="sidenav-contractor-logo" />
+                ) : (
+                  <span className="sidenav-contractor-mark" aria-hidden="true">
+                    <span className="sidenav-contractor-monogram">{contractorInitials}</span>
+                  </span>
+                )}
+                <span className="sidenav-contractor-bizname" title={businessName ?? undefined}>
+                  {businessName || 'My Business'}
                 </span>
-              )}
-              <span className="sidenav-contractor-bizname" title={businessName ?? undefined}>
-                {businessName || 'My Business'}
-              </span>
-            </Link>
-          ) : (
-            <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home">
-              <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
-            </Link>
-          )}
+              </Link>
+            ) : (
+              <Link href={brandHref} className="sidenav-brand" aria-label="Let&apos;s Get Quoted home" title={isCollapsed ? "Let's Get Quoted" : undefined}>
+                <span className="sidenav-wordmark">Let&apos;s Get <span>Quoted</span></span>
+                <span className="sidenav-brand-mini" aria-hidden="true">
+                  <BrandLogo size={20} />
+                </span>
+              </Link>
+            )}
+
+            <button
+              type="button"
+              className="sidenav-collapse-toggle"
+              onClick={toggleCollapsed}
+              aria-expanded={!isCollapsed}
+              aria-controls="primary-nav"
+              aria-label={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
+              title={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
+            >
+              <svg className="sidenav-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <rect width="18" height="18" x="3" y="3" rx="4" />
+                <path d="M9 3v18" />
+                {isCollapsed ? <path d="m13 15 3-3-3-3" /> : <path d="m14 9-3 3 3 3" />}
+              </svg>
+            </button>
+          </div>
 
           <div className="sidenav-lead">
             {businessName && !contractorLogoTop ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
@@ -1055,10 +1110,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               <Link
                 href="/dashboard/schedule/plan"
                 className={`action-btn action-btn--plan sidenav-plan${pathname.startsWith('/dashboard/schedule/plan') ? ' active' : ''}`}
-                title="Order today's stops into the shortest sensible route"
+                title={isCollapsed ? "Plan Day — Order today's stops into the shortest route" : "Order today's stops into the shortest sensible route"}
               >
                 <ActionIcon name="plan" />
-                Plan Day
+                <span className="sidenav-action-label">Plan Day</span>
               </Link>
               <div className="sidenav-new-wrap" ref={railNewRef}>
                 <button
@@ -1066,16 +1121,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   className="sidenav-new"
                   aria-haspopup="menu"
                   aria-expanded={newMenuAt === 'rail'}
-                  /* Conditional, because the menu is not rendered while shut.
-                     Chrome drops a controls relation whose target is missing
-                     OR hidden, so this reads identically in the tree either
-                     way — but written unconditionally the attribute names an
-                     element that is not in the document, which is the same
-                     dangling reference the labels in 6fe6f462 had. */
                   aria-controls={newMenuAt === 'rail' ? 'sidenav-new-menu' : undefined}
                   onClick={() => setNewMenuAt((at) => (at === 'rail' ? null : 'rail'))}
+                  title={isCollapsed ? "New item (+ New)" : undefined}
                 >
-                  <span className="sidenav-new-plus" aria-hidden="true">+</span> New
+                  <span className="sidenav-new-plus" aria-hidden="true">+</span>
+                  <span className="sidenav-new-text"> New</span>
                   <span className={`sidenav-new-caret${newMenuAt === 'rail' ? ' open' : ''}`} aria-hidden="true">▾</span>
                 </button>
                 {newMenuAt === 'rail' ? renderNewMenu('sidenav-new-menu') : null}
@@ -1083,41 +1134,55 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             </div>
           </div>
 
-          <Link
-            href="/dashboard/sites"
-            data-tour-id="nav:/dashboard/sites"
-            className={`website-nav-badge sidenav-website${sitePublished ? ' live' : ''}`}
-            title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
-          >
-            {sitePublished ? (
-              <>
-                <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
-                {siteHost ? (
-                  <span className="website-nav-live-text">
-                    <span className="website-nav-live-top">
-                      <span className="website-nav-live-label">Website: Live</span>
-                      <span className="website-nav-live-edit">(edit)</span>
+          {(!nav || nav.visible.includes('/dashboard/sites')) ? (
+            <Link
+              href="/dashboard/sites"
+              data-tour-id="nav:/dashboard/sites"
+              className={`website-nav-badge sidenav-website${sitePublished ? ' live' : ''}`}
+              title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
+            >
+              {sitePublished ? (
+                <>
+                  <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
+                  {siteHost ? (
+                    <span className="website-nav-live-text">
+                      <span className="website-nav-live-top">
+                        <span className="website-nav-live-label">Website: Live</span>
+                        <span className="website-nav-live-edit">(edit)</span>
+                      </span>
+                      <span className="website-nav-live-host">{siteHost}</span>
                     </span>
-                    <span className="website-nav-live-host">{siteHost}</span>
-                  </span>
-                ) : (
-                  'Website: Live'
-                )}
-              </>
-            ) : (
-              <>
-                <span aria-hidden="true">✨</span> Build your Website
-              </>
-            )}
-          </Link>
+                  ) : (
+                    'Website: Live'
+                  )}
+                </>
+              ) : (
+                <>
+                  <span aria-hidden="true">✨</span> Build your Website
+                </>
+              )}
+            </Link>
+          ) : null}
 
           <nav className="sidenav-nav" aria-label="Dashboard">
-            {NAV_GROUPS.map((group) => (
-              <div className={`sidenav-group sidenav-group--${group.accent}`} key={group.label}>
-                <p className="sidenav-glabel">{group.label}</p>
-                {group.hrefs.map((href) => renderSideLink(href))}
+            {NAV_GROUPS.map((group) => {
+              const visibleHrefs = nav
+                ? group.hrefs.filter((href) => nav.visible.includes(href))
+                : group.hrefs;
+              if (visibleHrefs.length === 0) return null;
+              return (
+                <div className={`sidenav-group sidenav-group--${group.accent}`} key={group.label}>
+                  <p className="sidenav-glabel">{group.label}</p>
+                  {visibleHrefs.map((href) => renderSideLink(href))}
+                </div>
+              );
+            })}
+            {nav && nav.demoted && nav.demoted.length > 0 ? (
+              <div className="sidenav-group sidenav-group--less-used" key="Less used">
+                <p className="sidenav-glabel">Less used</p>
+                {nav.demoted.map((href) => renderSideLink(href, 'sidenav-link--demoted'))}
               </div>
-            ))}
+            ) : null}
             {/* Dashboard closes the rail rather than opening it. It is the
                 summary of everything above, not a step before any of it, and at
                 the top it took the first slot from Leads — which is where the
@@ -1212,6 +1277,16 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                   </span>
                 </Link>
               </div>
+            ) : null}
+
+            {nav && nav.hiddenCount > 0 ? (
+              <p
+                className="sidenav-hidden-note"
+                title={`${nav.hiddenCount} section${nav.hiddenCount === 1 ? '' : 's'} hidden by your office role permissions`}
+              >
+                <span className="sidenav-hidden-icon" aria-hidden="true">🔒</span>
+                <span>{nav.hiddenCount} section{nav.hiddenCount === 1 ? '' : 's'} hidden</span>
+              </p>
             ) : null}
           </div>
         </aside>

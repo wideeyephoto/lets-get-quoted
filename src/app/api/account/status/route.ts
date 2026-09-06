@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
-import { createAdminClient, getCurrentMembership } from '@/lib/auth';
+import { createAdminClient, getCurrentMembership, loadHeldCapabilities } from '@/lib/auth';
 import { expireStaleLeads, getLeadTriage, type LeadStatus, type LeadTriage } from '@/lib/leads';
 import { isLeadActive, needsResponse } from '@/lib/lead-queue';
 import { leadRailTitle, leadSummary } from '@/lib/lead-summary';
@@ -12,6 +12,9 @@ import { quickStopNavState, quickStopState } from '@/lib/quick-stop-state';
 import { pickBusinessName } from '@/lib/business-name';
 import { applyTestRecordFilter } from '@/lib/test-records';
 import { loadTextToJobStatus } from '@/lib/field-intake-leads';
+import { resolveServerNavDecision } from '@/lib/nav-server';
+import { isNavPersonaEnabled } from '@/lib/nav-visibility';
+import { NAV_VISIBILITY_COOKIE, type NavVisibilityDecision } from '@/lib/nav-visibility-client';
 
 // Lightweight status check used by the app shell to show persistent dashboard
 // badges and alerts. Intentionally returns only minimal state needed for the
@@ -211,7 +214,21 @@ export async function GET() {
   const lowCreditAlert = (typeof textCredits === 'number' && textCredits <= 15)
     || (Boolean(balanceRows && balanceRows.length > 0) && aiCredits <= 5);
 
-  return NextResponse.json({
+  let nav: NavVisibilityDecision | null = null;
+  if (isNavPersonaEnabled()) {
+    try {
+      const capabilities = await loadHeldCapabilities(
+        membership.role as 'owner' | 'office' | 'crew' | null,
+        membership.accountId,
+        user.id,
+      );
+      nav = await resolveServerNavDecision(admin, membership.accountId, membership.role, capabilities);
+    } catch (err) {
+      console.error('Failed to resolve nav in /api/account/status:', err);
+    }
+  }
+
+  const response = NextResponse.json({
     loggedIn: true,
     onboarded: account?.connect_onboarded ?? false,
     sitePublished,
@@ -254,5 +271,20 @@ export async function GET() {
       : siteUrl && bookingAvailability.weekdays.length > 0 && bookingAvailability.windowTimes.length > 0
         ? ('on' as const)
         : ('paused' as const),
+    nav,
   });
+
+  if (nav) {
+    try {
+      response.cookies.set(NAV_VISIBILITY_COOKIE, JSON.stringify(nav), {
+        path: '/',
+        maxAge: 2592000,
+        sameSite: 'lax',
+      });
+    } catch {
+      // Ignore cookie set errors
+    }
+  }
+
+  return response;
 }

@@ -23,6 +23,11 @@ import StripeAlertBanner from './StripeAlertBanner';
 import { connectStripeFromBannerAction } from './stripe-actions';
 import { AssistantProvider } from '@/components/ai-assistant/AssistantProvider';
 import AssistantWidget from '@/components/ai-assistant/AssistantWidget';
+import { createAdminClient } from '@/lib/auth';
+import { resolveServerNavDecision } from '@/lib/nav-server';
+import { isNavPersonaEnabled } from '@/lib/nav-visibility';
+import type { NavVisibilityDecision } from '@/lib/nav-visibility-client';
+import DashboardNavSync from './DashboardNavSync';
 
 // Wraps every /dashboard/** page. Shows a hard-to-miss banner whenever Stripe
 // payouts aren't connected yet, since that blocks the core business function
@@ -80,8 +85,19 @@ export default async function DashboardLayout({ children }: { children: ReactNod
     }
   }
 
+  let navDecision: NavVisibilityDecision | null = null;
+  if (isNavPersonaEnabled()) {
+    try {
+      const admin = createAdminClient();
+      navDecision = await resolveServerNavDecision(admin, accountId, role, capabilities);
+    } catch (err) {
+      console.error('Failed to resolve server nav in DashboardLayout:', err);
+    }
+  }
+
   return (
     <AssistantProvider>
+      {navDecision ? <DashboardNavSync nav={navDecision} /> : null}
       {!onboarded ? (
         // The whole bar starts the Stripe connect itself — landing on Settings
         // and hunting for the same button is a step that does nothing.

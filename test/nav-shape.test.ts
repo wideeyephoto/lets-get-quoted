@@ -318,3 +318,45 @@ describe('the rail is colour-coded by section', () => {
     expect(GLOBALS).not.toMatch(/\.sidenav-group--\w+\s*\{[^}]*background/);
   });
 });
+
+describe('nav-phase-2-3 rail shape and safety invariants', () => {
+  it('every rendered href in NAV_GROUPS resolves in baseNavItems', () => {
+    const groupsBlock = SHELL.slice(SHELL.indexOf('const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
+    expect(hrefMatches.length).toBeGreaterThan(15);
+
+    const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
+
+    for (const href of hrefMatches) {
+      expect(baseNavBlock, `href ${href} must be registered in baseNavItems`).toContain(`href: '${href}'`);
+    }
+  });
+
+  it('every rendered href has a NAV_ICON_PATHS entry', () => {
+    const groupsBlock = SHELL.slice(SHELL.indexOf('const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
+
+    for (const href of hrefMatches) {
+      expect(ICONS, `href ${href} must have an icon in nav-icons.tsx`).toContain(`'${href}':`);
+    }
+  });
+
+  it('the logged-out sales rail still renders the complete NAV_GROUPS without filtering', () => {
+    // §3 regression test: the logged-out "Preview everything included" rail
+    // must render NAV_GROUPS directly without capability/usage filtering
+    const salesSection = SHELL.slice(SHELL.indexOf('Preview everything included'));
+    expect(salesSection).toContain('NAV_GROUPS.map((group) =>');
+    expect(salesSection).toContain('group.hrefs.map((href) => renderAppLink(href))');
+    expect(salesSection).not.toContain('group.hrefs.filter');
+  });
+
+  it('baseNavItems is not filtered anywhere so active longest-match is preserved', () => {
+    expect(SHELL).not.toMatch(/baseNavItems\.filter\(/);
+  });
+
+  it('supports the Less used demoted group and hidden note styling in CSS', () => {
+    expect(GLOBALS).toContain('.sidenav-group--less-used');
+    expect(GLOBALS).toContain('.sidenav-link--demoted');
+    expect(GLOBALS).toContain('.sidenav-hidden-note');
+  });
+});
