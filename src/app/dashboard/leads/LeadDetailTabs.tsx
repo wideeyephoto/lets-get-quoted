@@ -214,9 +214,9 @@ export default function LeadDetailTabs({
             <span>Received: <strong style={{ color: 'var(--text)' }}>{detail.createdAtLabel}</strong></span>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               {detail.photos.length === 0 && (
-                <span>
-                  📷 No photos · <Link href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`} style={{ color: 'var(--ink-orange-8, #ff7a21)', textDecoration: 'none', fontWeight: 600 }}>+ Add photos</Link>
-                </span>
+                <Link href={`${base}/leads/${detail.id}?details=photos#lead-photos-modal`} style={{ color: 'var(--ink-orange-8, #ff7a21)', textDecoration: 'none', fontWeight: 600 }}>
+                  +Add Photos
+                </Link>
               )}
               {onSelectTab && (
                 <button

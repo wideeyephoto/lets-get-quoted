@@ -135,6 +135,7 @@ export default function RecordPhotos({
 }) {
   const total = photoTotal ?? photoCount;
   const label = total > 0 ? `Open all ${total} photo${total === 1 ? '' : 's'}` : 'Add the first photo';
+  const emptyCoverLabel = kind === 'lead' ? '+Add Photos' : 'No photos';
 
   if (!canOpen) {
     return (
@@ -144,6 +145,7 @@ export default function RecordPhotos({
         photoUrl={photoUrl}
         photoCount={photoCount}
         photoTotal={photoTotal}
+        emptyLabel={emptyCoverLabel}
       />
     );
   }
@@ -156,6 +158,7 @@ export default function RecordPhotos({
         photoUrl={photoUrl}
         photoCount={photoCount}
         photoTotal={photoTotal}
+        emptyLabel={emptyCoverLabel}
       />
       <ModalDialog
         title={title}

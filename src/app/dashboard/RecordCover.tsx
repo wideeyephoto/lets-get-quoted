@@ -31,6 +31,7 @@ export default function RecordCover({
   photoUrl,
   photoCount,
   photoTotal,
+  emptyLabel = 'No photos',
 }: {
   /** Job or lead id — hashed for the drawn cover's hue. */
   recordId: string;
@@ -42,6 +43,8 @@ export default function RecordCover({
   photoCount: number;
   /** Total once known, for the "+3" badge. */
   photoTotal?: number;
+  /** Badge text when record has no photos. */
+  emptyLabel?: string;
 }) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -82,7 +85,7 @@ export default function RecordCover({
         <figcaption className={styles.coverCount}>+{extra}</figcaption>
       )}
       {!showPhoto && !awaitingPhoto && (
-        <figcaption className={styles.coverCount} data-empty="true">No photos</figcaption>
+        <figcaption className={styles.coverCount} data-empty="true">{emptyLabel}</figcaption>
       )}
     </figure>
   );
