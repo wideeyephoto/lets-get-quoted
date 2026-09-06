@@ -4,6 +4,7 @@ import { headers } from 'next/headers';
 import { createAdminClient } from '@/lib/auth';
 import { sendCrewMagicLink } from '@/lib/crew-auth';
 import { checkRateLimitStrict, clientIpFrom } from '@/lib/rate-limit';
+import { normalizeUsPhone } from '@/lib/phone';
 
 // Same exposure as the owner sign-in link, same limits — see app/login/actions.
 // A crew member's inbox is no less worth protecting than an owner's, and this
@@ -49,3 +50,46 @@ export async function sendCrewMagicLinkAction(email: string): Promise<void> {
 
   await sendCrewMagicLink(clean, businessName);
 }
+
+const PER_PHONE_LIMIT = 5;
+const PER_PHONE_WINDOW_SECONDS = 15 * 60;
+
+/**
+ * Pre-flights a phone number before sending an SMS OTP:
+ * 1. Validates format
+ * 2. Enforces per-phone and per-IP rate limits
+ * 3. Confirms the phone number is actually attached to an active, non-revoked crew roster
+ */
+export async function preflightCrewPhoneAction(phone: string): Promise<{ ok: boolean; normalized: string }> {
+  const normalized = normalizeUsPhone(phone.trim());
+  if (!normalized) {
+    throw new Error('Enter a valid 10-digit mobile number.');
+  }
+
+  const admin = createAdminClient();
+  const ip = clientIpFrom(await headers());
+  const withinPhoneLimit = await checkRateLimitStrict(admin, `crewphone:number:${normalized}`, PER_PHONE_LIMIT, PER_PHONE_WINDOW_SECONDS);
+  const withinIpLimit = await checkRateLimitStrict(admin, `crewphone:ip:${ip}`, PER_IP_LIMIT, PER_IP_WINDOW_SECONDS);
+  if (!withinPhoneLimit || !withinIpLimit) {
+    throw new Error('Too many sign-in codes requested. Wait a few minutes and try again.');
+  }
+
+  const { data: crewRows } = await admin
+    .from('crew')
+    .select('id, phone, access_revoked_at')
+    .is('deleted_at', null)
+    .eq('active', true);
+
+  const matched = (crewRows ?? []).some((row) => {
+    if (row.access_revoked_at) return false;
+    const p = row.phone ? normalizeUsPhone(row.phone) : null;
+    return p === normalized;
+  });
+
+  if (!matched) {
+    throw new Error("That mobile number isn't on a crew roster yet. Ask your manager to add you and send an invite.");
+  }
+
+  return { ok: true, normalized };
+}
+

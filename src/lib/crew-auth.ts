@@ -7,6 +7,7 @@ import { listCrewForUser, type CrewMember } from '@/lib/crew';
 import { pickBusinessName } from '@/lib/business-name';
 import { readFieldAccount } from '@/lib/field-account';
 import { INVITE_EXPIRY_MINUTES } from '@/lib/crew-invite';
+import { normalizeUsPhone } from '@/lib/phone';
 import { normalizeTimeClockMode, type TimeClockMode } from '@/lib/time-clock';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { renderBrandedEmail, FONT_STACK } from '@/emails/brand';
@@ -77,7 +78,7 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
         label: 'Open my assigned jobs',
         url: verifyUrl.toString(),
       },
-      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This secure link expires in ${TOKEN_EXPIRY_MINUTES} minutes. If you did not expect this invite, you can safely ignore this email.</p>`,
+      footerHtml: `<p style="margin:10px 0 0;font-family:${FONT_STACK};font-size:12px;line-height:1.6;color:#64748b">This secure link expires in ${TOKEN_EXPIRY_MINUTES >= 1440 ? `${Math.round(TOKEN_EXPIRY_MINUTES / 1440)} days` : `${TOKEN_EXPIRY_MINUTES} minutes`}. If you did not expect this invite, you can safely ignore this email.</p>`,
     }),
     tags: [{ name: 'kind', value: 'crew_magic_link' }],
   });
@@ -218,6 +219,65 @@ export async function linkCrewUserByEmail(userId: string, email: string): Promis
     await admin
       .from('memberships')
       .upsert({ account_id: row.account_id, user_id: userId, role: 'crew' }, { onConflict: 'account_id,user_id', ignoreDuplicates: true });
+  }
+  return eligibleRows.map((row) => row.account_id as string);
+}
+
+/**
+ * After a crew member verifies their phone OTP: link the auth user to every
+ * crew record that carries their mobile number, and grant a 'crew' membership
+ * on each of those accounts.
+ *
+ * Parallel to linkCrewUserByEmail, but matches by normalized phone number.
+ */
+export async function linkCrewUserByPhone(userId: string, phone: string): Promise<string[]> {
+  const admin = createAdminClient();
+  const normalized = normalizeUsPhone(phone);
+  if (!normalized) return [];
+
+  const { data: crewRows } = await admin
+    .from('crew')
+    .select('id, account_id, user_id, phone, access_revoked_at')
+    .is('deleted_at', null)
+    .eq('active', true);
+
+  // Match normalized phone number and ensure access has not been revoked
+  const rows = (crewRows ?? []).filter((row) => {
+    if (row.access_revoked_at) return false;
+    const rowPhone = row.phone ? normalizeUsPhone(row.phone) : null;
+    return rowPhone === normalized;
+  });
+  if (rows.length === 0) return [];
+
+  // Filter out suspended accounts so we never link or grant memberships for suspended workspaces
+  const accountIds = Array.from(new Set(rows.map((r) => r.account_id as string)));
+  const { data: accounts } = await admin
+    .from('accounts')
+    .select('id, suspended_at')
+    .in('id', accountIds);
+
+  const suspendedSet = new Set(
+    (accounts ?? []).filter((a) => a.suspended_at).map((a) => a.id as string),
+  );
+
+  const eligibleRows = rows.filter((row) => !suspendedSet.has(row.account_id as string));
+  if (eligibleRows.length === 0) return [];
+
+  const signedInAt = new Date().toISOString();
+
+  for (const row of eligibleRows) {
+    const patch: Record<string, unknown> = { last_signed_in_at: signedInAt };
+    if (!row.user_id) patch.user_id = userId;
+    const { error } = await admin.from('crew').update(patch).eq('id', row.id);
+    if (error && !row.user_id) await admin.from('crew').update({ user_id: userId }).eq('id', row.id);
+
+    // is_member(account_id) drives RLS for the field views.
+    await admin
+      .from('memberships')
+      .upsert(
+        { account_id: row.account_id, user_id: userId, role: 'crew' },
+        { onConflict: 'account_id,user_id', ignoreDuplicates: true },
+      );
   }
   return eligibleRows.map((row) => row.account_id as string);
 }

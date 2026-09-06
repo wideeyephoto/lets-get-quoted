@@ -427,8 +427,8 @@ export default function AddCrewDrawer({
                     onChange={(event) => setEmail(event.target.value)}
                   />
                   <small className="field-hint">
-                    The field app signs in by emailed link, so an invitation needs an address. Leave it blank and they
-                    still get their job texts — they just can&apos;t log hours from their phone yet.
+                    Crew can sign in to the field app with their mobile number or email. If you provide an email, we&apos;ll
+                    email them an invite link (valid for 7 days); otherwise they can sign in directly using their phone number.
                   </small>
                 </div>
               </div>

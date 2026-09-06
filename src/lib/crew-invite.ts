@@ -28,11 +28,13 @@ export type FieldAppState =
   /** An owner took the app away. Still on the roster, deliberately shut out. */
   | 'revoked';
 
-/** How long a crew magic link stays usable. Mirrors crew-auth's token expiry. */
-export const INVITE_EXPIRY_MINUTES = 60;
+/** How long a crew magic link stays usable (7 days). */
+export const INVITE_EXPIRY_DAYS = 7;
+export const INVITE_EXPIRY_MINUTES = INVITE_EXPIRY_DAYS * 24 * 60;
 
 export type InviteFields = {
   email?: string | null;
+  phone?: string | null;
   user_id?: string | null;
   invited_at?: string | null;
   invite_expires_at?: string | null;
@@ -52,7 +54,7 @@ export type InviteFields = {
 export function fieldAppState(member: InviteFields, now: Date = new Date()): FieldAppState {
   if (member.access_revoked_at) return 'revoked';
   if (member.user_id) return 'linked';
-  if (!member.email) return 'no-email';
+  if (!member.email && !member.phone) return 'no-email';
   if (!member.invited_at) return 'not-invited';
 
   const expiresAt = member.invite_expires_at ? Date.parse(member.invite_expires_at) : NaN;
@@ -157,9 +159,12 @@ export function fieldAppDetail(member: InviteFields, now: Date = new Date()): st
   if (state === 'invited') {
     const sent = timeAgo(member.invited_at, now);
     const expires = timeUntil(member.invite_expires_at, now);
-    return [sent ? `Invited ${sent}` : 'Invited', expires ? `link expires ${expires}` : null]
+    const count = Number(member.invite_count) || 0;
+    const attempts = count > 1 ? ` · ${count} invites sent` : '';
+    const main = [sent ? `Invited ${sent}` : 'Invited', expires ? `link expires ${expires}` : null]
       .filter(Boolean)
       .join(' · ');
+    return `${main}${attempts}`;
   }
 
   if (state === 'expired') {
