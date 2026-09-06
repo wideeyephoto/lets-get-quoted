@@ -1,6 +1,7 @@
 import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { getSiteContent, mergeSiteContent, type SiteBlogPost } from '@/lib/site-content';
+import { revalidatePublicSiteCache } from '@/lib/cached-sites';
 
 // preserveBlogPosts and uniqueBlogSlug live in site-content.ts, not here.
 // preserveBlogPosts is the invariant this whole split rests on and it has to be
@@ -86,7 +87,7 @@ export async function saveBlogPosts(
 ): Promise<SiteBlogPost[]> {
   const { data: site } = await supabase
     .from('sites')
-    .select('id, content')
+    .select('id, subdomain, custom_domain, content')
     .eq('account_id', accountId)
     .maybeSingle();
   if (!site) throw new Error('No site found for your account.');
@@ -100,6 +101,11 @@ export async function saveBlogPosts(
     .update({ content: mergeSiteContent(raw, { blog: { ...content.blog, ...blogFields, posts } }) })
     .eq('id', site.id);
   if (error) throw new Error(error.message);
+
+  revalidatePublicSiteCache({
+    subdomain: site.subdomain,
+    customDomain: site.custom_domain,
+  });
 
   return posts;
 }
