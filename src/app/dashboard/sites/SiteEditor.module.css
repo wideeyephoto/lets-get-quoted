@@ -772,11 +772,11 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .connectorHead small { color: var(--muted-2); font-size: .78rem; }
 .connectorProviders { display: flex; flex-wrap: wrap; gap: .4rem; }
 .connectorProvider { min-height: 38px; padding: .45rem .9rem; border: 1px solid var(--edge-t16); border-radius: 8px; background: rgba(var(--tint), .05); color: var(--muted); font-size: .82rem; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
-.connectorProvider:hover { background: rgba(255,255,255,.09); color: #fff; }
-.connectorProviderOn { background: linear-gradient(180deg, #ff8a3d, #ff7a21); border-color: #ff7a21; color: #fff; }
+.connectorProvider:hover { background: rgba(var(--tint), .09); border-color: var(--edge-t28); color: var(--text); }
+.connectorProviderOn { background: linear-gradient(180deg, #ff8a3d, #ff7a21); border-color: #ff7a21; color: #110500; font-weight: 800; }
 .connectorOpen { display: inline-flex; align-items: center; justify-self: start; min-height: 42px; padding: .55rem 1.1rem; border-radius: 8px; background: rgba(255,122,33,.14); border: 1px solid var(--cedge-orange-71); color: var(--accent-ink); font-size: .86rem; font-weight: 800; }
 .connectorOpen:hover { background: rgba(255,122,33,.22); color: var(--ink-mod-orange-3); }
-.connectorRecord { display: grid; gap: .35rem; padding: .75rem .8rem; border: 1px solid var(--edge-t12); border-radius: 8px; background: rgba(var(--shade), .22); }
+.connectorRecord { display: grid; gap: .35rem; padding: .75rem .8rem; border: 1px solid var(--edge-t12); border-radius: 8px; background: rgba(var(--tint), .04); }
 .connectorRow { display: grid; grid-template-columns: 4.5rem 1fr auto; align-items: center; gap: .6rem; }
 .connectorRowLabel { color: var(--muted-2); font-size: .72rem; font-weight: 800; letter-spacing: .04em; text-transform: uppercase; }
 .connectorRowValue { overflow-x: auto; color: var(--gold-ink); font-size: .82rem; white-space: nowrap; }
@@ -789,14 +789,14 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .connectorNote { margin: 0; color: var(--muted-2); font-size: .77rem; line-height: 1.5; }
 .connectorActions { display: flex; flex-wrap: wrap; align-items: center; gap: .6rem; }
 .connectorScreenshotBtn { display: inline-flex; align-items: center; gap: .45rem; min-height: 42px; padding: .55rem 1rem; border-radius: 8px; border: 1px solid var(--edge-t16); background: rgba(var(--tint), .06); color: var(--text); font-size: .84rem; font-weight: 700; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
-.connectorScreenshotBtn:hover { background: rgba(var(--tint), .12); border-color: var(--edge-t22); color: #fff; }
+.connectorScreenshotBtn:hover { background: rgba(var(--tint), .12); border-color: var(--edge-t22); color: var(--text); }
 .screenshotModalOverlay { position: fixed; inset: 0; z-index: 1100; display: flex; align-items: center; justify-content: center; padding: clamp(.75rem, 3vw, 2rem); background: rgba(4, 8, 14, .78); backdrop-filter: blur(4px); }
 .screenshotModal { display: flex; flex-direction: column; width: min(860px, 100%); max-height: min(90vh, 840px); overflow: hidden; border: 1px solid var(--edge-t16); border-radius: 14px; background: var(--ground-2); box-shadow: 0 30px 80px -20px rgba(var(--shade), .85); }
 .screenshotModalHead { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid var(--rule-t10); }
 .screenshotModalHead strong { display: block; font-size: 1.05rem; color: var(--text); }
 .screenshotModalHead small { display: block; margin-top: .15rem; color: var(--muted-2); font-size: .8rem; }
 .screenshotModalClose { min-width: 36px; min-height: 36px; border: 1px solid var(--edge-t16); border-radius: 8px; background: rgba(var(--tint), .06); color: var(--text); font-size: .9rem; cursor: pointer; transition: background .15s; }
-.screenshotModalClose:hover { background: rgba(var(--tint), .14); }
+.screenshotModalClose:hover { background: rgba(var(--tint), .14); color: var(--text); }
 .screenshotModalBody { overflow-y: auto; padding: 1.25rem; display: grid; gap: 1.15rem; }
 .screenshotImageContainer { border-radius: 10px; overflow: hidden; border: 1px solid var(--edge-t16); background: #000; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
 .screenshotImage { display: block; width: 100%; height: auto; object-fit: contain; }
@@ -804,14 +804,15 @@ a.blogGenerateBtn { display: block; text-align: center; text-decoration: none; l
 .screenshotAnnotationsTitle { margin: 0; color: var(--text); font-size: .92rem; font-weight: 800; }
 .annotationList { margin: 0; padding: 0; list-style: none; display: grid; gap: .85rem; }
 .annotationItem { display: flex; align-items: flex-start; gap: .75rem; }
-.annotationNumber { flex: none; width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #fff; font-size: .78rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: .1rem; }
+.annotationNumber { flex: none; width: 24px; height: 24px; border-radius: 50%; background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #110500; font-size: .78rem; font-weight: 800; display: flex; align-items: center; justify-content: center; margin-top: .1rem; }
 .annotationText { font-size: .84rem; line-height: 1.5; color: var(--muted); }
 .annotationText strong { color: var(--text); }
 .annotationText p { margin: .2rem 0 0; }
 .annotationText code { color: var(--gold-ink); background: rgba(var(--tint), .06); padding: .1rem .35rem; border-radius: 4px; font-size: .8rem; }
 .annotationHighlight { display: inline-block; padding: .15rem .45rem; border-radius: 4px; background: rgba(220, 38, 38, .2); border: 1px solid rgba(220, 38, 38, .55); color: #fca5a5; font-size: .74rem; font-weight: 700; vertical-align: middle; margin-left: .25rem; }
+:global(:root[data-theme='sunlight']) .annotationHighlight { background: rgba(220, 38, 38, .12); border-color: rgba(220, 38, 38, .4); color: #991b1b; }
 .screenshotModalFoot { display: flex; justify-content: flex-end; padding: .85rem 1.25rem; border-top: 1px solid var(--rule-t10); }
-.screenshotModalDone { min-height: 38px; padding: .45rem 1.2rem; border-radius: 6px; border: 0; background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #fff; font-size: .84rem; font-weight: 800; cursor: pointer; }
+.screenshotModalDone { min-height: 38px; padding: .45rem 1.2rem; border-radius: 6px; border: 0; background: linear-gradient(180deg, #ff8a3d, #ff7a21); color: #110500; font-size: .84rem; font-weight: 800; cursor: pointer; }
 .screenshotModalDone:hover { filter: brightness(1.06); }
 /* Publish hero — the go-live moment, pinned to the top of the Publish tab with
    a gradient, glow, and an animated shine so it reads as the main action. */

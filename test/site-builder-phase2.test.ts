@@ -128,7 +128,12 @@ describe('Site Builder Phase 2: Custom Domain Providers', () => {
   it('exports SquarespaceDnsModal and has screenshot asset', async () => {
     const { default: SquarespaceDnsModal } = await import('../src/app/dashboard/sites/SquarespaceDnsModal');
     expect(typeof SquarespaceDnsModal).toBe('function');
-    const { existsSync } = await import('fs');
+    const { existsSync, readFileSync } = await import('fs');
     expect(existsSync('public/help/squarespace-dns-settings.jpg')).toBe(true);
+
+    const css = readFileSync('src/app/dashboard/sites/SiteEditor.module.css', 'utf-8');
+    expect(css).toContain(":global(:root[data-theme='sunlight']) .annotationHighlight");
+    expect(css).toContain('color: #110500');
   });
 });
+
