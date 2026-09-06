@@ -29,6 +29,8 @@ import {
   generateCardQrRawBuffer,
   verifyQrDecode,
 } from '@/lib/merchandise/card-qr';
+import { PRIMARY_COLOR_PRESETS, SECONDARY_COLOR_PRESETS } from '@/app/dashboard/merchandise/StudioConfigurator';
+import { isDarkColor } from '@/app/dashboard/merchandise/BusinessCardMockup';
 import type { MerchandiseOrderItem, ShippingAddress } from '@/lib/merchandise/types';
 
 // Mock dependencies for Server Actions & Webhooks
@@ -1707,5 +1709,31 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(notepads!.specs.dimensions).toContain('8.5" × 5.5"');
       expect(notepads!.turnaroundEstimate).toBe('3–4 business days');
     });
+
+    it('verifies dual primary and secondary color options for business cards', () => {
+      expect(PRIMARY_COLOR_PRESETS.length).toBeGreaterThanOrEqual(7);
+      expect(SECONDARY_COLOR_PRESETS.length).toBeGreaterThanOrEqual(8);
+
+      for (const preset of PRIMARY_COLOR_PRESETS) {
+        expect(preset.hex).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(preset.name.length).toBeGreaterThan(0);
+      }
+
+      for (const preset of SECONDARY_COLOR_PRESETS) {
+        expect(preset.hex).toMatch(/^#[0-9a-fA-F]{6}$/);
+        expect(preset.name.length).toBeGreaterThan(0);
+      }
+    });
+
+    it('verifies luminance contrast calculations for card template readability', () => {
+      expect(isDarkColor('#0f172a')).toBe(true);
+      expect(isDarkColor('#000000')).toBe(true);
+      expect(isDarkColor('#064e3b')).toBe(true);
+      expect(isDarkColor('#7f1d1d')).toBe(true);
+      expect(isDarkColor('#ffffff')).toBe(false);
+      expect(isDarkColor('#fefce8')).toBe(false);
+      expect(isDarkColor('#d2b48c')).toBe(false);
+    });
   });
 });
+

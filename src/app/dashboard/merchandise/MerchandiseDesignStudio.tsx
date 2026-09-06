@@ -63,17 +63,25 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const [selectedCardFinish, setSelectedCardFinish] = useState<CardFinishId>('velvet_matte');
   const [selectedNotepadTemplate, setSelectedNotepadTemplate] = useState<string>('work_order');
   const [selectedTierQty, setSelectedTierQty] = useState<number>(() => currentProduct.pricingTiers[0].quantity);
-  const [viewAngle, setViewAngle] = useState<MockupViewAngle>('front');
+  const [viewAngle, setViewAngle] = useState<MockupViewAngle>('duo');
   const [includeQrCode, setIncludeQrCode] = useState<boolean>(true);
 
   // Brand data state (pre-filled from initialData)
   const [businessName, setBusinessName] = useState(initialData.companyName);
   const [tagline, setTagline] = useState(initialData.tagline);
   const [phone, setPhone] = useState(initialData.phone);
+  const [secondaryPhone, setSecondaryPhone] = useState(initialData.secondaryPhone || '');
+  const [fax, setFax] = useState(initialData.fax || '');
+  const [email, setEmail] = useState(initialData.email || '');
   const [website, setWebsite] = useState(initialData.website);
   const [license, setLicense] = useState(initialData.license);
+  const [primaryColor, setPrimaryColor] = useState<string>(initialData.primaryColor || '#0f172a');
   const [accentColor, setAccentColor] = useState(initialData.accentColor);
   const [secondaryColor, setSecondaryColor] = useState(initialData.secondaryColor);
+  const [badgeLabel, setBadgeLabel] = useState<string>('');
+  const [ratingBadgeText, setRatingBadgeText] = useState<string>('');
+  const [bulletText, setBulletText] = useState<string>('');
+  const [footerText, setFooterText] = useState<string>('');
 
   // Apply Trade Preset Pack
   function handleApplyTradePreset(preset: TradePreset) {
@@ -81,8 +89,12 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setSecondaryColor(preset.secondaryColor);
     setTagline(preset.tagline);
     setSelectedCardTemplate(preset.cardTemplate);
-    setSelectedCardFinish(preset.cardFinish);
+    setSelectedCardFinish('velvet_matte');
     setSelectedNotepadTemplate(preset.notepadTemplate);
+    setBadgeLabel('');
+    setRatingBadgeText('');
+    setBulletText('');
+    setFooterText('');
     if (cartToastTimeoutRef.current) clearTimeout(cartToastTimeoutRef.current);
     setCartToast(`Applied ${preset.badge} ${preset.name} Pro Trade Style Pack!`);
     cartToastTimeoutRef.current = setTimeout(() => {
@@ -105,16 +117,22 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         if (typeof parsed.businessName === 'string') setBusinessName(parsed.businessName);
         if (typeof parsed.tagline === 'string') setTagline(parsed.tagline);
         if (typeof parsed.phone === 'string') setPhone(parsed.phone);
+        if (typeof parsed.secondaryPhone === 'string') setSecondaryPhone(parsed.secondaryPhone);
+        if (typeof parsed.fax === 'string') setFax(parsed.fax);
+        if (typeof parsed.email === 'string') setEmail(parsed.email);
         if (typeof parsed.website === 'string') setWebsite(parsed.website);
         if (typeof parsed.license === 'string') setLicense(parsed.license);
+        if (typeof parsed.primaryColor === 'string') setPrimaryColor(parsed.primaryColor);
         if (typeof parsed.accentColor === 'string') setAccentColor(parsed.accentColor);
         if (typeof parsed.secondaryColor === 'string') setSecondaryColor(parsed.secondaryColor);
+        if (typeof parsed.badgeLabel === 'string') setBadgeLabel(parsed.badgeLabel);
+        if (typeof parsed.ratingBadgeText === 'string') setRatingBadgeText(parsed.ratingBadgeText);
+        if (typeof parsed.bulletText === 'string') setBulletText(parsed.bulletText);
+        if (typeof parsed.footerText === 'string') setFooterText(parsed.footerText);
         if (typeof parsed.selectedCardTemplate === 'string') {
           setSelectedCardTemplate(parsed.selectedCardTemplate as BusinessCardTemplateId);
         }
-        if (typeof parsed.selectedCardFinish === 'string') {
-          setSelectedCardFinish(parsed.selectedCardFinish as CardFinishId);
-        }
+        setSelectedCardFinish('velvet_matte');
         if (typeof parsed.selectedNotepadTemplate === 'string') {
           setSelectedNotepadTemplate(parsed.selectedNotepadTemplate);
         }
@@ -134,8 +152,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             businessName,
             tagline,
             phone,
+            secondaryPhone,
+            fax,
+            email,
             website,
             license,
+            badgeLabel,
+            ratingBadgeText,
+            bulletText,
+            footerText,
+            primaryColor,
             accentColor,
             secondaryColor,
             selectedCardTemplate,
@@ -154,8 +180,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     businessName,
     tagline,
     phone,
+    secondaryPhone,
+    fax,
+    email,
     website,
     license,
+    badgeLabel,
+    ratingBadgeText,
+    bulletText,
+    footerText,
+    primaryColor,
     accentColor,
     secondaryColor,
     selectedCardTemplate,
@@ -167,8 +201,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setBusinessName(initialData.companyName);
     setTagline(initialData.tagline);
     setPhone(initialData.phone);
+    setSecondaryPhone(initialData.secondaryPhone || '');
+    setFax(initialData.fax || '');
+    setEmail(initialData.email || '');
     setWebsite(initialData.website);
     setLicense(initialData.license);
+    setBadgeLabel('');
+    setRatingBadgeText('');
+    setBulletText('');
+    setFooterText('');
+    setPrimaryColor(initialData.primaryColor || '#0f172a');
     setAccentColor(initialData.accentColor);
     setSecondaryColor(initialData.secondaryColor);
     setSelectedCardTemplate('executive');
@@ -183,7 +225,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Logo source: 'site' | 'ai' | 'vector' | 'upload'
   const [logoSource, setLogoSource] = useState<'site' | 'ai' | 'vector' | 'upload'>(
-    initialData.aiLogos.length > 0 ? 'ai' : initialData.currentLogoUrl ? 'site' : 'vector'
+    initialData.currentLogoUrl ? 'site' : 'upload'
   );
   const [selectedAiLogoId, setSelectedAiLogoId] = useState<string | null>(
     initialData.aiLogos[0]?.id || null
@@ -273,7 +315,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     setSelectedColorId(prod.availableColors[0]?.id || 'default');
     setSelectedTierQty(prod.pricingTiers[0]?.quantity || prod.minQuantity);
     if (!prod.supportedViews.includes(viewAngle)) {
-      setViewAngle(prod.supportedViews[0] || 'front');
+      setViewAngle(prod.supportedViews[0] || 'duo');
     }
   }
 
@@ -409,13 +451,21 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         businessName,
         tagline,
         phone,
+        secondaryPhone,
+        fax,
+        email,
         website,
         license,
+        primaryColor: currentProduct.id === 'biz_cards' ? primaryColor : undefined,
         accentColor,
         secondaryColor,
         cardTemplateId: currentProduct.id === 'biz_cards' ? selectedCardTemplate : undefined,
         cardFinish: currentProduct.id === 'biz_cards' ? selectedCardFinish : undefined,
         finish: currentProduct.id === 'biz_cards' ? selectedCardFinish : undefined,
+        badgeLabel: currentProduct.id === 'biz_cards' ? badgeLabel : undefined,
+        ratingBadgeText: currentProduct.id === 'biz_cards' ? ratingBadgeText : undefined,
+        bulletText: currentProduct.id === 'biz_cards' ? bulletText : undefined,
+        footerText: currentProduct.id === 'biz_cards' ? footerText : undefined,
         includeQrCode,
         decorationMethod: currentProduct.decorationMethod,
         placement:
@@ -473,7 +523,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   const checkoutItems = useMemo(() => {
     if (cart.length > 0) return cart;
     return [getCurrentOrderItem()];
-  }, [cart, currentProduct, activeColor, activeTier, businessName, tagline, phone, website, license, accentColor, secondaryColor, selectedCardTemplate, selectedCardFinish, selectedNotepadTemplate, includeQrCode, logoSource, activeLogoSrc, customUploadUrl, activeAiLogo, initialData.currentLogoUrl]);
+  }, [cart, currentProduct, activeColor, activeTier, businessName, tagline, phone, website, license, badgeLabel, ratingBadgeText, bulletText, footerText, primaryColor, accentColor, secondaryColor, selectedCardTemplate, selectedCardFinish, selectedNotepadTemplate, includeQrCode, logoSource, activeLogoSrc, customUploadUrl, activeAiLogo, initialData.currentLogoUrl]);
 
   function handleOpenCheckout() {
     setCheckoutError(null);
@@ -595,6 +645,9 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       addSpecRow('Company Name:', businessName || 'N/A');
       if (tagline) addSpecRow('Tagline:', tagline);
       addSpecRow('Phone Number:', phone || 'N/A');
+      if (secondaryPhone) addSpecRow('Second Phone:', secondaryPhone);
+      if (email) addSpecRow('Email Address:', email);
+      if (fax) addSpecRow('Fax Number:', fax);
       if (website) addSpecRow('Website:', website);
       if (license) addSpecRow('License Line:', license);
       addSpecRow('Accent Hex:', accentColor, accentColor);
@@ -984,8 +1037,16 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               businessName={businessName}
               tagline={tagline}
               phone={phone}
+              secondaryPhone={secondaryPhone}
+              fax={fax}
+              email={email}
               website={website}
               license={license}
+              badgeLabel={badgeLabel}
+              ratingBadgeText={ratingBadgeText}
+              bulletText={bulletText}
+              footerText={footerText}
+              primaryColor={primaryColor}
               accentColor={accentColor}
               secondaryColor={secondaryColor}
               renderBranding={renderMockupBranding}
@@ -1024,6 +1085,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             selectedColorId={selectedColorId}
             onSelectColorId={setSelectedColorId}
             activeColor={activeColor}
+            primaryColor={primaryColor}
+            setPrimaryColor={setPrimaryColor}
             selectedTierQty={selectedTierQty}
             onSelectTierQty={setSelectedTierQty}
             activeTier={activeTier}
@@ -1033,10 +1096,24 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             setTagline={setTagline}
             phone={phone}
             setPhone={setPhone}
+            secondaryPhone={secondaryPhone}
+            setSecondaryPhone={setSecondaryPhone}
+            fax={fax}
+            setFax={setFax}
+            email={email}
+            setEmail={setEmail}
             website={website}
             setWebsite={setWebsite}
             license={license}
             setLicense={setLicense}
+            badgeLabel={badgeLabel}
+            setBadgeLabel={setBadgeLabel}
+            ratingBadgeText={ratingBadgeText}
+            setRatingBadgeText={setRatingBadgeText}
+            bulletText={bulletText}
+            setBulletText={setBulletText}
+            footerText={footerText}
+            setFooterText={setFooterText}
             accentColor={accentColor}
             setAccentColor={setAccentColor}
             secondaryColor={secondaryColor}
@@ -1049,7 +1126,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             onLogoFileUpload={handleLogoFileUpload}
             onRemoveCustomLogo={() => {
               setCustomUploadUrl(null);
-              setLogoSource('vector');
+              setLogoSource(initialData.currentLogoUrl ? 'site' : 'upload');
             }}
             aiLogos={initialData.aiLogos}
             selectedAiLogoId={selectedAiLogoId}

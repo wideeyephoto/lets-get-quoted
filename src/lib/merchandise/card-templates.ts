@@ -77,6 +77,8 @@ export interface CardTemplateDefinition {
   recommendedFinish: CardFinishId;
   badgeLabel: string;
   ratingBadgeText: string;
+  bulletText?: string;
+  footerText?: string;
   patternType: 'pinstripe' | 'split' | 'carbon' | 'grid' | 'qr_focus' | 'trust_seal' | 'showcase' | 'traditional';
 }
 
@@ -93,6 +95,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'foil_gold',
     badgeLabel: 'MASTER BUILDER',
     ratingBadgeText: 'Direct Contractor Service',
+    bulletText: 'Fast Estimates • Clear Communication',
+    footerText: 'Luxury Residential & Commercial • Direct Booking',
     patternType: 'pinstripe',
   },
   {
@@ -107,6 +111,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'spot_uv',
     badgeLabel: 'SMART CONTRACTOR',
     ratingBadgeText: 'Licensed & Verified Trade',
+    bulletText: 'Fast Quotes • Direct Booking',
+    footerText: 'Commercial & Residential Specialists • Free Estimates',
     patternType: 'split',
   },
   {
@@ -121,6 +127,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'foil_silver',
     badgeLabel: 'HEAVY CIVIL & COMMERCIAL',
     ratingBadgeText: 'COMMERCIAL & INDUSTRIAL SPEC',
+    bulletText: 'Commercial & Industrial Contractor',
+    footerText: 'Commercial Grade Heavy Equipment & Field Specialists',
     patternType: 'carbon',
   },
   {
@@ -135,6 +143,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'foil_silver',
     badgeLabel: 'CAD PRECISION • DWG SPEC',
     ratingBadgeText: 'ARCHITECTURAL DESIGN & BUILD',
+    bulletText: 'Precision Architectural Design & Build',
+    footerText: 'Precision Design-Build • General Contracting • Commercial Framing',
     patternType: 'grid',
   },
   {
@@ -148,7 +158,9 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     backFeature: 'Full services checklist with 24/7 hotline callouts',
     recommendedFinish: 'spot_uv',
     badgeLabel: 'FAST DISPATCH ESTIMATE',
-    ratingBadgeText: 'SCAN TO BOOK IN 60 SECONDS',
+    ratingBadgeText: 'INSTANT ESTIMATE',
+    bulletText: 'Get an instant estimate & book appointment directly on our calendar.',
+    footerText: 'Clear Written Scope • Prompt Scheduling',
     patternType: 'qr_focus',
   },
   {
@@ -163,6 +175,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'foil_gold',
     badgeLabel: 'RESIDENTIAL SPECIALIST',
     ratingBadgeText: 'Upfront Pricing & Clear Estimates',
+    bulletText: 'Craftsmanship Guarantee • Upfront Estimates',
+    footerText: 'Clean Background Checked Crews • Free Consultation',
     patternType: 'trust_seal',
   },
   {
@@ -177,6 +191,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'velvet_matte',
     badgeLabel: 'CUSTOM RESIDENTIAL CRAFT',
     ratingBadgeText: 'FREE ON-SITE CONSULTATION',
+    bulletText: 'Custom Craftsmanship',
+    footerText: 'Residential & Commercial Installation',
     patternType: 'showcase',
   },
   {
@@ -191,6 +207,8 @@ export const BUSINESS_CARD_TEMPLATES: CardTemplateDefinition[] = [
     recommendedFinish: 'foil_gold',
     badgeLabel: 'MASTER CRAFTSMAN',
     ratingBadgeText: 'HERITAGE RESTORATION & FINISH',
+    bulletText: 'Heritage Restoration & Finish',
+    footerText: 'Quality Craftsmanship • Master Tradesman',
     patternType: 'traditional',
   },
 ];

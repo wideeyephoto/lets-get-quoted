@@ -11,8 +11,6 @@ import type {
 import {
   BUSINESS_CARD_TEMPLATES,
   getCardTemplateById,
-  CARD_FINISHES,
-  getCardFinishById,
 } from '@/lib/merchandise/card-templates';
 import {
   NOTEPAD_TEMPLATES,
@@ -21,19 +19,42 @@ import {
   TRADE_PRESETS,
 } from '@/lib/merchandise/product-templates';
 
+export const PRIMARY_COLOR_PRESETS = [
+  { name: 'Dark Slate', hex: '#0f172a', darkText: false },
+  { name: 'Bright White', hex: '#ffffff', darkText: true },
+  { name: 'Executive Navy', hex: '#0a2540', darkText: false },
+  { name: 'Charcoal Slate', hex: '#1e293b', darkText: false },
+  { name: 'Forest Green', hex: '#064e3b', darkText: false },
+  { name: 'Deep Crimson', hex: '#7f1d1d', darkText: false },
+  { name: 'Kraft Tan', hex: '#d2b48c', darkText: true },
+];
+
+export const SECONDARY_COLOR_PRESETS = [
+  { name: 'Safety Orange', hex: '#ff7a21', darkText: false },
+  { name: 'Construction Amber', hex: '#f59e0b', darkText: true },
+  { name: 'Blueprint Cyan', hex: '#38bdf8', darkText: true },
+  { name: 'Pro Emerald', hex: '#10b981', darkText: false },
+  { name: 'Hi-Vis Cobalt', hex: '#2563eb', darkText: false },
+  { name: 'Warning Red', hex: '#ef4444', darkText: false },
+  { name: 'Steel Gray', hex: '#94a3b8', darkText: true },
+  { name: 'Pure White', hex: '#ffffff', darkText: true },
+];
+
 interface StudioConfiguratorProps {
   currentProduct: MerchandiseProduct;
   displayedProducts: MerchandiseProduct[];
   onSelectProduct: (prod: MerchandiseProduct) => void;
   selectedCardTemplate: BusinessCardTemplateId;
   onSelectCardTemplate: (templateId: BusinessCardTemplateId) => void;
-  selectedCardFinish: CardFinishId;
-  onSelectCardFinish: (finish: CardFinishId) => void;
+  selectedCardFinish?: CardFinishId;
+  onSelectCardFinish?: (finish: CardFinishId) => void;
   selectedNotepadTemplate: string;
   onSelectNotepadTemplate: (templateId: string) => void;
   selectedColorId: string;
   onSelectColorId: (colorId: string) => void;
   activeColor: { id: string; name: string; hex: string; darkText?: boolean };
+  primaryColor?: string;
+  setPrimaryColor?: (val: string) => void;
   selectedTierQty: number;
   onSelectTierQty: (qty: number) => void;
   activeTier: { quantity: number; unitPrice: number; totalPrice: number; isPopular?: boolean; savingsPercent?: number };
@@ -43,24 +64,38 @@ interface StudioConfiguratorProps {
   setTagline: (val: string) => void;
   phone: string;
   setPhone: (val: string) => void;
+  secondaryPhone?: string;
+  setSecondaryPhone?: (val: string) => void;
+  fax?: string;
+  setFax?: (val: string) => void;
+  email?: string;
+  setEmail?: (val: string) => void;
   website: string;
   setWebsite: (val: string) => void;
   license: string;
   setLicense: (val: string) => void;
+  badgeLabel: string;
+  setBadgeLabel: (val: string) => void;
+  ratingBadgeText: string;
+  setRatingBadgeText: (val: string) => void;
+  bulletText: string;
+  setBulletText: (val: string) => void;
+  footerText: string;
+  setFooterText: (val: string) => void;
   accentColor: string;
   setAccentColor: (val: string) => void;
   secondaryColor: string;
   setSecondaryColor: (val: string) => void;
-  onApplyTradePreset: (preset: TradePreset) => void;
+  onApplyTradePreset?: (preset: TradePreset) => void;
   onResetToDefaults: () => void;
   logoSource: 'site' | 'ai' | 'vector' | 'upload';
   setLogoSource: (source: 'site' | 'ai' | 'vector' | 'upload') => void;
   customUploadUrl: string | null;
   onLogoFileUpload: (file: File) => void;
   onRemoveCustomLogo: () => void;
-  aiLogos: { id: string; url: string }[];
-  selectedAiLogoId: string | null;
-  onSelectAiLogoId: (id: string) => void;
+  aiLogos?: { id: string; url: string }[];
+  selectedAiLogoId?: string | null;
+  onSelectAiLogoId?: (id: string) => void;
   siteLogoUrl?: string | null;
   onOpenCheckout: () => void;
   onAddToCart: () => void;
@@ -90,10 +125,26 @@ export default function StudioConfigurator({
   setTagline,
   phone,
   setPhone,
+  secondaryPhone,
+  setSecondaryPhone,
+  fax,
+  setFax,
+  email,
+  setEmail,
   website,
   setWebsite,
   license,
   setLicense,
+  badgeLabel,
+  setBadgeLabel,
+  ratingBadgeText,
+  setRatingBadgeText,
+  bulletText,
+  setBulletText,
+  footerText,
+  setFooterText,
+  primaryColor = '#0f172a',
+  setPrimaryColor,
   accentColor,
   setAccentColor,
   secondaryColor,
@@ -115,11 +166,13 @@ export default function StudioConfigurator({
   isGeneratingProof,
 }: StudioConfiguratorProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const [isBrandAccordionOpen, setIsBrandAccordionOpen] = useState(false);
+  const [isBrandAccordionOpen, setIsBrandAccordionOpen] = useState(true);
 
   const activeCardTemplate = getCardTemplateById(selectedCardTemplate);
-  const activeCardFinish = getCardFinishById(selectedCardFinish);
   const activeNotepadTemplate = getNotepadTemplateById(selectedNotepadTemplate);
+
+  const effectivePrimaryColor = primaryColor || activeColor?.hex || '#0f172a';
+  const effectiveSecondaryColor = secondaryColor || accentColor || '#ff7a21';
 
   return (
     <div
@@ -348,115 +401,226 @@ export default function StudioConfigurator({
         )}
       </div>
 
-      {/* 3. Tactile Finish (Business Cards only) */}
-      {currentProduct.id === 'biz_cards' && (
-        <div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
-            <label
-              style={{
-                fontSize: '0.72rem',
-                fontWeight: 800,
-                color: '#38bdf8',
-                textTransform: 'uppercase',
-                letterSpacing: '0.08em',
-                margin: 0,
-              }}
-            >
-              3. Tactile Finish
-            </label>
-            <span style={{ fontSize: '0.7rem', color: '#ffffff', fontWeight: 700 }}>
-              {activeCardFinish.name}
+      {/* 3. Card Color Selector (Primary & Secondary for Business Cards, Pad Cover Color for Notepads) */}
+      <div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.45rem' }}>
+          <label
+            style={{
+              fontSize: '0.72rem',
+              fontWeight: 800,
+              color: 'var(--gold-ink)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              margin: 0,
+            }}
+          >
+            {currentProduct.id === 'biz_cards' ? '3. Card Colors (Primary & Secondary)' : '3. Pad Cover Color'}
+          </label>
+          {currentProduct.id === 'biz_cards' && (
+            <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>
+              Applies to all templates
             </span>
+          )}
+        </div>
+
+        {currentProduct.id === 'biz_cards' ? (
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '0.85rem',
+              background: 'rgba(var(--tint), 0.035)',
+              padding: '0.8rem',
+              borderRadius: '9px',
+              border: '1px solid rgba(var(--tint), 0.12)',
+            }}
+          >
+            {/* Primary Card Color */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text)' }}>
+                  Primary Color <span style={{ fontSize: '0.62rem', color: 'var(--muted)', fontWeight: 500 }}>(Card face &amp; panels)</span>
+                </span>
+                <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>
+                  {effectivePrimaryColor.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Curated Swatches + Custom Picker */}
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {PRIMARY_COLOR_PRESETS.map((clr) => {
+                  const isSelected = effectivePrimaryColor.toLowerCase() === clr.hex.toLowerCase();
+                  return (
+                    <button
+                      key={clr.hex}
+                      type="button"
+                      onClick={() => {
+                        setPrimaryColor?.(clr.hex);
+                        const matched = currentProduct.availableColors.find(
+                          (c) => c.hex.toLowerCase() === clr.hex.toLowerCase()
+                        );
+                        if (matched) onSelectColorId(matched.id);
+                      }}
+                      aria-label={`Primary ${clr.name}`}
+                      title={`${clr.name} (${clr.hex})`}
+                      className="focus-ring"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '6px',
+                        background: clr.hex,
+                        border: isSelected ? '2.5px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.25)',
+                        boxShadow: isSelected ? '0 0 0 2px rgba(255, 122, 33, 0.4)' : 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: clr.darkText ? '#0f172a' : '#ffffff',
+                        fontSize: '0.8rem',
+                        fontWeight: 900,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {isSelected ? '✓' : ''}
+                    </button>
+                  );
+                })}
+
+                {/* Custom Color Input & Hex Box */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginLeft: 'auto' }}>
+                  <input
+                    type="color"
+                    aria-label="Custom primary color picker"
+                    value={effectivePrimaryColor.startsWith('#') ? effectivePrimaryColor : '#0f172a'}
+                    onChange={(e) => {
+                      setPrimaryColor?.(e.target.value);
+                      const matched = currentProduct.availableColors.find(
+                        (c) => c.hex.toLowerCase() === e.target.value.toLowerCase()
+                      );
+                      if (matched) onSelectColorId(matched.id);
+                    }}
+                    style={{ width: '28px', height: '28px', padding: 0, border: '1px solid rgba(255, 255, 255, 0.25)', borderRadius: '6px', cursor: 'pointer', background: 'transparent' }}
+                  />
+                  <input
+                    type="text"
+                    maxLength={7}
+                    aria-label="Custom primary color hex"
+                    value={effectivePrimaryColor}
+                    onChange={(e) => {
+                      setPrimaryColor?.(e.target.value);
+                      const matched = currentProduct.availableColors.find(
+                        (c) => c.hex.toLowerCase() === e.target.value.toLowerCase()
+                      );
+                      if (matched) onSelectColorId(matched.id);
+                    }}
+                    style={{ width: '68px', padding: '0.3rem 0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.72rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Secondary Accent Color */}
+            <div style={{ borderTop: '1px solid rgba(var(--tint), 0.1)', paddingTop: '0.7rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.4rem' }}>
+                <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--text)' }}>
+                  Secondary Color <span style={{ fontSize: '0.62rem', color: 'var(--muted)', fontWeight: 500 }}>(Accents, borders &amp; badges)</span>
+                </span>
+                <span style={{ fontSize: '0.68rem', fontFamily: 'monospace', fontWeight: 700, color: 'var(--accent)' }}>
+                  {effectiveSecondaryColor.toUpperCase()}
+                </span>
+              </div>
+
+              {/* Curated Swatches + Custom Picker */}
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                {SECONDARY_COLOR_PRESETS.map((clr) => {
+                  const isSelected = effectiveSecondaryColor.toLowerCase() === clr.hex.toLowerCase();
+                  return (
+                    <button
+                      key={clr.hex}
+                      type="button"
+                      onClick={() => setSecondaryColor(clr.hex)}
+                      aria-label={`Secondary ${clr.name}`}
+                      title={`${clr.name} (${clr.hex})`}
+                      className="focus-ring"
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        borderRadius: '6px',
+                        background: clr.hex,
+                        border: isSelected ? '2.5px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.25)',
+                        boxShadow: isSelected ? '0 0 0 2px rgba(255, 122, 33, 0.4)' : 'none',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        color: clr.darkText ? '#0f172a' : '#ffffff',
+                        fontSize: '0.8rem',
+                        fontWeight: 900,
+                        transition: 'all 0.15s ease',
+                      }}
+                    >
+                      {isSelected ? '✓' : ''}
+                    </button>
+                  );
+                })}
+
+                {/* Custom Secondary Input & Hex Box */}
+                <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', marginLeft: 'auto' }}>
+                  <input
+                    type="color"
+                    aria-label="Custom secondary color picker"
+                    value={effectiveSecondaryColor.startsWith('#') ? effectiveSecondaryColor : '#ff7a21'}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    style={{ width: '28px', height: '28px', padding: 0, border: '1px solid rgba(255, 255, 255, 0.25)', borderRadius: '6px', cursor: 'pointer', background: 'transparent' }}
+                  />
+                  <input
+                    type="text"
+                    maxLength={7}
+                    aria-label="Custom secondary color hex"
+                    value={effectiveSecondaryColor}
+                    onChange={(e) => setSecondaryColor(e.target.value)}
+                    style={{ width: '68px', padding: '0.3rem 0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.72rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '0.35rem' }}>
-            {CARD_FINISHES.map((fin) => {
-              const isFinSelected = selectedCardFinish === fin.id;
+        ) : (
+          <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
+            {currentProduct.availableColors.map((clr) => {
+              const isSelected = clr.id === selectedColorId;
               return (
                 <button
-                  key={fin.id}
+                  key={clr.id}
                   type="button"
-                  onClick={() => onSelectCardFinish(fin.id)}
+                  onClick={() => onSelectColorId(clr.id)}
+                  aria-label={clr.name}
+                  aria-pressed={isSelected}
+                  title={clr.name}
                   className="focus-ring"
                   style={{
-                    padding: '6px 9px',
-                    borderRadius: '7px',
-                    border: isFinSelected ? '1.5px solid #38bdf8' : '1px solid rgba(var(--tint), 0.12)',
-                    background: isFinSelected ? 'rgba(56, 189, 248, 0.15)' : 'rgba(var(--tint), 0.03)',
+                    width: '32px',
+                    height: '32px',
+                    borderRadius: '50%',
+                    background: clr.hex,
+                    border: isSelected ? '3px solid var(--accent)' : '2px solid rgba(255, 255, 255, 0.2)',
+                    boxShadow: isSelected ? '0 0 0 2px rgba(255, 122, 33, 0.4)' : 'none',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
-                    justifyContent: 'space-between',
-                    textAlign: 'left',
+                    justifyContent: 'center',
+                    color: clr.darkText ? '#0f172a' : '#ffffff',
+                    fontSize: '0.85rem',
+                    fontWeight: 900,
                     transition: 'all 0.15s ease',
                   }}
                 >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '0.9rem' }}>{fin.badge}</span>
-                    <div>
-                      <strong style={{ fontSize: '0.72rem', color: isFinSelected ? '#38bdf8' : 'var(--text)', display: 'block' }}>
-                        {fin.name}
-                      </strong>
-                      <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>{fin.description}</span>
-                    </div>
-                  </div>
-                  {isFinSelected && <span style={{ fontSize: '0.7rem', color: '#38bdf8' }}>●</span>}
+                  {isSelected ? '✓' : ''}
                 </button>
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* 4. Base Paper / Background Color */}
-      <div>
-        <label
-          style={{
-            display: 'block',
-            fontSize: '0.72rem',
-            fontWeight: 800,
-            color: 'var(--gold-ink)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.08em',
-            marginBottom: '0.4rem',
-          }}
-        >
-          {currentProduct.id === 'biz_cards' ? '4. Card Color' : '3. Pad Cover Color'}:{' '}
-          <span style={{ color: 'var(--accent)' }}>{activeColor.name}</span>
-        </label>
-        <div style={{ display: 'flex', gap: '0.55rem', flexWrap: 'wrap' }}>
-          {currentProduct.availableColors.map((clr) => {
-            const isSelected = clr.id === selectedColorId;
-            return (
-              <button
-                key={clr.id}
-                type="button"
-                onClick={() => onSelectColorId(clr.id)}
-                aria-label={clr.name}
-                aria-pressed={isSelected}
-                title={clr.name}
-                className="focus-ring"
-                style={{
-                  width: '32px',
-                  height: '32px',
-                  borderRadius: '50%',
-                  background: clr.hex,
-                  border: isSelected ? '3px solid var(--accent)' : '2px solid rgba(255, 255, 255, 0.2)',
-                  boxShadow: isSelected ? '0 0 0 2px rgba(255, 122, 33, 0.4)' : 'none',
-                  cursor: 'pointer',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: clr.darkText ? '#0f172a' : '#ffffff',
-                  fontSize: '0.85rem',
-                  fontWeight: 900,
-                  transition: 'all 0.15s ease',
-                }}
-              >
-                {isSelected ? '✓' : ''}
-              </button>
-            );
-          })}
-        </div>
+        )}
       </div>
 
       {/* 5. Collapsible Brand Details Accordion */}
@@ -602,29 +766,6 @@ export default function StudioConfigurator({
                   }}
                 />
 
-                {aiLogos.length > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setLogoSource('ai')}
-                    style={{
-                      padding: '0.35rem 0.6rem',
-                      borderRadius: '6px',
-                      border: logoSource === 'ai' ? '1.5px solid #a855f7' : '1px solid rgba(var(--tint), 0.12)',
-                      background: logoSource === 'ai' ? 'rgba(124, 58, 237, 0.2)' : 'rgba(var(--tint), 0.04)',
-                      color: logoSource === 'ai' ? '#f3e8ff' : 'var(--muted)',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                    }}
-                  >
-                    <Sparkles size={12} />
-                    <span>AI Concept</span>
-                  </button>
-                )}
-
                 {siteLogoUrl && (
                   <button
                     type="button"
@@ -643,23 +784,6 @@ export default function StudioConfigurator({
                     Site Logo
                   </button>
                 )}
-
-                <button
-                  type="button"
-                  onClick={() => setLogoSource('vector')}
-                  style={{
-                    padding: '0.35rem 0.6rem',
-                    borderRadius: '6px',
-                    border: logoSource === 'vector' ? '1.5px solid var(--accent)' : '1px solid rgba(var(--tint), 0.12)',
-                    background: logoSource === 'vector' ? 'rgba(255, 122, 33, 0.18)' : 'rgba(var(--tint), 0.04)',
-                    color: logoSource === 'vector' ? '#ffffff' : 'var(--muted)',
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Vector Crest
-                </button>
               </div>
 
               {/* Uploaded logo tag */}
@@ -676,69 +800,9 @@ export default function StudioConfigurator({
                   </button>
                 </div>
               )}
-
-              {/* AI logo picker */}
-              {logoSource === 'ai' && aiLogos.length > 0 && (
-                <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.4rem', overflowX: 'auto' }}>
-                  {aiLogos.map((lg, idx) => (
-                    <button
-                      key={lg.id}
-                      type="button"
-                      onClick={() => onSelectAiLogoId(lg.id)}
-                      style={{
-                        position: 'relative',
-                        width: '52px',
-                        height: '40px',
-                        borderRadius: '6px',
-                        border: selectedAiLogoId === lg.id ? '2px solid #a855f7' : '1px solid rgba(var(--tint), 0.12)',
-                        background: '#101520',
-                        cursor: 'pointer',
-                        padding: '2px',
-                        flexShrink: 0,
-                      }}
-                    >
-                      <Image src={lg.url} alt={`AI concept ${idx + 1}`} fill sizes="52px" style={{ objectFit: 'contain' }} />
-                    </button>
-                  ))}
-                </div>
-              )}
             </div>
 
-            {/* 1-Click Pro Trade Style Packs */}
-            <div>
-              <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>
-                ⚡ Quick Trade Presets:
-              </span>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.3rem' }}>
-                {TRADE_PRESETS.slice(0, 6).map((preset) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => onApplyTradePreset(preset)}
-                    className="focus-ring"
-                    title={`${preset.name}: matching colors, tagline, template`}
-                    style={{
-                      padding: '4px',
-                      borderRadius: '6px',
-                      border: '1px solid rgba(var(--tint), 0.12)',
-                      background: 'rgba(var(--tint), 0.04)',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      fontSize: '0.68rem',
-                      color: 'var(--text)',
-                      fontWeight: 700,
-                    }}
-                  >
-                    <span>{preset.badge}</span>
-                    <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{preset.name}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Inputs */}
+            {/* Company & Tagline Inputs */}
             <div>
               <label htmlFor="cfg-biz-name" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
                 Company Name:
@@ -767,6 +831,7 @@ export default function StudioConfigurator({
               />
             </div>
 
+            {/* Phone & Secondary Phone */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
               <div>
                 <label htmlFor="cfg-phone" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
@@ -782,6 +847,56 @@ export default function StudioConfigurator({
                 />
               </div>
               <div>
+                <label htmlFor="cfg-secondary-phone" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                  Second Phone / Mobile:
+                </label>
+                <input
+                  id="cfg-secondary-phone"
+                  type="text"
+                  maxLength={20}
+                  value={secondaryPhone || ''}
+                  placeholder="e.g. (555) 987-6543"
+                  onChange={(e) => setSecondaryPhone?.(e.target.value)}
+                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            {/* Email Address & Fax # */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+              <div>
+                <label htmlFor="cfg-email" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                  Email Address:
+                </label>
+                <input
+                  id="cfg-email"
+                  type="email"
+                  maxLength={50}
+                  value={email || ''}
+                  placeholder="info@yourcompany.com"
+                  onChange={(e) => setEmail?.(e.target.value)}
+                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                />
+              </div>
+              <div>
+                <label htmlFor="cfg-fax" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                  Fax #:
+                </label>
+                <input
+                  id="cfg-fax"
+                  type="text"
+                  maxLength={20}
+                  value={fax || ''}
+                  placeholder="e.g. (555) 019-2835"
+                  onChange={(e) => setFax?.(e.target.value)}
+                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            {/* Website & License */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+              <div>
                 <label htmlFor="cfg-website" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
                   Website:
                 </label>
@@ -794,65 +909,139 @@ export default function StudioConfigurator({
                   style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
                 />
               </div>
-            </div>
-
-            <div>
-              <label htmlFor="cfg-license" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                License Line:
-              </label>
-              <input
-                id="cfg-license"
-                type="text"
-                maxLength={30}
-                value={license}
-                onChange={(e) => setLicense(e.target.value)}
-                style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-              />
-            </div>
-
-            {/* Colors */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
               <div>
-                <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Accent Color:
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                <label htmlFor="cfg-license" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                  License Line:
+                </label>
+                <input
+                  id="cfg-license"
+                  type="text"
+                  maxLength={30}
+                  value={license}
+                  onChange={(e) => setLicense(e.target.value)}
+                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                />
+              </div>
+            </div>
+
+            {/* Business Card Dynamic Copy Fields */}
+            {currentProduct.id === 'biz_cards' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', borderTop: '1px solid rgba(var(--tint), 0.1)', paddingTop: '0.65rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Card Copy &amp; Badges (Editable)
+                  </span>
+                  <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>Overrides template defaults</span>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+                  <div>
+                    <label htmlFor="cfg-badge-label" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Header Badge:
+                    </label>
+                    <input
+                      id="cfg-badge-label"
+                      type="text"
+                      maxLength={32}
+                      value={badgeLabel}
+                      placeholder={activeCardTemplate.badgeLabel}
+                      onChange={(e) => setBadgeLabel(e.target.value)}
+                      style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="cfg-rating-badge" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                      Sub-Badge / Tag:
+                    </label>
+                    <input
+                      id="cfg-rating-badge"
+                      type="text"
+                      maxLength={36}
+                      value={ratingBadgeText}
+                      placeholder={activeCardTemplate.ratingBadgeText}
+                      onChange={(e) => setRatingBadgeText(e.target.value)}
+                      style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="cfg-bullet-text" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                    Service Highlight / Bullet Line:
+                  </label>
                   <input
-                    type="color"
-                    value={accentColor.startsWith('#') ? accentColor : '#2563eb'}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    style={{ width: '26px', height: '26px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  />
-                  <input
+                    id="cfg-bullet-text"
                     type="text"
-                    maxLength={10}
-                    value={accentColor}
-                    onChange={(e) => setAccentColor(e.target.value)}
-                    style={{ width: '100%', padding: '0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.74rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                    maxLength={60}
+                    value={bulletText}
+                    placeholder={activeCardTemplate.bulletText || 'Fast Estimates • Clear Communication'}
+                    onChange={(e) => setBulletText(e.target.value)}
+                    style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="cfg-footer-text" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                    Footer Notice / Disclaimer:
+                  </label>
+                  <input
+                    id="cfg-footer-text"
+                    type="text"
+                    maxLength={65}
+                    value={footerText}
+                    placeholder={activeCardTemplate.footerText || 'Commercial & Residential Specialists • Free Estimates'}
+                    onChange={(e) => setFooterText(e.target.value)}
+                    style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
                   />
                 </div>
               </div>
-              <div>
-                <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Secondary Color:
-                </span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                  <input
-                    type="color"
-                    value={secondaryColor.startsWith('#') ? secondaryColor : '#f59e0b'}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                    style={{ width: '26px', height: '26px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  />
-                  <input
-                    type="text"
-                    maxLength={10}
-                    value={secondaryColor}
-                    onChange={(e) => setSecondaryColor(e.target.value)}
-                    style={{ width: '100%', padding: '0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.74rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
-                  />
+            )}
+
+            {/* Colors for non-card products */}
+            {currentProduct.id !== 'biz_cards' && (
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+                <div>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                    Accent Color:
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <input
+                      type="color"
+                      value={accentColor.startsWith('#') ? accentColor : '#2563eb'}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      style={{ width: '26px', height: '26px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    />
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={accentColor}
+                      onChange={(e) => setAccentColor(e.target.value)}
+                      style={{ width: '100%', padding: '0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.74rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                    Secondary Color:
+                  </span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+                    <input
+                      type="color"
+                      value={secondaryColor.startsWith('#') ? secondaryColor : '#f59e0b'}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      style={{ width: '26px', height: '26px', padding: 0, border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                    />
+                    <input
+                      type="text"
+                      maxLength={10}
+                      value={secondaryColor}
+                      onChange={(e) => setSecondaryColor(e.target.value)}
+                      style={{ width: '100%', padding: '0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.74rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                    />
+                  </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
         )}
       </div>

@@ -157,8 +157,12 @@ export type MerchandiseOrderItem = {
     businessName: string;
     tagline?: string;
     phone?: string;
+    secondaryPhone?: string;
+    fax?: string;
+    email?: string;
     website?: string;
     license?: string;
+    primaryColor?: string;
     accentColor?: string;
     secondaryColor?: string;
     logoUrl?: string;
@@ -172,6 +176,10 @@ export type MerchandiseOrderItem = {
     deviceModel?: string;
     cardTemplateId?: BusinessCardTemplateId;
     cardFinish?: CardFinishId;
+    badgeLabel?: string;
+    ratingBadgeText?: string;
+    bulletText?: string;
+    footerText?: string;
   };
 };
 
@@ -210,8 +218,12 @@ export type MerchandiseStudioInitialData = {
   trade: string;
   tagline: string;
   phone: string;
+  secondaryPhone?: string;
+  fax?: string;
+  email?: string;
   website: string;
   license: string;
+  primaryColor?: string;
   accentColor: string;
   secondaryColor: string;
   currentLogoUrl: string | null;

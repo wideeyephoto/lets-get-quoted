@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useId, useEffect } from 'react';
+import React from 'react';
 import type { MerchandiseProduct, MockupViewAngle, BusinessCardTemplateId, CardFinishId } from '@/lib/merchandise/types';
 import BusinessCardMockup from './BusinessCardMockup';
 import Html5ProductCanvasCaster from './Html5ProductCanvasCaster';
@@ -9,8 +9,8 @@ interface Props {
   product: MerchandiseProduct;
   activeColor: { id: string; name: string; hex: string; darkText?: boolean };
   activeTier: { quantity: number; unitPrice: number; totalPrice: number };
-  viewAngle: MockupViewAngle;
-  setViewAngle: (angle: MockupViewAngle) => void;
+  viewAngle?: MockupViewAngle;
+  setViewAngle?: (angle: MockupViewAngle) => void;
   backdropTheme?: 'clean' | 'dark' | 'jobsite';
   setBackdropTheme?: (theme: 'clean' | 'dark' | 'jobsite') => void;
   includeQrCode: boolean;
@@ -19,8 +19,16 @@ interface Props {
   businessName: string;
   tagline: string;
   phone: string;
+  secondaryPhone?: string;
+  fax?: string;
+  email?: string;
   website: string;
   license: string;
+  badgeLabel?: string;
+  ratingBadgeText?: string;
+  bulletText?: string;
+  footerText?: string;
+  primaryColor?: string;
   accentColor: string;
   secondaryColor: string;
   renderBranding: (mode?: 'color' | 'dark' | 'white', scale?: number) => React.ReactNode;
@@ -42,7 +50,7 @@ export default function Product3DMockupStage({
   product,
   activeColor,
   activeTier,
-  viewAngle,
+  viewAngle = 'duo',
   setViewAngle,
   backdropTheme = 'clean',
   setBackdropTheme,
@@ -50,8 +58,16 @@ export default function Product3DMockupStage({
   businessName,
   tagline,
   phone,
+  secondaryPhone,
+  fax,
+  email,
   website,
   license,
+  badgeLabel,
+  ratingBadgeText,
+  bulletText,
+  footerText,
+  primaryColor,
   accentColor,
   secondaryColor,
   renderBranding,
@@ -61,425 +77,115 @@ export default function Product3DMockupStage({
   cardFinish = 'velvet_matte',
   notepadTemplateId = 'work_order',
 }: Props) {
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [tilt, setTilt] = useState<{ rotX: number; rotY: number; glareX: number; glareY: number }>({
-    rotX: 0,
-    rotY: 0,
-    glareX: 50,
-    glareY: 50,
-  });
-  const [isInteractiveTilt, setIsInteractiveTilt] = useState(true);
-  const [isHovered, setIsHovered] = useState(false);
-  const [showBleedGuides, setShowBleedGuides] = useState(false);
-
-  // Unique IDs for SVG filters
-  const filterId = useId();
-
-  // Mouse move handler for realistic 3D tilt
-  function handleMouseMove(e: React.MouseEvent<HTMLDivElement>) {
-    if (!isInteractiveTilt || !stageRef.current) return;
-    const rect = stageRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    const normX = (x / rect.width) * 2 - 1; // -1 to +1
-    const normY = (y / rect.height) * 2 - 1; // -1 to +1
-
-    const maxRotX = 14;
-    const maxRotY = 16;
-
-    setTilt({
-      rotX: -normY * maxRotX,
-      rotY: normX * maxRotY,
-      glareX: Math.round((x / rect.width) * 100),
-      glareY: Math.round((y / rect.height) * 100),
-    });
-  }
-
-  function handleMouseLeave() {
-    setIsHovered(false);
-    setTilt({ rotX: 0, rotY: 0, glareX: 50, glareY: 50 });
-  }
-
-  function handleMouseEnter() {
-    setIsHovered(true);
-  }
-
-  // Keyboard shortcut to flip card ('Space' or 'f')
-  useEffect(() => {
-    if (product.id !== 'biz_cards') return;
-    function handleKeyDown(e: KeyboardEvent) {
-      if (
-        e.target instanceof HTMLInputElement ||
-        e.target instanceof HTMLTextAreaElement ||
-        e.target instanceof HTMLSelectElement
-      ) {
-        return;
-      }
-      if (e.code === 'Space' || e.key === 'f' || e.key === 'F') {
-        if (viewAngle === 'front') {
-          e.preventDefault();
-          setViewAngle('back');
-        } else if (viewAngle === 'back') {
-          e.preventDefault();
-          setViewAngle('front');
-        }
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [product.id, viewAngle, setViewAngle]);
-
-  // Base rotation per view angle
-  const baseRotation =
-    viewAngle === 'angle'
-      ? { x: 12, y: -22, z: 0, scale: 1.0 }
-      : viewAngle === 'detail'
-      ? { x: 4, y: -6, z: 0, scale: 1.35 }
-      : { x: 0, y: 0, z: 0, scale: 1.0 };
-
-  const finalRotX = baseRotation.x + tilt.rotX;
-  const finalRotY = baseRotation.y + tilt.rotY;
-  const finalScale = baseRotation.scale;
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', width: '100%' }}>
-      {/* 1. Stage Top Controls Bar */}
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          flexWrap: 'wrap',
-          gap: '0.75rem',
-          marginBottom: '0.85rem',
-        }}
-      >
-        {/* View Angle Switcher */}
+    <div
+      style={{
+        width: '100%',
+        minHeight: '520px',
+        borderRadius: '16px',
+        border: '1px solid rgba(255, 255, 255, 0.12)',
+        background: 'radial-gradient(ellipse at 50% 35%, #1e293b 0%, #0b101b 100%)',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2.5rem 1.5rem',
+        position: 'relative',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* 1. BUSINESS CARDS MOCKUP (2D Flat Proof: Front & Back Side-by-Side) */}
+      {product.id === 'biz_cards' && (
         <div
           style={{
             display: 'flex',
-            gap: '0.35rem',
-            background: 'rgba(11, 15, 23, 0.85)',
-            padding: '4px',
-            borderRadius: '10px',
-            border: '1px solid rgba(255, 255, 255, 0.12)',
-            backdropFilter: 'blur(12px)',
+            gap: '2.5rem',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            alignItems: 'center',
+            width: '100%',
           }}
         >
-          {product.supportedViews.map((vw) => (
-            <button
-              key={vw}
-              type="button"
-              onClick={() => setViewAngle(vw)}
-              aria-pressed={viewAngle === vw}
-              aria-label={`Switch to ${vw} view`}
-              className="focus-ring"
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <BusinessCardMockup
+              templateId={cardTemplateId}
+              finish={cardFinish}
+              side="front"
+              primaryColor={primaryColor}
+              activeColor={activeColor}
+              accentColor={accentColor}
+              secondaryColor={secondaryColor}
+              businessName={businessName}
+              tagline={tagline}
+              phone={phone}
+              secondaryPhone={secondaryPhone}
+              fax={fax}
+              email={email}
+              website={website}
+              license={license}
+              badgeLabel={badgeLabel}
+              ratingBadgeText={ratingBadgeText}
+              bulletText={bulletText}
+              footerText={footerText}
+              includeQrCode={includeQrCode}
+              renderBranding={renderBranding}
+            />
+            <span
               style={{
-                padding: '0.4rem 0.85rem',
-                borderRadius: '7px',
-                border: 'none',
-                background: viewAngle === vw ? 'var(--accent)' : 'transparent',
-                color: viewAngle === vw ? '#ffffff' : 'var(--muted)',
-                fontSize: '0.78rem',
+                fontSize: '0.7rem',
+                color: '#94a3b8',
                 fontWeight: 800,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem',
-                transition: 'all 0.15s ease',
+                letterSpacing: '0.08em',
+                background: 'rgba(255, 255, 255, 0.06)',
+                padding: '3px 12px',
+                borderRadius: '999px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
               }}
             >
-              <span>
-                {vw === 'duo'
-                  ? '🎴 Duo Spread'
-                  : vw === 'front'
-                  ? '👁️ Front'
-                  : vw === 'back'
-                  ? '🔄 Back'
-                  : vw === 'detail'
-                  ? '🔍 Macro Detail'
-                  : '📐 3D Angle'}
-              </span>
-            </button>
-          ))}
+              FRONT
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+            <BusinessCardMockup
+              templateId={cardTemplateId}
+              finish={cardFinish}
+              side="back"
+              primaryColor={primaryColor}
+              activeColor={activeColor}
+              accentColor={accentColor}
+              secondaryColor={secondaryColor}
+              businessName={businessName}
+              tagline={tagline}
+              phone={phone}
+              secondaryPhone={secondaryPhone}
+              fax={fax}
+              email={email}
+              website={website}
+              license={license}
+              badgeLabel={badgeLabel}
+              ratingBadgeText={ratingBadgeText}
+              bulletText={bulletText}
+              footerText={footerText}
+              includeQrCode={includeQrCode}
+              renderBranding={renderBranding}
+            />
+            <span
+              style={{
+                fontSize: '0.7rem',
+                color: '#94a3b8',
+                fontWeight: 800,
+                letterSpacing: '0.08em',
+                background: 'rgba(255, 255, 255, 0.06)',
+                padding: '3px 12px',
+                borderRadius: '999px',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+            >
+              BACK
+            </span>
+          </div>
         </div>
-
-        {/* Right Stage Tools */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-          {/* Safe Zone & Print Bleed Overlay Toggle */}
-          <button
-            type="button"
-            onClick={() => setShowBleedGuides((prev) => !prev)}
-            aria-pressed={showBleedGuides}
-            aria-label="Toggle print safe zone and bleed guides"
-            className="focus-ring"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.38rem 0.75rem',
-              borderRadius: '7px',
-              border: showBleedGuides ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
-              background: showBleedGuides ? 'rgba(255, 122, 33, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-              color: showBleedGuides ? '#ffffff' : 'var(--muted)',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-              transition: 'all 0.15s ease',
-            }}
-          >
-            <span>📐</span>
-            <span>{showBleedGuides ? 'Bleed Guides: ON' : 'Bleed Guides: OFF'}</span>
-          </button>
-
-          {/* Interactive Mouse 3D Tilt Toggle */}
-          <button
-            type="button"
-            onClick={() => setIsInteractiveTilt((prev) => !prev)}
-            aria-pressed={isInteractiveTilt}
-            aria-label="Toggle interactive mouse 3D tilt"
-            className="focus-ring"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '0.35rem',
-              padding: '0.38rem 0.75rem',
-              borderRadius: '7px',
-              border: isInteractiveTilt ? '1px solid var(--accent)' : '1px solid rgba(255, 255, 255, 0.12)',
-              background: isInteractiveTilt ? 'rgba(255, 122, 33, 0.2)' : 'rgba(255, 255, 255, 0.05)',
-              color: isInteractiveTilt ? '#ffffff' : 'var(--muted)',
-              fontSize: '0.74rem',
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            <span>🎯</span>
-            <span>{isInteractiveTilt ? '3D Tilt: ON' : 'Tilt: OFF'}</span>
-          </button>
-        </div>
-      </div>
-
-      {/* 2. Interactive 3D Canvas Stage */}
-      <div
-        ref={stageRef}
-        onMouseMove={handleMouseMove}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        style={{
-          width: '100%',
-          minHeight: '520px',
-          borderRadius: '20px',
-          border: '1px solid rgba(255, 255, 255, 0.12)',
-          background: 'radial-gradient(ellipse at 50% 35%, #1e293b 0%, #0b101b 100%)',
-          boxShadow: '0 30px 70px rgba(0, 0, 0, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '2.5rem',
-          position: 'relative',
-          overflow: 'hidden',
-          perspective: '1400px',
-          cursor: isInteractiveTilt ? 'grab' : 'default',
-        }}
-      >
-        {/* Dynamic Specular Sheen based on mouse coordinates */}
-        <div
-          style={{
-            position: 'absolute',
-            inset: 0,
-            pointerEvents: 'none',
-            background: `radial-gradient(circle 380px at ${tilt.glareX}% ${tilt.glareY}%, rgba(255, 255, 255, 0.08), transparent 70%)`,
-            zIndex: 1,
-            transition: 'opacity 0.2s ease',
-          }}
-        />
-
-        {/* Studio Floor Shadow Ellipse */}
-        <div
-          style={{
-            position: 'absolute',
-            bottom: '40px',
-            width: '540px',
-            height: '45px',
-            borderRadius: '50%',
-            background: 'radial-gradient(ellipse at center, rgba(0, 0, 0, 0.65) 0%, rgba(0, 0, 0, 0) 75%)',
-            pointerEvents: 'none',
-            transform: `scale(${1 + tilt.rotY * 0.01}) translateY(${tilt.rotX * 0.8}px)`,
-            zIndex: 1,
-          }}
-        />
-
-        {/* 3D Transform Object Holder */}
-        <div
-          style={{
-            position: 'relative',
-            zIndex: 2,
-            transformStyle: 'preserve-3d',
-            transform: `rotateX(${finalRotX}deg) rotateY(${finalRotY}deg) scale(${finalScale})`,
-            transition: isHovered ? 'transform 0.08s ease-out' : 'transform 0.4s ease-out',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '100%',
-            maxWidth: '680px',
-          }}
-        >
-          {/* ========================================================================= */}
-          {/* 1. BUSINESS CARDS MOCKUP */}
-          {/* ========================================================================= */}
-          {product.id === 'biz_cards' && (() => {
-            const renderFrontCard = (customStyle?: React.CSSProperties) => (
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="Front of card. Click to flip to back."
-                onClick={() => {
-                  if (viewAngle === 'front') setViewAngle('back');
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    if (viewAngle === 'front') setViewAngle('back');
-                  }
-                }}
-                style={{
-                  cursor: viewAngle === 'front' ? 'pointer' : 'default',
-                  outline: 'none',
-                }}
-              >
-                <BusinessCardMockup
-                  templateId={cardTemplateId}
-                  finish={cardFinish}
-                  side="front"
-                  activeColor={activeColor}
-                  accentColor={accentColor}
-                  secondaryColor={secondaryColor}
-                  businessName={businessName}
-                  tagline={tagline}
-                  phone={phone}
-                  website={website}
-                  license={license}
-                  includeQrCode={includeQrCode}
-                  renderBranding={renderBranding}
-                  glareX={tilt.glareX}
-                  showBleedGuides={showBleedGuides}
-                  customStyle={customStyle}
-                />
-              </div>
-            );
-
-            const renderBackCard = (customStyle?: React.CSSProperties) => (
-              <div
-                role="button"
-                tabIndex={0}
-                aria-label="Back of card. Click to flip to front."
-                onClick={() => {
-                  if (viewAngle === 'back') setViewAngle('front');
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' || e.key === ' ') {
-                    if (viewAngle === 'back') setViewAngle('front');
-                  }
-                }}
-                style={{
-                  cursor: viewAngle === 'back' ? 'pointer' : 'default',
-                  outline: 'none',
-                }}
-              >
-                <BusinessCardMockup
-                  templateId={cardTemplateId}
-                  finish={cardFinish}
-                  side="back"
-                  activeColor={activeColor}
-                  accentColor={accentColor}
-                  secondaryColor={secondaryColor}
-                  businessName={businessName}
-                  tagline={tagline}
-                  phone={phone}
-                  website={website}
-                  license={license}
-                  includeQrCode={includeQrCode}
-                  renderBranding={renderBranding}
-                  glareX={tilt.glareX}
-                  showBleedGuides={showBleedGuides}
-                  customStyle={customStyle}
-                />
-              </div>
-            );
-
-            return (
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '2.5rem',
-                  flexWrap: 'wrap',
-                  justifyContent: 'center',
-                  alignItems: 'center',
-                  transformStyle: 'preserve-3d',
-                  width: '100%',
-                  position: 'relative',
-                }}
-              >
-                {viewAngle === 'front' && renderFrontCard({ transform: 'translateZ(25px)' })}
-                {viewAngle === 'back' && renderBackCard({ transform: 'translateZ(25px)' })}
-                {viewAngle === 'angle' && (
-                  <>
-                    {renderFrontCard({ transform: 'translateZ(35px) rotateY(-12deg) rotateX(4deg)' })}
-                    {renderBackCard({ transform: 'translateZ(10px) rotateY(8deg) rotateX(2deg)' })}
-                  </>
-                )}
-                {viewAngle === 'duo' && (
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: '2.5rem',
-                      flexWrap: 'wrap',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      transformStyle: 'preserve-3d',
-                      width: '100%',
-                    }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-                      {renderFrontCard({ transform: 'translateZ(30px) rotateY(-8deg)' })}
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          color: '#cbd5e1',
-                          fontWeight: 800,
-                          letterSpacing: '0.08em',
-                          background: 'rgba(0,0,0,0.6)',
-                          padding: '2px 10px',
-                          borderRadius: '999px',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                      >
-                        FRONT FACE
-                      </span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-                      {renderBackCard({ transform: 'translateZ(20px) rotateY(8deg)' })}
-                      <span
-                        style={{
-                          fontSize: '0.68rem',
-                          color: '#cbd5e1',
-                          fontWeight: 800,
-                          letterSpacing: '0.08em',
-                          background: 'rgba(0,0,0,0.6)',
-                          padding: '2px 10px',
-                          borderRadius: '999px',
-                          border: '1px solid rgba(255,255,255,0.1)',
-                        }}
-                      >
-                        BACK FACE
-                      </span>
-                    </div>
-                  </div>
-                )}
-                {viewAngle === 'detail' && renderFrontCard({ transform: 'translateZ(45px) scale(1.1)' })}
-              </div>
-            );
-          })()}
+      )}
 
           {/* ========================================================================= */}
           {/* 2. NOTEPAD & ESTIMATING FORMS MOCKUP */}
@@ -511,14 +217,12 @@ export default function Product3DMockupStage({
                     height: '470px',
                     background: sheetBg,
                     borderRadius: '12px',
-                    boxShadow: '0 25px 50px rgba(0,0,0,0.35), 0 0 0 1px ' + sheetBorder + ', 0 8px 0 0 #475569',
+                    boxShadow: '0 20px 40px rgba(0,0,0,0.4), 0 0 0 1px ' + sheetBorder + ', 0 6px 0 0 #475569',
                     display: 'flex',
                     flexDirection: 'column',
                     padding: '1.5rem',
                     boxSizing: 'border-box',
                     position: 'relative',
-                    transformStyle: 'preserve-3d',
-                    ...customStyle,
                   }}
                 >
                   {/* Heavy Leatherette Binding Spine Tape */}
@@ -672,83 +376,80 @@ export default function Product3DMockupStage({
                     </div>
                   </div>
 
-                  {/* Corner duplicate peek if single view */}
-                  {!isDuplicateYellow && viewAngle !== 'duo' && (
-                    <div
-                      style={{
-                        position: 'absolute',
-                        bottom: '-8px',
-                        right: '-8px',
-                        width: '60px',
-                        height: '60px',
-                        background: '#fef08a',
-                        border: '1px solid #fde047',
-                        borderRadius: '0 0 10px 0',
-                        transform: 'rotate(-4deg)',
-                        zIndex: -1,
-                        boxShadow: '0 4px 10px rgba(0,0,0,0.15)',
-                      }}
-                    />
-                  )}
                 </div>
               );
             };
 
-            if (viewAngle === 'duo') {
-              return (
-                <div
-                  style={{
-                    display: 'flex',
-                    gap: '2.5rem',
-                    flexWrap: 'wrap',
-                    justifyContent: 'center',
-                    alignItems: 'center',
-                    transformStyle: 'preserve-3d',
-                    width: '100%',
-                  }}
-                >
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-                    {renderNotepadSheet(false, { transform: 'translateZ(30px) rotateY(-8deg)' })}
-                    <span style={{ fontSize: '0.68rem', color: '#cbd5e1', fontWeight: 800, letterSpacing: '0.08em', background: 'rgba(0,0,0,0.6)', padding: '2px 10px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      PART 1 • WHITE CUSTOMER ORIGINAL
-                    </span>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem' }}>
-                    {renderNotepadSheet(true, { transform: 'translateZ(20px) rotateY(8deg)' })}
-                    <span style={{ fontSize: '0.68rem', color: '#cbd5e1', fontWeight: 800, letterSpacing: '0.08em', background: 'rgba(0,0,0,0.6)', padding: '2px 10px', borderRadius: '999px', border: '1px solid rgba(255,255,255,0.1)' }}>
-                      PART 2 • YELLOW CONTRACTOR NCR DUPLICATE
-                    </span>
-                  </div>
+            return (
+              <div
+                style={{
+                  display: 'flex',
+                  gap: '2.5rem',
+                  flexWrap: 'wrap',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  width: '100%',
+                }}
+              >
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                  {renderNotepadSheet(false)}
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      color: '#94a3b8',
+                      fontWeight: 800,
+                      letterSpacing: '0.08em',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      padding: '3px 12px',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    PART 1 • CUSTOMER ORIGINAL (WHITE)
+                  </span>
                 </div>
-              );
-            }
-
-            return renderNotepadSheet(false, { transform: 'translateZ(20px)' });
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.75rem' }}>
+                  {renderNotepadSheet(true)}
+                  <span
+                    style={{
+                      fontSize: '0.7rem',
+                      color: '#94a3b8',
+                      fontWeight: 800,
+                      letterSpacing: '0.08em',
+                      background: 'rgba(255, 255, 255, 0.06)',
+                      padding: '3px 12px',
+                      borderRadius: '999px',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                  >
+                    PART 2 • CONTRACTOR DUPLICATE (YELLOW)
+                  </span>
+                </div>
+              </div>
+            );
           })()}
 
-          {/* Fallback for any other product via HTML5 Canvas Caster */}
-          {product.id !== 'biz_cards' && product.id !== 'notepads' && (
-            <Html5ProductCanvasCaster
-              productId={product.id}
-              viewAngle={viewAngle}
-              colorHex={activeColor.hex}
-              colorId={activeColor.id}
-              darkText={activeColor.darkText}
-              businessName={businessName}
-              tagline={tagline}
-              phone={phone}
-              website={website}
-              license={license}
-              accentColor={accentColor}
-              secondaryColor={secondaryColor}
-              logoSrc={logoSrc}
-              onExportReady={onExportReady}
-              glareX={tilt.glareX}
-              glareY={tilt.glareY}
-            />
-          )}
-        </div>
-      </div>
+      {/* Fallback for any other product via HTML5 Canvas Caster */}
+      {product.id !== 'biz_cards' && product.id !== 'notepads' && (
+        <Html5ProductCanvasCaster
+          productId={product.id}
+          viewAngle={viewAngle}
+          colorHex={activeColor.hex}
+          colorId={activeColor.id}
+          darkText={activeColor.darkText}
+          businessName={businessName}
+          tagline={tagline}
+          phone={phone}
+          website={website}
+          license={license}
+          accentColor={accentColor}
+          secondaryColor={secondaryColor}
+          logoSrc={logoSrc}
+          onExportReady={onExportReady}
+          glareX={50}
+          glareY={50}
+        />
+      )}
     </div>
   );
 }
