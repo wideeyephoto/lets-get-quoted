@@ -35941,6 +35941,605 @@ grant execute on function public.record_sms_shared_notice_reply(uuid, text, text
   to service_role;
 
 commit;
+
+-- Source: migrations/20260906121036_register_signalwire_dispatch_sender.sql
+-- Register the carrier-verified LGQ crew/subcontractor dispatch sender.
+--
+-- SignalWire confirms that the individual number assignment is Completed and
+-- that the exact phone resource is SMS-capable, Campaign-bound, and configured
+-- for the production POST LaML webhook. This migration performs no provider
+-- request and changes no runtime feature gate.
+
+begin;
+
+do $register_signalwire_dispatch_sender$
+declare
+  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_sender public.sms_sender_numbers%rowtype;
+begin
+  -- Use the same first lock as every SignalWire sender/voice identity mutation
+  -- before touching the inventory. The table's cross-rail trigger reacquires
+  -- this transaction lock safely and then checks unresolved voice ownership.
+  perform pg_catalog.pg_advisory_xact_lock(1280265031, 2108);
+
+  insert into public.sms_sender_numbers (
+    provider,
+    e164_number,
+    provider_number_id,
+    purpose,
+    account_id,
+    brand_id,
+    campaign_id,
+    assignment_id,
+    assignment_state,
+    inbound_resource_id,
+    inbound_webhook_url,
+    provisioning_status,
+    inbound_ready,
+    activated_at,
+    last_verified_at,
+    provider_brand_state,
+    provider_campaign_state,
+    provider_verified_at,
+    provider_phone_verified_at,
+    provider_sms_capable,
+    inbound_request_method,
+    inbound_message_handler,
+    updated_at
+  ) values (
+    'signalwire',
+    '+18103208333',
+    'b28fc2e0-3a92-43f0-a817-923defaf9c4c',
+    'lgq_dispatch',
+    null,
+    '4a09f38f-2de4-48b7-aba5-dac76a398ccf',
+    '19e7c875-3611-4b40-8429-7dae3b5e6553',
+    '5d101ac6-955f-40cf-a0b8-18b5b5121a4b',
+    'assigned',
+    '53ae4e4a-d03f-426b-9983-b09ba496fc43',
+    'https://app.letsgetquoted.com/api/sms/inbound',
+    'active',
+    true,
+    v_now,
+    v_now,
+    'complete',
+    'complete',
+    v_now,
+    v_now,
+    true,
+    'POST',
+    'laml_webhooks',
+    v_now
+  )
+  on conflict (provider, e164_number) do nothing;
+
+  select sender.* into v_sender
+    from public.sms_sender_numbers sender
+   where sender.provider = 'signalwire'
+     and sender.e164_number = '+18103208333'
+   for update;
+
+  if not found then
+    raise exception 'LGQ dispatch sender was not registered'
+      using errcode = '55000';
+  end if;
+
+  -- Never rewrite a collision. Provider phone, brand, Campaign, individual
+  -- assignment, inbound destination, purpose, and tenant shape are identity.
+  if v_sender.provider_number_id is distinct from 'b28fc2e0-3a92-43f0-a817-923defaf9c4c'
+     or v_sender.purpose is distinct from 'lgq_dispatch'
+     or v_sender.account_id is not null
+     or v_sender.brand_id is distinct from '4a09f38f-2de4-48b7-aba5-dac76a398ccf'
+     or v_sender.campaign_id is distinct from '19e7c875-3611-4b40-8429-7dae3b5e6553'
+     or v_sender.assignment_id is distinct from '5d101ac6-955f-40cf-a0b8-18b5b5121a4b'
+     or v_sender.inbound_resource_id is distinct from '53ae4e4a-d03f-426b-9983-b09ba496fc43'
+     or v_sender.inbound_webhook_url is distinct from 'https://app.letsgetquoted.com/api/sms/inbound'
+     or v_sender.provisioning_application_id is not null then
+    raise exception 'LGQ dispatch sender conflicts with canonical inventory identity'
+      using errcode = '23505';
+  end if;
+
+  -- The row is an egress and ingress authority. Refuse to complete if any live
+  -- carrier proof is absent or if an existing row is suspended/downgraded.
+  if v_sender.assignment_state is distinct from 'assigned'
+     or v_sender.provisioning_status is distinct from 'active'
+     or v_sender.inbound_ready is distinct from true
+     or v_sender.activated_at is null
+     or v_sender.last_verified_at is null
+     or v_sender.suspended_at is not null
+     or v_sender.provider_brand_state is distinct from 'complete'
+     or v_sender.provider_campaign_state is distinct from 'complete'
+     or v_sender.provider_verified_at is null
+     or v_sender.provider_phone_verified_at is null
+     or v_sender.provider_sms_capable is distinct from true
+     or pg_catalog.upper(coalesce(v_sender.inbound_request_method, '')) <> 'POST'
+     or pg_catalog.lower(coalesce(v_sender.inbound_message_handler, '')) <> 'laml_webhooks' then
+    raise exception 'LGQ dispatch sender lacks complete carrier activation proof'
+      using errcode = '55000';
+  end if;
+end;
+$register_signalwire_dispatch_sender$;
+
+-- SignalWire assignment order a2bac09b-99c8-4423-a1bc-0cacf02858fa is
+-- orchestration evidence, not the canonical individual assignment. The sender
+-- inventory's assignment_id deliberately stores individual assignment
+-- 5d101ac6-955f-40cf-a0b8-18b5b5121a4b. Signed provider callbacks retain the
+-- order separately in messaging_registry_callbacks.provider_order_id.
+
+commit;
+
+-- Source: migrations/20260906130000_sms_campaign_purpose_boundary.sql
+-- Bind the LGQ dispatch sender exclusively to crew/subcontractor traffic.
+--
+-- Existing history is preserved. New durable delivery intent is rejected at
+-- the enqueue boundary when exactly one side of the dispatch/crew pairing is
+-- present. Legacy shared-number crew field confirmations are rehomed onto the
+-- campaign-qualified dispatch lane; owner confirmations remain on shared.
+
+begin;
+
+alter table public.sms_events
+  drop constraint if exists sms_events_dispatch_category_match;
+alter table public.sms_events
+  add constraint sms_events_dispatch_category_match check (
+    sender_purpose is null
+    or billing_category is null
+    or (
+      (sender_purpose = 'lgq_dispatch')
+      = (billing_category = 'crew_message')
+    )
+  ) not valid;
+alter table public.sms_events
+  validate constraint sms_events_dispatch_category_match;
+
+do $purpose_boundary$
+declare
+  v_enqueue_oid oid := pg_catalog.to_regprocedure(
+    'public.enqueue_sms_delivery(uuid,text,text,text,text,text,text,text,text,uuid,uuid,uuid,timestamptz)'
+  );
+  v_enqueue_definition text;
+  v_sender_validation text := $sender_validation$
+  if p_sender_purpose is null or p_sender_purpose not in (
+    'lgq_shared', 'lgq_dispatch', 'contractor_dedicated'
+  ) then
+    raise exception 'SMS sender purpose is invalid'
+      using errcode = '22023';
+  end if;
+$sender_validation$;
+  v_dispatch_guard text := $dispatch_guard$
+  if (p_sender_purpose = 'lgq_dispatch')
+       is distinct from (p_billing_category = 'crew_message') then
+    raise exception 'LGQ dispatch sender and crew billing category must match'
+      using errcode = '22023';
+  end if;
+$dispatch_guard$;
+  v_field_oid oid := pg_catalog.to_regprocedure(
+    'public.apply_owner_field_action(uuid,uuid,text,jsonb,text,text)'
+  );
+  v_field_definition text;
+  v_old_field_sender text := $old_field_sender$p_sender_purpose => 'lgq_shared',$old_field_sender$;
+  v_new_field_sender text := $new_field_sender$p_sender_purpose => case when v_crew.id is not null then 'lgq_dispatch' else 'lgq_shared' end,$new_field_sender$;
+  v_old_field_number text := $old_field_number$p_sender_number_id => v_task.sender_number_id$old_field_number$;
+  v_new_field_number text := $new_field_number$p_sender_number_id => case when v_crew.id is not null then null::uuid else v_task.sender_number_id end$new_field_number$;
+  v_occurrences integer;
+begin
+  if v_enqueue_oid is null then
+    raise exception 'enqueue_sms_delivery function is missing';
+  end if;
+
+  select pg_catalog.pg_get_functiondef(v_enqueue_oid)
+    into v_enqueue_definition;
+
+  if pg_catalog.strpos(v_enqueue_definition, v_dispatch_guard) = 0 then
+    v_occurrences := (
+      pg_catalog.length(v_enqueue_definition)
+      - pg_catalog.length(pg_catalog.replace(v_enqueue_definition, v_sender_validation, ''))
+    ) / pg_catalog.length(v_sender_validation);
+    if v_occurrences <> 1 then
+      raise exception 'enqueue_sms_delivery sender validation shape changed';
+    end if;
+    v_enqueue_definition := pg_catalog.replace(
+      v_enqueue_definition,
+      v_sender_validation,
+      v_sender_validation || v_dispatch_guard
+    );
+    execute v_enqueue_definition;
+  end if;
+
+  if v_field_oid is null then
+    raise exception 'apply_owner_field_action function is missing';
+  end if;
+
+  select pg_catalog.pg_get_functiondef(v_field_oid)
+    into v_field_definition;
+
+  if pg_catalog.strpos(v_field_definition, v_new_field_sender) = 0 then
+    v_occurrences := (
+      pg_catalog.length(v_field_definition)
+      - pg_catalog.length(pg_catalog.replace(v_field_definition, v_old_field_sender, ''))
+    ) / pg_catalog.length(v_old_field_sender);
+    if v_occurrences <> 1 then
+      raise exception 'apply_owner_field_action sender selection shape changed';
+    end if;
+    v_field_definition := pg_catalog.replace(
+      v_field_definition,
+      v_old_field_sender,
+      v_new_field_sender
+    );
+  end if;
+
+  if pg_catalog.strpos(v_field_definition, v_new_field_number) = 0 then
+    v_occurrences := (
+      pg_catalog.length(v_field_definition)
+      - pg_catalog.length(pg_catalog.replace(v_field_definition, v_old_field_number, ''))
+    ) / pg_catalog.length(v_old_field_number);
+    if v_occurrences <> 1 then
+      raise exception 'apply_owner_field_action sender pinning shape changed';
+    end if;
+    v_field_definition := pg_catalog.replace(
+      v_field_definition,
+      v_old_field_number,
+      v_new_field_number
+    );
+  end if;
+  execute v_field_definition;
+end
+$purpose_boundary$;
+
+revoke all on function public.enqueue_sms_delivery(
+  uuid,text,text,text,text,text,text,text,text,uuid,uuid,uuid,timestamptz
+) from public, anon, authenticated, service_role;
+grant execute on function public.enqueue_sms_delivery(
+  uuid,text,text,text,text,text,text,text,text,uuid,uuid,uuid,timestamptz
+) to service_role;
+
+revoke all on function public.apply_owner_field_action(
+  uuid,uuid,text,jsonb,text,text
+) from public, anon, authenticated;
+grant execute on function public.apply_owner_field_action(
+  uuid,uuid,text,jsonb,text,text
+) to service_role;
+
+do $verify_boundary$
+declare
+  v_enqueue_definition text := pg_catalog.pg_get_functiondef(
+    'public.enqueue_sms_delivery(uuid,text,text,text,text,text,text,text,text,uuid,uuid,uuid,timestamptz)'::pg_catalog.regprocedure
+  );
+  v_field_definition text := pg_catalog.pg_get_functiondef(
+    'public.apply_owner_field_action(uuid,uuid,text,jsonb,text,text)'::pg_catalog.regprocedure
+  );
+begin
+  if pg_catalog.strpos(
+    v_enqueue_definition,
+    '(p_sender_purpose = ''lgq_dispatch'')'
+  ) = 0 or pg_catalog.strpos(
+    v_enqueue_definition,
+    '(p_billing_category = ''crew_message'')'
+  ) = 0 then
+    raise exception 'SMS Campaign purpose guard was not installed';
+  end if;
+
+  if pg_catalog.strpos(
+    v_field_definition,
+    'case when v_crew.id is not null then ''lgq_dispatch'' else ''lgq_shared'' end'
+  ) = 0 or pg_catalog.strpos(
+    v_field_definition,
+    'case when v_crew.id is not null then null::uuid else v_task.sender_number_id end'
+  ) = 0 then
+    raise exception 'Field confirmation Campaign routing was not installed';
+  end if;
+
+  if pg_catalog.has_function_privilege(
+       'authenticated',
+       'public.enqueue_sms_delivery(uuid,text,text,text,text,text,text,text,text,uuid,uuid,uuid,timestamptz)',
+       'execute'
+     ) or pg_catalog.has_function_privilege(
+       'anon',
+       'public.enqueue_sms_delivery(uuid,text,text,text,text,text,text,text,text,uuid,uuid,uuid,timestamptz)',
+       'execute'
+     ) then
+    raise exception 'SMS enqueue privilege boundary changed';
+  end if;
+
+  if not exists (
+    select 1
+      from pg_catalog.pg_constraint constraint_row
+     where constraint_row.conrelid = 'public.sms_events'::pg_catalog.regclass
+       and constraint_row.conname = 'sms_events_dispatch_category_match'
+       and constraint_row.contype = 'c'
+       and constraint_row.convalidated
+  ) then
+    raise exception 'SMS Campaign purpose table constraint was not installed';
+  end if;
+end
+$verify_boundary$;
+
+notify pgrst, 'reload schema';
+
+commit;
+
+-- Source: migrations/20260906131500_messaging_registry_callback_fail_closed.sql
+-- Fail closed when SignalWire reports that a platform/shared sender's
+-- Campaign Registry number assignment failed.
+--
+-- The prior callback function changed only assignment_state. For an active
+-- sender, sms_sender_numbers_activation_shape requires assignment_state to
+-- remain assigned, so PostgreSQL rejected that partial update and rolled back
+-- the callback receipt with it. The sender therefore remained eligible for
+-- egress after a carrier failure.
+
+begin;
+
+create or replace function public.ingest_messaging_registry_callback(
+  p_receipt_key text,
+  p_body_sha256 text,
+  p_raw_body text,
+  p_content_type text,
+  p_request_method text,
+  p_request_path text,
+  p_request_headers jsonb,
+  p_signature_header_name text,
+  p_signature_header_value text,
+  p_parsed jsonb,
+  p_provider_order_id text,
+  p_provider_assignment_id text,
+  p_provider_campaign_id text,
+  p_provider_phone_number text,
+  p_provider_state text,
+  p_normalized_state text,
+  p_failure_code text,
+  p_failure_detail text
+)
+returns table (
+  callback_id uuid,
+  inserted boolean,
+  matched_application_id uuid,
+  disposition text
+)
+language plpgsql
+security definer
+set search_path = pg_catalog, pg_temp
+set timezone to 'UTC'
+as $$
+declare
+  v_now timestamptz := pg_catalog.clock_timestamp();
+  v_existing public.messaging_registry_callbacks%rowtype;
+  v_application public.messaging_registration_applications%rowtype;
+  v_sender public.sms_sender_numbers%rowtype;
+  v_matched boolean := false;
+  v_sender_match_count integer := 0;
+  v_account uuid;
+  v_status text;
+  v_id uuid;
+begin
+  if p_receipt_key is null or pg_catalog.length(pg_catalog.btrim(p_receipt_key)) = 0
+     or coalesce(p_body_sha256, '') !~ '^[0-9a-f]{64}$'
+     or p_raw_body is null then
+    raise exception 'registry callback input is invalid' using errcode = '22023';
+  end if;
+
+  select c.* into v_existing
+    from public.messaging_registry_callbacks c
+   where c.provider = 'signalwire' and c.receipt_key = p_receipt_key
+   for update;
+
+  if found then
+    -- A replay must be byte-identical. Differing bytes under one receipt key
+    -- means the key was built from something that does not identify the event.
+    if v_existing.body_sha256 is distinct from p_body_sha256 then
+      raise exception 'registry callback already received with different bytes'
+        using errcode = '23505';
+    end if;
+    return query select v_existing.id, false, v_existing.application_id,
+                        v_existing.processing_status;
+    return;
+  end if;
+
+  -- 1. Try matching contractor application by order id.
+  if p_provider_order_id is not null then
+    select a.* into v_application
+      from public.messaging_registration_applications a
+     where a.assignment_order_id = p_provider_order_id
+     for update;
+    v_matched := found;
+  end if;
+
+  -- 2. Try matching contractor application by phone number or assignment id.
+  if not v_matched then
+    if p_provider_phone_number is not null then
+      select a.* into v_application
+        from public.messaging_registration_applications a
+       where a.purchased_number = p_provider_phone_number
+       order by a.created_at desc
+       limit 1
+       for update;
+      v_matched := found;
+    end if;
+
+    if not v_matched and p_provider_assignment_id is not null then
+      select a.* into v_application
+        from public.messaging_registration_applications a
+       where a.assignment_id = p_provider_assignment_id
+       order by a.created_at desc
+       limit 1
+       for update;
+      v_matched := found;
+    end if;
+  end if;
+
+  if v_matched and v_application.id is not null then
+    v_account := v_application.account_id;
+    v_status  := 'received';
+  else
+    -- 3. Check platform/shared sender inventory. Every supplied identifier must
+    -- identify the same row. In particular, a phone/assignment conflict must
+    -- never fall back to its Campaign, and Campaign-only callbacks mutate a
+    -- sender only when that Campaign has exactly one platform number.
+    if p_provider_phone_number is not null
+       or p_provider_assignment_id is not null
+       or p_provider_campaign_id is not null then
+      -- Sender provisioning and platform registration use this same lock. It
+      -- keeps the cardinality proof and row lock in one inventory snapshot.
+      perform pg_catalog.pg_advisory_xact_lock(1280265031, 2108);
+
+      select pg_catalog.count(*)::integer into v_sender_match_count
+        from public.sms_sender_numbers s
+       where s.provider = 'signalwire'
+         and s.purpose in ('lgq_shared', 'lgq_dispatch')
+         and (p_provider_phone_number is null or s.e164_number = p_provider_phone_number)
+         and (p_provider_assignment_id is null or s.assignment_id = p_provider_assignment_id)
+         and (p_provider_campaign_id is null or s.campaign_id = p_provider_campaign_id);
+
+      if v_sender_match_count = 1 then
+        select s.* into strict v_sender
+          from public.sms_sender_numbers s
+         where s.provider = 'signalwire'
+           and s.purpose in ('lgq_shared', 'lgq_dispatch')
+           and (p_provider_phone_number is null or s.e164_number = p_provider_phone_number)
+           and (p_provider_assignment_id is null or s.assignment_id = p_provider_assignment_id)
+           and (p_provider_campaign_id is null or s.campaign_id = p_provider_campaign_id)
+         for update;
+      end if;
+    end if;
+
+    if v_sender.id is not null then
+      v_account := v_sender.account_id;
+      v_status  := 'processed';
+      v_application.id := v_sender.provisioning_application_id;
+
+      if p_normalized_state = 'complete' then
+        -- Preserve the existing completion behavior: this callback records
+        -- assignment proof, but never activates or unsuspends a sender.
+        update public.sms_sender_numbers
+           set assignment_state = 'assigned',
+               last_verified_at = v_now,
+               updated_at = v_now
+         where id = v_sender.id;
+      elsif p_normalized_state = 'failed' then
+        -- assignment_state and provisioning_status move together so the
+        -- activation CHECK accepts the transition and egress immediately loses
+        -- eligibility. Keep inbound_ready truthful as configuration evidence:
+        -- the webhook is still configured, while the independent active,
+        -- assigned, and unsuspended predicates quarantine both runtime rails.
+        -- The suspension timestamp requires explicit verified recovery.
+        update public.sms_sender_numbers
+           set assignment_state = 'failed',
+               provisioning_status = 'failed',
+               suspended_at = coalesce(suspended_at, v_now),
+               last_verified_at = v_now,
+               updated_at = v_now
+         where id = v_sender.id;
+      end if;
+
+      if not found then
+        raise exception 'registry callback could not update its sender row'
+          using errcode = '55000';
+      end if;
+    else
+      -- A callback naming an identifier LGQ cannot resolve is still stored.
+      v_application.id := null;
+      v_account := null;
+      v_status  := 'unmatched';
+    end if;
+  end if;
+
+  insert into public.messaging_registry_callbacks (
+    provider, receipt_key, body_sha256, raw_body, content_type,
+    request_method, request_path, request_headers,
+    signature_header_name, signature_header_value, parsed,
+    provider_order_id, provider_assignment_id, provider_campaign_id,
+    provider_phone_number, provider_state, normalized_state,
+    failure_code, failure_detail,
+    application_id, account_id, processing_status, processed_at
+  ) values (
+    'signalwire', p_receipt_key, p_body_sha256, p_raw_body, p_content_type,
+    p_request_method, p_request_path, coalesce(p_request_headers, '{}'::jsonb),
+    p_signature_header_name, p_signature_header_value, p_parsed,
+    p_provider_order_id, p_provider_assignment_id, p_provider_campaign_id,
+    p_provider_phone_number, p_provider_state, p_normalized_state,
+    p_failure_code, p_failure_detail,
+    v_application.id, v_account, v_status,
+    case when v_status <> 'received' then v_now else null end
+  )
+  returning id into v_id;
+
+  if v_id is null then
+    raise exception 'registry callback was not stored' using errcode = '55000';
+  end if;
+
+  return query select v_id, true, v_application.id, v_status;
+end;
+$$;
+
+-- CREATE OR REPLACE retains privileges today, but restate the service-role-only
+-- contract so a fresh schema and an upgraded database converge exactly.
+revoke all on function public.ingest_messaging_registry_callback(
+  text, text, text, text, text, text, jsonb, text, text, jsonb,
+  text, text, text, text, text, text, text, text)
+  from public, anon, authenticated, service_role;
+grant execute on function public.ingest_messaging_registry_callback(
+  text, text, text, text, text, text, jsonb, text, text, jsonb,
+  text, text, text, text, text, text, text, text)
+  to service_role;
+
+do $verify_registry_callback_fail_closed$
+declare
+  v_definition text;
+begin
+  select pg_catalog.pg_get_functiondef(p.oid) into v_definition
+    from pg_catalog.pg_proc p
+    join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'public'
+     and p.proname = 'ingest_messaging_registry_callback'
+     and pg_catalog.pg_get_function_identity_arguments(p.oid) =
+       'p_receipt_key text, p_body_sha256 text, p_raw_body text, p_content_type text, p_request_method text, p_request_path text, p_request_headers jsonb, p_signature_header_name text, p_signature_header_value text, p_parsed jsonb, p_provider_order_id text, p_provider_assignment_id text, p_provider_campaign_id text, p_provider_phone_number text, p_provider_state text, p_normalized_state text, p_failure_code text, p_failure_detail text';
+
+  if v_definition is null
+     or v_definition not like '%provisioning_status = ''failed''%'
+     or v_definition not like '%suspended_at = coalesce(suspended_at, v_now)%'
+     or v_definition not like '%last_verified_at = v_now%'
+     or v_definition not like '%pg_advisory_xact_lock(1280265031, 2108)%'
+     or v_definition not like '%v_sender_match_count = 1%'
+     or v_definition not like '%p_provider_phone_number is null or s.e164_number = p_provider_phone_number%'
+     or v_definition not like '%p_provider_assignment_id is null or s.assignment_id = p_provider_assignment_id%'
+     or v_definition not like '%p_provider_campaign_id is null or s.campaign_id = p_provider_campaign_id%'
+     or v_definition like '%inbound_ready = false%' then
+    raise exception 'registry callback failure quarantine is incomplete';
+  end if;
+
+  if not exists (
+    select 1
+      from pg_catalog.pg_proc p
+      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+     where n.nspname = 'public'
+       and p.proname = 'ingest_messaging_registry_callback'
+       and p.prosecdef
+       and p.proconfig @> array['search_path=pg_catalog, pg_temp', 'TimeZone=UTC']
+  ) then
+    raise exception 'registry callback security configuration drifted';
+  end if;
+
+  if not pg_catalog.has_function_privilege(
+       'service_role',
+       'public.ingest_messaging_registry_callback(text,text,text,text,text,text,jsonb,text,text,jsonb,text,text,text,text,text,text,text,text)',
+       'execute'
+     )
+     or pg_catalog.has_function_privilege(
+       'authenticated',
+       'public.ingest_messaging_registry_callback(text,text,text,text,text,text,jsonb,text,text,jsonb,text,text,text,text,text,text,text,text)',
+       'execute'
+     )
+     or pg_catalog.has_function_privilege(
+       'anon',
+       'public.ingest_messaging_registry_callback(text,text,text,text,text,text,jsonb,text,text,jsonb,text,text,text,text,text,text,text,text)',
+       'execute'
+     ) then
+    raise exception 'registry callback execution privilege drifted';
+  end if;
+end;
+$verify_registry_callback_fail_closed$;
+
+commit;
 -- END GENERATED SIGNALWIRE MESSAGING AND VOICE RUNTIME
 
 

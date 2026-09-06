@@ -70,6 +70,8 @@ describe('AI Voice Emergency SMS Alerts (Tier 1)', () => {
     const sent = sentDeliveries[0] as Record<string, unknown>;
     expect(sent.p_phone_number).toBe('+12485550100');
     expect(sent.p_message_kind).toBe('owner-voice-emergency-alert');
+    expect(sent.p_billing_category).toBe('owner_alert');
+    expect(sent.p_sender_purpose).toBe('lgq_shared');
     expect(sent.p_body).toContain('🚨 EMERGENCY CALL for BrokePipes Plumbing');
     expect(sent.p_body).toContain('/dashboard/voice-calls/call-xyz-123');
   });
@@ -163,6 +165,8 @@ describe('AI Voice Emergency SMS Alerts (Tier 1)', () => {
     const sent = sentDeliveries[0] as Record<string, unknown>;
     expect(sent.p_phone_number).toBe('+12485550100');
     expect(sent.p_message_kind).toBe('owner-voice-call-notification');
+    expect(sent.p_billing_category).toBe('owner_alert');
+    expect(sent.p_sender_purpose).toBe('lgq_shared');
     expect(sent.p_body).toContain('📞 New call answered for BrokePipes Plumbing');
     expect(sent.p_body).toContain('Bob Miller (+12485550199)');
   });

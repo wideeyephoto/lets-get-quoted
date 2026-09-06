@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import { createAdminClient } from '@/lib/auth';
+import { createHaloClaimToken } from '@/lib/neighborhood-halo-claim-token';
 import { getHaloCampaignById } from '@/lib/neighborhood-halo-service';
 import HaloClaimForm from './HaloClaimForm';
 import styles from './halo-claim.module.css';
@@ -43,6 +44,7 @@ export default async function HaloClaimPage({
 
   const businessName = (site?.company_name as string | undefined) || account?.business_name || 'Our Team';
   const phone = account?.phone || '';
+  const claimToken = createHaloClaimToken(campaign.id, campaign.accountId);
 
   return (
     <div className={styles.container}>
@@ -116,6 +118,7 @@ export default async function HaloClaimPage({
 
         <HaloClaimForm
           campaignId={campaign.id}
+          claimToken={claimToken}
           streetName={campaign.streetName}
           city={campaign.city}
           businessName={businessName}

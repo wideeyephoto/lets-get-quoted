@@ -311,7 +311,6 @@ export async function sendOwnerVoiceCallNotificationSms(input: {
       messageKind: 'owner-voice-call-notification',
       category: 'owner_alert',
       context: 'owner',
-      senderPurpose: 'lgq_dispatch',
       idempotencyKey: input.idempotencyKey,
     });
   } catch (error) {
@@ -1609,8 +1608,12 @@ export async function sendCrewWelcomeSms(params: {
       context: 'crew',
       eventType: 'crew_welcome',
       crewId: params.crewId,
-      senderPurpose: 'lgq_shared',
-      idempotencyKey: `crew-welcome:${params.crewId}:${normalized}`,
+      senderPurpose: 'lgq_dispatch',
+      // SMS delivery keys deliberately exclude "+" even though destinations
+      // are stored as E.164. Keep the destination in the key so a phone change
+      // can receive its own welcome, but encode it as digits for both the
+      // application and PostgreSQL validators.
+      idempotencyKey: `crew-welcome:${params.crewId}:${normalized.replace(/^\+/, '')}`,
     });
     return { status: 'queued', eventId };
   } catch (sendError) {

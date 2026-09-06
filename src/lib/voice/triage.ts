@@ -116,7 +116,6 @@ export async function notifyEmergencyCall(
       messageKind: 'owner-voice-emergency-alert',
       billingCategory: 'owner_alert',
       context: 'owner',
-      senderPurpose: 'lgq_dispatch',
       idempotencyKey: callId ? `voice-emergency:${accountId}:${callId}` : undefined,
     }, admin);
     if (!queued?.eventId) throw new Error('Voice notification was not durably queued');
@@ -187,7 +186,6 @@ export async function notifyOrdinaryCall(
       messageKind: 'owner-voice-call-notification',
       billingCategory: 'owner_alert',
       context: 'owner',
-      senderPurpose: 'lgq_dispatch',
       idempotencyKey: callId ? `voice-call-notify:${accountId}:${callId}` : undefined,
     }, admin);
     if (!queued?.eventId) throw new Error('Voice notification was not durably queued');

@@ -242,6 +242,9 @@ function ownerAlertIdempotencyKey(claim: SmsInboundActionClaim): string {
 }
 
 async function isOwnerFieldIntake(claim: SmsInboundActionClaim, admin: SupabaseClient): Promise<boolean> {
+  // Dispatch remains on the generic action rail: it owns YES/NO responses to
+  // subcontractor offers. Diverting it wholesale into field intake would turn
+  // those decisions into no_action confirmations.
   if (claim.senderPurpose === 'lgq_shared') return true;
   if (claim.senderPurpose === 'contractor_dedicated') {
     if (typeof admin?.from !== 'function') return false;

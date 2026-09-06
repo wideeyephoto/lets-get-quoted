@@ -102,6 +102,13 @@ export async function enqueueSmsDelivery(
   const eventType = requiredName(input.eventType ?? messageKind.replace(/-/g, '_'), 'SMS event type');
   const idempotencyKey = input.idempotencyKey ?? newSmsIdempotencyKey(messageKind);
   if (!IDEMPOTENCY_KEY.test(idempotencyKey)) throw new Error('SMS idempotency key is invalid.');
+  const senderPurpose = input.senderPurpose ?? senderPurposeFor(input.billingCategory);
+  // The LGQ dispatch Campaign is registered only for crew/subcontractor traffic.
+  // Keep both directions fail-closed so crew traffic cannot escape onto another
+  // Campaign and non-crew traffic cannot enter the dispatch Campaign.
+  if ((senderPurpose === 'lgq_dispatch') !== (input.billingCategory === 'crew_message')) {
+    throw new Error('LGQ dispatch sender and crew billing category must match.');
+  }
 
   let availableAt = input.availableAt;
   if (!availableAt && !input.bypassQuietHours && input.billingCategory === 'customer_message') {
@@ -118,7 +125,7 @@ export async function enqueueSmsDelivery(
     p_body: input.body,
     p_message_kind: messageKind,
     p_billing_category: input.billingCategory,
-    p_sender_purpose: input.senderPurpose ?? senderPurposeFor(input.billingCategory),
+    p_sender_purpose: senderPurpose,
     p_context: input.context,
     p_event_type: eventType,
     p_idempotency_key: idempotencyKey,

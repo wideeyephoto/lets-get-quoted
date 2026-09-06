@@ -1,13 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import type { SanitizedTranscriptTurn } from '@/lib/voice/call-workspace';
-import { formatCallLength } from '@/lib/voice/call-formatting';
+import { formatCallLength, isBackendJargonOrJson } from '@/lib/voice/call-formatting';
 import styles from './call-detail.module.css';
 
 export default function InteractiveTranscriptViewer({
   callId,
-  transcript,
+  transcript: rawTranscript,
   recordingStatus,
   recordingDurationSeconds,
   isProvisional,
@@ -18,6 +18,12 @@ export default function InteractiveTranscriptViewer({
   recordingDurationSeconds: number | null;
   isProvisional: boolean;
 }) {
+  const transcript = useMemo(
+    () => (Array.isArray(rawTranscript) ? rawTranscript : []).filter(
+      (t) => t && typeof t.content === 'string' && !isBackendJargonOrJson(t.content),
+    ),
+    [rawTranscript],
+  );
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);

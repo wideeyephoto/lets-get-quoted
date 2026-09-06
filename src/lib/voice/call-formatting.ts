@@ -169,3 +169,93 @@ export function formatDispositionLabel(disposition: VoiceCallDisposition): strin
   }
 }
 
+/**
+ * Detects if a transcript turn's content represents internal backend artifacts,
+ * SWAIG/SWML tool executions, or post-prompt structured intake JSON summaries
+ * rather than natural human conversation.
+ */
+export function isBackendJargonOrJson(rawContent: string): boolean {
+  const text = rawContent.trim();
+  if (!text) return true;
+
+  // 1. Strip markdown code fences if present (e.g. ```json ... ``` or ``` ... ```)
+  const unquoted = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '').trim();
+
+  // 2. Direct JSON object/array test
+  if (
+    (unquoted.startsWith('{') && unquoted.endsWith('}')) ||
+    (unquoted.startsWith('[') && unquoted.endsWith(']'))
+  ) {
+    try {
+      const parsed = JSON.parse(unquoted);
+      if (typeof parsed === 'object' && parsed !== null) {
+        return true;
+      }
+    } catch {
+      // Not strictly valid JSON, but let other checks catch malformed tool/jargon strings
+    }
+  }
+
+  // 3. Known tool / schema / SWAIG signatures
+  const lower = text.toLowerCase();
+  if (
+    lower.startsWith('swaig') ||
+    lower.includes('{"function"') ||
+    lower.includes('"function":') ||
+    lower.includes('{"argument"') ||
+    lower.includes('"argument":') ||
+    lower.includes('{"response"') ||
+    lower.includes('"response":') ||
+    lower.includes('{"action"') ||
+    lower.includes('"action":') ||
+    lower.includes('{"output"') ||
+    lower.includes('"output":') ||
+    lower.includes('{"result"') ||
+    lower.includes('"result":') ||
+    lower.includes('{"swml"') ||
+    lower.includes('"swml":') ||
+    lower.includes('{"status"') ||
+    lower.includes('"status":')
+  ) {
+    if (text.includes('{') || text.includes('}') || text.includes('(') || lower.startsWith('swaig')) {
+      return true;
+    }
+  }
+
+  // 4. Post-prompt structured summary extraction signatures
+  // (e.g., caller_name, work_requested, hazard_type, follow_up_action)
+  const structuredFieldCount = [
+    'caller_name',
+    'caller_phone',
+    'service_address',
+    'work_requested',
+    'hazard_type',
+    'follow_up_action',
+    'requested_slot',
+    'booked_slot',
+    'transfer_requested',
+  ].filter((key) => lower.includes(key)).length;
+
+  if (structuredFieldCount >= 2) {
+    return true;
+  }
+
+  // 5. Embedded JSON block (e.g., "Summary: { ... }" or "{ ... } (end of call)")
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]);
+      if (typeof parsed === 'object' && parsed !== null) {
+        const remaining = text.replace(jsonMatch[0], '').trim();
+        if (remaining.length < 50 || lower.includes('summary') || lower.includes('intake') || lower.includes('post_prompt')) {
+          return true;
+        }
+      }
+    } catch {
+      // not valid JSON
+    }
+  }
+
+  return false;
+}
+

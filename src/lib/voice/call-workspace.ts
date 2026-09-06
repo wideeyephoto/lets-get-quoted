@@ -4,9 +4,12 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { boundedVoiceHistoryDays } from '@/lib/voice/call-history';
 import { detectCallEmergency } from '@/lib/voice/triage';
 
-import type {
-  VoiceCallOutcome,
-  VoiceCallDisposition,
+import {
+  formatOutcomeLabel,
+  formatDispositionLabel,
+  isBackendJargonOrJson,
+  type VoiceCallOutcome,
+  type VoiceCallDisposition,
 } from '@/lib/voice/call-formatting';
 export type {
   VoiceCallOutcome,
@@ -15,7 +18,8 @@ export type {
 export {
   formatOutcomeLabel,
   formatDispositionLabel,
-} from '@/lib/voice/call-formatting';
+  isBackendJargonOrJson,
+};
 
 export type VoiceCallUrgency = 'normal' | 'urgent' | 'emergency';
 
@@ -605,9 +609,9 @@ export function sanitizeTranscriptTurns(rawLog: unknown): readonly SanitizedTran
 
     if (!content) continue;
 
-    // Filter out system turns, tool instructions, and internal SWAIG schemas
-    if (roleRaw === 'system' || roleRaw === 'tool' || roleRaw === 'function') continue;
-    if (content.startsWith('SWAIG') || content.includes('{"function"') || content.includes('{"argument"')) continue;
+    // Filter out system turns, tool instructions, data payloads, and internal JSON/SWAIG jargon
+    if (roleRaw === 'system' || roleRaw === 'tool' || roleRaw === 'function' || roleRaw === 'data' || roleRaw === 'metadata') continue;
+    if (isBackendJargonOrJson(content)) continue;
 
     if (roleRaw === 'user' || roleRaw === 'caller') {
       turns.push({

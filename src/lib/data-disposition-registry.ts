@@ -2101,18 +2101,7 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Marketing tracking links and collateral attribution
-  marketing_tracking_links: {
-    tableName: 'marketing_tracking_links',
-    relationship: 'direct_account_id',
-    primaryKeyColumn: 'id',
-    localAction: 'delete',
-    portability: 'full',
-    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
-    legalHoldBehavior: 'block_disposal_preserve_snapshot',
-  },
-
-  // Neighborhood Halo contractor ad settings
+  // Per-workspace Neighborhood Halo launch and budget preferences
   neighborhood_halo_settings: {
     tableName: 'neighborhood_halo_settings',
     relationship: 'direct_account_id',
@@ -2123,13 +2112,23 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
-  // Neighborhood Halo 1-mile hyper-local ad campaigns
+  // Neighborhood Halo micro-ad campaign operations and results
   neighborhood_halo_campaigns: {
     tableName: 'neighborhood_halo_campaigns',
     relationship: 'direct_account_id',
     primaryKeyColumn: 'id',
-    localAction: 'anonymize_columns',
-    targetColumns: ['street_name', 'neighborhood_name', 'city', 'state', 'zip'],
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
+  // Marketing tracking links and collateral attribution
+  marketing_tracking_links: {
+    tableName: 'marketing_tracking_links',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
     portability: 'full',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 365, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',

@@ -43,6 +43,63 @@ describe('transcript sanitization', () => {
     expect(sanitizeTranscriptTurns(undefined)).toEqual([]);
     expect(sanitizeTranscriptTurns([null, {}, { role: 'system' }])).toEqual([]);
   });
+
+  it('filters out post-prompt structured extraction JSON summaries (as seen in call dad0ff1e)', () => {
+    const rawConversation = [
+      { role: 'user', content: "You know, why don't we do try a new lead? ----" },
+      { role: 'assistant', content: 'Sure, I can help with that. What is the full name for the new lead?' },
+      { role: 'user', content: 'Terry Woohoo.' },
+      { role: 'assistant', content: 'Got it, Terry Woohoo. What is the contact phone number for this lead?' },
+      { role: 'user', content: 'None.' },
+      { role: 'assistant', content: 'No problem. What is the address for Terry Woohoo?' },
+      {
+        role: 'assistant',
+        content: '{ "caller_name": "Terry Woohoo", "caller_phone": null, "service_address": null, "work_requested": "new lead", "urgency": "normal", "is_emergency": false, "hazard_type": null, "requested_slot": null, "booked_slot": null, "transfer_requested": false, "follow_up_action": "none", "confidence": 0 }',
+      },
+    ];
+
+    const sanitized = sanitizeTranscriptTurns(rawConversation);
+
+    // The trailing post-prompt JSON extraction object must be filtered out
+    expect(sanitized).toHaveLength(6);
+    expect(sanitized[sanitized.length - 1]).toEqual({
+      role: 'assistant',
+      content: 'No problem. What is the address for Terry Woohoo?',
+      timestamp: null,
+    });
+  });
+
+  it('filters out markdown code fences containing JSON summaries and tool responses', () => {
+    const rawLog = [
+      { role: 'user', content: 'Can you give me an estimate for fixing a water line?' },
+      { role: 'assistant', content: 'I can certainly help with that.' },
+      {
+        role: 'assistant',
+        content: '```json\n{\n  "caller_name": "Alice",\n  "work_requested": "water line repair"\n}\n```',
+      },
+      {
+        role: 'assistant',
+        content: '{"response": "Checking open schedule slots for you..."}',
+      },
+    ];
+
+    const sanitized = sanitizeTranscriptTurns(rawLog);
+
+    expect(sanitized).toHaveLength(2);
+    expect(sanitized[0]!.content).toBe('Can you give me an estimate for fixing a water line?');
+    expect(sanitized[1]!.content).toBe('I can certainly help with that.');
+  });
+
+  it('preserves genuine dialogue even when contact info or numbers are spoken', () => {
+    const rawLog = [
+      { role: 'user', content: 'My name is Terry and my phone is 248-555-0199.' },
+      { role: 'assistant', content: 'Thank you Terry. What work do you need done?' },
+      { role: 'user', content: 'I need a new service lead at 456 Elm Street.' },
+    ];
+
+    const sanitized = sanitizeTranscriptTurns(rawLog);
+    expect(sanitized).toHaveLength(3);
+  });
 });
 
 describe('call detail loader with multi-tenant isolation', () => {

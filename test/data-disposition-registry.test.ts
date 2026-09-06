@@ -60,6 +60,37 @@ describe('multidimensional data disposition registry', () => {
     expect(DATA_DISPOSITION_REGISTRY.account_tags.portability).toBe('internal_system');
   });
 
+  it('deletes and exports tenant-owned Neighborhood Halo data under the campaign retention policy', () => {
+    const settings = DATA_DISPOSITION_REGISTRY.neighborhood_halo_settings;
+    const campaigns = DATA_DISPOSITION_REGISTRY.neighborhood_halo_campaigns;
+
+    expect(settings).toMatchObject({
+      relationship: 'direct_account_id',
+      primaryKeyColumn: 'account_id',
+      localAction: 'delete',
+      portability: 'full',
+      retention: {
+        legalBasis: 'transient_operational',
+        durationDays: 0,
+        startEvent: 'account_closed',
+      },
+    });
+    expect(campaigns).toMatchObject({
+      relationship: 'direct_account_id',
+      primaryKeyColumn: 'id',
+      localAction: 'delete',
+      portability: 'full',
+      retention: {
+        legalBasis: 'transient_operational',
+        durationDays: 365,
+        startEvent: 'account_closed',
+      },
+    });
+    expect(getExportableTables()).toEqual(
+      expect.arrayContaining(['neighborhood_halo_settings', 'neighborhood_halo_campaigns']),
+    );
+  });
+
   it('guarantees every table marked full or redacted is in getExportableTables()', () => {
     const exportableSet = new Set(getExportableTables());
     for (const [name, entry] of Object.entries(DATA_DISPOSITION_REGISTRY)) {
