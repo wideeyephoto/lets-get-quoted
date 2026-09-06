@@ -240,3 +240,102 @@ export function calculateClosedLoopRoas(params: {
     roasVerdict,
   };
 }
+
+export type MetaCapiUploadResult = {
+  success: boolean;
+  eventsReceived?: number;
+  fbtraceId?: string;
+  message: string;
+  status: 'uploaded' | 'failed' | 'simulated' | 'unconfigured';
+};
+
+/**
+ * Dispatches normalized, hashed conversion events directly to Meta Conversions API (CAPI).
+ */
+export async function uploadMetaCapiEvents(params: {
+  events: MetaCapiEventPayload[];
+  pixelId?: string;
+  accessToken?: string;
+  testEventCode?: string;
+}): Promise<MetaCapiUploadResult> {
+  const { events, testEventCode } = params;
+  if (!events || events.length === 0) {
+    return { success: true, eventsReceived: 0, status: 'uploaded', message: 'No events to upload.' };
+  }
+
+  const token = params.accessToken || process.env.META_ACCESS_TOKEN || process.env.META_SYSTEM_USER_TOKEN;
+  const pixel = params.pixelId || process.env.META_PIXEL_ID || process.env.META_DATASET_ID;
+  const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+
+  if (!token || !pixel) {
+    if (isProduction) {
+      return {
+        success: false,
+        status: 'unconfigured',
+        message: 'Meta Pixel / Access Token unconfigured in production.',
+      };
+    }
+    // Staging / simulated mode
+    return {
+      success: true,
+      eventsReceived: events.length,
+      status: 'simulated',
+      fbtraceId: `sim_trace_${Date.now()}`,
+      message: `Simulated upload of ${events.length} Meta CAPI events.`,
+    };
+  }
+
+  try {
+    const version = process.env.META_GRAPH_API_VERSION || 'v20.0';
+    const url = `https://graph.facebook.com/${version}/${pixel}/events?access_token=${encodeURIComponent(token)}`;
+
+    const body: Record<string, unknown> = {
+      data: events,
+    };
+    if (testEventCode) {
+      body.test_event_code = testEventCode;
+    }
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      signal: AbortSignal.timeout(10000),
+      body: JSON.stringify(body),
+    });
+
+    const json = (await res.json().catch(() => ({}))) as {
+      events_received?: number;
+      fbtrace_id?: string;
+      error?: { message: string; type: string; code: number };
+    };
+
+    if (!res.ok || json.error) {
+      const errMsg = json.error?.message || `HTTP ${res.status}`;
+      return {
+        success: false,
+        status: 'failed',
+        fbtraceId: json.fbtrace_id,
+        message: `Meta CAPI upload failed: ${errMsg}`,
+      };
+    }
+
+    return {
+      success: true,
+      eventsReceived: json.events_received ?? events.length,
+      fbtraceId: json.fbtrace_id,
+      status: 'uploaded',
+      message: `Successfully uploaded ${json.events_received ?? events.length} events to Meta CAPI.`,
+    };
+  } catch (err) {
+    const errMsg = err instanceof Error ? err.message : String(err);
+    return {
+      success: false,
+      status: 'failed',
+      message: `Meta CAPI network error: ${errMsg}`,
+    };
+  }
+}
+

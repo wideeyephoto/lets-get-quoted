@@ -551,6 +551,16 @@ export async function markJobCompleteAction(jobId: string, formData?: FormData) 
     } catch (error) {
       console.error(`Auto review request skipped for job ${jobId}:`, error instanceof Error ? error.message : error);
     }
+
+    // Neighborhood Halo 1-Mile Micro-Ad Campaign check
+    // Best-effort and non-blocking: if the account has auto-launch enabled,
+    // provisions or queues a 1-mile halo campaign.
+    try {
+      const { triggerNeighborhoodHaloOnJobComplete } = await import('@/lib/neighborhood-halo-service');
+      await triggerNeighborhoodHaloOnJobComplete(supabase, accountId, jobId);
+    } catch (error) {
+      console.error(`[NeighborhoodHalo] Auto-launch skipped for job ${jobId}:`, error instanceof Error ? error.message : error);
+    }
   }
 
   revalidatePath('/dashboard/jobs');

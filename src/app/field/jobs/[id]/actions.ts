@@ -82,6 +82,15 @@ export async function setFieldJobStatusAction(jobId: string, status: 'in_progres
     author: crew.name,
   });
 
+  if (status === 'complete') {
+    try {
+      const { triggerNeighborhoodHaloOnJobComplete } = await import('@/lib/neighborhood-halo-service');
+      await triggerNeighborhoodHaloOnJobComplete(createAdminClient(), accountId, jobId);
+    } catch (error) {
+      console.warn(`[NeighborhoodHalo] Auto-launch from field skipped for job ${jobId}:`, error);
+    }
+  }
+
   revalidatePath('/field');
   revalidatePath(`/field/jobs/${jobId}`);
   redirect(`/field/jobs/${jobId}`);
