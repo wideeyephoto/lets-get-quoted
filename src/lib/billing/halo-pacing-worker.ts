@@ -6,6 +6,7 @@ import {
   type NeighborhoodHaloCampaign,
 } from '@/lib/neighborhood-halo';
 import { killHaloCampaign } from '@/lib/neighborhood-halo-service';
+import { fetchMetaCampaignDailySpend } from '@/lib/meta-ads-api';
 
 export type HaloPacingWorkerResult = {
   processed: number;
@@ -106,18 +107,27 @@ export async function runHaloPacingWorker(
     }
 
     // 3. Advance daily pacing
-    const additionalSpend = Math.min(budgetDollars - currentSpend, dailyBudget);
-    const nextSpend = currentSpend + additionalSpend;
-
-    // In simulated sandbox, generate realistic impressions and clicks
     let newImpressions = Number(row.impressions || 0);
     let newClicks = Number(row.clicks || 0);
-    if (row.status === 'simulated_sandbox') {
-      newImpressions += Math.floor(45 + Math.random() * 30);
-      if (Math.random() > 0.4) {
-        newClicks += Math.floor(1 + Math.random() * 2);
+    let additionalSpend = Math.min(budgetDollars - currentSpend, dailyBudget);
+
+    // If live Meta campaign is linked, sync real performance insights
+    if (row.meta_campaign_id && !row.meta_campaign_id.startsWith('meta_sim_')) {
+      try {
+        const metaSpend = await fetchMetaCampaignDailySpend(row.meta_campaign_id);
+        if (metaSpend.success) {
+          if (metaSpend.impressions > 0) newImpressions = metaSpend.impressions;
+          if (metaSpend.clicks > 0) newClicks = metaSpend.clicks;
+          if (metaSpend.spendCents > 0) {
+            additionalSpend = Math.min(budgetDollars - currentSpend, metaSpend.spendCents / 100);
+          }
+        }
+      } catch (metaErr) {
+        console.warn(`[HaloPacingWorker] Meta insights fetch failed for ${row.meta_campaign_id}:`, metaErr);
       }
     }
+
+    const nextSpend = currentSpend + additionalSpend;
 
     await admin
       .from('neighborhood_halo_campaigns')

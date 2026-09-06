@@ -27,6 +27,7 @@ describe('Neighborhood Halo Database Migration', () => {
     expect(haloMigration).toContain('street_name text not null');
     expect(haloMigration).toContain('radius_miles numeric(4, 2) not null default 1.00');
     expect(haloMigration).toContain('budget_dollars numeric(10, 2) not null default 25.00');
+    expect(haloMigration).toContain('wallet_deducted_cents integer not null default 0');
     expect(haloMigration).toContain('daily_budget_dollars numeric(10, 2) not null default 5.00');
     expect(haloMigration).toContain('ad_copy jsonb not null default');
     expect(haloMigration).toContain('landing_page_url text not null');

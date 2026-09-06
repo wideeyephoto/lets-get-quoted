@@ -477,6 +477,12 @@ export default function NeighborhoodHaloDashboardTab({
               </div>
             ) : null}
 
+            {launchError ? (
+              <div style={{ padding: '0.75rem', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', color: '#f87171', fontSize: '0.82rem', marginBottom: '1rem' }}>
+                {launchError}
+              </div>
+            ) : null}
+
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
               <button
                 type="button"

@@ -9,6 +9,15 @@ vi.mock('@/lib/neighborhood-halo-service', () => ({
   killHaloCampaign: vi.fn().mockResolvedValue({ id: 'halo_dead', status: 'killed' }),
 }));
 
+vi.mock('@/lib/meta-ads-api', () => ({
+  fetchMetaCampaignDailySpend: vi.fn().mockResolvedValue({
+    success: true,
+    impressions: 340,
+    clicks: 14,
+    spendCents: 450,
+  }),
+}));
+
 describe('Halo Pacing Worker', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -96,5 +105,54 @@ describe('Halo Pacing Worker', () => {
     expect(res.advanced).toBe(1);
     expect(res.completed).toBe(0);
     expect(res.totalDailySpendDollars).toBe(5.0);
+  });
+
+  it('reconciles real performance metrics from Meta Marketing API when meta_campaign_id is present', async () => {
+    const metaCampaign = {
+      id: 'halo_meta_1',
+      account_id: 'acc_1',
+      job_id: 'job_1',
+      street_name: 'Pine Creek Rd',
+      city: 'Austin',
+      status: 'active',
+      duration_days: 5,
+      days_active: 2,
+      budget_dollars: 25.0,
+      spend_dollars: 10.0,
+      daily_budget_dollars: 5.0,
+      impressions: 150,
+      clicks: 5,
+      leads_generated: 1,
+      meta_campaign_id: 'camp_meta_real_999',
+      center_lat: 30.26,
+      center_lng: -97.74,
+      radius_miles: 1.0,
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    };
+
+    let updatedPayload: any = null;
+    const mockAdmin = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            is: vi.fn().mockResolvedValue({ data: [metaCampaign], error: null }),
+          }),
+        }),
+        update: vi.fn().mockImplementation((payload) => {
+          updatedPayload = payload;
+          return {
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }),
+      }),
+    } as never;
+
+    const res = await runHaloPacingWorker(mockAdmin);
+    expect(res.processed).toBe(1);
+    expect(res.advanced).toBe(1);
+    expect(updatedPayload).toBeDefined();
+    expect(updatedPayload.impressions).toBe(340); // from Meta API mock
+    expect(updatedPayload.clicks).toBe(14); // from Meta API mock
+    expect(updatedPayload.spend_dollars).toBe(14.5); // 10.0 + 4.50 from Meta spend
   });
 });

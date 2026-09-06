@@ -14,6 +14,7 @@ import {
 import { buildHaloCreativeBundle, type HaloAdCreativeBundle } from './neighborhood-halo-ai';
 import { createJobPhotoLinks } from './job-photo-storage';
 import { isGoogleAdsConfigured } from './google-ads-api';
+import { isMetaAdsConfigured, provisionManagedMetaCampaign } from './meta-ads-api';
 import { stateFromAddress } from './marketing-calendar';
 import { getSiteContent } from './site-content';
 
@@ -42,6 +43,7 @@ export type HaloCampaignRecord = {
   radiusMiles: number;
   budgetDollars: number;
   spendDollars: number;
+  walletDeductedCents: number;
   dailyBudgetDollars: number;
   durationDays: number;
   daysActive: number;
@@ -97,6 +99,7 @@ function mapRowToCampaign(row: Record<string, unknown>): HaloCampaignRecord {
     radiusMiles: Number(row.radius_miles ?? 1.0),
     budgetDollars: Number(row.budget_dollars ?? 25.0),
     spendDollars: Number(row.spend_dollars ?? 0.0),
+    walletDeductedCents: Number(row.wallet_deducted_cents ?? 0),
     dailyBudgetDollars: Number(row.daily_budget_dollars ?? 5.0),
     durationDays: Number(row.duration_days ?? 5),
     daysActive: Number(row.days_active ?? 0),
@@ -408,27 +411,36 @@ export async function launchHaloCampaign(
     );
   }
 
-  // Deduct micro-budget from Ad Wallet via atomic spend RPC
+  // Deduct micro-budget from sitewide Ad Wallet via atomic spend RPC
   const spendCents = Math.round(budget * 100);
   const todayIso = new Date().toISOString().slice(0, 10);
   let walletDeducted = false;
 
-  try {
-    const { data: spendData, error: spendError } = await admin.rpc('atomic_ad_wallet_spend', {
-      p_account_id: accountId,
-      p_spend_cents: spendCents,
-      p_date: todayIso,
-      p_source: 'neighborhood_halo_launch',
-    });
+  const { data: spendData, error: spendError } = await admin.rpc('atomic_ad_wallet_spend', {
+    p_account_id: accountId,
+    p_spend_cents: spendCents,
+    p_date: todayIso,
+    p_source: 'neighborhood_halo_launch',
+  });
 
-    if (!spendError && spendData && typeof spendData === 'object') {
-      const res = spendData as { success: boolean; error?: string };
-      if (res.success) {
-        walletDeducted = true;
-      }
+  if (spendError) {
+    throw new Error(
+      `INSUFFICIENT_WALLET_BALANCE: Neighborhood Halo requires $${budget.toFixed(2)} in your Managed Ads Wallet. ${spendError.message || 'Please deposit or auto-refill wallet funds.'}`
+    );
+  }
+
+  if (spendData && typeof spendData === 'object') {
+    const res = spendData as { success: boolean; error?: string };
+    if (!res.success) {
+      throw new Error(
+        `INSUFFICIENT_WALLET_BALANCE: Neighborhood Halo requires $${budget.toFixed(2)} in your Managed Ads Wallet. ${res.error || 'Please deposit or auto-refill wallet funds.'}`
+      );
     }
-  } catch {
-    // If ad wallet is not initialized or balance is 0 in sandbox, continue transparently
+    walletDeducted = true;
+  } else {
+    throw new Error(
+      `INSUFFICIENT_WALLET_BALANCE: Unable to verify wallet balance for Neighborhood Halo launch.`
+    );
   }
 
   // Generate creative bundle
@@ -462,7 +474,29 @@ export async function launchHaloCampaign(
   });
 
   const liveGoogleConfigured = isGoogleAdsConfigured();
-  const status: HaloCampaignStatus = liveGoogleConfigured ? 'active' : 'simulated_sandbox';
+  const liveMetaConfigured = isMetaAdsConfigured();
+
+  let metaCampaignId: string | null = null;
+  if (liveMetaConfigured) {
+    try {
+      const metaRes = await provisionManagedMetaCampaign({
+        accountId,
+        businessName: (site?.company_name as string | undefined) || account?.business_name || 'Our Team',
+        trade: job.trade || getSiteContent(site?.content).trade || 'Contracting',
+        city,
+        radiusMiles: radius,
+        monthlyBudgetDollars: Math.round(budget * (30.4 / duration)),
+        landingPageUrl: landingUrl,
+      });
+      if (metaRes.success && metaRes.campaignId) {
+        metaCampaignId = metaRes.campaignId;
+      }
+    } catch (metaErr) {
+      console.warn('[NeighborhoodHalo] Meta campaign provisioning error:', metaErr);
+    }
+  }
+
+  const status: HaloCampaignStatus = (liveGoogleConfigured || liveMetaConfigured) ? 'active' : 'simulated_sandbox';
 
   const expiresAt = new Date(Date.now() + duration * 86400000).toISOString();
   const nowIso = new Date().toISOString();
@@ -482,6 +516,7 @@ export async function launchHaloCampaign(
     radius_miles: radius,
     budget_dollars: budget,
     spend_dollars: 0.0,
+    wallet_deducted_cents: walletDeducted ? spendCents : 0,
     daily_budget_dollars: budget / duration,
     duration_days: duration,
     days_active: 0,
@@ -493,7 +528,7 @@ export async function launchHaloCampaign(
     after_photo_url: photoUrls[0] || null,
     google_campaign_id: liveGoogleConfigured ? `gads_halo_${haloCampaignId.slice(0, 8)}` : null,
     google_campaign_resource: null,
-    meta_campaign_id: null,
+    meta_campaign_id: metaCampaignId,
     landing_page_url: landingUrl,
     expires_at: expiresAt,
     created_at: nowIso,
@@ -572,8 +607,10 @@ export async function killHaloCampaign(
     throw new Error('Campaign not found.');
   }
 
-  const unspentDollars = Math.max(0, campaign.budgetDollars - campaign.spendDollars);
-  const unspentCents = Math.round(unspentDollars * 100);
+  // Refunds are strictly tied to proven debits
+  const provenDebitedCents = campaign.walletDeductedCents || 0;
+  const actualSpendCents = Math.round(campaign.spendDollars * 100);
+  const refundableCents = Math.max(0, provenDebitedCents - actualSpendCents);
 
   const { data, error } = await supabase
     .from('neighborhood_halo_campaigns')
@@ -590,16 +627,16 @@ export async function killHaloCampaign(
 
   if (error) throw new Error(`Unable to kill campaign: ${error.message}`);
 
-  if (unspentCents > 0) {
+  if (refundableCents > 0) {
     try {
       await admin.rpc('atomic_ad_wallet_credit', {
         p_account_id: accountId,
         p_payment_intent_id: `refund_halo_kill_${campaignId}`,
-        p_credit_cents: unspentCents,
+        p_credit_cents: refundableCents,
         p_fee_cents: 0,
       });
     } catch (refundErr) {
-      console.warn(`Failed to refund unspent budget for halo ${campaignId}:`, refundErr);
+      console.warn(`Failed to refund proven unspent budget for halo ${campaignId}:`, refundErr);
     }
   }
 

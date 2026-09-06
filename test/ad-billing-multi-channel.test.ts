@@ -58,7 +58,7 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
     process.env = { ...originalEnv };
     process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = 'true';
     delete process.env.VERCEL_ENV;
-    process.env.NODE_ENV = 'test';
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'test';
     mockCreatedSessionConfig = null;
   });
 
@@ -155,6 +155,7 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
         descriptionsCount: 4,
         keywordsCount: 20,
         negativeKeywordsCount: 50,
+        message: 'Campaign provisioned successfully',
       });
 
       vi.spyOn(metaAdsModule, 'provisionManagedMetaCampaign').mockResolvedValue({
@@ -220,8 +221,6 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
     it('dispatches pause to both Google and Meta campaigns', async () => {
       const gSpy = vi.spyOn(googleAdsModule, 'updateGoogleAdsCampaignStatus').mockResolvedValue({
         success: true,
-        campaignId: 'gads_123',
-        status: 'PAUSED',
         message: 'Paused',
       });
 
@@ -261,8 +260,6 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
     it('dispatches resume to both Google and Meta campaigns', async () => {
       const gSpy = vi.spyOn(googleAdsModule, 'updateGoogleAdsCampaignStatus').mockResolvedValue({
         success: true,
-        campaignId: 'gads_123',
-        status: 'ENABLED',
         message: 'Resumed',
       });
 
@@ -306,9 +303,11 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
 
       vi.spyOn(googleAdsModule, 'fetchGoogleAdsCampaignDailySpend').mockResolvedValue({
         success: true,
+        totalSpendCents: 3000,
         data: [
           {
             date: todayStr,
+            costMicros: 30000000,
             spendCents: 3000,
             clicks: 5,
             impressions: 120,
@@ -376,9 +375,11 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
       // Google now reports $35 (up from $30) and Meta still reports $15 (total $50, up from $45)
       vi.spyOn(googleAdsModule, 'fetchGoogleAdsCampaignDailySpend').mockResolvedValue({
         success: true,
+        totalSpendCents: 3500,
         data: [
           {
             date: todayStr,
+            costMicros: 35000000,
             spendCents: 3500,
             clicks: 6,
             impressions: 140,

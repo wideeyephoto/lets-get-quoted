@@ -240,6 +240,70 @@ describe('Neighborhood Halo Service', () => {
         /Job must be marked completed before launching a Neighborhood Halo campaign/
       );
     });
+
+    it('refuses launch if wallet balance is insufficient or debit fails', async () => {
+      const mockJob = {
+        id: jobId,
+        account_id: accountId,
+        status: 'complete',
+        address: '1428 Maple Ave, Rochester, MI 48307',
+        photo_paths: ['p1.jpg'],
+        city: 'Rochester',
+      };
+
+      const mockSupabase = {
+        from: vi.fn().mockImplementation((table: string) => {
+          if (table === 'neighborhood_halo_settings') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+                }),
+              }),
+            };
+          }
+          if (table === 'neighborhood_halo_campaigns') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  is: vi.fn().mockReturnValue({
+                    gte: vi.fn().mockResolvedValue({ data: [], error: null }),
+                    order: vi.fn().mockReturnValue({
+                      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+                    }),
+                  }),
+                }),
+              }),
+            };
+          }
+          if (table === 'jobs') {
+            return {
+              select: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    maybeSingle: vi.fn().mockResolvedValue({ data: mockJob, error: null }),
+                  }),
+                }),
+              }),
+            };
+          }
+          return {};
+        }),
+      } as never;
+
+      const mockAdmin = {
+        rpc: vi.fn().mockResolvedValue({
+          data: { success: false, error: 'insufficient_wallet_balance' },
+          error: null,
+        }),
+      };
+      const { createAdminClient } = await import('@/lib/auth');
+      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
+
+      await expect(launchHaloCampaign(mockSupabase, accountId, jobId)).rejects.toThrow(
+        /INSUFFICIENT_WALLET_BALANCE/
+      );
+    });
   });
 
   describe('pause, resume, and kill campaign', () => {
@@ -267,6 +331,105 @@ describe('Neighborhood Halo Service', () => {
 
       const resumed = await resumeHaloCampaign(mockSupabase, accountId, 'halo_1');
       expect(resumed.status).toBe('active');
+    });
+
+    it('kills campaign and refunds proven debits only', async () => {
+      const liveRow = {
+        id: 'halo_1',
+        account_id: accountId,
+        status: 'active',
+        street_name: 'Maple Ave',
+        budget_dollars: 25.0,
+        spend_dollars: 10.0,
+        wallet_deducted_cents: 2500,
+      };
+
+      const mockAdmin = {
+        rpc: vi.fn().mockResolvedValue({ data: { success: true }, error: null }),
+      };
+      const { createAdminClient } = await import('@/lib/auth');
+      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
+
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: liveRow, error: null }),
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                select: vi.fn().mockReturnValue({
+                  single: vi.fn().mockResolvedValue({
+                    data: { ...liveRow, status: 'killed' },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      } as never;
+
+      const killed = await killHaloCampaign(mockSupabase, accountId, 'halo_1', '72h_zero_clicks');
+      expect(killed.status).toBe('killed');
+      // Proven debit: $25 (2500c), actual spend: $10 (1000c) -> refundable: 1500c ($15)
+      expect(mockAdmin.rpc).toHaveBeenCalledWith('atomic_ad_wallet_credit', {
+        p_account_id: accountId,
+        p_payment_intent_id: 'refund_halo_kill_halo_1',
+        p_credit_cents: 1500,
+        p_fee_cents: 0,
+      });
+    });
+
+    it('kills campaign with 0 refund when wallet_deducted_cents is 0', async () => {
+      const sandboxRow = {
+        id: 'halo_2',
+        account_id: accountId,
+        status: 'simulated_sandbox',
+        street_name: 'Oak Ave',
+        budget_dollars: 25.0,
+        spend_dollars: 5.0,
+        wallet_deducted_cents: 0, // never debited wallet
+      };
+
+      const mockAdmin = {
+        rpc: vi.fn(),
+      };
+      const { createAdminClient } = await import('@/lib/auth');
+      vi.mocked(createAdminClient).mockReturnValue(mockAdmin as never);
+
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              is: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: sandboxRow, error: null }),
+              }),
+            }),
+          }),
+          update: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                select: vi.fn().mockReturnValue({
+                  single: vi.fn().mockResolvedValue({
+                    data: { ...sandboxRow, status: 'killed' },
+                    error: null,
+                  }),
+                }),
+              }),
+            }),
+          }),
+        }),
+      } as never;
+
+      const killed = await killHaloCampaign(mockSupabase, accountId, 'halo_2', 'manual');
+      expect(killed.status).toBe('killed');
+      // Must NOT credit anything since wallet was never debited
+      expect(mockAdmin.rpc).not.toHaveBeenCalled();
     });
   });
 

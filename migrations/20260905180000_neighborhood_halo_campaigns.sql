@@ -62,6 +62,7 @@ create table if not exists public.neighborhood_halo_campaigns (
   radius_miles numeric(4, 2) not null default 1.00,
   budget_dollars numeric(10, 2) not null default 25.00,
   spend_dollars numeric(10, 2) not null default 0.00,
+  wallet_deducted_cents integer not null default 0,
   daily_budget_dollars numeric(10, 2) not null default 5.00,
   duration_days integer not null default 5,
   days_active integer not null default 0,

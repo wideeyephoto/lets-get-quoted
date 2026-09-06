@@ -20,7 +20,7 @@ export type PrintfulOrderResult = {
   carrier?: string | null;
   estimatedDelivery?: string;
   isSimulated?: boolean;
-  provider?: 'printful' | 'commercial_print_broker';
+  provider?: 'printful' | 'commercial_print_broker' | 'split_fulfillment';
   error?: string;
 };
 
@@ -90,13 +90,24 @@ export async function createPrintfulOrder(params: {
     };
   }
 
+  if (!params.items || params.items.length === 0) {
+    return {
+      ok: false,
+      error: 'Cannot fulfill order with empty item list.',
+    };
+  }
+
   // Check if order consists of commercial paper print items (cards / NCR pads)
   // Printful does not print 16pt cardstock or 2-part carbonless NCR forms; those require commercial trade press.
-  const hasCommercialPrintItems = params.items.some(
+  const commercialPrintItems = params.items.filter(
     (it) => it.productId === 'biz_cards' || it.productId === 'notepads'
   );
+  const apparelItems = params.items.filter(
+    (it) => it.productId !== 'biz_cards' && it.productId !== 'notepads'
+  );
 
-  if (hasCommercialPrintItems) {
+  // If order consists purely of commercial paper print items
+  if (commercialPrintItems.length > 0 && apparelItems.length === 0) {
     // Commercial trade print broker routing for stationery
     const brokerOrderId = Math.floor(2000000 + Math.random() * 8000000);
     const deliveryDays = params.shippingMethod === 'rush' ? 2 : 4;
@@ -116,6 +127,10 @@ export async function createPrintfulOrder(params: {
     };
   }
 
+  // Determine provider type when apparel items are present (split fulfillment if stationery is also included)
+  const provider: 'printful' | 'split_fulfillment' =
+    commercialPrintItems.length > 0 ? 'split_fulfillment' : 'printful';
+
   if (isSimulation || apiKey?.startsWith('test_')) {
     const randomPrintfulId = Math.floor(1000000 + Math.random() * 9000000);
     const trackingNum = `1Z9999999${Math.floor(100000000 + Math.random() * 900000000)}`;
@@ -131,23 +146,23 @@ export async function createPrintfulOrder(params: {
       carrier: 'UPS Ground Commercial',
       estimatedDelivery: deliveryDate,
       isSimulated: true,
-      provider: 'printful',
+      provider,
     };
   }
 
-  // Fail-safe guard: Ensure no commercial print items ever reach Printful
-  const invalidPrintfulItem = params.items.find(
-    (it) => it.productId === 'biz_cards' || it.productId === 'notepads'
+  // Fail-safe guard: Ensure no unsupported or stationery items reach Printful apparel endpoint
+  const invalidPrintfulItem = apparelItems.find(
+    (it) => !PRINTFUL_DEFAULT_VARIANT_MAP[it.productId]
   );
   if (invalidPrintfulItem) {
     return {
       ok: false,
-      error: `Product '${invalidPrintfulItem.productId}' cannot be fulfilled via Printful apparel API. Must route to commercial trade print broker.`,
+      error: `Product '${invalidPrintfulItem.productId}' is not supported by Printful apparel API.`,
     };
   }
 
   try {
-    const printfulItems = params.items.map((item, index) => {
+    const printfulItems = apparelItems.map((item, index) => {
       const isEmbroidery =
         item.customizationDetails.decorationMethod === 'embroidery' ||
         item.customizationDetails.decorationMethod === 'leather_patch';
@@ -182,6 +197,7 @@ export async function createPrintfulOrder(params: {
       };
     });
 
+    const apparelTotal = apparelItems.reduce((acc, it) => acc + it.totalPrice, 0);
     const shippingCode = params.shippingMethod === 'rush' ? 'EXPRESS' : 'STANDARD';
 
     const payload = {
@@ -201,7 +217,7 @@ export async function createPrintfulOrder(params: {
       },
       items: printfulItems,
       retail_costs: {
-        total: params.retailTotal.toFixed(2),
+        total: apparelTotal.toFixed(2),
         currency: 'USD',
       },
       packing_slip: {
@@ -234,7 +250,7 @@ export async function createPrintfulOrder(params: {
       printfulOrderId: orderData?.id,
       externalId: orderData?.external_id || params.orderNumber,
       status: orderData?.status || 'pending',
-      provider: 'printful',
+      provider,
     };
   } catch (err) {
     console.error('Printful API request error:', err);

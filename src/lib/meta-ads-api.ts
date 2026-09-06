@@ -41,7 +41,7 @@ export function normalizeAdAccountId(id?: string | null): string | null {
   return `act_${clean}`;
 }
 
-export function isMetaAdsConfigured(adAccountId?: string, config?: MetaAdsConfig): boolean {
+export function isMetaAdsConfigured(adAccountId?: string | null, config?: MetaAdsConfig): boolean {
   const effectiveConfig = config || getMetaAdsConfig();
   const effectiveAdAccount = normalizeAdAccountId(adAccountId || effectiveConfig.adAccountId);
   return Boolean(effectiveConfig.accessToken && effectiveAdAccount);
@@ -284,8 +284,8 @@ export async function provisionManagedMetaCampaign(
       const adData = (await adRes.json()) as { id: string };
       const adId = adData.id;
 
-      // 5. Two-Stage Activation: Flip Campaign and AdSet to ACTIVE
-      const activateRes = await fetch(
+      // 5. Complete Multi-Stage Activation: Flip Campaign, AdSet, and Ad to ACTIVE
+      const activateCampRes = await fetch(
         `${META_GRAPH_API_BASE_URL}/${campaignId}`,
         {
           method: 'POST',
@@ -295,19 +295,77 @@ export async function provisionManagedMetaCampaign(
         }
       );
 
-      if (!activateRes.ok) {
-        console.warn('Meta Campaign activation failed, left PAUSED.');
+      if (!activateCampRes.ok) {
+        const errData = await activateCampRes.json().catch(() => ({}));
+        const errMsg = errData.error?.message || `HTTP ${activateCampRes.status}`;
+        console.warn('Meta Campaign activation failed:', errMsg);
         return {
-          success: true,
+          success: false,
           campaignId,
           adSetId,
           creativeId,
           adId,
-          status: 'paused',
+          status: 'failed',
           dailyBudgetDollars,
           headline: adCopy.headline,
           primaryText: adCopy.primaryText,
-          message: 'Campaign created successfully in PAUSED status.',
+          message: `Meta Campaign activation failed: ${errMsg}`,
+        };
+      }
+
+      const activateAdSetRes = await fetch(
+        `${META_GRAPH_API_BASE_URL}/${adSetId}`,
+        {
+          method: 'POST',
+          headers,
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({ status: 'ACTIVE' }),
+        }
+      );
+
+      if (!activateAdSetRes.ok) {
+        const errData = await activateAdSetRes.json().catch(() => ({}));
+        const errMsg = errData.error?.message || `HTTP ${activateAdSetRes.status}`;
+        console.warn('Meta AdSet activation failed:', errMsg);
+        return {
+          success: false,
+          campaignId,
+          adSetId,
+          creativeId,
+          adId,
+          status: 'failed',
+          dailyBudgetDollars,
+          headline: adCopy.headline,
+          primaryText: adCopy.primaryText,
+          message: `Meta AdSet activation failed: ${errMsg}`,
+        };
+      }
+
+      const activateAdRes = await fetch(
+        `${META_GRAPH_API_BASE_URL}/${adId}`,
+        {
+          method: 'POST',
+          headers,
+          signal: AbortSignal.timeout(15000),
+          body: JSON.stringify({ status: 'ACTIVE' }),
+        }
+      );
+
+      if (!activateAdRes.ok) {
+        const errData = await activateAdRes.json().catch(() => ({}));
+        const errMsg = errData.error?.message || `HTTP ${activateAdRes.status}`;
+        console.warn('Meta Ad activation failed:', errMsg);
+        return {
+          success: false,
+          campaignId,
+          adSetId,
+          creativeId,
+          adId,
+          status: 'failed',
+          dailyBudgetDollars,
+          headline: adCopy.headline,
+          primaryText: adCopy.primaryText,
+          message: `Meta Ad activation failed: ${errMsg}`,
         };
       }
 
@@ -321,7 +379,7 @@ export async function provisionManagedMetaCampaign(
         dailyBudgetDollars,
         headline: adCopy.headline,
         primaryText: adCopy.primaryText,
-        message: 'Meta Campaign successfully deployed and activated.',
+        message: 'Meta Campaign, AdSet, and Ad successfully deployed and activated.',
       };
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);

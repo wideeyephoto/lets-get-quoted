@@ -48,7 +48,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
     vi.restoreAllMocks();
     process.env = { ...originalEnv };
     delete process.env.VERCEL_ENV;
-    process.env.NODE_ENV = 'test';
+    (process.env as Record<string, string | undefined>).NODE_ENV = 'test';
   });
 
   afterEach(() => {
@@ -124,7 +124,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
       if (url.includes('/ads')) {
         return new Response(JSON.stringify({ id: 'ad_live_999' }), { status: 200 });
       }
-      if (url.endsWith('/camp_live_123')) {
+      if (url.endsWith('/camp_live_123') || url.endsWith('/adset_live_456') || url.endsWith('/ad_live_999')) {
         // Activation
         return new Response(JSON.stringify({ success: true }), { status: 200 });
       }
@@ -148,11 +148,14 @@ describe('Meta Ads API — Campaign Provisioning', () => {
     expect(res.creativeId).toBe('cr_live_789');
     expect(res.adId).toBe('ad_live_999');
 
-    // Verify 5 distinct calls: Campaign -> AdSet -> Creative -> Ad -> Activation
-    expect(fetchCalls.length).toBe(5);
-    expect(fetchCalls[0].body.status).toBe('PAUSED'); // Two-stage activation starts PAUSED
+    // Verify 7 distinct calls: Campaign -> AdSet -> Creative -> Ad -> Camp Activation -> AdSet Activation -> Ad Activation
+    expect(fetchCalls.length).toBe(7);
+    expect(fetchCalls[0].body.status).toBe('PAUSED'); // Multi-stage activation starts PAUSED
     expect(fetchCalls[1].body.status).toBe('PAUSED');
-    expect(fetchCalls[4].body.status).toBe('ACTIVE'); // Final activation
+    expect(fetchCalls[3].body.status).toBe('PAUSED');
+    expect(fetchCalls[4].body.status).toBe('ACTIVE'); // Campaign activation
+    expect(fetchCalls[5].body.status).toBe('ACTIVE'); // AdSet activation
+    expect(fetchCalls[6].body.status).toBe('ACTIVE'); // Ad activation
   });
 
   it('fails safely and reports failed status if Campaign creation throws an API error', async () => {

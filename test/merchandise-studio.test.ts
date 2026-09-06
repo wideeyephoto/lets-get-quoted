@@ -1676,6 +1676,62 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       fetchSpy.mockRestore();
     });
 
+    it('properly partitions mixed cart orders (stationery + apparel) and sets provider to split_fulfillment', async () => {
+      const mixedResult = await createPrintfulOrder({
+        orderNumber: 'LGQ-TEST-MIXED',
+        items: [
+          {
+            productId: 'biz_cards',
+            productName: 'Business Cards',
+            quantity: 500,
+            unitPrice: 0.17,
+            totalPrice: 85.0,
+            colorName: 'Matte White',
+            colorHex: '#ffffff',
+            customizationDetails: {
+              businessName: 'Apex Roofing',
+              cardTemplateId: 'executive',
+              cardFinish: 'velvet_matte',
+              decorationMethod: 'offset_cmyk',
+              placement: 'front_card',
+            },
+          },
+          {
+            productId: 't_shirts',
+            productName: 'Heavyweight Cotton Tee',
+            quantity: 12,
+            unitPrice: 26.5,
+            totalPrice: 318.0,
+            colorName: 'Black',
+            colorHex: '#111111',
+            customizationDetails: {
+              businessName: 'Apex Roofing',
+              decorationMethod: 'screen_print',
+              placement: 'chest_center',
+              logoUrl: 'https://example.com/logo.png',
+            },
+          },
+        ],
+        shippingAddress: {
+          fullName: 'John Doe',
+          streetAddress: '123 Main St',
+          city: 'Austin',
+          state: 'TX',
+          postalCode: '78701',
+          country: 'US',
+          phone: '(555) 019-2834',
+          email: 'john@example.com',
+        },
+        retailTotal: 403.0,
+        companyName: 'Apex Roofing',
+      });
+
+      expect(mixedResult.ok).toBe(true);
+      expect(mixedResult.provider).toBe('split_fulfillment');
+      expect(mixedResult.status).toBe('in_production');
+      expect(mixedResult.trackingNumber).toBeDefined();
+    });
+
     it('generates mathematically accurate and optically verifiable QR code vectors with DENSO quiet zone', async () => {
       const testUrl = 'https://app.letsgetquoted.com/quote/apex-roofing';
       const matrix = getCardQrMatrix(testUrl, 4);
