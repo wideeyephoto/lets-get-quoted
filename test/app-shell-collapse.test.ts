@@ -68,6 +68,13 @@ describe('desktop collapsible navigation rail', () => {
       expect(GLOBALS).toMatch(/\.app-main\.app-main-sidenav\s*\{[^}]*transition:\s*padding-left 0\.22s/);
     });
 
+    it('places push out collapse toggle mid-screen always on the sidebar boundary', () => {
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*position:\s*absolute;/);
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*top:\s*50%;/);
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*right:\s*-14px;/);
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*transform:\s*translateY\(-50%\);/);
+    });
+
     it('hides collapse toggle on mobile screens below 1080px', () => {
       expect(GLOBALS).toMatch(/@media\s*\(max-width:\s*1080px\)\s*\{[\s\S]*?\.sidenav-collapse-toggle\s*\{[^}]*display:\s*none\s*!important;/);
     });

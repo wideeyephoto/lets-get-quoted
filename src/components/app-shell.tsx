@@ -1053,6 +1053,22 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         {isNavOpen ? <div className="sidenav-scrim" onClick={closeNav} aria-hidden="true" /> : null}
 
         <aside id="primary-nav" ref={railRef} className={`sidenav${isNavOpen ? ' open' : ''}${isCollapsed ? ' collapsed' : ''}`} aria-label="Primary">
+          <button
+            type="button"
+            className="sidenav-collapse-toggle"
+            onClick={toggleCollapsed}
+            aria-expanded={!isCollapsed}
+            aria-controls="primary-nav"
+            aria-label={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
+            title={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
+          >
+            <svg className="sidenav-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect width="18" height="18" x="3" y="3" rx="4" />
+              <path d="M9 3v18" />
+              {isCollapsed ? <path d="m13 15 3-3-3-3" /> : <path d="m14 9-3 3 3 3" />}
+            </svg>
+          </button>
+
           <div className="sidenav-topbar">
             {contractorLogoTop ? (
               <Link
@@ -1081,22 +1097,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 </span>
               </Link>
             )}
-
-            <button
-              type="button"
-              className="sidenav-collapse-toggle"
-              onClick={toggleCollapsed}
-              aria-expanded={!isCollapsed}
-              aria-controls="primary-nav"
-              aria-label={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
-              title={isCollapsed ? 'Expand navigation rail ([ or Ctrl+B)' : 'Collapse navigation rail ([ or Ctrl+B)'}
-            >
-              <svg className="sidenav-collapse-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                <rect width="18" height="18" x="3" y="3" rx="4" />
-                <path d="M9 3v18" />
-                {isCollapsed ? <path d="m13 15 3-3-3-3" /> : <path d="m14 9-3 3 3 3" />}
-              </svg>
-            </button>
           </div>
 
           <div className="sidenav-lead">

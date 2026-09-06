@@ -3288,25 +3288,39 @@ h3 {
 }
 
 .sidenav-collapse-toggle {
+  position: absolute;
+  top: 50%;
+  right: -14px;
+  transform: translateY(-50%);
+  z-index: 45;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  border: 1px solid var(--edge-t08);
-  background: rgba(var(--tint), 0.04);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: rgb(var(--chrome-rgb));
   color: var(--muted-2);
   cursor: pointer;
   padding: 0;
-  flex-shrink: 0;
-  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.sidenav-collapse-toggle::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
 }
 
 .sidenav-collapse-toggle:hover {
-  background: rgba(var(--tint), 0.09);
-  color: var(--text);
-  border-color: var(--edge-t14);
+  background: rgb(var(--chrome-rgb));
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.38);
+  transform: translateY(-50%) scale(1.1);
 }
 
 .sidenav-collapse-toggle:focus-visible {
@@ -3315,8 +3329,8 @@ h3 {
 }
 
 .sidenav-collapse-icon {
-  width: 17px;
-  height: 17px;
+  width: 16px;
+  height: 16px;
   display: block;
 }
 
@@ -4646,10 +4660,8 @@ h3 {
   }
 
   .sidenav.collapsed .sidenav-topbar {
-    flex-direction: column;
     justify-content: center;
     align-items: center;
-    gap: 0.5rem;
     padding: 0 0 0.4rem;
     margin-bottom: 0.4rem;
   }
@@ -4692,8 +4704,7 @@ h3 {
   }
 
   .sidenav.collapsed .sidenav-collapse-toggle {
-    width: 34px;
-    height: 34px;
+    right: -14px;
   }
 
   .sidenav.collapsed .sidenav-lead {
@@ -4926,7 +4937,8 @@ h3 {
 @media (prefers-reduced-motion: reduce) {
   .sidenav,
   .app-main.app-main-sidenav,
-  .app-main.app-main-sidenav::before {
+  .app-main.app-main-sidenav::before,
+  .sidenav-collapse-toggle {
     transition: none !important;
   }
 }
