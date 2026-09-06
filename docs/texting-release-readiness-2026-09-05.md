@@ -51,7 +51,8 @@ an authorized operator to correlate production records.
 | Delivery after START | `3a52aeeb-8f9e-4e2e-90f4-2ee2c006b927` | Delivered at 2026-09-06 00:00:21 UTC |
 | Second STOP | Inbound receipt at 2026-09-06 00:00:47 UTC | Consent changed to opted out |
 | Send while stopped | `c476c7f4-2557-4465-a351-8bd93e5876c9` | Cancelled at 2026-09-06 00:02:18 UTC with `sms_consent_not_current`; no provider ID |
-| Final START and ordinary reply | Handset instruction issued | Awaiting correlated evidence |
+| Final START | Receipt `bbe80b3d-879c-488d-ad20-7b9891c95e52` at 2026-09-06 00:14:07 UTC | Processed; consent restored to opted in |
+| Ordinary reply | Receipt `af373c4e-6002-41e0-9f9b-6e253d45df57`; message `0049c4fb-e8c9-4d1e-b5d6-c96c0060f29c` | Stored and routed to the correct workspace at 00:15:25 UTC; worker completed once with `no_action` and no error |
 
 Receipt processing proves the application's keyword handling. All four compliance
 acknowledgments were recorded as `twiml` egress. Handset receipt of each
@@ -68,7 +69,8 @@ completed carrier assignment, and verified application sender registration. A
 SignalWire number was quoted at $0.50/month; purchase is pending explicit approval.
 Do not mark the lane active before the carrier confirms assignment.
 
-The pilot dedicated number is attached to the support campaign. That campaign's
+The user confirmed BrokePipes is only a test workspace; no real-business registration
+was invented or submitted. The pilot dedicated number is attached to the support campaign. That campaign's
 description explicitly excludes contractor-to-customer traffic. Prepare the proper
 contractor brand/campaign from real business information and complete the carrier
 process before declaring customer messaging ready. Do not move it to the crew
@@ -76,8 +78,8 @@ dispatch campaign or alter its voice routing.
 
 ## Remaining live matrix
 
-1. Restore handset opt-in with START and verify an ordinary inbound reply is stored
-   and routed to the expected workspace.
+1. Completed: handset opt-in restored through START; ordinary inbound reply stored,
+   routed to the expected workspace, and handled without business changes.
 2. Complete dispatch provisioning and verify a consented crew send and reply.
 3. Correct the dedicated customer campaign, then exercise a real booking or post-call
    flow through the released producer, queue, carrier callback, and inbox.
