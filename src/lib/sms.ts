@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/auth';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadBusinessName } from '@/lib/business-name';
 import { normalizeUsPhone } from '@/lib/phone';
 import { resolveRecipientTimeZone, getTcpaCompliantSendTime } from '@/lib/phone-timezone';
@@ -1116,10 +1117,10 @@ export async function ensureSmsConsentBaseline(
   accountId: string,
   phone: string,
   source: SmsConsentBaselineSource = 'crew_added',
+  admin: SupabaseClient = createAdminClient(),
 ): Promise<boolean> {
   const normalized = normalizeUsPhone(phone);
   if (!normalized) return false; // can't track an unparseable number
-  const admin = createAdminClient();
   const { data, error } = await admin.rpc('ensure_sms_consent_baseline_scope', {
     p_account_id: accountId,
     p_phone_number: normalized,
