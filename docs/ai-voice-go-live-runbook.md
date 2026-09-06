@@ -1,5 +1,28 @@
 # AI Voice Receptionist — go-live runbook
 
+## Call duration update — 2026-09-06
+
+The owner selected a **10-minute maximum** for reception and dispatch calls.
+New allowance admissions reserve at most ten minutes. A definite ledger
+shortfall retries with the smaller available whole-minute balance; the actual
+reservation determines the provider duration. One or two remaining minutes are
+usable. Duplicate inbound webhooks reload the saved limit. Ambiguous ledger
+failures do not trigger a smaller retry.
+
+SignalWire's documented `answer.max_duration` bounds the entire answered call
+(including greeting and transfers), with `ai.params.hard_stop_time` set fifteen
+seconds earlier to allow a closing line, followed by explicit hangup. The old
+`ai.params.max_duration` setting was not a documented duration control.
+References: https://signalwire.com/docs/swml/reference/answer and
+https://signalwire.com/docs/swml/reference/calling/ai/params.
+
+The 90-minute reservation expiry remains a receipt-processing grace period,
+not a call limit. Settlement uses the original admission's cap so delayed
+receipts from older calls are not incorrectly reduced to the new maximum.
+This change does not enable financial enforcement or authorize overage.
+Before enforcement, validate a controlled call reaching the provider cutoff,
+low-balance admission, recovery/retries, and Step 9 invoice reconciliation.
+
 Written 2026-08-19, revised 2026-08-26. Everything in Phase 4 V1 and P0/P1
 hardening (truthful capacity, live in-call transactional booking, admission-bound
 SWAIG tool permits, emergency deduplication, structured post-call extraction,

@@ -1,4 +1,5 @@
 import { greetingWithAiDisclosure } from '@/lib/voice/provider';
+import { VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import type {
   InboundCall,
   VoiceAnswer,
@@ -231,7 +232,15 @@ export const signalwireVoiceProvider: VoiceProvider = {
       const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
         recordingEnabled: recordCall,
       });
-      const mainSection: Record<string, unknown>[] = [{ answer: {} }];
+      const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
+        ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
+      const maxDurationSeconds = capMinutes * 60;
+      // answer.max_duration bounds the whole answered call, including greeting
+      // and transfers. AI hard_stop_time leaves time for a brief closing line.
+      // ai.params.max_duration is not a documented SignalWire duration control.
+      const mainSection: Record<string, unknown>[] = [{
+        answer: { max_duration: maxDurationSeconds },
+      }];
       // The deterministic disclosure must finish before recording begins. The
       // AI instruction that follows cannot substitute for audio the caller has
       // actually heard.
@@ -770,10 +779,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           post_prompt_auth_user: plan.receiptAuthorization.username,
           post_prompt_auth_password: plan.receiptAuthorization.password,
           params: {
-            // The published safety cap, expressed to the provider so it
-            // holds even if LGQ's own settlement never runs.
             end_of_speech_timeout: 1000,
-            max_duration: plan.capMinutes * 60,
+            hard_stop_time: `${maxDurationSeconds - 15}s`,
+            hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can
             // still retain originals, so the receipt boundary redacts again.
             redact_prompt: 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
@@ -799,6 +807,8 @@ export const signalwireVoiceProvider: VoiceProvider = {
           ...(swaigFunctions.length > 0 ? { SWAIG: { functions: swaigFunctions } } : {}),
         },
       });
+
+      mainSection.push({ hangup: {} });
 
       return Object.freeze({
         contentType: 'application/json',

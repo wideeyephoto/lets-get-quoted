@@ -126,7 +126,7 @@ beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.letsgetquoted.com');
   vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'letsgetquoted.com');
   admitVoiceCall.mockReset();
-  admitVoiceCall.mockResolvedValue({ outcome: 'admitted', lease: {} });
+  admitVoiceCall.mockResolvedValue({ outcome: 'admitted', lease: { reservedMinutes: 10 } });
   resolveVoiceCallerIdentity.mockReset();
   resolveVoiceCallerIdentity.mockResolvedValue({ status: 'customer' });
   purchasedVoiceUnits = 0;
@@ -146,6 +146,16 @@ describe('the product flag is not a metering flag', () => {
 });
 
 describe('what a caller gets', () => {
+  it.each([
+    { outcome: 'admitted', lease: { reservedMinutes: 2 } },
+    { outcome: 'admitted_existing', capMinutes: 2 },
+    { outcome: 'admitted_overage', overage: { units: 2 } },
+  ])('passes the admitted shorter duration to the provider: $outcome', async (decision) => {
+    admitVoiceCall.mockResolvedValue(decision);
+    expect((await planInboundCall(admin, call, options)).plan)
+      .toMatchObject({ kind: 'ai_agent', capMinutes: 2 });
+  });
+
   it('reaches the AI when everything is in place', async () => {
     const result = await planInboundCall(admin, call, options);
     expect(result.plan.kind).toBe('ai_agent');
@@ -365,7 +375,7 @@ describe('what a caller gets', () => {
   });
 
   it('answers on an authorized overage too', async () => {
-    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_overage', overage: {} });
+    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_overage', overage: { units: 10 } });
     expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
   });
 });

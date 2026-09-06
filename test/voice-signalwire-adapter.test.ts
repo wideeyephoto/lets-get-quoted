@@ -357,7 +357,22 @@ describe('rendering an answer', () => {
     expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
-    expect(ai.params.max_duration).toBe(3600);
+    expect(swml.sections.main[0].answer.max_duration).toBe(600);
+    expect(ai.params.hard_stop_time).toBe('585s');
+    expect(ai.params).not.toHaveProperty('max_duration');
+    expect(swml.sections.main.at(-1)).toEqual({ hangup: {} });
+  });
+
+  it.each([1, 2, 10])('limits a %s-minute admission at the provider', (capMinutes) => {
+    const answer = provider.renderAnswer({
+      kind: 'ai_agent', receiptUrl: 'https://lgq.test/api/voice/receipt',
+      receiptAuthorization: RECEIPT_AUTH, greeting: 'Hello.', capMinutes, transferTo: null,
+    });
+    const main = JSON.parse(answer.body).sections.main;
+    expect(main[0].answer.max_duration).toBe(capMinutes * 60);
+    expect(main.find((step: { ai?: unknown }) => step.ai).ai.params.hard_stop_time)
+      .toBe(`${capMinutes * 60 - 15}s`);
+    expect(main.at(-1)).toEqual({ hangup: {} });
   });
 
   it('plays both disclosures before it starts call recording', () => {

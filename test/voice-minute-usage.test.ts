@@ -20,7 +20,11 @@ vi.mock('@/lib/billing/usage-overage', () => ({
 }));
 
 const rpc = vi.fn();
-const admin = { rpc } as never;
+const existingAdmission = vi.fn();
+const admin = { rpc, from: () => {
+  const chain = { select: () => chain, eq: () => chain, maybeSingle: existingAdmission };
+  return chain;
+} } as never;
 type RpcReply = { data: unknown; error: unknown } | Error;
 let rpcScript: Record<string, RpcReply[]>;
 
@@ -51,6 +55,8 @@ const MEASURED = { ai_start_date: 1787171667036808, ai_end_date: 178717169984323
 
 beforeEach(() => {
   rpc.mockReset();
+  existingAdmission.mockReset();
+  existingAdmission.mockResolvedValue({ data: { reserved_minutes: 2 }, error: null });
   rpcScript = {};
   rpc.mockImplementation(async (name: string) => {
     const scripted = rpcScript[name]?.shift();
@@ -186,7 +192,7 @@ describe('admission', () => {
       data: [{ claim_status: 'existing', admission_id: 'adm-1' }], error: null,
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
-      .toEqual({ outcome: 'admitted_unmetered', reason: 'existing_admission' });
+      .toEqual({ outcome: 'admitted_existing', capMinutes: 2 });
     expect(callsFor('reserve_usage_credits')).toHaveLength(0);
   });
 
@@ -216,6 +222,59 @@ describe('admission', () => {
         p_operation_type: 'ai_voice_minute',
       }));
     });
+  });
+
+  it.each(['measure', 'enforce'] as const)('uses remaining credit below the cap in %s mode', async (mode) => {
+    for (const balance of [1, 2, 9, 10, 59]) {
+      const units = Math.min(10, balance);
+      setRpc('reserve_usage_credits',
+        ...(balance < 10 ? [{ data: null, error: {
+          code: 'P0001', message: `insufficient usage credits for resource voice_minutes (missing ${10 - balance} units)`,
+        } }] : []),
+        { data: 'res-small', error: null });
+      const decision = await admitVoiceCall(admin, input, { mode });
+      expect(decision).toMatchObject({ outcome: 'admitted', lease: { reservedMinutes: units } });
+      expect(callsFor('finalize_voice_call_admission').at(-1)?.[1]).toMatchObject({
+        p_reservation_id: 'res-small', p_reserved_minutes: units,
+      });
+    }
+    expect(tryOverage).not.toHaveBeenCalled();
+  });
+
+  it('rechecks a smaller hold atomically if other usage spends the balance', async () => {
+    setRpc('reserve_usage_credits',
+      { data: null, error: { code: 'P0001', message: 'insufficient usage credits (missing 8 units)' } },
+      { data: null, error: { code: 'P0001', message: 'insufficient usage credits (missing 1 units)' } },
+      { data: 'res-last-minute', error: null });
+    expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
+      .toMatchObject({ outcome: 'admitted', lease: { reservedMinutes: 1 } });
+    expect(callsFor('reserve_usage_credits').map(([, args]) => args.p_units)).toEqual([10, 2, 1]);
+  });
+
+  it('never retries an ambiguous failure after a definite shortfall', async () => {
+    setRpc('reserve_usage_credits',
+      { data: null, error: { code: 'P0001', message: 'insufficient usage credits (missing 8 units)' } },
+      new Error('response lost'));
+    expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
+      .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(2);
+    expect(tryOverage).not.toHaveBeenCalled();
+  });
+
+  it.each([0, -1, 11, 60, 1.5, Number.NaN])('refuses an invalid admission cap of %s', async (capMinutes) => {
+    expect(await admitVoiceCall(admin, input, { mode: 'enforce', capMinutes }))
+      .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(rpc).not.toHaveBeenCalled();
+  });
+
+  it.each([null, { reserved_minutes: -1 }, { reserved_minutes: '2' }])('refuses replay when its limit cannot be trusted: %j', async (data) => {
+    setRpc('claim_voice_call_admission_v2', {
+      data: [{ claim_status: 'existing', admission_id: 'adm-1' }], error: null,
+    });
+    existingAdmission.mockResolvedValue({ data, error: null });
+    expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
+      .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(0);
   });
 
   it('holds it for longer than the longest call it could cover', async () => {

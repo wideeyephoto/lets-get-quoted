@@ -1,5 +1,11 @@
 # AI Voice Receptionist V1 — decisions
 
+**2026-09-06 amendment:** The owner replaced the original 60-minute call cap
+with a **10-minute maximum**. New allowance holds shrink to the available
+whole-minute balance and determine the provider's actual call limit. See the
+call-duration update in `ai-voice-go-live-runbook.md`. The older cap discussions
+below describe the original design, not the current duration policy.
+
 Decided 2026-08-19. This is the decision record, not the plan. It exists so that
 an implementer six weeks from now can tell what was chosen from what was merely
 convenient, and so a later provider swap does not have to re-litigate any of it.

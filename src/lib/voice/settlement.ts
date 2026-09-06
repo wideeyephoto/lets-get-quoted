@@ -107,7 +107,7 @@ export async function settleVoiceReceipt(
   const minutes = billableVoiceMinutes({
     ai_start_date: receipt.aiStartMicros,
     ai_end_date: receipt.aiEndMicros,
-  });
+  }, row.reserved_minutes && row.reserved_minutes > 0 ? row.reserved_minutes : undefined);
 
   let settled: number | null = null;
   let reconcile: VoiceSettlement['reconcile'] = null;
@@ -127,10 +127,10 @@ export async function settleVoiceReceipt(
     }, minutes);
     if (settled === null) reconcile = 'settlement_failed';
   } else if (row.overage_key) {
-    // ADMITTED ON OVERAGE. The full 60-minute safety cap was charged the moment
+    // ADMITTED ON OVERAGE. The admitted safety cap was charged the moment
     // the call was answered, because nobody can know its length in advance. Now
     // the receipt says what it actually was, so the charge comes down to it.
-    // Without this a twenty-second wrong number costs $21 for ever.
+    // A short call must not retain the full initial overage hold.
     const committedMinutes = Math.min(minutes, row.reserved_minutes ?? minutes);
     const outcome = await settleUsageOverage(admin, {
       accountId: row.account_id,
