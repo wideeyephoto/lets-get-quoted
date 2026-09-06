@@ -53,6 +53,7 @@ an authorized operator to correlate production records.
 | Send while stopped | `c476c7f4-2557-4465-a351-8bd93e5876c9` | Cancelled at 2026-09-06 00:02:18 UTC with `sms_consent_not_current`; no provider ID |
 | Final START | Receipt `bbe80b3d-879c-488d-ad20-7b9891c95e52` at 2026-09-06 00:14:07 UTC | Processed; consent restored to opted in |
 | Ordinary reply | Receipt `af373c4e-6002-41e0-9f9b-6e253d45df57`; message `0049c4fb-e8c9-4d1e-b5d6-c96c0060f29c` | Stored and routed to the correct workspace at 00:15:25 UTC; worker completed once with `no_action` and no error |
+| Post-release delivery | Event `3c1b40d2-98a8-4423-8614-45f1d70e256b`; provider `062335f2-c651-4989-a7d8-38d1b1082bd4` | Delivered at 2026-09-06 00:37:22 UTC; no provider error; usage committed |
 
 Receipt processing proves the application's keyword handling. All four compliance
 acknowledgments were recorded as `twiml` egress. Handset receipt of each
@@ -86,8 +87,17 @@ dispatch campaign or alter its voice routing.
 4. Exercise quiet hours, rejected destinations, retries, duplicate callbacks, and
    usage reconciliation with controlled test records. Local coverage alone does not
    count as live carrier verification.
-5. Record the deployed commit and post-release evidence before declaring the code
-   fixes live. The build above is local verification, not deployment evidence.
+5. Completed: PR #25 merged as `94404f14d3c69ec62698185745110ef042167972`.
+   CI run `34001180283` passed; Vercel `dpl_AXnZn8NAnN6FMTawjvs7ToTdkAtv`
+   was READY and assigned to the production apex and wildcard before the final
+   delivered SMS. Production health returned 200/operational and unauthenticated
+   SWAIG returned 401. No matching SMS error/fatal logs were found in the scoped scan.
+
+Vercel's separate TypeCheck initially exhausted its 2 GB JavaScript heap. Follow-up
+`0f1ae88f24a3b6a75f603f42a4f4e5292a209ecc` gives the typecheck command the same
+4 GB allowance as CI. Normal and cache-disabled local checks passed; Vercel's check
+then exited 0 at 00:33:39 UTC. No check was disabled. Each initial delivered test
+has exactly one committed one-segment reservation; the STOP-blocked event has none.
 
 For another handset run, obtain explicit permission for the recipient first. Send
 through the normal application queue, correlate event/provider/receipt records, and
