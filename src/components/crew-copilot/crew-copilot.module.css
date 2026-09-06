@@ -1,0 +1,889 @@
+/* ==========================================================================
+   Crew AI Copilot - Mobile Field Assistant Styles
+   Engineered for Mobile-First, Touch Targets (>=44px), & 4 Contrast Themes
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Welcome Banner (Embedded on /field dashboard)
+   -------------------------------------------------------------------------- */
+.welcomeBanner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+  padding: 16px;
+  margin: 0 0 16px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.welcomeHeader {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.avatarContainer {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+}
+
+.companionAvatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #6366f1;
+  background: #1e293b;
+}
+
+.onlineBadge {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 13px;
+  height: 13px;
+  background: #10b981;
+  border: 2px solid #0f172a;
+  border-radius: 50%;
+  box-shadow: 0 0 6px #10b981;
+}
+
+.welcomeMeta {
+  flex: 1;
+  min-width: 0;
+}
+
+.welcomeTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.welcomeTitle {
+  font-size: 16px;
+  font-weight: 700;
+  color: #f8fafc;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.copilotBadge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  background: rgba(99, 102, 241, 0.2);
+  color: #c7d2fe;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.welcomeSubtitle {
+  font-size: 12.5px;
+  color: #94a3b8;
+  margin: 3px 0 0;
+  line-height: 1.35;
+}
+
+.chipsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chipBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #f1f5f9;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 12px;
+  border-radius: 9999px;
+  min-height: 40px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  font-family: inherit;
+  text-align: left;
+}
+
+.chipBtn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(129, 140, 248, 0.5);
+  color: #ffffff;
+  transform: translateY(-1px);
+}
+
+.chipBtn:active {
+  transform: translateY(0);
+}
+
+.chipPrimary {
+  background: #ff7a21;
+  border-color: #ff8e42;
+  color: #110500; /* WCAG AAA high contrast dark ink on #ff7a21 */
+  font-weight: 700;
+  box-shadow: 0 2px 10px rgba(255, 122, 33, 0.3);
+}
+
+.chipPrimary:hover {
+  background: #ff8e42;
+  border-color: #ffa466;
+  color: #110500;
+  box-shadow: 0 4px 14px rgba(255, 122, 33, 0.45);
+}
+
+/* --------------------------------------------------------------------------
+   2. Floating Copilot Trigger (Bottom right on mobile field app)
+   -------------------------------------------------------------------------- */
+.floatingTrigger {
+  position: fixed;
+  bottom: 24px;
+  right: 20px;
+  z-index: 9990;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 6px;
+  background: rgba(15, 23, 42, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  color: #ffffff;
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  border-radius: 9999px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5), 0 0 16px rgba(99, 102, 241, 0.3);
+  cursor: pointer;
+  min-height: 44px;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+}
+
+.floatingTrigger:hover {
+  transform: translateY(-2px) scale(1.03);
+  border-color: rgba(165, 180, 252, 0.7);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.6), 0 0 22px rgba(99, 102, 241, 0.5);
+}
+
+.floatingTrigger:active {
+  transform: translateY(0) scale(0.97);
+}
+
+.triggerAvatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1.5px solid #6366f1;
+}
+
+.triggerText {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+}
+
+/* --------------------------------------------------------------------------
+   3. Mobile Bottom Sheet / Modal Drawer
+   -------------------------------------------------------------------------- */
+.sheetOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9995;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheetContent {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+  height: 86vh;
+  max-height: 86vh;
+  background: #0b1320;
+  border-top-left-radius: 24px;
+  border-top-right-radius: 24px;
+  border: 1px solid rgba(129, 140, 248, 0.25);
+  border-bottom: none;
+  box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: slideUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.sheetHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.85);
+  flex-shrink: 0;
+}
+
+.sheetHeaderLeft {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sheetAvatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #6366f1;
+}
+
+.sheetHeaderMeta {
+  display: flex;
+  flex-direction: column;
+}
+
+.sheetTitle {
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #f8fafc;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sheetSubtitle {
+  font-size: 11px;
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.closeBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: all 0.15s ease;
+}
+
+.closeBtn:hover {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   4. Chat Messages Scroll Area
+   -------------------------------------------------------------------------- */
+.messagesArea {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.messageRow {
+  display: flex;
+  flex-direction: column;
+  max-width: 86%;
+}
+
+.userRow {
+  align-self: flex-end;
+  align-items: flex-end;
+}
+
+.assistantRow {
+  align-self: flex-start;
+  align-items: flex-start;
+}
+
+.userBubble {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 18px 18px 4px 18px;
+  font-size: 14px;
+  line-height: 1.45;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
+  word-break: break-word;
+}
+
+.assistantBubble {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #f1f5f9;
+  padding: 12px 14px;
+  border-radius: 18px 18px 18px 4px;
+  font-size: 14px;
+  line-height: 1.5;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  word-break: break-word;
+}
+
+.assistantBubble p {
+  margin: 0 0 8px;
+}
+
+.assistantBubble p:last-child {
+  margin-bottom: 0;
+}
+
+.assistantBubble ul {
+  margin: 4px 0 8px 18px;
+  padding: 0;
+}
+
+.assistantBubble li {
+  margin-bottom: 4px;
+}
+
+.toolExecutionChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
+  padding: 2px 7px;
+  border-radius: 6px;
+  margin-bottom: 6px;
+}
+
+.timestamp {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 4px;
+  padding: 0 4px;
+}
+
+/* --------------------------------------------------------------------------
+   5. Drawer Bottom Input Capsule & Chips
+   -------------------------------------------------------------------------- */
+.drawerFooter {
+  padding: 8px 12px 16px;
+  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.drawerQuickChips {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  scrollbar-width: none;
+}
+
+.drawerQuickChips::-webkit-scrollbar {
+  display: none;
+}
+
+.quickChip {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #cbd5e1;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  cursor: pointer;
+  font-family: inherit;
+  min-height: 32px;
+}
+
+.quickChip:hover {
+  background: rgba(255, 255, 255, 0.14);
+  color: #ffffff;
+}
+
+.inputCapsule {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(129, 140, 248, 0.3);
+  border-radius: 9999px;
+  padding: 4px 6px;
+  box-sizing: border-box;
+}
+
+.inputCapsule:focus-within {
+  border-color: #818cf8;
+  background: rgba(30, 41, 59, 0.95);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+}
+
+.inputField {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 8px 6px;
+  font-size: 16px; /* 16px prevents iOS Safari from automatically zooming the page on focus */
+  color: #ffffff;
+  font-family: inherit;
+}
+
+.inputField::placeholder {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.iconActionBtn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.iconActionBtn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #818cf8;
+}
+
+.iconActionBtn.isListening {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+  animation: pulse 1.2s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+.sendBtn {
+  background: #ff7a21;
+  border: none;
+  color: #110500; /* WCAG AAA high contrast dark ink */
+  font-weight: 700;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(255, 122, 33, 0.35);
+}
+
+.sendBtn:hover:not(:disabled) {
+  background: #ff8e42;
+  transform: scale(1.05);
+}
+
+.sendBtn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.typingIndicator {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 14px;
+  width: fit-content;
+}
+
+.typingDot {
+  width: 6px;
+  height: 6px;
+  background: #94a3b8;
+  border-radius: 50%;
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typingDot:nth-child(1) { animation-delay: -0.32s; }
+.typingDot:nth-child(2) { animation-delay: -0.16s; }
+.typingDot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* --------------------------------------------------------------------------
+   6. CONTRAST THEMES SUPPORT
+   - Default (Dark): Styled by base classes above
+   - Light (Workbench): Crisp white paper, dark text (#0f172a), high contrast
+   - Dim (Slate): Mid-tone slate (#1e293b), soft glow
+   - Sunlight (Daylight): Ultra-high contrast, black ink & borders for outdoor sun
+   -------------------------------------------------------------------------- */
+
+/* --- THEME: LIGHT (Workbench / Paper) --- */
+:root[data-theme='light'] .welcomeBanner {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+}
+
+:root[data-theme='light'] .welcomeTitle {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .welcomeSubtitle {
+  color: #475569;
+}
+
+:root[data-theme='light'] .chipBtn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .chipBtn:hover {
+  background: #e2e8f0;
+  border-color: #94a3b8;
+}
+
+:root[data-theme='light'] .chipPrimary {
+  background: #ff7a21;
+  border-color: #ea580c;
+  color: #110500; /* WCAG AAA */
+}
+
+:root[data-theme='light'] .floatingTrigger {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+:root[data-theme='light'] .sheetContent {
+  background: #f8fafc;
+  border: 1px solid #cbd5e1;
+}
+
+:root[data-theme='light'] .sheetHeader {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+:root[data-theme='light'] .sheetTitle {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .sheetSubtitle {
+  color: #64748b;
+}
+
+:root[data-theme='light'] .closeBtn {
+  background: #f1f5f9;
+  color: #475569;
+}
+
+:root[data-theme='light'] .assistantBubble {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+:root[data-theme='light'] .drawerFooter {
+  background: #ffffff;
+  border-top: 1px solid #e2e8f0;
+}
+
+:root[data-theme='light'] .quickChip {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #334155;
+}
+
+:root[data-theme='light'] .inputCapsule {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+}
+
+:root[data-theme='light'] .inputField {
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .inputField::placeholder {
+  color: #94a3b8;
+}
+
+/* --- THEME: DIM (Slate / Twilight) --- */
+:root[data-theme='dim'] .welcomeBanner {
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #f8fafc;
+}
+
+:root[data-theme='dim'] .welcomeTitle {
+  color: #f8fafc;
+}
+
+:root[data-theme='dim'] .welcomeSubtitle {
+  color: #94a3b8;
+}
+
+:root[data-theme='dim'] .chipBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #f8fafc;
+}
+
+:root[data-theme='dim'] .floatingTrigger {
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  color: #f8fafc;
+}
+
+:root[data-theme='dim'] .sheetContent {
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+}
+
+:root[data-theme='dim'] .sheetHeader {
+  background: #1e293b;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+:root[data-theme='dim'] .assistantBubble {
+  background: #1e293b;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #f8fafc;
+}
+
+:root[data-theme='dim'] .drawerFooter {
+  background: #1e293b;
+  border-top: 1px solid rgba(148, 163, 184, 0.2);
+}
+
+:root[data-theme='dim'] .inputCapsule {
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+
+/* --- THEME: SUNLIGHT (Daylight High Contrast) --- */
+:root[data-theme='sunlight'] .welcomeBanner {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  box-shadow: 0 4px 0 #090d16;
+}
+
+:root[data-theme='sunlight'] .welcomeTitle {
+  color: #090d16;
+  font-weight: 800;
+}
+
+:root[data-theme='sunlight'] .welcomeSubtitle {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+:root[data-theme='sunlight'] .copilotBadge {
+  background: #090d16;
+  color: #ffffff;
+  border: 1px solid #090d16;
+}
+
+:root[data-theme='sunlight'] .chipBtn {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  font-weight: 700;
+}
+
+:root[data-theme='sunlight'] .chipBtn:hover {
+  background: #f1f5f9;
+  border-color: #090d16;
+}
+
+:root[data-theme='sunlight'] .chipPrimary {
+  background: #ff7a21;
+  border: 2px solid #090d16;
+  color: #110500; /* WCAG AAA high contrast */
+  box-shadow: 0 2px 0 #090d16;
+}
+
+:root[data-theme='sunlight'] .floatingTrigger {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  box-shadow: 0 4px 0 #090d16;
+}
+
+:root[data-theme='sunlight'] .sheetContent {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  box-shadow: 0 -8px 0 #090d16;
+}
+
+:root[data-theme='sunlight'] .sheetHeader {
+  background: #ffffff;
+  border-bottom: 2px solid #090d16;
+}
+
+:root[data-theme='sunlight'] .sheetTitle {
+  color: #090d16;
+  font-weight: 800;
+}
+
+:root[data-theme='sunlight'] .sheetSubtitle {
+  color: #1e293b;
+  font-weight: 600;
+}
+
+:root[data-theme='sunlight'] .closeBtn {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .userBubble {
+  background: #090d16;
+  color: #ffffff;
+  border: 1px solid #090d16;
+}
+
+:root[data-theme='sunlight'] .assistantBubble {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  box-shadow: 0 2px 0 #090d16;
+  font-weight: 500;
+}
+
+:root[data-theme='sunlight'] .drawerFooter {
+  background: #ffffff;
+  border-top: 2px solid #090d16;
+}
+
+:root[data-theme='sunlight'] .quickChip {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  font-weight: 700;
+}
+
+:root[data-theme='sunlight'] .inputCapsule {
+  background: #ffffff;
+  border: 2px solid #090d16;
+}
+
+:root[data-theme='sunlight'] .inputField {
+  color: #090d16;
+  font-weight: 600;
+}
+
+:root[data-theme='sunlight'] .inputField::placeholder {
+  color: #475569;
+}
+
+:root[data-theme='sunlight'] .sendBtn {
+  background: #ff7a21;
+  border: 2px solid #090d16;
+  color: #110500; /* WCAG AAA */
+}
+
+/* Header button in FieldHeader */
+.headerCopilotBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(99, 102, 241, 0.16);
+  border: 1px solid rgba(129, 140, 248, 0.35);
+  color: #c7d2fe;
+  border-radius: 9999px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  user-select: none;
+}
+
+.headerCopilotBtn:hover {
+  background: rgba(99, 102, 241, 0.28);
+  border-color: rgba(165, 180, 252, 0.6);
+  color: #ffffff;
+}
+
+:root[data-theme='light'] .headerCopilotBtn {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+}
+
+:root[data-theme='light'] .headerCopilotBtn:hover {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+:root[data-theme='dim'] .headerCopilotBtn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: #f8fafc;
+}
+
+:root[data-theme='sunlight'] .headerCopilotBtn {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  font-weight: 700;
+}
+

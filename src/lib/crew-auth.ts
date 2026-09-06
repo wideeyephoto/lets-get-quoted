@@ -72,8 +72,9 @@ export async function sendCrewMagicLink(email: string, businessName: string, acc
       eyebrow: 'Field Crew App',
       heading: `Welcome to ${businessName}`,
       paragraphs: [
-        'Tap the secure button below to open your assigned jobs, view site schedules, and update job status directly from your phone.',
+        'Tap the secure button below to open your assigned jobs, chat with your AI field copilot for gate codes & directions, and log hours or updates directly from your phone.',
       ],
+
       cta: {
         label: 'Open my assigned jobs',
         url: verifyUrl.toString(),

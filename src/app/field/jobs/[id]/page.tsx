@@ -28,8 +28,10 @@ import { createAdminClient } from '@/lib/auth';
 import FieldJobForms from '@/components/forms/FieldJobForms';
 import { saveFieldFormAction } from './form-actions';
 import { listJobFormSubmissions } from '@/lib/forms/forms-data';
+import CrewCopilotWidget from '@/components/crew-copilot/CrewCopilotWidget';
 
 export const dynamic = 'force-dynamic';
+
 
 const STATUS_LABEL: Record<string, string> = {
   new_lead: 'New',
@@ -547,7 +549,14 @@ export default async function FieldJobPage({ params: paramsPromise, searchParams
           </section>
         ) : null}
       </main>
+      <CrewCopilotWidget
+        crewName={crew.name}
+        businessName={businessName}
+        activeJobId={job?.id}
+        activeJobRef={job?.ref}
+      />
       <FieldFooter navLogoTop={navLogoTop} />
     </>
   );
 }
+

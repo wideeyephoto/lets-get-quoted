@@ -14,6 +14,8 @@ import FieldHeader from './FieldHeader';
 import FieldFooter from './FieldFooter';
 import FieldPwa from './FieldPwa';
 import FieldOfflineWarm from './FieldOfflineWarm';
+import CrewWelcomeBanner from '@/components/crew-copilot/CrewWelcomeBanner';
+import CrewCopilotWidget from '@/components/crew-copilot/CrewCopilotWidget';
 
 export const dynamic = 'force-dynamic';
 
@@ -245,6 +247,13 @@ export default async function FieldHomePage() {
         <h1 className="field-greeting">Hi {firstName} 👋</h1>
         <FieldPwa />
 
+        {/* AI Field Copilot Welcome & Quick Action Prompts */}
+        <CrewWelcomeBanner
+          crewName={crew.name}
+          businessName={businessName}
+          todayStopsCount={routeItems.length}
+        />
+
         {/* Quick Texting Field Tip */}
         <div className="field-textintake-tip">
           <div className="field-textintake-tip-header">
@@ -360,7 +369,12 @@ export default async function FieldHomePage() {
           </>
         )}
       </main>
+      <CrewCopilotWidget
+        crewName={crew.name}
+        businessName={businessName}
+      />
       <FieldFooter navLogoTop={navLogoTop} />
     </>
   );
 }
+

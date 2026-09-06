@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import { FieldHeaderCopilotButton } from '@/components/crew-copilot/CrewWelcomeBanner';
 
 // Field-app top bar: business + crew name, with a back link on detail pages and
 // a native sign-out (POST to the shared /auth/signout route).
@@ -76,9 +77,13 @@ export default function FieldHeader({
           </div>
         </div>
       )}
-      <form action="/auth/signout" method="post">
-        <button type="submit" className="field-signout">Sign out</button>
-      </form>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+        <FieldHeaderCopilotButton />
+        <form action="/auth/signout" method="post">
+          <button type="submit" className="field-signout">Sign out</button>
+        </form>
+      </div>
     </header>
   );
 }
+
