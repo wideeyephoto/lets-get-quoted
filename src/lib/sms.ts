@@ -993,53 +993,21 @@ export async function isPhoneOptedOut(accountId: string, phone: string): Promise
   if (!normalized) return true;
   const admin = createAdminClient();
   try {
-    const prefQuery = admin
-      .from('sms_sender_keyword_preferences')
-      .select('sender_number_id, status, opted_out_at')
-      .eq('phone_number', normalized)
-      .eq('status', 'opted_out');
-    const prefPromise = typeof (prefQuery as { not?: unknown }).not === 'function'
-      ? (prefQuery as unknown as { not: (col: string, op: string, val: unknown) => Promise<unknown> }).not('opted_out_at', 'is', null)
-      : prefQuery;
-
-    const [consentResult, prefResult] = await Promise.all([
-      admin
-        .from('sms_consent')
-        .select('status')
-        .eq('account_id', accountId)
-        .eq('phone_number', normalized)
-        .maybeSingle(),
-      prefPromise as Promise<{ data: Array<{ sender_number_id?: string; opted_out_at?: string | null }> | null; error: { message: string } | null }>,
-    ]);
-
-    // Fail closed: if consent can't be read, treat as opted-out and skip the
-    // send rather than risk texting someone who opted out.
-    if (consentResult.error) {
-      console.error(`Consent check failed for ${normalized}; skipping send:`, consentResult.error.message);
+    const { data, error } = await admin.rpc('sms_account_recipient_opted_out', {
+      p_account_id: accountId,
+      p_phone_number: normalized,
+    });
+    // The database function resolves the recipient's account consent together
+    // with the effective sender/campaign preference. Anything unreadable or
+    // malformed fails closed before a message is even queued.
+    if (error || typeof data !== 'boolean') {
+      console.error(
+        `Consent check failed for ${normalized}; skipping send:`,
+        error?.message ?? 'invalid opt-out result',
+      );
       return true;
     }
-    if (consentResult.data?.status === 'opted_out') return true;
-
-    if (!prefResult.error && prefResult.data && prefResult.data.length > 0) {
-      const activeOptOuts = prefResult.data.filter((p) => p.opted_out_at !== null);
-      const senderIds = activeOptOuts.map((p) => p.sender_number_id).filter(Boolean);
-      if (senderIds.length > 0) {
-        const { data: matchedSenders, error: sendersError } = await admin
-          .from('sms_sender_numbers')
-          .select('id')
-          .in('id', senderIds)
-          .or(`account_id.eq.${accountId},purpose.in.(lgq_shared,lgq_dispatch)`);
-        if (sendersError) {
-          console.error(`Sender lookup failed during opt-out check for ${normalized}:`, sendersError.message);
-          return true;
-        }
-        if (matchedSenders && matchedSenders.length > 0) {
-          return true;
-        }
-      }
-    }
-
-    return false;
+    return data;
   } catch (err) {
     console.error(`Consent check failed for ${normalized}; skipping send:`, err);
     return true;

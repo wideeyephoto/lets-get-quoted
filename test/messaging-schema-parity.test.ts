@@ -67,6 +67,7 @@ const MIGRATIONS = [
   'migrations/20260904133000_unify_delivery_request_started_sender.sql',
   'migrations/20260904210000_sms_delivery_task_ttl.sql',
   'migrations/20260905153351_sms_lead_delivery_history.sql',
+  'migrations/20260906120000_sms_campaign_wide_stop.sql',
 ] as const;
 
 function lf(value: string): string {
