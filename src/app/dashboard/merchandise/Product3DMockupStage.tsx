@@ -17,13 +17,18 @@ interface Props {
   selectedFinish?: string;
   selectedModel?: string;
   businessName: string;
+  personName?: string;
+  personTitle?: string;
   tagline: string;
   phone: string;
+  phoneType?: string;
   secondaryPhone?: string;
+  secondaryPhoneType?: string;
   fax?: string;
   email?: string;
   website: string;
   license: string;
+  credentialType?: string;
   badgeLabel?: string;
   ratingBadgeText?: string;
   bulletText?: string;
@@ -56,13 +61,18 @@ export default function Product3DMockupStage({
   setBackdropTheme,
   includeQrCode,
   businessName,
+  personName,
+  personTitle,
   tagline,
   phone,
+  phoneType,
   secondaryPhone,
+  secondaryPhoneType,
   fax,
   email,
   website,
   license,
+  credentialType,
   badgeLabel,
   ratingBadgeText,
   bulletText,
@@ -116,13 +126,18 @@ export default function Product3DMockupStage({
               accentColor={accentColor}
               secondaryColor={secondaryColor}
               businessName={businessName}
+              personName={personName}
+              personTitle={personTitle}
               tagline={tagline}
               phone={phone}
+              phoneType={phoneType}
               secondaryPhone={secondaryPhone}
+              secondaryPhoneType={secondaryPhoneType}
               fax={fax}
               email={email}
               website={website}
               license={license}
+              credentialType={credentialType}
               badgeLabel={badgeLabel}
               ratingBadgeText={ratingBadgeText}
               bulletText={bulletText}
@@ -155,13 +170,18 @@ export default function Product3DMockupStage({
               accentColor={accentColor}
               secondaryColor={secondaryColor}
               businessName={businessName}
+              personName={personName}
+              personTitle={personTitle}
               tagline={tagline}
               phone={phone}
+              phoneType={phoneType}
               secondaryPhone={secondaryPhone}
+              secondaryPhoneType={secondaryPhoneType}
               fax={fax}
               email={email}
               website={website}
               license={license}
+              credentialType={credentialType}
               badgeLabel={badgeLabel}
               ratingBadgeText={ratingBadgeText}
               bulletText={bulletText}

@@ -30,7 +30,7 @@ import {
   verifyQrDecode,
 } from '@/lib/merchandise/card-qr';
 import { PRIMARY_COLOR_PRESETS, SECONDARY_COLOR_PRESETS } from '@/app/dashboard/merchandise/StudioConfigurator';
-import { isDarkColor } from '@/app/dashboard/merchandise/BusinessCardMockup';
+import { isDarkColor, renderCardCredential } from '@/app/dashboard/merchandise/BusinessCardMockup';
 import type { MerchandiseOrderItem, ShippingAddress } from '@/lib/merchandise/types';
 
 // Mock dependencies for Server Actions & Webhooks
@@ -1733,6 +1733,72 @@ describe('Merchandise Studio & Instant Purchasing Engine', () => {
       expect(isDarkColor('#ffffff')).toBe(false);
       expect(isDarkColor('#fefce8')).toBe(false);
       expect(isDarkColor('#d2b48c')).toBe(false);
+    });
+
+    it('verifies renderCardCredential formats different trust badge types with distinct styling', () => {
+      // family_owned badge with emoji and pill styling
+      const famElem = renderCardCredential('Father & Son Owned', 'family_owned', '#ff7a21');
+      expect(famElem).not.toBeNull();
+      expect(famElem?.props.style.display).toBe('inline-flex');
+      expect(famElem?.props.children[0].props.children).toBe('👨‍👦');
+      expect(famElem?.props.children[1].props.children).toBe('Father & Son Owned');
+
+      // years_in_biz with star flourishes and uppercase tracking
+      const yearsElem = renderCardCredential('25+ Years in Business', 'years_in_biz', '#ff7a21');
+      expect(yearsElem).not.toBeNull();
+      expect(yearsElem?.props.style.textTransform).toBe('uppercase');
+      expect(yearsElem?.props.children[0].props.children).toBe('★');
+      expect(yearsElem?.props.children[1].props.children).toBe('25+ Years in Business');
+      expect(yearsElem?.props.children[2].props.children).toBe('★');
+
+      // bonded_insured with shield icon
+      const bondedElem = renderCardCredential('Fully Bonded & Insured', 'bonded_insured', '#2563eb');
+      expect(bondedElem).not.toBeNull();
+      expect(bondedElem?.props.children[0].props.children).toBe('🛡️');
+      expect(bondedElem?.props.children[1].props.children).toBe('Fully Bonded & Insured');
+
+      // standard license
+      const licElem = renderCardCredential('LIC# ROC-389142', 'license', '#2563eb');
+      expect(licElem).not.toBeNull();
+      expect(licElem?.props.style.textTransform).toBe('uppercase');
+      expect(licElem?.props.children).toBe('LIC# ROC-389142');
+
+      // empty or whitespace returns null
+      expect(renderCardCredential('', 'license')).toBeNull();
+      expect(renderCardCredential('   ', 'family_owned')).toBeNull();
+      expect(renderCardCredential(undefined, 'bonded_insured')).toBeNull();
+    });
+
+    it('verifies MerchandiseOrderItem accepts employee name, title, phone types, and credential types', () => {
+      const item: MerchandiseOrderItem = {
+        productId: 'biz_cards',
+        productName: '16pt Velvet Business Cards',
+        colorName: 'Matte Charcoal Onyx',
+        colorHex: '#18181b',
+        quantity: 500,
+        unitPrice: 0.17,
+        totalPrice: 85,
+        customizationDetails: {
+          businessName: 'Apex Roofing & Restoration',
+          personName: 'John Doe',
+          personTitle: 'Owner & Master Roofer',
+          phone: '(555) 234-5678',
+          phoneType: 'Office',
+          secondaryPhone: '(555) 876-5432',
+          secondaryPhoneType: 'Cell',
+          credentialType: 'family_owned',
+          license: 'Father & Son Owned',
+          decorationMethod: 'offset_cmyk',
+          placement: 'Front & Back Velvet Offset Imprint',
+        },
+      };
+
+      expect(item.customizationDetails.personName).toBe('John Doe');
+      expect(item.customizationDetails.personTitle).toBe('Owner & Master Roofer');
+      expect(item.customizationDetails.phoneType).toBe('Office');
+      expect(item.customizationDetails.secondaryPhoneType).toBe('Cell');
+      expect(item.customizationDetails.credentialType).toBe('family_owned');
+      expect(item.customizationDetails.license).toBe('Father & Son Owned');
     });
   });
 });

@@ -68,13 +68,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   // Brand data state (pre-filled from initialData)
   const [businessName, setBusinessName] = useState(initialData.companyName);
+  const [personName, setPersonName] = useState(initialData.personName || '');
+  const [personTitle, setPersonTitle] = useState(initialData.personTitle || '');
   const [tagline, setTagline] = useState(initialData.tagline);
   const [phone, setPhone] = useState(initialData.phone);
+  const [phoneType, setPhoneType] = useState(initialData.phoneType || 'Office');
   const [secondaryPhone, setSecondaryPhone] = useState(initialData.secondaryPhone || '');
+  const [secondaryPhoneType, setSecondaryPhoneType] = useState(initialData.secondaryPhoneType || 'Cell');
   const [fax, setFax] = useState(initialData.fax || '');
   const [email, setEmail] = useState(initialData.email || '');
   const [website, setWebsite] = useState(initialData.website);
   const [license, setLicense] = useState(initialData.license);
+  const [credentialType, setCredentialType] = useState(initialData.credentialType || 'license');
   const [primaryColor, setPrimaryColor] = useState<string>(initialData.primaryColor || '#0f172a');
   const [accentColor, setAccentColor] = useState(initialData.accentColor);
   const [secondaryColor, setSecondaryColor] = useState(initialData.secondaryColor);
@@ -115,13 +120,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       if (saved) {
         const parsed = JSON.parse(saved);
         if (typeof parsed.businessName === 'string') setBusinessName(parsed.businessName);
+        if (typeof parsed.personName === 'string') setPersonName(parsed.personName);
+        if (typeof parsed.personTitle === 'string') setPersonTitle(parsed.personTitle);
         if (typeof parsed.tagline === 'string') setTagline(parsed.tagline);
         if (typeof parsed.phone === 'string') setPhone(parsed.phone);
+        if (typeof parsed.phoneType === 'string') setPhoneType(parsed.phoneType);
         if (typeof parsed.secondaryPhone === 'string') setSecondaryPhone(parsed.secondaryPhone);
+        if (typeof parsed.secondaryPhoneType === 'string') setSecondaryPhoneType(parsed.secondaryPhoneType);
         if (typeof parsed.fax === 'string') setFax(parsed.fax);
         if (typeof parsed.email === 'string') setEmail(parsed.email);
         if (typeof parsed.website === 'string') setWebsite(parsed.website);
         if (typeof parsed.license === 'string') setLicense(parsed.license);
+        if (typeof parsed.credentialType === 'string') setCredentialType(parsed.credentialType);
         if (typeof parsed.primaryColor === 'string') setPrimaryColor(parsed.primaryColor);
         if (typeof parsed.accentColor === 'string') setAccentColor(parsed.accentColor);
         if (typeof parsed.secondaryColor === 'string') setSecondaryColor(parsed.secondaryColor);
@@ -150,13 +160,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
           draftStorageKey,
           JSON.stringify({
             businessName,
+            personName,
+            personTitle,
             tagline,
             phone,
+            phoneType,
             secondaryPhone,
+            secondaryPhoneType,
             fax,
             email,
             website,
             license,
+            credentialType,
             badgeLabel,
             ratingBadgeText,
             bulletText,
@@ -178,13 +193,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
   }, [
     draftStorageKey,
     businessName,
+    personName,
+    personTitle,
     tagline,
     phone,
+    phoneType,
     secondaryPhone,
+    secondaryPhoneType,
     fax,
     email,
     website,
     license,
+    credentialType,
     badgeLabel,
     ratingBadgeText,
     bulletText,
@@ -199,13 +219,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
   function handleResetToDefaults() {
     setBusinessName(initialData.companyName);
+    setPersonName(initialData.personName || '');
+    setPersonTitle(initialData.personTitle || '');
     setTagline(initialData.tagline);
     setPhone(initialData.phone);
+    setPhoneType(initialData.phoneType || 'Office');
     setSecondaryPhone(initialData.secondaryPhone || '');
+    setSecondaryPhoneType(initialData.secondaryPhoneType || 'Cell');
     setFax(initialData.fax || '');
     setEmail(initialData.email || '');
     setWebsite(initialData.website);
     setLicense(initialData.license);
+    setCredentialType(initialData.credentialType || 'license');
     setBadgeLabel('');
     setRatingBadgeText('');
     setBulletText('');
@@ -449,13 +474,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
       totalPrice: activeTier.totalPrice,
       customizationDetails: {
         businessName,
+        personName: currentProduct.id === 'biz_cards' ? personName : undefined,
+        personTitle: currentProduct.id === 'biz_cards' ? personTitle : undefined,
         tagline,
         phone,
+        phoneType: currentProduct.id === 'biz_cards' ? phoneType : undefined,
         secondaryPhone,
+        secondaryPhoneType: currentProduct.id === 'biz_cards' ? secondaryPhoneType : undefined,
         fax,
         email,
         website,
         license,
+        credentialType: currentProduct.id === 'biz_cards' ? credentialType : undefined,
         primaryColor: currentProduct.id === 'biz_cards' ? primaryColor : undefined,
         accentColor,
         secondaryColor,
@@ -743,17 +773,17 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
     }
   }
 
-  // Render logo inside mockup with strict height and width bounds
+  // Render logo inside mockup with generous height and width bounds
   function renderMockupBranding(mode: 'color' | 'dark' | 'white' = 'color', scale = 1) {
     const isNotepad = selectedProductId === 'notepads';
-    const baseH = isNotepad ? 40 : 32;
-    const baseW = isNotepad ? 180 : 130;
-    const maxH = Math.max(20, Math.round(baseH * scale));
-    const maxW = Math.max(75, Math.round(baseW * scale));
+    const baseH = isNotepad ? 48 : 58;
+    const baseW = isNotepad ? 220 : 210;
+    const maxH = Math.max(28, Math.round(baseH * scale));
+    const maxW = Math.max(90, Math.round(baseW * scale));
 
     if (logoSource === 'upload' && customUploadUrl) {
       return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: `${maxH}px`, maxWidth: `${maxW}px` }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxHeight: `${maxH}px`, maxWidth: `${maxW}px`, height: `${maxH}px`, width: 'auto' }}>
           <img
             src={customUploadUrl}
             alt={`${businessName} custom logo`}
@@ -765,7 +795,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
     if (logoSource === 'ai' && activeAiLogo) {
       return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: `${maxH}px`, maxWidth: `${maxW}px` }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxHeight: `${maxH}px`, maxWidth: `${maxW}px`, height: `${maxH}px`, width: 'auto' }}>
           <Image
             src={activeAiLogo.url}
             alt={`${businessName} logo`}
@@ -779,7 +809,7 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
 
     if (logoSource === 'site' && initialData.currentLogoUrl) {
       return (
-        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', height: `${maxH}px`, maxWidth: `${maxW}px` }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', maxHeight: `${maxH}px`, maxWidth: `${maxW}px`, height: `${maxH}px`, width: 'auto' }}>
           <Image
             src={initialData.currentLogoUrl}
             alt={`${businessName} logo`}
@@ -797,8 +827,10 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
         style={{
           display: 'inline-flex',
           alignItems: 'center',
+          justifyContent: 'center',
           height: `${maxH}px`,
           maxWidth: `${maxW}px`,
+          width: '100%',
           overflow: 'hidden',
         }}
         dangerouslySetInnerHTML={{ __html: vectorLogoSvg }}
@@ -1035,13 +1067,18 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
               setViewAngle={setViewAngle}
               includeQrCode={includeQrCode}
               businessName={businessName}
+              personName={personName}
+              personTitle={personTitle}
               tagline={tagline}
               phone={phone}
+              phoneType={phoneType}
               secondaryPhone={secondaryPhone}
+              secondaryPhoneType={secondaryPhoneType}
               fax={fax}
               email={email}
               website={website}
               license={license}
+              credentialType={credentialType}
               badgeLabel={badgeLabel}
               ratingBadgeText={ratingBadgeText}
               bulletText={bulletText}
@@ -1092,12 +1129,20 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             activeTier={activeTier}
             businessName={businessName}
             setBusinessName={setBusinessName}
+            personName={personName}
+            setPersonName={setPersonName}
+            personTitle={personTitle}
+            setPersonTitle={setPersonTitle}
             tagline={tagline}
             setTagline={setTagline}
             phone={phone}
             setPhone={setPhone}
+            phoneType={phoneType}
+            setPhoneType={setPhoneType}
             secondaryPhone={secondaryPhone}
             setSecondaryPhone={setSecondaryPhone}
+            secondaryPhoneType={secondaryPhoneType}
+            setSecondaryPhoneType={setSecondaryPhoneType}
             fax={fax}
             setFax={setFax}
             email={email}
@@ -1106,6 +1151,8 @@ export default function MerchandiseDesignStudio({ initialData }: Props) {
             setWebsite={setWebsite}
             license={license}
             setLicense={setLicense}
+            credentialType={credentialType}
+            setCredentialType={setCredentialType}
             badgeLabel={badgeLabel}
             setBadgeLabel={setBadgeLabel}
             ratingBadgeText={ratingBadgeText}

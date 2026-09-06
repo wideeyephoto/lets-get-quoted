@@ -18,6 +18,7 @@ import {
   TradePreset,
   TRADE_PRESETS,
 } from '@/lib/merchandise/product-templates';
+import { renderCardCredential } from './BusinessCardMockup';
 
 export const PRIMARY_COLOR_PRESETS = [
   { name: 'Dark Slate', hex: '#0f172a', darkText: false },
@@ -60,12 +61,20 @@ interface StudioConfiguratorProps {
   activeTier: { quantity: number; unitPrice: number; totalPrice: number; isPopular?: boolean; savingsPercent?: number };
   businessName: string;
   setBusinessName: (val: string) => void;
+  personName?: string;
+  setPersonName?: (val: string) => void;
+  personTitle?: string;
+  setPersonTitle?: (val: string) => void;
   tagline: string;
   setTagline: (val: string) => void;
   phone: string;
   setPhone: (val: string) => void;
+  phoneType?: string;
+  setPhoneType?: (val: string) => void;
   secondaryPhone?: string;
   setSecondaryPhone?: (val: string) => void;
+  secondaryPhoneType?: string;
+  setSecondaryPhoneType?: (val: string) => void;
   fax?: string;
   setFax?: (val: string) => void;
   email?: string;
@@ -74,6 +83,8 @@ interface StudioConfiguratorProps {
   setWebsite: (val: string) => void;
   license: string;
   setLicense: (val: string) => void;
+  credentialType?: string;
+  setCredentialType?: (val: string) => void;
   badgeLabel: string;
   setBadgeLabel: (val: string) => void;
   ratingBadgeText: string;
@@ -121,12 +132,20 @@ export default function StudioConfigurator({
   activeTier,
   businessName,
   setBusinessName,
+  personName,
+  setPersonName,
+  personTitle,
+  setPersonTitle,
   tagline,
   setTagline,
   phone,
   setPhone,
+  phoneType = 'Office',
+  setPhoneType,
   secondaryPhone,
   setSecondaryPhone,
+  secondaryPhoneType = 'Cell',
+  setSecondaryPhoneType,
   fax,
   setFax,
   email,
@@ -135,6 +154,8 @@ export default function StudioConfigurator({
   setWebsite,
   license,
   setLicense,
+  credentialType = 'license',
+  setCredentialType,
   badgeLabel,
   setBadgeLabel,
   ratingBadgeText,
@@ -167,6 +188,21 @@ export default function StudioConfigurator({
 }: StudioConfiguratorProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [isBrandAccordionOpen, setIsBrandAccordionOpen] = useState(true);
+  const [subAccordions, setSubAccordions] = useState<{
+    company: boolean;
+    contact: boolean;
+    trust: boolean;
+    cardCopy: boolean;
+  }>({
+    company: true,
+    contact: true,
+    trust: true,
+    cardCopy: false,
+  });
+
+  const toggleSubAccordion = (key: 'company' | 'contact' | 'trust' | 'cardCopy') => {
+    setSubAccordions((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
 
   const activeCardTemplate = getCardTemplateById(selectedCardTemplate);
   const activeNotepadTemplate = getNotepadTemplateById(selectedNotepadTemplate);
@@ -682,9 +718,26 @@ export default function StudioConfigurator({
         </button>
 
         {isBrandAccordionOpen && (
-          <div style={{ padding: '0.85rem', borderTop: '1px solid rgba(var(--tint), 0.08)', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-            {/* Reset to Defaults button */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <div style={{ padding: '0.85rem', borderTop: '1px solid rgba(var(--tint), 0.08)', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {/* Top Bar: Expand/Collapse All & Reset to Defaults */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.45rem', fontSize: '0.66rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setSubAccordions({ company: true, contact: true, trust: true, cardCopy: true })}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontWeight: 600 }}
+                >
+                  Expand all
+                </button>
+                <span style={{ color: 'rgba(var(--tint), 0.2)' }}>•</span>
+                <button
+                  type="button"
+                  onClick={() => setSubAccordions({ company: false, contact: false, trust: false, cardCopy: false })}
+                  style={{ background: 'transparent', border: 'none', color: 'var(--muted)', cursor: 'pointer', padding: 0, textDecoration: 'underline', fontWeight: 600 }}
+                >
+                  Collapse all
+                </button>
+              </div>
               <button
                 type="button"
                 onClick={onResetToDefaults}
@@ -729,279 +782,728 @@ export default function StudioConfigurator({
               </div>
             )}
 
-            {/* Logo Source Buttons */}
-            <div>
-              <label style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '3px' }}>
-                Logo / Brand Mark:
-              </label>
-              <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  style={{
-                    padding: '0.35rem 0.6rem',
-                    borderRadius: '6px',
-                    border: logoSource === 'upload' ? '1.5px solid #10b981' : '1px solid rgba(var(--tint), 0.12)',
-                    background: logoSource === 'upload' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(var(--tint), 0.04)',
-                    color: logoSource === 'upload' ? '#a7f3d0' : 'var(--muted)',
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                    cursor: 'pointer',
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                  }}
-                >
-                  <Upload size={12} />
-                  <span>Upload</span>
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                  style={{ display: 'none' }}
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onLogoFileUpload(file);
-                  }}
-                />
+            {/* ============================================================ */}
+            {/* SUB-ACCORDION 1: 🏢 Company & Branding */}
+            {/* ============================================================ */}
+            <div
+              style={{
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--tint), 0.10)',
+                background: 'rgba(var(--tint), 0.02)',
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => toggleSubAccordion('company')}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.75rem',
+                  background: subAccordions.company ? 'rgba(var(--tint), 0.05)' : 'transparent',
+                  border: 'none',
+                  borderBottom: subAccordions.company ? '1px solid rgba(var(--tint), 0.08)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ fontSize: '0.85rem' }}>🏢</span>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '0.02em' }}>
+                    Company &amp; Branding
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {businessName && (
+                    <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {businessName}
+                    </span>
+                  )}
+                  {subAccordions.company ? <ChevronUp size={14} style={{ color: 'var(--muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--muted)' }} />}
+                </div>
+              </button>
 
-                {siteLogoUrl && (
-                  <button
-                    type="button"
-                    onClick={() => setLogoSource('site')}
-                    style={{
-                      padding: '0.35rem 0.6rem',
-                      borderRadius: '6px',
-                      border: logoSource === 'site' ? '1.5px solid #3b82f6' : '1px solid rgba(var(--tint), 0.12)',
-                      background: logoSource === 'site' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(var(--tint), 0.04)',
-                      color: logoSource === 'site' ? '#bfdbfe' : 'var(--muted)',
-                      fontSize: '0.72rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Site Logo
-                  </button>
-                )}
-              </div>
+              {subAccordions.company && (
+                <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {/* Logo Source Buttons */}
+                  <div>
+                    <label style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                      Logo / Brand Mark:
+                    </label>
+                    <div style={{ display: 'flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        style={{
+                          padding: '0.35rem 0.65rem',
+                          borderRadius: '6px',
+                          border: logoSource === 'upload' ? '1.5px solid #10b981' : '1px solid rgba(var(--tint), 0.14)',
+                          background: logoSource === 'upload' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(var(--tint), 0.04)',
+                          color: logoSource === 'upload' ? '#a7f3d0' : 'var(--muted)',
+                          fontSize: '0.72rem',
+                          fontWeight: 800,
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <Upload size={12} />
+                        <span>Upload</span>
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) onLogoFileUpload(file);
+                        }}
+                      />
 
-              {/* Uploaded logo tag */}
-              {logoSource === 'upload' && customUploadUrl && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.72rem' }}>
-                  <img src={customUploadUrl} alt="Custom logo" style={{ width: '32px', height: '24px', objectFit: 'contain' }} />
-                  <span style={{ color: 'var(--text)', flex: 1 }}>Custom logo active</span>
-                  <button
-                    type="button"
-                    onClick={onRemoveCustomLogo}
-                    style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 800, cursor: 'pointer', fontSize: '0.7rem' }}
-                  >
-                    Remove
-                  </button>
+                      {siteLogoUrl && (
+                        <button
+                          type="button"
+                          onClick={() => setLogoSource('site')}
+                          style={{
+                            padding: '0.35rem 0.65rem',
+                            borderRadius: '6px',
+                            border: logoSource === 'site' ? '1.5px solid #3b82f6' : '1px solid rgba(var(--tint), 0.14)',
+                            background: logoSource === 'site' ? 'rgba(59, 130, 246, 0.2)' : 'rgba(var(--tint), 0.04)',
+                            color: logoSource === 'site' ? '#bfdbfe' : 'var(--muted)',
+                            fontSize: '0.72rem',
+                            fontWeight: 800,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          Site Logo
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Uploaded logo thumbnail */}
+                    {logoSource === 'upload' && customUploadUrl && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', fontSize: '0.72rem' }}>
+                        <img src={customUploadUrl} alt="Custom logo" style={{ width: '32px', height: '24px', objectFit: 'contain' }} />
+                        <span style={{ color: 'var(--text)', flex: 1 }}>Custom logo active</span>
+                        <button
+                          type="button"
+                          onClick={onRemoveCustomLogo}
+                          style={{ background: 'transparent', border: 'none', color: '#ef4444', fontWeight: 800, cursor: 'pointer', fontSize: '0.7rem' }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Company Name */}
+                  <div>
+                    <label htmlFor="cfg-biz-name" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                      Company Name:
+                    </label>
+                    <input
+                      id="cfg-biz-name"
+                      name="merch_biz_name"
+                      type="text"
+                      maxLength={40}
+                      autoComplete="off"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
+                      value={businessName}
+                      onChange={(e) => setBusinessName(e.target.value)}
+                      className="merch-studio-input"
+                    />
+                  </div>
+
+                  {/* Tagline */}
+                  <div>
+                    <label htmlFor="cfg-tagline" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                      Tagline / Trade Specialty:
+                    </label>
+                    <input
+                      id="cfg-tagline"
+                      name="merch_tagline"
+                      type="text"
+                      maxLength={50}
+                      autoComplete="off"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
+                      value={tagline}
+                      onChange={(e) => setTagline(e.target.value)}
+                      className="merch-studio-input"
+                    />
+                  </div>
                 </div>
               )}
             </div>
 
-            {/* Company & Tagline Inputs */}
-            <div>
-              <label htmlFor="cfg-biz-name" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                Company Name:
-              </label>
-              <input
-                id="cfg-biz-name"
-                type="text"
-                maxLength={40}
-                value={businessName}
-                onChange={(e) => setBusinessName(e.target.value)}
-                style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-              />
-            </div>
-
-            <div>
-              <label htmlFor="cfg-tagline" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                Tagline / Trade Specialty:
-              </label>
-              <input
-                id="cfg-tagline"
-                type="text"
-                maxLength={50}
-                value={tagline}
-                onChange={(e) => setTagline(e.target.value)}
-                style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-              />
-            </div>
-
-            {/* Phone & Secondary Phone */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-              <div>
-                <label htmlFor="cfg-phone" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Phone #:
-                </label>
-                <input
-                  id="cfg-phone"
-                  type="text"
-                  maxLength={20}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <label htmlFor="cfg-secondary-phone" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Second Phone / Mobile:
-                </label>
-                <input
-                  id="cfg-secondary-phone"
-                  type="text"
-                  maxLength={20}
-                  value={secondaryPhone || ''}
-                  placeholder="e.g. (555) 987-6543"
-                  onChange={(e) => setSecondaryPhone?.(e.target.value)}
-                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* Email Address & Fax # */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-              <div>
-                <label htmlFor="cfg-email" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Email Address:
-                </label>
-                <input
-                  id="cfg-email"
-                  type="email"
-                  maxLength={50}
-                  value={email || ''}
-                  placeholder="info@yourcompany.com"
-                  onChange={(e) => setEmail?.(e.target.value)}
-                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <label htmlFor="cfg-fax" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Fax #:
-                </label>
-                <input
-                  id="cfg-fax"
-                  type="text"
-                  maxLength={20}
-                  value={fax || ''}
-                  placeholder="e.g. (555) 019-2835"
-                  onChange={(e) => setFax?.(e.target.value)}
-                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* Website & License */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
-              <div>
-                <label htmlFor="cfg-website" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  Website:
-                </label>
-                <input
-                  id="cfg-website"
-                  type="text"
-                  maxLength={60}
-                  value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
-                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                />
-              </div>
-              <div>
-                <label htmlFor="cfg-license" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                  License Line:
-                </label>
-                <input
-                  id="cfg-license"
-                  type="text"
-                  maxLength={30}
-                  value={license}
-                  onChange={(e) => setLicense(e.target.value)}
-                  style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                />
-              </div>
-            </div>
-
-            {/* Business Card Dynamic Copy Fields */}
-            {currentProduct.id === 'biz_cards' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.55rem', borderTop: '1px solid rgba(var(--tint), 0.1)', paddingTop: '0.65rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '0.7rem', fontWeight: 800, color: 'var(--gold-ink)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Card Copy &amp; Badges (Editable)
+            {/* ============================================================ */}
+            {/* SUB-ACCORDION 2: 👤 Team & Contact Details */}
+            {/* ============================================================ */}
+            <div
+              style={{
+                borderRadius: '8px',
+                border: '1px solid rgba(var(--tint), 0.10)',
+                background: 'rgba(var(--tint), 0.02)',
+                overflow: 'hidden',
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => toggleSubAccordion('contact')}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem 0.75rem',
+                  background: subAccordions.contact ? 'rgba(var(--tint), 0.05)' : 'transparent',
+                  border: 'none',
+                  borderBottom: subAccordions.contact ? '1px solid rgba(var(--tint), 0.08)' : 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                  <span style={{ fontSize: '0.85rem' }}>👤</span>
+                  <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '0.02em' }}>
+                    Team &amp; Contact Info
                   </span>
-                  <span style={{ fontSize: '0.62rem', color: 'var(--muted)' }}>Overrides template defaults</span>
                 </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  {phone && (
+                    <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 600, maxWidth: '120px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {phone}
+                    </span>
+                  )}
+                  {subAccordions.contact ? <ChevronUp size={14} style={{ color: 'var(--muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--muted)' }} />}
+                </div>
+              </button>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+              {subAccordions.contact && (
+                <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {/* Employee / Owner Name & Title (Business Cards) */}
+                  {currentProduct.id === 'biz_cards' && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '0.5rem' }}>
+                      <div>
+                        <label htmlFor="cfg-person-name" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                          Employee / Owner Name:
+                        </label>
+                        <input
+                          id="cfg-person-name"
+                          name="merch_person_name"
+                          type="text"
+                          maxLength={35}
+                          autoComplete="off"
+                          data-1p-ignore="true"
+                          data-lpignore="true"
+                          value={personName || ''}
+                          placeholder="e.g. John Doe"
+                          onChange={(e) => setPersonName?.(e.target.value)}
+                          className="merch-studio-input"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="cfg-person-title" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                          Title / Role:
+                        </label>
+                        <input
+                          id="cfg-person-title"
+                          name="merch_person_title"
+                          type="text"
+                          maxLength={30}
+                          autoComplete="off"
+                          data-1p-ignore="true"
+                          data-lpignore="true"
+                          value={personTitle || ''}
+                          placeholder="e.g. Owner / Electrician"
+                          onChange={(e) => setPersonTitle?.(e.target.value)}
+                          className="merch-studio-input"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Primary & Second Phone with Inline Type Selectors */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        <label htmlFor="cfg-phone" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700 }}>
+                          Primary Phone:
+                        </label>
+                        {currentProduct.id === 'biz_cards' && (
+                          <select
+                            id="cfg-phone-type"
+                            value={phoneType || 'Office'}
+                            onChange={(e) => setPhoneType?.(e.target.value)}
+                            aria-label="Primary Phone Type"
+                            style={{
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(var(--tint), 0.16)',
+                              background: 'rgba(15, 23, 42, 0.85)',
+                              color: 'var(--text)',
+                              cursor: 'pointer',
+                              outline: 'none',
+                            }}
+                          >
+                            <option value="Office">Office</option>
+                            <option value="Work">Work</option>
+                            <option value="Cell">Cell</option>
+                            <option value="Main">Main</option>
+                            <option value="Direct">Direct</option>
+                            <option value="">No Label</option>
+                          </select>
+                        )}
+                      </div>
+                      <input
+                        id="cfg-phone"
+                        name="merch_phone"
+                        type="text"
+                        maxLength={20}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.25rem' }}>
+                        <label htmlFor="cfg-secondary-phone" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700 }}>
+                          Second Phone:
+                        </label>
+                        {currentProduct.id === 'biz_cards' && (
+                          <select
+                            id="cfg-secondary-phone-type"
+                            value={secondaryPhoneType || 'Cell'}
+                            onChange={(e) => setSecondaryPhoneType?.(e.target.value)}
+                            aria-label="Second Phone Type"
+                            style={{
+                              fontSize: '0.62rem',
+                              fontWeight: 700,
+                              padding: '1px 5px',
+                              borderRadius: '4px',
+                              border: '1px solid rgba(var(--tint), 0.16)',
+                              background: 'rgba(15, 23, 42, 0.85)',
+                              color: 'var(--text)',
+                              cursor: 'pointer',
+                              outline: 'none',
+                            }}
+                          >
+                            <option value="Cell">Cell</option>
+                            <option value="Work">Work</option>
+                            <option value="Office">Office</option>
+                            <option value="Direct">Direct</option>
+                            <option value="">No Label</option>
+                          </select>
+                        )}
+                      </div>
+                      <input
+                        id="cfg-secondary-phone"
+                        name="merch_secondary_phone"
+                        type="text"
+                        maxLength={20}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={secondaryPhone || ''}
+                        placeholder="e.g. (555) 987-6543"
+                        onChange={(e) => setSecondaryPhone?.(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Email Address & Fax # */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1.15fr 1fr', gap: '0.5rem' }}>
+                    <div>
+                      <label htmlFor="cfg-email" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Email Address:
+                      </label>
+                      <input
+                        id="cfg-email"
+                        name="merch_email"
+                        type="email"
+                        maxLength={50}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={email || ''}
+                        placeholder="info@yourcompany.com"
+                        onChange={(e) => setEmail?.(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="cfg-fax" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Fax #:
+                      </label>
+                      <input
+                        id="cfg-fax"
+                        name="merch_fax"
+                        type="text"
+                        maxLength={20}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={fax || ''}
+                        placeholder="e.g. (555) 019-2835"
+                        onChange={(e) => setFax?.(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Website (Full Width) */}
                   <div>
-                    <label htmlFor="cfg-badge-label" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                      Header Badge:
+                    <label htmlFor="cfg-website" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                      Website URL:
                     </label>
                     <input
-                      id="cfg-badge-label"
+                      id="cfg-website"
+                      name="merch_website"
                       type="text"
-                      maxLength={32}
-                      value={badgeLabel}
-                      placeholder={activeCardTemplate.badgeLabel}
-                      onChange={(e) => setBadgeLabel(e.target.value)}
-                      style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
+                      maxLength={60}
+                      autoComplete="off"
+                      data-1p-ignore="true"
+                      data-lpignore="true"
+                      value={website}
+                      onChange={(e) => setWebsite(e.target.value)}
+                      className="merch-studio-input"
                     />
                   </div>
-                  <div>
-                    <label htmlFor="cfg-rating-badge" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                      Sub-Badge / Tag:
-                    </label>
-                    <input
-                      id="cfg-rating-badge"
-                      type="text"
-                      maxLength={36}
-                      value={ratingBadgeText}
-                      placeholder={activeCardTemplate.ratingBadgeText}
-                      onChange={(e) => setRatingBadgeText(e.target.value)}
-                      style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                    />
+
+                  {/* Non-card products (Field Notepads): Static License Line */}
+                  {currentProduct.id !== 'biz_cards' && (
+                    <div>
+                      <label htmlFor="cfg-license-notepad" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        License Line:
+                      </label>
+                      <input
+                        id="cfg-license-notepad"
+                        name="merch_license"
+                        type="text"
+                        maxLength={35}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={license}
+                        onChange={(e) => setLicense(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* ============================================================ */}
+            {/* SUB-ACCORDION 3: 🛡️ Trust Badge & Credentials (Biz Cards) */}
+            {/* ============================================================ */}
+            {currentProduct.id === 'biz_cards' && (
+              <div
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid rgba(var(--tint), 0.10)',
+                  background: 'rgba(var(--tint), 0.02)',
+                  overflow: 'hidden',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleSubAccordion('trust')}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem 0.75rem',
+                    background: subAccordions.trust ? 'rgba(var(--tint), 0.05)' : 'transparent',
+                    border: 'none',
+                    borderBottom: subAccordions.trust ? '1px solid rgba(var(--tint), 0.08)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ fontSize: '0.85rem' }}>🛡️</span>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '0.02em' }}>
+                      Trust Badge &amp; Credentials
+                    </span>
                   </div>
-                </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    {license && (
+                      <span style={{ fontSize: '0.64rem', color: 'var(--gold-ink)', fontWeight: 700, maxWidth: '130px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {license}
+                      </span>
+                    )}
+                    {subAccordions.trust ? <ChevronUp size={14} style={{ color: 'var(--muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--muted)' }} />}
+                  </div>
+                </button>
 
-                <div>
-                  <label htmlFor="cfg-bullet-text" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                    Service Highlight / Bullet Line:
-                  </label>
-                  <input
-                    id="cfg-bullet-text"
-                    type="text"
-                    maxLength={60}
-                    value={bulletText}
-                    placeholder={activeCardTemplate.bulletText || 'Fast Estimates • Clear Communication'}
-                    onChange={(e) => setBulletText(e.target.value)}
-                    style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                  />
-                </div>
+                {subAccordions.trust && (
+                  <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    {/* Badge Type Selector */}
+                    <div>
+                      <label htmlFor="cfg-credential-type" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Badge / Trust Line Type:
+                      </label>
+                      <select
+                        id="cfg-credential-type"
+                        value={credentialType || 'license'}
+                        onChange={(e) => {
+                          const newType = e.target.value;
+                          setCredentialType?.(newType);
+                          if (!license || license === 'LIC# ROC-389142' || license.includes('LIC#') || license.includes('Years') || license.includes('Owned') || license.includes('Bonded')) {
+                            if (newType === 'years_in_biz') setLicense('25+ Years in Business');
+                            else if (newType === 'family_owned') setLicense('Father & Son Owned');
+                            else if (newType === 'bonded_insured') setLicense('Fully Bonded & Insured');
+                            else if (newType === 'license') setLicense('LIC# ROC-389142');
+                          }
+                        }}
+                        className="merch-studio-input"
+                        style={{ cursor: 'pointer' }}
+                      >
+                        <option value="license">License #</option>
+                        <option value="years_in_biz"># of Years in Biz</option>
+                        <option value="family_owned">Father &amp; Son / Family Owned</option>
+                        <option value="bonded_insured">Bonded &amp; Insured</option>
+                        <option value="custom">Custom Highlight</option>
+                      </select>
+                    </div>
 
-                <div>
-                  <label htmlFor="cfg-footer-text" style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
-                    Footer Notice / Disclaimer:
-                  </label>
-                  <input
-                    id="cfg-footer-text"
-                    type="text"
-                    maxLength={65}
-                    value={footerText}
-                    placeholder={activeCardTemplate.footerText || 'Commercial & Residential Specialists • Free Estimates'}
-                    onChange={(e) => setFooterText(e.target.value)}
-                    style={{ width: '100%', padding: '0.42rem 0.55rem', borderRadius: '6px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.8rem', fontWeight: 600, boxSizing: 'border-box' }}
-                  />
-                </div>
+                    {/* Badge Text Input */}
+                    <div>
+                      <label htmlFor="cfg-license" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Badge Display Text:
+                      </label>
+                      <input
+                        id="cfg-license"
+                        name="merch_license"
+                        type="text"
+                        maxLength={35}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={license}
+                        placeholder={
+                          credentialType === 'years_in_biz'
+                            ? 'e.g. 25+ Years in Business'
+                            : credentialType === 'family_owned'
+                            ? 'e.g. Father & Son Owned'
+                            : credentialType === 'bonded_insured'
+                            ? 'e.g. Fully Bonded & Insured'
+                            : 'e.g. LIC# ROC-389142'
+                        }
+                        onChange={(e) => setLicense(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+
+                    {/* Quick 1-Touch Presets */}
+                    <div>
+                      <span style={{ fontSize: '0.64rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '0.3rem' }}>
+                        Popular 1-Touch Presets:
+                      </span>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                        {[
+                          { type: 'license', label: '📜 LIC #', text: 'LIC# ROC-389142' },
+                          { type: 'years_in_biz', label: '★ 25+ Years', text: '25+ Years in Business' },
+                          { type: 'family_owned', label: '👨‍👦 Father & Son', text: 'Father & Son Owned' },
+                          { type: 'family_owned', label: '👨‍👩‍👧 Family Owned', text: 'Family Owned & Operated' },
+                          { type: 'bonded_insured', label: '🛡️ Bonded & Insured', text: 'Licensed, Bonded & Insured' },
+                        ].map((preset) => (
+                          <button
+                            key={preset.text}
+                            type="button"
+                            onClick={() => {
+                              setCredentialType?.(preset.type);
+                              setLicense(preset.text);
+                            }}
+                            style={{
+                              fontSize: '0.64rem',
+                              fontWeight: 700,
+                              padding: '3px 8px',
+                              borderRadius: '5px',
+                              border: license === preset.text ? '1px solid var(--gold-ink)' : '1px solid rgba(var(--tint), 0.12)',
+                              background: license === preset.text ? 'rgba(var(--tint), 0.14)' : 'rgba(var(--tint), 0.04)',
+                              color: license === preset.text ? 'var(--gold-ink)' : 'var(--text)',
+                              cursor: 'pointer',
+                              lineHeight: 1.2,
+                              transition: 'all 0.15s ease',
+                            }}
+                          >
+                            {preset.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Live Card Appearance Preview Box */}
+                    <div
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '0.45rem 0.65rem',
+                        borderRadius: '6px',
+                        background: 'rgba(var(--tint), 0.035)',
+                        border: '1px dashed rgba(var(--tint), 0.14)',
+                        marginTop: '0.15rem',
+                      }}
+                    >
+                      <span style={{ fontSize: '0.64rem', color: '#94a3b8', fontWeight: 700 }}>Card Appearance:</span>
+                      <div style={{ display: 'flex', alignItems: 'center' }}>
+                        {renderCardCredential(license, credentialType, effectiveSecondaryColor)}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ============================================================ */}
+            {/* SUB-ACCORDION 4: ✨ Card Copy & Badges (Advanced Overrides) */}
+            {/* ============================================================ */}
+            {currentProduct.id === 'biz_cards' && (
+              <div
+                style={{
+                  borderRadius: '8px',
+                  border: '1px solid rgba(var(--tint), 0.10)',
+                  background: 'rgba(var(--tint), 0.02)',
+                  overflow: 'hidden',
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleSubAccordion('cardCopy')}
+                  style={{
+                    width: '100%',
+                    padding: '0.55rem 0.75rem',
+                    background: subAccordions.cardCopy ? 'rgba(var(--tint), 0.05)' : 'transparent',
+                    border: 'none',
+                    borderBottom: subAccordions.cardCopy ? '1px solid rgba(var(--tint), 0.08)' : 'none',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    cursor: 'pointer',
+                    textAlign: 'left',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                    <span style={{ fontSize: '0.85rem' }}>✨</span>
+                    <span style={{ fontSize: '0.74rem', fontWeight: 800, color: 'var(--text)', letterSpacing: '0.02em' }}>
+                      Card Copy &amp; Badges
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                    <span style={{ fontSize: '0.60rem', color: 'var(--muted)', fontWeight: 600, background: 'rgba(var(--tint), 0.06)', padding: '1px 5px', borderRadius: '3px' }}>
+                      Advanced
+                    </span>
+                    {subAccordions.cardCopy ? <ChevronUp size={14} style={{ color: 'var(--muted)' }} /> : <ChevronDown size={14} style={{ color: 'var(--muted)' }} />}
+                  </div>
+                </button>
+
+                {subAccordions.cardCopy && (
+                  <div style={{ padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                    <div style={{ fontSize: '0.64rem', color: 'var(--muted)', marginBottom: '0.1rem' }}>
+                      Overrides individual card template default badges &amp; footers.
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
+                      <div>
+                        <label htmlFor="cfg-badge-label" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                          Header Badge:
+                        </label>
+                        <input
+                          id="cfg-badge-label"
+                          name="merch_badge_label"
+                          type="text"
+                          maxLength={32}
+                          autoComplete="off"
+                          data-1p-ignore="true"
+                          data-lpignore="true"
+                          value={badgeLabel}
+                          placeholder={activeCardTemplate.badgeLabel}
+                          onChange={(e) => setBadgeLabel(e.target.value)}
+                          className="merch-studio-input"
+                        />
+                      </div>
+                      <div>
+                        <label htmlFor="cfg-rating-badge" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                          Sub-Badge / Tag:
+                        </label>
+                        <input
+                          id="cfg-rating-badge"
+                          name="merch_rating_badge"
+                          type="text"
+                          maxLength={36}
+                          autoComplete="off"
+                          data-1p-ignore="true"
+                          data-lpignore="true"
+                          value={ratingBadgeText}
+                          placeholder={activeCardTemplate.ratingBadgeText}
+                          onChange={(e) => setRatingBadgeText(e.target.value)}
+                          className="merch-studio-input"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="cfg-bullet-text" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Service Highlight / Bullet Line:
+                      </label>
+                      <input
+                        id="cfg-bullet-text"
+                        name="merch_bullet_text"
+                        type="text"
+                        maxLength={60}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={bulletText}
+                        placeholder={activeCardTemplate.bulletText || 'Fast Estimates • Clear Communication'}
+                        onChange={(e) => setBulletText(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="cfg-footer-text" style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
+                        Footer Notice / Disclaimer:
+                      </label>
+                      <input
+                        id="cfg-footer-text"
+                        name="merch_footer_text"
+                        type="text"
+                        maxLength={65}
+                        autoComplete="off"
+                        data-1p-ignore="true"
+                        data-lpignore="true"
+                        value={footerText}
+                        placeholder={activeCardTemplate.footerText || 'Commercial & Residential Specialists • Free Estimates'}
+                        onChange={(e) => setFooterText(e.target.value)}
+                        className="merch-studio-input"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
             {/* Colors for non-card products */}
             {currentProduct.id !== 'biz_cards' && (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.45rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                 <div>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
                     Accent Color:
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -1014,14 +1516,16 @@ export default function StudioConfigurator({
                     <input
                       type="text"
                       maxLength={10}
+                      autoComplete="off"
                       value={accentColor}
                       onChange={(e) => setAccentColor(e.target.value)}
-                      style={{ width: '100%', padding: '0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.74rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                      className="merch-studio-input"
+                      style={{ padding: '0.35rem', fontFamily: 'monospace' }}
                     />
                   </div>
                 </div>
                 <div>
-                  <span style={{ fontSize: '0.68rem', color: 'var(--muted)', fontWeight: 700, display: 'block', marginBottom: '2px' }}>
+                  <span style={{ fontSize: '0.70rem', color: '#94a3b8', fontWeight: 700, display: 'block', marginBottom: '0.25rem' }}>
                     Secondary Color:
                   </span>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
@@ -1034,9 +1538,11 @@ export default function StudioConfigurator({
                     <input
                       type="text"
                       maxLength={10}
+                      autoComplete="off"
                       value={secondaryColor}
                       onChange={(e) => setSecondaryColor(e.target.value)}
-                      style={{ width: '100%', padding: '0.35rem', borderRadius: '5px', border: '1px solid var(--line)', background: 'rgba(var(--tint), 0.06)', color: 'var(--text)', fontSize: '0.74rem', fontFamily: 'monospace', fontWeight: 700, boxSizing: 'border-box' }}
+                      className="merch-studio-input"
+                      style={{ padding: '0.35rem', fontFamily: 'monospace' }}
                     />
                   </div>
                 </div>
@@ -1066,10 +1572,15 @@ export default function StudioConfigurator({
           </span>
         </div>
 
+        {/* 5 Small Quantity Buttons */}
         <div
           role="radiogroup"
-          aria-label="Quantity and pricing tiers"
-          style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}
+          aria-label="Quantity tiers"
+          style={{
+            display: 'grid',
+            gridTemplateColumns: `repeat(${currentProduct.pricingTiers.length}, 1fr)`,
+            gap: '0.35rem',
+          }}
         >
           {currentProduct.pricingTiers.map((tier) => {
             const isSelected = tier.quantity === selectedTierQty;
@@ -1082,50 +1593,105 @@ export default function StudioConfigurator({
                 onClick={() => onSelectTierQty(tier.quantity)}
                 className="focus-ring"
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '0.55rem 0.8rem',
-                  borderRadius: '8px',
-                  border: isSelected ? '2px solid var(--accent)' : '1px solid rgba(var(--tint), 0.08)',
+                  padding: '0.55rem 0.2rem',
+                  borderRadius: '7px',
+                  border: isSelected ? '2px solid var(--accent, #ff7a21)' : '1px solid rgba(var(--tint), 0.12)',
                   background: isSelected
-                    ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.18), rgba(255, 122, 33, 0.04))'
-                    : 'rgba(var(--tint), 0.035)',
+                    ? 'linear-gradient(145deg, rgba(255, 122, 33, 0.22), rgba(255, 122, 33, 0.08))'
+                    : 'rgba(var(--tint), 0.04)',
+                  color: isSelected ? '#ffffff' : 'var(--text)',
                   cursor: 'pointer',
-                  textAlign: 'left',
+                  textAlign: 'center',
                   transition: 'all 0.15s ease',
+                  boxShadow: isSelected ? '0 2px 10px rgba(255, 122, 33, 0.25)' : 'none',
                 }}
               >
-                <div>
-                  <strong style={{ fontSize: '0.82rem', color: isSelected ? '#ffffff' : 'var(--text)' }}>
-                    {tier.quantity.toLocaleString()} {currentProduct.id === 'biz_cards' ? 'cards' : 'pads'}
-                  </strong>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--muted)', marginLeft: '0.4rem' }}>
-                    (${tier.unitPrice.toFixed(2)}/ea)
+                <strong
+                  style={{
+                    display: 'block',
+                    fontSize: '0.86rem',
+                    fontWeight: 800,
+                    letterSpacing: '-0.01em',
+                    color: isSelected ? '#ffffff' : 'var(--text)',
+                    lineHeight: 1.15,
+                  }}
+                >
+                  {tier.quantity}
+                </strong>
+                {tier.isPopular && (
+                  <span
+                    style={{
+                      display: 'block',
+                      fontSize: '0.52rem',
+                      fontWeight: 800,
+                      color: isSelected ? '#fed7aa' : '#38bdf8',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      lineHeight: 1,
+                      marginTop: '2px',
+                    }}
+                  >
+                    Popular
                   </span>
-                </div>
-
-                <div style={{ textAlign: 'right' }}>
-                  <strong style={{ fontSize: '0.86rem', color: isSelected ? '#ffffff' : 'var(--text)' }}>
-                    ${tier.totalPrice.toFixed(2)}
-                  </strong>
-                  {tier.isPopular && (
-                    <span
-                      style={{
-                        display: 'block',
-                        fontSize: '0.62rem',
-                        fontWeight: 800,
-                        color: '#2563eb',
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      Most Popular
-                    </span>
-                  )}
-                </div>
+                )}
               </button>
             );
           })}
+        </div>
+
+        {/* Selected Tier Price Card - Only Show Price of Selected */}
+        <div
+          style={{
+            marginTop: '0.5rem',
+            padding: '0.75rem 0.9rem',
+            borderRadius: '8px',
+            border: '1px solid rgba(var(--tint), 0.12)',
+            background: 'rgba(var(--tint), 0.03)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+          }}
+        >
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontSize: '0.86rem', fontWeight: 800, color: 'var(--text)' }}>
+                {activeTier.quantity.toLocaleString()} {currentProduct.id === 'biz_cards' ? 'Cards' : 'Pads'}
+              </span>
+              {activeTier.isPopular && (
+                <span
+                  style={{
+                    fontSize: '0.58rem',
+                    fontWeight: 800,
+                    color: '#38bdf8',
+                    background: 'rgba(56, 189, 248, 0.15)',
+                    border: '1px solid rgba(56, 189, 248, 0.3)',
+                    padding: '1px 6px',
+                    borderRadius: '4px',
+                    textTransform: 'uppercase',
+                  }}
+                >
+                  Most Popular
+                </span>
+              )}
+            </div>
+            <div style={{ fontSize: '0.72rem', color: 'var(--muted)', marginTop: '2px' }}>
+              ${activeTier.unitPrice.toFixed(2)}/each
+              {activeTier.savingsPercent ? (
+                <span style={{ color: '#10b981', fontWeight: 700, marginLeft: '6px' }}>
+                  • Save {activeTier.savingsPercent}%
+                </span>
+              ) : null}
+            </div>
+          </div>
+
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '1.25rem', fontWeight: 900, color: 'var(--text)', letterSpacing: '-0.02em', lineHeight: 1.1 }}>
+              ${activeTier.totalPrice.toFixed(2)}
+            </div>
+            <span style={{ fontSize: '0.62rem', color: '#10b981', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Wholesale Rate
+            </span>
+          </div>
         </div>
       </div>
 

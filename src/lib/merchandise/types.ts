@@ -155,13 +155,18 @@ export type MerchandiseOrderItem = {
   totalPrice: number;
   customizationDetails: {
     businessName: string;
+    personName?: string;
+    personTitle?: string;
     tagline?: string;
     phone?: string;
+    phoneType?: string;
     secondaryPhone?: string;
+    secondaryPhoneType?: string;
     fax?: string;
     email?: string;
     website?: string;
     license?: string;
+    credentialType?: string;
     primaryColor?: string;
     accentColor?: string;
     secondaryColor?: string;
@@ -215,14 +220,19 @@ export type MerchandiseOrder = {
 export type MerchandiseStudioInitialData = {
   accountId?: string;
   companyName: string;
+  personName?: string;
+  personTitle?: string;
   trade: string;
   tagline: string;
   phone: string;
+  phoneType?: string;
   secondaryPhone?: string;
+  secondaryPhoneType?: string;
   fax?: string;
   email?: string;
   website: string;
   license: string;
+  credentialType?: string;
   primaryColor?: string;
   accentColor: string;
   secondaryColor: string;
