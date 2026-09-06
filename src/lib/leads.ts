@@ -7,7 +7,7 @@ import type { LeadVisualAnalysis } from '@/lib/lead-photo-ai';
 import { sanitizeAttribution, type LeadAttribution } from '@/lib/attribution';
 export { formatLeadAttribution, type LeadAttribution } from '@/lib/attribution';
 
-export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice' | 'google_lsa' | 'meta_lead_ads' | 'angi' | 'thumbtack' | 'marketplace';
+export type LeadSource = 'website_form' | 'missed_call' | 'manual' | 'referral' | 'ai_voice' | 'google_lsa' | 'meta_lead_ads' | 'angi' | 'thumbtack' | 'marketplace' | 'neighborhood_halo';
 export type LeadStatus = 'new' | 'contacted' | 'quoted' | 'won' | 'lost';
 
 export type LeadScore = 'hot' | 'warm' | 'low';
@@ -358,6 +358,7 @@ export function formatLeadSource(source: LeadSource): string {
   if (source === 'angi') return 'Angi Leads';
   if (source === 'thumbtack') return 'Thumbtack';
   if (source === 'marketplace') return 'Marketplace Lead';
+  if (source === 'neighborhood_halo') return 'Neighborhood Halo';
   return 'Manual';
 }
 

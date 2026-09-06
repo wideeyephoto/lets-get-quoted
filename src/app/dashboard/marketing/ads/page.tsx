@@ -2,6 +2,7 @@ import { requireOfficeContext } from '@/lib/auth';
 import { getSiteContent, getPublishedServices } from '@/lib/site-content';
 import { getAuthoritativeTrade } from '@/lib/workspace-trade';
 import { stateFromAddress } from '@/lib/marketing-calendar';
+import { getHaloSettings, listHaloCampaigns } from '@/lib/neighborhood-halo-service';
 import ManagedAdsScreen from './ManagedAdsScreen';
 
 export const dynamic = 'force-dynamic';
@@ -16,10 +17,26 @@ export default async function ManagedAdsPage({
   const initialTab = typeof resolvedParams?.tab === 'string' ? resolvedParams.tab : undefined;
   const { supabase, accountId } = await requireOfficeContext('marketing.read');
 
-  const [{ data: accountRow }, { data: siteRow }, trade] = await Promise.all([
+  const [
+    { data: accountRow },
+    { data: siteRow },
+    trade,
+    haloSettings,
+    haloCampaigns,
+    { data: completedJobs },
+  ] = await Promise.all([
     supabase.from('accounts').select('business_name, mailing_address, phone').eq('id', accountId).maybeSingle(),
     supabase.from('sites').select('subdomain, custom_domain, company_name, content').eq('account_id', accountId).maybeSingle(),
     getAuthoritativeTrade(supabase, accountId),
+    getHaloSettings(supabase, accountId),
+    listHaloCampaigns(supabase, accountId, 50),
+    supabase
+      .from('jobs')
+      .select('id, ref, address, quoted_amount, status, created_at, photo_paths')
+      .eq('account_id', accountId)
+      .eq('status', 'complete')
+      .order('created_at', { ascending: false })
+      .limit(10),
   ]);
 
   const content = getSiteContent(siteRow?.content as Record<string, unknown> | null);
@@ -58,6 +75,9 @@ export default async function ManagedAdsPage({
       initialWalletState={(content as Record<string, unknown>).adCampaign as never}
       leadFilters={content.leadFilters}
       initialTab={initialTab}
+      initialHaloSettings={haloSettings}
+      initialHaloCampaigns={haloCampaigns}
+      completedJobsForHalo={(completedJobs || []) as never}
     />
   );
 }
