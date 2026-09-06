@@ -98,9 +98,13 @@ export async function POST(request: Request) {
       bookingUrl = `https://${site.subdomain}.letsgetquoted.com/quote`;
     }
 
-    await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back').catch((err) => {
+    const consent = await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back', admin).catch((err) => {
       console.warn('[swaig:send_booking_link] Failed to establish caller SMS consent baseline:', err);
+      return false;
     });
+    if (!consent) {
+      return NextResponse.json({ response: 'I could not confirm permission to text this number, so I have not queued a message. We can continue over the phone.' });
+    }
 
     const sendResult = await sendCallerVoiceBookingLinkSms({
       accountId,
@@ -116,7 +120,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({
-      response: "I've just texted a direct booking link to your mobile phone. You can use it anytime to choose an appointment slot, or we can continue our conversation right now.",
+      response: "I've queued a text with your booking link. Delivery can take a little time; we can continue our conversation while you wait.",
     });
   }
 
@@ -285,8 +289,9 @@ export async function POST(request: Request) {
 
     // Create the booking lead and pending job in database
     try {
-      await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back').catch((err) => {
+      const consent = await ensureSmsConsentBaseline(accountId, callerPhone, 'missed_call_text_back', admin).catch((err) => {
         console.warn('[swaig:book_appointment_slot] Failed to establish caller SMS consent baseline:', err);
+        return false;
       });
 
       await createBooking(admin, accountId, {
@@ -305,16 +310,16 @@ export async function POST(request: Request) {
         sourceVoiceProviderCallId: verifiedProviderCallId,
       });
 
-      const confirmation = await sendCallerVoiceBookingConfirmationSms({
+      const confirmation = consent ? await sendCallerVoiceBookingConfirmationSms({
         accountId,
         callerPhone,
         whenLabel: `${matchedDay.dayLabel} (${matchedSlot.label})`,
         serviceAddress,
         idempotencyKey: `voice-booking-sms:${accountId}:${verifiedProviderCallId}`,
-      });
+      }) : { ok: false };
 
       return NextResponse.json({
-        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' I also texted a confirmation to your mobile phone.' : ' The request is saved, but the confirmation text could not be delivered.'} Our team will review and confirm the appointment.`,
+        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' A confirmation text is queued for your mobile phone.' : ' The request is saved, but the confirmation text could not be queued.'} Our team will review and confirm the appointment.`,
       });
     } catch (err) {
       console.error('Error creating in-call booking:', err);
