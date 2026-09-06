@@ -1230,3 +1230,108 @@ textarea.input {
   gap: 0.6rem;
 }
 
+/* MFA & Authenticator Management */
+.mfaStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.2rem;
+}
+.mfaActionGroup {
+  display: flex;
+  gap: 0.65rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.mfaStepUpPrompt {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.mfaPromptText {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text, #eef1f6);
+}
+.mfaSetup {
+  margin-top: 1.2rem;
+}
+.mfaWarningCard {
+  margin-top: 1rem;
+  padding: 0.8rem 1rem;
+  background: rgba(245, 158, 11, 0.08);
+  border-radius: 0.6rem;
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  align-items: flex-start;
+}
+.mfaSection {
+  margin-top: 1.5rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(var(--tint, 255, 255, 255), 0.08);
+}
+.mfaSectionTitle {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--muted, rgba(247, 245, 239, 0.65));
+  margin: 0 0 0.75rem;
+}
+.mfaList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.mfaItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.85rem;
+  background: rgba(var(--tint, 255, 255, 255), 0.025);
+  border-radius: 0.55rem;
+  border: 1px solid rgba(var(--tint, 255, 255, 255), 0.06);
+}
+.mfaItemLead {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+}
+.mfaItemIcon {
+  font-size: 1.15rem;
+  line-height: 1;
+}
+.mfaItemName {
+  font-weight: 600;
+  font-size: 0.85rem;
+  color: var(--text, #eef1f6);
+}
+.mfaItemMeta {
+  font-size: 0.72rem;
+  color: var(--muted, #99a2b2);
+}
+.formStack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  margin-top: 0.8rem;
+}
+.input {
+  background: rgba(var(--tint, 255, 255, 255), 0.05);
+  border: 1px solid rgba(var(--tint, 255, 255, 255), 0.15);
+  border-radius: 0.55rem;
+  color: var(--text, #eef1f6);
+  padding: 0.5rem 0.75rem;
+  font-size: 0.88rem;
+  width: 100%;
+  max-width: 320px;
+}
+.input:focus {
+  outline: none;
+  border-color: var(--accent, #ff7a21);
+  box-shadow: 0 0 0 2px rgba(255, 122, 33, 0.2);
+}
+
