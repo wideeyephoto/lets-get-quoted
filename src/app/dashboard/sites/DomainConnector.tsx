@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import styles from './SiteEditor.module.css';
+import SquarespaceDnsModal from './SquarespaceDnsModal';
 
 // Guided custom-domain connector. Not an API integration — it gives each
 // provider's current, exact steps, a copy-pasteable CNAME record, and a deep
@@ -115,6 +116,7 @@ export const PROVIDERS: Provider[] = [
 export default function DomainConnector({ domain, target, apexIp = '76.76.21.21', apexDomain }: { domain: string | null | undefined; target: string; apexIp?: string; apexDomain?: string }) {
   const [providerId, setProviderId] = useState('godaddy');
   const [copied, setCopied] = useState<string | null>(null);
+  const [showGuide, setShowGuide] = useState(false);
 
   const provider = PROVIDERS.find((item) => item.id === providerId) || PROVIDERS[0];
   const cleanedDomain = (domain || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
@@ -160,11 +162,22 @@ export default function DomainConnector({ domain, target, apexIp = '76.76.21.21'
         ))}
       </div>
 
-      {openUrl && (
-        <a className={styles.connectorOpen} href={openUrl} target="_blank" rel="noopener noreferrer">
-          {provider.openLabel || `Open ${provider.name} DNS settings ↗`}
-        </a>
-      )}
+      <div className={styles.connectorActions}>
+        {openUrl && (
+          <a className={styles.connectorOpen} href={openUrl} target="_blank" rel="noopener noreferrer">
+            {provider.openLabel || `Open ${provider.name} DNS settings ↗`}
+          </a>
+        )}
+        {providerId === 'squarespace' && (
+          <button
+            type="button"
+            className={styles.connectorScreenshotBtn}
+            onClick={() => setShowGuide(true)}
+          >
+            📸 View Squarespace Screenshot Guide
+          </button>
+        )}
+      </div>
 
       <div className={styles.connectorRecord}>
         {records.map((row) => (
@@ -206,6 +219,16 @@ export default function DomainConnector({ domain, target, apexIp = '76.76.21.21'
       </details>
 
       <p className={styles.connectorNote}>If your domain’s nameservers point to another service (e.g. Cloudflare), add this record there instead — records added at your registrar won’t apply.</p>
+
+      {providerId === 'squarespace' && (
+        <SquarespaceDnsModal
+          isOpen={showGuide}
+          onClose={() => setShowGuide(false)}
+          isApex={isApex}
+          host={records[0]?.host || (isApex ? '@' : 'www')}
+          value={records[0]?.value || (isApex ? apexIp : target)}
+        />
+      )}
     </div>
   );
 }
