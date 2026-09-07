@@ -26,10 +26,10 @@ try {
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
-export async function loadEnvFile() {
+export async function loadEnvFile(envRoot = root) {
   for (const fileName of ['.env.local', '.env']) {
     try {
-      const contents = await readFile(resolve(root, fileName), 'utf8');
+      const contents = await readFile(resolve(envRoot, fileName), 'utf8');
       for (const line of contents.split(/\r?\n/)) {
         const trimmed = line.trim();
         if (!trimmed || trimmed.startsWith('#')) continue;
@@ -204,17 +204,14 @@ export async function runCronInspection({
   windowMinutes = 1440,
   strict = false,
   now = new Date(),
+  envRoot = root,
 } = {}) {
-  await loadEnvFile();
+  await loadEnvFile(envRoot);
 
   if (!process.env.DATABASE_URL) {
-    if (strict) {
-      console.error('DATABASE_URL is not set; failing in --strict mode.');
-      process.exitCode = 1;
-      return { silent: [], stale: [], failing: [], idle: [], ok: [], error: 'DATABASE_URL missing' };
-    }
-    console.warn('DATABASE_URL is not set; skipping cron health inspection.');
-    return { silent: [], stale: [], failing: [], idle: [], ok: [], skipped: true };
+    console.error('DATABASE_URL is not set; nothing to read.');
+    process.exitCode = 1;
+    return { silent: [], stale: [], failing: [], idle: [], ok: [], disabled: [], error: 'DATABASE_URL missing' };
   }
 
   let client = null;
@@ -341,10 +338,10 @@ export async function runCronInspection({
 
       everRows = Array.from(everMap.values());
       successRows = Array.from(successMapRaw.entries()).map(([job, last_success]) => ({ job, last_success }));
-    } else if (strict) {
-      console.error('No database connection available; failing in --strict mode.');
+    } else {
+      console.error('No database connection available; failing inspection.');
       process.exitCode = 1;
-      return { silent: [], stale: [], failing: [], idle: [], ok: [], error: 'Database connection failed' };
+      return { silent: [], stale: [], failing: [], idle: [], ok: [], disabled: [], error: 'Database connection failed' };
     }
 
     const successMap = new Map(successRows.map((row) => [row.job, row.last_success]));
@@ -424,8 +421,14 @@ const isDirectRun =
 if (isDirectRun) {
   const windowMinutes = Number.parseInt(process.argv[2] ?? '', 10) || 1440;
   const strict = process.argv.includes('--strict');
-  runCronInspection({ windowMinutes, strict }).catch((err) => {
-    console.error('Fatal inspection error:', err);
-    process.exit(1);
-  });
+  runCronInspection({ windowMinutes, strict })
+    .then((result) => {
+      if (result.error || (strict && (result.silent?.length > 0 || result.stale?.length > 0 || result.failing?.length > 0))) {
+        process.exit(1);
+      }
+    })
+    .catch((err) => {
+      console.error('Fatal inspection error:', err);
+      process.exit(1);
+    });
 }

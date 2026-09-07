@@ -16,7 +16,7 @@ export declare function classifyJobStatus(input: {
   now?: Date;
 }): JobStatusResult;
 
-export declare function loadEnvFile(): Promise<void>;
+export declare function loadEnvFile(envRoot?: string): Promise<void>;
 
 export declare function declaredCrons(): Promise<Array<{ job: string; schedule: string }>>;
 
@@ -24,12 +24,14 @@ export declare function runCronInspection(options?: {
   windowMinutes?: number;
   strict?: boolean;
   now?: Date;
+  envRoot?: string;
 }): Promise<{
   silent: Array<{ job: string; schedule: string; status: string; detail: string }>;
   stale: Array<{ job: string; schedule: string; status: string; detail: string }>;
   failing: Array<{ job: string; schedule: string; status: string; detail: string }>;
   idle: Array<{ job: string; schedule: string; status: string; detail: string }>;
   ok: Array<{ job: string; schedule: string; status: string; detail: string }>;
+  disabled?: Array<{ job: string; schedule: string; status: string; detail: string }>;
   undeclared?: Array<{ job: string; runs: number }>;
   error?: string;
   skipped?: boolean;

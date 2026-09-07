@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, afterEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 // @ts-ignore - raw ESM script
@@ -6,6 +6,7 @@ import {
   maxIntervalMinutes,
   graceMinutesFor,
   classifyJobStatus,
+  runCronInspection,
 } from '../scripts/inspect-cron-health.mjs';
 
 const MINUTE = 1;
@@ -211,4 +212,41 @@ describe('classifyJobStatus', () => {
       });
     });
   });
+
+  describe('runCronInspection gate enforcement', () => {
+    const originalDbUrl = process.env.DATABASE_URL;
+    const originalExitCode = process.exitCode;
+
+    afterEach(() => {
+      if (originalDbUrl !== undefined) {
+        process.env.DATABASE_URL = originalDbUrl;
+      } else {
+        delete process.env.DATABASE_URL;
+      }
+      process.exitCode = originalExitCode;
+    });
+
+    it('hard-fails with exit code 1 and error when DATABASE_URL is missing (default mode)', async () => {
+      delete process.env.DATABASE_URL;
+      process.exitCode = 0;
+
+      const result = await runCronInspection({ envRoot: '/empty-dir-without-env' });
+
+      expect(result.error).toBe('DATABASE_URL missing');
+      expect((result as any).skipped).toBeUndefined();
+      expect(process.exitCode).toBe(1);
+    });
+
+    it('hard-fails with exit code 1 and error when DATABASE_URL is missing (strict mode)', async () => {
+      delete process.env.DATABASE_URL;
+      process.exitCode = 0;
+
+      const result = await runCronInspection({ strict: true, envRoot: '/empty-dir-without-env' });
+
+      expect(result.error).toBe('DATABASE_URL missing');
+      expect((result as any).skipped).toBeUndefined();
+      expect(process.exitCode).toBe(1);
+    });
+  });
 });
+
