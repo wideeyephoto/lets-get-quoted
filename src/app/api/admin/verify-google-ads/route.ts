@@ -43,6 +43,11 @@ export async function GET(request: NextRequest) {
       ok: writePathReport.success && offlineReport.success,
       timestamp: new Date().toISOString(),
       customerId: customerId.replace(/-/g, ''),
+      environmentAudit: {
+        featureManagedAdsCheckoutEnabled: process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED || '(unset)',
+        googleAdsConversionActionIdWonJob: process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB || writePathReport.wonJobConversionActionId || '(unset)',
+        billingSetup: writePathReport.billingSetups?.[0] || null,
+      },
       writePath: writePathReport,
       offlineConversions: offlineReport,
     },
@@ -68,6 +73,11 @@ export async function POST(request: NextRequest) {
       ok: writePathReport.success && offlineReport.success,
       timestamp: new Date().toISOString(),
       customerId: customerId.replace(/-/g, ''),
+      environmentAudit: {
+        featureManagedAdsCheckoutEnabled: process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED || '(unset)',
+        googleAdsConversionActionIdWonJob: process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB || writePathReport.wonJobConversionActionId || '(unset)',
+        billingSetup: writePathReport.billingSetups?.[0] || null,
+      },
       writePath: writePathReport,
       offlineConversions: offlineReport,
     },

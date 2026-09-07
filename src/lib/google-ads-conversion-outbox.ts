@@ -222,7 +222,7 @@ export async function syncLeadWonConversion(params: {
     conversionActionName = params.conversionActionName
       || process.env.GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB
       || process.env.GOOGLE_ADS_CONVERSION_ACTION_WON_JOB
-      || 'Job Won',
+      || '7752658766',
     clientCustomerId,
   } = params;
 
