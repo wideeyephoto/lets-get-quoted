@@ -13,6 +13,7 @@ import PayoutsTransfersPanel from './PayoutsTransfersPanel';
 import RevenueAnalyticsPanel from './RevenueAnalyticsPanel';
 import DisputesDefensePanel from './DisputesDefensePanel';
 import PaymentModals, { type ModalType } from './PaymentModals';
+import MoneyNav from '@/components/MoneyNav';
 
 interface Props {
   initialPayments: PaymentLedgerItem[];
@@ -57,7 +58,7 @@ export default function RevenuePaymentsScreen({
   analytics,
   jobs,
   selectedRange,
-  isOwner = true,
+  isOwner = false,
   stripeError,
 }: Props) {
   const [activeTab, setActiveTab] = useState(stripeError ? 'payouts' : 'ledger');
@@ -148,6 +149,7 @@ export default function RevenuePaymentsScreen({
 
   return (
     <main className="wide-shell workspace-shell">
+      <MoneyNav />
       {/* Toast alert with smooth entrance */}
       {toastMessage && (
         <div
@@ -552,16 +554,30 @@ export default function RevenuePaymentsScreen({
                 In-Transit to Bank
               </span>
               <span style={{ fontSize: '0.7rem', padding: '0.12rem 0.45rem', borderRadius: '999px', background: 'rgba(59, 130, 246, 0.12)', color: 'var(--info, #2563eb)', fontWeight: 600, border: '1px solid rgba(59, 130, 246, 0.25)' }}>
-                {payouts.payoutsPaused ? 'Paused' : 'Auto-Transfer'}
+                {payouts.payoutsPaused
+                  ? 'Paused'
+                  : !payouts.available
+                  ? 'Syncing'
+                  : payouts.payoutSchedule === 'Manual'
+                  ? 'Manual'
+                  : payouts.payoutSchedule === 'Unavailable'
+                  ? 'Unavailable'
+                  : payouts.payoutSchedule || 'Auto-Transfer'}
               </span>
             </div>
-            <strong className="workspace-metric-value" style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'block', color: 'var(--text)' }}>
-              {formatUsd(payouts.availableBalanceDollars + payouts.pendingBalanceDollars)}
+            <strong className="workspace-metric-value" style={{ fontSize: '1.65rem', fontWeight: 700, letterSpacing: '-0.02em', display: 'block', color: payouts.available ? 'var(--text)' : 'var(--muted)' }}>
+              {payouts.available ? formatUsd(payouts.availableBalanceDollars + payouts.pendingBalanceDollars) : '—'}
             </strong>
           </div>
           <p className="workspace-metric-note" style={{ fontSize: '0.74rem', color: 'var(--muted)', margin: '0.65rem 0 0' }}>
             {payouts.payoutsPaused ? (
               <span style={{ color: 'var(--bad, #dc2626)' }}>⚠️ Action required on Stripe</span>
+            ) : !payouts.available ? (
+              <span style={{ color: 'var(--warn, #d97706)' }}>⏳ Stripe balance sync temporarily delayed</span>
+            ) : payouts.payoutSchedule === 'Manual' ? (
+              'Manual payouts enabled in Stripe'
+            ) : payouts.payoutSchedule === 'Unavailable' ? (
+              'Payout schedule unavailable from Stripe'
             ) : (
               'Next transfer arriving in 1–2 business days'
             )}

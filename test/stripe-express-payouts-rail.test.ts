@@ -158,32 +158,125 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
       expect(overview.payoutSchedule).toBe('Weekly Automatic');
       expect(overview.availableBalanceDollars).toBe(0);
     });
+
+    it('handles accounts.retrieve failure or unpopulated schedule interval by setting payoutSchedule to Unavailable', async () => {
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  stripe_connect_id: 'acct_123',
+                  connect_onboarded: true,
+                  connect_disabled_at: null,
+                },
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      mockRetrieve.mockResolvedValue({
+        available: [{ amount: 10000, currency: 'usd' }],
+        pending: [],
+        instant_available: [],
+      });
+      mockPayoutsList.mockResolvedValue({ data: [] });
+      // Simulate Stripe accounts.retrieve rejecting (e.g. v1 on v2 account error)
+      mockAccountsRetrieve.mockRejectedValue(new Error('Stripe API error on accounts.retrieve'));
+
+      const overview = await loadStripePayoutsOverview(mockSupabase, 'acc_test');
+
+      expect(overview.connected).toBe(true);
+      expect(overview.payoutSchedule).toBe('Unavailable');
+    });
+
+    it('handles payouts.list failure gracefully by marking recentPayoutsAvailable: false without asserting zero payouts as fact', async () => {
+      const mockSupabase = {
+        from: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: {
+                  stripe_connect_id: 'acct_123',
+                  connect_onboarded: true,
+                  connect_disabled_at: null,
+                },
+              }),
+            }),
+          }),
+        }),
+      } as any;
+
+      mockRetrieve.mockResolvedValue({
+        available: [{ amount: 10000, currency: 'usd' }],
+        pending: [],
+        instant_available: [],
+      });
+      // Simulate payouts.list rejecting
+      mockPayoutsList.mockRejectedValue(new Error('Stripe API 500 error on payouts.list'));
+      mockAccountsRetrieve.mockResolvedValue({
+        settings: { payouts: { schedule: { interval: 'daily' } } },
+      });
+
+      const overview = await loadStripePayoutsOverview(mockSupabase, 'acc_test');
+
+      expect(overview.connected).toBe(true);
+      expect(overview.recentPayoutsAvailable).toBe(false);
+      expect(overview.recentPayouts).toEqual([]);
+      expect(overview.payoutSchedule).toBe('Daily Automatic');
+    });
   });
 
-  describe('2. UI Integrity across Payouts, Settings & Modals', () => {
-    it('has zero dead links to https://dashboard.stripe.com across contractor surfaces', () => {
-      const filesToCheck = [
+  describe('2. UI Integrity across Payouts, Settings, Modals & Revenue Screen', () => {
+    it('routes contractor recipient surfaces through /api/stripe/express-dashboard with no unauthenticated links', () => {
+      const expressSurfaces = [
         'src/app/dashboard/payments/PayoutsTransfersPanel.tsx',
         'src/app/dashboard/settings/PayoutAccount.tsx',
-        'src/app/dashboard/settings/MerchantOnboardingSection.tsx',
-        'src/app/dashboard/payments/PaymentModals.tsx',
       ];
 
-      for (const relativePath of filesToCheck) {
+      for (const relativePath of expressSurfaces) {
         const content = readFileSync(join(process.cwd(), relativePath), 'utf8');
         expect(content).not.toContain('https://dashboard.stripe.com');
         expect(content).toContain('/api/stripe/express-dashboard');
       }
     });
 
-    it('enforces role gating, $0.50 min fee math, and error alerts in PayoutsTransfersPanel', () => {
+    it('points MerchantOnboardingSection to https://dashboard.stripe.com for full dashboard accounts', () => {
+      const content = readFileSync(
+        join(process.cwd(), 'src/app/dashboard/settings/MerchantOnboardingSection.tsx'),
+        'utf8'
+      );
+      expect(content).toContain('https://dashboard.stripe.com');
+      expect(content).not.toContain('/api/stripe/express-dashboard');
+    });
+
+    it('channels dispute defense in PaymentModals and DisputesDefensePanel to LGQ Support via mailto', () => {
+      const modalsContent = readFileSync(
+        join(process.cwd(), 'src/app/dashboard/payments/PaymentModals.tsx'),
+        'utf8'
+      );
+      expect(modalsContent).not.toContain('https://dashboard.stripe.com/disputes');
+      expect(modalsContent).not.toContain('/api/stripe/express-dashboard');
+      expect(modalsContent).toContain('mailto:support@letsgetquoted.com');
+      expect(modalsContent).toContain('Email Evidence to Support ✉️');
+
+      const panelContent = readFileSync(
+        join(process.cwd(), 'src/app/dashboard/payments/DisputesDefensePanel.tsx'),
+        'utf8'
+      );
+      expect(panelContent).not.toContain('https://dashboard.stripe.com');
+      expect(panelContent).toContain('support@letsgetquoted.com');
+    });
+
+    it('enforces role gating, error alerts when disconnected, and failure banners in PayoutsTransfersPanel', () => {
       const panelCode = readFileSync(
         join(process.cwd(), 'src/app/dashboard/payments/PayoutsTransfersPanel.tsx'),
         'utf8'
       );
 
-      // Verify role gating and error banner
-      expect(panelCode).toContain('isOwner');
+      // Verify fail-closed role gating
+      expect(panelCode).toContain('isOwner = false');
       expect(panelCode).toContain('stripeError');
       expect(panelCode).toContain('stripe_login_failed');
       expect(panelCode).toContain('Unable to Open Stripe Express Portal');
@@ -194,9 +287,35 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
       expect(panelCode).toContain('Math.max(0.5, instantAvailable * 0.015)');
       expect(panelCode).toContain('Est. Net After Fee (1.5%, min $0.50)');
 
-      // Verify copy alignment
+      // Verify payout failure banners and unavailable schedule handling
+      expect(panelCode).toContain('Payout History Temporarily Unavailable');
+      expect(panelCode).toContain('payouts.recentPayoutsAvailable');
+      expect(panelCode).toContain('Schedule not reported by Stripe');
       expect(panelCode).toContain('⚡ 30-Min Transfer Available');
-      expect(panelCode).toContain('payouts.payoutSchedule');
+    });
+
+    it('synchronizes RevenuePaymentsScreen with payout schedule, balance availability, and fail-closed owner default', () => {
+      const screenCode = readFileSync(
+        join(process.cwd(), 'src/app/dashboard/payments/RevenuePaymentsScreen.tsx'),
+        'utf8'
+      );
+
+      // Verify no dead links
+      expect(screenCode).not.toContain('https://dashboard.stripe.com');
+
+      // Verify fail-closed default
+      expect(screenCode).toContain('isOwner = false');
+
+      // Verify dynamic schedule badge & copy
+      expect(screenCode).toContain("payouts.payoutSchedule === 'Manual'");
+      expect(screenCode).toContain("payouts.payoutSchedule === 'Unavailable'");
+      expect(screenCode).toContain('Manual payouts enabled in Stripe');
+      expect(screenCode).toContain('Payout schedule unavailable from Stripe');
+
+      // Verify balance outage representation
+      expect(screenCode).toContain("!payouts.available\n                  ? 'Syncing'");
+      expect(screenCode).toContain("payouts.available ? formatUsd(payouts.availableBalanceDollars + payouts.pendingBalanceDollars) : '—'");
+      expect(screenCode).toContain('Stripe balance sync temporarily delayed');
     });
   });
 

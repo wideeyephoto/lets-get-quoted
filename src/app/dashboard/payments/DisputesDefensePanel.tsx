@@ -65,7 +65,7 @@ export default function DisputesDefensePanel({ disputedPayments, onOpenEvidenceM
           <div style={{ fontSize: '2.5rem' }}>🏆</div>
           <strong style={{ fontSize: '1.1rem', color: 'var(--text)' }}>Dispute Defense Studio Standing By</strong>
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--muted)', maxWidth: '460px' }}>
-            When a credit card issuer opens a dispute, our automated counter-evidence compiler compiles signed agreements, photo logs, and timestamped SMS communications into an audit-ready dossier you can copy and submit directly in the Stripe Disputes portal.
+            When a credit card issuer opens a dispute, our automated counter-evidence compiler compiles signed agreements, photo logs, and timestamped SMS communications into an audit-ready dossier you can copy and email to LGQ Support (<a href="mailto:support@letsgetquoted.com" style={{ color: 'inherit', textDecoration: 'underline' }}>support@letsgetquoted.com</a>) to defend on your behalf.
           </p>
         </div>
       ) : (

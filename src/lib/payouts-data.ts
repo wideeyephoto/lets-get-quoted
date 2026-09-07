@@ -26,6 +26,7 @@ export type PayoutsAccountOverview = {
   payoutSchedule: string;
   recentPayouts: StripePayoutItem[];
   available: boolean;
+  recentPayoutsAvailable: boolean;
 };
 
 export async function loadStripePayoutsOverview(
@@ -51,9 +52,10 @@ export async function loadStripePayoutsOverview(
         pendingBalanceDollars: 0,
         instantAvailableDollars: 0,
         instantPayoutEligible: false,
-        payoutSchedule: 'Daily Automatic',
+        payoutSchedule: 'Unavailable',
         recentPayouts: [],
         available: true,
+        recentPayoutsAvailable: true,
       };
     }
 
@@ -75,6 +77,17 @@ export async function loadStripePayoutsOverview(
 
     if (isBalanceFulfilled) {
       const b = balanceRes.value;
+      const nonUsdAvail = b.available?.filter((item) => item.currency !== 'usd' && item.amount > 0) ?? [];
+      const nonUsdPend = b.pending?.filter((item) => item.currency !== 'usd' && item.amount > 0) ?? [];
+      const nonUsdInstant = b.instant_available?.filter((item) => item.currency !== 'usd' && item.amount > 0) ?? [];
+      if (nonUsdAvail.length > 0 || nonUsdPend.length > 0 || nonUsdInstant.length > 0) {
+        console.warn('Non-USD balances detected on Stripe account but only USD is supported:', connectId, {
+          available: nonUsdAvail,
+          pending: nonUsdPend,
+          instant: nonUsdInstant,
+        });
+      }
+
       const availCents = b.available?.reduce((sum, item) => sum + (item.currency === 'usd' ? item.amount : 0), 0) ?? 0;
       const pendCents = b.pending?.reduce((sum, item) => sum + (item.currency === 'usd' ? item.amount : 0), 0) ?? 0;
       const instantCents = b.instant_available?.reduce((sum, item) => sum + (item.currency === 'usd' ? item.amount : 0), 0) ?? 0;
@@ -87,17 +100,23 @@ export async function loadStripePayoutsOverview(
       console.warn('Stripe balance retrieval failed for account:', connectId, balanceRes.reason);
     }
 
-    let payoutSchedule = 'Daily Automatic';
+    let payoutSchedule = 'Unavailable';
     if (accountRes.status === 'fulfilled' && accountRes.value) {
       const interval = accountRes.value.settings?.payouts?.schedule?.interval;
       if (interval === 'manual') payoutSchedule = 'Manual';
       else if (interval === 'weekly') payoutSchedule = 'Weekly Automatic';
       else if (interval === 'monthly') payoutSchedule = 'Monthly Automatic';
       else if (interval === 'daily') payoutSchedule = 'Daily Automatic';
+      else {
+        console.warn('Unknown or unpopulated Stripe payout schedule interval:', connectId, interval);
+      }
+    } else if (accountRes.status === 'rejected') {
+      console.warn('Stripe accounts.retrieve failed for account:', connectId, accountRes.reason);
     }
 
     const recentPayouts: StripePayoutItem[] = [];
-    if (payoutsRes.status === 'fulfilled') {
+    const isPayoutsFulfilled = payoutsRes.status === 'fulfilled';
+    if (isPayoutsFulfilled) {
       for (const p of payoutsRes.value.data) {
         let dest = 'Bank Account';
         if (p.destination && typeof p.destination === 'object') {
@@ -118,6 +137,8 @@ export async function loadStripePayoutsOverview(
           failureMessage: p.failure_message || null,
         });
       }
+    } else {
+      console.warn('Stripe payouts.list failed for account:', connectId, payoutsRes.reason);
     }
 
     return {
@@ -131,6 +152,7 @@ export async function loadStripePayoutsOverview(
       payoutSchedule,
       recentPayouts,
       available: isBalanceFulfilled,
+      recentPayoutsAvailable: isPayoutsFulfilled,
     };
   } catch (error) {
     console.error('Failed to load Stripe payouts overview:', error);
@@ -143,9 +165,10 @@ export async function loadStripePayoutsOverview(
       pendingBalanceDollars: 0,
       instantAvailableDollars: 0,
       instantPayoutEligible: false,
-      payoutSchedule: 'Daily Automatic',
+      payoutSchedule: 'Unavailable',
       recentPayouts: [],
       available: false,
+      recentPayoutsAvailable: false,
     };
   }
 }

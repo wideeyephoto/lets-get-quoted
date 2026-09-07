@@ -23,26 +23,73 @@ function formatDate(iso: string): string {
   });
 }
 
-export default function PayoutsTransfersPanel({ payouts, isOwner = true, stripeError }: Props) {
+export default function PayoutsTransfersPanel({ payouts, isOwner = false, stripeError }: Props) {
   const [dismissedError, setDismissedError] = useState(false);
+
+  const stripeLoginAlert = stripeError === 'stripe_login_failed' && !dismissedError ? (
+    <div
+      role="alert"
+      style={{
+        padding: '0.85rem 1rem',
+        background: 'rgba(239, 68, 68, 0.08)',
+        border: '1px solid rgba(239, 68, 68, 0.28)',
+        borderRadius: '8px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        gap: '1rem',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+        <span style={{ fontSize: '1.25rem' }}>⚠️</span>
+        <div>
+          <strong style={{ color: 'var(--bad)', fontSize: '0.88rem' }}>
+            Unable to Open Stripe Express Portal
+          </strong>
+          <p style={{ margin: '0.15rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
+            The Stripe authentication session could not be established. Ensure your business profile is verified or try again shortly.
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => setDismissedError(true)}
+        style={{
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--muted)',
+          fontSize: '1.25rem',
+          lineHeight: 1,
+          cursor: 'pointer',
+          padding: '0.25rem 0.5rem',
+        }}
+        aria-label="Dismiss alert"
+      >
+        ×
+      </button>
+    </div>
+  ) : null;
 
   if (!payouts.connected) {
     return (
-      <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)' }}>
-        <div style={{ fontSize: '2.2rem', marginBottom: '0.75rem' }}>🏦</div>
-        <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', color: 'var(--text)' }}>Connect Stripe to Enable Automatic Bank Payouts</h3>
-        <p style={{ maxWidth: '480px', margin: '0 auto 1.25rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
-          Connect your bank account through Stripe Connect so homeowner payments, deposits, and invoice balances land safely in your checking account.
-        </p>
-        {isOwner ? (
-          <Link href="/dashboard/settings#payments" className="btn primary">
-            Set Up Payout Account →
-          </Link>
-        ) : (
-          <p style={{ fontSize: '0.85rem', color: 'var(--muted)', fontStyle: 'italic' }}>
-            🔒 Workspace owner authorization required to connect a Stripe payout account.
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {stripeLoginAlert}
+        <div style={{ padding: '2.5rem 1.5rem', textAlign: 'center', background: 'var(--bg-2)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+          <div style={{ fontSize: '2.2rem', marginBottom: '0.75rem' }}>🏦</div>
+          <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.2rem', color: 'var(--text)' }}>Connect Stripe to Enable Automatic Bank Payouts</h3>
+          <p style={{ maxWidth: '480px', margin: '0 auto 1.25rem', color: 'var(--muted)', fontSize: '0.9rem' }}>
+            Connect your bank account through Stripe Connect so homeowner payments, deposits, and invoice balances land safely in your checking account.
           </p>
-        )}
+          {isOwner ? (
+            <Link href="/dashboard/settings#payments" className="btn primary">
+              Set Up Payout Account →
+            </Link>
+          ) : (
+            <p style={{ fontSize: '0.85rem', color: 'var(--muted)', fontStyle: 'italic' }}>
+              🔒 Workspace owner authorization required to connect a Stripe payout account.
+            </p>
+          )}
+        </div>
       </div>
     );
   }
@@ -55,49 +102,7 @@ export default function PayoutsTransfersPanel({ payouts, isOwner = true, stripeE
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
       {/* Stripe Login Error Alert Banner */}
-      {stripeError === 'stripe_login_failed' && !dismissedError && (
-        <div
-          role="alert"
-          style={{
-            padding: '0.85rem 1rem',
-            background: 'rgba(239, 68, 68, 0.08)',
-            border: '1px solid rgba(239, 68, 68, 0.28)',
-            borderRadius: '8px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: '1rem',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <span style={{ fontSize: '1.25rem' }}>⚠️</span>
-            <div>
-              <strong style={{ color: 'var(--bad)', fontSize: '0.88rem' }}>
-                Unable to Open Stripe Express Portal
-              </strong>
-              <p style={{ margin: '0.15rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
-                The Stripe authentication session could not be established. Ensure your business profile is verified or try again shortly.
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={() => setDismissedError(true)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'var(--muted)',
-              fontSize: '1.25rem',
-              lineHeight: 1,
-              cursor: 'pointer',
-              padding: '0.25rem 0.5rem',
-            }}
-            aria-label="Dismiss alert"
-          >
-            ×
-          </button>
-        </div>
-      )}
+      {stripeLoginAlert}
 
       {/* Stripe Outage / Balance Sync Warning Banner */}
       {!payouts.available && (
@@ -176,11 +181,15 @@ export default function PayoutsTransfersPanel({ payouts, isOwner = true, stripeE
           <span style={{ fontSize: '0.78rem', color: 'var(--muted)', textTransform: 'uppercase', fontWeight: 600 }}>
             Payout Schedule
           </span>
-          <div style={{ fontSize: '1.2rem', fontWeight: 700, marginTop: '0.45rem', color: 'var(--text)' }}>
-            {payouts.payoutSchedule || 'Daily Automatic'}
+          <div style={{ fontSize: '1.2rem', fontWeight: 700, marginTop: '0.45rem', color: payouts.payoutSchedule === 'Unavailable' ? 'var(--muted)' : 'var(--text)' }}>
+            {payouts.payoutSchedule === 'Unavailable' ? 'Unavailable' : payouts.payoutSchedule || 'Unavailable'}
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--muted)', marginTop: '0.35rem' }}>
-            Transfers directly to bank account
+            {payouts.payoutSchedule === 'Unavailable'
+              ? 'Schedule not reported by Stripe'
+              : payouts.payoutSchedule === 'Manual'
+              ? 'Transfers initiated on demand in Stripe'
+              : 'Transfers directly to bank account'}
           </div>
         </div>
       </div>
@@ -231,7 +240,9 @@ export default function PayoutsTransfersPanel({ payouts, isOwner = true, stripeE
             ) : (
               <div style={{ textAlign: 'right' }}>
                 <span style={{ color: 'var(--muted)', display: 'block', fontSize: '0.72rem' }}>Transfer Schedule</span>
-                <strong style={{ color: 'var(--text)' }}>{payouts.payoutSchedule || 'Daily Automatic'}</strong>
+                <strong style={{ color: payouts.payoutSchedule === 'Unavailable' ? 'var(--muted)' : 'var(--text)' }}>
+                  {payouts.payoutSchedule === 'Unavailable' ? 'Unavailable' : payouts.payoutSchedule || 'Unavailable'}
+                </strong>
               </div>
             )}
           </div>
@@ -320,6 +331,33 @@ export default function PayoutsTransfersPanel({ payouts, isOwner = true, stripeE
           )}
         </div>
 
+        {/* Payout History Outage Warning Banner */}
+        {!payouts.recentPayoutsAvailable && (
+          <div
+            role="status"
+            style={{
+              padding: '0.85rem 1rem',
+              background: 'rgba(245, 181, 68, 0.08)',
+              border: '1px solid rgba(245, 181, 68, 0.28)',
+              borderRadius: '8px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.65rem',
+              marginBottom: '0.75rem',
+            }}
+          >
+            <span style={{ fontSize: '1.25rem' }}>⏳</span>
+            <div>
+              <strong style={{ color: 'var(--warn)', fontSize: '0.88rem' }}>
+                Payout History Temporarily Unavailable
+              </strong>
+              <p style={{ margin: '0.15rem 0 0', fontSize: '0.82rem', color: 'var(--muted)' }}>
+                Recent bank disbursement records could not be retrieved from Stripe. Check back shortly or view transfers in the Stripe portal.
+              </p>
+            </div>
+          </div>
+        )}
+
         <div className="table-wrap" style={{ overflowX: 'auto' }}>
           <table className="table" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
             <thead>
@@ -335,8 +373,16 @@ export default function PayoutsTransfersPanel({ payouts, isOwner = true, stripeE
               {payouts.recentPayouts.length === 0 ? (
                 <tr>
                   <td colSpan={5} style={{ padding: '2.5rem 1rem', textAlign: 'center', color: 'var(--muted)' }}>
-                    <p style={{ margin: 0, fontWeight: 500 }}>No recent bank payouts.</p>
-                    <small>Payouts will appear here as soon as your customer payments settle and transfer to your bank.</small>
+                    <p style={{ margin: 0, fontWeight: 500 }}>
+                      {!payouts.recentPayoutsAvailable
+                        ? 'Unable to load recent bank payouts.'
+                        : 'No recent bank payouts.'}
+                    </p>
+                    <small>
+                      {!payouts.recentPayoutsAvailable
+                        ? 'Live disbursement history is experiencing temporary sync delays from Stripe.'
+                        : 'Payouts will appear here as soon as your customer payments settle and transfer to your bank.'}
+                    </small>
                   </td>
                 </tr>
               ) : (

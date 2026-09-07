@@ -1363,7 +1363,7 @@ export default function PaymentModals({
 
               <div>
                 <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.3rem' }}>
-                  Formatted Evidence Statement (Paste into Stripe Dashboard)
+                  Formatted Evidence Statement (Submit to LGQ Support)
                 </label>
                 <textarea
                   readOnly
@@ -1372,6 +1372,10 @@ export default function PaymentModals({
                   className="input"
                   style={{ width: '100%', fontFamily: 'monospace', fontSize: '0.82rem' }}
                 />
+              </div>
+
+              <div style={{ padding: '0.75rem', background: 'rgba(59, 130, 246, 0.08)', border: '1px solid rgba(59, 130, 246, 0.25)', borderRadius: '6px', fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+                ℹ️ <strong>Platform Loss Collection Notice:</strong> Because contractor payout accounts use Stripe Express destination charges, Let&apos;s Get Quoted manages dispute defense with Stripe on your behalf. Email this evidence statement and attachments to <a href="mailto:support@letsgetquoted.com" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>support@letsgetquoted.com</a> before the response deadline.
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -1388,13 +1392,11 @@ export default function PaymentModals({
                     {copied ? '✓ Copied Evidence Statement!' : '📋 Copy Evidence to Clipboard'}
                   </button>
                   <a
-                    href="/api/stripe/express-dashboard"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={`mailto:support@letsgetquoted.com?subject=${encodeURIComponent(`Dispute Defense Evidence - ${selectedPayment?.jobRef || selectedPayment?.clientName || 'Job'}`)}`}
                     className="btn secondary"
                     style={{ fontSize: '0.85rem' }}
                   >
-                    Submit in Stripe Portal ↗
+                    Email Evidence to Support ✉️
                   </a>
                 </div>
                 <button type="button" className="btn secondary" onClick={onClose}>
