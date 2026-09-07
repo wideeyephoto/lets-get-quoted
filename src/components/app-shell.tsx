@@ -69,10 +69,10 @@ export const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/claims', label: 'Claims', hint: 'Adjuster scopes, supplements & depreciation' },
   { href: '/dashboard/payments', label: 'Money', hint: 'Collected revenue, invoices, cash flow & expenses' },
   { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/sites', label: 'Website', hint: 'Contractor website & online presence' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
-  { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
   { href: '/dashboard/help', label: 'Help', hint: 'Ask us a question and track the answer' },
   { href: '/dashboard/reports', label: 'Financial Reports', hint: 'P&L, Schedule C & 1099 tax summaries' },
@@ -112,8 +112,7 @@ const FLOW_CLASS: Record<string, string> = {
 // Grouping used only by the signed-in dashboard's left sidebar. The flat
 // `baseNavItems` order still drives the marketing/top-bar render; here the same
 // items are bucketed so the rail reads as labeled sections instead of one long
-// list. Website is promoted to its own badge and Account drops to the sidebar
-// footer, so neither appears here.
+// list. Account drops to the sidebar footer, so it does not appear here.
 //
 // Dashboard is not in a group either: it is rendered BELOW all of them, with a
 // rule above it — see the note at the `renderSideLink('/dashboard', …)` call.
@@ -148,6 +147,7 @@ export const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = 
     label: 'Marketing & AI',
     accent: 'grow',
     hrefs: [
+      '/dashboard/sites',
       '/dashboard/automations',
       '/dashboard/marketing',
       '/dashboard/reviews',
@@ -216,6 +216,11 @@ const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { labe
     // Switched on, but there is nothing to book: no published site, no open days,
     // or no arrival windows. ON here would be a promise the page cannot keep.
     paused: { label: 'NOT LIVE', title: 'Online booking is on but nothing is on offer — publish your website, or open some days and arrival windows' },
+  },
+  '/dashboard/sites': {
+    on: { label: 'LIVE', title: 'Website is live — manage your site and view live link' },
+    off: { label: 'OFF', title: 'Website is not published — build and launch your site' },
+    paused: { label: 'NOT LIVE', title: 'Website is not live' },
   },
 };
 
@@ -929,7 +934,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             ? quickStopState
             : href === '/dashboard/schedule/booking'
               ? bookingState
-              : 'unknown';
+              : href === '/dashboard/sites'
+                ? (sitePublished ? 'on' : 'off')
+                : 'unknown';
       // Ornament budget: at most one ornament per row.
       // Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count
       const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href]);
@@ -957,7 +964,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           {/* Ornament Budget: at most one ornament per row.
               Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count */}
           {showState ? (
-            <span className="sidenav-state" data-state={state} title={NAV_STATE_PILL[href][state].title}>
+            <span
+              className="sidenav-state"
+              data-state={state}
+              title={
+                href === '/dashboard/sites' && sitePublished && siteHost
+                  ? `Website is live at ${siteHost} — manage your site`
+                  : NAV_STATE_PILL[href][state].title
+              }
+            >
               {NAV_STATE_PILL[href][state].label}
             </span>
           ) : showCount ? (
@@ -1150,36 +1165,6 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               </div>
             </div>
           </div>
-
-          {(!nav || nav.visible.includes('/dashboard/sites')) ? (
-            <Link
-              href="/dashboard/sites"
-              data-tour-id="nav:/dashboard/sites"
-              className={`website-nav-badge sidenav-website${sitePublished ? ' live' : ''}`}
-              title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
-            >
-              {sitePublished ? (
-                <>
-                  <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
-                  {siteHost ? (
-                    <span className="website-nav-live-text">
-                      <span className="website-nav-live-top">
-                        <span className="website-nav-live-label">Website: Live</span>
-                        <span className="website-nav-live-edit">(edit)</span>
-                      </span>
-                      <span className="website-nav-live-host">{siteHost}</span>
-                    </span>
-                  ) : (
-                    'Website: Live'
-                  )}
-                </>
-              ) : (
-                <>
-                  <span aria-hidden="true">✨</span> Build your Website
-                </>
-              )}
-            </Link>
-          ) : null}
 
           <nav className="sidenav-nav" aria-label="Dashboard">
             {NAV_GROUPS.map((group) => {
@@ -1615,6 +1600,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           {isDashboard && isLoggedIn ? (
             <Link
               href="/dashboard/sites"
+              data-tour-id="nav:/dashboard/sites"
               className={`website-nav-badge${sitePublished ? ' live' : ''}`}
               title={sitePublished ? `Your website is live${siteHost ? ` at ${siteHost}` : ''} — manage it` : 'Build your free contractor website'}
             >

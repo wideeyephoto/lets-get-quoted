@@ -94,7 +94,7 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
       ]);
       expect(result.visible.length).toBe(4);
       expect(result.hiddenCount).toBe(NAV_RAIL_ORDER.length - result.visible.length);
-      expect(result.hiddenCount).toBe(13 - 4);
+      expect(result.hiddenCount).toBe(14 - 4);
     });
 
     it('office user with settings.write can see /dashboard/sites', () => {

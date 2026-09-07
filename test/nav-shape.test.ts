@@ -328,7 +328,7 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
   it('every rendered href in NAV_GROUPS resolves in baseNavItems', () => {
     const groupsBlock = SHELL.slice(SHELL.indexOf('const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
     const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
-    expect(hrefMatches.length).toBe(13);
+    expect(hrefMatches.length).toBe(14);
 
     const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
 
@@ -371,7 +371,7 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
 
     const groupsBlock = SHELL.slice(SHELL.indexOf('const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
     const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
-    expect(hrefMatches.length).toBe(13);
+    expect(hrefMatches.length).toBe(14);
 
     // Every single href from NAV_GROUPS must be mapped either dynamically or explicitly
     for (const href of hrefMatches) {
@@ -452,9 +452,9 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     expect(SETTINGS).toContain('<PriceBookSettingsSection />');
     expect(SETTINGS).toContain('<StationerySettingsSection />');
 
-    // Total grouped rail entries is now 13 (8 Work, 2 Money, 3 Marketing & AI)
+    // Total grouped rail entries is now 14 (8 Work, 2 Money, 4 Marketing & AI)
     const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
-    expect(hrefMatches).toHaveLength(13);
+    expect(hrefMatches).toHaveLength(14);
   });
 
   it('Phase 1d: Fix accidental splits (Reports in MoneyNav, Payroll canonical resolution)', () => {
@@ -498,6 +498,6 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     const groupsBlock = SHELL.slice(SHELL.indexOf('export const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
     const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
     expect([...NAV_RAIL_ORDER]).toEqual(hrefMatches);
-    expect(NAV_RAIL_ORDER).toHaveLength(13);
+    expect(NAV_RAIL_ORDER).toHaveLength(14);
   });
 });

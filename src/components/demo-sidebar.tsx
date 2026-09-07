@@ -36,6 +36,10 @@ const STATE_BY_HREF: Record<string, { label: string; title: string }> = {
     label: 'ON',
     title: 'Quick Stops is ON — nearby customers can pay to be fitted in sooner',
   },
+  '/demo/sites': {
+    label: 'LIVE',
+    title: `Website is live at ${DEMO_HOST} — contractor website is online`,
+  },
 };
 
 type DemoItem = {
@@ -238,17 +242,6 @@ export default function DemoSidebar() {
             </a>
           </div>
         </div>
-
-        <Link href="/demo/sites" className="website-nav-badge sidenav-website live" title="This contractor's website is live">
-          <span className="website-nav-signal" aria-hidden="true"><i /><i /><i /></span>
-          <span className="website-nav-live-text">
-            <span className="website-nav-live-top">
-              <span className="website-nav-live-label">Website: Live</span>
-              <span className="website-nav-live-edit">(edit)</span>
-            </span>
-            <span className="website-nav-live-host">{DEMO_HOST}</span>
-          </span>
-        </Link>
 
         <nav className="sidenav-nav" aria-label="Demo dashboard">
           {GROUPS.map((group) => (

@@ -61,6 +61,7 @@ export const NAV_RAIL_ORDER: readonly string[] = Object.freeze([
   '/dashboard/claims',
   '/dashboard/payments',
   '/dashboard/recurring',
+  '/dashboard/sites',
   '/dashboard/automations',
   '/dashboard/marketing',
   '/dashboard/reviews',
