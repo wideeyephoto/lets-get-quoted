@@ -29,9 +29,11 @@ export type FooterLink = readonly [href: string, label: string];
 /** Product and company. The main row. */
 export const FOOTER_PRIMARY: readonly FooterLink[] = [
   ['/features', 'Product'],
-  ['/features/sparky', 'AI Copilot with Avatars'],
+  ['/features/ai-copilot', 'AI Copilot with Avatars'],
   ['/features/website-builder', 'Website'],
+  ['/features/ai-intake', 'AI Intake'],
   ['/features/text-to-job', 'Text-to-Job'],
+  ['/features/quick-stops', 'Quick Stops'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],
   ['/pricing', 'Pricing'],

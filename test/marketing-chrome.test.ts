@@ -157,9 +157,29 @@ describe('the marketing nav', () => {
     expect(CHROME).toContain('FOOTER_PRIMARY.map(');
     expect(CHROME).toContain('FOOTER_LEGAL.map(');
 
-    for (const href of ['/resources', '/faq', '/security', '/sms-terms']) {
+    for (const href of [
+      '/resources',
+      '/faq',
+      '/security',
+      '/sms-terms',
+      '/features/quick-stops',
+      '/features/ai-intake',
+      '/features/ai-copilot',
+    ]) {
       const inFooterNav = [...FOOTER_PRIMARY, ...FOOTER_LEGAL].some(([h]) => h === href);
       expect(inFooterNav, `${href} is missing from the shared footer list`).toBe(true);
+    }
+
+    // Must link to the canonical route, not /features/sparky which canonicalizes away
+    expect(
+      [...FOOTER_PRIMARY, ...FOOTER_LEGAL].some(([h]) => h === '/features/sparky'),
+      '/features/sparky should not be in the footer nav as it canonicalizes away',
+    ).toBe(false);
+  });
+
+  it('points every footer entry at a route that exists on disk', () => {
+    for (const [href, label] of [...FOOTER_PRIMARY, ...FOOTER_LEGAL]) {
+      expect(existsSync(`src/app${href}/page.tsx`), `${label} -> ${href}`).toBe(true);
     }
   });
 
