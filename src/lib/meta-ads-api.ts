@@ -298,8 +298,8 @@ export async function provisionManagedMetaCampaign(
 
       if (!adRes.ok) {
         const errData = await adRes.json().catch(() => ({}));
-        const errMsg = errData.error?.message || `HTTP ${adRes.status}`;
-        console.error('Meta Ad creation failed:', errMsg);
+        console.error('Meta Ad creation failed:', JSON.stringify(errData, null, 2));
+        const errMsg = errData.error?.error_user_msg || errData.error?.message || `HTTP ${adRes.status}`;
         return {
           success: false,
           campaignId,
