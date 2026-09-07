@@ -54,9 +54,10 @@ describe('Deliverability & Recovery Matrix — Transactional Email & Alignment C
   });
 
   describe('Contractor From & Sender Header Alignment', () => {
-    it('always preserves verified domain @letsgetquoted.com to maintain SPF/DKIM/DMARC alignment', () => {
+    it('defaults to the platform domain when the account has no verified sending domain', () => {
       // Clean business name
       expect(contractorFrom('Elite Electricians')).toBe('Elite Electricians <hello@letsgetquoted.com>');
+      expect(contractorFrom({ businessName: 'Elite Electricians', fromAddress: null })).toBe('Elite Electricians <hello@letsgetquoted.com>');
 
       // Empty or whitespace falls back to company brand
       expect(contractorFrom('')).toBe("Let's Get Quoted <hello@letsgetquoted.com>");
@@ -71,6 +72,15 @@ describe('Deliverability & Recovery Matrix — Transactional Email & Alignment C
       const veryLong = 'A'.repeat(100);
       const formatted = contractorFrom(veryLong);
       expect(formatted).toBe(`${'A'.repeat(60)} <hello@letsgetquoted.com>`);
+    });
+
+    it('uses the verified tenant sending domain when present and valid', () => {
+      expect(
+        contractorFrom({
+          businessName: 'Elite Electricians',
+          fromAddress: 'quotes@eliteelectricians.com',
+        }),
+      ).toBe('Elite Electricians <quotes@eliteelectricians.com>');
     });
   });
 

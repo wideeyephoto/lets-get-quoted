@@ -199,7 +199,7 @@ export function renderSampleEmailPreviewSync(
     senderName: brandInput.senderName || 'Alex Miller',
   };
 
-  const from = contractorFrom(brand.businessName);
+  const from = contractorFrom(brand);
   const replyTo = brand.replyTo || 'hello@letsgetquoted.com';
   const paint = themePaint(themeNormalized, brand.accent);
 

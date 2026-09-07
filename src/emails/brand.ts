@@ -29,6 +29,8 @@ export type EmailBrand = {
   siteUrl: string | null;
   /** Where a reply actually goes. */
   replyTo: string | null;
+  /** A verified tenant sending address, or null to use the platform address. */
+  fromAddress?: string | null;
   /** The owner's chosen layout. Missing/legacy values render as Studio. */
   theme?: EmailThemeId;
   /** Physical postal address for CAN-SPAM and footer verification. */
@@ -165,16 +167,39 @@ export function accessibleAccent(accent: string, onBackground = '#ffffff', targe
 }
 
 /**
+ * Validates an outbound email address to prevent SMTP header injection.
+ * Refuses quotes, angle brackets, backslashes, CR, LF, whitespace, and multiple @ symbols.
+ */
+export function sanitizeAddress(address?: string | null): string | null {
+  if (!address) return null;
+  const trimmed = String(address).trim();
+  if (!trimmed || trimmed.length > 320) return null;
+  if (/["\\<>\r\n\s]/.test(trimmed)) return null;
+  const atIndex = trimmed.indexOf('@');
+  if (atIndex <= 0 || atIndex !== trimmed.lastIndexOf('@') || atIndex === trimmed.length - 1) {
+    return null;
+  }
+  const localPart = trimmed.slice(0, atIndex);
+  const domain = trimmed.slice(atIndex + 1);
+  if (localPart.length > 64 || domain.length > 255) return null;
+  return trimmed;
+}
+
+/**
  * The From line.
  *
- * The DISPLAY name is the contractor's; the address stays on our verified
- * domain because that is what SPF and DKIM sign. Sending as their own address
- * without their DNS would fail authentication and land in spam — the failure
- * mode being worse than the branding gain, by a lot.
+ * When a verified tenant sending domain is present in brand.fromAddress,
+ * mail leaves as e.g. "Elite Electricians <quotes@eliteelectricians.com>".
+ * When null or invalid, falls back to the verified platform address @letsgetquoted.com.
  */
-export function contractorFrom(businessName: string): string {
+export function contractorFrom(
+  brandOrName: (Pick<EmailBrand, 'businessName'> & { fromAddress?: string | null }) | string,
+): string {
+  const businessName = typeof brandOrName === 'string' ? brandOrName : brandOrName?.businessName;
+  const rawFrom = typeof brandOrName === 'object' && brandOrName !== null ? brandOrName.fromAddress : null;
   const clean = String(businessName ?? '').replace(/["\\<>\r\n]/g, '').trim().slice(0, 60);
-  return clean ? `${clean} <hello@letsgetquoted.com>` : "Let's Get Quoted <hello@letsgetquoted.com>";
+  const address = sanitizeAddress(rawFrom) ?? 'hello@letsgetquoted.com';
+  return clean ? `${clean} <${address}>` : `Let's Get Quoted <${address}>`;
 }
 
 /**

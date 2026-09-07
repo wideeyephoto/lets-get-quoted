@@ -216,7 +216,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
     }
 
     const result = await resend.emails.send({
-      from: contractorFrom(brand.businessName),
+      from: contractorFrom(brand),
       to: input.recipientEmail,
       subject: `Invoice ${input.invoice.ref} from ${input.businessName}`,
       html: emailHtml,
@@ -264,7 +264,7 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
   const html = renderClientQuoteEmailHtml({ ...input, brand });
 
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Your quote ${input.jobRef} from ${input.businessName}`,
     html,
@@ -310,7 +310,7 @@ export async function sendOfficeInvitationEmail(input: {
   const brand = await brandFor(input);
 
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `${brand.businessName} added you to their team`,
     html: renderBrandedEmail({
@@ -578,7 +578,7 @@ export async function sendQuoteFollowupEmail(input: {
   // since quoteFollowupText was extracted; this is the email half catching up.
   const copy = quoteFollowupEmailPreview({ businessName: input.businessName, clientName: input.clientName });
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: copy.subject,
     html: renderBrandedEmail({
@@ -624,7 +624,7 @@ export async function sendSelectionRequestEmail(input: {
   const first = input.clientName.trim().split(/\s+/)[0] || 'there';
   const what = input.count === 1 ? 'a choice' : `${input.count} choices`;
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: input.overdue
       ? `We're waiting on ${what} from you — ${input.businessName}`
@@ -684,7 +684,7 @@ export async function sendReviewRequestEmail(input: {
   `;
 
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `How did we do? A quick review for ${input.businessName}`,
     html: renderBrandedEmail({
@@ -729,7 +729,7 @@ export async function sendRebookInviteEmail(input: {
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const content = rebookInviteEmailContent(input);
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: content.subject,
     html: renderBrandedEmail({
@@ -782,7 +782,7 @@ export async function sendAppointmentReminderEmail(input: {
   const html = renderAppointmentReminderEmailHtml({ ...input, brand });
 
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Reminder: your appointment with ${input.businessName}`,
     html,
@@ -822,7 +822,7 @@ export async function sendChoiceReminderTestEmail(input: {
 
   const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Test: your choice reminder from ${input.businessName}`,
     html: renderBrandedEmail({
@@ -886,7 +886,7 @@ export async function sendBookingConfirmationEmail(input: {
   ];
 
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `We got your booking request — ${input.businessName}`,
     html: renderBrandedEmail({
@@ -930,7 +930,7 @@ export async function sendClientPortalLinkEmail(input: {
 
   const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Your jobs with ${input.businessName}`,
     html: renderBrandedEmail({
@@ -966,7 +966,7 @@ export async function sendCardUpdateEmail(input: {
 
   const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Action needed: update your card for ${input.businessName}`,
     html: renderBrandedEmail({
@@ -1006,7 +1006,7 @@ export async function sendCardSetupEmail(input: {
 
   const brand = await brandFor(input);
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: `Save your card for ${input.businessName}`,
     html: renderBrandedEmail({
@@ -1074,7 +1074,7 @@ export async function sendCampaignEmail(input: {
   const brand = await brandFor(input);
   const oneClickUrl = buildUnsubscribeOneClickUrl(input.accountId, input.recipientEmail);
   const result = await resend.emails.send({
-    from: contractorFrom(brand.businessName),
+    from: contractorFrom(brand),
     to: input.recipientEmail,
     subject: input.subject,
     html: await renderCampaignEmailHtml(input),

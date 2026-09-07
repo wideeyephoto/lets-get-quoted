@@ -38,9 +38,10 @@ export async function loadEmailBrand(
   let row: BrandRow | null = null;
   let mailingAddress: string | null = null;
   let replyTo: string | null = null;
+  let fromAddress: string | null = null;
 
   try {
-    const [{ data: siteData }, { data: accountData }] = await Promise.all([
+    const [{ data: siteData }, { data: accountData }, { data: sendingDomainData }] = await Promise.all([
       admin
         .from('sites')
         .select('company_name, accent_override, logo_url, phone, subdomain, custom_domain, custom_domain_verified_at, email_theme, service_area, license_number, template')
@@ -51,12 +52,21 @@ export async function loadEmailBrand(
         .select('mailing_address, reply_to_email')
         .eq('id', accountId)
         .maybeSingle(),
+      admin
+        .from('email_sending_domains')
+        .select('domain, from_local_part')
+        .eq('account_id', accountId)
+        .eq('status', 'verified')
+        .maybeSingle(),
     ]);
     row = (siteData as BrandRow) ?? null;
     mailingAddress = accountData?.mailing_address ? String(accountData.mailing_address).trim() : null;
     const explicitReplyTo = accountData?.reply_to_email ? String(accountData.reply_to_email).trim() : null;
     if (explicitReplyTo) {
       replyTo = explicitReplyTo;
+    }
+    if (sendingDomainData?.domain && sendingDomainData?.from_local_part) {
+      fromAddress = `${sendingDomainData.from_local_part.trim().toLowerCase()}@${sendingDomainData.domain.trim().toLowerCase()}`;
     }
   } catch {
     row = null;
@@ -107,6 +117,7 @@ export async function loadEmailBrand(
     phone: (row?.phone ?? '').trim() || null,
     siteUrl: host ? `https://${host}` : null,
     replyTo,
+    fromAddress,
     theme: normalizeEmailTheme(row?.email_theme),
     mailingAddress,
     licenseNumber: row?.license_number?.trim() || null,
@@ -124,6 +135,7 @@ export function nameOnlyBrand(businessName: string): EmailBrand {
     phone: null,
     siteUrl: null,
     replyTo: null,
+    fromAddress: null,
     theme: 'studio',
   };
 }
