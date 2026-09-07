@@ -139,6 +139,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
       radiusMiles: 20,
       monthlyBudgetDollars: 427,
       landingPageUrl: 'https://texasprimeroofing.com',
+      durationDays: 5,
     });
 
     expect(res.success).toBe(true);
@@ -152,6 +153,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
     expect(fetchCalls.length).toBe(7);
     expect(fetchCalls[0].body.status).toBe('PAUSED'); // Multi-stage activation starts PAUSED
     expect(fetchCalls[1].body.status).toBe('PAUSED');
+    expect(fetchCalls[1].body.end_time).toMatch(/^\d{4}-\d{2}-\d{2}T/); // Provider-side duration bound
     expect(fetchCalls[3].body.status).toBe('PAUSED');
     expect(fetchCalls[4].body.status).toBe('ACTIVE'); // Campaign activation
     expect(fetchCalls[5].body.status).toBe('ACTIVE'); // AdSet activation
@@ -187,6 +189,9 @@ describe('Meta Ads API — Campaign Provisioning', () => {
 
 describe('Meta Ads API — Lifecycle & Insights', () => {
   it('pauses and resumes simulated campaigns without making network requests', async () => {
+    const pauseEmpty = await pauseMetaCampaign('');
+    expect(pauseEmpty.success).toBe(false);
+
     const pauseRes = await pauseMetaCampaign('meta_123456789');
     expect(pauseRes.success).toBe(true);
     expect(pauseRes.message).toContain('Simulated');

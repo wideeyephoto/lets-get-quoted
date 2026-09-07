@@ -6,7 +6,7 @@ import {
   type NeighborhoodHaloCampaign,
 } from '@/lib/neighborhood-halo';
 import { killHaloCampaign } from '@/lib/neighborhood-halo-service';
-import { fetchMetaCampaignDailySpend } from '@/lib/meta-ads-api';
+import { fetchMetaCampaignDailySpend, pauseMetaCampaign } from '@/lib/meta-ads-api';
 
 export type HaloPacingWorkerResult = {
   processed: number;
@@ -87,21 +87,32 @@ export async function runHaloPacingWorker(
       continue;
     }
 
-    // 2. Check if campaign reached full duration
-    const newDaysActive = daysActive + 1;
-    if (newDaysActive >= durationDays) {
-      const finalSpend = Math.min(budgetDollars, currentSpend + dailyBudget);
+    // 2. Check if campaign reached full duration or expiry
+    const createdAtMs = new Date(row.created_at).getTime();
+    const nowMs = Date.now();
+    const elapsedDays = Math.max(1, Math.floor((nowMs - createdAtMs) / (24 * 60 * 60 * 1000)));
+    const isExpired = row.expires_at ? nowMs >= new Date(row.expires_at).getTime() : false;
+    const newDaysActive = Math.max(daysActive, elapsedDays);
+
+    if (newDaysActive >= durationDays || isExpired) {
+      if (row.meta_campaign_id) {
+        try {
+          await pauseMetaCampaign(row.meta_campaign_id);
+        } catch (pauseErr) {
+          console.warn(`[HaloPacingWorker] Failed to pause completed Meta campaign ${row.meta_campaign_id}:`, pauseErr);
+        }
+      }
+
       await admin
         .from('neighborhood_halo_campaigns')
         .update({
           status: 'completed',
-          days_active: newDaysActive,
-          spend_dollars: finalSpend,
+          days_active: Math.max(newDaysActive, durationDays),
+          spend_dollars: currentSpend,
           updated_at: new Date().toISOString(),
         })
         .eq('id', campaignId);
 
-      totalDailySpendDollars += (finalSpend - currentSpend);
       completed += 1;
       continue;
     }
@@ -109,10 +120,19 @@ export async function runHaloPacingWorker(
     // 3. Advance daily pacing
     let newImpressions = Number(row.impressions || 0);
     let newClicks = Number(row.clicks || 0);
-    let additionalSpend = Math.min(budgetDollars - currentSpend, dailyBudget);
+    let additionalSpend = 0;
 
-    // If live Meta campaign is linked, sync real performance insights
-    if (row.meta_campaign_id && !row.meta_campaign_id.startsWith('meta_sim_')) {
+    const isSimulated =
+      row.status === 'simulated_sandbox' ||
+      !row.meta_campaign_id ||
+      row.meta_campaign_id.startsWith('meta_sim_') ||
+      row.meta_campaign_id.startsWith('sim_');
+
+    if (isSimulated) {
+      // In simulated sandbox mode, simulate daily pacing up to remaining budget
+      additionalSpend = Math.min(budgetDollars - currentSpend, dailyBudget);
+    } else if (row.meta_campaign_id) {
+      // If live Meta campaign is linked, sync real performance insights
       try {
         const metaSpend = await fetchMetaCampaignDailySpend(row.meta_campaign_id);
         if (metaSpend.success) {
@@ -121,6 +141,8 @@ export async function runHaloPacingWorker(
           if (metaSpend.spendCents > 0) {
             additionalSpend = Math.min(budgetDollars - currentSpend, metaSpend.spendCents / 100);
           }
+        } else {
+          console.warn(`[HaloPacingWorker] Meta insights fetch failed for ${row.meta_campaign_id}: ${metaSpend.message}`);
         }
       } catch (metaErr) {
         console.warn(`[HaloPacingWorker] Meta insights fetch failed for ${row.meta_campaign_id}:`, metaErr);

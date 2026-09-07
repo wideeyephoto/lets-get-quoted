@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { runHaloPacingWorker } from '@/lib/billing/halo-pacing-worker';
+import { pauseMetaCampaign, fetchMetaCampaignDailySpend } from '@/lib/meta-ads-api';
 
 vi.mock('@/lib/auth', () => ({
   createAdminClient: vi.fn(),
@@ -16,6 +17,7 @@ vi.mock('@/lib/meta-ads-api', () => ({
     clicks: 14,
     spendCents: 450,
   }),
+  pauseMetaCampaign: vi.fn().mockResolvedValue({ success: true, message: 'Paused' }),
 }));
 
 describe('Halo Pacing Worker', () => {
@@ -32,7 +34,7 @@ describe('Halo Pacing Worker', () => {
       city: 'Rochester',
       status: 'active',
       duration_days: 5,
-      days_active: 4, // on next run, will hit 5 and complete
+      days_active: 4,
       budget_dollars: 25.0,
       spend_dollars: 20.0,
       daily_budget_dollars: 5.0,
@@ -42,7 +44,7 @@ describe('Halo Pacing Worker', () => {
       center_lat: 42.68,
       center_lng: -83.13,
       radius_miles: 1.0,
-      created_at: new Date(Date.now() - 4 * 86400000).toISOString(),
+      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
     };
 
     const mockAdmin = {
@@ -62,7 +64,7 @@ describe('Halo Pacing Worker', () => {
     expect(res.processed).toBe(1);
     expect(res.completed).toBe(1);
     expect(res.advanced).toBe(0);
-    expect(res.totalDailySpendDollars).toBe(5.0);
+    expect(res.totalDailySpendDollars).toBe(0);
   });
 
   it('advances active campaign by 1 day when duration not yet reached', async () => {
@@ -154,5 +156,109 @@ describe('Halo Pacing Worker', () => {
     expect(updatedPayload.impressions).toBe(340); // from Meta API mock
     expect(updatedPayload.clicks).toBe(14); // from Meta API mock
     expect(updatedPayload.spend_dollars).toBe(14.5); // 10.0 + 4.50 from Meta spend
+  });
+
+  it('pauses live Meta campaign when campaign completes duration', async () => {
+    const expiredMetaCampaign = {
+      id: 'halo_meta_exp',
+      account_id: 'acc_1',
+      job_id: 'job_1',
+      street_name: 'Sunset Blvd',
+      city: 'Los Angeles',
+      status: 'active',
+      duration_days: 5,
+      days_active: 4,
+      budget_dollars: 25.0,
+      spend_dollars: 25.0,
+      daily_budget_dollars: 5.0,
+      impressions: 500,
+      clicks: 20,
+      leads_generated: 2,
+      meta_campaign_id: 'camp_meta_live_completed_123',
+      center_lat: 34.05,
+      center_lng: -118.24,
+      radius_miles: 1.0,
+      created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+    };
+
+    let updatedPayload: any = null;
+    const mockAdmin = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            is: vi.fn().mockResolvedValue({ data: [expiredMetaCampaign], error: null }),
+          }),
+        }),
+        update: vi.fn().mockImplementation((payload) => {
+          updatedPayload = payload;
+          return {
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }),
+      }),
+    } as never;
+
+    const res = await runHaloPacingWorker(mockAdmin);
+    expect(res.processed).toBe(1);
+    expect(res.completed).toBe(1);
+    expect(pauseMetaCampaign).toHaveBeenCalledWith('camp_meta_live_completed_123');
+    expect(updatedPayload?.status).toBe('completed');
+  });
+
+  it('does NOT add synthetic spend if Meta API insights fetch fails on live campaign', async () => {
+    vi.mocked(fetchMetaCampaignDailySpend).mockResolvedValueOnce({
+      success: false,
+      message: 'Rate limit or network error',
+      impressions: 0,
+      clicks: 0,
+      spendCents: 0,
+      conversions: 0,
+      date: '2026-09-07',
+    });
+
+    const liveCampaign = {
+      id: 'halo_meta_fail',
+      account_id: 'acc_1',
+      job_id: 'job_1',
+      street_name: 'Elm St',
+      city: 'Austin',
+      status: 'active',
+      duration_days: 5,
+      days_active: 2,
+      budget_dollars: 25.0,
+      spend_dollars: 10.0,
+      daily_budget_dollars: 5.0,
+      impressions: 150,
+      clicks: 5,
+      leads_generated: 1,
+      meta_campaign_id: 'camp_meta_real_999',
+      center_lat: 30.26,
+      center_lng: -97.74,
+      radius_miles: 1.0,
+      created_at: new Date(Date.now() - 2 * 86400000).toISOString(),
+    };
+
+    let updatedPayload: any = null;
+    const mockAdmin = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockReturnValue({
+            is: vi.fn().mockResolvedValue({ data: [liveCampaign], error: null }),
+          }),
+        }),
+        update: vi.fn().mockImplementation((payload) => {
+          updatedPayload = payload;
+          return {
+            eq: vi.fn().mockResolvedValue({ error: null }),
+          };
+        }),
+      }),
+    } as never;
+
+    const res = await runHaloPacingWorker(mockAdmin);
+    expect(res.processed).toBe(1);
+    expect(res.advanced).toBe(1);
+    expect(res.totalDailySpendDollars).toBe(0);
+    expect(updatedPayload?.spend_dollars).toBe(10.0); // Spend unchanged, NOT inflated
   });
 });

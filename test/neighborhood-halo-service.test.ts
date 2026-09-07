@@ -26,6 +26,12 @@ vi.mock('@/lib/google-ads-api', () => ({
   isGoogleAdsConfigured: vi.fn().mockReturnValue(false),
 }));
 
+vi.mock('@/lib/meta-ads-api', () => ({
+  isMetaAdsConfigured: vi.fn().mockReturnValue(false),
+  provisionManagedMetaCampaign: vi.fn(),
+  pauseMetaCampaign: vi.fn().mockResolvedValue({ success: true, message: 'Paused' }),
+}));
+
 describe('Neighborhood Halo Service', () => {
   const accountId = 'acc_test_123';
   const jobId = 'job_test_456';
@@ -342,6 +348,7 @@ describe('Neighborhood Halo Service', () => {
         budget_dollars: 25.0,
         spend_dollars: 10.0,
         wallet_deducted_cents: 2500,
+        meta_campaign_id: 'meta_camp_live_123',
       };
 
       const mockAdmin = {
@@ -374,8 +381,10 @@ describe('Neighborhood Halo Service', () => {
         }),
       } as never;
 
+      const { pauseMetaCampaign } = await import('@/lib/meta-ads-api');
       const killed = await killHaloCampaign(mockSupabase, accountId, 'halo_1', '72h_zero_clicks');
       expect(killed.status).toBe('killed');
+      expect(pauseMetaCampaign).toHaveBeenCalledWith('meta_camp_live_123');
       // Proven debit: $25 (2500c), actual spend: $10 (1000c) -> refundable: 1500c ($15)
       expect(mockAdmin.rpc).toHaveBeenCalledWith('atomic_ad_wallet_credit', {
         p_account_id: accountId,

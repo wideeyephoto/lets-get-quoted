@@ -342,6 +342,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'customer',
     consequence: 'Expired cancellation waitlist holds remain pending forever, holding slots open and preventing auto-cascade to the next qualified candidate.',
   },
+  {
+    job: 'halo-pacing',
+    label: 'Neighborhood Halo daily pacing & spend sync',
+    schedule: '0 4 * * *',
+    importance: 'money',
+    consequence: 'Active Neighborhood Halo micro-campaigns stop polling Meta daily spend, auto-killing zero-click campaigns, and completing on schedule.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

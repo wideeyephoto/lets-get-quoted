@@ -47,15 +47,23 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
   }
 
-  // 1. Verify HMAC Signature if configured
+  // 1. Verify HMAC Signature
   const signatureHeader = request.headers.get('x-hub-signature-256');
+  const appSecret = process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET;
+  const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+
+  // In production, require configured secret and fail closed if missing
+  if (isProduction && !appSecret) {
+    console.error('Meta webhook secret is not configured in production.');
+    return NextResponse.json({ error: 'Webhook unconfigured in production' }, { status: 500 });
+  }
+
   const isSignatureValid = verifyMetaWebhookSignature({
     rawBody: rawBodyText,
     signatureHeader,
   });
 
-  // If secret is configured in environment and signature verification fails, reject
-  if ((process.env.META_APP_SECRET || process.env.FACEBOOK_APP_SECRET) && !isSignatureValid) {
+  if (appSecret && !isSignatureValid) {
     console.error('Meta webhook signature verification failed.');
     return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 401 });
   }

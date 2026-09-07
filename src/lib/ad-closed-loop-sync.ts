@@ -286,7 +286,7 @@ export async function uploadMetaCapiEvents(params: {
   }
 
   try {
-    const version = process.env.META_GRAPH_API_VERSION || 'v20.0';
+    const version = process.env.META_GRAPH_API_VERSION || 'v22.0';
     const url = `https://graph.facebook.com/${version}/${pixel}/events?access_token=${encodeURIComponent(token)}`;
 
     const body: Record<string, unknown> = {

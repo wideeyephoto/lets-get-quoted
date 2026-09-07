@@ -14,7 +14,7 @@ import {
 import { buildHaloCreativeBundle, type HaloAdCreativeBundle } from './neighborhood-halo-ai';
 import { createJobPhotoLinks } from './job-photo-storage';
 import { isGoogleAdsConfigured } from './google-ads-api';
-import { isMetaAdsConfigured, provisionManagedMetaCampaign } from './meta-ads-api';
+import { isMetaAdsConfigured, provisionManagedMetaCampaign, pauseMetaCampaign } from './meta-ads-api';
 import { stateFromAddress } from './marketing-calendar';
 import { getSiteContent } from './site-content';
 
@@ -487,6 +487,7 @@ export async function launchHaloCampaign(
         radiusMiles: radius,
         monthlyBudgetDollars: Math.round(budget * (30.4 / duration)),
         landingPageUrl: landingUrl,
+        durationDays: duration,
       });
       if (metaRes.success && metaRes.campaignId) {
         metaCampaignId = metaRes.campaignId;
@@ -605,6 +606,15 @@ export async function killHaloCampaign(
   const campaign = await getHaloCampaignById(supabase, campaignId);
   if (!campaign || campaign.accountId !== accountId) {
     throw new Error('Campaign not found.');
+  }
+
+  // If a live Meta campaign is running, pause it on Meta to halt real ad delivery immediately
+  if (campaign.metaCampaignId) {
+    try {
+      await pauseMetaCampaign(campaign.metaCampaignId);
+    } catch (pauseErr) {
+      console.warn(`[NeighborhoodHalo] Failed to pause Meta campaign ${campaign.metaCampaignId} on kill:`, pauseErr);
+    }
   }
 
   // Refunds are strictly tied to proven debits

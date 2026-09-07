@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import type { MarketplaceInboundLead } from './types';
 
-export const META_GRAPH_API_VERSION = 'v20.0';
+export const META_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v22.0';
 export const META_GRAPH_API_BASE = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`;
 
 export type MetaLeadgenValue = {

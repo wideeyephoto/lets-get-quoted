@@ -7,7 +7,7 @@
 
 import { generateMetaAdCopy, type MetaAdCopy } from './multi-channel-ads';
 
-export const META_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v20.0';
+export const META_GRAPH_API_VERSION = process.env.META_GRAPH_API_VERSION || 'v22.0';
 export const META_GRAPH_API_BASE_URL = `https://graph.facebook.com/${META_GRAPH_API_VERSION}`;
 
 export type MetaAdsConfig = {
@@ -55,6 +55,8 @@ export type ProvisionMetaCampaignParams = {
   radiusMiles: number;
   monthlyBudgetDollars: number;
   landingPageUrl: string;
+  durationDays?: number;
+  endTime?: string;
   services?: string[];
   phone?: string;
   customFocus?: string;
@@ -92,12 +94,20 @@ export async function provisionManagedMetaCampaign(
     radiusMiles = 25,
     monthlyBudgetDollars,
     landingPageUrl,
+    durationDays,
+    endTime,
     services = [],
     customFocus,
     seasonalAngle = 'standard',
     clientAdAccountId,
     pageId: overridePageId,
   } = params;
+
+  const computedEndTime =
+    endTime ||
+    (durationDays && durationDays > 0
+      ? new Date(Date.now() + durationDays * 86400000 + 3600000).toISOString()
+      : undefined);
 
   const dailyBudgetDollars = Math.round((monthlyBudgetDollars / 30.4) * 100) / 100;
   // Meta daily_budget is in cents (smallest currency unit for USD)
@@ -137,6 +147,7 @@ export async function provisionManagedMetaCampaign(
             objective: 'OUTCOME_LEADS',
             status: 'PAUSED',
             special_ad_categories: ['NONE'],
+            is_adset_budget_sharing_enabled: false,
           }),
         }
       );
@@ -174,6 +185,7 @@ export async function provisionManagedMetaCampaign(
             billing_event: 'IMPRESSIONS',
             optimization_goal: 'LEAD_GENERATION',
             bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+            ...(computedEndTime ? { end_time: computedEndTime } : {}),
             targeting: {
               geo_locations: {
                 countries: ['US'],
@@ -436,7 +448,11 @@ export async function pauseMetaCampaign(
   campaignId: string,
   config?: MetaAdsConfig
 ): Promise<{ success: boolean; message: string }> {
-  if (campaignId.startsWith('meta_') && campaignId.length === 14) {
+  if (!campaignId || !campaignId.trim()) {
+    return { success: false, message: 'No Meta campaign ID provided to pause.' };
+  }
+
+  if (campaignId.startsWith('meta_') || campaignId.startsWith('sim_')) {
     // Simulated campaign ID
     return { success: true, message: 'Simulated Meta campaign paused.' };
   }
