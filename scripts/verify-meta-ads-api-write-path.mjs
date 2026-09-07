@@ -218,6 +218,7 @@ async function run() {
       billing_event: 'IMPRESSIONS',
       optimization_goal: 'LEAD_GENERATION',
       bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+      promoted_object: { page_id: pageId },
       end_time: endTimeIso,
       targeting: {
         geo_locations: {

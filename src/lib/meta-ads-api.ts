@@ -208,6 +208,7 @@ export async function provisionManagedMetaCampaign(
             billing_event: 'IMPRESSIONS',
             optimization_goal: 'LEAD_GENERATION',
             bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
+            promoted_object: { page_id: targetPageId },
             ...(computedEndTime ? { end_time: computedEndTime } : {}),
             targeting: {
               geo_locations: geoLocations,
