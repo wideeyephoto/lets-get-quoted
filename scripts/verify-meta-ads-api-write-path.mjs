@@ -186,7 +186,7 @@ async function run() {
     const nowIso = new Date().toISOString();
     const campPayload = {
       name: `LGQ Verification Test - ${nowIso} (Auto-Teardown)`,
-      objective: 'OUTCOME_LEADS',
+      objective: 'OUTCOME_TRAFFIC',
       status: 'PAUSED',
       special_ad_categories: ['NONE'],
       is_adset_budget_sharing_enabled: false,
@@ -216,9 +216,8 @@ async function run() {
       campaign_id: createdCampaignId,
       daily_budget: '500', // $5.00
       billing_event: 'IMPRESSIONS',
-      optimization_goal: 'LEAD_GENERATION',
+      optimization_goal: 'LINK_CLICKS',
       bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-      promoted_object: { page_id: pageId },
       end_time: endTimeIso,
       targeting: {
         geo_locations: {

@@ -148,7 +148,7 @@ export async function provisionManagedMetaCampaign(
           signal: AbortSignal.timeout(15000),
           body: JSON.stringify({
             name: campaignName,
-            objective: 'OUTCOME_LEADS',
+            objective: 'OUTCOME_TRAFFIC',
             status: 'PAUSED',
             special_ad_categories: ['NONE'],
             is_adset_budget_sharing_enabled: false,
@@ -206,9 +206,8 @@ export async function provisionManagedMetaCampaign(
             campaign_id: campaignId,
             daily_budget: String(dailyBudgetCents),
             billing_event: 'IMPRESSIONS',
-            optimization_goal: 'LEAD_GENERATION',
+            optimization_goal: 'LINK_CLICKS',
             bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
-            promoted_object: { page_id: targetPageId },
             ...(computedEndTime ? { end_time: computedEndTime } : {}),
             targeting: {
               geo_locations: geoLocations,

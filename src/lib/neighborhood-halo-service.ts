@@ -13,8 +13,7 @@ import {
 } from './neighborhood-halo';
 import { buildHaloCreativeBundle, type HaloAdCreativeBundle } from './neighborhood-halo-ai';
 import { createJobPhotoLinks } from './job-photo-storage';
-import { isGoogleAdsConfigured } from './google-ads-api';
-import { isMetaAdsConfigured, provisionManagedMetaCampaign, pauseMetaCampaign } from './meta-ads-api';
+import { isMetaAdsConfigured, provisionManagedMetaCampaign, pauseMetaCampaign, resumeMetaCampaign } from './meta-ads-api';
 import { stateFromAddress } from './marketing-calendar';
 import { getSiteContent } from './site-content';
 
@@ -411,6 +410,10 @@ export async function launchHaloCampaign(
     );
   }
 
+  if (!isMetaAdsConfigured()) {
+    throw new Error('Meta Ads API is not configured. Neighborhood Halo requires active Meta Ads credentials.');
+  }
+
   // Deduct micro-budget from sitewide Ad Wallet via atomic spend RPC
   const spendCents = Math.round(budget * 100);
   const todayIso = new Date().toISOString().slice(0, 10);
@@ -476,33 +479,65 @@ export async function launchHaloCampaign(
     customIncentive: '$250 Off Neighbor Group Rate',
   });
 
-  const liveGoogleConfigured = isGoogleAdsConfigured();
-  const liveMetaConfigured = isMetaAdsConfigured();
-
   let metaCampaignId: string | null = null;
-  if (liveMetaConfigured) {
-    try {
-      const metaRes = await provisionManagedMetaCampaign({
-        accountId,
-        businessName: (site?.company_name as string | undefined) || account?.business_name || 'Our Team',
-        trade: job.trade || getSiteContent(site?.content).trade || 'Contracting',
-        city,
-        radiusMiles: radius,
-        latitude: job.lat ? Number(job.lat) : undefined,
-        longitude: job.lng ? Number(job.lng) : undefined,
-        monthlyBudgetDollars: Math.round(budget * (30.4 / duration)),
-        landingPageUrl: landingUrl,
-        durationDays: duration,
-      });
-      if (metaRes.success && metaRes.campaignId) {
-        metaCampaignId = metaRes.campaignId;
-      }
-    } catch (metaErr) {
-      console.warn('[NeighborhoodHalo] Meta campaign provisioning error:', metaErr);
+  let metaRes: Awaited<ReturnType<typeof provisionManagedMetaCampaign>> | null = null;
+  try {
+    metaRes = await provisionManagedMetaCampaign({
+      accountId,
+      businessName: (site?.company_name as string | undefined) || account?.business_name || 'Our Team',
+      trade: job.trade || getSiteContent(site?.content).trade || 'Contracting',
+      city,
+      radiusMiles: radius,
+      latitude: job.lat ? Number(job.lat) : undefined,
+      longitude: job.lng ? Number(job.lng) : undefined,
+      monthlyBudgetDollars: Math.round(budget * (30.4 / duration)),
+      landingPageUrl: landingUrl,
+      durationDays: duration,
+    });
+  } catch (metaErr: unknown) {
+    if (walletDeducted) {
+      try {
+        await admin.rpc('atomic_ad_wallet_credit', {
+          p_account_id: accountId,
+          p_payment_intent_id: `refund_halo_fail_${haloCampaignId}`,
+          p_credit_cents: spendCents,
+          p_fee_cents: 0,
+        });
+      } catch {}
     }
+    const errMessage = metaErr instanceof Error ? metaErr.message : 'Meta campaign provisioning failed';
+    throw new Error(`Failed to launch Neighborhood Halo campaign: ${errMessage}`);
   }
 
-  const status: HaloCampaignStatus = (liveGoogleConfigured || liveMetaConfigured) ? 'active' : 'simulated_sandbox';
+  if (metaRes.success && metaRes.campaignId) {
+    metaCampaignId = metaRes.campaignId;
+  } else {
+    const failureMsg = metaRes?.message || 'Meta campaign provisioning failed';
+    // If a campaign was partially created on Meta, pause it to prevent orphaned ad spend
+    if (metaRes?.campaignId) {
+      try {
+        await pauseMetaCampaign(metaRes.campaignId);
+      } catch (cleanErr) {
+        console.warn('[NeighborhoodHalo] Failed to pause orphan Meta campaign:', cleanErr);
+      }
+    }
+    // Roll back upfront wallet debit
+    if (walletDeducted) {
+      try {
+        await admin.rpc('atomic_ad_wallet_credit', {
+          p_account_id: accountId,
+          p_payment_intent_id: `refund_halo_fail_${haloCampaignId}`,
+          p_credit_cents: spendCents,
+          p_fee_cents: 0,
+        });
+      } catch (refundErr) {
+        console.error('[NeighborhoodHalo] Failed to refund wallet debit on provisioning failure:', refundErr);
+      }
+    }
+    throw new Error(`Failed to launch Neighborhood Halo campaign: ${failureMsg}`);
+  }
+
+  const status: HaloCampaignStatus = 'active';
 
   const expiresAt = new Date(Date.now() + duration * 86400000).toISOString();
   const nowIso = new Date().toISOString();
@@ -532,7 +567,7 @@ export async function launchHaloCampaign(
     ad_copy: creative.copy as never,
     before_photo_url: photoUrls[1] || null,
     after_photo_url: photoUrls[0] || null,
-    google_campaign_id: liveGoogleConfigured ? `gads_halo_${haloCampaignId.slice(0, 8)}` : null,
+    google_campaign_id: null,
     google_campaign_resource: null,
     meta_campaign_id: metaCampaignId,
     landing_page_url: landingUrl,
@@ -571,6 +606,18 @@ export async function pauseHaloCampaign(
   accountId: string,
   campaignId: string
 ): Promise<HaloCampaignRecord> {
+  const campaign = await getHaloCampaignById(supabase, campaignId);
+  if (!campaign || campaign.accountId !== accountId) {
+    throw new Error('Campaign not found.');
+  }
+
+  if (campaign.metaCampaignId) {
+    const pauseRes = await pauseMetaCampaign(campaign.metaCampaignId);
+    if (!pauseRes.success) {
+      throw new Error(`Unable to pause Meta campaign: ${pauseRes.message}`);
+    }
+  }
+
   const { data, error } = await supabase
     .from('neighborhood_halo_campaigns')
     .update({ status: 'paused', updated_at: new Date().toISOString() })
@@ -588,15 +635,47 @@ export async function resumeHaloCampaign(
   accountId: string,
   campaignId: string
 ): Promise<HaloCampaignRecord> {
+  const campaign = await getHaloCampaignById(supabase, campaignId);
+  if (!campaign || campaign.accountId !== accountId) {
+    throw new Error('Campaign not found.');
+  }
+
+  if (campaign.status !== 'paused') {
+    throw new Error(`Cannot resume campaign with status '${campaign.status}'. Only paused campaigns can be resumed.`);
+  }
+
+  if (campaign.expiresAt && Date.now() >= new Date(campaign.expiresAt).getTime()) {
+    throw new Error('Cannot resume campaign: campaign duration has expired.');
+  }
+
   const { data, error } = await supabase
     .from('neighborhood_halo_campaigns')
     .update({ status: 'active', updated_at: new Date().toISOString() })
     .eq('account_id', accountId)
     .eq('id', campaignId)
+    .eq('status', 'paused')
     .select()
     .single();
 
   if (error) throw new Error(`Unable to resume campaign: ${error.message}`);
+
+  if (campaign.metaCampaignId) {
+    try {
+      const resumeRes = await resumeMetaCampaign(campaign.metaCampaignId);
+      if (!resumeRes.success) {
+        throw new Error(resumeRes.message);
+      }
+    } catch (resumeErr) {
+      await supabase
+        .from('neighborhood_halo_campaigns')
+        .update({ status: 'paused', updated_at: new Date().toISOString() })
+        .eq('account_id', accountId)
+        .eq('id', campaignId);
+      const msg = resumeErr instanceof Error ? resumeErr.message : String(resumeErr);
+      throw new Error(`Unable to resume Meta campaign: ${msg}`);
+    }
+  }
+
   return mapRowToCampaign(data);
 }
 
@@ -615,10 +694,9 @@ export async function killHaloCampaign(
 
   // If a live Meta campaign is running, pause it on Meta to halt real ad delivery immediately
   if (campaign.metaCampaignId) {
-    try {
-      await pauseMetaCampaign(campaign.metaCampaignId);
-    } catch (pauseErr) {
-      console.warn(`[NeighborhoodHalo] Failed to pause Meta campaign ${campaign.metaCampaignId} on kill:`, pauseErr);
+    const pauseRes = await pauseMetaCampaign(campaign.metaCampaignId);
+    if (!pauseRes.success) {
+      throw new Error(`Unable to pause Meta campaign on kill: ${pauseRes.message}`);
     }
   }
 

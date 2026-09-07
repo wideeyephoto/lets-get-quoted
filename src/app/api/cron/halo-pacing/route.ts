@@ -12,6 +12,8 @@ export const GET = cronRoute('halo-pacing', async () => {
     advanced: res.advanced,
     completed: res.completed,
     killed: res.killed,
+    pauseFailures: res.pauseFailures,
+    failures: res.pauseFailures,
     totalDailySpendDollars: res.totalDailySpendDollars.toFixed(2),
     summary: res.summary,
   };

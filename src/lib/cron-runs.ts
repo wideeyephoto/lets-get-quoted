@@ -119,7 +119,7 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
     if (
       typeof val === 'number' &&
       val > 0 &&
-      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors)$/i.test(key) &&
+      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors|pauseFailures|pause_failures)$/i.test(key) &&
       key !== 'failures' &&
       key !== 'failed'
     ) {

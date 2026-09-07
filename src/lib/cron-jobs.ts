@@ -424,7 +424,7 @@ export function graceMs(intervalMs: number): number {
 export function cronSummaryHasFailures(summary: Record<string, unknown> | null | undefined): boolean {
   if (!summary) return false;
   return Object.entries(summary).some(([key, value]) => {
-    if (!/(^|_)(failed|failures|errors|error_count)$/i.test(key)) return false;
+    if (!/(^|_)(failed|failures|errors|error_count|pauseFailures|pause_failures)$/i.test(key)) return false;
     if (typeof value === 'number') return Number.isFinite(value) && value > 0;
     if (typeof value === 'boolean') return value;
     return typeof value === 'string' && value.trim() !== '' && value.trim() !== '0';

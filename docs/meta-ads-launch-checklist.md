@@ -151,6 +151,7 @@ Tooling script created: `scripts/verify-meta-ads-api-write-path.mjs`.
   - Durability is grounded on `leads.triage->metaOfflineConversion`.
   - Won-job hooks call `triggerWonLeadMetaCapiConversion(admin, accountId, lead)`.
   - Graph API endpoint upgraded to `v22.0`.
+  - **Auction Feedback Scope Note**: Neighborhood Halo campaigns optimize for off-Facebook landing page clicks (`OUTCOME_TRAFFIC` + `LINK_CLICKS`) with no pixel `promoted_object`. Consequently, the server-side CAPI purchase conversion loop functions as closed-loop conversion reporting, CAC measurement, and ROAS attribution within Meta Events Manager and reporting dashboards — it does not directly feed real-time ad auction delivery bidding optimization (which requires a pixel `promoted_object` and `OFFSITE_CONVERSIONS` optimization goal).
 - [ ] **Events Manager Test Event Tool**:
   - Trigger synthetic offline conversion upload with `test_event_code`.
   - Verify receipt in Events Manager Test Events tab:
@@ -175,6 +176,7 @@ Tooling script created: `scripts/verify-meta-ads-api-write-path.mjs`.
 
 - [x] **Atomic Wallet Spend Deductions & Rollbacks**:
   - Handled by `launchHaloCampaign` with `atomic_ad_wallet_spend`.
+  - Fail-closed guard: Refuses launch immediately without debiting wallet when Meta is not configured.
   - Immediate rollback with `atomic_ad_wallet_credit` upon provisioning failure.
 - [x] **Auto-Kill & Completion Meta Pausing**:
   - Auto-kill criteria (`ageHours >= 72 && impressions >= 150 && clicks === 0`) terminates and pauses on Meta.
@@ -186,14 +188,14 @@ Tooling script created: `scripts/verify-meta-ads-api-write-path.mjs`.
 
 ## 9. Controlled Canary Deployment & Go-Live Sequence
 
-1. [x] **Canary Campaign Launch (VERIFIED LIVE ON META)**:
-   - Campaign: `120254255069430440` (Provisioned & Verified)
-   - Ad Set: `120254255070250440` (1-mile coordinate geo-targeting + provider-side `end_time`)
-   - Ad Creative: `1036672472749942` (Published under Page "Let's Get Quoted")
-   - Ad: `120254255070680440` (Active on Meta, safely paused via API)
+1. [ ] **Canary Campaign Launch (Re-run Required with OUTCOME_TRAFFIC)**:
+   - *Previous Canary:* Campaign `120254255069430440` was provisioned under the old `OUTCOME_LEADS` / `LEAD_GENERATION` schema.
+   - *Current Schema:* The codebase now creates `OUTCOME_TRAFFIC` / `LINK_CLICKS` campaigns without `promoted_object`.
+   - *Action:* Re-run `node scripts/verify-meta-ads-api-write-path.mjs` against live Meta API to verify provider acceptance of the new traffic-objective shape before marking live verification complete.
 
 2. [x] **Cron & Sync Registration**:
    - `/api/cron/halo-pacing` registered in `vercel.json` (`0 4 * * *`) and `src/lib/cron-jobs.ts`.
+   - `pauseFailures` surfaced in route response and tracked by `cronSummaryHasFailures` to fail the run when non-zero.
    - Real elapsed day pacing and zero synthetic spend logic verified.
 
 3. [x] **Unflag Managed Ads Checkout**:

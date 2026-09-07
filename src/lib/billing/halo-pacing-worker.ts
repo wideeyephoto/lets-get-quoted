@@ -13,6 +13,7 @@ export type HaloPacingWorkerResult = {
   advanced: number;
   completed: number;
   killed: number;
+  pauseFailures: number;
   totalDailySpendDollars: number;
   summary: string;
 };
@@ -33,6 +34,7 @@ export async function runHaloPacingWorker(
       advanced: 0,
       completed: 0,
       killed: 0,
+      pauseFailures: 0,
       totalDailySpendDollars: 0,
       summary: `Failed to query active campaigns: ${error.message}`,
     };
@@ -41,6 +43,7 @@ export async function runHaloPacingWorker(
   let advanced = 0;
   let completed = 0;
   let killed = 0;
+  let pauseFailures = 0;
   let totalDailySpendDollars = 0;
 
   for (const row of activeRows || []) {
@@ -97,9 +100,43 @@ export async function runHaloPacingWorker(
     if (newDaysActive >= durationDays || isExpired) {
       if (row.meta_campaign_id) {
         try {
-          await pauseMetaCampaign(row.meta_campaign_id);
+          const pauseRes = await pauseMetaCampaign(row.meta_campaign_id);
+          if (!pauseRes.success) {
+            console.warn(`[HaloPacingWorker] Failed to pause completed Meta campaign ${row.meta_campaign_id}: ${pauseRes.message}`);
+            pauseFailures += 1;
+            // Leave row untouched in 'active' so the next cron run re-evaluates and retries
+            continue;
+          }
         } catch (pauseErr) {
           console.warn(`[HaloPacingWorker] Failed to pause completed Meta campaign ${row.meta_campaign_id}:`, pauseErr);
+          pauseFailures += 1;
+          continue;
+        }
+      }
+
+      // Fetch final day's spend if live Meta campaign is linked
+      let finalImpressions = Number(row.impressions || 0);
+      let finalClicks = Number(row.clicks || 0);
+      let finalSpendDollars = currentSpend;
+
+      const isLiveMeta =
+        row.meta_campaign_id &&
+        !row.meta_campaign_id.startsWith('meta_sim_') &&
+        !row.meta_campaign_id.startsWith('sim_');
+
+      if (isLiveMeta) {
+        try {
+          const metaSpend = await fetchMetaCampaignDailySpend(row.meta_campaign_id);
+          if (metaSpend.success) {
+            if (metaSpend.impressions > 0) finalImpressions = metaSpend.impressions;
+            if (metaSpend.clicks > 0) finalClicks = metaSpend.clicks;
+            if (metaSpend.spendCents > 0) {
+              const additional = Math.min(budgetDollars - currentSpend, metaSpend.spendCents / 100);
+              finalSpendDollars = currentSpend + additional;
+            }
+          }
+        } catch (metaErr) {
+          console.warn(`[HaloPacingWorker] Meta final insights fetch failed for ${row.meta_campaign_id}:`, metaErr);
         }
       }
 
@@ -108,10 +145,30 @@ export async function runHaloPacingWorker(
         .update({
           status: 'completed',
           days_active: Math.max(newDaysActive, durationDays),
-          spend_dollars: currentSpend,
+          spend_dollars: finalSpendDollars,
+          impressions: finalImpressions,
+          clicks: finalClicks,
           updated_at: new Date().toISOString(),
         })
         .eq('id', campaignId);
+
+      // Refund unspent portion of upfront wallet debit (replay-safe via p_payment_intent_id deduplication)
+      const provenDebitedCents = Number(row.wallet_deducted_cents || 0);
+      const actualSpendCents = Math.round(finalSpendDollars * 100);
+      const refundableCents = Math.max(0, provenDebitedCents - actualSpendCents);
+
+      if (refundableCents > 0) {
+        try {
+          await admin.rpc('atomic_ad_wallet_credit', {
+            p_account_id: accountId,
+            p_payment_intent_id: `refund_halo_complete_${campaignId}`,
+            p_credit_cents: refundableCents,
+            p_fee_cents: 0,
+          });
+        } catch (refundErr) {
+          console.error(`[HaloPacingWorker] Failed to refund remaining budget for completed campaign ${campaignId}:`, refundErr);
+        }
+      }
 
       completed += 1;
       continue;
@@ -171,7 +228,8 @@ export async function runHaloPacingWorker(
     advanced,
     completed,
     killed,
+    pauseFailures,
     totalDailySpendDollars,
-    summary: `Processed ${(activeRows || []).length} active halo campaigns: ${advanced} advanced, ${completed} completed, ${killed} auto-killed. Total daily spend paced: $${totalDailySpendDollars.toFixed(2)}.`,
+    summary: `Processed ${(activeRows || []).length} active halo campaigns: ${advanced} advanced, ${completed} completed, ${killed} auto-killed, ${pauseFailures} pause failures. Total daily spend paced: $${totalDailySpendDollars.toFixed(2)}.`,
   };
 }

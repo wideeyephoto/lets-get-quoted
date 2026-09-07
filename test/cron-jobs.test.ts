@@ -129,10 +129,12 @@ describe('grading a job', () => {
   it('is failing when a completed wrapper reports failed work in its summary', () => {
     expect(cronHealth(daily, { ...done(2 * HOUR), summary: { processed: 8, failed: 1 } }, ago(2 * HOUR), now)).toBe('failing');
     expect(cronHealth(daily, { ...done(2 * HOUR), summary: { errors: 2 } }, ago(2 * HOUR), now)).toBe('failing');
+    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { pauseFailures: 1 } }, ago(2 * HOUR), now)).toBe('failing');
+    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { pause_failures: 1 } }, ago(2 * HOUR), now)).toBe('failing');
   });
 
   it('stays healthy when explicit failure counters are zero', () => {
-    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { processed: 8, failed: 0 } }, ago(2 * HOUR), now)).toBe('ok');
+    expect(cronHealth(daily, { ...done(2 * HOUR), summary: { processed: 8, failed: 0, pauseFailures: 0 } }, ago(2 * HOUR), now)).toBe('ok');
   });
 
   // The case a last-run timestamp alone cannot catch: it succeeded, and then
@@ -240,5 +242,13 @@ describe('extracting logical failure reason from cron summaries', () => {
         databaseErrors: 2,
       })
     ).toBe('voice-number-reconciliation reported logical failures (5 failure(s)) (providerErrors=3, databaseErrors=2)');
+
+    expect(
+      extractLogicalFailureReason('halo-pacing', {
+        processed: 3,
+        pauseFailures: 2,
+        failures: 2,
+      })
+    ).toBe('halo-pacing reported logical failures (2 failure(s)) (pauseFailures=2)');
   });
 });
