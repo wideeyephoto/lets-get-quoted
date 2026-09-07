@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { measuredRoom } from './fixtures/room-scan';
+import { nativeRoom } from './fixtures/roomplan/native-room';
 import { parseCustomScanJson } from '@/lib/property-intel/room-scan-validation';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -10,8 +11,9 @@ vi.mock('@/lib/property-intel', () => ({ summarizePropertyIntelligence: () => nu
 import { loadDraftContext, buildDraftInstructions } from '@/lib/quote-draft-ai';
 
 describe('saved scan reaches quote generation', () => {
-  it.each([true, false])('builds quote context from saved geometry (hasScan=%s)', async hasScan => {
-    const scan = parseCustomScanJson(JSON.stringify(measuredRoom));
+  it.each(['normalized', 'roomplan', 'absent'])('builds quote context from saved geometry (%s)', async source => {
+    const hasScan = source !== 'absent';
+    const scan = parseCustomScanJson(JSON.stringify(source === 'roomplan' ? nativeRoom() : measuredRoom));
     const db = { from: () => {
       let columns = '';
       const q = { select: (value: string) => { columns = value; return q; }, eq: () => q, is: () => q,

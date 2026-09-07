@@ -1,5 +1,6 @@
-import type { RoomObject3D, RoomOpening, RoomSpatialScan, WallSegment } from './room-spatial-intel';
+import type { RoomObject3D, RoomOpening, RoomScanConfidence, RoomSpatialScan, WallSegment } from './room-spatial-intel';
 import { getRoomFloorPolygon, isSimplePolygon } from './room-scan-geometry';
+import { adaptRoomPlan, isRoomPlanJson } from './roomplan-adapter';
 
 export const MAX_ROOM_SCAN_BYTES = 1024 * 1024;
 
@@ -24,24 +25,35 @@ function array(value: unknown, label: string, max: number): unknown[] {
   return value;
 }
 
-/** LGQ normalized geometry, in inches. Native RoomPlan requires a separate adapter. */
+function sourceConfidence(value: unknown): RoomScanConfidence | undefined {
+  if (value === undefined) return undefined;
+  if (value !== 'low' && value !== 'medium' && value !== 'high') throw new Error('Unsupported source confidence label.');
+  return value;
+}
+
+/** Accept native CapturedRoom JSON or normalized geometry; always validate the canonical inches format. */
 export function parseCustomScanJson(raw: string): RoomSpatialScan {
   if (new TextEncoder().encode(raw).length > MAX_ROOM_SCAN_BYTES) throw new Error('Scan JSON must be 1 MB or smaller.');
   let input: unknown;
   try { input = JSON.parse(raw); } catch { throw new Error('Invalid JSON format.'); }
-  const parsed = record(input, 'Scan');
+  let parsed = record(input, 'Scan');
   if (parsed.isSample === true) throw new Error('Sample models cannot be imported as job measurements.');
+  if (parsed.rooms !== undefined) throw new Error('Import one CapturedRoom at a time; multi-room structures are not supported.');
+  if (isRoomPlanJson(parsed)) parsed = adaptRoomPlan(parsed);
   if (parsed.schemaVersion !== undefined && parsed.schemaVersion !== 1) throw new Error('Unsupported scan schema version.');
   if (parsed.units !== undefined && parsed.units !== 'inches') throw new Error('Normalize all scan coordinates and dimensions to inches before importing.');
+  if (parsed.sourceFormat !== undefined && parsed.sourceFormat !== 'apple-roomplan') throw new Error('Unsupported scan source format.');
+  if (parsed.sourceVersion !== undefined && (parsed.sourceFormat !== 'apple-roomplan' || (parsed.sourceVersion !== 1 && parsed.sourceVersion !== 2))) throw new Error('Unsupported RoomPlan source version.');
   const rawWalls = array(parsed.walls, 'Walls', 128);
   if (rawWalls.length < 3) throw new Error('Room must contain at least 3 walls.');
   const walls: WallSegment[] = rawWalls.map((value, i) => {
     const w = record(value, `Wall ${i + 1}`);
     return {
-      id: `w-${i + 1}`, label: text(w.label, `Wall ${i + 1}`),
+      id: text(w.id, `w-${i + 1}`), label: text(w.label, `Wall ${i + 1}`),
       lengthInches: number(w.lengthInches, `Wall ${i + 1} lengthInches`),
       heightInches: number(w.heightInches, `Wall ${i + 1} heightInches`),
       isExterior: w.isExterior === true,
+      sourceConfidence: sourceConfidence(w.sourceConfidence),
     };
   });
   const ceilingHeightInches = parsed.ceilingHeightInches === undefined
@@ -66,6 +78,8 @@ export function parseCustomScanJson(raw: string): RoomSpatialScan {
     pointCount: parsed.pointCount === undefined ? 0 : number(parsed.pointCount, 'pointCount', 0, 1e9),
     confidenceScore: parsed.confidenceScore === undefined ? 0 : number(parsed.confidenceScore, 'confidenceScore', 0, 100),
     schemaVersion: 1, units: 'inches', floorPolygon,
+    sourceFormat: parsed.sourceFormat as RoomSpatialScan['sourceFormat'],
+    sourceVersion: parsed.sourceVersion as RoomSpatialScan['sourceVersion'],
     floorShape: parsed.floorShape === 'rectangle' ? 'rectangle' : undefined,
     ceilingHeightInches, walls, openings: [], objects: [], isSample: false,
   };
@@ -86,30 +100,40 @@ export function parseCustomScanJson(raw: string): RoomSpatialScan {
     const widthInches = number(op.widthInches, 'Opening widthInches');
     const heightInches = number(op.heightInches, 'Opening heightInches');
     const offsetInches = number(op.offsetInches, 'Opening offsetInches', 0);
-    if (offsetInches + widthInches > walls[wallIndex].lengthInches + 0.1 || heightInches > walls[wallIndex].heightInches) {
+    const sillHeightInches = op.sillHeightInches === undefined ? undefined : number(op.sillHeightInches, 'Opening sillHeightInches', 0);
+    if (offsetInches + widthInches > walls[wallIndex].lengthInches + 0.1 || (sillHeightInches ?? 0) + heightInches > walls[wallIndex].heightInches + 0.1) {
       throw new Error(`Opening ${i + 1} extends beyond its wall.`);
     }
-    return { id: `op-${i + 1}`, type: op.type as RoomOpening['type'], wallIndex, widthInches, heightInches, offsetInches };
+    return { id: text(op.id, `op-${i + 1}`), type: op.type as RoomOpening['type'], wallIndex, widthInches, heightInches, offsetInches,
+      sillHeightInches, sourceConfidence: sourceConfidence(op.sourceConfidence) };
   });
   for (let i = 0; i < scan.openings.length; i++) {
     const a = scan.openings[i];
     if (scan.openings.slice(i + 1).some(b => a.wallIndex === b.wallIndex &&
-      a.offsetInches < b.offsetInches + b.widthInches && b.offsetInches < a.offsetInches + a.widthInches)) {
+      a.offsetInches < b.offsetInches + b.widthInches && b.offsetInches < a.offsetInches + a.widthInches &&
+      (a.sillHeightInches === undefined || b.sillHeightInches === undefined ||
+        (a.sillHeightInches < b.sillHeightInches + b.heightInches && b.sillHeightInches < a.sillHeightInches + a.heightInches)))) {
       throw new Error('Overlapping openings are not supported; they would double-count deductions.');
     }
   }
   scan.objects = array(parsed.objects ?? [], 'Objects', 256).map((value, i): RoomObject3D => {
     const obj = record(value, `Object ${i + 1}`);
-    if (!['bathtub', 'shower', 'vanity', 'toilet', 'cabinet', 'appliance', 'closet'].includes(String(obj.category))) {
+    if (!['bathtub', 'shower', 'vanity', 'toilet', 'cabinet', 'appliance', 'closet', 'furniture', 'other'].includes(String(obj.category))) {
       throw new Error('Unsupported object category.');
     }
     const dims = record(obj.dimensionsInches, 'Object dimensionsInches');
     const pos = record(obj.position, 'Object position');
     return {
-      id: `obj-${i + 1}`, category: obj.category as RoomObject3D['category'], label: text(obj.label, `Fixture ${i + 1}`),
+      id: text(obj.id, `obj-${i + 1}`), category: obj.category as RoomObject3D['category'], label: text(obj.label, `Fixture ${i + 1}`),
       dimensionsInches: { width: number(dims.width, 'Object width'), depth: number(dims.depth, 'Object depth'), height: number(dims.height, 'Object height') },
       position: { x: number(pos.x, 'Object x', -120000), y: number(pos.y, 'Object y', 0), z: number(pos.z, 'Object z', -120000) },
+      rotationYRadians: obj.rotationYRadians === undefined ? undefined : number(obj.rotationYRadians, 'Object rotationYRadians', -Math.PI, Math.PI),
+      sourceCategory: obj.sourceCategory === undefined ? undefined : text(obj.sourceCategory, 'unknown'),
+      sourceConfidence: sourceConfidence(obj.sourceConfidence),
     };
   });
+  for (const elements of [scan.walls, scan.openings, scan.objects]) {
+    if (new Set(elements.map(element => element.id)).size !== elements.length) throw new Error('Scan element identifiers must be unique.');
+  }
   return scan;
 }

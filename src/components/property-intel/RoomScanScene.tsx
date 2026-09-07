@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import type { RoomSpatialScan } from '@/lib/property-intel/room-spatial-intel';
-import { getRoomFloorPolygon, pointDistance, type SpatialPoint } from '@/lib/property-intel/room-scan-geometry';
+import { getObjectFootprint, getRoomFloorPolygon, pointDistance, type SpatialPoint } from '@/lib/property-intel/room-scan-geometry';
 import styles from './room-scan-viewer.module.css';
 
 /** Parametric surface preview. Every selectable point comes from imported geometry. */
@@ -52,12 +52,10 @@ export function RoomScanScene({ scan }: { scan: RoomSpatialScan }) {
         return <polygon key={i} points={points([vertices[i], vertices[j], vertices[j + floor.length], vertices[i + floor.length]])} fill="rgba(56,189,248,0.04)" stroke="rgba(56,189,248,0.6)" />;
       })}
       {scan.objects.map(obj => {
-        const { x, y, z } = obj.position;
-        const w = obj.dimensionsInches.width / 2, d = obj.dimensionsInches.depth / 2;
-        const base = [{ x: x-w, y, z: z-d }, { x: x+w, y, z: z-d }, { x: x+w, y, z: z+d }, { x: x-w, y, z: z+d }];
-        const top = base.map(p => ({ ...p, y: y + obj.dimensionsInches.height }));
+        const base = getObjectFootprint(obj);
+        const top = base.map(p => ({ ...p, y: p.y + obj.dimensionsInches.height }));
         return <g key={obj.id}>
-          <title>{obj.label}: {obj.dimensionsInches.width} × {obj.dimensionsInches.depth} × {obj.dimensionsInches.height} inches</title>
+          <title>{obj.label}: {obj.dimensionsInches.width.toFixed(1)} × {obj.dimensionsInches.depth.toFixed(1)} × {obj.dimensionsInches.height.toFixed(1)} inches</title>
           <polygon points={points(mode === '3d' ? top : base)} fill="rgba(167,139,250,0.15)" stroke="#a78bfa" />
           {mode === '3d' && base.map((p, i) => <line key={i} x1={project(p).x} y1={project(p).y} x2={project(top[i]).x} y2={project(top[i]).y} stroke="#a78bfa" />)}
         </g>;

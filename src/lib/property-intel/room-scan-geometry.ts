@@ -1,10 +1,20 @@
-import type { RoomSpatialScan } from './room-spatial-intel';
+import type { RoomObject3D, RoomSpatialScan } from './room-spatial-intel';
 
 export type FloorPoint = { x: number; z: number };
 export type SpatialPoint = FloorPoint & { y: number };
 
 export function pointDistance(a: SpatialPoint, b: SpatialPoint): number {
   return Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+}
+
+export function getObjectFootprint(object: RoomObject3D): SpatialPoint[] {
+  const w = object.dimensionsInches.width / 2, d = object.dimensionsInches.depth / 2;
+  const angle = object.rotationYRadians ?? 0, c = Math.cos(angle), s = Math.sin(angle);
+  return [[-w, -d], [w, -d], [w, d], [-w, d]].map(([x, z]) => ({
+    x: object.position.x + x * c - z * s,
+    y: object.position.y,
+    z: object.position.z + x * s + z * c,
+  }));
 }
 
 export function polygonArea(points: FloorPoint[]): number {

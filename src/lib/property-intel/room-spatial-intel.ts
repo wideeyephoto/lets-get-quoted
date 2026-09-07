@@ -5,6 +5,7 @@ export { parseCustomScanJson } from './room-scan-validation';
 // Uses normalized room geometry for surface takeoffs and supply house pick-lists.
 
 export type RoomOpeningType = 'door' | 'window' | 'opening';
+export type RoomScanConfidence = 'low' | 'medium' | 'high';
 
 export type RoomOpening = {
   id: string;
@@ -13,6 +14,8 @@ export type RoomOpening = {
   widthInches: number;
   heightInches: number;
   offsetInches: number; // offset from wall start
+  sillHeightInches?: number; // measured elevation above floor; omitted in legacy scans
+  sourceConfidence?: RoomScanConfidence;
 };
 
 export type WallSegment = {
@@ -21,14 +24,18 @@ export type WallSegment = {
   lengthInches: number;
   heightInches: number;
   isExterior?: boolean;
+  sourceConfidence?: RoomScanConfidence;
 };
 
 export type RoomObject3D = {
   id: string;
-  category: 'bathtub' | 'shower' | 'vanity' | 'toilet' | 'cabinet' | 'appliance' | 'closet';
+  category: 'bathtub' | 'shower' | 'vanity' | 'toilet' | 'cabinet' | 'appliance' | 'closet' | 'furniture' | 'other';
   label: string;
   dimensionsInches: { width: number; depth: number; height: number };
   position: { x: number; y: number; z: number }; // inches; footprint center X/Z, base elevation Y
+  rotationYRadians?: number; // local X direction in the world X/Z plane
+  sourceCategory?: string;
+  sourceConfidence?: RoomScanConfidence;
 };
 
 export type RoomSpatialScan = {
@@ -45,6 +52,8 @@ export type RoomSpatialScan = {
   objects: RoomObject3D[];
   schemaVersion?: 1;
   units?: 'inches';
+  sourceFormat?: 'apple-roomplan';
+  sourceVersion?: 1 | 2;
   floorShape?: 'rectangle';
   floorPolygon?: FloorPoint[];
   rawUsdzUrl?: string;
@@ -137,7 +146,7 @@ export function calculateRoomSummary(scan: RoomSpatialScan): RoomDimensionsSumma
     openingsAreaSqFt += area;
     if (op.type === 'door' || op.type === 'opening') {
       doorsCount++;
-      doorWidthsInches += op.widthInches;
+      if ((op.sillHeightInches ?? 0) <= 0.1) doorWidthsInches += op.widthInches;
     } else if (op.type === 'window') {
       windowsCount++;
     }
