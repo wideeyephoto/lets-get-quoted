@@ -133,7 +133,7 @@ function record(name, pass, details) {
 // 1. Account & Terms
 const { data: fullAccount, error: fullAcctError } = await admin
   .from('accounts')
-  .select('id, business_name, terms_accepted_at, terms_version, terms_accepted_by, trade, postal_code, stripe_merchant_account_id, merchant_onboarding_state, merchant_card_payments_active, merchant_payouts_active')
+  .select('id, business_name, terms_accepted_at, terms_version, terms_accepted_by, trade, postal_code, stripe_merchant_account_id, stripe_connect_id, connect_onboarded, merchant_onboarding_state, merchant_card_payments_active, merchant_payouts_active')
   .eq('id', accountId)
   .single();
 
@@ -158,16 +158,16 @@ if (memError || !memberList || memberList.length === 0) {
 }
 
 // 3. Stripe Connect Merchant Status
-const stripeAccountId = fullAccount?.stripe_merchant_account_id;
+const stripeAccountId = fullAccount?.stripe_merchant_account_id || fullAccount?.stripe_connect_id;
 const isMerchantReady = Boolean(
   stripeAccountId &&
-  (fullAccount.merchant_onboarding_state === 'completed' || fullAccount.merchant_card_payments_active)
+  (fullAccount.merchant_onboarding_state === 'completed' || fullAccount.merchant_card_payments_active || fullAccount.connect_onboarded)
 );
 
 record(
   'Stripe Connect Merchant Ready',
   isMerchantReady,
-  `Stripe ID: ${stripeAccountId || 'NONE'}, State: ${fullAccount?.merchant_onboarding_state || 'none'}, Card Payments Active: ${Boolean(fullAccount?.merchant_card_payments_active)}`
+  `Stripe ID: ${stripeAccountId || 'NONE'}, Connect Onboarded: ${Boolean(fullAccount?.connect_onboarded)}, State: ${fullAccount?.merchant_onboarding_state || 'none'}, Card Payments Active: ${Boolean(fullAccount?.merchant_card_payments_active)}`
 );
 
 // 4. Jobs & Quotes
@@ -187,28 +187,31 @@ if (jobsError || !jobs || jobs.length === 0) {
 // 5. Payments & Invoices
 const { data: payments, error: paymentsError } = await admin
   .from('payments')
-  .select('id, job_id, amount, status, refunded_amount, platform_fee, platform_fee_refunded, stripe_payment_intent, paid_at, refunded_at')
-  .eq('account_id', accountId);
+  .select('id, job_id, amount, status, refunded_amount, platform_fee, platform_fee_refunded, stripe_payment_intent, paid_at, requested_at, refunded_at')
+  .eq('account_id', accountId)
+  .order('requested_at', { ascending: false });
 
 if (paymentsError || !payments || payments.length === 0) {
   record('Payment Created & Attempted', false, paymentsError?.message || 'No payments found on account.');
 } else {
-  const payment = payments[0];
+  const paidPayments = payments.filter((p) => p.status === 'paid' || p.status === 'refunded');
+  const payment = paidPayments[0] || payments[0];
   const isPaidOrRefunded = payment.status === 'paid' || payment.status === 'refunded';
-  record('Payment Charged Successfully', isPaidOrRefunded, `Status: ${payment.status}, Amount: $${payment.amount}, PI: ${payment.stripe_payment_intent || 'NONE'}, Paid at: ${payment.paid_at || 'NONE'}`);
+  record('Payment Charged Successfully', isPaidOrRefunded, `Payment: ${payment.id}, Status: ${payment.status}, Amount: $${payment.amount}, PI: ${payment.stripe_payment_intent || 'NONE'}, Paid at: ${payment.paid_at || 'NONE'}`);
 
-  const isRefunded = payment.status === 'refunded' || (payment.refunded_amount != null && Number(payment.refunded_amount) > 0);
+  const refundedPayment = payments.find((p) => p.status === 'refunded' || (p.refunded_amount != null && Number(p.refunded_amount) > 0)) || payment;
+  const isRefunded = refundedPayment.status === 'refunded' || (refundedPayment.refunded_amount != null && Number(refundedPayment.refunded_amount) > 0);
   record(
     'Dashboard-Issued Refund Succeeded',
     isRefunded,
-    `Refunded: $${payment.refunded_amount || 0} of $${payment.amount}, Fee Refunded: $${payment.platform_fee_refunded || 0}, Refunded at: ${payment.refunded_at || 'NONE'}`
+    `Payment: ${refundedPayment.id}, Refunded: $${refundedPayment.refunded_amount || 0} of $${refundedPayment.amount}, Fee Refunded: $${refundedPayment.platform_fee_refunded || 0}, Refunded at: ${refundedPayment.refunded_at || 'NONE'}`
   );
 }
 
 // 6. Outbound Notifications
 const { data: emailEvents } = await admin
   .from('email_events')
-  .select('id, event_type, recipient, status, occurred_at')
+  .select('id, kind, recipient, status, occurred_at')
   .eq('account_id', accountId)
   .order('occurred_at', { ascending: false })
   .limit(10);

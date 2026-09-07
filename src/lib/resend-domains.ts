@@ -43,6 +43,16 @@ export function isSendingDomainProvisioningConfigured(): boolean {
   return Boolean(getApiKey());
 }
 
+export function isEmailSendingDomainsFeatureEnabled(): boolean {
+  if (process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED === 'false') {
+    return false;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    return process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED === 'true';
+  }
+  return true;
+}
+
 function normalizeStatus(status?: string): SendingDomainStatus {
   if (status === 'verified') return 'verified';
   if (status === 'pending') return 'pending';

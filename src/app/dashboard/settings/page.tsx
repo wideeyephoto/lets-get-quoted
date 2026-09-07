@@ -67,7 +67,8 @@ import DeveloperApiSection, { type WebhookSubscriptionView, type WebhookDelivery
 import PriceBookSettingsSection from './PriceBookSettingsSection';
 import StationerySettingsSection from './StationerySettingsSection';
 import EmailSendingDomainSection from './EmailSendingDomainSection';
-import { isEmailSendingDomainsFeatureEnabled, type EmailSendingDomainRow } from './email-domain-actions';
+import { type EmailSendingDomainRow } from './email-domain-actions';
+import { isEmailSendingDomainsFeatureEnabled } from '@/lib/resend-domains';
 import { listApiTokens } from '@/lib/public-api/api-credentials';
 
 export const metadata = { title: 'Account' };

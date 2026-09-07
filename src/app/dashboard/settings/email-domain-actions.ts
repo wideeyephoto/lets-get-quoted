@@ -7,6 +7,7 @@ import {
   createSendingDomain,
   deleteSendingDomain,
   isSendingDomainProvisioningConfigured,
+  isEmailSendingDomainsFeatureEnabled,
   triggerSendingDomainVerify,
   validateFromLocalPart,
   filterSafeSendingDnsRecords,
@@ -29,17 +30,6 @@ export interface EmailSendingDomainRow {
   failure_reason: string | null;
   created_at: string;
   updated_at: string;
-}
-
-export function isEmailSendingDomainsFeatureEnabled(): boolean {
-  // Flag absent in Production disables the feature; dev/test enables by default unless explicitly false
-  if (process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED === 'false') {
-    return false;
-  }
-  if (process.env.NODE_ENV === 'production') {
-    return process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED === 'true';
-  }
-  return true;
 }
 
 export async function getEmailSendingDomainAction(): Promise<{
