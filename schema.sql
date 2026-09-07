@@ -2668,6 +2668,41 @@ create index if not exists email_events_status_idx on email_events (status, occu
 create index if not exists email_events_account_idx on email_events (account_id, occurred_at desc);
 alter table email_events enable row level security;
 
+-- Customer-owned outbound sending domains (Scope A: Resend)
+create table if not exists public.email_sending_domains (
+  id                 uuid primary key default gen_random_uuid(),
+  account_id         uuid not null references public.accounts(id) on delete cascade,
+  domain             text not null,
+  from_local_part    text not null default 'hello',
+  from_display_name  text,
+  provider           text not null default 'resend',
+  provider_domain_id text,
+  status             text not null default 'pending'
+                       check (status in ('pending','verified','failed','disabled')),
+  dns_records        jsonb not null default '[]'::jsonb,
+  last_checked_at    timestamptz,
+  verified_at        timestamptz,
+  failure_reason     text,
+  created_at         timestamptz not null default now(),
+  updated_at         timestamptz not null default now()
+);
+
+create unique index if not exists email_sending_domains_domain_key on public.email_sending_domains (lower(domain));
+create unique index if not exists email_sending_domains_provider_key
+  on public.email_sending_domains (provider_domain_id) where provider_domain_id is not null;
+create index if not exists email_sending_domains_account_idx on public.email_sending_domains (account_id);
+create unique index if not exists email_sending_domains_one_verified_per_account
+  on public.email_sending_domains (account_id) where status = 'verified';
+
+alter table public.email_sending_domains enable row level security;
+revoke all on public.email_sending_domains from anon, authenticated;
+grant select on public.email_sending_domains to authenticated;
+
+drop policy if exists email_sending_domains_read on public.email_sending_domains;
+create policy email_sending_domains_read on public.email_sending_domains
+  for select to authenticated
+  using (public.office_can(account_id, 'settings.write'));
+
 -- Staff-authored release and incident log. Manually curated: there is no deploy
 -- tracking or incident management anywhere else in this codebase, and one small
 -- table staff write by hand is honest about that.

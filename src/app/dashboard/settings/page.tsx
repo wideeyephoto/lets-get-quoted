@@ -66,6 +66,8 @@ import MerchantOnboardingSection from './MerchantOnboardingSection';
 import DeveloperApiSection, { type WebhookSubscriptionView, type WebhookDeliveryView } from './DeveloperApiSection';
 import PriceBookSettingsSection from './PriceBookSettingsSection';
 import StationerySettingsSection from './StationerySettingsSection';
+import EmailSendingDomainSection from './EmailSendingDomainSection';
+import { isEmailSendingDomainsFeatureEnabled, type EmailSendingDomainRow } from './email-domain-actions';
 import { listApiTokens } from '@/lib/public-api/api-credentials';
 
 export const metadata = { title: 'Account' };
@@ -139,6 +141,17 @@ export default async function SettingsPage({
 
   const webhookSubscriptions = ((webhookSubsResult?.data ?? []) as unknown[]) as WebhookSubscriptionView[];
   const webhookDeliveries = ((webhookDeliveriesResult?.data ?? []) as unknown[]) as WebhookDeliveryView[];
+
+  const emailSendingDomainsEnabled = isEmailSendingDomainsFeatureEnabled();
+  const { data: emailDomainData } = emailSendingDomainsEnabled
+    ? await supabase
+        .from('email_sending_domains')
+        .select('*')
+        .eq('account_id', accountId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+    : { data: null };
 
   // than throwing. A Settings page that 500s because one card cannot load is a
   // worse failure than a card that says nobody is here.
@@ -616,6 +629,7 @@ export default async function SettingsPage({
               'job-costing',
               'price-book',
               'stationery',
+              'email-domain',
               'business-basics',
               'business',
               'quote-changes',
@@ -647,7 +661,7 @@ export default async function SettingsPage({
           id: 'profile',
           label: 'Profile & locations',
           blurb: 'Who you are, what you do, and where you work from.',
-          anchors: ['business-basics', 'quote-changes', 'marketing-address', 'addresses', 'stationery'],
+          anchors: ['business-basics', 'quote-changes', 'marketing-address', 'addresses', 'stationery', 'email-domain'],
           content: (
               <>
                 {/* The customer portal used to sit here. It moved to
@@ -779,6 +793,10 @@ export default async function SettingsPage({
                 </section>
 
                 <StationerySettingsSection />
+                <EmailSendingDomainSection
+                  initialDomain={emailDomainData as EmailSendingDomainRow | null}
+                  isEnabled={emailSendingDomainsEnabled}
+                />
               </>
           ),
         },
