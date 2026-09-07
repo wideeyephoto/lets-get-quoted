@@ -350,7 +350,8 @@ This table is an inventory, not proof of a deployed value. `.env.example` contai
 - [x] **Complete Secret-Rotation Drill (Completed 2026-09-01)**: Codified zero-downtime key rotation protocols, emergency revocation playbooks, and rolling secret migration in `docs/runbooks/secret-rotation-drill.md`. Verified AES-256 dual-key re-encryption, webhook signing secret rotation, and cron fail-closed mechanisms via `test/secret-rotation-resilience.test.ts` (3/3 passing).; prove old credentials fail.
 - [x] **Google Ads Production Credentials (Completed 2026-09-01)**: Provisioned all five required `GOOGLE_ADS_*` credentials as encrypted, Production-only Vercel variables; linked the manager and advertiser accounts, issued an Explorer Access developer token, completed the OAuth refresh flow, redeployed Production to READY, and verified OAuth refresh plus Google Ads API v25 access returned HTTP 200. Secret-free setup record: `docs/google-ads-production-credential-setup.md`.
 - [x] **Google Ads Sign-Up Attribution (Completed 2026-09-01)**: Configured the paired public `NEXT_PUBLIC_GOOGLE_TAG_ID` and `NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID` values for Vercel Production and deployed the corrected first-run trigger plus CSP allowlist in READY release `97761d26`. Production browser verification proved `gtag.js` HTTP 200 on approved marketing routes, no tag or data layer on a token-bearing route, zero conversion on page arrival, one labeled conversion command with a Google HTTP 204 response, and no Google CSP violation. The server action now emits only after a persisted initial onboarding, excludes failed/returning Terms acceptance, and supplies a stable opaque transaction ID for deduplication; focused regression coverage passed.
-- [x] **Upgrade Google Ads API Compatibility to v25 & Live Campaign Verification (Completed 2026-09-04)**: Upgraded Google Ads API client to v25 default, retired legacy v17 conversions, pruned retired LSA endpoints in favor of `src/lib/google-lsa`, and verified offline conversion and provisioning contracts. Codified live write-path verification runner `scripts/verify-google-ads-v25-write-path.mjs` verifying OAuth 2.0 refresh, `customers:listAccessibleCustomers` account isolation, budget mutation, paused campaign creation (`status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, `maximizeConversions: {}`), and status toggle write-path mutations with immediate teardown (`status: 'REMOVED'`). Verified via `test/google-ads-write-path.test.ts` (6/6 passing), `test/google-ads-api.test.ts` (22/22 passing), and `test/google-ads-v20-provisioning.test.ts` (7/7 passing) — total 35/35 Google Ads suite tests passing.
+- [x] **Upgrade Google Ads API Compatibility to v25 & Provisioning Contract (Completed 2026-09-04)**: Upgraded Google Ads API client to v25 default, retired legacy v17 conversions, pruned retired LSA endpoints in favor of `src/lib/google-lsa`, and verified offline conversion and provisioning contracts. Codified write-path verification runner `scripts/verify-google-ads-v25-write-path.mjs` (OAuth 2.0 refresh, `customers:listAccessibleCustomers` account isolation, budget mutation, paused campaign creation with `status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, `maximizeConversions: {}`, and status toggle with immediate `status: 'REMOVED'` teardown). Codified offline conversion allowlist verifier `scripts/verify-google-ads-offline-conversions.mjs` to detect Google's June 15, 2026 `CUSTOMER_NOT_ALLOWLISTED_FOR_THIS_FEATURE` restriction (which mandates Google Data Manager API for new tokens). Verified via contract suites `test/google-ads-write-path.test.ts` (6/6 passing), `test/google-ads-offline-conversions.test.ts` (6/6 passing), `test/google-ads-hardening-gates.test.ts` (10/10 passing), `test/google-ads-api.test.ts` (22/22 passing), and `test/google-ads-v20-provisioning.test.ts` (7/7 passing) — total 51/51 Google Ads suite tests passing.
+- [ ] **Execute Live Google Ads API v25 Write-Path & Offline Conversion Network Probes**: Execute `node scripts/verify-google-ads-v25-write-path.mjs` and `node scripts/verify-google-ads-offline-conversions.mjs` with live production credentials against serving customer `228-567-1544`. Verify HTTP 200 responses on real Google network endpoints; confirm Explorer Access production quota (2,880 ops/day) in Google Ads API Center; prove offline click conversion upload succeeds without allowlist rejection before booking alpha campaigns.
 
 | Environment Variable | Production Value / Note |
 | :--- | :--- |
@@ -621,27 +622,26 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 
 ## 14. Full Application Page Inventory & Freshness Audit (Updated 2026-09-04)
 
-This section is the definitive inventory of all **250 App Router page surfaces** across Let's Get Quoted. It records the exact date each page was last updated/touched in version control or active development, tracks staleness metrics, and provides an active triage plan to guarantee **no page is neglected or abandoned** for launch.
+This section is the definitive inventory of all **254 App Router page surfaces** across Let's Get Quoted. It records the exact date each page was last updated/touched in version control or active development, tracks staleness metrics, and provides an active triage plan to guarantee **no page is neglected or abandoned** for launch.
 
 ### Page Freshness Breakdown
 
-- **Total App Router Pages**: **250** distinct `page.tsx` surfaces.
-- 🟢 **Fresh / Recently Touched (Sep 1–4, 2026)**: **129 pages** (52%) — actively validated during final pre-launch hardening, WCAG remediation, voice/SMS contractor dispatch, and insights updates.
-- 🟡 **Stable (Aug 20–31, 2026)**: **107 pages** (43%) — hardened during late August feature sprints (Stripe Connect, schedule waitlists, marketing campaigns, permissions).
-- 🔴 **Stale / Neglected (>3 Weeks Ago — Prior to Aug 20, 2026)**: **14 pages** (6%) — flagged for explicit verification below.
+- **Total App Router Pages**: **254** distinct `page.tsx` surfaces.
+- 🟢 **Fresh / Recently Touched (Sep 1–4, 2026)**: **151 pages** (59%) — actively validated during final pre-launch hardening, WCAG remediation, voice/SMS contractor dispatch, and insights updates.
+- 🟡 **Stable (Aug 20–31, 2026)**: **91 pages** (36%) — hardened during late August feature sprints (Stripe Connect, schedule waitlists, marketing campaigns, permissions).
+- 🔴 **Stale / Neglected (>3 Weeks Ago — Prior to Aug 20, 2026)**: **12 pages** (5%) — flagged for explicit verification below.
 
 ### Neglected Page Triage & Disposition Matrix
 
-The following **14 pages** have not been touched in over 3 weeks. Each surface has been reviewed to determine its current operational status, whether it carries breaking changes or needs retirement, and its go-live disposition:
+The following **12 pages** have not been touched in over 3 weeks. Each surface has been reviewed to determine its current operational status, whether it carries breaking changes or needs retirement, and its go-live disposition:
 
 | Route | File Path | Last Touched | Commit | Launch Status & Disposition |
 | :--- | :--- | :--- | :--- | :--- |
-| `/demo/campaigns` | `src/app/demo/campaigns/page.tsx` | 2026-08-06 (4 weeks ago) | `b9fb1174e` | Static live-demo campaign builder. Renders demo mock sequences; verified operational without console errors. |
-| `/demo/marketing/performance` | `src/app/demo/marketing/performance/page.tsx` | 2026-08-06 (4 weeks ago) | `b9fb1174e` | Demo performance analytics view. Verified functional against synthetic metrics. |
-| `/demo/recurring` | `src/app/demo/recurring/page.tsx` | 2026-08-06 (4 weeks ago) | `b9fb1174e` | Demo recurring agreements manager. Verified rendering with mock agreements. |
+| `/demo/campaigns` | `src/app/demo/campaigns/page.tsx` | 2026-08-06 (5 weeks ago) | `b9fb1174e` | Static live-demo campaign builder. Renders demo mock sequences; verified operational without console errors. |
+| `/demo/marketing/performance` | `src/app/demo/marketing/performance/page.tsx` | 2026-08-06 (5 weeks ago) | `b9fb1174e` | Demo performance analytics view. Verified functional against synthetic metrics. |
+| `/demo/recurring` | `src/app/demo/recurring/page.tsx` | 2026-08-06 (5 weeks ago) | `b9fb1174e` | Demo recurring agreements manager. Verified rendering with mock agreements. |
 | `/home-compare` | `src/app/home-compare/page.tsx` | 2026-08-07 (4 weeks ago) | `56684ddd3` | A/B test homepage comparison rig (`/home-compare`). Standalone internal preview; non-indexed; safe. |
 | `/home-flagship` | `src/app/home-flagship/page.tsx` | 2026-08-07 (4 weeks ago) | `55a60a4d2` | Alternative flagship interactive tour homepage variant. Standalone internal preview; non-indexed; safe. |
-| `/dashboard/clients/import` | `src/app/dashboard/clients/import/page.tsx` | 2026-08-14 (3 weeks ago) | `3c18ab230` | CSV customer roster importer. Schema field mapping verified; paginated bulk import ready. |
 | `/dashboard/jobs/import` | `src/app/dashboard/jobs/import/page.tsx` | 2026-08-14 (3 weeks ago) | `3c18ab230` | CSV job history importer. Column matching and job staging verified operational. |
 | `/dashboard/jobs/import-invoices` | `src/app/dashboard/jobs/import-invoices/page.tsx` | 2026-08-14 (3 weeks ago) | `3c18ab230` | CSV invoice history importer. Connect ledger mapping verified. |
 | `/demo/messages` | `src/app/demo/messages/page.tsx` | 2026-08-14 (3 weeks ago) | `3c18ab230` | Demo message workspace. Updated on 2026-08-31 to serve as fallback target for AI Voice demo links. |
@@ -649,84 +649,84 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/dashboard/stripe-merchant/refresh` | `src/app/dashboard/stripe-merchant/refresh/page.tsx` | 2026-08-16 (3 weeks ago) | `fde575acb` | Stripe Connect merchant onboarding refresh redirect destination. Lightweight auth-gated redirector; verified. |
 | `/dashboard/stripe-merchant/return` | `src/app/dashboard/stripe-merchant/return/page.tsx` | 2026-08-16 (3 weeks ago) | `fde575acb` | Stripe Connect merchant onboarding return destination. Directs back to settings with refresh state; verified. |
 | `/features/client-portal` | `src/app/features/client-portal/page.tsx` | 2026-08-16 (3 weeks ago) | `28a2d0925` | Public feature page for Client Portal. Passed full 4-theme WCAG AA contrast audit on 2026-09-01. |
-| `/security` | `src/app/security/page.tsx` | 2026-08-16 (3 weeks ago) | `28a2d0925` | Platform security & trust overview page. Reconciled with subprocessor, SOC2, and storage encryption claims. |
 
 ---
 
-### Authenticated Dashboard (70 pages)
+### Authenticated Dashboard (71 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/dashboard` | `src/app/dashboard/page.tsx` | 2026-09-04 | `935050f98` | 🟢 Fresh |
+| `/dashboard` | `src/app/dashboard/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
 | `/dashboard/activity` | `src/app/dashboard/activity/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
-| `/dashboard/automations` | `src/app/dashboard/automations/page.tsx` | 2026-09-04 | `4c904ee01` | 🟢 Fresh |
-| `/dashboard/cash-flow` | `src/app/dashboard/cash-flow/page.tsx` | 2026-09-04 | `9c18d4ae9` | 🟢 Fresh |
-| `/dashboard/claims` | `src/app/dashboard/claims/page.tsx` | 2026-09-04 | `34a0844dc` | 🟢 Fresh |
-| `/dashboard/clients` | `src/app/dashboard/clients/page.tsx` | 2026-09-03 | `a18225bff` | 🟢 Fresh |
-| `/dashboard/clients/[id]` | `src/app/dashboard/clients/[id]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/dashboard/clients/[id]/statement` | `src/app/dashboard/clients/[id]/statement/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/clients/import` | `src/app/dashboard/clients/import/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
-| `/dashboard/crew` | `src/app/dashboard/crew/page.tsx` | 2026-09-04 | `c83dea52d` | 🟢 Fresh |
+| `/dashboard/automations` | `src/app/dashboard/automations/page.tsx` | 2026-09-05 | `cdc726cac` | 🟢 Fresh |
+| `/dashboard/cash-flow` | `src/app/dashboard/cash-flow/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/claims` | `src/app/dashboard/claims/page.tsx` | 2026-09-05 | `d56aabcb9` | 🟢 Fresh |
+| `/dashboard/clients` | `src/app/dashboard/clients/page.tsx` | 2026-09-05 | `5ba1a8884` | 🟢 Fresh |
+| `/dashboard/clients/[id]` | `src/app/dashboard/clients/[id]/page.tsx` | 2026-09-05 | `5ba1a8884` | 🟢 Fresh |
+| `/dashboard/clients/[id]/statement` | `src/app/dashboard/clients/[id]/statement/page.tsx` | 2026-09-05 | `b9fd05905` | 🟢 Fresh |
+| `/dashboard/clients/import` | `src/app/dashboard/clients/import/page.tsx` | 2026-09-05 | `b9fd05905` | 🟢 Fresh |
+| `/dashboard/crew` | `src/app/dashboard/crew/page.tsx` | 2026-09-06 | `24d05d92c` | 🟢 Fresh |
 | `/dashboard/crew/requests/[id]` | `src/app/dashboard/crew/requests/[id]/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
 | `/dashboard/crew/requests/new` | `src/app/dashboard/crew/requests/new/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/expenses` | `src/app/dashboard/expenses/page.tsx` | 2026-09-04 | `761c6c32c` | 🟢 Fresh |
+| `/dashboard/expenses` | `src/app/dashboard/expenses/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
 | `/dashboard/forms` | `src/app/dashboard/forms/page.tsx` | 2026-09-02 | `bff437d13` | 🟢 Fresh |
 | `/dashboard/forms/[id]` | `src/app/dashboard/forms/[id]/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
 | `/dashboard/forms/builder` | `src/app/dashboard/forms/builder/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
 | `/dashboard/help` | `src/app/dashboard/help/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/help/[caseId]` | `src/app/dashboard/help/[caseId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/import` | `src/app/dashboard/import/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
-| `/dashboard/insights` | `src/app/dashboard/insights/page.tsx` | 2026-09-04 | `34a0844dc` | 🟢 Fresh |
-| `/dashboard/inventory` | `src/app/dashboard/inventory/page.tsx` | 2026-09-04 | `34a0844dc` | 🟢 Fresh |
-| `/dashboard/jobs` | `src/app/dashboard/jobs/page.tsx` | 2026-09-04 | `c15eb7177` | 🟢 Fresh |
-| `/dashboard/jobs/[id]` | `src/app/dashboard/jobs/[id]/page.tsx` | 2026-09-04 | `c15eb7177` | 🟢 Fresh |
+| `/dashboard/insights` | `src/app/dashboard/insights/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/inventory` | `src/app/dashboard/inventory/page.tsx` | 2026-09-05 | `262334caf` | 🟢 Fresh |
+| `/dashboard/jobs` | `src/app/dashboard/jobs/page.tsx` | 2026-09-06 | `9f45d36b1` | 🟢 Fresh |
+| `/dashboard/jobs/[id]` | `src/app/dashboard/jobs/[id]/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
 | `/dashboard/jobs/[id]/forms/[submissionId]/print` | `src/app/dashboard/jobs/[id]/forms/[submissionId]/print/page.tsx` | 2026-09-01 | `12e223c0b` | 🟢 Fresh |
 | `/dashboard/jobs/[id]/invoices/[invoiceId]` | `src/app/dashboard/jobs/[id]/invoices/[invoiceId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/jobs/[id]/quote` | `src/app/dashboard/jobs/[id]/quote/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/jobs/import` | `src/app/dashboard/jobs/import/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
 | `/dashboard/jobs/import-invoices` | `src/app/dashboard/jobs/import-invoices/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
-| `/dashboard/leads` | `src/app/dashboard/leads/page.tsx` | 2026-09-03 | `a06ca21e2` | 🟢 Fresh |
+| `/dashboard/leads` | `src/app/dashboard/leads/page.tsx` | 2026-09-06 | `9f45d36b1` | 🟢 Fresh |
 | `/dashboard/leads/[leadId]` | `src/app/dashboard/leads/[leadId]/page.tsx` | 2026-09-03 | `2e6c7af21` | 🟢 Fresh |
-| `/dashboard/marketing` | `src/app/dashboard/marketing/page.tsx` | 2026-09-04 | `63ad353be` | 🟢 Fresh |
-| `/dashboard/marketing/ads` | `src/app/dashboard/marketing/ads/page.tsx` | 2026-09-03 | `77e751f04` | 🟢 Fresh |
-| `/dashboard/marketing/blog` | `src/app/dashboard/marketing/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/marketing/blog/[id]` | `src/app/dashboard/marketing/blog/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/marketing` | `src/app/dashboard/marketing/page.tsx` | 2026-09-06 | `123adafe2` | 🟢 Fresh |
+| `/dashboard/marketing/ads` | `src/app/dashboard/marketing/ads/page.tsx` | 2026-09-06 | `123adafe2` | 🟢 Fresh |
+| `/dashboard/marketing/blog` | `src/app/dashboard/marketing/blog/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
+| `/dashboard/marketing/blog/[id]` | `src/app/dashboard/marketing/blog/[id]/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
 | `/dashboard/marketing/campaigns` | `src/app/dashboard/marketing/campaigns/page.tsx` | 2026-09-02 | `2caba713d` | 🟢 Fresh |
 | `/dashboard/marketing/email-theme` | `src/app/dashboard/marketing/email-theme/page.tsx` | 2026-08-30 | `d311d6527` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/marketing/links` | `src/app/dashboard/marketing/links/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
+| `/dashboard/marketing/links` | `src/app/dashboard/marketing/links/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
 | `/dashboard/marketing/merchandise` | `src/app/dashboard/marketing/merchandise/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/dashboard/marketing/performance` | `src/app/dashboard/marketing/performance/page.tsx` | 2026-09-01 | `8fd524833` | 🟢 Fresh |
-| `/dashboard/marketing/referrals` | `src/app/dashboard/marketing/referrals/page.tsx` | 2026-08-22 | `9088f7d94` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/merchandise` | `src/app/dashboard/merchandise/page.tsx` | 2026-09-04 | `9abf2e074` | 🟢 Fresh |
-| `/dashboard/messages` | `src/app/dashboard/messages/page.tsx` | 2026-09-04 | `c15eb7177` | 🟢 Fresh |
+| `/dashboard/marketing/performance` | `src/app/dashboard/marketing/performance/page.tsx` | 2026-09-05 | `4e3fc2f5e` | 🟢 Fresh |
+| `/dashboard/marketing/referrals` | `src/app/dashboard/marketing/referrals/page.tsx` | 2026-09-05 | `d56aabcb9` | 🟢 Fresh |
+| `/dashboard/merchandise` | `src/app/dashboard/merchandise/page.tsx` | 2026-09-06 | `05f73a558` | 🟢 Fresh |
+| `/dashboard/messages` | `src/app/dashboard/messages/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
 | `/dashboard/messages/dedicated-number` | `src/app/dashboard/messages/dedicated-number/page.tsx` | 2026-09-01 | `3627683c9` | 🟢 Fresh |
-| `/dashboard/payments` | `src/app/dashboard/payments/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/dashboard/payroll` | `src/app/dashboard/payroll/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/payments` | `src/app/dashboard/payments/page.tsx` | 2026-09-07 | `204f78148` | 🟢 Fresh |
+| `/dashboard/payroll` | `src/app/dashboard/payroll/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
 | `/dashboard/quick-stops` | `src/app/dashboard/quick-stops/page.tsx` | 2026-09-04 | `19b4543d9` | 🟢 Fresh |
 | `/dashboard/rebook` | `src/app/dashboard/rebook/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/recurring` | `src/app/dashboard/recurring/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
-| `/dashboard/reports` | `src/app/dashboard/reports/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/reviews` | `src/app/dashboard/reviews/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/dashboard/schedule` | `src/app/dashboard/schedule/page.tsx` | 2026-09-04 | `20caf69e3` | 🟢 Fresh |
-| `/dashboard/schedule/booking` | `src/app/dashboard/schedule/booking/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/dashboard/schedule/dispatch` | `src/app/dashboard/schedule/dispatch/page.tsx` | 2026-08-26 | `ead4a91a6` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/schedule/plan` | `src/app/dashboard/schedule/plan/page.tsx` | 2026-09-04 | `20caf69e3` | 🟢 Fresh |
-| `/dashboard/schedule/requests` | `src/app/dashboard/schedule/requests/page.tsx` | 2026-08-26 | `ead4a91a6` | 🟡 Stable (Aug 20-31) |
+| `/dashboard/reports` | `src/app/dashboard/reports/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/reviews` | `src/app/dashboard/reviews/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
+| `/dashboard/schedule` | `src/app/dashboard/schedule/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/schedule/booking` | `src/app/dashboard/schedule/booking/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/schedule/dispatch` | `src/app/dashboard/schedule/dispatch/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/schedule/intake` | `src/app/dashboard/schedule/intake/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/schedule/plan` | `src/app/dashboard/schedule/plan/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/schedule/requests` | `src/app/dashboard/schedule/requests/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
 | `/dashboard/schedule/settings` | `src/app/dashboard/schedule/settings/page.tsx` | 2026-09-03 | `1ced5fca3` | 🟢 Fresh |
-| `/dashboard/schedule/waitlist` | `src/app/dashboard/schedule/waitlist/page.tsx` | 2026-09-03 | `e6e5b9d6d` | 🟢 Fresh |
-| `/dashboard/services` | `src/app/dashboard/services/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
-| `/dashboard/services/import` | `src/app/dashboard/services/import/page.tsx` | 2026-09-04 | `1cfdbde53` | 🟢 Fresh |
-| `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | 2026-09-04 | `d3bbb56e7` | 🟢 Fresh |
-| `/dashboard/sites` | `src/app/dashboard/sites/page.tsx` | 2026-09-04 | `cdfbbcdb8` | 🟢 Fresh |
+| `/dashboard/schedule/waitlist` | `src/app/dashboard/schedule/waitlist/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
+| `/dashboard/services` | `src/app/dashboard/services/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/services/import` | `src/app/dashboard/services/import/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
+| `/dashboard/settings` | `src/app/dashboard/settings/page.tsx` | 2026-09-07 | `02e5bc3a8` | 🟢 Fresh |
+| `/dashboard/sites` | `src/app/dashboard/sites/page.tsx` | 2026-09-07 | `bbcb8b9fa` | 🟢 Fresh |
 | `/dashboard/sites/preview` | `src/app/dashboard/sites/preview/page.tsx` | 2026-08-23 | `333d702a3` | 🟡 Stable (Aug 20-31) |
 | `/dashboard/stripe-merchant/refresh` | `src/app/dashboard/stripe-merchant/refresh/page.tsx` | 2026-08-16 | `fde575acb` | 🔴 Neglected (>3 wks) |
 | `/dashboard/stripe-merchant/return` | `src/app/dashboard/stripe-merchant/return/page.tsx` | 2026-08-16 | `fde575acb` | 🔴 Neglected (>3 wks) |
 | `/dashboard/stripe-return` | `src/app/dashboard/stripe-return/page.tsx` | 2026-09-01 | `3627683c9` | 🟢 Fresh |
-| `/dashboard/text-to-job` | `src/app/dashboard/text-to-job/page.tsx` | 2026-09-04 | `cdfbbcdb8` | 🟢 Fresh |
-| `/dashboard/trash` | `src/app/dashboard/trash/page.tsx` | 2026-09-01 | `3c3dff71a` | 🟢 Fresh |
+| `/dashboard/text-to-job` | `src/app/dashboard/text-to-job/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
+| `/dashboard/trash` | `src/app/dashboard/trash/page.tsx` | 2026-09-05 | `ab63b2a02` | 🟢 Fresh |
 | `/dashboard/voice-assistant` | `src/app/dashboard/voice-assistant/page.tsx` | 2026-08-26 | `cdd0b44fd` | 🟡 Stable (Aug 20-31) |
-| `/dashboard/voice-calls` | `src/app/dashboard/voice-calls/page.tsx` | 2026-09-04 | `935050f98` | 🟢 Fresh |
-| `/dashboard/voice-calls/[callId]` | `src/app/dashboard/voice-calls/[callId]/page.tsx` | 2026-09-04 | `935050f98` | 🟢 Fresh |
+| `/dashboard/voice-calls` | `src/app/dashboard/voice-calls/page.tsx` | 2026-09-06 | `42e93ae74` | 🟢 Fresh |
+| `/dashboard/voice-calls/[callId]` | `src/app/dashboard/voice-calls/[callId]/page.tsx` | 2026-09-06 | `42e93ae74` | 🟢 Fresh |
 
 ### Customer & Client Facing (10 pages)
 
@@ -734,7 +734,7 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | :--- | :--- | :--- | :--- | :--- |
 | `/book/[subdomain]` | `src/app/book/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/client/jobs/[token]` | `src/app/client/jobs/[token]/page.tsx` | 2026-09-03 | `5806fd4ca` | 🟢 Fresh |
-| `/invoice/[id]` | `src/app/invoice/[id]/page.tsx` | 2026-09-04 | `55e4f0ef4` | 🟢 Fresh |
+| `/invoice/[id]` | `src/app/invoice/[id]/page.tsx` | 2026-09-05 | `e6f557cb7` | 🟢 Fresh |
 | `/pay/[id]` | `src/app/pay/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/portal` | `src/app/portal/page.tsx` | 2026-09-04 | `55e4f0ef4` | 🟢 Fresh |
 | `/portal/[subdomain]` | `src/app/portal/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -753,56 +753,58 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/start` | `src/app/start/page.tsx` | 2026-09-03 | `35ba268ba` | 🟢 Fresh |
 | `/welcome` | `src/app/welcome/page.tsx` | 2026-09-03 | `35ba268ba` | 🟢 Fresh |
 
-### Product Features (23 pages)
+### Product Features (24 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/features` | `src/app/features/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
+| `/features` | `src/app/features/page.tsx` | 2026-09-07 | `23224eb68*` | 🟢 Fresh |
 | `/features-flagship` | `src/app/features-flagship/page.tsx` | 2026-08-26 | `de72f3cf5` | 🟡 Stable (Aug 20-31) |
 | `/features/ai-ads` | `src/app/features/ai-ads/page.tsx` | 2026-09-04 | `0f4c25d7f` | 🟢 Fresh |
-| `/features/ai-copilot` | `src/app/features/ai-copilot/page.tsx` | 2026-09-03 | `b6ede0e5b` | 🟢 Fresh |
+| `/features/ai-copilot` | `src/app/features/ai-copilot/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/features/ai-intake` | `src/app/features/ai-intake/page.tsx` | 2026-09-01 | `1a0c6fd90` | 🟢 Fresh |
-| `/features/ai-vision` | `src/app/features/ai-vision/page.tsx` | 2026-09-03 | `b6f2d990e` | 🟢 Fresh |
+| `/features/ai-vision` | `src/app/features/ai-vision/page.tsx` | 2026-09-07 | `23224eb68` | 🟢 Fresh |
 | `/features/ai-voice` | `src/app/features/ai-voice/page.tsx` | 2026-09-01 | `c39099360` | 🟢 Fresh |
 | `/features/back-office` | `src/app/features/back-office/page.tsx` | 2026-09-01 | `80232fe27` | 🟢 Fresh |
 | `/features/cash-flow` | `src/app/features/cash-flow/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
 | `/features/client-portal` | `src/app/features/client-portal/page.tsx` | 2026-08-16 | `28a2d0925` | 🔴 Neglected (>3 wks) |
-| `/features/crew` | `src/app/features/crew/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
+| `/features/crew` | `src/app/features/crew/page.tsx` | 2026-09-07 | `e4f635a58*` | 🟢 Fresh |
 | `/features/dispatch` | `src/app/features/dispatch/page.tsx` | 2026-08-27 | `91f85e576` | 🟡 Stable (Aug 20-31) |
-| `/features/neighborhood-halo` | `src/app/features/neighborhood-halo/page.tsx` | 2026-09-03 | `5fad5ce03` | 🟢 Fresh |
+| `/features/live-eta` | `src/app/features/live-eta/page.tsx` | 2026-09-07 | `*` | 🟢 Fresh |
+| `/features/neighborhood-halo` | `src/app/features/neighborhood-halo/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/features/payments` | `src/app/features/payments/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
 | `/features/quick-stops` | `src/app/features/quick-stops/page.tsx` | 2026-08-29 | `0533d57a9` | 🟡 Stable (Aug 20-31) |
 | `/features/quotes` | `src/app/features/quotes/page.tsx` | 2026-09-02 | `37dc4c966` | 🟢 Fresh |
 | `/features/recurring` | `src/app/features/recurring/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
 | `/features/reviews` | `src/app/features/reviews/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
 | `/features/scheduling` | `src/app/features/scheduling/page.tsx` | 2026-08-29 | `e4f635a58` | 🟡 Stable (Aug 20-31) |
-| `/features/sparky` | `src/app/features/sparky/page.tsx` | 2026-09-03 | `750e8cb1f` | 🟢 Fresh |
-| `/features/text-to-job` | `src/app/features/text-to-job/page.tsx` | 2026-09-03 | `2a9510fff` | 🟢 Fresh |
-| `/features/website-builder` | `src/app/features/website-builder/page.tsx` | 2026-09-02 | `dd0a59154` | 🟢 Fresh |
+| `/features/sparky` | `src/app/features/sparky/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/features/text-to-job` | `src/app/features/text-to-job/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/features/website-builder` | `src/app/features/website-builder/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/features/website-builder-mockup` | `src/app/features/website-builder-mockup/page.tsx` | 2026-08-28 | `ec20b4264` | 🟡 Stable (Aug 20-31) |
 
-### Public Marketing (41 pages)
+### Public Marketing (42 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/` | `src/app/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
+| `/` | `src/app/page.tsx` | 2026-09-07 | `23224eb68*` | 🟢 Fresh |
 | `/account-suspended` | `src/app/account-suspended/page.tsx` | 2026-08-31 | `33c409ea4` | 🟡 Stable (Aug 20-31) |
 | `/card-saved` | `src/app/card-saved/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/changelog` | `src/app/changelog/page.tsx` | 2026-08-26 | `192ffbce6` | 🟡 Stable (Aug 20-31) |
+| `/claim/halo/[id]` | `src/app/claim/halo/[id]/page.tsx` | 2026-09-06 | `123adafe2` | 🟢 Fresh |
 | `/contact` | `src/app/contact/page.tsx` | 2026-09-01 | `80232fe27` | 🟢 Fresh |
 | `/dpa` | `src/app/dpa/page.tsx` | 2026-08-27 | `91f85e576` | 🟡 Stable (Aug 20-31) |
-| `/faq` | `src/app/faq/page.tsx` | 2026-09-02 | `beaf80591` | 🟢 Fresh |
-| `/field` | `src/app/field/page.tsx` | 2026-09-04 | `19b4543d9` | 🟢 Fresh |
+| `/faq` | `src/app/faq/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/field` | `src/app/field/page.tsx` | 2026-09-06 | `97c00e46b` | 🟢 Fresh |
 | `/field/choose` | `src/app/field/choose/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
 | `/field/dictate` | `src/app/field/dictate/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
 | `/field/intake/[id]` | `src/app/field/intake/[id]/page.tsx` | 2026-09-04 | `19b4543d9` | 🟢 Fresh |
-| `/field/jobs/[id]` | `src/app/field/jobs/[id]/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
-| `/field/login` | `src/app/field/login/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/field/jobs/[id]` | `src/app/field/jobs/[id]/page.tsx` | 2026-09-06 | `97c00e46b` | 🟢 Fresh |
+| `/field/login` | `src/app/field/login/page.tsx` | 2026-09-06 | `24d05d92c` | 🟢 Fresh |
 | `/field/offline` | `src/app/field/offline/page.tsx` | 2026-08-28 | `a54825870` | 🟡 Stable (Aug 20-31) |
 | `/field/pay` | `src/app/field/pay/page.tsx` | 2026-09-02 | `3a3f2aa65` | 🟢 Fresh |
-| `/for` | `src/app/for/page.tsx` | 2026-09-03 | `7091aae2d` | 🟢 Fresh |
+| `/for` | `src/app/for/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/for-mockup` | `src/app/for-mockup/page.tsx` | 2026-09-01 | `a519c0ee6` | 🟢 Fresh |
-| `/founder` | `src/app/founder/page.tsx` | 2026-09-03 | `de1142d9c` | 🟢 Fresh |
+| `/founder` | `src/app/founder/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/home-classic` | `src/app/home-classic/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/home-compact` | `src/app/home-compact/page.tsx` | 2026-08-28 | `c5132ccf2` | 🟡 Stable (Aug 20-31) |
 | `/home-compare` | `src/app/home-compare/page.tsx` | 2026-08-07 | `56684ddd3` | 🔴 Neglected (>3 wks) |
@@ -812,15 +814,15 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/how-it-works` | `src/app/how-it-works/page.tsx` | 2026-09-02 | `dd0a59154` | 🟢 Fresh |
 | `/office-access` | `src/app/office-access/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/passport/[passportCode]` | `src/app/passport/[passportCode]/page.tsx` | 2026-09-01 | `a05e3d1a4` | 🟢 Fresh |
-| `/pricing` | `src/app/pricing/page.tsx` | 2026-09-04 | `c15eb7177` | 🟢 Fresh |
+| `/pricing` | `src/app/pricing/page.tsx` | 2026-09-07 | `c10f67cda` | 🟢 Fresh |
 | `/privacy` | `src/app/privacy/page.tsx` | 2026-09-01 | `0cc7421e7` | 🟢 Fresh |
 | `/quick-stop/[id]` | `src/app/quick-stop/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/quickbooks/disconnected` | `src/app/quickbooks/disconnected/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/recover-account` | `src/app/recover-account/page.tsx` | 2026-09-01 | `82eefc37f` | 🟢 Fresh |
-| `/resources` | `src/app/resources/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/resources/[slug]` | `src/app/resources/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/resources` | `src/app/resources/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/resources/[slug]` | `src/app/resources/[slug]/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/schedule/[token]` | `src/app/schedule/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/security` | `src/app/security/page.tsx` | 2026-08-16 | `28a2d0925` | 🔴 Neglected (>3 wks) |
+| `/security` | `src/app/security/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/sms-terms` | `src/app/sms-terms/page.tsx` | 2026-08-31 | `51abfa532` | 🟡 Stable (Aug 20-31) |
 | `/sub/[token]` | `src/app/sub/[token]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/terms` | `src/app/terms/page.tsx` | 2026-08-31 | `51abfa532` | 🟡 Stable (Aug 20-31) |
@@ -831,21 +833,21 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/for/[trade]` | `src/app/for/[trade]/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
+| `/for/[trade]` | `src/app/for/[trade]/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 
 ### Competitive Comparisons (2 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/compare` | `src/app/compare/page.tsx` | 2026-09-01 | `ba8cc421a` | 🟢 Fresh |
-| `/compare/[competitor]` | `src/app/compare/[competitor]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/compare` | `src/app/compare/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/compare/[competitor]` | `src/app/compare/[competitor]/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 
 ### Public Free Tools (4 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/tools` | `src/app/tools/page.tsx` | 2026-09-01 | `80232fe27` | 🟢 Fresh |
-| `/tools/estimate-generator` | `src/app/tools/estimate-generator/page.tsx` | 2026-09-01 | `80232fe27` | 🟢 Fresh |
+| `/tools` | `src/app/tools/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
+| `/tools/estimate-generator` | `src/app/tools/estimate-generator/page.tsx` | 2026-09-05 | `a49cbac93` | 🟢 Fresh |
 | `/tools/hourly-rate-calculator` | `src/app/tools/hourly-rate-calculator/page.tsx` | 2026-08-27 | `503c50171` | 🟡 Stable (Aug 20-31) |
 | `/tools/leakage-calculator` | `src/app/tools/leakage-calculator/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 
@@ -858,11 +860,11 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/help/manual` | `src/app/help/manual/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
 | `/help/manual/[slug]` | `src/app/help/manual/[slug]/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
 
-### Interactive Demo (45 pages)
+### Interactive Demo (46 pages)
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/demo` | `src/app/demo/page.tsx` | 2026-09-04 | `0c66cd74b` | 🟢 Fresh |
+| `/demo` | `src/app/demo/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
 | `/demo/automations` | `src/app/demo/automations/page.tsx` | 2026-08-27 | `2dc29d9e9` | 🟡 Stable (Aug 20-31) |
 | `/demo/campaigns` | `src/app/demo/campaigns/page.tsx` | 2026-08-06 | `b9fb1174e` | 🔴 Neglected (>3 wks) |
 | `/demo/cash-flow` | `src/app/demo/cash-flow/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -876,14 +878,15 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/demo/jobs/[id]` | `src/app/demo/jobs/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/demo/leads` | `src/app/demo/leads/page.tsx` | 2026-09-03 | `f97c93a14` | 🟢 Fresh |
 | `/demo/leads/[leadId]` | `src/app/demo/leads/[leadId]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/demo/marketing` | `src/app/demo/marketing/page.tsx` | 2026-09-01 | `c39099360` | 🟢 Fresh |
+| `/demo/marketing` | `src/app/demo/marketing/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
 | `/demo/marketing/ads` | `src/app/demo/marketing/ads/page.tsx` | 2026-08-30 | `7886b7ea9` | 🟡 Stable (Aug 20-31) |
 | `/demo/marketing/blog` | `src/app/demo/marketing/blog/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
 | `/demo/marketing/blog/[id]` | `src/app/demo/marketing/blog/[id]/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
 | `/demo/marketing/campaigns` | `src/app/demo/marketing/campaigns/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/demo/marketing/email-theme` | `src/app/demo/marketing/email-theme/page.tsx` | 2026-09-01 | `c39099360` | 🟢 Fresh |
-| `/demo/marketing/links` | `src/app/demo/marketing/links/page.tsx` | 2026-09-01 | `8eb04f1ba` | 🟢 Fresh |
+| `/demo/marketing/links` | `src/app/demo/marketing/links/page.tsx` | 2026-09-05 | `7e1906c94` | 🟢 Fresh |
 | `/demo/marketing/performance` | `src/app/demo/marketing/performance/page.tsx` | 2026-08-06 | `b9fb1174e` | 🔴 Neglected (>3 wks) |
+| `/demo/marketing/referrals` | `src/app/demo/marketing/referrals/page.tsx` | 2026-09-05 | `5ba1a8884` | 🟢 Fresh |
 | `/demo/messages` | `src/app/demo/messages/page.tsx` | 2026-08-14 | `3c18ab230` | 🔴 Neglected (>3 wks) |
 | `/demo/payroll` | `src/app/demo/payroll/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/demo/quick-stops` | `src/app/demo/quick-stops/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -912,7 +915,7 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/admin` | `src/app/admin/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
+| `/admin` | `src/app/admin/page.tsx` | 2026-09-06 | `937e5e89e` | 🟢 Fresh |
 | `/admin/accounts` | `src/app/admin/accounts/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
 | `/admin/accounts/[id]` | `src/app/admin/accounts/[id]/page.tsx` | 2026-09-04 | `92b992c43` | 🟢 Fresh |
 | `/admin/accounts/closures` | `src/app/admin/accounts/closures/page.tsx` | 2026-09-04 | `1edfb2a04` | 🟢 Fresh |
@@ -939,7 +942,7 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/admin/quick-stops/[id]` | `src/app/admin/quick-stops/[id]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/admin/risk` | `src/app/admin/risk/page.tsx` | 2026-09-04 | `1a08f02c8` | 🟢 Fresh |
 | `/admin/search` | `src/app/admin/search/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-| `/admin/security` | `src/app/admin/security/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/admin/security` | `src/app/admin/security/page.tsx` | 2026-09-06 | `937e5e89e` | 🟢 Fresh |
 | `/admin/staff` | `src/app/admin/staff/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/admin/voice/numbers` | `src/app/admin/voice/numbers/page.tsx` | 2026-09-03 | `bd25aa7ac` | 🟢 Fresh |
 
@@ -947,7 +950,7 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 
 | Route | Source File | Last Touched | Commit | Freshness |
 | :--- | :--- | :--- | :--- | :--- |
-| `/site-domain/[domain]` | `src/app/site-domain/[domain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/site-domain/[domain]` | `src/app/site-domain/[domain]/page.tsx` | 2026-09-05 | `e0ad82cd7` | 🟢 Fresh |
 | `/site-domain/[domain]/blog` | `src/app/site-domain/[domain]/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site-domain/[domain]/blog/[slug]` | `src/app/site-domain/[domain]/blog/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site-domain/[domain]/portal` | `src/app/site-domain/[domain]/portal/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
@@ -955,7 +958,7 @@ The following **14 pages** have not been touched in over 3 weeks. Each surface h
 | `/site-domain/[domain]/terms` | `src/app/site-domain/[domain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site-domain/[domain]/videos` | `src/app/site-domain/[domain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site-preview-frame` | `src/app/site-preview-frame/page.tsx` | 2026-09-01 | `792b40156` | 🟢 Fresh |
-| `/site/[subdomain]` | `src/app/site/[subdomain]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
+| `/site/[subdomain]` | `src/app/site/[subdomain]/page.tsx` | 2026-09-05 | `e0ad82cd7` | 🟢 Fresh |
 | `/site/[subdomain]/blog` | `src/app/site/[subdomain]/blog/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/blog/[slug]` | `src/app/site/[subdomain]/blog/[slug]/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/portal` | `src/app/site/[subdomain]/portal/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |

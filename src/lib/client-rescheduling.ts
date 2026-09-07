@@ -1,5 +1,3 @@
-import { haversineMiles, type LatLng, minutesFromMiles } from '@/lib/distance';
-
 export type RescheduleSlotId = 'morning' | 'afternoon' | 'evening';
 
 export type RescheduleSlotDef = {
@@ -47,17 +45,6 @@ export type RescheduleWindow = {
 export type RescheduleValidationResult = {
   allowed: boolean;
   reason?: string;
-};
-
-export type LiveArrivalEtaResult = {
-  status: 'on_schedule' | 'arriving_early' | 'running_late' | 'arrived';
-  distanceMiles: number;
-  estimatedDriveMinutes: number;
-  estimatedArrivalLabel: string;
-  varianceMinutes: number;
-  progressPct: number;
-  headline: string;
-  tone: 'success' | 'warn' | 'neutral';
 };
 
 export const DEFAULT_MIN_NOTICE_HOURS = 2;
@@ -157,81 +144,4 @@ export function validateRescheduleRequest(params: {
   }
 
   return { allowed: true };
-}
-
-/**
- * Calculates live driving ETA and progress percentage toward destination.
- */
-export function calculateLiveArrivalEta(params: {
-  technicianCoord: LatLng;
-  destinationCoord: LatLng;
-  promisedStartIso?: string | null;
-  promisedEndIso?: string | null;
-  now?: Date;
-}): LiveArrivalEtaResult {
-  const now = params.now || new Date();
-  const distanceMiles = Math.round(haversineMiles(params.technicianCoord, params.destinationCoord) * 10) / 10;
-  const driveMinutes = minutesFromMiles(distanceMiles);
-
-  const etaDate = new Date(now.getTime() + driveMinutes * 60_000);
-  const arrivalTimeStr = etaDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-  });
-
-  if (distanceMiles <= 0.05) {
-    return {
-      status: 'arrived',
-      distanceMiles: 0,
-      estimatedDriveMinutes: 0,
-      estimatedArrivalLabel: 'Arrived on site',
-      varianceMinutes: 0,
-      progressPct: 100,
-      headline: 'Technician has arrived at your address',
-      tone: 'success',
-    };
-  }
-
-  let status: LiveArrivalEtaResult['status'] = 'on_schedule';
-  let tone: LiveArrivalEtaResult['tone'] = 'success';
-  let varianceMinutes = 0;
-  let headline = `Estimated arrival at ${arrivalTimeStr} (~${driveMinutes} mins away)`;
-
-  if (params.promisedEndIso) {
-    const promisedEndMs = new Date(params.promisedEndIso).getTime();
-    if (!isNaN(promisedEndMs)) {
-      varianceMinutes = Math.round((etaDate.getTime() - promisedEndMs) / 60_000);
-      if (varianceMinutes > 15) {
-        status = 'running_late';
-        tone = 'warn';
-        headline = `Running ~${varianceMinutes} mins behind due to traffic. New ETA: ${arrivalTimeStr}`;
-      }
-    }
-  }
-
-  if (params.promisedStartIso) {
-    const promisedStartMs = new Date(params.promisedStartIso).getTime();
-    if (!isNaN(promisedStartMs)) {
-      const earlyMins = Math.round((promisedStartMs - etaDate.getTime()) / 60_000);
-      if (earlyMins > 20) {
-        status = 'arriving_early';
-        tone = 'neutral';
-        headline = `Technician is running ahead of schedule! Expected around ${arrivalTimeStr}`;
-      }
-    }
-  }
-
-  // Approximate progress: 10 miles away = 10% progress, 0.5 miles away = 95% progress
-  const progressPct = Math.min(95, Math.max(10, Math.round(100 - distanceMiles * 8)));
-
-  return {
-    status,
-    distanceMiles,
-    estimatedDriveMinutes: driveMinutes,
-    estimatedArrivalLabel: `ETA ~${arrivalTimeStr}`,
-    varianceMinutes,
-    progressPct,
-    headline,
-    tone,
-  };
 }

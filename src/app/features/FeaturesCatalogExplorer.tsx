@@ -33,6 +33,7 @@ const FEATURE_DEEP_LINKS: Record<string, string> = {
   'weather-ad-surge': '/features/ai-ads',
   'closed-loop-conversions': '/features/ai-ads',
   'neighborhood-halo': '/features/neighborhood-halo',
+  'live-eta': '/features/live-eta',
 };
 
 export default function FeaturesCatalogExplorer() {

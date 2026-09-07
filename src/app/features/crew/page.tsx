@@ -275,7 +275,12 @@ export default function CrewFeaturePage() {
         },
         {
           q: 'Does it track where my crew are?',
-          a: 'No. There is no background location and nothing runs while they work. Location is shared only when somebody sends an “on my way” message and only if they turn it on for that trip, and the link the homeowner gets expires on its own. It is a delivery-style tracker for one journey, not a record of anybody’s day.',
+          a: (
+            <>
+              No. There is no background location and nothing runs while they work. Location is shared only when somebody sends an “on my way” message and only if they turn it on for that trip, and the link the homeowner gets expires on its own. It is a delivery-style tracker for one journey, not a record of anybody’s day.{' '}
+              <a href="/features/live-eta">Live ETA sharing has its own page.</a>
+            </>
+          ),
         },
         {
           q: 'Can I control what each person can do?',

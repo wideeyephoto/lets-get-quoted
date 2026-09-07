@@ -138,6 +138,12 @@ const CARDS = [
     title: 'Run your jobs hands-free from the truck.',
     foot: 'Dictate change orders · File receipt photos · 15-minute undo',
   },
+  {
+    slug: 'live-eta',
+    eyebrow: 'LIVE ETA SHARING',
+    title: 'Your customer stops wondering where you are.',
+    foot: 'Expiring map link · 4-hour lifetime · Automatic delay notice',
+  },
 ];
 
 /** The real mark, inlined — the renderer has no origin to fetch it from. */

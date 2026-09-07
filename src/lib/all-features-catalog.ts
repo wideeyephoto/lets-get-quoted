@@ -792,7 +792,7 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
         tags: ['GPS', 'ETA', 'Customer Portal'],
         subBullets: [
           'Generates a secure, expiring tracking link with live map pin and technician first name/photo.',
-          'Dynamically recalculates arrival windows with traffic awareness and dispatches automatic delay notices when running behind.',
+          'Dynamically recalculates arrival windows against live traffic (with fallback estimation) and dispatches automatic delay notices when running behind.',
         ],
       },
     ],

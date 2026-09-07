@@ -27,7 +27,6 @@ import {
   newTrackingToken,
   type TrackingRow,
 } from '@/lib/job-tracking';
-import { calculateLiveArrivalEta } from '@/lib/client-rescheduling';
 import { CAPABILITIES } from '@/lib/product-truth';
 import { ALL_FEATURES_CATALOG } from '@/lib/all-features-catalog';
 import fs from 'fs';
@@ -139,21 +138,28 @@ describe('Live Technician ETA Sharing & Expiring Map Links', () => {
       expect(message).not.toContain('http');
     });
 
-    it('calculates live arrival ETA tone, progress, and traffic delay in client rescheduling', () => {
-      const techFar = { lat: 40.9000, lng: -74.2731 }; // ~11 miles away (~22 mins drive)
-      const destCoord = { lat: 40.7312, lng: -74.2731 };
+    it('detects delay and flips status when live ETA exceeds promised window plus grace period', () => {
+      const originalPromise = arrivalWindowTimes(NOON, 15, { windowStyle: 'window', windowMinutes: 30 }); // 12:15 to 12:45
+      const now = new Date(NOON.getTime() + 10 * 60_000); // 12:10 PM
 
-      const liveEta = calculateLiveArrivalEta({
-        technicianCoord: techFar,
-        destinationCoord: destCoord,
-        promisedEndIso: new Date(NOON.getTime() + 5 * 60_000).toISOString(), // Window ends in 5 mins!
-        now: NOON,
-      });
+      // ETA 36 min -> new arrival start is 12:46 PM (1 min past end, within 2 min grace period)
+      const withinGrace = recalculateLiveArrivalTimes(
+        now,
+        36,
+        { windowStyle: 'window', windowMinutes: 30 },
+        originalPromise.end.toISOString(),
+      );
+      expect(withinGrace.isDelayed).toBe(false);
 
-      expect(liveEta.status).toBe('running_late');
-      expect(liveEta.tone).toBe('warn');
-      expect(liveEta.headline).toContain('behind due to traffic');
-      expect(liveEta.varianceMinutes).toBeGreaterThan(15);
+      // ETA 38 min -> new arrival start is 12:48 PM (3 min past end, past 2 min grace period)
+      const pastGrace = recalculateLiveArrivalTimes(
+        now,
+        38,
+        { windowStyle: 'window', windowMinutes: 30 },
+        originalPromise.end.toISOString(),
+      );
+      expect(pastGrace.isDelayed).toBe(true);
+      expect(pastGrace.minutesLate).toBe(3);
     });
   });
 

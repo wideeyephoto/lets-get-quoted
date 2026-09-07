@@ -33,6 +33,7 @@ const SLUGS = [
   'ai-voice',
   'dispatch',
   'text-to-job',
+  'live-eta',
 ];
 
 const source = (slug: string) =>
