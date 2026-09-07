@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { AUTOMATION_ANCHORS, isAutomationsAnchor } from '@/lib/nav-helpers';
+import { NAV_RAIL_ORDER } from '@/lib/nav-visibility';
 
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
 
@@ -490,5 +491,12 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     expect(SHELL).toContain("const showCount = !showState && count > 0");
     expect(SHELL).toContain("const showNew = !showState && !showCount && isNew");
     expect(SHELL).toContain("const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0)");
+  });
+
+  it('Persona Gating Invariant: NAV_RAIL_ORDER in nav-visibility.ts strictly matches NAV_GROUPS hrefs', () => {
+    const groupsBlock = SHELL.slice(SHELL.indexOf('export const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
+    expect([...NAV_RAIL_ORDER]).toEqual(hrefMatches);
+    expect(NAV_RAIL_ORDER).toHaveLength(13);
   });
 });
