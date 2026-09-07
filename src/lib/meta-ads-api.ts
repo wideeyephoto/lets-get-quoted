@@ -53,6 +53,8 @@ export type ProvisionMetaCampaignParams = {
   trade: string;
   city: string;
   radiusMiles: number;
+  latitude?: number;
+  longitude?: number;
   monthlyBudgetDollars: number;
   landingPageUrl: string;
   durationDays?: number;
@@ -92,6 +94,8 @@ export async function provisionManagedMetaCampaign(
     trade,
     city,
     radiusMiles = 25,
+    latitude,
+    longitude,
     monthlyBudgetDollars,
     landingPageUrl,
     durationDays,
@@ -172,6 +176,25 @@ export async function provisionManagedMetaCampaign(
 
       // 2. Create Ad Set (PAUSED)
       const cleanCity = city.replace(/,\s*[A-Z]{2}$/i, '').trim();
+      const geoLocations: Record<string, unknown> = {
+        countries: ['US'],
+      };
+      if (
+        typeof latitude === 'number' &&
+        typeof longitude === 'number' &&
+        !Number.isNaN(latitude) &&
+        !Number.isNaN(longitude)
+      ) {
+        geoLocations.custom_locations = [
+          {
+            latitude,
+            longitude,
+            radius: Math.max(1, radiusMiles),
+            distance_unit: 'mile',
+          },
+        ];
+      }
+
       const adSetRes = await fetch(
         `${META_GRAPH_API_BASE_URL}/${targetAdAccountId}/adsets`,
         {
@@ -187,10 +210,7 @@ export async function provisionManagedMetaCampaign(
             bid_strategy: 'LOWEST_COST_WITHOUT_CAP',
             ...(computedEndTime ? { end_time: computedEndTime } : {}),
             targeting: {
-              geo_locations: {
-                countries: ['US'],
-                cities: [{ name: cleanCity, radius: radiusMiles, distance_unit: 'mile' }],
-              },
+              geo_locations: geoLocations,
             },
             status: 'PAUSED',
           }),
@@ -199,8 +219,8 @@ export async function provisionManagedMetaCampaign(
 
       if (!adSetRes.ok) {
         const errData = await adSetRes.json().catch(() => ({}));
-        const errMsg = errData.error?.message || `HTTP ${adSetRes.status}`;
-        console.error('Meta AdSet creation failed:', errMsg);
+        console.error('Meta AdSet creation failed:', JSON.stringify(errData, null, 2));
+        const errMsg = errData.error?.error_user_msg || errData.error?.message || `HTTP ${adSetRes.status}`;
         return {
           success: false,
           campaignId,
@@ -243,8 +263,8 @@ export async function provisionManagedMetaCampaign(
 
       if (!creativeRes.ok) {
         const errData = await creativeRes.json().catch(() => ({}));
-        const errMsg = errData.error?.message || `HTTP ${creativeRes.status}`;
-        console.error('Meta Creative creation failed:', errMsg);
+        console.error('Meta Creative creation failed:', JSON.stringify(errData, null, 2));
+        const errMsg = errData.error?.error_user_msg || errData.error?.message || `HTTP ${creativeRes.status}`;
         return {
           success: false,
           campaignId,

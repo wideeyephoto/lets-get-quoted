@@ -420,6 +420,9 @@ export async function launchHaloCampaign(
     p_account_id: accountId,
     p_spend_cents: spendCents,
     p_date: todayIso,
+    p_clicks: 0,
+    p_impressions: 0,
+    p_conversions: 0,
     p_source: 'neighborhood_halo_launch',
   });
 
@@ -485,6 +488,8 @@ export async function launchHaloCampaign(
         trade: job.trade || getSiteContent(site?.content).trade || 'Contracting',
         city,
         radiusMiles: radius,
+        latitude: job.lat ? Number(job.lat) : undefined,
+        longitude: job.lng ? Number(job.lng) : undefined,
         monthlyBudgetDollars: Math.round(budget * (30.4 / duration)),
         landingPageUrl: landingUrl,
         durationDays: duration,
