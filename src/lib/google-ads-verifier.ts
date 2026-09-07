@@ -282,7 +282,6 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
               },
               maximizeConversions: {},
               containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
-              startDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
             },
           },
         ],

@@ -168,7 +168,6 @@ export async function runVerification(options = {}) {
         targetContentNetwork: false,
         targetPartnerSearchNetwork: false,
       },
-      startDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
     };
 
     if ('biddingStrategyType' in sampleCampaignPayload) {
@@ -401,7 +400,6 @@ export async function runVerification(options = {}) {
               },
               maximizeConversions: {},
               containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING',
-              startDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
             },
           },
         ],
