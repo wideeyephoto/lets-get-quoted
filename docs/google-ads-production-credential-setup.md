@@ -80,3 +80,14 @@ Consent currently defaults `ad_storage`, `ad_user_data`, `ad_personalization`, a
 - A newly issued developer token may initially have Test Account Access. Production calls require Explorer, Basic, or Standard Access; Basic Access review is typically five business days when an automatic Explorer upgrade is not granted.
 - The issued developer token has Explorer Access: permits production-account operations capped at **2,880 operations/day for production accounts** (the 15,000 operations/day limit applies only to test accounts under Explorer Access, or to Basic Access tokens). Upgrading to Basic Access (15,000 ops/day on production) requires standard application review in the Google Ads API Center.
 - Google Cloud projects become paired with a Google Ads developer token after the first API request. This project must not be tested with a different manager account's token.
+
+## Live Network Verification Record (Completed 2026-09-07)
+
+Live write-path and offline conversion probes were executed against real Google Ads API v25 endpoints from Vercel Production via authenticated endpoint `/api/admin/verify-google-ads`:
+
+1. **Serving Account Confirmation**: Queried account metadata for advertiser `228-567-1544` under MCC `***-***-7203`. Confirmed `testAccount: false` (real production account), `currency: USD`, `timeZone: America/New_York`.
+2. **Campaign Budget Mutation**: Successfully created daily campaign budget (`campaignBudgets/15859183194`, HTTP 200).
+3. **Paused Campaign Creation**: Successfully created search campaign with `status: 'PAUSED'`, `containsEuPoliticalAdvertising: 'DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING'`, and `maximizeConversions: {}` (`campaigns/24231331135`, HTTP 200).
+4. **Status Mutate & Teardown**: Executed `campaigns:mutate` status update with `updateMask=status`, cleanly transitioning the test campaign to `REMOVED` (HTTP 200). Zero test spend incurred.
+5. **Offline Click Conversions Reachability**: Probed `ConversionUploadService.uploadClickConversions`. Received HTTP 200 (`allowlisted: true`, `requiresDataManagerApi: false`), confirming the developer token is active and allowlisted on production without blocking errors.
+
