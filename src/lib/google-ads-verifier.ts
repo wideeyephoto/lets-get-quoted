@@ -31,6 +31,7 @@ export type VerifierOptions = {
   mccCustomerId?: string;
   cleanup?: boolean;
   conversionActionId?: string;
+  createConversionAction?: boolean;
 };
 
 export type StepResult = {
@@ -49,6 +50,8 @@ export type VerificationReport = {
   mccCustomerId?: string;
   servingCustomerId?: string | null;
   conversionActions?: Array<{ id: string; name: string; type: string; status: string }>;
+  billingSetups?: Array<{ id: string; status: string; paymentsAccountId?: string }>;
+  wonJobConversionActionId?: string;
   steps: StepResult[];
   success: boolean;
   error?: string | null;
@@ -241,15 +244,94 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
       // Non-blocking query
     }
 
+    // Query billing setups in the account
+    try {
+      const billingRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/googleAds:search`, {
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({
+          query: 'SELECT billing_setup.id, billing_setup.status, billing_setup.payments_account_info.payments_account_id FROM billing_setup',
+        }),
+      });
+      if (billingRes.ok) {
+        const billingData = await billingRes.json();
+        report.billingSetups = (billingData.results || []).map((r: { billingSetup?: Record<string, unknown> }) => ({
+          id: String(r.billingSetup?.id || ''),
+          status: String(r.billingSetup?.status || ''),
+          paymentsAccountId: String((r.billingSetup?.paymentsAccountInfo as Record<string, unknown>)?.paymentsAccountId || ''),
+        }));
+      }
+    } catch {
+      // Non-blocking query
+    }
+
+    // Check if an offline conversion action exists
+    let wonJobAction = report.conversionActions?.find(
+      (a) => a.type === 'UPLOAD_CLICKS' || a.name.toLowerCase().includes('job won') || a.name.toLowerCase().includes('offline')
+    );
+
+    // If missing and createConversionAction is requested, create it
+    if (!wonJobAction && options.createConversionAction !== false) {
+      try {
+        const createConvRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/conversionActions:mutate`, {
+          method: 'POST',
+          headers: baseHeaders,
+          body: JSON.stringify({
+            operations: [
+              {
+                create: {
+                  name: 'Job Won (Offline)',
+                  type: 'UPLOAD_CLICKS',
+                  category: 'PURCHASE',
+                  status: 'ENABLED',
+                  valueSettings: {
+                    defaultValue: 500,
+                    alwaysUseDefaultValue: false,
+                  },
+                },
+              },
+            ],
+          }),
+        });
+        if (createConvRes.ok) {
+          const createData = await createConvRes.json();
+          const createdResource = createData.results?.[0]?.resourceName;
+          const createdId = createdResource?.split('/')?.pop() || '';
+          if (createdId) {
+            wonJobAction = {
+              id: createdId,
+              name: 'Job Won (Offline)',
+              type: 'UPLOAD_CLICKS',
+              status: 'ENABLED',
+            };
+            report.conversionActions = [...(report.conversionActions || []), wonJobAction];
+          }
+        } else {
+          const errText = await createConvRes.text();
+          console.warn('Could not auto-create conversion action:', errText);
+        }
+      } catch (e) {
+        console.warn('Auto-create conversion action exception:', e);
+      }
+    }
+
+    if (wonJobAction) {
+      report.wonJobConversionActionId = wonJobAction.id;
+    }
+
     const actionSummary = report.conversionActions && report.conversionActions.length > 0
-      ? ` (${report.conversionActions.length} conversion actions found: ${report.conversionActions.map((a) => `${a.name} [#${a.id}]`).join(', ')})`
-      : ' (0 conversion actions configured)';
+      ? ` (${report.conversionActions.length} actions: ${report.conversionActions.map((a) => `${a.name} [#${a.id}]`).join(', ')})`
+      : ' (0 conversion actions)';
+
+    const billingSummary = report.billingSetups && report.billingSetups.length > 0
+      ? ` | Billing: ${report.billingSetups.map((b) => `${b.status} [#${b.id}]`).join(', ')}`
+      : ' | Billing: None queryable via API';
 
     report.steps.push({
       step: 3,
       name: 'Customer Account Info',
       status: 'PASS',
-      note: `Confirmed account (timeZone: ${customerInfo.timeZone}, currency: ${customerInfo.currency}, testAccount: ${customerInfo.testAccount})${actionSummary}`,
+      note: `Confirmed account (timeZone: ${customerInfo.timeZone}, currency: ${customerInfo.currency}, testAccount: ${customerInfo.testAccount})${actionSummary}${billingSummary}`,
     });
 
     // Step 4: Create Campaign Budget
