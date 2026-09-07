@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7d821a416bdc4d79
+   source-sha256: acf7f2a2bf034fb9
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -5061,6 +5061,7 @@ h3 {
     inset: 0 0 auto;
     z-index: 20;
     padding: 0.65rem 1rem;
+    padding-top: max(0.65rem, env(safe-area-inset-top));
     border-bottom: 1px solid var(--line);
     background: var(--chrome-solid);
     -webkit-backdrop-filter: blur(18px);
@@ -5192,6 +5193,7 @@ h3 {
     /* The drawer sits over a scrollable page; without this, flicking past the
        end of the nav starts scrolling the dashboard behind it. */
     overscroll-behavior: contain;
+    padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
   }
 
   /* Nothing shrinks to fit — the rail scrolls instead. Listed twice so the
@@ -26810,6 +26812,14 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
     flex: 0 0 auto;
   }
 
+  .sidenav-mobilebar [class*="mobileTrigger"] {
+    margin-left: auto;
+  }
+
+  .sidenav-mobilebar [class*="mobileTrigger"] + .mobilebar-plan {
+    margin-left: 0;
+  }
+
   .sidenav-mobilebar .mobilebar-plan,
   .sidenav-mobilebar .mobilebar-new {
     display: inline-flex;
@@ -26882,6 +26892,11 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
     padding: 0.3rem 0.45rem;
   }
 
+  .sidenav-mobilebar .mobilebar-contractor-bizname {
+    max-width: 100px;
+    font-size: 0.8rem;
+  }
+
   .sidenav-mobilebar .mobilebar-new {
     padding: 0 0.65rem;
   }
@@ -26908,6 +26923,11 @@ body:not(:has(.app-main-sidenav)) .theme-fab {
     font-size: 0.7rem;
     padding: 0.25rem 0.38rem;
     letter-spacing: 0.02em;
+  }
+
+  .sidenav-mobilebar .mobilebar-contractor-bizname {
+    max-width: 80px;
+    font-size: 0.75rem;
   }
 
   .sidenav-mobilebar .mobilebar-new {
@@ -28465,8 +28485,10 @@ select optgroup {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0;
   border: 1px solid var(--line);
   border-radius: 11px;

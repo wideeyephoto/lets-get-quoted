@@ -68,11 +68,12 @@
   align-items: center;
   justify-content: center;
   gap: 0.35rem;
-  min-height: 38px;
+  min-height: 44px;
+  min-width: 44px;
   padding: 0 0.75rem;
   background: var(--bg-soft, rgba(255, 255, 255, 0.05));
   border: 1px solid var(--line, rgba(255, 255, 255, 0.1));
-  border-radius: 8px;
+  border-radius: 999px;
   color: var(--text, #f1f5f9);
   font-size: 0.8125rem;
   font-weight: 650;
@@ -87,9 +88,26 @@
 }
 
 .mobileTriggerIcon {
-  width: 16px;
-  height: 16px;
+  width: 18px;
+  height: 18px;
   color: #ea580c;
+  flex-shrink: 0;
+}
+
+.mobileTriggerText {
+  white-space: nowrap;
+}
+
+@media (max-width: 540px) {
+  .mobileTrigger {
+    width: 44px;
+    height: 44px;
+    padding: 0;
+  }
+
+  .mobileTriggerText {
+    display: none;
+  }
 }
 
 /* Modal Scrim & Backdrop Overlay */

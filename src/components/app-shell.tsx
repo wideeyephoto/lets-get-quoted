@@ -1105,6 +1105,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 {isCollapsed ? <path d="m13 15 3-3-3-3" /> : <path d="m14 9-3 3 3 3" />}
               </svg>
             </button>
+
+            {isNavOpen ? (
+              <button type="button" className="sidenav-close" onClick={closeNav} aria-label="Close navigation">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+                  <path d="M6.5 6.5l11 11M17.5 6.5l-11 11" />
+                </svg>
+                <span className="sr-only">Close navigation</span>
+              </button>
+            ) : null}
           </div>
 
           <div className="sidenav-lead">
