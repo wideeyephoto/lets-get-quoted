@@ -325,7 +325,6 @@ export async function provisionManagedSearchCampaign(
                     positiveGeoTargetType: 'PRESENCE',
                     negativeGeoTargetType: 'PRESENCE',
                   },
-                  startDate: new Date().toISOString().slice(0, 10).replace(/-/g, ''),
                 },
               },
             ],

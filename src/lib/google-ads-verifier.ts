@@ -48,6 +48,7 @@ export type VerificationReport = {
   mode: 'dry-run' | 'live';
   mccCustomerId?: string;
   servingCustomerId?: string | null;
+  conversionActions?: Array<{ id: string; name: string; type: string; status: string }>;
   steps: StepResult[];
   success: boolean;
   error?: string | null;
@@ -218,11 +219,37 @@ export async function runVerification(options: VerifierOptions = {}): Promise<Ve
       };
     }
 
+    // Query conversion actions in the account
+    try {
+      const convRes = await fetch(`${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/googleAds:search`, {
+        method: 'POST',
+        headers: baseHeaders,
+        body: JSON.stringify({
+          query: 'SELECT conversion_action.id, conversion_action.name, conversion_action.type, conversion_action.status FROM conversion_action',
+        }),
+      });
+      if (convRes.ok) {
+        const convData = await convRes.json();
+        report.conversionActions = (convData.results || []).map((r: { conversionAction?: Record<string, unknown> }) => ({
+          id: String(r.conversionAction?.id || ''),
+          name: String(r.conversionAction?.name || ''),
+          type: String(r.conversionAction?.type || ''),
+          status: String(r.conversionAction?.status || ''),
+        }));
+      }
+    } catch {
+      // Non-blocking query
+    }
+
+    const actionSummary = report.conversionActions && report.conversionActions.length > 0
+      ? ` (${report.conversionActions.length} conversion actions found: ${report.conversionActions.map((a) => `${a.name} [#${a.id}]`).join(', ')})`
+      : ' (0 conversion actions configured)';
+
     report.steps.push({
       step: 3,
       name: 'Customer Account Info',
       status: 'PASS',
-      note: `Confirmed account (timeZone: ${customerInfo.timeZone}, currency: ${customerInfo.currency}, testAccount: ${customerInfo.testAccount})`,
+      note: `Confirmed account (timeZone: ${customerInfo.timeZone}, currency: ${customerInfo.currency}, testAccount: ${customerInfo.testAccount})${actionSummary}`,
     });
 
     // Step 4: Create Campaign Budget
