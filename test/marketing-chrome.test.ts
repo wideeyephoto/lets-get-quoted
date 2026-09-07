@@ -177,6 +177,16 @@ describe('the marketing nav', () => {
     ).toBe(false);
   });
 
+  it('includes AI Intake and Quick Stops on candidate homepage footers', () => {
+    const compact = readFileSync('src/app/home-compact/page.tsx', 'utf8');
+    expect(compact).toContain('/features/ai-intake');
+    expect(compact).toContain('/features/quick-stops');
+
+    const editorial = readFileSync('src/app/home-editorial/page.tsx', 'utf8');
+    expect(editorial).toContain('/features/ai-intake');
+    expect(editorial).toContain('/features/quick-stops');
+  });
+
   it('points every footer entry at a route that exists on disk', () => {
     for (const [href, label] of [...FOOTER_PRIMARY, ...FOOTER_LEGAL]) {
       expect(existsSync(`src/app${href}/page.tsx`), `${label} -> ${href}`).toBe(true);

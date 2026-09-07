@@ -307,6 +307,8 @@ export default function HomeEditorialPage() {
             <span>© 2026 Let’s Get Quoted</span>
             <nav className={styles.footLinks} aria-label="Footer">
               <Link href="/features">Features</Link>
+              <Link href="/features/ai-intake">AI Intake</Link>
+              <Link href="/features/quick-stops">Quick Stops</Link>
               <Link href="/how-it-works">How it works</Link>
               <Link href="/pricing">Pricing</Link>
               <Link href="/founder">Founder</Link>
