@@ -3293,18 +3293,20 @@ h3 {
 }
 
 .sidenav-topbar {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-  padding: 0.1rem 0.2rem 0.45rem;
+  justify-content: center;
+  padding: 0.15rem 2.2rem 0.45rem;
   min-height: 44px;
 }
 
 .sidenav-topbar .sidenav-brand {
-  flex: 1 1 auto;
-  min-width: 0;
-  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  margin: 0 auto;
   padding: 0;
 }
 
@@ -3314,38 +3316,29 @@ h3 {
 
 .sidenav-collapse-toggle {
   position: absolute;
+  right: 0.35rem;
   top: 50%;
-  right: -14px;
   transform: translateY(-50%);
-  z-index: 45;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid var(--line);
-  background: rgb(var(--chrome-rgb));
+  background: rgba(var(--tint), 0.04);
   color: var(--muted-2);
   cursor: pointer;
   padding: 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.28);
+  flex-shrink: 0;
   transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.sidenav-collapse-toggle::after {
-  content: '';
-  position: absolute;
-  inset: -6px;
-  border-radius: 50%;
-}
-
 .sidenav-collapse-toggle:hover {
-  background: rgb(var(--chrome-rgb));
+  background: rgba(var(--tint), 0.1);
   color: var(--accent);
   border-color: var(--accent);
-  box-shadow: 0 3px 12px rgba(0, 0, 0, 0.38);
-  transform: translateY(-50%) scale(1.1);
+  transform: translateY(-50%) scale(1.05);
 }
 
 .sidenav-collapse-toggle:focus-visible {
@@ -3422,7 +3415,8 @@ h3 {
 .sidenav-brand--contractor {
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
+  text-align: center;
   gap: 0.65rem;
   padding: 0.35rem 0.55rem 0.65rem;
   min-height: 46px;
@@ -3436,7 +3430,7 @@ h3 {
   max-height: 38px;
   max-width: 88px;
   object-fit: contain;
-  object-position: left center;
+  object-position: center;
   flex-shrink: 0;
 }
 
@@ -4685,8 +4679,11 @@ h3 {
   }
 
   .sidenav.collapsed .sidenav-topbar {
+    display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
+    gap: 0.45rem;
     padding: 0 0 0.4rem;
     margin-bottom: 0.4rem;
   }
@@ -4729,7 +4726,22 @@ h3 {
   }
 
   .sidenav.collapsed .sidenav-collapse-toggle {
-    right: -14px;
+    position: static;
+    transform: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    margin: 0 auto;
+    background: rgba(var(--tint), 0.04);
+    border: 1px solid var(--edge-t10);
+    color: var(--muted-2);
+  }
+
+  .sidenav.collapsed .sidenav-collapse-toggle:hover {
+    background: rgba(var(--tint), 0.1);
+    color: var(--accent);
+    border-color: var(--accent);
+    transform: scale(1.05);
   }
 
   .sidenav.collapsed .sidenav-lead {

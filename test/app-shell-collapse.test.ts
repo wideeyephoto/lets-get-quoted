@@ -68,11 +68,11 @@ describe('desktop collapsible navigation rail', () => {
       expect(GLOBALS).toMatch(/\.app-main\.app-main-sidenav\s*\{[^}]*transition:\s*padding-left 0\.22s/);
     });
 
-    it('places push out collapse toggle mid-screen always on the sidebar boundary', () => {
-      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*position:\s*absolute;/);
-      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*top:\s*50%;/);
-      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*right:\s*-14px;/);
-      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*transform:\s*translateY\(-50%\);/);
+    it('integrates collapse toggle inside sidebar header without border seam protrusion', () => {
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*display:\s*inline-flex;/);
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*width:\s*30px;/);
+      expect(GLOBALS).toMatch(/\.sidenav-collapse-toggle\s*\{[^}]*height:\s*30px;/);
+      expect(SHELL).toMatch(/<div className="sidenav-topbar">[\s\S]*?<button[\s\S]*?className="sidenav-collapse-toggle"/);
     });
 
     it('hides collapse toggle on mobile screens below 1080px', () => {
