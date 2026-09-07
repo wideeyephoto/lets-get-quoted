@@ -121,8 +121,10 @@ export type ProvisionCampaignResult = {
 export async function teardownPartialCampaign(
   targetCustomerId: string,
   campaignResourceName: string,
-  headers: Record<string, string>
+  headers: Record<string, string>,
+  budgetResourceName?: string
 ): Promise<string> {
+  let campaignRemoved = false;
   try {
     const res = await fetch(
       `${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`,
@@ -143,13 +145,42 @@ export async function teardownPartialCampaign(
         }),
       }
     );
-    if (res.ok) {
-      return ' (compensating teardown: orphaned campaign REMOVED)';
-    }
-    return ' (compensating teardown failed: campaign left PAUSED)';
+    campaignRemoved = res.ok;
   } catch {
-    return ' (compensating teardown timed out: campaign left PAUSED)';
+    campaignRemoved = false;
   }
+
+  let budgetRemoved = false;
+  if (budgetResourceName) {
+    try {
+      const bRes = await fetch(
+        `${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaignBudgets:mutate`,
+        {
+          method: 'POST',
+          headers,
+          signal: AbortSignal.timeout(10000),
+          body: JSON.stringify({
+            operations: [
+              {
+                remove: budgetResourceName,
+              },
+            ],
+          }),
+        }
+      );
+      budgetRemoved = bRes.ok;
+    } catch {
+      budgetRemoved = false;
+    }
+  }
+
+  if (campaignRemoved && budgetRemoved) {
+    return ' (compensating teardown: orphaned campaign and budget REMOVED)';
+  }
+  if (campaignRemoved) {
+    return ' (compensating teardown: orphaned campaign REMOVED)';
+  }
+  return ' (compensating teardown failed: campaign left PAUSED)';
 }
 
 /**
@@ -306,6 +337,19 @@ export async function provisionManagedSearchCampaign(
         const errData = await campaignRes.json().catch(() => ({}));
         const errMsg = errData.error?.message || `Google Ads campaign creation failed with HTTP ${campaignRes.status}`;
         console.warn('Google Ads campaign error:', errMsg, errData);
+        if (budgetResourceName) {
+          await fetch(
+            `${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaignBudgets:mutate`,
+            {
+              method: 'POST',
+              headers,
+              signal: AbortSignal.timeout(10000),
+              body: JSON.stringify({
+                operations: [{ remove: budgetResourceName }],
+              }),
+            }
+          ).catch(() => {});
+        }
         return {
           success: false,
           campaignId: '',
@@ -317,7 +361,7 @@ export async function provisionManagedSearchCampaign(
           descriptionsCount: rsa.descriptions.length,
           keywordsCount: allKeywords.length,
           negativeKeywordsCount: negativeKeywords.length,
-          message: errMsg,
+          message: `${errMsg} (compensating teardown: orphaned budget REMOVED)`,
         };
       }
 
@@ -352,7 +396,7 @@ export async function provisionManagedSearchCampaign(
         const errData = await adGroupRes.json().catch(() => ({}));
         const errMsg = errData.error?.message || `Google Ads AdGroup creation failed with HTTP ${adGroupRes.status}`;
         console.warn('Google Ads AdGroup error:', errMsg, errData);
-        const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
+        const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers, budgetResourceName);
         return {
           success: false,
           campaignId,
@@ -413,7 +457,7 @@ export async function provisionManagedSearchCampaign(
           const errData = kwRes ? await kwRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (kwRes ? `HTTP ${kwRes.status}` : 'network error');
           console.warn('Google Ads keyword creation failed:', errMsg);
-          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers, budgetResourceName);
           return {
             success: false,
             campaignId,
@@ -460,7 +504,7 @@ export async function provisionManagedSearchCampaign(
           const errData = negRes ? await negRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (negRes ? `HTTP ${negRes.status}` : 'network error');
           console.warn('Google Ads negative criteria failed:', errMsg);
-          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers, budgetResourceName);
           return {
             success: false,
             campaignId,
@@ -510,7 +554,7 @@ export async function provisionManagedSearchCampaign(
           const errData = adRes ? await adRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (adRes ? `HTTP ${adRes.status}` : 'network error');
           console.warn('Google Ads RSA creation failed:', errMsg);
-          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers, budgetResourceName);
           return {
             success: false,
             campaignId,
@@ -559,7 +603,7 @@ export async function provisionManagedSearchCampaign(
           const errData = proxRes ? await proxRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (proxRes ? `HTTP ${proxRes.status}` : 'network error');
           console.warn('Google Ads proximity criteria failed:', errMsg);
-          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers, budgetResourceName);
           return {
             success: false,
             campaignId,
@@ -611,7 +655,7 @@ export async function provisionManagedSearchCampaign(
         const errData = schedRes ? await schedRes.json().catch(() => ({})) : {};
         const errMsg = errData.error?.message || (schedRes ? `HTTP ${schedRes.status}` : 'network error');
         console.warn('Google Ads schedule criteria failed:', errMsg);
-        const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
+        const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers, budgetResourceName);
         return {
           success: false,
           campaignId,

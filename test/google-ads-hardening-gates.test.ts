@@ -76,6 +76,34 @@ describe('Google Ads Launch Hardening & Defect Remediation Suite', () => {
 
       fetchSpy.mockRestore();
     });
+
+    it('issues REMOVED mutations on both orphaned campaign and budget when budget is passed', async () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch')
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ results: [{ resourceName: 'customers/123/campaigns/456' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        )
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ results: [{ resourceName: 'customers/123/campaignBudgets/789' }] }), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' },
+          })
+        );
+
+      const msg = await teardownPartialCampaign(
+        '1234567890',
+        'customers/1234567890/campaigns/456',
+        { Authorization: 'Bearer test' },
+        'customers/1234567890/campaignBudgets/789'
+      );
+
+      expect(fetchSpy).toHaveBeenCalledTimes(2);
+      expect(msg).toContain('orphaned campaign and budget REMOVED');
+
+      fetchSpy.mockRestore();
+    });
   });
 
   describe('3. Emergency Kill-Switch Halts Wallet Auto-Refills', () => {

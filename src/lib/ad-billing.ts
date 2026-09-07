@@ -1201,7 +1201,7 @@ export async function executeWalletRefillCharge(params: {
   const { admin, accountId, reason, force } = params;
 
   const { isManagedAdsCheckoutAllowed } = await import('@/lib/ad-billing-shared');
-  if (!isManagedAdsCheckoutAllowed() && !force) {
+  if (!isManagedAdsCheckoutAllowed()) {
     return {
       success: false,
       refilled: false,

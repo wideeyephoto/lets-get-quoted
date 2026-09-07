@@ -442,6 +442,20 @@ describe('Managed Ads Money Movement Hardening (P0 Adversarial Suite)', () => {
   });
 
   describe('5. Ambiguity-Safe Idempotency Key Handling on Stripe Failures', () => {
+    const originalEnv = process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+
+    beforeEach(() => {
+      process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = 'true';
+    });
+
+    afterEach(() => {
+      if (originalEnv === undefined) {
+        delete process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED;
+      } else {
+        process.env.FEATURE_MANAGED_ADS_CHECKOUT_ENABLED = originalEnv;
+      }
+    });
+
     it('preserves pendingRefillIdempotencyKey on ambiguous network errors so retries do not double charge', async () => {
       const { getStripeClient } = await import('@/lib/stripe');
       const stripe = getStripeClient();

@@ -203,15 +203,28 @@ export async function updateIntakeContentAction(input: {
         if (googleCampaignId && adState.status === 'active') {
           try {
             const { syncCapacityGuardStatus } = await import('@/lib/google-ads-api');
-            void syncCapacityGuardStatus(googleCampaignId, nextFullyBooked).catch((err) => {
-              console.warn(`[CapacityGuard] Failed to sync status to Google Ads for account ${accountId}:`, err);
-            });
+            const syncRes = await syncCapacityGuardStatus(googleCampaignId, nextFullyBooked);
+            if (syncRes.success) {
+              patch.adCampaign = {
+                ...adState,
+                capacityGuardPaused: nextFullyBooked,
+                lastCapacityGuardError: null,
+              };
+            } else {
+              console.warn(
+                `[CapacityGuard] Google Ads status toggle refused for account ${accountId}: leaving capacityGuardPaused stale for reconciler.`
+              );
+              patch.adCampaign = {
+                ...adState,
+                lastCapacityGuardError: 'Google Ads status toggle refused or unconfigured',
+              };
+            }
+          } catch (err) {
+            console.warn(`[CapacityGuard] Error syncing status to Google Ads for account ${accountId}:`, err);
             patch.adCampaign = {
               ...adState,
-              capacityGuardPaused: nextFullyBooked,
+              lastCapacityGuardError: err instanceof Error ? err.message : String(err),
             };
-          } catch (err) {
-            console.warn(`[CapacityGuard] Error importing google-ads-api for account ${accountId}:`, err);
           }
         }
       }

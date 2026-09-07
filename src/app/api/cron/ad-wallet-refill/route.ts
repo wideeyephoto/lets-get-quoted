@@ -10,6 +10,7 @@ export const GET = cronRoute('ad-wallet-refill', async () => {
     return {
       processed: 0,
       refilled: 0,
+      pausedByKillSwitch: true,
       summary: 'Auto-refills paused: managed ads checkout and billing gate is disabled (FEATURE_MANAGED_ADS_CHECKOUT_ENABLED=false).',
     };
   }
@@ -19,6 +20,7 @@ export const GET = cronRoute('ad-wallet-refill', async () => {
   return {
     processed: res.processed,
     refilled: res.refilled,
+    pausedByKillSwitch: Boolean(res.pausedByKillSwitch),
     summary: `Processed ${res.processed} wallet accounts, refilled ${res.refilled}.`,
   };
 });
