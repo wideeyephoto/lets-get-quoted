@@ -67,8 +67,8 @@ export const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/inventory', label: 'Inventory', hint: 'Truck tools, equipment & warehouse stock' },
   { href: '/dashboard/claims', label: 'Claims', hint: 'Adjuster scopes, supplements & depreciation' },
-  { href: '/dashboard/payments', label: 'Payments', hint: 'Collected revenue, invoices, cash flow & expenses' },
-  { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/payments', label: 'Money', hint: 'Collected revenue, invoices, cash flow & expenses' },
+  { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
@@ -137,7 +137,7 @@ export const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = 
     ],
   },
   {
-    label: 'Billing & Cash',
+    label: 'Money',
     accent: 'money',
     hrefs: [
       '/dashboard/payments',

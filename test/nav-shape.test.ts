@@ -389,7 +389,7 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
 
     // NAV_GROUPS now has 3 active groups
     expect(groupsBlock).toContain("label: 'Work'");
-    expect(groupsBlock).toContain("label: 'Billing & Cash'");
+    expect(groupsBlock).toContain("label: 'Money'");
     expect(groupsBlock).toContain("label: 'Marketing & AI'");
   });
 
@@ -409,9 +409,9 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
   });
 
   it('Phase 1b: Merge the money group into Payments with secondary MoneyNav tabs', () => {
-    // In app-shell.tsx, Billing & Cash is streamlined to 3 entries
+    // In app-shell.tsx, Money is streamlined to 2 entries
     const groupsBlock = SHELL.slice(SHELL.indexOf('export const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
-    const billingSection = groupsBlock.slice(groupsBlock.indexOf("label: 'Billing & Cash'"));
+    const billingSection = groupsBlock.slice(groupsBlock.indexOf("label: 'Money'"));
     const billingGroup = billingSection.slice(0, billingSection.indexOf('],'));
     expect(billingGroup).toContain("'/dashboard/payments'");
     expect(billingGroup).toContain("'/dashboard/recurring'");
@@ -452,7 +452,7 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     expect(SETTINGS).toContain('<PriceBookSettingsSection />');
     expect(SETTINGS).toContain('<StationerySettingsSection />');
 
-    // Total grouped rail entries is now 13 (8 Work, 2 Billing & Cash, 3 Marketing & AI)
+    // Total grouped rail entries is now 13 (8 Work, 2 Money, 3 Marketing & AI)
     const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
     expect(hrefMatches).toHaveLength(13);
   });
@@ -484,7 +484,8 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
     expect(baseNavBlock).toContain("href: '/dashboard/inventory', label: 'Inventory'");
     expect(baseNavBlock).toContain("href: '/dashboard/claims', label: 'Claims'");
-    expect(baseNavBlock).toContain("href: '/dashboard/recurring', label: 'Recurring'");
+    expect(baseNavBlock).toContain("href: '/dashboard/payments', label: 'Money'");
+    expect(baseNavBlock).toContain("href: '/dashboard/recurring', label: 'Recurring Jobs'");
 
     // Ornament budget hierarchy in renderSideLink: state pill > attention count > new badge > total count
     expect(SHELL).toContain("const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href])");
