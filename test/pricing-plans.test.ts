@@ -97,6 +97,10 @@ describe('the contractor pricing catalog', () => {
       ['5,000 marketing emails', '$17'],
       ['250 AI credits', '$19'],
       ['Crew user', '$5/month'],
+      ['AI Voice Receptionist (Flex)', '$69/month'],
+      ['AI Voice Receptionist (Solo)', '$59/month'],
+      ['AI Voice Receptionist (Growth)', '$55/month'],
+      ['100 AI-connected minutes', '$35'],
     ]);
   });
 
