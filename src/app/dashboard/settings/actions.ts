@@ -193,6 +193,29 @@ export async function updateIntakeContentAction(input: {
         .slice(0, 10);
     }
     patch.leadFilters = { ...current.leadFilters, ...cleanFilters };
+
+    if (cleanFilters.fullyBooked !== undefined) {
+      const priorFullyBooked = current.leadFilters?.fullyBooked?.enabled ?? false;
+      const nextFullyBooked = cleanFilters.fullyBooked.enabled ?? priorFullyBooked;
+      if (priorFullyBooked !== nextFullyBooked) {
+        const adState = (stored?.adCampaign as Record<string, unknown> | undefined) || {};
+        const googleCampaignId = typeof adState.googleCampaignId === 'string' ? adState.googleCampaignId : null;
+        if (googleCampaignId && adState.status === 'active') {
+          try {
+            const { syncCapacityGuardStatus } = await import('@/lib/google-ads-api');
+            void syncCapacityGuardStatus(googleCampaignId, nextFullyBooked).catch((err) => {
+              console.warn(`[CapacityGuard] Failed to sync status to Google Ads for account ${accountId}:`, err);
+            });
+            patch.adCampaign = {
+              ...adState,
+              capacityGuardPaused: nextFullyBooked,
+            };
+          } catch (err) {
+            console.warn(`[CapacityGuard] Error importing google-ads-api for account ${accountId}:`, err);
+          }
+        }
+      }
+    }
   }
   if (input.emailField) patch.estimateRanges = { ...current.estimateRanges, emailField: input.emailField };
 

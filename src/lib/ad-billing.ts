@@ -1200,6 +1200,15 @@ export async function executeWalletRefillCharge(params: {
 }> {
   const { admin, accountId, reason, force } = params;
 
+  const { isManagedAdsCheckoutAllowed } = await import('@/lib/ad-billing-shared');
+  if (!isManagedAdsCheckoutAllowed() && !force) {
+    return {
+      success: false,
+      refilled: false,
+      message: 'Automated wallet refills are paused while Managed Ads checkout is in private preview (FEATURE_MANAGED_ADS_CHECKOUT_ENABLED=false).',
+    };
+  }
+
   const { data: site } = await admin
     .from('sites')
     .select('id, content')
@@ -1462,7 +1471,18 @@ export async function processAllWalletAutoRefills(admin: SupabaseClient): Promis
   processed: number;
   refilled: number;
   results: Record<string, unknown>[];
+  pausedByKillSwitch?: boolean;
 }> {
+  const { isManagedAdsCheckoutAllowed } = await import('@/lib/ad-billing-shared');
+  if (!isManagedAdsCheckoutAllowed()) {
+    return {
+      processed: 0,
+      refilled: 0,
+      results: [],
+      pausedByKillSwitch: true,
+    };
+  }
+
   const { data: sites } = await admin
     .from('sites')
     .select('id, account_id, content')
@@ -1571,12 +1591,16 @@ export async function syncAccountAdSpendUsage(
   let googleClicks = 0;
   let googleImpressions = 0;
   let googleConversions = 0;
+  let syncError: string | null = null;
 
   if (adState.googleCampaignId) {
     try {
       const { fetchGoogleAdsCampaignDailySpend } = await import('@/lib/google-ads-api');
       const googleRes = await fetchGoogleAdsCampaignDailySpend(adState.googleCampaignId);
-      if (googleRes.success && googleRes.data.length > 0) {
+      if (!googleRes.success) {
+        syncError = `Google Ads spend query failed: ${googleRes.message || 'unknown error'}`;
+        console.warn(`[SyncAdSpend] ${syncError} for account ${accountId}`);
+      } else if (googleRes.data.length > 0) {
         const todayStr = new Date().toISOString().slice(0, 10);
         const latest = googleRes.data.find((d) => d.date === todayStr) || googleRes.data[0];
         if (latest && latest.spendCents > 0) {
@@ -1587,7 +1611,8 @@ export async function syncAccountAdSpendUsage(
         }
       }
     } catch (err) {
-      console.warn(`[SyncAdSpend] Google Ads query warning for account ${accountId}:`, err);
+      syncError = `Google Ads query exception: ${err instanceof Error ? err.message : String(err)}`;
+      console.warn(`[SyncAdSpend] ${syncError} for account ${accountId}`);
     }
   }
 
@@ -1600,7 +1625,10 @@ export async function syncAccountAdSpendUsage(
     try {
       const { fetchMetaCampaignDailySpend } = await import('@/lib/meta-ads-api');
       const metaRes = await fetchMetaCampaignDailySpend(adState.metaCampaignId);
-      if (metaRes.success && metaRes.spendCents > 0) {
+      if (!metaRes.success) {
+        syncError = syncError ? `${syncError}; Meta Ads failed: ${metaRes.message}` : `Meta Ads spend query failed: ${metaRes.message}`;
+        console.warn(`[SyncAdSpend] Meta Ads query warning for account ${accountId}:`, metaRes.message);
+      } else if (metaRes.spendCents > 0) {
         metaSpendCents = metaRes.spendCents;
         metaClicks = metaRes.clicks;
         metaImpressions = metaRes.impressions;
@@ -1609,6 +1637,37 @@ export async function syncAccountAdSpendUsage(
     } catch (err) {
       console.warn(`[SyncAdSpend] Meta Ads query warning for account ${accountId}:`, err);
     }
+  }
+
+  if (syncError) {
+    await updateAccountAdBudgetState(admin, accountId, {
+      lastSpendSyncError: syncError,
+    });
+    return { success: false, spendRecordedCents: 0, message: syncError };
+  }
+
+  // Periodic capacity guard sync
+  if (adState.googleCampaignId) {
+    try {
+      const { checkCampaignCapacityGuard } = await import('@/lib/google-ads-generator');
+      const { syncCapacityGuardStatus } = await import('@/lib/google-ads-api');
+      const leadFilters = content.leadFilters as { fullyBooked?: { enabled: boolean; until?: string; message?: string } } | undefined;
+      const capacityCheck = checkCampaignCapacityGuard(leadFilters);
+      if (Boolean(adState.capacityGuardPaused) !== capacityCheck.shouldPauseBidding) {
+        await syncCapacityGuardStatus(adState.googleCampaignId, capacityCheck.shouldPauseBidding);
+        await updateAccountAdBudgetState(admin, accountId, {
+          capacityGuardPaused: capacityCheck.shouldPauseBidding,
+        });
+      }
+    } catch (err) {
+      console.warn(`[CapacityGuard] Periodic check warning for account ${accountId}:`, err);
+    }
+  }
+
+  if (adState.lastSpendSyncError) {
+    await updateAccountAdBudgetState(admin, accountId, {
+      lastSpendSyncError: null,
+    });
   }
 
   const totalDaySpendCents = googleSpendCents + metaSpendCents;
@@ -1640,8 +1699,11 @@ export async function syncAccountAdSpendUsage(
  */
 export async function processAllAdSpendSync(admin: SupabaseClient): Promise<{
   processed: number;
+  succeeded: number;
+  failed: number;
   totalSpendSyncedCents: number;
   results: Record<string, unknown>[];
+  failures: Record<string, unknown>[];
 }> {
   const { data: sites } = await admin
     .from('sites')
@@ -1649,22 +1711,35 @@ export async function processAllAdSpendSync(admin: SupabaseClient): Promise<{
     .not('content->adCampaign', 'is', null);
 
   const results: Record<string, unknown>[] = [];
+  const failures: Record<string, unknown>[] = [];
   let totalSpendSyncedCents = 0;
+  let succeeded = 0;
+  let failed = 0;
 
   for (const site of sites || []) {
     const content = (site.content as Record<string, unknown>) || {};
     const adState = (content.adCampaign as AdBudgetWalletState) || {};
     if (adState.status === 'active') {
       const res = await syncAccountAdSpendUsage(admin, site.account_id);
-      totalSpendSyncedCents += res.spendRecordedCents;
-      results.push({ accountId: site.account_id, ...res });
+      if (res.success) {
+        succeeded++;
+        totalSpendSyncedCents += res.spendRecordedCents;
+        results.push({ accountId: site.account_id, ...res });
+      } else {
+        failed++;
+        failures.push({ accountId: site.account_id, ...res });
+        results.push({ accountId: site.account_id, ...res });
+      }
     }
   }
 
   return {
     processed: results.length,
+    succeeded,
+    failed,
     totalSpendSyncedCents,
     results,
+    failures,
   };
 }
 

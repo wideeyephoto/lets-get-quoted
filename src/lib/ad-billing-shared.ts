@@ -446,6 +446,8 @@ export type AdBudgetWalletState = {
   spendThisMonthCents: number;
   totalSpendAllTimeCents?: number;
   lastSpendSyncAt?: string | null;
+  lastSpendSyncError?: string | null;
+  capacityGuardPaused?: boolean;
   dailySpendHistory?: AdSpendDailyEntry[];
   smsAlertsEnabled?: boolean;
   smsAlertPhone?: string | null;

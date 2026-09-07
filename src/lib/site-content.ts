@@ -2600,6 +2600,26 @@ export function preserveIntakeSettings(
   return next;
 }
 
+/**
+ * Keep the managed ads wallet and campaign state that the website builder does not own.
+ *
+ * Ad budget, wallet balance, and Google Ads campaign identifiers are modified
+ * by Stripe webhooks, ad spend sync crons, and the marketing ads dashboard.
+ * The website builder sends the whole content object it loaded when the page opened;
+ * without this, a website save would clobber active ad wallet balances back to a stale state.
+ */
+export function preserveAdCampaign(
+  stored: Record<string, unknown> | null | undefined,
+  incoming: Record<string, unknown> | null | undefined,
+): Record<string, unknown> {
+  const next = (incoming && typeof incoming === 'object' ? { ...incoming } : {}) as Record<string, unknown>;
+  const savedAdCampaign = stored?.adCampaign;
+  if (savedAdCampaign) {
+    next.adCampaign = savedAdCampaign;
+  }
+  return next;
+}
+
 export type PersistedAiLogo = {
   id: string;
   url: string;

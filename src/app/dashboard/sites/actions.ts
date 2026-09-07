@@ -20,7 +20,7 @@ import { siteToSeoInput } from '@/lib/seo/site-seo';
 import { generateStockImages, type StockImageResult } from '@/lib/stock/generate';
 import { fetchStockPool, isPexelsConfigured } from '@/lib/stock/pexels';
 import type { ImageOrientation, PexelsSearchResult } from '@/lib/stock/types';
-import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings, preserveAiLogos, type PersistedAiLogo, type PendingAiLogo } from '@/lib/site-content';
+import { getSiteContent, getUnreviewedGeneratedSections, preserveIntakeSettings, preserveAiLogos, preserveAdCampaign, type PersistedAiLogo, type PendingAiLogo } from '@/lib/site-content';
 import { preserveBlogPosts } from '@/lib/site-blog';
 import { matchesServedCity } from '@/lib/service-area-match';
 import { buildTaglinePromptInput, getFallbackTaglines, TAGLINE_INSTRUCTIONS } from '@/lib/logo-taglines';
@@ -73,14 +73,17 @@ export async function updateSiteAction(updates: SiteEditableInput) {
   // the owner thought only changed their headline. Enforced here rather than
   // trusted to the client, because it is an invariant and not a convention.
   //
-  // Intake tuning is preserved for the same reason: it moved to Settings →
-  // Automations → Smart Intake, and the builder would otherwise revert it.
+  // Intake tuning and Ad Campaigns are preserved for the same reason: they moved
+  // to their own tabs/workflows, and the builder would otherwise revert them.
   const contentWithBlogPreserved = updates.content
     ? preserveAiLogos(
         sites[0].content as Record<string, unknown> | null,
         preserveIntakeSettings(
           sites[0].content as Record<string, unknown> | null,
-          preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content),
+          preserveAdCampaign(
+            sites[0].content as Record<string, unknown> | null,
+            preserveBlogPosts(sites[0].content as Record<string, unknown> | null, updates.content),
+          ),
         ),
       )
     : updates.content;

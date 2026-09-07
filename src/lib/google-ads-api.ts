@@ -115,6 +115,44 @@ export type ProvisionCampaignResult = {
 };
 
 /**
+ * Compensating teardown: removes an orphaned campaign created in Stage 2 if
+ * downstream child assets (ad group, RSAs, keywords, negatives, proximity, schedule) fail.
+ */
+export async function teardownPartialCampaign(
+  targetCustomerId: string,
+  campaignResourceName: string,
+  headers: Record<string, string>
+): Promise<string> {
+  try {
+    const res = await fetch(
+      `${GOOGLE_ADS_API_BASE_URL}/customers/${targetCustomerId}/campaigns:mutate`,
+      {
+        method: 'POST',
+        headers,
+        signal: AbortSignal.timeout(10000),
+        body: JSON.stringify({
+          operations: [
+            {
+              update: {
+                resourceName: campaignResourceName,
+                status: 'REMOVED',
+              },
+              updateMask: 'status',
+            },
+          ],
+        }),
+      }
+    );
+    if (res.ok) {
+      return ' (compensating teardown: orphaned campaign REMOVED)';
+    }
+    return ' (compensating teardown failed: campaign left PAUSED)';
+  } catch {
+    return ' (compensating teardown timed out: campaign left PAUSED)';
+  }
+}
+
+/**
  * Provisions a complete Google Search Ads campaign for a contractor with all required
  * child resources (Budget, Campaign, Ad Group, Keywords, Negatives, Proximity, Ad Schedule, RSAs).
  */
@@ -314,6 +352,7 @@ export async function provisionManagedSearchCampaign(
         const errData = await adGroupRes.json().catch(() => ({}));
         const errMsg = errData.error?.message || `Google Ads AdGroup creation failed with HTTP ${adGroupRes.status}`;
         console.warn('Google Ads AdGroup error:', errMsg, errData);
+        const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
         return {
           success: false,
           campaignId,
@@ -325,7 +364,7 @@ export async function provisionManagedSearchCampaign(
           descriptionsCount: rsa.descriptions.length,
           keywordsCount: allKeywords.length,
           negativeKeywordsCount: negativeKeywords.length,
-          message: errMsg,
+          message: `${errMsg}${teardownMsg}`,
         };
       }
 
@@ -374,6 +413,7 @@ export async function provisionManagedSearchCampaign(
           const errData = kwRes ? await kwRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (kwRes ? `HTTP ${kwRes.status}` : 'network error');
           console.warn('Google Ads keyword creation failed:', errMsg);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
           return {
             success: false,
             campaignId,
@@ -385,7 +425,7 @@ export async function provisionManagedSearchCampaign(
             descriptionsCount: rsa.descriptions.length,
             keywordsCount: 0,
             negativeKeywordsCount: 0,
-            message: `Google Ads keyword deployment failed: ${errMsg}`,
+            message: `Google Ads keyword deployment failed: ${errMsg}${teardownMsg}`,
           };
         }
       }
@@ -420,6 +460,7 @@ export async function provisionManagedSearchCampaign(
           const errData = negRes ? await negRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (negRes ? `HTTP ${negRes.status}` : 'network error');
           console.warn('Google Ads negative criteria failed:', errMsg);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
           return {
             success: false,
             campaignId,
@@ -431,7 +472,7 @@ export async function provisionManagedSearchCampaign(
             descriptionsCount: rsa.descriptions.length,
             keywordsCount: allKeywords.length,
             negativeKeywordsCount: 0,
-            message: `Campaign negative keyword shields failed to deploy (campaign left PAUSED): ${errMsg}`,
+            message: `Campaign negative keyword shields failed to deploy (campaign left PAUSED): ${errMsg}${teardownMsg}`,
           };
         }
       }
@@ -469,6 +510,7 @@ export async function provisionManagedSearchCampaign(
           const errData = adRes ? await adRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (adRes ? `HTTP ${adRes.status}` : 'network error');
           console.warn('Google Ads RSA creation failed:', errMsg);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
           return {
             success: false,
             campaignId,
@@ -480,7 +522,7 @@ export async function provisionManagedSearchCampaign(
             descriptionsCount: 0,
             keywordsCount: allKeywords.length,
             negativeKeywordsCount: negativeKeywords.length,
-            message: `Google Ads ad copy deployment failed (campaign left PAUSED): ${errMsg}`,
+            message: `Google Ads ad copy deployment failed (campaign left PAUSED): ${errMsg}${teardownMsg}`,
           };
         }
       }
@@ -517,6 +559,7 @@ export async function provisionManagedSearchCampaign(
           const errData = proxRes ? await proxRes.json().catch(() => ({})) : {};
           const errMsg = errData.error?.message || (proxRes ? `HTTP ${proxRes.status}` : 'network error');
           console.warn('Google Ads proximity criteria failed:', errMsg);
+          const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
           return {
             success: false,
             campaignId,
@@ -528,7 +571,7 @@ export async function provisionManagedSearchCampaign(
             descriptionsCount: rsa.descriptions.length,
             keywordsCount: allKeywords.length,
             negativeKeywordsCount: negativeKeywords.length,
-            message: `Campaign geo-fencing failed to deploy (campaign left PAUSED): ${errMsg}`,
+            message: `Campaign geo-fencing failed to deploy (campaign left PAUSED): ${errMsg}${teardownMsg}`,
           };
         }
       }
@@ -568,6 +611,7 @@ export async function provisionManagedSearchCampaign(
         const errData = schedRes ? await schedRes.json().catch(() => ({})) : {};
         const errMsg = errData.error?.message || (schedRes ? `HTTP ${schedRes.status}` : 'network error');
         console.warn('Google Ads schedule criteria failed:', errMsg);
+        const teardownMsg = await teardownPartialCampaign(targetCustomerId, campaignResourceName, headers);
         return {
           success: false,
           campaignId,
@@ -581,7 +625,7 @@ export async function provisionManagedSearchCampaign(
           negativeKeywordsCount: negativeKeywords.length,
           scheduleDaysCount: 0,
           geoRadiusMiles: radiusMiles,
-          message: `Campaign ad schedule failed to deploy (campaign left PAUSED): ${errMsg}`,
+          message: `Campaign ad schedule failed to deploy (campaign left PAUSED): ${errMsg}${teardownMsg}`,
         };
       }
 
@@ -980,15 +1024,27 @@ export async function updateCampaignBidModifier(params: {
   campaignId: string;
   bidModifier: number;
   deviceType?: 'MOBILE' | 'DESKTOP' | 'TABLET';
+  clientCustomerId?: string;
+  config?: GoogleAdsConfig;
 }): Promise<{ success: boolean; message: string }> {
-  const { campaignId, bidModifier, deviceType = 'MOBILE' } = params;
-  const config = getGoogleAdsConfig();
+  const { campaignId, bidModifier, deviceType = 'MOBILE', clientCustomerId } = params;
+  const config = params.config || getGoogleAdsConfig();
+  const isProduction = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
 
-  if (isGoogleAdsConfigured()) {
+  // If credentials/config are provided (or in production), we must resolve a valid serving advertiser ID
+  const hasCredentials = Boolean(config.developerToken || config.clientId || params.config);
+  const customerId = resolveServingCustomerId(clientCustomerId, config);
+
+  if (hasCredentials && !customerId) {
+    return {
+      success: false,
+      message: 'Google Ads requires a valid serving advertiser account ID (cannot apply bid modifiers to an MCC manager account).',
+    };
+  }
+
+  if (isGoogleAdsConfigured(clientCustomerId, config)) {
     try {
       const token = await fetchGoogleAdsAccessToken(config);
-      const customerId = (config.clientCustomerId || config.mccCustomerId)!.replace(/-/g, '');
-
       const res = await fetch(
         `${GOOGLE_ADS_API_BASE_URL}/customers/${customerId}/campaignCriteria:mutate`,
         {
@@ -1018,7 +1074,20 @@ export async function updateCampaignBidModifier(params: {
       };
     } catch (err) {
       console.warn('Google Ads bid modifier mutate fallback:', err);
+      if (isProduction) {
+        return {
+          success: false,
+          message: `Google Ads bid modifier update failed: ${err instanceof Error ? err.message : String(err)}`,
+        };
+      }
     }
+  }
+
+  if (isProduction) {
+    return {
+      success: false,
+      message: 'Google Ads API requires an active serving advertiser customer ID in production.',
+    };
   }
 
   return {
@@ -1120,7 +1189,8 @@ export async function syncWeatherSurgeBidModifier(
   campaignId: string,
   surgeActive: boolean,
   trade?: string,
-  condition?: WeatherSurgeCondition
+  condition?: WeatherSurgeCondition,
+  clientCustomerId?: string
 ): Promise<{ success: boolean; modifierApplied: number; reason?: string }> {
   let effectiveSurge = surgeActive;
   let reason: string | undefined;
@@ -1143,6 +1213,7 @@ export async function syncWeatherSurgeBidModifier(
     campaignId,
     bidModifier: multiplier,
     deviceType: 'MOBILE',
+    clientCustomerId,
   });
   return { success: result.success, modifierApplied: multiplier, reason };
 }
@@ -1268,22 +1339,32 @@ export type DailyAdMetric = {
 export async function fetchGoogleAdsCampaignDailySpend(
   campaignId: string,
   startDate?: string,
-  endDate?: string
+  endDate?: string,
+  clientCustomerId?: string
 ): Promise<{ success: boolean; data: DailyAdMetric[]; totalSpendCents: number; message?: string }> {
   const config = getGoogleAdsConfig();
-  if (!isGoogleAdsConfigured() || (!config.mccCustomerId && !config.clientCustomerId)) {
+  if (!isGoogleAdsConfigured(clientCustomerId, config)) {
     return {
-      success: true,
+      success: false,
       data: [],
       totalSpendCents: 0,
-      message: 'Google Ads API not configured; fallback to scheduled daily pacing.',
+      message: 'Google Ads API not configured or missing valid serving customer ID.',
+    };
+  }
+
+  const customerId = resolveServingCustomerId(clientCustomerId, config);
+  if (!customerId) {
+    return {
+      success: false,
+      data: [],
+      totalSpendCents: 0,
+      message: 'Google Ads API requires an active serving advertiser customer ID (cannot query spend directly on an MCC manager account).',
     };
   }
 
   try {
     const token = await fetchGoogleAdsAccessToken(config);
     const headers = buildGoogleAdsHeaders(config, token);
-    const customerId = (config.clientCustomerId || config.mccCustomerId)!.replace(/-/g, '');
 
     const dateFilter = startDate && endDate
       ? `AND segments.date BETWEEN '${startDate}' AND '${endDate}'`
