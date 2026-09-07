@@ -185,4 +185,38 @@ describe('Workspace Smart Search', () => {
     expect(appShellCode).toContain('<SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />');
     expect(appShellCode).toContain('<SmartSearch variant="palette-only" isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />');
   });
+
+  it('indexes all primary, secondary, and demoted navigation destinations in QUICK_ACTIONS', async () => {
+    const mockSupabase = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        is: vi.fn().mockReturnThis(),
+        ilike: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue({ data: [], error: null }),
+      }),
+    } as any;
+
+    const queries = [
+      { q: 'payroll', expectedHref: '/dashboard/crew?tab=timecards' },
+      { q: 'p&l', expectedHref: '/dashboard/reports' },
+      { q: 'cash flow', expectedHref: '/dashboard/cash-flow' },
+      { q: 'expenses', expectedHref: '/dashboard/expenses' },
+      { q: 'price book', expectedHref: '/dashboard/services' },
+      { q: 'stationery', expectedHref: '/dashboard/merchandise' },
+      { q: 'inventory', expectedHref: '/dashboard/inventory' },
+      { q: 'claims', expectedHref: '/dashboard/claims' },
+      { q: 'automations', expectedHref: '/dashboard/automations' },
+      { q: 'marketing', expectedHref: '/dashboard/marketing' },
+      { q: 'reviews', expectedHref: '/dashboard/reviews' },
+      { q: 'dispatch', expectedHref: '/dashboard/schedule/dispatch' },
+      { q: 'help', expectedHref: '/dashboard/help' },
+    ];
+
+    for (const { q, expectedHref } of queries) {
+      const res = await searchWorkspaceEverything(mockSupabase, 'acc-123', q);
+      const match = res.sections.actions.find((a) => a.href === expectedHref);
+      expect(match, `Query "${q}" should find action with href ${expectedHref}`).toBeDefined();
+    }
+  });
 });

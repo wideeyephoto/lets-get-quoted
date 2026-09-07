@@ -477,4 +477,18 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     // Crew & Labor hint explicitly surfaces timecards & payroll export
     expect(baseNavBlock).toContain("Team roster, timecards & payroll export");
   });
+
+  it('Ornament Budget & Single-Word Labels: enforces at most 1 ornament per row and concise labels', () => {
+    // Label shortening in baseNavItems
+    const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
+    expect(baseNavBlock).toContain("href: '/dashboard/inventory', label: 'Inventory'");
+    expect(baseNavBlock).toContain("href: '/dashboard/claims', label: 'Claims'");
+    expect(baseNavBlock).toContain("href: '/dashboard/recurring', label: 'Recurring'");
+
+    // Ornament budget hierarchy in renderSideLink: state pill > attention count > new badge > total count
+    expect(SHELL).toContain("const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href])");
+    expect(SHELL).toContain("const showCount = !showState && count > 0");
+    expect(SHELL).toContain("const showNew = !showState && !showCount && isNew");
+    expect(SHELL).toContain("const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0)");
+  });
 });

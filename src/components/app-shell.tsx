@@ -65,10 +65,10 @@ export const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
   { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Team roster, timecards & payroll export' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
-  { href: '/dashboard/inventory', label: 'Inventory & Fleet', hint: 'Truck tools, equipment & warehouse stock' },
-  { href: '/dashboard/claims', label: 'Insurance Claims', hint: 'Adjuster scopes, supplements & depreciation' },
+  { href: '/dashboard/inventory', label: 'Inventory', hint: 'Truck tools, equipment & warehouse stock' },
+  { href: '/dashboard/claims', label: 'Claims', hint: 'Adjuster scopes, supplements & depreciation' },
   { href: '/dashboard/payments', label: 'Payments', hint: 'Collected revenue, invoices, cash flow & expenses' },
-  { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
@@ -930,6 +930,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             : href === '/dashboard/schedule/booking'
               ? bookingState
               : 'unknown';
+      // Ornament budget: at most one ornament per row.
+      // Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count
+      const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href]);
+      const showCount = !showState && count > 0;
+      const showNew = !showState && !showCount && isNew;
+      const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0);
+
       return (
         <Link
           href={href}
@@ -947,28 +954,23 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         >
           <NavIcon href={href} />
           <span className="sidenav-label">{item.label}</span>
-          {/* The two automations that can put work on your calendar without you
-              touching anything. Both switches are pages deep, so the rail says
-              which way they are set from wherever you happen to be. */}
-          {state !== 'unknown' && NAV_STATE_PILL[href] ? (
+          {/* Ornament Budget: at most one ornament per row.
+              Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count */}
+          {showState ? (
             <span className="sidenav-state" data-state={state} title={NAV_STATE_PILL[href][state].title}>
               {NAV_STATE_PILL[href][state].label}
             </span>
-          ) : null}
-          {/* Ahead of the numbers, so the badge cluster reads left to right as
-              "is there news, then how much". */}
-          {isNew ? (
-            <span className="sidenav-unseen" title={newLabelByHref[href]}>
-              <span aria-hidden="true">New</span>
-              <span className="sr-only">{newLabelByHref[href] ?? 'New since your last visit'}</span>
-            </span>
-          ) : null}
-          {count > 0 ? (
+          ) : showCount ? (
             <span className="sidenav-count" title={navAttentionLabel(href, count) ?? undefined}>
               <span aria-hidden="true">{attentionDigits(href, count)}</span>
               <span className="sr-only">{navAttentionLabel(href, count) ?? `${count} need your attention`}</span>
             </span>
-          ) : total && total.count > 0 ? (
+          ) : showNew ? (
+            <span className="sidenav-unseen" title={newLabelByHref[href]}>
+              <span aria-hidden="true">New</span>
+              <span className="sr-only">{newLabelByHref[href] ?? 'New since your last visit'}</span>
+            </span>
+          ) : showTotal ? (
             <span className="sidenav-total" title={total.title}>
               <span aria-hidden="true">{total.count}</span>
               <span className="sr-only">{total.title}</span>
