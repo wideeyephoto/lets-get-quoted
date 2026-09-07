@@ -29,17 +29,16 @@ const calculator = () => read('src', 'app', 'pricing', 'PricingCalculator.tsx');
  * deliberate: flipping VOICE_PURCHASABLE should require reading this file and
  * deciding, not silently pass a suite that stopped meaning anything.
  */
-describe('AI Voice is purchasable across plans with live pricing', () => {
-  it('is purchasable across plans', () => {
-    expect(VOICE_PURCHASABLE).toBe(true);
+describe('AI Voice is withheld from sale until live provisioning and Price IDs exist', () => {
+  it('is not purchasable across plans today', () => {
+    expect(VOICE_PURCHASABLE).toBe(false);
   });
 
-  it('calculates plan estimate including Voice fees for eligible plans', () => {
+  it('calculates plan estimate without un-purchasable Voice fees', () => {
     for (const plan of PLANS) {
       const asShown = annualPlanEstimate(plan, 'annual', 250_000, VOICE_PURCHASABLE, 1, false);
       const withoutVoice = annualPlanEstimate(plan, 'annual', 250_000, false, 1, false);
-      const expectedDifference = VOICE_MONTHLY_BY_PLAN[plan.id] * 12;
-      expect(asShown! - withoutVoice!).toBe(expectedDifference);
+      expect(asShown).toEqual(withoutVoice);
     }
   });
 

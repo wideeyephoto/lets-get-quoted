@@ -51,7 +51,7 @@ describe('it is the same arithmetic the public page already publishes', () => {
   });
 
   it('allows calculating crossover with and without AI Voice', () => {
-    expect(VOICE_PURCHASABLE).toBe(true);
+    expect(VOICE_PURCHASABLE).toBe(false);
     const growth = PLANS.find((p) => p.id === 'growth')!;
     const scale = PLANS.find((p) => p.id === 'scale')!;
     expect(planCrossover(growth, scale, 'annual', true)).toBe(1_160_000);

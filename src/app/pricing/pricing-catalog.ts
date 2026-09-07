@@ -177,7 +177,7 @@ export const PLANS: readonly PricingPlan[] = [
   },
 ] as const;
 
-export const VOICE_PURCHASABLE = true;
+export const VOICE_PURCHASABLE = false;
 
 export const VOICE_PLANNED_PRICE_LABEL = 'Launch pricing from $55/month';
 
@@ -230,7 +230,7 @@ export const PRICING_FAQS = [
   },
   {
     q: 'Is AI Voice Receptionist & Field Assistant available?',
-    a: 'AI Voice Receptionist is available as an add-on for Flex, Solo, and Growth plans, and included with Scale. It provides 24/7 intelligent call answering, live quote discussions, job scheduling, and automated SMS follow-ups on your dedicated business line.',
+    a: 'AI Voice Receptionist is coming soon (in preview rollout) while carrier line routing and dedicated voice numbers complete final validation. Web-based 24/7 Smart Intake, instant quote generation, automated SMS dispatch, and multi-tier estimate workflows are fully live across all accounts today. Dedicated business lines and AI call answering add-ons become active as carrier 10DLC registrations are verified.',
   },
   {
     q: 'Can the AI receptionist answer multiple calls at once?',
