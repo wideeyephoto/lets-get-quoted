@@ -38,6 +38,7 @@ import { createAdminClient } from '@/lib/auth';
 import { arrivalSettingsFromAccount, formatArrivalWindow, DEFAULT_ARRIVAL_TEMPLATE } from '@/lib/arrival';
 import { getActiveTrackingByJob } from '@/lib/job-tracking';
 import { formatJobSchedule } from '@/lib/jobs';
+import ScheduleNav from '../ScheduleNav';
 
 export const metadata = { title: 'Plan my day' };
 
@@ -440,6 +441,7 @@ export default async function PlanDayPage({
 
   return (
     <main className="wide-shell plan-shell">
+      <ScheduleNav />
       <header className="plan-header">
         <div className="plan-header-title">
           <p className="eyebrow">Plan my day</p>

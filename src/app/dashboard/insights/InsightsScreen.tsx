@@ -22,6 +22,7 @@ import ReputationCard from './ReputationCard';
 import VoiceInsightsCard from './VoiceInsightsCard';
 import ExportInsightsModal from './ExportInsightsModal';
 import { PERIOD_PRESETS } from '@/lib/insights';
+import MoneyNav from '@/components/MoneyNav';
 
 /**
  * The Insights screen — everything from the headline tiles to the arrival
@@ -533,6 +534,7 @@ export default function InsightsScreen({
 
   return (
     <main className="wide-shell workspace-shell ins-shell">
+      <MoneyNav />
       <header className="ins-head">
         <div>
           <h1 className="ins-title">Insights</h1>

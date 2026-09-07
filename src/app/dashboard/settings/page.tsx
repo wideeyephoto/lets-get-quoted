@@ -64,6 +64,8 @@ import PlanUsageSection from './PlanUsageSection';
 import OfficeTeamSection from './OfficeTeamSection';
 import MerchantOnboardingSection from './MerchantOnboardingSection';
 import DeveloperApiSection, { type WebhookSubscriptionView, type WebhookDeliveryView } from './DeveloperApiSection';
+import PriceBookSettingsSection from './PriceBookSettingsSection';
+import StationerySettingsSection from './StationerySettingsSection';
 import { listApiTokens } from '@/lib/public-api/api-credentials';
 
 export const metadata = { title: 'Account' };
@@ -612,6 +614,8 @@ export default async function SettingsPage({
             // carries that id, and could not be linked to.
             anchors: [
               'job-costing',
+              'price-book',
+              'stationery',
               'business-basics',
               'business',
               'quote-changes',
@@ -643,7 +647,7 @@ export default async function SettingsPage({
           id: 'profile',
           label: 'Profile & locations',
           blurb: 'Who you are, what you do, and where you work from.',
-          anchors: ['business-basics', 'quote-changes', 'marketing-address', 'addresses'],
+          anchors: ['business-basics', 'quote-changes', 'marketing-address', 'addresses', 'stationery'],
           content: (
               <>
                 {/* The customer portal used to sit here. It moved to
@@ -773,6 +777,8 @@ export default async function SettingsPage({
                     </div>
                   </form>
                 </section>
+
+                <StationerySettingsSection />
               </>
           ),
         },
@@ -780,11 +786,14 @@ export default async function SettingsPage({
           id: 'costs',
           label: 'Costs & job settings',
           blurb: 'What labour really costs you, and when to warn about a thin job.',
-          anchors: ['job-costing'],
+          anchors: ['job-costing', 'price-book'],
           content: (
-            <section className="panel workspace-section-card" id="job-costing">
-              <JobCostingSection burdenPct={defaultBurdenPct} minMarginPct={minMarginPct} />
-            </section>
+            <>
+              <section className="panel workspace-section-card" id="job-costing">
+                <JobCostingSection burdenPct={defaultBurdenPct} minMarginPct={minMarginPct} />
+              </section>
+              <PriceBookSettingsSection />
+            </>
           ),
         },
         {

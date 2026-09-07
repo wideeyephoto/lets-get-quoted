@@ -4,6 +4,7 @@ import { listJobs } from '@/lib/jobs';
 import { listSubcontractorRequests, loadSubcontractors, todayIn } from '@/lib/subcontractor-dispatch-data';
 import { isLiveMessagingEnvironment } from '@/lib/sms';
 import JobRequests from '@/app/dashboard/crew/JobRequests';
+import ScheduleNav from '../ScheduleNav';
 
 export const metadata = { title: 'Coverage Requests · Schedule' };
 export const dynamic = 'force-dynamic';
@@ -29,6 +30,7 @@ export default async function ScheduleCoverageRequestsPage() {
   return (
     <main className="wide-shell workspace-shell crew-shell">
       <section className="panel workspace-section-card" style={{ padding: '1.25rem' }}>
+        <ScheduleNav />
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
             <p className="eyebrow" style={{ margin: 0 }}>Schedule &amp; Operations</p>

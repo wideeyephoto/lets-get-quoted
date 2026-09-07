@@ -30,6 +30,7 @@ import { listUpcomingBlocks } from '@/lib/availability-blocks';
 import BookingRequests from './BookingRequests';
 import { listPendingBookings, toPendingBookings } from '@/lib/booking-requests';
 import FieldIntakeHint from '@/components/field-intake-hint';
+import ScheduleNav from './ScheduleNav';
 
 export const metadata = { title: 'Schedule' };
 
@@ -812,6 +813,7 @@ export default async function SchedulePage({
         clientAvailability={clientScheduleAvailability}
       >
       <section className="panel workspace-section-card schedule-calendar-panel" data-tour-id="schedule:workbench">
+        <ScheduleNav />
         {/* Two rows, not six. The page used to spend ~470px on desktop and
             ~640px on mobile introducing itself — an eyebrow, a title, a lead
             paragraph, an action row, a metric card, then a SECOND eyebrow and

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { loadCrewLocationMapSnapshot } from '@/lib/crew-location';
 import LiveCrewMap from '@/app/dashboard/crew/LiveCrewMap';
+import ScheduleNav from '../ScheduleNav';
 
 export const metadata = { title: 'Live Dispatch · Schedule' };
 export const dynamic = 'force-dynamic';
@@ -14,6 +15,7 @@ export default async function ScheduleLiveDispatchPage() {
   return (
     <main className="wide-shell workspace-shell crew-shell">
       <section className="panel workspace-section-card" style={{ padding: '1.25rem' }}>
+        <ScheduleNav />
         <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <div>
             <p className="eyebrow" style={{ margin: 0 }}>Schedule &amp; Operations</p>

@@ -497,6 +497,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/schedule/actions.ts',
       'src/app/dashboard/schedule/booking/page.tsx',
       'src/app/dashboard/schedule/dispatch/page.tsx',
+      'src/app/dashboard/schedule/intake/page.tsx',
       'src/app/dashboard/schedule/page.tsx',
       'src/app/dashboard/schedule/plan/actions.ts',
       'src/app/dashboard/schedule/plan/offer-actions.ts',

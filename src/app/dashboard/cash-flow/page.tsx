@@ -7,6 +7,7 @@ import { payDaySentence } from '@/lib/pay-day';
 import CashFlowBoard from './CashFlowBoard';
 import ScheduledPaymentsPanel from './ScheduledPaymentsPanel';
 import { saveCashSettingsAction } from './actions';
+import MoneyNav from '@/components/MoneyNav';
 
 export const metadata = { title: 'Cash flow' };
 
@@ -57,6 +58,7 @@ export default async function CashFlowPage({ searchParams: searchParamsPromise }
 
   return (
     <main className="wide-shell workspace-shell">
+      <MoneyNav />
       {/* The hero is rendered by the board, not here: the chart lives inside it,
           and the chart is client state. Splitting the hero across a server and a
           client component to keep two static paragraphs up here would buy
@@ -97,7 +99,7 @@ export default async function CashFlowPage({ searchParams: searchParamsPromise }
             <strong>Payroll</strong> — pay periods run {PERIOD_WORD[sources.payrollMode] ?? 'weekly'}, paid{' '}
             {payDaySentence(sources.payDay).toLowerCase()}. Approved hours are confirmed; hours nobody has approved yet are
             priced from what&rsquo;s logged. A future period with no hours yet is projected from your recent ones.{' '}
-            <Link href="/dashboard/crew">Hours &amp; pay →</Link>
+            <Link href="/dashboard/crew?tab=timecards">Hours &amp; pay →</Link>
           </li>
           <li>
             <strong>Money coming in</strong> — payment requests you&rsquo;ve sent, payment-plan installments (including a

@@ -1,0 +1,61 @@
+.subNav {
+  margin-bottom: 1.25rem;
+  border-bottom: 1px solid var(--rule-t10, rgba(255, 255, 255, 0.08));
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+
+.subNav::-webkit-scrollbar {
+  display: none;
+}
+
+.subNavList {
+  display: flex;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  min-width: max-content;
+}
+
+.subNavLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-height: 42px;
+  padding: 0 0.85rem;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--mute-t58, rgba(255, 255, 255, 0.6));
+  font-size: 0.875rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: color 0.16s ease, border-color 0.16s ease;
+}
+
+.subNavLink:hover {
+  color: var(--text, #fff);
+}
+
+.subNavLink.isActive {
+  border-bottom-color: var(--accent, #ff7a21);
+  color: var(--text, #fff);
+}
+
+.subNavLink:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21);
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+.subNavBadge {
+  font-size: 0.75rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text, #fff);
+}

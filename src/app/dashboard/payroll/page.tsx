@@ -16,5 +16,5 @@ export default async function PayrollRedirect({ searchParams: searchParamsPromis
     'last-month': 'period=monthly&offset=-1',
   };
   const suffix = searchParams.period && legacy[searchParams.period] ? `&${legacy[searchParams.period]}` : '';
-  redirect(`/dashboard/crew?tab=hours${suffix}`);
+  redirect(`/dashboard/crew?tab=timecards${suffix}`);
 }

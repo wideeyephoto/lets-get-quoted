@@ -46,6 +46,11 @@ export default async function ServicesPage({
 
   return (
     <main className="wide-shell workspace-shell">
+      <div style={{ marginBottom: '1rem' }}>
+        <Link href="/dashboard/settings#price-book" className="btn secondary sm" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+          &larr; Back to Business settings
+        </Link>
+      </div>
       <section className={`workspace-hero panel${stats ? '' : ' workspace-hero-solo'}`}>
         <div className="workspace-hero-copy">
           <p className="eyebrow">Price book</p>

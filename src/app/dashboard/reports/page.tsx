@@ -2,16 +2,15 @@ import Link from 'next/link';
 import { requireOfficeContext } from '@/lib/auth';
 import { getAvailableTaxYears, buildProfitAndLoss, buildScheduleCWorksheet, build1099PrepList } from '@/lib/tax-reports';
 import FinanceReports from '../settings/FinanceReports';
+import MoneyNav from '@/components/MoneyNav';
 
 export const metadata = { title: 'Financial reports' };
 
 /**
  * Financial reports, on their own page.
  *
- * These were three long accordions at the bottom of the Business settings tab,
- * which is the wrong place twice over: they are not settings — nothing here is
- * a preference, it is all output — and they were being built on every render of
- * a page people open to change a phone number.
+ * Part of the Money financial workspace (MoneyNav), providing CPA and bookkeeper-ready
+ * summaries (P&L, Schedule C Worksheet, 1099 Contractor Prep).
  */
 export default async function ReportsPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ year?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
@@ -29,6 +28,7 @@ export default async function ReportsPage({ searchParams: searchParamsPromise }:
 
   return (
     <main className="wide-shell workspace-shell">
+      <MoneyNav />
       <header className="inbox-header">
         <div className="inbox-header-copy">
           <h1 className="workspace-title">Financial reports</h1>

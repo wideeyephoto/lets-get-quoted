@@ -9,6 +9,8 @@ import { NavIcon } from './nav-icons';
 import { DEMO_COMPANY_NAME, DEMO_SITE_HOST, DEMO_NAV_COUNTS } from '@/lib/demo-data';
 import { APP_SIGNUP_URL } from '@/components/marketing/links';
 
+import { NAV_GROUPS, baseNavItems } from './app-shell';
+
 const DEMO_HOST = DEMO_SITE_HOST;
 
 // Attention-count badges beside the pipeline links, same as the live rail.
@@ -22,6 +24,10 @@ const COUNT_BY_HREF: Record<string, number> = {
 // touching anything. The live rail says which way each is set from wherever you
 // are standing; the sample account has both on, so the demo says so too.
 const STATE_BY_HREF: Record<string, { label: string; title: string }> = {
+  '/demo/schedule': {
+    label: 'ON',
+    title: 'Schedule intake is live — online booking and quick stops active',
+  },
   '/demo/schedule/booking': {
     label: 'ON',
     title: 'Online booking is live — customers can grab an open slot from your website',
@@ -34,8 +40,7 @@ const STATE_BY_HREF: Record<string, { label: string; title: string }> = {
 
 type DemoItem = {
   // `icon` is the /dashboard/* key into the shared icon set; `href` is where the
-  // row actually links. Every row now has a real demo page — the whole app is
-  // explorable, nothing gated.
+  // row actually links.
   icon: string;
   label: string;
   href: string;
@@ -44,53 +49,49 @@ type DemoItem = {
   brand?: boolean;
 };
 
-// Mirrors NAV_GROUPS in app-shell.tsx. A row that sits somewhere else here would
-// be showing a prospect a product that does not exist.
+const LABEL_BY_DASHBOARD_HREF = new Map(baseNavItems.map((item) => [item.href, item.label] as const));
+
+type DemoRouteOverride = {
+  demoHref?: string;
+  preview?: boolean;
+  brand?: boolean;
+};
+
+const DEMO_ROUTE_OVERRIDES: Record<string, DemoRouteOverride> = {
+  '/dashboard/inventory': { preview: true, demoHref: APP_SIGNUP_URL },
+  '/dashboard/claims': { preview: true, demoHref: APP_SIGNUP_URL },
+  '/dashboard/text-to-job': { preview: true, demoHref: APP_SIGNUP_URL },
+  '/dashboard/quick-stops': { brand: true },
+  '/dashboard/voice-calls': { demoHref: '/demo/settings#automations' },
+  '/dashboard/payments': { preview: true, demoHref: APP_SIGNUP_URL },
+  '/dashboard/expenses': { preview: true, demoHref: APP_SIGNUP_URL },
+  '/dashboard/automations': { demoHref: '/demo/settings#automations' },
+  '/dashboard/merchandise': { preview: true, demoHref: APP_SIGNUP_URL },
+};
+
+function resolveDemoItem(dashboardHref: string): DemoItem {
+  const override = DEMO_ROUTE_OVERRIDES[dashboardHref];
+  const label = LABEL_BY_DASHBOARD_HREF.get(dashboardHref) ?? dashboardHref;
+  const href = override?.demoHref ?? dashboardHref.replace('/dashboard', '/demo');
+  return {
+    icon: dashboardHref,
+    label,
+    href,
+    preview: override?.preview,
+    brand: override?.brand,
+  };
+}
+
+// Mirrors NAV_GROUPS in app-shell.tsx by importing and deriving from it directly.
+// A row that sits somewhere else here would be showing a prospect a product that does not exist.
 // `accent` is the group's hue and mirrors NAV_GROUPS too — a prospect looking
 // at the demo should see the same four section colors the product uses. The
 // value itself lives in globals.css, on .sidenav-group--*.
-const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = [
-  {
-    label: 'Work',
-    accent: 'work',
-    items: [
-      { icon: '/dashboard/leads', label: 'Leads', href: '/demo/leads' },
-      { icon: '/dashboard/messages', label: 'Messages', href: '/demo/messages' },
-      { icon: '/dashboard/jobs', label: 'Jobs', href: '/demo/jobs' },
-      { icon: '/dashboard/schedule', label: 'Schedule', href: '/demo/schedule' },
-      { icon: '/dashboard/crew', label: 'Crew & Labor', href: '/demo/crew' },
-      { icon: '/dashboard/clients', label: 'Clients', href: '/demo/clients' },
-    ],
-  },
-  {
-    label: 'Intake Channels',
-    accent: 'intake',
-    items: [
-      { icon: '/dashboard/quick-stops', label: 'Quick Stops', href: '/demo/quick-stops' },
-      { icon: '/dashboard/schedule/booking', label: 'Online Booking', href: '/demo/schedule/booking' },
-      { icon: '/dashboard/voice-calls', label: '24/7 AI Receptionist', href: '/demo/settings#automations' },
-    ],
-  },
-  {
-    label: 'Billing & Cash',
-    accent: 'money',
-    items: [
-      { icon: '/dashboard/insights', label: 'Reports & Insights', href: '/demo/insights' },
-      { icon: '/dashboard/recurring', label: 'Recurring Jobs', href: '/demo/recurring' },
-      { icon: '/dashboard/services', label: 'Price Book', href: '/demo/services' },
-      { icon: '/dashboard/cash-flow', label: 'Cash Flow', href: '/demo/cash-flow' },
-    ],
-  },
-  {
-    label: 'Marketing & AI',
-    accent: 'grow',
-    items: [
-      { icon: '/dashboard/automations', label: 'Automations', href: '/demo/settings#automations' },
-      { icon: '/dashboard/marketing', label: 'Marketing', href: '/demo/marketing' },
-      { icon: '/dashboard/reviews', label: 'Reviews', href: '/demo/reviews' },
-    ],
-  },
-];
+const GROUPS: { label: string; accent: string; items: DemoItem[] }[] = NAV_GROUPS.map((group) => ({
+  label: group.label,
+  accent: group.accent,
+  items: group.hrefs.map(resolveDemoItem),
+}));
 
 function LockGlyph() {
   return (
@@ -105,29 +106,26 @@ export default function DemoSidebar() {
   const pathname = usePathname();
   const { isNavOpen, closeNav, toggleNav } = useAppShell();
 
-  // `/demo/schedule` would otherwise light up for /demo/schedule/booking and
-  // /demo/schedule/plan as well, so its children have to be excluded by name.
-  const SCHEDULE_CHILDREN = ['/demo/schedule/booking', '/demo/schedule/plan'];
+  const DEMO_MONEY_SUBROUTES = ['/demo/insights', '/demo/cash-flow', '/demo/expenses'];
   const isActive = (href: string) => {
     if (href === '/demo') return pathname === '/demo';
-    if (href === '/demo/schedule') {
-      return pathname.startsWith(href) && !SCHEDULE_CHILDREN.some((child) => pathname.startsWith(child));
+    if (
+      href === '/demo/payments' &&
+      DEMO_MONEY_SUBROUTES.some((sub) => pathname === sub || pathname.startsWith(`${sub}/`))
+    ) {
+      return true;
     }
     return pathname.startsWith(href);
   };
 
   const renderItem = (item: DemoItem, extraClass = '') => {
     const state = STATE_BY_HREF[item.href];
-    return (
-      <Link
-        key={item.label}
-        href={item.href}
-        className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${item.preview ? ' preview' : ''}${!item.preview && isActive(item.href) ? ' active' : ''}`}
-        // On the row as well as the pill, so the row can carry the state's
-        // color without CSS reaching into a child with :has().
-        data-state={state ? 'on' : undefined}
-        title={item.preview ? 'Available in the full app — create a free account to use it' : undefined}
-      >
+    const isExternal = item.href.startsWith('http://') || item.href.startsWith('https://');
+    const className = `sidenav-link${extraClass ? ` ${extraClass}` : ''}${item.preview ? ' preview' : ''}${!item.preview && isActive(item.href) ? ' active' : ''}`;
+    const title = item.preview ? 'Available in the full app — create a free account to use it' : undefined;
+
+    const content = (
+      <>
         {item.brand ? (
           <Image
             src="/brand/quick-stops-wordmark.png"
@@ -145,6 +143,32 @@ export default function DemoSidebar() {
         {state ? <span className="sidenav-state" data-state="on" title={state.title}>{state.label}</span> : null}
         {COUNT_BY_HREF[item.href] ? <span className="sidenav-count">{COUNT_BY_HREF[item.href]}</span> : null}
         {item.preview ? <LockGlyph /> : null}
+      </>
+    );
+
+    if (isExternal) {
+      return (
+        <a
+          key={item.label}
+          href={item.href}
+          className={className}
+          data-state={state ? 'on' : undefined}
+          title={title}
+        >
+          {content}
+        </a>
+      );
+    }
+
+    return (
+      <Link
+        key={item.label}
+        href={item.href}
+        className={className}
+        data-state={state ? 'on' : undefined}
+        title={title}
+      >
+        {content}
       </Link>
     );
   };

@@ -56,35 +56,31 @@ const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
   { href: '/dashboard/crew?tab=people&add=sub', icon: '/dashboard/crew', label: 'New subcontractor' },
 ];
 
-const baseNavItems: { href: string; label: string; hint?: string }[] = [
+export const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/', label: 'Home' },
   { href: '/dashboard', label: 'Dashboard' },
   { href: '/dashboard/leads', label: 'Leads', hint: 'New & website leads' },
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
-  { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Your team, their hours & pay' },
+  { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Team roster, timecards & payroll export' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/inventory', label: 'Inventory & Fleet', hint: 'Truck tools, equipment & warehouse stock' },
   { href: '/dashboard/claims', label: 'Insurance Claims', hint: 'Adjuster scopes, supplements & depreciation' },
-  { href: '/dashboard/text-to-job', label: 'Text-to-Job', hint: 'SMS & voice memos straight to job files' },
-  { href: '/dashboard/quick-stops', label: 'Quick Stops', hint: 'Lets customers pay to be fitted in sooner.' },
-  { href: '/dashboard/schedule/booking', label: 'Online Booking', hint: 'Lets customers book an available time through your website.' },
-  { href: '/dashboard/voice-calls', label: '24/7 AI Receptionist', hint: '24/7 AI receptionist, live booking & call log' },
-  { href: '/dashboard/insights', label: 'Reports & Insights', hint: 'Sales activity & revenue trends' },
+  { href: '/dashboard/payments', label: 'Payments', hint: 'Collected revenue, invoices, cash flow & expenses' },
   { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
-  { href: '/dashboard/payments', label: 'Revenue & Payments', hint: 'Collected revenue, client payments, invoices & payouts' },
-  { href: '/dashboard/services', label: 'Price Book', hint: 'Saved services & prices' },
-  { href: '/dashboard/cash-flow', label: 'Cash Flow', hint: 'Upcoming bills, payroll & projected balance' },
-  { href: '/dashboard/expenses', label: 'Expenses Ledger', hint: 'Cross-job supplier receipts, labor & costs' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
-  { href: '/dashboard/merchandise', label: 'Cards & Stationery', hint: 'Commercial business cards, 2-part NCR order pads & field forms' },
   { href: '/dashboard/reviews', label: 'Reviews', hint: 'Ratings & private feedback' },
   { href: '/dashboard/sites', label: 'Website' },
   { href: '/dashboard/settings', label: 'Account' },
   { href: '/dashboard/help', label: 'Help', hint: 'Ask us a question and track the answer' },
+  { href: '/dashboard/reports', label: 'Financial Reports', hint: 'P&L, Schedule C & 1099 tax summaries' },
+  { href: '/dashboard/payroll', label: 'Payroll', hint: 'Crew hours, pay calculation & payroll export' },
 ];
+
+// Subroutes that fold under Payments in the primary rail
+const MONEY_SUBROUTES = ['/dashboard/insights', '/dashboard/cash-flow', '/dashboard/expenses', '/dashboard/reports'];
 
 // The connected-pill "flow" styling now spans all three pipeline stages.
 // Which rail entry owns the highlight for a path.
@@ -94,6 +90,12 @@ const baseNavItems: { href: string; label: string; hint?: string }[] = [
 // match, and two lit rows say you are in two places at once. Longest match wins.
 function isActiveNav(pathname: string, href: string): boolean {
   if (href === '/dashboard') return pathname === href;
+  if (
+    href === '/dashboard/payments' &&
+    MONEY_SUBROUTES.some((sub) => pathname === sub || pathname.startsWith(`${sub}/`))
+  ) {
+    return true;
+  }
   if (!pathname.startsWith(href)) return false;
   return !baseNavItems.some(
     (other) => other.href.length > href.length && other.href.startsWith(href) && pathname.startsWith(other.href),
@@ -119,7 +121,7 @@ const FLOW_CLASS: Record<string, string> = {
 // `accent` is the group's hue, carried as a class rather than a style so the
 // value itself stays in globals.css — see --nav-work and the .sidenav-group--*
 // block there.
-const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
+export const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
   {
     label: 'Work',
     accent: 'work',
@@ -135,25 +137,11 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
     ],
   },
   {
-    label: 'Intake Channels',
-    accent: 'intake',
-    hrefs: [
-      '/dashboard/text-to-job',
-      '/dashboard/quick-stops',
-      '/dashboard/schedule/booking',
-      '/dashboard/voice-calls',
-    ],
-  },
-  {
     label: 'Billing & Cash',
     accent: 'money',
     hrefs: [
-      '/dashboard/insights',
       '/dashboard/payments',
       '/dashboard/recurring',
-      '/dashboard/services',
-      '/dashboard/cash-flow',
-      '/dashboard/expenses',
     ],
   },
   {
@@ -162,7 +150,6 @@ const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = [
     hrefs: [
       '/dashboard/automations',
       '/dashboard/marketing',
-      '/dashboard/merchandise',
       '/dashboard/reviews',
     ],
   },
@@ -213,6 +200,11 @@ export type NavState = 'on' | 'off' | 'paused' | 'unknown';
 // Nav entries that carry their own on/off state. The WORD is the state and the
 // color only agrees with it, so it still reads without color vision.
 const NAV_STATE_PILL: Record<string, Record<Exclude<NavState, 'unknown'>, { label: string; title: string }>> = {
+  '/dashboard/schedule': {
+    on: { label: 'ON', title: 'Schedule intake is live — online booking or quick stops active' },
+    off: { label: 'OFF', title: 'Schedule intake is off — online booking and quick stops are not taking requests' },
+    paused: { label: 'PAUSED', title: 'Schedule intake needs attention — online booking or quick stops is on but not bookable' },
+  },
   '/dashboard/quick-stops': {
     on: { label: 'ON', title: 'Quick Stops is ON — nearby customers can pay to be fitted in sooner' },
     off: { label: 'OFF', title: 'Quick Stops is OFF — nobody can ask to be added to today' },
@@ -922,8 +914,22 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       // Never on the page you're standing on — the effect above marks it seen
       // the moment you arrive, but the badge shouldn't flicker in the gap.
       const isNew = !active && isSectionNew(newestByHref[href], navSeen[href]);
+      const scheduleRollupState: NavState =
+        quickStopState === 'paused' || bookingState === 'paused'
+          ? 'paused'
+          : quickStopState === 'on' || bookingState === 'on'
+            ? 'on'
+            : quickStopState === 'off' && bookingState === 'off'
+              ? 'off'
+              : 'unknown';
       const state =
-        href === '/dashboard/quick-stops' ? quickStopState : href === '/dashboard/schedule/booking' ? bookingState : 'unknown';
+        href === '/dashboard/schedule'
+          ? scheduleRollupState
+          : href === '/dashboard/quick-stops'
+            ? quickStopState
+            : href === '/dashboard/schedule/booking'
+              ? bookingState
+              : 'unknown';
       return (
         <Link
           href={href}

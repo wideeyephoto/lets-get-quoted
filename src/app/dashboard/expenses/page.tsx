@@ -4,6 +4,7 @@ import { listJobs } from '@/lib/jobs';
 import { listCrew } from '@/lib/crew';
 import { listAllAccountExpenses, getExpenseSummaryMetrics, listAccountSuppliers } from '@/lib/expense-ledger';
 import ExpensesLedger from './ExpensesLedger';
+import MoneyNav from '@/components/MoneyNav';
 
 export const metadata = { title: 'All Expenses Ledger · Let’s Get Quoted' };
 
@@ -35,6 +36,7 @@ export default async function ExpensesPage() {
 
   return (
     <main className="wide-shell workspace-shell">
+      <MoneyNav />
       <header className="inbox-header" style={{ marginBottom: '1.25rem' }}>
         <div className="inbox-header-copy">
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>

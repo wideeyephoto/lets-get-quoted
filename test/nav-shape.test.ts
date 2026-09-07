@@ -13,6 +13,11 @@ const TABS = read('src', 'app', 'dashboard', 'settings', 'SettingsTabs.tsx');
 const AUTOMATIONS = read('src', 'app', 'dashboard', 'automations', 'page.tsx');
 const GLOBALS = read('src', 'app', 'globals.css');
 const LITE = read('src', 'app', 'globals-lite.css');
+const SCHEDULE_NAV = read('src', 'app', 'dashboard', 'schedule', 'ScheduleNav.tsx');
+const SUB_NAV = read('src', 'components', 'SubNav.tsx');
+const MONEY_NAV = read('src', 'components', 'MoneyNav.tsx');
+const REPORTS_PAGE = read('src', 'app', 'dashboard', 'reports', 'page.tsx');
+const PAYROLL_PAGE = read('src', 'app', 'dashboard', 'payroll', 'page.tsx');
 
 /**
  * The shape of the rail, which nothing pinned before this.
@@ -68,13 +73,12 @@ describe('Automations is a primary nav item', () => {
     expect(SHELL).not.toContain('settingsTabEvent');
   });
 
-  // The demo rail is hand-duplicated and its own comment promises it mirrors
-  // NAV_GROUPS. A row that moved in one and not the other shows a prospect a
+  // Phase 0: The demo rail imports NAV_GROUPS directly instead of maintaining a
+  // hand-duplicated copy. A row that moved in one and not the other shows a prospect a
   // product that does not exist.
-  it('moved in the demo rail too', () => {
-    const marketing = DEMO_RAIL.slice(DEMO_RAIL.indexOf("label: 'Marketing & AI'"));
-    const items = marketing.slice(0, marketing.indexOf('],'));
-    expect(items).toContain("label: 'Automations'");
+  it('mirrors NAV_GROUPS in the demo rail by importing it directly', () => {
+    expect(DEMO_RAIL).toContain("import { NAV_GROUPS, baseNavItems } from './app-shell'");
+    expect(DEMO_RAIL).toContain('NAV_GROUPS.map((group) =>');
   });
 });
 
@@ -237,15 +241,15 @@ describe('the rail is colour-coded by section', () => {
   ] as const;
 
   it('gives every group an accent and renders it as a class', () => {
-    for (const [name] of ACCENTS) {
+    // In Phase 1a, Intake Channels is folded into Schedule, leaving 3 active groups
+    const ACTIVE_ACCENTS = ['work', 'money', 'grow'] as const;
+    for (const name of ACTIVE_ACCENTS) {
       expect(SHELL, name).toContain(`accent: '${name}'`);
     }
     // Both rails the shell draws: the signed-in one and the marketing drawer.
     expect(SHELL.match(/sidenav-group sidenav-group--\$\{group\.accent\}/g) ?? []).toHaveLength(2);
-    // And the demo rail, which promises to mirror NAV_GROUPS.
-    for (const [name] of ACCENTS) {
-      expect(DEMO_RAIL, name).toContain(`accent: '${name}'`);
-    }
+    // And the demo rail, which derives its section colors directly from NAV_GROUPS.
+    expect(DEMO_RAIL).toContain('accent: group.accent');
     expect(DEMO_RAIL).toContain('sidenav-group sidenav-group--${group.accent}');
   });
 
@@ -323,7 +327,7 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
   it('every rendered href in NAV_GROUPS resolves in baseNavItems', () => {
     const groupsBlock = SHELL.slice(SHELL.indexOf('const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
     const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
-    expect(hrefMatches.length).toBeGreaterThan(15);
+    expect(hrefMatches.length).toBe(13);
 
     const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
 
@@ -358,5 +362,119 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
     expect(GLOBALS).toContain('.sidenav-group--less-used');
     expect(GLOBALS).toContain('.sidenav-link--demoted');
     expect(GLOBALS).toContain('.sidenav-hidden-note');
+  });
+
+  it('Phase 0: demo rail covers every single href in NAV_GROUPS without drift', () => {
+    expect(DEMO_RAIL).toContain("import { NAV_GROUPS, baseNavItems } from './app-shell'");
+    expect(DEMO_RAIL).toContain('group.hrefs.map(resolveDemoItem)');
+
+    const groupsBlock = SHELL.slice(SHELL.indexOf('const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
+    expect(hrefMatches.length).toBe(13);
+
+    // Every single href from NAV_GROUPS must be mapped either dynamically or explicitly
+    for (const href of hrefMatches) {
+      const isOverridden = DEMO_RAIL.includes(`'${href}':`);
+      const isDynamic = href.startsWith('/dashboard/');
+      expect(isOverridden || isDynamic, `href ${href} must be handled by demo rail`).toBe(true);
+    }
+  });
+
+  it('Phase 1a: Intake Channels is folded into Schedule, eliminating the separate group', () => {
+    // The Intake Channels group is removed from NAV_GROUPS
+    const groupsBlock = SHELL.slice(SHELL.indexOf('export const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    expect(groupsBlock).not.toContain("label: 'Intake Channels'");
+    expect(groupsBlock).not.toContain("accent: 'intake'");
+
+    // NAV_GROUPS now has 3 active groups
+    expect(groupsBlock).toContain("label: 'Work'");
+    expect(groupsBlock).toContain("label: 'Billing & Cash'");
+    expect(groupsBlock).toContain("label: 'Marketing & AI'");
+  });
+
+  it('Phase 1a: Schedule rail entry carries the rolled-up ON/OFF/PAUSED state pill', () => {
+    expect(SHELL).toContain("'/dashboard/schedule': {");
+    expect(SHELL).toContain('scheduleRollupState');
+    expect(SHELL).toContain("href === '/dashboard/schedule'");
+    expect(DEMO_RAIL).toContain("'/demo/schedule': {");
+  });
+
+  it('Phase 1a: Shared SubNav and ScheduleNav provide secondary navigation across schedule views', () => {
+    expect(SUB_NAV).toContain('export default function SubNav');
+    expect(SCHEDULE_NAV).toContain("import SubNav, { type SubNavItem } from '@/components/SubNav'");
+    expect(SCHEDULE_NAV).toContain("href: '/dashboard/schedule/intake', label: 'Intake Channels'");
+    expect(SCHEDULE_NAV).toContain("href: '/dashboard/schedule/booking', label: 'Online Booking'");
+    expect(SCHEDULE_NAV).toContain("href: '/dashboard/schedule/plan', label: 'Plan Day'");
+  });
+
+  it('Phase 1b: Merge the money group into Payments with secondary MoneyNav tabs', () => {
+    // In app-shell.tsx, Billing & Cash is streamlined to 3 entries
+    const groupsBlock = SHELL.slice(SHELL.indexOf('export const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    const billingSection = groupsBlock.slice(groupsBlock.indexOf("label: 'Billing & Cash'"));
+    const billingGroup = billingSection.slice(0, billingSection.indexOf('],'));
+    expect(billingGroup).toContain("'/dashboard/payments'");
+    expect(billingGroup).toContain("'/dashboard/recurring'");
+    expect(billingGroup).not.toContain("'/dashboard/services'");
+    expect(billingGroup).not.toContain("'/dashboard/insights'");
+    expect(billingGroup).not.toContain("'/dashboard/cash-flow'");
+    expect(billingGroup).not.toContain("'/dashboard/expenses'");
+
+    // Active state maps insights, cash-flow, expenses, and reports to Payments in shell and demo
+    expect(SHELL).toContain("MONEY_SUBROUTES = ['/dashboard/insights', '/dashboard/cash-flow', '/dashboard/expenses', '/dashboard/reports']");
+    expect(DEMO_RAIL).toContain("DEMO_MONEY_SUBROUTES = ['/demo/insights', '/demo/cash-flow', '/demo/expenses']");
+
+    // MoneyNav provides secondary tabs
+    expect(MONEY_NAV).toContain('export default function MoneyNav');
+    expect(MONEY_NAV).toContain("href: '/dashboard/payments', label: 'Payments'");
+    expect(MONEY_NAV).toContain("href: '/dashboard/insights', label: 'Insights'");
+    expect(MONEY_NAV).toContain("href: '/dashboard/cash-flow', label: 'Cash Flow'");
+    expect(MONEY_NAV).toContain("href: '/dashboard/expenses', label: 'Expenses'");
+    expect(MONEY_NAV).toContain("href: '/dashboard/reports', label: 'Reports'");
+  });
+
+  it('Phase 1c: Demote reference data (Price Book and Cards & Stationery) to Settings', () => {
+    // Both are removed from primary rail NAV_GROUPS
+    const groupsBlock = SHELL.slice(SHELL.indexOf('export const NAV_GROUPS'), SHELL.indexOf('type AccountStatus'));
+    expect(groupsBlock).not.toContain("'/dashboard/services'");
+    expect(groupsBlock).not.toContain("'/dashboard/merchandise'");
+
+    // Both are removed from baseNavItems
+    const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
+    expect(baseNavBlock).not.toContain("'/dashboard/services'");
+    expect(baseNavBlock).not.toContain("'/dashboard/merchandise'");
+
+    // Settings provides dedicated reference cards with deep link anchors
+    expect(SETTINGS).toContain("import PriceBookSettingsSection from './PriceBookSettingsSection'");
+    expect(SETTINGS).toContain("import StationerySettingsSection from './StationerySettingsSection'");
+    expect(SETTINGS).toContain("'price-book'");
+    expect(SETTINGS).toContain("'stationery'");
+    expect(SETTINGS).toContain('<PriceBookSettingsSection />');
+    expect(SETTINGS).toContain('<StationerySettingsSection />');
+
+    // Total grouped rail entries is now 13 (8 Work, 2 Billing & Cash, 3 Marketing & AI)
+    const hrefMatches = Array.from(groupsBlock.matchAll(/'(\/dashboard\/[^']+)'/g)).map((m) => m[1]);
+    expect(hrefMatches).toHaveLength(13);
+  });
+
+  it('Phase 1d: Fix accidental splits (Reports in MoneyNav, Payroll canonical resolution)', () => {
+    // Reports is integrated into MoneyNav and mounts MoneyNav
+    expect(MONEY_NAV).toContain("href: '/dashboard/reports', label: 'Reports'");
+    expect(REPORTS_PAGE).toContain("import MoneyNav from '@/components/MoneyNav'");
+    expect(REPORTS_PAGE).toContain('<MoneyNav />');
+
+    // baseNavItems registers both Financial Reports and Payroll
+    const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
+    expect(baseNavBlock).toContain("href: '/dashboard/reports', label: 'Financial Reports'");
+    expect(baseNavBlock).toContain("href: '/dashboard/payroll', label: 'Payroll'");
+
+    // Both have icons in nav-icons.tsx
+    expect(ICONS).toContain("'/dashboard/reports':");
+    expect(ICONS).toContain("'/dashboard/payroll':");
+
+    // Payroll redirects canonically to tab=timecards
+    expect(PAYROLL_PAGE).toContain("redirect(`/dashboard/crew?tab=timecards${suffix}`)");
+
+    // Crew & Labor hint explicitly surfaces timecards & payroll export
+    expect(baseNavBlock).toContain("Team roster, timecards & payroll export");
   });
 });

@@ -89,6 +89,8 @@ export const NAV_ICON_PATHS: Record<string, string> = {
   '/dashboard/help': '<circle cx="12" cy="12" r="9.2"/><path d="M9.2 9.3a2.9 2.9 0 0 1 5.6 1c0 1.9-2.8 2.5-2.8 4"/><path d="M12 17.4h.01"/>',
   '/dashboard/merchandise': '<rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19M6.5 15h4M14.5 15h3"/>',
   '/dashboard/sites': '<rect x="3" y="4.5" width="18" height="12" rx="2"/><path d="M3 9h18M8 20h8M12 16.5V20"/>',
+  '/dashboard/reports': '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>',
+  '/dashboard/payroll': '<rect x="2" y="4" width="20" height="16" rx="2.5"/><path d="M2 9.5h20M12 12.5v5M9.5 14h3.5a1.2 1.2 0 0 1 0 2.4H9.5"/>',
 };
 
 // `iconHref` is the /dashboard/* key above; callers whose links point elsewhere

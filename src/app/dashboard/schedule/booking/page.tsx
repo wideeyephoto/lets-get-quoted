@@ -5,6 +5,7 @@ import { getAvailableBookingDays } from '@/lib/booking';
 import { loadOwnerAlerts } from '@/lib/owner-sms';
 import { todayIn } from '@/lib/quote-options';
 import BookingSetup from './BookingSetup';
+import ScheduleNav from '../ScheduleNav';
 
 export const metadata = { title: 'Booking requests' };
 
@@ -68,24 +69,29 @@ export default async function BookingSetupPage() {
   }));
 
   return (
-    <BookingSetup
-      availability={availability}
-      instantBook={{
-        enabled: Boolean(account?.instant_book_enabled),
-        minAmount: account?.instant_book_min_amount ? Number(account.instant_book_min_amount) : 0,
-        radiusMiles: account?.instant_book_radius_miles ? Number(account.instant_book_radius_miles) : 15,
-        geoMode: account?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer',
-        driveTime: Boolean(account?.instant_book_drive_time),
-      }}
-      blocks={blocks}
-      bookingUrl={bookingUrl}
-      openWindowCount={openWindowCount}
-      bookableDays={bookableDays}
-      timezoneOptions={TIMEZONE_OPTIONS}
-      todayKey={todayKey}
-      ownerAlerts={ownerAlerts.kind === 'ok' ? ownerAlerts : null}
-      alertPhone={account?.alert_phone ?? null}
-      dedicatedPhone={dedicatedSender?.e164_number ?? null}
-    />
+    <>
+      <div style={{ maxWidth: '1180px', margin: '0 auto', padding: '1.25rem 1rem 0' }}>
+        <ScheduleNav />
+      </div>
+      <BookingSetup
+        availability={availability}
+        instantBook={{
+          enabled: Boolean(account?.instant_book_enabled),
+          minAmount: account?.instant_book_min_amount ? Number(account.instant_book_min_amount) : 0,
+          radiusMiles: account?.instant_book_radius_miles ? Number(account.instant_book_radius_miles) : 15,
+          geoMode: account?.instant_book_geo_mode === 'restrict' ? 'restrict' : 'prefer',
+          driveTime: Boolean(account?.instant_book_drive_time),
+        }}
+        blocks={blocks}
+        bookingUrl={bookingUrl}
+        openWindowCount={openWindowCount}
+        bookableDays={bookableDays}
+        timezoneOptions={TIMEZONE_OPTIONS}
+        todayKey={todayKey}
+        ownerAlerts={ownerAlerts.kind === 'ok' ? ownerAlerts : null}
+        alertPhone={account?.alert_phone ?? null}
+        dedicatedPhone={dedicatedSender?.e164_number ?? null}
+      />
+    </>
   );
 }
