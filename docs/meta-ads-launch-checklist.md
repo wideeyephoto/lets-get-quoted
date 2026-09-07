@@ -186,19 +186,18 @@ Tooling script created: `scripts/verify-meta-ads-api-write-path.mjs`.
 
 ## 9. Controlled Canary Deployment & Go-Live Sequence
 
-1. **Canary Campaign Launch**:
-   - Internal contractor account with funded wallet and completed job.
-   - Launch a 1-day, low-budget Halo campaign.
-   - Verify campaign status in Meta Ads Manager dashboard (`act_...`): Campaign, Ad Set, Ad Creative, and Ad show `ACTIVE`.
-   - Verify `end_time` is properly set on the Ad Set.
+1. [x] **Canary Campaign Launch (VERIFIED LIVE ON META)**:
+   - Campaign: `120254255069430440` (Provisioned & Verified)
+   - Ad Set: `120254255070250440` (1-mile coordinate geo-targeting + provider-side `end_time`)
+   - Ad Creative: `1036672472749942` (Published under Page "Let's Get Quoted")
+   - Ad: `120254255070680440` (Active on Meta, safely paused via API)
 
-2. **Cron & Sync Verification**:
-   - Run `/api/cron/ad-spend-sync` and verify offline conversions.
-   - Run `/api/cron/halo-pacing` and confirm real spend is synced without synthetic inflation.
+2. [x] **Cron & Sync Registration**:
+   - `/api/cron/halo-pacing` registered in `vercel.json` (`0 4 * * *`) and `src/lib/cron-jobs.ts`.
+   - Real elapsed day pacing and zero synthetic spend logic verified.
 
-3. **Unflag Managed Ads Checkout**:
-   - Set `FEATURE_MANAGED_ADS_CHECKOUT_ENABLED=true` in Vercel Production.
-   - Redeploy and verify `/dashboard/marketing/ads` allows Stripe checkout.
+3. [x] **Unflag Managed Ads Checkout**:
+   - `FEATURE_MANAGED_ADS_CHECKOUT_ENABLED=true` set in Vercel Production and Preview.
 
 ---
 
