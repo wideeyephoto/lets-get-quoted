@@ -123,7 +123,7 @@ export type AdminPaymentDetail = {
   failed_at: string | null;
   requested_at: string | null;
   paid_at: string | null;
-  created_at: string | null;
+  created_at?: string | null;
   // Absent on a database that predates charge-model migrations. Presence with
   // any value other than `destination` must disable the legacy refund surface.
   charge_model?: string | null;
@@ -142,7 +142,7 @@ const LEGACY_DETAIL_COLUMNS = `
   stripe_payment_intent, stripe_checkout_session, stripe_dispute_id,
   disputed_at, dispute_reason, dispute_status, dispute_due_by,
   dunning_state, failure_message, failed_at,
-  requested_at, paid_at, created_at
+  requested_at, paid_at
 `.replace(/\s+/g, ' ').trim();
 const DETAIL_COLUMNS = `${LEGACY_DETAIL_COLUMNS}, charge_model, stripe_account_id, stripe_livemode, stripe_charge_id, stripe_application_fee_id, stripe_balance_transaction_id, reconciliation_status, reconciled_at`;
 const CHARGE_MODEL_DETAIL_COLUMNS = `${LEGACY_DETAIL_COLUMNS}, charge_model`;

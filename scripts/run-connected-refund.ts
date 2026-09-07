@@ -68,18 +68,45 @@ async function main() {
   console.log(`  Payment Intent: ${payment.stripe_payment_intent}`);
   console.log(`  Invoice ID:     ${payment.invoice_id} (Ref: ${payment.invoice?.ref})`);
   console.log(`  Invoice Status: ${payment.invoice?.status}`);
+  const args = process.argv.slice(2);
+  const isExecute = args.includes('--execute');
+  const amountArg = args.find((a) => !a.startsWith('--'));
+  const targetAmount = amountArg ? Number.parseFloat(amountArg) : undefined;
+
   console.log(`  Dashboard URL:  https://app.letsgetquoted.com/dashboard/jobs/${payment.job_id}`);
   console.log(`  Admin URL:      https://app.letsgetquoted.com/admin/payments/${payment.id}\n`);
-  return;
+
+  if (!isExecute) {
+    console.log(`[DRY RUN PREVIEW] Safety guard active: --execute flag omitted.`);
+    console.log(`To execute this live refund rehearsal, either:`);
+    console.log(`  1. Use the Admin UI:   https://app.letsgetquoted.com/admin/payments/${payment.id}`);
+    console.log(`  2. Run with --execute:  npx tsx scripts/run-connected-refund.ts --execute ${targetAmount ? targetAmount : '[amount]'}`);
+    console.log(`     (Ensure STRIPE_SECRET_KEY is set to a live key: sk_live_... or rk_live_...)\n`);
+    return;
+  }
+
+  // Verify live Stripe key format before attempting live refund
+  const stripeKey = process.env.STRIPE_SECRET_KEY || '';
+  if (!stripeKey.startsWith('sk_live_') && !stripeKey.startsWith('rk_live_')) {
+    console.error(`ERROR: STRIPE_SECRET_KEY must be a live key (sk_live_... or rk_live_...) to refund live payment ${payment.stripe_payment_intent}.`);
+    console.error(`Current key starts with: '${stripeKey.slice(0, 8)}...'`);
+    console.error(`\nPlease run with live key:`);
+    console.error(`  STRIPE_SECRET_KEY="sk_live_..." npx tsx scripts/run-connected-refund.ts --execute ${targetAmount ? targetAmount : ''}`);
+    console.error(`Or execute directly in the production Admin UI where the live key is pre-configured on Vercel:`);
+    console.error(`  https://app.letsgetquoted.com/admin/payments/${payment.id}\n`);
+    process.exitCode = 1;
+    return;
+  }
 
   if (payment.status !== 'paid') {
     console.error(`Cannot refund payment: current status is '${payment.status}' (expected 'paid')`);
-    process.exit(1);
+    process.exitCode = 1;
+    return;
   }
 
   // 2. Execute refund via production refundPayment engine
-  console.log('Executing refundPayment()...');
-  const result = await refundPayment(admin, payment.account_id, payment.id);
+  console.log(`Executing refundPayment(amount: ${targetAmount ? '$' + targetAmount.toFixed(2) : 'full'})...`);
+  const result = await refundPayment(admin, payment.account_id, payment.id, targetAmount);
 
   console.log('\nRefund Result:');
   console.log(`  Amount Refunded:  $${result.amount.toFixed(2)}`);

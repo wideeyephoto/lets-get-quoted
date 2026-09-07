@@ -362,7 +362,8 @@ export type AdminPaymentRow = {
   amount: number | null;
   status: string | null;
   kind: string | null;
-  created_at: string | null;
+  requested_at: string | null;
+  created_at?: string | null;
   paid_at: string | null;
   refunded_amount: number | null;
 };
@@ -431,10 +432,10 @@ export async function getAccountAdminDetail(admin: SupabaseClient, id: string): 
     admin.from('payments').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).eq('status', 'disputed'),
     admin
       .from('payments')
-      .select('id, label, amount, status, kind, created_at, paid_at, refunded_amount')
+      .select('id, label, amount, status, kind, requested_at, paid_at, refunded_amount')
       .is('test_marker', null)
       .eq('account_id', id)
-      .order('created_at', { ascending: false })
+      .order('requested_at', { ascending: false })
       .limit(12),
     getAccountCreditBalanceCents(admin, id),
     admin.from('extra_stop_requests').select('id', { count: 'exact', head: true }).is('test_marker', null).eq('account_id', id).in('status', ['awaiting_contractor', 'contractor_offer_sent', 'awaiting_customer_payment', 'confirmed', 'en_route', 'arrived']),

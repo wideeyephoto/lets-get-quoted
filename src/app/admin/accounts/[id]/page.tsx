@@ -561,7 +561,7 @@ export default async function AdminAccountDetailPage({
             <tbody>
               {detail.recentPayments.map((p) => (
                 <tr key={p.id}>
-                  <td className={styles.muted}>{fmtDate(p.created_at)}</td>
+                  <td className={styles.muted}>{fmtDate(p.requested_at ?? p.created_at)}</td>
                   <td>
                     <Link href={`/admin/payments/${p.id}`} className={styles.rowLink}>
                       {p.label || 'Payment'}

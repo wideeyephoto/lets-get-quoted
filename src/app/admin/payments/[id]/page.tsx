@@ -153,7 +153,7 @@ export default async function AdminPaymentPage({
               {fee.expectedFee !== null ? <><dt>Expected LGQ fee</dt><dd>{usd(fee.expectedFee)} <span className={styles.muted}>· not recognized</span></dd></> : null}
               <dt>Fee state</dt><dd><span className={`${styles.pill} ${feeTone}`}>{fee.label}</span></dd>
               {fee.recognizedAt ? <><dt>Fee recognized</dt><dd className={styles.muted}>{fmt(fee.recognizedAt)}</dd></> : null}
-              <dt>Requested</dt><dd className={styles.muted}>{fmt(payment.requested_at ?? payment.created_at)}</dd>
+              <dt>Requested</dt><dd className={styles.muted}>{fmt(payment.requested_at)}</dd>
               <dt>Paid</dt><dd className={styles.muted}>{fmt(payment.paid_at)}</dd>
               {payment.refunded_at ? <><dt>Last refunded</dt><dd className={styles.muted}>{fmt(payment.refunded_at)}</dd></> : null}
             </dl>
