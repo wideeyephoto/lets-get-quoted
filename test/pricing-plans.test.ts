@@ -99,6 +99,10 @@ describe('the contractor pricing catalog', () => {
       ['100 GB storage', '$15/month'],
       ['Office user', '$15/month'],
       ['Crew user', '$5/month'],
+      ['AI Voice Receptionist (Flex)', '$69/month'],
+      ['AI Voice Receptionist (Solo)', '$59/month'],
+      ['AI Voice Receptionist (Growth)', '$55/month'],
+      ['100 AI-connected minutes', '$35'],
     ]);
   });
 

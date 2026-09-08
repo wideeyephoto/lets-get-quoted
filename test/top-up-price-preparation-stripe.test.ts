@@ -39,19 +39,19 @@ const hook = `import {registerHooks} from 'node:module'; registerHooks({resolve(
 function run(priceCase: string) {
   return spawnSync(process.execPath, [
     '--import', `data:text/javascript,${encodeURIComponent(hook)}`,
-    'scripts/seed-stripe-top-up-prices.mjs', '--prepare-withheld=ai_voice_flex',
+    'scripts/seed-stripe-top-up-prices.mjs', '--prepare-skus=ai_voice_flex',
   ], {
     cwd: process.cwd(), encoding: 'utf8', timeout: 10_000,
     env: { ...process.env, STRIPE_SECRET_KEY: 'sk_test_dummy', PRICE_CASE: priceCase },
   });
 }
 
-describe('withheld Price preparation against the Stripe boundary', () => {
-  it('creates and verifies a missing monthly Price while retaining withholding', () => {
+describe('named Price preparation against the Stripe boundary', () => {
+  it('creates and verifies a missing monthly Price without changing the catalog', () => {
     const result = run('missing');
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('MOCK_PRICE_CREATED');
-    expect(result.stdout).toContain('checkout and fulfillment remain withheld');
+    expect(result.stdout).not.toContain('checkout and fulfillment remain withheld');
     expect(result.stdout).toContain('All seeded SKUs satisfy the contract');
   });
   it('reuses a matching Price without creating anything', () => {

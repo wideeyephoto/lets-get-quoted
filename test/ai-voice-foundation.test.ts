@@ -181,11 +181,11 @@ describe('the voice SKUs exist, and cannot be bought', () => {
     });
   });
 
-  it('withholds all four voice SKUs from sale', async () => {
+  it('releases all four voice SKUs in measurement mode', async () => {
     const { SELLABLE_TOP_UP_IDS, TOP_UPS_WITHHELD } = await import('@/lib/billing/catalog');
     for (const id of ['ai_voice_flex', 'ai_voice_solo', 'ai_voice_growth', 'voice_minutes_100']) {
-      expect(SELLABLE_TOP_UP_IDS, id).not.toContain(id);
-      expect(TOP_UPS_WITHHELD, id).toHaveProperty(id);
+      expect(SELLABLE_TOP_UP_IDS, id).toContain(id);
+      expect(TOP_UPS_WITHHELD, id).not.toHaveProperty(id);
     }
   });
 

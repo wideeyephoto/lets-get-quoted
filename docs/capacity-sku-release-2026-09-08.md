@@ -1,46 +1,51 @@
-# Storage and office seat release
+# Six-SKU release
 
-Release scope: `storage_100gb` ($15/month, 100 GB) and `office_user`
-($15/month, one additional counted office seat). Voice SKUs remain withheld.
+The catalog enables `storage_100gb`, `office_user`, `ai_voice_flex`,
+`ai_voice_solo`, `ai_voice_growth`, and `voice_minutes_100` for eligible plans.
+Each requires its matching live Stripe Price and canonical catalog metadata.
 
-## Hosted evidence
+## Capacity products
 
-- Live Stripe Prices and their five catalog metadata fields were verified in
-  `six-sku-release-readiness-2026-09-08.md`.
-- Production storage sweep on September 8 measured all 11 accounts. All have
-  storage entitlements; none is currently above its cap.
-- `LGQ_STORAGE_CAP_ENFORCED=1` was saved to the production Vercel project for
-  the next deployment. Existing batch upload guards were deployed with PR #27.
-- A rollback-only transaction on production's actual capacity functions verified
-  that 100 GB increases the storage limit by 107374182400 bytes and one office
-  seat raises the seat limit by one. Provider cancellation restored both limits;
-  repeated cancellation returned `already_canceled`. No test ledger rows remain.
-- Midwest Glass Company has two included Flex seats, with its owner and Brett's
-  office membership consuming both. Its invitation RPC rejected a third invite
-  with `office_seat_limit_reached` in a rollback-only check; no email was sent.
-- Brett accepted the Midwest invitation. In his authenticated browser, workspace
-  selection, leads, clients, jobs, and the isolated office job detail all loaded.
-  His explicit grants are `leads.read`, `clients.read`, and `jobs.read`.
-  Additional seats do not grant owner authority or automatically assign permissions.
-
-## Lifecycle and verification
-
-The existing paid-checkout projector grants recurring capacity only after paid
-checkout and requires a valid subscription ID. The existing account settings
-action schedules cancellation at period end; the provider lifecycle reconciler
-removes capacity on terminal cancellation. Storage and office now exercise these
-production code paths without mocking the catalog withholding list. Cancellation
-tests cover all three capacity products.
-
-This evidence combines authenticated browser reads, hosted rollback-only database
-checks, and hermetic Stripe-boundary tests. It is not a claim that a live customer
-card was charged or refunded. No live test charge was made.
-
+Storage adds 100 GB for $15/month. Production uses
+`LGQ_STORAGE_CAP_ENFORCED=1`, and upload paths check the workspace limit.
 Storage retains the documented support-upload exception, client-reported video
 size limitation, and periodic measurement rather than atomic upload reservations.
-Cancellation reduces future available capacity; it does not delete stored files
-or automatically remove existing members.
 
-The four voice SKUs still require controlled provider recovery/cutoff evidence,
-enforced exhaustion, and full-period provider reconciliation. Their withholding
-is independent of this capacity release.
+Office capacity adds one counted office seat for $15/month on eligible paid
+plans. Flex includes two counted office seats. Additional seats do not grant
+owner authority or automatically assign permissions; clients and jobs require
+the appropriate explicit office grants.
+
+The paid-checkout projector grants recurring capacity only after paid checkout
+with a valid subscription ID. Cancellation is scheduled for period end; terminal
+provider cancellation removes the purchased capacity idempotently. It does not
+delete stored files or automatically remove existing members.
+
+## Voice launch policy
+
+Voice launches with metering enabled and exhaustion blocking disabled. LGQ
+absorbs unmetered usage while provider reconciliation continues:
+
+- `LGQ_VOICE_MINUTE_METER_ENABLED=1`
+- `LGQ_VOICE_MINUTE_GATE_ENABLED=0`
+- The recurring allowance worker remains enabled.
+
+Full-period reconciliation is required before strict exhaustion enforcement.
+This release does not enable additional overage charges or enforcement.
+
+Inbound retries exclude their own admission from the concurrency count.
+Fallback does not forward a caller back to the same phone. Signed status
+callbacks use fixed URLs and retrieve attribution from the saved inbound call;
+recording and callback authentication remain mandatory. Duplicate fallback
+requests preserve settled call and recording state.
+
+## Verification and release records
+
+Automated coverage includes checkout eligibility, Stripe Price validation,
+recurring capacity grants and cancellation, voice allowances, metering,
+concurrency, callback signatures, recording ingestion, and workspace access.
+Tests use synthetic fixtures and disposable or rolled-back database changes.
+No live card charge is part of this verification.
+
+Detailed controlled-call evidence remains in the local release record, outside
+this public repository. Implementation is tracked in PRs #28, #29, #30, and #31.

@@ -37,10 +37,11 @@ const DRY_RUN = process.argv.includes('--dry-run');
 const WANT_LIVE = process.argv.includes('--live');
 // Prepare named Prices while checkout and fulfillment remain withheld.
 // Example: --prepare-withheld=storage_100gb,office_user --dry-run
-const prepareArgs = process.argv.slice(2).filter((arg) => arg.startsWith('--prepare-withheld='));
-const PREPARE = new Set(prepareArgs.flatMap((arg) => arg.slice('--prepare-withheld='.length).split(',')));
+const prepareArgs = process.argv.slice(2).filter((arg) => arg.startsWith('--prepare-withheld=') || arg.startsWith('--prepare-skus='));
+const withheldOnly = process.argv.some((arg) => arg.startsWith('--prepare-withheld='));
+const PREPARE = new Set(prepareArgs.flatMap((arg) => arg.slice(arg.indexOf('=') + 1).split(',')));
 for (const arg of process.argv.slice(2)) {
-  if (!['--live', '--dry-run'].includes(arg) && !arg.startsWith('--prepare-withheld=')) {
+  if (!['--live', '--dry-run'].includes(arg) && !arg.startsWith('--prepare-withheld=') && !arg.startsWith('--prepare-skus=')) {
     throw new Error(`Unknown argument: ${arg}`);
   }
 }
@@ -131,8 +132,8 @@ async function catalog() {
 
 const { version, skus, withheld: WITHHELD } = await catalog();
 for (const id of PREPARE) {
-  if (!skus.some((sku) => sku.id === id) || !WITHHELD[id]) {
-    throw new Error(`Preparation requires a named withheld SKU: ${id || '(empty)'}`);
+  if (!skus.some((sku) => sku.id === id) || (withheldOnly && !WITHHELD[id])) {
+    throw new Error(`Preparation requires a named ${withheldOnly ? 'withheld ' : ''}SKU: ${id || '(empty)'}`);
   }
 }
 

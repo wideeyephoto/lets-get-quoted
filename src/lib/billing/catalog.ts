@@ -410,21 +410,9 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  * disagree about which SKUs are live -- and a reader is told why rather than
  * finding a SKU quietly missing from a list.
  */
-/** One reason, three SKUs. Repeating it would let two of them drift. */
-const AI_VOICE_WITHHELD =
-  'live Stripe Prices and minute settlement have been verified, but self-service '
-  + 'release still requires provider recovery checks, '
-  + 'full-period usage reconciliation and enforced allowance exhaustion';
-
-export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
-  ai_voice_flex: AI_VOICE_WITHHELD,
-  ai_voice_solo: AI_VOICE_WITHHELD,
-  ai_voice_growth: AI_VOICE_WITHHELD,
-  voice_minutes_100:
-    'live minute deduction has been demonstrated, but provider recovery, '
-    + 'full-period reconciliation and enforced allowance exhaustion remain '
-    + 'release gates for selling additional minutes',
-});
+// Voice launches with metering on and exhaustion blocking off. LGQ absorbs
+// unmetered usage while provider reconciliation continues (September 8, 2026).
+export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({});
 
 /** SKUs that may be sold today. */
 export const SELLABLE_TOP_UP_IDS = Object.freeze(
