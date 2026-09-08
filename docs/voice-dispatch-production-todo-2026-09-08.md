@@ -136,6 +136,42 @@ C:/dev/voice-cutoff-retest-provider-evidence-20260908.jsonl.
   boundary and speech-to-audio tests. Invoice reconciliation and strict financial
   enforcement remain deferred under the owner's measurement-mode decision.
 
+## Execution update — September 8, 2026, 21:46 UTC
+
+This update supersedes the earlier release-pending observations above.
+
+- PRs #35 through #41 are merged. Current verified production is
+  `ef7f42df55ae241720375e2e5c63cb403e2ff676` /
+  `dpl_Y42ukrhhX4fEp6zusb8wiJFaEvGA`, including the answered-transfer fix.
+  CI run 34280733087 passed every required step. Both public hosts and protected
+  health were checked after explicit promotion; unrelated main changes remain.
+- The operational-health migration and worker are live. Scheduled runs at
+  21:30 and 21:35 UTC succeeded with zero active issues, zero failures, and an
+  untruncated scan. This is scheduled integration evidence, not just a manual RPC.
+- The current PostgreSQL concurrency harness passed 22 assertions. Three real
+  concurrent sessions prove bounded reservations, same-call idempotency, one
+  partial settlement, capacity fallback for distinct calls, retry reuse, changed
+  caller rejection, and terminal-call slot release. These are local database
+  sessions; a simultaneous handset test is not claimed.
+- The second transfer echoed correctly and all three legs ended at 21:41:20 UTC.
+  No voicemail was created; forwarding was 80.794 seconds (stored as 81), and
+  one AI minute settled once. Receipt attempt 1 succeeded, with no active holds.
+  The user's later clarification and provider direction show caller-side ending;
+  recipient-initiated hangup acceptance remains open. The 60-second test echo
+  explains the reported wait. See [transfer evidence](voice-transfer-end-2026-09-08.md).
+- Pickup speech began about 112 ms after answer. A one-second recipient-only
+  pause is prepared, with 70 affected tests passing. Its deployment and audible
+  acceptance remain pending. Test instructions must wait for the bridge rather
+  than rely on a fixed pause.
+- The SMS task completed decline and unanswered cancellation, including user
+  confirmation, closed offer links, and nine deliveries totaling 22 provider
+  segments matched to committed units. Original fixtures were archived; the
+  test crew was subsequently reactivated for that task's STOP/START probe.
+  Its cleanup remains open. Eight hosted rollback checks passed specific
+  cross-workspace sender suppression; actual keyword acceptance remains there.
+- Customer registration, full invoice-period reconciliation, strict enforcement,
+  quantitative audio latency, and the remaining live boundary scenarios stay open.
+
 ## P0 — Fix failed post-call processing
 
 **Finding:** `src/lib/voice/triage.ts` selects `accounts.company_name` and `accounts.phone`, which do not exist in the inspected production schema. Ordinary and emergency notification paths contain this query. The latest sampled call committed its minute usage, but its receipt failed with `Voice notification settings read failed`. This query predates the other SMS changes.
@@ -176,7 +212,7 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 - [ ] Trace representative calls through admission → reservation → measured duration → final committed units → remaining allowance. Preserve historical intentionally unmetered calls as historical evidence.
 - [x] Test minute rounding around boundaries, very short AI calls, calls with no AI conversation, transfers, and voicemail. Local tests cover 0/1/59/60/61/119 AI seconds and missing evidence. Live AI transfer billed one minute for ten AI seconds while tracking 119 forwarding seconds separately; the earlier voicemail-only call remains unmetered. Provider connected time includes greeting and forwarding and is not the AI billing basis.
 - [x] Test remaining balances of 0, less than 10, exactly 10, and more than 10 minutes. Verify reservation size, effective duration, and the intended exhausted-balance behavior.
-- [ ] Test overlapping calls near exhaustion and simultaneous retries. Reservations must prevent overspending without treating a retry of the same provider call as a new caller.
+- [x] Test overlapping calls near exhaustion and simultaneous retries. September 8 local PostgreSQL tests use three independent sessions: one reservation wins the available balance, retries reuse it, and concurrent partial settlement commits once. Live overlapping-handset acceptance is not implied.
 - [x] Test duplicate, delayed, and out-of-order terminal callbacks; worker interruption; and receipt replay after usage was already committed. Each call must finalize usage once.
 - [x] Verify failed admission, fallback-only calls, and calls that never connect release any applicable holds through the intended policy. Application tests cover failed attribution/release, terminal tombstones, and non-admitted calls never reaching the ledger. The reconciled fallback-only provider call retains its released hold without fabricated AI time. Unchanged inbox PostgreSQL tests cover abandoned pre-answer claims and delayed receipts.
 - [x] Verify monthly grants, period boundaries, and rerun/idempotency behavior using controlled fixtures before relying on a live renewal.
@@ -222,7 +258,7 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 - [ ] Verify an answered transfer ends the remaining caller leg without an unavailable prompt or voicemail. The first live echo test exposed the unconditional fallback defect; the fix and targeted retest are tracked separately.
 
 - [ ] Recheck the actual production number and agent configuration: voice entrypoint, post-call receipt, status/recording callbacks, methods, and stable URLs.
-- [ ] Prove a retry of the same call does not hit the concurrency fallback; prove a genuinely separate call follows the configured concurrency policy.
+- [x] Prove a retry of the same call does not hit the concurrency fallback; prove a genuinely separate call follows the configured concurrency policy. Current PostgreSQL admission/finalization functions passed concurrent session checks at capacity one; finalized retries return the existing admission and distinct calls receive at_capacity.
 - [ ] Prove a caller cannot be forwarded back to their own number and that invalid/unreachable destinations reach a bounded fallback.
 - [ ] Exercise declined/unanswered transfer, provider failure, unavailable application dependency, paused workspace, and applicable quota exhaustion.
 - [x] Verify fallback identity survives callback delivery so the recording, workspace, caller, and call history remain linked correctly.
@@ -240,7 +276,7 @@ Use the September 8 extended-session update in `docs/sms-ready-roadmap-2026-09-0
 
 - [x] Recheck whether delivery-evidence permission fix `bd151870c` on `fix/sms-dispatch-help-20260908` has since reached production; review/apply its required changes if still pending.
 - [x] Verify the fix records delivery evidence with appropriate service-role access and tenant boundaries. Repair the already-delivered offer's evidence through the supported path; do not resend it to reconstruct a missing link.
-- [ ] Complete separate subcontractor decline and cancel branches, including repeated actions, saved state, recipient selection, and expected notification behavior.
+- [x] Complete separate subcontractor decline and cancel branches, including repeated actions, saved state, recipient selection, and expected notification behavior. Existing SMS task verified decline, cancellation after response, and unanswered cancellation; closed links, one intended cancellation recipient, and one delivered notification are recorded in its September 8 evidence.
 - [ ] Clean up the extended-session test crew/job and unsent decline draft after their remaining checks. Preserve delivery and consent evidence. The earlier session's fixtures were already cleaned up.
 - [ ] Complete eligible second-workspace and same-campaign sender STOP-suppression checks. A rejection for missing consent, registration, or allow-list eligibility does not prove STOP enforcement.
 - [ ] Complete quiet-hours, retryable rejection, unknown provider outcome, terminal failure, duplicate/out-of-order callback, and worker-recovery checks without duplicate business sends.
@@ -267,7 +303,7 @@ Use the September 8 extended-session update in `docs/sms-ready-roadmap-2026-09-0
 
 - [x] Establish a baseline for failed/deferred receipts, oldest pending age, attempt counts, overdue active calls, stale reservations, notification failures, and SMS delivery/reconciliation exceptions.
 - [ ] Make actionable failures visible to the operator with a call/receipt reference, failure stage, retry state, and supported recovery action. Avoid PII in logs.
-- [ ] Add or verify alerts for stranded receipts, calls exceeding the hard maximum, reservations that outlive completed calls, and unexpected unmetered AI calls while the meter is enabled. Preserve expected fallback-only and historical unmetered cases.
+- [x] Add or verify alerts for stranded receipts, calls exceeding the hard maximum, reservations that outlive completed calls, and unexpected unmetered AI calls while the meter is enabled. PR #40 and its applied migration cover these conditions, preserve historical exceptions, and passed observed scheduled runs at 21:30 and 21:35 UTC.
 - [ ] Add or verify latency measurements for speech-to-audio and backend tool execution; keep them separate so slow audio is not misdiagnosed as a database problem.
 - [x] Verify retention and authorized access for transcripts, recordings, and callback evidence; test deletion behavior using controlled fixtures.
 - [x] Before each release, identify the current production SHA, main SHA, migrations, and unrelated pending work. Review only the intended changes and their dependencies.
