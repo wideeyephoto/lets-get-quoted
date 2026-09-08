@@ -10,6 +10,7 @@ export type NavVisibilityDecision = {
   visible: string[];
   demoted: string[];
   hiddenCount: number;
+  promoted?: string[];
 };
 
 export function parseNavVisibilityDecision(value: unknown): NavVisibilityDecision | null {
@@ -27,6 +28,7 @@ export function parseNavVisibilityDecision(value: unknown): NavVisibilityDecisio
         visible: parsed.visible.map(String),
         demoted: parsed.demoted.map(String),
         hiddenCount: parsed.hiddenCount,
+        promoted: Array.isArray(parsed.promoted) ? parsed.promoted.map(String) : [],
       };
     }
   } catch {

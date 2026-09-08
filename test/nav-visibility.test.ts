@@ -281,4 +281,88 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
       expect(navTreatment('/dashboard/claims', officeSignals)).toBe('hide');
     });
   });
+
+  describe('Trade-driven promotion and protection', () => {
+    it('promotes Claims to top-of-Work for auto-glass, roofing, and restoration', () => {
+      const glassSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'auto-glass',
+        emptySections: new Set(),
+      };
+
+      const result = resolveVisibleNav(glassSignals);
+      expect(result.promoted).toContain('/dashboard/claims');
+      // Claims is placed right after Leads at top-of-Work
+      const leadsIdx = result.visible.indexOf('/dashboard/leads');
+      const claimsIdx = result.visible.indexOf('/dashboard/claims');
+      expect(claimsIdx).toBe(leadsIdx + 1);
+    });
+
+    it('protects Inventory from zero-usage demotion for auto-glass (windshields/sheets are core)', () => {
+      const glassSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'auto-glass',
+        emptySections: new Set(['/dashboard/inventory']), // even when empty!
+      };
+
+      expect(navTreatment('/dashboard/inventory', glassSignals)).toBe('show');
+      const result = resolveVisibleNav(glassSignals);
+      expect(result.visible).toContain('/dashboard/inventory');
+      expect(result.demoted).not.toContain('/dashboard/inventory');
+      expect(result.promoted).toContain('/dashboard/inventory');
+    });
+
+    it('protects Recurring from zero-usage demotion and demotes Claims for lawn-care', () => {
+      const lawnSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'lawn-care',
+        emptySections: new Set(['/dashboard/recurring']), // even when empty!
+      };
+
+      expect(navTreatment('/dashboard/recurring', lawnSignals)).toBe('show');
+      expect(navTreatment('/dashboard/claims', lawnSignals)).toBe('demote');
+
+      const result = resolveVisibleNav(lawnSignals);
+      expect(result.visible).toContain('/dashboard/recurring');
+      expect(result.demoted).toContain('/dashboard/claims');
+      expect(result.promoted).toContain('/dashboard/recurring');
+    });
+  });
+
+  describe('Owner pinning', () => {
+    it('pinned items are never demoted by zero-usage or trade', () => {
+      // Lawn care owner pins Claims and Crew (even though Claims is non-trade and Crew is empty)
+      const ownerSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'lawn-care',
+        emptySections: new Set(['/dashboard/crew']),
+        pinned: new Set(['/dashboard/claims', '/dashboard/crew']),
+      };
+
+      expect(navTreatment('/dashboard/claims', ownerSignals)).toBe('show');
+      expect(navTreatment('/dashboard/crew', ownerSignals)).toBe('show');
+
+      const result = resolveVisibleNav(ownerSignals);
+      expect(result.visible).toContain('/dashboard/claims');
+      expect(result.visible).toContain('/dashboard/crew');
+      expect(result.demoted).not.toContain('/dashboard/claims');
+      expect(result.demoted).not.toContain('/dashboard/crew');
+    });
+
+    it('pinned item is still hidden if office user lacks capability (security outranks pin)', () => {
+      const officeSignals: NavSignals = {
+        role: 'office',
+        can: (cap) => cap !== 'crew.read',
+        trade: null,
+        emptySections: new Set(),
+        pinned: new Set(['/dashboard/crew']),
+      };
+
+      expect(navTreatment('/dashboard/crew', officeSignals)).toBe('hide');
+    });
+  });
 });

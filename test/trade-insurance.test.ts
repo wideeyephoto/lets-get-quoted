@@ -19,6 +19,10 @@ describe('trade-insurance.ts', () => {
       expect(isInsuranceEligibleTrade('mold-remediation')).toBe(true);
       expect(isInsuranceEligibleTrade('siding')).toBe(true);
       expect(isInsuranceEligibleTrade('emergency-plumbing')).toBe(true);
+      expect(isInsuranceEligibleTrade('auto-glass')).toBe(true);
+      expect(isInsuranceEligibleTrade('storefront-glass')).toBe(true);
+      expect(isInsuranceEligibleTrade('glass-and-mirrors')).toBe(true);
+      expect(isInsuranceEligibleTrade('Midwest Auto Glass')).toBe(true);
     });
 
     it('returns false for standard maintenance or non-insurance trades', () => {
@@ -77,6 +81,13 @@ describe('trade-insurance.ts', () => {
       const profile = getInsuranceTradeProfile('water-damage-restoration');
       expect(profile.name).toContain('Water Mitigation');
       expect(profile.primaryCodeCitations.some((c) => c.code.includes('IICRC S500'))).toBe(true);
+    });
+
+    it('returns FMVSS and AGRSS standards and ADAS calibration supplements for auto-glass', () => {
+      const profile = getInsuranceTradeProfile('auto-glass');
+      expect(profile.name).toContain('Auto Glass');
+      expect(profile.primaryCodeCitations.some((c) => c.code.includes('FMVSS') || c.code.includes('AGRSS'))).toBe(true);
+      expect(profile.standardSupplements.some((s) => s.item.includes('ADAS'))).toBe(true);
     });
   });
 

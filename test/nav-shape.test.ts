@@ -482,10 +482,11 @@ describe('nav-phase-2-3 rail shape and safety invariants', () => {
   it('Ornament Budget & Single-Word Labels: enforces at most 1 ornament per row and concise labels', () => {
     // Label shortening in baseNavItems
     const baseNavBlock = SHELL.slice(SHELL.indexOf('const baseNavItems'), SHELL.indexOf('function isActiveNav'));
+    expect(baseNavBlock).toContain("href: '/dashboard/crew', label: 'Crew'");
     expect(baseNavBlock).toContain("href: '/dashboard/inventory', label: 'Inventory'");
     expect(baseNavBlock).toContain("href: '/dashboard/claims', label: 'Claims'");
     expect(baseNavBlock).toContain("href: '/dashboard/payments', label: 'Money'");
-    expect(baseNavBlock).toContain("href: '/dashboard/recurring', label: 'Recurring Jobs'");
+    expect(baseNavBlock).toContain("href: '/dashboard/recurring', label: 'Recurring'");
 
     // Ornament budget hierarchy in renderSideLink: state pill > attention count > new badge > total count
     expect(SHELL).toContain("const showState = state !== 'unknown' && Boolean(NAV_STATE_PILL[href])");

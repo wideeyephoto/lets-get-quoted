@@ -16,7 +16,7 @@ import PublicGridBackground from '@/components/marketing/PublicGridBackground';
 import SparkyCopilot from '@/components/marketing/SparkyCopilot';
 import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_STORAGE_KEY, type NavSeenMap } from '@/lib/nav-helpers';
 import { attentionBadgeLabel } from '@/lib/lead-queue';
-import { useNavCustomization, useNavCollapsed } from '@/lib/nav-customization';
+import { useNavCustomization, useNavCollapsed, useNavPinned } from '@/lib/nav-customization';
 import { useNavVisibility } from '@/lib/nav-visibility-client';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
@@ -33,20 +33,15 @@ function attentionDigits(href: string, count: number): string {
 /**
  * What "+ New" can create. ONE list, rendered by both triggers.
  *
- * There are two of them — the rail's button on a wide screen, and the mobile
- * top bar's. The mobile one used to be a plain link straight to
- * /dashboard/jobs?new=1, so a contractor on a phone — the device they actually
- * start the day on — could only ever create a job, and the other three were
- * reachable only by opening the Menu drawer first. Both now open this.
+ * Sits in lib so the demo and the app share it — see the note on demo-sidebar.tsx.
  *
- * Every href lands on the record's own page with its add form already open,
- * which is why they carry a query flag rather than pointing at a /new route.
+ * Ordered by how fast the action is: a quick note (memo), someone you just
+ * met, and somebody you hired.
  */
-const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
-  { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
-  { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
-  { href: '/dashboard/text-to-job', icon: '/dashboard/text-to-job', label: 'Voice / SMS memo' },
-  // The two records you create without a job in front of you: a customer you
+export const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
+  { href: '/dashboard/jobs?add=memo', icon: '/dashboard/text-to-job', label: 'Field memo' },
+  { href: '/dashboard/jobs?add=quote', icon: '/dashboard/jobs', label: 'New quote' },
+  { href: '/dashboard/jobs?add=invoice', icon: '/dashboard/jobs', label: 'New invoice' },
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
   // The Crew tab is called People now that it holds subcontractors too.
@@ -63,12 +58,12 @@ export const baseNavItems: { href: string; label: string; hint?: string }[] = [
   { href: '/dashboard/messages', label: 'Messages', hint: 'Two-way customer texts' },
   { href: '/dashboard/jobs', label: 'Jobs', hint: 'Quotes · Invoices · Payments' },
   { href: '/dashboard/schedule', label: 'Schedule', hint: 'Calendar & unscheduled work' },
-  { href: '/dashboard/crew', label: 'Crew & Labor', hint: 'Team roster, timecards & payroll export' },
+  { href: '/dashboard/crew', label: 'Crew', hint: 'Team roster, timecards & payroll export' },
   { href: '/dashboard/clients', label: 'Clients', hint: 'Customer profiles & history' },
   { href: '/dashboard/inventory', label: 'Inventory', hint: 'Truck tools, equipment & warehouse stock' },
   { href: '/dashboard/claims', label: 'Claims', hint: 'Adjuster scopes, supplements & depreciation' },
   { href: '/dashboard/payments', label: 'Money', hint: 'Collected revenue, invoices, cash flow & expenses' },
-  { href: '/dashboard/recurring', label: 'Recurring Jobs', hint: 'Repeating jobs & auto-billing' },
+  { href: '/dashboard/recurring', label: 'Recurring', hint: 'Repeating jobs & auto-billing' },
   { href: '/dashboard/sites', label: 'Website', hint: 'Contractor website & online presence' },
   { href: '/dashboard/automations', label: 'Automations', hint: 'The follow-ups, reminders and review asks that run without you' },
   { href: '/dashboard/marketing', label: 'Marketing', hint: 'Overview, campaigns, paid ads, SEO & tracking' },
@@ -325,6 +320,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const { contractorLogoTop } = useNavCustomization();
   const { isCollapsed, toggleCollapsed } = useNavCollapsed();
   const { nav, setNav } = useNavVisibility();
+  const { pinned, isPinned, togglePin } = useNavPinned();
 
   // Keyboard shortcut to quick-collapse/expand the desktop navigation rail:
   // '[' or 'Ctrl+B' / 'Cmd+B' when not typing in an input/textarea/editable.
@@ -910,7 +906,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       '/dashboard/jobs': 'New work has landed since you last opened Jobs',
       '/dashboard/text-to-job': 'New field memos have arrived since you last opened Text-to-Job',
     };
-    const renderSideLink = (href: string, extraClass = '') => {
+    const renderSideLink = (href: string, extraClass = '', allowPin = false) => {
       const item = byHref.get(href);
       if (!item) return null;
       const active = isActiveNav(pathname, href);
@@ -961,6 +957,24 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         >
           <NavIcon href={href} />
           <span className="sidenav-label">{item.label}</span>
+          {allowPin ? (
+            <button
+              type="button"
+              className="sidenav-pin-toggle"
+              aria-label={isPinned(href) ? `Unpin ${item.label}` : `Pin ${item.label}`}
+              title={isPinned(href) ? 'Unpin from primary navigation' : 'Pin to primary navigation'}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                togglePin(href);
+              }}
+            >
+              <svg viewBox="0 0 24 24" width="12" height="12" fill={isPinned(href) ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="12" y1="17" x2="12" y2="22" />
+                <path d="M5 17h14v-2l-3-3V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v7l-3 3v2z" />
+              </svg>
+            </button>
+          ) : null}
           {/* Ornament Budget: at most one ornament per row.
               Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count */}
           {showState ? (
@@ -1168,23 +1182,39 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
 
           <nav className="sidenav-nav" aria-label="Dashboard">
             {NAV_GROUPS.map((group) => {
-              const visibleHrefs = nav
-                ? group.hrefs.filter((href) => nav.visible.includes(href))
+              let visibleHrefs = nav
+                ? group.hrefs.filter((href) => (nav.visible.includes(href) || isPinned(href)) && (!nav.demoted?.includes(href) || isPinned(href)))
                 : group.hrefs;
+
+              // Trade promotion: order promoted items at the top of the group
+              if (nav?.promoted && nav.promoted.length > 0) {
+                const promotedInGroup = nav.promoted.filter((href) => visibleHrefs.includes(href));
+                const othersInGroup = visibleHrefs.filter((href) => !nav.promoted?.includes(href));
+                visibleHrefs = [...promotedInGroup, ...othersInGroup];
+              }
+
               if (visibleHrefs.length === 0) return null;
+              const isSingle = visibleHrefs.length === 1;
+
               return (
-                <div className={`sidenav-group sidenav-group--${group.accent}`} key={group.label}>
-                  <p className="sidenav-glabel">{group.label}</p>
+                <div className={`sidenav-group sidenav-group--${group.accent}${isSingle ? ' is-single' : ''}`} key={group.label}>
+                  {!isSingle ? <p className="sidenav-glabel">{group.label}</p> : null}
                   {visibleHrefs.map((href) => renderSideLink(href))}
                 </div>
               );
             })}
-            {nav && nav.demoted && nav.demoted.length > 0 ? (
-              <div className="sidenav-group sidenav-group--less-used" key="Less used">
-                <p className="sidenav-glabel">Less used</p>
-                {nav.demoted.map((href) => renderSideLink(href, 'sidenav-link--demoted'))}
-              </div>
-            ) : null}
+            {(() => {
+              const demotedHrefs = nav && nav.demoted
+                ? nav.demoted.filter((href) => !isPinned(href))
+                : [];
+              if (demotedHrefs.length === 0) return null;
+              return (
+                <div className="sidenav-group sidenav-group--less-used" key="Less used">
+                  <p className="sidenav-glabel">Less used</p>
+                  {demotedHrefs.map((href) => renderSideLink(href, 'sidenav-link--demoted', true))}
+                </div>
+              );
+            })()}
             {/* Dashboard closes the rail rather than opening it. It is the
                 summary of everything above, not a step before any of it, and at
                 the top it took the first slot from Leads — which is where the
