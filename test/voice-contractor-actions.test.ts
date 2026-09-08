@@ -505,6 +505,17 @@ describe('AI Voice contractor durable action outcomes', () => {
     expect(result.response).toBe('I added that caution to Rosa Holbrook\'s job (LGQ-1042).');
   });
 
+  it('reads back the committed note snapshot rather than its earlier request', async () => {
+    const { admin } = mockAdmin({ jobs: [baseJob], rpcResults: [{ error: null,
+      data: { job_id: JOB_ID, saved: { note: 'Persisted note text', is_caution: false } },
+    }] });
+    const result = await handleContractorVoiceAction(actionContext(admin,
+      'append_job_caution_or_note', { job_ref_or_client: baseJob.ref, note: 'Earlier caution request' }));
+    expect(result.response).toContain('I added that note');
+    expect(result.response).toContain('Saved text: “Persisted note text”');
+    expect(result.response).not.toContain('Earlier caution request');
+  });
+
   it('does not speak a success confirmation when the RPC rejects the authorization', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => undefined);
     const { admin } = mockAdmin({
