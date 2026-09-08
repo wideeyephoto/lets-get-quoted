@@ -10,18 +10,39 @@ function getResend() {
 }
 
 /**
+ * Resolves who operator mail goes to.
+ *
+ * There is deliberately no fallback address. This used to default to
+ * `founder@letsgetquoted.com`, which is not a real mailbox: a live run on
+ * 2026-09-08 hard-bounced two seconds after sending, while the cron reported
+ * `digestDelivered: true`. Left alone that is a hard bounce every morning at
+ * 11:00 UTC forever, which is also how a sending reputation gets destroyed.
+ * Silence when unconfigured is better than mail aimed at a dead address.
+ */
+function resolveOperatorRecipient(explicit?: string): string | null {
+  const recipient = explicit || process.env.ADMIN_ALERT_EMAIL;
+  return recipient && recipient.includes('@') ? recipient : null;
+}
+
+/**
  * Sends a daily morning executive digest email to the founder and staff
  */
 export async function dispatchExecutiveBriefingDigest(
   briefing: ExecutiveBriefing,
   options?: { recipientEmail?: string },
-): Promise<{ success: boolean; deliveredVia: string[] }> {
-  const recipient = options?.recipientEmail || process.env.ADMIN_ALERT_EMAIL || 'founder@letsgetquoted.com';
+): Promise<{ success: boolean; deliveredVia: string[]; error?: string }> {
+  const recipient = resolveOperatorRecipient(options?.recipientEmail);
   const deliveredVia: string[] = [];
+  const failures: string[] = [];
+
+  if (!recipient) {
+    failures.push('no recipient configured (set ADMIN_ALERT_EMAIL)');
+  }
 
   // 1. Dispatch via Resend Email if configured
   const resend = getResend();
-  if (resend) {
+  if (!resend) failures.push('RESEND_API_KEY not configured');
+  if (resend && recipient) {
     try {
       const subject = `☀️ Morning Briefing: $${briefing.revenue.mrrEstimated}/mo MRR • ${briefing.contractors.totalActive} Contractors • ${briefing.operations.queueHealth.toUpperCase()}`;
       const html = `
@@ -84,15 +105,25 @@ export async function dispatchExecutiveBriefingDigest(
 </html>
 `.trim();
 
-      await resend.emails.send({
+      // The Resend SDK returns { data, error } and does NOT throw on an API-level
+      // rejection, so the old unchecked `await send(); deliveredVia.push()` reported
+      // delivery for sends the provider had refused outright.
+      const { data, error } = await resend.emails.send({
         from: "LGQ AI Operator <alerts@letsgetquoted.com>",
         to: recipient,
         subject,
         html,
       });
 
-      deliveredVia.push(`email:${recipient}`);
+      if (error) {
+        failures.push(`email rejected: ${error.message ?? String(error)}`);
+        console.error('Failed to send email digest:', error);
+      } else {
+        deliveredVia.push(`email:${recipient}`);
+        if (data?.id) console.info(`[ai-operator] digest queued to ${recipient} (${data.id})`);
+      }
     } catch (e) {
+      failures.push(`email threw: ${e instanceof Error ? e.message : String(e)}`);
       console.error('Failed to send email digest:', e);
     }
   }
@@ -101,22 +132,33 @@ export async function dispatchExecutiveBriefingDigest(
   const webhookUrl = process.env.OPERATOR_SLACK_WEBHOOK_URL || process.env.OPERATOR_DISCORD_WEBHOOK_URL;
   if (webhookUrl) {
     try {
-      await fetch(webhookUrl, {
+      const res = await fetch(webhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: `☀️ *LGQ AI Operator Executive Briefing*\n*MRR:* $${briefing.revenue.mrrEstimated}/mo | *Contractors:* ${briefing.contractors.totalActive} | *Webhooks:* ${briefing.operations.unresolvedWebhooksCount}\n\n${briefing.markdownSummary}\n\n👉 <https://app.letsgetquoted.com/admin/operator|Open Cockpit>`,
         }),
       });
-      deliveredVia.push('webhook');
+      // A 4xx from Slack still resolves the fetch; only the status says it posted.
+      if (res.ok) deliveredVia.push('webhook');
+      else failures.push(`webhook rejected: HTTP ${res.status}`);
     } catch (e) {
+      failures.push(`webhook threw: ${e instanceof Error ? e.message : String(e)}`);
       console.error('Failed to post webhook digest:', e);
     }
   }
 
+  // `deliveredVia` means the provider ACCEPTED the message, which is not the same as
+  // it reaching anyone -- the 2026-09-08 run was accepted and hard-bounced two seconds
+  // later. The bounce arrives asynchronously on the Resend webhook and lands in
+  // email_events; that table, not this return value, is the record of delivery.
+  //
+  // The old code substituted ['in-memory-logged'] when nothing was sent, which made a
+  // total failure to dispatch read as a delivery channel.
   return {
     success: deliveredVia.length > 0,
-    deliveredVia: deliveredVia.length > 0 ? deliveredVia : ['in-memory-logged'],
+    deliveredVia,
+    ...(failures.length > 0 ? { error: failures.join('; ') } : {}),
   };
 }
 
