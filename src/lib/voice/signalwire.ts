@@ -11,6 +11,15 @@ import type {
 } from '@/lib/voice/provider';
 import { sanitizeVoiceReceipt } from '@/lib/voice/receipt-redaction';
 
+// A 600-second provider timer produced 600.938 connected seconds in the live
+// cutoff test. Reserve two seconds for timer/hangup completion.
+const HANGUP_MARGIN_SECONDS = 2;
+const MAX_CONNECTED_SECONDS = VOICE_CALL_CAP_MINUTES * 60 - HANGUP_MARGIN_SECONDS;
+
+function forwardTimeout(seconds: number): number {
+  return Number.isFinite(seconds) ? Math.max(5, Math.min(60, Math.floor(seconds))) : 20;
+}
+
 /**
  * SignalWire AI Agents, behind the provider-neutral seam.
  *
@@ -234,7 +243,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       });
       const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
         ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
-      const maxDurationSeconds = capMinutes * 60;
+      const maxDurationSeconds = capMinutes * 60 - HANGUP_MARGIN_SECONDS;
       // answer.max_duration bounds the whole answered call, including greeting
       // and transfers. AI hard_stop_time leaves time for a brief closing line.
       // ai.params.max_duration is not a documented SignalWire duration control.
@@ -284,6 +293,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                         connect: {
                           to: plan.transferTo,
                           timeout: 25,
+                          max_duration: maxDurationSeconds,
                           confirm: [
                             { play: { url: 'say: Incoming transfer from AI receptionist regarding: %{args.reason}.' } },
                           ],
@@ -846,11 +856,13 @@ export const signalwireVoiceProvider: VoiceProvider = {
             version: '1.0.0',
             sections: {
               main: [
+                { answer: { max_duration: MAX_CONNECTED_SECONDS } },
                 {
                   connect: {
                     to: plan.number,
                     from: plan.callerId,
-                    timeout: plan.timeoutSeconds,
+                    timeout: forwardTimeout(plan.timeoutSeconds),
+                    max_duration: MAX_CONNECTED_SECONDS,
                     status_url: plan.actionUrl,
                   },
                 },
@@ -869,7 +881,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
           version: '1.0.0',
           sections: {
             main: [
-              { answer: {} },
+              { answer: { max_duration: MAX_CONNECTED_SECONDS } },
               { play: { url: `say: ${message}` } },
               ...(plan.kind === 'voicemail' ? [{ record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } }] : []),
               { hangup: {} },
@@ -885,7 +897,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       return Object.freeze({
         contentType: 'text/xml',
         body: '<?xml version="1.0" encoding="UTF-8"?><Response>'
-          + `<Dial timeout="${plan.timeoutSeconds}" callerId="${escapeXml(plan.callerId)}"`
+          + `<Dial timeout="${forwardTimeout(plan.timeoutSeconds)}" timeLimit="${MAX_CONNECTED_SECONDS - forwardTimeout(plan.timeoutSeconds) - 5}" callerId="${escapeXml(plan.callerId)}"`
           + ` action="${escapeXml(plan.actionUrl)}" method="POST">`
           + `<Number>${escapeXml(plan.number)}</Number></Dial></Response>`,
       });

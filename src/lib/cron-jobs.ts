@@ -147,6 +147,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
   },
   {
+    job: 'voice-receipt-recovery',
+    label: 'AI Voice receipt recovery',
+    schedule: '*/5 * * * *',
+    importance: 'customer',
+    consequence: 'Failed post-call notifications and processing remain stranded after provider retries stop.',
+  },
+  {
     job: 'voice-number-reconciliation',
     label: 'AI Voice number reconciliation',
     schedule: '0 * * * *',

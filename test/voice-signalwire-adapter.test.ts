@@ -357,8 +357,8 @@ describe('rendering an answer', () => {
     expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
-    expect(swml.sections.main[0].answer.max_duration).toBe(600);
-    expect(ai.params.hard_stop_time).toBe('585s');
+    expect(swml.sections.main[0].answer.max_duration).toBe(598);
+    expect(ai.params.hard_stop_time).toBe('583s');
     expect(ai.params).not.toHaveProperty('max_duration');
     expect(swml.sections.main.at(-1)).toEqual({ hangup: {} });
   });
@@ -369,9 +369,9 @@ describe('rendering an answer', () => {
       receiptAuthorization: RECEIPT_AUTH, greeting: 'Hello.', capMinutes, transferTo: null,
     });
     const main = JSON.parse(answer.body).sections.main;
-    expect(main[0].answer.max_duration).toBe(capMinutes * 60);
+    expect(main[0].answer.max_duration).toBe(capMinutes * 60 - 2);
     expect(main.find((step: { ai?: unknown }) => step.ai).ai.params.hard_stop_time)
-      .toBe(`${capMinutes * 60 - 15}s`);
+      .toBe(`${capMinutes * 60 - 17}s`);
     expect(main.at(-1)).toEqual({ hangup: {} });
   });
 
@@ -503,6 +503,7 @@ describe('rendering an answer', () => {
     });
     expect(answer.body).not.toContain('<Hangup/>');
     expect(answer.body).toContain('&amp;b=2');
+    expect(answer.body).toContain('timeLimit="573"');
   });
 
   it('pins the spoken voice, so it does not change with the provider', () => {
@@ -532,15 +533,17 @@ describe('rendering an answer', () => {
     }, { format: 'swml' });
     expect(forward.contentType).toBe('application/json');
     const fSwml = JSON.parse(forward.body);
-    expect(fSwml.sections.main[0].connect.to).toBe('+15551230000');
-    expect(fSwml.sections.main[0].connect.from).toBe('+15559876543');
-    expect(fSwml.sections.main[0].connect.timeout).toBe(20);
-    expect(fSwml.sections.main[0].connect.status_url).toBe('https://x.test/s');
-    expect(fSwml.sections.main[1].play.url).toContain('say:');
-    expect(fSwml.sections.main[2]).toEqual({ record: expect.objectContaining({
+    expect(fSwml.sections.main[0].answer.max_duration).toBe(598);
+    expect(fSwml.sections.main[1].connect.max_duration).toBe(598);
+    expect(fSwml.sections.main[1].connect.to).toBe('+15551230000');
+    expect(fSwml.sections.main[1].connect.from).toBe('+15559876543');
+    expect(fSwml.sections.main[1].connect.timeout).toBe(20);
+    expect(fSwml.sections.main[1].connect.status_url).toBe('https://x.test/s');
+    expect(fSwml.sections.main[2].play.url).toContain('say:');
+    expect(fSwml.sections.main[3]).toEqual({ record: expect.objectContaining({
       beep: true, max_length: 120, direction: 'speak',
     }) });
-    expect(fSwml.sections.main[3]).toEqual({ hangup: {} });
+    expect(fSwml.sections.main[4]).toEqual({ hangup: {} });
 
     const decline = provider.renderAnswer({
       kind: 'unavailable', message: 'Sorry, we are closed.',
@@ -581,6 +584,7 @@ describe('rendering an answer', () => {
     const transferMain = action.SWML.sections.main;
     expect(transferMain[0].connect.to).toBe('+15558889999');
     expect(transferMain[0].connect.timeout).toBe(25);
+    expect(transferMain[0].connect.max_duration).toBe(598);
     expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
     expect(transferMain[1].play.url).toContain('say:');
     expect(transferMain[2]).toEqual({ record: expect.objectContaining({

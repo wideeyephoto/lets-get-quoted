@@ -80,6 +80,16 @@ describe('provider-neutral SMS webhook parsing', () => {
     expect(extractStatusWebhook({ MessageStatus: 'delivered' })).toBeNull();
   });
 
+  it('gives JSON status callbacks the same receipt identity as compatibility callbacks', () => {
+    const json = parseSmsWebhookBody('{"id":"relay-message-1","status":"DELIVERED"}', 'application/json');
+    expect(extractStatusWebhook(json)).toEqual(extractStatusWebhook({
+      MessageSid: 'relay-message-1', MessageStatus: 'delivered',
+    }));
+    expect(extractStatusWebhook(json)?.providerStatus).toBe('delivered');
+    expect(extractStatusWebhook({ id: 'relay-message-1', MessageStatus: 'sent', status: 'delivered' })?.providerStatus).toBe('sent');
+    expect(extractStatusWebhook({ id: 'relay-message-1', status: '' })).toBeNull();
+  });
+
   it('rejects an unaudited content type instead of guessing how to parse it', () => {
     expect(() => parseSmsWebhookBody('anything', 'multipart/form-data')).toThrow(/Unsupported/);
   });

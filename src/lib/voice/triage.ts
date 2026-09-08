@@ -5,6 +5,16 @@ import { enqueueSmsDelivery } from '@/lib/sms-delivery';
 import { normalizeUsPhone } from '@/lib/phone';
 import { ownerVoiceEmergencyAlertText, ownerVoiceCallNotificationText } from '@/lib/sms-templates';
 
+function notificationReadFailure(source: 'account' | 'settings', error: { code?: string }): Error {
+  // Database messages can contain row values. Keep only a bounded machine code.
+  const code = /^[A-Z0-9]{5,12}$/.test(error.code ?? '') ? error.code : 'unknown';
+  return new Error(`Voice notification ${source} read failed (${code}).`);
+}
+
+function notificationPhone(...candidates: Array<string | null | undefined>): string | null {
+  return candidates.map((candidate) => normalizeUsPhone(candidate || '')).find(Boolean) || null;
+}
+
 export type EmergencyDetectionResult = {
   isEmergency: boolean;
   hazardType: string | null;
@@ -69,12 +79,16 @@ export async function notifyEmergencyCall(
 ): Promise<boolean> {
   if (!emergency.isEmergency) return false;
 
-  // Find account alert phone or transfer number or phone
+  // These are the supported account fields; legacy company_name/phone never
+  // existed in the production accounts schema.
   const { data: account, error: accountError } = await admin
     .from('accounts')
-    .select('company_name, business_name, alert_phone, phone, call_forward_number')
+    .select('business_name, alert_phone, call_forward_number')
     .eq('id', accountId)
     .maybeSingle();
+
+  if (accountError) throw notificationReadFailure('account', accountError);
+  if (!account) return false;
 
   const { data: voiceSettings, error: settingsError } = await admin
     .from('voice_settings')
@@ -82,11 +96,9 @@ export async function notifyEmergencyCall(
     .eq('account_id', accountId)
     .maybeSingle();
 
-  if (accountError || settingsError) throw new Error('Voice notification settings read failed');
+  if (settingsError) throw notificationReadFailure('settings', settingsError);
 
-  const targetPhone = normalizeUsPhone(
-    account?.alert_phone || voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
-  );
+  const targetPhone = notificationPhone(account.alert_phone, voiceSettings?.transfer_number, account.call_forward_number);
 
   if (!targetPhone) {
     console.warn(`[AI Voice Emergency] No valid destination phone for emergency alert on account ${accountId}`);
@@ -98,7 +110,7 @@ export async function notifyEmergencyCall(
     ? `${appUrl}/dashboard/voice-calls/${callId}`
     : `${appUrl}/dashboard/voice-calls`;
   const callerDisplay = callerPhone || 'Unknown caller';
-  const businessName = account?.business_name || account?.company_name || 'Your Business';
+  const businessName = account.business_name || 'Your Business';
   const hazardSummary = summary.slice(0, 140) || emergency.reason;
 
   const alertText = ownerVoiceEmergencyAlertText({
@@ -143,22 +155,23 @@ export async function notifyOrdinaryCall(
     .eq('account_id', accountId)
     .maybeSingle();
 
-  if (settingsError) throw new Error('Voice notification settings read failed');
+  if (settingsError) throw notificationReadFailure('settings', settingsError);
   if (voiceSettings && voiceSettings.contractor_notifications_enabled === false) {
     return false;
   }
+  const channel = voiceSettings?.contractor_notification_channel ?? 'sms';
+  if (channel !== 'sms' && channel !== 'both') return false;
 
   const { data: account, error: accountError } = await admin
     .from('accounts')
-    .select('company_name, business_name, alert_phone, phone, call_forward_number')
+    .select('business_name, alert_phone, call_forward_number')
     .eq('id', accountId)
     .maybeSingle();
 
-  if (accountError || settingsError) throw new Error('Voice notification settings read failed');
+  if (accountError) throw notificationReadFailure('account', accountError);
+  if (!account) return false;
 
-  const targetPhone = normalizeUsPhone(
-    account?.alert_phone || voiceSettings?.transfer_number || account?.call_forward_number || account?.phone || '',
-  );
+  const targetPhone = notificationPhone(account.alert_phone, voiceSettings?.transfer_number, account.call_forward_number);
 
   if (!targetPhone) {
     return false;
@@ -168,7 +181,7 @@ export async function notifyOrdinaryCall(
   const dashboardUrl = callId
     ? `${appUrl}/dashboard/voice-calls/${callId}`
     : `${appUrl}/dashboard/voice-calls`;
-  const businessName = account?.business_name || account?.company_name || 'Your Business';
+  const businessName = account.business_name || 'Your Business';
 
   const alertText = ownerVoiceCallNotificationText({
     businessName,

@@ -89,6 +89,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/voice-receipt-recovery",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/connected-payment-projection",
       "schedule": "*/5 * * * *"
     },
