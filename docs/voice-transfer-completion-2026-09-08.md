@@ -29,8 +29,9 @@ bridge time and must not be copied into the new field as an assumed equivalent.
 Apply `20260908163021_voice_transfer_completion_evidence.sql` before deploying
 the callback wiring. It requires the existing observation foundation migration
 `20260905151055_voice_observation_and_recording_hardening.sql`. The designated
-staging database still needs this later foundation before persistent transfer
-installation; its measurement-only foundation bundle does not include it.
+staging database has both migrations installed after explicit approval. The
+installed-schema callback replay passed with test rows rolled back. Production
+installation and callback deployment remain pending.
 
 The migration does not backfill history or modify ledger entries. Keep existing
 provider evidence for reconciliation. App rollback can retain the additive

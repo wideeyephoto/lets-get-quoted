@@ -3,6 +3,7 @@ import 'server-only';
 import { createAdminClient } from '@/lib/auth';
 import { assertConfiguredStripeBillingMode } from '@/lib/billing/stripe-billing-subscription-checkout';
 import {
+  capacitySubscriptionPeriodEnd,
   isCapacityReconcileOutcome,
   mapProviderSubscriptionStatus,
   periodEndIso,
@@ -111,7 +112,7 @@ export async function runPurchasedCapacityLifecycleSweep(
           continue;
         }
         providerStatus = subscription.status;
-        providerPeriodEnd = (subscription as { current_period_end?: unknown }).current_period_end;
+        providerPeriodEnd = capacitySubscriptionPeriodEnd(subscription);
       } catch (err) {
         // A subscription Stripe no longer has is NOT treated as a cancellation.
         // `canceled` is terminal and irreversible here, and a 404 from a
