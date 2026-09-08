@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
 import { normalizeUsPhone } from '@/lib/phone';
-import { verifyVoiceReceiptAuthorization, verifySignedVoiceWebhook, isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
+import { verifyVoiceReceiptAuthorization, verifySignedVoiceWebhook, isTrustedVoiceMediaUrl, voiceWebhookFailureDiagnostics } from '@/lib/voice/auth';
 
 function text(value: unknown): string | null {
   if (typeof value === 'string' && value.trim()) return value.trim();
@@ -26,6 +26,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'not_configured' }, { status: 503 });
     }
     if (!signature.ok && !authCheck.ok) {
+      console.warn('Voice recording callback authentication rejected:', {
+        signatureReason: signature.reason,
+        basicReason: authCheck.reason,
+        ...voiceWebhookFailureDiagnostics(req, rawBody),
+      });
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 

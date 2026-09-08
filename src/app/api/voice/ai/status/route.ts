@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
-import { verifySignedVoiceWebhook } from '@/lib/voice/auth';
+import { verifySignedVoiceWebhook, voiceWebhookFailureDiagnostics } from '@/lib/voice/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
@@ -30,6 +30,10 @@ export async function POST(request: Request) {
   const rawBody = await request.clone().text();
   const check = verifySignedVoiceWebhook(request, rawBody);
   if (!check.ok) {
+    console.warn('Voice fallback callback authentication rejected:', {
+      reason: check.reason,
+      ...voiceWebhookFailureDiagnostics(request, rawBody),
+    });
     await logWebhookFailure({
       source: 'ai_voice',
       errorMessage: `Voice fallback status signature validation failed: ${check.reason}`,

@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('@/lib/auth', () => ({ createAdminClient: mocks.createAdminClient }));
 vi.mock('@/lib/voice/auth', () => ({
   verifySignedVoiceWebhook: mocks.verifySignedVoiceWebhook,
+  voiceWebhookFailureDiagnostics: () => ({}),
 }));
 vi.mock('@/lib/webhook-failures', () => ({
   logWebhookFailure: mocks.logWebhookFailure,

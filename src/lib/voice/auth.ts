@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
 
 import {
   hasSignatureHeader,
@@ -108,6 +109,45 @@ export function verifySignedVoiceWebhook(
   return check.ok && check.provider !== 'signalwire'
     ? { ok: false, reason: 'mismatch' }
     : check;
+}
+
+/** Diagnostic booleans only. These candidates NEVER authorize a callback. */
+export function voiceWebhookFailureDiagnostics(request: Request, rawBody: string) {
+  const signature = request.headers.get('x-signalwire-signature') ?? '';
+  const stronger = request.headers.get('x-signalwire-sha256-signature') ?? '';
+  const key = process.env.SIGNALWIRE_SIGNING_KEY;
+  const origin = trustedProviderCallbackOrigin();
+  const received = new URL(request.url);
+  const tail = received.pathname + received.search;
+  const urls = origin ? [origin + tail, `https://${new URL(origin).hostname}:443${tail}`] : [];
+  const matches: string[] = [];
+  if (key) {
+    for (const url of urls) {
+      const candidates = [
+        ['sha1_hex_url_body', 'sha1', 'hex', url + rawBody, signature],
+        ['sha1_base64_url_body', 'sha1', 'base64', url + rawBody, signature],
+        ['sha256_hex_url_body', 'sha256', 'hex', url + rawBody, stronger],
+        ['sha1_base64_url_only', 'sha1', 'base64', url, signature],
+        ['sha1_hex_url_only', 'sha1', 'hex', url, signature],
+        ['sha1_hex_without_query_body', 'sha1', 'hex', url.split('?')[0] + rawBody, signature],
+      ] as const;
+      for (const [name, algorithm, encoding, input, supplied] of candidates) {
+        if (supplied && constantTimeEquals(createHmac(algorithm, key).update(input).digest(encoding), supplied)) {
+          if (!matches.includes(name)) matches.push(name);
+        }
+      }
+    }
+  }
+  return {
+    signaturePresent: Boolean(signature),
+    sha256SignaturePresent: Boolean(stronger),
+    signatureEncoding: /^[a-f0-9]{40}$/i.test(signature) ? 'sha1-hex'
+      : /^[A-Za-z0-9+/]{27}=$/.test(signature) ? 'sha1-base64' : signature ? 'other' : 'missing',
+    bodyBytes: Buffer.byteLength(rawBody),
+    queryPresent: Boolean(received.search),
+    bodyHashPresent: received.searchParams.has('bodySHA256'),
+    matches,
+  };
 }
 
 /** Verify the end-of-call receipt's dedicated Basic credential. */
