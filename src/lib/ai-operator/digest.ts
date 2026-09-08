@@ -83,7 +83,11 @@ export async function dispatchExecutiveBriefingDigest(
       </div>
       <div class="kpi-tile">
         <div class="kpi-label">SMS Deliverability</div>
-        <div class="kpi-val">${briefing.operations.smsDeliverabilityPct}%</div>
+        <div class="kpi-val">${
+          briefing.operations.smsDeliverabilityPct === null
+            ? 'No sends'
+            : `${briefing.operations.smsDeliverabilityPct}%`
+        }</div>
       </div>
       <div class="kpi-tile">
         <div class="kpi-label">Webhook SRE</div>
