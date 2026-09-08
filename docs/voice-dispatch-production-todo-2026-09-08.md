@@ -4,7 +4,46 @@ This checklist consolidates the September 8 reassessment. It is an execution pla
 
 An unchecked item is still open even when its implementation exists. Close it with dated evidence and the deployment tested. Label evidence as local, hosted fixture, or live provider/handset; one does not automatically substitute for another.
 
-## Current baseline
+## Current execution update — September 8, 2026, 22:29 UTC
+
+This update supersedes release-pending and transfer-acceptance statements in the
+older snapshots below. It is not a complete production sign-off.
+
+- PRs #35–#43 are merged. The latest verified production revision is
+  `d248510e256d694a76af28bcdbde09100b6f6ad2`; both public hostnames matched it
+  after explicit promotion and protected health passed. PR #43 only changes the
+  admission-error renderer and its tests; concurrent financing work is retained.
+- The recipient heard the complete transfer announcement and confirmed two-way
+  audio. A separate hangup-only test proved recipient-first termination: the
+  remaining leg ended 121 ms later, with no unavailable prompt or recording.
+  All test legs ended and temporary provider scripts were removed.
+- Final transfer usage reconciled through admission, reservation, measurement,
+  settlement and remaining credit. Each call committed once and released unused
+  credit. Scheduled health checks completed with no active issues or failed
+  recovery work. Detailed call and ledger identifiers remain private.
+- The emergency voice fallback URL was configured and verified. Signed live
+  HTTP checks returned bounded voicemail instructions without creating calls.
+  Provider-triggered invocation and original-deadline continuity remain open.
+- The admission-error apology now uses the same 598-second provider limit and
+  explicit hangup as other unavailable responses. PR #43 passed 92 focused
+  tests, typecheck, scoped lint, full repository CI, and its deployment checks.
+- Metering and the allowance worker remain enabled, with the financial
+  exhaustion gate disabled under the owner's measurement-mode decision.
+  Full-period invoice reconciliation and strict enforcement remain deferred.
+- [ ] Complete deadline continuity, late/unanswered transfer, silence and
+  in-flight tool boundary acceptance. A successful staff cutoff does not prove
+  all call paths.
+- [ ] Complete measured audio latency and interruption acceptance. The owner's
+  no-gap report is an accepted sample, not a latency percentile.
+- [ ] Implement the requested interruption fade when a supported media control
+  is established. See [fade investigation](voice-interruption-fade-2026-09-08.md)
+  and the [unsent provider questions](voice-provider-questions-2026-09-08.md).
+
+Remaining SMS, customer registration, staff/dialogue and operator-UI checks
+retain their individual status below. Do not infer their completion from these
+voice transfer tests or repeat work owned by the coordinated SMS/billing tasks.
+
+## Initial baseline (historical)
 
 - [x] Voice metering is operating: sampled recent calls settled for 1, 8, and 10 minutes, with committed reservations. The earlier claim that nothing is metered is obsolete.
 - [x] The 10-minute cap and dispatch hardening are in the inspected production release. This proves deployment, not the strict live cutoff or acceptable audible latency.
@@ -209,7 +248,7 @@ This update supersedes the earlier release-pending observations above.
 Metering has live evidence. The approved launch uses measurement mode with absorbed usage. Full-period reconciliation remains required before any later decision to enable strict financial enforcement.
 
 - [x] Record the deployed allowance-worker, meter, and financial-gate configuration without exposing secrets. Verify actual worker execution and grants, not only configured flags.
-- [ ] Trace representative calls through admission → reservation → measured duration → final committed units → remaining allowance. Preserve historical intentionally unmetered calls as historical evidence.
+- [x] Trace representative calls through admission, reservation, measured duration, committed units, and remaining allowance. The final transfer calls reconciled through the credit lots, with unused holds released and each debit committed once. Historical intentionally unmetered calls and legacy policy fields remain unchanged. Detailed ledger evidence stays in the private acceptance record.
 - [x] Test minute rounding around boundaries, very short AI calls, calls with no AI conversation, transfers, and voicemail. Local tests cover 0/1/59/60/61/119 AI seconds and missing evidence. Live AI transfer billed one minute for ten AI seconds while tracking 119 forwarding seconds separately; the earlier voicemail-only call remains unmetered. Provider connected time includes greeting and forwarding and is not the AI billing basis.
 - [x] Test remaining balances of 0, less than 10, exactly 10, and more than 10 minutes. Verify reservation size, effective duration, and the intended exhausted-balance behavior.
 - [x] Test overlapping calls near exhaustion and simultaneous retries. September 8 local PostgreSQL tests use three independent sessions: one reservation wins the available balance, retries reuse it, and concurrent partial settlement commits once. Live overlapping-handset acceptance is not implied.
@@ -255,9 +294,9 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 ## P1 — Complete fallback, callback, and recovery acceptance
 
 - [x] Verify audio in both directions through a live answered transfer. The September 8 controlled caller plus native echo passed on the owner's single mobile. This is audio-path evidence, not a ten-minute boundary test.
-- [ ] Verify an answered transfer ends the remaining caller leg without an unavailable prompt or voicemail. The first live echo test exposed the unconditional fallback defect; the fix and targeted retest are tracked separately.
+- [x] Verify an answered transfer ends the remaining caller leg without an unavailable prompt or voicemail. The recipient-first retest passed on PR #42: the parent ended 121 ms after the mobile, before the test safety ending could run. All legs ended and no fallback playback or recording followed.
 
-- [ ] Recheck the actual production number and agent configuration: voice entrypoint, post-call receipt, status/recording callbacks, methods, and stable URLs.
+- [x] Recheck the production voice entrypoint and callbacks. The existing primary SWML and provider-status routes retained their POST configuration. The missing emergency fallback was configured to /api/voice/fallback POST and read back with other routing fields unchanged. Signed live SWML/LaML HTTP checks returned bounded responses. Actual provider-triggered fallback remains a separate acceptance test.
 - [x] Prove a retry of the same call does not hit the concurrency fallback; prove a genuinely separate call follows the configured concurrency policy. Current PostgreSQL admission/finalization functions passed concurrent session checks at capacity one; finalized retries return the existing admission and distinct calls receive at_capacity.
 - [ ] Prove a caller cannot be forwarded back to their own number and that invalid/unreachable destinations reach a bounded fallback.
 - [ ] Exercise declined/unanswered transfer, provider failure, unavailable application dependency, paused workspace, and applicable quota exhaustion.
@@ -266,7 +305,7 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 - [ ] Test recording completion, failed/missing recording, playback access, and cross-workspace access denial. Check configured disclosure and retention behavior where recording is enabled.
 - [x] Verify a partial failure after settlement preserves durable evidence and has a bounded retry/recovery route with visible exhaustion.
 - [x] Reconcile the older controlled fallback test still shown as `in_progress/unsettled`: its admission is terminal and reservation already released. Correct the stale display/state through supported reconciliation without inventing AI duration or charging it.
-- [ ] Recheck the live failure queue after acceptance; classify controlled signature probes separately from genuine provider failures.
+- [x] Recheck the live failure queue after acceptance. All voice receipts were processed, with no active minute holds or non-signature voice failures at the post-test inspection. Existing authentication rejects were retained; their classification does not assert they were all controlled probes.
 
 **Done when:** supported failures reach a bounded, correctly attributed outcome, callback validation remains strict, and no test leaves unexplained active calls, held reservations, or stranded receipts.
 
@@ -282,8 +321,8 @@ Use the September 8 extended-session update in `docs/sms-ready-roadmap-2026-09-0
 - [ ] Complete quiet-hours, retryable rejection, unknown provider outcome, terminal failure, duplicate/out-of-order callback, and worker-recovery checks without duplicate business sends.
 - [x] Reconcile SMS segments and reservations/commits/releases. Verify STOP-blocked sends have no provider submission or committed business-message debit.
 - [x] Add compatibility coverage for signed JSON status payloads using the `status` alias if that payload variant is part of the supported provider contract. Preserve working form payloads and signature verification.
-- [ ] Check the messaging handler screenshot settings against current configuration: primary inbound `/api/sms/inbound` POST; status `/api/sms/status` POST where applicable. Verify existing per-message status callbacks before adding another callback source and test deduplication if both are used.
-- [ ] Leave the optional messaging fallback blank until a real fallback handler is designed and tested. Do not enter a voice route or invent a URL. If fallback handling is required, define durable capture, loop prevention, and duplicate suppression first.
+- [x] Check the messaging handler settings against current configuration. The inspected owned numbers use laml_webhooks and /api/sms/inbound POST. The sender supplies /api/sms/status per message and carrier callbacks were verified in the SMS task. No duplicate number-level callback source was added.
+- [x] Leave the optional messaging fallback blank until a real recovery handler is designed and tested. Provider readback confirms it is blank on the inspected numbers. A voice route was not used as an SMS fallback.
 - [ ] Record dispatch rollout scope, observation window, failure criteria, and the current allow-list before expanding to additional eligible accounts.
 
 **Done when:** the remaining workflow, evidence, suppression, recovery, and usage checks pass. Reuse the completed single-workspace handset and accepted-offer results unless a relevant change invalidates them.
@@ -307,10 +346,10 @@ Use the September 8 extended-session update in `docs/sms-ready-roadmap-2026-09-0
 - [ ] Add or verify latency measurements for speech-to-audio and backend tool execution; keep them separate so slow audio is not misdiagnosed as a database problem.
 - [x] Verify retention and authorized access for transcripts, recordings, and callback evidence; test deletion behavior using controlled fixtures.
 - [x] Before each release, identify the current production SHA, main SHA, migrations, and unrelated pending work. Review only the intended changes and their dependencies.
-- [ ] Run focused regression checks plus required repository validation. Do not repeat the full earlier handset matrix for an unrelated change.
-- [ ] Commit the coherent fix, push it, verify CI, and confirm the actual production deployment and applicable migrations. “Pushed” and “live” require separate evidence.
+- [x] Run focused regression checks and required repository validation for PRs #35–#43. PR #42 passed 70 focused tests and full CI; the merged revision passed 63 affected voice/financing checks. PR #43 passed 92 focused tests, local typecheck/scoped lint, full CI, and preview/production builds.
+- [x] Commit and push the coherent fixes, verify CI, and confirm production and migrations separately. PRs #35–#43 are merged; both public hosts were verified on the PR #43 release after explicit promotion. Protected health passed. PR #43 required no migration.
 - [x] Verify a rollback or lane-specific containment procedure preserves inbound/status callbacks and durable evidence while stopping the affected behavior.
-- [ ] Update the existing launch checklist/runbook with dated results. Remove or qualify stale claims such as “nothing is metered” and distinguish partial live evidence from a completed gate.
+- [x] Update this checklist with dated results and qualify stale metering/readiness claims. The older snapshots below remain historical; the latest update controls current status. Unchecked provider, handset, registration and invoice gates remain open.
 
 **Done when:** an operator can detect and recover the relevant failures, identify exactly what is deployed, and trace every closed launch gate to evidence.
 

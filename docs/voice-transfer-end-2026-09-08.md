@@ -62,3 +62,21 @@ Native silence contract: [SWML play](https://signalwire.com/docs/swml/reference/
 
 This short echo test does not establish the ten-minute transfer boundary or
 speech-to-audio latency percentiles.
+
+## Final pickup and manual-hangup acceptance — September 8
+
+PR #42's one-second recipient pause is live. The owner confirmed hearing the
+complete announcement from its first word and confirmed two-way audio through
+the echo test. That echo test ended automatically, so it was not used as proof
+of recipient-first termination.
+
+A separate hangup-only call asked the recipient to press End. Its script allowed
+up to 45 seconds before a safety ending. The mobile disconnected first; the parent
+ended 121 ms later, well before the safety ending could run. No unavailable
+prompt or recording followed the bridge. All legs ended, one AI minute settled
+once, unused held credit was released, and the temporary test script was removed.
+
+These results close pickup, two-way audio and recipient-first termination.
+Late-transfer and ten-minute boundary scenarios, provider-triggered fallback,
+latency percentiles and interruption fading remain separate acceptance work.
+Private evidence retains the call identifiers and native event timestamps.
