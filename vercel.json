@@ -1,6 +1,10 @@
 {
   "crons": [
     {
+      "path": "/api/cron/addon-refunds",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/blog",
       "schedule": "0 9 * * *"
     },
