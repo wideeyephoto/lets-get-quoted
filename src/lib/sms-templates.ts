@@ -76,6 +76,41 @@ export function voiceStaffStepUpCodeText(input: { code: string }): string {
   return `Your Let’s Get Quoted voice authorization code is ${input.code}. It expires in 10 minutes. Only use it on the call you started. Reply STOP to opt out.`;
 }
 
+function voiceAlertBrief(raw: string, fallback: string): string {
+  let summary = raw.trim();
+  // Post-call summaries can be serialized structured data, not prose. Never
+  // truncate that data before parsing it or expose malformed JSON in a text.
+  if (/^(?:\{|\[|```)/.test(summary)) {
+    const json = summary.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '');
+    summary = '';
+    try {
+      const parsed: unknown = JSON.parse(json);
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+        const fields = parsed as Record<string, unknown>;
+        const text = (key: string) => typeof fields[key] === 'string' ? fields[key].trim() : '';
+        const request = text('work_requested')
+          || (fields.transfer_requested === true ? 'Caller requested a transfer' : '')
+          || (fields.follow_up_action === 'callback_required' ? 'Caller requested a callback' : '');
+        const parts = [request];
+        if (text('service_address')) parts.push(`at ${text('service_address')}`);
+        if (text('booked_slot')) parts.push(`Booked: ${text('booked_slot')}`);
+        else if (text('requested_slot')) parts.push(`Requested: ${text('requested_slot')}`);
+        if (text('hazard_type')) parts.push(`Hazard: ${text('hazard_type').replace(/_/g, ' ')}`);
+        summary = parts.filter(Boolean).join(' ');
+      }
+    } catch {
+      // The linked call record retains the original payload for review.
+    }
+  }
+  summary = (summary || fallback).replace(/\s+/g, ' ').trim();
+  if (summary.length > 140) {
+    const prefix = summary.slice(0, 137);
+    const boundary = prefix.lastIndexOf(' ');
+    summary = `${boundary > 0 ? prefix.slice(0, boundary) : prefix}...`;
+  }
+  return /[.!?…]$/.test(summary) ? summary : `${summary}.`;
+}
+
 export function ownerVoiceEmergencyAlertText(input: {
   businessName: string;
   callerNumber: string | null;
@@ -83,7 +118,8 @@ export function ownerVoiceEmergencyAlertText(input: {
   dashboardUrl: string;
 }): string {
   const caller = input.callerNumber || 'Unknown caller';
-  return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  const brief = voiceAlertBrief(input.hazardSummary, 'Review the call for emergency details');
+  return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${brief} Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
 }
 
 export function ownerVoiceCallNotificationText(input: {
@@ -94,8 +130,8 @@ export function ownerVoiceCallNotificationText(input: {
   dashboardUrl: string;
 }): string {
   const caller = input.callerName ? `${input.callerName} (${input.callerNumber || 'Unknown'})` : (input.callerNumber || 'Unknown caller');
-  const brief = input.summary.slice(0, 140);
-  return `📞 New call answered for ${input.businessName} from ${caller}: ${brief}. Details: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  const brief = voiceAlertBrief(input.summary, 'No call summary available');
+  return `📞 New call answered for ${input.businessName} from ${caller}: ${brief} Details: ${input.dashboardUrl} — Reply STOP to opt out.`;
 }
 
 export function callerVoiceBookingLinkText(input: {
