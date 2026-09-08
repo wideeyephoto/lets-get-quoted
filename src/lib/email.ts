@@ -1202,6 +1202,61 @@ export function renderDailyDigestEmailHtml(input: {
   });
 }
 
+/**
+ * Their custom sending domain stopped verifying.
+ *
+ * FROM THE PLATFORM ADDRESS, DELIBERATELY, and this is the whole reason the
+ * function exists rather than reusing a contractor-branded sender. The thing
+ * being reported is that mail from their own domain no longer authenticates —
+ * sending that news from the broken domain is the one delivery most likely to
+ * land in spam or bounce outright. `contractorFrom` is never called here.
+ *
+ * Their outbound customer mail has already fallen back to the platform address
+ * by this point, so nothing is queued or lost; the cost of not reading this is
+ * that their invoices keep going out under our name instead of theirs.
+ */
+export async function sendSendingDomainFailedEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  domain: string;
+  accountId?: string;
+  reason?: string | null;
+  settingsUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `Action needed: ${input.domain} stopped verifying`,
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Email from ${input.domain} is no longer signed by your domain`,
+      eyebrow: 'Action needed',
+      heading: 'Your sending domain stopped verifying',
+      paragraphs: [
+        `The DNS records that let us send email as ${input.domain} are no longer answering, so we have stopped sending from that address.`,
+        input.reason?.trim()
+          ? `What your DNS provider reported: ${input.reason.trim()}`
+          : 'This usually means the DKIM or SPF record was edited or removed at your DNS provider.',
+        `Nothing has been lost. Your quotes and invoices are still going out — they are just coming from our address instead of yours until the records are back.`,
+      ],
+      cta: { label: 'Check my sending domain', url: input.settingsUrl },
+      footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">We are sending this from ${escapeHtml("Let's Get Quoted")} rather than ${escapeHtml(input.domain)} because that domain can no longer sign mail.</p>`,
+    }),
+    reply_to: 'hello@letsgetquoted.com',
+    tags: defaultTags('sending_domain_failed', brand, input.accountId),
+  });
+
+  if (result.error) {
+    console.error('Failed to send sending-domain failure email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 export async function sendDailyDigestEmail(input: {
   accountId: string;
   recipientEmail: string;

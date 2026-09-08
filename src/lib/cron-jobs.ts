@@ -356,6 +356,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'money',
     consequence: 'Active Neighborhood Halo micro-campaigns stop polling Meta daily spend, auto-killing zero-click campaigns, and completing on schedule.',
   },
+  {
+    job: 'email-domain-reconcile',
+    label: 'Custom sending domain re-verification',
+    schedule: '23 6 * * *',
+    importance: 'customer',
+    consequence: 'A contractor whose DKIM record is edited or removed keeps a domain marked verified while the provider refuses their mail, so quotes and invoices silently stop being signed by their own domain and nobody is told.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

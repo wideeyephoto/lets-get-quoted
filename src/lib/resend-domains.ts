@@ -155,6 +155,21 @@ async function resendRequest<T>(path: string, method = 'GET', body?: object): Pr
   return (await res.json()) as T;
 }
 
+/**
+ * Every domain this Resend account holds, or null if the listing failed.
+ *
+ * `null` is not `[]`. The reconciler uses this to spot domains registered at
+ * the provider with no row behind them, and a failed listing that read as an
+ * empty list would make every domain we own look orphaned at once.
+ */
+export async function listSendingDomains(): Promise<Array<{ id: string; name: string }> | null> {
+  const res = await resendRequest<{ data?: Array<{ id: string; name: string }> }>('/domains', 'GET');
+  if (!res || !Array.isArray(res.data)) return null;
+  return res.data
+    .filter((d) => d && typeof d.id === 'string' && typeof d.name === 'string')
+    .map((d) => ({ id: d.id, name: d.name.trim().toLowerCase() }));
+}
+
 async function findExistingDomain(domain: string): Promise<string | null> {
   const target = domain.trim().toLowerCase();
   try {
