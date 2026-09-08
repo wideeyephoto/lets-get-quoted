@@ -399,9 +399,13 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [dismissedQuoteRequestId, setDismissedQuoteRequestId] = useState<string | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const isDashboard = pathname.startsWith('/dashboard');
-  // Homeowner-facing transactional pages (paying, approving a quote, an invoice)
-  // stay on the minimal top bar — a big marketing rail there would be off-key.
-  const isTransactional = pathname.startsWith('/pay') || pathname.startsWith('/client') || pathname.startsWith('/invoice') || pathname.startsWith('/track') || pathname.startsWith('/portal');
+  const isTransactional =
+    pathname.startsWith('/pay') ||
+    pathname.startsWith('/client') ||
+    pathname.startsWith('/invoice') ||
+    pathname.startsWith('/track') ||
+    pathname.startsWith('/portal') ||
+    pathname.startsWith('/sub');
   // The subset that now wears the CONTRACTOR's brand instead of a top bar. /track
   // is deliberately not here: it's a live arrival map with its own full-bleed
   // chrome, and a header above it would push the map below the fold on a phone.
@@ -858,6 +862,15 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   // Preview does exactly that) got the full dashboard rail, live lead counts
   // and all, wrapped around their customer's page.
   if (pathname.startsWith('/book/')) {
+    return <>{children}</>;
+  }
+
+  // The subcontractor job offer page (/sub/[token]) is a recipient-facing
+  // page sent via SMS or email. It has its own mobile-first shell, action
+  // bar, and header carrying the contractor's business name, with no account
+  // required. AppShell must not wrap it with marketing chrome, demo previews,
+  // locked CRM drawers, the dashboard rail, or SparkyCopilot.
+  if (pathname.startsWith('/sub/') || pathname === '/sub') {
     return <>{children}</>;
   }
 
