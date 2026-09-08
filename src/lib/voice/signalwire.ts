@@ -284,6 +284,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                         connect: {
                           to: plan.transferTo,
                           timeout: 25,
+                          ...(plan.transferStatusUrl ? { status_url: plan.transferStatusUrl } : {}),
                           confirm: [
                             { play: { url: 'say: Incoming transfer from AI receptionist regarding: %{args.reason}.' } },
                           ],

@@ -412,6 +412,7 @@ export async function planInboundCall(
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
       transferTo: settings.transferNumber || workspace.callForwardNumber,
+      transferStatusUrl: options.forwardActionUrl(workspace.accountId),
       recordCall: settings.recordingEnabled === true && !grounding?.contractorStaffCaller,
       recordingStatusUrl: options.recordingStatusUrl
         ? options.recordingStatusUrl(workspace.accountId)
