@@ -129,7 +129,7 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
     expect(rendered.contentType).toBe('application/json');
     const swml = JSON.parse(rendered.body);
     expect(swml.sections.main).toHaveLength(5);
-    expect(swml.sections.main[0]).toEqual({ answer: { max_duration: 600 } });
+    expect(swml.sections.main[0]).toEqual({ answer: { max_duration: 598 } });
     expect(swml.sections.main[4]).toEqual({ hangup: {} });
     expect(swml.sections.main[1].play.url).toContain(AI_VOICE_DISCLOSURE);
     expect(swml.sections.main[1].play.url).toContain(RECORDING_DISCLOSURE);

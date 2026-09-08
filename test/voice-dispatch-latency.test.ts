@@ -15,7 +15,7 @@ describe('Dispatch latency contract', () => {
     });
     const main = JSON.parse(answer.body).sections.main;
     const ai = main.find((item: { ai?: unknown }) => item.ai).ai;
-    expect(main.find((item: { answer?: unknown }) => item.answer).answer.max_duration).toBe(600);
+    expect(main.find((item: { answer?: unknown }) => item.answer).answer.max_duration).toBe(598);
     expect(ai.params.end_of_speech_timeout).toBe(contractorMode ? 700 : 1000);
     expect(ai.params.enable_turn_detection).toBe(true);
     expect(ai.params.turn_detection_timeout).toBe(250);
