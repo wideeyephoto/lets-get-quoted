@@ -297,7 +297,7 @@ export async function signOutAllSessionsAction(accountId: string, formData: Form
     console.error('signOutAllSessions membership read failed:', membershipError);
     backTo(accountId, 'error=update_failed');
   }
-  const userIds = (members ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
+  const userIds = ((members ?? []) as Array<{ user_id?: string | null }>).map((m) => m.user_id).filter((id): id is string => Boolean(id));
   const failedUserIds: string[] = [];
   for (const userId of userIds) {
     try {
@@ -474,7 +474,7 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
 
   // Resolve the owner(s) before the cascade wipes the memberships.
   const { data: owners } = await admin.from('memberships').select('user_id').eq('account_id', accountId).eq('role', 'owner');
-  const ownerIds = (owners ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
+  const ownerIds = ((owners ?? []) as Array<{ user_id?: string | null }>).map((m) => m.user_id).filter((id): id is string => Boolean(id));
 
   // Same reason, one table over: `sites` cascades too, so the custom domains
   // this workspace holds have to be read while they are still readable. They
@@ -551,7 +551,7 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
   if (!expected || typed !== expected) backTo(accountId, 'error=confirm');
 
   const { data: owners } = await admin.from('memberships').select('user_id').eq('account_id', accountId).eq('role', 'owner');
-  const ownerIds = (owners ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
+  const ownerIds = ((owners ?? []) as Array<{ user_id?: string | null }>).map((m) => m.user_id).filter((id): id is string => Boolean(id));
 
   const { requestAccountClosure, processClosureJob, buildProductionClosureAdapters } = await import('@/lib/account-closure-orchestrator');
   const { jobId } = await requestAccountClosure(admin, {

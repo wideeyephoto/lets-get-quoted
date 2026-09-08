@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { createAdminClient } from '@/lib/auth';
+import { createAdminClient } from '@/lib/supabase-admin';
 import {
   ACORN_MIN_LOAN_AMOUNT,
   ACORN_PROVIDER_ID,
