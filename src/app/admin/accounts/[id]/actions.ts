@@ -10,6 +10,7 @@ import { addAccountNote, addAccountTag, removeAccountTag } from '@/lib/account-n
 import { uploadAccountAttachment, deleteAccountAttachment, isAttachmentFile } from '@/lib/account-attachments';
 import { logPrivacyRequest, resolvePrivacyRequest, isPrivacyRequestKind } from '@/lib/privacy-requests';
 import { isAccountFlag } from '@/lib/account-flags';
+import { readAccountCustomDomains, releaseCustomDomains } from '@/lib/custom-domain-release';
 
 // All account-level staff actions. Each re-runs requireAdmin() (a server action
 // is its own entry point — never trust that the page guarded it) and writes to
@@ -473,6 +474,18 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
   const { data: owners } = await admin.from('memberships').select('user_id').eq('account_id', accountId).eq('role', 'owner');
   const ownerIds = (owners ?? []).map((m) => (m as { user_id: string }).user_id).filter(Boolean);
 
+  // Same reason, one table over: `sites` cascades too, so the custom domains
+  // this workspace holds have to be read while they are still readable. They
+  // are handed back to the project only after the delete is confirmed below.
+  let heldDomains: string[] = [];
+  try {
+    heldDomains = await readAccountCustomDomains(admin, accountId);
+  } catch (error) {
+    // Never block the erasure on this read. A leaked binding is a mess; a
+    // refused GDPR deletion is a breach.
+    console.error('deleteAccount custom domain read failed:', error instanceof Error ? error.message : error);
+  }
+
   // The privacy log outlives the account on purpose — a deletion request has to
   // stay provable after the deletion. But `details` is free text a staff member
   // typed, and it may quote the very personal data the request was about, so it
@@ -497,6 +510,11 @@ export async function deleteAccountAction(accountId: string, formData: FormData)
     console.error('deleteAccountAction failed:', deleteError);
     backTo(accountId, deleteError.code === '23503' ? 'error=delete_blocked' : 'error=delete_failed');
   }
+
+  // The account is gone, so nothing here can serve those hostnames any more.
+  // Detaching them frees the names for whoever holds them next; failures are
+  // logged for a human and never reverse a completed deletion.
+  if (heldDomains.length) await releaseCustomDomains(heldDomains);
 
   // Everything below is after a CONFIRMED delete. `details` is free text a staff
   // member typed and may quote the very personal data the request was about, so

@@ -363,6 +363,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'customer',
     consequence: 'A contractor whose DKIM record is edited or removed keeps a domain marked verified while the provider refuses their mail, so quotes and invoices silently stop being signed by their own domain and nobody is told.',
   },
+  {
+    job: 'custom-domain-reconcile',
+    label: 'Custom website domain certificate watch',
+    schedule: '*/15 * * * *',
+    importance: 'customer',
+    consequence: 'A contractor whose domain finishes provisioning its certificate is never noticed or told, so their website stays on the free subdomain and the builder keeps saying pending until they think to click Check connection again.',
+  },
 ];
 
 export function cronJob(job: string): CronJobSpec | undefined {

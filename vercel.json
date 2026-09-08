@@ -175,6 +175,10 @@
     {
       "path": "/api/cron/email-domain-reconcile",
       "schedule": "23 6 * * *"
+    },
+    {
+      "path": "/api/cron/custom-domain-reconcile",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

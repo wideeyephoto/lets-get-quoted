@@ -1,6 +1,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { cancelSubscriptionForAccountDeletion, loadCancellableSubscription } from '@/lib/billing/subscription-cancellation';
 import { revokeToken } from '@/lib/quickbooks/oauth';
+import { readAccountCustomDomains, releaseCustomDomains } from '@/lib/custom-domain-release';
 
 export const KNOWN_STORAGE_BUCKETS = [
   'insurance-proof',
@@ -296,6 +297,17 @@ export async function executeAccountClosureSaga(
     // Non-fatal if memberships cannot be read
   }
 
+  // 6b. Read the custom domains this workspace holds while `sites` still
+  // exists. A hard delete cascades it away, and a binding whose row is gone
+  // is a hostname our project answers for with nobody behind it — and one no
+  // other Vercel project can ever claim.
+  let heldDomains: string[] = [];
+  try {
+    heldDomains = await readAccountCustomDomains(admin, accountId);
+  } catch (error) {
+    errors.push(`Custom domain read failed: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
   // 7. Attempt complete account row deletion
   let hardDeleted = false;
   let retainedLedger = false;
@@ -327,8 +339,29 @@ export async function executeAccountClosureSaga(
     if (redactAcctErr) {
       errors.push(`Account row redaction failed: ${redactAcctErr.message}`);
     }
+
+    // The rows survived the ledger foreign keys, so clear what they claim:
+    // the binding is released below either way, and a site still advertising
+    // a domain nothing serves is the same lie this whole rail was fixed for.
+    const { error: siteDomainErr } = await admin
+      .from('sites')
+      .update({ custom_domain: null, custom_domain_verified_at: null, published: false })
+      .eq('account_id', accountId);
+    if (siteDomainErr) errors.push(`Site domain clearing failed: ${siteDomainErr.message}`);
   } else {
     errors.push(`Account delete failed with unexpected error: ${deleteError.message}`);
+  }
+
+  // 7b. Hand every domain back to the project. The workspace is closed on
+  // both branches above — hard-deleted or ledger-retained — so nothing here
+  // serves those hostnames any more. Failures are recorded, never fatal: the
+  // destructive work is already done and cannot be undone by a provider
+  // being unreachable.
+  if (heldDomains.length) {
+    const release = await releaseCustomDomains(heldDomains);
+    if (release.failed.length) {
+      errors.push(`Custom domains still attached to the project: ${release.failed.join(', ')}`);
+    }
   }
 
   // 8. Owner Auth User Cleanup (only if user belongs to no remaining accounts)
