@@ -47,6 +47,44 @@ export const CHANGELOG_CATEGORIES: ChangelogCategory[] = [
 
 export const CHANGELOG_RELEASES: ChangelogRelease[] = [
   {
+    id: 'release-2026-09-homeowner-financing-acorn',
+    version: 'v2.8.0',
+    title: 'Zero-Fee Homeowner Financing via Acorn Finance, Independent Quote & Invoice Toggles',
+    date: '2026-09-08',
+    category: 'Pricing & Permits',
+    badge: 'Feature Update',
+    summary:
+      'Offer your clients flexible monthly payment options through Acorn Finance with 0% contractor merchant fees. Homeowners get funded directly, and you get paid in full through your existing Stripe payout rails.',
+    highlights: [
+      {
+        badge: 'New',
+        title: '💳 Acorn Finance Homeowner Referral Integration',
+        description:
+          'Enable flexible payment options for your customers on quotes, invoices, and payment requests without any dealer fees or lending risk. Acorn’s network of lenders funds the homeowner directly.',
+      },
+      {
+        badge: 'New',
+        title: '⚙️ Independent Quote & Invoice Surface Controls',
+        description:
+          'Control where financing options appear directly in Settings > Connected apps > Homeowner Financing. Toggle options on quotes, invoices, or both with instant opt-in control.',
+      },
+      {
+        badge: 'Improved',
+        title: '🔒 Reg Z Compliance & Deliverability Protection',
+        description:
+          'Fully compliant neutral prequalification notices protect your business from advertising disclosure traps while ensuring transactional emails remain safe from spam and phishing filters.',
+      },
+    ],
+    primaryAction: {
+      label: 'Configure Financing',
+      href: '/dashboard/settings#financing',
+    },
+    secondaryAction: {
+      label: 'View Settings',
+      href: '/dashboard/settings',
+    },
+  },
+  {
     id: 'release-2026-09-developer-api-copilot-restoration',
     version: 'v2.7.0',
     title: 'Public Developer API & Webhooks, Multi-Mascot AI Copilot, Insurance Claim Packets & 30-Day Trash Recovery',

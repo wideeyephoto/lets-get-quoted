@@ -24,6 +24,8 @@ import { resolvePaymentView } from '@/lib/payment-view';
 import { QUICK_STOP_PAYABLE_COLUMNS, quickStopOfferAllowsPayment } from '@/lib/quick-stop';
 import { CustomerPermitBadge } from '@/components/permits/CustomerPermitBadge';
 import { getCustomerPermitSummary } from '@/lib/permit-intel/customer-portal';
+import FinancingOption from '@/components/financing/FinancingOption';
+import { resolveHomeownerFinancing } from '@/lib/bnpl-financing';
 import { startCheckoutAction } from './actions';
 
 // Always render fresh from the database — this page's content changes based
@@ -408,6 +410,13 @@ export default async function PublicPaymentPage({
       ? 'contractor_unavailable'
       : null;
 
+  const financing = await resolveHomeownerFinancing(payment.account_id, 'payment_request', payment.amount, {
+    paymentKind: payment.kind,
+    isSettled: payment.status === 'paid' || paymentView.banner === 'paid',
+    isBlocked: Boolean(checkoutBlock) || !canPay,
+    adminClient: admin,
+  });
+
   return (
     <>
       <ContractorBrandBar brand={brand} context={kindLabel} />
@@ -535,6 +544,7 @@ export default async function PublicPaymentPage({
                     transfer takes a few business days to clear, and you’ll be confirmed once it settles.
                   </p>
                 ) : null}
+                <FinancingOption availability={financing} businessName={businessName} />
               </>
             )
           ) : payment.status === 'paid' || paymentView.banner === 'paid' || paymentView.banner === 'settling' ? (

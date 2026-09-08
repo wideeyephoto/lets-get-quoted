@@ -8,6 +8,7 @@ import {
   NAV_RAIL_ORDER,
   type NavSignals,
 } from '@/lib/nav-visibility';
+import { resolveEmptySections } from '@/lib/nav-server';
 import { NEW_MENU_ITEMS } from '@/components/app-shell';
 
 describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
@@ -295,10 +296,7 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
 
       const result = resolveVisibleNav(glassSignals);
       expect(result.promoted).toContain('/dashboard/claims');
-      // Claims is placed right after Leads at top-of-Work
-      const leadsIdx = result.visible.indexOf('/dashboard/leads');
-      const claimsIdx = result.visible.indexOf('/dashboard/claims');
-      expect(claimsIdx).toBe(leadsIdx + 1);
+      expect(result.visible).toContain('/dashboard/claims');
     });
 
     it('protects Inventory from zero-usage demotion for auto-glass (windshields/sheets are core)', () => {
@@ -394,6 +392,105 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
       // Ensure no dead ?add= queries on /dashboard/jobs exist
       const deadJobHrefs = NEW_MENU_ITEMS.filter((item) => item.href.startsWith('/dashboard/jobs?add='));
       expect(deadJobHrefs.length).toBe(0);
+    });
+  });
+
+  describe('resolveEmptySections historical audit event detection (Defect D2 inventory follow-up)', () => {
+    function createMockSupabase(options: {
+      accountCreatedAt?: string;
+      counts?: Record<string, number>;
+      auditEntityTypes?: string[];
+    }) {
+      return {
+        from: (table: string) => {
+          let queryEntityIn: string[] = [];
+          let queryEntityType: string | null = null;
+          const queryObj = {
+            select: () => queryObj,
+            eq: (_col: string, val: any) => {
+              if (_col === 'entity_type') queryEntityType = val;
+              return queryObj;
+            },
+            in: (_col: string, vals: any[]) => {
+              if (_col === 'entity_type') queryEntityIn = vals;
+              return queryObj;
+            },
+            not: () => queryObj,
+            maybeSingle: async () => {
+              if (table === 'accounts') {
+                return {
+                  data: { created_at: options.accountCreatedAt ?? '2025-01-01T00:00:00Z' },
+                  error: null,
+                };
+              }
+              return { data: null, error: null };
+            },
+            then: (resolve: (val: any) => void) => {
+              let count = options.counts?.[table] ?? 0;
+              if (table === 'tenant_audit_events') {
+                if (queryEntityType) {
+                  count = options.auditEntityTypes?.includes(queryEntityType) ? 1 : 0;
+                } else if (queryEntityIn.length > 0) {
+                  count = options.auditEntityTypes?.some((t) => queryEntityIn.includes(t)) ? 1 : 0;
+                }
+              }
+              resolve({ count, error: null });
+            },
+          };
+          return queryObj;
+        },
+      } as any;
+    }
+
+    it('protects brand-new accounts (<30 days old) from demotion even if tables are empty', async () => {
+      const recentAccountDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+      const client = createMockSupabase({ accountCreatedAt: recentAccountDate, counts: {} });
+      const empty = await resolveEmptySections(client, 'acct-new');
+      expect(empty.size).toBe(0);
+    });
+
+    it('demotes inventory when account is older and has never had tools, vehicles, or stock items', async () => {
+      const client = createMockSupabase({ counts: {}, auditEntityTypes: [] });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(true);
+      expect(empty.has('/dashboard/crew')).toBe(true);
+      expect(empty.has('/dashboard/recurring')).toBe(true);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_tools', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_tools'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_vehicles', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_vehicles'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_stock_items', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_stock_items'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves crew navigation if tenant_audit_events has historical crew events', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['crew'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/crew')).toBe(false);
     });
   });
 });

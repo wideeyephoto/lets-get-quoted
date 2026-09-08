@@ -45,6 +45,7 @@ export default function QuoteAcceptance({
    * quote beside installments adding to $3,502.
    */
   planTotal,
+  financingOption,
 }: {
   approveAction: (formData: FormData) => void;
   businessName: string;
@@ -52,6 +53,7 @@ export default function QuoteAcceptance({
   scheduledLabel: string | null;
   payment: PaymentSummary;
   planTotal: number | null;
+  financingOption?: React.ReactNode;
 }) {
   const {
     signer,
@@ -138,6 +140,8 @@ export default function QuoteAcceptance({
           {formatUsd(total)} — {businessName} will confirm how the difference is billed before anything is charged.
         </p>
       ) : null}
+
+      {financingOption}
 
       {/* THE SIGNATURE THAT BELONGS TO THIS AGREEMENT.
           A typed name was already being collected on this page — under

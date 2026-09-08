@@ -1201,6 +1201,10 @@ create table if not exists job_schedule_requests (
 
 -- ----------------------------------------------------------------------------
 -- FINANCE PLANS
+-- NOTE: DORMANT. Left dormant per docs/plan-acorn-homeowner-financing-2026-09-08.md.
+-- Defaults provider to 'Wisetack' and stores computed terms (financed/monthly/months/apr)
+-- with zero writers in the codebase. Do not mistake this table for the Acorn integration,
+-- which uses public.homeowner_financing_enrollments.
 -- ----------------------------------------------------------------------------
 create table if not exists finance_plans (
   id            uuid primary key default gen_random_uuid(),
@@ -2700,6 +2704,38 @@ grant select on public.email_sending_domains to authenticated;
 
 drop policy if exists email_sending_domains_read on public.email_sending_domains;
 create policy email_sending_domains_read on public.email_sending_domains
+  for select to authenticated
+  using (public.office_can(account_id, 'settings.write'));
+
+-- Homeowner financing partner enrollments (Stage 0: Acorn Finance referral foundation)
+create table if not exists public.homeowner_financing_enrollments (
+  id                   uuid primary key default gen_random_uuid(),
+  account_id           uuid not null references public.accounts(id) on delete cascade,
+  provider             text not null default 'acorn'
+                         check (provider in ('acorn')),
+  provider_code        text,                     -- dealer/partner code (e.g. Acorn ?d=<code>)
+  status               text not null default 'pending'
+                         check (status in ('pending','active','suspended','declined')),
+  enabled_on_quotes    boolean not null default false,
+  enabled_on_invoices  boolean not null default false,
+  enrolled_at          timestamptz,
+  disabled_reason      text,
+  created_at           timestamptz not null default now(),
+  updated_at           timestamptz not null default now()
+);
+
+create unique index if not exists homeowner_financing_one_per_account
+  on public.homeowner_financing_enrollments (account_id, provider);
+
+create index if not exists homeowner_financing_account_idx
+  on public.homeowner_financing_enrollments (account_id);
+
+alter table public.homeowner_financing_enrollments enable row level security;
+revoke all on public.homeowner_financing_enrollments from anon, authenticated;
+grant select on public.homeowner_financing_enrollments to authenticated;
+
+drop policy if exists homeowner_financing_read on public.homeowner_financing_enrollments;
+create policy homeowner_financing_read on public.homeowner_financing_enrollments
   for select to authenticated
   using (public.office_can(account_id, 'settings.write'));
 

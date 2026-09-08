@@ -22,6 +22,7 @@
     "test:pg17:flex-limits": "node scripts/verify-new-workspace-flex-limits.mjs",
     "test:pg17:grace-collect": "node scripts/verify-grace-may-still-collect.mjs",
     "test:pg17:ledger-contract": "node scripts/verify-usage-meter-ledger-contract.mjs",
+    "test:pg17:homeowner-financing": "node scripts/verify-homeowner-financing.mjs",
     "preflight:prices": "vitest run --config vitest.preflight.config.ts test-preflight/stripe-plan-prices.preflight.ts",
     "preflight:prices:discover": "vitest run --config vitest.preflight.config.ts test-preflight/stripe-plan-prices-discovery.preflight.ts",
     "audit:applied": "node scripts/audit-applied-migrations.mjs",

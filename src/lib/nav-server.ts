@@ -50,6 +50,7 @@ export async function resolveEmptySections(
       inventoryToolsRes,
       inventoryVehiclesRes,
       inventoryStockRes,
+      inventoryAuditRes,
       recurringRes,
       recurringJobsRes,
     ] = await Promise.allSettled([
@@ -59,6 +60,11 @@ export async function resolveEmptySections(
       admin.from('inventory_tools').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
       admin.from('inventory_vehicles').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
       admin.from('inventory_stock_items').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+      admin
+        .from('tenant_audit_events')
+        .select('id', { count: 'exact', head: true })
+        .eq('account_id', accountId)
+        .in('entity_type', ['inventory_tools', 'inventory_vehicles', 'inventory_stock_items']),
       admin.from('recurring_plans').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
       admin.from('jobs').select('id', { count: 'exact', head: true }).eq('account_id', accountId).not('recurring_plan_id', 'is', null),
     ]);
@@ -76,7 +82,8 @@ export async function resolveEmptySections(
     const hasEverHadInventory =
       (inventoryToolsRes.status === 'fulfilled' && !inventoryToolsRes.value.error && (inventoryToolsRes.value.count ?? 0) > 0) ||
       (inventoryVehiclesRes.status === 'fulfilled' && !inventoryVehiclesRes.value.error && (inventoryVehiclesRes.value.count ?? 0) > 0) ||
-      (inventoryStockRes.status === 'fulfilled' && !inventoryStockRes.value.error && (inventoryStockRes.value.count ?? 0) > 0);
+      (inventoryStockRes.status === 'fulfilled' && !inventoryStockRes.value.error && (inventoryStockRes.value.count ?? 0) > 0) ||
+      (inventoryAuditRes.status === 'fulfilled' && !inventoryAuditRes.value.error && (inventoryAuditRes.value.count ?? 0) > 0);
 
     // Only demote if proven that the account has NEVER had inventory
     if (!hasEverHadInventory && inventoryToolsRes.status === 'fulfilled' && !inventoryToolsRes.value.error) {

@@ -7,6 +7,8 @@ import { canCreateConnectCharge } from '@/lib/stripe';
 import { calculateQuotePriceLock } from '@/lib/quote-expiration';
 import { loadContractorBrand } from '@/lib/contractor-brand';
 import { ContractorBrandBar, ContractorBrandFoot } from '@/components/contractor-brand';
+import FinancingOption from '@/components/financing/FinancingOption';
+import { resolveHomeownerFinancing } from '@/lib/bnpl-financing';
 import { payInvoiceAction, signInvoiceAction } from './actions';
 
 // Always render fresh — this page's content changes once the client signs,
@@ -57,6 +59,11 @@ export default async function PublicInvoicePage({ params: paramsPromise }: { par
     .eq('invoice_id', invoice.id);
   const pay = invoicePayState(invoice, totals.total, (paymentRows ?? []) as InvoicePayment[]);
   const boundPayInvoice = payInvoiceAction.bind(null, invoice.id);
+  const canCharge = canCreateConnectCharge(invoice.account);
+  const financing = await resolveHomeownerFinancing(invoice.account_id, 'invoice', totals.total, {
+    isSettled: pay.state === 'settled' || invoice.status === 'paid',
+    isBlocked: !canCharge,
+  });
 
   return (
     <>
@@ -112,9 +119,12 @@ export default async function PublicInvoicePage({ params: paramsPromise }: { par
               <p>{CHECKOUT_BLOCK_NOTE.contractor_unavailable}</p>
             </div>
           ) : pay.state === 'payable' ? (
-            <form action={boundPayInvoice} className="actions workspace-actions">
-              <button type="submit" className="btn primary">Pay {formatMoney(pay.due)}</button>
-            </form>
+            <>
+              <form action={boundPayInvoice} className="actions workspace-actions">
+                <button type="submit" className="btn primary">Pay {formatMoney(pay.due)}</button>
+              </form>
+              <FinancingOption availability={financing} businessName={businessName} />
+            </>
           ) : pay.state === 'processing' ? (
             <div className="payment-banner">
               {/* Only reached for a genuinely in-flight transfer now.

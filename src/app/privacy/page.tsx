@@ -116,6 +116,7 @@ export default function PrivacyPolicyPage() {
             <li><strong>Transactional Email Delivery:</strong> Resend, Inc. (DKIM/SPF-signed transactional and notification emails).</li>
             <li><strong>Property Intelligence:</strong> RentCast, Inc. (address-level structural and valuation baselines for estimating).</li>
             <li><strong>Mapping &amp; Geocoding:</strong> Google Maps Platform (server-side geocoding and browser mapping with referrer restrictions).</li>
+            <li><strong>Homeowner Financing Marketplace (Optional Referral):</strong> Acorn Finance Inc. When a contractor enables homeowner financing, homeowners may voluntarily click through to Acorn Finance&apos;s lending marketplace to prequalify for personal home improvement loans. Outbound referral links convey estimated project totals and partner attribution codes; Let&apos;s Get Quoted never transmits customer personal identifying information (such as name, email, or address) in prequalification link parameters. Any application information submitted by the homeowner is handled directly by Acorn Finance and its participating lenders under Acorn&apos;s privacy policy.</li>
           </ul>
           <p>
             For contractors processing personal data subject to state privacy regulations (such as the CCPA), our{' '}
