@@ -11,17 +11,17 @@ function run(...args: string[]) {
 
 describe('preparing withheld Prices without opening sales', () => {
   it('plans only the named SKUs offline with their real amount and cadence', () => {
-    const result = run('--prepare-withheld=storage_100gb,voice_minutes_100', '--dry-run');
+    const result = run('--prepare-withheld=ai_voice_flex,voice_minutes_100', '--dry-run');
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toContain('storage_100gb PLAN $15.00 month (100 storage_gb)');
+    expect(result.stdout).toContain('ai_voice_flex PLAN $69.00 month (100 voice_minutes)');
     expect(result.stdout).toContain('voice_minutes_100 PLAN $35.00 one-time (100 voice_minutes)');
     expect(result.stdout).toContain('sales remain withheld');
     expect(result.stdout).not.toContain('office_user');
-    expect(SELLABLE_TOP_UP_IDS).not.toContain('storage_100gb');
+    expect(SELLABLE_TOP_UP_IDS).not.toContain('ai_voice_flex');
     expect(SELLABLE_TOP_UP_IDS).not.toContain('voice_minutes_100');
   });
 
-  it.each(['', 'typo', 'crew_user', 'storage_100gb,typo'])(
+  it.each(['', 'typo', 'crew_user', 'ai_voice_flex,typo'])(
     'refuses invalid preparation selection %s before loading credentials', (selection) => {
       const result = run(`--prepare-withheld=${selection}`, '--dry-run');
       expect(result.status).not.toBe(0);
@@ -31,15 +31,15 @@ describe('preparing withheld Prices without opening sales', () => {
   );
 
   it('refuses a misspelled dry-run flag instead of creating live Prices', () => {
-    const result = run('--dryrun', '--prepare-withheld=storage_100gb');
+    const result = run('--dryrun', '--prepare-withheld=ai_voice_flex');
     expect(result.status).not.toBe(0);
     expect(result.stderr).toContain('Unknown argument');
   });
 
-  it('keeps all six withheld in the normal offline plan', () => {
+  it('keeps all four voice SKUs withheld in the normal offline plan', () => {
     const result = run('--dry-run');
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout.match(/WITHHELD -/g)).toHaveLength(6);
+    expect(result.stdout.match(/WITHHELD -/g)).toHaveLength(4);
     expect(result.stdout).toContain('No credentials read, no Stripe requests');
   });
 });
