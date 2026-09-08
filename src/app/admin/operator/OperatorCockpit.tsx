@@ -134,10 +134,11 @@ export default function OperatorCockpit({
         }
         const timeStr = new Date().toLocaleTimeString();
         const safeCount = res.report.safeActionsExecuted;
+        const candidates = res.report.onboardingNudgeCandidates;
         const pendingCount = res.report.pendingHitlActions.length;
         setStatusBanner({
           type: 'success',
-          message: `✓ Ops cycle completed at ${timeStr}. Briefing refreshed, ${safeCount} safe tasks processed, ${pendingCount} approval(s) pending.`,
+          message: `✓ Ops cycle completed at ${timeStr}. Briefing refreshed, ${safeCount} task(s) executed, ${candidates} nudge candidate(s) identified, ${pendingCount} approval(s) pending.`,
         });
       } else {
         setStatusBanner({

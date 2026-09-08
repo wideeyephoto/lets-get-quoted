@@ -38,7 +38,15 @@ export interface AutonomousCycleReport {
   briefing: ExecutiveBriefing;
   revOpsScan: RevOpsScanResult;
   pendingHitlActions: OperatorHitlActionRequest[];
+  /**
+   * Actions the operator actually performed unattended. This read
+   * `onboardingNudgesQueued` and so reported identified contractors as work done --
+   * the cron answered "4 safe actions executed" for four nudges nothing sent.
+   * Nothing on this path executes yet, so it is 0 until a sender exists.
+   */
   safeActionsExecuted: number;
+  /** Contractors identified as nudge candidates. Identification, not outreach. */
+  onboardingNudgeCandidates: number;
   auditLogs?: import('./types').OperatorAuditLogEntry[];
 }
 
@@ -70,10 +78,11 @@ export async function runAutonomousOperatorCycle(
     toolName: 'runAutonomousOperatorCycle',
     outputResult: {
       cycleId,
-      safeActions: revOpsScan.onboardingNudgesQueued,
+      safeActions: 0,
+      nudgeCandidates: revOpsScan.onboardingNudgeCandidates,
       pendingHitl: pendingHitlActions.length,
     },
-    reasoningSummary: `Autonomous cycle completed. ${revOpsScan.onboardingNudgesQueued} automated actions run, ${pendingHitlActions.length} HITL approvals pending.`,
+    reasoningSummary: `Autonomous cycle completed. 0 automated actions run, ${revOpsScan.onboardingNudgeCandidates} nudge candidate(s) identified (none sent), ${pendingHitlActions.length} HITL approvals pending.`,
     status: 'success',
   });
 
@@ -88,7 +97,8 @@ export async function runAutonomousOperatorCycle(
     briefing,
     revOpsScan,
     pendingHitlActions,
-    safeActionsExecuted: revOpsScan.onboardingNudgesQueued,
+    safeActionsExecuted: 0,
+    onboardingNudgeCandidates: revOpsScan.onboardingNudgeCandidates,
     auditLogs,
   };
 

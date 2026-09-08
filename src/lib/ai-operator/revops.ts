@@ -6,7 +6,12 @@ export interface RevOpsScanResult {
   scannedAt: string;
   dunningAccountsIdentified: number;
   dunningTotalAmountCents: number;
-  onboardingNudgesQueued: number;
+  /**
+   * Contractors identified as needing a nudge. Named "Queued" originally, which was
+   * read as work performed and reported to the founder as safeActionsExecuted --
+   * nothing is queued and nothing is sent, these are candidates for the HITL card.
+   */
+  onboardingNudgeCandidates: number;
   tierUpgradesRecommended: number;
   hitlActionsCreated: number;
   details: {
@@ -98,12 +103,17 @@ export async function runRevOpsGrowthScan(
     });
 
     if (autoDispatch) {
+      // Identification only. This loop has never sent anything -- no email or SMS
+      // call exists on this path, and the HITL card raised just above is what a
+      // human would approve to make outreach happen. It previously recorded
+      // "Automated Onboarding Nudge Dispatched" at safe_auto/success, so the audit
+      // trail asserted outreach that no contractor ever received.
       recordOperatorAudit({
         category: 'growth_lifecycle',
-        actionName: 'Automated Onboarding Nudge Dispatched',
-        severity: 'safe_auto',
+        actionName: 'Onboarding Nudge Candidate Identified',
+        severity: 'info',
         accountId: account.id,
-        reasoningSummary: `Contractor ${displayName} has zero quotes/uncompleted onboarding. Dispatched automated guidance.`,
+        reasoningSummary: `Contractor ${displayName} has zero quotes/uncompleted onboarding. Identified as a nudge candidate; nothing was sent.`,
         status: 'success',
       });
     }
@@ -113,7 +123,7 @@ export async function runRevOpsGrowthScan(
     scannedAt: new Date().toISOString(),
     dunningAccountsIdentified: details.dunningActions.length,
     dunningTotalAmountCents,
-    onboardingNudgesQueued: details.onboardingNudges.length,
+    onboardingNudgeCandidates: details.onboardingNudges.length,
     tierUpgradesRecommended: details.upgradeRecommendations.length,
     hitlActionsCreated: hitlActionsCount,
     details,
@@ -127,10 +137,10 @@ export async function runRevOpsGrowthScan(
     outputResult: {
       dunningCount: result.dunningAccountsIdentified,
       dunningTotalAmountCents: result.dunningTotalAmountCents,
-      nudgesCount: result.onboardingNudgesQueued,
+      nudgeCandidates: result.onboardingNudgeCandidates,
       hitlCreated: hitlActionsCount,
     },
-    reasoningSummary: `Scan found ${result.dunningAccountsIdentified} dunning items ($${(dunningTotalAmountCents / 100).toFixed(2)} total), queued ${result.onboardingNudgesQueued} onboarding nudges, and created ${hitlActionsCount} HITL actions.`,
+    reasoningSummary: `Scan found ${result.dunningAccountsIdentified} dunning items ($${(dunningTotalAmountCents / 100).toFixed(2)} total), identified ${result.onboardingNudgeCandidates} onboarding nudge candidate(s) (none sent), and created ${hitlActionsCount} HITL actions.`,
     status: 'success',
   });
 
