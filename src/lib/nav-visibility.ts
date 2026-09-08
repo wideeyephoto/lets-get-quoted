@@ -268,29 +268,6 @@ export function resolveVisibleNav(
     }
   }
 
-  // If Claims is promoted to top-of-Work for glass/roofing/restoration:
-  // Elevate /dashboard/claims right after /dashboard/leads in the Work group
-  if (promoted.includes('/dashboard/claims') && visible.includes('/dashboard/claims')) {
-    const claimsIdx = visible.indexOf('/dashboard/claims');
-    if (claimsIdx > 0) {
-      visible.splice(claimsIdx, 1);
-      const leadsIdx = visible.indexOf('/dashboard/leads');
-      const insertAt = leadsIdx >= 0 ? leadsIdx + 1 : 0;
-      visible.splice(insertAt, 0, '/dashboard/claims');
-    }
-  }
-
-  // If Recurring is promoted:
-  // In Money section, ensure /dashboard/recurring is ahead of /dashboard/payments
-  if (promoted.includes('/dashboard/recurring') && visible.includes('/dashboard/recurring') && visible.includes('/dashboard/payments')) {
-    const recIdx = visible.indexOf('/dashboard/recurring');
-    const payIdx = visible.indexOf('/dashboard/payments');
-    if (recIdx > payIdx) {
-      visible.splice(recIdx, 1);
-      visible.splice(payIdx, 0, '/dashboard/recurring');
-    }
-  }
-
   return {
     visible,
     demoted,

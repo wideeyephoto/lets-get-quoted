@@ -21,6 +21,7 @@ describe('trade-insurance.ts', () => {
       expect(isInsuranceEligibleTrade('emergency-plumbing')).toBe(true);
       expect(isInsuranceEligibleTrade('auto-glass')).toBe(true);
       expect(isInsuranceEligibleTrade('storefront-glass')).toBe(true);
+      expect(isInsuranceEligibleTrade('glass-and-mirrors')).toBe(true);
       expect(isInsuranceEligibleTrade('Midwest Auto Glass')).toBe(true);
       expect(INSURANCE_ELIGIBLE_TRADE_SLUGS.has('auto-glass')).toBe(true);
       expect(INSURANCE_ELIGIBLE_TRADE_SLUGS.has('storefront-glass')).toBe(true);
