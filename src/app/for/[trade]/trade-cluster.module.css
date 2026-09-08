@@ -18,7 +18,7 @@
 }
 
 .kicker {
-  color: #ff6a24;
+  color: var(--mkt-orange);
   font-size: 12px;
   font-weight: 800;
   letter-spacing: 2px;
@@ -32,18 +32,18 @@
   font-weight: 850;
   letter-spacing: -1px;
   line-height: 1.2;
-  color: #f5f0e7;
+  color: var(--mkt-text);
   margin: 0 0 14px;
 }
 
 .title em {
-  color: #ff6a24;
+  color: var(--mkt-orange);
   font-style: normal;
 }
 
 .subtitle {
   font-size: clamp(15px, 1.8vw, 17px);
-  color: #a7bcc8;
+  color: var(--mkt-muted);
   line-height: 1.6;
   margin: 0;
 }
@@ -86,25 +86,25 @@
 
 .badgeGuide {
   background: rgba(255, 106, 36, 0.15);
-  color: #ff8c4a;
+  color: var(--mkt-orange-soft);
   border: 1px solid rgba(255, 106, 36, 0.3);
 }
 
 .badgeTool {
   background: rgba(80, 227, 189, 0.12);
-  color: #50e3bd;
+  color: var(--mkt-mint);
   border: 1px solid rgba(80, 227, 189, 0.25);
 }
 
 .badgeFeature {
   background: rgba(88, 166, 255, 0.12);
-  color: #79c0ff;
+  color: var(--mkt-info);
   border: 1px solid rgba(88, 166, 255, 0.25);
 }
 
 .badgeComparison {
   background: rgba(210, 153, 34, 0.15);
-  color: #e3b341;
+  color: var(--mkt-gold);
   border: 1px solid rgba(210, 153, 34, 0.3);
 }
 
@@ -112,23 +112,23 @@
   font-size: 17px;
   font-weight: 750;
   line-height: 1.35;
-  color: #f5f0e7;
+  color: var(--mkt-text);
   margin: 0 0 10px;
 }
 
 .cardHeading a {
-  color: #f5f0e7;
+  color: var(--mkt-text);
   text-decoration: none;
   transition: color 0.2s ease;
 }
 
 .cardHeading a:hover {
-  color: #ff6a24;
+  color: var(--mkt-orange);
 }
 
 .cardBlurb {
   font-size: 13.5px;
-  color: #a7bcc8;
+  color: var(--mkt-muted);
   line-height: 1.55;
   margin: 0 0 18px;
   flex-grow: 1;
@@ -140,13 +140,13 @@
   gap: 6px;
   font-size: 13px;
   font-weight: 700;
-  color: #ff6a24;
+  color: var(--mkt-orange);
   text-decoration: none;
   transition: gap 0.2s ease, color 0.2s ease;
 }
 
 .actionLink:hover {
-  color: #ff8c4a;
+  color: var(--mkt-orange-soft);
   gap: 10px;
 }
 

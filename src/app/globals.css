@@ -107,6 +107,43 @@
   color: var(--text);
 }
 
+/* MARKETING SURFACE -- the paid-landing palette.
+   /for/[trade], /compare and the feature heroes deliberately opt out of the
+   eight themes: an ad's creative and its landing page have to match, so these
+   pages force their own dark ground whatever the visitor picked. That decision
+   is deliberate and stays. Four different navies, three oranges and two mints
+   across pages in the SAME campaign was not deliberate. One ramp, one accent,
+   defined once here so a rebrand reaches every ad destination instead of
+   stopping at the four modules that hardcoded their own.
+   Consumers: src/app/compare/compare.module.css,
+   src/app/for/[trade]/trade-{definitive,roi,cluster}.module.css.
+   These do NOT vary by theme on purpose -- see the force-dark wrapper in
+   src/app/for/for.module.css. Theme-scoped marketing overrides live in
+   flagship.module.css and are correct; do not fold them in here. */
+:root {
+  --mkt-ink: #040d14;
+  --mkt-ground: #07131d;
+  --mkt-surface: #081722;
+  --mkt-surface-2: #0c202d;
+  --mkt-surface-3: #152c3c;
+  --mkt-orange: #ff6a24;
+  --mkt-orange-rgb: 255, 106, 36;
+  --mkt-orange-hover: #ff7d3e;
+  --mkt-orange-soft: #ff8c4a;
+  --mkt-mint: #50e3bd;
+  --mkt-mint-rgb: 80, 227, 189;
+  --mkt-on-accent: #06131f;
+  --mkt-text: #f5f0e7;
+  --mkt-text-strong: #ffffff;
+  --mkt-muted: #a7bcc8;
+  --mkt-muted-2: #8da1ad;
+  --mkt-muted-bright: #d1e2eb;
+  --mkt-gold: #e3b341;
+  --mkt-info: #79c0ff;
+  --mkt-bad: #ff5252;
+  --mkt-bad-soft: #ff8e8e;
+}
+
 /* WORKBENCH — a drafting table: near-black neutral chrome so the cards, which
    flip to paper further down this file, read as paper rather than as grey. The
    darker the shell, the more the sheet on it looks like a sheet. */
