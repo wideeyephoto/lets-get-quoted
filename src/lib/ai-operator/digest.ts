@@ -173,18 +173,33 @@ export async function dispatchCriticalAnomalyAlert(incident: {
   console.warn(`[OPERATOR CRITICAL ALERT] ${incident.title}: ${incident.details}`);
 
   const resend = getResend();
-  const recipient = process.env.ADMIN_ALERT_EMAIL || 'founder@letsgetquoted.com';
+  const recipient = resolveOperatorRecipient();
+
+  // Same dead default as the digest, but this is the critical-incident path: every
+  // emergency alert was addressed to a mailbox that hard-bounces, and the send result
+  // was never inspected, so nobody was ever paged and nothing recorded that.
+  if (!recipient) {
+    console.error(
+      `[OPERATOR CRITICAL ALERT] NOT SENT -- no ADMIN_ALERT_EMAIL configured. Alert was: ${incident.title}`,
+    );
+    return;
+  }
 
   if (resend) {
     try {
-      await resend.emails.send({
+      const { error } = await resend.emails.send({
         from: "LGQ SRE Guardian <alerts@letsgetquoted.com>",
         to: recipient,
         subject: `🚨 [CRITICAL ALERT] ${incident.title}`,
         html: `<p><strong>Incident Alert:</strong> ${incident.title}</p><p>${incident.details}</p><p><a href="https://app.letsgetquoted.com/admin/operator">Open Operator Cockpit</a></p>`,
       });
+      if (error) {
+        console.error('Emergency alert REJECTED by provider:', error.message ?? error);
+      }
     } catch (err) {
       console.error('Failed to send emergency alert email:', err);
     }
+  } else {
+    console.error('[OPERATOR CRITICAL ALERT] NOT SENT -- RESEND_API_KEY not configured.');
   }
 }
