@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/auth';
+import { normalizeUsPhone } from '@/lib/phone';
 import { verifyVoiceReceiptAuthorization, verifySignedVoiceWebhook, isTrustedVoiceMediaUrl } from '@/lib/voice/auth';
 
 function text(value: unknown): string | null {
@@ -71,8 +72,8 @@ export async function POST(req: Request) {
       p_url: isCompleted ? recordingUrl : null,
       p_duration: durationSeconds, p_size: sizeBytes,
       // Only provider-signed recovery URLs can supply inventory attribution.
-      p_to_number: signature.ok ? callbackUrl.searchParams.get('to') : null,
-      p_caller: signature.ok ? callbackUrl.searchParams.get('from') : null,
+      p_to_number: signature.ok ? normalizeUsPhone(callbackUrl.searchParams.get('to') ?? '') : null,
+      p_caller: signature.ok ? normalizeUsPhone(callbackUrl.searchParams.get('from') ?? '') : null,
     });
 
     if (error) {

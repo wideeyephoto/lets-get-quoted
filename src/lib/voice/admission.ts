@@ -190,6 +190,7 @@ export async function countOpenAiCalls(
   accountId: string,
   limit: number,
   now: Date = new Date(),
+  retryProviderCallId?: string,
 ): Promise<number> {
   const since = new Date(now.getTime() - OPEN_CALL_WINDOW_MINUTES * 60_000).toISOString();
   try {
@@ -203,7 +204,11 @@ export async function countOpenAiCalls(
       console.error('open AI call count failed:', error);
       return limit;
     }
-    const liveAdmissions = data.filter((row) => !(row as { provider_terminal_at?: unknown }).provider_terminal_at);
+    // A provider retry is the same call, not a second caller competing for a
+    // slot. The atomic admission RPC still validates and reuses its lease.
+    const liveAdmissions = data.filter((row) =>
+      !(row as { provider_terminal_at?: unknown }).provider_terminal_at
+      && (row as { provider_call_id?: string }).provider_call_id !== retryProviderCallId);
     if (liveAdmissions.length === 0) return 0;
 
     const ids = liveAdmissions.map((row) => String((row as { provider_call_id: string }).provider_call_id));
@@ -266,7 +271,8 @@ export async function planInboundCall(
     // The contractor's own rule, not an error message. A number keeps being a
     // phone number even when the product on top of it is off.
     const forwardTo = workspace?.settings?.transferNumber || workspace?.callForwardNumber;
-    if (forwardTo && workspace) {
+    if (forwardTo && workspace
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')) {
       return Object.freeze({
         accountId: workspace.accountId,
         declineReason: reason,
@@ -345,6 +351,7 @@ export async function planInboundCall(
   const open = await countOpenAiCalls(
     admin, workspace.accountId, workspace.concurrentCallLimit,
     (options.now ?? (() => new Date()))(),
+    call.providerCallId,
   );
   if (open >= workspace.concurrentCallLimit) return fallback(workspace, 'at_capacity');
 
