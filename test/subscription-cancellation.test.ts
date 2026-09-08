@@ -356,9 +356,9 @@ describe('scheduling capacity subscription cancellation', () => {
     current_period_end: '2026-09-20T00:00:00Z',
   };
 
-  it('updates Stripe with cancel_at_period_end and records an event', async () => {
+  it.each(['crew_user', 'storage_100gb', 'office_user'])('cancels %s at period end and records an event', async (topUpId) => {
     const result = await cancelPurchasedCapacitySubscriptionAtPeriodEnd({
-      admin: adminWith(CAPACITY_ROW),
+      admin: adminWith({ ...CAPACITY_ROW, top_up_id: topUpId }),
       accountId: 'acct_1',
       stripeSubscriptionId: 'sub_cap_1',
     });
