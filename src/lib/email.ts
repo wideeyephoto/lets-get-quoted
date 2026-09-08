@@ -34,6 +34,7 @@ import { loadEmailBrand, nameOnlyBrand } from './email-brand';
 import type { DailyDigest } from './daily-digest';
 import { quoteFollowupEmailPreview } from './quote-followups';
 import { rebookInviteEmailContent } from './rebook-message';
+import { resolveHomeownerFinancing } from './bnpl-financing';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -178,6 +179,20 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
     const totals = computeInvoiceTotals(input.items, Number(input.invoice.discount_percent) || 0, Number(input.invoice.tax_rate) || 0);
 
     const brand = await brandFor(input);
+    let financingAvailable = false;
+    if (input.accountId) {
+      try {
+        const financing = await resolveHomeownerFinancing(
+          input.accountId,
+          'invoice',
+          totals.total,
+        );
+        financingAvailable = financing.available;
+      } catch (err) {
+        console.warn('Failed to resolve homeowner financing for invoice email:', err);
+      }
+    }
+
     const emailHtml = generateInvoiceHtml({
       brand,
       businessName: input.businessName,
@@ -192,6 +207,7 @@ export async function sendInvoiceEmail(input: SendInvoiceEmailInput): Promise<vo
       taxAmount: totals.taxAmount,
       items: input.items,
       invoiceLink,
+      financingAvailable,
     });
 
     // Best-effort: attach a PDF copy of the invoice. If PDF generation fails
@@ -260,8 +276,22 @@ export async function sendClientQuoteEmail(input: SendClientQuoteEmailInput): Pr
     throw new Error('Email provider is not configured.');
   }
 
+  let financingAvailable = input.financingAvailable ?? false;
+  if (!financingAvailable && input.accountId) {
+    try {
+      const financing = await resolveHomeownerFinancing(
+        input.accountId,
+        'quote',
+        input.quotedAmount,
+      );
+      financingAvailable = financing.available;
+    } catch (err) {
+      console.warn('Failed to resolve homeowner financing for quote email:', err);
+    }
+  }
+
   const brand = await brandFor(input);
-  const html = renderClientQuoteEmailHtml({ ...input, brand });
+  const html = renderClientQuoteEmailHtml({ ...input, brand, financingAvailable });
 
   const result = await resend.emails.send({
     from: contractorFrom(brand),

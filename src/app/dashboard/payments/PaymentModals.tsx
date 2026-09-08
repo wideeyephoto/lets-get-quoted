@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import {
   recordManualPaymentAction,
   issueRefundAction,
@@ -922,7 +923,10 @@ export default function PaymentModals({
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>
             {HOMEOWNER_FINANCING.nextStep}
           </p>
-          <div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Link href="/dashboard/settings#financing" className="btn primary" onClick={onClose}>
+              Manage in Settings
+            </Link>
             <button type="button" className="btn secondary" onClick={onClose}>
               Close
             </button>

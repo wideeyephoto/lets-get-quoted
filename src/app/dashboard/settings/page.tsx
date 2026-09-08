@@ -69,6 +69,9 @@ import StationerySettingsSection from './StationerySettingsSection';
 import EmailSendingDomainSection from './EmailSendingDomainSection';
 import { type EmailSendingDomainRow } from './email-domain-actions';
 import { isEmailSendingDomainsFeatureEnabled } from '@/lib/resend-domains';
+import HomeownerFinancingSection from './HomeownerFinancingSection';
+import { isHomeownerFinancingFeatureEnabled } from '@/lib/acorn-financing';
+import type { HomeownerFinancingEnrollmentRow } from '@/lib/bnpl-financing';
 import { listApiTokens } from '@/lib/public-api/api-credentials';
 
 export const metadata = { title: 'Account' };
@@ -88,6 +91,7 @@ export default async function SettingsPage({
     top_up_checkout?: string;
     plan?: string;
     billing?: string;
+    financing?: string;
   }>;
 }) {
   const searchParams = (await searchParamsPromise) || {};
@@ -151,6 +155,16 @@ export default async function SettingsPage({
         .eq('account_id', accountId)
         .order('created_at', { ascending: false })
         .limit(1)
+        .maybeSingle()
+    : { data: null };
+
+  const homeownerFinancingEnabled = isHomeownerFinancingFeatureEnabled();
+  const { data: financingEnrollmentData } = homeownerFinancingEnabled
+    ? await supabase
+        .from('homeowner_financing_enrollments')
+        .select('*')
+        .eq('account_id', accountId)
+        .eq('provider', 'acorn')
         .maybeSingle()
     : { data: null };
 
@@ -838,9 +852,16 @@ export default async function SettingsPage({
           id: 'apps',
           label: 'Connected apps',
           blurb: 'The other tools your business runs on.',
-          anchors: ['quickbooks', 'google-local-services'],
+          anchors: ['quickbooks', 'google-local-services', 'financing', 'homeowner-financing'],
           content: (
               <>
+                {homeownerFinancingEnabled ? (
+                  <HomeownerFinancingSection
+                    enrollment={(financingEnrollmentData as HomeownerFinancingEnrollmentRow | null) || null}
+                    notice={searchParams.financing}
+                  />
+                ) : null}
+
                 <QuickBooksSection
                   status={quickBooksStatus}
                   notice={searchParams.quickbooks}

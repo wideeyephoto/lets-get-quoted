@@ -736,6 +736,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Contractor homeowner financing settings & provider enrollment
+  homeowner_financing_enrollments: {
+    tableName: 'homeowner_financing_enrollments',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 365, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Structured installment payment plans
   payment_plans: {
     tableName: 'payment_plans',
