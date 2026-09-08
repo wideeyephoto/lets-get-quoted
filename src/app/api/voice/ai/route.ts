@@ -64,22 +64,13 @@ function failureResponse(isJson: boolean, message?: string, status = 200) {
         },
       );
     }
-    return new NextResponse(
-      JSON.stringify({
-        version: '1.0.0',
-        sections: {
-          main: [
-            { answer: {} },
-            { play: { url: `say: ${message}` } },
-            { hangup: {} },
-          ],
-        },
-      }),
-      {
-        status,
-        headers: { 'Content-Type': 'application/json' },
-      },
-    );
+    // Dependency failures need the same provider-enforced limit as every
+    // other answered call, even if apology playback never finishes.
+    const answer = signalwireVoiceProvider.renderAnswer({ kind: 'unavailable', message }, { format: 'swml' });
+    return new NextResponse(answer.body, {
+      status,
+      headers: { 'Content-Type': answer.contentType },
+    });
   }
   return xml(message ? `<Say voice="man">${escapeXml(message)}</Say>` : '', status);
 }
