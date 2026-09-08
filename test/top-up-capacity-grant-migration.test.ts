@@ -126,22 +126,12 @@ describe('what this migration deliberately does not do', () => {
     // sweep, and the counter must decline to count what it marked canceled.
     expect(sql).not.toMatch(/status\s*=\s*'canceled'/i);
 
-    // Asserted by fulfillment kind rather than by id, so a NEW capacity SKU
-    // cannot quietly become sellable by being added to the catalog.
-    //
-    // crew_user used to be the one exception, named here rather than
-    // pattern-matched, because it went on sale on 2026-08-20 once the sweep and
-    // the `active`/`past_due` counter were verified. It came back on 2026-08-23:
-    // fulfilment was never the problem, CANCELLATION was, and nothing in the
-    // product can end a top-up subscription. So there is no exception now, and
-    // the rule is the plain one -- no recurring_capacity SKU is sellable.
-    const withheldCapacitySkus = Object.values(TOP_UPS)
-      .filter((sku) => sku.fulfillment === 'recurring_capacity' && sku.id in TOP_UPS_WITHHELD)
-      .map((sku) => sku.id);
-    expect(withheldCapacitySkus.length).toBeGreaterThan(0);
-    for (const id of withheldCapacitySkus) {
-      expect(TOP_UPS_WITHHELD, `${id} is a withheld capacity SKU`).toHaveProperty(id);
-      expect(SELLABLE_TOP_UP_IDS).not.toContain(id);
+    const capacitySkus = Object.values(TOP_UPS)
+      .filter((sku) => sku.fulfillment === 'recurring_capacity' && !(sku.id in TOP_UPS_WITHHELD)).map((sku) => sku.id);
+    expect(capacitySkus.sort()).toEqual(['crew_user', 'office_user', 'storage_100gb']);
+    for (const id of capacitySkus) {
+      expect(TOP_UPS_WITHHELD).not.toHaveProperty(id);
+      expect(SELLABLE_TOP_UP_IDS).toContain(id);
     }
     expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
   });

@@ -96,6 +96,8 @@ describe('the contractor pricing catalog', () => {
       ['1,000 text credits', '$42'],
       ['5,000 marketing emails', '$17'],
       ['250 AI credits', '$19'],
+      ['100 GB storage', '$15/month'],
+      ['Office user', '$15/month'],
       ['Crew user', '$5/month'],
     ]);
   });

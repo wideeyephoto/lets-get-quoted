@@ -417,15 +417,6 @@ const AI_VOICE_WITHHELD =
   + 'full-period usage reconciliation and enforced allowance exhaustion';
 
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
-  storage_100gb:
-    'the live recurring Price is verified and purchased capacity raises the '
-    + 'storage limit, but LGQ_STORAGE_CAP_ENFORCED is off. Upload coverage and '
-    + 'purchase/cancellation acceptance must pass before enforced headroom is sold',
-  office_user:
-    'office users can reach leads, clients and jobs through capability guards. '
-    + 'The live recurring Price is verified and job detail has a separate '
-    + 'office read surface. Deployed role-by-role acceptance of the advertised '
-    + 'office workflows must pass before self-service release',
   ai_voice_flex: AI_VOICE_WITHHELD,
   ai_voice_solo: AI_VOICE_WITHHELD,
   ai_voice_growth: AI_VOICE_WITHHELD,

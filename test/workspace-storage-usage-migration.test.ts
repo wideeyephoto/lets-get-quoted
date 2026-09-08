@@ -177,11 +177,11 @@ describe('the effective limit', () => {
 });
 
 describe('what this migration deliberately does not do', () => {
-  it('leaves storage_100gb withheld from sale', () => {
+  it('releases storage after price, measurement and enforcement verification', () => {
     // Measuring storage is the prerequisite for selling it, not the sale. The
     // SKU goes on sale when its live Price exists and the sweep has run — a
     // deliberate act, not a side effect of this migration.
-    expect(TOP_UPS_WITHHELD).toHaveProperty('storage_100gb');
-    expect(SELLABLE_TOP_UP_IDS).not.toContain('storage_100gb');
+    expect(TOP_UPS_WITHHELD).not.toHaveProperty('storage_100gb');
+    expect(SELLABLE_TOP_UP_IDS).toContain('storage_100gb');
   });
 });

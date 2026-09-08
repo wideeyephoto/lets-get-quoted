@@ -1,28 +1,7 @@
 import type Stripe from 'stripe';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
-/**
- * The recurring-capacity branch of the top-up projector.
- *
- * Every capacity SKU is in TOP_UPS_WITHHELD today, and the withheld check runs
- * first, so `capacity_granted` is unreachable in the real catalog -- exactly as
- * intended while nothing can cancel a seat. That makes this branch untestable
- * without lifting the withhold, so this file mocks the catalog to un-withhold
- * `crew_user` and nothing else.
- *
- * The mock is the point, not a workaround: it is how the code will behave on the
- * day the withhold is lifted, tested before that day rather than after.
- */
-vi.mock('@/lib/billing/catalog', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/billing/catalog')>(
-    '@/lib/billing/catalog',
-  );
-  const withheld = { ...actual.TOP_UPS_WITHHELD };
-  delete (withheld as Record<string, unknown>).crew_user;
-  return { ...actual, TOP_UPS_WITHHELD: Object.freeze(withheld) };
-});
-
-import { PRICING_CATALOG_VERSION, TOP_UPS, TOP_UPS_WITHHELD } from '@/lib/billing/catalog';
+import { PRICING_CATALOG_VERSION, TOP_UPS } from '@/lib/billing/catalog';
 import { decideTopUpProjection } from '@/lib/billing/top-up-event-projector';
 
 const WORKSPACE_ID = '10000000-0000-4000-8000-000000000001';
@@ -59,16 +38,6 @@ function session(
     ...overrides,
   } as unknown as Stripe.Checkout.Session;
 }
-
-describe('the mock actually lifts the withhold', () => {
-  it('leaves crew_user sellable and every other capacity SKU withheld', () => {
-    // Guards the guard: if the mock stopped working, every assertion below would
-    // pass for the wrong reason -- fulfillment_withheld instead of the branch.
-    expect(TOP_UPS_WITHHELD.crew_user).toBeUndefined();
-    expect(TOP_UPS_WITHHELD.storage_100gb).toBeTruthy();
-    expect(TOP_UPS_WITHHELD.office_user).toBeTruthy();
-  });
-});
 
 describe('a paid recurring-capacity purchase', () => {
   it('is granted as capacity, not as a consumable credit lot', () => {
@@ -123,12 +92,12 @@ describe('capacity that nothing could ever cancel is refused', () => {
   });
 });
 
-describe('the withheld check still wins', () => {
-  it.each(['storage_100gb', 'office_user'])('refuses %s even though it is capacity', (topUpId) => {
-    // Withheld is checked before fulfillment kind, so a SKU the catalog refuses
-    // to sell is not fulfilled by EITHER path.
+describe('released storage and office capacity', () => {
+  it.each(['storage_100gb', 'office_user'])('grants paid %s through the capacity rail', (topUpId) => {
     const decision = decideTopUpProjection(claim(), session(topUpId));
-    expect(decision.outcome).toBe('fulfillment_withheld');
+    expect(decision.outcome).toBe('capacity_granted');
+    expect(decision.units).toBe(TOP_UPS[topUpId as keyof typeof TOP_UPS].units);
+    expect(decision.stripe_subscription_id).toBe(SUBSCRIPTION_ID);
   });
 });
 

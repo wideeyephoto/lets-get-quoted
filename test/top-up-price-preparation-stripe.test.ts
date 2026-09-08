@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest';
 // Run the real CLI with Stripe replaced at the Node module boundary. No API
 // request can leave this child process, even if local environment files exist.
 const stripeStub = `
-const meta = {lgq_price_purpose:'top_up',lgq_top_up_id:'storage_100gb',lgq_resource_code:'storage_gb',lgq_units:'100'};
+const meta = {lgq_price_purpose:'top_up',lgq_top_up_id:'ai_voice_flex',lgq_resource_code:'voice_minutes',lgq_units:'100'};
 let saved;
 function price(query) {
-  return {id:'price_existing',active:true,currency:'usd',unit_amount:1500,livemode:false,
+  return {id:'price_existing',active:true,currency:'usd',unit_amount:6900,livemode:false,
     product:'prod_existing',tax_behavior:'exclusive',recurring:{interval:'month',interval_count:1},
     currency_options:{usd:{}},metadata:{...meta,lgq_catalog_version:query.match(/lgq_catalog_version'\\]:'([^']+)'/)[1]}};
 }
@@ -39,7 +39,7 @@ const hook = `import {registerHooks} from 'node:module'; registerHooks({resolve(
 function run(priceCase: string) {
   return spawnSync(process.execPath, [
     '--import', `data:text/javascript,${encodeURIComponent(hook)}`,
-    'scripts/seed-stripe-top-up-prices.mjs', '--prepare-withheld=storage_100gb',
+    'scripts/seed-stripe-top-up-prices.mjs', '--prepare-withheld=ai_voice_flex',
   ], {
     cwd: process.cwd(), encoding: 'utf8', timeout: 10_000,
     env: { ...process.env, STRIPE_SECRET_KEY: 'sk_test_dummy', PRICE_CASE: priceCase },
