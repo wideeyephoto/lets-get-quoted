@@ -1,5 +1,11 @@
 # SMS activation gap audit — September 8, 2026
 
+## Closeout at 21:22 UTC — current status
+
+The initial table below is historical. Production projector permission and event-link repairs, live decline, cancellation after decline, cancellation of an unanswered offer, and fixture archival are complete. The inline cancellation fix shipped through PR #39 (`c6937034b`), with passing CI and verified production domain deployment. Cancellation delivered in one attempt; Brett confirmed the original link is closed without an Accept button. Both fixture records were archived through the UI; all six subcontractor tasks completed once. Nine business messages reconcile actual provider segments to committed application usage (22 total).
+
+Still open: eligible second-workspace/sender STOP acceptance; quiet-hours release; remaining rejection/retry/dead-letter, callback and failed/indeterminate accounting cases; provider guidance for an accurate LGQ internal-test registration; customer campaign/number readiness and live customer tests; commercial dedicated-number lifecycle; authorized rollout expansion. Controlled rollback-only callback evidence does not establish signed HTTP/carrier replay. The generic duplicate-open-request error remains a separate usability follow-up. No customer registration, customer send, paid purchase, or rollout expansion was performed.
+
 ## Continuation at 20:20 UTC
 
 The permission-fix and existing-offer-link rows below are now closed: production migration `20260908201549` applied, role grants verified, accepted/claimed state retained during exact-event repair, and fresh UI offer delivery projected correctly in one attempt. Six earlier business messages independently matched provider segment counts to application reservations (17 total). Hosted rollback-only duplicate/late-status assertions passed without changing accepted state or accounting; synthetic receipts were absent after rollback. This advances the callback matrix only for those database-layer cases. Fresh decline offer is delivered; handset response, cancellation, and cleanup remain pending. A second-open-request attempt was rejected without creating a duplicate, but surfaced a generic error page. The table below preserves the initial audit snapshot.
