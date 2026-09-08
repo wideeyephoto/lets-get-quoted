@@ -57,9 +57,7 @@ describe('the top-up SKU seeder', () => {
     // Silently skipping them would make the run read as "all eight are live",
     // which is the confusion the appendix status key exists to prevent.
     expect(SCRIPT).toContain('WITHHELD -');
-    expect(Object.keys(TOP_UPS_WITHHELD).sort()).toEqual([
-      'ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo', 'voice_minutes_100',
-    ]);
+    expect(Object.keys(TOP_UPS_WITHHELD)).toEqual([]);
     // Both remain in the price book; what is withheld is the sale.
     expect(TOP_UPS.office_user).toBeTruthy();
     expect(TOP_UPS.crew_user).toBeTruthy();

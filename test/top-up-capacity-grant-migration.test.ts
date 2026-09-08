@@ -128,7 +128,7 @@ describe('what this migration deliberately does not do', () => {
 
     const capacitySkus = Object.values(TOP_UPS)
       .filter((sku) => sku.fulfillment === 'recurring_capacity' && !(sku.id in TOP_UPS_WITHHELD)).map((sku) => sku.id);
-    expect(capacitySkus.sort()).toEqual(['crew_user', 'office_user', 'storage_100gb']);
+    expect(capacitySkus.sort()).toEqual(['ai_voice_flex', 'ai_voice_growth', 'ai_voice_solo', 'crew_user', 'office_user', 'storage_100gb']);
     for (const id of capacitySkus) {
       expect(TOP_UPS_WITHHELD).not.toHaveProperty(id);
       expect(SELLABLE_TOP_UP_IDS).toContain(id);

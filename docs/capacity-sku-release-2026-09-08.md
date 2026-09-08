@@ -1,7 +1,8 @@
-# Storage and office seat release
+# Six-SKU release
 
 Release scope: `storage_100gb` ($15/month, 100 GB) and `office_user`
-($15/month, one additional counted office seat). Voice SKUs remain withheld.
+($15/month, one additional counted office seat), the three AI Voice subscriptions,
+and the 100-minute voice pack.
 
 ## Hosted evidence
 
@@ -41,6 +42,43 @@ size limitation, and periodic measurement rather than atomic upload reservations
 Cancellation reduces future available capacity; it does not delete stored files
 or automatically remove existing members.
 
-The four voice SKUs still require controlled provider recovery/cutoff evidence,
-enforced exhaustion, and full-period provider reconciliation. Their withholding
-is independent of this capacity release.
+## Voice launch decision
+
+The owner explicitly selected: launch with metering and absorb unmetered usage.
+`LGQ_VOICE_MINUTE_METER_ENABLED=1` and the allowance worker remain enabled;
+`LGQ_VOICE_MINUTE_GATE_ENABLED=0` remains off. Full-period reconciliation is a
+post-launch requirement before strict exhaustion enforcement, not a checkout
+block under this decision. No new overage enforcement or charges are enabled.
+
+The September 8 regression run passed 218 voice tests and all 34 disposable
+PostgreSQL allowance checks. A live test exposed Vercel SSO protection on the app
+alias: SignalWire received 401 before the webhook. Registering the existing
+app.letsgetquoted.com hostname as a production project domain restored public
+routing while retaining application webhook signature checks. Anonymous health
+returns 200 and unsigned voice requests correctly return application 403.
+
+The subsequent live call reserved ten minutes, but a provider retry counted its
+own admission against the concurrency limit and returned forwarding instead of
+AI. Because the forwarding target was the staff caller, this rang the caller
+back. Provider events confirmed fallback-only delivery and termination. The
+stale admission was closed through the provider-status RPC and the unused
+reservation released through the normal release RPC. This is not evidence of a
+successful AI conversation.
+
+PR #29 excludes the current provider call from the preflight count while keeping
+atomic admission checks, and sends same-caller fallback to voicemail. Its build,
+test TypeScript check, scoped lint, 102 voice regression tests, and 12 recording
+tests passed. Callback phone query values use digits and normalize after signed
+verification; live callback delivery still needs checking. Final AI answer,
+cutoff, and recovery observations remain pending before the voice SKU release.
+
+
+## Production release progress
+
+PR #28 merged as 66b146d07990e04c0b1cd66a13abf88572994438. Its production
+build was assigned to app.letsgetquoted.com. Anonymous health returned 200 and
+unsigned voice requests returned 403. Authenticated storage purchase reached
+live Stripe checkout for 100 GB at $15/month; checkout was exited without
+payment. PR #29 merged as 378b32a7deadf6c964257dc21652881ef01e3095 after all
+hosted checks passed; production deployment and the controlled call are pending.
+The voice catalog changes in this branch remain a draft until those checks pass.

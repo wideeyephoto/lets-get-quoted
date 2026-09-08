@@ -9,16 +9,16 @@ function run(...args: string[]) {
   });
 }
 
-describe('preparing withheld Prices without opening sales', () => {
+describe('preparing named Prices without changing the catalog', () => {
   it('plans only the named SKUs offline with their real amount and cadence', () => {
-    const result = run('--prepare-withheld=ai_voice_flex,voice_minutes_100', '--dry-run');
+    const result = run('--prepare-skus=ai_voice_flex,voice_minutes_100', '--dry-run');
     expect(result.status, result.stderr).toBe(0);
     expect(result.stdout).toContain('ai_voice_flex PLAN $69.00 month (100 voice_minutes)');
     expect(result.stdout).toContain('voice_minutes_100 PLAN $35.00 one-time (100 voice_minutes)');
-    expect(result.stdout).toContain('sales remain withheld');
+    expect(result.stdout).not.toContain('sales remain withheld');
     expect(result.stdout).not.toContain('office_user');
-    expect(SELLABLE_TOP_UP_IDS).not.toContain('ai_voice_flex');
-    expect(SELLABLE_TOP_UP_IDS).not.toContain('voice_minutes_100');
+    expect(SELLABLE_TOP_UP_IDS).toContain('ai_voice_flex');
+    expect(SELLABLE_TOP_UP_IDS).toContain('voice_minutes_100');
   });
 
   it.each(['', 'typo', 'crew_user', 'ai_voice_flex,typo'])(
@@ -36,10 +36,11 @@ describe('preparing withheld Prices without opening sales', () => {
     expect(result.stderr).toContain('Unknown argument');
   });
 
-  it('keeps all four voice SKUs withheld in the normal offline plan', () => {
+  it('plans all released SKUs offline', () => {
     const result = run('--dry-run');
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout.match(/WITHHELD -/g)).toHaveLength(4);
+    expect(result.stdout).not.toContain('WITHHELD -');
+    expect(result.stdout.match(/ PLAN /g)).toHaveLength(12);
     expect(result.stdout).toContain('No credentials read, no Stripe requests');
   });
 });

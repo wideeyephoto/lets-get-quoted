@@ -274,7 +274,7 @@ describe('the SKU is sellable, and every reason it was not is closed', () => {
   it('makes crew_user sellable once the cancel path and account deletion cleanup exist', () => {
     expect(TOP_UPS_WITHHELD).not.toHaveProperty('crew_user');
     expect(SELLABLE_TOP_UP_IDS).toContain('crew_user');
-    expect(SELLABLE_TOP_UP_IDS).toHaveLength(8);
+    expect(SELLABLE_TOP_UP_IDS).toHaveLength(12);
   });
 
   it.each(['office_user', 'storage_100gb'] as const)('releases verified capacity SKU %s', (id) => {
