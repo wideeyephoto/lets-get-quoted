@@ -1,93 +1,51 @@
 # Six-SKU release
 
-Release scope: `storage_100gb` ($15/month, 100 GB) and `office_user`
-($15/month, one additional counted office seat), the three AI Voice subscriptions,
-and the 100-minute voice pack.
+The catalog enables `storage_100gb`, `office_user`, `ai_voice_flex`,
+`ai_voice_solo`, `ai_voice_growth`, and `voice_minutes_100` for eligible plans.
+Each requires its matching live Stripe Price and canonical catalog metadata.
 
-## Hosted evidence
+## Capacity products
 
-- Live Stripe Prices and their five catalog metadata fields were verified in
-  `six-sku-release-readiness-2026-09-08.md`.
-- Production storage sweep on September 8 measured all 11 accounts. All have
-  storage entitlements; none is currently above its cap.
-- `LGQ_STORAGE_CAP_ENFORCED=1` was saved to the production Vercel project for
-  the next deployment. Existing batch upload guards were deployed with PR #27.
-- A rollback-only transaction on production's actual capacity functions verified
-  that 100 GB increases the storage limit by 107374182400 bytes and one office
-  seat raises the seat limit by one. Provider cancellation restored both limits;
-  repeated cancellation returned `already_canceled`. No test ledger rows remain.
-- Midwest Glass Company has two included Flex seats, with its owner and Brett's
-  office membership consuming both. Its invitation RPC rejected a third invite
-  with `office_seat_limit_reached` in a rollback-only check; no email was sent.
-- Brett accepted the Midwest invitation. In his authenticated browser, workspace
-  selection, leads, clients, jobs, and the isolated office job detail all loaded.
-  His explicit grants are `leads.read`, `clients.read`, and `jobs.read`.
-  Additional seats do not grant owner authority or automatically assign permissions.
-
-## Lifecycle and verification
-
-The existing paid-checkout projector grants recurring capacity only after paid
-checkout and requires a valid subscription ID. The existing account settings
-action schedules cancellation at period end; the provider lifecycle reconciler
-removes capacity on terminal cancellation. Storage and office now exercise these
-production code paths without mocking the catalog withholding list. Cancellation
-tests cover all three capacity products.
-
-This evidence combines authenticated browser reads, hosted rollback-only database
-checks, and hermetic Stripe-boundary tests. It is not a claim that a live customer
-card was charged or refunded. No live test charge was made.
-
+Storage adds 100 GB for $15/month. Production uses
+`LGQ_STORAGE_CAP_ENFORCED=1`, and upload paths check the workspace limit.
 Storage retains the documented support-upload exception, client-reported video
 size limitation, and periodic measurement rather than atomic upload reservations.
-Cancellation reduces future available capacity; it does not delete stored files
-or automatically remove existing members.
 
-## Voice launch decision
+Office capacity adds one counted office seat for $15/month on eligible paid
+plans. Flex includes two counted office seats. Additional seats do not grant
+owner authority or automatically assign permissions; clients and jobs require
+the appropriate explicit office grants.
 
-The owner explicitly selected: launch with metering and absorb unmetered usage.
-`LGQ_VOICE_MINUTE_METER_ENABLED=1` and the allowance worker remain enabled;
-`LGQ_VOICE_MINUTE_GATE_ENABLED=0` remains off. Full-period reconciliation is a
-post-launch requirement before strict exhaustion enforcement, not a checkout
-block under this decision. No new overage enforcement or charges are enabled.
+The paid-checkout projector grants recurring capacity only after paid checkout
+with a valid subscription ID. Cancellation is scheduled for period end; terminal
+provider cancellation removes the purchased capacity idempotently. It does not
+delete stored files or automatically remove existing members.
 
-The September 8 regression run passed 218 voice tests and all 34 disposable
-PostgreSQL allowance checks. A live test exposed Vercel SSO protection on the app
-alias: SignalWire received 401 before the webhook. Registering the existing
-app.letsgetquoted.com hostname as a production project domain restored public
-routing while retaining application webhook signature checks. Anonymous health
-returns 200 and unsigned voice requests correctly return application 403.
+## Voice launch policy
 
-The subsequent live call reserved ten minutes, but a provider retry counted its
-own admission against the concurrency limit and returned forwarding instead of
-AI. Because the forwarding target was the staff caller, this rang the caller
-back. Provider events confirmed fallback-only delivery and termination. The
-stale admission was closed through the provider-status RPC and the unused
-reservation released through the normal release RPC. This is not evidence of a
-successful AI conversation.
+Voice launches with metering enabled and exhaustion blocking disabled. LGQ
+absorbs unmetered usage while provider reconciliation continues:
 
-PR #29 excludes the current provider call from the preflight count while keeping
-atomic admission checks, and sends same-caller fallback to voicemail. Its build,
-test TypeScript check, scoped lint, 102 voice regression tests, and 12 recording
-tests passed. Callback phone query values use digits and normalize after signed
-verification; live callback delivery still needs checking. Final AI answer,
-cutoff, and recovery observations remain pending before the voice SKU release.
+- `LGQ_VOICE_MINUTE_METER_ENABLED=1`
+- `LGQ_VOICE_MINUTE_GATE_ENABLED=0`
+- The recurring allowance worker remains enabled.
 
+Full-period reconciliation is required before strict exhaustion enforcement.
+This release does not enable additional overage charges or enforcement.
 
-## Production release progress — 2026-09-08 14:50 UTC
+Inbound retries exclude their own admission from the concurrency count.
+Fallback does not forward a caller back to the same phone. Signed status
+callbacks use fixed URLs and retrieve attribution from the saved inbound call;
+recording and callback authentication remain mandatory. Duplicate fallback
+requests preserve settled call and recording state.
 
-PR #28 merged as 66b146d07990e04c0b1cd66a13abf88572994438. Its production
-build was assigned to app.letsgetquoted.com. Anonymous health returned 200 and
-unsigned voice requests returned 403. Authenticated storage purchase reached
-live Stripe checkout for 100 GB at $15/month; checkout was exited without
-payment. PR #29 merged as 378b32a7deadf6c964257dc21652881ef01e3095 after all
-hosted checks passed; production deployment and the controlled call are pending.
-The voice catalog changes in this branch remain a draft until those checks pass.
+## Verification and release records
 
-## Controlled call verification
+Automated coverage includes checkout eligibility, Stripe Price validation,
+recurring capacity grants and cancellation, voice allowances, metering,
+concurrency, callback signatures, recording ingestion, and workspace access.
+Tests use synthetic fixtures and disposable or rolled-back database changes.
+No live card charge is part of this verification.
 
-The controlled staff test confirmed that AI conversation works after the inbound
-provider retry. The returned call plan retained its configured ten-minute cap.
-This observation does not yet establish the measured cutoff or settlement.
-Final aggregated test results and the release decision are tracked in
-https://github.com/wideeyephoto/lets-get-quoted/pull/30; detailed call identifiers
-and provider diagnostics remain local.
+Detailed controlled-call evidence remains in the local release record, outside
+this public repository. Implementation is tracked in PRs #28, #29, #30, and #31.

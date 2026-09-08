@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 
 import { createAdminClient } from '@/lib/auth';
 import { logWebhookFailure } from '@/lib/webhook-failures';
-import { verifySignedVoiceWebhook } from '@/lib/voice/auth';
+import { verifySignedVoiceWebhook, voiceWebhookFailureDiagnostics } from '@/lib/voice/auth';
 import { normalizeUsPhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
@@ -30,6 +30,10 @@ export async function POST(request: Request) {
   const rawBody = await request.clone().text();
   const check = verifySignedVoiceWebhook(request, rawBody);
   if (!check.ok) {
+    console.warn('Voice fallback callback authentication rejected:', {
+      reason: check.reason,
+      ...voiceWebhookFailureDiagnostics(request, rawBody),
+    });
     await logWebhookFailure({
       source: 'ai_voice',
       errorMessage: `Voice fallback status signature validation failed: ${check.reason}`,
@@ -38,7 +42,7 @@ export async function POST(request: Request) {
   }
 
   const url = new URL(request.url);
-  const accountId = url.searchParams.get('account');
+  let accountId = url.searchParams.get('account');
   const queryCallId = url.searchParams.get('call_id');
   const queryFrom = url.searchParams.get('from');
 
@@ -77,6 +81,24 @@ export async function POST(request: Request) {
 
   if (!callId && queryCallId) callId = queryCallId.trim();
   if (!caller && queryFrom) caller = normalizeUsPhone(queryFrom);
+
+  // Native callbacks need no workspace or caller query parameters. Only after
+  // verifying the exact provider-signed body may its call id select saved context.
+  if (!accountId && callId) {
+    try {
+      const { data, error } = await createAdminClient().from('voice_calls')
+        .select('account_id, caller_number')
+        .eq('provider', check.provider).eq('provider_call_id', callId).maybeSingle();
+      if (error) throw new Error('Fallback call context lookup failed');
+      if (!data) return xml(400);
+      accountId = data.account_id;
+      caller = normalizeUsPhone(data.caller_number || '');
+    } catch {
+      await logWebhookFailure({ source: 'ai_voice', referenceId: callId,
+        errorMessage: 'Fallback call context lookup failed' });
+      return xml(500);
+    }
+  }
 
   // Presence-only operational signal. No phone numbers, form body, signature,
   // or callback credentials are written to a log.
