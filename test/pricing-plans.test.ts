@@ -123,7 +123,8 @@ describe('the contractor pricing catalog', () => {
   });
 
   it('uses office and phone requirements to find the lowest eligible plan', () => {
-    expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 2, false)).toBeNull();
+    expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 2, false)).toBe(500);
+    expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 3, false)).toBeNull();
     expect(annualPlanEstimate(plan('flex'), 'annual', 40_000, false, 1, true)).toBeNull();
     // Solo grants two office seats, so a second user costs nothing extra. Kept
     // alongside the three-user case so the add-on arithmetic stays covered for

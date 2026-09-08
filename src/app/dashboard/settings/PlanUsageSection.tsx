@@ -767,10 +767,8 @@ const CAPACITY_TONE: Readonly<Record<CapacityRow['verdict'], Tone>> = {
  * One capacity row: the figure, the word, and a bar only where a bar can be
  * honest.
  *
- * `at_limit` is INFO rather than a warning. On Flex, "1 of 1 office users" is
- * simply what the free plan is, and painting it amber tells somebody that the
- * thing they chose is broken. Over the limit is a different matter and is the
- * only red here.
+ * `at_limit` is INFO rather than a warning: using the full included allowance
+ * is expected. Over the limit is a different matter and is the only red here.
  */
 function CapacityMeter({ row }: { row: CapacityRow }) {
   const tone = CAPACITY_TONE[row.verdict];
@@ -1043,9 +1041,8 @@ export default function PlanUsageSection({
 
   // WHAT SURVIVES THE SECTION BEING SHUT. `over` and `near` force it open,
   // because those are states somebody can still act on. `at_limit` does not:
-  // Flex grants one office seat and the owner occupies it, so every Flex
-  // workspace sits there permanently and treating it as an alarm would mean the
-  // fold never closes for anybody. It still appears in the summary, so a
+  // Using the full allowance is expected and should not force an alarm.
+  // It still appears in the summary, so a
   // collapsed section never costs the reader the fact.
   const capacityRows = capacity?.rows ?? [];
   const capacityNeedsAttention = capacityRows.some((row) => row.verdict === 'over' || row.verdict === 'near');

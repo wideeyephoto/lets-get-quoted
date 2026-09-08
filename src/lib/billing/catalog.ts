@@ -97,7 +97,7 @@ export const BILLING_PLANS: Readonly<Record<BillingPlanId, BillingPlanDefinition
     platformFeeBps: 125,
     allowances: {
       cadence: 'one_time',
-      officeUsers: 1,
+      officeUsers: 2,
       crewUsers: 2,
       customDomainConnections: 1,
       dedicatedBusinessNumbers: 0,

@@ -73,12 +73,10 @@ describe('the capacity ladder fails to unknown, never to healthy', () => {
 
 describe('the verdicts a contractor will actually see', () => {
   it('calls a full plan at_limit, not a fault', () => {
-    // Flex grants one office seat and the owner occupies it. That is what the
-    // free plan IS, and painting it as a warning tells somebody the thing they
-    // chose is broken.
-    const office = row(build({ officeSeatsUsed: 1 }, null, { ...LIMITS, officeUsers: 1 }), 'office_users');
+    // Using both included seats is expected, not an over-limit condition.
+    const office = row(build({ officeSeatsUsed: 2 }, null, { ...LIMITS, officeUsers: 2 }), 'office_users');
     expect(office?.verdict).toBe('at_limit');
-    expect(office?.detail).toBe('1 of 1 used');
+    expect(office?.detail).toBe('2 of 2 used');
   });
 
   it('gives Solo room after the second seat landed', () => {
