@@ -62,7 +62,7 @@ type RpcOutcome = {
   hours?: number;
   material_cost?: number;
   is_caution?: boolean;
-  saved?: { scope_append?: string; status?: string; scheduled_date?: string; scheduled_time?: string };
+  saved?: { scope_append?: string; status?: string; scheduled_date?: string; scheduled_time?: string; note?: string; is_caution?: boolean };
 };
 
 function canonicalFunction(name: string): string {
@@ -582,8 +582,10 @@ export async function handleContractorVoiceAction(
     || ['caution', 'warning', 'danger', 'dog', 'gate', 'hazard'].some((word) => lowerNote.includes(word));
   const result = await applyAction(context, fn, job.id, null, { note, is_caution: isCaution });
   if (!result.outcome) return { handled: true, response: failedResponse(result.code) };
+  const savedNote = text(result.outcome.saved?.note, 4000);
+  const savedCaution = result.outcome.saved?.is_caution ?? result.outcome.is_caution ?? isCaution;
   return {
     handled: true,
-    response: `${replayPrefix(result.outcome)}I added that ${isCaution ? 'caution' : 'note'} to ${job.client_name}'s job (${job.ref}).`,
+    response: `${replayPrefix(result.outcome)}I added that ${savedCaution ? 'caution' : 'note'} to ${job.client_name}'s job (${job.ref}).${savedNote ? ` Saved text: “${savedNote.slice(0, 240)}${savedNote.length > 240 ? '…' : ''}”` : ''}`,
   };
 }

@@ -12,6 +12,7 @@ import { syncBuiltinESMExports } from 'node:module';
 import { promisify } from 'node:util';
 
 const MIGRATION = 'migrations/20260903215831_voice_contractor_dispatch_hardening.sql';
+const CURRENT_CONTRACT = process.env.LGQ_VOICE_CURRENT_CONTRACT === '1';
 const PORT = Number(process.env.LGQ_VOICE_CONTRACTOR_DISPATCH_CHECK_PORT || 54379);
 const execFileAsync = promisify(execFile);
 
@@ -364,6 +365,7 @@ const pg = new EmbeddedPostgres({
   password: 'postgres',
   port: PORT,
   persistent: false,
+  initdbFlags: ['--encoding=UTF8'],
 });
 
 let client;
@@ -390,6 +392,28 @@ try {
   await client.query(migrationSql);
   await client.query(migrationSql);
   check('migration applies idempotently on PostgreSQL 17', true);
+
+  if (CURRENT_CONTRACT) {
+    // Exercise the actual upgrade sequence, including the later migration
+    // that replaced the private implementation with an incompatible body.
+    await client.query(`
+      create table public.voice_staff_step_up_challenges(id uuid primary key);
+      alter function public.apply_voice_contractor_action(uuid,text,text,text,uuid,uuid,jsonb)
+        rename to apply_voice_contractor_action_after_step_up;
+      alter table public.voice_call_admissions add column provider_terminal_at timestamptz;
+      alter table public.jobs add column client_phone text, add column address text,
+        add column created_at timestamptz default now();
+      alter table public.leads alter column id set default gen_random_uuid();
+    `);
+    for (const name of [
+      '20260904080000_voice_lead_creation_without_step_up.sql',
+      '20260905173016_voice_staff_without_verification_codes.sql',
+      '20260906105714_voice_dispatch_latency.sql',
+      '20260908205505_voice_dispatch_contract_restore.sql',
+      '20260908205505_voice_dispatch_contract_restore.sql',
+    ]) await client.query(readFileSync(join(process.cwd(), 'migrations', name), 'utf8'));
+    check('complete dispatch upgrade sequence and repeated repair apply', true);
+  }
 
   const privilege = one(await client.query(`
     select
@@ -981,6 +1005,52 @@ try {
       && atomicState.feed_count === 0,
     atomic.errorCode ?? JSON.stringify(atomicState),
   );
+  if (CURRENT_CONTRACT) {
+    const request = {
+      providerCallId: calls.authorized, callerNumber: ownerPhoneA,
+      functionName: 'append_job_caution_or_note', targetJobId: jobA,
+      payload: { note: 'Dispatch acceptance test only', is_caution: false },
+    };
+    const saved = await invoke(request);
+    const repeated = await invoke(request);
+    const noteState = one(await client.query(`select
+      (select count(*)::integer from public.job_feed where source_id=$1) as feed_count,
+      (select notes from public.clients where id=$2) as client_notes`,
+    [saved.outcome?.action_id ?? null, clientA]));
+    check('owner note saves once to existing feed/client schema and returns saved text',
+      saved.errorCode === null && saved.outcome?.saved?.note === request.payload.note
+        && repeated.outcome?.replayed === true
+        && repeated.outcome?.action_id === saved.outcome?.action_id
+        && noteState.feed_count === 1 && noteState.client_notes.includes(request.payload.note),
+      saved.message ?? JSON.stringify(noteState));
+    const status = one(await client.query(`select public.get_voice_contractor_action_status(
+      $1,$2,$3,$4,$5,null,$6::jsonb) as outcome`,
+    [accountA, calls.authorized, ownerPhoneA, request.functionName, jobA, JSON.stringify(request.payload)]));
+    check('read-only recovery returns the identical committed note snapshot',
+      status.outcome?.action_id === saved.outcome?.action_id
+        && status.outcome?.saved?.note === request.payload.note);
+    for (const payload of [{ line_item_label: 'Extra', line_item_price: 2300 }, { quote_total: 2300 }]) {
+      const denied = await invoke({ ...request, functionName: 'update_job_details', payload });
+      check('direct financial update is rejected without a job or ledger write', denied.errorCode === '22023');
+    }
+    const lead = await invoke({ ...request, functionName: 'create_or_update_lead', targetJobId: null,
+      payload: { name: 'Controlled lead', message: 'Requested a repair estimate' } });
+    check('lead default create accepts substantive detail without a phone',
+      lead.errorCode === null && Boolean(lead.outcome?.lead_id), lead.message ?? 'saved');
+    const draft = await invoke({ ...request, functionName: 'create_job_change_order',
+      payload: { title: 'Extra work', description: 'Describe work for office pricing' } });
+    check('unpriced change order saves a draft without changing the quote',
+      draft.errorCode === null && Boolean(draft.outcome?.change_order_id), draft.message ?? 'saved');
+    const labor = await invoke({ ...request, functionName: 'log_crew_time_and_materials',
+      payload: { crew_id: fieldCrew, hours: 1, note: 'Controlled labor entry' } });
+    check('labor writes to current costs schema and current burden field',
+      labor.errorCode === null && Boolean(labor.outcome?.action_id), labor.message ?? 'saved');
+    const acl = one(await client.query(`select
+      has_function_privilege('service_role', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as service_exec,
+      has_function_privilege('anon', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as anon_exec,
+      has_function_privilege('authenticated', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as auth_exec`));
+    check('private implementation cannot bypass the live-call wrapper', !acl.service_exec && !acl.anon_exec && !acl.auth_exec);
+  }
 } catch (error) {
   fatalError = error;
   console.error(`FATAL  ${errorText(error)}`);
@@ -1017,5 +1087,5 @@ try {
 }
 
 const failed = checks.filter((item) => !item.ok);
-console.log(`\n${checks.length - failed.length}/${checks.length} checks passed.`);
-if (failed.length > 0 || fatalError) process.exitCode = 1;
+console.log(`\n${checks.length - failed.length}/${checks.length} checks passed.${fatalError ? ' Fatal error: verification incomplete.' : ''}`);
+if (failed.length > 0 || fatalError) process.exit(1);
