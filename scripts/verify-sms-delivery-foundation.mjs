@@ -724,10 +724,31 @@ try {
       `pg17:subcontractor:${subcontractorOfferId}`, null, subcontractorCrewId, null,
     ],
   ));
-  await control.query(
-    'update public.subcontractor_offers set sms_event_id=$1 where id=$2',
-    [subcontractorEvent.sms_event_id, subcontractorOfferId],
-  );
+  // Match the production server role rather than hiding missing nested-call
+  // privileges by running every producer operation as postgres.
+  await control.query('alter role service_role bypassrls');
+  await control.query('grant select, update on public.subcontractor_offers, public.subcontractor_requests to service_role');
+  await control.query('grant select on public.sms_events to service_role');
+  await control.query('set role service_role');
+  let projectionPermissionCode;
+  try {
+    await control.query('update public.subcontractor_offers set sms_event_id=$1 where id=$2',
+      [subcontractorEvent.sms_event_id, subcontractorOfferId]);
+  } catch (error) { projectionPermissionCode = sqlState(error); }
+  await control.query('reset role');
+  check('service-role offer linking reproduces missing projector privilege', projectionPermissionCode === '42501');
+  const projectionGrant = readFileSync('migrations/20260908175833_subcontractor_sms_projection_service_grant.sql', 'utf8');
+  await control.query(projectionGrant);
+  await control.query(projectionGrant);
+  await control.query('set role service_role');
+  await control.query('update public.subcontractor_offers set sms_event_id=$1 where id=$2',
+    [subcontractorEvent.sms_event_id, subcontractorOfferId]);
+  await control.query('reset role');
+  const projectionAcl = one(await control.query(`select
+    has_function_privilege('service_role','public.apply_subcontractor_sms_event_projection(uuid)','execute') as service,
+    has_function_privilege('anon','public.apply_subcontractor_sms_event_projection(uuid)','execute') as anon,
+    has_function_privilege('authenticated','public.apply_subcontractor_sms_event_projection(uuid)','execute') as authenticated`));
+  check('projector grant permits server linking and excludes browser roles', projectionAcl.service && !projectionAcl.anon && !projectionAcl.authenticated);
   const queuedProjection = one(await control.query(
     `select o.status as offer_status, o.provider_id, o.sms_event_id, o.sent_at,
             r.status as request_status, r.sent_at as request_sent_at
