@@ -139,6 +139,7 @@ export default async function AdminHealthPage({
 
   const unwell = rows.filter((r) => r.health === 'failing' || r.health === 'stale');
   const neverSeen = rows.filter((r) => r.health === 'unknown');
+  const moneyJobCount = CRON_JOBS.filter((job) => job.importance === 'money').length;
 
   return (
     <>
@@ -496,7 +497,7 @@ export default async function AdminHealthPage({
                     </td>
                     {canManageOps ? (
                       <td style={{ whiteSpace: 'nowrap' }}>
-                        <RunCronButton job={spec.job} jobLabel={spec.label} compact />
+                        <RunCronButton job={spec.job} jobLabel={spec.label} isMoney={spec.importance === 'money'} compact />
                       </td>
                     ) : null}
                   </tr>

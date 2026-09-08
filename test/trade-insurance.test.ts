@@ -32,6 +32,8 @@ describe('trade-insurance.ts', () => {
       expect(isInsuranceEligibleTrade('locksmiths')).toBe(false);
       expect(isInsuranceEligibleTrade('pool-cleaning')).toBe(false);
       expect(isInsuranceEligibleTrade('appliance-repair')).toBe(false);
+      expect(isInsuranceEligibleTrade('fiberglass-pools')).toBe(false);
+      expect(isInsuranceEligibleTrade('fiberglass-repair')).toBe(false);
       expect(isInsuranceEligibleTrade(null)).toBe(false);
       expect(isInsuranceEligibleTrade(undefined)).toBe(false);
     });

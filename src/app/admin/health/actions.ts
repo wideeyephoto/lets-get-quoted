@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireAdmin, requireMfaPermission } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
 import { dispatchOnCallTestDrill } from '@/lib/on-call-paging';
-
-const MONEY_TOUCHING_CRONS = ['direct-payment-settlement', 'ad-wallet-refill', 'overage-settlement'];
+import { cronJob } from '@/lib/cron-jobs';
 
 export async function dispatchTestPageAction(): Promise<{ success: boolean; message: string }> {
   const { staff } = await requireAdmin();
@@ -29,7 +28,12 @@ export async function dispatchTestPageAction(): Promise<{ success: boolean; mess
 }
 
 export async function runCronJobNowAction(jobSlug: string, confirmation?: string): Promise<{ success: boolean; message: string }> {
-  const isMoney = MONEY_TOUCHING_CRONS.includes(jobSlug);
+  const spec = cronJob(jobSlug);
+  if (!spec) {
+    return { success: false, message: `Unknown cron job: '${jobSlug}'.` };
+  }
+
+  const isMoney = spec.importance === 'money';
   const ctx = isMoney
     ? await requireMfaPermission('ops.manage')
     : await requireAdmin();
@@ -46,12 +50,6 @@ export async function runCronJobNowAction(jobSlug: string, confirmation?: string
   }
 
   try {
-
-    const { cronJob } = await import('@/lib/cron-jobs');
-    const spec = cronJob(jobSlug);
-    if (!spec) {
-      return { success: false, message: `Unknown cron job: '${jobSlug}'.` };
-    }
 
     const secret = process.env.CRON_SECRET;
     if (!secret) {

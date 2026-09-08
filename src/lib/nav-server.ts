@@ -42,18 +42,31 @@ export async function resolveEmptySections(
     }
 
     // 2. "Never had a row, not currently zero":
-    // Check both live tables AND historical indicators (soft-deleted rows, recoverable deletions, jobs with assigned crew/recurring plans).
-    const [crewRes, crewDeletedRes, inventoryRes, recurringRes, recurringJobsRes] = await Promise.allSettled([
+    // Check both live tables AND historical indicators (soft-deleted rows, recoverable deletions, audit ledger, jobs with assigned crew/recurring plans).
+    const [
+      crewRes,
+      crewDeletedRes,
+      crewAuditRes,
+      inventoryToolsRes,
+      inventoryVehiclesRes,
+      inventoryStockRes,
+      recurringRes,
+      recurringJobsRes,
+    ] = await Promise.allSettled([
       admin.from('crew').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
-      admin.from('recoverable_deletions').select('id', { count: 'exact', head: true }).eq('account_id', accountId).eq('table_name', 'crew'),
+      admin.from('recoverable_deletions').select('id', { count: 'exact', head: true }).eq('account_id', accountId).eq('entity_type', 'crew'),
+      admin.from('tenant_audit_events').select('id', { count: 'exact', head: true }).eq('account_id', accountId).eq('entity_type', 'crew'),
       admin.from('inventory_tools').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+      admin.from('inventory_vehicles').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
+      admin.from('inventory_stock_items').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
       admin.from('recurring_plans').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
       admin.from('jobs').select('id', { count: 'exact', head: true }).eq('account_id', accountId).not('recurring_plan_id', 'is', null),
     ]);
 
     const hasEverHadCrew =
       (crewRes.status === 'fulfilled' && !crewRes.value.error && (crewRes.value.count ?? 0) > 0) ||
-      (crewDeletedRes.status === 'fulfilled' && !crewDeletedRes.value.error && (crewDeletedRes.value.count ?? 0) > 0);
+      (crewDeletedRes.status === 'fulfilled' && !crewDeletedRes.value.error && (crewDeletedRes.value.count ?? 0) > 0) ||
+      (crewAuditRes.status === 'fulfilled' && !crewAuditRes.value.error && (crewAuditRes.value.count ?? 0) > 0);
 
     // Only demote if proven that the account has NEVER had a crew member
     if (!hasEverHadCrew && crewRes.status === 'fulfilled' && !crewRes.value.error) {
@@ -61,10 +74,12 @@ export async function resolveEmptySections(
     }
 
     const hasEverHadInventory =
-      inventoryRes.status === 'fulfilled' && !inventoryRes.value.error && (inventoryRes.value.count ?? 0) > 0;
+      (inventoryToolsRes.status === 'fulfilled' && !inventoryToolsRes.value.error && (inventoryToolsRes.value.count ?? 0) > 0) ||
+      (inventoryVehiclesRes.status === 'fulfilled' && !inventoryVehiclesRes.value.error && (inventoryVehiclesRes.value.count ?? 0) > 0) ||
+      (inventoryStockRes.status === 'fulfilled' && !inventoryStockRes.value.error && (inventoryStockRes.value.count ?? 0) > 0);
 
     // Only demote if proven that the account has NEVER had inventory
-    if (!hasEverHadInventory && inventoryRes.status === 'fulfilled' && !inventoryRes.value.error) {
+    if (!hasEverHadInventory && inventoryToolsRes.status === 'fulfilled' && !inventoryToolsRes.value.error) {
       empty.add('/dashboard/inventory');
     }
 

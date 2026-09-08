@@ -3,10 +3,12 @@ import { loadHeldCapabilities } from '@/lib/auth';
 import {
   navTreatment,
   resolveVisibleNav,
+  getTradeRelevance,
   CAPABILITY_MAP,
   NAV_RAIL_ORDER,
   type NavSignals,
 } from '@/lib/nav-visibility';
+import { NEW_MENU_ITEMS } from '@/components/app-shell';
 
 describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
   describe('§1 The sentinel trap verification', () => {
@@ -363,6 +365,35 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
       };
 
       expect(navTreatment('/dashboard/crew', officeSignals)).toBe('hide');
+    });
+  });
+
+  describe('Trade stem isolation & NEW_MENU_ITEMS safety (Defects D1, D5)', () => {
+    it('does not promote inventory for gate-automation (substring auto safety)', () => {
+      const gateRelevance = getTradeRelevance('gate-automation');
+      expect(gateRelevance.inventory).toBe('standard');
+
+      const autoGlassRelevance = getTradeRelevance('auto-glass');
+      expect(autoGlassRelevance.inventory).toBe('promoted');
+
+      const autoDetailingRelevance = getTradeRelevance('auto-detailing');
+      expect(autoDetailingRelevance.inventory).toBe('promoted');
+    });
+
+    it('NEW_MENU_ITEMS contains valid working targets and handles New lead / New job', () => {
+      const labels = NEW_MENU_ITEMS.map((item) => item.label);
+      expect(labels).toContain('New job');
+      expect(labels).toContain('New lead');
+
+      const jobItem = NEW_MENU_ITEMS.find((item) => item.label === 'New job');
+      expect(jobItem?.href).toBe('/dashboard/jobs?new=1#new-job');
+
+      const leadItem = NEW_MENU_ITEMS.find((item) => item.label === 'New lead');
+      expect(leadItem?.href).toBe('/dashboard/leads?add=1#add-lead');
+
+      // Ensure no dead ?add= queries on /dashboard/jobs exist
+      const deadJobHrefs = NEW_MENU_ITEMS.filter((item) => item.href.startsWith('/dashboard/jobs?add='));
+      expect(deadJobHrefs.length).toBe(0);
     });
   });
 });

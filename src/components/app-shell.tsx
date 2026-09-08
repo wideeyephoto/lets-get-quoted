@@ -3,7 +3,7 @@
 import BrandLogo from '@/components/brand-logo';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
+import { Fragment, useEffect, useRef, useState, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react';
 import { useAppShell } from './app-shell-provider';
 import { NavIcon } from './nav-icons';
 import ActionIcon from './action-icon';
@@ -31,17 +31,20 @@ function attentionDigits(href: string, count: number): string {
 // after the stages instead of splitting them. `hint` surfaces the vocabulary
 // each stage owns (quotes/invoices/payments live inside Jobs) as a hover title.
 /**
- * What "+ New" can create. ONE list, rendered by both triggers.
+ * Quick-create targets for the '+ New' button in the rail and topbar.
  *
- * Sits in lib so the demo and the app share it — see the note on demo-sidebar.tsx.
+ * Lifted here so the two triggers — the topbar plus button that phone users
+ * start the day on and the desktop '+ New' button that tablet contractors
+ * start the day on — can quickly create records directly.
  *
- * Ordered by how fast the action is: a quick note (memo), someone you just
- * met, and somebody you hired.
+ * Every href lands on the record's own page with its add form already open,
+ * which is why they carry a query flag rather than pointing at a /new route.
  */
 export const NEW_MENU_ITEMS: { href: string; icon: string; label: string }[] = [
-  { href: '/dashboard/jobs?add=memo', icon: '/dashboard/text-to-job', label: 'Field memo' },
-  { href: '/dashboard/jobs?add=quote', icon: '/dashboard/jobs', label: 'New quote' },
-  { href: '/dashboard/jobs?add=invoice', icon: '/dashboard/jobs', label: 'New invoice' },
+  { href: '/dashboard/jobs?new=1#new-job', icon: '/dashboard/jobs', label: 'New job' },
+  { href: '/dashboard/leads?add=1#add-lead', icon: '/dashboard/leads', label: 'New lead' },
+  { href: '/dashboard/text-to-job', icon: '/dashboard/text-to-job', label: 'Voice / SMS memo' },
+  // The two records you create without a job in front of you: a customer you
   // met, and somebody you hired.
   { href: '/dashboard/clients?add=1', icon: '/dashboard/clients', label: 'New client' },
   // The Crew tab is called People now that it holds subcontractors too.
@@ -940,10 +943,10 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       const showNew = !showState && !showCount && isNew;
       const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0);
 
-      return (
+      const linkEl = (
         <Link
-          href={href}
           key={href}
+          href={href}
           data-tour-id={`nav:${href}`}
           className={`sidenav-link${extraClass ? ` ${extraClass}` : ''}${active ? ' active' : ''}`}
           // Which row you are standing on was said in color and in nothing
@@ -957,7 +960,54 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
         >
           <NavIcon href={href} />
           <span className="sidenav-label">{item.label}</span>
-          {allowPin ? (
+          {/* Ornament Budget: at most one ornament per row.
+              Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count */}
+          {showState ? (
+            <span
+              className="sidenav-state"
+              data-state={state}
+              title={
+                href === '/dashboard/sites' && sitePublished && siteHost
+                  ? `Website is live at ${siteHost} — manage your site`
+                  : NAV_STATE_PILL[href][state].title
+              }
+            >
+              <span className="sr-only">{NAV_STATE_PILL[href][state].label}</span>
+              {state === 'on' ? (
+                <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              ) : state === 'paused' ? (
+                <svg viewBox="0 0 24 24" width="10" height="10" fill="currentColor" stroke="none" aria-hidden="true">
+                  <rect x="6" y="5" width="4" height="14" rx="1" />
+                  <rect x="14" y="5" width="4" height="14" rx="1" />
+                </svg>
+              ) : null}
+              {NAV_STATE_PILL[href][state].label}
+            </span>
+          ) : showCount ? (
+            <span className="sidenav-count" title={`${count} item${count === 1 ? '' : 's'} need attention`}>
+              <span aria-hidden="true">{count}</span>
+              <span className="sr-only">{count} items need attention</span>
+            </span>
+          ) : showNew ? (
+            <span className="sidenav-unseen" title={newLabelByHref[href]}>
+              <span aria-hidden="true">New</span>
+              <span className="sr-only">{newLabelByHref[href] ?? 'New since your last visit'}</span>
+            </span>
+          ) : showTotal ? (
+            <span className="sidenav-total" title={total.title}>
+              <span aria-hidden="true">{total.count}</span>
+              <span className="sr-only">{total.title}</span>
+            </span>
+          ) : null}
+        </Link>
+      );
+
+      if (allowPin) {
+        return (
+          <div className="sidenav-link-row" key={href}>
+            {linkEl}
             <button
               type="button"
               className="sidenav-pin-toggle"
@@ -974,39 +1024,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 <path d="M5 17h14v-2l-3-3V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v7l-3 3v2z" />
               </svg>
             </button>
-          ) : null}
-          {/* Ornament Budget: at most one ornament per row.
-              Precedence: state pill (ON/OFF/PAUSED) > attention count > unseen ("New") badge > total count */}
-          {showState ? (
-            <span
-              className="sidenav-state"
-              data-state={state}
-              title={
-                href === '/dashboard/sites' && sitePublished && siteHost
-                  ? `Website is live at ${siteHost} — manage your site`
-                  : NAV_STATE_PILL[href][state].title
-              }
-            >
-              {NAV_STATE_PILL[href][state].label}
-            </span>
-          ) : showCount ? (
-            <span className="sidenav-count" title={navAttentionLabel(href, count) ?? undefined}>
-              <span aria-hidden="true">{attentionDigits(href, count)}</span>
-              <span className="sr-only">{navAttentionLabel(href, count) ?? `${count} need your attention`}</span>
-            </span>
-          ) : showNew ? (
-            <span className="sidenav-unseen" title={newLabelByHref[href]}>
-              <span aria-hidden="true">New</span>
-              <span className="sr-only">{newLabelByHref[href] ?? 'New since your last visit'}</span>
-            </span>
-          ) : showTotal ? (
-            <span className="sidenav-total" title={total.title}>
-              <span aria-hidden="true">{total.count}</span>
-              <span className="sr-only">{total.title}</span>
-            </span>
-          ) : null}
-        </Link>
-      );
+          </div>
+        );
+      }
+
+      return linkEl;
     };
 
     const contractorInitials = (businessName || 'HQ').trim().split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase();
@@ -1186,11 +1208,21 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
                 ? group.hrefs.filter((href) => (nav.visible.includes(href) || isPinned(href)) && (!nav.demoted?.includes(href) || isPinned(href)))
                 : group.hrefs;
 
-              // Trade promotion: order promoted items at the top of the group
+              // Trade promotion: order promoted items at priority positions,
+              // but ensure Leads remains in slot one of Work where the day starts.
               if (nav?.promoted && nav.promoted.length > 0) {
                 const promotedInGroup = nav.promoted.filter((href) => visibleHrefs.includes(href));
                 const othersInGroup = visibleHrefs.filter((href) => !nav.promoted?.includes(href));
-                visibleHrefs = [...promotedInGroup, ...othersInGroup];
+                if (othersInGroup.includes('/dashboard/leads')) {
+                  const leadsIdx = othersInGroup.indexOf('/dashboard/leads');
+                  visibleHrefs = [
+                    ...othersInGroup.slice(0, leadsIdx + 1),
+                    ...promotedInGroup,
+                    ...othersInGroup.slice(leadsIdx + 1),
+                  ];
+                } else {
+                  visibleHrefs = [...promotedInGroup, ...othersInGroup];
+                }
               }
 
               if (visibleHrefs.length === 0) return null;
@@ -1199,7 +1231,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               return (
                 <div className={`sidenav-group sidenav-group--${group.accent}${isSingle ? ' is-single' : ''}`} key={group.label}>
                   {!isSingle ? <p className="sidenav-glabel">{group.label}</p> : null}
-                  {visibleHrefs.map((href) => renderSideLink(href))}
+                  {visibleHrefs.map((href) => renderSideLink(href, '', isPinned(href)))}
                 </div>
               );
             })}

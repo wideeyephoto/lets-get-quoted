@@ -224,6 +224,7 @@ describe('CAN-SPAM & Email Compliance Invariants', () => {
         const chain: Record<string, unknown> = {
           select: vi.fn().mockReturnThis(),
           in: vi.fn().mockReturnThis(),
+          gt: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
           is: vi.fn().mockReturnThis(),
           gte: vi.fn().mockReturnThis(),

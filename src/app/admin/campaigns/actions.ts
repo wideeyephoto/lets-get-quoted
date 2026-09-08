@@ -12,8 +12,7 @@ import {
   type PlatformCampaignInput,
 } from '@/lib/admin-platform-campaigns';
 
-// Recent blast keys to prevent accidental double-click / duplicate broadcast
-const recentBlastKeys = new Map<string, number>();
+
 
 /**
  * Server action to generate exact live HTML preview for a campaign.
@@ -143,21 +142,36 @@ export async function sendPlatformCampaignBlastAction(
 }> {
   const context = await requireMfaPermission('ops.manage');
 
-  const idKey = input.idempotencyKey || `${input.audience}:${input.subject}:${input.senderEmail}`;
-  const lastSent = recentBlastKeys.get(idKey);
-  const now = Date.now();
-  if (lastSent && now - lastSent < 60000) {
-    return { success: false, error: 'A campaign blast with this key was dispatched less than 60 seconds ago. Duplicate send blocked.' };
-  }
-  recentBlastKeys.set(idKey, now);
-  if (recentBlastKeys.size > 100) {
-    for (const [k, v] of recentBlastKeys) {
-      if (now - v > 300000) recentBlastKeys.delete(k);
-    }
-  }
+  const idKey = input.idempotencyKey || `${input.audience}:${input.subject}:${input.senderEmail || 'default'}`;
+  const windowStart = new Date(Date.now() - 60_000).toISOString();
 
   try {
-    const result = await sendPlatformCampaignBlast(context.admin, context, input);
+    const { data: recentBlasts } = await context.admin
+      .from('admin_actions')
+      .select('id, meta, created_at')
+      .eq('action', 'platform_campaign_send')
+      .gte('created_at', windowStart)
+      .limit(20);
+
+    const isDuplicate = (recentBlasts || []).some((row: any) => {
+      const meta = row?.meta as any;
+      if (meta?.idempotencyKey && meta.idempotencyKey === idKey) return true;
+      const camp = meta?.campaign;
+      if (camp && camp.audience === input.audience && camp.subject === input.subject) return true;
+      return false;
+    });
+
+    if (isDuplicate) {
+      return {
+        success: false,
+        error: 'A campaign blast with this key or subject was dispatched less than 60 seconds ago. Duplicate send blocked.',
+      };
+    }
+
+    const result = await sendPlatformCampaignBlast(context.admin, context, {
+      ...input,
+      idempotencyKey: idKey,
+    } as any);
     return {
       success: true,
       campaignId: result.campaignId,

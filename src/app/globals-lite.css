@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 9d4fd4e4d4698a18
+   source-sha256: 5e13789cc15bd57b
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -4171,11 +4171,30 @@ h3 {
   opacity: 1;
 }
 
+.sidenav-link-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.sidenav-link-row > .sidenav-link {
+  width: 100%;
+  padding-right: 2rem;
+}
+
+.sidenav-link-row > .sidenav-pin-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 2;
+}
+
 .sidenav-pin-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-left: auto;
   padding: 0.15rem;
   border-radius: 4px;
   border: none;
@@ -4189,7 +4208,15 @@ h3 {
 .sidenav-pin-toggle:hover {
   opacity: 1;
   color: var(--accent);
-  transform: scale(1.15);
+  transform: translateY(-50%) scale(1.15);
+}
+
+.sidenav.collapsed .sidenav-link-row > .sidenav-link {
+  padding-right: 0.6rem;
+}
+
+.sidenav.collapsed .sidenav-pin-toggle {
+  display: none !important;
 }
 
 .sidenav-hidden-note {
@@ -9397,6 +9424,7 @@ li+li {
 }
 
 .trade-search-clear-btn {
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -9411,6 +9439,12 @@ li+li {
   line-height: 1;
   cursor: pointer;
   transition: all 0.15s ease;
+}
+
+.trade-search-clear-btn::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
 }
 
 .trade-search-clear-btn:hover {

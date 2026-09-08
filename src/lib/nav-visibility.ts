@@ -86,8 +86,9 @@ export function getTradeRelevance(trade: string | null): TradeRelevance {
     return { claims: 'standard', inventory: 'standard', recurring: 'standard' };
   }
   const t = trade.toLowerCase().trim();
+  const tokens = t.split(/[-_\s]+/);
 
-  const isGlass = t.includes('glass') || t === 'auto-glass' || t === 'storefront-glass' || t === 'glass-and-mirrors';
+  const isGlass = tokens.includes('glass') || t === 'auto-glass' || t === 'storefront-glass' || t === 'glass-and-mirrors';
   const isRestorationOrRoofing =
     t.includes('roof') ||
     t.includes('water') ||
@@ -109,13 +110,23 @@ export function getTradeRelevance(trade: string | null): TradeRelevance {
     t.includes('snow') ||
     t.includes('wash');
 
+  const isAutoInventory =
+    t === 'auto-glass' ||
+    t === 'auto-detailing' ||
+    t === 'mobile-mechanics' ||
+    t === 'mobile-tires' ||
+    t === 'paintless-dent-repair' ||
+    t === 'rv-repair' ||
+    tokens.includes('auto') ||
+    tokens.includes('mechanic') ||
+    tokens.includes('vehicle');
+
   const isInventoryTrade =
     isGlass ||
     t.includes('plumb') ||
     t.includes('electric') ||
     t.includes('hvac') ||
-    t.includes('mechanic') ||
-    t.includes('auto') ||
+    isAutoInventory ||
     t.includes('tire') ||
     t.includes('appliance');
 

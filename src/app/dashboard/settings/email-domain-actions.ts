@@ -13,7 +13,9 @@ import {
   filterSafeSendingDnsRecords,
   toStoredStatus,
   failureReasonFor,
+  ResendApiError,
   type SendingDomainRecord,
+  type SendingDomainResponse,
   type StoredSendingDomainStatus,
 } from '@/lib/resend-domains';
 
@@ -58,7 +60,7 @@ export async function getEmailSendingDomainAction(): Promise<{
 
   return {
     domain: (data as EmailSendingDomainRow) ?? null,
-    isConfigured: isSendingDomainProvisioningConfigured(),
+    isConfigured: await isSendingDomainProvisioningConfigured(),
     isEnabled: isEmailSendingDomainsFeatureEnabled(),
   };
 }
@@ -72,6 +74,11 @@ export async function createEmailSendingDomainAction(input: {
 
   if (!isEmailSendingDomainsFeatureEnabled()) {
     throw new Error('Custom email sending domains are currently disabled.');
+  }
+
+  const isConfigured = await isSendingDomainProvisioningConfigured();
+  if (!isConfigured) {
+    throw new Error('Domain connection is temporarily unavailable — we have been notified.');
   }
 
   const domain = validateCustomDomain(input.domain);
@@ -97,7 +104,30 @@ export async function createEmailSendingDomainAction(input: {
   }
 
   // Create or retrieve domain from provider
-  const providerRes = await createSendingDomain(domain);
+  let providerRes: SendingDomainResponse;
+  try {
+    providerRes = await createSendingDomain(domain);
+  } catch (err: unknown) {
+    const rawError =
+      err instanceof ResendApiError
+        ? err.providerBody
+        : err instanceof Error
+          ? err.message
+          : String(err);
+    const statusCode = err instanceof ResendApiError ? err.statusCode : undefined;
+    console.error(
+      `[email-domains] Failed to create sending domain for account ${accountId} (status ${statusCode ?? 'unknown'}):`,
+      rawError,
+    );
+    if (
+      statusCode === 401 ||
+      statusCode === 403 ||
+      /Resend API error \((?:401|403)\)/i.test(rawError)
+    ) {
+      throw new Error('Domain connection is temporarily unavailable — we have been notified.');
+    }
+    throw new Error('Could not configure sending domain with the email provider.');
+  }
 
   // Filter DNS records to protect against hostile apex MX records
   const { safeRecords, warnings } = filterSafeSendingDnsRecords(providerRes.records, domain);

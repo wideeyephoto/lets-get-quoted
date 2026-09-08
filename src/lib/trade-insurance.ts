@@ -63,7 +63,6 @@ const ELIGIBLE_TRADE_STEMS = [
   'plumb',
   'biohazard',
   'disaster',
-  'glass',
 ];
 
 /**
@@ -73,6 +72,10 @@ export function isInsuranceEligibleTrade(tradeSlug: string | undefined | null): 
   if (!tradeSlug) return false;
   const normalized = tradeSlug.toLowerCase().trim();
   if (INSURANCE_ELIGIBLE_TRADE_SLUGS.has(normalized)) return true;
+
+  // Handle distinct glass trades (preventing substring collisions with e.g. fiberglass)
+  const tokens = normalized.split(/[-_\s]+/);
+  if (tokens.includes('glass')) return true;
 
   // Handle trade stems and sub-categories
   return ELIGIBLE_TRADE_STEMS.some((stem) => normalized.includes(stem));
@@ -379,7 +382,8 @@ export function getInsuranceTradeProfile(tradeSlug: string | undefined | null): 
   if (!tradeSlug) return INSURANCE_TRADE_PROFILES.roofers;
   const normalized = tradeSlug.toLowerCase().trim();
 
-  if (normalized.includes('glass')) return INSURANCE_TRADE_PROFILES['auto-glass'];
+  const tokens = normalized.split(/[-_\s]+/);
+  if (tokens.includes('glass')) return INSURANCE_TRADE_PROFILES['auto-glass'];
   if (normalized.includes('tree')) return INSURANCE_TRADE_PROFILES['tree-services'];
   if (normalized.includes('water') || normalized.includes('flood') || normalized.includes('plumb')) {
     return INSURANCE_TRADE_PROFILES['water-damage-restoration'];
