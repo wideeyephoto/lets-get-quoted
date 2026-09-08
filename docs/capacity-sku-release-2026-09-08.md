@@ -73,7 +73,7 @@ verification; live callback delivery still needs checking. Final AI answer,
 cutoff, and recovery observations remain pending before the voice SKU release.
 
 
-## Production release progress
+## Production release progress — 2026-09-08 14:50 UTC
 
 PR #28 merged as 66b146d07990e04c0b1cd66a13abf88572994438. Its production
 build was assigned to app.letsgetquoted.com. Anonymous health returned 200 and
@@ -82,3 +82,12 @@ live Stripe checkout for 100 GB at $15/month; checkout was exited without
 payment. PR #29 merged as 378b32a7deadf6c964257dc21652881ef01e3095 after all
 hosted checks passed; production deployment and the controlled call are pending.
 The voice catalog changes in this branch remain a draft until those checks pass.
+
+## Controlled call verification
+
+The controlled staff test confirmed that AI conversation works after the inbound
+provider retry. The returned call plan retained its configured ten-minute cap.
+This observation does not yet establish the measured cutoff or settlement.
+Final aggregated test results and the release decision are tracked in
+https://github.com/wideeyephoto/lets-get-quoted/pull/30; detailed call identifiers
+and provider diagnostics remain local.
