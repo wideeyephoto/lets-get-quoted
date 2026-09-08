@@ -121,6 +121,15 @@ export function voiceWebhookFailureDiagnostics(request: Request, rawBody: string
   const tail = received.pathname + received.search;
   const urls = origin ? [origin + tail, `https://${new URL(origin).hostname}:443${tail}`] : [];
   const matches: string[] = [];
+  let legacyJsonFields: string | null = null;
+  try {
+    const parsed = JSON.parse(rawBody);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      // The SDK compatibility fallback coerces nested objects to a string.
+      // Diagnose it, but never trust that lossy representation as body auth.
+      legacyJsonFields = Object.keys(parsed).sort().map((name) => name + String(parsed[name])).join('');
+    }
+  } catch { /* The raw body may be a compatibility form. */ }
   if (key) {
     for (const url of urls) {
       const candidates = [
@@ -135,6 +144,11 @@ export function voiceWebhookFailureDiagnostics(request: Request, rawBody: string
         if (supplied && constantTimeEquals(createHmac(algorithm, key).update(input).digest(encoding), supplied)) {
           if (!matches.includes(name)) matches.push(name);
         }
+      }
+      if (legacyJsonFields !== null && signature
+          && constantTimeEquals(createHmac('sha1', key).update(url + legacyJsonFields).digest('base64'), signature)
+          && !matches.includes('sha1_base64_json_fields')) {
+        matches.push('sha1_base64_json_fields');
       }
     }
   }

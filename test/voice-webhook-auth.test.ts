@@ -17,6 +17,21 @@ import {
 const ENV = { LGQ_VOICE_RECEIPT_BASIC: 'voice-receipt:test:password' };
 
 describe('safe callback authentication diagnostics', () => {
+  it('diagnoses legacy nested JSON coercion but refuses its unbound recording fields', () => {
+    useTrustedCallbackOrigin();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'private-signing-key');
+    const url = 'https://lgq.test/api/voice/recording-status';
+    const signature = createHmac('sha1', 'private-signing-key')
+      .update(url + 'event_typecalling.call.recordparams[object Object]').digest('base64');
+    for (const duration of [5, 999]) {
+      const body = JSON.stringify({ event_type: 'calling.call.record', params: { duration } });
+      const req = new Request(url, { method: 'POST', body, headers: {
+        'content-type': 'application/json', 'x-signalwire-signature': signature,
+      } });
+      expect(voiceWebhookFailureDiagnostics(req, body).matches).toContain('sha1_base64_json_fields');
+      expect(verifySignedVoiceWebhook(req, body)).toEqual({ ok: false, reason: 'mismatch' });
+    }
+  });
   it('identifies a body-unbound signature without accepting it or exposing credentials or payload', () => {
     useTrustedCallbackOrigin();
     vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'private-signing-key');
