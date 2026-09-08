@@ -237,9 +237,9 @@ describe('Homeowner financing availability and Reg Z compliance guards', () => {
       expect(html).not.toMatch(/APR|as low as|\$[\d,.]+\/mo|\d+ months|0%/i);
     });
 
-    it('suppresses financing when invoice amount is below $500 floor', async () => {
-      const html = await invoiceHtml(499);
-      expect(html).toContain('Pay $499.00');
+    it('suppresses financing when invoice amount is below $1,000 floor', async () => {
+      const html = await invoiceHtml(999);
+      expect(html).toContain('Pay $999.00');
       expect(html).not.toContain('See options');
       expect(html).not.toContain('DEALER_ACORN_99');
       expect(html).not.toMatch(/APR|as low as|\$[\d,.]+\/mo|\d+ months|0%/i);
@@ -540,14 +540,17 @@ describe('Homeowner financing availability and Reg Z compliance guards', () => {
       }
     });
 
-    it('URL generator propagates dealer code and strictly omits customer PII from parameters', () => {
+    it('URL generator propagates dealer code, partner attribution, and docRef join key without PII', () => {
       const urlA = buildAcornApplyUrl({
         dealerCode: 'DEALER_ACCOUNT_A',
         amount: 8500,
+        docRef: 'INV-1001',
       });
 
-      // Dealer code rides the URL
+      // Dealer code and attribution ride the URL
       expect(urlA).toContain('d=DEALER_ACCOUNT_A');
+      expect(urlA).toContain('utm_source=letsgetquoted');
+      expect(urlA).toContain('utm_content=INV-1001');
 
       // Cross-tenant isolation: Account A's dealer code never leaks into Account B's URL
       const urlB = buildAcornApplyUrl({

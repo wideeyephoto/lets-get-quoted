@@ -415,6 +415,7 @@ export default async function PublicPaymentPage({
     isSettled: payment.status === 'paid' || paymentView.banner === 'paid',
     isBlocked: Boolean(checkoutBlock) || !canPay,
     adminClient: admin,
+    docRef: payment.id,
   });
 
   return (

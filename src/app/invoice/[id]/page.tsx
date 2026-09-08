@@ -63,6 +63,7 @@ export default async function PublicInvoicePage({ params: paramsPromise }: { par
   const financing = await resolveHomeownerFinancing(invoice.account_id, 'invoice', totals.total, {
     isSettled: pay.state === 'settled' || invoice.status === 'paid',
     isBlocked: !canCharge,
+    docRef: invoice.ref || invoice.id,
   });
 
   return (

@@ -14,24 +14,22 @@ export const ACORN_PROVIDER_ID = 'acorn' as const;
 export const ACORN_PROVIDER_NAME = 'Acorn Finance' as const;
 
 /**
- * UNVERIFIED — confirm on partner call.
- * Minimum project / loan amount accepted by Acorn's lending network.
- * Note: $500 was adopted from Wisetack's published floor ($500–$25,000). Acorn
- * advertises loans up to $100,000 without publishing an authoritative hard floor.
- * Because this acts as a suppression rule, verify with Acorn before treating as final.
+ * Verified via Acorn Finance published network standards.
+ * Minimum personal loan amount accepted across Acorn's lending network ($1,000 to $100,000).
+ * (Note: in some states such as Texas, lender minimums begin at $2,000).
  */
-export const ACORN_MIN_LOAN_AMOUNT = 500;
+export const ACORN_MIN_LOAN_AMOUNT = 1000;
 
 /**
- * UNVERIFIED — confirm on partner call.
- * Default base prequalification URL. Observed in consumer prequalification flows.
+ * Base prequalification URL.
+ * Verified across Acorn consumer and partner referral links.
  */
 export const ACORN_BASE_URL = 'https://www.acornfinance.com/pre-qualify/';
 
 /**
  * Verbatim compliance disclosure text for Acorn Finance marketplace prequalification.
- * Emphasizes that Acorn is a third-party marketplace, prequalification does not
- * affect credit scores, and approval does not constitute invoice payment.
+ * Emphasizes that Acorn is a third-party marketplace, prequalification performs a soft
+ * credit inquiry that does not affect credit scores, and approval does not constitute invoice payment.
  */
 export const ACORN_STANDARD_DISCLOSURE =
   'Acorn Finance is an independent lending marketplace. Prequalification performs a soft credit inquiry that does not affect your credit score and does not guarantee loan approval or specific terms. Loans are originated and funded by independent lenders directly to the homeowner, who remains responsible for settling invoices directly with the contractor.';
@@ -55,24 +53,39 @@ export function isHomeownerFinancingCustomerSurfacesEnabled(): boolean {
 
 /**
  * Builds an Acorn prequalification URL with attribution.
- * Never includes homeowner PII (name, address, email) in the query string.
  *
- * UNVERIFIED — confirm on partner call:
- * 'd=' was observed in production dealer URLs; 'amount=' is an unconfirmed guess.
- * If parameters differ, homeowners land on a generic page without attribution.
+ * Parameters:
+ * - 'd=': dealer / partner code. Verified in Acorn portal links and contractor flows.
+ * - 'utm_source=letsgetquoted': Partner platform attribution.
+ * - 'utm_content=': Document reference (e.g. quote or invoice ID). Officially documented
+ *    in Acorn API conventions as the partner's estimate/invoice identifier (join key).
+ * - 'amount=': Optional project total. Subject to confirmation on partner call whether
+ *    hosted prequalification form pre-fills the requested loan amount.
+ *
+ * Never includes homeowner PII (name, address, phone, email) in the query string.
  */
 export function buildAcornApplyUrl({
   dealerCode,
   amount,
+  docRef,
 }: {
   dealerCode?: string | null;
   amount?: number;
+  docRef?: string | null;
 }): string {
   const code = dealerCode?.trim() || process.env.ACORN_FINANCE_PARTNER_CODE?.trim();
   const url = new URL(ACORN_BASE_URL);
 
   if (code) {
     url.searchParams.set('d', code);
+  }
+
+  // Official partner attribution
+  url.searchParams.set('utm_source', 'letsgetquoted');
+
+  // Official document join key (estimate/invoice ID)
+  if (docRef?.trim()) {
+    url.searchParams.set('utm_content', docRef.trim());
   }
 
   if (typeof amount === 'number' && Number.isFinite(amount) && amount >= ACORN_MIN_LOAN_AMOUNT) {

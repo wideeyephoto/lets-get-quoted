@@ -934,6 +934,7 @@ export default async function ClientJobDashboardPage({
                       access?.accountId || '',
                       'quote',
                       agreedTotal,
+                      { docRef: access?.jobId },
                     );
                     return (
                       <QuoteAcceptance

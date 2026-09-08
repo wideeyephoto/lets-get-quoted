@@ -42,6 +42,7 @@ export type ResolveFinancingOptions = {
   paymentKind?: string;
   isSettled?: boolean;
   isBlocked?: boolean;
+  docRef?: string;
 };
 
 export type HomeownerFinancingEnrollmentRow = {
@@ -191,6 +192,7 @@ export async function resolveHomeownerFinancing(
   const applyUrl = buildAcornApplyUrl({
     dealerCode: enrollment.provider_code,
     amount,
+    docRef: options?.docRef,
   });
 
   return {
