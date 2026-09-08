@@ -28,6 +28,37 @@ Provider contracts checked September 8:
 Validation: 79 focused adapter, inbound, transfer-status, fallback, and recording
 tests passed. Coverage verifies the only recording branch is `failed`, unknown
 results fall through to hangup, and signed callback destinations are retained.
-Full CI, production deployment, and a targeted live termination retest are pending.
+Full CI passed in run 34280733087. PR #41 merged as
+`ef7f42df55ae241720375e2e5c63cb403e2ff676` and was explicitly promoted to
+production deployment `dpl_Y42ukrhhX4fEp6zusb8wiJFaEvGA`; both public hosts were
+verified on that release before the retest.
+
+The retest had 80.794 seconds of connected forwarding and 110.914 seconds of
+answered parent time. All three provider legs ended at 21:41:20 UTC, with no
+post-transfer playback or recording. The database retained `transferred_and_answered`,
+81 rounded forwarding seconds, recording status `none`, one measured/committed
+AI minute, and one successfully processed receipt. No voice holds remained.
+
+The user initially reported hanging up, then clarified that they were still on
+the line. The test caller had its own 60-second Echo followed by a closing message
+and hangup. Provider events attribute the final disconnect to that caller side.
+This proves clean caller-side termination with no voicemail; it does not prove
+that a recipient hangup triggers the new connected-result branch. Keep that
+specific acceptance check open.
+
+The user also reported speech already underway on pickup. The mobile leg's
+announcement began 111.868 ms after its answer timestamp. The transfer whisper
+now starts with one second of native silence, giving the answered handset time
+before the opening words. This delay applies only to the recipient announcement,
+within the existing call cap. It does not change conversational endpointing.
+The audible improvement still needs handset verification.
+
+The test harness's fixed pause also allowed its instructions to advance without
+knowing when the mobile bridge was ready. Future controlled tests must synchronize
+their prompt to the confirmed bridge and use a shorter, clearly described echo
+window. Do not treat harness timing as speech-to-audio latency evidence.
+
+Native silence contract: [SWML play](https://signalwire.com/docs/swml/reference/calling/play).
+
 This short echo test does not establish the ten-minute transfer boundary or
 speech-to-audio latency percentiles.

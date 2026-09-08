@@ -591,7 +591,12 @@ describe('rendering an answer', () => {
     expect(transferMain[0].connect.timeout).toBe(25);
     expect(transferMain[0].connect.max_duration).toBe(598);
     expect(transferMain[0].connect.status_url).toBe('https://x.test/api/voice/ai/status');
-    expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
+    const announcement = transferMain[0].connect.confirm[0].play;
+    expect(announcement.urls).toEqual([
+      'silence:1.0',
+      expect.stringContaining('%{args.reason}'),
+    ]);
+    expect(announcement).not.toHaveProperty('url');
     expect(transferMain[1].switch.variable).toBe('connect_result');
     expect(Object.keys(transferMain[1].switch.case)).toEqual(['failed']);
     expect(transferMain[1].switch.default).toEqual([]);

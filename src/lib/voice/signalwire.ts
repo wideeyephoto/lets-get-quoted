@@ -314,7 +314,12 @@ export const signalwireVoiceProvider: VoiceProvider = {
                           max_duration: maxDurationSeconds,
                           ...(plan.transferStatusUrl ? { status_url: plan.transferStatusUrl } : {}),
                           confirm: [
-                            { play: { url: 'say: Incoming transfer from AI receptionist regarding: %{args.reason}.' } },
+                            // The live mobile test started speech 112 ms after answer,
+                            // before the recipient could hear the opening words.
+                            { play: { urls: [
+                              'silence:1.0',
+                              'say: Incoming transfer from AI receptionist regarding: %{args.reason}.',
+                            ] } },
                           ],
                         },
                       },
