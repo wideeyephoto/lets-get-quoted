@@ -28,7 +28,7 @@ const FEATURE_DEEP_LINKS: Record<string, string> = {
   'video-sections': '/features/website-builder',
   'quick-stops': '/features/quick-stops',
   'ai-ads-autopilot': '/features/ai-ads',
-  'speed-to-lead-sms': '/features/ai-ads',
+  'speed-to-lead-sms': '/features/speed-to-lead',
   'message-match-hero': '/features/ai-ads',
   'weather-ad-surge': '/features/ai-ads',
   'closed-loop-conversions': '/features/ai-ads',

@@ -96,6 +96,12 @@ const nextConfig = {
       { source: '/ai-copilot', destination: '/features/ai-copilot', permanent: true },
       { source: '/copilot', destination: '/features/ai-copilot', permanent: true },
       { source: '/aicopilot', destination: '/features/ai-copilot', permanent: true },
+      // Convenience shortcuts for speed-to-lead feature page.
+      { source: '/speed-to-lead', destination: '/features/speed-to-lead', permanent: true },
+      { source: '/speedtolead', destination: '/features/speed-to-lead', permanent: true },
+      // Convenience shortcuts for live-eta / eta feature page.
+      { source: '/eta', destination: '/features/live-eta', permanent: true },
+      { source: '/live-eta', destination: '/features/live-eta', permanent: true },
       // The campaign composer moved onto the seasonal-calendar page when the two
       // became one destination. Here rather than as a redirect() in a page
       // component: that renders, and by the time the redirect throws Next has
