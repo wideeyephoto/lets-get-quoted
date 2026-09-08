@@ -112,9 +112,10 @@ export default function FeaturesCatalogExplorer() {
   return (
     <section
       className={styles.catalogSection}
-      id="features-explorer"
+      id="catalog-explorer"
       aria-labelledby={headingId}
     >
+      <span id="features-explorer" aria-hidden="true" />
       <div className={styles.catalogHeader}>
         <p className="eyebrow">
           <span aria-hidden="true">✦</span> COMPLETE CONTRACTOR OPERATING SYSTEM

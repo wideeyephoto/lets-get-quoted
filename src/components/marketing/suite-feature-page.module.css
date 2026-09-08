@@ -512,8 +512,7 @@
 }
 
 :global(:root[data-theme='light']) .head > :global(.eyebrow),
-:global(:root[data-theme='light']) .shotsHead > :global(.eyebrow),
-:global(:root[data-theme='light']) :global(.section-block) :global(.eyebrow) {
+:global(:root[data-theme='light']) .shotsHead > :global(.eyebrow) {
   color: #9a3412 !important;
 }
 
@@ -568,8 +567,7 @@
 }
 
 :global(:root[data-theme='sunlight']) .head > :global(.eyebrow),
-:global(:root[data-theme='sunlight']) .shotsHead > :global(.eyebrow),
-:global(:root[data-theme='sunlight']) :global(.section-block) :global(.eyebrow) {
+:global(:root[data-theme='sunlight']) .shotsHead > :global(.eyebrow) {
   color: #9a3412 !important;
 }
 

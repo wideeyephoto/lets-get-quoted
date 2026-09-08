@@ -83,7 +83,7 @@ const CONTEXT_ACTIONS: Record<string, { label: string; href: string }> = {
   'what-does-it-cost': { label: 'See full pricing fee breakdown →', href: '/pricing' },
   'ai-instant-estimate': { label: 'Test the AI Estimator in the live demo →', href: '/demo' },
   'how-do-i-get-help': { label: 'Open the direct contact form →', href: '/contact' },
-  'do-i-need-a-domain': { label: 'Explore website & domain features →', href: '/website' },
+  'do-i-need-a-domain': { label: 'Explore website & domain features →', href: '/features/website-builder' },
 };
 
 export default function FaqClient({ groups }: FaqClientProps) {
