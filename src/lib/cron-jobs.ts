@@ -329,6 +329,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'New trade contractors stop receiving automated onboarding guidance, quote activation playbooks, and Stripe payout reminders.',
   },
   {
+    job: 'operator-briefing',
+    label: 'AI operator morning briefing',
+    schedule: '0 11 * * *',
+    importance: 'housekeeping',
+    consequence: 'The founder morning briefing stops being generated and emailed, so revenue, webhook, cron and dispute regressions go unreported until someone opens the admin cockpit by hand.',
+  },
+  {
     job: 'purge-expired',
     label: 'Expired data and closure purge',
     schedule: '0 3 * * *',

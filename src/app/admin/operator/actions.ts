@@ -6,12 +6,20 @@ import {
   runAutonomousOperatorCycle,
   askAiOperator,
   executeHitlDecision,
+  type OperatorChatTurn,
 } from '@/lib/ai-operator/engine';
-import { permissionForHitlAction, getHitlActionByIdAsync } from '@/lib/ai-operator/audit';
+import {
+  permissionForHitlAction,
+  getHitlActionByIdAsync,
+  flushOperatorWrites,
+} from '@/lib/ai-operator/audit';
 import { triageSupportCase, diagnoseContractorOnboarding } from '@/lib/ai-operator/support-copilot';
 import { executeOperatorTool } from '@/lib/ai-operator/tools';
 import { dispatchExecutiveBriefingDigest } from '@/lib/ai-operator/digest';
 import { generateExecutiveBriefing } from '@/lib/ai-operator/briefing';
+
+/** How many prior turns of cockpit conversation to replay to the model. */
+const MAX_HISTORY_TURNS = 12;
 
 export async function triggerOperatorCycleAction() {
   const context = await requirePermission('ops.manage');
@@ -20,6 +28,7 @@ export async function triggerOperatorCycleAction() {
     action: 'operator.cycle_triggered',
     reason: 'Staff triggered AI operator autonomous cycle',
   });
+  await flushOperatorWrites();
   return { success: true, report };
 }
 
@@ -69,17 +78,28 @@ export async function resolveHitlActionServerAction(
     },
   });
 
+  await flushOperatorWrites();
   return result;
 }
 
-export async function askOperatorServerAction(query: string) {
+export async function askOperatorServerAction(
+  query: string,
+  history?: OperatorChatTurn[],
+) {
   const context = await requireAdmin();
-  const response = await askAiOperator(query, {
-    supabase: context.admin,
-    adminUserId: context.adminEmail,
-    source: 'admin_dashboard',
-    staff: context.staff,
-  });
+  const response = await askAiOperator(
+    query,
+    {
+      supabase: context.admin,
+      adminUserId: context.adminEmail,
+      source: 'admin_dashboard',
+      staff: context.staff,
+    },
+    // Capped in the client, but re-capped here: history arrives from the browser and
+    // is replayed straight into the model prompt.
+    history?.slice(-MAX_HISTORY_TURNS),
+  );
+  await flushOperatorWrites();
   return response;
 }
 
@@ -92,6 +112,7 @@ export async function triageCaseServerAction(caseId: string, subject: string, bo
     targetId: caseId,
     reason: 'Staff invoked AI support copilot triage',
   });
+  await flushOperatorWrites();
   return triage;
 }
 
@@ -110,6 +131,7 @@ export async function replayWebhooksServerAction(action: 'diagnose' | 'replay_an
     meta: { result: res.data },
   });
 
+  await flushOperatorWrites();
   return res.data;
 }
 
@@ -136,5 +158,6 @@ export async function sendManualDigestServerAction() {
     meta: { deliveredVia: result.deliveredVia },
   });
 
+  await flushOperatorWrites();
   return result;
 }

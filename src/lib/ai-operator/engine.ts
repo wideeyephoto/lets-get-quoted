@@ -13,12 +13,24 @@ import {
   recordOperatorAudit,
   resolveHitlAction,
   listPendingHitlActions,
+  listPendingHitlActionsAsync,
   getOperatorAuditLogs,
+  getOperatorAuditLogsAsync,
   getHitlActionByIdAsync,
+  flushOperatorWrites,
 } from './audit';
 import { refundPayment } from '@/lib/payments';
 import { generateExecutiveBriefing } from './briefing';
 import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops';
+
+/** One prior turn of the cockpit conversation, replayed so follow-ups resolve. */
+export interface OperatorChatTurn {
+  role: 'user' | 'model';
+  text: string;
+}
+
+/** Guards against a tool-call loop that never converges on a final answer. */
+const MAX_TOOL_TURNS = 4;
 
 export interface AutonomousCycleReport {
   cycleId: string;
@@ -48,8 +60,8 @@ export async function runAutonomousOperatorCycle(
   // 2. Generate updated executive briefing
   const briefing = await generateExecutiveBriefing(supabase);
 
-  // 3. Collect pending HITL actions
-  const pendingHitlActions = listPendingHitlActions();
+  // 3. Collect pending HITL actions (from Supabase -- the cron runs on a cold lambda)
+  const pendingHitlActions = await listPendingHitlActionsAsync(new Date(), supabase);
 
   recordOperatorAudit({
     category: 'executive',
@@ -65,7 +77,10 @@ export async function runAutonomousOperatorCycle(
     status: 'success',
   });
 
-  const auditLogs = getOperatorAuditLogs({ limit: 25 });
+  // Flush before reading back, otherwise this cycle's own audit rows are still in
+  // flight and the report shows the previous run's trail.
+  await flushOperatorWrites();
+  const auditLogs = await getOperatorAuditLogsAsync({ limit: 25 }, supabase);
 
   const report: AutonomousCycleReport = {
     cycleId,
@@ -86,6 +101,7 @@ export async function runAutonomousOperatorCycle(
 export async function askAiOperator(
   query: string,
   ctx: OperatorExecutionContext,
+  history?: OperatorChatTurn[],
 ): Promise<{
   answer: string;
   toolCallsExecuted: string[];
@@ -190,63 +206,95 @@ export async function askAiOperator(
 You assist the founder by monitoring platform health, triaging contractor support cases, managing revenue dunning, reviewing SMS queue deliverability, diagnosing onboarding blockers, and drafting or executing operations.
 
 Available Tools:
-- get_system_health: Check SMS errors, webhook failures, and cron job status.
-- get_sms_queue_diagnostics: Detailed delivery diagnostics on SMS tasks.
-- get_revenue_and_billing_summary: Summarize MRR, dunning accounts, and open Stripe disputes.
-- get_contractor_account_360: Detailed 360 view of a contractor account.
-- diagnose_contractor_onboarding: Deep diagnostics on onboarding blockers (Stripe, SMS, Quote).
-- triage_support_case: Triage incoming contractor support tickets.
-- create_hitl_action_request: Propose a high-impact operation requiring 1-click founder approval.
-- resolve_hitl_action: Approve or reject an existing pending action request.
-- list_pending_action_requests: View all active action cards awaiting approval.
-- trigger_contractor_lifecycle_nudge: Send safe onboarding or re-engagement communication.
+${OPERATOR_TOOLS_DECLARATION.map((t) => `- ${t.name}: ${t.description}`).join('\n')}
 
 Invariants:
 - Safe read-only inspections and minor nudges are executed automatically.
 - High-impact mutations (refunds, forced settlements, custom trial extensions) MUST be queued as HITL action cards via create_hitl_action_request.
-- Provide concise, insightful, executive-level summaries.`;
+- You cannot approve or reject an action card. Only the founder can, from the cockpit.
+- Never invent figures. If a tool reports that data is unavailable, say so plainly rather than estimating.
+- Provide concise, insightful, executive-level summaries. Interpret tool output; do not paste it verbatim.`;
 
   try {
+    // Replay the conversation so follow-ups ("what about the second one?") resolve.
+    // Only the current message used to be sent, which left the operator amnesiac
+    // behind a UI that advertised a multi-turn chat.
     const formattedContents: Content[] = [
+      ...(history ?? []).map((turn) => ({
+        role: turn.role,
+        parts: [{ text: turn.text }],
+      })),
       {
         role: 'user',
         parts: [{ text: query }],
       },
     ];
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: formattedContents,
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-        tools: [{ functionDeclarations: OPERATOR_TOOLS_DECLARATION }],
-      },
-    });
+    let answerText = '';
 
-    const functionCalls = response.functionCalls;
-    let answerText = response.text || '';
+    // Agentic loop. The previous implementation executed the model's tool calls and
+    // then dumped the raw JSON at the founder -- the results were never returned to
+    // the model, so it never synthesised anything. Each result now goes back as a
+    // functionResponse and the model gets to answer with it in hand.
+    for (let turn = 0; turn < MAX_TOOL_TURNS; turn++) {
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: formattedContents,
+        config: {
+          systemInstruction,
+          temperature: 0.2,
+          tools: [{ functionDeclarations: OPERATOR_TOOLS_DECLARATION }],
+        },
+      });
 
-    if (functionCalls && functionCalls.length > 0) {
+      const functionCalls = response.functionCalls ?? [];
+      answerText = response.text || answerText;
+
+      if (functionCalls.length === 0) break;
+
+      formattedContents.push({
+        role: 'model',
+        parts: functionCalls.map((call) => ({
+          functionCall: { name: call.name, args: call.args },
+        })),
+      });
+
+      const responseParts = [];
       for (const call of functionCalls) {
         if (!call.name) continue;
         toolCallsExecuted.push(call.name);
-        const result = await executeOperatorTool(
-          call.name,
-          (call.args as Record<string, unknown>) || {},
-          ctx,
-        );
 
-        if (!answerText) {
-          answerText = `Executed **${call.name}**: ${JSON.stringify(result.data, null, 2)}`;
+        let toolOutput: unknown;
+        try {
+          const result = await executeOperatorTool(
+            call.name,
+            (call.args as Record<string, unknown>) || {},
+            ctx,
+          );
+          toolOutput = result.data;
+        } catch (toolErr: unknown) {
+          // Hand the failure back to the model rather than aborting the turn -- it can
+          // explain the gap or try another tool.
+          toolOutput = { error: toolErr instanceof Error ? toolErr.message : String(toolErr) };
         }
+
+        responseParts.push({
+          functionResponse: {
+            name: call.name,
+            response: { result: toolOutput },
+          },
+        });
       }
+
+      formattedContents.push({ role: 'user', parts: responseParts });
     }
+
+    await flushOperatorWrites();
 
     return {
       answer: answerText || 'Operational query processed successfully.',
       toolCallsExecuted,
-      pendingHitlActions: listPendingHitlActions(),
+      pendingHitlActions: await listPendingHitlActionsAsync(new Date(), ctx.supabase),
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);

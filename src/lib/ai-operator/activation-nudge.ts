@@ -30,6 +30,37 @@ function isWithinTcpaHours(timezone = 'America/New_York'): boolean {
 }
 
 /**
+ * Records one nudge, reporting whether the write actually landed.
+ *
+ * `contractor_onboarding_nudges` does not exist in production: every insert here
+ * returns PGRST205. The previous code awaited the insert, never inspected `error`,
+ * and incremented the counter regardless -- so the autopilot reported nudges it had
+ * not recorded, and `safeActionsExecuted` in the cycle report counted them. Failing
+ * loudly is the only way a missing table stops reading as a successful sweep.
+ *
+ * Note this only ever wrote a row. No SMS or email sender reads this table, so a
+ * successful write still is not a message delivered to a contractor.
+ */
+async function recordNudge(
+  supabase: SupabaseClient,
+  row: { account_id: string; nudge_type: string; channel: string },
+  report: ActivationAutopilotReport,
+  dryRun: boolean,
+): Promise<boolean> {
+  if (dryRun) return true;
+
+  const { error } = await supabase
+    .from('contractor_onboarding_nudges')
+    .insert({ ...row, dispatched_at: new Date().toISOString() });
+
+  if (error) {
+    report.errors.push(`${row.nudge_type} for ${row.account_id}: ${error.message}`);
+    return false;
+  }
+  return true;
+}
+
+/**
  * Autonomous RevOps worker that accelerates new contractor activation milestones
  */
 export async function runActivationAutopilotSweep(
@@ -76,46 +107,33 @@ export async function runActivationAutopilotSweep(
 
       // 1. Milestone 1 (24h - 48h): 0 quotes created -> Send Welcome & Quote Builder Nudge
       if (ageHours >= 24 && diagnosis.quotesCount === 0) {
-        if (!opts.dryRun) {
-          // Log automated nudge dispatch
-          await supabase
-            .from('contractor_onboarding_nudges')
-            .insert({
-              account_id: acc.id,
-              nudge_type: 'onboarding_welcome',
-              dispatched_at: new Date().toISOString(),
-              channel: 'sms',
-            });
-        }
-        report.welcomeNudgesSent++;
+        const ok = await recordNudge(
+          supabase,
+          { account_id: acc.id, nudge_type: 'onboarding_welcome', channel: 'sms' },
+          report,
+          Boolean(opts.dryRun),
+        );
+        if (ok) report.welcomeNudgesSent++;
       }
       // 2. Milestone 2 (48h - 96h): Stripe Connect Missing -> Send 1-click KYC link
       else if (ageHours >= 48 && !diagnosis.isStripeConnected) {
-        if (!opts.dryRun) {
-          await supabase
-            .from('contractor_onboarding_nudges')
-            .insert({
-              account_id: acc.id,
-              nudge_type: 'stripe_connect_reminder',
-              dispatched_at: new Date().toISOString(),
-              channel: 'sms',
-            });
-        }
-        report.stripeRemindersSent++;
+        const ok = await recordNudge(
+          supabase,
+          { account_id: acc.id, nudge_type: 'stripe_connect_reminder', channel: 'sms' },
+          report,
+          Boolean(opts.dryRun),
+        );
+        if (ok) report.stripeRemindersSent++;
       }
       // 3. Milestone 3 (96h+): Sending quotes without custom hotline -> Suggest Dedicated Number
       else if (ageHours >= 96 && diagnosis.quotesCount > 0 && !diagnosis.hasSmsSenderNumber) {
-        if (!opts.dryRun) {
-          await supabase
-            .from('contractor_onboarding_nudges')
-            .insert({
-              account_id: acc.id,
-              nudge_type: 'phone_setup_help',
-              dispatched_at: new Date().toISOString(),
-              channel: 'email',
-            });
-        }
-        report.phoneSetupNudgesSent++;
+        const ok = await recordNudge(
+          supabase,
+          { account_id: acc.id, nudge_type: 'phone_setup_help', channel: 'email' },
+          report,
+          Boolean(opts.dryRun),
+        );
+        if (ok) report.phoneSetupNudgesSent++;
       }
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);

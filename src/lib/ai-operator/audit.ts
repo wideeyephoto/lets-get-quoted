@@ -15,6 +15,34 @@ import type {
 const auditLogsStore: OperatorAuditLogEntry[] = [];
 const hitlActionStore: Map<string, OperatorHitlActionRequest> = new Map();
 
+// Persistence to Supabase is issued from synchronous call sites (recordOperatorAudit
+// is called from ~17 places, several of them sync), so the insert cannot be awaited
+// inline. On serverless the runtime freezes the moment the response is sent, which
+// drops any in-flight insert -- the audit trail then disappears exactly when it is
+// needed. Every issued write is parked here so a request boundary can await it.
+const pendingWrites: Set<Promise<unknown>> = new Set();
+
+function trackWrite(write: Promise<unknown>): void {
+  const settled = write.then(
+    () => {},
+    (err: unknown) => console.warn('[ai-operator] persist error:', (err as Error)?.message || err),
+  );
+  pendingWrites.add(settled);
+  void settled.finally(() => pendingWrites.delete(settled));
+}
+
+/**
+ * Awaits every Supabase write issued by this module so far.
+ *
+ * Call this before returning from a server action, route handler, or cron so the
+ * serverless runtime cannot freeze mid-insert. Safe to call when nothing is pending.
+ */
+export async function flushOperatorWrites(): Promise<void> {
+  while (pendingWrites.size > 0) {
+    await Promise.all([...pendingWrites]);
+  }
+}
+
 function getAdminClientSafe(provided?: SupabaseClient): SupabaseClient | null {
   if (provided) return provided;
   try {
@@ -208,7 +236,7 @@ export function recordOperatorAudit(
     try {
       const q = client.from('ai_operator_logs');
       if (typeof q?.insert === 'function') {
-        q.insert({
+        trackWrite(Promise.resolve(q.insert({
           id: fullEntry.id,
           timestamp: fullEntry.timestamp,
           category: fullEntry.category,
@@ -220,10 +248,7 @@ export function recordOperatorAudit(
           reasoning_summary: fullEntry.reasoningSummary,
           account_id: fullEntry.accountId,
           status: fullEntry.status,
-        }).then(
-          () => {},
-          (err: any) => console.warn('[ai-operator] audit persist error:', err?.message || err),
-        );
+        })));
       }
     } catch {
       // Mock client or unconfigured
@@ -330,7 +355,7 @@ export function createHitlAction(
     try {
       const q = client.from('ai_operator_action_requests');
       if (typeof q?.insert === 'function') {
-        q.insert({
+        trackWrite(Promise.resolve(q.insert({
           id: request.id,
           category: request.category,
           title: request.title,
@@ -342,10 +367,7 @@ export function createHitlAction(
           expires_at: request.expiresAt,
           is_financial_mutation: Boolean(params.isFinancialMutation),
           required_role: params.requiredRole || 'admin',
-        }).then(
-          () => {},
-          (err: any) => console.warn('[ai-operator] hitl persist error:', err?.message || err),
-        );
+        })));
       }
     } catch {
       // Mock client or unconfigured
@@ -510,17 +532,12 @@ export function resolveHitlAction(
     try {
       const q = client.from('ai_operator_action_requests');
       if (typeof q?.update === 'function') {
-        q.update({
+        trackWrite(Promise.resolve(q.update({
           status: decision,
           resolved_at: action.resolvedAt,
           resolved_by: action.resolvedBy,
           resolution_reason: action.resolutionReason,
-        })
-          .eq('id', actionId)
-          .then(
-            () => {},
-            (err: any) => console.warn('[ai-operator] resolve persist error:', err?.message || err),
-          );
+        }).eq('id', actionId)));
       }
     } catch {
       // Mock client or unconfigured

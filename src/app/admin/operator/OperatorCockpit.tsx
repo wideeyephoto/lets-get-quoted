@@ -46,14 +46,43 @@ interface SpeechRecognitionLike {
   start: () => void;
 }
 
-const QUICK_PROMPT_CHIPS = [
-  '🔍 Triage 2 Webhook Failures',
-  '🚀 Nudge 4 Unactivated Signups',
-  '💳 Revenue & Billing Breakdown',
-  '🛠️ Check SRE & Cron Health',
-  '📈 Scan Plan Upgrade Candidates',
-  '🛡️ Generate Dispute Evidence Packet',
-];
+/** How many prior turns of cockpit conversation to replay to the model. */
+const MAX_HISTORY_TURNS = 12;
+
+/**
+ * Quick prompts, built from the briefing actually on screen.
+ *
+ * These used to be fixed strings that named counts ("Triage 2 Webhook Failures",
+ * "Nudge 4 Unactivated Signups") regardless of what was really outstanding, so the
+ * cockpit asserted a number before anything had been measured.
+ */
+function buildQuickPromptChips(briefing: ExecutiveBriefing): string[] {
+  const chips: string[] = [];
+  const { operations, contractors, escalations } = briefing;
+
+  if (operations.unresolvedWebhooksCount > 0) {
+    chips.push(`🔍 Triage ${operations.unresolvedWebhooksCount} webhook failure(s)`);
+  }
+  if (operations.cronTroubledCount > 0) {
+    chips.push(`⏱️ Explain ${operations.cronTroubledCount} troubled cron job(s)`);
+  }
+  if (contractors.unactivatedCount > 0) {
+    chips.push(`🚀 Diagnose ${contractors.unactivatedCount} unactivated signup(s)`);
+  }
+  if (escalations.openDisputesCount > 0) {
+    chips.push(`🛡️ Summarise ${escalations.openDisputesCount} open dispute(s)`);
+  }
+  if (escalations.casesNearSlaCount > 0) {
+    chips.push(`⏳ Review ${escalations.casesNearSlaCount} case(s) near SLA`);
+  }
+
+  // Always available: these ask a question rather than assert a count.
+  chips.push('💳 Revenue & billing breakdown');
+  chips.push('🛠️ Check SRE & cron health');
+  chips.push('📈 Scan plan upgrade candidates');
+
+  return chips.slice(0, 6);
+}
 
 export default function OperatorCockpit({
   initialBriefing,
@@ -85,6 +114,8 @@ export default function OperatorCockpit({
 
   // Contractor 360 Modal
   const [modalAccount, setModalAccount] = useState<ModalAccountState | null>(null);
+
+  const quickPromptChips = buildQuickPromptChips(briefing);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -156,7 +187,14 @@ export default function OperatorCockpit({
     setIsPrompting(true);
 
     try {
-      const res = await askOperatorServerAction(text);
+      // Replay the conversation so follow-ups resolve against what was already said.
+      // The welcome message is excluded -- it is UI copy, not something the model said.
+      const history = chatMessages
+        .filter((m) => m.id !== 'welcome-msg')
+        .slice(-MAX_HISTORY_TURNS)
+        .map((m) => ({ role: m.sender === 'user' ? ('user' as const) : ('model' as const), text: m.text }));
+
+      const res = await askOperatorServerAction(text, history);
       const operatorMsg: ChatMessage = {
         id: `op-${Date.now()}`,
         sender: 'operator',
@@ -468,7 +506,7 @@ export default function OperatorCockpit({
         <div className={styles.chatBox}>
           {/* Quick-Prompt Suggestion Chips */}
           <div className={styles.promptChipsRow}>
-            {QUICK_PROMPT_CHIPS.map((chipText) => (
+            {quickPromptChips.map((chipText) => (
               <button
                 key={chipText}
                 type="button"

@@ -4,6 +4,7 @@ import {
   recordOperatorAudit,
   getOperatorAuditLogs,
   createHitlAction,
+  getHitlActionById,
   listPendingHitlActions,
   resolveHitlAction,
   clearOperatorMemory,
@@ -13,13 +14,14 @@ import {
   permissionForHitlAction,
   SAFE_AUTO_REMEDIATION_ACTION_TYPES,
   REQUIRES_APPROVAL_ACTION_TYPES,
+  flushOperatorWrites,
 } from '@/lib/ai-operator/audit';
 import {
   diagnoseContractorOnboarding,
   triageSupportCase,
 } from '@/lib/ai-operator/support-copilot';
 import { runRevOpsGrowthScan } from '@/lib/ai-operator/revops';
-import { generateExecutiveBriefing } from '@/lib/ai-operator/briefing';
+import { generateExecutiveBriefing, calculateSmsDeliverability } from '@/lib/ai-operator/briefing';
 import {
   runAutonomousOperatorCycle,
   askAiOperator,
@@ -188,9 +190,45 @@ describe('AI Operator Framework - Tool Declarations & Schemas', () => {
     expect(names).toContain('diagnose_contractor_onboarding');
     expect(names).toContain('triage_support_case');
     expect(names).toContain('create_hitl_action_request');
-    expect(names).toContain('resolve_hitl_action');
     expect(names).toContain('list_pending_action_requests');
     expect(names).toContain('trigger_contractor_lifecycle_nudge');
+  });
+
+  // The operator proposes action cards; only the founder resolves them. Exposing the
+  // resolver let the model clear its own approvals, skipping the per-action permission
+  // and the MFA step-up that resolveHitlActionServerAction enforces -- and stamping the
+  // signed-in admin as the approver. This operator also reads untrusted support ticket
+  // text, so an injected instruction had a route to dismissing approvals in their name.
+  it('never offers the approval resolver to the model', () => {
+    const names = OPERATOR_TOOLS_DECLARATION.map((t) => t.name);
+    expect(names).not.toContain('resolve_hitl_action');
+  });
+
+  it('refuses to resolve an approval even when called directly', async () => {
+    const ctx: OperatorExecutionContext = {
+      supabase: createMockSupabase(),
+      adminUserId: 'admin-usr-1',
+      source: 'admin_dashboard',
+    };
+    const created = createHitlAction({
+      category: 'billing_revenue',
+      title: 'Refund a subscription',
+      description: 'Needs founder sign-off',
+      actionType: 'issue_subscription_refund',
+      payload: { accountId: 'acc-1', amountDollars: 120 },
+      isFinancialMutation: true,
+      requiredRole: 'founder',
+    });
+
+    const res = await executeOperatorTool(
+      'resolve_hitl_action',
+      { actionId: created.id, decision: 'approved' },
+      ctx,
+    );
+
+    expect((res.data as { success: boolean }).success).toBe(false);
+    // The card must still be waiting for a human.
+    expect(getHitlActionById(created.id)?.status).toBe('pending');
   });
 
   it('validates schema requirements for create_hitl_action_request', () => {
@@ -696,17 +734,44 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((res.data as any).pausedPayoutsCount).toBeDefined();
   });
 
-  it('executes generate_dispute_evidence_packet with complete timeline defense', async () => {
+  // This tool used to ignore disputeId and return a fixed $250 packet for
+  // "acc-contractor-sample" with five invented events, flagged readyForSubmission.
+  // The old test asserted exactly that, so it held the fabrication in place. Evidence
+  // filed with a card network has to come from real rows or not exist at all.
+  it('refuses to assemble a dispute evidence packet from data it does not have', async () => {
     const res = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: 'dp_123' }, ctx);
-    expect(res.data).toBeDefined();
-    expect((res.data as any).timeline.length).toBeGreaterThan(0);
-    expect((res.data as any).readyForSubmission).toBe(true);
+    const data = res.data as { available: boolean; timeline?: unknown; error: string };
+
+    expect(data.available).toBe(false);
+    expect(data.timeline).toBeUndefined();
+    expect(data.error).toMatch(/not yet wired/i);
+    // Never claim a packet is submittable.
+    expect((data as { readyForSubmission?: boolean }).readyForSubmission).toBeUndefined();
   });
 
-  it('executes get_ops_trend_history across multi-day snapshot series', async () => {
+  // The series was synthesised as `168 + i * 15` and presented as real trend history.
+  // Nothing records a daily metrics snapshot, so there is no history to report.
+  it('reports that trend history is unavailable rather than synthesising a series', async () => {
     const res = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
-    expect(res.data).toBeDefined();
-    expect((res.data as any).history.length).toBe(7);
+    const data = res.data as { available: boolean; history: unknown[]; error: string };
+
+    expect(data.available).toBe(false);
+    expect(data.history).toEqual([]);
+    expect(data.error).toMatch(/no historical metrics/i);
+  });
+
+  // It logged "dispatched" and returned a timestamp while no sender was ever called.
+  it('does not report a lifecycle nudge as sent when nothing sends it', async () => {
+    const res = await executeOperatorTool(
+      'trigger_contractor_lifecycle_nudge',
+      { accountId: 'acc-1', campaignType: 'onboarding_welcome' },
+      ctx,
+    );
+    const data = res.data as { success: boolean; dispatchedAt?: string; error?: string };
+
+    expect(data.success).toBe(false);
+    expect(data.dispatchedAt).toBeUndefined();
+    expect(data.error).toMatch(/no sender/i);
   });
 
   it('validates SQL safety: permits read-only queries and rejects multi-statement/mutating constructs', () => {
@@ -760,6 +825,102 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect(approvedResult.action?.status).toBe('approved');
     expect(approvedResult.action?.resolvedBy).toBe('staff@letsgetquoted.com');
     expect(approvedResult.executionResult).toBeDefined();
-    expect((approvedResult.executionResult as any).success).toBe(true);
+
+    // Resolving the card and performing the work are two different outcomes. This
+    // assertion used to read `.success === true` for a nudge that no sender has ever
+    // delivered, which made an approval look like an outreach. The decision lands;
+    // the dispatch reports that it cannot happen yet.
+    expect((approvedResult.executionResult as { success: boolean }).success).toBe(false);
+    expect((approvedResult.executionResult as { error: string }).error).toMatch(/no sender/i);
+  });
+});
+
+// A percentage without a denominator is not a rate. The briefing used to report a
+// hardcoded 98.5% whenever anything failed, and a tile computed as
+// `100 - failures * 0.5`, so the number moved with the failure count but never
+// described delivery. These lock the arithmetic to real counts.
+describe('SMS deliverability is measured, not asserted', () => {
+  function smsMock(total: number, failed: number): any {
+    return {
+      from: (table: string) => ({
+        select: (_cols?: string, options?: any) => {
+          if (table !== 'sms_events' || options?.count !== 'exact') {
+            throw new Error(`unexpected read: ${table}`);
+          }
+          let failedOnly = false;
+          const builder: any = {
+            is: () => builder,
+            gte: () => Promise.resolve({ count: failedOnly ? failed : total, error: null }),
+            eq: (col: string, val: any) => {
+              if (col === 'status' && val === 'failed') failedOnly = true;
+              return builder;
+            },
+          };
+          return builder;
+        },
+      }),
+    };
+  }
+
+  it('divides failures by real send volume', async () => {
+    const res = await calculateSmsDeliverability(smsMock(200, 3));
+    expect(res.totalSends).toBe(200);
+    expect(res.failedSends).toBe(3);
+    expect(res.deliverabilityPct).toBe(98.5);
+  });
+
+  it('does not claim 100% when nothing was sent', async () => {
+    const res = await calculateSmsDeliverability(smsMock(0, 0));
+    expect(res.totalSends).toBe(0);
+    // null, not 100 -- an empty window has no rate to report.
+    expect(res.deliverabilityPct).toBeNull();
+  });
+
+  it('reports the same failure count at different volumes as different rates', async () => {
+    const quiet = await calculateSmsDeliverability(smsMock(10, 5));
+    const busy = await calculateSmsDeliverability(smsMock(1000, 5));
+    expect(quiet.deliverabilityPct).toBe(50);
+    expect(busy.deliverabilityPct).toBe(99.5);
+  });
+});
+
+// Persistence is issued from synchronous call sites, so inserts cannot be awaited
+// inline. On serverless the runtime freezes when the response is sent, which drops
+// anything still in flight -- the audit trail then vanishes exactly when it matters.
+describe('operator writes are awaited before a request returns', () => {
+  it('flushes an in-flight audit insert', async () => {
+    let landed = false;
+    let release: () => void = () => {};
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+
+    const slowClient: any = {
+      from: () => ({
+        insert: () => gate.then(() => { landed = true; return { error: null }; }),
+      }),
+    };
+
+    recordOperatorAudit(
+      {
+        category: 'executive',
+        actionName: 'Probe',
+        severity: 'info',
+        reasoningSummary: 'Persistence flush probe',
+        status: 'success',
+      },
+      slowClient,
+    );
+
+    // Returning here is what used to lose the row.
+    expect(landed).toBe(false);
+
+    release();
+    await flushOperatorWrites();
+    expect(landed).toBe(true);
+  });
+
+  it('resolves when there is nothing pending', async () => {
+    await expect(flushOperatorWrites()).resolves.toBeUndefined();
   });
 });

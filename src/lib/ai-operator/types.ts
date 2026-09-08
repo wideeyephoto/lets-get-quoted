@@ -168,7 +168,10 @@ export interface ExecutiveBriefing {
     pendingPayouts: number;
   };
   operations: {
-    smsDeliverabilityPct: number;
+    /** null when nothing was sent in the window -- there is no rate to report. */
+    smsDeliverabilityPct: number | null;
+    smsTotalSends: number;
+    smsFailedSends: number;
     queueHealth: 'healthy' | 'degraded' | 'critical';
     cronStatus: 'ok' | 'issues_detected';
     cronTroubledCount: number;

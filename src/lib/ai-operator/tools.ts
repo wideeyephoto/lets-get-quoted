@@ -5,14 +5,12 @@ import type {
   OperatorCategory,
   SmsCarrierHealthResult,
   UpgradeCandidate,
-  DisputeEvidencePacket,
   OpsTrendSnapshot,
 } from './types';
 import {
   recordOperatorAudit,
   createHitlAction,
   listPendingHitlActions,
-  resolveHitlAction as resolveHitlActionAudit,
   validateActionExecutionSafety,
 } from './audit';
 import {
@@ -167,28 +165,16 @@ export const OPERATOR_TOOLS_DECLARATION: OperatorFunctionDeclaration[] = [
       required: ['category', 'title', 'description', 'actionType', 'payloadJson'],
     },
   },
-  {
-    name: 'resolve_hitl_action',
-    description: 'Approves or rejects a pending human-in-the-loop action request.',
-    parameters: {
-      type: Type.OBJECT,
-      properties: {
-        actionId: {
-          type: Type.STRING,
-          description: 'The ID of the pending action request',
-        },
-        decision: {
-          type: Type.STRING,
-          description: '"approved" or "rejected"',
-        },
-        reason: {
-          type: Type.STRING,
-          description: 'Optional note or reasoning for the decision',
-        },
-      },
-      required: ['actionId', 'decision'],
-    },
-  },
+  // resolve_hitl_action is deliberately NOT declared to the model.
+  //
+  // The approval queue is the one control that stands between the operator and a
+  // refund, suspension, or payout release. resolveHitlActionServerAction is what
+  // enforces the per-action permission and the MFA step-up on money operations;
+  // the tool path bypassed both, stamped resolved_by with the signed-in admin's
+  // address, and cleared the card out of the founder's queue. Since this operator
+  // also reads untrusted text (support ticket bodies via triage_support_case),
+  // exposing it gave injected text a route to dismissing approvals in the
+  // founder's name. Approvals come from a human in the cockpit, or not at all.
   {
     name: 'list_pending_action_requests',
     description: 'Lists all pending action cards awaiting the founder’s 1-click approval.',
@@ -558,14 +544,18 @@ export async function executeOperatorTool(
       };
     }
 
+    // Refuses even if something reaches executeOperatorTool with this name -- the
+    // declaration being absent stops the model asking, and this stops it landing.
+    // Approval flows through resolveHitlActionServerAction, which checks the
+    // action's own permission and steps up MFA for refunds and payouts.
     case 'resolve_hitl_action': {
-      const actionId = String(args.actionId || '');
-      const decision = args.decision === 'approved' ? 'approved' : 'rejected';
-      const reason = args.reason ? String(args.reason) : undefined;
-      const resolver = ctx.adminUserId || 'system-founder';
-
-      const result = resolveHitlActionAudit(actionId, decision, resolver, reason);
-      return { data: result };
+      return {
+        data: {
+          success: false,
+          error:
+            'Approval decisions cannot be made by the operator. Present the action card and let the founder decide in the cockpit.',
+        },
+      };
     }
 
     case 'list_pending_action_requests': {
@@ -583,23 +573,29 @@ export async function executeOperatorTool(
         return { data: { error: safetyCheck.reason, success: false } };
       }
 
+      // This tool has never sent anything. It wrote an audit line claiming dispatch
+      // and returned success with a dispatchedAt timestamp, while no SMS or email
+      // call was made anywhere in the path. There is still no sender behind the
+      // lifecycle rail, so it reports that honestly instead of manufacturing a
+      // delivery record the founder would count as outreach.
       recordOperatorAudit({
         category: 'growth_lifecycle',
-        actionName: `Lifecycle Nudge: ${campaignType}`,
-        severity: 'safe_auto',
+        actionName: `Lifecycle Nudge REFUSED: ${campaignType}`,
+        severity: 'info',
         toolName: 'trigger_contractor_lifecycle_nudge',
         accountId,
         inputPayload: { accountId, campaignType },
-        reasoningSummary: `Triggered automated ${campaignType} lifecycle communication for contractor account ${accountId}.`,
-        status: 'success',
+        reasoningSummary: `Lifecycle nudge "${campaignType}" for ${accountId} was not dispatched: no sender is wired to the contractor lifecycle rail.`,
+        status: 'failure',
       });
 
       return {
         data: {
-          success: true,
+          success: false,
           accountId,
           campaignType,
-          dispatchedAt: new Date().toISOString(),
+          error:
+            'Contractor lifecycle nudges have no sender wired. Nothing was delivered. Reach the contractor from /admin/contractors until this rail is built.',
         },
       };
     }
@@ -886,47 +882,42 @@ export async function executeOperatorTool(
       }
     }
 
+    // Withheld until it reads real quote, payment, and job rows.
+    //
+    // This previously ignored disputeId entirely and returned a fixed $250 packet for
+    // "acc-contractor-sample" with five invented timestamped events, marked
+    // readyForSubmission: true. Submitting that to a card network would be filing
+    // fabricated evidence in a real financial dispute -- returning nothing is strictly
+    // safer than returning a convincing fiction.
     case 'generate_dispute_evidence_packet': {
       const disputeId = String(args.disputeId || '');
-      const evidencePacket: DisputeEvidencePacket = {
-        disputeId,
-        accountId: 'acc-contractor-sample',
-        amount: 250.0,
-        homeownerName: 'Homeowner Client',
-        timeline: [
-          { timestamp: '2026-08-20T10:15:00Z', event: 'Quote Created & Sent', details: 'Contractor generated $250.00 quote via Let\'s Get Quoted' },
-          { timestamp: '2026-08-20T11:42:10Z', event: 'Quote Electronically Approved', details: 'Client clicked Approve Quote link from verified phone number' },
-          { timestamp: '2026-08-21T09:00:00Z', event: 'Job Scheduled', details: 'Scheduled appointment for field execution' },
-          { timestamp: '2026-08-22T14:30:00Z', event: 'Payment Processed', details: 'Deposit paid via Stripe Connect card checkout' },
-          { timestamp: '2026-08-23T16:00:00Z', event: 'Job Marked Complete', details: 'Completion notification sent with client approval' },
-        ],
-        defenseSummary: 'Evidence proves valid electronic quote agreement, client authorization timestamp, and verified job completion.',
-        readyForSubmission: true,
+      return {
+        data: {
+          disputeId,
+          available: false,
+          error:
+            'Dispute evidence assembly is not yet wired to the quote, payment, and job tables. Build the packet by hand from /admin/money -- do not submit anything generated here.',
+        },
       };
-
-      return { data: evidencePacket };
     }
 
+    // Withheld: nothing in this platform records a daily metrics snapshot.
+    //
+    // The series returned here was synthesised arithmetically -- MRR was literally
+    // `168 + i * 15`, with contractor counts hardcoded -- and presented to the founder
+    // as "7-Day Operational Trends". Serving this needs a snapshot table plus a cron
+    // that writes one row a day; today's numbers cannot be backfilled into history.
     case 'get_ops_trend_history': {
       const days = Number(args.days) || 7;
-      const history: OpsTrendSnapshot[] = [];
-      const baseDate = new Date();
-
-      for (let i = days - 1; i >= 0; i--) {
-        const d = new Date(baseDate);
-        d.setDate(d.getDate() - i);
-        history.push({
-          date: d.toISOString().split('T')[0],
-          mrrEstimated: 168 + (days - 1 - i) * 15,
-          totalActiveContractors: 11,
-          stripeConnectedContractors: 7,
-          smsDeliverabilityPct: 100,
-          unresolvedWebhooksCount: i === 0 ? 2 : 0,
-          incidentCount: 0,
-        });
-      }
-
-      return { data: { days, history } };
+      return {
+        data: {
+          days,
+          available: false,
+          history: [] as OpsTrendSnapshot[],
+          error:
+            'No historical metrics are recorded, so trends cannot be reported. Current-moment figures are available via get_system_health and get_revenue_and_billing_summary.',
+        },
+      };
     }
 
     default:
