@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { inferTradeFromBusinessName } from '@/components/trade-search-select';
+import { readFileSync } from 'node:fs';
+import { inferTradeFromBusinessName, resolveTradeAutoSuggest } from '@/components/trade-search-select';
 import { matchTrades } from '@/lib/trade-matching';
+
 
 const mocks = vi.hoisted(() => ({
   basePlanSubscriptionCheckoutEnabled: vi.fn(),
@@ -108,6 +110,116 @@ describe('Trade Search & Auto-Suggest', () => {
       expect(inferTradeFromBusinessName(null)).toBeNull();
     });
   });
+
+  describe('resolveTradeAutoSuggest logic', () => {
+    it('auto-fills trade from business name when trade is empty and untouched', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Brookhaven Plumbing',
+        currentValue: '',
+        isAutoFilled: false,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'set', slug: 'plumbers', name: 'Plumbers' });
+    });
+
+    it('does not fill after the trade field has been touched by the user', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Brookhaven Plumbing',
+        currentValue: '',
+        isAutoFilled: false,
+        userTouched: true,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'none' });
+    });
+
+    it('does not fill over an initial trade (e.g. from URL ?trade= or account)', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Brookhaven Plumbing',
+        currentValue: 'electricians',
+        isAutoFilled: false,
+        userTouched: false,
+        hasInitialTrade: true,
+      });
+      expect(decision).toEqual({ action: 'none' });
+    });
+
+    it('never overwrites an already chosen manual trade', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Apex Roofing LLC',
+        currentValue: 'electricians',
+        isAutoFilled: false,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'none' });
+    });
+
+    it('does not fill when business name has no trade indicators', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Smith & Sons Enterprises',
+        currentValue: '',
+        isAutoFilled: false,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'none' });
+    });
+
+    it('clears an auto-filled trade when business name is cleared', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: '',
+        currentValue: 'plumbers',
+        isAutoFilled: true,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'clear' });
+    });
+
+    it('does NOT clear a manually chosen trade when business name is cleared', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: '',
+        currentValue: 'plumbers',
+        isAutoFilled: false,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'none' });
+    });
+
+    it('updates auto-fill when business name changes to another trade', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Brookhaven Roofing',
+        currentValue: 'plumbers',
+        isAutoFilled: true,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'set', slug: 'roofers', name: 'Roofers' });
+    });
+
+    it('clears auto-fill when business name changes to a name without a trade', () => {
+      const decision = resolveTradeAutoSuggest({
+        businessName: 'Smith & Sons',
+        currentValue: 'plumbers',
+        isAutoFilled: true,
+        userTouched: false,
+        hasInitialTrade: false,
+      });
+      expect(decision).toEqual({ action: 'clear' });
+    });
+
+    it('includes accessible .welcome-guess live region in component source', () => {
+      const source = readFileSync('src/components/trade-search-select.tsx', 'utf8');
+      expect(source).toContain('welcome-guess');
+      expect(source).toContain('aria-live="polite"');
+      expect(source).toContain('Guessed from your business name. Not right?');
+      expect(source).toContain('Pick your trade above.');
+    });
+  });
+
 
   describe('matchTrades querying', () => {
     it('finds glass-related trades when searching "glass"', () => {

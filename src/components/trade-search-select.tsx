@@ -10,6 +10,7 @@ export type TradeSearchSelectProps = {
   value: string; // Trade slug or ''
   onChange: (slug: string) => void;
   businessName?: string;
+  initialTrade?: string | null;
   placeholder?: string;
   disabled?: boolean;
   autoFocus?: boolean;
@@ -73,12 +74,67 @@ export function inferTradeFromBusinessName(businessName?: string | null): Trade 
   return null;
 }
 
+export type AutoSuggestDecision =
+  | { action: 'set'; slug: string; name: string }
+  | { action: 'clear' }
+  | { action: 'none' };
+
+/**
+ * Pure decision function for trade auto-suggestion from business name.
+ * Respects all 4 conditions from the liveness plan:
+ * 1. Never overwrites a manually chosen trade.
+ * 2. Never auto-fills after user has touched/interacted with the trade box.
+ * 3. Never auto-fills if an explicit initial trade was provided (e.g. from URL ?trade=).
+ * 4. Only auto-fills if inferTradeFromBusinessName returns non-null.
+ * Also ensures clearing the business name clears an auto-fill, but never a manual pick.
+ */
+export function resolveTradeAutoSuggest({
+  businessName,
+  currentValue,
+  isAutoFilled,
+  userTouched,
+  hasInitialTrade,
+}: {
+  businessName: string;
+  currentValue: string;
+  isAutoFilled: boolean;
+  userTouched: boolean;
+  hasInitialTrade: boolean;
+}): AutoSuggestDecision {
+  if (userTouched || hasInitialTrade) return { action: 'none' };
+
+  const trimmedName = businessName.trim();
+  if (!trimmedName) {
+    return isAutoFilled ? { action: 'clear' } : { action: 'none' };
+  }
+
+  // Never overwrite an already chosen manual trade
+  if (currentValue !== '' && !isAutoFilled) {
+    return { action: 'none' };
+  }
+
+  const inferred = inferTradeFromBusinessName(trimmedName);
+  if (inferred) {
+    if (currentValue !== inferred.slug) {
+      return { action: 'set', slug: inferred.slug, name: inferred.name };
+    }
+    return { action: 'none' };
+  }
+
+  if (isAutoFilled) {
+    return { action: 'clear' };
+  }
+
+  return { action: 'none' };
+}
+
 export default function TradeSearchSelect({
   id = 'wf-trade',
   name = 'trade',
   value,
   onChange,
   businessName = '',
+  initialTrade,
   placeholder = 'Search your trade (e.g. Plumber, HVAC, Glass)…',
   disabled = false,
   autoFocus = false,
@@ -88,6 +144,16 @@ export default function TradeSearchSelect({
   const listboxId = useId();
   const inputRef = useRef<HTMLInputElement>(null);
   const blurTimerRef = useRef<number | null>(null);
+
+  // Track if user has touched (interacted with) trade search input directly
+  const userTouchedRef = useRef(false);
+  // Track if trade was auto-filled via business name
+  const [isAutoFilled, setIsAutoFilled] = useState(false);
+  const isAutoFilledRef = useRef(false);
+  isAutoFilledRef.current = isAutoFilled;
+
+  // Track if an explicit initial trade was provided on mount
+  const hadInitialTradeRef = useRef(Boolean(initialTrade || value));
 
   // Find currently selected trade object
   const selectedTrade = useMemo(() => {
@@ -105,6 +171,33 @@ export default function TradeSearchSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
+  // Auto-fill trade guess from businessName (debounced ~250ms)
+  useEffect(() => {
+    if (userTouchedRef.current || hadInitialTradeRef.current) return;
+
+    const timer = setTimeout(() => {
+      const decision = resolveTradeAutoSuggest({
+        businessName,
+        currentValue: value,
+        isAutoFilled: isAutoFilledRef.current,
+        userTouched: userTouchedRef.current,
+        hasInitialTrade: hadInitialTradeRef.current,
+      });
+
+      if (decision.action === 'set') {
+        setIsAutoFilled(true);
+        onChange(decision.slug);
+        setInputValue(decision.name);
+      } else if (decision.action === 'clear') {
+        setIsAutoFilled(false);
+        onChange('');
+        setInputValue('');
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [businessName, value, onChange]);
+
   // Keep inputValue in sync if value changes externally
   useEffect(() => {
     if (selectedTrade) {
@@ -116,6 +209,7 @@ export default function TradeSearchSelect({
       }
     }
   }, [value, selectedTrade]);
+
 
   // Build the list of trade options based on query
   const query = inputValue.trim();
@@ -166,6 +260,8 @@ export default function TradeSearchSelect({
   }, [query, selectedTrade, matchingTrades, inferredTrade, popularTrades, value]);
 
   function handleSelect(item: SuggestionItem) {
+    userTouchedRef.current = true;
+    setIsAutoFilled(false);
     if (item.type === 'something_else') {
       onChange('');
       setInputValue('Something else');
@@ -178,6 +274,8 @@ export default function TradeSearchSelect({
   }
 
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
+    userTouchedRef.current = true;
+    setIsAutoFilled(false);
     const next = event.target.value;
     setInputValue(next);
     setIsOpen(true);
@@ -222,12 +320,26 @@ export default function TradeSearchSelect({
   function handleClear(event: React.MouseEvent) {
     event.preventDefault();
     event.stopPropagation();
+    userTouchedRef.current = true;
+    setIsAutoFilled(false);
     onChange('');
     setInputValue('');
     setIsOpen(true);
     setHighlightedIndex(-1);
     inputRef.current?.focus();
   }
+
+  function handleClearGuess(event: React.MouseEvent) {
+    event.preventDefault();
+    event.stopPropagation();
+    userTouchedRef.current = true;
+    setIsAutoFilled(false);
+    onChange('');
+    setInputValue('');
+    setIsOpen(true);
+    inputRef.current?.focus();
+  }
+
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
     if (!isOpen) {
@@ -488,6 +600,21 @@ export default function TradeSearchSelect({
           })}
         </div>
       )}
+
+      {isAutoFilled && selectedTrade && (
+        <p className="welcome-guess" aria-live="polite">
+          <span className="sr-only">Trade set to {selectedTrade.name} based on business name. </span>
+          <span>Guessed from your business name. Not right? </span>
+          <button
+            type="button"
+            className="welcome-guess-clear"
+            onClick={handleClearGuess}
+          >
+            Pick your trade above.
+          </button>
+        </p>
+      )}
     </div>
   );
 }
+

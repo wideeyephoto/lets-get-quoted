@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: 7dbbe4b8cdcb6b58
+   source-sha256: 9d4fd4e4d4698a18
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -9678,7 +9678,256 @@ li+li {
   }
 }
 
+.auth-form .welcome-guess {
+  margin: 0.35rem 0 0;
+  font-size: 0.8rem;
+  font-weight: normal;
+  text-transform: none;
+  letter-spacing: normal;
+  color: var(--mute-t62);
+  line-height: 1.4;
+  cursor: default;
+}
+
+.auth-form .welcome-guess-clear {
+  display: inline;
+  padding: 0;
+  margin-left: 0.25rem;
+  background: none;
+  border: none;
+  color: var(--gold-ink);
+  font-size: inherit;
+  font-weight: 500;
+  font-family: inherit;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.auth-form .welcome-guess-clear:hover {
+  color: var(--accent-2);
+}
+
+.welcome-zip-echo {
+  color: var(--tint);
+}
+
+.welcome-zip-echo strong {
+  color: var(--gold-ink);
+  font-weight: 600;
+}
+
+.hero-card.auth-card.welcome-card {
+  max-width: 960px;
+  width: 100%;
+}
+
+.welcome-split {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+  margin-top: 1rem;
+}
+
+@media (min-width: 900px) {
+  .welcome-split {
+    grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+    align-items: start;
+    gap: 2.5rem;
+  }
+}
+
+.welcome-preview-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  padding: 1.5rem;
+  background: var(--surface-1, rgba(255, 255, 255, 0.03));
+  border: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.1));
+  border-radius: 12px;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.25);
+}
+
+.welcome-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.welcome-preview-badge {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(var(--tint), 0.08);
+  color: var(--mute-t62);
+  border: 1px solid rgba(var(--tint), 0.12);
+}
+
+.welcome-preview-mark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  background: var(--gold-ink, #d97706);
+  color: #0b0f19;
+}
+
+.welcome-preview-glyph {
+  width: 20px;
+  height: 20px;
+}
+
+.welcome-preview-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.welcome-preview-company {
+  font-family: var(--font-forge-display, Anton, sans-serif);
+  font-size: 1.65rem;
+  line-height: 1.2;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--tint);
+  word-break: break-word;
+  min-height: 2rem;
+}
+
+.welcome-preview-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-family: var(--font-forge-body, Barlow, sans-serif);
+  font-size: 0.92rem;
+  color: var(--mute-t62);
+}
+
+.welcome-preview-trade-work {
+  font-weight: 500;
+  color: rgba(var(--tint), 0.85);
+  text-transform: capitalize;
+}
+
+.welcome-preview-city {
+  color: var(--mute-t55);
+}
+
+.welcome-preview-footer {
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule-t12, rgba(255, 255, 255, 0.08));
+  font-size: 0.75rem;
+  color: var(--mute-t45);
+}
+
+.welcome-preview-skeleton {
+  background: rgba(var(--tint), 0.08);
+  border-radius: 4px;
+}
+
+.welcome-preview-skeleton-title {
+  width: 70%;
+  height: 1.8rem;
+}
+
+.welcome-preview-skeleton-text {
+  width: 50%;
+  height: 1rem;
+}
+
+.welcome-preview-skeleton-city {
+  width: 40%;
+  height: 1rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-preview-company,
+  .welcome-preview-trade-work,
+  .welcome-preview-city {
+    transition: opacity 0.25s ease-out;
+  }
+}
+
+.welcome-site-reveal {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-site-reveal-bar {
+  position: sticky;
+  top: 0;
+  z-index: 1000;
+  background: rgba(15, 23, 42, 0.95);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f8fafc;
+  padding: 0.75rem 1.25rem;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.welcome-site-reveal-bar-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.welcome-site-reveal-bar-text {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.45;
+  color: rgba(248, 250, 252, 0.85);
+  max-width: 680px;
+}
+
+.welcome-site-reveal-bar-text strong {
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.welcome-site-reveal-bar-actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-shrink: 0;
+}
+
+.welcome-site-reveal-cta {
+  font-size: 0.88rem;
+  padding: 0.45rem 1rem;
+}
+
+.welcome-site-reveal-skip {
+  font-size: 0.84rem;
+  color: rgba(248, 250, 252, 0.7);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.welcome-site-reveal-skip:hover {
+  color: #ffffff;
+}
+
+.welcome-site-reveal-frame {
+  flex: 1;
+}
+
 .auth-divider {
+
   display: flex;
   align-items: center;
   gap: .75rem;
