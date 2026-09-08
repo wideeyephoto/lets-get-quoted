@@ -143,6 +143,8 @@ import {
 
 export const metadata = { title: 'Job' };
 
+import OfficeJobDetail from './OfficeJobDetail';
+
 export default async function JobDetailPage({
   params: paramsPromise,
   searchParams: searchParamsPromise,
@@ -156,7 +158,7 @@ export default async function JobDetailPage({
   const layoutCookie = cookieStore.get(JOB_DETAIL_LAYOUT_COOKIE)?.value;
   const layout = normalizeJobDetailLayout(searchParams.view || layoutCookie);
 
-  const { supabase, accountId, role } = await requireOfficeContext('jobs.read', 'clients.read');
+  const { supabase, accountId, role, capabilities } = await requireOfficeContext('jobs.read', 'clients.read');
 
   const job = await getJob(supabase, accountId, params.id);
 
@@ -173,7 +175,11 @@ export default async function JobDetailPage({
     );
   }
 
-  const costs = role === 'owner' ? await listCosts(supabase, accountId, job.id) : [];
+  if (role !== 'owner') {
+    return <OfficeJobDetail job={job} canSchedule={capabilities.has('schedule.write')} />;
+  }
+
+  const costs = await listCosts(supabase, accountId, job.id);
   const margin = computeMargin(job, costs);
   const changeOrders = await listChangeOrders(supabase, accountId, job.id);
   const [selections, selectionTemplates, lastSelectionSent] = await Promise.all([

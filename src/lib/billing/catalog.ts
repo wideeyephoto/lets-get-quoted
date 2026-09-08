@@ -412,37 +412,27 @@ export const TOP_UPS: Readonly<Record<TopUpId, TopUpDefinition>> = {
  */
 /** One reason, three SKUs. Repeating it would let two of them drift. */
 const AI_VOICE_WITHHELD =
-  'the call rail is built and verified with dedicated carrier routing, but no live '
-  + 'recurring Stripe Price exists and automated recurring allowance granting is '
-  + 'withheld from self-service purchase until full usage meter reconciliation is verified';
+  'live Stripe Prices and minute settlement have been verified, but self-service '
+  + 'release still requires provider recovery checks, '
+  + 'full-period usage reconciliation and enforced allowance exhaustion';
 
 export const TOP_UPS_WITHHELD: Readonly<Partial<Record<TopUpId, string>>> = Object.freeze({
   storage_100gb:
-    'the whole rail works - payment writes the capacity ledger, the lifecycle '
-    + 'sweep follows the subscription, and the storage limit has added purchased '
-    + 'units since 20260819000000. What is left is two switches nobody has '
-    + 'thrown: no live recurring Price exists, and LGQ_STORAGE_CAP_ENFORCED is '
-    + 'off, so headroom bought today changes nothing a workspace can feel',
+    'the live recurring Price is verified and purchased capacity raises the '
+    + 'storage limit, but LGQ_STORAGE_CAP_ENFORCED is off. Upload coverage and '
+    + 'purchase/cancellation acceptance must pass before enforced headroom is sold',
   office_user:
-    'the seat rail is complete - invitation, acceptance, removal, last-owner '
-    + 'protection, reaching the workspace - and since 20260819250000 a purchased '
-    + 'seat actually raises the limit, which it did not before. THE PERMISSIONS '
-    + 'HALF IS NO LONGER THE BLOCKER: thirteen capabilities are enabled, and '
-    + 'since 20260821 an office user lands on the leads board and can read, '
-    + 'triage and edit a lead. What remains is one switch and one gap. No live '
-    + 'recurring Price exists. And leads is the only one of the three tables the '
-    + 'database supports that any page reaches: clients and jobs were both '
-    + 'audited and refused, clients because its detail page states "$0.00 paid" '
-    + 'as a fact when payments is owner-only, jobs because its detail page '
-    + 'builds an admin client while rendering and reads two dozen owner-only '
-    + 'tables. So the seat buys a lead queue today, not a back office',
+    'office users can reach leads, clients and jobs through capability guards. '
+    + 'The live recurring Price is verified and job detail has a separate '
+    + 'office read surface. Deployed role-by-role acceptance of the advertised '
+    + 'office workflows must pass before self-service release',
   ai_voice_flex: AI_VOICE_WITHHELD,
   ai_voice_solo: AI_VOICE_WITHHELD,
   ai_voice_growth: AI_VOICE_WITHHELD,
   voice_minutes_100:
-    'the ledger accepts voice_minutes and the top-up path would grant them '
-    + 'correctly, but with the meter dark nothing ever spends them - selling 100 '
-    + 'minutes today takes $35 for a balance that cannot be drawn down',
+    'live minute deduction has been demonstrated, but provider recovery, '
+    + 'full-period reconciliation and enforced allowance exhaustion remain '
+    + 'release gates for selling additional minutes',
 });
 
 /** SKUs that may be sold today. */

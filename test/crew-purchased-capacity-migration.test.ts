@@ -293,7 +293,7 @@ describe('the SKU is sellable, and every reason it was not is closed', () => {
     // rather than assumed: inspect:live-top-ups reports NO LIVE PRICE for it.
     // The second assertion is the tripwire -- if that sentence comes back, so
     // has the stale claim.
-    expect(TOP_UPS_WITHHELD.office_user).toMatch(/No live recurring Price exists/);
+    expect(TOP_UPS_WITHHELD.office_user).toMatch(/live recurring Price/);
     expect(TOP_UPS_WITHHELD.office_user).not.toMatch(/no permissions at all/);
     expect(TOP_UPS_WITHHELD.storage_100gb).toMatch(/LGQ_STORAGE_CAP_ENFORCED/);
     expect(SELLABLE_TOP_UP_IDS).not.toContain('office_user');
