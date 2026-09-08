@@ -159,7 +159,11 @@ try {
     join(process.cwd(), 'migrations/20260906131500_messaging_registry_callback_fail_closed.sql'),
     'utf8',
   ));
-  check('SMS durability, routing, Campaign STOP, dispatch sender, purpose boundary, and callback quarantine reapply', true);
+  await client.query(readFileSync(
+    join(process.cwd(), 'migrations/20260908173107_sms_dispatch_help_account_binding.sql'),
+    'utf8',
+  ));
+  check('SMS durability, routing, Campaign STOP, dispatch sender, purpose boundary, callback quarantine, and HELP binding reapply', true);
 
   const tables = await client.query(
     `select tablename from pg_catalog.pg_tables
