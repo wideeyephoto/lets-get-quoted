@@ -539,11 +539,14 @@ describe('rendering an answer', () => {
     expect(fSwml.sections.main[1].connect.from).toBe('+15559876543');
     expect(fSwml.sections.main[1].connect.timeout).toBe(20);
     expect(fSwml.sections.main[1].connect.status_url).toBe('https://x.test/s');
-    expect(fSwml.sections.main[2].play.url).toContain('say:');
-    expect(fSwml.sections.main[3]).toEqual({ record: expect.objectContaining({
+    expect(fSwml.sections.main[2].switch.variable).toBe('connect_result');
+    expect(Object.keys(fSwml.sections.main[2].switch.case)).toEqual(['failed']);
+    expect(fSwml.sections.main[2].switch.default).toEqual([]);
+    expect(fSwml.sections.main[2].switch.case.failed[0].play.url).toContain('say:');
+    expect(fSwml.sections.main[2].switch.case.failed[1]).toEqual({ record: expect.objectContaining({
       beep: true, max_length: 120, direction: 'speak',
     }) });
-    expect(fSwml.sections.main[4]).toEqual({ hangup: {} });
+    expect(fSwml.sections.main.slice(3)).toEqual([{ hangup: {} }]);
 
     const decline = provider.renderAnswer({
       kind: 'unavailable', message: 'Sorry, we are closed.',
@@ -574,6 +577,7 @@ describe('rendering an answer', () => {
       capMinutes: 10,
       transferTo: '+15558889999',
       transferStatusUrl: 'https://x.test/api/voice/ai/status',
+      recordingStatusUrl: 'https://x.test/api/voice/recording-status',
     });
     const parsed = JSON.parse(aiAnswer.body);
     const aiSection = parsed.sections.main.find((s: Record<string, unknown>) => 'ai' in s);
@@ -588,11 +592,15 @@ describe('rendering an answer', () => {
     expect(transferMain[0].connect.max_duration).toBe(598);
     expect(transferMain[0].connect.status_url).toBe('https://x.test/api/voice/ai/status');
     expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
-    expect(transferMain[1].play.url).toContain('say:');
-    expect(transferMain[2]).toEqual({ record: expect.objectContaining({
+    expect(transferMain[1].switch.variable).toBe('connect_result');
+    expect(Object.keys(transferMain[1].switch.case)).toEqual(['failed']);
+    expect(transferMain[1].switch.default).toEqual([]);
+    expect(transferMain[1].switch.case.failed[0].play.url).toContain('say:');
+    expect(transferMain[1].switch.case.failed[1]).toEqual({ record: expect.objectContaining({
       beep: true, max_length: 120, direction: 'speak',
+      status_url: 'https://x.test/api/voice/recording-status',
     }) });
-    expect(transferMain[3]).toEqual({ hangup: {} });
+    expect(transferMain.slice(2)).toEqual([{ hangup: {} }]);
   });
 
   it('parses structured JSON post prompt data into receipt.structuredPostPrompt', () => {
