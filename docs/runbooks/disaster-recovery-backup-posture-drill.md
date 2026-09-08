@@ -1,7 +1,7 @@
 # Disaster Recovery & Backup Posture Drill — Execution Checklist
 
 **Status:** PLANNED — never executed
-**Target:** PostgreSQL 17.6.1, Supabase project `mfuvvtrkipkigwqqtcal` (`us-west-2`), 8 storage buckets
+**Target:** PostgreSQL 17.6.1, Supabase project `mfuvvtrkipkigwqqtcal` (`us-west-2`), 7 storage buckets (an 8th appears on first use — §0.1)
 **Supersedes the sign-off claims in:** [backup-posture.md](../backup-posture.md), [disaster-recovery-pitr-drill.md](./disaster-recovery-pitr-drill.md)
 **Written:** 2026-09-08
 
@@ -17,9 +17,31 @@ Verified against the tree today. Read this before trusting any existing DR docum
 | "RPO ≤ 1 hour" | `backup-posture.md` §1 | **Unknown.** With no hourly dump, RPO rests entirely on Supabase PITR. PITR is a paid add-on; nothing in the repo proves it is enabled. Without it, the managed daily backup puts RPO at **24 hours**, not 1. |
 | "RTO ≤ 30 minutes … verified clean restore … in < 5 minutes on scratch database" | `backup-posture.md` §1, runbook §3 | **No restore has ever been run.** No output, no timing log, no scratch project ID, no reconciled counts anywhere in the repo. |
 | "Verified via `test/disaster-recovery-restore-drill.test.ts` (4/4 passing)" | `LAUNCH_CHECKLIST.md` §611-616, §649-653 | 108 lines of mocks that restore nothing and assert literals against themselves (`expect(mockPayment.platform_fee).toBe(3.63)`). It is green and will stay green through total data loss. |
-| "7 Managed Buckets" | `backup-posture.md` header, runbook §2 | **8 buckets.** `tool-photos` ([tool-photo-validation.ts:1](../../src/lib/tool-photo-validation.ts#L1)) is created and written by [inventory/actions.ts](../../src/app/dashboard/inventory/actions.ts) and is absent from the DR inventory, from `KNOWN_STORAGE_BUCKETS` ([account-deletion-saga.ts:6](../../src/lib/account-deletion-saga.ts#L6)) and from `METERED_STORAGE_BUCKETS` ([storage-usage.ts:34](../../src/lib/billing/storage-usage.ts#L34)). A ninth, `voice-recordings`, is named in the admin manual with no code path — confirm whether it exists in production. |
+| "7 Managed Buckets" | `backup-posture.md` header, runbook §2 | True **today** (measured — see §0.1), but latently wrong. An 8th, `tool-photos` ([tool-photo-validation.ts:1](../../src/lib/tool-photo-validation.ts#L1)), is lazily created by [inventory/actions.ts](../../src/app/dashboard/inventory/actions.ts) on first upload and does not exist yet. When it appears it will be `public: true`, absent from `KNOWN_STORAGE_BUCKETS` ([account-deletion-saga.ts:6](../../src/lib/account-deletion-saga.ts#L6)) so account closure never deletes it, absent from `METERED_STORAGE_BUCKETS` ([storage-usage.ts:34](../../src/lib/billing/storage-usage.ts#L34)) so it is never charged or capacity-guarded, and absent from the DR inventory. `voice-recordings` is **admin-manual fiction** — no such bucket, resolved. |
+| "Validate … `quotes`" and "`crew_members`" | `backup-posture.md` §3.3, runbook §2.3, `LAUNCH_CHECKLIST.md` §21 P0 gate, and `coreTables` in `run-pitr-restore-drill.mjs` | **Neither table exists.** `public.quotes` and `public.crew_members` are not in production; the quote-ish table is `estimate_offers`. The runner fails its `core_tables_presence` check when a table is missing, so **the drill runner reports FAILED on a perfect restore** — and the P0 gate instructs the operator to reconcile counts on a table that has never existed. |
 | "`node scripts/run-pitr-restore-drill.mjs --target=…`" | runbook §2 Phase 2 | The runner exists and connects, but contains **no reference to `SCRATCH_DATABASE_URL`**, the variable its own runbook says the drill needs. Never invoked against a real database. |
-| "automated backups" sold to customers | [security/page.tsx:48](../../src/app/security/page.tsx#L48) | Customer-facing durability claim standing on all of the above. Seven of the eight buckets hold homeowner property photos and contractor insurance documents. |
+| "automated backups" sold to customers | [security/page.tsx:48](../../src/app/security/page.tsx#L48) | Customer-facing durability claim standing on all of the above. Five of the seven buckets hold homeowner property photos and contractor insurance documents. |
+
+### §0.1 — Measured production baseline
+
+Read-only, from `db.mfuvvtrkipkigwqqtcal.supabase.co`, **2026-09-08, 18:2xZ**. This is the reconciliation baseline for §3 B4 and the scale the restore must reproduce. Re-measure immediately before the drill; these are recorded so a later run can show drift.
+
+| Dimension | Measured |
+| :--- | :--- |
+| `public` base tables | 226 |
+| RLS policies (`public`) | 271 |
+| Tables with FORCE RLS | 59 |
+| Functions (`public`) | 410 |
+| Extensions | 5 — `plpgsql`, `pgcrypto`, `uuid-ossp`, `pg_stat_statements`, **`supabase_vault` 0.3.1 in schema `vault`** |
+| `auth.users` | 12 |
+| `accounts` / `memberships` / `staff` | 11 / 8 / 2 |
+| `clients` / `jobs` | 961 / 691 |
+| `invoices` / `payments` | 273 / 282 |
+| Storage buckets | 7 (`site-images` and `site-videos` are `public: true`) |
+| Storage objects / bytes | **38 objects, 35,726,922 bytes (34.07 MB)** |
+| Storage meter agreement | **Exact.** `workspace_storage_usage` reports the same 38 objects and 35,726,922 bytes across 11 workspaces, last swept 18:17:19Z. This rail is genuinely green. |
+
+**The planning conclusion this forces:** at 34 MB of blobs and under a thousand rows in the largest table, **restore time is not a data-volume problem.** Nothing here takes minutes to copy. The entire RTO will be consumed by schema, ownership, extension ordering and permission errors — 226 tables, 410 functions, 271 policies and `supabase_vault`. Optimizing for transfer speed would be optimizing the wrong thing; the drill's value is the error log in §3 B3, not the clock.
 
 **Also true and load-bearing:** `pg_dump`, `pg_restore` and `psql` are **not installed on this machine**. `node_modules/@embedded-postgres/windows-x64/native/bin/` ships `initdb.exe`, `pg_ctl.exe` and `postgres.exe` only. The drill's central command cannot run until client tooling is installed. That is blocker B1.
 
@@ -46,7 +68,8 @@ The restore half is worthless if there is nothing to restore from. Do this phase
 - [ ] **A5 — Prove the backup is readable, not merely present.** A backup never decompressed is a hypothesis. `pg_restore --list` the archive (or take a fresh dump) and confirm the table of contents is intact and non-empty. **PASS =** a TOC line count.
 - [ ] **A6 — Confirm the dump scope covers `auth` and `storage`.** A `public`-only dump loses `auth.users`, which makes every workspace unrecoverable no matter how clean the `public` restore looks. Highest-consequence check in the phase. **PASS =** the TOC names objects in `auth`, `storage` *and* `public`.
 - [ ] **A7 — Storage blobs are not in the database dump.** `storage.objects` rows are metadata pointing at bytes held by the Storage service; restoring the database yields rows whose blobs do not exist. Establish whether any blob-level backup exists at all. **PASS =** either a located blob backup with a proven object count, or a written statement that **file assets have no independent backup** — which, if true, is a finding, not a checklist item.
-- [ ] **A8 — Correct the bucket inventory to 8.** Add `tool-photos`. Resolve `voice-recordings` against `storage.buckets` (real, or admin-manual fiction). While there: `tool-photos` is `public: true`, is not deleted on account closure, and is not metered — three defects sharing one root cause. Log them; fix the closure gap regardless of the drill outcome.
+- [x] **A8 — Bucket inventory resolved (2026-09-08).** Production holds **7** buckets; `voice-recordings` does not exist and the admin-manual entry naming it is fiction. The count in `backup-posture.md` is therefore accurate *today*. **But `tool-photos` is a bucket waiting to happen:** [tool-photo-storage.ts:21](../../src/lib/tool-photo-storage.ts#L21) creates it on the first inventory upload, `public: true`, and it is in neither `KNOWN_STORAGE_BUCKETS` nor `METERED_STORAGE_BUCKETS`. The instant a contractor uploads a tool photo, the platform gains a public bucket that account closure will not delete, the meter will not charge, and this runbook does not cover. **Fix the two lists now**, before the bucket exists — it is a one-line change today and a data-deletion incident later.
+- [ ] **A9 — Re-check the bucket count as a standing item, not a one-off.** Lazy `createBucket` means the inventory can grow without a migration, a deploy, or a review. Any check that hard-codes "7" will be wrong silently. **PASS =** the drill reads `storage.buckets` at run time rather than trusting a constant.
 
 ---
 
@@ -57,11 +80,11 @@ The restore half is worthless if there is nothing to restore from. Do this phase
 - [ ] **B1 — Record the recovery point.** UTC timestamp or archive filename, chosen before restoring, written down.
 - [ ] **B2 — Restore into the scratch target.** `pg_restore --clean --if-exists --no-owner --no-privileges -d "$SCRATCH_DATABASE_URL" <archive>` — expect the first attempt to fail. The Supabase-flavored archive carries `supabase_auth_admin` / `supabase_storage_admin` objects and extension ordering that is exactly the shape that breaks on a foreign target. **Capture every error, not just the last.** **PASS =** exit status plus a complete error log, retained even on success.
 - [ ] **B3 — Log each remediation as a step in the real RTO.** Missing roles, missing extensions (`pgcrypto`, `pg_net`, `uuid-ossp`, and any vector/cron extension present), `search_path` assumptions, `plpgsql` ownership. Each is a step a human performs at 3am under load. **PASS =** an ordered remediation list a second person could follow.
-- [ ] **B4 — Reconcile row counts against the production snapshot.** At minimum `accounts`, `memberships`, `staff`, `clients`, `jobs`, `quotes`, `invoices`, `payments`, `auth.users`. Do not accept "no error" as evidence — a zero-row read returns no error, and that pattern sits behind most of this repo's false green. **PASS =** a two-column table, source vs restored, with every delta explained.
+- [ ] **B4 — Reconcile row counts against the production snapshot.** Use the §0.1 baseline: `accounts`, `memberships`, `staff`, `clients`, `jobs`, `invoices`, `payments`, `auth.users`, plus `estimate_offers`. **Do not reconcile `quotes` or `crew_members`** — they do not exist, whatever the older DR docs and the P0 gate say. Do not accept "no error" as evidence — a zero-row read returns no error, and that pattern sits behind most of this repo's false green. **PASS =** a two-column table, source vs restored, with every delta explained.
 - [ ] **B5 — Verify the 320 migrations landed as objects, not as a number.** Compare the `information_schema` function/table/index inventory against source. A matching migrations-table count proves nothing about function bodies. Cross-check with `npm run audit:applied` — the *applied* audit, not the ordering one, which passes on a database missing its foundation.
 - [ ] **B6 — Verify RLS survived.** Policies and `FORCE ROW LEVEL SECURITY` are the tenancy boundary, and `--no-privileges` is precisely the flag most likely to drop them. Count `pg_policies` rows and `relforcerowsecurity` tables on both sides. **PASS =** exact parity, per table.
 - [ ] **B7 — Verify grants did not default open.** New objects are anon-accessible by default in this project — the revoke *is* the security. Assert `anon` has no EXECUTE on service-only functions and no write on public tables in the restored database. **PASS =** an explicit denial per rail, not an absence of error.
-- [ ] **B8 — Run the drill runner and keep its JSON.** `node scripts/run-pitr-restore-drill.mjs --target="$SCRATCH_DATABASE_URL"`. Its FK-orphan and count checks become genuinely useful once pointed at a real database. **PASS =** the emitted report, dated, committed to the drill record.
+- [ ] **B8 — Fix the drill runner's table list before running it.** Its `coreTables` array asserts `quotes`, which does not exist, so it reports `core_tables_presence: failed` on a flawless restore. Replace `quotes` with `estimate_offers` (and confirm the rest against §0.1) *first* — otherwise the drill's first real execution produces a false failure, and someone will spend the incident debugging the checker. Then run `node scripts/run-pitr-restore-drill.mjs --target="$SCRATCH_DATABASE_URL"`; its FK-orphan and count checks are genuinely useful once pointed at a real database. **PASS =** the emitted report, dated, committed to the drill record.
 - [ ] **B9 — Stop the stopwatch and write the number.** That is the RTO. Whatever it is, it replaces the 30-minute claim.
 
 ---
@@ -70,8 +93,8 @@ The restore half is worthless if there is nothing to restore from. Do this phase
 
 The database half is the easy half. Seven buckets hold the evidence contractors are legally required to keep and homeowner property photos they cannot re-take.
 
-- [ ] **C1 — Count objects per bucket in production.** All 8: `insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`, `tool-photos`. Query `storage.objects` grouped by `bucket_id` — the same source the storage meter uses. **PASS =** a per-bucket object count and total bytes.
-- [ ] **C2 — Restore or mirror blobs into the scratch environment** for at least one bucket end to end. If no blob backup exists (A7), this step converts into: *measure how long a full re-mirror from production would take*, which is the true storage RTO.
+- [x] **C1 — Count objects per bucket in production.** Done 2026-09-08: `site-videos` 3 / 16.93 MB, `site-images` 11 / 7.79 MB, `crew-photos` 2 / 5.02 MB, `lead-photos` 12 / 2.35 MB, `insurance-proof` 1 / 1.37 MB, `job-photos` 9 / 0.61 MB, `account-attachments` 0 / empty. **Total 38 objects, 34.07 MB.** Re-measure before the drill.
+- [ ] **C2 — Mirror every bucket, not a sample.** At 34 MB total this is small enough to copy in full in seconds, so there is no reason to prove one bucket and extrapolate. If no blob backup exists (A7), a full re-mirror from production *is* the recovery procedure, and at this size it is cheap — write it down as such. **Note the asymmetry:** `insurance-proof` holds a single object, but it is a contractor's liability document, and `job-photos`/`lead-photos` are homeowner property photos that cannot be re-taken. Object count is not importance.
 - [ ] **C3 — Prove a signed URL resolves to real bytes.** Generate a signed URL against a restored object and fetch it. **PASS =** HTTP 200 and a byte length matching the source; a 200 on a zero-byte object is a failure.
 - [ ] **C4 — Verify tenant partitioning survived.** Object paths are `${accountId}/${uuid}.${ext}`. Confirm no object landed under a different account prefix and that per-bucket RLS/access policies restored. **PASS =** a cross-tenant read attempt that is refused.
 - [ ] **C5 — Reconcile `workspace_storage_usage` after restore.** Run `reconcile_workspace_storage_usage_v1()` on the restored database and compare against production. A missing row means never swept, which is not zero. **PASS =** per-workspace byte parity, or an explained delta.
@@ -133,6 +156,8 @@ These are false today and remain false regardless of when the drill runs.
 - [ ] **H3 — Correct the `security/page.tsx` copy** to what is actually true after A1–A3. If PITR is on and verified, "automated backups" is defensible; if it is not, the sentence has to change.
 - [ ] **H4 — Untick the two completed sections in `LAUNCH_CHECKLIST.md`** (§611-616, §649-653) that certify this drill as done. Edit by hand carefully — the page-inventory generator truncates this file from section 14 down when it fails.
 - [ ] **H5 — Correct §443-444 of `platform-go-live-2026-09-08.md`,** which states "the backup half genuinely runs". The managed Supabase backup may run; the hourly encrypted offsite dump described in `backup-posture.md` does not exist.
+- [ ] **H6 — Purge the phantom tables from every DR document.** `quotes` and `crew_members` are named in `backup-posture.md` §3.3, `disaster-recovery-pitr-drill.md` §2.3, the `LAUNCH_CHECKLIST.md` §21 P0 gate, and the runner's `coreTables`. None of them exist. This is the tell that the whole DR record was written without ever being executed against the database it describes — a single run would have failed on the first one.
+- [ ] **H7 — Remove the `voice-recordings` bucket from the admin manual** ([admin-manual/index.ts:2192](../../src/lib/admin-manual/index.ts#L2192)). It hands an operator a `SELECT` against a bucket that does not exist, during a call-audio investigation, which is exactly when nobody has time to discover that.
 
 ---
 
