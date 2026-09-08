@@ -633,3 +633,9 @@
     display: none;
   }
 }
+
+/* Sunlight theme contrast protection */
+:global(:root[data-theme='sunlight']) .toggleOnlyAdvantage,
+:global(:root[data-theme='sunlight']) .toggleOnlyAdvantage span {
+  color: #d1e2eb !important;
+}

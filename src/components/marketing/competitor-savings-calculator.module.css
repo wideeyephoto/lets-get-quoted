@@ -461,3 +461,8 @@
   box-shadow: 0 8px 22px rgba(255, 106, 36, 0.45);
 }
 
+/* Sunlight theme contrast protection */
+:global(:root[data-theme='sunlight']) .controlLabel {
+  color: #d1e2eb !important;
+}
+

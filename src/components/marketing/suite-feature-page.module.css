@@ -489,3 +489,104 @@
   }
 }
 
+/* ==========================================================================
+   Theme Adaptations: Workbench (light) & Sunlight
+   ========================================================================== */
+
+:global(:root[data-theme='light']) .groupHead h3,
+:global(:root[data-theme='light']) .list strong,
+:global(:root[data-theme='light']) #screens-title,
+:global(:root[data-theme='light']) :global(.section-block) .shotsHead h2 {
+  color: #0f172a !important;
+}
+
+:global(:root[data-theme='light']) .groupHead span {
+  color: #c2410c !important;
+}
+
+:global(:root[data-theme='light']) .groupIntro,
+:global(:root[data-theme='light']) .list span,
+:global(:root[data-theme='light']) .total,
+:global(:root[data-theme='light']) :global(.section-block) .shotsHead > p {
+  color: #475569 !important;
+}
+
+:global(:root[data-theme='light']) .head > :global(.eyebrow),
+:global(:root[data-theme='light']) .shotsHead > :global(.eyebrow),
+:global(:root[data-theme='light']) :global(.section-block) :global(.eyebrow) {
+  color: #9a3412 !important;
+}
+
+:global(:root[data-theme='light']) .total a {
+  color: #c2410c !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotTitle {
+  color: #f3f4f6 !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotStep {
+  color: #ff9d5c !important;
+}
+
+:global(:root[data-theme='light']) :global(.section-block) .shotBody {
+  color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='light']) .faq details {
+  background: #1e2128 !important;
+  border-color: #2e3446 !important;
+}
+
+:global(:root[data-theme='light']) .faq summary {
+  color: #f3f4f6 !important;
+}
+
+:global(:root[data-theme='light']) .faq details > p {
+  color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='sunlight']) .groupHead h3,
+:global(:root[data-theme='sunlight']) .list strong,
+:global(:root[data-theme='sunlight']) .shotTitle,
+:global(:root[data-theme='sunlight']) #screens-title,
+:global(:root[data-theme='sunlight']) :global(.section-block) .shotsHead h2 {
+  color: #0f172a !important;
+}
+
+:global(:root[data-theme='sunlight']) .groupHead span,
+:global(:root[data-theme='sunlight']) .shotStep {
+  color: #c2410c !important;
+}
+
+:global(:root[data-theme='sunlight']) .groupIntro,
+:global(:root[data-theme='sunlight']) .list span,
+:global(:root[data-theme='sunlight']) .shotBody,
+:global(:root[data-theme='sunlight']) .total,
+:global(:root[data-theme='sunlight']) :global(.section-block) .shotsHead > p {
+  color: #475569 !important;
+}
+
+:global(:root[data-theme='sunlight']) .head > :global(.eyebrow),
+:global(:root[data-theme='sunlight']) .shotsHead > :global(.eyebrow),
+:global(:root[data-theme='sunlight']) :global(.section-block) :global(.eyebrow) {
+  color: #9a3412 !important;
+}
+
+:global(:root[data-theme='sunlight']) .total a {
+  color: #c2410c !important;
+}
+
+:global(:root[data-theme='sunlight']) .faq details {
+  background: #ffffff !important;
+  border-color: #cbd5e1 !important;
+}
+
+:global(:root[data-theme='sunlight']) .faq summary {
+  color: #090d16 !important;
+}
+
+:global(:root[data-theme='sunlight']) .faq details > p {
+  color: #334155 !important;
+}
+
