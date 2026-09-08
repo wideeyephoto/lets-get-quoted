@@ -1257,6 +1257,51 @@ export async function sendSendingDomainFailedEmail(input: {
   }
 }
 
+/**
+ * Sent once, on the transition from pending to connected — the stamp itself is
+ * the dedupe, because a row can only be promoted once. The reconciler is the
+ * only caller: an owner who clicks "Check connection" and watches it succeed
+ * has already been told by the page in front of them.
+ */
+export async function sendCustomDomainConnectedEmail(input: {
+  recipientEmail: string;
+  businessName: string;
+  domain: string;
+  accountId?: string;
+  siteUrl: string;
+  settingsUrl: string;
+}): Promise<void> {
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error('Email provider is not configured.');
+  }
+
+  const brand = await brandFor(input);
+  const result = await resend.emails.send({
+    from: "Let's Get Quoted <hello@letsgetquoted.com>",
+    to: input.recipientEmail,
+    subject: `${input.domain} is live`,
+    html: renderBrandedEmail({
+      brand,
+      preheader: `Your website is now serving on ${input.domain}`,
+      eyebrow: 'Your domain is connected',
+      heading: 'Your website is live on your own domain',
+      paragraphs: [
+        `The certificate for ${input.domain} has finished provisioning, so your website is now served securely on your own domain. There is nothing left for you to do.`,
+        'You can put this address on your truck, your cards and your invoices. Your free subdomain keeps working too, so anything already printed still reaches you.',
+      ],
+      cta: { label: `Visit ${input.domain}`, url: input.siteUrl },
+      footerHtml: `<p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:#6b7280">Manage this domain any time in <a href="${escapeHtml(input.settingsUrl)}" style="color:#6b7280">your website settings</a>.</p>`,
+    }),
+    reply_to: 'hello@letsgetquoted.com',
+    tags: defaultTags('custom_domain_connected', brand, input.accountId),
+  });
+
+  if (result.error) {
+    console.error('Failed to send custom-domain connected email:', result.error);
+    throw new Error(result.error.message);
+  }
+}
+
 export async function sendDailyDigestEmail(input: {
   accountId: string;
   recipientEmail: string;

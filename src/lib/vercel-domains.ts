@@ -109,6 +109,34 @@ export async function getVercelDomainConfig(domain: string): Promise<VercelDomai
   };
 }
 
+/**
+ * Every domain currently attached to the project, following pagination.
+ *
+ * Read by the orphan sweep: a binding whose site row is gone answers for a
+ * hostname nobody here owns any more, and there is no other way to see one.
+ * Bounded at ten pages so a paginating provider cannot spin this forever.
+ */
+export async function listProjectDomains(): Promise<string[] | null> {
+  if (!isVercelDomainProvisioningConfigured()) return null;
+  const names: string[] = [];
+  let since: number | undefined;
+  for (let page = 0; page < 10; page += 1) {
+    const query = `?limit=100${since ? `&until=${since}` : ''}`;
+    const result = await domainRequest<{
+      domains?: Array<{ name?: string }>;
+      pagination?: { next?: number | null };
+    }>(`${projectDomainPath()}${query}`);
+    if (!result) break;
+    for (const entry of result.domains ?? []) {
+      if (entry?.name) names.push(entry.name.toLowerCase());
+    }
+    const next = result.pagination?.next;
+    if (!next) break;
+    since = next;
+  }
+  return names;
+}
+
 export async function removeDomainFromVercel(domain: string): Promise<boolean> {
   if (!isVercelDomainProvisioningConfigured()) return false;
   try {
