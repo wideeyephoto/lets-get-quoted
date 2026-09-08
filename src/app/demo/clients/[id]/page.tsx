@@ -176,7 +176,7 @@ export default async function DemoClientDetailPage({ params: paramsPromise }: { 
               In your real account you can edit contact notes, dispatch jobs, and send automated review requests.
             </p>
             <div className="actions" style={{ marginTop: '1rem' }}>
-              <a href={APP_SIGNUP_URL} className="btn primary">Start Free Platform Trial</a>
+              <a href={APP_SIGNUP_URL} className="btn primary">Build my free site</a>
             </div>
           </div>
         </div>

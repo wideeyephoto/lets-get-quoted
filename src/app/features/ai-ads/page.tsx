@@ -107,7 +107,7 @@ export default function AiAdsFeaturePage() {
       ]}
       demo={<AiAdsSimulator />}
       primary={{ label: 'Launch My Campaign', href: '/dashboard/marketing/ads' }}
-      secondary={{ label: 'Start Free Platform Trial', href: 'https://app.letsgetquoted.com/start?goal=build_site&source=feature_page' }}
+      secondary={{ label: 'Start free on Flex', href: 'https://app.letsgetquoted.com/start?goal=build_site&source=feature_page' }}
       proof={PROOF}
       story={{
         eyebrow: 'HOW THE AUTOPILOT WORKS',

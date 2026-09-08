@@ -13,6 +13,17 @@ describe('Legal & Claims Substantiation Invariants', () => {
       /guarantees\s+100%\s+carrier\s+delivery/i,
       /100%\s+UPPA\s+compliant/i,
       /When\s+we\s+analyzed\s+the\s+contractors\s+with\s+the\s+highest\s+win\s+rates\s+on\s+Let's\s+Get\s+Quoted/i,
+      // There is no trial, and there cannot be one without a price-contract
+      // change: `trial_period_days` is rejected outright by
+      // stripe-plan-prices.ts and top-up-purchase.ts, and a Price carrying one
+      // fails the whole six-binding load rather than starting a trial. Flex is
+      // $0/month with no card and is the default plan for every new workspace,
+      // so "trial" both misdescribes the offer and implies an expiry that does
+      // not exist. Five CTAs carried this string until 2026-09-08 while nothing
+      // in test/ asserted anything about the word, so nothing stopped it
+      // returning. "Trial by jury" in terms/page.tsx is unaffected by both.
+      /\bfree\s+(platform\s+)?trial\b/i,
+      /\btrial\s+period\b/i,
     ];
 
     function scanDirectory(dir: string): Array<{ file: string; match: string }> {

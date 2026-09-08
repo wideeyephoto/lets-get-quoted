@@ -81,7 +81,7 @@ export default function AiCopilotWithAvatarsScreen({
         '🚶 Walk-Up Estimate Brain Dump',
         '🎨 Custom Outfits for 8+ Contractor Trades',
       ]}
-      primary={{ label: 'Start Free Platform Trial', href: signupUrl }}
+      primary={{ label: 'Start free on Flex', href: signupUrl }}
 
       secondary={{ label: 'See all features', href: '/features' }}
       demo={
