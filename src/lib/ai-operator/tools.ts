@@ -436,7 +436,7 @@ export async function executeOperatorTool(
       try {
         const [accountRes, staffRes, numbersRes, supportRes, diagnosis, entitlementRes] = await Promise.all([
           supabase.from('accounts').select('*').eq('id', accountId).maybeSingle(),
-          supabase.from('account_staff').select('id, user_id, role').eq('account_id', accountId),
+          supabase.from('memberships').select('id, user_id, role').eq('account_id', accountId).is('deactivated_at', null),
           supabase.from('sms_sender_numbers').select('*').eq('account_id', accountId),
           supabase.from('support_cases').select('*').eq('account_id', accountId).limit(5),
           diagnoseContractorOnboarding(supabase, accountId).catch(() => null),
@@ -541,20 +541,6 @@ export async function executeOperatorTool(
           title: hitlAction.title,
         },
         hitlAction,
-      };
-    }
-
-    // Refuses even if something reaches executeOperatorTool with this name -- the
-    // declaration being absent stops the model asking, and this stops it landing.
-    // Approval flows through resolveHitlActionServerAction, which checks the
-    // action's own permission and steps up MFA for refunds and payouts.
-    case 'resolve_hitl_action': {
-      return {
-        data: {
-          success: false,
-          error:
-            'Approval decisions cannot be made by the operator. Present the action card and let the founder decide in the cockpit.',
-        },
       };
     }
 
@@ -830,28 +816,13 @@ export async function executeOperatorTool(
     }
 
     case 'optimize_dunning_retries': {
-      try {
-        const dunning = await getPaymentsNeedingAttention(supabase);
-        const retrySchedule = dunning.map((d) => ({
-          paymentId: d.id,
-          accountId: d.account_id,
-          amountDollars: d.amount ?? 0,
-          currentState: d.dunning_state,
-          recommendedNextRetry: d.next_retry_at || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-          recommendedAction: d.dunning_state === 'needs_card'
-            ? 'Dispatch card update SMS/email to customer'
-            : 'Escalate to contractor for manual invoice settlement',
-        }));
-
-        return {
-          data: {
-            dunningCount: dunning.length,
-            retrySchedule,
-          },
-        };
-      } catch (err: unknown) {
-        return { data: { error: err instanceof Error ? err.message : String(err) } };
-      }
+      return {
+        data: {
+          available: false,
+          error:
+            'Smart dunning retry automation is not currently active or wired to messaging delivery rails. Inspect failed billing events directly from /admin/billing-operations.',
+        },
+      };
     }
 
     case 'check_connect_payout_compliance': {

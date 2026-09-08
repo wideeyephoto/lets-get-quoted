@@ -1,17 +1,19 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, requireMfaPermission } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
 import { dispatchOnCallTestDrill } from '@/lib/on-call-paging';
 
-export async function dispatchTestPageAction(): Promise<{ success: boolean; message: string }> {
-  try {
-    const { staff } = await requireAdmin();
-    if (!staffCan(staff, 'ops.manage')) {
-      return { success: false, message: 'Forbidden: Insufficient permissions to dispatch on-call alerts.' };
-    }
+const MONEY_TOUCHING_CRONS = ['direct-payment-settlement', 'ad-wallet-refill', 'overage-settlement'];
 
+export async function dispatchTestPageAction(): Promise<{ success: boolean; message: string }> {
+  const { staff } = await requireAdmin();
+  if (!staffCan(staff, 'ops.manage')) {
+    return { success: false, message: 'Forbidden: Insufficient permissions to dispatch on-call alerts.' };
+  }
+
+  try {
     const event = await dispatchOnCallTestDrill(staff.email);
     revalidatePath('/admin/health');
     return {
@@ -26,12 +28,24 @@ export async function dispatchTestPageAction(): Promise<{ success: boolean; mess
   }
 }
 
-export async function runCronJobNowAction(jobSlug: string): Promise<{ success: boolean; message: string }> {
+export async function runCronJobNowAction(jobSlug: string, confirmation?: string): Promise<{ success: boolean; message: string }> {
+  const isMoney = MONEY_TOUCHING_CRONS.includes(jobSlug);
+  const ctx = isMoney
+    ? await requireMfaPermission('ops.manage')
+    : await requireAdmin();
+
+  if (!isMoney && !staffCan(ctx.staff, 'ops.manage')) {
+    return { success: false, message: 'Forbidden: Insufficient permissions to trigger cron jobs (requires ops.manage).' };
+  }
+
+  if (isMoney && confirmation !== jobSlug) {
+    return {
+      success: false,
+      message: `Typed confirmation required: to manually trigger money-moving worker '${jobSlug}', confirmation matching '${jobSlug}' must be provided.`,
+    };
+  }
+
   try {
-    const ctx = await requireAdmin();
-    if (!staffCan(ctx.staff, 'ops.manage')) {
-      return { success: false, message: 'Forbidden: Insufficient permissions to trigger cron jobs (requires ops.manage).' };
-    }
 
     const { cronJob } = await import('@/lib/cron-jobs');
     const spec = cronJob(jobSlug);

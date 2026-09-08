@@ -25,8 +25,8 @@ import { loadVoiceOperatorHealth } from '@/lib/voice/operator-health';
 import { getApmSummary, getRecentExceptions } from '@/lib/apm-telemetry';
 import { runSyntheticUptimeProbe } from '@/lib/uptime-monitoring';
 import { getOnCallRoster, getRecentPagingEvents } from '@/lib/on-call-paging';
-import { dispatchTestPageAction } from './actions';
 import { RunCronButton } from './RunCronButton';
+import { dispatchTestPageAction } from './actions';
 import styles from '../admin.module.css';
 
 const PROVIDER_LABEL: Record<SmsProviderId, string> = {
@@ -139,7 +139,6 @@ export default async function AdminHealthPage({
 
   const unwell = rows.filter((r) => r.health === 'failing' || r.health === 'stale');
   const neverSeen = rows.filter((r) => r.health === 'unknown');
-  const moneyJobCount = CRON_JOBS.filter((job) => job.importance === 'money').length;
 
   return (
     <>
@@ -216,7 +215,9 @@ export default async function AdminHealthPage({
                       {sub.status}
                     </span>
                   </td>
-                  <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>{sub.latencyMs}ms</td>
+                  <td className={styles.muted} style={{ whiteSpace: 'nowrap' }}>
+                    {sub.latencyMs !== null ? `${sub.latencyMs}ms` : '—'}
+                  </td>
                   <td style={{ fontSize: '.78rem' }}>{sub.detail}</td>
                   <td className={styles.muted} style={{ fontSize: '.72rem', maxWidth: '30ch' }}>{sub.consequenceIfDown}</td>
                 </tr>
@@ -243,35 +244,43 @@ export default async function AdminHealthPage({
         </p>
         <div className={styles.cardGrid}>
           <div className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue} style={{ color: apm.latencyPercentiles.p95Ms > 600 ? '#fca5a5' : '#86efac' }}>
-              {apm.latencyPercentiles.p95Ms}ms
+            <span className={styles.statValue} style={{ color: apm.active ? (apm.latencyPercentiles.p95Ms > 600 ? '#fca5a5' : '#86efac') : undefined }}>
+              {apm.active ? `${apm.latencyPercentiles.p95Ms}ms` : '—'}
             </span>
             <span className={styles.statLabel}>p95 Latency</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>p50: {apm.latencyPercentiles.p50Ms}ms · p99: {apm.latencyPercentiles.p99Ms}ms</span>
+            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
+              {apm.active ? `p50: ${apm.latencyPercentiles.p50Ms}ms · p99: ${apm.latencyPercentiles.p99Ms}ms` : 'No requests buffered'}
+            </span>
           </div>
 
           <div className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue} style={{ color: apm.errorRatePct > 1 ? '#fca5a5' : '#86efac' }}>
-              {apm.errorRatePct}%
+            <span className={styles.statValue} style={{ color: apm.active ? (apm.errorRatePct > 1 ? '#fca5a5' : '#86efac') : undefined }}>
+              {apm.active ? `${apm.errorRatePct}%` : '—'}
             </span>
             <span className={styles.statLabel}>5xx Error Rate</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>2xx: {apm.statusCodeDistribution.status2xx} · 5xx: {apm.statusCodeDistribution.status5xx}</span>
+            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
+              {apm.active ? `2xx: ${apm.statusCodeDistribution.status2xx} · 5xx: ${apm.statusCodeDistribution.status5xx}` : 'No requests recorded'}
+            </span>
           </div>
 
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue}>
-              {apm.rpm}
+              {apm.active ? apm.rpm : '—'}
             </span>
             <span className={styles.statLabel}>Throughput (RPM)</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>{apm.totalRequestsTracked} requests buffered</span>
+            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
+              {apm.totalRequestsTracked > 0 ? `${apm.totalRequestsTracked} requests buffered` : '0 requests buffered'}
+            </span>
           </div>
 
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={{ color: '#38bdf8' }}>
-              {apm.provider === 'builtin_high_res' ? 'High-Res APM' : apm.provider}
+              {apm.provider === 'builtin_high_res' ? (apm.active ? 'Active' : 'Unbuffered') : apm.provider}
             </span>
-            <span className={styles.statLabel}>APM Engine</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>Sentry &amp; Datadog hooks ready</span>
+            <span className={styles.statLabel}>APM Status</span>
+            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
+              {apm.active ? 'In-memory telemetry active' : 'Waiting for instrumented requests'}
+            </span>
           </div>
         </div>
 
@@ -399,26 +408,34 @@ export default async function AdminHealthPage({
                 </tr>
               </thead>
               <tbody>
-                {recentPages.map((page) => (
-                  <tr key={page.id}>
-                    <td>
-                      <span className={`${styles.pill} ${page.severity === 'P1_CRITICAL' ? styles.bad : page.severity === 'P2_HIGH' ? styles.warn : styles.good}`}>
-                        {page.severity}
-                      </span>
+                {recentPages.length > 0 ? (
+                  recentPages.map((page) => (
+                    <tr key={page.id}>
+                      <td>
+                        <span className={`${styles.pill} ${page.severity === 'P1_CRITICAL' ? styles.bad : page.severity === 'P2_HIGH' ? styles.warn : styles.good}`}>
+                          {page.severity}
+                        </span>
+                      </td>
+                      <td>
+                        <strong>{page.title}</strong>
+                        <div className={styles.muted} style={{ fontSize: '.72rem' }}>Source: <code>{page.source}</code></div>
+                      </td>
+                      <td className={styles.muted} style={{ fontSize: '.75rem' }}>{page.dispatchedChannels.join(', ')}</td>
+                      <td>
+                        <span className={`${styles.pill} ${page.status === 'resolved' ? styles.good : page.status === 'acknowledged' ? styles.neutral : styles.bad}`}>
+                          {page.status}
+                        </span>
+                      </td>
+                      <td className={styles.muted} style={{ fontSize: '.75rem' }}>{ago(page.dispatchedAt, now)}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={5} className={styles.muted} style={{ textAlign: 'center', padding: '24px' }}>
+                      No paging dispatches or drills on record.
                     </td>
-                    <td>
-                      <strong>{page.title}</strong>
-                      <div className={styles.muted} style={{ fontSize: '.72rem' }}>Source: <code>{page.source}</code></div>
-                    </td>
-                    <td className={styles.muted} style={{ fontSize: '.75rem' }}>{page.dispatchedChannels.join(', ')}</td>
-                    <td>
-                      <span className={`${styles.pill} ${page.status === 'resolved' ? styles.good : page.status === 'acknowledged' ? styles.neutral : styles.bad}`}>
-                        {page.status}
-                      </span>
-                    </td>
-                    <td className={styles.muted} style={{ fontSize: '.75rem' }}>{ago(page.dispatchedAt, now)}</td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
@@ -667,7 +684,7 @@ export default async function AdminHealthPage({
           <li>
             <time>APM Tracing</time>
             <span>
-              Real-time in-memory request ring buffer computes p50/p95/p99 latencies and 5xx error rates across API routes and server actions with zero external network overhead, with optional Sentry / Datadog sink integration.
+              In-memory request ring buffer collects latency and status telemetry for instrumented endpoints (with optional Sentry / Datadog sink integration). Resets on cold serverless starts.
             </span>
           </li>
           <li>

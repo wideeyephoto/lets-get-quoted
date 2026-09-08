@@ -66,7 +66,9 @@ function createMockSupabase(overrides?: {
                 if (table === 'jobs') {
                   const jCount = overrides?.jobsCount !== undefined ? overrides.jobsCount : 3;
                   const resPromise = Promise.resolve({ count: jCount, data: [] });
-                  (resPromise as any).eq = () => Promise.resolve({ count: jCount, data: [] });
+                  (resPromise as any).eq = () => resPromise;
+                  (resPromise as any).gt = () => resPromise;
+                  (resPromise as any).in = () => resPromise;
                   return resPromise;
                 }
                 return Promise.resolve({ count: 0, data: [] });
@@ -226,7 +228,7 @@ describe('AI Operator Framework - Tool Declarations & Schemas', () => {
       ctx,
     );
 
-    expect((res.data as { success: boolean }).success).toBe(false);
+    expect((res.data as any).error).toContain('Unknown operator tool');
     // The card must still be waiting for a human.
     expect(getHitlActionById(created.id)?.status).toBe('pending');
   });
@@ -722,10 +724,11 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((res.data as any).qualifiedCandidatesCount).toBeDefined();
   });
 
-  it('executes optimize_dunning_retries and calculates optimal retry windows', async () => {
+  it('refuses optimize_dunning_retries honestly until delivery rails exist (P2-1)', async () => {
     const res = await executeOperatorTool('optimize_dunning_retries', {}, ctx);
     expect(res.data).toBeDefined();
-    expect((res.data as any).dunningCount).toBeDefined();
+    expect((res.data as any).available).toBe(false);
+    expect((res.data as any).error).toContain('billing-operations');
   });
 
   it('executes check_connect_payout_compliance for paused Stripe Connect accounts', async () => {

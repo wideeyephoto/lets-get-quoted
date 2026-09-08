@@ -14,21 +14,25 @@ export default async function AdminCampaignsPage() {
   const { admin, adminEmail } = await requireAdmin();
 
   // Load initial reach counts across all standard audiences
+  const reachErrors: string[] = [];
   const reachEntries = await Promise.all(
     PLATFORM_AUDIENCES.map(async (aud) => {
       if (aud.id === 'custom') return [aud.id, 0] as const;
       try {
         const recipients = await resolvePlatformCampaignRecipients(admin, aud.id);
         return [aud.id, recipients.length] as const;
-      } catch {
-        return [aud.id, 0] as const;
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`Failed to resolve campaign recipients for audience ${aud.id}:`, err);
+        reachErrors.push(`Audience "${aud.label}" failed to resolve: ${msg}`);
+        return [aud.id, -1] as const;
       }
     }),
   );
 
   const initialAudienceReach = Object.fromEntries(reachEntries);
-  const totalContractors = initialAudienceReach['all_contractors'] ?? 0;
-  const active30d = initialAudienceReach['active_30d'] ?? 0;
+  const totalContractors = initialAudienceReach['all_contractors'] ?? -1;
+  const active30d = initialAudienceReach['active_30d'] ?? -1;
 
   // Load past campaign broadcasts
   const campaigns = await listPlatformCampaignHistory(admin, 50);
@@ -45,6 +49,17 @@ export default async function AdminCampaignsPage() {
         </p>
       </header>
 
+      {reachErrors.length > 0 && (
+        <div role="alert" className={`${styles.panel} ${styles.accentRose}`} style={{ marginBottom: '1.4rem', padding: '0.8rem 1rem' }}>
+          <strong>Audience Reach Resolution Warning:</strong> Failed to calculate recipient counts for one or more audiences. Blasts should not be sent until audience resolution is verified.
+          <ul style={{ margin: '0.4rem 0 0 1.2rem', fontSize: '0.85rem' }}>
+            {reachErrors.map((e, idx) => (
+              <li key={idx}>{e}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Top Headline Metric Cards */}
       <section className={styles.cardGrid} aria-label="Campaign broadcast summary" style={{ marginBottom: '1.4rem' }}>
         <div className={`${styles.panel} ${styles.statCard} ${styles.accentAmber}`}>
@@ -56,10 +71,10 @@ export default async function AdminCampaignsPage() {
         </div>
 
         <div className={`${styles.panel} ${styles.statCard} ${styles.accentEmerald}`}>
-          <span className={styles.statValue}>{totalContractors.toLocaleString('en-US')}</span>
+          <span className={styles.statValue}>{totalContractors >= 0 ? totalContractors.toLocaleString('en-US') : '—'}</span>
           <span className={styles.statLabel}>Deliverable contractors</span>
           <span className={styles.muted} style={{ fontSize: '0.72rem' }}>
-            {active30d.toLocaleString('en-US')} active in last 30 days
+            {active30d >= 0 ? `${active30d.toLocaleString('en-US')} active in last 30 days` : 'Active contractors unavailable'}
           </span>
         </div>
 

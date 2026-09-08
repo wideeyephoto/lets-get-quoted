@@ -140,7 +140,15 @@ export async function askAiOperator(
     }
 
     if (q.includes('dispute') || q.includes('chargeback') || q.includes('evidence')) {
-      const evidence = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: 'dp_sample_123' }, ctx);
+      const match = query.match(/\b(dp_[a-zA-Z0-9_-]+)\b/i);
+      if (!match) {
+        return {
+          answer: `**Dispute Defense Packet**: Please specify a valid Stripe dispute ID (e.g., "generate dispute evidence for dp_..."). Active dispute IDs can be reviewed at /admin/money.`,
+          toolCallsExecuted: [],
+          pendingHitlActions: listPendingHitlActions(),
+        };
+      }
+      const evidence = await executeOperatorTool('generate_dispute_evidence_packet', { disputeId: match[1] }, ctx);
       return {
         answer: `**Dispute Defense Packet**:\n\n${JSON.stringify(evidence.data, null, 2)}`,
         toolCallsExecuted: ['generate_dispute_evidence_packet'],
@@ -158,10 +166,9 @@ export async function askAiOperator(
     }
 
     if (q.includes('trend') || q.includes('history') || q.includes('growth')) {
-      const trends = await executeOperatorTool('get_ops_trend_history', { days: 7 }, ctx);
       return {
-        answer: `**7-Day Operational Trends**:\n\n${JSON.stringify(trends.data, null, 2)}`,
-        toolCallsExecuted: ['get_ops_trend_history'],
+        answer: `**7-Day Operational Trends**: No historical metrics snapshots are currently recorded, so historical trends cannot be reported. Real-time platform metrics are available via \`get_system_health\` and \`get_revenue_and_billing_summary\`.`,
+        toolCallsExecuted: [],
         pendingHitlActions: listPendingHitlActions(),
       };
     }
@@ -185,7 +192,15 @@ export async function askAiOperator(
     }
 
     if (q.includes('onboarding') || q.includes('blocker') || q.includes('nudge') || q.includes('connect')) {
-      const diagnosis = await executeOperatorTool('diagnose_contractor_onboarding', { accountId: 'acc-test-123' }, ctx);
+      const match = query.match(/\b([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\b/i);
+      if (!match) {
+        return {
+          answer: `**Onboarding Diagnostics**: Please specify a contractor account UUID to diagnose onboarding blockers (e.g., "diagnose onboarding for <account-uuid>"). You can find account IDs in /admin/accounts.`,
+          toolCallsExecuted: [],
+          pendingHitlActions: listPendingHitlActions(),
+        };
+      }
+      const diagnosis = await executeOperatorTool('diagnose_contractor_onboarding', { accountId: match[1] }, ctx);
       return {
         answer: `**Onboarding Diagnostics**: ${JSON.stringify(diagnosis.data, null, 2)}`,
         toolCallsExecuted: ['diagnose_contractor_onboarding'],

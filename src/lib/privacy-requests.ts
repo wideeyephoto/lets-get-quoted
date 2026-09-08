@@ -67,10 +67,37 @@ export async function logPrivacyRequest(
   return { id: data.id };
 }
 
-export async function resolvePrivacyRequest(admin: SupabaseClient, actor: AuditActor, requestId: string): Promise<void> {
+export async function resolvePrivacyRequest(
+  admin: SupabaseClient,
+  actor: AuditActor,
+  requestId: string,
+  resolutionNotes: string,
+): Promise<void> {
+  const note = resolutionNotes?.trim();
+  if (!note) {
+    throw new Error('Resolution notes are required to resolve a privacy request.');
+  }
+
+  // Fetch current details to append resolution audit note
+  const { data: existing } = await admin
+    .from('privacy_requests')
+    .select('details')
+    .eq('id', requestId)
+    .single();
+
+  const timestamp = new Date().toISOString();
+  const updatedDetails = existing?.details
+    ? `${existing.details}\n[Resolution ${timestamp}]: ${note}`
+    : `[Resolution ${timestamp}]: ${note}`;
+
   const { data, error } = await admin
     .from('privacy_requests')
-    .update({ resolved_at: new Date().toISOString(), resolved_by: actor.adminEmail, status: 'resolved' })
+    .update({
+      resolved_at: timestamp,
+      resolved_by: actor.adminEmail,
+      status: 'resolved',
+      details: updatedDetails,
+    })
     .eq('id', requestId)
     .select('id')
     .single();
@@ -78,7 +105,12 @@ export async function resolvePrivacyRequest(admin: SupabaseClient, actor: AuditA
     console.error('resolvePrivacyRequest failed:', error);
     throw new Error(error?.message || 'Privacy request not found or resolution failed');
   }
-  await logAdminAction(admin, actor, { action: 'privacy_request_resolve', targetType: 'privacy_request', targetId: requestId });
+  await logAdminAction(admin, actor, {
+    action: 'privacy_request_resolve',
+    targetType: 'privacy_request',
+    targetId: requestId,
+    meta: { resolutionNotes: note },
+  });
 }
 
 /**

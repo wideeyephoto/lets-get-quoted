@@ -7,7 +7,7 @@ import {
   type PrivacyRequestStatus,
   type PrivacyRequestKind,
 } from '@/lib/privacy-requests';
-import { severityForDeadline, relativeAge } from '@/lib/command-center-logic';
+import { relativeAge } from '@/lib/command-center-logic';
 import { resolvePlatformPrivacyRequestAction } from './actions';
 import styles from '../admin.module.css';
 
@@ -20,17 +20,6 @@ function fmtDate(v: unknown): string {
     const d = new Date(v as string | number | Date);
     if (isNaN(d.getTime())) return '—';
     return d.toLocaleDateString('en-US', { dateStyle: 'medium' });
-  } catch {
-    return '—';
-  }
-}
-
-function fmtDateTime(v: unknown): string {
-  if (!v) return '—';
-  try {
-    const d = new Date(v as string | number | Date);
-    if (isNaN(d.getTime())) return '—';
-    return d.toLocaleDateString('en-US', { dateStyle: 'short', timeStyle: 'short' });
   } catch {
     return '—';
   }
@@ -291,8 +280,15 @@ export default async function AdminPrivacyRequestsPage({
                       <td>
                         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                           {isOpen && canManage ? (
-                            <form action={resolvePlatformPrivacyRequestAction}>
+                            <form action={resolvePlatformPrivacyRequestAction} style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center' }}>
                               <input type="hidden" name="request_id" value={row.id} />
+                              <input
+                                type="text"
+                                name="resolution_notes"
+                                placeholder="Resolution notes..."
+                                required
+                                style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', border: '1px solid #444', borderRadius: '4px', background: '#111', color: '#fff', width: '150px' }}
+                              />
                               <button type="submit" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem' }}>
                                 Resolve
                               </button>

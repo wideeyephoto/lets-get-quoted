@@ -1,6 +1,8 @@
 'use server';
 
-import { requireAdmin, requirePermission } from '@/lib/auth';
+import { requireAdmin, requirePermission, requireMfaPermission } from '@/lib/auth';
+import { logAdminAction } from '@/lib/admin';
+import { staffCan } from '@/lib/staff';
 import {
   renderPlatformCampaignEmailHtml,
   resolvePlatformCampaignRecipients,
@@ -10,14 +12,17 @@ import {
   type PlatformCampaignInput,
 } from '@/lib/admin-platform-campaigns';
 
+// Recent blast keys to prevent accidental double-click / duplicate broadcast
+const recentBlastKeys = new Map<string, number>();
+
 /**
  * Server action to generate exact live HTML preview for a campaign.
  */
 export async function previewPlatformCampaignAction(
   input: Omit<PlatformCampaignInput, 'audience'>,
 ): Promise<{ success: boolean; html?: string; error?: string }> {
+  await requireAdmin();
   try {
-    await requireAdmin();
     const sampleRecipient = {
       email: 'alex@millerplumbing.com',
       name: 'Alex Miller',
@@ -30,9 +35,6 @@ export async function previewPlatformCampaignAction(
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
-
-import { logAdminAction } from '@/lib/admin';
-import { staffCan } from '@/lib/staff';
 
 function maskEmail(email: string): string {
   const parts = email.split('@');
@@ -51,8 +53,8 @@ export async function getAudienceReachAction(
   audience: PlatformAudienceId,
   customEmails = '',
 ): Promise<{ success: boolean; count: number; sampleEmails: string[]; error?: string }> {
+  const ctx = await requireAdmin();
   try {
-    const ctx = await requireAdmin();
     const recipients = await resolvePlatformCampaignRecipients(ctx.admin, audience, customEmails);
     const canViewPii = staffCan(ctx.staff, 'ops.manage');
 
@@ -97,8 +99,8 @@ export async function sendTestPlatformEmailAction(
   campaign: Omit<PlatformCampaignInput, 'audience'>,
   testEmail: string,
 ): Promise<{ success: boolean; error?: string }> {
+  const context = await requirePermission('ops.manage');
   try {
-    const context = await requirePermission('ops.manage');
     const cleanEmail = (testEmail || '').trim().toLowerCase();
     if (!cleanEmail || !cleanEmail.includes('@')) {
       return { success: false, error: 'A valid destination email is required for test sends.' };
@@ -126,9 +128,10 @@ export async function sendTestPlatformEmailAction(
 
 /**
  * Server action to broadcast a platform email campaign blast to the target audience.
+ * Strictly gated behind MFA with ops.manage permission and protected by idempotency key.
  */
 export async function sendPlatformCampaignBlastAction(
-  input: PlatformCampaignInput,
+  input: PlatformCampaignInput & { idempotencyKey?: string },
 ): Promise<{
   success: boolean;
   campaignId?: string;
@@ -138,8 +141,22 @@ export async function sendPlatformCampaignBlastAction(
   failures?: Array<{ email: string; error: string }>;
   error?: string;
 }> {
+  const context = await requireMfaPermission('ops.manage');
+
+  const idKey = input.idempotencyKey || `${input.audience}:${input.subject}:${input.senderEmail}`;
+  const lastSent = recentBlastKeys.get(idKey);
+  const now = Date.now();
+  if (lastSent && now - lastSent < 60000) {
+    return { success: false, error: 'A campaign blast with this key was dispatched less than 60 seconds ago. Duplicate send blocked.' };
+  }
+  recentBlastKeys.set(idKey, now);
+  if (recentBlastKeys.size > 100) {
+    for (const [k, v] of recentBlastKeys) {
+      if (now - v > 300000) recentBlastKeys.delete(k);
+    }
+  }
+
   try {
-    const context = await requirePermission('ops.manage');
     const result = await sendPlatformCampaignBlast(context.admin, context, input);
     return {
       success: true,

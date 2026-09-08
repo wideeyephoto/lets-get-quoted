@@ -13,7 +13,7 @@ export interface SubsystemHealthProbe {
   name: string;
   category: 'core' | 'payments' | 'communications' | 'ai' | 'infrastructure';
   status: SubsystemStatus;
-  latencyMs: number;
+  latencyMs: number | null;
   lastCheckedAt: string;
   detail: string;
   consequenceIfDown: string;
@@ -91,32 +91,28 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
   });
 
   // 2. Instant Quoting & PDF Generation Engine
-  const quoteStart = performance.now();
   const hasDb = dbStatus === 'operational' || dbStatus === 'degraded';
-  const quoteLatency = Math.max(1, Math.round(performance.now() - quoteStart) + Math.min(dbLatency, 15));
   subsystems.push({
     id: 'quoting-engine',
     name: 'Instant Quoting & PDF Generation Engine',
     category: 'core',
     status: hasDb ? 'operational' : 'outage',
-    latencyMs: quoteLatency,
+    latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasDb ? 'Material algorithms and PDF builder operational' : 'Blocked by database outage',
     consequenceIfDown: 'Contractors cannot generate live estimates or produce branded client PDFs.',
   });
 
   // 3. Stripe Payments & Connected Accounts
-  const stripeStart = performance.now();
   const hasStripeSecret = Boolean(process.env.STRIPE_SECRET_KEY);
-  const stripeLatency = Math.max(1, Math.round(performance.now() - stripeStart) + 8);
   subsystems.push({
     id: 'stripe-payments',
     name: 'Stripe Payments & Connect Rails',
     category: 'payments',
     status: hasStripeSecret ? 'operational' : 'degraded',
-    latencyMs: stripeLatency,
+    latencyMs: null,
     lastCheckedAt: testedAt,
-    detail: hasStripeSecret ? 'Stripe Connect API V2 operational' : 'Missing STRIPE_SECRET_KEY credentials',
+    detail: hasStripeSecret ? 'Stripe Connect API credentials configured' : 'Missing STRIPE_SECRET_KEY credentials',
     consequenceIfDown: 'Homeowners cannot pay deposits or invoices; payouts cannot settle.',
   });
 
@@ -128,10 +124,10 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     name: 'Two-Way SMS & Dedicated Phone Gateway',
     category: 'communications',
     status: hasSmsConfig ? 'operational' : 'degraded',
-    latencyMs: 12,
+    latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasSmsConfig
-      ? `${smsSummary.active === 'signalwire' ? 'SignalWire' : 'Twilio'} 10DLC carrier network connected (${smsSummary.senderMode})`
+      ? `${smsSummary.active === 'signalwire' ? 'SignalWire' : 'Twilio'} carrier integration configured (${smsSummary.senderMode})`
       : 'No SMS carrier credentials configured',
     consequenceIfDown: 'Lead text-backs, quote reminders, and two-way dispatch conversations stall.',
   });
@@ -145,12 +141,12 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     name: 'AI Voice Receptionist & Webhook Engine',
     category: 'ai',
     status: voiceOperational ? 'operational' : 'degraded',
-    latencyMs: 16,
+    latencyMs: null,
     lastCheckedAt: testedAt,
     detail: !voiceEnabled
       ? 'Feature disabled by LGQ_AI_VOICE_ENABLED'
       : voiceOperational
-        ? 'Inbound HMAC & Basic auth receipts validated'
+        ? 'Inbound HMAC & Basic auth credentials configured'
         : 'Incomplete webhook signing keys or credentials',
     consequenceIfDown: 'AI phone answering fails to admit calls or drop recordings into CRM.',
   });
@@ -162,17 +158,20 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     name: 'Transactional Email Delivery (Resend)',
     category: 'communications',
     status: hasResend ? 'operational' : 'degraded',
-    latencyMs: 14,
+    latencyMs: null,
     lastCheckedAt: testedAt,
-    detail: hasResend ? 'Resend transactional API configured with bounce tracking' : 'Missing RESEND_API_KEY credential',
+    detail: hasResend ? 'Resend transactional API configured' : 'Missing RESEND_API_KEY credential',
     consequenceIfDown: 'Quotes, receipts, invite tokens, and owner notification emails cannot dispatch.',
   });
 
   // 7. Background Scheduled Cron Fleet
   let cronStatus: SubsystemStatus = 'operational';
   let cronDetail = 'All scheduled background jobs running on cadence';
+  const cronStart = performance.now();
+  let cronLatency: number | null = null;
   try {
     const { last, lastSuccessAt } = await loadCronStatus(client, CRON_JOBS.map((j) => j.job));
+    cronLatency = Math.max(1, Math.round(performance.now() - cronStart));
     const now = new Date();
     const evaluated = CRON_JOBS.map((spec) => ({
       spec,
@@ -191,6 +190,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
   } catch {
     cronStatus = 'degraded';
     cronDetail = 'Unable to evaluate cron run history table';
+    cronLatency = Math.max(1, Math.round(performance.now() - cronStart));
   }
 
   subsystems.push({
@@ -198,7 +198,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     name: 'Background Scheduled Cron Fleet',
     category: 'infrastructure',
     status: cronStatus,
-    latencyMs: 24,
+    latencyMs: cronLatency,
     lastCheckedAt: testedAt,
     detail: cronDetail,
     consequenceIfDown: 'Billing settlements, overage period freezes, and automated dunning stall.',
@@ -211,9 +211,9 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     name: 'Edge Network CDN & Contractor Domains',
     category: 'infrastructure',
     status: hasCdn ? 'operational' : 'degraded',
-    latencyMs: 10,
+    latencyMs: null,
     lastCheckedAt: testedAt,
-    detail: hasCdn ? 'Global Anycast Edge Network and DNS routing operational' : 'Missing root domain config',
+    detail: hasCdn ? 'Edge Network and root domain configured' : 'Missing root domain config',
     consequenceIfDown: 'Homeowner public website visits and quote viewing links fail.',
   });
 

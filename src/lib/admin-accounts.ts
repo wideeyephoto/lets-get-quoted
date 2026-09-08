@@ -225,17 +225,6 @@ export async function accountIdsByPhone(
     for (const r of (smsSenders.data ?? []) as { account_id: string; e164_number: string }[]) {
       if (r.e164_number) addMatch(r.account_id, r.e164_number, 'Messaging sender');
     }
-
-    try {
-      const msgSenders = await admin.from('messaging_sender_numbers').select('account_id, phone_number').or(`phone_number.ilike.%${last10}%,phone_number.ilike.%${last7}%`).limit(limit);
-      if (!msgSenders.error && msgSenders.data) {
-        for (const r of msgSenders.data as { account_id: string; phone_number: string }[]) {
-          if (r.phone_number) addMatch(r.account_id, r.phone_number, 'Messaging sender');
-        }
-      }
-    } catch {
-      // Table may not exist or may be aliased
-    }
   } catch (err) {
     console.error('accountIdsByPhone failed:', err);
     onError?.('phone number lookup', err);

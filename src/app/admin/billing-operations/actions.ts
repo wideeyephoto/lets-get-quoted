@@ -23,11 +23,13 @@ export async function requeueBillingDeadLettersAction(
     return { success: false, message: 'A specific operational reason (minimum 4 characters) is required.' };
   }
 
+  // Guard must run before try so step-up redirects are not swallowed
+  const ctx = await requireMfaPermission('ops.manage');
+  const { admin, staff } = ctx;
+  const nowIso = new Date().toISOString();
+  let count = 0;
+
   try {
-    const ctx = await requireMfaPermission('ops.manage');
-    const { admin, staff } = ctx;
-    const nowIso = new Date().toISOString();
-    let count = 0;
 
     switch (ledgerId) {
       case 'quick_stop_payment_tasks': {
@@ -132,9 +134,34 @@ export async function requeueBillingDeadLettersAction(
 
     revalidatePath('/admin/billing-operations');
 
+    let message = `Successfully requeued ${count} dead-lettered item(s) in '${ledgerId}'.`;
+    if (count === 0) {
+      if (['subscription_events', 'connected_success_events', 'connected_expiration_events'].includes(ledgerId)) {
+        const scope = ledgerId === 'subscription_events' ? 'platform_subscription' : 'connected_payment';
+        let checkQuery = admin
+          .from('billing_events')
+          .select('id', { count: 'exact', head: true })
+          .eq('event_scope', scope)
+          .eq('processing_status', 'failed');
+        if (ledgerId === 'connected_success_events') {
+          checkQuery = checkQuery.in('event_type', ['checkout.session.completed', 'checkout.session.async_payment_succeeded']);
+        } else if (ledgerId === 'connected_expiration_events') {
+          checkQuery = checkQuery.eq('event_type', 'checkout.session.expired');
+        }
+        const { count: scheduledCount } = await checkQuery;
+        if (scheduledCount && scheduledCount > 0) {
+          message = `0 item(s) requeued in '${ledgerId}'. ${scheduledCount} failed event(s) have active retry backoffs scheduled (next_attempt_at is set) and were preserved.`;
+        } else {
+          message = `0 item(s) requeued in '${ledgerId}': no failed events exist.`;
+        }
+      } else {
+        message = `0 item(s) requeued in '${ledgerId}': no dead-lettered tasks exist.`;
+      }
+    }
+
     return {
       success: true,
-      message: `Successfully requeued ${count} dead-lettered item(s) in '${ledgerId}'.`,
+      message,
       requeuedCount: count,
     };
   } catch (err) {

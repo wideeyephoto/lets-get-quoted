@@ -30,9 +30,9 @@ const ICONS: Record<string, string> = {
   '/admin/security': '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>',
 };
 
-const ITEMS: { href: string; label: string; permission?: Permission }[] = [
+export const ITEMS: { href: string; label: string; permission?: Permission }[] = [
   { href: '/admin', label: 'Command Center' },
-  { href: '/admin/operator', label: 'AI Operator ⚡' },
+  { href: '/admin/operator', label: 'AI Operator ⚡', permission: 'ops.manage' },
   { href: '/admin/search', label: 'Search' },
   { href: '/admin/manual', label: 'Admin manual' },
   { href: '/admin/accounts', label: 'Accounts' },

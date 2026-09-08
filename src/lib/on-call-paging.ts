@@ -46,16 +46,16 @@ export function getOnCallRoster(): {
   escalationTimeoutMinutes: number;
   channels: PagingChannelStatus[];
 } {
-  const primaryEmail = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || 'ops@letsgetquoted.com';
-  const primaryPhone = process.env.ONCALL_PRIMARY_PHONE || '+1 (555) 019-2831';
+  const primaryEmail = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || '';
+  const primaryPhone = process.env.ONCALL_PRIMARY_PHONE || '';
 
   const channels: PagingChannelStatus[] = [
     {
       id: 'emergency_sms_email',
       name: 'Emergency SMS & Resend Ops Channel',
-      configured: Boolean(process.env.RESEND_API_KEY),
-      status: process.env.RESEND_API_KEY ? 'ready' : 'unconfigured',
-      target: primaryEmail,
+      configured: Boolean(process.env.RESEND_API_KEY && primaryEmail),
+      status: (process.env.RESEND_API_KEY && primaryEmail) ? 'ready' : 'unconfigured',
+      target: primaryEmail || 'Not configured',
     },
     {
       id: 'pagerduty',
@@ -87,20 +87,23 @@ export function getOnCallRoster(): {
     },
   ];
 
+  const secondaryEmail = process.env.ONCALL_SECONDARY_EMAIL || '';
+  const secondaryPhone = process.env.ONCALL_SECONDARY_PHONE || '';
+
   return {
     primary: {
       role: 'primary',
-      name: 'Lead Platform SRE (On-Duty)',
-      email: primaryEmail,
-      phone: primaryPhone,
+      name: primaryEmail ? 'Lead Platform SRE (On-Duty)' : 'Unassigned',
+      email: primaryEmail || 'Not configured',
+      phone: primaryPhone || 'Not configured',
       shiftSchedule: '24/7 Primary Rotation (America/New_York)',
-      status: 'on_shift',
+      status: primaryEmail ? 'on_shift' : 'standby',
     },
     secondary: {
       role: 'secondary',
-      name: 'Platform Engineering Escalation',
-      email: 'sre-escalation@letsgetquoted.com',
-      phone: '+1 (555) 019-9942',
+      name: secondaryEmail ? 'Platform Engineering Escalation' : 'Unassigned',
+      email: secondaryEmail || 'Not configured',
+      phone: secondaryPhone || 'Not configured',
       shiftSchedule: 'Backup On-Call (15 min auto-escalate)',
       status: 'standby',
     },
@@ -231,25 +234,6 @@ export async function dispatchOnCallPage(params: {
  * Returns recent paging history for display in admin operations center
  */
 export function getRecentPagingEvents(limit = 10): PagingEvent[] {
-  if (recentPagingEvents.length === 0) {
-    // Return sample baseline record so UI is clean on startup
-    return [
-      {
-        id: 'page_init_baseline',
-        incidentKey: 'inc_baseline',
-        title: 'On-Call Paging & Emergency Escalation Active',
-        severity: 'P3_WARNING',
-        source: 'system-startup',
-        incidentType: 'uptime',
-        dispatchedAt: new Date(Date.now() - 3600000).toISOString(),
-        dispatchedChannels: ['emergency_email_sms'],
-        acknowledgedAt: new Date(Date.now() - 3500000).toISOString(),
-        acknowledgedBy: 'ops-lead',
-        resolvedAt: new Date(Date.now() - 3400000).toISOString(),
-        status: 'resolved',
-      },
-    ];
-  }
   return recentPagingEvents.slice(0, limit);
 }
 

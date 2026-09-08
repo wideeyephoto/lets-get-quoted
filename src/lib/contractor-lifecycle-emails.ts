@@ -456,7 +456,8 @@ export async function runContractorLifecycleSweep(
   const { data: jobCounts } = await admin
     .from('jobs')
     .select('account_id')
-    .in('account_id', accountIds);
+    .in('account_id', accountIds)
+    .gt('quoted_amount', 0);
 
   const quoteCountMap = new Map<string, number>();
   for (const j of jobCounts ?? []) {

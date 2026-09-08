@@ -445,9 +445,11 @@ export async function resolvePrivacyRequestAction(accountId: string, formData: F
   const ctx = await requirePermission('privacy.manage');
   const { admin } = ctx;
   const requestId = String(formData.get('request_id') ?? '').trim();
+  const resolutionNotes = String(formData.get('resolution_notes') ?? '').trim();
   if (!requestId) backTo(accountId, 'error=request_id_required');
+  if (!resolutionNotes) backTo(accountId, 'error=resolution_notes_required');
   try {
-    await resolvePrivacyRequest(admin, ctx, requestId);
+    await resolvePrivacyRequest(admin, ctx, requestId, resolutionNotes);
   } catch (error) {
     console.error('resolvePrivacyRequestAction failed:', error);
     backTo(accountId, 'error=update_failed');
