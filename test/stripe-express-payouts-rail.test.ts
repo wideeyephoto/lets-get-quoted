@@ -313,7 +313,7 @@ describe('Stripe Express Built-In Instant Payout Rail', () => {
       expect(screenCode).toContain('Payout schedule unavailable from Stripe');
 
       // Verify balance outage representation
-      expect(screenCode).toContain("!payouts.available\n                  ? 'Syncing'");
+      expect(screenCode).toMatch(/!payouts\.available\r?\n\s+\? 'Syncing'/);
       expect(screenCode).toContain("payouts.available ? formatUsd(payouts.availableBalanceDollars + payouts.pendingBalanceDollars) : '—'");
       expect(screenCode).toContain('Stripe balance sync temporarily delayed');
     });

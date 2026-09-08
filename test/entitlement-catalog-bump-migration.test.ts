@@ -47,8 +47,9 @@ const HISTORICAL_DELTA: Readonly<Record<string, Record<string, number>>> = {
   // one, so it carries no delta.
   //
   // 20260821010000 then gave Solo a second office seat: the owner occupies one,
-  // so a one-seat plan could never invite anybody. Flex still grants one and is
-  // meant to.
+  // so a one-seat plan could never invite anybody. Flex followed on September 8;
+  // this historical migration still records its original one-seat allowance.
+  flex: { office_users: 1 },
   solo: { dedicated_business_numbers: 1, office_users: 1 },
   growth: { dedicated_business_numbers: 1 },
   scale: { dedicated_business_numbers: 1 },

@@ -37,7 +37,7 @@ describe('Problem 6: Product Truth Registry & Route Integrity', () => {
     it('matches exact plan prices, platform fees, and seat allowances', () => {
       expect(PLAN_TRUTH.flex.monthlyPrice).toBe(0);
       expect(PLAN_TRUTH.flex.platformFeePct).toBe(1.25);
-      expect(PLAN_TRUTH.flex.officeSeats).toBe(1);
+      expect(PLAN_TRUTH.flex.officeSeats).toBe(2);
 
       expect(PLAN_TRUTH.solo.monthlyPrice).toBe(39);
       expect(PLAN_TRUTH.solo.platformFeePct).toBe(0.50);

@@ -156,7 +156,7 @@ describe('the owner guard sends them somewhere that exists', () => {
     // outside that guard, and an assertion that forbade the word would forbid
     // the explanation. What must be absent is the IMPORT.
     expect(page).not.toMatch(/import[^;]*requireOwnerContext/);
-    expect(page).toContain("redirect('/dashboard')");
+    expect(page).toContain("redirect('/workspaces')");
     expect(page).toContain("redirect('/login')");
   });
 
