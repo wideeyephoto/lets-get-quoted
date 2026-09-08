@@ -16,7 +16,27 @@ function xml(status = 200) {
   });
 }
 
-const MISSED = new Set(['no-answer', 'busy', 'failed', 'canceled', 'ended']);
+const MISSED = new Set(['no-answer', 'busy', 'failed', 'canceled']);
+
+function measuredDuration(value: unknown): number | null {
+  if (typeof value !== 'number' && (typeof value !== 'string' || !/^\d+(?:\.\d+)?$/.test(value))) return null;
+  const seconds = Number(value);
+  return Number.isFinite(seconds) && seconds >= 0 && seconds <= 86400 ? Math.ceil(seconds) : null;
+}
+
+function nativeDialStatus(params: Record<string, unknown>): string {
+  if (params.connect_state) return String(params.connect_state).trim();
+  // An ended leg alone does not prove a missed call. Only explicit failure
+  // reasons may enqueue a missed-call message; a normal hangup is unresolved
+  // forwarding evidence until its connected event arrives.
+  if (params.call_state === 'ended') {
+    const missed: Record<string, string> = {
+      no_answer: 'no-answer', busy: 'busy', cancel: 'canceled', declined: 'failed', error: 'failed',
+    };
+    return missed[String(params.end_reason)] ?? 'disconnected';
+  }
+  return String(params.call_state ?? 'unknown').trim();
+}
 
 /**
  * Dial completion for the fallback emitted by /api/voice/ai.
@@ -58,10 +78,9 @@ export async function POST(request: Request) {
       const json = JSON.parse(rawBody) as Record<string, unknown>;
       const params = (json.params ?? {}) as Record<string, unknown>;
       callId = String(json.CallSid ?? json.call_id ?? params.call_id ?? queryCallId ?? '').trim() || null;
-      dialStatus = String(json.DialCallStatus ?? json.dial_status ?? params.connect_state ?? params.call_state ?? 'unknown').trim();
+      dialStatus = String(json.DialCallStatus ?? json.dial_status ?? nativeDialStatus(params)).trim();
       if (typeof json.timestamp === 'number' && Number.isFinite(json.timestamp)) observedAt = new Date(json.timestamp * 1000).toISOString();
-      const duration = Number(json.DialCallDuration ?? params.duration);
-      if (Number.isFinite(duration) && duration >= 0 && duration <= 86400) forwardingSeconds = Math.ceil(duration);
+      forwardingSeconds = measuredDuration(json.DialCallDuration ?? params.duration);
       caller = normalizeUsPhone(String(json.From ?? json.from ?? params.from ?? queryFrom ?? ''));
     } catch {
       // fallback to query params

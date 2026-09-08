@@ -171,6 +171,7 @@ describe('what a caller gets', () => {
     if (result.plan.kind !== 'ai_agent') return;
     expect(result.plan.receiptUrl).toBe('https://lgq.test/api/voice/receipt');
     expect(result.plan.receiptUrl).not.toContain('@');
+    expect(result.plan.transferStatusUrl).toBe(options.forwardActionUrl(ACCOUNT));
     // The disclosure is not optional and not a setting.
     expect(result.plan.greeting).toContain('AI assistant');
     expect(admitVoiceCall).toHaveBeenCalledWith(

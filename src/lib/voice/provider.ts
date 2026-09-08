@@ -103,6 +103,8 @@ export type VoiceAnswerPlan =
     capMinutes: number;
     /** Where to send the caller when the agent hands off. */
     transferTo: string | null;
+    /** Signed provider connection callbacks, attributed to the saved inbound call. */
+    transferStatusUrl?: string;
     /** Whether background call recording is enabled. */
     recordCall?: boolean;
     /** Webhook status URL for recording completion callbacks. */
