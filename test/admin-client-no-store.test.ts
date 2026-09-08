@@ -18,8 +18,9 @@ describe('the admin client never reads from the Next data cache', () => {
   });
 
   it('is wired into createAdminClient', async () => {
-    const { readFileSync } = await import('node:fs');
-    const source = readFileSync('src/lib/auth.ts', 'utf8');
+    const { readFileSync, existsSync } = await import('node:fs');
+    const file = existsSync('src/lib/supabase-admin.ts') ? 'src/lib/supabase-admin.ts' : 'src/lib/auth.ts';
+    const source = readFileSync(file, 'utf8');
     // A worker that claims the same row ten times looks identical to one doing
     // real work, so this wiring is pinned rather than assumed.
     expect(source).toMatch(/global:\s*\{\s*fetch:\s*noStoreFetch\s*\}/);
