@@ -34,7 +34,7 @@ import type { TerminalReader, TerminalPaymentStatusResult } from '@/lib/stripe-t
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
 import { HOMEOWNER_FINANCING } from '@/lib/financing-status';
-import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
+import { calculateEarlyPayDiscount } from '@/lib/early-pay-discount';
 import type { NoiDocumentData } from '@/lib/noi-generator';
 import type { LienWaiverDocument, LienWaiverType } from '@/lib/lien-waiver';
 import { LIEN_WAIVER_TITLES } from '@/lib/lien-waiver';

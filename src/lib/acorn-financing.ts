@@ -13,10 +13,19 @@
 export const ACORN_PROVIDER_ID = 'acorn' as const;
 export const ACORN_PROVIDER_NAME = 'Acorn Finance' as const;
 
-/** Minimum project / loan amount accepted by Acorn's lending network ($500). */
+/**
+ * UNVERIFIED — confirm on partner call.
+ * Minimum project / loan amount accepted by Acorn's lending network.
+ * Note: $500 was adopted from Wisetack's published floor ($500–$25,000). Acorn
+ * advertises loans up to $100,000 without publishing an authoritative hard floor.
+ * Because this acts as a suppression rule, verify with Acorn before treating as final.
+ */
 export const ACORN_MIN_LOAN_AMOUNT = 500;
 
-/** Default base prequalification URL. */
+/**
+ * UNVERIFIED — confirm on partner call.
+ * Default base prequalification URL. Observed in consumer prequalification flows.
+ */
 export const ACORN_BASE_URL = 'https://www.acornfinance.com/pre-qualify/';
 
 /**
@@ -47,6 +56,10 @@ export function isHomeownerFinancingCustomerSurfacesEnabled(): boolean {
 /**
  * Builds an Acorn prequalification URL with attribution.
  * Never includes homeowner PII (name, address, email) in the query string.
+ *
+ * UNVERIFIED — confirm on partner call:
+ * 'd=' was observed in production dealer URLs; 'amount=' is an unconfirmed guess.
+ * If parameters differ, homeowners land on a generic page without attribution.
  */
 export function buildAcornApplyUrl({
   dealerCode,

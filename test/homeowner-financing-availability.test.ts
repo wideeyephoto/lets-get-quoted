@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -88,6 +90,7 @@ import {
 import {
   ACORN_MIN_LOAN_AMOUNT,
   buildAcornApplyUrl,
+  ACORN_PROVIDER_ID,
 } from '@/lib/acorn-financing';
 import { generateInvoiceHtml } from '@/emails/InvoiceEmail';
 import { renderClientQuoteEmailHtml } from '@/emails/renderers';
@@ -211,7 +214,6 @@ describe('Homeowner financing availability and Reg Z compliance guards', () => {
       expect(html).toContain('Monthly payment options');
       expect(html).toContain('See options');
       expect(html).toContain('DEALER_ACORN_99');
-      expect(html).toContain('amount=4800');
       expect(html).toContain('Acorn Finance is an independent lending marketplace');
 
       // REG Z / TILA MANDATE: Absolute zero tolerance for trigger terms even when active
@@ -538,16 +540,26 @@ describe('Homeowner financing availability and Reg Z compliance guards', () => {
       }
     });
 
-    it('URL generator strictly omits customer PII from prequalification link parameters', () => {
-      const url = buildAcornApplyUrl({
-        dealerCode: 'DEALER_TEST_123',
+    it('URL generator propagates dealer code and strictly omits customer PII from parameters', () => {
+      const urlA = buildAcornApplyUrl({
+        dealerCode: 'DEALER_ACCOUNT_A',
         amount: 8500,
       });
 
-      expect(url).toContain('d=DEALER_TEST_123');
-      expect(url).toContain('amount=8500');
-      // Must not carry PII in any parameter
-      expect(url).not.toMatch(/email|name|phone|address|ssn|client/i);
+      // Dealer code rides the URL
+      expect(urlA).toContain('d=DEALER_ACCOUNT_A');
+
+      // Cross-tenant isolation: Account A's dealer code never leaks into Account B's URL
+      const urlB = buildAcornApplyUrl({
+        dealerCode: 'DEALER_ACCOUNT_B',
+        amount: 8500,
+      });
+      expect(urlB).toContain('d=DEALER_ACCOUNT_B');
+      expect(urlB).not.toContain('DEALER_ACCOUNT_A');
+
+      // Must not carry customer PII in any parameter
+      expect(urlA).not.toMatch(/email|name|phone|address|ssn|client/i);
+      expect(urlB).not.toMatch(/email|name|phone|address|ssn|client/i);
     });
 
     it('financing resolution never creates payments or modifies invoice balances', async () => {
@@ -571,6 +583,43 @@ describe('Homeowner financing availability and Reg Z compliance guards', () => {
 
       // Payments array remains untouched — no payments or disbursements created
       expect(mocks.payments).toHaveLength(0);
+    });
+  });
+
+  describe('Stage 0 migration contracts and security invariants', () => {
+    const migrationPath = fileURLToPath(
+      new URL(
+        '../migrations/20260908150000_homeowner_financing_enrollments.sql',
+        import.meta.url,
+      ),
+    );
+    const migrationSql = readFileSync(migrationPath, 'utf8').toLowerCase();
+
+    it('migration enforces row level security and revokes all grants from anon', () => {
+      expect(migrationSql).toContain(
+        'alter table public.homeowner_financing_enrollments enable row level security',
+      );
+      expect(migrationSql).toContain(
+        'revoke all on public.homeowner_financing_enrollments from anon',
+      );
+      // Assert anon is never granted any privileges
+      expect(migrationSql).not.toMatch(
+        /grant\s+[a-z,\s]+\s+on\s+public\.homeowner_financing_enrollments\s+to\s+anon/,
+      );
+    });
+
+    it('TypeScript provider constant matches the SQL check constraint in migration', () => {
+      const checkMatch = migrationSql.match(
+        /check\s*\(\s*provider\s+in\s*\(([^)]+)\)\s*\)/i,
+      );
+      expect(checkMatch).not.toBeNull();
+      const allowedProviders = checkMatch![1]
+        .split(',')
+        .map((s) => s.trim().replace(/^['"]|['"]$/g, ''));
+
+      // Assert TS constant is present and strictly matches the SQL check constraint
+      expect(allowedProviders).toContain(ACORN_PROVIDER_ID);
+      expect(allowedProviders).toEqual([ACORN_PROVIDER_ID]);
     });
   });
 });
