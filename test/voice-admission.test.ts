@@ -381,6 +381,21 @@ describe('what a caller gets', () => {
 });
 
 describe('concurrency, without a call-started event to count from', () => {
+  it('uses voicemail rather than ringing the caller back on the same phone', async () => {
+    workspace({ voice_concurrent_calls: 1 }, call.fromNumber);
+    replies.voice_call_admissions = { data: [{ provider_call_id: 'another-call' }], error: null };
+    expect((await planInboundCall(admin, call, options)).plan.kind).toBe('voicemail');
+  });
+  it('reuses a retried call instead of forwarding it back to the owner as at capacity', async () => {
+    workspace({ voice_concurrent_calls: 1 });
+    replies.voice_call_admissions = { data: [{ provider_call_id: CALL }], error: null };
+    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_existing', capMinutes: 10 });
+    const result = await planInboundCall(admin, call, options);
+    expect(result.declineReason).toBeNull();
+    expect(result.plan).toMatchObject({ kind: 'ai_agent', capMinutes: 10 });
+    expect(admitVoiceCall).toHaveBeenCalledOnce();
+  });
+
   it('counts an admission with no receipt as a live call', async () => {
     replies.voice_call_admissions = { data: [{ provider_call_id: 'live-1' }], error: null };
     replies.voice_events = { data: [], error: null };

@@ -166,7 +166,10 @@ export async function POST(request: Request) {
       // SignalWire renders this into dedicated auth fields. It is never placed
       // in the URL or included in the decline log below.
       receiptAuthorization: voiceReceiptAuthorization(),
-      forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}&from=${encodeURIComponent(call.fromNumber || '')}&call_id=${encodeURIComponent(call.providerCallId)}`,
+      // Use digits for phone query values to avoid provider/proxy disagreement
+      // over escaped plus signs in the URL covered by the webhook signature.
+      // The status route normalizes the digits back to E.164 after verification.
+      forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}&from=${(call.fromNumber || '').replace(/\D/g, '')}&call_id=${encodeURIComponent(call.providerCallId)}`,
       recordingStatusUrl: (id) => `${callbackOrigin}/api/voice/recording-status?account=${id}`,
       swaigUrl: (id, ctx) => {
         const token = ctx
@@ -205,7 +208,7 @@ export async function POST(request: Request) {
       console.info('AI voice declined:', { reason: declineReason, accountId, call: call.providerCallId });
     }
 
-    const renderedPlan = plan.kind === 'voicemail' || plan.kind === 'forward' ? { ...plan, recordingStatusUrl: `${callbackOrigin}/api/voice/recording-status?to=${encodeURIComponent(call.toNumber)}&from=${encodeURIComponent(call.fromNumber || '')}` } : plan;
+    const renderedPlan = plan.kind === 'voicemail' || plan.kind === 'forward' ? { ...plan, recordingStatusUrl: `${callbackOrigin}/api/voice/recording-status?to=${call.toNumber.replace(/\D/g, '')}&from=${(call.fromNumber || '').replace(/\D/g, '')}` } : plan;
     const answer = provider.renderAnswer(renderedPlan, { format: isJson ? 'swml' : 'laml' });
     return new NextResponse(answer.body, {
       status: 200,
