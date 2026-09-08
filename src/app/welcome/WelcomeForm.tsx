@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { completeFirstRunAction } from './actions';
 import { seedSiteFromFirstRunAction } from './seed-actions';
 import { trackSignupConversion, updateGoogleConsent } from '@/lib/google-tag';
+import TradeSearchSelect from '@/components/trade-search-select';
 
 type TradeOption = { slug: string; name: string };
 
@@ -119,12 +120,14 @@ export default function WelcomeForm({
 
       <label htmlFor="wf-trade">
         What kind of work do you do?
-        <select id="wf-trade" name="trade" value={trade} onChange={(event) => setTrade(event.target.value)}>
-          <option value="">Something else</option>
-          {trades.map((option) => (
-            <option key={option.slug} value={option.slug}>{option.name}</option>
-          ))}
-        </select>
+        <TradeSearchSelect
+          id="wf-trade"
+          name="trade"
+          value={trade}
+          onChange={setTrade}
+          businessName={businessName}
+          placeholder="Search trade or specialty (e.g. Plumber, HVAC, Glass)…"
+        />
       </label>
       <p className="welcome-hint">We use this to pick your starting design, your icons, and how the estimator prices work.</p>
 
