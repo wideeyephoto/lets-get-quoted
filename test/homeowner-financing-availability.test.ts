@@ -2,14 +2,11 @@ import React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  invoice: vi.fn(),
-  payments: [] as Array<Record<string, unknown>>,
-  enrollmentRows: [] as Array<Record<string, unknown>>,
-}));
-
-vi.mock('@/lib/auth', () => ({
-  createAdminClient: () => ({
+const mocks = vi.hoisted(() => {
+  const enrollmentRows: Array<Record<string, unknown>> = [];
+  const payments: Array<Record<string, unknown>> = [];
+  const invoice = vi.fn();
+  const createAdminClient = () => ({
     from: (table: string) => {
       if (table === 'homeowner_financing_enrollments') {
         let accountFilter: string | null = null;
@@ -41,7 +38,21 @@ vi.mock('@/lib/auth', () => ({
       };
       return query;
     },
-  }),
+  });
+
+  return {
+    invoice,
+    payments,
+    enrollmentRows,
+    createAdminClient,
+  };
+});
+
+vi.mock('@/lib/auth', () => ({
+  createAdminClient: () => mocks.createAdminClient(),
+}));
+vi.mock('@/lib/supabase-admin', () => ({
+  createAdminClient: () => mocks.createAdminClient(),
 }));
 vi.mock('@/lib/invoices', async (original) => ({
   ...(await original<typeof import('@/lib/invoices')>()),

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireAdmin } from '@/lib/auth';
 import { accountDisplayName } from '@/lib/admin-accounts';
-import { listAdminActions } from '@/lib/admin';
+import { listAdminActions, type AdminActionRow } from '@/lib/admin';
 import {
   adminPaymentFeeState,
   getPaymentForAdmin,
@@ -77,7 +77,7 @@ export default async function AdminPaymentPage({
   const account: { business_name: string | null; account_number: number | null } =
     (acct as { business_name: string | null; account_number: number | null } | null) ??
     { business_name: null, account_number: null };
-  const paymentActions = actions.filter((a) => a.target_type === 'payment' && a.target_id === params.id);
+  const paymentActions = (actions as AdminActionRow[]).filter((a: AdminActionRow) => a.target_type === 'payment' && a.target_id === params.id);
 
   const mayRefund = staffCan(ctx.staff, 'money.refund');
   const blocked = refundBlockedReason(payment);
