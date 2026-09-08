@@ -12,6 +12,7 @@ import {
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 import { trustedProviderCallbackOrigin } from '@/lib/app-origin';
 import { recordVoiceRouteVerification } from '@/lib/voice/route-readiness';
+import { recordFallbackVoiceCall } from '@/lib/voice/fallback-context';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -166,11 +167,9 @@ export async function POST(request: Request) {
       // SignalWire renders this into dedicated auth fields. It is never placed
       // in the URL or included in the decline log below.
       receiptAuthorization: voiceReceiptAuthorization(),
-      // Use digits for phone query values to avoid provider/proxy disagreement
-      // over escaped plus signs in the URL covered by the webhook signature.
-      // The status route normalizes the digits back to E.164 after verification.
-      forwardActionUrl: (id) => `${callbackOrigin}/api/voice/ai/status?account=${id}&from=${(call.fromNumber || '').replace(/\D/g, '')}&call_id=${encodeURIComponent(call.providerCallId)}`,
-      recordingStatusUrl: (id) => `${callbackOrigin}/api/voice/recording-status?account=${id}`,
+      // Keep signed callback URLs stable; attribution comes from saved call identity.
+      forwardActionUrl: () => `${callbackOrigin}/api/voice/ai/status`,
+      recordingStatusUrl: () => `${callbackOrigin}/api/voice/recording-status`,
       swaigUrl: (id, ctx) => {
         const token = ctx
           ? signVoiceToolToken({
@@ -208,7 +207,12 @@ export async function POST(request: Request) {
       console.info('AI voice declined:', { reason: declineReason, accountId, call: call.providerCallId });
     }
 
-    const renderedPlan = plan.kind === 'voicemail' || plan.kind === 'forward' ? { ...plan, recordingStatusUrl: `${callbackOrigin}/api/voice/recording-status?to=${call.toNumber.replace(/\D/g, '')}&from=${(call.fromNumber || '').replace(/\D/g, '')}` } : plan;
+    if (plan.kind === 'voicemail' || plan.kind === 'forward') {
+      if (!accountId) throw new Error('Fallback call has no workspace');
+      await recordFallbackVoiceCall(admin, accountId, call, plan.kind);
+    }
+    const renderedPlan = plan.kind === 'voicemail' || plan.kind === 'forward'
+      ? { ...plan, recordingStatusUrl: `${callbackOrigin}/api/voice/recording-status` } : plan;
     const answer = provider.renderAnswer(renderedPlan, { format: isJson ? 'swml' : 'laml' });
     return new NextResponse(answer.body, {
       status: 200,

@@ -9,11 +9,47 @@ import {
   signalWireVoiceScope,
   voiceReceiptAuthorization,
   voiceWebhookSecuritySummary,
+  voiceWebhookFailureDiagnostics,
   signVoiceToolToken,
   verifyVoiceToolToken,
 } from '@/lib/voice/auth';
 
 const ENV = { LGQ_VOICE_RECEIPT_BASIC: 'voice-receipt:test:password' };
+
+describe('safe callback authentication diagnostics', () => {
+  it('diagnoses legacy nested JSON coercion but refuses its unbound recording fields', () => {
+    useTrustedCallbackOrigin();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'private-signing-key');
+    const url = 'https://lgq.test/api/voice/recording-status';
+    const signature = createHmac('sha1', 'private-signing-key')
+      .update(url + 'event_typecalling.call.recordparams[object Object]').digest('base64');
+    for (const duration of [5, 999]) {
+      const body = JSON.stringify({ event_type: 'calling.call.record', params: { duration } });
+      const req = new Request(url, { method: 'POST', body, headers: {
+        'content-type': 'application/json', 'x-signalwire-signature': signature,
+      } });
+      expect(voiceWebhookFailureDiagnostics(req, body).matches).toContain('sha1_base64_json_fields');
+      expect(verifySignedVoiceWebhook(req, body)).toEqual({ ok: false, reason: 'mismatch' });
+    }
+  });
+  it('identifies a body-unbound signature without accepting it or exposing credentials or payload', () => {
+    useTrustedCallbackOrigin();
+    vi.stubEnv('SIGNALWIRE_SIGNING_KEY', 'private-signing-key');
+    const url = 'https://lgq.test/api/voice/recording-status?from=18105551234';
+    const body = '{"call_id":"private-call-id"}';
+    const signature = createHmac('sha1', 'private-signing-key').update(url).digest('base64');
+    const req = new Request(url, { method: 'POST', body, headers: {
+      'content-type': 'application/json', 'x-signalwire-signature': signature,
+    } });
+    const result = voiceWebhookFailureDiagnostics(req, body);
+    expect(result.matches).toContain('sha1_base64_url_only');
+    expect(verifySignedVoiceWebhook(req, body)).toEqual({ ok: false, reason: 'mismatch' });
+    const serialized = JSON.stringify(result);
+    for (const secret of [signature, 'private-signing-key', 'private-call-id', '18105551234', url, body]) {
+      expect(serialized).not.toContain(secret);
+    }
+  });
+});
 
 afterEach(() => vi.unstubAllEnvs());
 
