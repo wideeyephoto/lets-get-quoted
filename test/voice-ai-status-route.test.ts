@@ -138,6 +138,7 @@ describe('AI voice fallback status callback', () => {
         params: {
           call_id: 'call-sw-swml-1',
           call_state: 'ended',
+          end_reason: 'no_answer',
         },
       }),
     });
@@ -149,7 +150,7 @@ describe('AI voice fallback status callback', () => {
       p_provider_call_id: 'call-sw-swml-1',
       p_account_id: ACCOUNT,
       p_phone_number: '+18105550199',
-      p_dial_status: 'ended',
+      p_dial_status: 'no-answer',
     }));
   });
 
@@ -172,6 +173,32 @@ describe('AI voice fallback status callback', () => {
     expect(rpc).toHaveBeenCalledWith('ingest_sms_missed_call', expect.objectContaining({
       p_account_id: ACCOUNT, p_provider_call_id: 'saved-call', p_phone_number: '+18105550199',
     }));
+  });
+
+  it.each([undefined, null, '', true, false, -1, 'bad', 86401])('preserves unknown native duration (%s)', async (duration) => {
+    const rpc = vi.fn().mockResolvedValue({ error: null });
+    mocks.createAdminClient.mockReturnValue({ rpc });
+    const { POST } = await import('@/app/api/voice/ai/status/route');
+    const response = await POST(new Request(`https://lgq.test/api/voice/ai/status?account=${ACCOUNT}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ timestamp: 1788864000, params: { call_id: 'transfer', connect_state: 'disconnected', duration } }),
+    }));
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledWith('record_voice_forwarding_usage', expect.objectContaining({ p_seconds: null, p_state: 'disconnected' }));
+    expect(rpc).not.toHaveBeenCalledWith('ingest_sms_missed_call', expect.anything());
+  });
+
+  it('does not send a missed-call message for a normal ended leg', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null });
+    mocks.createAdminClient.mockReturnValue({ rpc });
+    const { POST } = await import('@/app/api/voice/ai/status/route');
+    const response = await POST(new Request(`https://lgq.test/api/voice/ai/status?account=${ACCOUNT}&from=%2B18105550199`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ params: { call_id: 'transfer', call_state: 'ended', end_reason: 'hangup' } }),
+    }));
+    expect(response.status).toBe(200);
+    expect(rpc).toHaveBeenCalledTimes(1);
+    expect(rpc).toHaveBeenCalledWith('record_voice_forwarding_usage', expect.objectContaining({ p_state: 'disconnected', p_seconds: null }));
   });
 
   it.each([false, true])('does not acknowledge a query-free callback with missing or unreadable context (database error: %s)', async (dbError) => {

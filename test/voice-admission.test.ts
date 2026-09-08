@@ -126,7 +126,7 @@ beforeEach(() => {
   vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://app.letsgetquoted.com');
   vi.stubEnv('NEXT_PUBLIC_ROOT_DOMAIN', 'letsgetquoted.com');
   admitVoiceCall.mockReset();
-  admitVoiceCall.mockResolvedValue({ outcome: 'admitted', lease: { reservedMinutes: 10 } });
+  admitVoiceCall.mockResolvedValue({ outcome: 'admitted', capMinutes: 10, lease: { reservedMinutes: 10 } });
   resolveVoiceCallerIdentity.mockReset();
   resolveVoiceCallerIdentity.mockResolvedValue({ status: 'customer' });
   purchasedVoiceUnits = 0;
@@ -147,13 +147,21 @@ describe('the product flag is not a metering flag', () => {
 
 describe('what a caller gets', () => {
   it.each([
-    { outcome: 'admitted', lease: { reservedMinutes: 2 } },
+    { outcome: 'admitted', capMinutes: 2, lease: { reservedMinutes: 2 } },
     { outcome: 'admitted_existing', capMinutes: 2 },
-    { outcome: 'admitted_overage', overage: { units: 2 } },
+    { outcome: 'admitted_overage', capMinutes: 2, overage: { units: 2 } },
   ])('passes the admitted shorter duration to the provider: $outcome', async (decision) => {
     admitVoiceCall.mockResolvedValue(decision);
     expect((await planInboundCall(admin, call, options)).plan)
       .toMatchObject({ kind: 'ai_agent', capMinutes: 2 });
+  });
+
+  it.each([0, 1, 2, 9, 10, 15])('uses the allowed duration independently of a %s-minute hold', async (balance) => {
+    admitVoiceCall.mockResolvedValue(balance === 0
+      ? { outcome: 'admitted_unmetered', capMinutes: 10, reason: 'exhausted_not_enforced' }
+      : { outcome: 'admitted', capMinutes: 10, lease: { reservedMinutes: Math.min(10, balance) } });
+    expect((await planInboundCall(admin, call, options)).plan)
+      .toMatchObject({ kind: 'ai_agent', capMinutes: 10 });
   });
 
   it('reaches the AI when everything is in place', async () => {
@@ -163,6 +171,7 @@ describe('what a caller gets', () => {
     if (result.plan.kind !== 'ai_agent') return;
     expect(result.plan.receiptUrl).toBe('https://lgq.test/api/voice/receipt');
     expect(result.plan.receiptUrl).not.toContain('@');
+    expect(result.plan.transferStatusUrl).toBe(options.forwardActionUrl(ACCOUNT));
     // The disclosure is not optional and not a setting.
     expect(result.plan.greeting).toContain('AI assistant');
     expect(admitVoiceCall).toHaveBeenCalledWith(
@@ -353,7 +362,7 @@ describe('what a caller gets', () => {
   it('still answers when the call was admitted unmetered', async () => {
     // Failing open is the meter's decision; the route must honour it rather
     // than treating "unmetered" as "refused".
-    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_unmetered', reason: 'ledger_unavailable' });
+    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_unmetered', capMinutes: 10, reason: 'ledger_unavailable' });
     expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
   });
 
@@ -375,7 +384,7 @@ describe('what a caller gets', () => {
   });
 
   it('answers on an authorized overage too', async () => {
-    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_overage', overage: { units: 10 } });
+    admitVoiceCall.mockResolvedValue({ outcome: 'admitted_overage', capMinutes: 10, overage: { units: 10 } });
     expect((await planInboundCall(admin, call, options)).plan.kind).toBe('ai_agent');
   });
 });

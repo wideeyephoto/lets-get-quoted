@@ -2,7 +2,7 @@ import 'server-only';
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-import { billableVoiceMinutes, settleVoiceCall } from '@/lib/billing/voice-minute-usage';
+import { billableVoiceMinutes, settleVoiceCall, VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import { settleUsageOverage } from '@/lib/billing/usage-overage';
 import { createLead } from '@/lib/leads';
 import { normalizeUsPhone } from '@/lib/phone';
@@ -47,6 +47,9 @@ type AdmissionRow = {
   account_id: string;
   reservation_id: string | null;
   reserved_minutes: number | null;
+  allowed_minutes?: number | null;
+  minute_mode?: 'off' | 'measure' | 'enforce' | null;
+  unmetered_reason?: string | null;
   /** Set only when the call was admitted on overage rather than on allowance. */
   overage_key: string | null;
   caller_number: string | null;
@@ -81,7 +84,7 @@ export async function settleVoiceReceipt(
   const receipt = sanitizeVoiceReceipt(receiptInput);
   const { data: admission, error: admissionError } = await admin
     .from('voice_call_admissions')
-    .select('account_id, reservation_id, reserved_minutes, overage_key, caller_number, caller_kind')
+    .select('account_id, reservation_id, reserved_minutes, allowed_minutes, minute_mode, unmetered_reason, overage_key, caller_number, caller_kind')
     .eq('provider', receipt.provider)
     .eq('provider_call_id', receipt.providerCallId)
     .maybeSingle();
@@ -104,10 +107,16 @@ export async function settleVoiceReceipt(
     });
   }
 
-  const minutes = billableVoiceMinutes({
+  const timings = {
     ai_start_date: receipt.aiStartMicros,
     ai_end_date: receipt.aiEndMicros,
-  }, row.reserved_minutes && row.reserved_minutes > 0 ? row.reserved_minutes : undefined);
+  };
+  const allowedMinutes = row.allowed_minutes
+    ?? (row.reserved_minutes && row.reserved_minutes > 0 ? row.reserved_minutes : VOICE_CALL_CAP_MINUTES);
+  const minutes = billableVoiceMinutes(timings, allowedMinutes);
+  // Retain the full rounded measurement, including any carrier overrun. Only
+  // settlement is bounded by the admission and hold; measurement must not hide it.
+  const measuredMinutes = billableVoiceMinutes(timings, Number.MAX_SAFE_INTEGER);
 
   let settled: number | null = null;
   let reconcile: VoiceSettlement['reconcile'] = null;
@@ -143,9 +152,17 @@ export async function settleVoiceReceipt(
     if (outcome.settled) settled = committedMinutes;
     else reconcile = 'settlement_failed';
   }
-  // Neither a reservation nor an overage key means the call was admitted
-  // unmetered, on purpose. There is nothing to settle and nothing wrong; the
-  // receipt is still the evidence that makes it reconcilable later.
+  const unmetered = row.reservation_id === null && row.overage_key == null;
+  // A failed/unknown settlement is not a write-off. Leave absorption unknown
+  // until a retry establishes how much credit was actually committed.
+  const absorbedMinutes = measuredMinutes !== null && (settled !== null || unmetered)
+    ? Math.max(0, measuredMinutes - (settled ?? 0)) : null;
+  const absorptionReason = absorbedMinutes && absorbedMinutes > 0
+    ? unmetered ? row.unmetered_reason ?? 'legacy_unmetered'
+      : measuredMinutes! > allowedMinutes ? 'duration_limit_exceeded'
+        : settled! < Math.min(minutes!, row.reserved_minutes ?? 0) ? 'reservation_released'
+          : row.minute_mode === 'measure' ? 'partial_balance' : 'unreserved_usage'
+    : null;
 
   let authoritativeCallerNumber = row.caller_number;
   let callerKind = row.caller_kind;
@@ -306,6 +323,9 @@ export async function settleVoiceReceipt(
   await recordCallHistory(admin, receipt, {
     accountId: row.account_id,
     minutes: settled,
+    measuredMinutes,
+    absorbedMinutes,
+    absorptionReason,
     // UNMETERED MEANS NOBODY WAS CHARGED. An overage call also holds no
     // reservation, so testing reservation_id alone called it unmetered and told
     // a contractor who had just paid the overage rate that the call was "not
@@ -314,7 +334,7 @@ export async function settleVoiceReceipt(
     // or by any caller that does not ask for it -- yields undefined, and
     // `undefined !== null` is true, which would mark every reservation-backed
     // call an overage. The existing tests caught exactly that.
-    unmetered: row.reservation_id === null && row.overage_key == null,
+    unmetered,
     overage: row.overage_key != null,
     unbillable: minutes === null,
     leadId,
@@ -484,6 +504,9 @@ export async function recordCallHistory(
   facts: Readonly<{
     accountId: string;
     minutes: number | null;
+    measuredMinutes?: number | null;
+    absorbedMinutes?: number | null;
+    absorptionReason?: string | null;
     unmetered: boolean;
     /** Charged against the workspace's overage cap rather than its allowance. */
     overage: boolean;
@@ -519,6 +542,13 @@ export async function recordCallHistory(
     ended_at: instant(receipt.callEndMicros),
     ai_seconds: seconds,
     billed_minutes: facts.minutes,
+    // Omit these fields for callers outside receipt settlement so provisional
+    // history writers cannot erase an already reconciled accounting record.
+    ...(facts.measuredMinutes !== undefined ? {
+      measured_minutes: facts.measuredMinutes,
+      absorbed_minutes: facts.absorbedMinutes ?? null,
+      absorption_reason: facts.absorptionReason ?? null,
+    } : {}),
     settlement,
     outcome,
     outcome_source: 'swml_post_prompt',

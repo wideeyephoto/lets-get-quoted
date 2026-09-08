@@ -573,6 +573,7 @@ describe('rendering an answer', () => {
       greeting: 'Hello',
       capMinutes: 10,
       transferTo: '+15558889999',
+      transferStatusUrl: 'https://x.test/api/voice/ai/status',
     });
     const parsed = JSON.parse(aiAnswer.body);
     const aiSection = parsed.sections.main.find((s: Record<string, unknown>) => 'ai' in s);
@@ -585,6 +586,7 @@ describe('rendering an answer', () => {
     expect(transferMain[0].connect.to).toBe('+15558889999');
     expect(transferMain[0].connect.timeout).toBe(25);
     expect(transferMain[0].connect.max_duration).toBe(598);
+    expect(transferMain[0].connect.status_url).toBe('https://x.test/api/voice/ai/status');
     expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
     expect(transferMain[1].play.url).toContain('say:');
     expect(transferMain[2]).toEqual({ record: expect.objectContaining({

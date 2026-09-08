@@ -408,15 +408,11 @@ export async function planInboundCall(
       ),
       systemPrompt,
       postPrompt,
-      capMinutes: decision.outcome === 'admitted'
-        ? decision.lease.reservedMinutes
-        : decision.outcome === 'admitted_overage'
-          ? decision.overage.units
-          : decision.outcome === 'admitted_existing'
-            ? decision.capMinutes : VOICE_CALL_CAP_MINUTES,
+      capMinutes: decision.capMinutes,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
       transferTo: settings.transferNumber || workspace.callForwardNumber,
+      transferStatusUrl: options.forwardActionUrl(workspace.accountId),
       recordCall: settings.recordingEnabled === true && !grounding?.contractorStaffCaller,
       recordingStatusUrl: options.recordingStatusUrl
         ? options.recordingStatusUrl(workspace.accountId)

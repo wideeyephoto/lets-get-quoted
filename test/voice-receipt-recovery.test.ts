@@ -126,10 +126,33 @@ describe('bounded receipt recovery worker', () => {
     const recover = vi.fn<typeof recoverVoiceReceipt>()
       .mockResolvedValueOnce({ status: 'processed', minutes: 1 })
       .mockResolvedValueOnce({ status: 'needs_review', reason: 'missing_complete_projection' });
-    await expect(runVoiceReceiptRecovery({ admin, scope, now, recover })).resolves.toMatchObject({ considered: 2, processed: 1, failed: 1, needsReview: 1 });
+    const claim = { status: 'claimed' as const, eventId: CALL, claimToken: EVENT, attemptNumber: 2, retryAfterSeconds: null };
+    const processingStore = {
+      claim: vi.fn().mockResolvedValue(claim), complete: vi.fn(),
+      fail: vi.fn().mockResolvedValue({ status: 'retryable', retryAfterSeconds: 30 }),
+    };
+    await expect(runVoiceReceiptRecovery({ admin, scope, now, recover, processingStore })).resolves.toMatchObject({ considered: 2, processed: 1, failed: 1, needsReview: 1 });
     expect(filters).toContainEqual(['limit', 5]);
     expect(filters.find((f) => f[0] === 'or')?.[1]).toContain('next_attempt_at.lte.');
     expect(filters.find((f) => f[0] === 'or')?.[1]).toContain('processing_lease_expires_at.lte.');
+    expect(filters.find((f) => f[0] === 'or')?.[1]).toContain('processing_status.eq.received,received_at.lte.2026-09-08T17:55:00.000Z');
+    expect(filters).toContainEqual(['eq', 'provider_project_id', scope.projectId]);
+    expect(filters).toContainEqual(['eq', 'provider_space_id', scope.spaceId]);
+    expect(processingStore.claim).toHaveBeenCalledTimes(1);
+    expect(processingStore.claim).toHaveBeenCalledWith(CALL);
+    expect(processingStore.fail).toHaveBeenCalledTimes(1);
+    expect(processingStore.fail).toHaveBeenCalledWith(claim, 'voice_recovery_requires_review', true);
     expect(recover).toHaveBeenCalledWith(admin, EVENT, { scope, now, apply: true });
+  });
+
+  it.each(['busy', 'processed', 'exhausted'] as const)('does not change a %s receipt after a recovery preflight race', async (status) => {
+    const query: Record<string, unknown> = {};
+    for (const method of ['select', 'eq', 'not', 'gte', 'or', 'order']) query[method] = () => query;
+    query.limit = () => Promise.resolve({ data: [{ id: EVENT }], error: null });
+    const processingStore = { claim: vi.fn().mockResolvedValue({ status }), fail: vi.fn(), complete: vi.fn() };
+    const recover = vi.fn<typeof recoverVoiceReceipt>().mockResolvedValue({ status: 'needs_review', reason: 'missing_complete_projection' });
+    await runVoiceReceiptRecovery({ admin: { from: () => query } as unknown as SupabaseClient, scope, now, recover, processingStore });
+    expect(processingStore.fail).not.toHaveBeenCalled();
+    expect(processingStore.complete).not.toHaveBeenCalled();
   });
 });
