@@ -13,6 +13,7 @@
  */
 import '../globals.css';
 import { headers } from 'next/headers';
+import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requireDashboardShellContext } from '@/lib/auth';
 import { DASHBOARD_ORIENTATION_TOUR } from '@/lib/product-tour/catalog';
@@ -98,6 +99,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   return (
     <AssistantProvider>
       {navDecision ? <DashboardNavSync nav={navDecision} /> : null}
+      <div style={{ padding: '8px 24px', textAlign: 'right' }}><Link href="/workspaces">Switch workspace</Link></div>
       {!onboarded ? (
         // The whole bar starts the Stripe connect itself — landing on Settings
         // and hunting for the same button is a step that does nothing.

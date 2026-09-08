@@ -211,7 +211,7 @@ describe('AI Operator Framework - Tool Declarations & Schemas', () => {
       source: 'admin_dashboard',
     };
     const created = createHitlAction({
-      category: 'billing_revenue',
+      category: 'billing_revops',
       title: 'Refund a subscription',
       description: 'Needs founder sign-off',
       actionType: 'issue_subscription_refund',

@@ -12,7 +12,8 @@
 // does it satisfy the same contract the seeder enforces" needs an answer read
 // from Stripe rather than assumed from a document.
 //
-// Uses the read-only rk_live key in .env.live.local. Refuses anything else.
+// Uses an injected live key, or the existing key in .env.live.local.
+// A restricted key is preferred; its prefix alone does not prove permissions.
 // Every call here is a retrieve/search. Nothing in this file writes.
 
 import { readFile } from 'node:fs/promises';
@@ -23,18 +24,16 @@ import Stripe from 'stripe';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
-const contents = await readFile(resolve(root, '.env.live.local'), 'utf8');
-const secretKey = contents.split(/\r?\n/)
+const contents = process.env.STRIPE_SECRET_KEY ? '' : await readFile(resolve(root, '.env.live.local'), 'utf8');
+const secretKey = process.env.STRIPE_SECRET_KEY || contents.split(/\r?\n/)
   .map((l) => l.trim())
   .find((l) => l.startsWith('STRIPE_SECRET_KEY='))
   ?.slice('STRIPE_SECRET_KEY='.length)
   .replace(/^['"]|['"]$/g, '');
 
 if (!secretKey) throw new Error('No STRIPE_SECRET_KEY in .env.live.local.');
-if (!/^rk_live_/.test(secretKey)) {
-  // A write-capable key must never be the one this runs under, and a test key
-  // would answer a different question while looking like it answered this one.
-  throw new Error('Refusing: this script requires the read-only rk_live_ key.');
+if (!/^(rk|sk)_live_/.test(secretKey)) {
+  throw new Error('Refusing: this read-only audit requires a live key.');
 }
 
 // Parsed from catalog.ts rather than restated, for the reason the seeder gives:

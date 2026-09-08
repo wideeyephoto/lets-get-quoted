@@ -36,7 +36,7 @@ export default async function OfficeAccessPage() {
 
   // An owner who wanders here has a dashboard to be in. Anyone else has no
   // business on this page either.
-  if (membership.role === 'owner') redirect('/dashboard');
+  if (membership.role === 'owner') redirect('/workspaces');
   if (membership.role !== 'office' || !membership.accountId) redirect('/login');
 
   /**

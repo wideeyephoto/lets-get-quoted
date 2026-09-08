@@ -171,7 +171,7 @@ export default function PricingCalculator({
           </div>
         </div>
         <p className={styles.requirementsHint}>
-          Flex supports 1 office user + 2 crew users. Extra office users on Solo+ are $15/month.
+          Flex supports 2 office users + 2 crew users. Extra office users on Solo+ are $15/month.
         </p>
       </div>
 

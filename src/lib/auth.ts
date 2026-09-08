@@ -10,6 +10,7 @@ import { clientIpFrom } from '@/lib/rate-limit';
 import { deniedMessage, parseStaffRole, staffCan, type Permission, type StaffRole } from '@/lib/staff';
 import { needsFirstRun, type FirstRunAccount } from '@/lib/terms';
 import { OFFICE_NO_ACCESS_PATH, officeLandingPath } from '@/lib/office-access';
+import { preferredWorkspace, selectWorkspaceMembership } from '@/lib/workspace-selection';
 
 /**
  * React's per-request memoization, where it exists.
@@ -94,7 +95,7 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
   // race instead of maybeSingle() erroring on multiple rows.)
   const { data, error: membershipError } = await supabase
     .from('memberships')
-    .select('account_id, role')
+    .select('account_id, role, deactivated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
 
@@ -106,12 +107,10 @@ export async function getCurrentMembership(userId: string): Promise<CurrentMembe
   // one is new and load-bearing: an office user who is also on somebody's crew
   // would otherwise resolve to the crew row purely because it is older, and land
   // in the field app instead of at the business that hired them.
-  const chosen = data.find((m) => m.role === 'owner')
-    ?? data.find((m) => m.role === 'office')
-    ?? data[0];
+  const chosen = selectWorkspaceMembership(data, await preferredWorkspace(userId));
   return {
-    accountId: chosen.account_id ?? null,
-    role: chosen.role ?? null,
+    accountId: chosen?.account_id ?? null,
+    role: chosen?.role as CurrentMembership['role'] ?? null,
   };
 }
 
@@ -405,7 +404,7 @@ async function verifiedUser(
  * row reads as "not suspended", which would let somebody keep working inside a
  * business staff had suspended.
  */
-type MemberRow = { account_id: string | null; role: string | null; accounts: unknown };
+type MemberRow = { account_id: string | null; role: string | null; accounts: unknown; deactivated_at?: string | null };
 
 async function readMemberRows(
   admin: ReturnType<typeof createAdminClient>,
@@ -413,7 +412,7 @@ async function readMemberRows(
 ): Promise<MemberRow[]> {
   const { data, error } = await admin
     .from('memberships')
-    .select('account_id, role, accounts(*)')
+    .select('account_id, role, deactivated_at, accounts(*)')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
   if (!error && data) return data as MemberRow[];
@@ -440,10 +439,10 @@ async function readMemberRows(
    */
   const { data: plain } = await admin
     .from('memberships')
-    .select('account_id, role')
+    .select('account_id, role, deactivated_at')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
-  return ((plain ?? []) as Array<{ account_id: string | null; role: string | null }>)
+  return ((plain ?? []) as Array<{ account_id: string | null; role: string | null; deactivated_at?: string | null }>)
     .map((row) => ({ ...row, accounts: null }));
 }
 
@@ -455,11 +454,8 @@ async function readMemberRows(
  * OFFICE so somebody who keeps another company's books is not dropped into the
  * field app by an older crew row, then the oldest of whatever is left.
  */
-function chooseMemberRow(rows: MemberRow[]): MemberRow | null {
-  return rows.find((row) => row.role === 'owner')
-    ?? rows.find((row) => row.role === 'office')
-    ?? rows[0]
-    ?? null;
+function chooseMemberRow(rows: MemberRow[], preferred: string | null): MemberRow | null {
+  return selectWorkspaceMembership(rows, preferred);
 }
 
 /** A to-one embed comes back as an object; tolerate an array in case it does not. */
@@ -524,7 +520,7 @@ const loadSessionMember = perRequest(async () => {
     rows = await readMemberRows(admin, user.id);
   }
 
-  const member = chooseMemberRow(rows);
+  const member = chooseMemberRow(rows, await preferredWorkspace(user.id));
 
   /**
    * The embed did not answer, so pay for the account row on its own.

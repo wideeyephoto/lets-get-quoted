@@ -17,7 +17,7 @@ describe('billing entitlement catalog compiler', () => {
       billingInterval: 'none',
       platformFeeBps: 125,
       featureLimits: {
-        office_users: 1,
+        office_users: 2,
         crew_users: 2,
         custom_domain_connections: 1,
         dedicated_business_numbers: 0,

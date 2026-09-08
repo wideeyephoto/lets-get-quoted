@@ -209,6 +209,51 @@ try {
   const driftedAgain = await row(DRIFTED);
   ck('and still leaves the drifted row alone',
     driftedAgain.feature_limits.storage_gb === 99);
+
+  // Exercise the current two-seat change on real initialization SQL and the
+  // captured subscription projector. Projector dependencies are intentionally
+  // absent: only its exact source edit is checked here, not webhook execution.
+  await c.query('alter table public.workspace_entitlements add column updated_at timestamptz');
+  await c.query('set check_function_bodies = off');
+  await c.query(readFileSync(join(REPO, 'test-fixtures/cancelled-returns-to-flex/projector.sql'), 'utf8'));
+  const cancellation = m('20260823160000_cancelled_workspace_returns_to_flex.sql');
+  for (const block of cancellation.matchAll(/do \$(patch|check)\$[\s\S]*?end \$\1\$;/g)) {
+    await c.query(block[0]);
+  }
+  const projectorSource = async () => (await c.query(
+    "select pg_get_functiondef('public.project_stripe_billing_subscription_event_v1_unchecked(uuid,uuid,jsonb)'::regprocedure) as d",
+  )).rows[0].d;
+  const projectorBefore = await projectorSource();
+  await c.query("update public.workspace_entitlements set feature_limits = jsonb_set(feature_limits, '{office_users}', '4') where account_id = $1", [DRIFTED]);
+  await c.query("update public.workspace_entitlements set plan_code = 'solo' where account_id = $1", [PARTIAL]);
+  const paidBefore = await row(PARTIAL);
+  const seatsMigration = m('20260908132425_flex_two_office_seats.sql');
+  await c.query(seatsMigration);
+  ck('existing Flex gains a second office seat', (await row(AFTER)).feature_limits.office_users === 2);
+  ck('larger office grants and unrelated limits survive',
+    (await row(DRIFTED)).feature_limits.office_users === 4 && (await row(DRIFTED)).feature_limits.storage_gb === 99);
+  ck('paid entitlement rows remain unchanged', JSON.stringify(await row(PARTIAL)) === JSON.stringify(paidBefore));
+  ck('cancellation changes only the Flex office allowance',
+    await projectorSource() === projectorBefore.replace('"office_users":1,"crew_users":2', '"office_users":2,"crew_users":2'));
+  await c.query('set check_function_bodies = on');
+  const NEW_TWO = '55555555-5555-4555-8555-555555555555';
+  const newTwo = await newAccount(NEW_TWO);
+  ck('new account initialization grants two office seats', newTwo.feature_limits.office_users === 2);
+  ck('new account retains other Flex limits', newTwo.feature_limits.storage_gb === 5 && newTwo.feature_limits.crew_users === 2);
+  await c.query('set check_function_bodies = off');
+  await c.query(seatsMigration);
+  ck('two-seat migration is idempotent', (await row(NEW_TWO)).feature_limits.office_users === 2);
+
+  // A changed source must roll back both the writer patch and row backfill.
+  const driftedSource = (await projectorSource()).replace('"office_users":2,"crew_users":2', '"office_users":3,"crew_users":2');
+  await c.query(driftedSource);
+  await c.query("update public.workspace_entitlements set feature_limits = jsonb_set(feature_limits, '{office_users}', '1') where account_id = $1", [AFTER]);
+  let seatDriftRefused = false;
+  try { await c.query(seatsMigration); } catch (err) {
+    seatDriftRefused = err.code === '55000';
+    await c.query('rollback');
+  }
+  ck('unexpected writer drift refuses atomically', seatDriftRefused && (await row(AFTER)).feature_limits.office_users === 1);
 } catch (err) {
   ck('harness completed without throwing', false, String(err?.message ?? err).slice(0, 240));
 } finally {

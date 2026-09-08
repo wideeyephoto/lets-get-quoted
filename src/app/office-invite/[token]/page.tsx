@@ -46,7 +46,7 @@ export default async function OfficeInvitePage({
   if (!error) {
     // They are now an office user of that workspace. Where that leads is
     // /office-access, which explains what they can and cannot do yet.
-    redirect('/office-access');
+    redirect('/workspaces');
   }
 
   const raw = String(error.message ?? '');
@@ -72,7 +72,7 @@ export default async function OfficeInvitePage({
               : 'It may have expired, been cancelled, already been used, or been meant for a different email address. Ask whoever invited you to send a new one.'}
         </p>
         <p className="office-access-note">
-          You&apos;re signed in as {user.email}. If that isn&apos;t the address the invitation was
+          You&apos;re signed in as {user.email || 'an account without an email address'}. If that isn&apos;t the address the invitation was
           sent to, sign out and sign back in with the right one.
         </p>
         <div className="office-access-actions">

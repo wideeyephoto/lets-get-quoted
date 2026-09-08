@@ -35,6 +35,15 @@ import Stripe from 'stripe';
 
 const DRY_RUN = process.argv.includes('--dry-run');
 const WANT_LIVE = process.argv.includes('--live');
+// Prepare named Prices while checkout and fulfillment remain withheld.
+// Example: --prepare-withheld=storage_100gb,office_user --dry-run
+const prepareArgs = process.argv.slice(2).filter((arg) => arg.startsWith('--prepare-withheld='));
+const PREPARE = new Set(prepareArgs.flatMap((arg) => arg.slice('--prepare-withheld='.length).split(',')));
+for (const arg of process.argv.slice(2)) {
+  if (!['--live', '--dry-run'].includes(arg) && !arg.startsWith('--prepare-withheld=')) {
+    throw new Error(`Unknown argument: ${arg}`);
+  }
+}
 const CATALOG_MODULE = new URL('../src/lib/billing/catalog.ts', import.meta.url);
 
 // Which SKUs may not be sold yet is a catalog fact, not a script opinion, so it
@@ -93,6 +102,7 @@ async function catalog() {
 
   const withheldBlock = source.match(/export const TOP_UPS_WITHHELD[^=]*= Object\.freeze\(\{([\s\S]*?)\}\);/);
   const withheld = {};
+  if (!withheldBlock) throw new Error('Could not parse TOP_UPS_WITHHELD. Refusing to seed.');
   if (withheldBlock) {
     for (const entry of withheldBlock[1].split(/^  (?=[a-z])/m)) {
       const id = entry.match(/^([a-z0-9_]+):/)?.[1];
@@ -112,8 +122,32 @@ async function catalog() {
     }
   }
 
+  for (const id of [...withheldBlock[1].matchAll(/^  ([a-z0-9_]+):/gm)].map((match) => match[1])) {
+    if (!withheld[id]) throw new Error(`Could not parse withheld reason for ${id}. Refusing to seed.`);
+  }
   if (skus.length === 0) throw new Error('Parsed no top-up SKUs. Refusing to report success.');
   return { version, skus, withheld };
+}
+
+const { version, skus, withheld: WITHHELD } = await catalog();
+for (const id of PREPARE) {
+  if (!skus.some((sku) => sku.id === id) || !WITHHELD[id]) {
+    throw new Error(`Preparation requires a named withheld SKU: ${id || '(empty)'}`);
+  }
+}
+
+// An offline plan is safe to review even when live credentials are unavailable.
+if (DRY_RUN) {
+  for (const sku of skus) {
+    if (PREPARE.size && !PREPARE.has(sku.id)) continue;
+    if (WITHHELD[sku.id] && !PREPARE.has(sku.id)) {
+      console.log(`${sku.id} WITHHELD - ${WITHHELD[sku.id]}`);
+      continue;
+    }
+    console.log(`${sku.id} PLAN $${(sku.priceCents / 100).toFixed(2)} ${sku.recurring ? 'month' : 'one-time'} (${sku.units} ${sku.resourceCode})${WITHHELD[sku.id] ? ' — PREPARE ONLY; sales remain withheld' : ''}`);
+  }
+  console.log('Dry run. No credentials read, no Stripe requests, nothing created. Existing Prices are not verified.');
+  process.exit(0);
 }
 
 await loadEnv();
@@ -142,7 +176,6 @@ if (keyMode === 'unrecognised') {
   process.exit(2);
 }
 
-const { version, skus, withheld: WITHHELD } = await catalog();
 const stripe = new Stripe(secretKey, { apiVersion: process.env.STRIPE_API_VERSION || undefined });
 
 console.log(`mode            ${keyMode}${DRY_RUN ? '  (dry run - creating nothing)' : ''}`);
@@ -163,10 +196,12 @@ const results = [];
 let failed = 0;
 
 for (const sku of skus) {
-  if (WITHHELD[sku.id]) {
+  if (PREPARE.size && !PREPARE.has(sku.id)) continue;
+  if (WITHHELD[sku.id] && !PREPARE.has(sku.id)) {
     console.log(`${sku.id.padEnd(22)} WITHHELD - ${WITHHELD[sku.id]}`);
     continue;
   }
+  if (WITHHELD[sku.id]) console.log(`${sku.id} PREPARE ONLY - checkout and fulfillment remain withheld`);
   const wanted = metadataFor(sku);
   const cadence = sku.recurring ? 'month' : 'one-time';
 
@@ -174,21 +209,21 @@ for (const sku of skus) {
     query: `metadata['lgq_top_up_id']:'${sku.id}' AND metadata['lgq_catalog_version']:'${version}'`,
     limit: 10,
   });
-  let price = found.data.find((p) => (
-    p.active && p.currency === 'usd' && p.unit_amount === sku.priceCents
-    && Boolean(p.recurring) === sku.recurring && sameMetadata(p.metadata, wanted)
-  ));
+  const active = found.data.filter((p) => p.active);
+  if (found.has_more || active.length > 1) {
+    throw new Error(`Ambiguous Prices for ${sku.id}. Resolve duplicates before seeding.`);
+  }
+  // Verify an existing Price instead of creating a second active Price when its
+  // contract is wrong. Checkout refuses that ambiguity.
+  let price = active[0];
 
   if (price) {
     console.log(`${sku.id.padEnd(22)} reused  ${price.id}  $${(sku.priceCents / 100).toFixed(2)} ${cadence}`);
-  } else if (DRY_RUN) {
-    console.log(`${sku.id.padEnd(22)} WOULD CREATE  $${(sku.priceCents / 100).toFixed(2)} ${cadence}  (${sku.units} ${sku.resourceCode})`);
-    continue;
   } else {
     const product = await stripe.products.create({
       name: `Lets Get Quoted - ${sku.label}`,
       metadata: { lgq_price_purpose: 'top_up', lgq_top_up_id: sku.id },
-    });
+    }, { idempotencyKey: `top-up-product:${version}:${sku.id}` });
     price = await stripe.prices.create({
       product: product.id,
       currency: 'usd',
@@ -198,7 +233,7 @@ for (const sku of skus) {
         ? { recurring: { interval: 'month', interval_count: 1, usage_type: 'licensed' } }
         : {}),
       metadata: wanted,
-    });
+    }, { idempotencyKey: `top-up-price:${version}:${sku.id}` });
     console.log(`${sku.id.padEnd(22)} created ${price.id}  $${(sku.priceCents / 100).toFixed(2)} ${cadence}`);
   }
 
@@ -209,11 +244,13 @@ for (const sku of skus) {
   const codes = Object.keys(options);
   const problems = [];
   if (verify.active !== true) problems.push('inactive');
+  if (verify.currency !== 'usd') problems.push('currency');
   if (verify.livemode !== (keyMode === 'live')) problems.push('livemode mismatch');
   if (verify.unit_amount !== sku.priceCents) problems.push(`unit_amount ${verify.unit_amount}`);
   if (verify.tax_behavior !== 'exclusive') problems.push(`tax_behavior ${verify.tax_behavior}`);
   if (Boolean(verify.recurring) !== sku.recurring) problems.push('recurring mismatch');
   if (sku.recurring && verify.recurring?.interval_count !== 1) problems.push('interval_count');
+  if (sku.recurring && verify.recurring?.interval !== 'month') problems.push('interval');
   if (verify.recurring?.trial_period_days != null) problems.push('trial_period_days set');
   if (codes.length !== 1 || codes[0] !== verify.currency) problems.push(`currency_options [${codes.join(',')}]`);
   if (!sameMetadata(verify.metadata, wanted)) problems.push('metadata');
@@ -229,10 +266,6 @@ for (const [id, priceId, resource, units] of results) {
   console.log(`  ${id.padEnd(22)} ${priceId}  grants ${units} ${resource}`);
 }
 
-if (DRY_RUN) {
-  console.log('\nDry run. Nothing was created.');
-  process.exit(0);
-}
 if (failed > 0) {
   console.log(`\n${failed} SKU(s) do not satisfy the contract.`);
   process.exit(1);

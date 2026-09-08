@@ -4,6 +4,7 @@ import { resolveJobAccess } from '@/lib/change-order-client';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { loadBusinessName } from '@/lib/business-name';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -34,9 +35,14 @@ async function uploadFollowupFiles(accountId: string, files: File[]): Promise<st
   const admin = createAdminClient();
   const paths: string[] = [];
 
-  for (const file of files.slice(0, 3)) {
-    if (file.size === 0 || file.size > MAX_ATTACHMENT_BYTES) continue;
-    if (!ALLOWED_MIME.has(file.type)) continue;
+  const accepted = files.slice(0, 3).filter((file) =>
+    file.size > 0 && file.size <= MAX_ATTACHMENT_BYTES && ALLOWED_MIME.has(file.type));
+  // Check the whole batch: the periodic measurement does not change between uploads.
+  if (accepted.length > 0) {
+    await assertStorageCapacity(admin, accountId, accepted.reduce((total, file) => total + file.size, 0));
+  }
+
+  for (const file of accepted) {
 
     const extension = file.type.includes('/') ? file.type.split('/')[1].replace('quicktime', 'mov') : 'jpg';
     const path = `${accountId}/${randomUUID()}.${extension}`;
@@ -91,7 +97,12 @@ export async function requestJobFollowup(token: string, input: FollowupRequestIn
       ? `${clientName} requested warranty service`
       : `${clientName} requested a follow-up`;
 
-  const photoPaths = input.files && input.files.length > 0 ? await uploadFollowupFiles(access.accountId, input.files) : [];
+  let photoPaths: string[] = [];
+  try {
+    if (input.files?.length) photoPaths = await uploadFollowupFiles(access.accountId, input.files);
+  } catch {
+    return { ok: false, message: 'Attachments could not be saved. Please submit without attachments or contact your contractor.' };
+  }
 
   await createJobFeedEvent(admin, access.accountId, access.jobId, {
     kind: feedKind,
