@@ -323,7 +323,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const { contractorLogoTop } = useNavCustomization();
   const { isCollapsed, toggleCollapsed } = useNavCollapsed();
   const { nav, setNav } = useNavVisibility();
-  const { pinned, isPinned, togglePin } = useNavPinned();
+  const { isPinned, togglePin } = useNavPinned();
 
   // Keyboard shortcut to quick-collapse/expand the desktop navigation rail:
   // '[' or 'Ctrl+B' / 'Cmd+B' when not typing in an input/textarea/editable.
