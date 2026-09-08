@@ -3,7 +3,10 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
 import { signalWireVoiceScope } from '@/lib/voice/auth';
-import { processVoiceReceipt, type VoiceReceiptProcessingResult } from '@/lib/voice/receipt-processing';
+import {
+  processVoiceReceipt, SupabaseVoiceReceiptProcessingStore,
+  type VoiceReceiptProcessingResult, type VoiceReceiptProcessingStore,
+} from '@/lib/voice/receipt-processing';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -77,26 +80,41 @@ export async function recoverVoiceReceipt(
 
 export async function runVoiceReceiptRecovery(dependencies: {
   admin?: SupabaseClient; scope?: Scope; now?: number; recover?: typeof recoverVoiceReceipt;
+  processingStore?: VoiceReceiptProcessingStore;
 } = {}) {
   const scope = dependencies.scope ?? signalWireVoiceScope();
   if (!scope) throw new Error('Voice receipt recovery scope is not configured.');
   const admin = dependencies.admin ?? createAdminClient();
   const now = dependencies.now ?? Date.now();
   const nowIso = new Date(now).toISOString();
+  const abandonedBefore = new Date(now - 5 * 60 * 1000).toISOString();
   const { data: events, error } = await admin.from('voice_events').select('id')
     .eq('provider', 'signalwire').not('account_id', 'is', null)
+    .eq('provider_project_id', scope.projectId).eq('provider_space_id', scope.spaceId)
     .gte('received_at', new Date(now - MAX_AGE_MS).toISOString())
-    .or(`and(processing_status.eq.failed,next_attempt_at.lte.${nowIso}),and(processing_status.eq.processing,processing_lease_expires_at.lte.${nowIso})`)
+    .or(`and(processing_status.eq.failed,next_attempt_at.lte.${nowIso}),and(processing_status.eq.processing,processing_lease_expires_at.lte.${nowIso}),and(processing_status.eq.received,received_at.lte.${abandonedBefore})`)
     .order('received_at', { ascending: true }).limit(BATCH_SIZE);
   if (error) throw new Error('Voice receipt recovery queue read failed.');
   const summary = { considered: 0, processed: 0, skipped: 0, failed: 0, needsReview: 0, truncated: (events?.length ?? 0) === BATCH_SIZE };
   const recover = dependencies.recover ?? recoverVoiceReceipt;
+  const processingStore = dependencies.processingStore ?? new SupabaseVoiceReceiptProcessingStore(admin);
   for (const event of events ?? []) {
     summary.considered += 1;
     try {
       const result = await recover(admin, event.id, { scope, now, apply: true });
       if (result.status === 'processed' || result.status === 'processed_before') summary.processed += 1;
-      else if (result.status === 'needs_review') { summary.needsReview += 1; summary.failed += 1; }
+      else if (result.status === 'needs_review') {
+        summary.needsReview += 1;
+        summary.failed += 1;
+        // Use the existing lease and retry budget even when reconstruction is
+        // impossible. Otherwise these rows monopolize every batch forever.
+        // A concurrent provider delivery remains protected by the same claim.
+        const claim = await processingStore.claim(event.id);
+        if (claim.status === 'claimed') {
+          await processingStore.fail(claim, 'voice_recovery_requires_review', true);
+          console.error('Voice receipt recovery needs review', { eventId: event.id, reason: result.reason });
+        }
+      }
       else if (['retryable_failure', 'terminal_failure', 'exhausted'].includes(result.status)) summary.failed += 1;
       else summary.skipped += 1;
     } catch {
