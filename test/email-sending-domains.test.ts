@@ -5,6 +5,8 @@ import { contractorFrom, sanitizeAddress } from '@/emails/brand';
 import {
   validateFromLocalPart,
   normalizeStatus,
+  toStoredStatus,
+  failureReasonFor,
   filterSafeSendingDnsRecords,
   type SendingDomainRecord,
 } from '@/lib/resend-domains';
@@ -118,6 +120,54 @@ describe('Customer-Owned Email Sending Domains Contract', () => {
     });
   });
 
+  describe('Stored Status Mapping (toStoredStatus)', () => {
+    // email_sending_domains.status is constrained to pending|verified|failed|
+    // disabled. normalizeStatus answers in the PROVIDER's vocabulary, which has
+    // two more values, and Resend returns one of them — not_started — for every
+    // domain it has just created. Writing the provider status straight to the
+    // column raised 23514 on the first write of every connection attempt.
+    const PROVIDER_STATUSES = [
+      'not_started',
+      'pending',
+      'verified',
+      'failed',
+      'temporary_failure',
+    ] as const;
+
+    it('never emits a value the status check constraint would reject', () => {
+      const allowedByTheColumn = ['pending', 'verified', 'failed', 'disabled'];
+      for (const status of PROVIDER_STATUSES) {
+        expect(allowedByTheColumn).toContain(toStoredStatus(status));
+      }
+    });
+
+    it('treats not_started and temporary_failure as pending, not as failure', () => {
+      // Both mean "the DNS is not in place yet, keep waiting". Calling either a
+      // failure would show a contractor a red banner seconds after they
+      // connected, before they have had any chance to add a record.
+      expect(toStoredStatus('not_started')).toBe('pending');
+      expect(toStoredStatus('temporary_failure')).toBe('pending');
+      expect(toStoredStatus('pending')).toBe('pending');
+    });
+
+    it('only ever reports verified for a provider-verified domain', () => {
+      expect(toStoredStatus('verified')).toBe('verified');
+      for (const status of PROVIDER_STATUSES.filter((s) => s !== 'verified')) {
+        expect(toStoredStatus(status)).not.toBe('verified');
+      }
+    });
+
+    it('keeps the transient/absent distinction that the status mapping drops', () => {
+      // toStoredStatus collapses temporary_failure into pending, so the reason
+      // line is the only place that difference survives for the owner to read.
+      expect(failureReasonFor('temporary_failure')).toMatch(/retry/i);
+      expect(failureReasonFor('failed')).toMatch(/DKIM/);
+      expect(failureReasonFor('verified')).toBeNull();
+      expect(failureReasonFor('pending')).toBeNull();
+      expect(failureReasonFor('not_started')).toBeNull();
+    });
+  });
+
   describe('DNS Record Guard (filterSafeSendingDnsRecords)', () => {
     it('preserves safe subdomain records from Resend', () => {
       const records: SendingDomainRecord[] = [
@@ -212,6 +262,59 @@ describe('Customer-Owned Email Sending Domains Contract', () => {
       );
       expect(crewAuthCode).not.toContain('contractorFrom');
       expect(crewAuthCode).toContain('@letsgetquoted.com');
+    });
+  });
+
+  describe('Write Path Invariant: the conflict target must be inferable', () => {
+    const actionsSource = () =>
+      readFileSync(
+        resolve(process.cwd(), 'src/app/dashboard/settings/email-domain-actions.ts'),
+        'utf8',
+      );
+
+    /**
+     * Comments stripped before matching, deliberately.
+     *
+     * The first version of the check below asserted the raw file did not
+     * contain "onConflict" — and failed, because the comment explaining why the
+     * upsert was removed says the word. An absence check that reads prose is
+     * not checking the code: it would equally have passed on a file that dropped
+     * the comment and kept the call.
+     */
+    const executableSource = () =>
+      actionsSource()
+        .replace(/\/\*[\s\S]*?\*\//g, '')
+        .split('\n')
+        .filter((line) => !/^\s*(\/\/|\*)/.test(line))
+        .join('\n');
+
+    it('never upserts on a conflict target Postgres cannot infer', () => {
+      // The only unique index is on lower(domain). `onConflict: 'domain'` emits
+      // ON CONFLICT (domain), which cannot be inferred from an expression index,
+      // so every connect attempt raised 42P10 — proven against PG17 in
+      // scripts/verify-email-sending-domains.mjs.
+      const source = executableSource();
+      expect(source).not.toMatch(/onConflict/);
+      expect(source).not.toMatch(/\.upsert\(/);
+    });
+
+    it('strips comments without stripping the code it is asked to check', () => {
+      // Guards the helper above: if it ever over-matched and returned an empty
+      // or gutted string, every absence assertion in this block would pass
+      // vacuously.
+      const source = executableSource();
+      expect(source).toMatch(/createEmailSendingDomainAction/);
+      expect(source).toMatch(/requireOfficeContext\('settings\.write'\)/);
+      expect(source.length).toBeGreaterThan(2000);
+    });
+
+    it('stores the mapped status rather than the raw provider status', () => {
+      const source = actionsSource();
+      // The two writes that touch `status` must both route through the mapper;
+      // assert the call is present and that the raw provider field is not being
+      // assigned to the column.
+      expect(source).toMatch(/toStoredStatus\(providerRes\.status\)/);
+      expect(source).not.toMatch(/status:\s*providerRes\.status/);
     });
   });
 });

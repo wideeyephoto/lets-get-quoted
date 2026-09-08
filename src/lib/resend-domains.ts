@@ -61,6 +61,49 @@ function normalizeStatus(status?: string): SendingDomainStatus {
   return 'failed';
 }
 
+/**
+ * The four states the DATABASE understands. Deliberately narrower than
+ * SendingDomainStatus, which is the PROVIDER's vocabulary.
+ */
+export type StoredSendingDomainStatus = 'pending' | 'verified' | 'failed' | 'disabled';
+
+/**
+ * Translate the provider's vocabulary into the column's.
+ *
+ * These are two different vocabularies and they were being written to one
+ * column. `email_sending_domains.status` is constrained to
+ * pending|verified|failed|disabled, but Resend answers a freshly created domain
+ * with `not_started` — so the very first write of every connection attempt was
+ * a check-constraint violation (23514), and the UI has no badge for those two
+ * states either.
+ *
+ * WHY MAP RATHER THAN WIDEN THE CHECK. `disabled` is ours and the provider
+ * never returns it; `not_started` and `temporary_failure` are both "the DNS is
+ * not in place yet, keep waiting", which is exactly what `pending` already
+ * means to the reconciler and to the badge. Widening would push two extra
+ * states into every consumer to say nothing new — and would need a second
+ * migration against a table already applied in production.
+ *
+ * The distinction that IS worth keeping — transient provider failure vs. records
+ * genuinely absent — is preserved in `failure_reason`, not in `status`.
+ */
+export function toStoredStatus(status: SendingDomainStatus): StoredSendingDomainStatus {
+  if (status === 'verified') return 'verified';
+  if (status === 'failed') return 'failed';
+  return 'pending';
+}
+
+/** The reason line that accompanies a stored status, or null when healthy. */
+export function failureReasonFor(status: SendingDomainStatus): string | null {
+  if (status === 'failed') {
+    return 'Required DNS records (DKIM / SPF) were not detected at your DNS provider.';
+  }
+  if (status === 'temporary_failure') {
+    return 'The provider could not complete verification this time and will retry. No action needed yet.';
+  }
+  return null;
+}
+
 function mapDomainResponse(data: ResendApiDomain): SendingDomainResponse {
   const records: SendingDomainRecord[] = Array.isArray(data.records)
     ? data.records.map((r) => ({

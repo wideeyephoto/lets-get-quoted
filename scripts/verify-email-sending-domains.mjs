@@ -270,6 +270,92 @@ try {
   }
   ck('Multiple unverified domains allowed for account', pendingAllowed);
 
+  // Test 8: every status the PROVIDER ADAPTER can produce must survive the
+  // column's check constraint.
+  //
+  // These two are why this file exists in the state it does. resend-domains.ts
+  // maps Resend's vocabulary onto the column's, because Resend answers a newly
+  // created domain with `not_started` and the column allows only
+  // pending|verified|failed|disabled. Storing the raw provider status raised
+  // 23514 on the FIRST write of every connection attempt, and the eleven checks
+  // that stood here only ever inserted 'verified' and 'pending' — they were
+  // green throughout. Assert the mapped set, and assert the raw set is refused,
+  // so that widening one vocabulary without the other fails here.
+  const STORED_STATUSES = ['pending', 'verified', 'failed', 'disabled'];
+  const PROVIDER_ONLY_STATUSES = ['not_started', 'temporary_failure'];
+
+  let allStoredAccepted = true;
+  for (const status of STORED_STATUSES) {
+    try {
+      await client.query(
+        `insert into public.email_sending_domains (account_id, domain, status)
+         values ($1, $2, $3)`,
+        [accB.id, `stored-${status}.com`, status],
+      );
+    } catch (err) {
+      allStoredAccepted = false;
+      ck(`Stored status '${status}' accepted`, false, err.message.split('\n')[0]);
+    }
+  }
+  ck('Every mapped status is accepted by the check constraint', allStoredAccepted);
+
+  let allProviderOnlyRefused = true;
+  for (const status of PROVIDER_ONLY_STATUSES) {
+    let refused = false;
+    try {
+      await client.query(
+        `insert into public.email_sending_domains (account_id, domain, status)
+         values ($1, $2, $3)`,
+        [accB.id, `raw-${status}.com`, status],
+      );
+    } catch (err) {
+      refused = err.code === '23514';
+    }
+    if (!refused) allProviderOnlyRefused = false;
+  }
+  ck(
+    'Raw provider statuses are refused, so the mapping cannot be skipped',
+    allProviderOnlyRefused,
+    'not_started / temporary_failure must be translated by toStoredStatus()',
+  );
+
+  // Test 9: the write path's conflict target must be inferable.
+  //
+  // The action used `.upsert(..., { onConflict: 'domain' })`, which emits
+  // `ON CONFLICT (domain)`. The only unique index is on `lower(domain)`, an
+  // expression index Postgres cannot infer from a bare column — so every
+  // connection attempt raised 42P10. The action now branches explicitly instead;
+  // this check pins the reason it has to.
+  let bareColumnInferenceFails = false;
+  try {
+    await client.query(
+      `insert into public.email_sending_domains (account_id, domain, status)
+       values ($1, 'inference-probe.com', 'pending')
+       on conflict (domain) do update set from_local_part = excluded.from_local_part`,
+      [accB.id],
+    );
+  } catch (err) {
+    bareColumnInferenceFails = err.code === '42P10';
+  }
+  ck(
+    'ON CONFLICT (domain) is NOT inferable — the write path must not upsert on it',
+    bareColumnInferenceFails,
+    'a plain unique index on (domain) would also let a raced upsert move a domain between tenants',
+  );
+
+  // Test 10: the losing side of an ownership race is refused, not served.
+  let raceRefused = false;
+  try {
+    await client.query(
+      `insert into public.email_sending_domains (account_id, domain, status)
+       values ($1, 'contractor-a.com', 'pending')`,
+      [accB.id],
+    );
+  } catch (err) {
+    raceRefused = err.code === '23505';
+  }
+  ck('A second account cannot insert a domain another account holds', raceRefused);
+
   // Test 7: Cascade on account deletion removes sending domain
   await client.query('delete from public.accounts where id = $1', [accA.id]);
   const { rowCount: remaining } = await client.query(

@@ -11,8 +11,10 @@ import {
   triggerSendingDomainVerify,
   validateFromLocalPart,
   filterSafeSendingDnsRecords,
+  toStoredStatus,
+  failureReasonFor,
   type SendingDomainRecord,
-  type SendingDomainStatus,
+  type StoredSendingDomainStatus,
 } from '@/lib/resend-domains';
 
 export interface EmailSendingDomainRow {
@@ -23,7 +25,9 @@ export interface EmailSendingDomainRow {
   from_display_name: string | null;
   provider: string;
   provider_domain_id: string | null;
-  status: SendingDomainStatus | 'disabled';
+  // The column's vocabulary, not the provider's. The UI renders exactly these
+  // four and has no badge for anything else.
+  status: StoredSendingDomainStatus;
   dns_records: SendingDomainRecord[];
   last_checked_at: string | null;
   verified_at: string | null;
@@ -101,34 +105,66 @@ export async function createEmailSendingDomainAction(input: {
     console.warn(`[email-domains] Filtered dangerous records for ${domain}:`, warnings);
   }
 
-  const verifiedAt = providerRes.status === 'verified' ? new Date().toISOString() : null;
+  const storedStatus = toStoredStatus(providerRes.status);
+  const verifiedAt = storedStatus === 'verified' ? new Date().toISOString() : null;
 
-  // Insert or update domain row for this account
-  const { data: row, error: insertErr } = await admin
+  const payload = {
+    account_id: accountId,
+    domain,
+    from_local_part: localPart,
+    from_display_name: input.fromDisplayName?.trim() || null,
+    provider: 'resend',
+    provider_domain_id: providerRes.id,
+    status: storedStatus,
+    dns_records: safeRecords,
+    last_checked_at: new Date().toISOString(),
+    verified_at: verifiedAt,
+    failure_reason: failureReasonFor(providerRes.status),
+    updated_at: new Date().toISOString(),
+  };
+
+  // DELIBERATELY NOT AN UPSERT.
+  //
+  // This was `.upsert(payload, { onConflict: 'domain' })`, which PostgREST turns
+  // into `ON CONFLICT (domain)`. The only unique index here is on
+  // `lower(domain)` — an expression index that `ON CONFLICT (domain)` cannot
+  // infer — so every call raised 42P10 and no contractor could ever connect a
+  // domain.
+  //
+  // Adding a second plain unique index on `domain` would have silenced that,
+  // and would have kept the worse half of the bug: `on conflict do update` sets
+  // `account_id` from the incoming row, so a request that raced the ownership
+  // check above would have MOVED another tenant's verified sending domain onto
+  // the caller's account. Branching explicitly means the losing side of that
+  // race hits the unique index and is refused (23505) instead.
+  const { data: owned, error: ownedErr } = await admin
     .from('email_sending_domains')
-    .upsert(
-      {
-        account_id: accountId,
-        domain,
-        from_local_part: localPart,
-        from_display_name: input.fromDisplayName?.trim() || null,
-        provider: 'resend',
-        provider_domain_id: providerRes.id,
-        status: providerRes.status,
-        dns_records: safeRecords,
-        last_checked_at: new Date().toISOString(),
-        verified_at: verifiedAt,
-        failure_reason: null,
-        updated_at: new Date().toISOString(),
-      },
-      { onConflict: 'domain' },
-    )
-    .select('*')
-    .single();
+    .select('id')
+    .eq('account_id', accountId)
+    .eq('domain', domain)
+    .maybeSingle();
+  if (ownedErr) throw ownedErr;
+
+  const write = owned
+    ? admin.from('email_sending_domains').update(payload).eq('id', owned.id).eq('account_id', accountId)
+    : admin.from('email_sending_domains').insert(payload);
+
+  const { data: row, error: insertErr } = await write.select('*').maybeSingle();
 
   if (insertErr) {
+    // 23505 is the ownership race above, or the one-verified-domain-per-account
+    // partial index. Both mean someone else got there first, which the caller
+    // can act on; anything else is ours and stays generic.
+    if (insertErr.code === '23505') {
+      throw new Error('This domain is already connected to another account.');
+    }
     console.error('Failed to record email_sending_domain:', insertErr);
     throw new Error('Could not save sending domain configuration.');
+  }
+  // An accepted statement is not a changed row: without this, a domain the owner
+  // disconnected mid-request would report success and return null to the UI.
+  if (!row) {
+    throw new Error('Your sending domain changed while it was being saved. Check it again.');
   }
 
   revalidatePath('/dashboard/settings');
@@ -188,8 +224,9 @@ export async function verifyEmailSendingDomainAction(
     console.warn(`[email-domains] Filtered dangerous records during verify:`, warnings);
   }
 
+  const storedStatus = toStoredStatus(providerRes.status);
   const verifiedAt =
-    providerRes.status === 'verified'
+    storedStatus === 'verified'
       ? existing.verified_at || new Date().toISOString()
       : null;
 
@@ -197,14 +234,11 @@ export async function verifyEmailSendingDomainAction(
   const { data: updated, error: updateErr } = await admin
     .from('email_sending_domains')
     .update({
-      status: providerRes.status,
+      status: storedStatus,
       dns_records: safeRecords,
       last_checked_at: new Date().toISOString(),
       verified_at: verifiedAt,
-      failure_reason:
-        providerRes.status === 'failed'
-          ? 'Required DNS records (DKIM / SPF) were not detected at your DNS provider.'
-          : null,
+      failure_reason: failureReasonFor(providerRes.status),
       updated_at: new Date().toISOString(),
     })
     .eq('id', domainId)
