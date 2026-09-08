@@ -262,6 +262,7 @@ export default function EmailSendingDomainSection({
                 </h4>
 
                 <select
+                  aria-label="DNS Provider Instructions"
                   value={selectedProviderId}
                   onChange={(e) => setSelectedProviderId(e.target.value)}
                   style={{ fontSize: '13px', padding: '4px 8px', borderRadius: '6px', border: '1px solid #cbd5e1' }}

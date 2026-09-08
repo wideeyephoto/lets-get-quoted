@@ -2517,6 +2517,18 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 2555, startEvent: 'job_completed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+
+  // Customer-owned outbound email sending domain configurations
+  email_sending_domains: {
+    tableName: 'email_sending_domains',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'full',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'contractual_fulfillment', durationDays: 0, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'resend',
+  },
 };
 
 export function getExportableTables(): string[] {

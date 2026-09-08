@@ -512,6 +512,7 @@ describe('the wiring, as source', () => {
       'src/app/dashboard/services/page.tsx',
       'src/app/dashboard/settings/actions.ts',
       'src/app/dashboard/settings/developer-api-actions.ts',
+      'src/app/dashboard/settings/email-domain-actions.ts',
       'src/app/dashboard/settings/office-team-actions.ts',
       'src/app/dashboard/settings/page.tsx',
       'src/app/dashboard/sites/actions.ts',
