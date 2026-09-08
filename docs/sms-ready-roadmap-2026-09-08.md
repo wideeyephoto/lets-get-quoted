@@ -2,11 +2,13 @@
 
 ## Extended-session update
 
+Latest continuation (20:20 UTC): production subcontractor permission fix and existing delivered-offer link repair are complete. Fresh decline offer delivered once through the normal UI with correct projection; handset response is pending. Six prior delivered messages have matched carrier/application segment evidence (17 total). Hosted rollback-only duplicate/late-status checks passed and left no synthetic receipts. Cancellation and fixture cleanup still require completion after the decline response. These results supersede pending-fix statements below; broader customer and cross-workspace gates remain open.
+
 This dated update supersedes earlier pending subcontractor-link statements below. The live offer URL opened on the phone without sign-in, hid customer identity before acceptance, and accepted the test offer. A Midwest-only staff session could not open the BrokePipes request management page (404). Decline/cancel and eligible second-workspace carrier suppression remain open.
 
 The send action exposed a delivery-evidence permission defect despite successful handset delivery. The tested service-role-only fix is committed as `bd151870c` on `fix/sms-dispatch-help-20260908`; production application remains pending. Do not resend the already-delivered accepted offer to repair its missing event link. The extended-session test crew/job remain active, with an unsent decline draft pending continuation and cleanup.
 
-Customer messaging: fresh production reads found no registration application for BrokePipes or Midwest, and pilot 2687 remains on the support campaign. A genuine intended business must be selected before preparing registration. Booking/post-call/intake/timezone tests and 23 registration/readiness checks passed locally; no live customer send or carrier approval is claimed.
+Customer messaging: fresh production reads found no registration application for BrokePipes or Midwest, and pilot 2687 remains on the support campaign. Booking/post-call/intake/timezone tests and 23 registration/readiness checks passed locally; no live customer send or carrier approval is claimed. Brett clarified that LUX HD ART was proposed only for LGQ testing, not as an operating installation business. No website or registration was created for it. The next registration step is provider confirmation of an accurately described LGQ internal-test setup; a support question was drafted, but submission and response are not confirmed. A genuine downstream business remains the alternative path. Neither path authorizes sending before correct approval and individual number assignment.
 
 **Next milestone: one coordinated dispatch handset session from (810) 320-8333.** Prove the normal crew welcome, a real job/schedule notification, links, ordinary replies, and HELP → STOP → blocked sends → START → resumed delivery. Then close the operator checks before expanding dispatch. Customer messaging follows its own registration gate.
 
