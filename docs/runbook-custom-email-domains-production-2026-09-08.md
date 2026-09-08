@@ -339,16 +339,16 @@ curl -s -X PATCH \
 
 | Gate | Evidence required | Filled |
 | --- | --- | --- |
-| 0.1 | Existing key permissions; new key created | |
-| 0.6 | Six gate commands, each exit 0 | |
-| 0.7 | Deployment id, completed after the env add | |
-| 1.1 | `inspect:cron-health` line for `email-domain-reconcile` | |
+| 0.1 | Existing key permissions; new key created | `lgq-domain-management` (id: `7c93c7fc-1b52-4b7b-8839-5af8709b4bd9`, Full access, created 2026-09-08 18:55:18Z); `Onboarding` confirmed restricted sending-only |
+| 0.6 | Six gate commands, each exit 0 | All exit 0: lint, typecheck, test:pg17:email-sending-domains (15/15), test/cron-jobs.test.ts (27/27), test/email-sending-domains-stage0.test.ts (3/3), build |
+| 0.7 | Deployment id, completed after the env add | Production deployment `dpl_7MfxqfkjUrzocAur2SAuTF8Zh1HU` completed 17:01:22 EDT after `RESEND_DOMAINS_API_KEY` added at 14:56:01 EDT |
+| 1.1 | `inspect:cron-health` line for `email-domain-reconcile` | Verified via manual trigger: `runId: 2b1f448d-0031-4e1a-bf33-a8ed4dbb4704`, `ok: true`, `errors: 0`, `orphanedAtProvider: 0`, duration 466ms (prior restricted run `b3dea37b-2439-4b5a-be88-d24e5b85570f` had `ok: false, errors: 1`) |
 | 2.3 | The rendered DNS record set — must show no apex MX | |
 | 2.4 | Row at `verified` with `verified_at` | |
 | 2.5 | One line per failure path with the observed result | |
 | 3.2 | Gmail raw headers, verbatim | |
 | 3.2 | Outlook / M365 raw headers, verbatim | |
-| 4.1–4.3 | Domain count, plan cap, computed headroom | |
+| 4.1–4.3 | Domain count, plan cap, computed headroom | 4.1: Resend `GET /domains` returns 1 domain: `letsgetquoted.com` (`0c43a090-1cb8-4808-a9d5-a6efa843cbc5`), verified |
 | 5.3 | Section renders in a production workspace | |
 | 5.5 | Seven consecutive `ok` reconciler runs | |
 | 5.6 | Canary sign-off with actual send volume | |
