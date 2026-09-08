@@ -73,6 +73,25 @@ remaining release conditions instead of describing the meter as dark.
 
 ## Remaining release work
 
+Follow-up verification on September 8 confirmed all 11 production accounts have
+storage measurements, with zero entitled accounts unmeasured and zero entitlement
+rows missing the storage limit. The oldest measurement was 12:17:19 UTC.
+The disposable PostgreSQL storage harness passed 22 checks, including a purchased
+100 GB increasing the plan limit from 5 GB to 105 GB and cancellation restoring
+5 GB. The office RLS harness passed 30 checks for client/job/lead reads, capability
+revocation and cross-account isolation. The voice allowance harness passed 34
+checks for granting, renewal, cancellation, duplicate suppression and spending
+near period end. These local database fixtures do not replace hosted acceptance.
+
+The upload inventory found two missing guards: client follow-up attachments and
+warranty photos. Both now check the accepted batch's combined size before the
+first upload, and return a client-appropriate retry message on refusal. Requests
+without attachments remain available at the cap. Eight regression tests exercise
+both public entry points, including invalid tokens and refusal before writes.
+Staff account attachments retain their documented support exception. Signed
+website videos retain the documented client-reported size limitation, and the
+periodic sweep is not an atomic reservation against concurrent uploads.
+
 | SKUs | Required before removing withholding |
 | --- | --- |
 | `storage_100gb` | Validate storage measurement and upload coverage, enable the cap in the intended deployment, prove a purchased 100 GB increases usable headroom and cancellation removes it correctly. Live Price is verified. |

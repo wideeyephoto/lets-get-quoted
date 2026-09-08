@@ -9,6 +9,7 @@ import { createJobFeedEvent } from '@/lib/job-feed';
 import { getAccountOwnerEmail, sendContractorAlertEmail } from '@/lib/email';
 import { resolveJobAccess } from '@/lib/change-order-client';
 import { raiseClaim } from '@/lib/warranties-data';
+import { assertStorageCapacity } from '@/lib/billing/storage-usage';
 
 const APP_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3010').replace(/\/$/, '');
 
@@ -34,8 +35,17 @@ export async function raiseWarrantyClaimAction(
   if (!access) return { ok: false, message: 'This link is no longer valid. Give us a call instead.' };
 
   const rawFiles = formData.getAll('photos');
+  const files = rawFiles.slice(0, 3).filter((entry): entry is File =>
+    entry instanceof File && entry.size > 0 && entry.size <= 10 * 1024 * 1024);
+  try {
+    if (files.length > 0) {
+      await assertStorageCapacity(admin, access.accountId, files.reduce((total, file) => total + file.size, 0));
+    }
+  } catch {
+    return { ok: false, message: 'Photos could not be saved. Please submit without photos or contact your contractor.' };
+  }
   const photoPaths: string[] = [];
-  for (const entry of rawFiles.slice(0, 3)) {
+  for (const entry of files) {
     if (entry instanceof File && entry.size > 0 && entry.size <= 10 * 1024 * 1024) {
       const ext = entry.type.includes('/') ? entry.type.split('/')[1].replace('quicktime', 'mov') : 'jpg';
       const path = `${access.accountId}/${crypto.randomUUID()}.${ext}`;
