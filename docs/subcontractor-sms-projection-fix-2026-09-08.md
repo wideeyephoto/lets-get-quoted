@@ -1,5 +1,7 @@
 # Subcontractor SMS delivery evidence permission fix
 
+Production continuation September 8: user requested completion of the remaining tasks. Applied as hosted migration `20260908201549`; service_role EXECUTE is true, anon/authenticated false, with no projector-specific security advisor finding. The exact original delivered event was linked to the accepted test offer, preserving accepted/claimed state and restoring carrier timestamps. Fresh normal UI offer delivery succeeded in one attempt with its event link and timestamps projected, closing this fix's live retest. Decline/cancel response coverage is tracked separately.
+
 The September 8 live offer reached the authorized handset and its private link accepted the test request, but the staff send action returned HTTP 500. Production logs recorded `42501: permission denied for function apply_subcontractor_sms_event_projection`. The durable event delivered, while the offer's `sms_event_id` and carrier timestamps stayed empty.
 
 The offer-link trigger runs as the server role and calls an invoker function whose EXECUTE permission was revoked from that role. Grant only `service_role` EXECUTE on the existing projector. Do not make it SECURITY DEFINER or expose it to browser roles. Existing account/crew identity guards and row permissions remain in place.
