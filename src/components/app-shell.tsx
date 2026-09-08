@@ -986,9 +986,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
               {NAV_STATE_PILL[href][state].label}
             </span>
           ) : showCount ? (
-            <span className="sidenav-count" title={`${count} item${count === 1 ? '' : 's'} need attention`}>
+            <span className="sidenav-count" title={navAttentionLabel(href, count) ?? `${count} item${count === 1 ? '' : 's'} need attention`}>
               <span aria-hidden="true">{count}</span>
-              <span className="sr-only">{count} items need attention</span>
+              <span className="sr-only">{navAttentionLabel(href, count) ?? `${count} items need attention`}</span>
             </span>
           ) : showNew ? (
             <span className="sidenav-unseen" title={newLabelByHref[href]}>

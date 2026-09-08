@@ -33,7 +33,7 @@ import {
 import type { TerminalReader, TerminalPaymentStatusResult } from '@/lib/stripe-terminal';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
-import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
+import { HOMEOWNER_FINANCING } from '@/lib/financing-status';
 import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
 import type { NoiDocumentData } from '@/lib/noi-generator';
 import type { LienWaiverDocument, LienWaiverType } from '@/lib/lien-waiver';
