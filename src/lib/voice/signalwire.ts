@@ -20,6 +20,24 @@ function forwardTimeout(seconds: number): number {
   return Number.isFinite(seconds) ? Math.max(5, Math.min(60, Math.floor(seconds))) : 20;
 }
 
+/** A completed bridge must not fall through into an unanswered-call recording. */
+function failedTransferVoicemail(message: string, recordingStatusUrl?: string) {
+  return {
+    switch: {
+      // SignalWire sets this to connected or failed after the peer leg ends.
+      variable: 'connect_result',
+      case: {
+        failed: [
+          { play: { url: `say: ${message}` } },
+          { record: { ...VOICEMAIL_RECORDING, ...(recordingStatusUrl ? { status_url: recordingStatusUrl } : {}) } },
+        ],
+      },
+      // Unknown results also end safely; they do not establish a missed call.
+      default: [],
+    },
+  };
+}
+
 /**
  * SignalWire AI Agents, behind the provider-neutral seam.
  *
@@ -300,8 +318,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                           ],
                         },
                       },
-                      { play: { url: 'say: Our office staff is currently unavailable to take your call. Please leave a message after the beep.' } },
-                      { record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } },
+                      failedTransferVoicemail('Our office staff is currently unavailable to take your call. Please leave a message after the beep.', plan.recordingStatusUrl),
                       { hangup: {} },
                     ],
                   },
@@ -867,8 +884,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                     status_url: plan.actionUrl,
                   },
                 },
-                { play: { url: "say: We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep." } },
-                { record: { ...VOICEMAIL_RECORDING, ...(plan.recordingStatusUrl ? { status_url: plan.recordingStatusUrl } : {}) } },
+                failedTransferVoicemail('We are currently unable to take your call. Please leave your name, number, and a detailed message after the beep.', plan.recordingStatusUrl),
                 { hangup: {} },
               ],
             },

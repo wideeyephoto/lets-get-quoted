@@ -112,6 +112,30 @@ The latter three are not yet final production application evidence.
 Private provider retest evidence:
 C:/dev/voice-cutoff-retest-provider-evidence-20260908.jsonl.
 
+## Execution update — September 8, 2026, 21:27 UTC
+
+- Production advanced to `030c4074f237625415c644e33fcbb4e70a2fc7dd` /
+  `dpl_2uWiNGnQkJHSmjW2F3z75Ck3vfFE`, including the dispatch readback repair.
+  The final health release passed all CI steps and merged as
+  `2ec69b679aeb0a1f58f34498aa52dfa0dbc40357`; its production build is pending.
+  Concurrent product-tour changes in main were retained.
+- Two new production admissions captured `measure` mode and ten allowed minutes.
+  The 12-second no-input call and 10-second AI transfer each measured one minute,
+  committed one minute from their ten-minute hold, and absorbed zero. Historical
+  admissions remain unchanged.
+- The owner has one mobile. An authorized owned-number caller reproduced the
+  earlier transfer test and used native echo. The owner confirmed hearing both
+  the test speech and their echoed words. Transfer callbacks saved the answered
+  outcome and 119 forwarding seconds; the receipt processed once without error.
+- After the mobile hung up, the provider incorrectly entered voicemail for the
+  remaining caller. The follow-up fix restricts voicemail to failed transfers;
+  79 focused tests pass. Live termination retest remains open. See
+  [transfer evidence](voice-transfer-end-2026-09-08.md).
+- Automated duration-policy, rounding, and hold-release coverage below is local
+  application/PostgreSQL evidence. It does not substitute for outstanding live
+  boundary and speech-to-audio tests. Invoice reconciliation and strict financial
+  enforcement remain deferred under the owner's measurement-mode decision.
+
 ## P0 — Fix failed post-call processing
 
 **Finding:** `src/lib/voice/triage.ts` selects `accounts.company_name` and `accounts.phone`, which do not exist in the inspected production schema. Ordinary and emergency notification paths contain this query. The latest sampled call committed its minute usage, but its receipt failed with `Voice notification settings read failed`. This query predates the other SMS changes.
@@ -140,7 +164,7 @@ C:/dev/voice-cutoff-retest-provider-evidence-20260908.jsonl.
 - [ ] Test a late transfer, unanswered transfer, and fallback/voicemail against the same maximum. Ensure connected child legs cannot outlive the intended call deadline.
 - [x] Verify a clear closing response where feasible and actual disconnection by 600 connected seconds. A prompt telling the agent to hang up is not sufficient evidence.
 - [x] Confirm final status, reservation settlement/release, and the dashboard outcome after forced termination.
-- [ ] Check that measurement-mode low-balance admissions retain the normal call limit, while an explicitly enabled enforcement mode uses its reserved limit. No path may request more than 10 minutes.
+- [x] Check that measurement-mode low-balance admissions retain the normal call limit, while an explicitly enabled enforcement mode uses its reserved limit. No path may request more than 10 minutes. Local admission/ledger tests cover balances 0/1/2/9/10/15, mode-changing retries, and invalid persisted caps; the provider renderer clamps all plans to ten minutes. Live low-balance boundary testing remains covered by the separate live-path gates.
 
 **Done when:** provider connection/hangup evidence shows every supported call path ends within 600 connected seconds, and boundary termination does not lose or duplicate saved work or usage.
 
@@ -150,11 +174,11 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 
 - [x] Record the deployed allowance-worker, meter, and financial-gate configuration without exposing secrets. Verify actual worker execution and grants, not only configured flags.
 - [ ] Trace representative calls through admission → reservation → measured duration → final committed units → remaining allowance. Preserve historical intentionally unmetered calls as historical evidence.
-- [ ] Test minute rounding around boundaries, very short AI calls, calls with no AI conversation, transfers, and voicemail. Document application and provider duration bases separately.
+- [x] Test minute rounding around boundaries, very short AI calls, calls with no AI conversation, transfers, and voicemail. Local tests cover 0/1/59/60/61/119 AI seconds and missing evidence. Live AI transfer billed one minute for ten AI seconds while tracking 119 forwarding seconds separately; the earlier voicemail-only call remains unmetered. Provider connected time includes greeting and forwarding and is not the AI billing basis.
 - [x] Test remaining balances of 0, less than 10, exactly 10, and more than 10 minutes. Verify reservation size, effective duration, and the intended exhausted-balance behavior.
 - [ ] Test overlapping calls near exhaustion and simultaneous retries. Reservations must prevent overspending without treating a retry of the same provider call as a new caller.
 - [x] Test duplicate, delayed, and out-of-order terminal callbacks; worker interruption; and receipt replay after usage was already committed. Each call must finalize usage once.
-- [ ] Verify failed admission, fallback-only calls, and calls that never connect release any applicable holds through the intended policy.
+- [x] Verify failed admission, fallback-only calls, and calls that never connect release any applicable holds through the intended policy. Application tests cover failed attribution/release, terminal tombstones, and non-admitted calls never reaching the ledger. The reconciled fallback-only provider call retains its released hold without fabricated AI time. Unchanged inbox PostgreSQL tests cover abandoned pre-answer claims and delayed receipts.
 - [x] Verify monthly grants, period boundaries, and rerun/idempotency behavior using controlled fixtures before relying on a live renewal.
 - [ ] Reconcile one full billing period against the SignalWire invoice. Explain differences due to rounding and provider-billed segments; investigate every unexplained difference.
 - [ ] Record the reconciliation period, totals, exceptions, evidence, and reviewer in the runbook.
@@ -193,6 +217,9 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 **Done when:** dispatch selects the intended workspace/job, applies each authorized action once, reports saved values truthfully, and handles ambiguity without guessing.
 
 ## P1 — Complete fallback, callback, and recovery acceptance
+
+- [x] Verify audio in both directions through a live answered transfer. The September 8 controlled caller plus native echo passed on the owner's single mobile. This is audio-path evidence, not a ten-minute boundary test.
+- [ ] Verify an answered transfer ends the remaining caller leg without an unavailable prompt or voicemail. The first live echo test exposed the unconditional fallback defect; the fix and targeted retest are tracked separately.
 
 - [ ] Recheck the actual production number and agent configuration: voice entrypoint, post-call receipt, status/recording callbacks, methods, and stable URLs.
 - [ ] Prove a retry of the same call does not hit the concurrency fallback; prove a genuinely separate call follows the configured concurrency policy.
