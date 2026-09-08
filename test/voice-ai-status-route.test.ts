@@ -152,4 +152,42 @@ describe('AI voice fallback status callback', () => {
       p_dial_status: 'ended',
     }));
   });
+
+  it('attributes a query-free native callback to the saved inbound call and caller', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [{ ingest_disposition: 'accepted' }], error: null });
+    const lookup = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn().mockResolvedValue({
+      data: { account_id: ACCOUNT, caller_number: '+18105550199' }, error: null,
+    }) };
+    lookup.select.mockReturnValue(lookup);
+    lookup.eq.mockReturnValue(lookup);
+    mocks.createAdminClient.mockReturnValue({ rpc, from: () => lookup });
+    const { POST } = await import('@/app/api/voice/ai/status/route');
+    const response = await POST(new Request('https://lgq.test/api/voice/ai/status', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ params: { call_id: 'saved-call', connect_state: 'failed', from: '+18105550000' } }),
+    }));
+    expect(response.status).toBe(200);
+    expect(lookup.eq).toHaveBeenCalledWith('provider', 'signalwire');
+    expect(lookup.eq).toHaveBeenCalledWith('provider_call_id', 'saved-call');
+    expect(rpc).toHaveBeenCalledWith('ingest_sms_missed_call', expect.objectContaining({
+      p_account_id: ACCOUNT, p_provider_call_id: 'saved-call', p_phone_number: '+18105550199',
+    }));
+  });
+
+  it.each([false, true])('does not acknowledge a query-free callback with missing or unreadable context (database error: %s)', async (dbError) => {
+    const rpc = vi.fn();
+    const lookup = { select: vi.fn(), eq: vi.fn(), maybeSingle: vi.fn().mockResolvedValue({
+      data: null, error: dbError ? { code: '08006' } : null,
+    }) };
+    lookup.select.mockReturnValue(lookup);
+    lookup.eq.mockReturnValue(lookup);
+    mocks.createAdminClient.mockReturnValue({ rpc, from: () => lookup });
+    const { POST } = await import('@/app/api/voice/ai/status/route');
+    const response = await POST(new Request('https://lgq.test/api/voice/ai/status', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ params: { call_id: 'unknown-call', connect_state: 'failed' } }),
+    }));
+    expect(response.status).toBe(dbError ? 500 : 400);
+    expect(rpc).not.toHaveBeenCalled();
+  });
 });

@@ -122,12 +122,14 @@ export function voiceWebhookFailureDiagnostics(request: Request, rawBody: string
   const urls = origin ? [origin + tail, `https://${new URL(origin).hostname}:443${tail}`] : [];
   const matches: string[] = [];
   let legacyJsonFields: string | null = null;
+  let compactJson: string | null = null;
   try {
     const parsed = JSON.parse(rawBody);
     if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
       // The SDK compatibility fallback coerces nested objects to a string.
       // Diagnose it, but never trust that lossy representation as body auth.
       legacyJsonFields = Object.keys(parsed).sort().map((name) => name + String(parsed[name])).join('');
+      compactJson = JSON.stringify(parsed);
     }
   } catch { /* The raw body may be a compatibility form. */ }
   if (key) {
@@ -139,10 +141,18 @@ export function voiceWebhookFailureDiagnostics(request: Request, rawBody: string
         ['sha1_base64_url_only', 'sha1', 'base64', url, signature],
         ['sha1_hex_url_only', 'sha1', 'hex', url, signature],
         ['sha1_hex_without_query_body', 'sha1', 'hex', url.split('?')[0] + rawBody, signature],
+        ['sha1_hex_http_url_body', 'sha1', 'hex', url.replace(/^https:/, 'http:') + rawBody, signature],
+        ['sha1_hex_body_only', 'sha1', 'hex', rawBody, signature],
       ] as const;
       for (const [name, algorithm, encoding, input, supplied] of candidates) {
         if (supplied && constantTimeEquals(createHmac(algorithm, key).update(input).digest(encoding), supplied)) {
           if (!matches.includes(name)) matches.push(name);
+        }
+      }
+      if (compactJson !== null && signature) {
+        for (const [name, body] of [['sha1_hex_compact_json', compactJson], ['sha1_hex_body_newline', rawBody + '\n']] as const) {
+          if (constantTimeEquals(createHmac('sha1', key).update(url + body).digest('hex'), signature)
+              && !matches.includes(name)) matches.push(name);
         }
       }
       if (legacyJsonFields !== null && signature
