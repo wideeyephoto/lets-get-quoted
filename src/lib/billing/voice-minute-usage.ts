@@ -21,16 +21,15 @@ import {
  *
  * So this meter reserves up to the ten-minute safety cap and settles the
  * truth afterwards through `commit_usage_reservation_partial`, which exists for
- * exactly this. The provider duration is bounded by the actual reservation,
- * including when fewer than ten minutes remain. Reserving that duration keeps
- * the spending limit effective: two concurrent calls cannot each believe the
- * last minute is theirs.
+ * exactly this. In enforcement mode the hold also bounds provider duration.
+ * Measurement mode keeps the normal duration even with a partial hold; the
+ * receipt records usage beyond the hold as absorbed minutes.
  *
  * Enforced mode requires a confirmed allowance or overage reservation. Ledger
  * outages use the configured forwarding/voicemail fallback. Measurement mode
  * can admit without a reservation; those calls remain explicitly unmetered.
  *
- * An exhausted allowance is NOT uncertainty. That refuses — and refusing here
+ * In enforcement mode, an exhausted allowance refuses — and refusing here
  * means the caller follows the contractor's own forwarding or voicemail rule,
  * which is the behaviour the pricing FAQ already publishes.
  */
@@ -90,10 +89,10 @@ export type VoiceAdmission =
 export type { UsageOverageHold };
 
 export type VoiceMinuteDecision =
-  | Readonly<{ outcome: 'admitted'; lease: VoiceMinuteLease }>
+  | Readonly<{ outcome: 'admitted'; lease: VoiceMinuteLease; capMinutes: number }>
   | Readonly<{ outcome: 'admitted_existing'; capMinutes: number }>
-  | Readonly<{ outcome: 'admitted_overage'; overage: UsageOverageHold }>
-  | Readonly<{ outcome: 'admitted_unmetered'; reason: VoiceAdmission }>
+  | Readonly<{ outcome: 'admitted_overage'; overage: UsageOverageHold; capMinutes: number }>
+  | Readonly<{ outcome: 'admitted_unmetered'; reason: VoiceAdmission; capMinutes: number }>
   /** Follow the contractor's forwarding or voicemail rule. Not an error. */
   | Readonly<{
       outcome: 'refused';
@@ -186,20 +185,27 @@ export async function admitVoiceCall(
 
   const slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
   if (slot.outcome === 'existing') {
-    // A retried webhook must keep a low-balance call's original shorter limit.
-    // Failure to read it must not silently restore the full duration.
+    // Replay the original duration, even if flags or requested caps changed.
+    // Legacy rows retain the duration the old application actually returned.
     try {
       const { data, error } = await admin.from('voice_call_admissions')
-        .select('reserved_minutes')
+        .select('reserved_minutes, allowed_minutes')
         .eq('account_id', input.accountId)
         .eq('provider', 'signalwire')
         .eq('provider_call_id', input.providerCallId)
         .maybeSingle();
       const reserved = data?.reserved_minutes;
-      if (!error && Number.isSafeInteger(reserved) && reserved >= 0) {
+      const allowed = data?.allowed_minutes;
+      const replayCap = allowed == null
+        ? Number.isSafeInteger(reserved) && reserved >= 0
+          ? reserved > 0 ? Math.min(VOICE_CALL_CAP_MINUTES, reserved) : VOICE_CALL_CAP_MINUTES
+          : null
+        : allowed;
+      if (!error && Number.isSafeInteger(replayCap) && replayCap >= 1
+          && replayCap <= VOICE_CALL_CAP_MINUTES) {
         return Object.freeze({
           outcome: 'admitted_existing' as const,
-          capMinutes: reserved > 0 ? Math.min(cap, reserved) : cap,
+          capMinutes: replayCap,
         });
       }
     } catch { /* Use the normal line when the persisted limit cannot be read. */ }
@@ -218,12 +224,19 @@ export async function admitVoiceCall(
     return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
   }
 
+  const finalize = (reservationId: string | null, reservedMinutes: number,
+    reason: VoiceAdmission | null = null, overageKey: string | null = null) => finalizeAdmission(
+    admin, slot.admissionId, input, reservationId, reservedMinutes,
+    mode === 'enforce' && reservedMinutes > 0 ? reservedMinutes : cap,
+    mode, reason, overageKey,
+  );
+
   if (mode === 'off') {
-    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+    if (!await finalize(null, 0, 'not_metered')) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
-    return Object.freeze({ outcome: 'admitted_unmetered' as const, reason: 'not_metered' as const });
+    return Object.freeze({ outcome: 'admitted_unmetered' as const, reason: 'not_metered' as const, capMinutes: cap });
   }
 
   const idempotencyKey = `ai-voice:v1:${input.providerCallId}`;
@@ -260,24 +273,24 @@ export async function admitVoiceCall(
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
-    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+    if (!await finalize(null, 0, 'ledger_unavailable')) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({
-      outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const,
+      outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const, capMinutes: cap,
     });
   }
 
   if (reserveError) {
     if (insufficientCredits(reserveError)) {
       if (mode !== 'enforce') {
-        if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+        if (!await finalize(null, 0, 'exhausted_not_enforced')) {
           await releaseAdmissionClaim(admin, slot.admissionId, input);
           return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
         }
         return Object.freeze({
-          outcome: 'admitted_unmetered' as const, reason: 'exhausted_not_enforced' as const,
+          outcome: 'admitted_unmetered' as const, reason: 'exhausted_not_enforced' as const, capMinutes: cap,
         });
       }
 
@@ -296,9 +309,7 @@ export async function admitVoiceCall(
         // reserved_minutes carries the CAP that was charged, not zero: it is
         // what the settlement trues down from, and what a human reading the row
         // needs to see to understand the initial overage hold.
-        if (!await finalizeAdmission(
-          admin, slot.admissionId, input, null, cap, overage.idempotencyKey,
-        )) {
+        if (!await finalize(null, cap, null, overage.idempotencyKey)) {
           await releaseUsageOverage(admin, {
             accountId: input.accountId,
             idempotencyKey: overage.idempotencyKey,
@@ -310,6 +321,7 @@ export async function admitVoiceCall(
         }
         return Object.freeze({
           outcome: 'admitted_overage' as const,
+          capMinutes: cap,
           overage: Object.freeze({
             resourceCode: VOICE_MINUTE_RESOURCE_CODE,
             units: cap,
@@ -327,12 +339,12 @@ export async function admitVoiceCall(
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
-    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+    if (!await finalize(null, 0, 'ledger_unavailable')) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({
-      outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const,
+      outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const, capMinutes: cap,
     });
   }
 
@@ -341,12 +353,12 @@ export async function admitVoiceCall(
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
-    if (!await finalizeAdmission(admin, slot.admissionId, input, null, 0)) {
+    if (!await finalize(null, 0, 'ledger_unavailable')) {
       await releaseAdmissionClaim(admin, slot.admissionId, input);
       return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
     }
     return Object.freeze({
-      outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const,
+      outcome: 'admitted_unmetered' as const, reason: 'ledger_unavailable' as const, capMinutes: cap,
     });
   }
 
@@ -358,13 +370,14 @@ export async function admitVoiceCall(
     reservedMinutes,
     ownsReservation: true,
   });
-  if (!await finalizeAdmission(admin, slot.admissionId, input, reservationId, reservedMinutes)) {
+  if (!await finalize(reservationId, reservedMinutes)) {
     await releaseVoiceCall(admin, lease, 'admission_record_failed');
     await releaseAdmissionClaim(admin, slot.admissionId, input);
     return Object.freeze({ outcome: 'refused' as const, reason: 'admission_unavailable' as const });
   }
   return Object.freeze({
     outcome: 'admitted' as const,
+    capMinutes: mode === 'enforce' ? reservedMinutes : cap,
     lease,
   });
 }
@@ -421,6 +434,9 @@ async function finalizeAdmission(
   input: VoiceAdmissionInput,
   reservationId: string | null,
   reservedMinutes: number,
+  allowedMinutes: number,
+  minuteMode: VoiceMinuteMode,
+  unmeteredReason: VoiceAdmission | null,
   // An overage-admitted call holds no reservation, so without this the
   // admission row is indistinguishable from an unmetered one -- and settlement
   // reads a null reservation as "nothing to do". That is how a $21 hold on a
@@ -428,13 +444,16 @@ async function finalizeAdmission(
   overageKey: string | null = null,
 ): Promise<boolean> {
   try {
-    const { data, error } = await admin.rpc('finalize_voice_call_admission', {
+    const { data, error } = await admin.rpc('finalize_voice_call_admission_v2', {
       p_admission_id: admissionId,
       p_account_id: input.accountId,
       p_provider_call_id: input.providerCallId,
       p_reservation_id: reservationId,
       p_reserved_minutes: reservedMinutes,
       p_overage_key: overageKey,
+      p_allowed_minutes: allowedMinutes,
+      p_minute_mode: minuteMode,
+      p_unmetered_reason: unmeteredReason,
     });
     if (error) {
       console.error('voice admission finalization failed:', error);
@@ -490,8 +509,10 @@ export async function settleVoiceCall(
       console.error('voice minute settlement failed:', error);
       return null;
     }
-    const settled = typeof data === 'number' ? data : Number(data);
-    return Number.isFinite(settled) ? settled : null;
+    const settled = typeof data === 'number' ? data
+      : typeof data === 'string' && /^\d+$/.test(data) ? Number(data) : Number.NaN;
+    return Number.isSafeInteger(settled) && settled >= 0 && settled <= lease.reservedMinutes
+      ? settled : null;
   } catch (error) {
     console.error('voice minute settlement threw:', error);
     return null;

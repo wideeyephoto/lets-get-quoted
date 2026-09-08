@@ -65,7 +65,7 @@ beforeEach(() => {
     if (name === 'claim_voice_call_admission_v2') {
       return { data: [{ claim_status: 'claimed', admission_id: 'adm-1' }], error: null };
     }
-    if (name === 'finalize_voice_call_admission'
+    if (name === 'finalize_voice_call_admission_v2'
         || name === 'release_voice_call_admission_claim') {
       return { data: true, error: null };
     }
@@ -233,9 +233,11 @@ describe('admission', () => {
         } }] : []),
         { data: 'res-small', error: null });
       const decision = await admitVoiceCall(admin, input, { mode });
-      expect(decision).toMatchObject({ outcome: 'admitted', lease: { reservedMinutes: units } });
-      expect(callsFor('finalize_voice_call_admission').at(-1)?.[1]).toMatchObject({
+      expect(decision).toMatchObject({ outcome: 'admitted', capMinutes: mode === 'measure' ? 10 : units, lease: { reservedMinutes: units } });
+      expect(callsFor('finalize_voice_call_admission_v2').at(-1)?.[1]).toMatchObject({
         p_reservation_id: 'res-small', p_reserved_minutes: units,
+        p_allowed_minutes: mode === 'measure' ? 10 : units,
+        p_minute_mode: mode, p_unmetered_reason: null,
       });
     }
     expect(tryOverage).not.toHaveBeenCalled();
@@ -249,6 +251,49 @@ describe('admission', () => {
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
       .toMatchObject({ outcome: 'admitted', lease: { reservedMinutes: 1 } });
     expect(callsFor('reserve_usage_credits').map(([, args]) => args.p_units)).toEqual([10, 2, 1]);
+  });
+
+  it.each([0, 1, 2, 9, 10, 15])('replays measurement admission at balance %s after enforcement is enabled', async (balance) => {
+    const held = Math.min(balance, 10);
+    setRpc('reserve_usage_credits',
+      ...(balance < 10 ? [{ data: null, error: { code: 'P0001', message: `insufficient usage credits (missing ${10 - balance} units)` } }] : []),
+      { data: 'res-1', error: null });
+    const first = await admitVoiceCall(admin, input, { mode: 'measure' });
+    expect(first).toMatchObject({ capMinutes: 10 });
+    const saved = callsFor('finalize_voice_call_admission_v2').at(-1)![1];
+    expect(saved).toMatchObject({ p_allowed_minutes: 10, p_reserved_minutes: held, p_minute_mode: 'measure' });
+    setRpc('claim_voice_call_admission_v2', { data: [{ claim_status: 'existing' }], error: null });
+    existingAdmission.mockResolvedValue({ data: { allowed_minutes: saved.p_allowed_minutes, reserved_minutes: held }, error: null });
+    const before = callsFor('reserve_usage_credits').length;
+    expect(await admitVoiceCall(admin, input, { mode: 'enforce', capMinutes: 3 }))
+      .toEqual({ outcome: 'admitted_existing', capMinutes: 10 });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(before);
+  });
+
+  it('replays the enforced partial cap after measurement mode is enabled', async () => {
+    setRpc('claim_voice_call_admission_v2', { data: [{ claim_status: 'existing' }], error: null });
+    existingAdmission.mockResolvedValue({ data: { allowed_minutes: 2, reserved_minutes: 2 }, error: null });
+    expect(await admitVoiceCall(admin, input, { mode: 'measure' }))
+      .toEqual({ outcome: 'admitted_existing', capMinutes: 2 });
+  });
+
+  it.each([0, 11, -1, '10', 1.5])('refuses an invalid persisted duration %s', async (allowed_minutes) => {
+    setRpc('claim_voice_call_admission_v2', { data: [{ claim_status: 'existing' }], error: null });
+    existingAdmission.mockResolvedValue({ data: { allowed_minutes, reserved_minutes: 2 }, error: null });
+    expect(await admitVoiceCall(admin, input, { mode: 'measure' }))
+      .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
+  });
+
+  it('persists the full duration and reason when a partial reservation has an ambiguous failure', async () => {
+    setRpc('reserve_usage_credits',
+      { data: null, error: { code: 'P0001', message: 'insufficient usage credits (missing 8 units)' } },
+      new Error('response lost'));
+    expect(await admitVoiceCall(admin, input, { mode: 'measure' }))
+      .toMatchObject({ outcome: 'admitted_unmetered', capMinutes: 10, reason: 'ledger_unavailable' });
+    expect(callsFor('finalize_voice_call_admission_v2').at(-1)![1]).toMatchObject({
+      p_allowed_minutes: 10, p_minute_mode: 'measure', p_unmetered_reason: 'ledger_unavailable', p_reserved_minutes: 0,
+    });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(2);
   });
 
   it('never retries an ambiguous failure after a definite shortfall', async () => {
@@ -305,7 +350,7 @@ describe('admission', () => {
   it('records the admission, which is what makes a forged receipt inert', async () => {
     setRpc('reserve_usage_credits', { data: 'res-9', error: null });
     await admitVoiceCall(admin, input, { mode: 'enforce' });
-    expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission_v2', expect.objectContaining({
       p_account_id: ACCOUNT, p_provider_call_id: CALL,
       p_reservation_id: 'res-9', p_reserved_minutes: VOICE_CALL_CAP_MINUTES,
     }));
@@ -316,13 +361,13 @@ describe('the failure posture: answer the call', () => {
   it('answers unmetered when the meter is off, but still records attribution', async () => {
     expect(await admitVoiceCall(admin, input, { mode: 'off' }))
       .toMatchObject({ outcome: 'admitted_unmetered', reason: 'not_metered' });
-    expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission_v2', expect.objectContaining({
       p_provider_call_id: CALL, p_reservation_id: null, p_reserved_minutes: 0,
     }));
   });
 
   it('refuses rather than answer a call whose receipt could not be attributed', async () => {
-    setRpc('finalize_voice_call_admission', {
+    setRpc('finalize_voice_call_admission_v2', {
       data: null, error: { code: '08006', message: 'database unavailable' },
     });
     expect(await admitVoiceCall(admin, input, { mode: 'off' }))
@@ -354,7 +399,7 @@ describe('the failure posture: answer the call', () => {
     }],
   ] as const)('releases the exact claim when %s and fallback attribution fails', async (_label, mode, arrange) => {
     arrange();
-    setRpc('finalize_voice_call_admission', {
+    setRpc('finalize_voice_call_admission_v2', {
       data: null, error: { code: '08006', message: 'database unavailable' },
     });
 
@@ -398,14 +443,14 @@ describe('the failure posture: answer the call', () => {
     // it arrives looking exactly like a forgery.
     setRpc('reserve_usage_credits', new Error('down'));
     await admitVoiceCall(admin, input, { mode: 'measure' });
-    expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission', expect.objectContaining({
+    expect(rpc).toHaveBeenCalledWith('finalize_voice_call_admission_v2', expect.objectContaining({
       p_provider_call_id: CALL, p_reservation_id: null, p_reserved_minutes: 0,
     }));
   });
 
   it('releases a metered hold when admission attribution cannot be stored', async () => {
     setRpc('reserve_usage_credits', { data: 'res-orphan', error: null });
-    setRpc('finalize_voice_call_admission', {
+    setRpc('finalize_voice_call_admission_v2', {
       data: null, error: { code: '08006', message: 'database unavailable' },
     });
     setRpc('release_usage_reservation', { data: true, error: null });
@@ -430,7 +475,7 @@ describe('the failure posture: answer the call', () => {
   it('records no admission when it refuses, because no receipt will come', async () => {
     setRpc('reserve_usage_credits', { data: null, error: insufficient });
     await admitVoiceCall(admin, input, { mode: 'enforce' });
-    expect(callsFor('finalize_voice_call_admission')).toHaveLength(0);
+    expect(callsFor('finalize_voice_call_admission_v2')).toHaveLength(0);
     expect(callsFor('release_voice_call_admission_claim')).toHaveLength(1);
   });
 
@@ -468,7 +513,7 @@ describe('the failure posture: answer the call', () => {
       periodStart: '2026-08-01',
       idempotencyKey: 'voice-overage-key',
     });
-    setRpc('finalize_voice_call_admission', {
+    setRpc('finalize_voice_call_admission_v2', {
       data: null, error: { code: '08006', message: 'database unavailable' },
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
@@ -530,6 +575,11 @@ describe('settlement', () => {
     setRpc('commit_usage_reservation_partial', { data: null, error: { message: 'nope' } });
     expect(await settleVoiceCall(admin, lease, 3)).toBeNull();
     setRpc('commit_usage_reservation_partial', new Error('gone'));
+    expect(await settleVoiceCall(admin, lease, 3)).toBeNull();
+  });
+
+  it.each([null, undefined, false, '', ' ', -1, 61, 0.5])('does not mistake an invalid settlement response %j for a debit', async (data) => {
+    setRpc('commit_usage_reservation_partial', { data, error: null });
     expect(await settleVoiceCall(admin, lease, 3)).toBeNull();
   });
 
