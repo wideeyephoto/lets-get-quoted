@@ -666,7 +666,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'update_job_details',
-          purpose: 'Update active job scope, schedule date/time, or status. Cannot change quote prices, totals, discounts, or priced line items. Direct price changes to the signed-in job quote editor; never claim a price was changed.',
+          purpose: 'Update active job scope, schedule date/time, or status only when the caller explicitly requests that field. A note, reminder, test phrase, or ambiguous add request is not a scope change; use append_job_caution_or_note for notes, or clarify the destination first. Cannot change quote prices, totals, discounts, or priced line items. Direct price changes to the signed-in job quote editor; never claim a price was changed.',
           argument: {
             type: 'object',
             additionalProperties: false,
@@ -677,7 +677,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               },
               scope: {
                 type: 'string',
-                description: 'New or additional scope of work completed or requested.',
+                description: 'Additional work explicitly requested for the job scope. Never put notes, reminders, test phrases, or an ambiguous add request here. Confirm the destination first when unclear.',
               },
               status: {
                 type: 'string',
@@ -831,6 +831,12 @@ export const signalwireVoiceProvider: VoiceProvider = {
             turn_detection_timeout: 250,
             function_wait_for_talking: false,
             ...(plan.contractorMode ? {
+              // Redaction runs inline. SignalWire recommends combining cleanup
+              // and redaction in one utility pass, instead of serial text passes.
+              // Keep provider masking and the independent receipt sanitizer.
+              utility_model: 'gpt-4.1-nano',
+              auto_correct: true,
+              enable_text_normalization: 'off',
               transparent_barge: true,
               barge_functions: false,
               interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',

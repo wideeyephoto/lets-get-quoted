@@ -17,6 +17,7 @@ import {
   VoiceReceiptProcessingRpcError,
 } from '@/lib/voice/receipt-processing';
 import { sanitizeVoiceReceipt } from '@/lib/voice/receipt-redaction';
+import { signalWireTimingSummary } from '@/lib/voice/provider-timing';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -161,6 +162,19 @@ export async function POST(request: Request) {
         errorMessage: 'Voice receipt for a call this deployment never admitted',
       });
       return NextResponse.json({ ok: true, settled: false }, { status: 200 });
+    }
+
+    if (inserted) {
+      // Only authenticated, scoped, admitted calls reach this projection. It
+      // cannot affect settlement or immutable replay comparisons.
+      try {
+        console.info('voice_provider_timing', {
+          providerCallId: receipt.providerCallId,
+          ...signalWireTimingSummary(payload),
+        });
+      } catch {
+        // Optional diagnostics must never prevent usage settlement or recovery.
+      }
     }
 
     // Ingest deduplicates immutable evidence; this claim decides whether that
