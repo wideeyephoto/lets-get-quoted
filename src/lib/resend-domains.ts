@@ -302,6 +302,10 @@ export async function getSendingDomain(id: string): Promise<SendingDomainRespons
 }
 
 export async function triggerSendingDomainVerify(id: string): Promise<SendingDomainResponse | null> {
+  // Verification is asynchronous. Re-triggering an already verified domain
+  // resets it to pending, so an immediate read can never show completion.
+  const current = await getSendingDomain(id);
+  if (!current || current.status === 'verified') return current;
   await resendRequest(`/domains/${encodeURIComponent(id)}/verify`, 'POST');
   return await getSendingDomain(id);
 }
