@@ -353,7 +353,7 @@ describe('rendering an answer', () => {
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
     expect(swml.sections.main[1].play.urls).toEqual([
-      'https://letsgetquoted.com/audio/dispatch-connected-v1.wav',
+      'https://letsgetquoted.com/audio/dispatch-connected-v2.wav',
       "say: Hi, I'm your AI assistant. Thanks for calling.",
     ]);
     expect(swml.sections.main[1].play.say_voice).toBe('rime.luna:coda');

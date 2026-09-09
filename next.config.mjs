@@ -61,10 +61,10 @@ const nextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: SECURITY_HEADERS },
-      {
-        source: '/audio/dispatch-connected-v1.wav',
+      ...['/audio/dispatch-connected-v1.wav', '/audio/dispatch-connected-v2.wav'].map((source) => ({
+        source,
         headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
-      },
+      })),
     ];
   },
   // /features is a real page again — it is no longer folded into the homepage,
