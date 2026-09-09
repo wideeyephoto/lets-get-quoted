@@ -28,6 +28,7 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
   const [locked, setLocked] = useState(false);
   const [supported, setSupported] = useState(false);
   const [message, setMessage] = useState('');
+  const [waitingForPasskey, setWaitingForPasskey] = useState(false);
   const [label, setLabel] = useState('My passkey');
   const [selectedTotp, setSelectedTotp] = useState('');
   const [code, setCode] = useState('');
@@ -36,9 +37,11 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
   const generation = useRef(0);
   const running = useRef(false);
   const identityLocked = useRef(false);
+  const cancelPasskey = useRef<(() => void) | null>(null);
   const clearSetup = useCallback(() => { setSetup(null); setCode(''); setCopied(false); }, []);
   const invalidateIdentity = useCallback(() => {
     generation.current += 1; identityLocked.current = true;
+    cancelPasskey.current?.();
     WebAuthnAbortService.cancelCeremony();
     clearSetup(); setFactors([]); setSecurity(null); setSelectedTotp(''); setLocked(true); setBusy(false);
     setMessage('Your signed-in account changed. Reload Security before continuing.');
@@ -81,7 +84,7 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
     void refresh(version).catch(error => {
       if (generation.current === version) { setSecurity(null); setMessage(messageFor(error)); }
     }).finally(() => { if (generation.current === version) setBusy(false); });
-    return () => { generation.current += 1; subscription.subscription.unsubscribe(); WebAuthnAbortService.cancelCeremony(); };
+    return () => { generation.current += 1; subscription.subscription.unsubscribe(); cancelPasskey.current?.(); WebAuthnAbortService.cancelCeremony(); };
   }, [accountId, clearSetup, invalidateIdentity, refresh]);
   useEffect(() => {
     if (!security?.verifiedUntil) return;
@@ -101,19 +104,34 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
     return fetch(endpoint, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...data, action, expectedUserId: accountId }) }).then(readJson<T>);
   }
   function unlocked(state: SecurityState) { return state.providerLevel === 'aal2' || state.verified; }
+  async function nativePrompt<T>(start: () => Promise<T>) {
+    setWaitingForPasskey(true);
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const cancelled = new Promise<never>((_, reject) => {
+      cancelPasskey.current = () => {
+        reject(new DOMException('Passkey prompt cancelled.', 'AbortError'));
+        WebAuthnAbortService.cancelCeremony();
+      };
+      // Password-manager extensions can ignore WebAuthn's requested timeout.
+      // Race the native call so a late result can never reach verification.
+      timer = setTimeout(() => cancelPasskey.current?.(), 60_000);
+    });
+    try { return await Promise.race([start(), cancelled]); }
+    finally { clearTimeout(timer); cancelPasskey.current = null; setWaitingForPasskey(false); }
+  }
   async function passkey(register: boolean) {
     await run(async version => {
       if (!supported) throw new Error('This browser cannot use passkeys here. Use an authenticator code or a supported browser.');
       if (register) {
         const start = await post<{ challengeId: string; options: PublicKeyCredentialCreationOptionsJSON }>('register-options', { label });
         await assertAccount(version);
-        const response = await startRegistration({ optionsJSON: start.options });
+        const response = await nativePrompt(() => startRegistration({ optionsJSON: start.options }));
         await assertAccount(version);
         await post('register-verify', { challengeId: start.challengeId, response });
       } else {
         const start = await post<{ challengeId: string; options: PublicKeyCredentialRequestOptionsJSON }>('authenticate-options');
         await assertAccount(version);
-        const response = await startAuthentication({ optionsJSON: start.options });
+        const response = await nativePrompt(() => startAuthentication({ optionsJSON: start.options }));
         await assertAccount(version);
         await post('authenticate-verify', { challengeId: start.challengeId, response });
       }
@@ -188,6 +206,11 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
       <dt>Passkeys</dt><dd>{security?.passkeysUnavailable ? 'Temporarily unavailable' : security?.passkeys.length ? `${security.passkeys.length} enrolled` : 'Not enrolled'}</dd>
       <dt>Authenticator backup</dt><dd>{hasTotp ? 'Enrolled' : 'Not enrolled'}</dd>
     </dl>
+    {waitingForPasskey ? <div className={styles.mfaActionGroup}>
+      <p role="status" className={styles.muted}>Waiting for your password manager or device. Check its prompt or unlock your password manager. If no prompt appears, cancel and use your authenticator code.</p>
+      <button type="button" className="btn secondary" onClick={() => cancelPasskey.current?.()}>Cancel passkey prompt</button>
+    </div> : null}
+    {message ? <p role="status" className={styles.mfaStatusMessage}>{message}</p> : null}
     {security?.verifiedUntil && security.verified ? <p className={styles.muted}>Passkey verification expires at {new Date(security.verifiedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</p> : null}
     {security?.passkeys.length ? <div className={styles.mfaActionGroup}>
       <button type="button" className="btn primary" disabled={disabled || !supported} onClick={() => passkey(false)}>Verify with passkey</button>
@@ -239,7 +262,6 @@ export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: 
       </div>)}</div> : null}
       {hasTotp ? <p className={styles.muted}>Keep a working authenticator as your recovery backup. Verify a code before adding or removing an authenticator app. {preserveBackup ? 'Add and verify a replacement before removing your last backup.' : ''}</p> : null}
     </div>
-    {message ? <p role="status" className={styles.mfaStatusMessage}>{message}</p> : null}
     {locked || (!security && !busy) ? <button type="button" className="btn secondary" onClick={() => window.location.reload()}>Reload Security</button> : null}
   </section>;
 }
