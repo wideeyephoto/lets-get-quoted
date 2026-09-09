@@ -565,7 +565,7 @@ export default function AiReceptionistSection(props: Props) {
             <div className={styles.funnelPerksList}>
               <div className={styles.funnelPerkItem}>
                 <span className={styles.funnelPerkCheck}>✓</span>
-                <span><strong>24/7 Live AI Answering:</strong> AI answers immediately and books estimate appointments</span>
+                <span><strong>AI Call Coverage:</strong> Answers according to your schedule and takes appointment requests for your team</span>
               </div>
               <div className={styles.funnelPerkItem}>
                 <span className={styles.funnelPerkCheck}>✓</span>
