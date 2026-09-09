@@ -21,6 +21,14 @@ describe('Dispatch latency contract', () => {
     expect(ai.params.turn_detection_timeout).toBe(250);
     expect(ai.params.function_wait_for_talking).toBe(false);
     expect(ai.params.redact_prompt).toContain('verification codes');
+    if (contractorMode) {
+      expect(ai.params.transparent_barge).toBe(true);
+      expect(ai.params.barge_functions).toBe(false);
+      expect(ai.params.interrupt_prompt).toContain('do not restart or summarize');
+      const lookup = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'lookup_jobs');
+      expect(lookup.purpose).toContain('current total or recorded quote');
+      expect(lookup.argument.properties.include_details.description).toContain('even if only one field is requested');
+    } else expect(ai.params.interrupt_prompt).toBeUndefined();
     for (const fn of ai.SWAIG.functions.filter((f: { web_hook_url?: string }) => f.web_hook_url)) {
       expect(fn.fillers.default.length).toBeGreaterThan(0);
       expect(fn.wait_for_fillers).toBe(false);
@@ -44,6 +52,15 @@ describe('Dispatch latency contract', () => {
     for (const timezone of [null, 'Invalid/Zone']) {
       expect(buildVoiceSystemPrompt({ ...context, timezone })).toContain('Ask for an explicit calendar date');
     }
+  });
+  it('supplies the observed-call readback, quote-read and interruption rules without removing price-write safeguards', () => {
+    const prompt = buildVoiceSystemPrompt(context);
+    expect(prompt).toContain('quote the exact Saved text from that tool result');
+    expect(prompt).toContain('do not call append_job_caution_or_note again');
+    expect(prompt).toContain('current job total, price, or quote');
+    expect(prompt).toContain('include_details=true');
+    expect(prompt).toContain('Do not restart or summarize the interrupted answer');
+    expect(prompt).toContain('price changes require');
   });
   it('bounds a hung identity read and cleans up successful read timers', async () => {
     vi.useFakeTimers();
