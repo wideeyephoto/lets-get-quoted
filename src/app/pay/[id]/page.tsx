@@ -545,7 +545,12 @@ export default async function PublicPaymentPage({
                     transfer takes a few business days to clear, and you’ll be confirmed once it settles.
                   </p>
                 ) : null}
-                <FinancingOption availability={financing} businessName={businessName} />
+                <FinancingOption
+                  availability={financing}
+                  businessName={businessName}
+                  surface="payment_request"
+                  docRef={payment.id}
+                />
               </>
             )
           ) : payment.status === 'paid' || paymentView.banner === 'paid' || paymentView.banner === 'settling' ? (

@@ -124,7 +124,12 @@ export default async function PublicInvoicePage({ params: paramsPromise }: { par
               <form action={boundPayInvoice} className="actions workspace-actions">
                 <button type="submit" className="btn primary">Pay {formatMoney(pay.due)}</button>
               </form>
-              <FinancingOption availability={financing} businessName={businessName} />
+              <FinancingOption
+                availability={financing}
+                businessName={businessName}
+                surface="invoice"
+                docRef={invoice.ref || invoice.id}
+              />
             </>
           ) : pay.state === 'processing' ? (
             <div className="payment-banner">

@@ -948,6 +948,8 @@ export default async function ClientJobDashboardPage({
                           <FinancingOption
                             availability={financing}
                             businessName={dashboard.businessName}
+                            surface="quote"
+                            docRef={access?.jobId}
                           />
                         }
                       />
