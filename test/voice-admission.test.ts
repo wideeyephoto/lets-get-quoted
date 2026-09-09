@@ -173,7 +173,7 @@ describe('what a caller gets', () => {
     expect(result.plan.receiptUrl).not.toContain('@');
     expect(result.plan.transferStatusUrl).toBe(options.forwardActionUrl(ACCOUNT));
     // The disclosure is not optional and not a setting.
-    expect(result.plan.greeting).toContain('AI assistant');
+    expect(result.plan.greeting).toMatch(/AI assistant/i);
     expect(admitVoiceCall).toHaveBeenCalledWith(
       admin,
       {
@@ -522,7 +522,7 @@ describe('when the receptionist is meant to pick up', () => {
     });
     const result = await planInboundCall(admin, call, options);
     if (result.plan.kind !== 'ai_agent') throw new Error('expected the agent');
-    expect(result.plan.greeting).toContain("Hi, I'm your AI assistant.");
+    expect(result.plan.greeting).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
     expect(result.plan.greeting).toContain('Rivera Plumbing, how can I help?');
     // The configured hand-off wins over the general forwarding number.
     expect(result.plan.transferTo).toBe('+15550001111');

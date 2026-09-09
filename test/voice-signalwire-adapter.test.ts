@@ -353,10 +353,10 @@ describe('rendering an answer', () => {
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
     expect(swml.sections.main[1].play.urls).toEqual([
-      'https://letsgetquoted.com/audio/dispatch-connected-v2.wav',
-      "say: Hi, I'm your AI assistant. Thanks for calling.",
+      'https://letsgetquoted.com/audio/dispatch-connected-v3.wav',
+      "say: Your personal Let's Get Quoted AI Assistant is loading. Thanks for calling.",
     ]);
-    expect(swml.sections.main[1].play.say_voice).toBe('rime.luna:coda');
+    expect(swml.sections.main[1].play.say_voice).toBe('rime.eyre:coda');
     expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
@@ -390,7 +390,7 @@ describe('rendering an answer', () => {
 
     expect(playIndex).toBeGreaterThan(-1);
     expect(recordIndex).toBeGreaterThan(playIndex);
-    expect(main[playIndex].play.urls[1]).toContain("Hi, I'm your AI assistant.");
+    expect(main[playIndex].play.urls[1]).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
     expect(main[playIndex].play.urls[1]).toContain('This call may be recorded for quality and training purposes.');
   });
 

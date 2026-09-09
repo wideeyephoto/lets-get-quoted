@@ -274,12 +274,14 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         play: {
           urls: [
-            new URL('/audio/dispatch-connected-v2.wav', plan.receiptUrl).toString(),
+            new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
             `say: ${spokenGreeting}`,
           ],
           // Pin the opening voice separately from the accepted conversational
           // profile. An engine-qualified voice avoids a provider-default switch.
-          say_voice: 'rime.luna:coda',
+          say_voice: 'rime.eyre:coda',
+          // Reduce the opening's playback level for speakerphone comfort.
+          volume: -2,
         },
       });
       if (recordCall) {
