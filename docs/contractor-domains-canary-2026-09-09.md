@@ -2,6 +2,8 @@
 
 Updated September 9, 2026. **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
 
+Release continuation: Brett explicitly approved publishing/deploying the candidate and hourly follow-ups with at most one test per approved inbox daily. The task heartbeat `contractor-domain-seven-day-canary` is now ACTIVE, hourly at minute 40. It continues lifecycle preparation first and does not start/count canary days until the activation and recovery gates below pass. This supersedes the historical approval blocks recorded below.
+
 ## Receiver and quote-link evidence
 
 | Check | Evidence | Scope |

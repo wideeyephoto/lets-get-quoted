@@ -204,6 +204,38 @@ describe('Admin security client flows', () => {
     expect(input('mfa-code').props.disabled).toBe(false);
   });
 
+  it('lets the user cancel an unresponsive password manager and ignores its late result', async () => {
+    const native = deferred<typeof nativeResponse>();
+    mocks.startAuthentication.mockReturnValueOnce(native.promise);
+    await mount();
+    await act(async () => { void button('Verify with passkey').props.onClick(); await flush(); });
+    expect(screen()).toContain('Waiting for your password manager or device.');
+    await click('Cancel passkey prompt');
+    expect(input('mfa-code').props.disabled).toBe(false);
+    expect(screen()).toContain('Passkey prompt closed.');
+    await act(async () => { native.resolve(nativeResponse); await flush(); });
+    expect(posts('authenticate-verify')).toEqual([]);
+    expect(screen()).not.toContain('MFA verified');
+  });
+
+  it('recovers from a registration provider that ignores the native timeout', async () => {
+    vi.useFakeTimers();
+    const native = deferred<typeof nativeResponse>();
+    mocks.startRegistration.mockReturnValueOnce(native.promise);
+    security.providerLevel = 'aal2';
+    security.passkeys = [];
+    await mount();
+    await act(async () => { void button('Add passkey').props.onClick(); await flush(); });
+    expect(screen()).toContain('Waiting for your password manager or device.');
+    await act(async () => { await vi.advanceTimersByTimeAsync(60_000); await flush(); });
+    expect(button('Add passkey').props.disabled).toBe(false);
+    expect(input('mfa-code').props.disabled).toBe(false);
+    expect(screen()).toContain('Passkey prompt closed.');
+    await act(async () => { native.resolve(nativeResponse); await flush(); });
+    expect(posts('register-verify')).toEqual([]);
+    expect(screen()).not.toContain('Passkey added.');
+  });
+
   it('does not claim success from the verify response when refreshed server state is still unverified', async () => {
     const original = mocks.fetch.getMockImplementation()!;
     mocks.fetch.mockImplementation(async (url, init) => init?.method === 'POST' && JSON.parse(init.body).action === 'authenticate-verify'

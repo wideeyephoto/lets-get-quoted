@@ -6,12 +6,17 @@ The [September 9 acceptance record](voice-acceptance-2026-09-09.md) supersedes
 older release-pending and handset observations below. The full staff session
 saved one note once and settled cleanly, but failed “dollars” pronunciation and
 post-speech delay acceptance. A short interactive test with the same speech
-settings and a written-out amount passed; the candidate still needs release and
-a full Dispatch retest. The earlier recipient-first transfer and provider phase
+settings and a written-out amount passed. PR #57 is now live; the post-release
+handset attempt hit voicemail with `admission_unavailable` before Dispatch
+started. A bounded admission retry/startup change and signed-path recording
+recovery need release and live retesting. The earlier recipient-first transfer and provider phase
 deadline checks are accepted within their documented scope. New unanswered
 probes reached `noAnswer` and the recording branch but did not prove voiced
-voicemail recovery or active recording termination at the cap. Those gates,
-actual provider fallback and live homeowner/on-call behavior remain open.
+voicemail recovery or active recording termination at the cap. Actual number
+fallback subsequently captured a finished synthetic voicemail, recovered from
+provider evidence with authorized app playback and zero AI charge. Its native
+recording callbacks returned HTTP 401. Automatic recovery, the primary SWML
+fetch failure, remaining boundaries and live homeowner/on-call behavior stay open.
 Provider-period reconciliation remains open; exhaustion blocking stays OFF.
 
 This checklist consolidates the September 8 reassessment. It is an execution plan, not a production sign-off. Refresh deployment and task status before starting each change: other SignalWire work is active.
@@ -34,11 +39,13 @@ spoken-currency diagnostic does not close the full Dispatch latency gate.
   See [the verification scope](voice-recording-access-boundaries.md).
 - [x] The actual signed-in operator receipt screen rendered with zero pending
   or failed receipts. Recent retention runs succeeded with no deletion backlog.
-- [ ] Actual failed-receipt retry, authorized recording playback and provider
-  deletion remain separate live acceptance cases.
+- [x] Authorized app playback of a manually recovered fallback voicemail ran
+  through its end at 20:57 UTC; see the dated acceptance record.
+- [ ] Actual failed-receipt retry and provider deletion remain separate live cases.
 - [ ] Full Dispatch audio, voiced voicemail, active-recording cutoff, real
-  provider fallback and homeowner/on-call acceptance remain open as described
-  in the dated acceptance record. No_input recording is not voiced acceptance.
+  callback recovery and homeowner/on-call acceptance remain open as described
+  in the dated acceptance record. Actual emergency fallback invocation passed;
+  no_input recording is not voiced acceptance.
 - [ ] Validate real-contractor settings and approved customer SMS registration
   before customer carrier acceptance; test-workspace values are insufficient.
 - [ ] Full provider-period reconciliation remains open; exhaustion blocking

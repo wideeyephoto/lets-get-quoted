@@ -35,6 +35,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     importance: 'money', consequence: 'Webhook, billing, messaging and dispute failures stop reaching the operator by email.',
   },
   {
+    job: 'addon-refunds',
+    label: 'Add-on refund reversals',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Refunded add-ons retain credits or capacity, and fully refunded subscriptions keep renewing.',
+  },
+  {
     job: 'overage-period-close',
     label: 'Overage period close',
     schedule: '17 * * * *',

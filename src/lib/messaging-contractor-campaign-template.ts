@@ -1,8 +1,9 @@
 /**
  * Standard non-marketing contractor Customer Operations 10DLC campaign template.
  *
- * This module defines the canonical, carrier-vetted Campaign Registry (TCR)
- * template for local trade contractors operating on Let's Get Quoted.
+ * This module prepares a Campaign Registry (TCR) application template for local
+ * trade contractors. It does not establish carrier approval; each submitted
+ * identity, consent flow, sample and number assignment must be reviewed.
  *
  * All contractor campaigns are strictly operational and non-marketing:
  * - Customer care and quote delivery
@@ -49,7 +50,7 @@ export function effectiveBrandName(input: Pick<ContractorCampaignTemplateInput, 
 }
 
 /**
- * Generate the standard, carrier-compliant TCR Campaign description.
+ * Generate the proposed non-marketing campaign description.
  */
 export function generateContractorCampaignDescription(input: ContractorCampaignTemplateInput): string {
   const brand = effectiveBrandName(input);
@@ -72,17 +73,20 @@ export function generateContractorOptInDescription(input: ContractorCampaignTemp
   const website = input.websiteUrl.trim();
 
   return (
-    `Customers opt in to receive SMS messages from ${brand} by submitting an online quote or service request `
-    + `form on the business website (${website}), by signing a service agreement, or by initiating direct contact. `
-    + `The web form displays a clear disclosure above the submit button stating: "By providing your phone number, `
-    + `you agree to receive text messages from ${brand} regarding your quote, appointment, and service updates. `
-    + `Message frequency varies. Message and data rates may apply. Reply STOP to opt out or HELP for help." `
-    + `Phone numbers and consent are collected directly and are never sold or shared with third parties.`
+    `Recipients provide their own phone number on ${brand}'s quote-request form (${website}) and choose `
+    + `"Call or text me" or "Text me only" before submitting. The form asks how ${brand} may follow up `
+    + `about that request. Its disclosure says submission authorizes contact about the request by text or email `
+    + `(or by phone, text, or email for "Call or text me"), states that message and data rates may apply, `
+    + `and links to the Privacy Policy. This describes the quote-request flow, not consent to unrelated `
+    + `messages. Verify the actual enrollment URL, displayed disclosure and stored consent evidence before `
+    + `submitting this application; other enrollment methods require their own verified description. `
+    + `Mobile numbers and SMS consent are not shared with third parties for their marketing or promotional purposes.`
   );
 }
 
 /**
- * Generate the standard carrier-compliant sample messages (5 representative operational examples).
+ * Generate five proposed operational samples. The described outcome must have
+ * actually occurred before its corresponding message is sent.
  */
 export function generateStandardContractorSampleMessages(input: ContractorCampaignTemplateInput): readonly string[] {
   const brand = effectiveBrandName(input);
@@ -91,7 +95,7 @@ export function generateStandardContractorSampleMessages(input: ContractorCampai
     // Sample 1: Quote Delivery / Estimate Link
     `${brand}: Hi [Customer], here is the estimate you requested for your project: https://quote.example.com/q/12345. Reply STOP to opt out, HELP for help.`,
     // Sample 2: Appointment / Schedule Confirmation
-    `${brand}: Hi [Customer], your appointment is confirmed for Tuesday at 10:00 AM. Reply STOP to cancel or opt out.`,
+    `${brand}: Hi [Customer], your appointment is confirmed for Tuesday at 10:00 AM. Reply STOP to opt out of texts. To change your appointment, contact our office.`,
     // Sample 3: Technician Dispatch & Arrival Notice
     `${brand}: Hi [Customer], our technician is on the way to your location and expects to arrive in 25 minutes. Reply STOP to opt out.`,
     // Sample 4: Direct 2-Way Conversational Reply
@@ -135,7 +139,7 @@ export function buildStandardContractorCampaignPayload(
 
   const optInMessage = (
     `${brand}: Welcome! You are now subscribed to service and quote updates. `
-    + `Msg&data rates may apply. Reply HELP for help, STOP to cancel.`
+    + `Msg&data rates may apply. Reply HELP for help, STOP to opt out of texts.`
   );
 
   return {

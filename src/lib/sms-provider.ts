@@ -913,7 +913,8 @@ function candidateUrls(request: Request): string[] {
 
   try {
     const received = new URL(request.url);
-    if (received.hash || !SIGNED_PROVIDER_CALLBACK_PATHS.has(received.pathname)) return [];
+    const recordingRecoveryPath = /^\/api\/voice\/recording-status\/1[2-9]\d{9}\/(?:1[2-9]\d{9}|unknown)$/.test(received.pathname);
+    if (received.hash || (!SIGNED_PROVIDER_CALLBACK_PATHS.has(received.pathname) && !recordingRecoveryPath)) return [];
 
     const tail = `${received.pathname}${received.search}`;
     const hostname = new URL(origin).hostname;

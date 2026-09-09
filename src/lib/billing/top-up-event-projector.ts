@@ -362,7 +362,13 @@ export function decideTopUpProjection(
   if (claim.eventType === 'checkout.session.async_payment_failed') {
     return Object.freeze({ outcome: 'payment_failed', checkout_session_id: sessionId, account_id: accountId });
   }
-  if (claim.eventType === 'checkout.session.completed' && session.payment_status === 'unpaid') {
+  // An event name is not proof of settlement. In particular a stale provider
+  // read after async success must retry, not grant an unpaid purchase or mark
+  // that final success receipt ignored forever.
+  if (session.payment_status !== 'paid') {
+    if (claim.eventType === 'checkout.session.async_payment_succeeded') {
+      throw new TopUpProjectionProviderError('provider_payment_not_paid', true);
+    }
     return Object.freeze({
       outcome: 'awaiting_async_payment',
       checkout_session_id: sessionId,
