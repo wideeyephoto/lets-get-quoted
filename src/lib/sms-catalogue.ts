@@ -15,14 +15,15 @@ import {
   crewPhoneVerificationCodeText,
   voiceStaffStepUpCodeText,
   crewScheduleSelectedText,
-  crewWelcomeText,
   inboxReplyText,
   intakeConfirmationText,
   jobUpdateText,
   leadDeclineText,
   leadQuoteVisitOptionsText,
   leadQuoteVisitText,
+  lienWaiverText,
   missedCallTextBack,
+  noiNoticeText,
   ownerBookingRequestAlertText,
   ownerPortalMessageAlertText,
   ownerHighValueLeadText,
@@ -58,16 +59,19 @@ import { LINK_PLACEHOLDER, draftOfferMessage } from '@/lib/subcontractor-dispatc
 import { generateSpeedToLeadSms, generateContractorAdLeadAlert } from '@/lib/ad-speed-to-lead';
 import { draftCustomerMessage } from '@/lib/weather';
 import { buildMorningWeatherAlertText } from '@/lib/weather-morning-alert';
+import { CREW_SMS_WELCOME_MESSAGE } from '@/lib/crew-sms-disclosure';
+import { confirmedSmsBody, declinedSmsBody } from '@/lib/booking-requests';
+import { ownerEstimateAcceptedText } from '@/lib/estimate-offers';
 
 /**
- * Every text message this app can send, in one list, with the real words.
+ * Outgoing system-text examples, built from their sending paths.
  *
  * WHAT THIS IS FOR. These messages leave through three deliberately separate
  * sender lanes, and until now there was nowhere to read them together. You
  * could find out what an automation says only by turning it on and waiting.
  *
- * WHY THE BODIES ARE BUILT AND NOT TYPED. Every `body` below is the output of
- * the same builder the sender calls, given sample data. Nothing here is a
+ * WHY THE BODIES ARE BUILT AND NOT TYPED. Every `body` below uses
+ * the same builder or canonical constant the sender calls, given sample data. Nothing here is a
  * transcription, because transcriptions of these messages have drifted twice
  * already — see the note at the top of sms-templates.ts. Change a message and
  * this page changes with it; there is no second copy to forget.
@@ -77,6 +81,11 @@ import { buildMorningWeatherAlertText } from '@/lib/weather-morning-alert';
  * unrelated examples.
  */
 
+// Synthetic values only. Match production path and token lengths so segment
+// estimates include the real link overhead; these are not issued access links.
+const SAMPLE_ORIGIN = 'https://app.letsgetquoted.com';
+const SAMPLE_TOKEN = 'a'.repeat(43); // 32 random bytes encoded as base64url (job-feed.ts)
+const SAMPLE_UUID = '11111111-1111-4111-8111-111111111111';
 const SAMPLE = {
   business: 'Evergreen Lawn & Landscape',
   client: 'Karen Whitfield',
@@ -84,7 +93,17 @@ const SAMPLE = {
   crew: 'Mike Torres',
   jobRef: 'J-1009',
   address: '1418 Maplewood Ave, Royal Oak, MI',
-  link: 'lgq.co/x7Kp2',
+  link: `${SAMPLE_ORIGIN}/client/jobs/${SAMPLE_TOKEN}`,
+  portalLink: `${SAMPLE_ORIGIN}/portal/view/${'a'.repeat(64)}`,
+  paymentLink: `${SAMPLE_ORIGIN}/pay/${SAMPLE_UUID}`,
+  waiverLink: `${SAMPLE_ORIGIN}/waivers/${SAMPLE_UUID}`,
+  quickStopLink: `${SAMPLE_ORIGIN}/quick-stop/${SAMPLE_UUID}`,
+  trackingLink: `${SAMPLE_ORIGIN}/track/${'a'.repeat(48)}`,
+  offerLink: `${SAMPLE_ORIGIN}/sub/${SAMPLE_TOKEN}.${'a'.repeat(22)}`,
+  bookingLink: 'https://evergreen.letsgetquoted.com/quote',
+  reviewLink: `${SAMPLE_ORIGIN}/review/${'a'.repeat(36)}`,
+  // Hosted checkout URLs vary; this synthetic session illustrates their length.
+  cardSetupLink: `https://checkout.stripe.com/c/pay/cs_test_${'a'.repeat(56)}#${'a'.repeat(80)}`,
 } as const;
 
 /** Who the phone belongs to. Not everything here goes to a customer. */
@@ -114,6 +133,7 @@ export const SENDER_LANE_LABEL: Record<SmsSenderLane, string> = {
  */
 export type SmsControl =
   | { kind: 'automation'; key: AutomationKey; label: string }
+  | { kind: 'configured'; label: string }
   | { kind: 'manual'; label: string }
   | { kind: 'always'; label: string };
 
@@ -154,7 +174,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     title: 'Instant intake confirmation',
     trigger: 'A homeowner completes an estimate request or intake form on your website',
     audience: 'lead',
-    control: always('Configured in Smart Intake setup — costs 1 text credit per send'),
+    control: always('Configured in Smart Intake setup'),
     body: intakeConfirmationText({
       businessName: SAMPLE.business,
       leadName: SAMPLE.first,
@@ -180,7 +200,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       businessName: SAMPLE.business,
       leadName: SAMPLE.client,
       estimate: { min: 2200, max: 3800 },
-      dashboardUrl: SAMPLE.link,
+      dashboardUrl: `${SAMPLE_ORIGIN}/dashboard/leads/${SAMPLE_UUID}`,
     }),
   },
   {
@@ -261,7 +281,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     body: bookingRequestCustomerConfirmationText({
       businessName: SAMPLE.business,
       customerName: SAMPLE.first,
-      whenLabel: 'Wed, Aug 12, 8:00 AM – 12:00 PM',
+      whenLabel: 'Wed, Aug 12, 8:00 AM - 12:00 PM',
       serviceName: 'Lawn Maintenance',
     }),
   },
@@ -274,9 +294,9 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     body: ownerBookingRequestAlertText({
       businessName: SAMPLE.business,
       customerName: SAMPLE.client,
-      whenLabel: 'Wed, Aug 12, 8:00 AM – 12:00 PM',
+      whenLabel: 'Wed, Aug 12, 8:00 AM - 12:00 PM',
       serviceName: 'Lawn Maintenance',
-      dashboardUrl: `${SAMPLE.link}/dashboard/schedule`,
+      dashboardUrl: `${SAMPLE_ORIGIN}/dashboard/schedule`,
     }),
   },
   {
@@ -289,18 +309,33 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       businessName: SAMPLE.business,
       customerName: SAMPLE.client,
       messagePreview: 'Can we move our appointment to next Monday morning?',
-      dashboardUrl: `${SAMPLE.link}/dashboard/messages`,
+      dashboardUrl: `${SAMPLE_ORIGIN}/dashboard/messages`,
     }),
   },
 
   {
     id: 'booking-decision',
-    title: 'Booking confirmed or declined',
-    trigger: 'You answer a request from your public booking page',
+    title: 'Booking confirmed',
+    trigger: 'You confirm a request from your public booking page',
     audience: 'customer',
     control: automation('booking', 'Online booking'),
-    ownerAuthored: true,
-    body: withOptOut(`${SAMPLE.business} confirmed your appointment for Wed, Aug 12 at 9:00 AM.`),
+    body: withOptOut(confirmedSmsBody(SAMPLE.business, 'Wed, Aug 12 at 9:00 AM')),
+  },
+  {
+    id: 'booking-declined',
+    title: 'Booking request declined',
+    trigger: 'You decline the arrival window requested on your public booking page',
+    audience: 'customer',
+    control: automation('booking', 'Online booking'),
+    body: withOptOut(declinedSmsBody(SAMPLE.business, 'Wed, Aug 12 at 9:00 AM')),
+  },
+  {
+    id: 'booking-declined-both-windows',
+    title: 'Both booking windows declined',
+    trigger: 'You decline a booking request that offered two possible windows',
+    audience: 'customer',
+    control: automation('booking', 'Online booking'),
+    body: withOptOut(declinedSmsBody(SAMPLE.business, 'Wed, Aug 12 at 9:00 AM', 'Thu, Aug 13 at 9:00 AM')),
   },
 
   // -- the quote -------------------------------------------------------------
@@ -310,7 +345,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'The customer asks for it by number on your website',
     audience: 'customer',
     control: always('Sent only when a customer requests it'),
-    body: portalLinkText({ businessName: SAMPLE.business, link: SAMPLE.link }),
+    body: portalLinkText({ businessName: SAMPLE.business, link: SAMPLE.portalLink }),
   },
   {
     id: 'client-job-dashboard',
@@ -341,11 +376,19 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
   },
   {
     id: 'quote-followup',
-    title: 'Quote follow-up',
-    trigger: 'A quote has sat unapproved for your follow-up window',
+    title: 'First quote follow-up',
+    trigger: 'A quote reaches its first follow-up window without approval or an active conversation',
     audience: 'customer',
     control: automation('followups', 'Quote follow-ups'),
-    body: quoteFollowupText({ businessName: SAMPLE.business, clientName: SAMPLE.first, url: SAMPLE.link }),
+    body: quoteFollowupText({ businessName: SAMPLE.business, clientName: SAMPLE.first, url: SAMPLE.link, stage: 'first' }),
+  },
+  {
+    id: 'quote-followup-final',
+    title: 'Final quote follow-up',
+    trigger: 'An unapproved quote reaches the last scheduled follow-up and conversation checks permit it',
+    audience: 'customer',
+    control: automation('followups', 'Quote follow-ups'),
+    body: quoteFollowupText({ businessName: SAMPLE.business, clientName: SAMPLE.first, url: SAMPLE.link, stage: 'final' }),
   },
   {
     id: 'scheduling-options',
@@ -421,7 +464,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       crewName: SAMPLE.crew,
       customerName: SAMPLE.client,
       times: null,
-      trackingUrl: SAMPLE.link,
+      trackingUrl: SAMPLE.trackingLink,
       timeZone: 'America/Detroit',
     }),
   },
@@ -455,14 +498,11 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
   // -- the crew --------------------------------------------------------------
   {
     id: 'crew-welcome',
-    title: 'Crew member onboarding & field intake welcome',
+    title: 'Crew text subscription welcome',
     trigger: 'A new crew member or subcontractor is invited to the workspace',
     audience: 'crew',
     control: always('Triggered on crew onboarding'),
-    body: crewWelcomeText({
-      crewName: 'Mike',
-      businessName: SAMPLE.business,
-    }),
+    body: CREW_SMS_WELCOME_MESSAGE,
   },
   {
     id: 'crew-assignment',
@@ -517,10 +557,10 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       businessName: SAMPLE.business,
       workDescription: 'Water heater replacement',
       generalLocation: 'Royal Oak',
-      whenLabel: 'Friday 9–11 AM',
+      whenLabel: 'Friday 9-11 AM',
       payAmount: 650,
       expiresLabel: '6 PM',
-    }).replace(LINK_PLACEHOLDER, SAMPLE.link),
+    }).replace(LINK_PLACEHOLDER, SAMPLE.offerLink),
   },
   {
     id: 'sub-offer-won',
@@ -531,8 +571,8 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     body: subcontractorWonText({
       businessName: SAMPLE.business,
       workDescription: 'water heater replacement',
-      whenLabel: 'Friday 9–11 AM',
-      link: SAMPLE.link,
+      whenLabel: 'Friday 9-11 AM',
+      link: SAMPLE.offerLink,
     }),
   },
   {
@@ -569,8 +609,8 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     body: quickStopOfferText({
       businessName: SAMPLE.business,
       whenLabel: 'today between 2 and 4 PM',
-      feeLabel: '$85',
-      payUrl: SAMPLE.link,
+      feeLabel: '$85 priority visit fee',
+      payUrl: SAMPLE.paymentLink,
       minutes: 15,
     }),
   },
@@ -583,16 +623,32 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     body: quickStopConfirmedText({
       businessName: SAMPLE.business,
       whenLabel: 'today between 2 and 4 PM',
-      statusUrl: SAMPLE.link,
+      statusUrl: SAMPLE.quickStopLink,
     }),
   },
   {
     id: 'quick-stop-status',
-    title: 'Quick Stop status',
-    trigger: 'En route, arrived, cancelled or refunded',
+    title: 'Quick Stop on the way',
+    trigger: 'You mark the Quick Stop technician as en route',
     audience: 'customer',
     control: automation('extra-stop', 'Quick Stop'),
-    body: withOptOut(quickStopStatusText('en_route')),
+    body: withOptOut(quickStopStatusText('en_route', { businessName: SAMPLE.business })),
+  },
+  {
+    id: 'quick-stop-arrived',
+    title: 'Quick Stop arrived',
+    trigger: 'You mark the Quick Stop technician as arrived',
+    audience: 'customer',
+    control: automation('extra-stop', 'Quick Stop'),
+    body: withOptOut(quickStopStatusText('arrived', { businessName: SAMPLE.business })),
+  },
+  {
+    id: 'quick-stop-eta',
+    title: 'Quick Stop arrival estimate',
+    trigger: 'You send an updated estimate of minutes until arrival',
+    audience: 'customer',
+    control: automation('extra-stop', 'Quick Stop'),
+    body: withOptOut(quickStopStatusText('eta', { businessName: SAMPLE.business, minutes: 20 })),
   },
   {
     id: 'estimate-offer',
@@ -605,11 +661,27 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
   },
   {
     id: 'owner-estimate-accepted',
-    title: 'They said yes',
-    trigger: 'A lead replies YES to an offer',
+    title: 'Estimate offer accepted and booked',
+    trigger: 'A lead replies YES while their offer is held and the visit is added to your day',
     audience: 'owner',
     control: always('Goes to your own mobile'),
-    body: withOptOut(`${SAMPLE.client} accepted your 2-4 PM offer.`),
+    body: withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'booked' })),
+  },
+  {
+    id: 'owner-estimate-accepted-late',
+    title: 'Estimate offer accepted after expiry',
+    trigger: 'A lead replies YES after the offer hold expires and no visit is booked',
+    audience: 'owner',
+    control: always('Goes to your own mobile'),
+    body: withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'expired' })),
+  },
+  {
+    id: 'owner-estimate-booking-failed',
+    title: 'Accepted estimate needs manual booking',
+    trigger: 'A lead accepts a held offer but the visit could not be added to your day',
+    audience: 'owner',
+    control: always('Goes to your own mobile'),
+    body: withOptOut(ownerEstimateAcceptedText({ leadName: SAMPLE.client, windowLabel: '2-4 PM', outcome: 'booking_failed' })),
   },
 
   // -- money -----------------------------------------------------------------
@@ -619,7 +691,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'You request a deposit, a stage payment or the balance',
     audience: 'customer',
     control: manual('Sent when you request it'),
-    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.link, eventType: 'payment_requested' }),
+    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.paymentLink, eventType: 'payment_requested' }),
   },
   {
     id: 'payment-paid',
@@ -627,7 +699,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'Their payment clears',
     audience: 'customer',
     control: always('Receipt for a payment they made'),
-    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.link, eventType: 'payment_paid' }),
+    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.paymentLink, eventType: 'payment_paid' }),
   },
   {
     id: 'payment-failed',
@@ -635,7 +707,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'Their payment is declined',
     audience: 'customer',
     control: always('They need to know it did not go through'),
-    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.link, eventType: 'payment_failed' }),
+    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.paymentLink, eventType: 'payment_failed' }),
   },
   {
     id: 'payment-refunded',
@@ -643,7 +715,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'You refund them',
     audience: 'customer',
     control: always('Receipt for a refund you sent'),
-    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.link, eventType: 'payment_refunded' }),
+    body: paymentText({ contractor: SAMPLE.business, label: 'deposit', amount: 1200, link: SAMPLE.paymentLink, eventType: 'payment_refunded' }),
   },
   {
     id: 'card-setup',
@@ -651,7 +723,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'You put a customer on a recurring plan',
     audience: 'customer',
     control: manual('Sent when you set the plan up'),
-    body: cardSetupText({ businessName: SAMPLE.business, url: SAMPLE.link }),
+    body: cardSetupText({ businessName: SAMPLE.business, url: SAMPLE.cardSetupLink }),
   },
   {
     id: 'card-update',
@@ -659,7 +731,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'A saved card fails on a recurring charge',
     audience: 'customer',
     control: always('Their service stops without it'),
-    body: cardUpdateText({ businessName: SAMPLE.business, url: SAMPLE.link }),
+    body: cardUpdateText({ businessName: SAMPLE.business, url: `${SAMPLE.paymentLink}/update-card` }),
   },
   {
     id: 'lien-waiver',
@@ -667,7 +739,15 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'You send an executed lien waiver to a customer or general contractor',
     audience: 'customer',
     control: manual('Sent when you generate and text the waiver'),
-    body: withOptOut(`${SAMPLE.business}: Here is your signed lien waiver for ${SAMPLE.jobRef}. View and download your copy: ${SAMPLE.link}`),
+    body: lienWaiverText({ businessName: SAMPLE.business, customerName: SAMPLE.first, waiverTypeTitle: 'Unconditional Waiver on Final Payment', jobRef: SAMPLE.jobRef, url: SAMPLE.waiverLink }),
+  },
+  {
+    id: 'noi-notice',
+    title: 'Notice of intent to file lien',
+    trigger: 'You send a notice of intent for an overdue payment from the payments page',
+    audience: 'customer',
+    control: manual('Sent when you choose to send the notice'),
+    body: noiNoticeText({ businessName: SAMPLE.business, amount: 1200, url: SAMPLE.paymentLink }),
   },
 
   // -- after the work --------------------------------------------------------
@@ -677,7 +757,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'You mark a job complete with the review pill on',
     audience: 'customer',
     control: automation('reviews', 'Review requests'),
-    body: reviewRequestText({ businessName: SAMPLE.business, clientName: SAMPLE.first, reviewUrl: SAMPLE.link }),
+    body: reviewRequestText({ businessName: SAMPLE.business, clientName: SAMPLE.first, reviewUrl: SAMPLE.reviewLink }),
   },
   {
     id: 'rebook-invite',
@@ -685,7 +765,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'You send a past customer a nudge from Rebook',
     audience: 'customer',
     control: manual('You choose who and when'),
-    body: rebookInviteText({ businessName: SAMPLE.business, clientName: SAMPLE.first, url: SAMPLE.link }),
+    body: rebookInviteText({ businessName: SAMPLE.business, clientName: SAMPLE.first, url: SAMPLE.bookingLink }),
   },
   {
     id: 'campaign',
@@ -715,7 +795,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       businessName: SAMPLE.business,
       callerNumber: '(248) 555-0117',
       hazardSummary: 'Water main rupture in basement',
-      dashboardUrl: SAMPLE.link,
+      dashboardUrl: `${SAMPLE_ORIGIN}/dashboard/voice`,
     }),
   },
   {
@@ -729,7 +809,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
       callerName: SAMPLE.client,
       callerNumber: '(248) 555-0117',
       summary: 'Caller needs a quote for complete roof replacement',
-      dashboardUrl: SAMPLE.link,
+      dashboardUrl: `${SAMPLE_ORIGIN}/dashboard/voice`,
     }),
   },
   {
@@ -740,18 +820,18 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     control: always('Requested by caller'),
     body: callerVoiceBookingLinkText({
       businessName: SAMPLE.business,
-      bookingUrl: SAMPLE.link,
+      bookingUrl: SAMPLE.bookingLink,
     }),
   },
   {
     id: 'caller-voice-booking-confirmation',
-    title: 'Voice call appointment confirmation',
-    trigger: 'Caller schedules and reserves an appointment slot during an AI voice call',
+    title: 'Voice call booking request receipt',
+    trigger: 'Caller requests an arrival window during an AI voice call, pending your confirmation',
     audience: 'customer',
-    control: always('Triggered on live call reservation'),
+    control: always('Triggered on live call booking request'),
     body: callerVoiceBookingConfirmationText({
       businessName: SAMPLE.business,
-      whenLabel: 'Thursday, Aug 27 (Morning: 8 AM – 12 PM)',
+      whenLabel: 'Thursday, Aug 27 (Morning: 8 AM - 12 PM)',
       serviceAddress: '123 Main St, Royal Oak, MI',
     }),
   },
@@ -760,14 +840,20 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     title: 'Voice call follow-up summary',
     trigger: 'Automated post-call summary and next steps sent after an AI voice call completes',
     audience: 'customer',
-    control: always('Triggered on voice call completion'),
+    control: { kind: 'configured', label: 'Follows the post-call text setting' },
     body: callerVoicePostCallFollowupText({
       businessName: SAMPLE.business,
       callerName: SAMPLE.first,
-      scheduledTime: 'Thursday, Aug 27 at 9:00 AM',
-      portalUrl: SAMPLE.link,
       issueSummary: 'Water heater maintenance and inspection',
     }),
+  },
+  {
+    id: 'caller-voice-post-call-no-summary',
+    title: 'Voice call follow-up without a summary',
+    trigger: 'An AI voice call completes without an available issue summary',
+    audience: 'customer',
+    control: { kind: 'configured', label: 'Follows the post-call text setting' },
+    body: callerVoicePostCallFollowupText({ businessName: SAMPLE.business, callerName: null, issueSummary: null }),
   },
   {
     id: 'speed-to-lead',

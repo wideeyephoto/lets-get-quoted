@@ -153,7 +153,8 @@ export function resolveRecipientTimeZoneWithSource(params: {
 }
 
 /**
- * Generates an instant, personalized, high-converting SMS response for ad-acquired leads.
+ * Acknowledges an ad lead and asks for preferences. Availability and staffing
+ * are not inputs, so this cannot offer specific slots or promise a live team.
  */
 export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
   const { businessName, leadName, projectType, city, urgency = 'standard', haloContext } = params;
@@ -163,24 +164,24 @@ export function generateSpeedToLeadSms(params: SpeedToLeadParams): string {
   const locationSuffix = cleanCity ? ` in ${cleanCity}` : '';
 
   // Halo-Aware Neighbor Lead Personalization
-  if (haloContext?.isNeighborLead && haloContext.streetName) {
+  if (urgency === 'standard' && haloContext?.isNeighborLead && haloContext.streetName) {
     const street = haloContext.streetName.trim();
     const neighborhood = haloContext.neighborhoodName ? ` in ${haloContext.neighborhoodName.trim()}` : '';
-    const cluster = haloContext.clusterOffer ? ` Your street qualifies for our ${haloContext.clusterOffer}.` : '';
+    const cluster = haloContext.clusterOffer ? ` Ask us about the ${haloContext.clusterOffer}.` : '';
 
     return withOptOut(
-      `Hi ${firstName}, thanks for reaching out to ${businessName}! We saw your request from our recent project on ${street}${neighborhood}.${cluster} Our estimator is working nearby this week — would tomorrow morning or afternoon work for a free 15-min look?`,
+      `Hi ${firstName}, ${businessName} here. We received your request for ${cleanService} near ${street}${neighborhood}.${cluster} What day works for an estimate? We'll confirm availability.`,
     );
   }
 
   if (urgency === 'emergency' || urgency === 'high') {
     return withOptOut(
-      `Hi ${firstName}, this is ${businessName}. We received your urgent request for ${cleanService}${locationSuffix}. Our dispatch team is on standby — are you available for a quick 2-minute call to confirm details?`,
+      `Hi ${firstName}, ${businessName} here. We received your urgent request for ${cleanService}${locationSuffix}. What time can we call to discuss it? Availability is not yet confirmed.`,
     );
   }
 
   return withOptOut(
-    `Hi ${firstName}, thanks for reaching out to ${businessName} regarding your ${cleanService}${locationSuffix}! When is the best time for our estimator to take a quick look — tomorrow morning or afternoon?`,
+    `Hi ${firstName}, ${businessName} here. We received your request for ${cleanService}${locationSuffix}. What day works for an estimate? We'll confirm availability.`,
   );
 }
 
@@ -214,7 +215,7 @@ export function generateContractorAdLeadAlert(params: {
     statusText = 'Auto-SMS delivery skipped.';
   }
 
-  return `🔥 [Ad Lead] ${cleanName} requested ${cleanService}${cleanCity}. ${statusText} Phone: ${phone}. Call lead now: ${phone}`;
+  return `[Ad Lead] ${cleanName} requested ${cleanService}${cleanCity}. ${statusText} Phone: ${phone}. Call lead now: ${phone}`;
 }
 
 /**

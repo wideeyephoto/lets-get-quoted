@@ -8,6 +8,7 @@ import {
   displayStatus,
   greetingName,
   holdState,
+  ownerEstimateAcceptedText,
   parseOfferReply,
   storedWindowLabel,
   type EstimateOffer,
@@ -347,7 +348,7 @@ export async function resolveOfferReply(accountId: string, phone: string, rawBod
 
       // Still a lead saying yes — the contractor wants to know, even though the
       // slot went.
-      await notifyOwner(offer, `${offer.lead?.name || 'A lead'} said YES to an estimate ${windowLabel} — but after the hold expired, so nothing was booked. Call them.`);
+      await notifyOwner(offer, ownerEstimateAcceptedText({ leadName: offer.lead?.name, windowLabel, outcome: 'expired' }));
       return replyTo(
         admin,
         offer,
@@ -359,11 +360,11 @@ export async function resolveOfferReply(accountId: string, phone: string, rawBod
     if (!stopId) {
       // The booking write failed. Nothing confirming goes out — the honest reply
       // is that a person will pick this up, and the contractor is told to.
-      await notifyOwner(offer, `${offer.lead?.name || 'A lead'} said YES to an estimate ${windowLabel} but we could not add it to your day. Book it manually.`);
+      await notifyOwner(offer, ownerEstimateAcceptedText({ leadName: offer.lead?.name, windowLabel, outcome: 'booking_failed' }));
       return replyTo(admin, offer, `Thanks ${leadName}! ${businessName} has your reply and will confirm the time with you shortly.`);
     }
 
-    await notifyOwner(offer, `${offer.lead?.name || 'A lead'} said YES — estimate added to your day, ${windowLabel}.`);
+    await notifyOwner(offer, ownerEstimateAcceptedText({ leadName: offer.lead?.name, windowLabel, outcome: 'booked' }));
     return replyTo(admin, offer, `You're booked, ${leadName}! ${businessName} will arrive between ${windowLabel}. See you then.`);
   } catch (error) {
     console.error('Estimate offer reply failed:', error instanceof Error ? error.message : error);

@@ -10,8 +10,8 @@ describe('intake confirmation SMS template', () => {
       projectType: 'Roof replacement',
     });
 
-    expect(text).toContain('Hi John, thanks for reaching out to Apex Roofing!');
-    expect(text).toContain('We received your Roof replacement.');
+    expect(text).toContain('Apex Roofing: Hi John, we received your Roof replacement.');
+    expect(text).toContain('Our team will contact you after review.');
     expect(text).toContain('Reply STOP to opt out.');
   });
 
@@ -23,8 +23,8 @@ describe('intake confirmation SMS template', () => {
       estimate: { min: 4500, max: 6200 },
     });
 
-    expect(text).toContain('Hi Sarah, thanks for reaching out to Evergreen Landscaping!');
-    expect(text).toContain('Your estimated range: $4,500-$6,200.');
+    expect(text).toContain('Evergreen Landscaping: Hi Sarah, we received your Patio installation.');
+    expect(text).toContain('Preliminary range: $4,500-$6,200, subject to reviewing the work.');
     expect(text).toContain('Reply STOP to opt out.');
   });
 
@@ -33,8 +33,8 @@ describe('intake confirmation SMS template', () => {
       businessName: 'Elite Plumbing',
     });
 
-    expect(text).toContain('Hi there, thanks for reaching out to Elite Plumbing!');
-    expect(text).toContain('We received your estimate request.');
+    expect(text).toContain('Elite Plumbing: Hi there, we received your estimate request.');
+    expect(text).toContain('we received your estimate request.');
     expect(text).toContain('Reply STOP to opt out.');
   });
 });

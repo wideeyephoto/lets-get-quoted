@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { segmentSms } from '@/lib/sms-segments';
 
 /**
  * Calculates carrier SMS segment usage and detects UCS-2 characters.
@@ -9,13 +10,8 @@ import { useEffect, useRef, useState } from 'react';
  * UCS-2 allows 70 characters for single segment, 67 for multi-segment.
  */
 export function calculateSmsSegments(text: string): { count: number; unicode: boolean } {
-  if (!text) return { count: 1, unicode: false };
-  // eslint-disable-next-line no-control-regex
-  const unicode = /[^ -~€£¥èéùìòÇØøÅåΔ_ΦΓΛΩΠΨΣΘΞÆæßÉ!"#¤%&'()*+,\-./:;<=>?¡ÄÖÑÜ§¿äöñüà\n\r]/.test(text);
-  const single = unicode ? 70 : 160;
-  const multi = unicode ? 67 : 153;
-  if (text.length <= single) return { count: 1, unicode };
-  return { count: Math.ceil(text.length / multi), unicode };
+  const segmentation = segmentSms(text);
+  return { count: segmentation.segments, unicode: segmentation.encoding === 'ucs-2' };
 }
 
 export function SmsBubble({

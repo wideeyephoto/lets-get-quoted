@@ -11,12 +11,8 @@ import {
 const read = (...parts: string[]) => readFileSync(join(process.cwd(), ...parts), 'utf8');
 const SMS = read('src', 'lib', 'sms.ts');
 
-/**
- * The catalogue on the automations page claims to be EVERY text this app sends.
- * That claim is the whole value of the page — a list that is merely most of
- * them is worse than no list, because it reads as complete.
- */
-describe('the outgoing-text catalogue covers every sender', () => {
+/** The core sender inventory is checked separately from its rendered variants. */
+describe('the outgoing-text catalogue covers every central sender', () => {
   const senders = [...SMS.matchAll(/export async function (send[A-Za-z]*(?:Sms|SmsEvent|TextBack))\b/g)].map((m) => m[1]);
 
   it('finds the senders at all', () => {
@@ -84,6 +80,12 @@ describe('every catalogue entry', () => {
     expect(senderLaneForAudience('lead')).toBe('contractor_dedicated');
     expect(senderLaneForAudience('owner')).toBe('lgq_shared');
     expect(senderLaneForAudience('crew')).toBe('lgq_dispatch');
+  });
+
+  it('does not describe configurable post-call texts as always on', () => {
+    const postCallEntries = SMS_CATALOGUE.filter((entry) => entry.id.startsWith('caller-voice-post-call-'));
+    expect(postCallEntries.length).toBeGreaterThan(0);
+    expect(postCallEntries.every((entry) => entry.control.kind === 'configured')).toBe(true);
   });
 
   /**

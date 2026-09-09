@@ -19,7 +19,9 @@ describe('booking request SMS templates', () => {
     expect(text).toContain('Hi Sarah');
     expect(text).toContain('Apex Roofing');
     expect(text).toContain('Roof Inspection');
-    expect(text).toContain('Thu, Sep 10, 8:00 AM – 12:00 PM');
+    expect(text).toContain('Thu, Sep 10, 8:00 AM - 12:00 PM');
+    expect(text).toContain('This is pending our confirmation.');
+    expect(text).not.toContain('shortly');
     expect(text).toContain('Reply STOP to opt out.');
   });
 
@@ -31,7 +33,9 @@ describe('booking request SMS templates', () => {
 
     expect(text).toContain('Hi there');
     expect(text).toContain('Apex Roofing');
-    expect(text).toContain('Thu, Sep 10, 8:00 AM – 12:00 PM');
+    expect(text).toContain('Thu, Sep 10, 8:00 AM - 12:00 PM');
+    expect(text).toContain('This is pending our confirmation.');
+    expect(text).not.toContain('shortly');
     expect(text).toContain('Reply STOP to opt out.');
   });
 
@@ -46,7 +50,7 @@ describe('booking request SMS templates', () => {
 
     expect(text).toContain('Apex Roofing');
     expect(text).toContain('John Doe');
-    expect(text).toContain('Fri, Sep 11, 1:00 PM – 5:00 PM');
+    expect(text).toContain('Fri, Sep 11, 1:00 PM - 5:00 PM');
     expect(text).toContain('Gutter Cleaning');
     expect(text).toContain('https://app.letsgetquoted.com/dashboard/schedule');
     expect(text).toContain('Reply STOP to opt out.');

@@ -173,6 +173,7 @@ describe('followupMaxAgeDays — where chasing stops', () => {
     expect(isFollowupWindowOpen(8, [2, 5])).toBe(true);
     expect(isFollowupWindowOpen(9, [2, 5])).toBe(false);
   });
+
 });
 
 describe('dueFollowupIndex — which nudge, if any, is due today', () => {
@@ -292,7 +293,7 @@ describe('quoteFollowupText — the message the card shows', () => {
   it('is from the contractor, not from us', () => {
     // It used to open "Let's Get Quoted:" — our name, on a text about somebody
     // else's quote, to a homeowner who has never heard of us.
-    expect(text.startsWith('Hi Sarah,')).toBe(true);
+    expect(text.startsWith('BrokePipes: Sarah,')).toBe(true);
     expect(text).not.toContain("Let's Get Quoted");
   });
 
@@ -302,14 +303,28 @@ describe('quoteFollowupText — the message the card shows', () => {
   });
 
   it('names the business and the person', () => {
-    expect(text).toContain('Hi Sarah,');
-    expect(text).toContain('your quote from BrokePipes');
+    expect(text).toContain('Sarah, any questions about your quote?');
+    expect(text).toContain('BrokePipes:');
   });
 
   it('never addresses somebody as an empty string', () => {
     const blank = quoteFollowupText({ businessName: '  ', clientName: '', url: 'https://x.test/j' });
-    expect(blank).toContain('Hi there,');
-    expect(blank).toContain('quote from your contractor');
+    expect(blank).toContain('there, any questions');
+    expect(blank).toContain('your contractor:');
+  });
+
+  it('defaults to helpful first-stage copy and varies middle and final nudges', () => {
+    const input = { businessName: 'BrokePipes', clientName: 'Sarah', url: 'https://x.test/j/abc' };
+    expect(quoteFollowupText(input)).toBe(quoteFollowupText({ ...input, stage: 'first' }));
+    const middle = quoteFollowupText({ ...input, stage: 'intermediate' });
+    const final = quoteFollowupText({ ...input, stage: 'final' });
+    expect(middle).toContain('need any changes');
+    expect(final).toContain('Reply if plans changed.');
+    expect(new Set([text, middle, final]).size).toBe(3);
+    for (const body of [text, middle, final]) {
+      expect(body).toContain(input.url);
+      expect(body.endsWith('Reply STOP to opt out.')).toBe(true);
+    }
   });
 });
 

@@ -1,5 +1,6 @@
 import { coordOf, haversineMiles, minutesFromMiles, type LatLng } from '@/lib/distance';
 import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop } from '@/lib/route-plan';
+import { normalizeSmsSystemText } from '@/lib/sms-copy';
 
 // Offering a nearby lead the gap in today's route.
 //
@@ -20,6 +21,23 @@ import { formatTimeLabel, formatTimeMinutes, parseTimeMinutes, type PlannedStop 
 
 export const OFFER_STATUSES = ['held', 'accepted', 'accepted_late', 'declined', 'expired', 'canceled'] as const;
 export type OfferStatus = (typeof OFFER_STATUSES)[number];
+
+/** The owner's next step depends on whether the accepted visit was booked. */
+export function ownerEstimateAcceptedText(input: {
+  leadName?: string | null;
+  windowLabel: string;
+  outcome: 'booked' | 'expired' | 'booking_failed';
+}): string {
+  const name = input.leadName?.trim() || 'A lead';
+  const windowLabel = normalizeSmsSystemText(input.windowLabel);
+  if (input.outcome === 'expired') {
+    return `${name} said YES to an estimate ${windowLabel}, but the hold expired, so nothing was booked. Call them.`;
+  }
+  if (input.outcome === 'booking_failed') {
+    return `${name} said YES to an estimate ${windowLabel} but we could not add it to your day. Book it manually.`;
+  }
+  return `${name} said YES. Estimate added to your day, ${windowLabel}.`;
+}
 
 export type EstimateOffer = {
   id: string;

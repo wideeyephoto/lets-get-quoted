@@ -18,8 +18,8 @@ describe('the missed-call text-back message', () => {
   });
 
   it('never renders an empty business name at a caller', () => {
-    expect(missedCallTextBack('')).toContain('at us!');
-    expect(missedCallTextBack('   ')).toContain('at us!');
+    expect(missedCallTextBack('')).toContain('Your service team:');
+    expect(missedCallTextBack('   ')).toContain('Your service team:');
   });
 });
 

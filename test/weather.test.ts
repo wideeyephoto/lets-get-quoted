@@ -55,7 +55,7 @@ describe('assessDay', () => {
     // afternoon is pleasant.
     const result = assessDay(day({ highF: 68, lowF: 28 }), sensitivityFor('concrete'));
     expect(result.level).toBe('unworkable');
-    expect(result.reasons.join(' ')).toContain('28°F');
+    expect(result.reasons.join(' ')).toContain('28 F');
   });
 
   it('flags wind for trades that work at height and ignores it for those that do not', () => {

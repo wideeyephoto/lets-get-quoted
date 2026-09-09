@@ -39,7 +39,7 @@ export function buildMorningWeatherAlertText(params: {
   const nameSummary = clientNames.slice(0, 3).join(', ') + (clientNames.length > 3 ? ` +${clientNames.length - 3} more` : '');
   const jobText = jobCount === 1 ? '1 scheduled job' : `${jobCount} scheduled jobs`;
 
-  return `⛈️ Morning Weather Alert (6:45 AM): Today's forecast (${reasonSummary}) threatens ${jobText} for ${businessName}: ${nameSummary}. Review and 1-tap reschedule before crews roll: ${scheduleUrl}`;
+  return `Morning Weather Alert (6:45 AM): Today's forecast (${reasonSummary}) threatens ${jobText} for ${businessName}: ${nameSummary}. Review and 1-tap reschedule before crews roll: ${scheduleUrl}`;
 }
 
 /**

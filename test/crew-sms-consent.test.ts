@@ -31,7 +31,7 @@ describe('Crew SMS Canonical Disclosure File', () => {
     expect(CREW_SMS_CONSENT_LABEL).toContain('recurring SMS messages from Let’s Get Quoted');
     expect(CREW_SMS_DISCLOSURE).toContain('Message frequency varies');
     expect(CREW_SMS_DISCLOSURE).toContain('Reply STOP to unsubscribe or HELP for help');
-    expect(CREW_SMS_WELCOME_MESSAGE).toContain('Let’s Get Quoted: Welcome!');
+    expect(CREW_SMS_WELCOME_MESSAGE).toContain("Let's Get Quoted: Welcome!");
     expect(CREW_SMS_WELCOME_MESSAGE).toContain('Reply STOP to unsubscribe or HELP for help');
   });
 
