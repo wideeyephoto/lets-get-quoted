@@ -299,7 +299,7 @@ export function buildBasePlanSubscriptionCheckoutIdempotencyKey(input: {
 
 export class StripeBillingModeMismatchError extends Error {
   override readonly name = 'StripeBillingModeMismatchError';
-  constructor(message = 'Stripe Billing requested mode does not match configured runtime mode.') {
+  constructor(message = 'Stripe Billing requested mode and configured runtime mode must match.') {
     super(message);
   }
 }
