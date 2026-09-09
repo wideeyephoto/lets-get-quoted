@@ -1,244 +1,60 @@
-// Run --serve for a local component preview, then --check for browser regressions.
-// All provider responses and credentials are synthetic; no Supabase project is used.
-import assert from 'node:assert/strict';
+// Synthetic browser preview. Run with --serve and inspect the printed URL.
+// Handler regressions: npm test -- test/admin-mfa-client.test.ts
+// Real staging protocol: node scripts/verify-native-mfa-provider.mjs --help
+// No actual Supabase project or device credentials are used by this preview.
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createServer } from 'vite';
-import { chromium } from 'playwright';
 import QRCode from 'qrcode';
-import jsQR from 'jsqr';
-
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const scratch = path.join(root, 'tmp', 'mfa-browser');
-const baseURL = 'http://127.0.0.1:3026';
 const testSecret = 'JBSWY3DPEHPK3PXP';
 const accountEmail = 'mfa-browser@example.invalid';
-const issuer = 'app.letsgetquoted.com';
-const uri = 'otpauth://totp/' + encodeURIComponent(issuer + ':' + accountEmail)
-  + '?secret=' + testSecret + '&issuer=' + issuer + '&algorithm=SHA1&digits=6&period=30';
-
-function mockProvider(qr, secret) {
+const accountId = 'mfa-browser-user';
+function preview(qr, secret) {
   const scenario = new URLSearchParams(location.search).get('scenario');
-  const existing = { id: 'existing-factor', factor_type: 'totp', friendly_name: 'Authenticator app', status: 'verified' };
-  const pending = { ...existing, id: 'pending-factor', status: 'unverified' };
-  const state = window.mfaTest = {
-    calls: [], factors: scenario === 'existing' ? [existing] : scenario === 'pending' ? [pending] : [],
-    level: 'aal1', rejectVerify: false, rejectRemove: false, stayAal1: false,
+  const factor = { id: 'totp-one', factor_type: 'totp', friendly_name: 'Authenticator app', status: 'verified' };
+  const state = window.mfaPreview = { userId: 'mfa-browser-user', level: scenario === 'verified' ? 'aal2' : 'aal1', factors: scenario ? [factor] : [], passkeys: scenario === 'passkeys' ? [{ id: 'passkey-one', label: 'Dashlane' }, { id: 'passkey-two', label: 'Apple Passwords' }] : [], verified: false, cancel: false, calls: [] };
+  let listener;
+  const record = (method, args) => { state.calls.push({ method, args }); document.querySelector('#calls').textContent = JSON.stringify(state.calls, null, 2); };
+  window.fetch = async (_url, init) => {
+    const body = init?.body ? JSON.parse(init.body) : null;
+    if (body) {
+      record(body.action, { expectedUserId: body.expectedUserId });
+      if (body.action === 'register-options' || body.action === 'authenticate-options') return new Response(JSON.stringify({ challengeId: 'fixture-challenge', options: {} }));
+      if (body.action === 'register-verify') state.passkeys.push({ id: 'new-passkey', label: 'My passkey' });
+      if (body.action === 'authenticate-verify') state.verified = true;
+      if (body.action === 'remove') { state.passkeys = state.passkeys.filter(p => p.id !== body.credentialId); state.verified = false; }
+    }
+    return new Response(JSON.stringify({ userId: state.userId, providerLevel: state.level, passkeys: state.passkeys, verified: state.verified, verifiedUntil: state.verified ? new Date(Date.now() + 900000).toISOString() : null }));
   };
-  const record = (method, args) => state.calls.push({ method, args });
-  return { auth: { mfa: {
-    async listFactors() {
-      return scenario === 'load-error'
-        ? { data: null, error: new Error('Simulated load failure') }
-        : { data: { all: structuredClone(state.factors) }, error: null };
+  document.querySelector('#cancel-native').onclick = () => { state.cancel = true; };
+  document.querySelector('#switch-account').onclick = () => { state.userId = 'different-user'; listener('SIGNED_IN', { user: { id: state.userId } }); };
+  return { auth: {
+    async getUser() { return { data: { user: { id: state.userId } }, error: null }; },
+    onAuthStateChange(callback) { listener = callback; return { data: { subscription: { unsubscribe() {} } } }; },
+    async refreshSession() { record('refreshSession'); if (!state.factors.some(f => f.status === 'verified')) state.level = 'aal1'; return { data: { session: { user: { id: state.userId } } }, error: null }; },
+    mfa: {
+      async listFactors() { return { data: { all: structuredClone(state.factors) }, error: null }; },
+      async enroll(args) { record('enroll', args); const created = { ...factor, id: 'new-totp', status: 'unverified', friendly_name: args.friendlyName }; state.factors.push(created); return { data: { ...created, totp: { qr_code: qr, secret } }, error: null }; },
+      async challenge(args) { record('challenge', args); return { data: { id: 'totp-challenge' }, error: null }; },
+      async verify(args) { record('verify', { factorId: args.factorId }); if (args.code !== '123456') return { error: new Error('Invalid code. Try again.') }; state.level = 'aal2'; state.factors.find(f => f.id === args.factorId).status = 'verified'; return { error: null }; },
+      async unenroll(args) { record('unenroll', args); state.factors = state.factors.filter(f => f.id !== args.factorId); return { error: null }; },
     },
-    async getAuthenticatorAssuranceLevel() {
-      return { data: { currentLevel: state.level }, error: null };
-    },
-    async enroll(args) {
-      record('enroll', args);
-      assertTotp(args);
-      const factor = { id: 'new-factor', status: 'unverified', factor_type: 'totp', friendly_name: args.friendlyName };
-      state.factors.push(factor);
-      return { data: { ...factor, totp: { qr_code: qr, secret } }, error: null };
-    },
-    async challenge(args) {
-      record('challenge', args);
-      return { data: { id: 'challenge-id' }, error: null };
-    },
-    async verify(args) {
-      record('verify', args);
-      if (state.rejectVerify) return { error: { message: 'Invalid verification code. Try again.' } };
-      state.factors.find(f => f.id === args.factorId).status = 'verified';
-      if (!state.stayAal1) state.level = 'aal2';
-      return { error: null };
-    },
-    async unenroll(args) {
-      record('unenroll', args);
-      if (state.rejectRemove) return { error: { message: 'Could not cancel setup. Try again.' } };
-      state.factors = state.factors.filter(f => f.id !== args.factorId);
-      return { error: null };
-    },
-  } } };
-  function assertTotp(args) {
-    if (args.factorType !== 'totp') throw new Error('Unsupported MFA enrollment attempted');
-    if (args.issuer !== 'app.letsgetquoted.com') throw new Error('Unexpected TOTP issuer');
-  }
+  } };
 }
-
-async function serve() {
-  await mkdir(scratch, { recursive: true });
-  const qr = await QRCode.toDataURL(uri, { width: 256 });
-  await writeFile(path.join(scratch, 'supabase.ts'),
-    'export const supabase = (' + mockProvider.toString() + ')(' + JSON.stringify(qr) + ',' + JSON.stringify(testSecret) + ');');
-  await writeFile(path.join(scratch, 'main.tsx'), [
-    "import React from 'react';",
-    "import {createRoot} from 'react-dom/client';",
-    "import MfaPanel from '/src/app/admin/security/MfaPanel';",
-    "import '/src/app/globals.css';",
-    "createRoot(document.getElementById('root')!).render(<main style={{maxWidth:780,margin:'24px auto',padding:16}}><MfaPanel stepUp={true} accountEmail=" + JSON.stringify(accountEmail) + " /></main>);",
-  ].join('\n'));
-  await writeFile(path.join(scratch, 'index.html'),
-    '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>MFA setup verification</title></head><body><div id="root"></div><script type="module" src="/tmp/mfa-browser/main.tsx"></script></body></html>');
-  const server = await createServer({
-    root, configFile: false, envFile: false,
-    cacheDir: path.join(scratch, 'vite-cache'),
-    resolve: { alias: [
-      { find: '@/lib/supabase', replacement: path.join(scratch, 'supabase.ts') },
-      { find: '@', replacement: path.join(root, 'src') },
-    ] },
-    esbuild: { jsx: 'automatic' },
-    server: { host: '127.0.0.1', port: 3026, strictPort: true, fs: { allow: [root, await import('node:fs').then(fs => fs.realpathSync(path.join(root, 'node_modules')))] } },
-  });
-  await server.listen();
-  console.log('MFA preview: ' + baseURL + '/tmp/mfa-browser/index.html');
-  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { await server.close(); process.exit(0); });
-}
-
-async function check() {
-  await mkdir(scratch, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 1280, height: 1000 } });
-  const errors = [];
-  page.on('pageerror', error => errors.push(error.message));
-  await page.addInitScript(() => {
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: {
-      async writeText(text) {
-        if (window.denyClipboard) throw new Error('Clipboard denied');
-        window.copiedMfaKey = text;
-      },
-    } });
-  });
-  const setupButton = () => page.getByRole('button', { name: 'Set up Authenticator App (TOTP)', exact: false });
-  const open = async (scenario = '') => {
-    await page.goto(baseURL + '/tmp/mfa-browser/index.html?scenario=' + scenario);
-    await page.getByRole('heading', { name: 'Two-factor authentication' }).waitFor();
-    if (scenario === 'pending') await page.getByRole('form', { name: 'Complete authenticator setup' }).waitFor();
-    else if (scenario !== 'load-error') await setupButton().waitFor();
-  };
-  const start = async () => {
-    await setupButton().click();
-    await page.getByAltText('Authenticator enrollment QR code').waitFor();
-  };
-  const submit = async () => {
-    await page.getByLabel('Six-digit authenticator code', { exact: true }).fill('123456');
-    await page.getByRole('button', { name: 'Verify & activate' }).click();
-  };
-  const report = label => console.log('PASS: ' + label);
-  try {
-    await open();
-    assert.equal(await page.getByRole('button', { name: 'Set up Passkey', exact: false }).count(), 0);
-    await start();
-    const calls = await page.evaluate(() => window.mfaTest.calls);
-    assert.deepEqual(calls[0], { method: 'enroll', args: { factorType: 'totp', friendlyName: 'Authenticator app', issuer } });
-    assert.equal(await page.getByText('MFA verified', { exact: true }).count(), 0);
-    report('Only supported TOTP enrollment is offered; scanning does not grant MFA assurance');
-
-    const qrPixels = await page.getByAltText('Authenticator enrollment QR code').evaluate(img => {
-      const canvas = document.createElement('canvas');
-      canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-      const ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      return { data: Array.from(ctx.getImageData(0, 0, canvas.width, canvas.height).data), width: canvas.width, height: canvas.height };
-    });
-    assert.equal(jsQR(Uint8ClampedArray.from(qrPixels.data), qrPixels.width, qrPixels.height)?.data, uri);
-    await page.getByText('Using Apple Passwords?', { exact: true }).click();
-    await page.getByRole('button', { name: 'Copy setup key', exact: true }).click();
-    await page.getByRole('button', { name: 'Setup key copied', exact: true }).waitFor();
-    assert.equal(await page.evaluate(() => window.copiedMfaKey), testSecret);
-    assert.match(await page.locator('details').innerText(), /Set Up Code/);
-    await page.screenshot({ path: path.join(scratch, 'desktop-setup.png'), fullPage: true });
-    await page.setViewportSize({ width: 390, height: 844 });
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.screenshot({ path: path.join(scratch, 'mobile-setup.png'), fullPage: true });
-    report('QR remains scannable; setup key copies exactly; Apple instructions fit desktop and mobile');
-
-    await page.evaluate(() => { window.mfaTest.rejectVerify = true; });
-    await submit();
-    await page.getByText('Invalid verification code. Try again.', { exact: true }).waitFor();
-    assert.equal(await page.getByAltText('Authenticator enrollment QR code').count(), 1);
-    assert.equal(await page.getByText('MFA verified', { exact: true }).count(), 0);
-    report('Rejected codes preserve the setup without claiming MFA verification');
-
-    await page.evaluate(() => { window.mfaTest.rejectVerify = false; });
-    await submit();
-    await page.getByText('MFA verified', { exact: true }).waitFor();
-    assert.equal(await page.getByAltText('Authenticator enrollment QR code').count(), 0);
-    assert.equal(await page.getByRole('button', { name: 'Copy setup key', exact: true }).count(), 0);
-    assert.equal((await page.locator('body').innerText()).includes(testSecret), false);
-    const verification = await page.evaluate(() => window.mfaTest.calls.filter(c => c.method === 'verify').at(-1));
-    assert.deepEqual(verification.args, { factorId: 'new-factor', challengeId: 'challenge-id', code: '123456' });
-    await setupButton().click();
-    await page.getByAltText('Authenticator enrollment QR code').waitFor();
-    assert.equal(await page.evaluate(() => window.mfaTest.calls.filter(c => c.method === 'enroll').at(-1).args.friendlyName), 'Authenticator app 2');
-    report('Valid verification clears the secret; additional authenticators get distinct names');
-
-    await open('existing');
-    assert.equal(await page.getByRole('button', { name: 'Remove', exact: true }).count(), 0);
-    await start();
-    await page.evaluate(() => { window.mfaTest.rejectRemove = true; });
-    await page.getByRole('button', { name: 'Cancel setup', exact: true }).click();
-    await page.getByText('Could not cancel setup. Try again.', { exact: true }).waitFor();
-    assert.equal(await page.getByAltText('Authenticator enrollment QR code').count(), 1);
-    await page.evaluate(() => { window.mfaTest.rejectRemove = false; });
-    await page.getByRole('button', { name: 'Cancel setup', exact: true }).click();
-    await setupButton().waitFor();
-    const remaining = await page.evaluate(() => window.mfaTest.factors);
-    assert.deepEqual(remaining.map(f => f.id), ['existing-factor']);
-    assert.equal((await page.locator('body').innerText()).includes(testSecret), false);
-    report('Cancellation failure preserves setup; retry removes only the pending factor and clears its key');
-
-    await open();
-    await start();
-    await page.evaluate(() => { window.denyClipboard = true; });
-    await page.getByRole('button', { name: 'Copy setup key', exact: true }).click();
-    await page.getByText('Could not copy automatically.', { exact: false }).waitFor();
-    assert.equal((await page.locator('body').innerText()).includes(testSecret), true);
-    report('Clipboard denial leaves a selectable manual setup key');
-
-    await page.evaluate(() => { window.mfaTest.stayAal1 = true; });
-    await submit();
-    await page.getByText('Your session still needs two-factor verification.', { exact: false }).waitFor();
-    assert.equal(await page.getByText('MFA verified', { exact: true }).count(), 0);
-    assert.equal((await page.locator('body').innerText()).includes('High-impact actions are unlocked'), false);
-    report('AAL1 sessions never receive an unlocked success message');
-
-    await open('pending');
-    await page.reload();
-    const resumeForm = page.getByRole('form', { name: 'Complete authenticator setup' });
-    await resumeForm.waitFor();
-    assert.equal(await page.getByAltText('Authenticator enrollment QR code').count(), 0);
-    assert.equal(await resumeForm.getByRole('button', { name: 'Verify & activate' }).isDisabled(), true);
-    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
-    await page.screenshot({ path: path.join(scratch, 'mobile-resume-setup.png'), fullPage: true });
-    await page.evaluate(() => { window.mfaTest.rejectVerify = true; });
-    await resumeForm.getByLabel('Six-digit authenticator code').fill('123456');
-    await resumeForm.getByRole('button', { name: 'Verify & activate' }).click();
-    await page.getByText('Invalid verification code. Try again.', { exact: true }).waitFor();
-    assert.equal(await resumeForm.isVisible(), true);
-    assert.equal(await page.getByText('MFA verified', { exact: true }).count(), 0);
-    await page.evaluate(() => { window.mfaTest.rejectVerify = false; });
-    await resumeForm.getByLabel('Six-digit authenticator code').fill('654321');
-    await resumeForm.getByLabel('Six-digit authenticator code').press('Enter');
-    await page.getByText('MFA verified', { exact: true }).waitFor();
-    const resumedCalls = await page.evaluate(() => window.mfaTest.calls);
-    assert.equal(resumedCalls.some(call => call.method === 'enroll' || call.method === 'unenroll'), false);
-    assert.deepEqual(resumedCalls.filter(call => call.method === 'verify').at(-1).args, {
-      factorId: 'pending-factor', challengeId: 'challenge-id', code: '654321',
-    });
-    assert.equal(await resumeForm.count(), 0);
-    report('Reloaded incomplete setup can retry and activate its saved factor without re-enrollment');
-
-    await open('load-error');
-    await page.getByText('Could not load your authenticators.', { exact: false }).waitFor();
-    assert.equal(await setupButton().isDisabled(), true);
-    assert.deepEqual(errors, []);
-    report('Provider read failure blocks enrollment; no browser exceptions');
-  } finally {
-    await browser.close();
-  }
-}
-if (process.argv.includes('--serve')) await serve();
-else if (process.argv.includes('--check')) await check();
-else throw new Error('Use --serve or --check.');
+if (!process.argv.includes('--serve')) throw new Error('Use --serve for the preview; run npm test for regressions.');
+await mkdir(scratch, { recursive: true });
+const qr = await QRCode.toDataURL(`otpauth://totp/app.letsgetquoted.com:${accountEmail}?secret=${testSecret}&issuer=app.letsgetquoted.com`);
+await writeFile(path.join(scratch, 'supabase.ts'), `export const supabase = (${preview.toString()})(${JSON.stringify(qr)}, ${JSON.stringify(testSecret)});`);
+await writeFile(path.join(scratch, 'webauthn.ts'), `export const browserSupportsWebAuthn = () => true;
+export const WebAuthnAbortService = {cancelCeremony(){}};
+async function prompt(kind){ document.querySelector('#native-status').textContent = 'Native '+kind+' API invoked (synthetic preview)'; if(window.mfaPreview.cancel){ window.mfaPreview.cancel=false; throw new DOMException('cancelled','NotAllowedError'); } return {id:'fixture-credential'}; }
+export const startRegistration = () => prompt('registration'); export const startAuthentication = () => prompt('authentication');`);
+await writeFile(path.join(scratch, 'main.tsx'), `import React from 'react'; import {createRoot} from 'react-dom/client'; import MfaPanel from '/src/app/admin/security/MfaPanel'; import '/src/app/globals.css'; createRoot(document.getElementById('root')!).render(<main style={{maxWidth:780,margin:'24px auto',padding:16}}><MfaPanel stepUp={true} accountEmail=${JSON.stringify(accountEmail)} accountId=${JSON.stringify(accountId)} /></main>);`);
+await writeFile(path.join(scratch, 'index.html'), '<!doctype html><html lang="en"><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>Admin native MFA preview</title></head><body><div style="padding:12px">Synthetic test: code 123456 · <a href="?">New setup</a> · <a href="?scenario=verified">Code verified</a> · <a href="?scenario=passkeys">Saved passkeys</a><button id="cancel-native">Cancel next native prompt</button><button id="switch-account">Switch account</button><p id="native-status"></p></div><div id="root"></div><details><summary>Test calls</summary><pre id="calls"></pre></details><script type="module" src="/tmp/mfa-browser/main.tsx"></script></body></html>');
+const server = await createServer({ root, configFile: false, envFile: false, cacheDir: path.join(scratch, 'vite-cache'), resolve: { alias: [{ find: '@/lib/supabase', replacement: path.join(scratch, 'supabase.ts') }, { find: '@simplewebauthn/browser', replacement: path.join(scratch, 'webauthn.ts') }, { find: '@', replacement: path.join(root, 'src') }] }, esbuild: { jsx: 'automatic' }, server: { host: '127.0.0.1', port:3026,strictPort:true } });
+await server.listen();
+console.log('Synthetic MFA preview: http://127.0.0.1:3026/tmp/mfa-browser/index.html');
+for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, async () => { await server.close(); process.exit(0); });

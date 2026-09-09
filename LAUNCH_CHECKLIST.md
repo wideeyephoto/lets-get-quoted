@@ -2,6 +2,14 @@
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
+## Security and recovery — 2026-09-09
+
+- [x] **Replace the three documented exposed credentials:** replacement Resend/Supabase/cron credentials configured in Vercel, GitHub and matching local consumers; production rebuilt and checked. Exposed Resend key removed; old Supabase service JWT denied as both API key and bearer JWT; legacy anon denied; old cron secret denied privileged diagnostics. See [dated evidence](docs/runbooks/security-recovery-2026-09-09.md).
+- [x] **Implement and stage-test native admin passkeys:** session-bound WebAuthn grants, TOTP recovery, origin/signature/replay checks and private credential storage implemented. All 22 real staging protocol checks passed; production schema and privileges verified. This is not native-device production acceptance.
+- [ ] **Finish production native passkey acceptance:** deploy the application, then verify owner enrollment, a fresh-session native assertion, backup method, cancelled-prompt denial and recovery on the canonical app origin.
+- [x] **Restore the downloaded offsite pack in isolation:** 260 row counts, 258 table/grant definitions, 272 policies, 435 functions/grants, existing-owner RLS and all 38 local object hashes passed. Plaintext temporary data removed. See [restore evidence](docs/runbooks/evidence/dr-downloaded-local-restore-2026-09-09.json).
+- [ ] **Complete hosted, infrastructure and provider recovery:** exact downloaded-pack hosted Auth/Storage/application acceptance, independent recovery-key retrieval, deployment/DNS recovery, and provider recovery/reconciliation remain open. The isolated PostgreSQL restore is not full-disaster recovery.
+
 ## Command Center & Operational Telemetry Honesty — 2026-09-09
 
 **Completed:** Verification against `docs/admin-command-center-task-list-2026-09-09.md` across Waves 0–6.
