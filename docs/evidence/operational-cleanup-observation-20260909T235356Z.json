@@ -1,0 +1,330 @@
+{
+  "observation_id": "operational-cleanup-20260909T211317Z",
+  "observed_at": "2026-09-09T23:53:56.085Z",
+  "window_started_at": "2026-09-09T21:13:17.282Z",
+  "minimum_end_at": "2026-09-10T21:13:17.282Z",
+  "elapsed_minutes": 160.64671666666666,
+  "cron_cycles": [
+    {
+      "job": "billing-subscription-projection",
+      "cycles_since_start": "32",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-09T23:50:29.143Z",
+      "latest_finished": "2026-09-09T23:50:30.071Z",
+      "maximum_gap_seconds": "300.517000"
+    },
+    {
+      "job": "operational-alerts",
+      "cycles_since_start": "32",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-09T23:50:13.299Z",
+      "latest_finished": "2026-09-09T23:50:15.137Z",
+      "maximum_gap_seconds": "300.625000"
+    },
+    {
+      "job": "sms-delivery",
+      "cycles_since_start": "161",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-09T23:53:18.463Z",
+      "latest_finished": "2026-09-09T23:53:19.356Z",
+      "maximum_gap_seconds": "61.176000"
+    }
+  ],
+  "failed_cron_cycles": [],
+  "live_failed_billing": [],
+  "post_containment_test_ingress": [],
+  "active_findings": [
+    {
+      "category": "billing_configuration",
+      "records": "1"
+    },
+    {
+      "category": "sms",
+      "records": "4"
+    }
+  ],
+  "webhook_failures_since_start": [
+    {
+      "id": "64a1d62d-a0ce-4876-92b4-89c83cdf09e1",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:46.802Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "8b56ac7b-57cd-41bb-98c3-415ffc095c26",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:47.418Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "28d72d21-e4f4-489e-96f4-afb53cb4de73",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:48.932Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "b81297a7-e508-4bf3-a323-eae9681154f5",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:49.510Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "b0e640a2-86f7-4b37-8132-3b6f0fd115f7",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:48:18.844Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "56d11948-f1cd-40e5-9eae-e08e14c28909",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T23:00:45.611Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "9a42ffec-c17b-4fc1-a4c5-9289ae735fe3",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T23:06:29.369Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "71e5433a-cd6e-4100-866c-59f38f35498e",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T23:13:53.409Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    }
+  ],
+  "unconfirmed_alerts": [],
+  "delivered_alerts_since_start": [
+    {
+      "id": "9d4ea7fc-ca45-48f5-a6d6-8c08ad83c111",
+      "category": "webhook",
+      "provider_id": "8315ac9f-07d8-4e8c-a331-f649b539bf27",
+      "created_at": "2026-09-09T21:10:14.527Z",
+      "delivered_at": "2026-09-09T21:15:15.045Z"
+    },
+    {
+      "id": "9529f3d8-4d9d-4fe6-b5a5-cf6e4b8e222a",
+      "category": "cron",
+      "provider_id": "4b7982d1-702a-4226-a164-83a20f2ae425",
+      "created_at": "2026-09-09T21:50:14.172Z",
+      "delivered_at": "2026-09-09T21:55:15.108Z"
+    },
+    {
+      "id": "29dd7bba-9f32-464a-8b9e-e66dd0b2f3c2",
+      "category": "webhook",
+      "provider_id": "074fe649-d7d3-498b-8d8c-3a13533606bb",
+      "created_at": "2026-09-09T22:10:14.764Z",
+      "delivered_at": "2026-09-09T22:15:15.104Z"
+    },
+    {
+      "id": "44aa1811-4303-46f2-b2c3-001424387901",
+      "category": "webhook",
+      "provider_id": "8f8f337e-b722-42ea-92f0-81a5f5e2f483",
+      "created_at": "2026-09-09T22:50:14.238Z",
+      "delivered_at": "2026-09-09T22:55:15.195Z"
+    },
+    {
+      "id": "e705dcdf-faa1-4d83-b345-6486507b0f35",
+      "category": "webhook",
+      "provider_id": "06c5da67-8b14-4b0e-bd78-5322d720b5de",
+      "created_at": "2026-09-09T23:05:15.568Z",
+      "delivered_at": "2026-09-09T23:10:16.827Z"
+    },
+    {
+      "id": "a9d2ba02-d22d-4192-947d-163d3d717238",
+      "category": "webhook",
+      "provider_id": "46676193-0788-487d-92c6-45ea072a778e",
+      "created_at": "2026-09-09T23:10:14.300Z",
+      "delivered_at": "2026-09-09T23:15:16.221Z"
+    },
+    {
+      "id": "704235a3-3401-4038-9b7a-e494c6b812cc",
+      "category": "webhook",
+      "provider_id": "b32b8a52-75ef-4e14-a746-280555ab0e30",
+      "created_at": "2026-09-09T23:15:14.482Z",
+      "delivered_at": "2026-09-09T23:20:14.845Z"
+    }
+  ],
+  "paging_ledger": [
+    {
+      "page_key": "lgq-monitor-mfuvvtrkipkigwqqtcal-drill-2026-09-09T20",
+      "state": "delivered",
+      "provider_id": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+      "provider_status": "delivered",
+      "error_code": null,
+      "started_at": "2026-09-09T20:22:05.077Z",
+      "delivered_at": "2026-09-09T20:22:23.096Z"
+    }
+  ],
+  "audit_integrity": [
+    {
+      "records": "221",
+      "unique_sources": "221"
+    }
+  ],
+  "source_integrity": [
+    {
+      "source_table": "billing_events",
+      "expected": "186",
+      "unchanged": "186",
+      "changed_ids": []
+    },
+    {
+      "source_table": "sms_events",
+      "expected": "4",
+      "unchanged": "4",
+      "changed_ids": []
+    },
+    {
+      "source_table": "webhook_failures",
+      "expected": "31",
+      "unchanged": "31",
+      "changed_ids": []
+    }
+  ],
+  "duplicate_new_sms_identities": [],
+  "duplicate_new_usage_grant_identities": [],
+  "new_sms_failure_ids": [],
+  "public_health": {
+    "http_status": 200,
+    "status": "operational",
+    "timestamp": "2026-09-09T23:53:58.158Z",
+    "services": [
+      {
+        "id": "quoting-engine",
+        "status": "operational"
+      },
+      {
+        "id": "sms-gateway",
+        "status": "operational"
+      },
+      {
+        "id": "stripe-payments",
+        "status": "operational"
+      },
+      {
+        "id": "contractor-cdn",
+        "status": "operational"
+      }
+    ]
+  },
+  "production_deployment": {
+    "id": "dpl_8SxWnaFVGvJasG8mMoSrFhKCe5ar",
+    "state": "READY",
+    "revision": "1f095c1f0c2339542bfd2b7f88206d942df3aba8",
+    "ready_at": "2026-09-09T22:44:38.131Z",
+    "production_alias": "app.letsgetquoted.com",
+    "paging_module_present": false,
+    "paging_module_verification": "git ls-tree at the exact deployed revision returned no src/lib/operational-sms-paging.mjs entry; the deployed watchdog source also contains no SMS configuration."
+  },
+  "independent_watchdog": {
+    "latest_runs": [
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T22:27:34Z",
+        "databaseId": 34412313437,
+        "event": "schedule",
+        "headSha": "18a412404d275949c919b06e80bd015fd1595cc9",
+        "status": "completed",
+        "updatedAt": "2026-09-09T22:28:07Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34412313437"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T20:03:37Z",
+        "databaseId": 34398756516,
+        "event": "schedule",
+        "headSha": "8a7b129ac4dd68467532cb384da78d5203135a18",
+        "status": "completed",
+        "updatedAt": "2026-09-09T20:04:09Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34398756516"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T17:50:59Z",
+        "databaseId": 34385419605,
+        "event": "schedule",
+        "headSha": "b85f75e60a6fc9a493707a8475ae040b5bb9f7bf",
+        "status": "completed",
+        "updatedAt": "2026-09-09T17:51:27Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34385419605"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T16:40:28Z",
+        "databaseId": 34378195363,
+        "event": "workflow_dispatch",
+        "headSha": "b3067953a38e11fca5826066b39fa2382c53555c",
+        "status": "completed",
+        "updatedAt": "2026-09-09T16:41:01Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34378195363"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T14:22:11Z",
+        "databaseId": 34363147749,
+        "event": "workflow_dispatch",
+        "headSha": "48dee526b6c25a020758e42f4684bd5698ef54e2",
+        "status": "completed",
+        "updatedAt": "2026-09-09T14:22:38Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34363147749"
+      }
+    ],
+    "latest_scheduled_run_age_minutes": 86.36808333333333,
+    "last_two_scheduled_run_start_gap_minutes": 143.95,
+    "note": "Successful scheduled execution occurred within the window. The nominal fifteen-minute schedule is not an observed guarantee."
+  },
+  "additional_checks": {
+    "observed_at": "2026-09-09T23:55:12.021351+00:00",
+    "addon_refund_cycles": [
+      {
+        "job": "addon-refunds",
+        "cycles": 24,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-09T23:50:12.528+00:00"
+      }
+    ],
+    "recent_routing_audits": [],
+    "new_sms_usage_failures": 0,
+    "duplicate_sms_provider_ids": [],
+    "duplicate_usage_reservations": []
+  },
+  "routing_disposition_checks": {
+    "recent_actions": [],
+    "disposition_tables": [
+      "api_request_audit",
+      "tenant_audit_events"
+    ],
+    "rehearsal_receipts": []
+  },
+  "routing_disposition_assessment": "All 24 records for the two known rehearsal emails are resolved in production, including four at 23:44:09 UTC. No matching recent admin_actions disposition or production email_events receipt was found. The deployed handler acknowledges a missing-workspace event with HTTP 202 after recording quarantine; this does not itself prove environment routing separation or final disposition. Keep routing acceptance open pending explicit evidence.",
+  "acceptance_status": "current-production observation remains in progress; production paging activation and verified routing disposition remain open"
+}
