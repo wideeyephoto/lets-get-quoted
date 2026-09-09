@@ -183,7 +183,17 @@ export async function admitVoiceCall(
   }
   const concurrencyLimit = options.concurrencyLimit ?? 1;
 
-  const slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
+  let slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
+  // A provider can retry while the first request is still finalizing its hold.
+  // Give that exact admission a short chance to finish instead of winning the
+  // response race with voicemail. Every retry repeats the atomic identity,
+  // number, terminal and capacity checks; busy itself never grants admission.
+  let busyRetries = 0;
+  for (; slot.outcome === 'busy' && busyRetries < 3; busyRetries += 1) {
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    slot = await claimAdmissionSlot(admin, input, concurrencyLimit);
+  }
+  if (busyRetries > 0) console.info('voice_admission_retry', { attempts: busyRetries, outcome: slot.outcome });
   if (slot.outcome === 'existing') {
     // Replay the original duration, even if flags or requested caps changed.
     // Legacy rows retain the duration the old application actually returned.
