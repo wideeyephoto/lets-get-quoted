@@ -50050,25 +50050,29 @@ a.bset-card {
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid var(--rule-t20);
   border-radius: 8px;
-  padding: 0.15rem 0.45rem;
+  padding: 0.2rem 0.55rem;
 }
 
 .cash-quick-balance-symbol {
-  font-size: 0.82rem;
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1.05rem;
+  font-weight: 500;
   color: var(--mute-i50);
-  margin-right: 0.2rem;
+  margin-right: 0.25rem;
 }
 
 .cash-quick-balance-input-wrap input {
-  width: 6.5rem;
+  width: 8.25rem;
   background: transparent;
   border: 0;
   color: var(--text);
-  font-size: 0.88rem;
+  font-family: var(--font-body), -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 1.1rem;
   font-weight: 600;
   padding: 0.2rem 0;
   outline: none;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
 }
 
 .cash-quick-balance-input-wrap input:focus {

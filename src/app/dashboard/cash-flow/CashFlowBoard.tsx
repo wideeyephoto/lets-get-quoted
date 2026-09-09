@@ -240,7 +240,7 @@ export default function CashFlowBoard({
    */
   const [balanceTouched, setBalanceTouched] = useState(false);
   const changeBalance = useCallback((next: number) => {
-    setBalance(next);
+    setBalance(Math.round(next));
     setBalanceTouched(true);
   }, []);
   const [buffer, setBuffer] = useState<number>(savedBuffer);
@@ -553,9 +553,9 @@ export default function CashFlowBoard({
                   <input
                     id="cash-quick-balance-input"
                     type="number"
-                    step="any"
+                    step="1"
                     placeholder="0"
-                    value={balance === 0 && !balanceTouched ? '' : balance}
+                    value={balance === 0 && !balanceTouched ? '' : Math.round(balance)}
                     onKeyDown={(event) => {
                       if (event.key.length === 1 || event.key === 'Backspace' || event.key === 'Delete') {
                         setBalanceTouched(true);
@@ -567,8 +567,13 @@ export default function CashFlowBoard({
                         changeBalance(0);
                         return;
                       }
-                      const next = Number(raw);
+                      const next = Math.round(Number(raw));
                       if (Number.isFinite(next)) changeBalance(next);
+                    }}
+                    onBlur={() => {
+                      if (Number.isFinite(balance)) {
+                        setBalance(Math.round(balance));
+                      }
                     }}
                   />
                 </div>

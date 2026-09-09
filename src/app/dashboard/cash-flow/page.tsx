@@ -70,7 +70,7 @@ export default async function CashFlowPage({ searchParams: searchParamsPromise }
         todayKey={todayKey}
         horizonDays={selected.days}
         longDays={MAX_HORIZON_DAYS}
-        savedBalance={sources.settings.balance}
+        savedBalance={sources.settings.balance !== null ? Math.round(sources.settings.balance) : null}
         savedBuffer={sources.settings.buffer}
         savedCreditLine={sources.settings.creditLine}
         balanceAt={sources.settings.balanceAt}
