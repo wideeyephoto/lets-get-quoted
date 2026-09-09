@@ -55,6 +55,21 @@ On the released public endpoint, all four original provider events were replayed
 
 All 16 original failures and four quarantine rows are retained with an explicit reviewed disposition and marker `contractor-domain-callback-rehearsal-20260909`; zero remain open under that marker. The disposition identifies the two delivered test messages, incorrect deleted staging tags, release, and successful replay evidence. No customer event was reassigned or resent. Resend's event summary initially retained its historical `failed` status with no next automatic attempt; a later read after the PR #67 promotion showed all four originals as `success`. The actual HTTP-202 replay attempts remain the primary evidence. This closes this rehearsal incident, not every suppression/bounce/complaint scenario in F11.
 
+### Follow-on callback retries reviewed at 23:44 UTC
+
+The hourly check found four later deliveries of those same signed provider events. No additional Replay Event call or email send was made in this check. Every later attempt returned HTTP 202 with the quarantine response, and the provider's current event records all showed `success`, `next_attempt_at=null`, and complete attempt lists (`has_more=false`). Their original message IDs, event types, deleted staging account tag, and occurrence times matched the earlier incident.
+
+| Retained quarantine row | Provider attempt / UTC |
+| --- | --- |
+| `b0e640a2-86f7-4b37-8132-3b6f0fd115f7` | `atmpt_3J6uz5WlEi5kGOwn1dSrczYfhbb` / 22:48:18.008 |
+| `56d11948-f1cd-40e5-9eae-e08e14c28909` | `atmpt_3J6wUHflpt1UneI7zlFEYPN8myd` / 23:00:39.628 |
+| `9a42ffec-c17b-4fc1-a4c5-9289ae735fe3` | `atmpt_3J6xC7vyuuKJKtfzoxAuEOdO6mN` / 23:06:28.508 |
+| `71e5433a-cd6e-4100-866c-59f38f35498e` | `atmpt_3J6y5r6tSZ0a3ufPxz6uZ01h0lb` / 23:13:51.980 |
+
+At 23:44:09.280 UTC, a scoped review update retained and resolved exactly these four rows. Its guards matched each row/provider/Svix event ID, the quarantine reason and original account, unresolved state, absent staging account, and absence of any canonical reassignment. Each disposition records its successful provider attempt. The incident marker now contains **24 retained records, zero unresolved**. J-1004 remains one delivered canonical event with its original tenant and timestamp. Future unmatched or newly failing callbacks still require separate review; this disposition does not suppress them.
+
+At 23:42 UTC, BrokePipes and its exact provider binding remained verified with no failure reason; all three provider DNS records were verified. The last scheduled `email-domain-reconcile` run was still the September 9 06:23 UTC empty-inventory run, so no active-domain canary run is counted. Website run `bb8e171c-4411-4a00-b635-a092361dfcbd` at 23:30:29.270 UTC checked the one pending fixture with zero errors or owner notifications. The daily recipient allowance and unfinished lifecycle gates still prevent starting the observation clock.
+
 J-1004's valid callbacks were also replayed in delivered-then-sent order. Provider attempts `atmpt_3J6tBySgT35oFsuOrHZYieT8U87` at 22:33:33.836 UTC and `atmpt_3J6tC9UlEXSyR1aKQF87mayXAwJ` at 22:33:35.236 UTC both returned HTTP 200. Before and after, exactly one canonical row `18809ab6-4d49-47a8-a1cd-26781688f9a8` remained attributed to BrokePipes with kind `client_quote`, status `delivered`, and original occurrence time 21:19:37.132 UTC. This proves authentic duplicate/out-of-order handling for this quote without another recipient email.
 
 ## Website fixture
