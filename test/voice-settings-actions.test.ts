@@ -70,6 +70,23 @@ beforeEach(() => {
 });
 
 describe('the settings write stays on the owner session', () => {
+  it('saves and clears a normalized on-call number without touching the SMS alert destination', async () => {
+    await updateVoiceSettingsAction(input({ emergencyTransferNumber: '(248) 555-0104' }));
+    expect(upsert).toHaveBeenLastCalledWith(expect.objectContaining({
+      account_id: ACCOUNT, emergency_transfer_number: '+12485550104',
+    }), { onConflict: 'account_id' });
+    expect(update.mock.calls.some(([data]) => 'alert_phone' in data)).toBe(false);
+    await updateVoiceSettingsAction(input({ emergencyTransferNumber: '' }));
+    expect(upsert).toHaveBeenLastCalledWith(expect.objectContaining({ emergency_transfer_number: null }), { onConflict: 'account_id' });
+  });
+
+  it('preserves an on-call number for older clients and rejects malformed new values', async () => {
+    await updateVoiceSettingsAction(input());
+    expect(upsert.mock.calls[0][0]).not.toHaveProperty('emergency_transfer_number');
+    upsert.mockClear();
+    await expect(updateVoiceSettingsAction(input({ emergencyTransferNumber: 'not a phone' }))).rejects.toThrow('on-call number');
+    expect(upsert).not.toHaveBeenCalled();
+  });
   it('uses admin only for the internal entitlement read', () => {
     const source = readFileSync(
       join(process.cwd(), 'src', 'app', 'dashboard', 'settings', 'voice-actions.ts'), 'utf8',

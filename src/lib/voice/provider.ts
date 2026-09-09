@@ -107,6 +107,8 @@ export type VoiceAnswerPlan =
     capMinutes: number;
     /** Where to send the caller when the agent hands off. */
     transferTo: string | null;
+    /** Explicit on-call destination, falling back to the regular office. */
+    emergencyTransferTo?: string | null;
     /** Signed provider connection callbacks, attributed to the saved inbound call. */
     transferStatusUrl?: string;
     /** Whether background call recording is enabled. */

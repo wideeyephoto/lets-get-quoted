@@ -88,7 +88,7 @@ export async function loadVoiceGroundingContext(
   const activeServices = services.filter((s) => s.active).map((s) => s.name);
   const voiceTone = (voiceSettings?.voice_tone as VoiceGroundingContext['voiceTone']) || 'professional';
   const forwardPhoneOffice = voiceSettings?.transfer_number || null;
-  const forwardPhoneEmergency = voiceSettings?.emergency_transfer_number || account?.alert_phone || null;
+  const forwardPhoneEmergency = voiceSettings?.emergency_transfer_number || forwardPhoneOffice || account?.call_forward_number || null;
 
   // Determine service area from site content or site record
   const serviceAreas = (siteContent?.serviceAreas?.cities && siteContent.serviceAreas.cities.length > 0)
@@ -311,7 +311,7 @@ export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
   sections.push(
     `[REAL CAPACITY & SCHEDULING]`,
     slotsText,
-    `Use the check_available_slots tool to check open calendar windows by date, and use the book_appointment_slot tool to directly lock in an appointment slot and text a confirmation to the caller.`,
+    `Use check_available_slots to check appointment windows and book_appointment_slot to submit an appointment request for office review. A saved request or temporary slot hold is not a confirmed appointment. Repeat the exact returned date/window and say the team must confirm it. Never promise a technician arrival or a delivered text; say a text is queued only when the tool confirms that.`,
     `[INTAKE GOALS & BEHAVIOR]`,
     `Warmly collect or verify the caller's intake details: (1) Full name and callback number (phone number is optional if unavailable), (2) Exact service address, (3) Detailed issue description and urgency, (4) Preferred appointment window.`,
     `- Use the capture_lead tool to save the customer's contact and request details as soon as they provide them.`,
@@ -321,17 +321,21 @@ export function buildVoiceSystemPrompt(context: VoiceGroundingContext): string {
     `- If the caller asks whether a permit or city inspection is required, use check_permit_requirement.`,
     `- If the caller asks about municipal inspection status for their existing job, use check_inspection_status.`,
     `- If the caller asks for clean energy or IRA rebates, use check_rebates_and_incentives.`,
-    `- If the caller needs to cancel or reschedule an existing appointment, use cancel_or_reschedule_appointment.`,
-    `- If the caller reports an acute emergency (burst pipes, active flooding, electrical sparks, gas odor, storm structural damage), prioritize life safety, confirm their address, and immediately use transfer_to_business to connect them with on-call dispatch.`,
-    `- If the caller insists on speaking to a live person and a transfer tool is available, use transfer_to_business.`,
+    `- For cancellation or rescheduling, use cancel_or_reschedule_appointment to save an office-review request. The existing appointment stays unchanged until the office confirms the change. Never claim it was canceled or moved from a request alone.`,
+    `- For an acute emergency (burst pipes, active flooding, electrical sparks, gas odor, storm structural damage), prioritize life safety. For immediate danger, tell the caller to contact local emergency services; do not delay them with intake questions or promise emergency response. ${context.forwardPhoneEmergency ? 'Use transfer_to_emergency to reach the configured on-call team.' : 'No live emergency transfer is available. State that clearly and offer to save a callback request without promising a response time.'}`,
+    `- ${context.forwardPhoneOffice ? 'When the caller asks for a person, use transfer_to_business.' : 'No regular live transfer is available. Offer to save a callback request; never claim a person is being connected.'}`,
   );
 
   return sections.join('\n');
 }
 
-export function buildVoicePostPrompt(): string {
+export function buildVoicePostPrompt(context?: VoiceGroundingContext): string {
+  const staff = context?.contractorStaffCaller;
   return [
-    'Return a valid JSON object summarizing this call intake. Output only the JSON object without markdown fences or extra prose.',
+    staff
+      ? `Summarize this internal staff call. The actual caller is ${JSON.stringify(staff.name)}, role ${staff.role}. A customer whose job was discussed is not the caller. Do not copy the customer's phone or address into caller fields. Put job references, discussed customers, requested changes and confirmed outcomes in work_requested. Distinguish drafts, denied actions and unknown save results from confirmed saves. An existing schedule read aloud is not a new booking. Set booked_slot, requested_slot and service_address to null; follow_up_action is callback_required only if actual unresolved work needs office review, otherwise none. Do not invent a lead or appointment from this staff conversation.`
+      : 'Summarize this homeowner intake. A saved appointment or change request needs office confirmation. Set booked_slot to null unless a tool explicitly confirms a final appointment; a slot hold or an existing schedule read aloud is not confirmation. Record the requested window in requested_slot and use callback_required when office review remains.',
+    'Return a valid JSON object. Output only the JSON object without markdown fences or extra prose. Use caller_phone only for the actual caller number, otherwise null.',
     '{',
     '  "caller_name": string or null,',
     '  "caller_phone": string or null,',

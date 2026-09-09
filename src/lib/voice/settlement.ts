@@ -379,6 +379,8 @@ export function inferProviderOutcome(receipt: VoiceReceipt): VoiceCallProviderOu
     return text.includes('connecting you now')
       || text.includes('connecting you with')
       || text.includes('transfer_to_business')
+      || text.includes('transfer_to_emergency')
+      || text.includes('connect you with our on-call team')
       || text.includes('transferring you')
       || text.includes('transfer to business');
   });

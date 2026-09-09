@@ -115,7 +115,7 @@ export default async function VoiceCallsPage({
       .maybeSingle(),
     supabase
       .from('voice_settings')
-      .select('status, answer_mode, greeting, transfer_number, voice_tone, business_hours')
+      .select('status, answer_mode, greeting, transfer_number, emergency_transfer_number, voice_tone, business_hours')
       .eq('account_id', accountId)
       .maybeSingle(),
     supabase
@@ -729,10 +729,12 @@ export default async function VoiceCallsPage({
 
           <div style={{ maxWidth: '1280px', width: '100%', margin: '0 auto' }}>
             <AiReceptionistSection
+              businessName={resolvedBusinessName}
               status={(voiceSettings?.status as 'off' | 'active' | 'paused') ?? 'off'}
               answerMode={(voiceSettings?.answer_mode as 'always' | 'after_hours') ?? 'always'}
               greeting={(voiceSettings?.greeting as string | null) ?? ''}
               transferNumber={(voiceSettings?.transfer_number as string | null) ?? ''}
+              emergencyTransferNumber={(voiceSettings?.emergency_transfer_number as string | null) ?? ''}
               alertPhone={(account?.alert_phone as string | null) ?? ''}
               verifiedNumbers={verifiedNumbers}
               callForwardNumber={callForwardNumber}
