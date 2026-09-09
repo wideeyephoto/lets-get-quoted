@@ -2,6 +2,7 @@
 
 import { requireDashboardShellContext } from '@/lib/auth';
 import { getTourDefinition, getStepById, filterStepsForUser } from '@/lib/product-tour/catalog';
+import { sanitizeTourEventPayload } from '@/lib/product-tour/events';
 import type { TourProgressRecord, TourStatus, TourAudience } from '@/lib/product-tour/types';
 
 export async function loadTourProgressAction(
@@ -290,3 +291,33 @@ export async function restartTourAction(
     return { success: false, error: message };
   }
 }
+
+export async function recordTourEventAction(
+  rawPayload: Record<string, unknown>,
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { supabase, accountId, userId, role } = await requireDashboardShellContext();
+    const { valid, sanitized, error: validationError } = sanitizeTourEventPayload(rawPayload);
+    if (!valid || !sanitized) {
+      return { success: false, error: validationError ?? 'Invalid tour event payload' };
+    }
+
+    const { error } = await supabase.from('product_tour_events').insert({
+      ...sanitized,
+      account_id: accountId,
+      user_id: userId,
+      role,
+      source: sanitized.source ?? 'dashboard_tour',
+    });
+
+    if (error) {
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to record tour event';
+    return { success: false, error: message };
+  }
+}
+

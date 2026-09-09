@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type CSSProperties } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
 import type { CoachmarkPlacement, TourStep } from '@/lib/product-tour/types';
 import styles from './product-tour.module.css';
@@ -29,9 +29,22 @@ export default function ProductTourCoachmark({
   onSkip,
 }: ProductTourCoachmarkProps) {
   const [mounted, setMounted] = useState(false);
-  const [cardHeight, setCardHeight] = useState(240);
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const cardRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  const [isMobile, setIsMobile] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(max-width: 639px)').matches;
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mql = window.matchMedia('(max-width: 639px)');
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
+  }, []);
 
   useEffect(() => {
     setMounted(true);
@@ -44,15 +57,15 @@ export default function ProductTourCoachmark({
     };
   }, []);
 
-  // Measure card height when mounted or content changes to ensure flip math is accurate
-  useEffect(() => {
+  // Measure card height before paint to ensure flip math is accurate with no post-paint jump
+  useLayoutEffect(() => {
     if (cardRef.current) {
       const measured = cardRef.current.offsetHeight;
-      if (measured > 0 && Math.abs(measured - cardHeight) > 4) {
-        setCardHeight(measured);
+      if (measured > 0) {
+        setMeasuredHeight((prev) => (prev !== measured ? measured : prev));
       }
     }
-  }, [step.id, step.body, step.title, cardHeight]);
+  }, [step.id, step.body, step.title]);
 
   // Trap focus inside coachmark card and listen for Escape
   useEffect(() => {
@@ -108,7 +121,7 @@ export default function ProductTourCoachmark({
 
   const isLastStep = stepIndex === totalSteps - 1;
   const isFirstStep = stepIndex === 0;
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+  const cardHeight = measuredHeight ?? 240;
 
   // Calculate placement style with boundary flip detection
   let cardStyle: CSSProperties = {};
@@ -254,9 +267,9 @@ export default function ProductTourCoachmark({
             }}
           />
         </>
-      ) : (
+      ) : isFallback || !step.targetId ? (
         <div className={styles.fullBackdrop} data-tour-overlay="true" onClick={onClose} />
-      )}
+      ) : null}
 
       {/* Coachmark Dialog */}
       <div

@@ -17,7 +17,7 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { requireDashboardShellContext } from '@/lib/auth';
 import { DASHBOARD_ORIENTATION_TOUR } from '@/lib/product-tour/catalog';
-import { filterStepsForUser } from '@/lib/product-tour/access';
+import { filterStepsForUser, shouldOfferTour } from '@/lib/product-tour/access';
 import type { TourProgressRecord } from '@/lib/product-tour/types';
 import ProductTourRoot from '@/components/product-tour/ProductTourRoot';
 import StripeAlertBanner from './StripeAlertBanner';
@@ -62,12 +62,13 @@ export default async function DashboardLayout({ children }: { children: ReactNod
   const tourEnabled = orientationFlag === undefined || orientationFlag === '1' || orientationFlag === 'true';
 
   let tourProgress: TourProgressRecord | null = null;
-  const allowedStepIds = filterStepsForUser(DASHBOARD_ORIENTATION_TOUR, {
+  const userTourContext = {
     userId,
     accountId,
-    role,
+    role: role as 'owner' | 'office',
     capabilities,
-  }).map((s) => s.id);
+  };
+  const allowedStepIds = filterStepsForUser(DASHBOARD_ORIENTATION_TOUR, userTourContext).map((s) => s.id);
 
   if (tourEnabled) {
     try {
@@ -85,6 +86,8 @@ export default async function DashboardLayout({ children }: { children: ReactNod
       tourProgress = null;
     }
   }
+
+  const offerTour = tourEnabled && shouldOfferTour(DASHBOARD_ORIENTATION_TOUR, tourProgress, userTourContext);
 
   let navDecision: NavVisibilityDecision | null = null;
   if (isNavPersonaEnabled()) {
@@ -110,6 +113,7 @@ export default async function DashboardLayout({ children }: { children: ReactNod
         initialProgress={tourProgress}
         allowedStepIds={allowedStepIds}
         enabled={tourEnabled}
+        offer={offerTour}
       />
       {children}
       <AssistantWidget />
