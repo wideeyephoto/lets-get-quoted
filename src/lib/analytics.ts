@@ -322,3 +322,44 @@ export function trackQuoteFunnelStep(payload: QuoteFunnelPayload): void {
   }
 }
 
+export type FinancingPrequalClickPayload = {
+  surface: 'quote' | 'invoice' | 'payment_request';
+  provider: 'acorn';
+  docRef?: string;
+};
+
+/**
+ * Tracks homeowner click-through to third-party financing prequalification.
+ * Strictly adheres to privacy constraints: zero customer PII (name, email, phone)
+ * is ever logged or transmitted in telemetry payloads.
+ */
+export function trackFinancingPrequalClick(payload: FinancingPrequalClickPayload): void {
+  if (typeof window === 'undefined') return;
+
+  // Custom DOM event for internal telemetry & automated testing
+  try {
+    const event = new CustomEvent('lgq:financing-prequal-click', { detail: payload });
+    window.dispatchEvent(event);
+  } catch {
+    // ignore
+  }
+
+  // Google Analytics 4 (if loaded & consented)
+  const win = window as unknown as {
+    gtag?: (...args: unknown[]) => void;
+  };
+
+  if (typeof win.gtag === 'function') {
+    try {
+      win.gtag('event', 'financing_prequal_click', {
+        event_category: 'homeowner_financing',
+        surface: payload.surface,
+        provider: payload.provider,
+        doc_ref: payload.docRef || '',
+      });
+    } catch {
+      // ignore
+    }
+  }
+}
+

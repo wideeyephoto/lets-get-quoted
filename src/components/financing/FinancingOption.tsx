@@ -1,14 +1,21 @@
+'use client';
+
 import React from 'react';
 import type { FinancingAvailability } from '@/lib/bnpl-financing';
+import { trackFinancingPrequalClick } from '@/lib/analytics';
 
 export default function FinancingOption({
   availability,
   businessName,
   className = '',
+  surface = 'invoice',
+  docRef,
 }: {
   availability: FinancingAvailability;
   businessName?: string;
   className?: string;
+  surface?: 'quote' | 'invoice' | 'payment_request';
+  docRef?: string;
 }) {
   if (!availability.available) return null;
 
@@ -63,6 +70,13 @@ export default function FinancingOption({
             rel="noopener noreferrer"
             className="btn secondary"
             style={{ whiteSpace: 'nowrap', fontSize: '0.82rem', padding: '0.45rem 0.85rem' }}
+            onClick={() => {
+              trackFinancingPrequalClick({
+                surface,
+                provider: 'acorn',
+                docRef,
+              });
+            }}
           >
             See options &rarr;
           </a>

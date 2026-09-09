@@ -33,7 +33,8 @@ function optionalMoney(value: FormDataEntryValue | null): number | null {
 export async function saveCashSettingsAction(formData: FormData) {
   const { supabase, accountId } = await requireOfficeContext('payments.collect');
 
-  const balance = optionalMoney(formData.get('balance'));
+  const rawBalance = optionalMoney(formData.get('balance'));
+  const balance = rawBalance !== null ? Math.round(rawBalance) : null;
   const buffer = optionalMoney(formData.get('buffer'));
   const creditLine = optionalMoney(formData.get('creditLine'));
 
