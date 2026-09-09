@@ -21,7 +21,7 @@ export const BRAND_POSITIONING = {
     supportingCopy:
       'LGQ is the intelligent back office that guides contractors from first lead to final payment—helping you operate smarter, protect profit, and grow with confidence.',
     primaryCta: 'Build my free site',
-    secondaryCta: 'Watch one job move',
+    secondaryCta: "See what Let's Get Quoted can do",
   },
   workflowSteps: [
     {
