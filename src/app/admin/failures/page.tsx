@@ -13,6 +13,8 @@ import { groupEmailFailures, groupSmsFailures, groupWebhookFailures } from '@/li
 import { loadOutboundWebhookFailures } from '@/lib/admin-public-api';
 import { staffCan } from '@/lib/staff';
 import { resolveWebhookGroupAction } from './actions';
+import VoiceReceiptFailures from './voice-receipts';
+import { loadPendingVoiceReceipts } from '@/lib/admin-voice-receipts';
 import styles from '../admin.module.css';
 
 export const dynamic = 'force-dynamic';
@@ -22,11 +24,11 @@ function fmt(value: string): string {
   return new Date(value).toLocaleString('en-US', { dateStyle: 'short', timeStyle: 'short' });
 }
 
-export default async function AdminFailuresPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string }> }) {
+export default async function AdminFailuresPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ done?: string; error?: string; voice?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
   const ctx = await requireAdmin();
   const diagnostics = createAdminSignalDiagnostics();
-  const [webhooks, totalWebhooks, sms, totalSms, emails, totalEmails, outboundDeliveries] = await Promise.all([
+  const [webhooks, totalWebhooks, sms, totalSms, emails, totalEmails, outboundDeliveries, voiceReceipts] = await Promise.all([
     getUnresolvedWebhookFailures(ctx.admin, { limit: 500, diagnostics }),
     countUnresolvedWebhookFailures(ctx.admin),
     getFailedSmsEvents(ctx.admin, { limit: 500, diagnostics }),
@@ -34,6 +36,7 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     getFailedEmailEvents(ctx.admin, { limit: 500, diagnostics }),
     countFailedEmailEvents(ctx.admin),
     loadOutboundWebhookFailures(ctx.admin, 100),
+    loadPendingVoiceReceipts(ctx.admin),
   ]);
   const webhookGroups = groupWebhookFailures(webhooks);
   const smsGroups = groupSmsFailures(sms);
@@ -49,6 +52,17 @@ export default async function AdminFailuresPage({ searchParams: searchParamsProm
     {diagnostics.failed.length ? <div className={`${styles.banner} ${styles.err}`}>Some failure sources are unavailable: {diagnostics.failed.join(', ')}.</div> : null}
     {searchParams.done ? <div className={`${styles.banner} ${styles.ok}`}>Failure group resolved.</div> : null}
     {searchParams.error ? <div className={`${styles.banner} ${styles.err}`}>Enter a reason and try again.</div> : null}
+    {searchParams.voice ? <div role="status" className={styles.banner}>{
+      searchParams.voice === 'processed' ? 'Voice receipt processed.'
+        : searchParams.voice === 'complete' ? 'The receipt is already finalized; no retry was needed.'
+        : searchParams.voice === 'retry_scheduled' ? 'Processing failed again. The receipt retains its scheduled retry and attempt limit.'
+        : searchParams.voice === 'deferred' ? 'The receipt is already processing or waiting for its retry time.'
+          : searchParams.voice === 'review' ? 'The receipt needs review. Its retry budget and saved evidence were preserved.'
+            : searchParams.voice === 'reason' ? 'Enter a retry reason between 10 and 500 characters.'
+              : 'The retry could not be confirmed. Refresh the receipt status before trying again.'
+    }</div> : null}
+
+    <VoiceReceiptFailures result={voiceReceipts} canRetry={canResolve} />
 
     <section className={styles.panel} id="webhooks">
       <h2 className={styles.panelTitle}>
