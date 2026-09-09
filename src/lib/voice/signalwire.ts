@@ -68,6 +68,7 @@ function text(value: unknown): string | null {
 
 export const CUSTOMER_SWAIG_TOOLS = [
   'transfer_to_business',
+  'transfer_to_emergency',
   'send_booking_link',
   'check_available_slots',
   'book_appointment_slot',
@@ -297,11 +298,16 @@ export const signalwireVoiceProvider: VoiceProvider = {
       }
       const swaigFunctions: Record<string, unknown>[] = [];
 
-      if (plan.transferTo) {
+      for (const transfer of [
+        { destination: plan.transferTo, name: 'transfer_to_business', emergency: false },
+        { destination: plan.emergencyTransferTo, name: 'transfer_to_emergency', emergency: true },
+      ]) {
+        if (!transfer.destination) continue;
         swaigFunctions.push({
-          function: 'transfer_to_business',
-          purpose: 'Send the caller to a person when they ask for one or the '
-            + 'request is beyond what can be handled.',
+          function: transfer.name,
+          purpose: transfer.emergency
+            ? 'Connect an urgent safety or emergency service caller to the configured on-call team. This is not emergency services and does not guarantee a response.'
+            : 'Send the caller to a person when they ask for one or the request is beyond what can be handled.',
           argument: {
             type: 'object',
             properties: {
@@ -314,7 +320,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
           data_map: { expressions: [{
             string: 'true', pattern: '.*',
             output: {
-              response: 'Connecting you with our office staff now. Please hold for just a moment.',
+              response: transfer.emergency
+                ? 'I will try to connect you with our on-call team now.'
+                : 'Connecting you with our office staff now. Please hold for just a moment.',
               action: [{
                 transfer: true,
                 SWML: {
@@ -323,7 +331,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
                     main: [
                       {
                         connect: {
-                          to: plan.transferTo,
+                          to: transfer.destination,
                           timeout: 25,
                           max_duration: maxDurationSeconds,
                           ...(plan.transferStatusUrl ? { status_url: plan.transferStatusUrl } : {}),
@@ -370,7 +378,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'check_available_slots',
-          purpose: 'Query live appointment slots and dispatch windows by date or timeframe.',
+          purpose: 'Query available appointment request windows by date or timeframe. Availability is not a confirmed booking.',
           argument: {
             type: 'object',
             properties: {
@@ -396,7 +404,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
         if (!plan.contractorMode) {
           swaigFunctions.push({
             function: 'book_appointment_slot',
-            purpose: 'Directly schedule and confirm an appointment slot into the system, place a hold, and send an SMS confirmation to the caller.',
+            purpose: 'Save an appointment request and temporary slot hold for office review. The team must confirm the appointment. Report the saved request and whether a text was queued; never claim a final booking or delivered text.',
             argument: {
               type: 'object',
               properties: {
@@ -564,7 +572,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'cancel_or_reschedule_appointment',
-          purpose: 'Reschedule or cancel an existing appointment for a customer by their phone number or address.',
+          purpose: 'Save a cancellation or rescheduling request for the office to verify and review. The existing appointment is unchanged until the office confirms. Caller-provided phone/address is not proof of ownership.',
           argument: {
             type: 'object',
             properties: {

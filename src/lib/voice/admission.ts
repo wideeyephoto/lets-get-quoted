@@ -76,6 +76,7 @@ export type VoiceSettings = Readonly<{
   businessHours: BusinessHours;
   greeting: string | null;
   transferNumber: string | null;
+  emergencyTransferNumber?: string | null;
   recordingEnabled: boolean;
   postCallSmsEnabled: boolean;
   contractorNotificationsEnabled: boolean;
@@ -146,7 +147,7 @@ export async function resolveVoiceWorkspace(
   // not become a permissive default on the one surface that answers a phone.
   const { data: configured } = await admin
     .from('voice_settings')
-    .select('status, answer_mode, business_hours, greeting, transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
+    .select('status, answer_mode, business_hours, greeting, transfer_number, emergency_transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
     .eq('account_id', account.id)
     .maybeSingle();
 
@@ -166,6 +167,7 @@ export async function resolveVoiceWorkspace(
         businessHours: (row.business_hours ?? {}) as BusinessHours,
         greeting: (row.greeting as string | null) ?? null,
         transferNumber: (row.transfer_number as string | null) ?? null,
+        emergencyTransferNumber: (row.emergency_transfer_number as string | null) ?? null,
         recordingEnabled: row.recording_enabled === true,
         postCallSmsEnabled: row.post_call_sms_enabled !== false,
         contractorNotificationsEnabled: row.contractor_notifications_enabled !== false,
@@ -273,7 +275,8 @@ export async function planInboundCall(
     // phone number even when the product on top of it is off.
     const forwardTo = workspace?.settings?.transferNumber || workspace?.callForwardNumber;
     if (forwardTo && workspace
-      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')) {
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.toNumber)) {
       return Object.freeze({
         accountId: workspace.accountId,
         declineReason: reason,
@@ -320,14 +323,6 @@ export async function planInboundCall(
   if (!settings || settings.status === 'off') return fallback(workspace, 'not_configured');
   if (settings.status === 'paused') return fallback(workspace, 'paused');
 
-  // The common configuration: the contractor takes their own calls during the
-  // day and wants the evenings covered. Answering during business hours would
-  // put the AI in front of customers who expected a person.
-  if (settings.answerMode === 'after_hours'
-    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
-    return fallback(workspace, 'within_business_hours');
-  }
-
   if (workspace.concurrentCallLimit < 1) return fallback(workspace, 'no_seat');
 
   const callerIdentity = await resolveVoiceCallerIdentity(
@@ -348,6 +343,14 @@ export async function planInboundCall(
   const callerNumber = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.normalizedPhone
     : normalizeUsPhone(call.fromNumber || '');
+
+  // After-hours is the homeowner answering schedule. Registered staff keep
+  // access to Dispatch all day; off/paused and entitlement gates still apply.
+  // Unknown or ambiguous identities never receive this staff-only exception.
+  if (effectiveIdentity.status !== 'staff' && settings.answerMode === 'after_hours'
+    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
+    return fallback(workspace, 'within_business_hours');
+  }
 
   const open = await countOpenAiCalls(
     admin, workspace.accountId, workspace.concurrentCallLimit,
@@ -392,8 +395,18 @@ export async function planInboundCall(
     console.error('Failed to load voice grounding context:', err);
     return null;
   });
-  const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;
-  const postPrompt = grounding ? buildVoicePostPrompt() : undefined;
+  // Never bridge the caller to themselves or back into this receptionist.
+  const safeDestination = (value: string | null | undefined) => {
+    const number = normalizeUsPhone(value || '');
+    return number && number !== normalizeUsPhone(call.fromNumber || '')
+      && number !== normalizeUsPhone(call.toNumber) ? number : null;
+  };
+  const transferTo = safeDestination(settings.transferNumber || workspace.callForwardNumber);
+  const emergencyTransferTo = safeDestination(settings.emergencyTransferNumber) || transferTo;
+  const systemPrompt = grounding ? buildVoiceSystemPrompt({
+    ...grounding, forwardPhoneOffice: transferTo, forwardPhoneEmergency: emergencyTransferTo,
+  }) : undefined;
+  const postPrompt = buildVoicePostPrompt(grounding ?? undefined);
 
   return Object.freeze({
     accountId: workspace.accountId,
@@ -412,7 +425,8 @@ export async function planInboundCall(
       capMinutes: decision.capMinutes,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
-      transferTo: settings.transferNumber || workspace.callForwardNumber,
+      transferTo,
+      emergencyTransferTo,
       transferStatusUrl: options.forwardActionUrl(workspace.accountId),
       recordCall: settings.recordingEnabled === true && !grounding?.contractorStaffCaller,
       recordingStatusUrl: options.recordingStatusUrl

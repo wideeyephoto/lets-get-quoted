@@ -2,6 +2,24 @@ import { describe, expect, it } from 'vitest';
 import { buildVoicePostPrompt, buildVoiceSystemPrompt, type VoiceGroundingContext } from '@/lib/voice/grounding';
 
 describe('buildVoiceSystemPrompt', () => {
+  it('keeps request-only scheduling and unavailable emergency routing explicit', () => {
+    const prompt = buildVoiceSystemPrompt({ companyName: 'Apex', trade: 'plumbing',
+      serviceNames: [], serviceAreas: 'Maplewood', availableSlots: [] });
+    expect(prompt).toContain('not a confirmed appointment');
+    expect(prompt).toContain('existing appointment stays unchanged');
+    expect(prompt).toContain('No live emergency transfer is available');
+    expect(prompt).not.toContain('directly lock in an appointment');
+  });
+
+  it('uses the staff caller in summaries without inventing homeowner bookings', () => {
+    const prompt = buildVoicePostPrompt({ companyName: 'Apex', trade: 'plumbing',
+      serviceNames: [], serviceAreas: 'Maplewood', availableSlots: [],
+      contractorStaffCaller: { name: 'Clara Office', role: 'office' } });
+    expect(prompt).toContain('actual caller is "Clara Office"');
+    expect(prompt).toContain('A customer whose job was discussed is not the caller');
+    expect(prompt).toContain('existing schedule read aloud is not a new booking');
+    expect(prompt).toContain('unknown save results');
+  });
   it('constructs tailored system instructions containing trade, services, areas, and schedule slots', () => {
     const context: VoiceGroundingContext = {
       companyName: 'Apex Plumbing & Heating',

@@ -29,6 +29,7 @@ export type VoiceSettingsInput = {
   answerMode: string;
   greeting: string;
   transferNumber: string;
+  emergencyTransferNumber?: string;
   alertPhone?: string;
   voiceTone?: string;
   businessHours: Record<string, [string, string] | null>;
@@ -122,6 +123,11 @@ export async function updateVoiceSettingsAction(
   if (rawTransferNumber && !transferNumber) {
     throw new Error('Enter a valid US transfer number, or leave it blank.');
   }
+  const rawEmergencyNumber = String(input?.emergencyTransferNumber ?? '').trim();
+  const emergencyTransferNumber = rawEmergencyNumber ? normalizeUsPhone(rawEmergencyNumber) : null;
+  if (rawEmergencyNumber && !emergencyTransferNumber) {
+    throw new Error('Enter a valid US on-call number, or leave it blank to use the regular transfer number.');
+  }
   const { hours, dropped } = businessHoursOf(input?.businessHours);
 
   if (status === 'active') {
@@ -177,6 +183,10 @@ export async function updateVoiceSettingsAction(
     voice_tone: voiceToneOf(input.voiceTone),
     business_hours: hours,
   };
+  // Older clients that omit this field must not erase an on-call destination.
+  if (input?.emergencyTransferNumber !== undefined) {
+    settingsUpsert.emergency_transfer_number = emergencyTransferNumber;
+  }
   if (input?.postCallSmsEnabled !== undefined) {
     settingsUpsert.post_call_sms_enabled = Boolean(input.postCallSmsEnabled);
   }
