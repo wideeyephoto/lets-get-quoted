@@ -1361,6 +1361,34 @@ textarea.input {
   width: 200px;
   height: 200px;
 }
+.mfaSetupDetails dd {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.mfaSetupKey {
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+.mfaInstructions {
+  margin-top: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: 0.65rem;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.6;
+}
+.mfaInstructions summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--text);
+}
+.mfaInstructions ol {
+  padding-left: 1.25rem;
+}
+.mfaInstructions li + li {
+  margin-top: 0.5rem;
+}
 .mfaCancelRow {
   display: flex;
   gap: 0.6rem;
