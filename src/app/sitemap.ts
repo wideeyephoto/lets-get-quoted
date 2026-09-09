@@ -35,6 +35,7 @@ const FEATURE_SLUGS = [
   'scheduling',
   'speed-to-lead',
   'text-to-job',
+  'video-studio',
   'website-builder',
 ] as const;
 
