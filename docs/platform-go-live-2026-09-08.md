@@ -440,8 +440,7 @@ Re-litigating closed findings has cost real days on this project, so:
 - **AI Operator Supabase reads** (§2.7).
 - **Custom-domain TLS serving** — one real domain serves.
 - **Sending-domain connect action** — the two fatal defects are fixed.
-- **`docs/backup-posture.md` exists** and the backup half genuinely runs. Only
-  the *restore* claim is unproven (§1.5).
+- **`docs/backup-posture.md` now records measured evidence (2026-09-09).** A manual local database and Storage capture is verified; PITR is disabled, no managed recovery points are listed, and no hourly/offsite backup or restore is verified. See `docs/runbooks/dr-drill-record-2026-09-09.md`.
 
 ---
 
@@ -471,3 +470,6 @@ checked whether a customer clicking Buy on any of the six gets a checkout or an
 error.** That check is one read-only command and it needs the operator.
 
 Everything else on this list is real, but that is the one that is live right now.
+
+
+September 9 follow-up: the tested crew-completion migration is now verified in production. Encrypted twice-daily Google Drive backups, private cloud presence and user-confirmed Dashlane key escrow are established. Offline pack opening passes; Chrome blocked independent cloud-download verification. PITR remains disabled by the user’s keep-Free decision. See [offsite recovery](runbooks/dr-offsite-recovery.md) for the current scope; earlier local-only findings above are historical.

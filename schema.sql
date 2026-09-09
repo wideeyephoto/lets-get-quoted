@@ -1957,7 +1957,7 @@ returns table (id uuid, status text, started_at timestamptz)
 language plpgsql security definer set search_path = public, pg_temp as $$
 declare current_status text;
 begin
-  if new_status not in ('in_progress', 'complete') then
+  if new_status is null or new_status not in ('in_progress', 'complete') then
     raise exception 'unsupported status %', new_status using errcode = 'check_violation';
   end if;
   if not crew_on_job(j) then
@@ -1976,14 +1976,15 @@ begin
 
   return query
     update jobs
-       set status = new_status,
+       set status = new_status::public.job_status,
            started_at = coalesce(jobs.started_at, now())
      where jobs.id = j
-    returning jobs.id, jobs.status, jobs.started_at;
+    returning jobs.id, jobs.status::text, jobs.started_at;
 end;
 $$;
 
 revoke all on function crew_set_job_status(uuid, text) from public;
+revoke all on function crew_set_job_status(uuid, text) from anon;
 grant execute on function crew_set_job_status(uuid, text) to authenticated;
 
 -- Short-lived soft holds for self-serve booking: closes the window where two

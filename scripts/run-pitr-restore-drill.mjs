@@ -3,25 +3,34 @@
  * Disaster Recovery & PITR Restore Drill Validator
  *
  * Usage:
- *   node scripts/run-pitr-restore-drill.mjs
+ *   SCRATCH_DATABASE_URL=... node scripts/run-pitr-restore-drill.mjs
  *   node scripts/run-pitr-restore-drill.mjs --target="postgres://..."
  *
- * Verifies relational integrity, auth persistence, invoice/payment state,
- * and storage asset availability on a restored database instance.
+ * Read-only relational checks, not a restore operation or sign-in/blob proof.
  */
 
 import { Client } from 'pg';
 import { readFile } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { assertScratchTarget } from './lib/dr-target.mjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const root = resolve(__dirname, '..');
 
 export async function verifyRestoredDatabase(connectionString) {
+  const primary = await readFile(resolve(root, '.env.local'), 'utf8').catch((error) => {
+    if (error.code === 'ENOENT') return '';
+    throw error;
+  });
+  const productionUrl = primary.split(/\r?\n/).find((line) => line.startsWith('DATABASE_URL='))?.slice('DATABASE_URL='.length).trim().replace(/^['"]|['"]$/g, '');
+  const target = assertScratchTarget(connectionString, productionUrl);
   const client = new Client({
     connectionString,
     ssl: { rejectUnauthorized: false },
+    connectionTimeoutMillis: 15000,
+    statement_timeout: 30000,
+    options: '-c default_transaction_read_only=on',
   });
 
   await client.connect();
@@ -33,6 +42,10 @@ export async function verifyRestoredDatabase(connectionString) {
       checks: [],
       passed: true,
       durationMs: 0,
+      target,
+      scope: 'Core table presence, row counts, and two account foreign-key checks only',
+      restorePerformed: false,
+      fullRecoveryVerified: false,
     };
 
     // 1. Check core table presence
@@ -44,7 +57,7 @@ export async function verifyRestoredDatabase(connectionString) {
       'clients',
       'invoices',
       'payments',
-      'quotes',
+      'estimate_offers',
       'extra_stop_requests',
       'email_suppression',
     ];
@@ -83,9 +96,16 @@ export async function verifyRestoredDatabase(connectionString) {
 
     report.checks.push({
       name: 'table_row_counts',
-      status: 'passed',
+      status: 'recorded',
       counts: tableCounts,
+      detail: 'Counts require comparison with the source snapshot; a count alone does not prove recovery.',
     });
+
+    // Do not query a missing relation and lose the useful failure report.
+    if (missingTables.length > 0) {
+      report.durationMs = Date.now() - startTime;
+      return report;
+    }
 
     // 3. Foreign key consistency check
     const { rows: orphanedJobs } = await client.query(
@@ -140,10 +160,10 @@ const isDirectRun =
 
 if (isDirectRun) {
   const targetArg = process.argv.find((a) => a.startsWith('--target='));
-  const targetUrl = targetArg ? targetArg.split('=')[1] : process.env.DATABASE_URL;
+  const targetUrl = targetArg ? targetArg.slice('--target='.length) : process.env.SCRATCH_DATABASE_URL;
 
   if (!targetUrl) {
-    console.error('ERROR: No database URL provided. Set DATABASE_URL or pass --target=postgres://...');
+    console.error('ERROR: Set SCRATCH_DATABASE_URL or pass --target=postgres://...; DATABASE_URL is never a fallback.');
     process.exit(1);
   }
 
@@ -156,7 +176,7 @@ if (isDirectRun) {
         console.error('\nDRILL FAILED: Relational consistency checks failed.');
         process.exit(1);
       }
-      console.log(`\nDRILL PASSED: Verification completed in ${report.durationMs}ms.`);
+      console.log(`\nRELATIONAL CHECKS PASSED in ${report.durationMs}ms. Restore, count parity, RLS, sign-in, and Storage recovery are not certified by this report.`);
     })
     .catch((err) => {
       console.error('Fatal DRILL execution error:', err);

@@ -1,0 +1,58 @@
+{
+  "function": {
+    "definitionHash": "47c38756de6e2792322262a4d0d66ad5",
+    "owner": "postgres",
+    "securityDefiner": true,
+    "config": [
+      "search_path=public, pg_temp"
+    ],
+    "grants": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+    "referencesMissingColumn": false,
+    "anonExecute": false,
+    "authenticatedExecute": true
+  },
+  "migration": [
+    {
+      "version": "20260909123033",
+      "name": "fix_crew_job_completion"
+    }
+  ],
+  "checkedAt": "2026-09-09T12:31:28.6561+00:00",
+  "projectRef": "mfuvvtrkipkigwqqtcal",
+  "authorizedBy": "User requested finishing the verified migration on 2026-09-09",
+  "localMigration": "migrations/20260909121506_fix_crew_job_completion.sql",
+  "sourceSha256": "a657f6f327bcb0c54de763513f340865bad67262956b15bab172cd4072fb846d",
+  "stagingDefinitionHash": "47c38756de6e2792322262a4d0d66ad5",
+  "preflightDefinitionHash": "66b3235fe0e9845d972817fa29d4b1fb",
+  "matchesStaging": true,
+  "businessRowsModified": false,
+  "stagingRlsTestsPassed": 35,
+  "productionFixtureTestsRun": false,
+  "advisors": [
+    {
+      "name": "rls_enabled_no_policy",
+      "count": 90,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0008_rls_enabled_no_policy"
+    },
+    {
+      "name": "function_search_path_mutable",
+      "count": 4,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0011_function_search_path_mutable"
+    },
+    {
+      "name": "anon_security_definer_function_executable",
+      "count": 16,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0028_anon_security_definer_function_executable"
+    },
+    {
+      "name": "authenticated_security_definer_function_executable",
+      "count": 34,
+      "remediation": "https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable"
+    },
+    {
+      "name": "auth_leaked_password_protection",
+      "count": 1,
+      "remediation": "https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection"
+    }
+  ]
+}

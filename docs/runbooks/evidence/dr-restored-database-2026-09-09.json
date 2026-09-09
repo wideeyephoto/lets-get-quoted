@@ -1,0 +1,1107 @@
+{
+  "checkedAt": "2026-09-09T10:57:23.219Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "checks": {
+    "tables": {
+      "passed": true,
+      "sourceCount": 258,
+      "restoredCount": 258,
+      "differences": [],
+      "missing": []
+    },
+    "policies": {
+      "passed": true,
+      "sourceCount": 272,
+      "restoredCount": 272,
+      "differences": [],
+      "missing": []
+    },
+    "functions": {
+      "passed": true,
+      "sourceCount": 435,
+      "restoredCount": 435,
+      "differences": [],
+      "missing": []
+    },
+    "rowCounts": {
+      "passed": true,
+      "tablesChecked": 260,
+      "differences": [
+        {
+          "table_name": "vault.secrets",
+          "row_count": "1"
+        }
+      ],
+      "counts": [
+        {
+          "table_name": "auth.audit_log_entries",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.custom_oauth_providers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.flow_state",
+          "row_count": "69"
+        },
+        {
+          "table_name": "auth.identities",
+          "row_count": "14"
+        },
+        {
+          "table_name": "auth.instances",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.mfa_amr_claims",
+          "row_count": "20"
+        },
+        {
+          "table_name": "auth.mfa_challenges",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.mfa_factors",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.oauth_authorizations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.oauth_client_states",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.oauth_clients",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.oauth_consents",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.one_time_tokens",
+          "row_count": "5"
+        },
+        {
+          "table_name": "auth.refresh_tokens",
+          "row_count": "143"
+        },
+        {
+          "table_name": "auth.saml_providers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.saml_relay_states",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.schema_migrations",
+          "row_count": "77"
+        },
+        {
+          "table_name": "auth.sessions",
+          "row_count": "20"
+        },
+        {
+          "table_name": "auth.sso_domains",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.sso_providers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.users",
+          "row_count": "12"
+        },
+        {
+          "table_name": "auth.webauthn_challenges",
+          "row_count": "0"
+        },
+        {
+          "table_name": "auth.webauthn_credentials",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.account_attachments",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.account_closure_jobs",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.account_credits",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.account_events",
+          "row_count": "73"
+        },
+        {
+          "table_name": "public.account_notes",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.account_tags",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.accounts",
+          "row_count": "11"
+        },
+        {
+          "table_name": "public.admin_actions",
+          "row_count": "7"
+        },
+        {
+          "table_name": "public.ai_operator_action_requests",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.ai_operator_logs",
+          "row_count": "7"
+        },
+        {
+          "table_name": "public.api_credentials",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.api_idempotency_records",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.api_request_audit",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.availability_blocks",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.billing_allowance_reset_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_allowance_reset_worker_attempts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_allowance_reset_worker_states",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_direct_checkout_late_success_resolutions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_direct_checkout_late_success_tasks",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_direct_payment_settlement_attempts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_direct_payment_settlement_tasks",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_direct_refund_authorizations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_direct_refund_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_events",
+          "row_count": "218"
+        },
+        {
+          "table_name": "public.billing_payment_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.billing_subscription_checkout_operations",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.billing_subscription_consent_acceptances",
+          "row_count": "12"
+        },
+        {
+          "table_name": "public.billing_subscription_customers",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.billing_subscription_plan_change_operations",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.billing_subscriptions",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.billing_top_up_purchase_operations",
+          "row_count": "9"
+        },
+        {
+          "table_name": "public.booking_holds",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.campaigns",
+          "row_count": "8"
+        },
+        {
+          "table_name": "public.cancellation_waitlist",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.cash_snapshots",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.change_orders",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.client_duplicate_dismissals",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.client_job_access",
+          "row_count": "743"
+        },
+        {
+          "table_name": "public.client_portal_access",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.clients",
+          "row_count": "961"
+        },
+        {
+          "table_name": "public.contractor_credentials",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.costs",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.crew",
+          "row_count": "6"
+        },
+        {
+          "table_name": "public.crew_assignments",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.crew_location_state",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.crew_pay_entries",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.crew_pay_entry_lines",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.crew_pay_events",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.crew_pay_periods",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.cron_runs",
+          "row_count": "107802"
+        },
+        {
+          "table_name": "public.day_plan_prefs",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.email_events",
+          "row_count": "103"
+        },
+        {
+          "table_name": "public.email_sending_domains",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.email_suppression",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.equipment_passports",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.estimate_offers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.extra_stop_events",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.extra_stop_requests",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.extra_stop_screenings",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.field_submissions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.finance_plans",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.google_lsa_connections",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.google_lsa_conversations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.google_lsa_feedback",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.google_lsa_leads",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.google_lsa_spend",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.homeowner_financing_enrollments",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.insurance_claims",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.integration_events",
+          "row_count": "47"
+        },
+        {
+          "table_name": "public.inventory_locations",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.inventory_maintenance_records",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.inventory_stock_items",
+          "row_count": "5"
+        },
+        {
+          "table_name": "public.inventory_stock_transfers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.inventory_tool_custody_log",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.inventory_tools",
+          "row_count": "8"
+        },
+        {
+          "table_name": "public.inventory_van_kit_templates",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.inventory_vehicles",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.invoice_items",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.invoices",
+          "row_count": "273"
+        },
+        {
+          "table_name": "public.job_feed",
+          "row_count": "77"
+        },
+        {
+          "table_name": "public.job_milestones",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.job_permit_cases",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.job_permit_documents",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.job_permit_inspections",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.job_schedule_requests",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.job_selections",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.job_tasks",
+          "row_count": "5"
+        },
+        {
+          "table_name": "public.job_tracking",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.jobs",
+          "row_count": "691"
+        },
+        {
+          "table_name": "public.lead_blocklist",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.leads",
+          "row_count": "926"
+        },
+        {
+          "table_name": "public.legacy_destination_checkout_event_receipts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.legacy_destination_checkout_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.legacy_destination_checkout_session_adoptions",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.login_events",
+          "row_count": "370"
+        },
+        {
+          "table_name": "public.magic_link_tokens",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.marketing_tracking_links",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.marketplace_lead_receipts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.membership_tiers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.memberships",
+          "row_count": "8"
+        },
+        {
+          "table_name": "public.merchandise_fulfillment_attempts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.merchandise_orders",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.merchandise_revenue_ledger",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.message_templates",
+          "row_count": "12"
+        },
+        {
+          "table_name": "public.messaging_compliance_verifications",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_lifecycle_email_evidence",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_lifecycle_notifications",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_managed_registration_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_number_provisioning_attempts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_number_provisioning_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_number_retention",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_number_retention_events",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_number_spend_policies",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_payment_ledger",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_registration_applications",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_registration_events",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_registrations",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.messaging_registry_callbacks",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.messaging_setup_orders",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.messaging_setup_payment_policy",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.milestone_photos",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.neighborhood_halo_campaigns",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.neighborhood_halo_settings",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.office_capabilities",
+          "row_count": "30"
+        },
+        {
+          "table_name": "public.office_invitations",
+          "row_count": "6"
+        },
+        {
+          "table_name": "public.office_member_capabilities",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.payment_plans",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.payment_sms_producer_tasks",
+          "row_count": "201"
+        },
+        {
+          "table_name": "public.payments",
+          "row_count": "282"
+        },
+        {
+          "table_name": "public.permit_authorities",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.permit_authority_coverage",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.permit_code_adoptions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.permit_code_amendments",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.permit_requirement_rules",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.permit_sources",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.platform_incidents",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.privacy_requests",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.product_tour_events",
+          "row_count": "153"
+        },
+        {
+          "table_name": "public.product_tour_progress",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.property_passport_ledger",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.property_passports",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.push_subscriptions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.quick_stop_payment_tasks",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.quick_stop_priority_zones",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.quickbooks_connections",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.rate_limits",
+          "row_count": "267"
+        },
+        {
+          "table_name": "public.recoverable_deletions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.recurring_plans",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.reschedule_offers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.review_invites",
+          "row_count": "58"
+        },
+        {
+          "table_name": "public.risk_reviews",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.route_stops",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.saved_places",
+          "row_count": "8"
+        },
+        {
+          "table_name": "public.scheduled_payments",
+          "row_count": "16"
+        },
+        {
+          "table_name": "public.selection_options",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.selection_reminders",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.selection_templates",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.services",
+          "row_count": "32"
+        },
+        {
+          "table_name": "public.sites",
+          "row_count": "6"
+        },
+        {
+          "table_name": "public.sms_campaign_keyword_preferences",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.sms_compliance_reply_results",
+          "row_count": "22"
+        },
+        {
+          "table_name": "public.sms_consent",
+          "row_count": "19"
+        },
+        {
+          "table_name": "public.sms_consent_evidence",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.sms_consent_scopes",
+          "row_count": "20"
+        },
+        {
+          "table_name": "public.sms_delivery_attempts",
+          "row_count": "542"
+        },
+        {
+          "table_name": "public.sms_delivery_tasks",
+          "row_count": "43"
+        },
+        {
+          "table_name": "public.sms_events",
+          "row_count": "43"
+        },
+        {
+          "table_name": "public.sms_inbound_action_tasks",
+          "row_count": "9"
+        },
+        {
+          "table_name": "public.sms_messages",
+          "row_count": "54"
+        },
+        {
+          "table_name": "public.sms_missed_call_receipts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.sms_operator_review_items",
+          "row_count": "15"
+        },
+        {
+          "table_name": "public.sms_sender_keyword_preferences",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.sms_sender_numbers",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.sms_shared_notice_replies",
+          "row_count": "4"
+        },
+        {
+          "table_name": "public.sms_webhook_receipts",
+          "row_count": "141"
+        },
+        {
+          "table_name": "public.staff",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.staff_role_changes",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.stripe_connected_checkout_expirations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.stripe_merchant_provisioning_operations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.subcontractor_offers",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.subcontractor_requests",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.subcontractor_reviews",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.support_case_notes",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.support_cases",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.tenant_audit_events",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.time_entries",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.usage_credit_lots",
+          "row_count": "58"
+        },
+        {
+          "table_name": "public.usage_reservation_allocations",
+          "row_count": "64"
+        },
+        {
+          "table_name": "public.usage_reservations",
+          "row_count": "63"
+        },
+        {
+          "table_name": "public.voice_call_admissions",
+          "row_count": "20"
+        },
+        {
+          "table_name": "public.voice_call_notes",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.voice_call_workflows",
+          "row_count": "18"
+        },
+        {
+          "table_name": "public.voice_calls",
+          "row_count": "19"
+        },
+        {
+          "table_name": "public.voice_events",
+          "row_count": "16"
+        },
+        {
+          "table_name": "public.voice_forwarding_usage",
+          "row_count": "6"
+        },
+        {
+          "table_name": "public.voice_number_candidate_observations",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.voice_number_identity_cleanup_reservations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.voice_number_inventory",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.voice_number_operation_retry_authorizations",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.voice_number_provisioning_attempts",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.voice_number_provisioning_operations",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.voice_number_purchase_authorizations",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.voice_number_spend_policies",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.voice_provider_terminal_call_tombstones",
+          "row_count": "3"
+        },
+        {
+          "table_name": "public.voice_recording_deletions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.voice_recording_observations",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.voice_settings",
+          "row_count": "11"
+        },
+        {
+          "table_name": "public.voice_staff_step_up_challenges",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.voice_staff_step_up_send_events",
+          "row_count": "2"
+        },
+        {
+          "table_name": "public.voice_tool_actions",
+          "row_count": "5"
+        },
+        {
+          "table_name": "public.waitlist_offers",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.warranties",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.warranty_claims",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.weather_cache",
+          "row_count": "21"
+        },
+        {
+          "table_name": "public.webhook_deliveries",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.webhook_delivery_attempts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.webhook_failures",
+          "row_count": "111"
+        },
+        {
+          "table_name": "public.webhook_subscriptions",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.workspace_entitlements",
+          "row_count": "11"
+        },
+        {
+          "table_name": "public.workspace_overage_accrual_events",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.workspace_overage_accruals",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.workspace_overage_authorizations",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.workspace_overage_event_settlements",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.workspace_overage_settings",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.workspace_overage_settlements",
+          "row_count": "0"
+        },
+        {
+          "table_name": "public.workspace_purchased_capacity",
+          "row_count": "1"
+        },
+        {
+          "table_name": "public.workspace_storage_usage",
+          "row_count": "11"
+        },
+        {
+          "table_name": "storage.buckets",
+          "row_count": "7"
+        },
+        {
+          "table_name": "storage.buckets_analytics",
+          "row_count": "0"
+        },
+        {
+          "table_name": "storage.buckets_vectors",
+          "row_count": "0"
+        },
+        {
+          "table_name": "storage.migrations",
+          "row_count": "68"
+        },
+        {
+          "table_name": "storage.objects",
+          "row_count": "38"
+        },
+        {
+          "table_name": "storage.s3_multipart_uploads",
+          "row_count": "0"
+        },
+        {
+          "table_name": "storage.s3_multipart_uploads_parts",
+          "row_count": "0"
+        },
+        {
+          "table_name": "storage.vector_indexes",
+          "row_count": "0"
+        },
+        {
+          "table_name": "supabase_migrations.schema_migrations",
+          "row_count": "103"
+        },
+        {
+          "table_name": "vault.secrets",
+          "row_count": "1"
+        }
+      ],
+      "sourceDifferences": [
+        {
+          "table_name": "vault.secrets",
+          "row_count": "1"
+        }
+      ],
+      "retainedDestinationException": {
+        "table": "vault.secrets",
+        "sourceRows": 0,
+        "targetRows": 1,
+        "preRestoreTargetRows": 1,
+        "reason": "Retained staging infrastructure secret; SMS cron remains disabled"
+      },
+      "restoredDataTablesMatched": 259
+    }
+  },
+  "taxVaultRows": 0,
+  "passed": true,
+  "scope": "Snapshot parity before functional probes, with declared retained destination infrastructure exception",
+  "managedSchemaLiveComparison": {
+    "productionReadOnly": true,
+    "matched": true,
+    "managedColumnsMd5": "0ddba86be1cb7b91951c9f6e8202694a",
+    "managedConstraintsMd5": "461874e3f2884b12aca3e75178b6d789",
+    "authMigrationsMd5": "e8037dbbb4bed37cb222d875d338247b",
+    "storageMigrationsMd5": "df6e17aef22127c3660f490cf344bd46",
+    "checkedDuring": "2026-09-09 restore verification"
+  },
+  "taxVaultArchiveRows": 0,
+  "taxVaultMatched": true
+}

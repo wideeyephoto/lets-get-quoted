@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-09T11:03:08.049Z",
+  "userIdSha256": "0356383a139cf2653901fd31812ff924cf5f015bfc154c8514cc083e6ee3276e",
+  "existingUserPreserved": true,
+  "existingMembershipsUnchanged": true,
+  "countsBefore": {
+    "users": 12,
+    "accounts": 11,
+    "memberships": 8
+  },
+  "countsAfter": {
+    "users": 12,
+    "accounts": 11,
+    "memberships": 8
+  },
+  "noUserOrAccountManufactured": true,
+  "lastSignInAt": "2026-09-09T11:01:53.943Z",
+  "browserDashboardRendered": true
+}

@@ -1,0 +1,164 @@
+{
+  "recordedAt": "2026-09-09T13:08:33.017Z",
+  "scope": "Offsite backups on existing Free plan; full infrastructure disaster recovery not certified",
+  "productionMigrationEvidence": "dr-production-migration-2026-09-09.json",
+  "pitr": {
+    "enabled": false,
+    "userDecision": "Keep free; complete offsite backups only",
+    "paidUpgradeSubmitted": false
+  },
+  "publication": {
+    "publishedAt": "2026-09-09T13:06:49.878Z",
+    "projectRef": "mfuvvtrkipkigwqqtcal",
+    "snapshot": {
+      "id": "00000025-000197AE-1",
+      "captured_at": "2026-09-09T13:05:16.736Z",
+      "server_version": "17.6",
+      "read_only": "on"
+    },
+    "sourceCapture": "mfuvvtrkipkigwqqtcal-2026-09-09T13-05-15-589Z",
+    "artifact": {
+      "file": "mfuvvtrkipkigwqqtcal-2026-09-09T13-06-46-615Z.tar.aesgcm",
+      "bytes": 175452160,
+      "sha256": "243b8c49b0329efb90a263fbe508ece647c1a8449ec60a0a00033723164bb667",
+      "encryptedSha256": "d7c872ba841e513184791456dbd3a370bc85e8a158b6716f4d287175110ab13f"
+    },
+    "sourceHead": "92d4d190f4d4f08d540f3a145cb3c1638f4f7134",
+    "storageObjects": 38,
+    "storageBytes": 35726922,
+    "encryptedEnvironmentIncluded": true,
+    "recoveryKeyIncluded": false,
+    "mountedReadbackVerified": true,
+    "independentCloudDownloadVerified": false,
+    "retentionDays": 30,
+    "destinationProvider": "Google Drive",
+    "localMount": "G:\\My Drive\\LGQ-Backup\\disaster-recovery"
+  },
+  "fullWorkflow": {
+    "startedAt": "2026-09-09T13:05:15.377Z",
+    "finishedAt": "2026-09-09T13:06:49.954Z",
+    "status": "passed"
+  },
+  "cloud": {
+    "account": "hello@letsgetquoted.com",
+    "parentFolderUrl": "https://drive.google.com/drive/u/2/folders/1U0a0wM5Y-yHS4Cs1MQRn5snxqwTp6n2S",
+    "folder": "LGQ-Backup/disaster-recovery",
+    "webPresenceVerified": true,
+    "sharing": "Private to you",
+    "displayedSize": "167.3 MB",
+    "independentDownloadVerified": false,
+    "reason": "Drive download requested; Chrome reported Cannot download file and This page has been blocked by Chrome. No workaround attempted.",
+    "folderUrl": "https://drive.google.com/drive/u/2/folders/13a59XiGg_YOIvi4z5eIVnbmbAUBt0gis",
+    "webPresenceVerifiedPack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-50-32-079Z.tar.aesgcm",
+    "userAlsoReportedDownloadBlocked": true
+  },
+  "recovery": {
+    "verifiedAt": "2026-09-09T13:04:02.533Z",
+    "pack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-50-32-079Z.tar.aesgcm",
+    "encryptedSha256": "1ffebdf0e2be530d8bdca09ab98af672e69719060b1332984032d6a52c4f4782",
+    "plaintextSha256": "0b49ade59c77b208e42d017ff4f472a3a2e7b0b9adfbcdaea41f98fb6eac89cc",
+    "projectRef": "mfuvvtrkipkigwqqtcal",
+    "sourceSnapshot": {
+      "id": "00000029-000256A0-1",
+      "captured_at": "2026-09-09T12:49:03.458Z",
+      "server_version": "17.6",
+      "read_only": "on"
+    },
+    "allArtifactsAuthenticated": true,
+    "databaseArchiveBytes": 10679604,
+    "databaseArchiveEntries": 4348,
+    "storageObjects": 38,
+    "storageBytes": 35726922,
+    "sourceHead": "92d4d190f4d4f08d540f3a145cb3c1638f4f7134",
+    "sourceAndWorkingChangesAuthenticated": true,
+    "environmentAuthenticated": true,
+    "environmentWrittenInPlaintext": false,
+    "recoveredCaptureDirectory": "C:\\dev\\CLAUDE CODE FOLDER\\tmp\\dr-mounted-recovery-verified",
+    "keyValuePrinted": false
+  },
+  "sourceExport": {
+    "verifiedAt": "2026-09-09T13:03:16.934Z",
+    "allArtifactsAuthenticated": true,
+    "environmentMatchedLocalFiles": true,
+    "temporaryPlaintextExportsRemoved": true
+  },
+  "keyEscrow": {
+    "provider": "Dashlane",
+    "note": "Lets Get Quoted - disaster recovery key",
+    "userConfirmedSaved": true,
+    "independentRetrievalTested": false,
+    "keyIncludedInPack": false,
+    "temporaryPlaintextHandoffNoteRemoved": true
+  },
+  "scheduledTask": {
+    "name": "LGQ Database Offsite Backup",
+    "times": [
+      "08:45",
+      "20:45"
+    ],
+    "timezone": "America/New_York",
+    "logonCatchUp": true,
+    "lastRun": "2026-09-09T08:52:30-04:00",
+    "lastResult": 0,
+    "lastRunWasFreshBackupSkip": true,
+    "manualFullRunPassed": true,
+    "retentionDays": 30,
+    "recoveryPointTargetHours": 12,
+    "requiresPcAndDrive": true
+  },
+  "tests": {
+    "passed": 23,
+    "success": true,
+    "tamperCases": 4,
+    "typecheckPassed": true
+  },
+  "usb": {
+    "previousDatabaseCaptureVerified": true,
+    "storageObjects": 38,
+    "rerunPending": false,
+    "repairedMissingRefs": [
+      [
+        "agent/auth-jwks-rebased",
+        "72643a99c5013191ac472b61a3e4ae54466b0734"
+      ],
+      [
+        "codex/pricing-live-20260828",
+        "1a05513d24e3e56cd508f316f3b991e74e8dbfc8"
+      ],
+      [
+        "agent/signalwire-activation-preflight",
+        "9d92a4ea894982c9d3c77d340004298408dae059"
+      ],
+      [
+        "test/merge-rehearsal",
+        "f85747d730e79b5466f223142895bdddc7497c99"
+      ]
+    ],
+    "repairSource": "Each worktree own latest HEAD reflog; atomic missing-ref creation; files/indexes unchanged",
+    "finalAttempt": {
+      "attempted_at": "2026-09-09T09:07:58.7222967-04:00",
+      "status": "FAILED",
+      "duration_seconds": 389.7,
+      "repositories": 7,
+      "loose_items": 439,
+      "database_verified": true,
+      "storage_objects": 38,
+      "warnings": [],
+      "failures": [
+        "repository lets-get-quoted: git diff failed with exit code 128 in C:\\dev\\pricing-growth-journey"
+      ]
+    },
+    "remainingIssue": {
+      "worktree": "C:/dev/pricing-growth-journey",
+      "missingIndexedBlob": "18479a8f32af5f222ea7cbafa818907803d3fad0",
+      "path": "src/app/dashboard/sites/WebsiteBuilder.tsx",
+      "indexReset": false
+    }
+  },
+  "remaining": [
+    "Independent cloud download authentication",
+    "Independent Dashlane key retrieval rehearsal",
+    "Provider reconciliation, deployment/DNS and full-disaster RTO",
+    "Legacy USB repository backup: missing indexed Git object; database and Storage capture verified"
+  ]
+}

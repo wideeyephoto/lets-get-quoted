@@ -1,0 +1,61 @@
+{
+  "startedAt": "2026-09-09T10:34:48.904Z",
+  "approvedTarget": "uydlabvgauzujdwuqzxq",
+  "sourceProject": "mfuvvtrkipkigwqqtcal",
+  "sourceSnapshot": "2026-09-09T10:17:00.776Z",
+  "approval": "User explicitly approved restoring the production snapshot into staging-db",
+  "attempts": [
+    {
+      "startedAt": "2026-09-09T10:34:49.057Z",
+      "durationMs": 2208,
+      "exitCode": 1,
+      "method": "raw pg_restore --clean",
+      "result": "rolled back",
+      "failure": "Supabase-owned pgrst_drop_watch event trigger cannot be dropped"
+    },
+    {
+      "startedAt": "2026-09-09T10:46:20.012Z",
+      "method": "hosted managed-schema restore",
+      "durationMs": 1479,
+      "exitCode": 3,
+      "result": "rolled back",
+      "failure": "Identity sequence attempted before owning table; corrected drop ordering"
+    },
+    {
+      "startedAt": "2026-09-09T10:47:15.373Z",
+      "method": "hosted managed-schema restore",
+      "durationMs": 334174,
+      "exitCode": 0,
+      "result": "committed"
+    }
+  ],
+  "completed": true,
+  "quarantine": {
+    "smsCronJobId": 1,
+    "active": false,
+    "runningJobs": 0,
+    "httpQueue": 0,
+    "reason": "Prevent restored production data from causing outbound SMS"
+  },
+  "grantRemediation": {
+    "startedAt": "2026-09-09T10:55:37.894Z",
+    "durationMs": 88605,
+    "exitCode": 0,
+    "problem": "Destination default privileges broadened restored object grants",
+    "action": "Quarantined API grants; reset objects to PostgreSQL baseline permissions and replayed 661 archive ACL entries",
+    "verified": "All captured table and function grants match after replay; future restore clears schema defaults before object creation"
+  },
+  "finishedAt": "2026-09-09T11:12:21.584Z",
+  "restoreAndVerificationElapsedMs": 2252680,
+  "fullRecoveryVerified": false,
+  "result": "RESTORED_WITH_APPLICATION_GATE_FAILURE",
+  "failure": "crew_set_job_status writes missing jobs.completed_at; source defect confirmed read-only in production",
+  "fullRtoEstablished": false,
+  "rtoLimitations": [
+    "Capture, credential discovery and tool installation preceded this clock",
+    "The crew completion acceptance check still fails",
+    "External providers, DNS, deployment, independent secrets and offsite recovery not rehearsed"
+  ],
+  "preview": "http://localhost:3014",
+  "productionWrites": false
+}
