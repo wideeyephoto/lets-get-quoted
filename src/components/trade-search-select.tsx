@@ -10,6 +10,8 @@ export type TradeSearchSelectProps = {
   value: string; // Trade slug or ''
   onChange: (slug: string) => void;
   businessName?: string;
+  autoFillFromBusinessName?: boolean;
+  onAutoFillChange?: (autoFilled: boolean) => void;
   initialTrade?: string | null;
   placeholder?: string;
   disabled?: boolean;
@@ -94,14 +96,16 @@ export function resolveTradeAutoSuggest({
   isAutoFilled,
   userTouched,
   hasInitialTrade,
+  autoFillFromBusinessName = true,
 }: {
   businessName: string;
   currentValue: string;
   isAutoFilled: boolean;
   userTouched: boolean;
   hasInitialTrade: boolean;
+  autoFillFromBusinessName?: boolean;
 }): AutoSuggestDecision {
-  if (userTouched || hasInitialTrade) return { action: 'none' };
+  if (!autoFillFromBusinessName || userTouched || hasInitialTrade) return { action: 'none' };
 
   const trimmedName = businessName.trim();
   if (!trimmedName) {
@@ -134,6 +138,8 @@ export default function TradeSearchSelect({
   value,
   onChange,
   businessName = '',
+  autoFillFromBusinessName = true,
+  onAutoFillChange,
   initialTrade,
   placeholder = 'Search your trade (e.g. Plumber, HVAC, Glass)…',
   disabled = false,
@@ -173,7 +179,7 @@ export default function TradeSearchSelect({
 
   // Auto-fill trade guess from businessName (debounced ~250ms)
   useEffect(() => {
-    if (userTouchedRef.current || hadInitialTradeRef.current) return;
+    if (!autoFillFromBusinessName || userTouchedRef.current || hadInitialTradeRef.current) return;
 
     const timer = setTimeout(() => {
       const decision = resolveTradeAutoSuggest({
@@ -182,21 +188,24 @@ export default function TradeSearchSelect({
         isAutoFilled: isAutoFilledRef.current,
         userTouched: userTouchedRef.current,
         hasInitialTrade: hadInitialTradeRef.current,
+        autoFillFromBusinessName,
       });
 
       if (decision.action === 'set') {
         setIsAutoFilled(true);
+        onAutoFillChange?.(true);
         onChange(decision.slug);
         setInputValue(decision.name);
       } else if (decision.action === 'clear') {
         setIsAutoFilled(false);
+        onAutoFillChange?.(false);
         onChange('');
         setInputValue('');
       }
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [businessName, value, onChange]);
+  }, [businessName, value, onChange, autoFillFromBusinessName, onAutoFillChange]);
 
   // Keep inputValue in sync if value changes externally
   useEffect(() => {
@@ -262,6 +271,7 @@ export default function TradeSearchSelect({
   function handleSelect(item: SuggestionItem) {
     userTouchedRef.current = true;
     setIsAutoFilled(false);
+    onAutoFillChange?.(false);
     if (item.type === 'something_else') {
       onChange('');
       setInputValue('Something else');
@@ -276,6 +286,7 @@ export default function TradeSearchSelect({
   function handleInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     userTouchedRef.current = true;
     setIsAutoFilled(false);
+    onAutoFillChange?.(false);
     const next = event.target.value;
     setInputValue(next);
     setIsOpen(true);
@@ -298,21 +309,17 @@ export default function TradeSearchSelect({
       setIsOpen(false);
       setHighlightedIndex(-1);
 
-      // If user typed something but didn't pick from dropdown, try to auto-resolve
-      const trimmed = inputValue.trim();
-      if (!trimmed || trimmed.toLowerCase() === 'something else') {
-        onChange('');
-        return;
-      }
+      // On blur with typed text that isn't empty, if no trade is selected,
+      // attempt to match closest trade
+      if (!selectedTrade && inputValue.trim()) {
+        const trimmed = inputValue.trim();
+        if (trimmed === 'Something else') return;
 
-      if (selectedTrade && trimmed.toLowerCase() === selectedTrade.name.toLowerCase()) {
-        return;
-      }
-
-      const best = findBestTradeMatch(trimmed, 250);
-      if (best) {
-        onChange(best.slug);
-        setInputValue(best.name);
+        const best = findBestTradeMatch(trimmed, 250);
+        if (best) {
+          onChange(best.slug);
+          setInputValue(best.name);
+        }
       }
     }, 180);
   }
@@ -322,6 +329,7 @@ export default function TradeSearchSelect({
     event.stopPropagation();
     userTouchedRef.current = true;
     setIsAutoFilled(false);
+    onAutoFillChange?.(false);
     onChange('');
     setInputValue('');
     setIsOpen(true);
@@ -334,6 +342,7 @@ export default function TradeSearchSelect({
     event.stopPropagation();
     userTouchedRef.current = true;
     setIsAutoFilled(false);
+    onAutoFillChange?.(false);
     onChange('');
     setInputValue('');
     setIsOpen(true);
