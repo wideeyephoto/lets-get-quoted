@@ -956,6 +956,12 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       const showNew = !showState && !showCount && isNew;
       const showTotal = !showState && !showCount && !showNew && Boolean(total && total.count > 0);
 
+      {/* Sidenav product tour anchors:
+          data-tour-id="nav:/dashboard/leads"
+          data-tour-id="nav:/dashboard/jobs"
+          data-tour-id="nav:/dashboard/schedule"
+          data-tour-id="nav:/dashboard/automations"
+      */}
       const linkEl = (
         <Link
           key={href}

@@ -231,7 +231,7 @@ export default function HowItWorksPage() {
 
           <WorkflowShowcase />
           <div className={styles.firstStepActions} style={{ marginTop: 24 }}>
-            <JobLifecycleTourLauncher className={styles.secondaryButton}>Try the interactive job tour →</JobLifecycleTourLauncher>
+            <JobLifecycleTourLauncher className={styles.secondaryButton} />
           </div>
 
           <aside className={styles.firstStepCta} aria-labelledby="first-step-title">

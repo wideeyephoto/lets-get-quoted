@@ -25,7 +25,7 @@ describe('Product Tour Domain Model', () => {
     it('resolves tours by key and version', () => {
       const demo = getTourDefinition('demo-job-lifecycle', 2);
       expect(demo).not.toBeNull();
-      expect(demo?.title).toBe('5-Minute Job Lifecycle Tour');
+      expect(demo?.title).toBe('Platform Overview');
 
       const dashboard = getTourDefinition('dashboard-orientation', 1);
       expect(dashboard).not.toBeNull();

@@ -22,7 +22,7 @@ await context.route('**/api/demo-tour/events', (route) => {
 });
 const dialog = page.getByRole('dialog', { name: 'See the whole job come together.' });
 const tab = (name) => dialog.getByRole('tab', { name: new RegExp(name) });
-const open = () => page.getByRole('button', { name: 'Try the 5-minute tour', exact: true }).first().click();
+const open = () => page.getByRole('button', { name: 'See Platform Overview', exact: true }).first().click();
 const waitOpen = () => dialog.waitFor({ state: 'visible' });
 const waitClosed = () => dialog.waitFor({ state: 'hidden' });
 try {
@@ -66,7 +66,7 @@ try {
   assert.equal(await tab('Approval & Booking').getAttribute('aria-selected'), 'true');
   await page.keyboard.press('Escape');
   await waitClosed();
-  assert.equal(await page.getByRole('button', { name: 'Try the 5-minute tour', exact: true }).first().evaluate((node) => node === document.activeElement), true);
+  assert.equal(await page.getByRole('button', { name: 'See Platform Overview', exact: true }).first().evaluate((node) => node === document.activeElement), true);
   await open();
   await waitOpen();
   await dialog.getByRole('button', { name: 'Restart tour' }).click();
@@ -133,10 +133,10 @@ try {
   await retryContext.route('**/api/demo-tour/events', (route) => route.fulfill({ status: 200, body: '{}' }));
   const retryPage = await retryContext.newPage();
   await retryPage.goto(`${base}/how-it-works`);
-  await retryPage.getByRole('button', { name: 'Try the 5-minute tour', exact: true }).first().waitFor();
+  await retryPage.getByRole('button', { name: 'See Platform Overview', exact: true }).first().waitFor();
   let failChunk = true;
   await retryPage.route('**/_next/static/chunks/**', (route) => failChunk ? route.abort() : route.continue());
-  await retryPage.getByRole('button', { name: 'Try the 5-minute tour', exact: true }).first().click();
+  await retryPage.getByRole('button', { name: 'See Platform Overview', exact: true }).first().click();
   await retryPage.getByRole('button', { name: 'Retry', exact: true }).waitFor();
   failChunk = false;
   await retryPage.getByRole('button', { name: 'Retry', exact: true }).click();

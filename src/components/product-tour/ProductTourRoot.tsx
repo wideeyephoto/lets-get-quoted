@@ -563,7 +563,7 @@ export default function ProductTourRoot({
       setCurrentStepIndex(nextIndex);
       targetElementRef.current = null;
       setTargetRect(null);
-      setPhase('navigating');
+      setPhase(pathname === nextStep?.route ? 'locating-target' : 'navigating');
       anchorStartTimeRef.current = Date.now();
       const result = await advanceTourAction(
         DASHBOARD_ORIENTATION_TOUR.key,
@@ -581,7 +581,7 @@ export default function ProductTourRoot({
         }).catch(() => {});
       }
     }
-  }, [currentStep, currentStepIndex, tourSteps, closeNav]);
+  }, [currentStep, currentStepIndex, tourSteps, closeNav, pathname]);
 
   const handlePrev = useCallback(async () => {
     if (currentStepIndex <= 0) return;
@@ -590,7 +590,7 @@ export default function ProductTourRoot({
     setCurrentStepIndex(prevIndex);
     targetElementRef.current = null;
     setTargetRect(null);
-    setPhase('navigating');
+    setPhase(pathname === prevStep?.route ? 'locating-target' : 'navigating');
     anchorStartTimeRef.current = Date.now();
 
     const result = await advanceTourAction(
@@ -608,7 +608,7 @@ export default function ProductTourRoot({
         metadata: { action: 'handlePrev', error: result.error ?? 'Unknown error' },
       }).catch(() => {});
     }
-  }, [currentStepIndex, tourSteps]);
+  }, [currentStepIndex, tourSteps, pathname]);
 
   const handleClose = useCallback(async () => {
     setPhase('idle');
@@ -638,7 +638,8 @@ export default function ProductTourRoot({
     setCurrentStepIndex(0);
     targetElementRef.current = null;
     setTargetRect(null);
-    setPhase('navigating');
+    const firstStep = tourSteps[0];
+    setPhase(pathname === firstStep?.route ? 'locating-target' : 'navigating');
     anchorStartTimeRef.current = Date.now();
     const result = await startTourAction(DASHBOARD_ORIENTATION_TOUR.key, DASHBOARD_ORIENTATION_TOUR.version);
     if (!result.success) {
@@ -650,14 +651,15 @@ export default function ProductTourRoot({
         metadata: { action: 'startTour', error: result.error ?? 'Unknown error' },
       }).catch(() => {});
     }
-  }, []);
+  }, [tourSteps, pathname]);
 
   const handleRestartTour = useCallback(async () => {
     hasInitializedRef.current = true;
     setCurrentStepIndex(0);
     targetElementRef.current = null;
     setTargetRect(null);
-    setPhase('navigating');
+    const firstStep = tourSteps[0];
+    setPhase(pathname === firstStep?.route ? 'locating-target' : 'navigating');
     anchorStartTimeRef.current = Date.now();
     const result = await restartTourAction(DASHBOARD_ORIENTATION_TOUR.key, DASHBOARD_ORIENTATION_TOUR.version);
     if (!result.success) {
@@ -669,7 +671,7 @@ export default function ProductTourRoot({
         metadata: { action: 'restartTour', error: result.error ?? 'Unknown error' },
       }).catch(() => {});
     }
-  }, []);
+  }, [tourSteps, pathname]);
 
   const handleResumeClick = useCallback(() => {
     if (!currentStep) return;

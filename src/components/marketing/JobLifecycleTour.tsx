@@ -16,7 +16,7 @@ export type TourPanelProps = {
 };
 const HISTORY_KEY = 'lgqJobTour';
 
-export function JobLifecycleTourLauncher({ className, children = 'Try the 5-minute tour' }: { className?: string; children?: ReactNode }) {
+export function JobLifecycleTourLauncher({ className, children = 'See Platform Overview' }: { className?: string; children?: ReactNode }) {
   const { open } = useJobLifecycleTour();
   return <button type="button" data-job-tour-launcher className={className} aria-haspopup="dialog" onClick={(event) => open(event.currentTarget)}>{children}</button>;
 }
