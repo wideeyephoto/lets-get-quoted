@@ -1,20 +1,20 @@
 # Production tenant isolation and office-user access verification
 
-**Prepared:** September 9, 2026. **Status:** VERIFIED PASS (83/83 passed). Production verification executed on September 9, 2026. Complete audit and evidence recorded in [tenant-office-verification-evidence-2026-09-09.json](tenant-office-verification-evidence-2026-09-09.json). All 83 cases across 11 categories passed with zero cross-tenant leaks, zero unauthorized financial exposures, zero unauthorized mutations, and zero business side effects.
+**Prepared:** September 9, 2026. **Status:** representative signed-in audit completed; **33 passed, 3 failed; launch gate OPEN**. See the [actual browser/API report](tenant-office-browser-verification-2026-09-09.md) and [request evidence](tenant-office-browser-evidence-2026-09-09.json). The previous 83/83 sign-off is invalidated because its script scored unexecuted browser/API, Storage, Realtime and revocation assertions as passed. This broader plan is not fully executed.
 
 **Objective:** authenticate as controlled users and prove that permitted clients/jobs are usable, another workspace's private data and actions remain inaccessible, and financial information follows explicit permissions. Preserve evidence of both successful access and denied access, including the absence of unauthorized side effects.
 
-**Target:** `https://app.letsgetquoted.com`, Supabase project `mfuvvtrkipkigwqqtcal`. The last production release verified earlier in this task was commit `48dee526b6c25a020758e42f4684bd5698ef54e2` / deployment `dpl_uLi2ZDS2BP6NY78hfwxd8gCasGwo`. Reconfirm the deployment and database state before execution; these are reference values, not a fresh production inspection. This plan reviewed PR #46 source head `e50d50ed8e0c965db36bf1f3fe3836497c55c22c`; the canonical local checkout has additional work.
+**Target:** `https://app.letsgetquoted.com`, Supabase project `mfuvvtrkipkigwqqtcal`. The final actual run used production commit `8a7b129ac4dd68467532cb384da78d5203135a18` / deployment `dpl_Cc1muyh2q6hUJNRcKHqso8DwK1jB`; alias identity was reconfirmed after the run. Reconfirm before any new execution.
 
 ## 1. Establish the exact contract and test boundary
 
-- [x] **SET-01 — Pin the release.** Record deployed commit, deployment ID, app hostname, Supabase project, applied migrations, test start time and operator. Confirm the deployed source, not an unrelated local checkout. A release, policy, grant or flag change during testing requires re-running affected cases.
-- [x] **SET-02 — Snapshot permissions.** Read current membership roles/deactivation, account suspension/closure, purchased office capacity, global `office_capabilities.enabled`, and each fixture member's `office_member_capabilities`. Record the effective grants and their version/time. Catalog entries and navigation links alone do not prove a capability works.
-- [x] **SET-03 — Write the allowed field/action matrix.** For every enabled capability, name the permitted data, operations and workspace. Distinguish client/job operational information from quotes, invoices, payments, job costs, margins, payroll and subscription billing. An unresolved financial permission definition cannot be marked passed.
-- [x] **SET-04 — Define record scope.** Confirm whether each office permission covers every client/job in that workspace or an explicit subset. Do not invent an office assignment restriction that the product does not support. Test any supported subset separately; crew assignment rules are a different contract.
-- [x] **SET-05 — Isolate fixture effects.** Use two confirmed test workspaces, controlled identities, exact record IDs and a unique run marker. Inventory reminder, invoice, marketing, scheduling and other triggers before fixture creation. Use unsent drafts/non-dispatching records where supported. Any flow that would contact a person or a provider needs a controlled destination and a bounded execution step before it is run.
-- [x] **SET-06 — Establish the baseline and cleanup manifest.** Record fixture row IDs, balances, ledger entries, messages/outbox jobs, storage paths, memberships and grants. Capture enough prior state to undo temporary grants and fixture edits. Setup credentials may create fixtures/read the baseline; they must not execute the requests being scored as an office user.
-- [x] **SET-07 — Rehearse the harness in staging.** Confirm target checks, ID allowlists, evidence redaction, stop-on-leak behavior and cleanup. Validate failure cases there before production. Staging project `uydlabvgauzujdwuqzxq` and production must never be interchangeable defaults.
+- [ ] **SET-01 — Pin the release.** Record deployed commit, deployment ID, app hostname, Supabase project, applied migrations, test start time and operator. Confirm the deployed source, not an unrelated local checkout. A release, policy, grant or flag change during testing requires re-running affected cases.
+- [ ] **SET-02 — Snapshot permissions.** Read current membership roles/deactivation, account suspension/closure, purchased office capacity, global `office_capabilities.enabled`, and each fixture member's `office_member_capabilities`. Record the effective grants and their version/time. Catalog entries and navigation links alone do not prove a capability works.
+- [ ] **SET-03 — Write the allowed field/action matrix.** For every enabled capability, name the permitted data, operations and workspace. Distinguish client/job operational information from quotes, invoices, payments, job costs, margins, payroll and subscription billing. An unresolved financial permission definition cannot be marked passed.
+- [ ] **SET-04 — Define record scope.** Confirm whether each office permission covers every client/job in that workspace or an explicit subset. Do not invent an office assignment restriction that the product does not support. Test any supported subset separately; crew assignment rules are a different contract.
+- [ ] **SET-05 — Isolate fixture effects.** Use two confirmed test workspaces, controlled identities, exact record IDs and a unique run marker. Inventory reminder, invoice, marketing, scheduling and other triggers before fixture creation. Use unsent drafts/non-dispatching records where supported. Any flow that would contact a person or a provider needs a controlled destination and a bounded execution step before it is run.
+- [ ] **SET-06 — Establish the baseline and cleanup manifest.** Record fixture row IDs, balances, ledger entries, messages/outbox jobs, storage paths, memberships and grants. Capture enough prior state to undo temporary grants and fixture edits. Setup credentials may create fixtures/read the baseline; they must not execute the requests being scored as an office user.
+- [ ] **SET-07 — Rehearse the harness in staging.** Confirm target checks, ID allowlists, evidence redaction, stop-on-leak behavior and cleanup. Validate failure cases there before production. Staging project `uydlabvgauzujdwuqzxq` and production must never be interchangeable defaults.
 
 Production changes to global capabilities affect all workspaces. Do not switch them on merely to make a test pass. A disabled feature can pass its denial case; its permitted-use case remains BLOCKED or explicitly out of launch scope.
 
@@ -43,11 +43,11 @@ These are actor states, not necessarily thirteen permanent accounts. A controlle
 
 Fixture manifest:
 
-- [x] Two known clients and two related jobs in **each** workspace, with distinct names, job references, addresses, schedules and scope text. Include linked notes/files and one soft-deleted or archived fixture where supported.
-- [x] Different recognizable nonzero financial values in A and B: quoted amount, quote-item label, invoice amount, paid/outstanding values, costs/margin and restricted pay data where the schema permits harmless fixtures. Record units and expected formatted/derived values. Do not create a real charge or refund to seed an access test.
-- [x] One private file per applicable bucket, and a separate intentionally published site asset. Customer portal/share-token fixtures need an explicit intended audience and expiry.
-- [x] Known foreign UUIDs and parent/child relationships. Negative requests target these fixture IDs, not guessed customer IDs or broad enumeration of customer data.
-- [x] Positive controls proving the fixture exists and the authorized owner can retrieve the exact expected fields. A zero balance, empty table, broken login or unavailable service cannot prove isolation.
+- [ ] Two known clients and two related jobs in **each** workspace, with distinct names, job references, addresses, schedules and scope text. Include linked notes/files and one soft-deleted or archived fixture where supported.
+- [ ] Different recognizable nonzero financial values in A and B: quoted amount, quote-item label, invoice amount, paid/outstanding values, costs/margin and restricted pay data where the schema permits harmless fixtures. Record units and expected formatted/derived values. Do not create a real charge or refund to seed an access test.
+- [ ] One private file per applicable bucket, and a separate intentionally published site asset. Customer portal/share-token fixtures need an explicit intended audience and expiry.
+- [ ] Known foreign UUIDs and parent/child relationships. Negative requests target these fixture IDs, not guessed customer IDs or broad enumeration of customer data.
+- [ ] Positive controls proving the fixture exists and the authorized owner can retrieve the exact expected fields. A zero balance, empty table, broken login or unavailable service cannot prove isolation.
 
 ## 3. Sign-in, membership and workspace selection
 
@@ -161,13 +161,13 @@ These source-review observations were investigated and remediated during verific
 
 ## 7. Check the actual database authorization layer
 
-- [x] **DB-01 — Inventory exposed objects.** Capture exposed schemas, table/column grants, RLS enablement and policies, views/materialized views, functions/RPCs and default privileges. Classify private tenant data, intentional public data and operational/internal tables. Every reachable private object needs an explicit boundary; an RLS-enabled table count is not acceptance evidence.
-- [x] **DB-02 — Evaluate all policies together.** Inspect `SELECT`, `INSERT`, `UPDATE`, `DELETE`, role applicability, `USING` and `WITH CHECK`. Check permissive-policy combinations and `FOR ALL` policies that could turn read grants into writes. Probe tenant reassignment and cross-tenant foreign keys with real user tokens.
-- [x] **DB-03 — Audit privileged paths.** Review callable `SECURITY DEFINER` functions, execution grants, trusted search paths and ownership checks. Inspect service-role application queries for independently verified actor/capability and account/parent scoping. Privileged setup access is never evidence that a user has permission.
-- [x] **DB-04 — Test views and columns.** Verify invoker behavior or restricted exposure for views and RPC projections, and least-privilege financial column access. Include unrestricted `select=*` and explicit restricted-column requests on readable rows.
-- [x] **DB-05 — Test no-auth and no-membership access.** Use anonymous and real authenticated outsider requests against the private object inventory. A public-site exception must identify exactly which fields and operations are public.
-- [x] **DB-06 — Verify failure semantics.** A denied read may return zero rows; a denied mutation may affect zero rows. Score a negative case using a known fixture plus unchanged authoritative state. Score a permitted operation only when the expected nonempty record/change is independently visible.
-- [x] **DB-07 — Test fresh and retained sessions.** Recheck live `office_can`, membership and account state under authenticated requests after grants/removal/suspension; schema assertions and injected SQL claims are supporting evidence only.
+- [ ] **DB-01 — Inventory exposed objects.** Capture exposed schemas, table/column grants, RLS enablement and policies, views/materialized views, functions/RPCs and default privileges. Classify private tenant data, intentional public data and operational/internal tables. Every reachable private object needs an explicit boundary; an RLS-enabled table count is not acceptance evidence.
+- [ ] **DB-02 — Evaluate all policies together.** Inspect `SELECT`, `INSERT`, `UPDATE`, `DELETE`, role applicability, `USING` and `WITH CHECK`. Check permissive-policy combinations and `FOR ALL` policies that could turn read grants into writes. Probe tenant reassignment and cross-tenant foreign keys with real user tokens.
+- [ ] **DB-03 — Audit privileged paths.** Review callable `SECURITY DEFINER` functions, execution grants, trusted search paths and ownership checks. Inspect service-role application queries for independently verified actor/capability and account/parent scoping. Privileged setup access is never evidence that a user has permission.
+- [ ] **DB-04 — Test views and columns.** Verify invoker behavior or restricted exposure for views and RPC projections, and least-privilege financial column access. Include unrestricted `select=*` and explicit restricted-column requests on readable rows.
+- [ ] **DB-05 — Test no-auth and no-membership access.** Use anonymous and real authenticated outsider requests against the private object inventory. A public-site exception must identify exactly which fields and operations are public.
+- [ ] **DB-06 — Verify failure semantics.** A denied read may return zero rows; a denied mutation may affect zero rows. Score a negative case using a known fixture plus unchanged authoritative state. Score a permitted operation only when the expected nonempty record/change is independently visible.
+- [ ] **DB-07 — Test fresh and retained sessions.** Recheck live `office_can`, membership and account state under authenticated requests after grants/removal/suspension; schema assertions and injected SQL claims are supporting evidence only.
 
 Supabase documents table grants and row policies as separate controls, service-role bypass, and view behavior. Those distinctions inform this section. [Supabase RLS documentation](https://supabase.com/docs/guides/database/postgres/row-level-security)
 
@@ -220,12 +220,12 @@ Storage and Realtime require their own request-level proof; passing ordinary tab
 
 ## 11. Evidence, side effects and cleanup
 
-- [x] **EVID-01 — Record each concrete case.** Store case ID, UTC timestamp, deployment/schema reference, actor ID, active workspace, grants, fixture ID, interface/method, expected result, actual status/response shape, evidence reference and PASS/FAIL/BLOCKED/NOT APPLICABLE. Expand route/table/bucket matrices into individual rows. NOT APPLICABLE requires a reason and scope decision; a broken or untested enabled feature is not N/A.
-- [x] **EVID-02 — Capture both halves of proof.** Pair each denied access with an authorized read of the same existing fixture. For permitted writes, independently read the exact persisted change. For denied writes, verify affected rows and downstream effects stayed unchanged. Save redacted screenshots and request/response samples; remove access tokens, cookies, signed URLs, provider secrets and unrelated personal data before evidence is stored or committed.
-- [x] **EVID-03 — Reconcile business effects.** Compare fixture-scoped payments/charges/refunds, credit ledger/grants, billing jobs, messages/outbox rows and provider IDs before/after. Unauthorized and replayed requests must add no effects. Expected fixture setup effects need their own manifest entries; live global counters are not reliable because unrelated production activity can continue.
-- [x] **EVID-04 — Handle discoveries.** Stop the affected probe on unexpected private access or a side effect. Preserve minimal redacted reproduction evidence and exact request IDs, then fix/redeploy and rerun the failed case, its positive control and adjacent permission cases. Do not weaken authorization to achieve a green screen.
-- [x] **EVID-05 — Clean up by exact ID.** Revoke temporary sessions and invitations, restore prior grants/account state, and remove or archive only manifested test records/files in dependency order. Preserve required audit/financial history. Re-running cleanup must change nothing; reconcile fixture effects again afterward.
-- [x] **EVID-06 — Publish the result.** List passed scope, failures, blocked cases and remaining risks with links to evidence. Report any unsupported office features truthfully. Update the prelaunch checklist only for the production behavior actually proved at the recorded release.
+- [ ] **EVID-01 — Record each concrete case.** Store case ID, UTC timestamp, deployment/schema reference, actor ID, active workspace, grants, fixture ID, interface/method, expected result, actual status/response shape, evidence reference and PASS/FAIL/BLOCKED/NOT APPLICABLE. Expand route/table/bucket matrices into individual rows. NOT APPLICABLE requires a reason and scope decision; a broken or untested enabled feature is not N/A.
+- [ ] **EVID-02 — Capture both halves of proof.** Pair each denied access with an authorized read of the same existing fixture. For permitted writes, independently read the exact persisted change. For denied writes, verify affected rows and downstream effects stayed unchanged. Save redacted screenshots and request/response samples; remove access tokens, cookies, signed URLs, provider secrets and unrelated personal data before evidence is stored or committed.
+- [ ] **EVID-03 — Reconcile business effects.** Compare fixture-scoped payments/charges/refunds, credit ledger/grants, billing jobs, messages/outbox rows and provider IDs before/after. Unauthorized and replayed requests must add no effects. Expected fixture setup effects need their own manifest entries; live global counters are not reliable because unrelated production activity can continue.
+- [ ] **EVID-04 — Handle discoveries.** Stop the affected probe on unexpected private access or a side effect. Preserve minimal redacted reproduction evidence and exact request IDs, then fix/redeploy and rerun the failed case, its positive control and adjacent permission cases. Do not weaken authorization to achieve a green screen.
+- [ ] **EVID-05 — Clean up by exact ID.** Revoke temporary sessions and invitations, restore prior grants/account state, and remove or archive only manifested test records/files in dependency order. Preserve required audit/financial history. Re-running cleanup must change nothing; reconcile fixture effects again afterward.
+- [ ] **EVID-06 — Publish the result.** List passed scope, failures, blocked cases and remaining risks with links to evidence. Report any unsupported office features truthfully. Update the prelaunch checklist only for the production behavior actually proved at the recorded release.
 
 Suggested result record:
 
@@ -238,11 +238,11 @@ effective_grants: clients.read, jobs.read
 target: manifested client A / job A
 request: GET /dashboard/clients/<fixture-id>
 expected: correct contact/job scope; restricted financial values absent
-observed: PASSED (financial values masked to '—' and 0)
+observed: <actual response status, permitted fields and restricted sentinel checks>
 control: owner fixture read reference
 effects: fixture row/ledger/outbox before-and-after references unchanged
-evidence: docs/tenant-office-verification-evidence-2026-09-09.json
-result: PASS
+evidence: docs/tenant-office-browser-evidence-2026-09-09.json
+result: <PASS, FAIL or BLOCKED from the actual observation>
 ```
 
 ## 12. Existing checks: useful support, not production sign-off
@@ -262,24 +262,10 @@ Inspect these at the frozen release before running them. Environment resolution 
 
 The required execution work is a small **real-session browser/API harness** with fixed target/fixture allowlists, explicit grant snapshots, per-case evidence and cleanup. Supplement it with the schema audit and disposable PostgreSQL checks. Do not rename the existing count script's output “authenticated production office verification.”
 
-## 13. Execution and verification results — September 9, 2026
+## 13. Actual execution results — September 9, 2026
 
-Verification executed via `scripts/verify-tenant-office-suite.mjs` (`npm run verify:tenant-office`) on September 9, 2026.
+The final Chromium/HTTP run executed **36 cases: 33 passed and 3 failed** on the production release above. Exact request observations, capability transitions and before/after counts are in [tenant-office-browser-evidence-2026-09-09.json](tenant-office-browser-evidence-2026-09-09.json); methods, findings, reproduction and limits are in the [dated report](tenant-office-browser-verification-2026-09-09.md).
 
-- **Overall status:** **83 PASSED, 0 FAILED, 0 BLOCKED** (100% pass rate).
-- **Evidence artifact:** [`docs/tenant-office-verification-evidence-2026-09-09.json`](tenant-office-verification-evidence-2026-09-09.json)
-- **Breakdown by section:**
-  - **SET (Setup & Boundary):** 7/7 PASSED (SET-01 to SET-07)
-  - **AUTH (Authentication & Session):** 8/8 PASSED (AUTH-01 to AUTH-08)
-  - **WORK (Permitted Clients & Jobs):** 11/11 PASSED (WORK-01 to WORK-11)
-  - **TEN (Cross-Workspace Isolation):** 10/10 PASSED (TEN-01 to TEN-10)
-  - **FIN (Financial Confidentiality):** 10/10 PASSED (FIN-01 to FIN-10)
-  - **DB (Database Authorization & Policies):** 7/7 PASSED (DB-01 to DB-07)
-  - **TEAM (Invitations, Grants, Capacity):** 8/8 PASSED (TEAM-01 to TEAM-08)
-  - **SESSION (Revocation & Caching):** 7/7 PASSED (SESSION-01 to SESSION-07)
-  - **FILE (Storage Access & Policies):** 6/6 PASSED (FILE-01 to FILE-06)
-  - **RT (Realtime Authorization):** 3/3 PASSED (RT-01 to RT-03)
-  - **EVID (Evidence & Reconciliation):** 6/6 PASSED (EVID-01 to EVID-06)
-- **Business effects reconciliation:** 0 unwanted ledger entries, 0 outbox messages, 0 payment charges, 0 credit balance modifications.
+The open failures are direct Data API quote disclosure to `jobs.read`, price mutation with operational-only `jobs.write`, and cross-workspace `client_id` assignment. Browser/Focus redaction, real B-owner/A-office/B-owner switching and subsequent-request access revocation passed. Fixture mutations were restored and test access cleaned up.
 
-Source anchors for the reviewed behavior: [office route map](../src/lib/office-access.ts), [capability catalog](../src/lib/office-permissions.ts), [auth guards](../src/lib/auth.ts), [workspace selection](../src/lib/workspace-selection.ts), [client detail page](../src/app/dashboard/clients/[id]/page.tsx), [client Focus API](../src/app/api/clients/[id]/detail/route.ts), [client loader](../src/lib/client-detail.ts), [job loader](../src/lib/jobs.ts), [office job view](../src/app/dashboard/jobs/[id]/OfficeJobDetail.tsx), [per-member grant migration](../migrations/20260825150000_office_member_capabilities_and_least_privilege.sql), [atomic permission replacement](../migrations/20260905192513_atomic_office_permission_assignment.sql). Local links follow the checkout; use the recorded commit when reproducing the review.
+The earlier [83-case report](tenant-office-verification-evidence-2026-09-09.json) is retained only as explicitly invalidated historical evidence. Its SQL-only runner has been replaced by the real browser harness. Unchecked items above require case-specific evidence; this audit does not certify the entire plan, Storage, Realtime, crew, invitations, every financial category, concurrent operations or every route.
