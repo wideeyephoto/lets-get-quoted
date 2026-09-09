@@ -66,7 +66,7 @@ export async function getEmailSendingDomainAction(): Promise<{
   return {
     domain: (data as EmailSendingDomainRow) ?? null,
     isConfigured: await isSendingDomainProvisioningConfigured(),
-    isEnabled: isEmailSendingDomainsFeatureEnabled() && (isEligible || hasExisting),
+    isEnabled: isEligible || hasExisting,
     isEnrollmentAllowed: isEligible,
   };
 }
@@ -105,7 +105,7 @@ export async function createEmailSendingDomainAction(input: {
   // v1 allows at most one sending domain per workspace.
   const { data: existingDomains, error: countErr } = await admin
     .from('email_sending_domains')
-    .select('id, domain, status, failure_reason, verified_at')
+    .select('id, domain, status, failure_reason, verified_at, provider_domain_id')
     .eq('account_id', accountId);
 
   if (countErr) throw countErr;
@@ -146,7 +146,7 @@ export async function createEmailSendingDomainAction(input: {
   // Create or retrieve domain from provider
   let providerRes: SendingDomainResponse;
   try {
-    providerRes = await createSendingDomain(domain);
+    providerRes = await createSendingDomain(domain, matchingDomain?.provider_domain_id);
   } catch (err: unknown) {
     const rawError =
       err instanceof ResendApiError
@@ -379,23 +379,32 @@ export async function deleteEmailSendingDomainAction(
   }
 
   let providerDeleted = true;
+  // Disable before provider deletion. Retain a retry marker until both the
+  // provider and database deletes succeed, so failures cannot leave live From.
+  const disableQuery = admin
+    .from('email_sending_domains')
+    .update({
+      status: 'disabled',
+      failure_reason: 'CLEANUP_PENDING: Disconnect requested.',
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', domainId)
+    .eq('account_id', accountId)
+    .eq('status', existing.status);
+  // A cleanup retry can race a new administrative hold without changing status.
+  const { data: disabled, error: disableErr } = await (existing.failure_reason == null
+    ? disableQuery.is('failure_reason', null)
+    : disableQuery.eq('failure_reason', existing.failure_reason))
+    .select('id')
+    .maybeSingle();
+  if (disableErr) throw new Error('Could not disable the domain. Try disconnecting again.');
+  if (!disabled) throw new Error('Domain changed while disconnecting. Refresh and try again.');
+
   if (existing.provider_domain_id) {
     providerDeleted = await deleteSendingDomain(existing.provider_domain_id);
   }
 
   if (!providerDeleted) {
-    // C08: If provider delete failed, mark disabled with CLEANUP_PENDING so reconciler can retry
-    await admin
-      .from('email_sending_domains')
-      .update({
-        status: 'disabled',
-        failure_reason: 'CLEANUP_PENDING: Provider delete request failed. Retry pending.',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', domainId)
-      .eq('account_id', accountId)
-      .neq('status', 'disabled');
-
     revalidatePath('/dashboard/settings');
     throw new Error('Could not delete domain from provider. Domain was disabled instead.');
   }
@@ -404,7 +413,9 @@ export async function deleteEmailSendingDomainAction(
     .from('email_sending_domains')
     .delete()
     .eq('id', domainId)
-    .eq('account_id', accountId);
+    .eq('account_id', accountId)
+    .eq('status', 'disabled')
+    .ilike('failure_reason', 'CLEANUP_PENDING:%');
 
   if (deleteErr) throw deleteErr;
 

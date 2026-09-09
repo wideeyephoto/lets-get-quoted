@@ -1,6 +1,18 @@
 # Contractor email domain sending: go-live task list
 
-Prepared September 9, 2026. Status: **not ready for general release; rehearsal and a controlled canary remain to be completed.**
+Prepared September 9, 2026. Status: **Gmail authentication/reply and transport-fallback rehearsal passed; deployed product rehearsal and a controlled canary remain open.**
+
+## September 9 verification update
+
+The [dated verification report](contractor-domains-verification-2026-09-09.md) records real provider, DNS, Gmail, production cron, TLS, and provider-cleanup observations. These replace the stale "no live send" and "watcher undeployed" assumptions. The actual quote-send function delivered from `blackholeart.com` with Gmail SPF/DKIM/DMARC PASS; Reply-To selected the approved Gmail inbox, and a self-reply was sent. A real rejected custom-domain send recovered once through the platform sender. This used an isolated staging fixture, not LGQ UI onboarding. The fixture was removed; production still has zero sending domains. The verified Resend domain is reserved for Brett's rehearsal and remains outside the production tenant inventory.
+
+- [x] Owned rehearsal DNS verified and Gmail delivery/authentication evidence retained.
+- [x] Gmail Reply-To selection and self-reply exercised; real provider-rejection fallback delivered.
+- [x] Production website TLS, watcher scheduling, and disposable provider-binding cleanup observed with the report's explicit scope limits.
+- [ ] Deploy the recovery patch and complete D–H through the app, including Outlook/separate-mailbox evidence and remaining failure drills.
+- [ ] Activate one approved production workspace and complete the seven-run canary before expansion.
+
+The initial observations below are historical. Resend now also contains the reserved `blackholeart.com` resource (two known occupied slots including the platform domain). Workspace allowlist code exists; the production flag and allowlist remain absent. This task did not revalidate or close the separate credential-recovery work in B08.
 
 Scope: LGQ sends contractor quotes, invoices, and supported job emails from a verified contractor domain. Replies go to the contractor's existing mailbox. This release does not provision inboxes, ingest incoming mail, or configure website domains. Successful authentication is required; universal inbox placement is not a promise we can make.
 
@@ -110,15 +122,15 @@ Owner: Engineering. Acceptance requires tests on the final candidate, with fixes
 
 - [x] **C01 — Add server-side workspace rollout control.** Gated settings visibility, UI section, and domain activation/connect actions by authenticated workspace ID plus global feature flag via `isWorkspaceEligibleForSendingDomains()`. Fails closed in production if allowlist unset/empty. Allowlist supports comma-separated list or `*`. Existing tenant domains remain viewable and manageable even if new enrollments are paused. Covered by unit tests in `test/email-sending-domains-controls.test.ts`.
 - [x] **C02 — Enforce authorization and immutable ownership.** Verified create, read, verify, disconnect enforce tenant session and owning `account_id`. RLS policies protect database records across tenants. Case-normalized duplicate domains refused across tenants (`lower(domain)`). Verified in `scripts/verify-email-sending-domains.mjs` (PG17: all 15 checks pass).
-- [x] **C03 — Audit reserved and previously verified domains.** `createEmailSendingDomainAction` enforces rejection of reserved/platform domains and does not inherit pre-verified status from orphan provider records without tenant verification proof; newly attached domains initialize to `pending`.
+- [x] **C03 — Audit reserved and previously verified domains.** Reserved/platform domains are refused. The September 9 patch removes name-only provider adoption: only an existing same-workspace provider ID with a matching domain can be reused. An unowned duplicate fails closed for operator resolution; setting a newly attached orphan to pending alone was insufficient because reconciliation could later verify it. Binding tests cover these cases.
 - [x] **C04 — Make administrative suspension durable.** `verifyEmailSendingDomainAction` and `reconcileSendingDomains` enforce `.neq('status', 'disabled')` so in-flight manual verification or scheduled reconciliation cannot overwrite an administrative hold. Added distinction between administrative hold (failure reason containing `administrative`) and retryable cleanup failure (`CLEANUP_PENDING`).
-- [x] **C05 — Bound domain creation and handle exhaustion.** Limit enforced to 1 custom domain per workspace in `createEmailSendingDomainAction`. Provider 422 quota errors caught and mapped to user-friendly quota exhaustion message. Covered by `test/email-sending-domains-controls.test.ts`.
+- [ ] **C05 — Bound domain creation and handle exhaustion.** Sequential one-domain preflight and quota messaging are tested. The database's one-verified-domain constraint does not atomically bound simultaneous pending attempts for different domains. Add atomic reservation/uniqueness and a concurrent-creation acceptance test before treating this requirement as complete.
 - [x] **C06 — Verify state transitions and send behavior.** Comprehensive mapping of provider statuses (`not_started`, `pending`, `verified`, `failed`, `temporary_failure`). Request timeouts and errors handled without state corruption. Sender selection restricted to `status = 'verified'`.
-- [x] **C07 — Handle the gap before reconciliation.** Resend send path safely falls back to platform sender with contractor `Reply-To` on unauthenticated/unverified custom domains without losing or duplicating messages.
-- [x] **C08 — Make removal and replacement recoverable.** Disconnect action stops custom sending and deletes provider domain. On provider failure, row transitions to `status = 'disabled'` with `CLEANUP_PENDING` failure reason. Reconciler sweep automatically retries and cleans up `CLEANUP_PENDING` provider resources.
+- [x] **C07 — Handle the gap before reconciliation.** The September 9 shared send wrapper retries exactly once only for Resend's definitive `validation_error` naming the actual custom From domain as unverified. Reply-To/content/options are preserved. It does not retry accepted sends, generic 403s, quota failures, timeouts, or unknown outcomes. Ten transport tests and a real provider rejection followed by Gmail fallback receipt pass. This is not a guarantee against every lost/duplicate message or an abuse-hold mechanism.
+- [x] **C08 — Make removal and replacement recoverable.** The September 9 patch disables sending and stores `CLEANUP_PENDING` before provider deletion, retaining it on provider/DB failure. A concurrent administrative hold prevents a cleanup retry from overwriting it. The reconciler counts provider/DB/read failures as errors and only counts actual removed rows as cleanup success. Local fault tests pass; live injected cleanup/recovery remains in F09.
 - [x] **C09 — Cover all intended email paths.** All contractor quote, invoice, and job notification email templates route via `email-brand.ts` respecting verified custom domain or fallback platform identity with contractor Reply-To. System/security/platform notifications strictly use platform identity.
-- [x] **C10 — Fix scale boundaries before exceeding them [scale].** Domain reconciler updated with exact backlog count calculation via PostgREST count header. Pagination boundary handling prepared for multi-page provider inventory.
-- [x] **C11 — Run the release checks.** Executed full test suite: `npm run lint` (clean, 0 errors), `npm run typecheck` (clean, 0 errors), `npm run test:pg17:email-sending-domains` (15/15 passed), `npx vitest run test/email-sending-domains*.test.ts test/env-example-covers-what-the-code-reads.test.ts` (47/47 passed), and Next.js production build verification completed.
+- [ ] **C10 — Fix scale boundaries before exceeding them [scale].** Exact database backlog counting exists, but provider inventory still reads one page. Implement and test pagination before the shared inventory exceeds one page; reserve provider/test capacity and respect the reconciler's batch/cadence limits meanwhile.
+- [ ] **C11 — Run the release checks.** Current audit: 214 tests in 16 relevant suites passed, followed by an affected-suite rerun including the new administrative-hold race regression; test-project TypeScript, targeted lint, and all 15 PG17 checks pass. The earlier 47-test/build report is historical. A fresh build and final deployed candidate verification remain required.
 
 ## D. Rehearse connect → DNS → verified through the product
 
@@ -234,10 +246,10 @@ For each task, retain: task ID, named owner, execution UTC time, environment, co
 | --- | --- | --- |
 | A: decisions | Named owners, canary, recipients, eligibility, suspension policy | Pending |
 | B: environment and quota | Deployment matrix, DB/provider mapping, key-scope proof, capacity worksheet | Pending |
-| C: engineering | Changes/review, ownership and suspension race tests, send-path inventory, check exit statuses | Pass (2026-09-09): C01–C11 complete; all 15 PG17 checks pass, 47 Vitest tests pass (including controls & env coverage), zero lint/typecheck errors, production build verified |
-| D: connect/DNS | UI records, actual DNS answers, provider binding and verified DB state | Pending |
-| E: received messages | Gmail and Outlook originals, auth results, reply/alias receipt, template coverage | Pending |
-| F: failure matrix | Before/after states and evidence for F01–F11; real versus injected clearly labeled | Pending |
+| C: engineering | Changes/review, ownership and suspension race tests, send-path inventory, check exit statuses | September 9 recovery patch and targeted checks pass; C05, C10 and final C11 remain open. See dated report |
+| D: connect/DNS | UI records, actual DNS answers, provider binding and verified DB state | Provider UI/DNS verified; product onboarding remains open |
+| E: received messages | Gmail and Outlook originals, auth results, reply/alias receipt, template coverage | Gmail quote auth PASS and self-reply observed; Outlook, separate-mailbox/alias and remaining templates open |
+| F: failure matrix | Before/after states and evidence for F01–F11; real versus injected clearly labeled | Real rejected-domain transport fallback received; local recovery fault tests pass; full live matrix open |
 | G/H: operations | Alert receipt, responder, quota/cleanup ownership, successful rollback/hold drill | Pending |
 | I: canary | Seven scheduled runs with real volume, incident log, contractor and release sign-off | Pending |
 | J: GA | Entitlement, purchased capacity, support article, cohort and deployment, post-release checks | Pending |

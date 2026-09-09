@@ -5,6 +5,7 @@ const dbRows: Record<string, unknown[]> = {
 };
 
 let currentAccountId = 'test-workspace-1';
+let beforeUpdate: (() => void) | undefined;
 
 const requireOfficeContextMock = vi.fn().mockImplementation(async () => ({
   accountId: currentAccountId,
@@ -37,7 +38,7 @@ vi.mock('@/lib/auth', () => ({
           });
 
           if (op === 'select') {
-            return { data: filtered, error: null };
+            return { data: filtered.map((row) => ({ ...row })), error: null };
           }
           if (op === 'insert') {
             const newRow = { id: `row-${Date.now()}`, ...patchData };
@@ -70,6 +71,8 @@ vi.mock('@/lib/auth', () => ({
             return builder;
           },
           update(payload: Record<string, unknown>) {
+            beforeUpdate?.();
+            beforeUpdate = undefined;
             op = 'update';
             patchData = payload;
             return builder;
@@ -84,6 +87,10 @@ vi.mock('@/lib/auth', () => ({
           },
           neq(col: string, val: unknown) {
             neqFilters[col] = val;
+            return builder;
+          },
+          is(col: string, val: unknown) {
+            filters[col] = val;
             return builder;
           },
           ilike() {
@@ -120,6 +127,7 @@ describe('Contractor Email Sending Domains - Release Controls & Guards', () => {
   beforeEach(() => {
     dbRows.email_sending_domains = [];
     currentAccountId = 'test-workspace-1';
+    beforeUpdate = undefined;
     vi.clearAllMocks();
     process.env = { ...originalEnv };
     process.env.RESEND_API_KEY = 're_test_key_123';
@@ -194,8 +202,8 @@ describe('Contractor Email Sending Domains - Release Controls & Guards', () => {
       expect(dbRows.email_sending_domains).toHaveLength(0);
     });
 
-    it('getEmailSendingDomainAction preserves view and manage access for existing tenant domain even when enrollment is paused', async () => {
-      process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED = 'true';
+    it.each(['true', 'false'])('keeps existing domains manageable with global flag %s and enrollment paused', async (enabled) => {
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED = enabled;
       (process.env as any).NODE_ENV = 'production';
       process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST = 'ws-other'; // currentAccountId not in allowlist
 
@@ -242,6 +250,37 @@ describe('Contractor Email Sending Domains - Release Controls & Guards', () => {
   });
 
   describe('C04: Durable Administrative Suspension', () => {
+    it('preserves an administrative hold applied during a cleanup retry', async () => {
+      const row = {
+        id: 'racing-cleanup', account_id: currentAccountId, domain: 'held.example',
+        provider_domain_id: 'rsd_held', status: 'disabled', failure_reason: 'CLEANUP_PENDING: retry',
+      };
+      dbRows.email_sending_domains.push(row);
+      beforeUpdate = () => { row.failure_reason = 'Administrative hold: review'; };
+      const { deleteEmailSendingDomainAction } = await import('@/app/dashboard/settings/email-domain-actions');
+      await expect(deleteEmailSendingDomainAction(row.id)).rejects.toThrow(/changed while disconnecting/);
+      expect(row.failure_reason).toBe('Administrative hold: review');
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+      expect(dbRows.email_sending_domains).toEqual([row]);
+    });
+
+    it('disables custom sending before provider deletion and retains recovery state on provider failure', async () => {
+      const row = {
+        id: 'disconnect-row', account_id: currentAccountId, domain: 'disconnect.example',
+        provider_domain_id: 'rsd_disconnect', status: 'verified', failure_reason: null,
+      };
+      dbRows.email_sending_domains.push(row);
+      globalThis.fetch = vi.fn(async () => {
+        expect(row.status).toBe('disabled');
+        expect(row.failure_reason).toMatch(/^CLEANUP_PENDING:/);
+        return new Response('{}', { status: 503 });
+      });
+      const { deleteEmailSendingDomainAction } = await import('@/app/dashboard/settings/email-domain-actions');
+      await expect(deleteEmailSendingDomainAction(row.id)).rejects.toThrow(/disabled instead/);
+      expect(dbRows.email_sending_domains).toEqual([row]);
+      expect(row.status).toBe('disabled');
+    });
+
     it('verifyEmailSendingDomainAction refuses to verify a domain in disabled status', async () => {
       currentAccountId = 'ws-disabled';
       dbRows.email_sending_domains.push({

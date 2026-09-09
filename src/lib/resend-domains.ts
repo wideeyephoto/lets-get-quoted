@@ -271,44 +271,28 @@ export async function listSendingDomains(): Promise<Array<{ id: string; name: st
     .map((d) => ({ id: d.id, name: d.name.trim().toLowerCase() }));
 }
 
-async function findExistingDomain(domain: string): Promise<string | null> {
-  const target = domain.trim().toLowerCase();
-  try {
-    const listRes = await resendRequest<{ data?: Array<{ id: string; name: string }> }>('/domains', 'GET');
-    const existing = listRes?.data?.find((d) => d.name.trim().toLowerCase() === target);
-    return existing?.id ?? null;
-  } catch {
-    return null;
-  }
-}
-
 /**
- * Idempotently create a domain at Resend.
- * Inspects existing domains first, and on error checks again to avoid duplicates on retries.
+ * Reuse only the binding already owned by this workspace. Finding a name in
+ * the shared provider inventory does not prove tenant ownership: otherwise an
+ * orphan's existing DKIM could verify a new tenant on the next cron run.
  */
-export async function createSendingDomain(domain: string): Promise<SendingDomainResponse> {
+export async function createSendingDomain(domain: string, ownedProviderId?: string | null): Promise<SendingDomainResponse> {
   const cleanDomain = domain.trim().toLowerCase();
-  const existingId = await findExistingDomain(cleanDomain);
-  if (existingId) {
-    const existing = await getSendingDomain(existingId);
-    if (existing) return existing;
+  if (ownedProviderId) {
+    const existing = await getSendingDomain(ownedProviderId);
+    if (existing) {
+      if (existing.name.trim().toLowerCase() !== cleanDomain) {
+        throw new Error('The saved provider binding belongs to a different domain.');
+      }
+      return existing;
+    }
   }
 
-  try {
-    const created = await resendRequest<ResendApiDomain>('/domains', 'POST', { name: cleanDomain });
-    if (!created?.id) {
-      throw new Error('Resend did not return a domain ID upon creation.');
-    }
-    return mapDomainResponse(created);
-  } catch (error) {
-    // Retry check for race condition
-    const racedId = await findExistingDomain(cleanDomain);
-    if (racedId) {
-      const raced = await getSendingDomain(racedId);
-      if (raced) return raced;
-    }
-    throw error;
+  const created = await resendRequest<ResendApiDomain>('/domains', 'POST', { name: cleanDomain });
+  if (!created?.id) {
+    throw new Error('Resend did not return a domain ID upon creation.');
   }
+  return mapDomainResponse(created);
 }
 
 export async function getSendingDomain(id: string): Promise<SendingDomainResponse | null> {
