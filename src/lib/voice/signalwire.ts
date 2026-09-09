@@ -271,7 +271,17 @@ export const signalwireVoiceProvider: VoiceProvider = {
       // The deterministic disclosure must finish before recording begins. The
       // AI instruction that follows cannot substitute for audio the caller has
       // actually heard.
-      mainSection.push({ play: { url: `say: ${spokenGreeting}` } });
+      mainSection.push({
+        play: {
+          urls: [
+            new URL('/audio/dispatch-connected-v1.wav', plan.receiptUrl).toString(),
+            `say: ${spokenGreeting}`,
+          ],
+          // Pin the opening voice separately from the accepted conversational
+          // profile. An engine-qualified voice avoids a provider-default switch.
+          say_voice: 'rime.luna:coda',
+        },
+      });
       if (recordCall) {
         mainSection.push({
           record_call: {
@@ -640,7 +650,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
 
         swaigFunctions.push({
           function: 'append_job_caution_or_note',
-          purpose: 'Add an internal note, safety warning, gate code, pet caution, or special request to a job or client record.',
+          purpose: 'Save an internal note, safety warning, gate code, pet caution, or special request to a job or client record. When the caller explicitly asks to add a note and the job and text are clear, save it without an extra confirmation. Do not call this function merely to draft, preview, or read back text. Repeat an unsaved draft from the conversation and label it unsaved; read confirmed Saved text from an earlier result without writing again.',
           argument: {
             type: 'object',
             properties: {
@@ -845,7 +855,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
             hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can
             // still retain originals, so the receipt boundary redacts again.
-            redact_prompt: 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
+            redact_prompt: plan.contractorMode
+              ? 'Sensitive content is actual secret values: six-digit authentication codes, one-time passwords, OTPs, verification codes, and PINs. Mark only those values when present, including secrets within a note. Preserve the remaining words and their meaning. Ordinary job references and business details are not credentials merely because they contain digits. Do not insert category names, explanations, new requests or words the caller did not say.'
+              : 'Redact six-digit voice authorization codes, one-time passwords, OTPs, verification codes, and PINs.',
           },
           prompt: {
             text: plan.systemPrompt || ('You are an AI receptionist for a home-service contractor. '

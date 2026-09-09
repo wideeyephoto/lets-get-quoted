@@ -522,7 +522,7 @@ describe('when the receptionist is meant to pick up', () => {
     });
     const result = await planInboundCall(admin, call, options);
     if (result.plan.kind !== 'ai_agent') throw new Error('expected the agent');
-    expect(result.plan.greeting).toContain('You are speaking with an AI assistant.');
+    expect(result.plan.greeting).toContain("Hi, I'm your AI assistant.");
     expect(result.plan.greeting).toContain('Rivera Plumbing, how can I help?');
     // The configured hand-off wins over the general forwarding number.
     expect(result.plan.transferTo).toBe('+15550001111');
