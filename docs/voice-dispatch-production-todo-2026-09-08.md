@@ -1,5 +1,19 @@
 # Voice and dispatch production TODO — September 8, 2026
 
+## Latest acceptance update — September 9, 2026
+
+The [September 9 acceptance record](voice-acceptance-2026-09-09.md) supersedes
+older release-pending and handset observations below. The full staff session
+saved one note once and settled cleanly, but failed “dollars” pronunciation and
+post-speech delay acceptance. A short interactive test with the same speech
+settings and a written-out amount passed; the candidate still needs release and
+a full Dispatch retest. The earlier recipient-first transfer and provider phase
+deadline checks are accepted within their documented scope. New unanswered
+probes reached `noAnswer` and the recording branch but did not prove voiced
+voicemail recovery or active recording termination at the cap. Those gates,
+actual provider fallback and live homeowner/on-call behavior remain open.
+Provider-period reconciliation remains open; exhaustion blocking stays OFF.
+
 This checklist consolidates the September 8 reassessment. It is an execution plan, not a production sign-off. Refresh deployment and task status before starting each change: other SignalWire work is active.
 
 An unchecked item is still open even when its implementation exists. Close it with dated evidence and the deployment tested. Label evidence as local, hosted fixture, or live provider/handset; one does not automatically substitute for another.
@@ -255,7 +269,7 @@ Metering has live evidence. The approved launch uses measurement mode with absor
 ## P1 — Complete fallback, callback, and recovery acceptance
 
 - [x] Verify audio in both directions through a live answered transfer. The September 8 controlled caller plus native echo passed on the owner's single mobile. This is audio-path evidence, not a ten-minute boundary test.
-- [ ] Verify an answered transfer ends the remaining caller leg without an unavailable prompt or voicemail. The first live echo test exposed the unconditional fallback defect; the fix and targeted retest are tracked separately.
+- [x] Verify an answered transfer ends the remaining caller leg without an unavailable prompt or voicemail. The later September 8 recipient-first handset retest ended the remaining leg after 121 ms with no voicemail; pickup speech and two-way audio also passed. See the September 9 evidence reconciliation.
 
 - [ ] Recheck the actual production number and agent configuration: voice entrypoint, post-call receipt, status/recording callbacks, methods, and stable URLs.
 - [x] Prove a retry of the same call does not hit the concurrency fallback; prove a genuinely separate call follows the configured concurrency policy. Current PostgreSQL admission/finalization functions passed concurrent session checks at capacity one; finalized retries return the existing admission and distinct calls receive at_capacity.
@@ -304,7 +318,7 @@ Use the September 8 extended-session update in `docs/sms-ready-roadmap-2026-09-0
 - [x] Establish a baseline for failed/deferred receipts, oldest pending age, attempt counts, overdue active calls, stale reservations, notification failures, and SMS delivery/reconciliation exceptions.
 - [ ] Make actionable failures visible to the operator with a call/receipt reference, failure stage, retry state, and supported recovery action. Avoid PII in logs.
 - [x] Add or verify alerts for stranded receipts, calls exceeding the hard maximum, reservations that outlive completed calls, and unexpected unmetered AI calls while the meter is enabled. PR #40 and its applied migration cover these conditions, preserve historical exceptions, and passed observed scheduled runs at 21:30 and 21:35 UTC.
-- [ ] Add or verify latency measurements for speech-to-audio and backend tool execution; keep them separate so slow audio is not misdiagnosed as a database problem.
+- [x] Verify separate speech-to-first-audio and backend timing instrumentation. The September 9 full staff call emitted seven audio-anchor samples and three sub-second tool timings. This establishes diagnostics, not acceptable latency; the audible failure remains open.
 - [x] Verify retention and authorized access for transcripts, recordings, and callback evidence; test deletion behavior using controlled fixtures.
 - [x] Before each release, identify the current production SHA, main SHA, migrations, and unrelated pending work. Review only the intended changes and their dependencies.
 - [ ] Run focused regression checks plus required repository validation. Do not repeat the full earlier handset matrix for an unrelated change.
