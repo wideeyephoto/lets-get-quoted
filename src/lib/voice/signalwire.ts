@@ -274,7 +274,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         play: {
           urls: [
-            new URL('/audio/dispatch-connected-v1.wav', plan.receiptUrl).toString(),
+            new URL('/audio/dispatch-connected-v2.wav', plan.receiptUrl).toString(),
             `say: ${spokenGreeting}`,
           ],
           // Pin the opening voice separately from the accepted conversational
