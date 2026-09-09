@@ -1,0 +1,188 @@
+{
+  "observation_id": "operational-cleanup-20260909T211317Z",
+  "observed_at": "2026-09-09T21:52:58.559Z",
+  "window_started_at": "2026-09-09T21:13:17.282Z",
+  "minimum_end_at": "2026-09-10T21:13:17.282Z",
+  "elapsed_minutes": 39.68795,
+  "cron_cycles": [
+    {
+      "job": "billing-subscription-projection",
+      "cycles_since_start": "8",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-09T21:50:29.308Z",
+      "latest_finished": "2026-09-09T21:50:29.686Z",
+      "maximum_gap_seconds": "300.186000"
+    },
+    {
+      "job": "operational-alerts",
+      "cycles_since_start": "8",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-09T21:50:13.374Z",
+      "latest_finished": "2026-09-09T21:50:15.935Z",
+      "maximum_gap_seconds": "300.322000"
+    },
+    {
+      "job": "sms-delivery",
+      "cycles_since_start": "40",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-09T21:52:18.320Z",
+      "latest_finished": "2026-09-09T21:52:19.176Z",
+      "maximum_gap_seconds": "60.536000"
+    }
+  ],
+  "failed_cron_cycles": [],
+  "live_failed_billing": [],
+  "post_containment_test_ingress": [],
+  "active_findings": [
+    {
+      "category": "billing_configuration",
+      "records": "1"
+    },
+    {
+      "category": "cron",
+      "records": "1"
+    },
+    {
+      "category": "sms",
+      "records": "4"
+    },
+    {
+      "category": "webhook",
+      "records": "16"
+    }
+  ],
+  "webhook_failures_since_start": [],
+  "unconfirmed_alerts": [
+    {
+      "id": "9529f3d8-4d9d-4fe6-b5a5-cf6e4b8e222a",
+      "category": "cron",
+      "state": "accepted",
+      "provider_id": "4b7982d1-702a-4226-a164-83a20f2ae425",
+      "created_at": "2026-09-09T21:50:14.172Z",
+      "accepted_at": "2026-09-09T21:50:15.181Z",
+      "last_error": null
+    }
+  ],
+  "delivered_alerts_since_start": [
+    {
+      "id": "9d4ea7fc-ca45-48f5-a6d6-8c08ad83c111",
+      "category": "webhook",
+      "provider_id": "8315ac9f-07d8-4e8c-a331-f649b539bf27",
+      "created_at": "2026-09-09T21:10:14.527Z",
+      "delivered_at": "2026-09-09T21:15:15.045Z"
+    }
+  ],
+  "paging_ledger": [
+    {
+      "page_key": "lgq-monitor-mfuvvtrkipkigwqqtcal-drill-2026-09-09T20",
+      "state": "delivered",
+      "provider_id": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+      "provider_status": "delivered",
+      "error_code": null,
+      "started_at": "2026-09-09T20:22:05.077Z",
+      "delivered_at": "2026-09-09T20:22:23.096Z"
+    }
+  ],
+  "audit_integrity": [
+    {
+      "records": "221",
+      "unique_sources": "221"
+    }
+  ],
+  "source_integrity": [
+    {
+      "source_table": "billing_events",
+      "expected": "186",
+      "unchanged": "186",
+      "changed_ids": []
+    },
+    {
+      "source_table": "sms_events",
+      "expected": "4",
+      "unchanged": "4",
+      "changed_ids": []
+    },
+    {
+      "source_table": "webhook_failures",
+      "expected": "31",
+      "unchanged": "31",
+      "changed_ids": []
+    }
+  ],
+  "duplicate_new_sms_identities": [],
+  "duplicate_new_usage_grant_identities": [],
+  "new_sms_failure_ids": [],
+  "public_health": {
+    "http_status": 200,
+    "status": "operational",
+    "timestamp": "2026-09-09T21:53:01.929Z",
+    "services": [
+      {
+        "id": "quoting-engine",
+        "status": "operational"
+      },
+      {
+        "id": "sms-gateway",
+        "status": "operational"
+      },
+      {
+        "id": "stripe-payments",
+        "status": "operational"
+      },
+      {
+        "id": "contractor-cdn",
+        "status": "operational"
+      }
+    ]
+  },
+  "production_deployment": {
+    "id": "dpl_V8WJLN69xhQXUc97bCHK9MHjcTVH",
+    "revision": "399e95a44f481a122aad5d6f399daae71199ee3c",
+    "state": "READY",
+    "ready_at": "2026-09-09T21:46:22.590Z",
+    "release": "PR #56: paid add-on refunds and paid-invoice Voice grants",
+    "changed_since_start": true,
+    "paging_module_present": false,
+    "paging_module_verification": "Exact deployed source path returned GitHub contents API 404"
+  },
+  "independent_watchdog": {
+    "last_verified_scheduled_run": 34398756516,
+    "created_at": "2026-09-09T20:03:37Z",
+    "finished_at": "2026-09-09T20:04:09Z",
+    "conclusion": "success",
+    "new_scheduled_run_since_baseline": false,
+    "elapsed_minutes_since_completion": 108.82598333333334,
+    "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34398756516"
+  },
+  "new_finding": {
+    "source_key": "cron:addon-refunds:never",
+    "first_detected_at": "2026-09-09T21:50:13.715154Z",
+    "reason": "Scheduled worker has no recorded run",
+    "configured_schedule": "*/5 * * * *",
+    "route_probe": {
+      "observed_at": "2026-09-09T21:54:33.754Z",
+      "unauthenticated": true,
+      "http_status": 404,
+      "body_empty": true
+    },
+    "deployed_code_boundary": "The deployed route returns an empty 404 before cronRoute when LGQ_ADDON_REFUND_REVERSAL_ENABLED is not 1. Its authenticated handler rejects missing credentials before business execution.",
+    "assessment": "Consistent with the new refund rollout still being disabled; no refund worker execution is claimed. Monitor reports never-run because no disabled result is recorded. Leave this visible for rollout/configuration review.",
+    "alert": {
+      "id": "9529f3d8-4d9d-4fe6-b5a5-cf6e4b8e222a",
+      "provider_id": "4b7982d1-702a-4226-a164-83a20f2ae425",
+      "provider_status": "delivered",
+      "provider_occurred_at": "2026-09-09T21:50:16.315Z",
+      "evidence": "email_events exact provider ID; the initial snapshot preceded the next monitor reconciliation"
+    },
+    "action_taken": "Read-only investigation and evidence recording. No flags, financial work, scheduler state, source dispositions or provider configuration changed."
+  },
+  "limits": [
+    "Only 39.69 minutes of the fixed 24-hour window have elapsed.",
+    "The public health response proves current HTTP/database readiness, not live delivery of every provider service.",
+    "Duplicate checks cover stored SMS and usage-grant identities; unchanged historical source rows establish no new projection/retry state for the original cohort. No new provider charge/refund/SMS requests were made by this observation.",
+    "A payments deployment became ready during the window. Preserve the original current-production observation; any claim about stability of that release must include 24 hours after its activation. Paging code remains undeployed."
+  ]
+}

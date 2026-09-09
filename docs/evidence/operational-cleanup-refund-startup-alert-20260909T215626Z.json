@@ -1,0 +1,30 @@
+{
+  "alert": {
+    "state": "delivered",
+    "provider_id": "4b7982d1-702a-4226-a164-83a20f2ae425",
+    "delivered_at": "2026-09-09T21:55:15.108+00:00"
+  },
+  "finding": {
+    "source_key": "cron:addon-refunds:never",
+    "resolved_at": "2026-09-09T21:55:13.932628+00:00",
+    "last_seen_at": "2026-09-09T21:50:13.726463+00:00"
+  },
+  "observed_at": "2026-09-09T21:56:26.526205+00:00",
+  "refund_runs": [
+    {
+      "id": "892374b4-2aea-4794-8e02-609a5e0f9fa6",
+      "ok": true,
+      "job": "addon-refunds",
+      "summary": {
+        "review": 0,
+        "claimed": 0,
+        "ignored": 0,
+        "pending": 0,
+        "failures": 0,
+        "completed": 0
+      },
+      "started_at": "2026-09-09T21:55:12.371+00:00",
+      "finished_at": "2026-09-09T21:55:12.795+00:00"
+    }
+  ]
+}
