@@ -1,4 +1,4 @@
-import { greetingWithAiDisclosure } from '@/lib/voice/provider';
+import { AI_VOICE_DISCLOSURE, greetingWithAiDisclosure } from '@/lib/voice/provider';
 import { VOICE_CALL_CAP_MINUTES } from '@/lib/billing/voice-minute-usage';
 import type {
   InboundCall,
@@ -259,6 +259,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       const spokenGreeting = greetingWithAiDisclosure(plan.greeting, {
         recordingEnabled: recordCall,
       });
+      const remainingGreeting = spokenGreeting.replace(AI_VOICE_DISCLOSURE, '').trim();
       const capMinutes = Number.isFinite(plan.capMinutes) && plan.capMinutes >= 1
         ? Math.min(VOICE_CALL_CAP_MINUTES, Math.floor(plan.capMinutes)) : 1;
       const maxDurationSeconds = capMinutes * 60 - HANGUP_MARGIN_SECONDS;
@@ -274,8 +275,9 @@ export const signalwireVoiceProvider: VoiceProvider = {
       mainSection.push({
         play: {
           urls: [
+            `say: ${AI_VOICE_DISCLOSURE}`,
             new URL('/audio/dispatch-connected-v3.wav', plan.receiptUrl).toString(),
-            `say: ${spokenGreeting}`,
+            ...(remainingGreeting ? [`say: ${remainingGreeting}`] : []),
           ],
           // Pin the opening voice separately from the accepted conversational
           // profile. An engine-qualified voice avoids a provider-default switch.

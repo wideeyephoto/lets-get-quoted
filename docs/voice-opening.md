@@ -1,8 +1,9 @@
 # Voice opening
 
-AI-answered calls play the original LGQ connection cue and a short disclosure
-before the conversation begins: "Your personal Let's Get Quoted AI Assistant is loading." Staff hear
-"Field dispatch is ready." next; customer greetings keep their configured text.
+AI-answered calls first say "Your personal Let's Get Quoted AI Assistant is loading."
+The original LGQ connection cue plays immediately afterward, before the conversation begins.
+Staff calls use only this opening sentence and cue; customer greetings keep their
+configured text, played after the cue.
 Earlier fixed disclosures are normalized so saved greetings do not repeat the introduction.
 Recording disclosure still finishes before any permitted recording starts.
 Staff calls remain unrecorded.
@@ -29,7 +30,8 @@ versioned, publicly cached path on the same app origin as the receipt endpoint.
 Generate a new filename/version for future sound changes.
 The earlier v1 and v2 files remain intact for existing immutable caches; new calls use v3.
 
-One ordered play list runs the cue then the disclosure, before recording/AI.
+One ordered play list runs the branded disclosure, cue, then any remaining
+customer greeting and recording disclosure, before recording/AI.
 The original answer deadline includes the entire opening. Transfers, voicemail
 and fallback prompts retain their existing handling. No routing, recording
 default, metering policy or account setting changes are required.
@@ -37,5 +39,5 @@ default, metering policy or account setting changes are required.
 Release checks: existing disclosure/recording/order and provider-cap tests,
 protected deployment health, and an unauthenticated GET confirming WAV audio
 and exact RIFF bytes at the public sound URL. On the handset, confirm the soft
-cue is audible from the beginning, the complete disclosure sounds natural,
+cue is audible in full after the branded line, the disclosure sounds natural,
 and the subsequent conversation still responds promptly.
