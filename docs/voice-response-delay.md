@@ -8,7 +8,17 @@ A short interactive diagnostic with the same speech parameters and a written-out
 amount passed pronunciation and perceived response speed. PR #57's spoken-quote
 format is now live. The actual post-release handset attempt hit voicemail with
 `admission_unavailable` before Dispatch started; it cannot validate speech or
-turn delay. Admission retry/startup fixes and the full retest remain open.
+turn delay. PR #61's admission retry/startup fix is live. A controlled customer
+call reached AI but needed two requests taking 5.399 and 4.228 seconds; its three
+turn-audio samples ranged from 1.988 to 4.281 seconds. These do not establish
+human acceptance or resolve the startup delay. The confirmed full Dispatch
+retest at 21:52–21:55 UTC also failed: startup took about 9.8 seconds with a
+retry, ten first-audio intervals ranged from 1.143 to 4.950 seconds, and lookup
+requests took 0.760–1.263 seconds. Repeated quote follow-up questions and an
+irrelevant code discussion disrupted the call. The stored log also misclassifies
+part of an ordinary job reference as a secret; that alone does not prove what
+the model heard or which processing stage caused the misunderstanding.
+The log cannot establish pronunciation quality or audible Stop cancellation.
 See the [dated acceptance record](voice-acceptance-2026-09-09.md).
 
 The staff-call profile now sets `utility_model: gpt-4.1-nano`,

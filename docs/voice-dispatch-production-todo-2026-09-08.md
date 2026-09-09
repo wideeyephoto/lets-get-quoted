@@ -8,15 +8,26 @@ saved one note once and settled cleanly, but failed “dollars” pronunciation 
 post-speech delay acceptance. A short interactive test with the same speech
 settings and a written-out amount passed. PR #57 is now live; the post-release
 handset attempt hit voicemail with `admission_unavailable` before Dispatch
-started. A bounded admission retry/startup change and signed-path recording
-recovery need release and live retesting. The earlier recipient-first transfer and provider phase
+started. PR #61's bounded admission retry/startup and signed-path recording
+fixes are now live. A controlled customer call reached AI and settled cleanly;
+native signed-path callbacks automatically persisted a nine-second voicemail.
+Startup still required a retry. A confirmed full Dispatch handset retest at
+21:52–21:55 UTC failed: the log shows spoken-reference redaction, repetitive
+quote follow-ups and first-audio waits up to 4.950 seconds. No note action ran;
+three AI minutes settled with no hold. See the dated report for the full analysis.
+The earlier recipient-first transfer and provider phase
 deadline checks are accepted within their documented scope. New unanswered
 probes reached `noAnswer` and the recording branch but did not prove voiced
 voicemail recovery or active recording termination at the cap. Actual number
 fallback subsequently captured a finished synthetic voicemail, recovered from
 provider evidence with authorized app playback and zero AI charge. Its native
-recording callbacks returned HTTP 401. Automatic recovery, the primary SWML
-fetch failure, remaining boundaries and live homeowner/on-call behavior stay open.
+old query-bearing recording callbacks returned HTTP 401. Admitted-call
+termination/unused-hold recovery, intermittent startup failure and remaining
+boundaries stay open. A later actual-number unanswered transfer automatically
+persisted 43 seconds of synthetic voicemail; final call status remains unreconciled.
+A synthetic customer call verified office-review wording;
+full Dispatch, on-call and role-specific live acceptance remain open. The later
+598.321-second boundary probe did not prove active recording and was cleaned up.
 Provider-period reconciliation remains open; exhaustion blocking stays OFF.
 
 This checklist consolidates the September 8 reassessment. It is an execution plan, not a production sign-off. Refresh deployment and task status before starting each change: other SignalWire work is active.
@@ -42,8 +53,12 @@ spoken-currency diagnostic does not close the full Dispatch latency gate.
 - [x] Authorized app playback of a manually recovered fallback voicemail ran
   through its end at 20:57 UTC; see the dated acceptance record.
 - [ ] Actual failed-receipt retry and provider deletion remain separate live cases.
-- [ ] Full Dispatch audio, voiced voicemail, active-recording cutoff, real
-  callback recovery and homeowner/on-call acceptance remain open as described
+- [x] Native signed-path recording callbacks and automatic scoped persistence
+  passed after PR #61. Synthetic customer office-review wording also passed.
+- [x] Actual-number unanswered transfer persisted a 43-second synthetic
+  voicemail automatically; authorized playback ran through its end.
+- [ ] Full Dispatch audio, final transfer status, active-recording cutoff,
+  admitted fallback termination/hold recovery and remaining on-call/role acceptance remain open as described
   in the dated acceptance record. Actual emergency fallback invocation passed;
   no_input recording is not voiced acceptance.
 - [ ] Validate real-contractor settings and approved customer SMS registration

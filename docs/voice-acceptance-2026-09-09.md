@@ -1,6 +1,6 @@
 # Voice acceptance — September 9, 2026
 
-**Status: partial; the spoken-quote fix is live, and failure-path acceptance remains open.**
+**Status: partial; spoken-quote and admission/recording fixes are live; handset and remaining failure-path acceptance stay open.**
 The owner participated in the affected staff handset retest and a separate
 speech diagnostic. Provider-period billing reconciliation remains open and
 financial exhaustion blocking stays OFF.
@@ -70,10 +70,87 @@ the existing atomic claim function; it never treats `busy` as permission to
 start AI or purchase another hold. It also loads independent workspace and
 caller/capacity facts concurrently and records numeric startup/retry timing.
 The code exposes a retry race consistent with this call, but the precise failing
-claim state was not logged by the old revision. Live validation of the fix is
-still required. Emergency recording attribution now uses numeric segments in
+claim state was not logged by the old revision. Emergency recording attribution uses numeric segments in
 the provider-signed path, preserving whole-URL/body authentication and the
-database-independent fallback. Provider validation of that new path is pending.
+database-independent fallback.
+
+PR #61 merged as `3e7466a6b` after full CI. At 21:44 UTC, production deployment
+`dpl_33ZThwnNGebPRy8oPxF9XRp1vYhZ` at `3fa18307a` (including the subsequent
+security UI fix) passed protected health and was verified on both domains.
+A controlled customer call reached AI and settled 32 AI seconds as one
+measured/committed minute, with one processed receipt and no remaining hold.
+Startup still required a provider retry: the two application requests took
+5,399 and 4,228 ms. This is a successful startup sample, not proof the delay or
+intermittent fallback is resolved. The later full staff attempt below failed.
+
+That synthetic customer call asked whether an appointment could be confirmed
+without office review. The assistant correctly said no; no appointment, lead or
+job tool ran. Three speech-to-first-audio intervals were 2,031, 4,281 and
+1,988 ms. These are provider measurements, not human audio acceptance.
+The saved history incorrectly said `transfer_attempted` because its classifier
+matched transfer instructions in the system prompt. Provider events show no
+handoff. A follow-up regression fix restricts that inference to assistant/tool
+turns; it does not change routing or billing.
+
+A separate native-provider recording probe exercised the new signed path
+without prior admission. Both callbacks returned HTTP 200 and automatically
+created the correctly scoped call with a ready nine-second synthetic voicemail.
+There was no AI, admission or hold. This proves callback authentication and
+automatic recording attribution/persistence; it does not prove termination and
+unused-hold recovery for an admitted call whose primary route fails.
+Signed-in app playback of this automatically recovered recording ran to its end
+at 21:56 UTC.
+
+### Full Dispatch retest and call-log analysis, 21:52–21:55 UTC
+
+The owner made a new call and reported problems, then requested analysis of the
+call log. This is a confirmed failed handset result, not the earlier withdrawn
+survey response. The call ran on production `399e95a44`, deployment
+`dpl_V8WJLN69xhQXUc97bCHK9MHjcTVH`, which includes PR #61 and the subsequent
+payments release. Its primary route returned AI rather than fallback voicemail.
+
+- **Job-reference recognition/redaction failed before recovering.** The first
+  lookup used only the spoken prefix and found no match. The assistant later
+  claimed the numeric suffix had no match without another lookup. It then
+  described a six-digit code. A retained redaction annotation incorrectly
+  classifies part of the ordinary spoken job reference as a secret. The next
+  lookup successfully returned the intended canonical job. These are observed
+  response-handling and stored-redaction failures, not a missing job.
+  [SignalWire documents](https://signalwire.com/docs/platform/ai/content-redaction)
+  that redaction changes recorded text rather than model input. The masked log
+  alone does not prove which pipeline stage caused the live misunderstanding.
+- **Quote data was correct; conversation behavior was not.** The detailed tool
+  result supplied the stored amount in complete spoken words. The assistant's
+  four quote answers retained that amount, but repeatedly appended unrelated
+  follow-up questions despite the existing instruction not to do so. One answer
+  also expanded into the job scope. The transcript cannot establish whether
+  “dollars” sounded clear; human call recording was disabled.
+- **Delay remains material.** Startup required two requests taking 4,964 and
+  3,810 ms; the provider answered about 9.8 seconds after call creation. Ten
+  last-word-to-first-audio intervals were 1,143, 4,950, 4,756, 2,571, 2,448,
+  2,139, 2,940, 2,242, 2,541 and 2,337 ms (median 2,494.5 ms). These include
+  progress speech where present and are not full-answer completion times.
+  The three lookup requests took 760, 1,263 and 1,017 ms, with database lookup
+  stages of 225, 190 and 322 ms. Backend lookup duration alone does not explain
+  the conversation delay. Transcript publication times are not audio timings.
+- **Expense reading is not implemented in the exposed staff tools.** The
+  assistant's inability to retrieve expense details was consistent with the
+  available read tool. Logging costs/materials is a separate supported write.
+  No expense-read authorization failure or failed expense query occurred.
+- **Draft/save/readback was not demonstrated.** No write tool ran and no note
+  action exists for this call. Several caller turns are masked, so the log
+  cannot establish whether a particular masked request asked to save a note.
+  Do not claim a successful save or a proven rejected save.
+- **Stop is recorded, but audible cancellation remains unproven.** The last
+  visible caller instruction was “Stop.” The final JSON is the post-call
+  summary, published after the provider's terminal timestamp; it is not evidence
+  that JSON was spoken to the caller.
+
+The call lasted 165.950 connected seconds, settled 157 AI seconds as three
+measured/committed minutes, produced one processed receipt, and left no held
+reservation. No job write occurred. The priority for the next speech fix is
+ordinary-reference preservation and consistent concise answers; retaining
+credential redaction is required. Another prompt change alone is not acceptance.
 
 ## Transfer, deadline and recovery evidence
 
@@ -81,11 +158,11 @@ database-independent fallback. Provider validation of that new path is pending.
 | --- | --- |
 | Answered transfer and recipient-first hangup | Reused September 8 accepted handset evidence: full pickup announcement, two-way audio, remaining leg ended 121 ms after the recipient, no voicemail, one AI minute settled and no hold. The earlier caller-first-only snapshot is superseded. |
 | Original deadline across provider phases | Reused real provider probes: repeated answer retained the 15-second timer; a hosted SWML transition retained it. The full late answered transfer ended at 597.661 connected seconds, with the child ending 19 ms before its parent. The inline JSON transition variant remains inconclusive. |
-| Unanswered transfer | New internal native-provider probe produced `noAnswer` after approximately five seconds. The visible control entered the failed branch and recording, but recording status was `no_input`. This is branch execution, not successful voicemail capture/playback. |
-| Late unanswered/voicemail boundary | The 570-second-delay probe ended at 593.862 connected seconds. It produced no completed voiced recording; natural completion before the cap does not prove forced termination of active voicemail. A reversed-direction short control also did not enforce its requested 40-second answer cap and is excluded from inbound deadline evidence. Keep this gate open. |
-| Tool deadline and homeowner/staff behavior | PR #55 merged as `2c5958ac2` and released separately. It aligns homeowner appointment-request wording, separate on-call destinations, staff summaries and after-hours behavior, and bounds new tool actions to admitted allowance minus two seconds. Hosted migration history uses `20260909195808`; repository migration is `20260909194635_voice_tool_call_deadline.sql`. Local boundary/role tests pass; live homeowner/on-call and in-flight tool acceptance remain open. |
+| Unanswered transfer | The later actual-number probe at 21:56–21:58 UTC attempted the configured office destination, failed after approximately 26 seconds and recorded 43 seconds of synthetic voicemail. Native callbacks persisted it automatically and signed-in playback ran through its end at 22:03 UTC. One AI minute settled and no hold remained. The call-history end timestamp still reflects AI exit rather than final hangup, and its outcome remains transfer-attempted; final status reconciliation is still open. Earlier internal `no_input` probes are superseded for capture/playback evidence only. |
+| Late unanswered/voicemail boundary | The first 570-second-delay probe ended at 593.862 connected seconds. A later delayed-speech probe ended at 598.321 seconds, but no visible leg or recording inventory proved active voicemail capture. The deadline was observed; forced termination during recording remains unproven. A reversed-direction short control did not enforce its requested 40-second answer cap and is excluded from inbound deadline evidence. Keep this gate open. |
+| Tool deadline and homeowner/staff behavior | PR #55 merged as `2c5958ac2` and released separately. It aligns homeowner appointment-request wording, separate on-call destinations, staff summaries and after-hours behavior, and bounds new tool actions to admitted allowance minus two seconds. Hosted migration history uses `20260909195808`; repository migration is `20260909194635_voice_tool_call_deadline.sql`. Local boundary/role tests pass. A real provider call with a synthetic customer verified office-review wording at 21:45 UTC; live on-call, role-specific and in-flight tool acceptance remain open. |
 | Receipt/recording recovery | Existing observation-hardening database checks passed again: early/late recording, monotonic state, attribution, replay, deletion outbox and authorization. All 23 scoped production receipts were processed and no voice holds remained at 20:57 UTC. The real fallback voicemail below was recovered from authenticated provider evidence; this does not prove automatic callback recovery. No AI receipt was manufactured. |
-| Provider-triggered emergency fallback | **Actual invocation proven:** a controlled call to the owned phone number entered `/api/voice/fallback` after the primary SWML fetch failed. It captured a finished 14-second synthetic voicemail. Native recording callbacks failed authentication with HTTP 401; the call was manually recovered, correctly attributed and settled unbillable with zero AI charge and its hold released. Signed-in app playback ran through the recording. Automatic recovery remains open. |
+| Provider-triggered emergency fallback | **Actual invocation proven:** a controlled call to the owned phone number entered `/api/voice/fallback` after the primary SWML fetch failed. It captured a finished 14-second synthetic voicemail. The old query-bearing callbacks failed authentication; manual recovery restored attribution, zero AI charge and released the hold, with signed-in app playback. The released signed-path replacement subsequently passed native callbacks and automatic nine-second recording persistence. Admitted-call termination/unused-hold recovery remains open. |
 
 ### Actual fallback failure and recovery
 
@@ -119,9 +196,12 @@ SWML resource was checked by project/name/contents and deleted after every
 associated call was terminal. No phone route, business setting, customer SMS
 eligibility or financial-gate setting was changed.
 
-A further synthetic probe started at 21:16 UTC with speech delayed until the
-late voicemail window and enough remaining speech to outlast the call cap. Its
-active-recording deadline result and temporary-resource cleanup are pending.
+A further synthetic probe ran from 21:16 to 21:26 UTC with speech delayed until
+the late voicemail window and enough remaining speech to outlast the call cap.
+It ended at 598.321 connected seconds, but neither visible-leg events nor the
+provider recording inventory proved active recording. The cap sample therefore
+does not close that gate. Its temporary resource was verified and deleted at
+21:27 UTC after the associated calls ended.
 
 ## Validation and remaining acceptance
 
@@ -138,6 +218,11 @@ The admission/recovery follow-up passed 1,050 tests across 79 files (voice plus
 the shared SMS provider verifier), scoped lint and TypeScript. New cases cover
 busy-admission replay without a second hold, a terminal transition while waiting,
 bounded failure, signed recovery attribution, path tampering and unknown callers.
+PR #61's full CI passed dependency audit, unit tests, SEO, stock checks,
+TypeScript, lint and production build. The outcome-inference follow-up passed
+101 focused settlement/receipt tests, including prompt and caller-request
+regressions while retaining actual assistant/tool transfer detection.
+TypeScript and scoped lint also passed for that follow-up.
 
 - [x] Record the full staff test, exact-once note result, timing failure and
   successful isolated pronunciation/response diagnostic.
@@ -145,14 +230,20 @@ bounded failure, signed recovery attribution, path tampering and unknown callers
   retained provider deadline evidence with the public checklist.
 - [x] Release the spoken-quote change and verify production health and both
   domain aliases.
-- [ ] Complete the full Dispatch handset retest on the released version, confirm
-  pronunciation and post-speech delay, then verify the note, receipt and settlement.
+- [ ] Resolve the failed 21:52 handset result: spoken-reference redaction,
+  repetitive replies and delay; then verify pronunciation, note/save/readback
+  and Stop on a new confirmed call. Receipt settlement passed for this attempt.
 - [x] Prove actual phone-number fallback invocation, recover its finished
   synthetic voicemail and verify authorized app playback and attribution.
-- [ ] Release and retest busy-admission handling and the signed recording
-  attribution path; complete automatic termination/unused-hold recovery.
-- [ ] Complete voiced unanswered-transfer recovery through persisted voicemail,
-  authorized playback and attribution, including active recording at the cap.
+- [x] Release admission retry handling and signed recording attribution; observe
+  a controlled AI startup and automatic native callback recording persistence.
+- [ ] Complete automatic termination/unused-hold recovery for admitted fallback
+  calls, and resolve the remaining startup delay/retry evidence.
+- [x] Verify actual-number unanswered transfer, automatic voiced voicemail
+  persistence/attribution and authorized playback.
+- [ ] Reconcile final transfer/voicemail call status and prove active recording
+  termination at the cap. The 43-second sample ended naturally at 95.919
+  connected seconds; it is not a ten-minute boundary test.
 - [ ] Complete silence/in-flight tool
   boundaries, and homeowner/on-call/role-specific live behavior on PR #55 or later.
 - [ ] Complete the provider invoice period reconciliation. Exhaustion blocking
