@@ -221,7 +221,7 @@ if (!globalThis.matchMedia) {
 import ProductTourRoot from '@/components/product-tour/ProductTourRoot';
 import ProductTourCoachmark from '@/components/product-tour/ProductTourCoachmark';
 import { ChecklistTourInvitation } from '@/components/product-tour/ProductTourLauncher';
-import { DASHBOARD_ORIENTATION_TOUR } from '@/lib/product-tour/catalog';
+import { DASHBOARD_ORIENTATION_TOUR, getTourCopySummary } from '@/lib/product-tour/catalog';
 import type { TourProgressRecord } from '@/lib/product-tour/types';
 
 describe('Phase 5: Product Tour Orchestration Behavior Suite', () => {
@@ -394,6 +394,18 @@ describe('Phase 5: Product Tour Orchestration Behavior Suite', () => {
     // Office user allowed steps: 3 steps (leads, jobs, schedule)
     const officeAllowedIds = ['leads-inbox', 'jobs-board', 'schedule-workbench'];
 
+    const officeCopy = getTourCopySummary(officeAllowedIds);
+    // Office copy does not invent an uncalibrated proportional constant (e.g. 45s); describes as "quick"
+    expect(officeCopy.durationText).toBe('quick');
+    expect(officeCopy.surfacesText).toBe('leads, jobs and scheduling');
+    expect(officeCopy.surfacesText).not.toContain('website builder');
+    expect(officeCopy.surfacesText).not.toContain('automations');
+
+    const fullCopy = getTourCopySummary();
+    expect(fullCopy.durationText).toBe('90-second');
+    expect(fullCopy.surfacesText).toContain('website builder');
+    expect(fullCopy.surfacesText).toContain('automations');
+
     React.act(() => {
       root.render(
         React.createElement(ChecklistTourInvitation as unknown as React.ComponentType<{ allowedStepIds?: string[] }>, {
@@ -417,5 +429,25 @@ describe('Phase 5: Product Tour Orchestration Behavior Suite', () => {
     // Fix requires useLayoutEffect to measure before paint, and no cardHeight in deps
     expect(coachmarkSrc).toContain('useLayoutEffect');
     expect(coachmarkSrc).not.toMatch(/useEffect\([^)]+cardHeight\]\)/);
+  });
+
+  it('8. Scroll settle: resolves scrolling ancestor and does not rely on a blind 500ms timer', () => {
+    const rootSrc = readFileSync('src/components/product-tour/ProductTourRoot.tsx', 'utf8');
+
+    // Must resolve scrolling ancestor for inner containers
+    expect(rootSrc).toContain('getScrollingAncestor');
+    // Must track settle via frame stability / IntersectionObserver rather than blind 500ms scrollend timer
+    expect(rootSrc).not.toContain('setTimeout(onScrollDone, 500)');
+    expect(rootSrc).toContain('consecutiveStableFrames >= 2');
+    expect(rootSrc).toContain('IntersectionObserver');
+  });
+
+  it('9. Modal observer scoping: does not observe document.body with subtree: true', () => {
+    const rootSrc = readFileSync('src/components/product-tour/ProductTourRoot.tsx', 'utf8');
+
+    // Modal observer must NOT observe document.body with subtree: true (which floods checks on every live streaming mutation)
+    expect(rootSrc).not.toMatch(/observer\.observe\(document\.body,\s*\{\s*childList:\s*true,\s*subtree:\s*true\s*\}\)/);
+    // Instead, it scopes to childList: true on document.body
+    expect(rootSrc).toMatch(/observer\.observe\(document\.body,\s*\{\s*childList:\s*true\s*\}\)/);
   });
 });

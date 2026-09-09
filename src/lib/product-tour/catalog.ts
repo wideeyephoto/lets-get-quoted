@@ -176,7 +176,12 @@ export function getTourCopySummary(allowedStepIds?: readonly string[] | null): {
     : DASHBOARD_ORIENTATION_TOUR.steps;
 
   const count = steps.length;
-  const durationText = count >= 6 ? '90-second' : count > 0 ? `${count * 15}-second` : 'quick';
+  // If the user has access to the full tour (all steps), use the catalog's declared "90-second".
+  // When filtered (e.g. office users with 3 steps), avoid inventing an uncalibrated proportional
+  // constant (e.g. count * 15); describe it as "quick" until anchor_ms telemetry establishes
+  // empirical per-step durations.
+  const isFullTour = count >= DASHBOARD_ORIENTATION_TOUR.steps.length;
+  const durationText = isFullTour ? '90-second' : 'quick';
 
   const surfaceNames = steps
     .map((s) => STEP_SURFACE_NAMES[s.id] ?? s.title.toLowerCase())

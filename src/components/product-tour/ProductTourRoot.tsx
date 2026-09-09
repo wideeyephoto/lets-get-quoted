@@ -33,6 +33,29 @@ type ProductTourRootProps = {
   offer?: boolean;
 };
 
+function getScrollingAncestor(element: HTMLElement | null): HTMLElement | Window {
+  if (!element || typeof window === 'undefined' || typeof window.getComputedStyle !== 'function') return window;
+  let parent = element.parentElement;
+  while (parent && parent !== document.body && parent !== document.documentElement) {
+    try {
+      const style = window.getComputedStyle(parent);
+      if (style) {
+        const overflow = `${style.overflow || ''} ${style.overflowY || ''} ${style.overflowX || ''}`;
+        if (
+          /(auto|scroll|overlay)/.test(overflow) &&
+          (parent.scrollHeight > parent.clientHeight || parent.scrollWidth > parent.clientWidth)
+        ) {
+          return parent;
+        }
+      }
+    } catch {
+      // Ignore style resolution error
+    }
+    parent = parent.parentElement;
+  }
+  return window;
+}
+
 export default function ProductTourRoot({
   role,
   initialProgress,
@@ -242,8 +265,7 @@ export default function ProductTourRoot({
     }
 
     let cancelled = false;
-    let scrollTimer: ReturnType<typeof setTimeout> | null = null;
-    let scrollEndHandler: (() => void) | null = null;
+    let activeSettleCleanup: (() => void) | null = null;
     let timeoutTimer: ReturnType<typeof setTimeout> | null = null;
     let observer: MutationObserver | null = null;
 
@@ -264,27 +286,125 @@ export default function ProductTourRoot({
         setPhase('showing-step');
       } else {
         settlePathRef.current = 'scrolled';
+        const scrollAncestor = getScrollingAncestor(el);
         el.scrollIntoView({ behavior: 'smooth', block: 'center' });
 
-        const onScrollDone = () => {
-          if (cancelled || generationRef.current !== currentGen) return;
-          if (scrollTimer) clearTimeout(scrollTimer);
-          if (scrollEndHandler) {
-            window.removeEventListener('scrollend', scrollEndHandler);
-            scrollEndHandler = null;
+        let settled = false;
+        let consecutiveStableFrames = 0;
+        let hasMoved = false;
+        const initialTop = r.top;
+        const initialLeft = r.left;
+        let lastTop = -999999;
+        let lastLeft = -999999;
+        const scrollStartTime = Date.now();
+
+        let settleRaf: number | null = null;
+        let hardCapTimer: ReturnType<typeof setTimeout> | null = null;
+        let intersectionObserver: IntersectionObserver | null = null;
+
+        const cleanupSettle = () => {
+          if (settleRaf !== null) {
+            cancelAnimationFrame(settleRaf);
+            settleRaf = null;
           }
+          if (hardCapTimer) {
+            clearTimeout(hardCapTimer);
+            hardCapTimer = null;
+          }
+          if (intersectionObserver) {
+            intersectionObserver.disconnect();
+            intersectionObserver = null;
+          }
+          scrollAncestor.removeEventListener('scrollend', onScrollEnd);
+          if (scrollAncestor !== window) {
+            window.removeEventListener('scrollend', onScrollEnd);
+          }
+        };
+
+        const finishSettle = () => {
+          if (settled || cancelled || generationRef.current !== currentGen) return;
+          settled = true;
+          cleanupSettle();
           const finalRect = el.getBoundingClientRect();
           setTargetRect(finalRect);
           setPhase('showing-step');
         };
 
-        if ('onscrollend' in window) {
-          scrollEndHandler = onScrollDone;
-          window.addEventListener('scrollend', onScrollDone, { once: true });
-          scrollTimer = setTimeout(onScrollDone, 500);
-        } else {
-          scrollTimer = setTimeout(onScrollDone, 400);
+        const onScrollEnd = () => {
+          hasMoved = true;
+          consecutiveStableFrames = 0;
+        };
+
+        scrollAncestor.addEventListener('scrollend', onScrollEnd, { once: true });
+        if (scrollAncestor !== window) {
+          window.addEventListener('scrollend', onScrollEnd, { once: true });
         }
+
+        // IntersectionObserver settlement tracking
+        if (typeof IntersectionObserver !== 'undefined') {
+          try {
+            intersectionObserver = new IntersectionObserver(
+              (entries) => {
+                if (settled || cancelled || generationRef.current !== currentGen) return;
+                for (const entry of entries) {
+                  if (entry.isIntersecting) {
+                    hasMoved = true;
+                  }
+                }
+              },
+              {
+                root: scrollAncestor === window ? null : (scrollAncestor as Element),
+                threshold: [0, 0.25, 0.5, 0.75, 1],
+              },
+            );
+            intersectionObserver.observe(el);
+          } catch {
+            // Ignore IntersectionObserver initialization failure
+          }
+        }
+
+        const checkStability = () => {
+          if (settled || cancelled || generationRef.current !== currentGen) return;
+
+          const currentRect = el.getBoundingClientRect();
+          const movedFromInitial =
+            Math.abs(currentRect.top - initialTop) > 1 ||
+            Math.abs(currentRect.left - initialLeft) > 1;
+
+          if (movedFromInitial) {
+            hasMoved = true;
+          }
+
+          const isPositionStable =
+            Math.abs(currentRect.top - lastTop) < 0.5 &&
+            Math.abs(currentRect.left - lastLeft) < 0.5;
+
+          if (isPositionStable) {
+            consecutiveStableFrames += 1;
+          } else {
+            consecutiveStableFrames = 0;
+          }
+
+          lastTop = currentRect.top;
+          lastLeft = currentRect.left;
+
+          const elapsed = Date.now() - scrollStartTime;
+          // Target is settled when:
+          // 1. Coordinates moved during scroll and remained stable for 2 consecutive animation frames
+          // 2. Or elapsed time >= 150ms with 2 consecutive stable frames (instant scroll or already centered)
+          if (consecutiveStableFrames >= 2 && (hasMoved || elapsed >= 150)) {
+            finishSettle();
+            return;
+          }
+
+          settleRaf = requestAnimationFrame(checkStability);
+        };
+
+        settleRaf = requestAnimationFrame(checkStability);
+        // Hard cap fallback: 2500ms max so a never-settling page cannot hang
+        hardCapTimer = setTimeout(finishSettle, 2500);
+
+        activeSettleCleanup = cleanupSettle;
       }
     }
 
@@ -336,28 +456,57 @@ export default function ProductTourRoot({
     return () => {
       cancelled = true;
       if (timeoutTimer) clearTimeout(timeoutTimer);
-      if (scrollTimer) clearTimeout(scrollTimer);
-      if (scrollEndHandler) {
-        window.removeEventListener('scrollend', scrollEndHandler);
-      }
+      if (activeSettleCleanup) activeSettleCleanup();
       if (observer) observer.disconnect();
     };
   }, [enabled, currentStep, phase, pathname, openNav, role]);
 
-  // Modal detection (Phase 2.6) - armed for all non-idle phases and debounced
+  // Modal detection (Phase 2.6) - armed for all non-idle phases, debounced, and scoped to modal containers/direct body children
   useEffect(() => {
     if (!enabled || phase === 'idle' || phase === 'passive-resume' || typeof MutationObserver === 'undefined') return;
 
     let rafId: number | null = null;
+    const isModalActive = (): boolean => {
+      // 1. Check direct children of document.body (portaled modals, backdrops, drawers)
+      for (const child of Array.from(document.body.children)) {
+        if (
+          child.hasAttribute('data-tour-coachmark') ||
+          child.hasAttribute('data-tour-overlay') ||
+          child.getAttribute('aria-label') === 'Product Tour'
+        ) {
+          continue;
+        }
+        if (
+          child.classList.contains('modal-overlay') ||
+          child.classList.contains('app-modal-backdrop') ||
+          child.classList.contains('qs-modal-overlay') ||
+          child.getAttribute('role') === 'dialog' ||
+          Boolean(
+            child.querySelector(
+              '.modal-overlay:not([data-tour-overlay]), [role="dialog"]:not([data-tour-coachmark]):not([aria-label="Product Tour"]), .app-modal-backdrop',
+            ),
+          )
+        ) {
+          return true;
+        }
+      }
+
+      // 2. Open native <dialog> elements
+      if (typeof document.querySelector === 'function') {
+        const openDialog = document.querySelector(
+          'dialog[open]:not([data-tour-coachmark]):not([aria-label="Product Tour"])',
+        );
+        if (openDialog) return true;
+      }
+
+      return false;
+    };
+
     const checkModal = () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
       rafId = requestAnimationFrame(() => {
         rafId = null;
-        const modalOpen = Boolean(
-          document.querySelector(
-            '.modal-overlay:not([data-tour-overlay]), [role="dialog"]:not([data-tour-coachmark]):not([aria-label="Product Tour"])',
-          ),
-        );
+        const modalOpen = isModalActive();
 
         if (modalOpen && (phase === 'showing-step' || phase === 'locating-target')) {
           setPhase('paused-by-modal');
@@ -368,8 +517,15 @@ export default function ProductTourRoot({
       });
     };
 
+    // Scoped observation: observe direct children of document.body only (where React portals mount backdrops and dialogs)
+    // without subtree: true so mutations deep within live streaming dashboard content do not trigger checks.
     const observer = new MutationObserver(checkModal);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true });
+
+    const modalRoot = document.getElementById('modal-root');
+    if (modalRoot) {
+      observer.observe(modalRoot, { childList: true });
+    }
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);
