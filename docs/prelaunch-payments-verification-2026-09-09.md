@@ -103,7 +103,14 @@ The workspace selector uses the account's business name while the dashboard uses
 its different website company name; both were verified against the same account
 number and database identity before preparing checkout.
 
-Public release status: PR #56 contains the first sanitized commit. Automatic
-approval review required separate authorization for the subsequently discovered
-paid Voice fix; that approval is pending. No additional migration, production
-application deployment, refund webhook change, or new charge has occurred yet.
+Public release status: the user approved publication of the additional paid
+Voice fix and sanitized evidence. PR #56 includes the current main Voice and
+security releases. Combined revision `25367d26e` passed all CI checks and its
+Vercel preview build. Production migration then stopped at a source-contract
+guard because the existing refund function retained CRLF while the new patch
+used LF; the transaction rolled back, including the new grant function.
+The correction normalizes line endings on both sides while preserving the guards.
+The PostgreSQL harness reproduces this exact failure and checks both directions
+of mixed LF/CRLF deployment history (44 checks each). An existing runtime can be
+selected with `LGQ_PG_RUNTIME_ROOT`; use `--migration-crlf` for the reverse case.
+No new charge, saved refund webhook change, or application rollout has occurred.

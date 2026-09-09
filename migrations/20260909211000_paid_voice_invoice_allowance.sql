@@ -76,7 +76,7 @@ grant execute on function public.grant_paid_voice_addon_period(boolean,jsonb) to
 do $$
 declare v_before text; v_after text;
 begin
-  v_before:=pg_get_functiondef('public.grant_voice_minute_allowance(uuid,timestamptz,timestamptz)'::regprocedure);
+  v_before:=replace(pg_get_functiondef('public.grant_voice_minute_allowance(uuid,timestamptz,timestamptz)'::regprocedure),chr(13),'');
   v_after:=replace(v_before, 'and l.source_type = ''voice_addon''',
     'and l.source_type = ''voice_addon'' and l.metadata->>''lgq_invoice_id'' is null');
   v_after:=replace(v_after, 'and c.status = ''active'';',
@@ -92,7 +92,9 @@ end $$;
 do $$
 declare v_before text; v_after text; v_old text; v_new text;
 begin
-  v_before:=pg_get_functiondef('public.apply_addon_refund(uuid,uuid,jsonb)'::regprocedure);
+  -- Stored function bodies retain the line endings used by their deployer.
+  -- Normalize both sides without weakening any source-contract guard.
+  v_before:=replace(pg_get_functiondef('public.apply_addon_refund(uuid,uuid,jsonb)'::regprocedure),chr(13),'');
   v_old:=$old$      -- Allowance windows follow the base workspace period, not invoice line
       -- boundaries. The window containing the paid service start owns this grant.$old$;
   v_new:=$new$      select * into v_lot from public.usage_credit_lots where account_id=v_account and resource_code='voice_minutes'
@@ -107,12 +109,14 @@ begin
         if v_capacity.metadata->>'voice_allowance_basis' is distinct from 'legacy_base_period' then
           raise exception 'refund_credit_grant_not_resolved' using errcode='P0002';
         end if;$new$;
+  v_old:=replace(v_old,chr(13),'');
   if strpos(v_before,v_old)=0 then raise exception 'refund_voice_source_contract_drift'; end if;
-  v_after:=replace(v_before,v_old,v_new);
+  v_after:=replace(v_before,v_old,replace(v_new,chr(13),''));
   v_after:=replace(v_after,'and source_type=''voice_addon'' and (metadata->>''period_start'')',
     'and source_type=''voice_addon'' and metadata->>''lgq_invoice_id'' is null and (metadata->>''period_start'')');
   v_old:=$old$        raise exception 'refund_allowance_attribution_ambiguous' using errcode='22023';
       end if;$old$;
+  v_old:=replace(v_old,chr(13),'');
   if strpos(v_after,v_old)=0 then raise exception 'refund_voice_end_contract_drift'; end if;
   v_after:=replace(v_after,v_old,v_old||E'\n      end if;');
   execute v_after;

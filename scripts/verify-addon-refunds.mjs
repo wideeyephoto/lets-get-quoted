@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve, basename } from 'node:path';
 import os, { tmpdir } from 'node:os';
-import { syncBuiltinESMExports } from 'node:module';
-import { fileURLToPath } from 'node:url';
+import { createRequire, syncBuiltinESMExports } from 'node:module';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -14,9 +14,11 @@ try { os.userInfo(); } catch (error) {
   syncBuiltinESMExports();
 }
 const platform = process.platform === 'win32' ? 'windows-x64' : process.platform === 'darwin' ? 'darwin-arm64' : 'linux-x64';
-const bin = join(root, 'node_modules/@embedded-postgres', platform, 'native/bin');
+const runtimeRoot = process.env.LGQ_PG_RUNTIME_ROOT || root;
+const bin = join(runtimeRoot, 'node_modules/@embedded-postgres', platform, 'native/bin');
 process.env.PATH = `${bin}${process.platform === 'win32' ? ';' : ':'}${process.env.PATH}`;
-const { default: EmbeddedPostgres } = await import('embedded-postgres');
+const runtimeRequire = createRequire(join(runtimeRoot, 'package.json'));
+const { default: EmbeddedPostgres } = await import(pathToFileURL(runtimeRequire.resolve('embedded-postgres')).href);
 const dir = mkdtempSync(join(tmpdir(), 'lgq-addon-refunds-'));
 const pg = new EmbeddedPostgres({ databaseDir: dir, user: 'postgres', password: 'postgres', port: 54391, persistent: false, onLog: () => {}, onError: () => {} });
 const read = name => readFileSync(join(root, 'migrations', name), 'utf8').replace(/\r\n/g, '\n');
@@ -54,10 +56,15 @@ try {
   await q(voiceCatalog.slice(catalogStart, catalogEnd));
   await q(read('20260819020000_purchased_capacity_lifecycle.sql'));
   await q('grant select on workspace_entitlements,usage_credit_lots,billing_top_up_purchase_operations,workspace_purchased_capacity to service_role');
-  await q(read('20260908175533_addon_refund_reversal_and_future_credit_debt.sql'));
+  // Production retained CRLF in the refund function while the older allowance
+  // function uses LF. Exercise that mixed source history, and the reverse case.
+  const refundSql = read('20260908175533_addon_refund_reversal_and_future_credit_debt.sql');
+  await q(process.argv.includes('--migration-crlf') ? refundSql : refundSql.replaceAll('\n', '\r\n'));
   await q(fn('voice_minute_lot_tail', voiceAllowance));
   await q(fn('grant_voice_minute_allowance', read('20260820110000_voice_allowance_survives_a_moved_period.sql')));
-  await q(read('20260909211000_paid_voice_invoice_allowance.sql'));
+  const invoiceSql = read('20260909211000_paid_voice_invoice_allowance.sql');
+  await q(process.argv.includes('--migration-crlf') ? invoiceSql.replaceAll('\n', '\r\n') : invoiceSql);
+  pass('invoice migration accepts independently stored LF and CRLF function sources');
   const account = '11111111-1111-4111-8111-111111111111';
   await q('insert into accounts values($1)', [account]);
   await q("insert into workspace_entitlements(account_id,plan_code,billing_interval,billing_status,entitlement_state,catalog_version,platform_fee_bps) values($1,'flex','none','free','active','fixture',0)", [account]);
