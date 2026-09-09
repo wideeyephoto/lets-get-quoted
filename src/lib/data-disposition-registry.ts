@@ -1054,6 +1054,47 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'stripe',
   },
 
+  // Platform add-on financial evidence follows the existing billing retention
+  // policy. Receipts/jobs are provider-scoped until exact attribution resolves.
+  addon_refund_events: {
+    tableName: 'addon_refund_events',
+    relationship: 'system_global',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+  addon_refund_jobs: {
+    tableName: 'addon_refund_jobs',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+  addon_refund_reversals: {
+    tableName: 'addon_refund_reversals',
+    relationship: 'direct_account_id',
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+  addon_refund_debt_offsets: {
+    tableName: 'addon_refund_debt_offsets',
+    relationship: 'fk_chain',
+    fkPath: ['reversal_id', 'addon_refund_reversals.account_id'],
+    localAction: 'retain_immutable',
+    portability: 'full',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Expired checkout session cleanup queue
   stripe_connected_checkout_expirations: {
     tableName: 'stripe_connected_checkout_expirations',
