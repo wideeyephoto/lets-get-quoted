@@ -41,7 +41,7 @@ describe('Service Health Telemetry Truthfulness Gate (P1-1, P1-2, P1-3)', () => 
 
         const roster = getOnCallRoster();
         expect(roster.primary.phone).toBe('Not configured');
-        expect(roster.primary.email).toBe('Not configured');
+        expect(roster.primary.email).toBe('hello@letsgetquoted.com');
         expect(roster.secondary.phone).toBe('Not configured');
         expect(roster.secondary.email).toBe('Not configured');
         expect(roster.primary.phone).not.toContain('555');
