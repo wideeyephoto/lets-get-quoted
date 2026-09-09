@@ -7,8 +7,10 @@
  * 3. Authenticated role cannot directly insert/update/delete (no write policies; writes run as service role).
  * 4. Unique domain constraint: lower(domain) uniqueness is enforced globally.
  * 5. One verified sending domain per account: partial unique index rejects a second verified domain,
- *    but allows multiple unverified/pending rows.
+ *    but allows multiple unverified/pending rows until the follow-up migration.
  * 6. Account deletion: cascade cleans up email_sending_domains rows without error.
+ * 7. The follow-up migration permits only one domain of any status per account,
+ *    including concurrent reservations from separate database connections.
  *
  * Exit code 2 if embedded-postgres is not installed and no fallback DB URL is provided.
  * Exit code 1 on test failure.
@@ -363,6 +365,30 @@ try {
     [accA.id],
   );
   ck('Account delete cascades and removes sending domains', remaining === 0);
+
+  // Apply the stricter v1 limit after checking the original schema contract.
+  await client.query('delete from public.email_sending_domains where account_id = $1', [accB.id]);
+  await client.query(readFileSync(join(REPO, 'migrations', '20260909210950_email_sending_domain_account_limit.sql'), 'utf8'));
+  const contenders = [0, 1].map(() => pgInstance
+    ? pgInstance.getPgClient('lgq_test')
+    : new Client({ connectionString: process.env.LGQ_PG17_DATABASE_URL }));
+  try {
+    await Promise.all(contenders.map((connection) => connection.connect()));
+    const results = await Promise.allSettled(contenders.map((connection, index) => connection.query(
+      'insert into public.email_sending_domains (account_id, domain, status) values ($1, $2, $3)',
+      [accB.id, `reservation-${index}.example`, 'pending'],
+    )));
+    ck('Concurrent pending reservations yield exactly one winner and one unique violation',
+      results.filter((result) => result.status === 'fulfilled').length === 1
+        && results.filter((result) => result.status === 'rejected' && result.reason.code === '23505').length === 1);
+    await client.query('delete from public.email_sending_domains where account_id = $1', [accB.id]);
+    await client.query('insert into public.email_sending_domains (account_id, domain, status) values ($1, $2, $3)',
+      [accB.id, 'replacement.example', 'pending']);
+    const { rowCount } = await client.query('select 1 from public.email_sending_domains where account_id = $1', [accB.id]);
+    ck('Disconnect releases the workspace reservation for a replacement domain', rowCount === 1);
+  } finally {
+    await Promise.all(contenders.map((connection) => connection.end()));
+  }
 
 } finally {
   if (client) await client.end();

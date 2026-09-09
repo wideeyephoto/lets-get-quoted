@@ -2,6 +2,8 @@
 
 Status: **verification and recovery fixes complete for this audit; production rollout remains gated.** This report separates local code checks, real provider/receiver tests, and deployed application behavior. The recovery fixes in this commit have not been deployed by this task.
 
+Follow-up: [Outlook, actual quote-link, callback incident, and canary evidence](contractor-domains-canary-2026-09-09.md). Outlook SPF/DKIM/DMARC and its reply to Gmail passed; a real production J-1004 email opens its matching quote. The original transport probes below used homepage links and are not product-link evidence. Their staging account tags caused production callback failures, now explicitly recorded in the follow-up. The account reservation gap is fixed and its migration applied to both databases. Later observations in that record supersede this initial audit's open items.
+
 ## Live email evidence
 
 Brett authorized DNS changes for `blackholeart.com` and test messages to his Gmail inbox. No existing mailbox was required for outbound sending. Replies use his existing Gmail address; `hello@blackholeart.com` has no receiving mailbox or alias.
@@ -45,4 +47,4 @@ Validation: 214 tests passed across 16 domain, identity, routing, cron, and dele
 
 The current production enrollment flag is absent (the flag exists in Preview only), and no production workspace allowlist is configured. Server-side allowlist and paused-enrollment behavior pass local tests; no production canary has been activated.
 
-The [go-live checklist](contractor-email-domain-go-live-checklist-2026-09-09.md) remains authoritative for the remaining work: deployed UI onboarding and runtime key permissions, Outlook and additional template/attachment coverage, separate-mailbox reply receipt, any required From alias, real DNS-loss/recovery and cleanup failure drills, enforceable abuse holds, named response ownership, and seven scheduled canary runs with representative sends. The code's one-domain preflight is not an atomic pending-attempt limit, and provider inventory pagination is not implemented; those claims have been corrected in the checklist. Do not enable general enrollment on the strength of this single Gmail rehearsal.
+The [go-live checklist](contractor-email-domain-go-live-checklist-2026-09-09.md) remains authoritative for deployed onboarding, additional template/attachment coverage, required From alias, real DNS-loss/recovery and cleanup failure drills, abuse holds, response ownership, and seven scheduled canary runs with representative sends. The follow-up closes Outlook/separate-mailbox evidence and the atomic reservation gap. Correction: Resend returns all domains when `limit` is omitted, so the current provider inventory call is not limited to one page. Do not enable general enrollment on the strength of transport probes.

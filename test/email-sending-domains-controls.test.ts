@@ -41,6 +41,9 @@ vi.mock('@/lib/auth', () => ({
             return { data: filtered.map((row) => ({ ...row })), error: null };
           }
           if (op === 'insert') {
+            if (rows.some((row) => row.account_id === patchData.account_id || row.domain === patchData.domain)) {
+              return { data: null, error: { code: '23505', message: 'Domain reservation already exists' } };
+            }
             const newRow = { id: `row-${Date.now()}`, ...patchData };
             dbRows[table].push(newRow);
             return { data: newRow, error: null };
@@ -227,6 +230,63 @@ describe('Contractor Email Sending Domains - Release Controls & Guards', () => {
   });
 
   describe('C05: Quota Bounds & Capacity Exhaustion Handling', () => {
+    it('reserves the workspace before provider creation and allows only one concurrent connection', async () => {
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED = 'true';
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST = '*';
+      const providerCreates: string[] = [];
+      globalThis.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'POST' && input.toString().endsWith('/domains')) {
+          const { name } = JSON.parse(init.body as string);
+          providerCreates.push(name);
+          expect(dbRows.email_sending_domains).toHaveLength(1);
+          expect(dbRows.email_sending_domains[0]).toMatchObject({
+            account_id: currentAccountId, domain: name, status: 'pending',
+            failure_reason: 'PROVISIONING_PENDING: Connecting to provider.',
+          });
+          return new Response(JSON.stringify({ id: 'rsd_reserved', name, status: 'not_started', records: [] }), { status: 200 });
+        }
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      });
+      const { createEmailSendingDomainAction } = await import('@/app/dashboard/settings/email-domain-actions');
+      const results = await Promise.allSettled([
+        createEmailSendingDomainAction({ domain: 'first-race.com' }),
+        createEmailSendingDomainAction({ domain: 'second-race.com' }),
+      ]);
+      expect(results.filter((result) => result.status === 'fulfilled')).toHaveLength(1);
+      expect(results.filter((result) => result.status === 'rejected')).toHaveLength(1);
+      expect(providerCreates).toHaveLength(1);
+      expect(dbRows.email_sending_domains).toHaveLength(1);
+      expect(dbRows.email_sending_domains[0]).toMatchObject({ provider_domain_id: 'rsd_reserved', status: 'pending' });
+    });
+
+    it('retains a recoverable failed reservation when provider capacity is exhausted', async () => {
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED = 'true';
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST = '*';
+      globalThis.fetch = vi.fn().mockResolvedValue(new Response(JSON.stringify({ message: 'Domain quota exceeded' }), { status: 422 }));
+      const { createEmailSendingDomainAction } = await import('@/app/dashboard/settings/email-domain-actions');
+      await expect(createEmailSendingDomainAction({ domain: 'capacity-test.com' })).rejects.toThrow(/capacity limit/);
+      expect(dbRows.email_sending_domains).toHaveLength(1);
+      expect(dbRows.email_sending_domains[0]).toMatchObject({ status: 'failed', failure_reason: expect.stringContaining('PROVISIONING_FAILED:') });
+    });
+
+    it('removes a newly created provider binding if the owner disconnects during provisioning', async () => {
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED = 'true';
+      process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST = '*';
+      const deleted: string[] = [];
+      globalThis.fetch = vi.fn().mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (init?.method === 'POST') {
+          dbRows.email_sending_domains = [];
+          return new Response(JSON.stringify({ id: 'rsd_unsaved', name: 'disconnect-race.com', status: 'not_started', records: [] }), { status: 200 });
+        }
+        if (init?.method === 'DELETE') deleted.push(input.toString());
+        return new Response(JSON.stringify({ data: [] }), { status: 200 });
+      });
+      const { createEmailSendingDomainAction } = await import('@/app/dashboard/settings/email-domain-actions');
+      await expect(createEmailSendingDomainAction({ domain: 'disconnect-race.com' })).rejects.toThrow(/changed while connecting/);
+      expect(deleted).toEqual(['https://api.resend.com/domains/rsd_unsaved']);
+      expect(dbRows.email_sending_domains).toHaveLength(0);
+    });
+
     it('refuses to connect a second distinct sending domain for the same workspace', async () => {
       process.env.LGQ_EMAIL_SENDING_DOMAINS_ENABLED = 'true';
       process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST = '*';
