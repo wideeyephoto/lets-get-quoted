@@ -2325,6 +2325,38 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Platform staff authentication material is independent of customer accounts.
+  // Credentials are removed on explicit revocation or auth-user deletion;
+  // challenges/grants expire and are pruned by the passkey RPCs. Account closure
+  // must never delete a platform administrator's recovery credentials.
+  admin_passkey_credentials: {
+    tableName: 'admin_passkey_credentials',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  admin_passkey_challenges: {
+    tableName: 'admin_passkey_challenges',
+    relationship: 'system_global',
+    primaryKeyColumn: 'id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  admin_passkey_grants: {
+    tableName: 'admin_passkey_grants',
+    relationship: 'system_global',
+    primaryKeyColumn: 'session_id',
+    localAction: 'delete',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 0, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // Staff role elevation audit trail
   staff_role_changes: {
     tableName: 'staff_role_changes',

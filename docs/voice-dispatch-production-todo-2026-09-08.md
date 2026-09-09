@@ -18,6 +18,33 @@ This checklist consolidates the September 8 reassessment. It is an execution pla
 
 An unchecked item is still open even when its implementation exists. Close it with dated evidence and the deployment tested. Label evidence as local, hosted fixture, or live provider/handset; one does not automatically substitute for another.
 
+## Current recording and operator follow-through — September 9, 2026
+
+This update incorporates PR #58 and preserves the newer full-call audio failure
+in the [September 9 acceptance record](voice-acceptance-2026-09-09.md). The short
+spoken-currency diagnostic does not close the full Dispatch latency gate.
+
+- [x] PR #55 homeowner/staff behavior and tool deadlines are released. Customer
+  After Hours routing and all-day registered-staff Dispatch follow the documented
+  [behavior contract](voice-homeowner-and-staff-readiness.md); existing business
+  answer modes were preserved.
+- [x] PR #58 merged as `5e7e00901` after full CI. All 74 focused recording,
+  retention and operator tests passed, including 15 new access-boundary cases.
+  Hosted authorization checks and anonymous denial of a ready recording passed.
+  See [the verification scope](voice-recording-access-boundaries.md).
+- [x] The actual signed-in operator receipt screen rendered with zero pending
+  or failed receipts. Recent retention runs succeeded with no deletion backlog.
+- [ ] Actual failed-receipt retry, authorized recording playback and provider
+  deletion remain separate live acceptance cases.
+- [ ] Full Dispatch audio, voiced voicemail, active-recording cutoff, real
+  provider fallback and homeowner/on-call acceptance remain open as described
+  in the dated acceptance record. No_input recording is not voiced acceptance.
+- [ ] Validate real-contractor settings and approved customer SMS registration
+  before customer carrier acceptance; test-workspace values are insufficient.
+- [ ] Full provider-period reconciliation remains open; exhaustion blocking
+  stays OFF. Interruption fade requires a supported provider control; the
+  prepared support question is unsent and no fade has been implemented.
+
 ## Current baseline
 
 - [x] Voice metering is operating: sampled recent calls settled for 1, 8, and 10 minutes, with committed reservations. The earlier claim that nothing is metered is obsolete.
