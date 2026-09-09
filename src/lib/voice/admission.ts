@@ -119,16 +119,18 @@ export async function resolveVoiceWorkspace(
   if (numberReadiness.kind !== 'ready') return null;
   const dedicatedNumber = numberReadiness.number;
 
-  const { data: account, error } = await admin
-    .from('accounts')
-    // NOT selecting a per-workspace greeting. There is no column for one yet,
-    // and PostgREST answers an unknown column with 42703 -- which this function
-    // turns into null, which sends EVERY caller to the unavailable message. A
-    // read written ahead of its column does not degrade; it fails closed for
-    // everyone. The greeting lands with the settings screen that edits it.
-    .select('id, call_forward_number, timezone')
-    .eq('id', dedicatedNumber.accountId)
-    .maybeSingle();
+  const [accountResult, voiceEntitlement, configuredResult] = await Promise.all([
+    admin.from('accounts')
+      .select('id, call_forward_number, timezone')
+      .eq('id', dedicatedNumber.accountId)
+      .maybeSingle(),
+    loadVoiceEntitlement(admin, dedicatedNumber.accountId),
+    admin.from('voice_settings')
+      .select('status, answer_mode, business_hours, greeting, transfer_number, emergency_transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
+      .eq('account_id', dedicatedNumber.accountId)
+      .maybeSingle(),
+  ]);
+  const { data: account, error } = accountResult;
 
   if (error) {
     console.error('voice workspace lookup failed:', error);
@@ -140,16 +142,10 @@ export async function resolveVoiceWorkspace(
   // concurrency number, but only Scale inclusion or an active add-on makes the
   // product usable. Keep the arithmetic in one shared reader so the route and
   // the dashboard cannot disagree.
-  const voiceEntitlement = await loadVoiceEntitlement(admin, String(account.id));
-
   // No row means never configured, which is off. Read separately and
   // defensively for the same reason as the entitlement: an unreadable row must
   // not become a permissive default on the one surface that answers a phone.
-  const { data: configured } = await admin
-    .from('voice_settings')
-    .select('status, answer_mode, business_hours, greeting, transfer_number, emergency_transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
-    .eq('account_id', account.id)
-    .maybeSingle();
+  const { data: configured } = configuredResult;
 
   const row = configured as Record<string, unknown> | null;
 
@@ -325,11 +321,12 @@ export async function planInboundCall(
 
   if (workspace.concurrentCallLimit < 1) return fallback(workspace, 'no_seat');
 
-  const callerIdentity = await resolveVoiceCallerIdentity(
-    admin,
-    workspace.accountId,
-    call.fromNumber,
-  ).catch(() => ({ status: 'unavailable' as const }));
+  const [callerIdentity, open] = await Promise.all([
+    resolveVoiceCallerIdentity(admin, workspace.accountId, call.fromNumber)
+      .catch(() => ({ status: 'unavailable' as const })),
+    countOpenAiCalls(admin, workspace.accountId, workspace.concurrentCallLimit,
+      (options.now ?? (() => new Date()))(), call.providerCallId),
+  ]);
 
   // Transient lookup failure or ambiguous matches must not deny AI answering to customers.
   // We degrade safely to customer status (which denies staff mutation tools but admits the caller).
@@ -352,11 +349,6 @@ export async function planInboundCall(
     return fallback(workspace, 'within_business_hours');
   }
 
-  const open = await countOpenAiCalls(
-    admin, workspace.accountId, workspace.concurrentCallLimit,
-    (options.now ?? (() => new Date()))(),
-    call.providerCallId,
-  );
   if (open >= workspace.concurrentCallLimit) return fallback(workspace, 'at_capacity');
 
   const decision = await admitVoiceCall(admin, {

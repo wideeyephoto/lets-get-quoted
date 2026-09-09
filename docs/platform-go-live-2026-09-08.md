@@ -147,27 +147,19 @@ conditions nobody has confirmed:
 **PASS =** one curl reads the flag from outside and returns on; and there is a
 named date by which reconciliation completes and the gate flips.
 
-### 1.3 The app's own refund path has never executed against a live charge — `INHERITED` — **P0**
+### 1.3 Live LGQ refund engine — verified September 9, 2026
 
-[payments.ts:865](../src/lib/payments.ts#L865) sets `reverse_transfer: true` and
-`refund_application_fee: true`. There are four distinct `stripe.refunds.create`
-call sites and **zero** have run against a live key. The one live refund on
-record (2026-08-17) was issued from the Stripe dashboard, which exercises only
-the `charge.refunded` projection and never `refundPayment()`.
+The earlier statement that no LGQ refund call site had run live is superseded
+by [verified provider/application evidence](prelaunch-payments-verification-2026-09-09.md).
+The September 7 programmatic LGQ refund returned $1.00, reversed $1.00 of the
+contractor transfer and refunded $0.01 of the platform fee. Stripe's API request
+log contains both reversal flags and LGQ's exact idempotency key. The production
+ledger and admin audit agree.
 
-The comment block at [payments.ts:791](../src/lib/payments.ts#L791) states the
-consequence plainly: without `reverse_transfer`, a $1,000 refund sends $1,000 to
-the customer, leaves $987.50 with the contractor, and costs **the platform**
-$987.50 of its own money. The first contractor who clicks Refund is the first
-execution.
-
-The webhook route handlers were rewritten for Next 15 *after* both live proofs
-on file, so even the stale evidence no longer describes the shipped code.
-
-**Do:** never through the Stripe dashboard UI. Create a $0.50 live invoice, pay
-it, then issue the refund **from the LGQ dashboard**. **PASS =** Stripe shows
-`transfer_reversal` set and `refund_application_fee` applied, and the payments
-row advances by compare-and-set. Operator required.
+**Scope:** this verifies the live partial-refund engine. It does not claim a new
+dashboard-button execution, a full refund, every other refund call site or the
+paid add-on lifecycle. The remaining live add-on gate is tracked in the current
+[launch checklist](../LAUNCH_CHECKLIST.md).
 
 ### 1.4 Production feature-flag reconciliation — 67 flags, 12 documented — `VERIFIED TODAY` — **P0**
 

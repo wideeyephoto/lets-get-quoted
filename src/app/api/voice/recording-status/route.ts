@@ -71,14 +71,17 @@ export async function POST(req: Request) {
 
     const admin = createAdminClient();
     const callbackUrl = new URL(req.url);
+    const recoveryPath = /^\/api\/voice\/recording-status\/(1[2-9]\d{9})\/(1[2-9]\d{9}|unknown)$/.exec(callbackUrl.pathname);
+    const recoveryTo = recoveryPath?.[1] ?? callbackUrl.searchParams.get('to') ?? '';
+    const recoveryFrom = recoveryPath?.[2] ?? callbackUrl.searchParams.get('from') ?? '';
     const { error } = await admin.rpc('apply_voice_recording_observation', {
       p_call_id: providerCallId,
       p_status: isCompleted ? 'ready' : pending ? 'pending' : 'failed',
       p_url: isCompleted ? recordingUrl : null,
       p_duration: durationSeconds, p_size: sizeBytes,
       // Only provider-signed recovery URLs can supply inventory attribution.
-      p_to_number: signature.ok ? normalizeUsPhone(callbackUrl.searchParams.get('to') ?? '') : null,
-      p_caller: signature.ok ? normalizeUsPhone(callbackUrl.searchParams.get('from') ?? '') : null,
+      p_to_number: signature.ok ? normalizeUsPhone(recoveryTo) : null,
+      p_caller: signature.ok ? normalizeUsPhone(recoveryFrom) : null,
     });
 
     if (error) {
