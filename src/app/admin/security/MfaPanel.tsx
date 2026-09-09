@@ -13,45 +13,11 @@ type Factor = {
   updated_at?: string;
 };
 
-export interface WebAuthnMfaClient {
-  _register?: (options: {
-    friendlyName?: string;
-    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
-  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
-  register?: (options: {
-    friendlyName?: string;
-    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
-  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
-  _authenticate?: (options: {
-    factorId: string;
-    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
-  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
-  authenticate?: (options: {
-    factorId: string;
-    webauthn?: { rpId?: string; rpOrigins?: string[]; signal?: AbortSignal };
-  }) => Promise<{ data: unknown; error: { message?: string } | null }>;
-}
+// Use the website domain instead of Supabase's project hostname in the otpauth
+// issuer so password managers can associate codes with the saved website login.
+const TOTP_ISSUER = 'app.letsgetquoted.com';
 
-export function getWebAuthnMfaClient(authClient = supabase.auth) {
-  const mfa = authClient?.mfa as unknown as { webauthn?: WebAuthnMfaClient } | undefined;
-  const webauthn = mfa?.webauthn;
-  if (!webauthn) {
-    throw new Error('WebAuthn MFA is not available: supabase.auth.mfa.webauthn is undefined.');
-  }
-
-  const registerFn = (webauthn._register ?? webauthn.register)?.bind(webauthn);
-  const authenticateFn = (webauthn._authenticate ?? webauthn.authenticate)?.bind(webauthn);
-
-  if (!registerFn || !authenticateFn) {
-    throw new Error(
-      `WebAuthn MFA methods missing on SDK client: register=${Boolean(registerFn)}, authenticate=${Boolean(authenticateFn)}`
-    );
-  }
-
-  return { webauthn, registerFn, authenticateFn };
-}
-
-export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
+export default function MfaPanel({ stepUp, accountEmail }: { stepUp: boolean; accountEmail: string }) {
   const [factors, setFactors] = useState<Factor[]>([]);
   const [level, setLevel] = useState<string>('checking');
   const [qr, setQr] = useState<string | null>(null);
@@ -59,63 +25,42 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
   const [totpFactorId, setTotpFactorId] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [message, setMessage] = useState('');
-  const [enrollNotice, setEnrollNotice] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [supportsWebAuthn, setSupportsWebAuthn] = useState(true);
+  const [copiedSetupKey, setCopiedSetupKey] = useState(false);
+  const [busy, setBusy] = useState(true);
 
   async function refresh() {
-    const [{ data: factorsData }, { data: assurance }] = await Promise.all([
+    const [{ data: factorsData, error: factorsError }, { data: assurance, error: assuranceError }] = await Promise.all([
       supabase.auth.mfa.listFactors(),
       supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
     ]);
+    if (factorsError) throw factorsError;
+    if (assuranceError) throw assuranceError;
     const all = (factorsData?.all ?? []) as Factor[];
     setFactors(all);
     setLevel(assurance?.currentLevel ?? 'aal1');
+    return assurance?.currentLevel ?? 'aal1';
   }
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setSupportsWebAuthn(Boolean(window.PublicKeyCredential));
-    }
-    void refresh();
+    void refresh()
+      .catch(() => setMessage('Could not load your authenticators. Refresh this page to try again.'))
+      .finally(() => setBusy(false));
   }, []);
 
-  async function enrollPasskey() {
-    setBusy(true);
-    setMessage('');
-    setEnrollNotice(null);
+  async function copySetupKey() {
+    if (!secret) return;
     try {
-      const { registerFn } = getWebAuthnMfaClient();
-      const { error } = await registerFn({
-        friendlyName: 'Passkey',
-      });
-      if (error) {
-        const errMsg = error.message || '';
-        if (errMsg.toLowerCase().includes('disabled for webauthn') || errMsg.toLowerCase().includes('mfa enroll is disabled')) {
-          setEnrollNotice(
-            'WebAuthn MFA enrollment is disabled in your Supabase project settings. In your Supabase Dashboard, navigate to Authentication → Multi-Factor Authentication and enable WebAuthn / Security Keys.'
-          );
-        } else {
-          setMessage(errMsg || 'Passkey setup was cancelled or failed.');
-        }
-        return;
-      }
-      setMessage('Passkey registered and verified! High-impact actions are unlocked for this session.');
-      setQr(null);
-      setSecret(null);
-      setTotpFactorId(null);
-      await refresh();
-    } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Passkey registration error.');
-    } finally {
-      setBusy(false);
+      await navigator.clipboard.writeText(secret);
+      setCopiedSetupKey(true);
+    } catch {
+      setCopiedSetupKey(false);
+      setMessage('Could not copy automatically. Select and copy the setup key shown below the QR code.');
     }
   }
 
   async function verifyPasskey(factorId?: string) {
     setBusy(true);
     setMessage('');
-    setEnrollNotice(null);
     try {
       const targetFactor = factorId
         ? factors.find((f) => f.id === factorId && f.factor_type === 'webauthn')
@@ -126,8 +71,10 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         return;
       }
 
-      const { authenticateFn } = getWebAuthnMfaClient();
-      const { error } = await authenticateFn({
+      // Keep verification available for previously enrolled WebAuthn factors.
+      // New enrollment is not offered: passkey sign-in and WebAuthn MFA are
+      // separate provider features, and this project only enables the former.
+      const { error } = await supabase.auth.mfa.webauthn.authenticate({
         factorId: targetFactor.id,
       });
 
@@ -136,8 +83,10 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         return;
       }
 
-      setMessage('Verified with passkey. High-impact actions are unlocked for this session.');
-      await refresh();
+      const currentLevel = await refresh();
+      setMessage(currentLevel === 'aal2'
+        ? 'Verified with passkey. High-impact actions are unlocked for this session.'
+        : 'Your session still needs two-factor verification. Try your authenticator app.');
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'Passkey verification failed.');
     } finally {
@@ -148,11 +97,17 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
   async function enrollTotp() {
     setBusy(true);
     setMessage('');
-    setEnrollNotice(null);
+    setCopiedSetupKey(false);
+    setCode('');
     try {
+      let friendlyName = 'Authenticator app';
+      for (let suffix = 2; factors.some((factor) => factor.friendly_name === friendlyName); suffix += 1) {
+        friendlyName = `Authenticator app ${suffix}`;
+      }
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Authenticator app',
+        friendlyName,
+        issuer: TOTP_ISSUER,
       });
       if (error || !data) {
         setMessage(error?.message ?? 'Could not start TOTP enrollment.');
@@ -184,12 +139,15 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         setMessage(error.message);
         return;
       }
-      setMessage('Verified with authenticator app. High-impact actions are unlocked for this session.');
       setQr(null);
       setSecret(null);
       setCode('');
       setTotpFactorId(null);
-      await refresh();
+      setCopiedSetupKey(false);
+      const currentLevel = await refresh();
+      setMessage(currentLevel === 'aal2'
+        ? 'Verified with authenticator app. High-impact actions are unlocked for this session.'
+        : 'Your session still needs two-factor verification. Enter a new code to try again.');
     } catch (err: unknown) {
       setMessage(err instanceof Error ? err.message : 'TOTP verification failed.');
     } finally {
@@ -210,6 +168,8 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         setTotpFactorId(null);
         setQr(null);
         setSecret(null);
+        setCode('');
+        setCopiedSetupKey(false);
       }
       setMessage('Authenticator removed.');
       await refresh();
@@ -232,7 +192,10 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
 
   return (
     <section className={styles.panel}>
-      <h2 className={styles.panelTitle}>Authenticator security</h2>
+      <h2 className={styles.panelTitle}>Two-factor authentication</h2>
+      <p className={styles.muted}>
+        Use six-digit verification codes from Google Authenticator, Apple Passwords, or another authenticator app.
+      </p>
 
       {stepUp && level !== 'aal2' ? (
         <div className={`${styles.banner} ${styles.err}`}>
@@ -307,15 +270,38 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
       {qr ? (
         <div className={styles.mfaSetup}>
           <p className={styles.mfaPromptText}>
-            Scan this QR code with your authenticator app, then enter its six-digit code.
+            Scan this QR code, then enter a six-digit code below to finish activating two-factor authentication.
           </p>
           <div className={styles.mfaQrCard}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qr} alt="Authenticator enrollment QR code" className={styles.mfaQrImg} />
           </div>
-          <p className={styles.muted}>
-            Manual key: <code>{secret}</code>
-          </p>
+          <dl className={`${styles.kv} ${styles.mfaSetupDetails}`}>
+            <dt>Website</dt><dd>{TOTP_ISSUER}</dd>
+            <dt>Account</dt><dd>{accountEmail}</dd>
+            <dt>Setup key</dt><dd><code className={styles.mfaSetupKey}>{secret}</code></dd>
+          </dl>
+          <div className={styles.mfaActionGroup}>
+            <button type="button" className="btn secondary" onClick={copySetupKey}>
+              {copiedSetupKey ? 'Setup key copied' : 'Copy setup key'}
+            </button>
+            <span role="status" className={styles.muted}>{copiedSetupKey ? 'Ready to paste into your authenticator.' : ''}</span>
+          </div>
+          <details className={styles.mfaInstructions}>
+            <summary>Using Apple Passwords?</summary>
+            <p>
+              Apple Passwords attaches verification codes to a saved login. After scanning, select your
+              {' '}<strong>{TOTP_ISSUER}</strong> account; it may ask you to choose it instead of filling it automatically.
+            </p>
+            <ol>
+              <li>In Passwords, open All and find your saved login for {TOTP_ISSUER} using {accountEmail}. Add the website login first if it is missing.</li>
+              <li>Open that login, tap Edit, then Set Up Code. Paste the setup key above and choose Use Setup Key.</li>
+              <li>Return here and enter the six-digit verification code from Passwords to activate 2FA.</li>
+            </ol>
+            <p>
+              On the same iPhone, you can also touch and hold the QR code and choose Add Verification in Passwords.
+            </p>
+          </details>
           <div className={styles.formStack}>
             <label htmlFor="mfa-code-enroll">Six-digit authenticator code</label>
             <input
@@ -332,7 +318,7 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
                 type="button"
                 className="btn primary"
                 disabled={busy || code.length !== 6}
-                onClick={() => verifyTotp(totpFactorId ?? unverifiedTotp?.id ?? '')}
+                onClick={() => { if (totpFactorId) void verifyTotp(totpFactorId); }}
               >
                 {busy ? 'Verifying…' : 'Verify & activate'}
               </button>
@@ -341,12 +327,14 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
                 className="btn secondary"
                 disabled={busy}
                 onClick={() => {
-                  const idToRemove = totpFactorId ?? unverifiedTotp?.id;
+                  const idToRemove = totpFactorId;
                   if (idToRemove) void removeFactor(idToRemove);
                   else {
                     setQr(null);
                     setSecret(null);
                     setTotpFactorId(null);
+                    setCode('');
+                    setCopiedSetupKey(false);
                   }
                 }}
               >
@@ -374,38 +362,17 @@ export default function MfaPanel({ stepUp }: { stepUp: boolean }) {
         </div>
       ) : null}
 
-      {/* Enrollment error notice (e.g. if WebAuthn MFA is disabled in project settings) */}
-      {enrollNotice ? (
-        <div className={`${styles.mfaNoticeBox} ${styles.error}`}>
-          <div className={styles.mfaNoticeTitle}>⚠️ Action required in Supabase Dashboard</div>
-          <p className={styles.mfaNoticeText}>{enrollNotice}</p>
-        </div>
-      ) : null}
-
       {/* Enrollment buttons (when no QR code is active) */}
-      {!qr ? (
+      {!qr && !unverifiedTotp ? (
         <div className={styles.mfaStack}>
           <p className={styles.mfaPromptHeading}>
             {hasVerified ? 'Add another authenticator' : 'Set up two-factor authentication'}
           </p>
           <div className={styles.mfaActionGroup}>
-            <button
-              type="button"
-              className="btn primary"
-              disabled={busy || !supportsWebAuthn}
-              onClick={enrollPasskey}
-            >
-              {busy ? 'Opening prompt…' : '🔑 Set up Passkey'}
-            </button>
-            <button type="button" className="btn secondary" disabled={busy} onClick={enrollTotp}>
-              📱 Set up Authenticator App (TOTP)
+            <button type="button" className="btn primary" disabled={busy || level === 'checking'} onClick={enrollTotp}>
+              {busy ? 'Please wait…' : '📱 Set up Authenticator App (TOTP)'}
             </button>
           </div>
-          {!supportsWebAuthn ? (
-            <p className={styles.muted}>
-              Passkeys / WebAuthn are not supported by this browser.
-            </p>
-          ) : null}
         </div>
       ) : null}
 
