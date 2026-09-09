@@ -78,6 +78,9 @@ function hasFilter(call: QueryCall, method: string, column: string, value?: unkn
 }
 
 function readMetric(call: QueryCall): number {
+  if (hasFilter(call, 'eq', 'requires_configuration_review', true)) return 1;
+  if (hasFilter(call, 'eq', 'requires_billing_action', true) && hasFilter(call, 'eq', 'operationally_terminal', true)) return 1;
+  if (hasFilter(call, 'eq', 'requires_billing_action', true) && hasFilter(call, 'eq', 'operationally_unresolved', true)) return 2;
   if (hasFilter(call, 'eq', 'projection_applied', true)) return 3;
   if (hasFilter(call, 'eq', 'processing_status', 'failed')) return 1;
   if (hasFilter(call, 'in', 'processing_status')) return 2;
@@ -214,9 +217,11 @@ describe('read-only admin billing operations', () => {
       fixedErrorCodesSupported: false,
       metrics: expect.arrayContaining([
         { code: 'total', label: 'Receipts', count: 9 },
-        { code: 'unresolved', label: 'Unresolved', count: 2 },
+        { code: 'unresolved', label: 'Actionable unresolved', count: 2 },
         { code: 'applied', label: 'Applied', count: 3 },
-        { code: 'dead_letter', label: 'Terminal failures', count: 1 },
+        { code: 'dead_letter', label: 'Actionable failures', count: 1 },
+        { code: 'classified_non_live', label: 'Non-live reviews', count: 1 },
+        { code: 'historical_dead_letter', label: 'Recorded terminal failures', count: 1 },
       ]),
     });
     expect(report.ledgers.find((ledger) => ledger.id === 'connected_expiration_events')?.metrics)
@@ -279,8 +284,8 @@ describe('read-only admin billing operations', () => {
     expect(selected).not.toMatch(/payload|metadata|provider_|stripe_|last_error(?:,|$)/);
     expect(calls.filter((call) => call.columns === 'last_error_code, dead_lettered_at')).toHaveLength(1);
     expect(calls.filter((call) => call.table === 'billing_direct_payment_settlement_tasks')).toHaveLength(0);
-    expect(calls.filter((call) => call.table === 'billing_direct_checkout_late_success_tasks')).toHaveLength(0);
-    expect(calls).toHaveLength(22);
+    expect(calls.filter((call) => call.table === 'billing_event_operational_classifications')).toHaveLength(3);
+    expect(calls).toHaveLength(24);
     expect(rpcCalls).toEqual([
       { functionName: LATE_SUCCESS_RPC, args: undefined },
       { functionName: DIRECT_SETTLEMENT_RPC, args: undefined },
