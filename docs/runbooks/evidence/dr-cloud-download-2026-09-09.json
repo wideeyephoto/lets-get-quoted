@@ -1,0 +1,28 @@
+{
+  "verifiedAt": "2026-09-09T13:12:04.918Z",
+  "pack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-42-53-253Z.tar.aesgcm",
+  "encryptedSha256": "ddccdacf0dbdcbfc5aaf5bc5c2f31c5d7986004600a5c8ffc55dc92cc6956bd3",
+  "plaintextSha256": "346f0e32a54fc8632356a7aceb844bbb02b8e3d50545adc24dbb5202a953c68a",
+  "projectRef": "mfuvvtrkipkigwqqtcal",
+  "sourceSnapshot": {
+    "id": "00000008-000273C7-1",
+    "captured_at": "2026-09-09T12:33:35.381Z",
+    "server_version": "17.6",
+    "read_only": "on"
+  },
+  "allArtifactsAuthenticated": true,
+  "databaseArchiveBytes": 10674967,
+  "databaseArchiveEntries": 4348,
+  "storageObjects": 38,
+  "storageBytes": 35726922,
+  "sourceHead": "92d4d190f4d4f08d540f3a145cb3c1638f4f7134",
+  "sourceAndWorkingChangesAuthenticated": true,
+  "environmentAuthenticated": true,
+  "environmentWrittenInPlaintext": false,
+  "recoveredCaptureDirectory": "C:\\dev\\CLAUDE CODE FOLDER\\tmp\\dr-cloud-download-verified",
+  "keyValuePrinted": false,
+  "userDownloadedFromGoogleDrive": true,
+  "receiptHashesMatch": true,
+  "verificationKeySource": "Local key; user separately confirmed Dashlane escrow",
+  "databaseRestorePerformed": false
+}

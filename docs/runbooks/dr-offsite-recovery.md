@@ -20,7 +20,7 @@ Every run authenticates encrypted artifacts and the published mounted copy. Unch
 
 Inspect `tmp/dr-offsite-status.json`, `tmp/dr-offsite-run.log`, and Task Scheduler. Failed runs retain the prior last-success record, return nonzero, and attempt a local desktop warning. Notification delivery is not an independently measured alerting guarantee.
 
-## September 9 proof and remaining download check
+## September 9 proof and independent cloud download
 
 The 12:49:03.458Z snapshot contains a 10,679,604-byte database archive with 4,348 readable TOC entries and 38 Storage objects totaling 35,726,922 bytes. The pack also authenticates the source and encrypted environment recovery kit. Offline opening passed, as did four wrong-key/tampering rejection tests.
 
@@ -28,7 +28,7 @@ Pack used for the offline recovery verification: `mfuvvtrkipkigwqqtcal-2026-09-0
 
 Ciphertext SHA-256: `1ffebdf0e2be530d8bdca09ab98af672e69719060b1332984032d6a52c4f4782`.
 
-Google Drive web confirms the file exists in cloud storage. A download was requested through Drive, but Chrome reported **Can't download file** and **This page has been blocked by Chrome**. No independent cloud-download hash or restore is claimed. Complete this remaining check by downloading the named file through a user-controlled browser into `C:\dev`, then running the offline opener against that downloaded file and comparing its hash with the receipt.
+The initial Chrome download was blocked. The user subsequently downloaded `mfuvvtrkipkigwqqtcal-2026-09-09T12-42-53-253Z.tar.aesgcm` from Drive, and independent verification passed at 13:12:04.918Z. Its ciphertext SHA-256 is `ddccdacf0dbdcbfc5aaf5bc5c2f31c5d7986004600a5c8ffc55dc92cc6956bd3`, matching its saved receipt exactly. All inner artifacts authenticated: database archive 10,674,967 bytes / 4,348 readable TOC entries, 38 Storage objects / 35,726,922 bytes, source and encrypted environment. This verifies recovery of cloud-stored bytes; the downloaded archive was not restored into a running database during this check. See [download evidence](evidence/dr-cloud-download-2026-09-09.json).
 
 ## Recover on another PC
 
@@ -47,6 +47,12 @@ Google Drive web confirms the file exists in cloud storage. A download was reque
 
 The existing USB task also captures database and Storage data. Earlier repository-only inspection missed that implementation. Its September 9 runs verified database and all 38 objects but exposed missing Git worktree branch refs; four refs were restored from their own HEAD reflogs without changing files or indexes. The final 09:07:58 local rerun still failed its repository portion: `pricing-growth-journey` references missing indexed blob `18479a8f32af5f222ea7cbafa818907803d3fad0` for `src/app/dashboard/sites/WebsiteBuilder.tsx`. Its index was not reset because that could discard staged work. Database/Storage verification still passed. The older cloud task's Git/GPG backup is separate from this new, passing encrypted database/Storage pipeline.
 
-The user also attempted the Drive download and reported that it was blocked. Independent cloud-download recovery remains an explicit open check; no browser-policy workaround was attempted.
+The user resolved the download block through their browser. No browser-policy workaround was attempted by the agent. Independent cloud-download authentication now passes; Dashlane retrieval itself and full infrastructure/provider recovery remain unrehearsed.
+
+### USB repair verified at 09:19 local time
+
+The later rerun supersedes the failed USB attempt above: **status `ok`, task exit code 0, eight repositories, 439 loose items, database verified, all 38 Storage objects, zero failures**, completed in 481.3 seconds. Fourteen missing indexed blobs were reconstructed from working files with exactly matching Git object hashes; another 27 historical objects were recovered from the USB mirror. The affected index's SHA-256 remained unchanged. All 37 active `C:\dev` worktrees produce readable binary diffs, and Git connectivity excluding reflogs passes.
+
+Two old OneDrive worktrees have broken Git metadata; the backup successfully captured their full non-rebuildable trees and reported warnings. One old `lgq-pricing-production` reflog entry refers to an unavailable commit; the entry was preserved, and it does not block active repository connectivity or the successful backup. See [USB repair evidence](evidence/dr-usb-repair-2026-09-09.json).
 
 See [offsite evidence](evidence/dr-offsite-2026-09-09.json) and [production migration verification](evidence/dr-production-migration-2026-09-09.json).

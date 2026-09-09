@@ -46,11 +46,35 @@
     "webPresenceVerified": true,
     "sharing": "Private to you",
     "displayedSize": "167.3 MB",
-    "independentDownloadVerified": false,
-    "reason": "Drive download requested; Chrome reported Cannot download file and This page has been blocked by Chrome. No workaround attempted.",
+    "independentDownloadVerified": true,
+    "reason": "User downloaded archive through Google Drive; exact receipt hashes and all inner artifacts verified.",
     "folderUrl": "https://drive.google.com/drive/u/2/folders/13a59XiGg_YOIvi4z5eIVnbmbAUBt0gis",
     "webPresenceVerifiedPack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-50-32-079Z.tar.aesgcm",
-    "userAlsoReportedDownloadBlocked": true
+    "userAlsoReportedDownloadBlocked": true,
+    "verifiedDownload": {
+      "verifiedAt": "2026-09-09T13:12:04.918Z",
+      "pack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-42-53-253Z.tar.aesgcm",
+      "encryptedSha256": "ddccdacf0dbdcbfc5aaf5bc5c2f31c5d7986004600a5c8ffc55dc92cc6956bd3",
+      "plaintextSha256": "346f0e32a54fc8632356a7aceb844bbb02b8e3d50545adc24dbb5202a953c68a",
+      "projectRef": "mfuvvtrkipkigwqqtcal",
+      "sourceSnapshot": {
+        "id": "00000008-000273C7-1",
+        "captured_at": "2026-09-09T12:33:35.381Z",
+        "server_version": "17.6",
+        "read_only": "on"
+      },
+      "allArtifactsAuthenticated": true,
+      "databaseArchiveBytes": 10674967,
+      "databaseArchiveEntries": 4348,
+      "storageObjects": 38,
+      "storageBytes": 35726922,
+      "sourceHead": "92d4d190f4d4f08d540f3a145cb3c1638f4f7134",
+      "sourceAndWorkingChangesAuthenticated": true,
+      "environmentAuthenticated": true,
+      "environmentWrittenInPlaintext": false,
+      "recoveredCaptureDirectory": "C:\\dev\\CLAUDE CODE FOLDER\\tmp\\dr-cloud-download-verified",
+      "keyValuePrinted": false
+    }
   },
   "recovery": {
     "verifiedAt": "2026-09-09T13:04:02.533Z",
@@ -136,29 +160,24 @@
     ],
     "repairSource": "Each worktree own latest HEAD reflog; atomic missing-ref creation; files/indexes unchanged",
     "finalAttempt": {
-      "attempted_at": "2026-09-09T09:07:58.7222967-04:00",
-      "status": "FAILED",
-      "duration_seconds": 389.7,
-      "repositories": 7,
+      "attempted_at": "2026-09-09T09:19:09.6825071-04:00",
+      "status": "ok",
+      "duration_seconds": 481.3,
+      "repositories": 8,
       "loose_items": 439,
       "database_verified": true,
       "storage_objects": 38,
-      "warnings": [],
-      "failures": [
-        "repository lets-get-quoted: git diff failed with exit code 128 in C:\\dev\\pricing-growth-journey"
-      ]
+      "warnings": [
+        "Broken Git metadata for linked worktree; captured full non-rebuildable tree: C:\\Users\\brett\\OneDrive\\Desktop\\LETS GET QUOTED PLANNING\\CLAUDE CODE FOLDER.worktrees\\agents-improve-phone-message-ui",
+        "Broken Git metadata for linked worktree; captured full non-rebuildable tree: C:\\Users\\brett\\OneDrive\\Desktop\\LETS GET QUOTED PLANNING\\CLAUDE CODE FOLDER.worktrees\\campaigns-page-redesign-recommendations"
+      ],
+      "failures": []
     },
-    "remainingIssue": {
-      "worktree": "C:/dev/pricing-growth-journey",
-      "missingIndexedBlob": "18479a8f32af5f222ea7cbafa818907803d3fad0",
-      "path": "src/app/dashboard/sites/WebsiteBuilder.tsx",
-      "indexReset": false
-    }
+    "repairEvidence": "dr-usb-repair-2026-09-09.json",
+    "taskExitCode": 0
   },
   "remaining": [
-    "Independent cloud download authentication",
     "Independent Dashlane key retrieval rehearsal",
-    "Provider reconciliation, deployment/DNS and full-disaster RTO",
-    "Legacy USB repository backup: missing indexed Git object; database and Storage capture verified"
+    "Provider reconciliation, deployment/DNS and full-disaster RTO"
   ]
 }

@@ -473,3 +473,6 @@ Everything else on this list is real, but that is the one that is live right now
 
 
 September 9 follow-up: the tested crew-completion migration is now verified in production. Encrypted twice-daily Google Drive backups, private cloud presence and user-confirmed Dashlane key escrow are established. Offline pack opening passes; Chrome blocked independent cloud-download verification. PITR remains disabled by the user’s keep-Free decision. See [offsite recovery](runbooks/dr-offsite-recovery.md) for the current scope; earlier local-only findings above are historical.
+
+
+September 9, 13:12 UTC follow-up: the user successfully downloaded the earlier 12:42 UTC encrypted pack from Google Drive. Its receipt hashes match exactly, and the database archive, all 38 Storage objects, source and encrypted configuration authenticate. This supersedes the earlier blocked-download finding. See [independent cloud-download evidence](runbooks/evidence/dr-cloud-download-2026-09-09.json). A live restore of this downloaded pack and full provider/infrastructure recovery were not performed in this check.

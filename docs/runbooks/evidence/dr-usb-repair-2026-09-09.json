@@ -1,0 +1,216 @@
+{
+  "recordedAt": "2026-09-09T13:20:18.214Z",
+  "workingTreeObjectRecovery": {
+    "repairedAt": "2026-09-09T13:11:01.490Z",
+    "worktree": "C:\\dev\\pricing-growth-journey",
+    "repaired": [
+      {
+        "hash": "52f8b9c96016d283a8e1ebae28cd073acdc3e087",
+        "path": "src/app/dashboard/sites/actions.ts"
+      },
+      {
+        "hash": "6014227558f7ed379df8a94705ab5324cb763fc6",
+        "path": "src/app/site-domain/[domain]/areas/[city]/page.tsx"
+      },
+      {
+        "hash": "4bb12453a8ff4e8fbc358cd9eaecd390ac932258",
+        "path": "src/lib/seo/site-area-page.ts"
+      },
+      {
+        "hash": "2de7c8459247c666a53922a03ea2750840bc73f9",
+        "path": "src/lib/seo/site-pages.ts"
+      },
+      {
+        "hash": "63493d6c239d6d18f2e8e4e1fe888ac1b3468c74",
+        "path": "src/lib/templates/SiteAreaPage.tsx"
+      },
+      {
+        "hash": "63dabea57ed25eb4d2be8d7edb4c5d653b3d4b2b",
+        "path": "src/lib/templates/coat.tsx"
+      },
+      {
+        "hash": "7f33c04bd063c57f6a34012bb959cbdb5e6c7ae2",
+        "path": "src/lib/templates/fixit.tsx"
+      },
+      {
+        "hash": "3dd60479d0b2b1ac131165d3cda76545745b9831",
+        "path": "src/lib/templates/forge.tsx"
+      },
+      {
+        "hash": "033542be252cf7698fb867d815e7f6873d50e0b9",
+        "path": "src/lib/templates/handy.tsx"
+      },
+      {
+        "hash": "0f89349628d4498f1ba76a2171e6b87364b8ff8d",
+        "path": "src/lib/templates/professional.tsx"
+      },
+      {
+        "hash": "3962f030599618541164518e804bf3f5908caf57",
+        "path": "src/lib/templates/themes.module.css"
+      },
+      {
+        "hash": "3cdc813868f8e893fe4ae559c48b135f5af69c4e",
+        "path": "test/chat-button.test.ts"
+      },
+      {
+        "hash": "63a2ed1c60023ff8bf1804fce714d826bce2027c",
+        "path": "test/stat-counters.test.ts"
+      }
+    ],
+    "indexSha256Before": "d21de30af2c82676ff9467ba0359c817a5fb17140da5e6192d4f91c6f8f5049f",
+    "indexSha256After": "d21de30af2c82676ff9467ba0359c817a5fb17140da5e6192d4f91c6f8f5049f",
+    "indexUnchanged": true,
+    "binaryDiffReadable": true,
+    "initialObjectRestored": "18479a8f32af5f222ea7cbafa818907803d3fad0"
+  },
+  "historicalRecovery": {
+    "restoredAt": "2026-09-09T13:13:51.925Z",
+    "source": "D:/dev-backup/repos/lets-get-quoted.git",
+    "restored": [
+      {
+        "id": "772b82f5901fb38f1bc0eab9d083f4eb93c69fff",
+        "type": "tree"
+      },
+      {
+        "id": "583276997ddeeda55aec462fb27d03dbf3c3cbc7",
+        "type": "tree"
+      },
+      {
+        "id": "0c63c6447e7f20a8423bec93554e3f72abe17a82",
+        "type": "tree"
+      },
+      {
+        "id": "40ac33eb42f1dd5caa930f62a6631ae50e35d961",
+        "type": "commit"
+      }
+    ],
+    "exactHashesVerified": true,
+    "descendants": [
+      {
+        "id": "0f2df2c372f555e934733c485d6dfcfaf41d6e2d",
+        "type": "tree"
+      },
+      {
+        "id": "18cee4f30955af2ede1f9973ee3bba6ac59af161",
+        "type": "tree"
+      },
+      {
+        "id": "65e424b962e5a1bb47cf302e41287663d8d84ff4",
+        "type": "tree"
+      },
+      {
+        "id": "6ee638ba66cf8f47abc9cd51f2aabcbb6c8bc520",
+        "type": "tree"
+      },
+      {
+        "id": "4cf9ae35a994feb07b24cd7d0b4cd4f648768e30",
+        "type": "tree"
+      },
+      {
+        "id": "40136d9eb16cca7f4aad478c94ee276525c5e35c",
+        "type": "tree"
+      },
+      {
+        "id": "66567fd7985ccce99df2f379b638f4cc9595d28d",
+        "type": "tree"
+      },
+      {
+        "id": "2f53d67fcb9a0ec31064aeb95244c92cb890c9ce",
+        "type": "tree"
+      },
+      {
+        "id": "34a93cdd2cd6f0141a8303b7784244423012396d",
+        "type": "tree"
+      },
+      {
+        "id": "71dfa2778426bd14a8dcff8227bddb71238c8af7",
+        "type": "tree"
+      },
+      {
+        "id": "000303bf5508ea8cfd98c74e351daa6425129033",
+        "type": "blob"
+      },
+      {
+        "id": "6a18b52d1ab8f32bc02d6cbfd536624fddbd4c3a",
+        "type": "tree"
+      },
+      {
+        "id": "002285dd1ba835e2fb8d25b88320b9cd76417d72",
+        "type": "tree"
+      },
+      {
+        "id": "1363b1c8440ccf9e0139db041fe2fefd09354186",
+        "type": "blob"
+      },
+      {
+        "id": "1d980fe78422d71a3a8e5cc1ccffb4b3eade67c8",
+        "type": "tree"
+      },
+      {
+        "id": "25b8478511aa1c77cdfe64c6729d653b707f8126",
+        "type": "tree"
+      },
+      {
+        "id": "39d7afb5d8dc70568b7d775e7dbe5aaad07fc78a",
+        "type": "blob"
+      },
+      {
+        "id": "008d0e0d3ae4b9f39d819e2e16ba82b4e850a6c6",
+        "type": "blob"
+      },
+      {
+        "id": "2f655b237cb67e6909989d47e6d0e4c4828edc80",
+        "type": "tree"
+      },
+      {
+        "id": "61d3bfa0cfe92df83f76f819a8f55a1c8f3d44c6",
+        "type": "tree"
+      },
+      {
+        "id": "4073a98f1663c3bcbb95df28526394f5bf4d1760",
+        "type": "tree"
+      },
+      {
+        "id": "2f7f65d13c011c00f81d7f00da1dd9bbc6b9b905",
+        "type": "tree"
+      },
+      {
+        "id": "53fb3cdcd6b5fdeb8c5920f79adcbf66fd7a1ded",
+        "type": "blob"
+      }
+    ]
+  },
+  "totalObjectsRestored": 41,
+  "preflight": {
+    "checked": 37,
+    "failures": []
+  },
+  "activeGitConnectivity": {
+    "command": "git fsck --connectivity-only --no-reflogs --no-dangling",
+    "exitCode": 0
+  },
+  "remainingHistoricalReflog": {
+    "object": "1ae8e1947b3d087856257365f48eee6bc82bdae8",
+    "worktree": "lgq-pricing-production",
+    "presentInUsbMirror": false,
+    "presentOnGithubRemote": false,
+    "reflogPreserved": true,
+    "blocksActiveConnectivity": false
+  },
+  "backupRerunPending": false,
+  "backup": {
+    "attempted_at": "2026-09-09T09:19:09.6825071-04:00",
+    "status": "ok",
+    "duration_seconds": 481.3,
+    "repositories": 8,
+    "loose_items": 439,
+    "database_verified": true,
+    "storage_objects": 38,
+    "warnings": [
+      "Broken Git metadata for linked worktree; captured full non-rebuildable tree: C:\\Users\\brett\\OneDrive\\Desktop\\LETS GET QUOTED PLANNING\\CLAUDE CODE FOLDER.worktrees\\agents-improve-phone-message-ui",
+      "Broken Git metadata for linked worktree; captured full non-rebuildable tree: C:\\Users\\brett\\OneDrive\\Desktop\\LETS GET QUOTED PLANNING\\CLAUDE CODE FOLDER.worktrees\\campaigns-page-redesign-recommendations"
+    ],
+    "failures": []
+  },
+  "taskExitCode": 0
+}

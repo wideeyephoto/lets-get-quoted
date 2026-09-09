@@ -637,7 +637,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Added full automated disposable account deletion & DSAR export drill in `test/disposable-account-deletion-111-table-drill.test.ts` (9/9 tests pass).
 - [ ] **Backup, PITR & Restore Drill (sign-off withdrawn 2026-09-09)**:
   - PITR remains disabled by the user’s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
-  - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download, provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
+  - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download authentication passes; provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
   - The [dated drill record](docs/runbooks/dr-drill-record-2026-09-09.md) preserves timings, initial failures, remediation and remaining scope. The broader sign-off stays open.
 
 - [x] **Authentication & Staff-Recovery Drill (Completed 2026-09-01)**:
@@ -673,7 +673,7 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
 
 - [ ] **Disaster Recovery & Supabase PITR Drill (sign-off withdrawn 2026-09-09)**:
   - PITR remains disabled by the user’s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
-  - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download, provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
+  - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download authentication passes; provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
   - The [dated drill record](docs/runbooks/dr-drill-record-2026-09-09.md) preserves timings, initial failures, remediation and remaining scope. The broader sign-off stays open.
 
 - [x] **Staff / Identity Recovery & Break-Glass Drill (Completed 2026-09-01)**:

@@ -1,6 +1,6 @@
 # Database & Storage Backup Posture — Let's Get Quoted
 
-**Status: staging acceptance passes; the verified corrective migration is applied to production. Encrypted twice-daily Google Drive backups are installed, cloud presence is confirmed, and the user confirms Dashlane key escrow. Independent cloud-download recovery and full disaster recovery remain unproven.**
+**Status: staging acceptance passes; the verified corrective migration is applied to production. Encrypted twice-daily Google Drive backups are installed, an independent cloud download authenticates successfully, and the user confirms Dashlane key escrow. Full infrastructure/provider disaster recovery remains unproven.**
 **Last checked:** 2026-09-09. Production project: `mfuvvtrkipkigwqqtcal`, PostgreSQL 17.6, Supabase organization `LETS GET QUOTED` (Free plan).
 
 ## Measured posture
@@ -14,7 +14,7 @@
 | Manual database copy | Captured at 2026-09-09 10:17:00.776Z: 10,630,650-byte custom archive, 4,348 readable TOC entries, including `public`, `auth`, and `storage` data. |
 | Manual Storage copy | All 38 objects in the seven current buckets downloaded: 35,726,922 bytes. Every object's length matches source metadata. Metadata was unchanged when checked after capture. |
 | Encryption verification | All archive and object files encrypted with AES-256-GCM, read back, authenticated, and compared by SHA-256. |
-| Scheduled or offsite backup | Twice daily 08:45/20:45, 30-day Drive retention. Full capture/publication and authenticated mounted readback passed; Drive web confirms private cloud files. Chrome blocked independent download verification. See the offsite runbook. |
+| Scheduled or offsite backup | Twice daily 08:45/20:45, 30-day Drive retention. Full capture/publication and mounted readback passed. A user-downloaded cloud pack independently matches its receipt and authenticates the database, all 38 Storage objects, source and configuration. See the offsite runbook. |
 
 Sources: [raw backups response](runbooks/evidence/dr-backups-2026-09-09.json), [capture summary and hashes](runbooks/evidence/dr-production-capture-2026-09-09.json), and [drill results](runbooks/dr-drill-record-2026-09-09.md).
 
@@ -35,4 +35,4 @@ The approved production snapshot was restored into existing staging. All 258 cap
 
 The source function's missing `jobs.completed_at` write initially caused a 29/30 result. The staged forward migration fixes completion and its enum/text boundary and removes anonymous execution. All **35 real RLS tests now pass**. Follow-up comparison confirms only that intended function/grant change. All 12 Auth users' checked fields and all 14 identities match the capture; an authenticated cross-account private Storage download and signed-URL request are denied. App use and migration-history deltas are documented separately from the original parity evidence.
 
-The verified crew-completion migration was applied to production at 12:30 UTC; readback matches the passing staging function exactly, including removal of anonymous execution. No production business rows were changed. Offsite capture/publication, scheduling, cloud presence and user-confirmed Dashlane escrow are established. Independent cloud-download recovery, provider reconciliation, deployment/DNS and broader recovery tiers remain open. Staging's SMS cron remains disabled. See the [dated evidence and limitations](runbooks/dr-drill-record-2026-09-09.md).
+The verified crew-completion migration was applied to production at 12:30 UTC; readback matches the passing staging function exactly, including removal of anonymous execution. No production business rows were changed. Offsite capture/publication, scheduling, independent cloud-download authentication and user-confirmed Dashlane escrow are established. Dashlane retrieval itself, provider reconciliation, deployment/DNS and broader recovery tiers remain open. Staging's SMS cron remains disabled. See the [dated evidence and limitations](runbooks/dr-drill-record-2026-09-09.md).
