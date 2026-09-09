@@ -26,10 +26,12 @@ const DAYS = [
 type Hours = Record<string, [string, string] | null>;
 
 type Props = {
+  businessName?: string;
   status: 'off' | 'active' | 'paused';
   answerMode: 'always' | 'after_hours';
   greeting: string;
   transferNumber: string;
+  emergencyTransferNumber?: string;
   alertPhone?: string;
   verifiedNumbers?: Array<{ number: string; label: string }>;
   callForwardNumber?: string;
@@ -68,7 +70,7 @@ type Props = {
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
-const PERSONAS = [
+const PERSONAS = (businessName: string) => [
   {
     id: 'friendly',
     title: 'Warm & Friendly',
@@ -77,7 +79,7 @@ const PERSONAS = [
     badgeClass: styles.badgeGreen,
     accentClass: styles.tileActiveGreen,
     desc: 'Empathetic, neighborly, and patient tone. Builds instant trust and comfort with homeowners.',
-    sample: '“Hey there! Thanks for calling Rivera Plumbing. How can we help you out today?”',
+    sample: `“Hi! Thanks for calling ${businessName}. How can we help you today?”`,
   },
   {
     id: 'professional',
@@ -87,7 +89,7 @@ const PERSONAS = [
     badgeClass: styles.badgeBlue,
     accentClass: styles.tileActiveBlue,
     desc: 'Polished, authoritative, and direct business demeanor. Focuses on speed and clear intake.',
-    sample: '“Thank you for calling Rivera Plumbing. I’m the company’s AI assistant — how can I assist you?”',
+    sample: `“Thank you for calling ${businessName}. How can I help?”`,
   },
   {
     id: 'urgent_dispatcher',
@@ -96,32 +98,34 @@ const PERSONAS = [
     badge: 'Emergency First',
     badgeClass: styles.badgePurple,
     accentClass: styles.tileActivePurple,
-    desc: 'Rapid, safety-first triage. Prioritizes hazard detection and direct appointment booking.',
-    sample: '“Rivera Emergency Dispatch. What issue are you experiencing, and what is your service address?”',
+    desc: 'Prioritizes urgent needs, on-call transfers and appointment requests.',
+    sample: `“Thanks for calling ${businessName}. What issue are you experiencing?”`,
   },
 ] as const;
 
-const GREETING_PRESETS = [
+const GREETING_PRESETS = (businessName: string) => [
   {
     label: 'Standard Contractor',
-    text: 'Thanks for calling Rivera Plumbing. How can I help you today?',
+    text: `Thanks for calling ${businessName}. How can I help you today?`,
   },
   {
-    label: '24/7 Scheduling',
-    text: 'Thanks for calling Rivera Plumbing. I can help answer questions or book an appointment slot on our calendar.',
+    label: 'Appointment Requests',
+    text: `Thanks for calling ${businessName}. I can answer questions and take an appointment request for our team to confirm.`,
   },
   {
-    label: 'Emergency Hotline',
-    text: 'Thanks for calling Rivera Plumbing emergency dispatch. What issue are you experiencing?',
+    label: 'Urgent Service',
+    text: `Thanks for calling ${businessName}. Tell me what is happening so I can help with the next step.`,
   },
 ];
 
 export default function AiReceptionistSection(props: Props) {
+  const businessName = props.businessName?.trim() || 'our team';
   const router = useRouter();
   const [status, setStatus] = useState(props.status);
   const [answerMode, setAnswerMode] = useState(props.answerMode);
   const [greeting, setGreeting] = useState(props.greeting);
   const [transferNumber, setTransferNumber] = useState(props.transferNumber);
+  const [emergencyTransferNumber, setEmergencyTransferNumber] = useState(props.emergencyTransferNumber ?? '');
   const [alertPhone, setAlertPhone] = useState(props.alertPhone ?? '');
   const [voiceTone, setVoiceTone] = useState<'friendly' | 'professional' | 'urgent_dispatcher'>(
     props.voiceTone ?? 'professional',
@@ -191,7 +195,7 @@ export default function AiReceptionistSection(props: Props) {
 
   // Modal state for adding & verifying a new number
   const [verifyModalOpen, setVerifyModalOpen] = useState(false);
-  const [verifyingField, setVerifyingField] = useState<'transfer' | 'alert' | null>(null);
+  const [verifyingField, setVerifyingField] = useState<'transfer' | 'emergency' | 'alert' | null>(null);
   const [newPhoneInput, setNewPhoneInput] = useState('');
   const [newPhoneLabel, setNewPhoneLabel] = useState('');
   const [otpState, setOtpState] = useState<'idle' | 'sending' | 'sent' | 'verifying'>('idle');
@@ -217,10 +221,13 @@ export default function AiReceptionistSection(props: Props) {
     if (alertPhone && !map.has(alertPhone)) {
       map.set(alertPhone, `${formatUsPhone(alertPhone)} — Current Saved Number`);
     }
+    if (emergencyTransferNumber && !map.has(emergencyTransferNumber)) {
+      map.set(emergencyTransferNumber, `${formatUsPhone(emergencyTransferNumber)} — Current On-Call Number`);
+    }
     return Array.from(map.entries()).map(([number, label]) => ({ number, label }));
-  }, [verifiedList, transferNumber, alertPhone]);
+  }, [verifiedList, transferNumber, emergencyTransferNumber, alertPhone]);
 
-  function openVerifyModal(field: 'transfer' | 'alert') {
+  function openVerifyModal(field: 'transfer' | 'emergency' | 'alert') {
     setVerifyingField(field);
     setNewPhoneInput('');
     setNewPhoneLabel('');
@@ -291,6 +298,8 @@ export default function AiReceptionistSection(props: Props) {
         markEdited();
         if (verifyingField === 'transfer') {
           setTransferNumber(verifiedNum);
+        } else if (verifyingField === 'emergency') {
+          setEmergencyTransferNumber(verifiedNum);
         } else if (verifyingField === 'alert') {
           setAlertPhone(verifiedNum);
         }
@@ -340,6 +349,7 @@ export default function AiReceptionistSection(props: Props) {
     answerMode !== props.answerMode ||
     greeting !== props.greeting ||
     transferNumber !== props.transferNumber ||
+    emergencyTransferNumber !== (props.emergencyTransferNumber ?? '') ||
     alertPhone !== (props.alertPhone ?? '') ||
     voiceTone !== (props.voiceTone ?? 'professional') ||
     JSON.stringify(hours) !== JSON.stringify(props.businessHours);
@@ -391,6 +401,7 @@ export default function AiReceptionistSection(props: Props) {
     setAnswerMode(props.answerMode);
     setGreeting(props.greeting);
     setTransferNumber(props.transferNumber);
+    setEmergencyTransferNumber(props.emergencyTransferNumber ?? '');
     setAlertPhone(props.alertPhone ?? '');
     setVoiceTone(props.voiceTone ?? 'professional');
     setHours(props.businessHours);
@@ -410,6 +421,7 @@ export default function AiReceptionistSection(props: Props) {
           answerMode,
           greeting,
           transferNumber,
+          emergencyTransferNumber,
           alertPhone,
           voiceTone,
           businessHours: hours,
@@ -933,7 +945,7 @@ export default function AiReceptionistSection(props: Props) {
               <span className={styles.subSectionTitle}>Speaking Demeanor &amp; Tone</span>
             </div>
             <div className={styles.personaStack} role="group" aria-label="Receptionist Persona Tone">
-              {PERSONAS.map((p) => {
+              {PERSONAS(businessName).map((p) => {
                 const isSelected = voiceTone === p.id;
                 return (
                   <button
@@ -969,7 +981,7 @@ export default function AiReceptionistSection(props: Props) {
 
             <div className={styles.chipsBar}>
               <span className={styles.chipsLabel}>Quick Templates:</span>
-              {GREETING_PRESETS.map((preset) => (
+              {GREETING_PRESETS(businessName).map((preset) => (
                 <button
                   key={preset.label}
                   type="button"
@@ -988,7 +1000,7 @@ export default function AiReceptionistSection(props: Props) {
               rows={5}
               maxLength={1000}
               disabled={controlsDisabled}
-              placeholder="Thanks for calling Rivera Plumbing. How can I help you today?"
+              placeholder={`Thanks for calling ${businessName}. How can I help you today?`}
               value={greeting}
               onChange={(event) => { markEdited(); setGreeting(event.target.value); }}
             />
@@ -1064,6 +1076,28 @@ export default function AiReceptionistSection(props: Props) {
               </div>
               <p className={styles.helperText}>
                 When a homeowner asks to speak with staff, the AI warmly transfers the call to this verified number.
+              </p>
+            </div>
+
+            <div className={styles.inputGroup}>
+              <div className={styles.labelRow}>
+                <label className={styles.inputLabel} htmlFor="voice-emergency-transfer">On-Call / Emergency Transfer</label>
+                <button type="button" className={styles.addNumberBtn} disabled={controlsDisabled}
+                  onClick={() => openVerifyModal('emergency')}>+ Add verified #</button>
+              </div>
+              <select id="voice-emergency-transfer" className={styles.selectField}
+                disabled={controlsDisabled} value={emergencyTransferNumber}
+                onChange={(event) => {
+                  if (event.target.value === '__ADD_NEW__') openVerifyModal('emergency');
+                  else { markEdited(); setEmergencyTransferNumber(event.target.value); }
+                }}>
+                <option value="">Use regular transfer number</option>
+                {allOptions.map((opt) => <option key={`emergency-${opt.number}`} value={opt.number}>{opt.label}</option>)}
+                <option value="__ADD_NEW__">Add new verified number…</option>
+              </select>
+              <p className={styles.helperText}>
+                Urgent service calls go to this person. If blank, they use the regular transfer number.
+                If neither is set, the assistant can take a callback request. SMS alerts are configured separately.
               </p>
             </div>
 

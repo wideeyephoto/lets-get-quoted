@@ -146,6 +146,29 @@ describe('the product flag is not a metering flag', () => {
 });
 
 describe('what a caller gets', () => {
+  it('selects an explicit on-call destination independently from the regular office', async () => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, emergency_transfer_number: '+12485550104',
+    });
+    expect((await planInboundCall(admin, call, options)).plan).toMatchObject({
+      kind: 'ai_agent', transferTo: '+15557654321', emergencyTransferTo: '+12485550104',
+    });
+  });
+
+  it.each([call.fromNumber, call.toNumber])('never transfers a caller back to %s', async (loopNumber) => {
+    workspace({ voice_concurrent_calls: 1 }, loopNumber, {
+      ...ACTIVE, transfer_number: loopNumber, emergency_transfer_number: loopNumber,
+    });
+    expect((await planInboundCall(admin, call, options)).plan).toMatchObject({
+      kind: 'ai_agent', transferTo: null, emergencyTransferTo: null,
+    });
+  });
+
+  it('uses the office for emergencies when there is no separate on-call number', async () => {
+    expect((await planInboundCall(admin, call, options)).plan).toMatchObject({
+      transferTo: '+15557654321', emergencyTransferTo: '+15557654321',
+    });
+  });
   it.each([
     { outcome: 'admitted', capMinutes: 2, lease: { reservedMinutes: 2 } },
     { outcome: 'admitted_existing', capMinutes: 2 },

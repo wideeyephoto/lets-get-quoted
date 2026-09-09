@@ -76,6 +76,7 @@ export type VoiceSettings = Readonly<{
   businessHours: BusinessHours;
   greeting: string | null;
   transferNumber: string | null;
+  emergencyTransferNumber?: string | null;
   recordingEnabled: boolean;
   postCallSmsEnabled: boolean;
   contractorNotificationsEnabled: boolean;
@@ -146,7 +147,7 @@ export async function resolveVoiceWorkspace(
   // not become a permissive default on the one surface that answers a phone.
   const { data: configured } = await admin
     .from('voice_settings')
-    .select('status, answer_mode, business_hours, greeting, transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
+    .select('status, answer_mode, business_hours, greeting, transfer_number, emergency_transfer_number, recording_enabled, post_call_sms_enabled, contractor_notifications_enabled')
     .eq('account_id', account.id)
     .maybeSingle();
 
@@ -166,6 +167,7 @@ export async function resolveVoiceWorkspace(
         businessHours: (row.business_hours ?? {}) as BusinessHours,
         greeting: (row.greeting as string | null) ?? null,
         transferNumber: (row.transfer_number as string | null) ?? null,
+        emergencyTransferNumber: (row.emergency_transfer_number as string | null) ?? null,
         recordingEnabled: row.recording_enabled === true,
         postCallSmsEnabled: row.post_call_sms_enabled !== false,
         contractorNotificationsEnabled: row.contractor_notifications_enabled !== false,
@@ -273,7 +275,8 @@ export async function planInboundCall(
     // phone number even when the product on top of it is off.
     const forwardTo = workspace?.settings?.transferNumber || workspace?.callForwardNumber;
     if (forwardTo && workspace
-      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')) {
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.fromNumber || '')
+      && normalizeUsPhone(forwardTo) !== normalizeUsPhone(call.toNumber)) {
       return Object.freeze({
         accountId: workspace.accountId,
         declineReason: reason,
@@ -392,8 +395,18 @@ export async function planInboundCall(
     console.error('Failed to load voice grounding context:', err);
     return null;
   });
-  const systemPrompt = grounding ? buildVoiceSystemPrompt(grounding) : undefined;
-  const postPrompt = grounding ? buildVoicePostPrompt() : undefined;
+  // Never bridge the caller to themselves or back into this receptionist.
+  const safeDestination = (value: string | null | undefined) => {
+    const number = normalizeUsPhone(value || '');
+    return number && number !== normalizeUsPhone(call.fromNumber || '')
+      && number !== normalizeUsPhone(call.toNumber) ? number : null;
+  };
+  const transferTo = safeDestination(settings.transferNumber || workspace.callForwardNumber);
+  const emergencyTransferTo = safeDestination(settings.emergencyTransferNumber) || transferTo;
+  const systemPrompt = grounding ? buildVoiceSystemPrompt({
+    ...grounding, forwardPhoneOffice: transferTo, forwardPhoneEmergency: emergencyTransferTo,
+  }) : undefined;
+  const postPrompt = buildVoicePostPrompt(grounding ?? undefined);
 
   return Object.freeze({
     accountId: workspace.accountId,
@@ -412,7 +425,8 @@ export async function planInboundCall(
       capMinutes: decision.capMinutes,
       // The configured hand-off, falling back to the line the contractor
       // already forwards to. Null is a valid setup, not a broken one.
-      transferTo: settings.transferNumber || workspace.callForwardNumber,
+      transferTo,
+      emergencyTransferTo,
       transferStatusUrl: options.forwardActionUrl(workspace.accountId),
       recordCall: settings.recordingEnabled === true && !grounding?.contractorStaffCaller,
       recordingStatusUrl: options.recordingStatusUrl
