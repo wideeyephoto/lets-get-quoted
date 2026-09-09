@@ -1,0 +1,86 @@
+// Disposable PostgreSQL: failures, batching, leases, timeout recovery and RLS.
+import assert from 'node:assert/strict';
+import { readFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { join, resolve } from 'node:path';
+import os from 'node:os';
+import { syncBuiltinESMExports } from 'node:module';
+try { os.userInfo(); } catch { os.userInfo = () => ({ uid: -1, gid: -1, username: process.env.USERNAME || 'windows-user', homedir: process.env.USERPROFILE || '', shell: null }); syncBuiltinESMExports(); }
+const root = resolve(import.meta.dirname, '..');
+const platform = process.platform === 'win32' ? 'windows-x64' : process.platform === 'darwin' ? 'darwin-arm64' : 'linux-x64';
+process.env.PATH = join(root, 'node_modules/@embedded-postgres', platform, 'native/bin') + (process.platform === 'win32' ? ';' : ':') + process.env.PATH;
+const { default: EmbeddedPostgres } = await import('embedded-postgres');
+const dataDir = mkdtempSync(join(os.tmpdir(), 'lgq-ops-'));
+const pg = new EmbeddedPostgres({ databaseDir: dataDir, user: 'postgres', password: 'postgres', port: 54409, persistent: true, onLog: () => {}, onError: () => {} });
+let db, checks = 0;
+const passed = name => { checks++; console.log(`PASS ${name}`); };
+try {
+  await pg.initialise(); await pg.start(); await pg.createDatabase('ops'); db = pg.getPgClient('ops'); await db.connect();
+  await db.query(`create role anon; create role authenticated; create role service_role bypassrls;
+    create table webhook_failures(id uuid default gen_random_uuid(), created_at timestamptz default now(), resolved_at timestamptz);
+    create table billing_events(id uuid default gen_random_uuid(), processing_status text, event_scope text, attempt_count int, received_at timestamptz default now(), projection_lease_expires_at timestamptz);
+    create table sms_delivery_tasks(sms_event_id uuid default gen_random_uuid(), task_state text, attempt_count int, last_error_code text, created_at timestamptz default now(), available_at timestamptz, failed_at timestamptz, indeterminate_at timestamptz, lease_expires_at timestamptz);
+    create table sms_events(id uuid default gen_random_uuid(),status text,created_at timestamptz default now(),failed_at timestamptz,indeterminate_at timestamptz);
+    create table payments(id uuid default gen_random_uuid(), stripe_dispute_id text, disputed_at timestamptz, requested_at timestamptz default now(), dispute_due_by timestamptz, status text, dispute_status text);
+    create table cron_runs(id uuid default gen_random_uuid(), job text, started_at timestamptz default now(), ok boolean);
+    create table business_effects(kind text primary key, count int); insert into business_effects values('charges',1),('credits',1),('messages',1);
+    grant usage on schema public to service_role,anon,authenticated;
+    grant select on webhook_failures,billing_events,sms_delivery_tasks,sms_events,payments,cron_runs to service_role;`);
+  await db.query(readFileSync(join(root, 'migrations/20260909133220_operational_alert_delivery.sql'), 'utf8'));
+  passed('migration applies');
+  for (const role of ['anon', 'authenticated']) {
+    await db.query(`set role ${role}`);
+    await assert.rejects(db.query('select scan_operational_failures()'), /permission denied/);
+    await assert.rejects(db.query('select * from operational_alert_deliveries'), /permission denied/);
+    await db.query('reset role');
+  }
+  passed('anonymous and authenticated users cannot invoke scans or read notification evidence');
+  await db.query(`insert into webhook_failures select gen_random_uuid(),now(),null from generate_series(1,31);
+    insert into billing_events(processing_status,event_scope,attempt_count) values('failed','platform_top_up',3);
+    insert into sms_delivery_tasks(task_state,attempt_count,failed_at) values('failed',2,now());
+    insert into sms_events(id,status) select sms_event_id,'failed' from sms_delivery_tasks;
+    insert into payments(status,disputed_at,stripe_dispute_id) values('disputed',now(),'dp_controlled');
+    insert into cron_runs(job,ok) values('controlled-drill',false);`);
+  const before = await db.query(`select row_to_json(x) as state from (select (select jsonb_agg(w) from webhook_failures w) w,(select jsonb_agg(b) from billing_events b) b,(select jsonb_agg(s) from sms_delivery_tasks s) s,(select jsonb_agg(p) from payments p) p) x`);
+  await db.query('set role service_role');
+  const crons = JSON.stringify([{ job: 'controlled-drill', max_gap_minutes: 15 }]);
+  assert.equal((await db.query('select scan_operational_failures($1) n', [crons])).rows[0].n, 35);
+  assert.equal((await db.query('select queue_operational_alerts($1,$2) n', ['ops@example.com', 'Ops <ops@example.com>'])).rows[0].n, 5);
+  passed('real failure rows in all five classes produce five bounded digest notifications');
+  await db.query('select scan_operational_failures($1)', [crons]);
+  assert.equal((await db.query('select queue_operational_alerts($1,$2) n', ['ops@example.com', 'Ops <ops@example.com>'])).rows[0].n, 0);
+  const claimed = (await db.query('select * from claim_operational_alerts(5)')).rows;
+  assert.equal(claimed.length, 5);
+  assert.equal((await db.query('select * from claim_operational_alerts(5)')).rowCount, 0);
+  passed('duplicate scans and overlapping claims do not duplicate notifications');
+  const first = claimed[0];
+  await db.query("update operational_alert_deliveries set lease_expires_at=now()-interval '1 second' where id=$1", [first.id]);
+  const retry = (await db.query('select * from claim_operational_alerts(5)')).rows[0];
+  assert.equal(retry.id, first.id); assert.deepEqual(retry.payload, first.payload); assert.notEqual(retry.claim_token, first.claim_token);
+  passed('crashed sender retries identical immutable payload and provider key');
+  await db.query("update operational_alert_deliveries set first_attempt_at=now()-interval '24 hours',lease_expires_at=now()-interval '1 second' where id=$1", [first.id]);
+  assert.equal((await db.query('select * from claim_operational_alerts(5)')).rowCount, 0);
+  assert.equal((await db.query('select state from operational_alert_deliveries where id=$1',[first.id])).rows[0].state,'manual_review');
+  passed('unknown outcomes stop before expired provider idempotency can cause another email');
+  await db.query('reset role');
+  const after = await db.query(`select row_to_json(x) as state from (select (select jsonb_agg(w) from webhook_failures w) w,(select jsonb_agg(b) from billing_events b) b,(select jsonb_agg(s) from sms_delivery_tasks s) s,(select jsonb_agg(p) from payments p) p) x`);
+  assert.deepEqual(after.rows,before.rows);
+  passed('alert scans, retries and recovery do not modify payment, billing, SMS or webhook source rows');
+  await db.query(`update webhook_failures set resolved_at=now(); update billing_events set processing_status='processed'; update sms_delivery_tasks set task_state='completed'; update sms_events set status='delivered'; update payments set status='paid'; insert into cron_runs(job,ok,started_at) values('controlled-drill',true,now()+interval '1 second');`);
+  await db.query('set role service_role');
+  assert.equal((await db.query('select scan_operational_failures($1) n',[crons])).rows[0].n,0);
+  assert.equal((await db.query('select count(*)::int n from operational_alert_findings where resolved_at is null')).rows[0].n,0);
+  await db.query('select scan_operational_failures($1)',[crons]);
+  assert.equal((await db.query('select queue_operational_alerts($1,$2) n',['ops@example.com','Ops <ops@example.com>'])).rows[0].n,0);
+  passed('verified source resolution closes findings and repeated recovery creates no new notification');
+  console.log(`${checks}/${checks} checks passed`);
+} finally {
+  if (db) await db.end();
+  if (process.platform === 'win32' && pg.process) {
+    execFileSync(join(root, 'node_modules/@embedded-postgres', platform, 'native/bin/pg_ctl.exe'), ['-D', dataDir, 'stop', '-m', 'fast', '-w'], { windowsHide: true, stdio: 'ignore', timeout: 15000 });
+    pg.process = undefined;
+  } else await pg.stop();
+  const target = resolve(dataDir), allowed = resolve(os.tmpdir()) + (process.platform === 'win32' ? '\\' : '/');
+  if (!target.startsWith(allowed) || !target.split(/[\\/]/).pop().startsWith('lgq-ops-')) throw new Error('Unsafe disposable cleanup path');
+  rmSync(target, { recursive: true, force: true });
+}

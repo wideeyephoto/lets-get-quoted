@@ -31,6 +31,10 @@ export type CronJobSpec = {
 
 export const CRON_JOBS: CronJobSpec[] = [
   {
+    job: 'operational-alerts', label: 'Operational failure alerts', schedule: '*/5 * * * *',
+    importance: 'money', consequence: 'Webhook, billing, messaging and dispute failures stop reaching the operator by email.',
+  },
+  {
     job: 'overage-period-close',
     label: 'Overage period close',
     schedule: '17 * * * *',
