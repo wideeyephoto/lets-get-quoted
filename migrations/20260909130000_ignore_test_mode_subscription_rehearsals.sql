@@ -3,6 +3,66 @@
 -- live production workers to ignore test-mode rehearsal events without failing,
 -- and clear the 185 stuck test-mode billing events from 2026-09-07 -> 09-08.
 
+begin;
+
+-- Both constraints must admit the new result, extended from their own live text
+-- exactly as 20260819030000 extends them.
+do $mig$
+declare
+  spec record;
+  body text;
+begin
+  for spec in
+    select *
+      from (values
+        (
+          'billing_events_projection_result_check',
+          $extra$(projection_result = 'test_mode_rehearsal_ignored')$extra$
+        ),
+        (
+          'billing_events_projection_terminal_shape_check',
+          $extra$(
+            event_scope = 'platform_subscription'
+            and processing_status = 'ignored'
+            and processed_at is not null
+            and projection_schema_version is not distinct from
+              'stripe_subscription_projection_v1'
+            and projection_applied is not null
+            and not projection_applied
+            and projection_result = 'test_mode_rehearsal_ignored'
+          )$extra$
+        )
+      ) as t(conname, extra)
+  loop
+    select pg_get_constraintdef(c.oid) into body
+      from pg_constraint c
+     where c.conrelid = 'public.billing_events'::regclass
+       and c.conname = spec.conname;
+
+    if body is null then
+      raise exception 'constraint % not found on billing_events', spec.conname;
+    end if;
+
+    -- Already extended: a second apply must not append the branch twice.
+    if pg_catalog.strpos(body, 'test_mode_rehearsal_ignored') > 0 then
+      continue;
+    end if;
+
+    body := pg_catalog.btrim(body);
+    if body !~ '^CHECK \(' then
+      raise exception 'unexpected constraint shape for %: %', spec.conname, pg_catalog.left(body, 40);
+    end if;
+    body := pg_catalog.substr(body, 8, pg_catalog.length(body) - 8);
+
+    execute pg_catalog.format(
+      'alter table public.billing_events drop constraint %I', spec.conname);
+    execute pg_catalog.format(
+      'alter table public.billing_events add constraint %I check ((%s) or %s)',
+      spec.conname, body, spec.extra);
+  end loop;
+end
+$mig$;
+
 create or replace function public.ignore_test_mode_stripe_billing_subscription_event(
   p_billing_event_id uuid,
   p_claim_token uuid
@@ -72,3 +132,5 @@ update public.billing_events e
  where e.event_scope = 'platform_subscription'
    and e.livemode = false
    and e.processing_status = 'failed';
+
+commit;
