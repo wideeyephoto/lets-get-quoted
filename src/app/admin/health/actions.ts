@@ -32,17 +32,17 @@ export async function dispatchTestPageAction(): Promise<{ success: boolean; mess
 }
 
 export async function runCronJobNowAction(jobSlug: string, confirmation?: string): Promise<{ success: boolean; message: string }> {
+  const ctx = await requireAdmin();
+
   const spec = cronJob(jobSlug);
   if (!spec) {
     return { success: false, message: `Unknown cron job: '${jobSlug}'.` };
   }
 
   const isMoney = spec.importance === 'money';
-  const ctx = isMoney
-    ? await requireMfaPermission('ops.manage')
-    : await requireAdmin();
-
-  if (!isMoney && !staffCan(ctx.staff, 'ops.manage')) {
+  if (isMoney) {
+    await requireMfaPermission('ops.manage');
+  } else if (!staffCan(ctx.staff, 'ops.manage')) {
     return { success: false, message: 'Forbidden: Insufficient permissions to trigger cron jobs (requires ops.manage).' };
   }
 

@@ -3,6 +3,8 @@
 import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { markJobCompleteAction, scheduleJobAction, toggleJobCrewAction } from '../jobs/actions';
+import { appointmentReminderText } from '@/lib/sms-templates';
+import { SmsBubble } from '@/components/sms/SmsPreview';
 
 /**
  * The rest of a plan's actions, behind one button.
@@ -21,6 +23,7 @@ import { markJobCompleteAction, scheduleJobAction, toggleJobCrewAction } from '.
 type Crew = { id: string; name: string };
 
 type Props = {
+  businessName?: string;
   clientName: string;
   /** "Aug 11" — how the visit is named in confirmations. */
   nextVisitLabel: string;
@@ -36,6 +39,7 @@ type Props = {
 };
 
 export default function PlanActionsMenu({
+  businessName,
   clientName,
   nextVisitLabel,
   nextVisitJobId,
@@ -48,7 +52,7 @@ export default function PlanActionsMenu({
 }: Props) {
   const [open, setOpen] = useState(false);
   const menuId = useId();
-  const [panel, setPanel] = useState<'move' | 'crew' | null>(null);
+  const [panel, setPanel] = useState<'move' | 'crew' | 'remind' | null>(null);
   const [assigned, setAssigned] = useState<string[]>(assignedCrewIds);
   const [moveTo, setMoveTo] = useState(visitScheduledFor ?? '');
   const [pending, startTransition] = useTransition();
@@ -129,10 +133,7 @@ export default function PlanActionsMenu({
                     type="button"
                     role="menuitem"
                     disabled={pending}
-                    onClick={() => {
-                      if (!window.confirm(`Text or email ${clientName} that their ${nextVisitLabel} visit is coming up? It sends now, and tonight’s automatic reminder for this visit won’t also go out.`)) return;
-                      run(remindAction);
-                    }}
+                    onClick={() => setPanel('remind')}
                   >
                     Remind the customer
                   </button>
@@ -230,6 +231,34 @@ export default function PlanActionsMenu({
                   because a checkbox does not look like it sends anything. */}
               <p className="recurring-menu-note">Anyone you add is texted the job.</p>
               <div className="recurring-menu-actions">
+                <button type="button" className="linklike" onClick={() => setPanel(null)}>Back</button>
+              </div>
+            </div>
+          ) : null}
+
+          {panel === 'remind' ? (
+            <div className="recurring-menu-panel">
+              <span className="recurring-menu-head">Remind {clientName}</span>
+              <SmsBubble
+                message={appointmentReminderText({
+                  businessName: businessName || "Let's Get Quoted contractor",
+                  clientName: (clientName || 'there').trim().split(/\s+/)[0] || 'there',
+                  whenLabel: nextVisitLabel,
+                })}
+                recipientLabel={clientName}
+              />
+              <p className="recurring-menu-note">
+                Sends now. Tonight’s automatic reminder for this visit won’t also go out.
+              </p>
+              <div className="recurring-menu-actions">
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={pending}
+                  onClick={() => run(remindAction)}
+                >
+                  {pending ? 'Sending…' : 'Send reminder'}
+                </button>
                 <button type="button" className="linklike" onClick={() => setPanel(null)}>Back</button>
               </div>
             </div>

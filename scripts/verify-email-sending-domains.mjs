@@ -130,7 +130,7 @@ async function setup() {
     user: 'postgres',
     password: 'postgres',
     port: Number(process.env.LGQ_SENDING_DOMAINS_PORT || 54359),
-    persistent: false,
+    persistent: true,
     onLog: () => {},
     onError: () => {},
   });

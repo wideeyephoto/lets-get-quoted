@@ -105,8 +105,22 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
   if (typeof summary.error === 'string' && summary.error.trim().length > 0) {
     return `${job} failed: ${summary.error}`.slice(0, 2000);
   }
+  if (typeof summary.firstError === 'string' && summary.firstError.trim().length > 0) {
+    return `${job} failed: ${summary.firstError}`.slice(0, 2000);
+  }
+  if (typeof summary.first_error === 'string' && summary.first_error.trim().length > 0) {
+    return `${job} failed: ${summary.first_error}`.slice(0, 2000);
+  }
+  if (typeof summary.first_failure_reason === 'string' && summary.first_failure_reason.trim().length > 0) {
+    return `${job} failed: ${summary.first_failure_reason}`.slice(0, 2000);
+  }
   if (Array.isArray(summary.errors) && summary.errors.length > 0) {
     const errorList = summary.errors.map(String).join('; ');
+    const countPrefix = summary.failed ? `${summary.failed} failed items: ` : '';
+    return `${job} logical failure (${countPrefix}${errorList})`.slice(0, 2000);
+  }
+  if (Array.isArray(summary.failure_reasons) && summary.failure_reasons.length > 0) {
+    const errorList = summary.failure_reasons.map(String).join('; ');
     const countPrefix = summary.failed ? `${summary.failed} failed items: ` : '';
     return `${job} logical failure (${countPrefix}${errorList})`.slice(0, 2000);
   }

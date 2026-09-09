@@ -64,7 +64,16 @@ export async function resolveEmptySections(
         .from('tenant_audit_events')
         .select('id', { count: 'exact', head: true })
         .eq('account_id', accountId)
-        .in('entity_type', ['inventory_tools', 'inventory_vehicles', 'inventory_stock_items']),
+        .in('entity_type', [
+          'inventory_tools',
+          'inventory_vehicles',
+          'inventory_stock_items',
+          'inventory_locations',
+          'inventory_tool',
+          'inventory_vehicle',
+          'inventory_stock_item',
+          'inventory_location',
+        ]),
       admin.from('recurring_plans').select('id', { count: 'exact', head: true }).eq('account_id', accountId),
       admin.from('jobs').select('id', { count: 'exact', head: true }).eq('account_id', accountId).not('recurring_plan_id', 'is', null),
     ]);

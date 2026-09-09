@@ -25,8 +25,8 @@ import { randomUUID } from 'node:crypto';
 // Never runs in CI: vitest.config.ts's include is test/**, this lives in
 // test-staging/**.
 //
-// EVERYTHING IS ROLLED BACK. The whole suite runs inside one transaction that
-// is never committed, so staging is byte-identical afterwards.
+// All fixture rows roll back. PostgreSQL sequences can advance even when the
+// surrounding transaction rolls back, so this is not a byte-identical reset.
 
 const AUTH_INSTANCE = '00000000-0000-0000-0000-000000000000';
 
@@ -41,6 +41,9 @@ const ids = {
   mate: randomUUID(),
   myJob: randomUUID(),
   theirJob: randomUUID(),
+  foreignAccount: randomUUID(),
+  foreignJob: randomUUID(),
+  directlyCompletedJob: randomUUID(),
   myStop: randomUUID(),
   looseStop: randomUUID(),
   theirStop: randomUUID(),
@@ -60,14 +63,19 @@ async function asAdmin() {
 
 /** Run something as a crew member and give back what the database said. */
 async function crewQuery(sql: string, params: unknown[] = [], userId = ids.crewUser) {
+  // Expected permission/trigger errors abort PostgreSQL's transaction until a
+  // rollback. Isolate each probe so a refusal cannot poison later assertions.
+  await db.query('savepoint crew_probe');
   await asCrew(userId);
   try {
     const result = await db.query(sql, params as never[]);
     return { ok: true as const, rows: result.rows, count: result.rowCount ?? 0 };
   } catch (error) {
+    await db.query('rollback to savepoint crew_probe');
     return { ok: false as const, message: error instanceof Error ? error.message : String(error) };
   } finally {
     await asAdmin();
+    await db.query('release savepoint crew_probe');
   }
 }
 
@@ -139,6 +147,15 @@ beforeAll(async () => {
     ids.mate,
     ids.account,
   ]);
+  await db.query(`insert into accounts (id, business_name) values ($1, 'Foreign RLS Fixture')`, [ids.foreignAccount]);
+  await db.query(
+    `insert into jobs (id, account_id, ref, client_name, status, quoted_amount)
+     values ($1, $2, 'J-RLS-FOREIGN', 'Foreign Customer', 'new_lead', 6000),
+            ($3, $4, 'J-RLS-DIRECT', 'Direct Completion Customer', 'new_lead', 7000)`,
+    [ids.foreignJob, ids.foreignAccount, ids.directlyCompletedJob, ids.account],
+  );
+  // Assigned only when its completion test runs, preserving the visibility
+  // assertion that initially this crew member sees exactly ids.myJob.
 
   const today = new Date().toISOString().slice(0, 10);
   await db.query(
@@ -199,6 +216,12 @@ describe('what a crew session can see', () => {
 });
 
 describe('changing a job status', () => {
+  it('exposes the status function only to signed-in clients', async () => {
+    const { rows: [access] } = await db.query(`select
+      has_function_privilege('anon', 'public.crew_set_job_status(uuid,text)', 'EXECUTE') as anon,
+      has_function_privilege('authenticated', 'public.crew_set_job_status(uuid,text)', 'EXECUTE') as authenticated`);
+    expect(access).toEqual({ anon: false, authenticated: true });
+  });
   it('cannot update the jobs table directly at all', async () => {
     // job_crew_update is gone. Under RLS an UPDATE with no permitting policy
     // matches nothing rather than raising, so the assertion is on rows touched.
@@ -216,12 +239,49 @@ describe('changing a job status', () => {
   });
 
   it('never re-dates started_at on a second press', async () => {
+    // now() is constant inside this fixture transaction. Use an earlier saved
+    // start so this catches a function that incorrectly writes now() again.
+    await db.query(`update jobs set started_at = now() - interval '2 hours' where id = $1`, [ids.myJob]);
     const first = await crewQuery('select started_at from jobs where id = $1', [ids.myJob]);
     const stamp = first.ok ? String(first.rows[0].started_at) : '';
     const again = await crewQuery(`select * from crew_set_job_status($1, 'complete')`, [ids.myJob]);
     expect(again.ok, again.ok ? '' : again.message).toBe(true);
     expect(again.ok && String(again.rows[0].started_at)).toBe(stamp);
     expect(again.ok && again.rows[0].status).toBe('complete');
+  });
+
+  it('replays completion without changing the original start time', async () => {
+    const before = await crewQuery('select started_at from jobs where id = $1', [ids.myJob]);
+    const repeated = await crewQuery(`select * from crew_set_job_status($1, 'complete')`, [ids.myJob]);
+    expect(repeated.ok, repeated.ok ? '' : repeated.message).toBe(true);
+    expect(repeated.ok && repeated.rows[0].status).toBe('complete');
+    expect(repeated.ok && String(repeated.rows[0].started_at)).toBe(before.ok && String(before.rows[0].started_at));
+  });
+
+  it('can complete an assigned job whose Start work press was never recorded', async () => {
+    await db.query(`insert into crew_assignments (job_id, crew_id, account_id) values ($1, $2, $3)`,
+      [ids.directlyCompletedJob, ids.crew, ids.account]);
+    const result = await crewQuery(`select * from crew_set_job_status($1, 'complete')`, [ids.directlyCompletedJob]);
+    expect(result.ok, result.ok ? '' : result.message).toBe(true);
+    expect(result.ok && result.rows[0].status).toBe('complete');
+    expect(result.ok && result.rows[0].started_at).toBeTruthy();
+  });
+
+  it('refuses to read or complete a job belonging to another workspace', async () => {
+    const read = await crewQuery('select id from jobs where id = $1', [ids.foreignJob]);
+    expect(read.ok && read.count).toBe(0);
+    const write = await crewQuery(`select * from crew_set_job_status($1, 'complete')`, [ids.foreignJob]);
+    expect(write.ok).toBe(false);
+    expect(!write.ok && write.message).toMatch(/not assigned/i);
+  });
+
+  it('refuses completion after the owner archives an assigned job', async () => {
+    await db.query(`update jobs set status = 'archived' where id = $1`, [ids.directlyCompletedJob]);
+    const result = await crewQuery(`select * from crew_set_job_status($1, 'complete')`, [ids.directlyCompletedJob]);
+    expect(result.ok).toBe(false);
+    expect(!result.ok && result.message).toMatch(/archived/i);
+    const { rows: [job] } = await db.query('select status from jobs where id = $1', [ids.directlyCompletedJob]);
+    expect(job.status).toBe('archived');
   });
 
   it('refuses a job this crew member is not on', async () => {
@@ -231,7 +291,7 @@ describe('changing a job status', () => {
   });
 
   it('refuses a status that is not one of the two the app offers', async () => {
-    for (const status of ['archived', 'new_lead', 'deleted']) {
+    for (const status of ['archived', 'new_lead', 'deleted', null]) {
       const result = await crewQuery(`select * from crew_set_job_status($1, $2)`, [ids.myJob, status]);
       expect(result.ok, `status ${status} should be refused`).toBe(false);
     }
@@ -272,7 +332,7 @@ describe('the clock, and what a crew member is paid for it', () => {
       [ids.account, ids.crew, ids.myJob],
     );
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.message).toMatch(/cannot start more than/i);
+    expect(!result.ok && result.message).toMatch(/cannot start more than|start time must be within/i);
   });
 
   it('refuses a shift claimed to start in the future', async () => {
@@ -282,7 +342,7 @@ describe('the clock, and what a crew member is paid for it', () => {
       [ids.account, ids.crew, ids.myJob],
     );
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.message).toMatch(/in the future/i);
+    expect(!result.ok && result.message).toMatch(/in the future|start time must be within/i);
   });
 
   it('does not fire on a genuine replay from earlier in the same day', async () => {
@@ -296,7 +356,7 @@ describe('the clock, and what a crew member is paid for it', () => {
       [ids.account, ids.crew, ids.myJob],
     );
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.message).not.toMatch(/cannot start/i);
+    expect(!result.ok && result.message).not.toMatch(/cannot start|start time must be within/i);
   });
 
   it('refuses a shift opened on a job they are not assigned to', async () => {
@@ -318,7 +378,7 @@ describe('the clock, and what a crew member is paid for it', () => {
   it('refuses a rate rise applied to a running shift', async () => {
     const result = await crewQuery('update time_entries set rate = 500 where id = $1', [shift]);
     expect(result.ok).toBe(false);
-    expect(!result.ok && result.message).toMatch(/may only close their own shift/i);
+    expect(!result.ok && result.message).toMatch(/may only close their own shift|may only set the end time on their own shift/i);
   });
 
   it('refuses backdating the start of a running shift', async () => {
@@ -345,8 +405,10 @@ describe('the clock, and what a crew member is paid for it', () => {
     expect(result.ok && result.count).toBe(1);
   });
 
-  it('and refuses to do it twice — a closed shift is a record, not a draft', async () => {
-    const result = await crewQuery('update time_entries set ended_at = now() where id = $1', [shift]);
+  it('refuses changing the end of a closed shift', async () => {
+    // now() is constant throughout this suite's transaction. Repeating now()
+    // would be an identical replay, so actually change the persisted timestamp.
+    const result = await crewQuery("update time_entries set ended_at = now() + interval '1 minute' where id = $1", [shift]);
     expect(result.ok).toBe(false);
     expect(!result.ok && result.message).toMatch(/already closed/i);
   });
@@ -419,6 +481,7 @@ describe('offline replay cannot double-bill', () => {
       ids.crew,
       key,
     ]);
+    await db.query('savepoint duplicate_submission');
     await expect(
       db.query(`insert into field_submissions (account_id, crew_id, key, kind) values ($1, $2, $3, 'clock-out')`, [
         ids.account,
@@ -426,6 +489,8 @@ describe('offline replay cannot double-bill', () => {
         key,
       ]),
     ).rejects.toMatchObject({ code: '23505' });
+    await db.query('rollback to savepoint duplicate_submission');
+    await db.query('release savepoint duplicate_submission');
   });
 
   it('and crew hold no policy on that ledger, so they cannot pre-claim their own', async () => {

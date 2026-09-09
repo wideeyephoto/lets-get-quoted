@@ -541,6 +541,7 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
             <LeadAvailabilityScheduler
               defaultOpen
               className={styles.primaryActionCard}
+              businessName={quoteBusinessName}
               availability={availabilityCards}
               leadPhone={lead.phone ?? ''}
               leadAddress={lead.address ?? ''}
@@ -635,6 +636,7 @@ export default async function LeadDetailPage({ params: paramsPromise, searchPara
                   phone={quotePreviewPhone}
                   email={quotePreviewEmail}
                   preference={triage.messageChannel ?? 'auto'}
+                  businessName={quoteBusinessName}
                 />
                 <details className={styles.optionalScheduleDetails}>
                   <summary>Suggest 3 job start times</summary>

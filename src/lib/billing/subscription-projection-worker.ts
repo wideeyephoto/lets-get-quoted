@@ -206,6 +206,13 @@ implements StripeBillingSubscriptionProjectionStore {
     return this.delegate.ignoreForeignRail(input);
   }
 
+  async ignoreTestModeRehearsal(
+    input: Parameters<StripeBillingSubscriptionProjectionStore['ignoreTestModeRehearsal']>[0],
+  ) {
+    assertOwnedInput(this.claimValue, input.billingEventId, input.claimToken);
+    return this.delegate.ignoreTestModeRehearsal(input);
+  }
+
   async project(input: Parameters<StripeBillingSubscriptionProjectionStore['project']>[0]) {
     assertOwnedInput(this.claimValue, input.billingEventId, input.claimToken);
     return this.delegate.project(input);

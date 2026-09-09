@@ -1,4 +1,4 @@
-﻿import { describe, it, expect } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   formatClientDashboardSmsText,
   formatPrivateSmsText,
@@ -34,5 +34,23 @@ describe('Dashboard SMS Dispatch Formatting', () => {
     });
 
     expect(text).toBe('Hi, this is Dan from Apex Roofing checking in!');
+  });
+
+  it('composes without duplicating business name when passing body through inboxReplyText', async () => {
+    const { inboxReplyText } = await import('@/lib/sms-templates');
+    const directDelivered = inboxReplyText({
+      businessName: 'Apex Roofing',
+      body: 'Can our tech come by tomorrow at 2 PM?',
+    });
+    expect(directDelivered).toBe('Apex Roofing: Can our tech come by tomorrow at 2 PM?');
+    expect(directDelivered).not.toContain('Apex Roofing: Apex Roofing:');
+
+    // And even if someone passed an already-prefixed body:
+    const alreadyPrefixed = inboxReplyText({
+      businessName: 'Apex Roofing',
+      body: 'Apex Roofing: Can our tech come by tomorrow at 2 PM?',
+    });
+    expect(alreadyPrefixed).toBe('Apex Roofing: Can our tech come by tomorrow at 2 PM?');
+    expect(alreadyPrefixed).not.toContain('Apex Roofing: Apex Roofing:');
   });
 });

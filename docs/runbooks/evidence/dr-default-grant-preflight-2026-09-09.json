@@ -1,0 +1,19 @@
+{
+  "checkedAt": "2026-09-09T11:06:38.621Z",
+  "passed": true,
+  "rolledBack": true,
+  "objects": [
+    {
+      "object": "__dr_default_grant_probe_id_seq",
+      "acl": null
+    },
+    {
+      "object": "__dr_default_grant_probe",
+      "acl": null
+    },
+    {
+      "object": "__dr_default_grant_probe_fn",
+      "acl": null
+    }
+  ]
+}

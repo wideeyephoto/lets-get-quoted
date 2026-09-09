@@ -50,6 +50,8 @@ import { computeInvoiceTotals, getInvoiceWithItems, listInvoices, selectPrimaryI
 import { paidTowardInvoice, paymentsForInvoice } from '@/lib/invoice-pay';
 import { loadBusinessName } from '@/lib/business-name';
 import PaymentPreview from './PaymentPreview';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { crewAssignmentText, jobUpdateText, paymentText } from '@/lib/sms-templates';
 import { createLinkedFeedItems, getActiveClientAccessCount, listJobFeed, sortJobFeed, type JobFeedEvent } from '@/lib/job-feed';
 import { listCrew, listCrewIdsForJob } from '@/lib/crew';
 import {
@@ -511,6 +513,10 @@ export default async function JobDetailPage({
       action={boundRequestReview}
       reviewConfigured={Boolean(reviewUrl)}
       lastRequestedAt={lastReviewRequest?.created_at ?? null}
+      businessName={previewBusinessName}
+      clientName={job.client_name}
+      clientPhone={job.client_phone}
+      reviewUrl={reviewUrl}
     />
   );
 
@@ -882,6 +888,10 @@ export default async function JobDetailPage({
               quotedAmount={Number(job.quoted_amount) || 0}
               clientPhone={job.client_phone}
               suggestSplit={suggestStages}
+              businessName={previewBusinessName}
+              jobRef={job.ref}
+              clientName={job.client_name}
+              payOrigin={quoteLinkOrigin}
               actions={{
                 seed: seedMilestonesAction.bind(null, job.id),
                 create: createMilestoneAction.bind(null, job.id),
@@ -928,6 +938,9 @@ export default async function JobDetailPage({
               approved={job.status !== 'new_lead'}
               approvedTotal={Number(job.quoted_amount) || 0}
               clientLabel={job.client_name}
+              businessName={previewBusinessName}
+              jobRef={job.ref}
+              clientPhone={job.client_phone}
               changeOrderHref={changeOrderHref}
             />
           </section>
@@ -1051,13 +1064,29 @@ export default async function JobDetailPage({
                   <textarea id="feedBody" name="body" rows={3} placeholder="Started demo on the north wall — on track to finish Thursday." />
                 </div>
                 {job.client_phone ? (
-                  <label className="sms-consent-check field full">
-                    <input name="notifyClientSms" type="checkbox" />
-                    <span>
-                      <strong>Also text this update to {job.client_name}</strong>
-                      <small>Sends to {formatPhoneDashes(job.client_phone)}. Reply STOP to opt out.</small>
-                    </span>
-                  </label>
+                  <div className="field full">
+                    <label className="sms-consent-check">
+                      <input name="notifyClientSms" type="checkbox" />
+                      <span>
+                        <strong>Also text this update to {job.client_name}</strong>
+                        <small>Sends to {formatPhoneDashes(job.client_phone)}. Reply STOP to opt out.</small>
+                      </span>
+                    </label>
+                    <div style={{ marginTop: '0.4rem' }}>
+                      <SmsPreview
+                        message={jobUpdateText({
+                          businessName: previewBusinessName,
+                          jobRef: job.ref,
+                          title: '[Update Title]',
+                          body: '[Details]',
+                        })}
+                        recipientLabel={job.client_name}
+                        phone={job.client_phone}
+                        triggerLabel="👁 Preview SMS envelope"
+                        buttonClassName="btn ghost"
+                      />
+                    </div>
+                  </div>
                 ) : null}
                 <div className="field full">
                   <SaveButton pendingLabel="Posting…" savedLabel="Posted ✓">Post update</SaveButton>
@@ -1386,11 +1415,26 @@ export default async function JobDetailPage({
                         <CopyLinkButton url={`${quoteLinkOrigin}/pay/${payment.id}`} label="Copy pay link" />
                       ) : null}
                       {isLegacyDestinationPayment(payment) && payment.sms_events?.some((event) => event.event_type === 'payment_requested' && event.status === 'failed') && (
-                        <form action={boundRetryPaymentText.bind(null, payment.id)}>
-                          <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
-                            Retry SMS
-                          </SaveButton>
-                        </form>
+                        <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem' }}>
+                          <form action={boundRetryPaymentText.bind(null, payment.id)}>
+                            <SaveButton className="btn secondary" pendingLabel="Sending…" savedLabel="Sent ✓">
+                              Retry SMS
+                            </SaveButton>
+                          </form>
+                          <SmsPreview
+                            message={paymentText({
+                              contractor: previewBusinessName,
+                              eventType: 'payment_requested',
+                              label: payment.label || 'payment',
+                              amount: Number(payment.amount),
+                              link: `${quoteLinkOrigin}/pay/${payment.id}`,
+                            })}
+                            recipientLabel={job.client_name}
+                            phone={job.client_phone}
+                            triggerLabel="👁"
+                            buttonClassName="btn ghost"
+                          />
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1541,9 +1585,26 @@ export default async function JobDetailPage({
                       </label>
                     ))}
                   </div>
-                  <div className="field full inline-action-form">
+                  <div className="field full inline-action-form" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <SaveButton formAction={updateJobCrewAction.bind(null, job.id, true)} aria-label="Save crew assignment and text newly added crew">Save &amp; text</SaveButton>
                     <SaveButton className="btn secondary" formAction={updateJobCrewAction.bind(null, job.id, false)} aria-label="Save crew assignment without texting">Save without texting</SaveButton>
+                    {crew.length > 0 ? (
+                      <SmsPreview
+                        message={crewAssignmentText({
+                          crewName: crew[0]?.name || 'Crew Member',
+                          businessName: previewBusinessName,
+                          jobRef: job.ref,
+                          clientName: job.client_name,
+                          address: job.address,
+                          scheduledFor: job.scheduled_for,
+                          scheduledTime: job.scheduled_time,
+                        })}
+                        recipientLabel={crew[0]?.name || 'Crew Member'}
+                        phone={crew[0]?.phone}
+                        triggerLabel="👁 Preview assignment text"
+                        buttonClassName="btn ghost"
+                      />
+                    ) : null}
                   </div>
                 </form>
               )}

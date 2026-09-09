@@ -113,7 +113,7 @@ describe('Reliability & Operations Center (APM, Uptime & Paging)', () => {
       expect(subsystemIds).toContain('contractor-cdn');
 
       for (const s of report.subsystems) {
-        expect(['operational', 'degraded', 'outage']).toContain(s.status);
+        expect(['operational', 'configured', 'degraded', 'outage']).toContain(s.status);
         if (s.id === 'database' || s.id === 'cron-cadence') {
           expect(s.latencyMs).toBeGreaterThanOrEqual(1);
         } else {
@@ -122,7 +122,9 @@ describe('Reliability & Operations Center (APM, Uptime & Paging)', () => {
         expect(s.consequenceIfDown.length).toBeGreaterThan(10);
       }
 
-      expect(report.sla.uptime30dPct).toBeGreaterThanOrEqual(99.0);
+      expect(report.sla.uptime30dPct).toBeNull();
+      expect(report.sla.uptime24hPct).toBeNull();
+      expect(report.sla.uptime7dPct).toBeNull();
       expect(report.externalMonitoring.pingEndpoint).toBe('/api/health');
     });
   });
@@ -170,6 +172,28 @@ describe('Reliability & Operations Center (APM, Uptime & Paging)', () => {
       expect(drill.title).toContain('Drill');
       expect(drill.severity).toBe('P3_WARNING');
       expect(drill.dispatchedChannels.length).toBeGreaterThan(0);
+    });
+
+    it('debounces and deduplicates dispatches with the same incidentKey', async () => {
+      const key = `incident_test_dedup_${Date.now()}`;
+      const page1 = await dispatchOnCallPage({
+        incidentKey: key,
+        title: 'DB Connection Saturation',
+        severity: 'P1_CRITICAL',
+        summary: 'Database connection pool reached 100% capacity.',
+        incidentType: 'database',
+      });
+
+      const page2 = await dispatchOnCallPage({
+        incidentKey: key,
+        title: 'DB Connection Saturation (duplicate)',
+        severity: 'P1_CRITICAL',
+        summary: 'Database connection pool reached 100% capacity.',
+        incidentType: 'database',
+      });
+
+      expect(page2.id).toBe(page1.id);
+      expect(page2.dispatchedAt).toBe(page1.dispatchedAt);
     });
   });
 });

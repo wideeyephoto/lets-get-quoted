@@ -290,7 +290,7 @@ export default async function AdminPrivacyRequestsPage({
                                 style={{ fontSize: '0.75rem', padding: '0.2rem 0.4rem', border: '1px solid #444', borderRadius: '4px', background: '#111', color: '#fff', width: '150px' }}
                               />
                               <button type="submit" className="btn secondary" style={{ fontSize: '0.8rem', padding: '0.25rem 0.6rem' }}>
-                                Resolve
+                                Mark responded
                               </button>
                             </form>
                           ) : null}

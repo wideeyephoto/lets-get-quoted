@@ -1,0 +1,625 @@
+{
+  "schema": "lgq.billing-rehearsal-noise-investigation.v1",
+  "exported_at_utc": "2026-09-09 15:51:27 UTC",
+  "observation_note": "Read-only observations collected during this investigation; not a single transaction-wide snapshot. Revalidate exact source rows before any later classification.",
+  "production_supabase_project": "mfuvvtrkipkigwqqtcal",
+  "production_target_deployment": "dpl_uLi2ZDS2BP6NY78hfwxd8gCasGwo",
+  "source_commit": "48dee526b6c25a020758e42f4684bd5698ef54e2",
+  "review_disposition": "unclassified_non_live_failures; rehearsal provenance not yet established",
+  "expected_event_count": 185,
+  "baseline": [
+    {
+      "evidence": {
+        "cohorts": [
+          {
+            "events": 185,
+            "newest": "2026-09-08T18:23:45.401037+00:00",
+            "oldest": "2026-09-07T23:09:25.422825+00:00",
+            "applied": 0,
+            "livemode": false,
+            "no_retry": true,
+            "last_error": "billing_mode_configuration_invalid",
+            "max_attempts": 1,
+            "min_attempts": 1,
+            "account_linked": 0,
+            "processing_status": "failed"
+          },
+          {
+            "events": 1,
+            "newest": "2026-09-09T14:12:34.126736+00:00",
+            "oldest": "2026-09-09T14:12:34.126736+00:00",
+            "applied": 0,
+            "livemode": false,
+            "no_retry": true,
+            "last_error": "controlled_ops_drill_completed",
+            "max_attempts": 1,
+            "min_attempts": 1,
+            "account_linked": 0,
+            "processing_status": "ignored"
+          },
+          {
+            "events": 11,
+            "newest": "2026-08-23T18:33:48.031961+00:00",
+            "oldest": "2026-08-18T08:01:13.613159+00:00",
+            "applied": 11,
+            "livemode": false,
+            "no_retry": true,
+            "last_error": null,
+            "max_attempts": 4,
+            "min_attempts": 1,
+            "account_linked": 11,
+            "processing_status": "processed"
+          },
+          {
+            "events": 1,
+            "newest": "2026-08-29T14:42:11.04799+00:00",
+            "oldest": "2026-08-29T14:42:11.04799+00:00",
+            "applied": 0,
+            "livemode": true,
+            "no_retry": true,
+            "last_error": "provider_object_contract_mismatch",
+            "max_attempts": 1,
+            "min_attempts": 1,
+            "account_linked": 0,
+            "processing_status": "failed"
+          },
+          {
+            "events": 7,
+            "newest": "2026-09-07T16:57:31.454736+00:00",
+            "oldest": "2026-08-23T23:33:14.976091+00:00",
+            "applied": 7,
+            "livemode": true,
+            "no_retry": true,
+            "last_error": null,
+            "max_attempts": 1,
+            "min_attempts": 1,
+            "account_linked": 7,
+            "processing_status": "processed"
+          }
+        ],
+        "findings": [
+          {
+            "active": 4,
+            "category": "sms"
+          },
+          {
+            "active": 186,
+            "category": "billing"
+          }
+        ],
+        "functions": [
+          {
+            "args": "p_crons jsonb",
+            "proname": "scan_operational_failures"
+          },
+          {
+            "args": "p_billing_event_id uuid",
+            "proname": "claim_stripe_billing_subscription_event"
+          },
+          {
+            "args": "p_billing_event_id uuid, p_claim_token uuid, p_error_code text, p_retryable boolean, p_next_attempt_at timestamp with time zone",
+            "proname": "fail_stripe_billing_subscription_event"
+          },
+          {
+            "args": "p_billing_event_id uuid, p_claim_token uuid, p_projection jsonb",
+            "proname": "project_stripe_billing_subscription_event"
+          },
+          {
+            "args": "",
+            "proname": "claim_next_due_stripe_billing_subscription_event"
+          },
+          {
+            "args": "p_billing_event_id uuid, p_claim_token uuid",
+            "proname": "ignore_foreign_stripe_billing_subscription_event"
+          },
+          {
+            "args": "p_billing_event_id uuid, p_claim_token uuid, p_projection jsonb",
+            "proname": "project_stripe_billing_subscription_event_v1_unchecked"
+          },
+          {
+            "args": "p_project_id text, p_space_id text",
+            "proname": "record_voice_operational_health"
+          },
+          {
+            "args": "p_recipient text, p_from text",
+            "proname": "queue_operational_alerts"
+          },
+          {
+            "args": "p_limit integer",
+            "proname": "claim_operational_alerts"
+          }
+        ],
+        "checked_at": "2026-09-09T15:46:03.865552+00:00",
+        "test_types": [
+          {
+            "events": 13,
+            "objects": 13,
+            "event_type": "customer.subscription.created"
+          },
+          {
+            "events": 10,
+            "objects": 10,
+            "event_type": "customer.subscription.deleted"
+          },
+          {
+            "events": 45,
+            "objects": 5,
+            "event_type": "customer.subscription.updated"
+          },
+          {
+            "events": 23,
+            "objects": 23,
+            "event_type": "invoice.created"
+          },
+          {
+            "events": 23,
+            "objects": 23,
+            "event_type": "invoice.finalized"
+          },
+          {
+            "events": 23,
+            "objects": 23,
+            "event_type": "invoice.paid"
+          },
+          {
+            "events": 5,
+            "objects": 5,
+            "event_type": "invoice.payment_failed"
+          },
+          {
+            "events": 23,
+            "objects": 23,
+            "event_type": "invoice.payment_succeeded"
+          },
+          {
+            "events": 20,
+            "objects": 10,
+            "event_type": "invoice.updated"
+          }
+        ]
+      }
+    }
+  ],
+  "contracts": [
+    {
+      "evidence": {
+        "cron": {
+          "last_failure": "2026-09-08T18:55:29.372+00:00",
+          "latest_success": "2026-09-09T15:45:29.377+00:00"
+        },
+        "indexes": [
+          {
+            "indexdef": "CREATE UNIQUE INDEX billing_events_pkey ON public.billing_events USING btree (id)",
+            "indexname": "billing_events_pkey"
+          },
+          {
+            "indexdef": "CREATE UNIQUE INDEX billing_events_provider_event_unique ON public.billing_events USING btree (provider, provider_event_id)",
+            "indexname": "billing_events_provider_event_unique"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_processing_queue_idx ON public.billing_events USING btree (processing_status, next_attempt_at, received_at) WHERE (processing_status = ANY (ARRAY['received'::text, 'failed'::text]))",
+            "indexname": "billing_events_processing_queue_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_account_received_idx ON public.billing_events USING btree (account_id, received_at DESC) WHERE (account_id IS NOT NULL)",
+            "indexname": "billing_events_account_received_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_provider_account_idx ON public.billing_events USING btree (provider_account_id, received_at DESC) WHERE (provider_account_id IS NOT NULL)",
+            "indexname": "billing_events_provider_account_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_subscription_idx ON public.billing_events USING btree (billing_subscription_id) WHERE (billing_subscription_id IS NOT NULL)",
+            "indexname": "billing_events_subscription_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_projection_lease_idx ON public.billing_events USING btree (projection_lease_expires_at, received_at, id) WHERE (processing_status = 'processing'::text)",
+            "indexname": "billing_events_projection_lease_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_subscription_projection_ready_idx ON public.billing_events USING btree (processing_status, next_attempt_at, provider_created_at, received_at, id) WHERE ((provider = 'stripe'::text) AND (event_scope = 'platform_subscription'::text) AND (provider_account_id IS NULL) AND (processing_status = ANY (ARRAY['received'::text, 'failed'::text])))",
+            "indexname": "billing_events_subscription_projection_ready_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_connected_payment_projection_ready_idx ON public.billing_events USING btree (processing_status, next_attempt_at, projection_lease_expires_at, provider_created_at, received_at, id) WHERE ((provider = 'stripe'::text) AND (event_scope = 'connected_payment'::text) AND (event_type = 'checkout.session.completed'::text) AND (provider_account_id IS NOT NULL) AND (processing_status = ANY (ARRAY['received'::text, 'failed'::text, 'processing'::text])))",
+            "indexname": "billing_events_connected_payment_projection_ready_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX billing_events_top_up_projection_ready_idx ON public.billing_events USING btree (processing_status, next_attempt_at, projection_lease_expires_at, provider_created_at, received_at, id) WHERE ((provider = 'stripe'::text) AND (event_scope = 'platform_top_up'::text) AND (provider_account_id IS NULL) AND (processing_status = ANY (ARRAY['received'::text, 'failed'::text, 'processing'::text])))",
+            "indexname": "billing_events_top_up_projection_ready_idx"
+          },
+          {
+            "indexdef": "CREATE INDEX idx_billing_events_billing_subscription_id ON public.billing_events USING btree (billing_subscription_id)",
+            "indexname": "idx_billing_events_billing_subscription_id"
+          },
+          {
+            "indexdef": "CREATE UNIQUE INDEX operational_alert_findings_pkey ON public.operational_alert_findings USING btree (source_key)",
+            "indexname": "operational_alert_findings_pkey"
+          },
+          {
+            "indexdef": "CREATE INDEX operational_findings_unqueued ON public.operational_alert_findings USING btree (category, detected_at) WHERE (delivery_id IS NULL)",
+            "indexname": "operational_findings_unqueued"
+          },
+          {
+            "indexdef": "CREATE INDEX operational_findings_open ON public.operational_alert_findings USING btree (last_seen_at) WHERE (resolved_at IS NULL)",
+            "indexname": "operational_findings_open"
+          }
+        ],
+        "constraints": [
+          {
+            "conname": "billing_events_account_id_fkey",
+            "definition": "FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE SET NULL"
+          },
+          {
+            "conname": "billing_events_attempt_count_check",
+            "definition": "CHECK ((attempt_count >= 0))"
+          },
+          {
+            "conname": "billing_events_billing_subscription_id_fkey",
+            "definition": "FOREIGN KEY (billing_subscription_id) REFERENCES billing_subscriptions(id) ON DELETE SET NULL"
+          },
+          {
+            "conname": "billing_events_complete_receipt_check",
+            "definition": "CHECK (((provider_created_at IS NOT NULL) AND (payload_sha256 IS NOT NULL)))"
+          },
+          {
+            "conname": "billing_events_event_type_check",
+            "definition": "CHECK ((length(btrim(event_type)) > 0))"
+          },
+          {
+            "conname": "billing_events_payload_check",
+            "definition": "CHECK ((jsonb_typeof(payload) = 'object'::text))"
+          },
+          {
+            "conname": "billing_events_payload_sha256_check",
+            "definition": "CHECK (((payload_sha256 IS NULL) OR (payload_sha256 ~ '^[0-9a-f]{64}$'::text)))"
+          },
+          {
+            "conname": "billing_events_pkey",
+            "definition": "PRIMARY KEY (id)"
+          },
+          {
+            "conname": "billing_events_processed_state_check",
+            "definition": "CHECK (((processed_at IS NULL) OR (processing_status = ANY (ARRAY['processed'::text, 'ignored'::text]))))"
+          },
+          {
+            "conname": "billing_events_processing_status_check",
+            "definition": "CHECK ((processing_status = ANY (ARRAY['received'::text, 'processing'::text, 'processed'::text, 'failed'::text, 'ignored'::text])))"
+          },
+          {
+            "conname": "billing_events_projection_claim_shape_check",
+            "definition": "CHECK ((((processing_status = 'processing'::text) AND (projection_claim_token IS NOT NULL) AND (projection_lease_expires_at IS NOT NULL) AND (processing_started_at IS NOT NULL)) OR ((processing_status <> 'processing'::text) AND (projection_claim_token IS NULL) AND (projection_lease_expires_at IS NULL))))"
+          },
+          {
+            "conname": "billing_events_projection_result_check",
+            "definition": "CHECK (((projection_result IS NULL) OR (projection_result = ANY (ARRAY['subscription_state_applied'::text, 'invoice_state_applied'::text, 'subscription_and_invoice_state_applied'::text, 'out_of_order_ignored'::text, 'direct_payment_paid_pending_reconciliation'::text, 'direct_payment_paid_reconciled'::text, 'direct_checkout_expired'::text, 'direct_payment_late_success_resolution_pending'::text, 'direct_payment_late_success_manual_review'::text, 'direct_payment_additional_paid_truth_manual_review'::text, 'direct_payment_late_success_resolved_settled'::text, 'direct_payment_late_success_hold_retained'::text])) OR (projection_result = ANY (ARRAY['top_up_credits_granted'::text, 'top_up_credits_already_granted'::text, 'top_up_awaiting_async_payment'::text, 'top_up_payment_failed'::text, 'top_up_checkout_expired'::text, 'top_up_not_a_purchase'::text, 'top_up_fulfillment_withheld'::text, 'top_up_capacity_fulfillment_deferred'::text])) OR (projection_result = ANY (ARRAY['top_up_capacity_granted'::text, 'top_up_capacity_already_granted'::text])) OR (projection_result = 'subscription_not_our_rail'::text)))"
+          },
+          {
+            "conname": "billing_events_projection_terminal_shape_check",
+            "definition": "CHECK ((((event_scope = 'platform_subscription'::text) AND (((processing_status = ANY (ARRAY['processed'::text, 'ignored'::text])) AND (processed_at IS NOT NULL) AND (NOT (projection_schema_version IS DISTINCT FROM 'stripe_subscription_projection_v1'::text)) AND (projection_applied IS NOT NULL) AND (projection_result = ANY (ARRAY['subscription_state_applied'::text, 'invoice_state_applied'::text, 'subscription_and_invoice_state_applied'::text, 'out_of_order_ignored'::text]))) OR ((processing_status <> ALL (ARRAY['processed'::text, 'ignored'::text])) AND (processed_at IS NULL) AND (projection_schema_version IS NULL) AND (projection_applied IS NULL) AND (projection_result IS NULL)))) OR ((event_scope = 'connected_payment'::text) AND (((processing_status = 'processed'::text) AND (processed_at IS NOT NULL) AND (projection_applied IS NOT NULL) AND (projection_result IS NOT NULL) AND (((event_type = 'checkout.session.completed'::text) AND (NOT (projection_schema_version IS DISTINCT FROM 'stripe_connected_payment_projection_v1'::text)) AND (projection_result = ANY (ARRAY['direct_payment_paid_pending_reconciliation'::text, 'direct_payment_paid_reconciled'::text, 'direct_payment_late_success_resolution_pending'::text, 'direct_payment_late_success_manual_review'::text, 'direct_payment_additional_paid_truth_manual_review'::text, 'direct_payment_late_success_resolved_settled'::text, 'direct_payment_late_success_hold_retained'::text]))) OR ((event_type = 'checkout.session.expired'::text) AND (NOT (projection_schema_version IS DISTINCT FROM 'stripe_connected_checkout_expiration_v1'::text)) AND (projection_result = 'direct_checkout_expired'::text)))) OR ((processing_status <> 'processed'::text) AND (processed_at IS NULL) AND (projection_schema_version IS NULL) AND (projection_applied IS NULL) AND (projection_result IS NULL)))) OR ((event_scope = 'platform_top_up'::text) AND (processed_at IS NULL) AND (projection_schema_version IS NULL) AND (projection_applied IS NULL) AND (projection_result IS NULL)) OR ((event_scope = 'platform_top_up'::text) AND (processed_at IS NOT NULL) AND (NOT (projection_schema_version IS DISTINCT FROM 'stripe_platform_top_up_projection_v1'::text)) AND (projection_applied IS NOT NULL) AND (((processing_status = 'processed'::text) AND projection_applied AND (event_type = ANY (ARRAY['checkout.session.completed'::text, 'checkout.session.async_payment_succeeded'::text])) AND (projection_result = 'top_up_credits_granted'::text)) OR ((processing_status = 'processed'::text) AND (NOT projection_applied) AND (event_type = ANY (ARRAY['checkout.session.completed'::text, 'checkout.session.async_payment_succeeded'::text])) AND (projection_result = 'top_up_credits_already_granted'::text)) OR ((processing_status = 'ignored'::text) AND (NOT projection_applied) AND (((event_type = 'checkout.session.completed'::text) AND (projection_result = 'top_up_awaiting_async_payment'::text)) OR ((event_type = 'checkout.session.async_payment_failed'::text) AND (projection_result = 'top_up_payment_failed'::text)) OR ((event_type = 'checkout.session.expired'::text) AND (projection_result = 'top_up_checkout_expired'::text)) OR ((event_type = ANY (ARRAY['checkout.session.completed'::text, 'checkout.session.async_payment_succeeded'::text])) AND (projection_result = ANY (ARRAY['top_up_fulfillment_withheld'::text, 'top_up_capacity_fulfillment_deferred'::text]))) OR (projection_result = 'top_up_not_a_purchase'::text))))) OR ((event_scope = 'platform_top_up'::text) AND (processed_at IS NOT NULL) AND (NOT (projection_schema_version IS DISTINCT FROM 'stripe_platform_top_up_projection_v1'::text)) AND (projection_applied IS NOT NULL) AND (processing_status = 'processed'::text) AND (event_type = ANY (ARRAY['checkout.session.completed'::text, 'checkout.session.async_payment_succeeded'::text])) AND ((projection_applied AND (projection_result = 'top_up_capacity_granted'::text)) OR ((NOT projection_applied) AND (projection_result = 'top_up_capacity_already_granted'::text)))) OR ((event_scope = 'platform_subscription'::text) AND (processing_status = 'ignored'::text) AND (processed_at IS NOT NULL) AND (NOT (projection_schema_version IS DISTINCT FROM 'stripe_subscription_projection_v1'::text)) AND (projection_applied IS NOT NULL) AND (NOT projection_applied) AND (projection_result = 'subscription_not_our_rail'::text))))"
+          },
+          {
+            "conname": "billing_events_provider_check",
+            "definition": "CHECK ((provider = 'stripe'::text))"
+          },
+          {
+            "conname": "billing_events_provider_event_id_check",
+            "definition": "CHECK ((length(btrim(provider_event_id)) > 0))"
+          },
+          {
+            "conname": "billing_events_provider_event_unique",
+            "definition": "UNIQUE (provider, provider_event_id)"
+          },
+          {
+            "conname": "billing_events_scope_binding_check",
+            "definition": "CHECK ((((event_scope = 'connected_payment'::text) AND (account_id IS NOT NULL) AND (provider_account_id IS NOT NULL)) OR ((event_scope = 'platform_subscription'::text) AND (provider_account_id IS NULL)) OR ((event_scope = 'platform_top_up'::text) AND (provider_account_id IS NULL))))"
+          },
+          {
+            "conname": "billing_events_scope_check",
+            "definition": "CHECK (((event_scope = ANY (ARRAY['connected_payment'::text, 'platform_subscription'::text])) OR (event_scope = 'platform_top_up'::text)))"
+          },
+          {
+            "conname": "billing_events_stripe_identity_format_check",
+            "definition": "CHECK (((provider_event_id ~ '^evt_[A-Za-z0-9_]{8,}$'::text) AND ((provider_account_id IS NULL) OR (provider_account_id ~ '^acct_[A-Za-z0-9]{8,}$'::text))))"
+          },
+          {
+            "conname": "billing_events_top_up_projection_completeness_check",
+            "definition": "CHECK (((event_scope <> 'platform_top_up'::text) OR (processing_status <> ALL (ARRAY['processed'::text, 'ignored'::text])) OR (processed_at IS NOT NULL)))"
+          },
+          {
+            "conname": "billing_events_type_scope_check",
+            "definition": "CHECK ((((event_scope = 'connected_payment'::text) AND (event_type = ANY (ARRAY['checkout.session.completed'::text, 'checkout.session.async_payment_succeeded'::text, 'checkout.session.async_payment_failed'::text, 'checkout.session.expired'::text, 'payment_intent.processing'::text, 'payment_intent.succeeded'::text, 'payment_intent.payment_failed'::text, 'payment_intent.canceled'::text, 'charge.succeeded'::text, 'charge.failed'::text, 'charge.refunded'::text, 'charge.refund.updated'::text, 'charge.dispute.created'::text, 'charge.dispute.updated'::text, 'charge.dispute.closed'::text, 'charge.dispute.funds_reinstated'::text, 'charge.dispute.funds_withdrawn'::text, 'refund.created'::text, 'refund.updated'::text, 'refund.failed'::text]))) OR ((event_scope = 'platform_subscription'::text) AND (event_type = ANY (ARRAY['customer.subscription.created'::text, 'customer.subscription.updated'::text, 'customer.subscription.deleted'::text, 'customer.subscription.paused'::text, 'customer.subscription.resumed'::text, 'customer.subscription.pending_update_applied'::text, 'customer.subscription.pending_update_expired'::text, 'customer.subscription.trial_will_end'::text, 'invoice.created'::text, 'invoice.updated'::text, 'invoice.finalized'::text, 'invoice.finalization_failed'::text, 'invoice.paid'::text, 'invoice.payment_succeeded'::text, 'invoice.payment_failed'::text, 'invoice.payment_action_required'::text, 'invoice.marked_uncollectible'::text, 'invoice.voided'::text]))) OR ((event_scope = 'platform_top_up'::text) AND (event_type = ANY (ARRAY['checkout.session.completed'::text, 'checkout.session.async_payment_succeeded'::text, 'checkout.session.async_payment_failed'::text, 'checkout.session.expired'::text])))))"
+          }
+        ],
+        "column_contracts": [
+          {
+            "data_type": "uuid",
+            "table_name": "billing_subscriptions",
+            "column_name": "id"
+          },
+          {
+            "data_type": "uuid",
+            "table_name": "billing_subscriptions",
+            "column_name": "account_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider_customer_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider_subscription_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider_subscription_item_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider_price_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "plan_code"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "billing_interval"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "status"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "catalog_version"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "currency"
+          },
+          {
+            "data_type": "bigint",
+            "table_name": "billing_subscriptions",
+            "column_name": "base_amount_cents"
+          },
+          {
+            "data_type": "integer",
+            "table_name": "billing_subscriptions",
+            "column_name": "platform_fee_bps"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "current_period_start"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "current_period_end"
+          },
+          {
+            "data_type": "boolean",
+            "table_name": "billing_subscriptions",
+            "column_name": "cancel_at_period_end"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "cancel_at"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "canceled_at"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "ended_at"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "pending_plan_code"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "pending_billing_interval"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "pending_effective_at"
+          },
+          {
+            "data_type": "jsonb",
+            "table_name": "billing_subscriptions",
+            "column_name": "metadata"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "created_at"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "updated_at"
+          },
+          {
+            "data_type": "boolean",
+            "table_name": "billing_subscriptions",
+            "column_name": "livemode"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider_state_event_created_at"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "provider_state_event_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "latest_invoice_id"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "latest_invoice_status"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "latest_invoice_event_type"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "latest_invoice_event_created_at"
+          },
+          {
+            "data_type": "text",
+            "table_name": "billing_subscriptions",
+            "column_name": "latest_invoice_event_id"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "last_paid_at"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "last_payment_failed_at"
+          },
+          {
+            "data_type": "timestamp with time zone",
+            "table_name": "billing_subscriptions",
+            "column_name": "messaging_grace_started_at"
+          }
+        ],
+        "possible_disposition_tables": null
+      }
+    }
+  ],
+  "provenance": [
+    {
+      "evidence": {
+        "object_keys": [
+          {
+            "key": "id"
+          },
+          {
+            "key": "object"
+          }
+        ],
+        "metadata_keys": null,
+        "candidate_tables": [
+          "billing_subscription_checkout_operations",
+          "stripe_connected_checkout_expirations",
+          "billing_direct_checkout_late_success_tasks",
+          "legacy_destination_checkout_session_adoptions",
+          "legacy_destination_checkout_operations",
+          "legacy_destination_checkout_event_receipts",
+          "billing_direct_checkout_late_success_resolutions"
+        ],
+        "billing_delivery_summary": [
+          {
+            "id": "57a1fae5-e18a-4c44-9cec-721f395cb8e5",
+            "state": "delivered",
+            "findings": 186,
+            "created_at": "2026-09-09T14:07:44.026335+00:00",
+            "delivered_at": "2026-09-09T14:10:15.596+00:00",
+            "open_findings": 186
+          },
+          {
+            "id": "89fe7b0c-cb14-4ee9-857e-f7e92ca45c60",
+            "state": "delivered",
+            "findings": 1,
+            "created_at": "2026-09-09T14:15:16.506216+00:00",
+            "delivered_at": "2026-09-09T14:15:24.35+00:00",
+            "open_findings": 0
+          }
+        ],
+        "known_subscription_matches": null
+      }
+    }
+  ],
+  "protected_live_event_and_additional_checks": [
+    {
+      "evidence": {
+        "sentinel": [
+          {
+            "id": "13eb0d53-2433-4cea-b7ae-0529d8878909",
+            "livemode": true,
+            "event_type": "customer.subscription.updated",
+            "last_error": "provider_object_contract_mismatch",
+            "received_at": "2026-08-29T14:42:11.04799+00:00",
+            "attempt_count": 1,
+            "payload_sha256": "567c82ddc8f53e0252c6afb8317fe5a9101018a9109769e1cc5b7bf7d42cf750",
+            "next_attempt_at": null,
+            "processing_status": "failed",
+            "provider_event_id": "evt_1U9nSQGqh5LFKuTCeXUjIBq7",
+            "projection_applied": null
+          }
+        ],
+        "test_checkout_operations": null,
+        "unqueued_billing_findings": null
+      }
+    }
+  ],
+  "installed_function_definitions": [
+    {
+      "proname": "claim_next_due_stripe_billing_subscription_event",
+      "definition": "CREATE OR REPLACE FUNCTION public.claim_next_due_stripe_billing_subscription_event()\n RETURNS TABLE(claim_status text, billing_event_id uuid, claim_token uuid, attempt_count integer, provider_event_id text, event_type text, provider_object_id text, provider_object_type text, livemode boolean, provider_created_at timestamp with time zone)\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\n SET \"TimeZone\" TO 'UTC'\nAS $function$\ndeclare\n  v_event_id uuid;\n  v_claim record;\nbegin\n  -- Claim only one row per transaction. The server-only runner repeats this\n  -- call up to its bounded batch size and processes the event before claiming\n  -- another, so a slow Stripe retrieval cannot age later leases in a batch.\n  select e.id\n    into v_event_id\n    from public.billing_events e\n   where e.provider = 'stripe'\n     and e.event_scope = 'platform_subscription'\n     and e.provider_account_id is null\n     and e.provider_created_at is not null\n     and e.payload #>> '{schema}' = 'lgq.stripe-event-inbox.v1'\n     and e.payload #>> '{scope}' = 'platform_subscription'\n     and e.payload #>> '{event,id}' = e.provider_event_id\n     and e.payload #>> '{event,type}' = e.event_type\n     and e.payload #> '{event,livemode}' = pg_catalog.to_jsonb(e.livemode)\n     and (\n       (\n         e.event_type like 'customer.subscription.%'\n         and e.payload #>> '{data_object,object}' = 'subscription'\n         and e.payload #>> '{data_object,id}' ~ '^sub_[A-Za-z0-9]{8,}$'\n       )\n       or (\n         e.event_type like 'invoice.%'\n         and e.payload #>> '{data_object,object}' = 'invoice'\n         and e.payload #>> '{data_object,id}' ~ '^in_[A-Za-z0-9]{8,}$'\n       )\n     )\n     and (\n       e.processing_status = 'received'\n       or (\n         e.processing_status = 'failed'\n         and e.next_attempt_at is not null\n         and e.next_attempt_at <= pg_catalog.now()\n       )\n       or (\n         e.processing_status = 'processing'\n         and e.projection_lease_expires_at is not null\n         and e.projection_lease_expires_at <= pg_catalog.now()\n       )\n     )\n   order by e.provider_created_at, e.received_at, e.id\n   limit 1\n   for update of e skip locked;\n\n  if not found then\n    return;\n  end if;\n\n  -- The existing function re-checks the complete redacted-inbox contract and\n  -- atomically increments attempt_count, mints the claim token, and starts the\n  -- five-minute lease. This selector never duplicates that state transition.\n  select c.*\n    into v_claim\n    from public.claim_stripe_billing_subscription_event(v_event_id) c;\n\n  if not found\n     or v_claim.claim_status is distinct from 'claimed'\n     or v_claim.billing_event_id is distinct from v_event_id\n     or v_claim.claim_token is null\n     or v_claim.attempt_count is null\n     or v_claim.attempt_count < 1 then\n    raise exception 'Stripe Billing worker selector did not receive an owned claim'\n      using errcode = '55000';\n  end if;\n\n  return query select\n    v_claim.claim_status::text,\n    v_claim.billing_event_id::uuid,\n    v_claim.claim_token::uuid,\n    v_claim.attempt_count::integer,\n    v_claim.provider_event_id::text,\n    v_claim.event_type::text,\n    v_claim.provider_object_id::text,\n    v_claim.provider_object_type::text,\n    v_claim.livemode::boolean,\n    v_claim.provider_created_at::timestamptz;\nend;\n$function$\n"
+    },
+    {
+      "proname": "fail_stripe_billing_subscription_event",
+      "definition": "CREATE OR REPLACE FUNCTION public.fail_stripe_billing_subscription_event(p_billing_event_id uuid, p_claim_token uuid, p_error_code text, p_retryable boolean, p_next_attempt_at timestamp with time zone)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'pg_temp'\n SET \"TimeZone\" TO 'UTC'\nAS $function$\ndeclare\n  v_event public.billing_events%rowtype;\nbegin\n  if p_error_code is null\n     or p_error_code !~ '^[a-z][a-z0-9_]{2,99}$'\n     or p_retryable is null\n     or (\n       p_retryable\n       and (\n         p_next_attempt_at is null\n         or p_next_attempt_at < pg_catalog.now() + interval '1 minute'\n         or p_next_attempt_at > pg_catalog.now() + interval '1 day 1 minute'\n       )\n     )\n     or (not p_retryable and p_next_attempt_at is not null) then\n    raise exception 'Stripe Billing projection failure contract is invalid'\n      using errcode = '22023';\n  end if;\n\n  select e.*\n    into v_event\n    from public.billing_events e\n   where e.id = p_billing_event_id\n   for update;\n  if not found\n     or v_event.event_scope <> 'platform_subscription'\n     or v_event.processing_status <> 'processing'\n     or v_event.projection_claim_token is distinct from p_claim_token\n     or v_event.projection_lease_expires_at <= pg_catalog.now() then\n    raise exception 'Stripe Billing event projection claim is not owned or expired'\n      using errcode = '55000';\n  end if;\n\n  update public.billing_events e\n     set processing_status = 'failed',\n         projection_claim_token = null,\n         projection_lease_expires_at = null,\n         next_attempt_at = p_next_attempt_at,\n         last_error = p_error_code\n   where e.id = v_event.id;\n  return true;\nend;\n$function$\n"
+    },
+    {
+      "proname": "ignore_foreign_stripe_billing_subscription_event",
+      "definition": "CREATE OR REPLACE FUNCTION public.ignore_foreign_stripe_billing_subscription_event(p_billing_event_id uuid, p_claim_token uuid)\n RETURNS text\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\n SET \"TimeZone\" TO 'UTC'\nAS $function$\r\ndeclare\r\n  v_event public.billing_events%rowtype;\r\nbegin\r\n  if p_billing_event_id is null or p_claim_token is null then\r\n    raise exception 'foreign subscription ignore input is invalid' using errcode = '22023';\r\n  end if;\r\n\r\n  select e.* into v_event\r\n    from public.billing_events e\r\n   where e.id = p_billing_event_id\r\n   for update;\r\n\r\n  if not found\r\n     or v_event.event_scope <> 'platform_subscription'\r\n     or v_event.processing_status <> 'processing'\r\n     or v_event.projection_claim_token is distinct from p_claim_token\r\n     or v_event.projection_lease_expires_at <= pg_catalog.now() then\r\n    raise exception 'subscription projection claim is not owned or expired'\r\n      using errcode = '55000';\r\n  end if;\r\n\r\n  -- All four columns the terminal shape demands for an ignored row of this\r\n  -- scope: processed_at, the schema version, a non-null applied flag and a\r\n  -- non-null result. applied is false because nothing was written anywhere.\r\n  update public.billing_events e\r\n     set processing_status = 'ignored',\r\n         processed_at = pg_catalog.now(),\r\n         next_attempt_at = null,\r\n         last_error = null,\r\n         projection_claim_token = null,\r\n         projection_lease_expires_at = null,\r\n         projection_schema_version = 'stripe_subscription_projection_v1',\r\n         projection_applied = false,\r\n         projection_result = 'subscription_not_our_rail'\r\n   where e.id = v_event.id;\r\n\r\n  return 'subscription_not_our_rail';\r\nend;\r\n$function$\n"
+    },
+    {
+      "proname": "protect_billing_event",
+      "definition": "CREATE OR REPLACE FUNCTION public.protect_billing_event()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\nbegin\n  if tg_op = 'DELETE' then\n    raise exception 'billing event audit rows cannot be deleted' using errcode = '42501';\n  end if;\n\n  if old.provider is distinct from new.provider\n     or old.provider_event_id is distinct from new.provider_event_id\n     or old.event_type is distinct from new.event_type\n     or old.provider_account_id is distinct from new.provider_account_id\n     or old.livemode is distinct from new.livemode\n     or old.api_version is distinct from new.api_version\n     or old.provider_created_at is distinct from new.provider_created_at\n     or old.payload is distinct from new.payload\n     or old.payload_sha256 is distinct from new.payload_sha256\n     or old.received_at is distinct from new.received_at then\n    raise exception 'billing event identity and payload are immutable' using errcode = '22000';\n  end if;\n  if old.account_id is not null and old.account_id is distinct from new.account_id then\n    raise exception 'billing event workspace is immutable once resolved' using errcode = '22000';\n  end if;\n  if old.billing_subscription_id is not null\n     and old.billing_subscription_id is distinct from new.billing_subscription_id then\n    raise exception 'billing event subscription is immutable once resolved' using errcode = '22000';\n  end if;\n  if new.attempt_count < old.attempt_count then\n    raise exception 'billing event attempt count cannot decrease' using errcode = '22000';\n  end if;\n\n  if new.processing_status is distinct from old.processing_status and not (\n    (old.processing_status = 'received' and new.processing_status in ('processing', 'ignored'))\n    or (old.processing_status = 'processing' and new.processing_status in ('processed', 'failed', 'ignored'))\n    or (old.processing_status = 'failed' and new.processing_status in ('processing', 'ignored'))\n  ) then\n    raise exception 'invalid billing event state transition: % -> %', old.processing_status, new.processing_status\n      using errcode = '22000';\n  end if;\n\n  return new;\nend;\n$function$\n"
+    },
+    {
+      "proname": "protect_billing_event_scope",
+      "definition": "CREATE OR REPLACE FUNCTION public.protect_billing_event_scope()\n RETURNS trigger\n LANGUAGE plpgsql\n SET search_path TO 'pg_catalog', 'pg_temp'\nAS $function$\nbegin\n  if old.event_scope is distinct from new.event_scope then\n    raise exception 'billing event scope is immutable' using errcode = '22000';\n  end if;\n  return new;\nend;\n$function$\n"
+    },
+    {
+      "proname": "queue_operational_alerts",
+      "definition": "CREATE OR REPLACE FUNCTION public.queue_operational_alerts(p_recipient text, p_from text)\n RETURNS integer\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\ndeclare v_category text; v_id uuid; v_count integer; v_total integer:=0; v_text text;\nbegin\n  if p_recipient !~ '^[^[:space:]@]+@[^[:space:]@]+\\.[^[:space:]@]+$' or length(p_from)<3 then\n    raise exception 'invalid alert recipient or sender';\n  end if;\n  perform pg_advisory_xact_lock(782321905);\n  for v_category in select distinct category from public.operational_alert_findings where delivery_id is null loop\n    v_id:=gen_random_uuid();\n    select count(*) into v_count from public.operational_alert_findings where category=v_category and delivery_id is null;\n    select string_agg(reference||' | observed='||occurred_at::text||E'\\n'||detail||E'\\n'||action_required||E'\\nhttps://app.letsgetquoted.com'||admin_path,E'\\n\\n' order by detected_at,source_key)\n      into v_text from (select * from public.operational_alert_findings where category=v_category and delivery_id is null order by detected_at,source_key limit 20) f;\n    insert into public.operational_alert_deliveries(id,category,payload) values(v_id,v_category,\n      jsonb_build_object('from',p_from,'to',jsonb_build_array(p_recipient),\n        'subject','[LGQ Ops] '||upper(v_category)||': '||v_count||' failure(s) ['||left(v_id::text,8)||']',\n        'text','Operational alert '||v_id||E'\\nCaptured: '||clock_timestamp()||E'\\n\\n'||v_text||\n          case when v_count>20 then E'\\n\\nShowing 20 of '||v_count||' records. All references are retained in operational_alert_findings under this alert ID.' else '' end||\n          E'\\n\\nThis monitor does not charge cards, grant credits, replay webhooks or send customer messages. Resolve the source through its supported recovery path; the next scan records when it clears.'));\n    update public.operational_alert_findings set delivery_id=v_id where category=v_category and delivery_id is null;\n    v_total:=v_total+1;\n  end loop;\n  return v_total;\nend $function$\n"
+    },
+    {
+      "proname": "scan_operational_failures",
+      "definition": "CREATE OR REPLACE FUNCTION public.scan_operational_failures(p_crons jsonb DEFAULT '[]'::jsonb)\n RETURNS integer\n LANGUAGE plpgsql\n SET search_path TO ''\nAS $function$\ndeclare v_now timestamptz := clock_timestamp(); v_count integer;\nbegin\n  if jsonb_typeof(p_crons) <> 'array' then raise exception 'invalid cron configuration'; end if;\n  perform pg_advisory_xact_lock(782321905);\n  with signals as (\n    select 'webhook:'||w.id as source_key, 'webhook' as category, w.id::text as reference,\n      w.created_at as occurred_at, 'Unresolved webhook failure; inspect the stored source event.' as detail,\n      'Open the failure by reference. Reconcile the original provider event, then use its supported replay with the original event ID. Mark resolved only after the expected effect is verified.' as action_required,\n      '/admin/failures#webhooks' as admin_path\n    from public.webhook_failures w where w.resolved_at is null\n    union all\n    select 'billing:'||b.id, 'billing', b.id::text, b.received_at,\n      'Billing event '||b.processing_status||'; scope='||b.event_scope||'; attempts='||b.attempt_count,\n      'Inspect the billing event and original Stripe event ID. Repair the cause and resume the existing projection worker. Never create another Checkout or grant credits manually to replay an event.', '/admin/billing-operations'\n    from public.billing_events b where b.processing_status='failed'\n      or (b.processing_status='received' and b.received_at < v_now-interval '15 minutes')\n      or (b.processing_status='processing' and b.projection_lease_expires_at < v_now-interval '5 minutes')\n    union all\n    select 'sms:'||e.id, 'sms', e.id::text,\n      coalesce(e.failed_at,e.indeterminate_at,s.failed_at,s.indeterminate_at,s.available_at,e.created_at),\n      'SMS event='||e.status||'; task='||coalesce(s.task_state,'none')||'; attempts='||coalesce(s.attempt_count,0)||'; code='||coalesce(s.last_error_code,'inspect_event'),\n      'Inspect the SMS event and provider message ID. For an unknown submission outcome, reconcile provider status before any retry. Resume only the existing supported task; do not compose a replacement message.', '/admin/messaging'\n    from public.sms_events e left join public.sms_delivery_tasks s on s.sms_event_id=e.id\n    where e.status in ('failed','indeterminate') or s.task_state in ('failed','indeterminate')\n      or (s.task_state='queued' and s.available_at < v_now-interval '15 minutes')\n      or (s.task_state='leased' and s.lease_expires_at < v_now-interval '5 minutes')\n    union all\n    select 'dispute:'||p.id||':'||coalesce(p.stripe_dispute_id,'unknown'), 'dispute', p.id::text,\n      coalesce(p.disputed_at,p.requested_at), 'Payment dispute requires review; deadline='||coalesce(p.dispute_due_by::text,'not recorded'),\n      'Open the payment and its existing Stripe dispute. Check the evidence deadline and submit through the original dispute. Do not refund or create a second charge as a recovery step.', '/admin/money#disputes'\n    from public.payments p where p.status='disputed' and coalesce(p.dispute_status,'needs_response') not in ('won','lost','warning_closed')\n    union all\n    select 'cron:'||(cfg->>'job')||':'||coalesce(s.last_success::text,'never'), 'cron', cfg->>'job',\n      coalesce(c.started_at,v_now), case when c.id is null then 'Scheduled worker has no recorded run'\n        when c.ok=false then 'Latest scheduled worker run failed; run='||c.id\n        else 'Scheduled worker is overdue; last run='||c.id end,\n      'Inspect cron_runs for this job and the deployed flags. Read the failure reason. Use the existing authenticated, idempotent worker after repairing the cause; verify its durable result.', '/admin/health'\n    from jsonb_array_elements(p_crons) cfg\n    left join lateral (select r.id,r.started_at,r.ok from public.cron_runs r where r.job=cfg->>'job' order by r.started_at desc limit 1) c on true\n    left join lateral (select max(r.started_at) last_success from public.cron_runs r where r.job=cfg->>'job' and r.ok=true) s on true\n    where c.ok=false or c.started_at < v_now-make_interval(mins => (cfg->>'max_gap_minutes')::integer)\n      or (c.id is null and coalesce((cfg->>'required')::boolean,true))\n  ), recorded as (\n    insert into public.operational_alert_findings(source_key,category,reference,occurred_at,detail,action_required,admin_path,last_seen_at)\n    select source_key,category,reference,occurred_at,detail,action_required,admin_path,v_now from signals\n    on conflict(source_key) do update set last_seen_at=v_now, resolved_at=null,\n      delivery_id=case when operational_alert_findings.resolved_at is not null then null else operational_alert_findings.delivery_id end,\n      detected_at=case when operational_alert_findings.resolved_at is not null then v_now else operational_alert_findings.detected_at end\n    returning source_key\n  ) select count(*) into v_count from recorded;\n  update public.operational_alert_findings set resolved_at=v_now\n    where resolved_at is null and last_seen_at < v_now;\n  return v_count;\nend $function$\n"
+    },
+    {
+      "proname": "serialize_stripe_connected_checkout_event_insert",
+      "definition": "CREATE OR REPLACE FUNCTION public.serialize_stripe_connected_checkout_event_insert()\n RETURNS trigger\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\n SET \"TimeZone\" TO 'UTC'\nAS $function$\ndeclare\n  v_checkout_session_id text;\nbegin\n  if new.provider = 'stripe'\n     and new.event_scope = 'connected_payment'\n     and new.event_type in (\n       'checkout.session.completed',\n       'checkout.session.async_payment_succeeded',\n       'checkout.session.expired'\n     ) then\n    v_checkout_session_id := new.payload #>> '{data_object,id}';\n    if new.account_id is null\n       or new.provider_account_id is null\n       or new.provider_account_id !~ '^acct_[A-Za-z0-9]{8,}$'\n       or new.livemode is null\n       or new.payload #>> '{schema}' is distinct from 'lgq.stripe-event-inbox.v1'\n       or new.payload #>> '{scope}' is distinct from 'connected_payment'\n       or new.payload #>> '{event,id}' is distinct from new.provider_event_id\n       or new.payload #>> '{event,type}' is distinct from new.event_type\n       or new.payload #>> '{event,account}' is distinct from new.provider_account_id\n       or new.payload #> '{event,livemode}' is distinct from pg_catalog.to_jsonb(new.livemode)\n       or new.payload #>> '{data_object,object}' is distinct from 'checkout.session'\n       or v_checkout_session_id is null\n       or v_checkout_session_id !~ '^cs_[A-Za-z0-9_]+$' then\n      raise exception 'connected Checkout event mutex identity is invalid'\n        using errcode = '22000';\n    end if;\n\n    perform pg_catalog.pg_advisory_xact_lock(\n      public.stripe_connected_checkout_session_mutex_key(\n        new.account_id,\n        new.provider_account_id,\n        new.livemode,\n        v_checkout_session_id\n      )\n    );\n  end if;\n  return new;\nend;\n$function$\n"
+    }
+  ]
+}

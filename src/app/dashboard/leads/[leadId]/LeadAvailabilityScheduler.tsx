@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useState, type MouseEvent } from 'react';
 import { useFormStatus } from 'react-dom';
 import TimeSlotSelect from '@/components/time-slot-select';
+import SmsPreview, { SmsBubble } from '@/components/sms/SmsPreview';
+import { leadQuoteVisitText, leadQuoteVisitOptionsText } from '@/lib/sms-templates';
 import styles from '../leads.module.css';
 
 type FormAction = (formData: FormData) => void | Promise<void>;
@@ -48,6 +50,7 @@ type VisitSummary = {
 };
 
 type Props = {
+  businessName?: string;
   availability: AvailabilityDay[];
   leadPhone: string;
   /**
@@ -89,6 +92,7 @@ function BookingReview({
   leadName,
   leadAddress,
   leadPhone,
+  businessName,
   action,
   onCancel,
 }: {
@@ -96,10 +100,12 @@ function BookingReview({
   leadName: string;
   leadAddress: string;
   leadPhone: string;
+  businessName?: string;
   action: FormAction;
   onCancel: () => void;
 }) {
   const who = leadName.trim() || 'this lead';
+  const [notifyChecked, setNotifyChecked] = useState(false);
 
   return (
     <div className={styles.modalBackdrop} role="dialog" aria-modal="true" aria-labelledby="bookingReviewTitle">
@@ -164,7 +170,13 @@ function BookingReview({
         {/* Named as what it does, off by default: a text going out is the one
             part of this dialog that reaches somebody else. */}
         <label className={`sms-consent-check ${styles.bookingReviewNotify}`}>
-          <input name="quoteVisitSmsConsent" type="checkbox" disabled={!leadPhone.trim()} />
+          <input
+            name="quoteVisitSmsConsent"
+            type="checkbox"
+            disabled={!leadPhone.trim()}
+            checked={notifyChecked}
+            onChange={(e) => setNotifyChecked(e.target.checked)}
+          />
           <span>
             <strong>Text {who} a confirmation now</strong>
             <small>
@@ -174,6 +186,22 @@ function BookingReview({
             </small>
           </span>
         </label>
+
+        {notifyChecked && leadPhone.trim() ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <SmsBubble
+              message={leadQuoteVisitText({
+                businessName: businessName || 'Your company',
+                leadName: who,
+                address: leadAddress || null,
+                scheduledFor: booking.date,
+                scheduledTime: booking.time || null,
+              })}
+              recipientLabel={who}
+              phone={leadPhone}
+            />
+          </div>
+        ) : null}
 
         <div className={styles.bookingReviewActions}>
           <button type="button" className="btn ghost" onClick={onCancel}>
@@ -207,6 +235,7 @@ function CalendarSendButton({ disabled }: { disabled: boolean }) {
 }
 
 export default function LeadAvailabilityScheduler({
+  businessName,
   availability,
   leadPhone,
   leadAddress,
@@ -360,6 +389,7 @@ export default function LeadAvailabilityScheduler({
           leadName={leadName}
           leadAddress={leadAddress}
           leadPhone={leadPhone}
+          businessName={businessName}
           action={scheduleVisitAction}
           onCancel={() => setPending(null)}
         />
@@ -419,6 +449,20 @@ export default function LeadAvailabilityScheduler({
             {selectedOptions.length === 0 ? <p className={styles.calendarSelectionHint}>Choose up to 3 options before sending.</p> : <p className={styles.calendarSelectionHint}>Ready to text {selectedOptions.length} option{selectedOptions.length === 1 ? '' : 's'}.</p>}
             <div className={styles.calendarActionButtons}>
               <button type="button" className="btn ghost" onClick={clearClientOptions} disabled={selectedOptions.length === 0}>Clear</button>
+              {selectedOptions.length > 0 ? (
+                <SmsPreview
+                  message={leadQuoteVisitOptionsText({
+                    businessName: businessName || 'Your company',
+                    leadName: leadName || 'there',
+                    address: leadAddress || null,
+                    options: selectedOptions.map((o) => ({ date: o.date, time: o.time })),
+                  })}
+                  recipientLabel={leadName}
+                  phone={leadPhone}
+                  triggerLabel="👁 Preview text"
+                  buttonClassName="btn secondary"
+                />
+              ) : null}
               <CalendarSendButton disabled={selectedOptions.length === 0} />
             </div>
           </div>

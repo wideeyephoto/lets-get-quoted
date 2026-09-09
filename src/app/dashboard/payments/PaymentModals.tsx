@@ -14,6 +14,7 @@ import {
   recordPromiseToPayAction,
   sendPaymentReminderAction,
   sendPaymentReceiptSmsAction,
+  sendNoiNoticeSmsAction,
   generateNoiNoticeAction,
   saveDunningRulesAction,
   savePaymentRulesAction,
@@ -30,6 +31,8 @@ import {
   cancelTerminalAction,
   confirmTerminalPaymentAction,
 } from './actions';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { paymentText, noiNoticeText, lienWaiverText } from '@/lib/sms-templates';
 import type { TerminalReader, TerminalPaymentStatusResult } from '@/lib/stripe-terminal';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
@@ -87,6 +90,7 @@ interface Props {
   onOpenModal: (type: ModalType, payment?: PaymentLedgerItem) => void;
   onClose: () => void;
   onSuccess: (message: string) => void;
+  businessName?: string;
 }
 
 function ControlledModal({
@@ -186,6 +190,7 @@ export default function PaymentModals({
   onOpenModal,
   onClose,
   onSuccess,
+  businessName,
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -896,6 +901,19 @@ export default function PaymentModals({
               <input type="checkbox" name="sendSms" value="1" defaultChecked />
               <span>Send SMS payment link automatically to customer phone</span>
             </label>
+
+            <div style={{ marginTop: '0.25rem', marginBottom: '0.5rem' }}>
+              <SmsPreview
+                message={paymentText({
+                  contractor: businessName || 'Your Business',
+                  label: 'payment',
+                  amount: 100,
+                  link: 'https://lgq.co/pay/…',
+                  eventType: 'payment_requested',
+                })}
+                triggerLabel="👁 Preview payment SMS"
+              />
+            </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '0.5rem' }}>
               <button type="button" className="btn secondary" onClick={onClose} disabled={loading}>
@@ -2021,6 +2039,19 @@ export default function PaymentModals({
               >
                 📱 SMS Receipt
               </button>
+              <SmsPreview
+                message={paymentText({
+                  contractor: businessName || 'Your Business',
+                  label: selectedPayment.label || 'payment',
+                  amount: selectedPayment.amount,
+                  link: 'https://lgq.co/pay/…',
+                  eventType: 'payment_paid',
+                })}
+                phone={selectedPayment.clientPhone}
+                recipientLabel={selectedPayment.clientName}
+                triggerLabel="👁 Preview"
+                buttonClassName="btn secondary"
+              />
             </div>
 
             <div style={{ display: 'flex', gap: '0.4rem' }}>
@@ -2628,6 +2659,18 @@ export default function PaymentModals({
                   <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.84rem' }}>
                     Close
                   </button>
+                  <SmsPreview
+                    message={noiNoticeText({
+                      businessName: businessName || 'Your Business',
+                      clientName: selectedPayment?.clientName || 'Customer',
+                      amount: selectedPayment?.amount || 0,
+                      url: 'https://lgq.co/pay/…',
+                    })}
+                    phone={selectedPayment?.clientPhone}
+                    recipientLabel={selectedPayment?.clientName || 'Customer'}
+                    triggerLabel="👁 Preview SMS"
+                    buttonClassName="btn secondary"
+                  />
                   <button
                     type="button"
                     className="btn primary"
@@ -2636,8 +2679,7 @@ export default function PaymentModals({
                       if (selectedPayment) {
                         const form = new FormData();
                         form.set('paymentId', selectedPayment.id);
-                        form.set('channel', 'sms');
-                        sendPaymentReminderAction(form).then((res) => {
+                        sendNoiNoticeSmsAction(form).then((res) => {
                           if (res.success) onSuccess('Statutory NOI notice dispatched via SMS & registered.');
                           else alert(res.error || 'Failed to dispatch notice.');
                           onClose();
@@ -3206,6 +3248,18 @@ export default function PaymentModals({
               <button type="button" className="btn secondary" onClick={onClose} style={{ fontSize: '0.82rem' }}>
                 Close
               </button>
+              <SmsPreview
+                message={lienWaiverText({
+                  customerName: selectedPayment?.clientName || 'Customer',
+                  waiverTypeTitle: LIEN_WAIVER_TITLES[waiverType],
+                  jobRef: selectedPayment?.jobRef || 'JOB',
+                  url: 'https://lgq.co/waivers/…',
+                })}
+                phone={selectedPayment?.clientPhone}
+                recipientLabel={selectedPayment?.clientName || 'Customer'}
+                triggerLabel="👁 Preview SMS"
+                buttonClassName="btn secondary"
+              />
               <button
                 type="button"
                 className="btn primary"
@@ -3215,8 +3269,8 @@ export default function PaymentModals({
                     await sendLienWaiverSmsAction({
                       waiverId: waiverDoc?.id || 'waiver-1',
                       phone: selectedPayment.clientPhone,
-                      customerName: selectedJob?.clientName || 'Customer',
-                      jobRef: selectedJob?.ref || 'JOB',
+                      customerName: selectedPayment?.clientName || 'Customer',
+                      jobRef: selectedPayment?.jobRef || 'JOB',
                       waiverTypeTitle: LIEN_WAIVER_TITLES[waiverType],
                     });
                     onSuccess(`Official signed lien waiver link dispatched via SMS.`);

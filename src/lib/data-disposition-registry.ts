@@ -2429,6 +2429,17 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
 
+  // Platform campaign dispatch idempotency ledger
+  platform_campaign_dispatches: {
+    tableName: 'platform_campaign_dispatches',
+    relationship: 'system_global',
+    primaryKeyColumn: 'idempotency_key',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+
   // High-risk payment & chargeback evaluations
   risk_reviews: {
     tableName: 'risk_reviews',

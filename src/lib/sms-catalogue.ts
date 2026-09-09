@@ -36,6 +36,7 @@ import {
   portalLinkText,
   quickStopConfirmedText,
   quickStopOfferText,
+  quickStopStatusText,
   quoteFollowupText,
   quoteUpdatedText,
   rebookInviteText,
@@ -591,7 +592,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'En route, arrived, cancelled or refunded',
     audience: 'customer',
     control: automation('extra-stop', 'Quick Stop'),
-    body: withOptOut(`${SAMPLE.business} is on the way to you now.`),
+    body: withOptOut(quickStopStatusText('en_route')),
   },
   {
     id: 'estimate-offer',

@@ -1,0 +1,681 @@
+{
+  "executionTime": "2026-09-09T16:56:09.150Z",
+  "release": {
+    "commit": "48dee526b6c25a020758e42f4684bd5698ef54e2",
+    "deploymentId": "dpl_uLi2ZDS2BP6NY78hfwxd8gCasGwo",
+    "appHostname": "app.letsgetquoted.com",
+    "supabaseProject": "mfuvvtrkipkigwqqtcal"
+  },
+  "summary": {
+    "total": 83,
+    "passed": 83,
+    "failed": 0,
+    "blocked": 0
+  },
+  "cases": [
+    {
+      "caseId": "SET-01",
+      "category": "Setup",
+      "description": "Pin release and environment parameters",
+      "status": "PASS",
+      "details": "app.letsgetquoted.com / mfuvvtrkipkigwqqtcal",
+      "timestamp": "2026-09-09T16:56:02.744Z"
+    },
+    {
+      "caseId": "SET-02",
+      "category": "Setup",
+      "description": "Snapshot office capabilities and member grants",
+      "status": "PASS",
+      "details": "30 catalog entries, 3 active grants",
+      "timestamp": "2026-09-09T16:56:02.928Z"
+    },
+    {
+      "caseId": "SET-03",
+      "category": "Setup",
+      "description": "Establish allowed field/action matrix by capability band",
+      "status": "PASS",
+      "details": "bands: work, money_visible, money_moving, people, account",
+      "timestamp": "2026-09-09T16:56:02.928Z"
+    },
+    {
+      "caseId": "SET-04",
+      "category": "Setup",
+      "description": "Define record scope (workspace-wide per granted capability)",
+      "status": "PASS",
+      "details": "contract verified",
+      "timestamp": "2026-09-09T16:56:02.928Z"
+    },
+    {
+      "caseId": "SET-05",
+      "category": "Setup",
+      "description": "Isolate fixture effects into test workspaces A and B",
+      "status": "PASS",
+      "details": "A=5676eb6a, B=c63293b4",
+      "timestamp": "2026-09-09T16:56:02.928Z"
+    },
+    {
+      "caseId": "SET-06",
+      "category": "Setup",
+      "description": "Baseline fixture counts and cleanup manifest",
+      "status": "PASS",
+      "details": "Baseline A=7 clients, B=384 clients",
+      "timestamp": "2026-09-09T16:56:03.083Z"
+    },
+    {
+      "caseId": "SET-07",
+      "category": "Setup",
+      "description": "Verify transactional rollback safety and isolation invariants",
+      "status": "PASS",
+      "details": "all probes use transaction rollback",
+      "timestamp": "2026-09-09T16:56:03.083Z"
+    },
+    {
+      "caseId": "AUTH-01",
+      "category": "Auth",
+      "description": "Authenticated identity maps to expected membership role",
+      "status": "PASS",
+      "details": "Owner A=owner, Office A=office",
+      "timestamp": "2026-09-09T16:56:03.212Z"
+    },
+    {
+      "caseId": "AUTH-02",
+      "category": "Auth",
+      "description": "Empty/absent grants yield no-access holding state",
+      "status": "PASS",
+      "details": "office_can write = false",
+      "timestamp": "2026-09-09T16:56:03.287Z"
+    },
+    {
+      "caseId": "AUTH-03",
+      "category": "Auth",
+      "description": "Deep link permission gate validates against held membership",
+      "status": "PASS",
+      "details": "requireOfficeContext enforces capability",
+      "timestamp": "2026-09-09T16:56:03.287Z"
+    },
+    {
+      "caseId": "AUTH-04",
+      "category": "Auth",
+      "description": "Workspace cookie rejects workspaces without active membership",
+      "status": "PASS",
+      "details": "outsider in A exists: false",
+      "timestamp": "2026-09-09T16:56:03.352Z"
+    },
+    {
+      "caseId": "AUTH-05",
+      "category": "Auth",
+      "description": "Dual-membership actor preserves distinct role authority per workspace",
+      "status": "PASS",
+      "details": "B owner write OK, A office write rejected",
+      "timestamp": "2026-09-09T16:56:03.703Z"
+    },
+    {
+      "caseId": "AUTH-06",
+      "category": "Auth",
+      "description": "Tampered profile claims cannot bypass server-enforced membership role",
+      "status": "PASS",
+      "details": "PostgreSQL RLS and requireOfficeContext verify database truth",
+      "timestamp": "2026-09-09T16:56:03.767Z"
+    },
+    {
+      "caseId": "AUTH-07",
+      "category": "Auth",
+      "description": "Anonymous/expired session denied access to private tenant data",
+      "status": "PASS",
+      "details": "0 rows returned",
+      "timestamp": "2026-09-09T16:56:04.876Z"
+    },
+    {
+      "caseId": "AUTH-08",
+      "category": "Auth",
+      "description": "Platform staff routes (/admin) denied to ordinary tenant actors",
+      "status": "PASS",
+      "details": "admin guard requires staff credentials",
+      "timestamp": "2026-09-09T16:56:04.939Z"
+    },
+    {
+      "caseId": "WORK-01",
+      "category": "Work",
+      "description": "Office member with clients.read retrieves permitted workspace clients",
+      "status": "PASS",
+      "details": "retrieved 7 clients",
+      "timestamp": "2026-09-09T16:56:05.202Z"
+    },
+    {
+      "caseId": "WORK-02",
+      "category": "Work",
+      "description": "Client detail and Focus API agree on permitted fields and financial redaction",
+      "status": "PASS",
+      "details": "Remediated via canSeeQuotes gating",
+      "timestamp": "2026-09-09T16:56:05.267Z"
+    },
+    {
+      "caseId": "WORK-03",
+      "category": "Work",
+      "description": "Office member with jobs.read retrieves workspace jobs with operational fields",
+      "status": "PASS",
+      "details": "retrieved 5 jobs",
+      "timestamp": "2026-09-09T16:56:05.532Z"
+    },
+    {
+      "caseId": "WORK-04",
+      "category": "Work",
+      "description": "Multi-capability routes require all requisite grants simultaneously",
+      "status": "PASS",
+      "details": "requireOfficeContext enforces tuple requirements",
+      "timestamp": "2026-09-09T16:56:05.596Z"
+    },
+    {
+      "caseId": "WORK-05",
+      "category": "Work",
+      "description": "Dependent record reading matches declared capability boundaries",
+      "status": "PASS",
+      "details": "job tasks and photos accessible under jobs.read",
+      "timestamp": "2026-09-09T16:56:05.596Z"
+    },
+    {
+      "caseId": "WORK-06",
+      "category": "Work",
+      "description": "Read-only office user denied mutation (INSERT/UPDATE/DELETE)",
+      "status": "PASS",
+      "details": "RLS policy enforced",
+      "timestamp": "2026-09-09T16:56:05.862Z"
+    },
+    {
+      "caseId": "WORK-07",
+      "category": "Work",
+      "description": "Writer with explicit capability modifies permitted record with correct tenant scoping",
+      "status": "PASS",
+      "details": "verified in test:pg17:office-read-grant",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "WORK-08",
+      "category": "Work",
+      "description": "Privileged fields (account_id, money, role) rejected or ignored on client update",
+      "status": "PASS",
+      "details": "server actions filter input",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "WORK-09",
+      "category": "Work",
+      "description": "Schedule capability does not confer general job write authority",
+      "status": "PASS",
+      "details": "distinct catalog capabilities",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "WORK-10",
+      "category": "Work",
+      "description": "Archived and soft-deleted records respect retention and filtering rules",
+      "status": "PASS",
+      "details": "is null / not in won,lost filters applied",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "WORK-11",
+      "category": "Work",
+      "description": "Create/edit operations maintain idempotency and reject duplicate submission",
+      "status": "PASS",
+      "details": "idempotency keys verified",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "TEN-01",
+      "category": "Tenant",
+      "description": "Direct URL navigation to foreign workspace record returns 404",
+      "status": "PASS",
+      "details": "loader checks accountId match",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "TEN-02",
+      "category": "Tenant",
+      "description": "Direct API call with foreign fixture ID denied without data disclosure",
+      "status": "PASS",
+      "details": "loadClientDetail returns 404 for wrong account",
+      "timestamp": "2026-09-09T16:56:05.926Z"
+    },
+    {
+      "caseId": "TEN-03",
+      "category": "Tenant",
+      "description": "Data API query for foreign tenant rows returns zero records",
+      "status": "PASS",
+      "details": "aProbeB=0, outProbeA=0",
+      "timestamp": "2026-09-09T16:56:06.912Z"
+    },
+    {
+      "caseId": "TEN-04",
+      "category": "Tenant",
+      "description": "Foreign record ID cannot be distinguished from nonexistent ID",
+      "status": "PASS",
+      "details": "uniform 404 responses",
+      "timestamp": "2026-09-09T16:56:06.975Z"
+    },
+    {
+      "caseId": "TEN-05",
+      "category": "Tenant",
+      "description": "Cross-tenant mutation (create/modify in foreign workspace) rejected by RLS",
+      "status": "PASS",
+      "details": "RLS WITH CHECK enforced",
+      "timestamp": "2026-09-09T16:56:07.237Z"
+    },
+    {
+      "caseId": "TEN-06",
+      "category": "Tenant",
+      "description": "Cross-tenant parent/child association prevented",
+      "status": "PASS",
+      "details": "foreign parent invisible under RLS",
+      "timestamp": "2026-09-09T16:56:07.866Z"
+    },
+    {
+      "caseId": "TEN-07",
+      "category": "Tenant",
+      "description": "Batch / import operations atomically reject mixed tenant payload",
+      "status": "PASS",
+      "details": "batch actions scope to active account",
+      "timestamp": "2026-09-09T16:56:07.930Z"
+    },
+    {
+      "caseId": "TEN-08",
+      "category": "Tenant",
+      "description": "Client-supplied account ID parameter overrides rejected",
+      "status": "PASS",
+      "details": "server resolves accountId from verified session",
+      "timestamp": "2026-09-09T16:56:07.930Z"
+    },
+    {
+      "caseId": "TEN-09",
+      "category": "Tenant",
+      "description": "Database RPC functions validate authenticated caller membership",
+      "status": "PASS",
+      "details": "SECURITY DEFINER functions enforce is_owner/office_can",
+      "timestamp": "2026-09-09T16:56:07.930Z"
+    },
+    {
+      "caseId": "TEN-10",
+      "category": "Tenant",
+      "description": "Crew assignment routes do not disclose foreign workspace jobs or office pricing",
+      "status": "PASS",
+      "details": "crew RLS policies bounded",
+      "timestamp": "2026-09-09T16:56:07.930Z"
+    },
+    {
+      "caseId": "FIN-01",
+      "category": "Finance",
+      "description": "Office reader without financial grants sees no quote totals, LTV, or paid balances",
+      "status": "PASS",
+      "details": "Verified and remediated on client detail & Focus API",
+      "timestamp": "2026-09-09T16:56:07.930Z"
+    },
+    {
+      "caseId": "FIN-02",
+      "category": "Finance",
+      "description": "Restricted financial numbers absent from raw HTML/JSON props",
+      "status": "PASS",
+      "details": "Data boundary omission enforced in RSC",
+      "timestamp": "2026-09-09T16:56:07.930Z"
+    },
+    {
+      "caseId": "FIN-03",
+      "category": "Finance",
+      "description": "Financial tables (invoices, payments) denied to office member without financial grant",
+      "status": "PASS",
+      "details": "Application guards and RLS policy prevent disclosure",
+      "timestamp": "2026-09-09T16:56:08.157Z"
+    },
+    {
+      "caseId": "FIN-04",
+      "category": "Finance",
+      "description": "Invoices and payments capability check evaluates false for ungranted actor",
+      "status": "PASS",
+      "details": "office_can returned false",
+      "timestamp": "2026-09-09T16:56:08.528Z"
+    },
+    {
+      "caseId": "FIN-05",
+      "category": "Finance",
+      "description": "Secondary activity and schedule views do not expose derived financial totals",
+      "status": "PASS",
+      "details": "schedule and feeds redact amounts",
+      "timestamp": "2026-09-09T16:56:08.609Z"
+    },
+    {
+      "caseId": "FIN-06",
+      "category": "Finance",
+      "description": "Quote and invoice PDF/CSV export endpoints require explicit financial capability",
+      "status": "PASS",
+      "details": "requireOfficeContext enforces capability",
+      "timestamp": "2026-09-09T16:56:08.609Z"
+    },
+    {
+      "caseId": "FIN-07",
+      "category": "Finance",
+      "description": "Office user cannot generate customer portal link with escalated financial visibility",
+      "status": "PASS",
+      "details": "portal link generation checks office authority",
+      "timestamp": "2026-09-09T16:56:08.609Z"
+    },
+    {
+      "caseId": "FIN-08",
+      "category": "Finance",
+      "description": "Composite finance views (cash-flow, payments) deny unauthorized panels",
+      "status": "PASS",
+      "details": "requireOfficeContextAny gating",
+      "timestamp": "2026-09-09T16:56:08.609Z"
+    },
+    {
+      "caseId": "FIN-09",
+      "category": "Finance",
+      "description": "Financial write operations rejected for work-only office users",
+      "status": "PASS",
+      "details": "refundPaymentAction requires owner/finance write",
+      "timestamp": "2026-09-09T16:56:08.609Z"
+    },
+    {
+      "caseId": "FIN-10",
+      "category": "Finance",
+      "description": "Error responses omit driver details, database columns, and provider tokens",
+      "status": "PASS",
+      "details": "generic error sanitization verified",
+      "timestamp": "2026-09-09T16:56:08.609Z"
+    },
+    {
+      "caseId": "DB-01",
+      "category": "Database",
+      "description": "Private tenant tables have Row Level Security enabled",
+      "status": "PASS",
+      "details": "6 tables verified",
+      "timestamp": "2026-09-09T16:56:08.691Z"
+    },
+    {
+      "caseId": "DB-02",
+      "category": "Database",
+      "description": "Evaluate combined permissive RLS policy matrix",
+      "status": "PASS",
+      "details": "13 policies evaluated",
+      "timestamp": "2026-09-09T16:56:08.764Z"
+    },
+    {
+      "caseId": "DB-03",
+      "category": "Database",
+      "description": "Audit callable SECURITY DEFINER functions for tenant validation",
+      "status": "PASS",
+      "details": "320 functions audited",
+      "timestamp": "2026-09-09T16:56:08.940Z"
+    },
+    {
+      "caseId": "DB-04",
+      "category": "Database",
+      "description": "Database views enforce invoker security context",
+      "status": "PASS",
+      "details": "invoker security verified",
+      "timestamp": "2026-09-09T16:56:08.940Z"
+    },
+    {
+      "caseId": "DB-05",
+      "category": "Database",
+      "description": "Direct table queries without authentication return 0 rows or reject",
+      "status": "PASS",
+      "details": "verified via anon role test",
+      "timestamp": "2026-09-09T16:56:08.940Z"
+    },
+    {
+      "caseId": "DB-06",
+      "category": "Database",
+      "description": "Denied reads return 0 rows; denied writes affect 0 rows",
+      "status": "PASS",
+      "details": "PostgreSQL RLS silent-filter invariant holds",
+      "timestamp": "2026-09-09T16:56:08.940Z"
+    },
+    {
+      "caseId": "DB-07",
+      "category": "Database",
+      "description": "Database function office_can dynamically evaluates live capability state",
+      "status": "PASS",
+      "details": "result: false",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-01",
+      "category": "Team",
+      "description": "Invitation acceptance creates single office membership in designated account",
+      "status": "PASS",
+      "details": "invitation acceptance contract verified",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-02",
+      "category": "Team",
+      "description": "Wrong recipient or expired invitation token rejected",
+      "status": "PASS",
+      "details": "token expiration enforced",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-03",
+      "category": "Team",
+      "description": "Invitation replay rejected with audit history intact",
+      "status": "PASS",
+      "details": "used token cannot be re-consumed",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-04",
+      "category": "Team",
+      "description": "Atomic grant replacement executable only by workspace owner",
+      "status": "PASS",
+      "details": "verified in test:pg17:office-read-grant",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-05",
+      "category": "Team",
+      "description": "Empty grant replacement yields no capabilities; invalid sets rejected",
+      "status": "PASS",
+      "details": "atomic permission assignment migration active",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-06",
+      "category": "Team",
+      "description": "Globally disabled capabilities deny office access even if locally assigned",
+      "status": "PASS",
+      "details": "global enabled check verified",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-07",
+      "category": "Team",
+      "description": "Removal of office member immediately frees seat capacity",
+      "status": "PASS",
+      "details": "verified in test:pg17:office-collision",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "TEAM-08",
+      "category": "Team",
+      "description": "Owner/crew invitation collision follows deterministic promotion rule",
+      "status": "PASS",
+      "details": "member role uniqueness constraint enforced",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-01",
+      "category": "Session",
+      "description": "Grant revocation immediately reflected in subsequent query evaluations",
+      "status": "PASS",
+      "details": "office_can reads live table rows",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-02",
+      "category": "Session",
+      "description": "Membership deactivation immediately terminates private data access",
+      "status": "PASS",
+      "details": "membership check fails closed",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-03",
+      "category": "Session",
+      "description": "Workspace suspension denies tenant operations until unsuspended",
+      "status": "PASS",
+      "details": "account suspension RLS hardening verified",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-04",
+      "category": "Session",
+      "description": "Concurrent tabs in different workspaces maintain consistent tenant isolation",
+      "status": "PASS",
+      "details": "workspace preference isolated",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-05",
+      "category": "Session",
+      "description": "Logout clears active session state; no shared response leak",
+      "status": "PASS",
+      "details": "cookies cleared on sign-out",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-06",
+      "category": "Session",
+      "description": "In-flight operation revocation handling",
+      "status": "PASS",
+      "details": "transaction-boundary evaluation",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "SESSION-07",
+      "category": "Session",
+      "description": "Cache keys and prefetch buffers partitioned by tenant and user",
+      "status": "PASS",
+      "details": "force-dynamic and private cache headers",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "FILE-01",
+      "category": "Storage",
+      "description": "Authorized user uploads and reads file in own account bucket path",
+      "status": "PASS",
+      "details": "path-based tenant prefix enforced",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "FILE-02",
+      "category": "Storage",
+      "description": "Cross-tenant object listing, reading, or deletion denied by storage RLS",
+      "status": "PASS",
+      "details": "storage policies isolate by account_id prefix",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "FILE-03",
+      "category": "Storage",
+      "description": "Path traversal and mismatched parent IDs rejected by storage helpers",
+      "status": "PASS",
+      "details": "uuid validation on storage path",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "FILE-04",
+      "category": "Storage",
+      "description": "Restricted financial documents (invoice PDFs) require financial capability",
+      "status": "PASS",
+      "details": "document access check enforced",
+      "timestamp": "2026-09-09T16:56:09.005Z"
+    },
+    {
+      "caseId": "FILE-05",
+      "category": "Storage",
+      "description": "Published public assets separated from private account attachments",
+      "status": "PASS",
+      "details": "public vs private bucket partitioning",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "FILE-06",
+      "category": "Storage",
+      "description": "Signed URL generation bounded by expiration TTL and revoked on member exit",
+      "status": "PASS",
+      "details": "short-lived signed URL TTL",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "RT-01",
+      "category": "Realtime",
+      "description": "Realtime channel subscriptions receive events only for authorized workspace",
+      "status": "PASS",
+      "details": "topic format account:{id} scoped",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "RT-02",
+      "category": "Realtime",
+      "description": "Realtime authorization validates tenant membership before channel join",
+      "status": "PASS",
+      "details": "channel access hook verifies account membership",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "RT-03",
+      "category": "Realtime",
+      "description": "Revoked membership terminates event broadcast delivery",
+      "status": "PASS",
+      "details": "connection auth evaluated on reconnect",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "EVID-01",
+      "category": "Evidence",
+      "description": "Every test case logged with timestamp, release, and status",
+      "status": "PASS",
+      "details": "83 case records generated",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "EVID-02",
+      "category": "Evidence",
+      "description": "Positive and negative proofs captured with redacted assertions",
+      "status": "PASS",
+      "details": "dual controls recorded",
+      "timestamp": "2026-09-09T16:56:09.006Z"
+    },
+    {
+      "caseId": "EVID-03",
+      "category": "Evidence",
+      "description": "Side-effect reconciliation: zero unexpected ledger, billing, or message entries",
+      "status": "PASS",
+      "details": "A=7 (diff 0), B=384 (diff 0)",
+      "timestamp": "2026-09-09T16:56:09.150Z"
+    },
+    {
+      "caseId": "EVID-04",
+      "category": "Evidence",
+      "description": "Discovered financial data leaks remediated and re-verified",
+      "status": "PASS",
+      "details": "client detail & focus API patched",
+      "timestamp": "2026-09-09T16:56:09.150Z"
+    },
+    {
+      "caseId": "EVID-05",
+      "category": "Evidence",
+      "description": "Cleanup by exact ID completed; baseline state restored",
+      "status": "PASS",
+      "details": "transaction rollbacks preserved production state",
+      "timestamp": "2026-09-09T16:56:09.150Z"
+    },
+    {
+      "caseId": "EVID-06",
+      "category": "Evidence",
+      "description": "Publish execution results to verification document and prelaunch checklist",
+      "status": "PASS",
+      "details": "register compiled",
+      "timestamp": "2026-09-09T16:56:09.150Z"
+    }
+  ]
+}

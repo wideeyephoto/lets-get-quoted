@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import type { ReceivableItem, ReceivablesSummary } from '@/lib/receivables-data';
 import { sendPaymentReminderAction, batchSendOverdueRemindersAction } from './actions';
+import SmsPreview, { SmsBubble, calculateSmsSegments } from '@/components/sms/SmsPreview';
+import { paymentText } from '@/lib/sms-templates';
 import { getClientInitials, getAvatarColor } from '@/lib/avatar-utils';
 
 interface Props {
@@ -17,6 +19,7 @@ interface Props {
   onOpenRetainageTracker?: () => void;
   onOpenDrawCalendar?: () => void;
   onSuccess: (message: string) => void;
+  businessName?: string;
 }
 
 function formatUsd(n: number): string {
@@ -35,9 +38,11 @@ export default function ReceivablesAgingBoard({
   onOpenRetainageTracker,
   onOpenDrawCalendar,
   onSuccess,
+  businessName,
 }: Props) {
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [batchLoading, setBatchLoading] = useState(false);
+  const [showBatchModal, setShowBatchModal] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   async function handleSendReminder(paymentId: string) {
@@ -56,11 +61,11 @@ export default function ReceivablesAgingBoard({
   }
 
   async function handleBatchOverdueReminders() {
-    if (!confirm(`Send SMS payment links to all overdue customers now?`)) return;
     setBatchLoading(true);
     const formData = new FormData();
     const res = await batchSendOverdueRemindersAction(formData);
     setBatchLoading(false);
+    setShowBatchModal(false);
     if (res.success) {
       onSuccess(res.message || 'Reminders broadcasted.');
     } else {
@@ -167,7 +172,7 @@ export default function ReceivablesAgingBoard({
               className="btn primary"
               style={{ fontSize: '0.82rem', padding: '0.35rem 0.75rem' }}
               disabled={batchLoading}
-              onClick={handleBatchOverdueReminders}
+              onClick={() => setShowBatchModal(true)}
             >
               {batchLoading ? 'Broadcasting…' : `⚡ Broadcast SMS Reminders (${summary.overdueCount})`}
             </button>
@@ -306,6 +311,19 @@ export default function ReceivablesAgingBoard({
 
                         {/* Streamlined Card Quick Actions */}
                         <div style={{ display: 'flex', gap: '0.35rem', marginTop: '0.1rem', paddingTop: '0.35rem', borderTop: '1px solid var(--line)', alignItems: 'center' }}>
+                          <SmsPreview
+                            message={paymentText({
+                              contractor: businessName || 'Your Business',
+                              label: item.title || 'overdue invoice',
+                              amount: item.amountDue,
+                              link: 'https://lgq.co/pay/…',
+                              eventType: 'payment_requested',
+                            })}
+                            phone={item.clientPhone}
+                            recipientLabel={item.clientName}
+                            triggerLabel="👁"
+                            buttonClassName="btn secondary"
+                          />
                           <button
                             type="button"
                             className="btn primary"
@@ -376,6 +394,61 @@ export default function ReceivablesAgingBoard({
           );
         })}
       </div>
+
+      {showBatchModal && (
+        <div className="preview-backdrop" role="presentation" onClick={() => setShowBatchModal(false)}>
+          <div
+            className="preview-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Broadcast Overdue Reminders"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '520px' }}
+          >
+            <div className="preview-head">
+              <h3>Broadcast Overdue Payment Reminders</h3>
+              <button type="button" className="preview-close" onClick={() => setShowBatchModal(false)}>
+                Close<span className="sr-only"> the dialog</span>
+              </button>
+            </div>
+            <div style={{ padding: '1.25rem' }}>
+              <p style={{ margin: '0 0 1rem', fontSize: '0.88rem', color: 'var(--text)' }}>
+                You are about to text payment reminders to{' '}
+                <strong>{summary.overdueCount} overdue customer{summary.overdueCount === 1 ? '' : 's'}</strong>.
+              </p>
+              <SmsBubble
+                message={paymentText({
+                  contractor: businessName || 'Your Business',
+                  label: 'overdue invoice',
+                  amount: receivables.find((r) => r.status === 'overdue' || r.daysOverdue > 0)?.amountDue || 750,
+                  link: 'https://lgq.co/pay/…',
+                  eventType: 'payment_requested',
+                })}
+                recipientLabel="Sample Overdue Customer"
+                note="Each customer receives their personalized link and amount. Review opt-out footer and segment count before dispatching."
+              />
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1.25rem' }}>
+                <button
+                  type="button"
+                  className="btn secondary"
+                  onClick={() => setShowBatchModal(false)}
+                  disabled={batchLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn primary"
+                  disabled={batchLoading}
+                  onClick={handleBatchOverdueReminders}
+                >
+                  {batchLoading ? 'Broadcasting…' : `Confirm & Send to ${summary.overdueCount} Customers`}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

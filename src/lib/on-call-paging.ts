@@ -116,6 +116,7 @@ export function getOnCallRoster(): {
  * Dispatches an automated incident page across all active channels
  */
 export async function dispatchOnCallPage(params: {
+  incidentKey?: string;
   title: string;
   severity: PagingSeverity;
   summary: string;
@@ -124,6 +125,18 @@ export async function dispatchOnCallPage(params: {
   details?: Record<string, unknown> | null;
   actionRequired?: string | null;
 }): Promise<PagingEvent> {
+  if (params.incidentKey) {
+    const DEDUP_WINDOW_MS = 15 * 60 * 1000;
+    const cutoff = Date.now() - DEDUP_WINDOW_MS;
+    const existing = recentPagingEvents.find(
+      (e) => e.incidentKey === params.incidentKey && new Date(e.dispatchedAt).getTime() > cutoff && e.status === 'triggered',
+    );
+    if (existing) {
+      return existing;
+    }
+  }
+
+  const incidentKey = params.incidentKey || `inc_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const eventId = `page_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
   const dispatchedAt = new Date().toISOString();
   const dispatchedChannels: string[] = [];
@@ -158,7 +171,7 @@ export async function dispatchOnCallPage(params: {
         body: JSON.stringify({
           routing_key: pdKey,
           event_action: 'trigger',
-          dedup_key: eventId,
+          dedup_key: incidentKey,
           payload: {
             summary: `[${params.severity}] ${params.title}: ${params.summary}`,
             severity: params.severity === 'P1_CRITICAL' ? 'critical' : params.severity === 'P2_HIGH' ? 'error' : 'warning',
@@ -218,7 +231,7 @@ export async function dispatchOnCallPage(params: {
 
   const pagingRecord: PagingEvent = {
     id: eventId,
-    incidentKey: `inc_${Date.now()}`,
+    incidentKey,
     title: params.title,
     severity: params.severity,
     source: params.source || 'production',
@@ -234,6 +247,13 @@ export async function dispatchOnCallPage(params: {
   }
 
   return pagingRecord;
+}
+
+/**
+ * Resets recent paging events memory buffer (for testing and verification)
+ */
+export function clearRecentPagingEventsForTesting(): void {
+  recentPagingEvents.length = 0;
 }
 
 /**

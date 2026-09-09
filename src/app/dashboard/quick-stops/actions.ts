@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { requireOfficeContext, createAdminClient } from '@/lib/auth';
 import { createJob } from '@/lib/jobs';
 import { sendQuickStopStatusSms } from '@/lib/sms';
+import { quickStopStatusText } from '@/lib/sms-templates';
 import { resolveQuickStopCancellation } from '@/lib/quick-stop-refunds';
 import {
   QUICK_STOP_SETTINGS_COLUMNS,
@@ -210,7 +211,7 @@ export async function markEnRouteQuickStopAction(requestId: string) {
   if (req.client_phone) await sendQuickStopStatusSms({
     accountId,
     toPhone: req.client_phone,
-    message: 'Your Quick Stop technician is on the way.',
+    message: quickStopStatusText('en_route'),
     idempotencyKey: `quick-stop:${requestId}:en-route`,
   });
   revalidatePath('/dashboard/quick-stops');
@@ -245,7 +246,7 @@ export async function markArrivedQuickStopAction(requestId: string, formData: Fo
   if (req.client_phone) await sendQuickStopStatusSms({
     accountId,
     toPhone: req.client_phone,
-    message: 'Your technician has arrived.',
+    message: quickStopStatusText('arrived'),
     idempotencyKey: `quick-stop:${requestId}:arrived`,
   });
   revalidatePath('/dashboard/quick-stops');
@@ -264,7 +265,7 @@ export async function sendEtaSmsQuickStopAction(requestId: string, minutes: numb
   await sendQuickStopStatusSms({
     accountId,
     toPhone: req.client_phone,
-    message: `Quick Stop update: Your technician is approximately ${minutes} minutes away.`,
+    message: quickStopStatusText('eta', { minutes }),
     idempotencyKey: `quick-stop:${requestId}:eta-${Date.now().toString().slice(0, -4)}`,
   });
 

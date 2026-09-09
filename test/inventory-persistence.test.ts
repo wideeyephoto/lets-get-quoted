@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { readFileSync, existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import {
@@ -825,5 +826,65 @@ describe('Inventory Persistence & Multi-Location Operations', () => {
     // Post-condition assertion
     expect(sql).toContain('pg_catalog.aclexplode');
     expect(sql).toContain('Inventory table(s) still hold anon/public grants');
+  });
+
+  describe('inventory deletion tenant audit events', () => {
+    it('records tenant audit events when deleting tool, vehicle, stock item, and location', async () => {
+      const rpcMock = vi.fn().mockResolvedValue({ data: 'audit-event-1', error: null });
+      const deleteCalls: string[] = [];
+
+      const createTableMock = (tableName: string) => ({
+        delete: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockImplementation(() => {
+              deleteCalls.push(tableName);
+              return Promise.resolve({ error: null });
+            }),
+          }),
+        }),
+      });
+
+      const mockClient = {
+        rpc: rpcMock,
+        from: vi.fn((tableName: string) => createTableMock(tableName)),
+      } as unknown as any;
+
+      await deleteTool(mockClient, 'acct-123', 'tool-99', { actor: { userId: 'u-1', role: 'owner' } });
+      expect(deleteCalls).toContain('inventory_tools');
+      expect(rpcMock).toHaveBeenCalledWith('record_tenant_audit_event_atomic', expect.objectContaining({
+        p_account_id: 'acct-123',
+        p_entity_type: 'inventory_tools',
+        p_entity_id: 'tool-99',
+        p_action: 'delete',
+        p_actor: { userId: 'u-1', role: 'owner' },
+      }));
+
+      await deleteVehicle(mockClient, 'acct-123', 'veh-88');
+      expect(deleteCalls).toContain('inventory_vehicles');
+      expect(rpcMock).toHaveBeenCalledWith('record_tenant_audit_event_atomic', expect.objectContaining({
+        p_account_id: 'acct-123',
+        p_entity_type: 'inventory_vehicles',
+        p_entity_id: 'veh-88',
+        p_action: 'delete',
+      }));
+
+      await deleteStockItem(mockClient, 'acct-123', 'stock-77');
+      expect(deleteCalls).toContain('inventory_stock_items');
+      expect(rpcMock).toHaveBeenCalledWith('record_tenant_audit_event_atomic', expect.objectContaining({
+        p_account_id: 'acct-123',
+        p_entity_type: 'inventory_stock_items',
+        p_entity_id: 'stock-77',
+        p_action: 'delete',
+      }));
+
+      await deleteLocation(mockClient, 'acct-123', 'loc-66');
+      expect(deleteCalls).toContain('inventory_locations');
+      expect(rpcMock).toHaveBeenCalledWith('record_tenant_audit_event_atomic', expect.objectContaining({
+        p_account_id: 'acct-123',
+        p_entity_type: 'inventory_locations',
+        p_entity_id: 'loc-66',
+        p_action: 'delete',
+      }));
+    });
   });
 });

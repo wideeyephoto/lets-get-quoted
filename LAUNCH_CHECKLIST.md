@@ -2,6 +2,183 @@
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
+## Command Center & Operational Telemetry Honesty — 2026-09-09
+
+**Completed:** Verification against `docs/admin-command-center-task-list-2026-09-09.md` across Waves 0–6.
+
+- [x] **Wave 1: Zero-risk correctness & telemetry honesty (T5–T8):**
+  - **T5:** Hoisted `requireAdmin()` and MFA checks before `cronJob(jobSlug)` lookup in `runCronJobNowAction`; unauthenticated requests redirect rather than revealing slug validity (`test/admin-actions-auth-guard.test.ts` 21/21 passed).
+  - **T6:** Nullified fabricated SLA numbers (`uptime24hPct: null`, `uptime7dPct: null`, `uptime30dPct: null`) in `src/lib/uptime-monitoring.ts` until persistent probe storage is implemented. Updated `/admin/health` subtitle to "Synthetic probes evaluated on page render" and display unmeasured SLA as `"—"`.
+  - **T7:** Introduced `SubsystemStatus = 'configured'` for the six static environment-check subsystems (`quoting-engine`, `stripe-payments`, `sms-gateway`, `voice-webhook`, `email-resend`, `contractor-cdn`). Mapped to neutral badge; does not artificially degrade or claim false active synthetic probe status.
+  - **T8:** Hardened gate in `test/service-health-telemetry.test.ts` asserting that any subsystem returning `operational` must provide an active numeric `latencyMs` probe. Proven to bite by temporarily flipping static check to `operational` with `null` latency and asserting test failure.
+- [x] **Wave 2: Observability cluster resolution (T10–T12):**
+  - **T10 & T11:** Removed unbuffered module-level APM request tiles, slowest routes, and unbacked exceptions table from `/admin/health` to eliminate empty/unmeasured serverless artifacts.
+  - **T12:** Wired `dispatchOnCallPage` to real operational triggers (`logIncidentAction` for critical and high severity platform incidents). Implemented 15-minute deduplication and debounce keyed on `incidentKey` (`test/reliability-operations-center.test.ts` verified).
+- [x] **Wave 3: Real insert-first campaign idempotency (T13):**
+  - Created migration `migrations/20260909150000_platform_campaign_dispatches.sql` with `idempotency_key text primary key`, RLS enabled, and `REVOKE ALL ... FROM public, anon, authenticated`. Asserted in `test/admin-platform-campaigns.test.ts`.
+  - Switched `sendPlatformCampaignBlastAction` to insert-first into `platform_campaign_dispatches` before entering the dispatch loop; duplicate sends blocked by Postgres unique constraint (`23505`). Dropped 60s subject-match fallback. Verified with concurrent dispatch test.
+- [x] **Wave 4: Data hygiene & failure diagnosis (T14–T16):**
+  - **T14:** Created migration `migrations/20260909130000_ignore_test_mode_subscription_rehearsals.sql` with RPC `ignore_test_mode_stripe_billing_subscription_event` to update 185 test-mode rehearsal rows in `billing_events` to `'ignored'`.
+  - **T15:** Updated subscription projector to gracefully classify `livemode = false` events as `ignored_test_mode` rather than failing them (`test/subscription-event-projector.test.ts` 14/14 passed).
+  - **T16:** Propagated underlying failure reason strings from batch workers into `cron_runs.error` via `extractLogicalFailureReason` (`test/cron-jobs.test.ts` passed).
+- [x] **Wave 5: Rotting decisions resolution & route inventory gate (T17–T25):**
+  - **T17–T22:** Retired `smart-dunning` and deferred `activation-autopilot` with clear non-executable status envelopes.
+  - **T23:** Renamed `safeActionsExecuted` to `auditActionsLogged` across `engine.ts`, `OperatorCockpit.tsx`, and `operator-briefing` to truthfully reflect audit ledger records rather than outbound messages sent.
+  - **T24:** Added route inventory gate in `test/cron-jobs.test.ts` ensuring all directories under `src/app/api/cron/` are scheduled in `vercel.json` + `cron-jobs.ts` or listed in an explicit allowlist with substantive reasons. Proven to bite by creating a dummy orphan directory and observing test failure.
+  - **T25:** Renamed privacy request resolution button to "Mark responded" in `/admin/accounts/[id]` and `/admin/privacy-requests` to truthfully reflect staff handling without implying hard deletion of foreign-key restricted records. Published direct monitored intake address (`privacy@letsgetquoted.com`) on `/privacy`.
+- [x] **Wave 6: Operator relay & billing verification (T26–T27):**
+  - **T27:** Documented Google Cloud billing active status beside AI privacy claims at `src/app/privacy/page.tsx` line 115, certifying enterprise zero-retention / non-training tier.
+
+## Operational failure alerts and recovery — 2026-09-09
+
+**Completed and deployed:** [PR #46](https://github.com/wideeyephoto/lets-get-quoted/pull/46), production commit `48dee526b6c25a020758e42f4684bd5698ef54e2`. Owner and approved inbox: **hello@letsgetquoted.com**. See the [dated verification report](docs/operational-alerts-verification-2026-09-09.md) for source IDs, timing, scope and replay evidence.
+
+- [x] **Audit and repair monitoring paths.** Five-minute application scanning plus an independent GitHub watchdog now cover unresolved webhook, billing, SMS, dispute and cron failures. Durable delivery evidence distinguishes provider acceptance from delivery. Rejected sends no longer report success; the SRE helper cannot falsely resolve unprocessed webhooks.
+- [x] **Trigger controlled failures and prove automatic arrival within 60 minutes.** Five marked production source fixtures were created at 14:12:34 UTC. The normal scheduler detected all five; signed delivery receipts show **2m 44.4s–2m 55.2s** to the approved inbox. All five were directly verified in Gmail Inbox within six minutes, with source references, recovery instructions and admin links. No manual monitor invocation drove the initial delivery.
+- [x] **Verify monitor-failure notification.** An isolated invalid database credential triggered the real fallback automatically; delivery took **3.469 seconds**. Two monitor attempts and the dependency-free fallback reused the same provider message.
+- [x] **Verify recovery without duplicate effects.** Replaying all five live alert requests returned the original provider IDs. Fixture cleanup changed five marked records; repeat cleanup changed zero. Charges, credit grants, customer messages and SMS tasks/provider IDs stayed zero. Billing audit history was preserved as ignored. The independent recovery run cleared all five findings with **zero queued, claimed or sent emails and zero delivery failures**.
+- [x] **Release validation.** Final CI passed **14,221 tests / 1,108 files**, security audit, typecheck, lint, SEO, stock and production build. Focused recovery regression: **114/114**. Disposable PostgreSQL verification: **9/9**. Production applied-migration audit: **zero gaps**.
+
+**Scope:** This closes the five-class operational alert and controlled-recovery gate. Existing historical business failures remain for triage. Real-money and real-carrier lifecycle gates elsewhere are unchanged. Both custom alert paths use Resend; a simultaneous email-provider/mailbox outage and a 60-minute guarantee for delayed GitHub schedules were not proved.
+
+### Remaining operational follow-ups
+
+- [ ] **Triage the historical failure backlog.** The September 9 baseline contained **31 unresolved webhook failures, 186 failed billing events and 4 failed SMS events**. Separate obsolete test records from actionable failures, retain an audited disposition for each, and use the supported recovery path for actionable records. **PASS =** every baseline record has a documented disposition, and any replay is reconciled against payment, credit and message evidence. The monitoring drill did not resolve this backlog.
+- [ ] **Prove paging when the email provider is unavailable.** Add and drill an independent delivery path for a Resend outage, with a defined fallback if the primary mailbox is unavailable. Existing GitHub-native failure emails do not establish a 60-minute scheduling guarantee. **PASS =** a controlled provider outage reaches the operator through the independent path within **60 minutes**, with recovery context and no duplicate business effects.
+
+---
+
+## Tenant isolation and office-user production verification — 2026-09-09
+
+- [x] **Verify tenant isolation and office-user access with authenticated production identities (COMPLETED 2026-09-09):** Followed the [comprehensive execution checklist](docs/tenant-office-production-verification-plan-2026-09-09.md) and executed the automated verification suite (`npm run verify:tenant-office`, script `scripts/verify-tenant-office-suite.mjs`). All **83 cases** across 11 categories passed cleanly (**83 passed, 0 failed, 0 blocked**):
+  - **Identities & Workspaces:** Two test workspaces (Midwest Glass and BrokePipes) with positive owner controls and office users verified with explicit grant snapshots.
+  - **Financial Confidentiality & Remediation:** Lifetime value and per-job quote amounts on `clients/[id]` and Focus API (`/api/clients/[id]/detail`) were identified and remediated to require quotes/reports capability (`canSeeQuotes`), masking amounts (`'—'`) for unauthorized office members. Raw responses, RSC streams, and Data API column requests verified.
+  - **Cross-Workspace Denial:** Bidirectional isolation (A $\to$ B, B $\to$ A) proven across deep links, JSON APIs, server actions, RPCs, Storage, and Realtime channels. Dual-membership user workspace-switching verified with zero authority leakage.
+  - **DB Authorization & RLS:** Complete inventory of 14 exposed tables, policies, functions, views, and failure semantics tested. Tenant reassignment and cross-tenant parent injection denied.
+  - **Invitations & Lifecycle:** Invitation replay, wrong-recipient denial, atomic permission replacement, and capacity enforcement verified (84/84 checks passed in `verify:office-seat-collision`).
+  - **Audit & Side Effects:** Complete audit history preserved. Reconciled 0 unwanted ledger entries, 0 outbox messages, 0 payment charges, and 0 credit balance modifications.
+  - **Evidence:** Stored in [`docs/tenant-office-verification-evidence-2026-09-09.json`](docs/tenant-office-verification-evidence-2026-09-09.json).
+
+---
+
+## AI Voice release and operational closeout fixes (PRs #29, #31, #35–#38, #40–#45, #48, #49) — 2026-09-08 to 2026-09-09
+
+**Completed across 14 merged production PRs:** Closes core lifecycle, transfer, timeout, callback authentication, and operator recovery gates for AI Voice and telephony dispatch.
+
+- [x] **Admission retry bounds & self-forwarding loop prevention (PR #29, commit `378b32a7d`):** Excluded current provider call from admission preflight count; routed callers to voicemail when the forwarding target is their own phone; normalized callback phone query values after strict signature verification.
+- [x] **Stable callback URLs & signature diagnostics (PR #31, commit `2913ee53b`):** Fallback callbacks use stable signed URLs resolving caller and workspace context from persisted inbound admission; added diagnostic candidate booleans for recording/forwarding signature format mismatches without leaking secrets, phone numbers, or request payloads.
+- [x] **Receipt retry bounds, abandoned receipt recovery & fallback duration limits (PR #35, commit `e8fb99a0e`):** Bounded incomplete receipt retries, recovered abandoned receipts (`602f434be`), enforced fallback call duration limits (`test/voice.test.ts`), and corrected account fields for call notifications (`c58741fa0`).
+- [x] **Measurement mode call limits vs reserved credit & transfer outcome preservation (PR #36, commit `42399d1ff`):** Separated 10-minute allowed call duration limits from reserved credit in measurement mode (`45d1d09f6`), and preserved confirmed answered-transfer history across late AI summaries (`d2efe58d0`).
+- [x] **Verified customer registration guard for voice SMS egress (PR #37, commit `889bc9ea8`):** Required verified customer registration and campaign evidence before SMS egress (`805a9fdfc`).
+- [x] **Dispatch write contract restoration (PR #38, commit `030c4074f`):** Restored dispatch write contract after legacy migration replacement (`3f424014c`).
+- [x] **Operational exception surfacing & launch evidence (PR #40, commit `2ec69b679`):** Surfaced operational exceptions and recorded launch evidence in `68cc484db`.
+- [x] **Answered transfer completion without voicemail (PR #41, commit `ef7f42df5`):** Ended answered voice transfers cleanly without initiating fallback voicemail (`7cf260c6c`).
+- [x] **Transfer announcement timing buffer (PR #42, commit `137eb3241`):** Gave transfer recipients audible settling time before starting the transfer announcement (`332d9eae1`).
+- [x] **Admission error response bounding with provider timeout (PR #43, commit `d248510e2`):** Bounded admission error responses within provider timeout limits (`ed94d7b22`).
+- [x] **Pending receipt exposure & guarded operator recovery (PR #44, commit `80728a737`):** Exposed receipt failures in admin operator view with guarded recovery actions (`705cd7760`).
+- [x] **Spoken references & note readback fidelity (PR #45, commit `b715f1b5e`):** Recovered spoken references and honored exact readback requests in voice conversations (`2ef20a78c`).
+- [x] **Response processing delay reduction & timing diagnostics (PR #48, commit `72ca241fc`):** Reduced staff voice processing passes and exposed safe timing diagnostics (`7fc3cf67b`).
+- [x] **Call opening polish & note draft distinction (PR #49, commit `b3067953a`):** Polished voice opening and distinguished note drafts from saved readbacks (`2807accab`).
+- [x] **Owner SMS voice summary readability (`43d174d5f`):** Formatted readable voice summaries in owner SMS alert messages.
+
+---
+
+## Customer SMS launch acceptance and dispatch recovery — 2026-09-08 to 2026-09-09
+
+**Completed checks & evidence:** Customer launch acceptance register (`docs/customer-sms-launch-acceptance-2026-09-09.md`), branch `test/customer-sms-acceptance-20260909` (commit `9bd5a672e`), and 30-task send preview plan (`004cd78d2`).
+
+- [x] **Verify campaign scope & fail-closed customer sender:** Provider inventory has only LGQ support and crew-dispatch campaigns, both excluding contractor-to-customer traffic. Number 2687 remains on support, 0 customer registration applications exist, and production customer readiness is false. No customer send or registration change was made.
+- [x] **Prove dispatch cross-workspace STOP protection using real handset keywords:** September 9 STOP at 15:42:18 UTC blocked otherwise-eligible BrokePipes and Midwest fixtures before provider/usage. START at 15:43:25 UTC restored BrokePipes readiness while preserving a separate Midwest workspace opt-out. All fixtures rolled back, cleanup passed, and the handset finished opted in.
+- [x] **Deferred queue and recovery components:** 177 application tests and 122 disposable PostgreSQL checks passed. Thirteen checks cover future release, repeated deferral, 1-winner claiming, bounded retry, expiry, and inbound dead-letter containment. Five production rollback checks proved customer-registration blocking through ten deferrals with no usage or provider request.
+- [x] **Send preview plan and static coverage guards (`004cd78d2`):** Implemented 30-task send preview plan and static coverage guards for SMS delivery foundations (`docs/sms-send-preview-fix-plan-2026-09-09.md`).
+- [x] **Subcontractor mobile cancellation & offer isolation (PR #39, commit `c6937034b`):** Replaced native confirmation popup with an inline disclosure and separate submit button to prevent browser hangs. Exempted job offer page from marketing shell and demo copilot (`25f276e77`). Reconciled 9 business messages to 22 provider segments (`7dec2060d`).
+- [x] **JSON delivery status callbacks (`df328582f`):** Accepted JSON delivery status callbacks in SMS webhook handlers.
+- [ ] **Remaining customer carrier gate:** Customer launch remains blocked on obtaining approved customer brand/campaign registration, number assignment, and carrier acceptance.
+
+---
+
+## Billing rehearsal noise classification and operational reviews — 2026-09-09
+
+**Completed in branch `fix/billing-rehearsal-noise-20260909` (commit `e9802a4bf`):** Resolves operational alert noise while preserving immutable historical records and keeping genuine live failures actionable. See `docs/billing-rehearsal-noise-fix-plan-2026-09-09.md` and `docs/historical-failure-backlog-triage-plan-2026-09-09.md`.
+
+- [x] **Append-only operational review ledger:** Created migration `migrations/20260909160000_billing_event_operational_reviews.sql` with table `billing_event_operational_reviews` and classification view, preserving raw `billing_events` records without mutation.
+- [x] **Classify 185 test-mode rehearsal failures:** Routed 185 terminal test-mode rehearsal events in `billing_events` to a dedicated `billing_configuration` review case, preventing false operational alerts.
+- [x] **Isolate actionable live failure:** Retained single live failure (`13eb0d53-2433-4cea-b7ae-0529d8878909`) visible as actionable billing failure for immediate staff resolution.
+- [x] **Operational alert deduplication query fix:** Fixed `queue_operational_alerts` to strictly check `delivery_id IS NULL AND resolved_at IS NULL` across all sites.
+- [x] **Disable dead-letter requeue hazard:** Disabled broad `subscription_events` dead-letter requeue in admin actions and UI.
+- [x] **Mode mismatch differentiation:** Differentiated event mode mismatch from runtime config invalid in Stripe event ingestion and worker cron summary. Verified via embedded PostgreSQL harness and unit tests.
+
+---
+
+## Contractor custom email sending domains allowlisting and reconciler — 2026-09-08 to 2026-09-09
+
+**Completed:** Commits `36da9930d`, `8b41b282a`, `b41604ece`, `901feda8b`. See runbook `docs/contractor-email-domain-go-live-checklist-2026-09-09.md`.
+
+- [x] **Rollout allowlisting, durable admin suspension & cleanup recovery (`36da9930d`):** Implemented strict workspace allowlisting (`LGQ_EMAIL_SENDING_DOMAINS_ALLOWLIST`), durable admin suspension controls, and automated domain cleanup/recovery (C01–C11).
+- [x] **Daily domain reconciler (`8b41b282a`):** Implemented daily reconciler cron scheduled at `23 6 * * *` to audit DNS/DKIM/SPF alignment and provider registration status.
+- [x] **Connect action defect resolution (`b41604ece`):** Fixed fatal provider status union mismatch against column CHECK constraint and corrected unique index shape (resolving PostgreSQL error 42P10).
+- [x] **Feature flag extraction and onboarding auditor (`901feda8b`):** Extracted flag helpers from server actions and hardened onboarding audit gates.
+- [ ] **Live sending gate:** Live contractor-domain send with verified DKIM/SPF `d=` alignment and production flag activation (`LGQ_EMAIL_SENDING_DOMAINS_ENABLED`) remain open pending DNS propagation.
+
+---
+
+## Custom website domains TLS & certificate watcher — 2026-09-08 to 2026-09-09
+
+**Completed:** Commits `103097369`, `bd7129cdf` / `3446f93ff`.
+
+- [x] **Provisioned TLS enforcement before activation (`bd7129cdf` / `3446f93ff`):** Enforced that custom domains require successful TLS provisioning and valid certificate handshake before activation.
+- [x] **Certificate watcher & release on deletion (`103097369`):** Added certificate status watcher and guaranteed automatic release and cleanup of Vercel domain bindings upon workspace site deletion.
+
+---
+
+## Admin security, WebAuthn & Apple Passwords MFA setup — 2026-09-06 to 2026-09-09
+
+**Completed:** Commit `100ff42d1` (branch `fix/mfa-setup-apple-passwords`) and commits `937e5e89e`, `b923b2060`.
+
+- [x] **Incomplete MFA setup recovery after reload (`100ff42d1`):** Enabled verification of partially completed MFA/passkey enrollments after page reloads (resolving Apple Passwords / Safari credential registration flows in `src/app/admin/security/MfaPanel.tsx` and `scripts/verify-admin-mfa.mjs`).
+- [x] **WebAuthn contract assertions & styling (`937e5e89e`, `b923b2060`):** Enforced fail-loud contract assertions, theme-compliant styling for passkeys and TOTP, and verified via automated test suite.
+
+---
+
+## Dashboard orientation tour orchestration & navigation integrity — 2026-09-08 to 2026-09-09
+
+**Completed:** Commits `92d4d190f`, `6cf9c6a35`, `9a1c4c0fa`. See `docs/plan-dashboard-orientation-tour-2026-09-08.md`.
+
+- [x] **Tour orchestration & navigation hijack fix (`92d4d190f`):** Built dedicated orchestrator preventing unfinished tour state from hijacking navigation on every dashboard load.
+- [x] **Scroll settle & modal observer scoping (`6cf9c6a35`):** Ensured viewport settling and scoped mutation observers before measuring and rendering coachmarks.
+- [x] **Coachmark flickering & collision resolution (`9a1c4c0fa`):** Resolved coachmark flickering, modal self-detection, and collision overlapping.
+
+---
+
+## Homeowner financing (Acorn Finance) contract alignment & protection — 2026-09-08 to 2026-09-09
+
+**Completed:** Commits `2579a9ced`, `18d047547`, `c81f76801`, `8d4b8609f`, `8a2772add`, `491ba8e72`. See `docs/plan-acorn-homeowner-financing-2026-09-08.md`.
+
+- [x] **Contract assumption hardening & APR calculator removal (`2579a9ced`):** Documented contract boundaries, removed outdated APR calculators, and added schema security guards.
+- [x] **Admin client bundle decoupling (`18d047547`):** Decoupled Supabase admin client to prevent `next/headers` leaking into client bundles.
+- [x] **Minimum loan floor & join keys (`c81f76801`):** Aligned minimum financing loan floor to $1,000 and attached document tracking join keys.
+- [x] **Pre-qualification telemetry (`8d4b8609f`):** Instrumented pre-qualification click telemetry and published customer help documentation.
+
+---
+
+## Spatial LiDAR room scans and takeoff persistence (PR #26) — 2026-09-05 to 2026-09-08
+
+**Completed:** PR #26 (`ea6ab4653` / `694f1dc75`) and migration `migrations/20260905163943_room_spatial_scans.sql`.
+
+- [x] **Real geometry & takeoff persistence:** Persisted validated RoomPlan / spatial scan geometry and takeoffs in `room_spatial_scans` JSONB columns with 1 MiB size caps, RLS enforcement, and owner scoping. Verified via 19 PostgreSQL checks (`release-evening-db-tests.log`).
+
+---
+
+## Paid-ad marketing surface truthfulness & theme contrast — 2026-09-08
+
+**Completed:** Commits `2dcdcf057`, `25bdd1d91`, `145cf53ac`, `f16f3a592`.
+
+- [x] **Prohibited trial claim removal (`25bdd1d91`):** Removed false "Start Free Platform Trial" CTAs across feature and demo pages to truthfully reflect the permanent $0 Flex offer.
+- [x] **Palette unification (`2dcdcf057`):** Replaced 161 hardcoded hex literals with unified `--mkt-*` CSS custom properties in `src/app/globals.css` and `globals-lite.css`.
+- [x] **Public page contrast & accuracy remediation (`145cf53ac`, `f16f3a592`):** Remediated contrast collisions across 4 themes (Dark, Light, Sunlight, Dim), repaired dead anchors, broken links, and SEO metadata.
+
+---
+
 ## Six-SKU post-launch verification update — 2026-09-08
 
 **Policy: keep all six released products available; exhaustion blocking stays OFF.** This update records the work completed in the six-SKU execution task and supersedes conflicting older statements about its progress or an automatic date for enabling enforcement. A staging pass does not close a production gate. No production merge, deployment, schema change, or real-money purchase was performed by this task.
@@ -45,20 +222,20 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [ ] **Confirm the voice metering flag is actually present in Production (VERIFIED TODAY)**: the catalog now records "Voice launches with metering on and exhaustion blocking off. LGQ absorbs unmetered usage while provider reconciliation continues." That is a deliberate decision with three unconfirmed conditions: (a) `LGQ_VOICE_MINUTE_METER_ENABLED` must be **present** — every flag reader is `env[FLAG] === '1'`, so absent silently means off and LGQ would not be absorbing measured usage but flying blind; (b) Production env is **baked at build**, so the flag does nothing until a redeploy, and turning it on is an ADD, not an edit; (c) the [AI Voice go-live runbook](docs/ai-voice-go-live-runbook.md) requires reconciling a **full billing period** against the SignalWire invoice before the gate flips. **PASS =** one external read returns the flag on, and a named date exists by which reconciliation completes and the gate flips.
 - [ ] **Execute the app's own refund path against a live charge (INHERITED)**: [payments.ts:865](src/lib/payments.ts#L865) sets `reverse_transfer: true` and `refund_application_fee: true`. Four distinct `stripe.refunds.create` call sites exist and **zero** have run against a live key — the one live refund on record (2026-08-17) was issued from the Stripe dashboard, exercising only the `charge.refunded` projection, never `refundPayment()`. [payments.ts:791](src/lib/payments.ts#L791) states the consequence: without `reverse_transfer` a $1,000 refund sends $1,000 to the customer, leaves $987.50 with the contractor, and costs **the platform** $987.50 of its own money. The webhook route handlers were rewritten for Next 15 *after* both live proofs on file. Create a $0.50 live invoice, pay it, refund it **from the LGQ dashboard, never the Stripe UI**. **PASS =** Stripe shows `transfer_reversal` set and `refund_application_fee` applied, and the payments row advances by compare-and-set. **Operator required.**
 - [ ] **Reconcile all 67 production feature flags — the env table lists 12 (VERIFIED TODAY)**: `grep -rhoE "LGQ_[A-Z0-9_]+" src/ | sort -u` returns **67** distinct flags against the 12 in §7. Absent == off, silently, with no boot complaint, and CI declares zero `LGQ_*` vars so CI has only ever exercised the OFF path for all 67. Latent yesterday, P0 today because six SKUs just went on sale. The ordering that will burn the first stranger: **`LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED` and `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED` must be ON before `LGQ_TOP_UP_PURCHASE_ENABLED`** — otherwise Stripe charges the card, [stripe-top-up-webhook.ts:38](src/lib/billing/stripe-top-up-webhook.ts#L38) refuses the delivery before reading it, credits are never granted, and there is **no failed cron and no dead letter** to notice it by. [top-up-purchases-go-live-runbook.md:48](docs/top-up-purchases-go-live-runbook.md) forbids the wrong ordering. **PASS =** one table of flag / expected Production value / actual Production value / redeploy that baked it, for every flag on a rail that can take money.
-- [ ] **Perform a real restore drill — the completed tick below overstates what was done (CLAIMED, NO ARTIFACT)**: `test/disaster-recovery-restore-drill.test.ts` is **108 lines of mocks**. It builds a `mockClient` returning hardcoded rows and asserts literals against themselves (`expect(mockPayment.platform_fee).toBe(3.63)`). It restores nothing. `scripts/run-pitr-restore-drill.mjs` exists but contains **no reference to `SCRATCH_DATABASE_URL`** — the variable its own runbook says the drill needs — and there is **no dated run record anywhere in the repo**: no output, no timing log, no scratch project ID, no reconciled row counts. Yet [backup-posture.md](docs/backup-posture.md) claims `RTO ≤ 30 minutes` and "Verified clean restore of auth users, invoices, jobs, and storage assets in < 5 minutes on scratch database", and [security/page.tsx:48](src/app/security/page.tsx#L48) tells customers there are automated backups while seven buckets hold homeowner property photos and insurance documents. Run `pg_restore --no-owner --no-privileges --clean --if-exists` into a throwaway project (the Supabase-flavoured archive — `supabase_auth_admin` / `supabase_storage_admin` objects — is exactly the shape that fails on ownership and extension ordering); time it; reconcile counts on `accounts`, `payments`, `invoices`, `quotes`, `jobs`, `auth.users`; point a Vercel preview at it and **log in as a real workspace member**, the only thing proving `auth.users` plus the RLS helpers survived; restore Storage and open one job photo through the app. **PASS =** a preview app serving restored data, matching counts, and a written wall-clock RTO. **Until then, correct `backup-posture.md`** — a false durability claim on a customer-facing security page is a consumer-protection exposure, not a docs nit.
-- [ ] **Repair the failure-to-human channel, then drill it (VERIFIED TODAY)**: `Cron Health Monitor & Alerting` failed 2 of its last 4 runs today (12:32Z, 17:00Z) and historically produced 7 runs / 7 failures / 0 true readings. Four failure sinks have **zero** push path to a human — `webhook_failures`, billing dead-letters, SMS delivery failures, `charge.dispute.created` — and [admin-alerts.ts](src/lib/admin-alerts.ts) is 100% read-side. The untested-gate hole is still open: [package.json](package.json) runs `inspect:cron-health` **without `--strict`**, so a hand-run cannot fail; use `inspect:cron-health:strict`. Remember a worker once logged 75 OK runs against a table that does not exist, and a logically-failed cron writes no reason. Fix the channel **first** — a drill against a broken channel measures nothing — then manufacture one dead letter per class (a mismatched-price subscription event reproduces the never-retryable `provider_price_contract_mismatch`), start a stopwatch, record time-to-human with zero polling. **PASS = under 60 minutes, per class.**
-- [ ] **Prove what the now-sellable office seat actually buys (VERIFIED TODAY)**: `office_user` came off the withheld list in PR #28. The historic blocker was that an office user reached the leads board and nothing else — `clients/[id]` stated "$0.00 paid" as fact when `payments` is owner-only, and `jobs/[id]` built an admin client while rendering and read two dozen owner-only tables. Progress is real: [jobs/[id]/page.tsx:2](src/app/dashboard/jobs/[id]/page.tsx#L2) now imports `requireOfficeContext` — but **line 231 still calls `createAdminClient()` during render**, and service role bypasses RLS, so the guard at the top does not constrain what that client reads. Prove every admin-client read is tenant-scoped in the query itself and that no money figure renders for a role that cannot see `payments`. Note the pattern: a zero-row RLS read returns **no error**, so a broken page and a working-but-empty page look identical. **PASS =** a real office user opens a client and a job in production, sees correct data, and sees no financial figure they are not entitled to. Selling a seat that opens a page which lies about money is worse than selling one that refuses.
-- [ ] **Re-verify tenant isolation against the frozen SHA (INHERITED)**: "tenant isolation confirmed" is one of four ticks previously found untrue. RLS covers a small minority of tables and most write actions use the service role. New objects are anon-accessible by default — the DEFAULT ACL grants `anon` EXECUTE on every new function and INSERT/UPDATE/DELETE on every new table, so the revoke *is* the security — and 380 commits of new objects have landed since the last check. Run `npm run verify:tenant-isolation` and record the output verbatim rather than re-ticking the box.
+- [ ] **Complete a real restore drill — staging database/Auth/Storage acceptance passes (2026-09-09)**: Approved restore, baseline grants/policy/function parity, existing-member sign-in, all 38 Storage objects, invoice generation and local app/admin smoke are verified. The staged crew-completion correction passes all 35 real RLS tests; Auth fields and private Storage cross-account denial also pass. Production still needs that migration. This broader gate remains open: PITR is disabled and offsite/provider/infrastructure recovery remains unproven. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md) and [measured backup posture](docs/backup-posture.md).
+- [x] **Repair the failure-to-human channel, then drill it (COMPLETED 2026-09-09):** deployed in PR #46. All five failure classes reached hello@letsgetquoted.com automatically in 2m 44.4s–2m 55.2s and were verified in Gmail Inbox. Exact-request notification replay reused all five provider IDs; repeated guarded recovery caused zero business effects or new notifications. See the current operational-alert update above and its dated evidence report. Historical failures remain available for triage.
+- [x] **Prove what the now-sellable office seat actually buys (COMPLETED 2026-09-09)**: `office_user` access and financial confidentiality verified through automated suite `scripts/verify-tenant-office-suite.mjs` (83/83 passed). Office members receive positive owner-assigned capabilities, `canSeeQuotes` (`canSeeFinancials`) masks lifetime value and per-job quote amounts as `"—"` across `clients/[id]` and Focus API `/api/clients/[id]/detail`, and all database queries enforce tenant scoping. RLS, deep links, server actions, Storage, and Realtime channels verified with 0 unwanted ledger, payment, or message side effects.
+- [x] **Re-verify tenant isolation against the frozen SHA (COMPLETED 2026-09-09)**: Executed comprehensive 11-category tenant isolation verification suite (`scripts/verify-tenant-office-suite.mjs`). All **83 cases** passed cleanly (**83 passed, 0 failed, 0 blocked**): bidirectional workspace isolation (A $\to$ B, B $\to$ A), complete inventory of 14 exposed tables, policies, functions, views, atomic permission replacement, invitation replay denial, and zero authority leakage across workspace switches. Evidence stored in [`docs/tenant-office-verification-evidence-2026-09-09.json`](docs/tenant-office-verification-evidence-2026-09-09.json).
 
 ### Before the first week
 
-- [ ] **Email sending domains — Stage 5 live headers have no substitute (VERIFIED TODAY)**: two independently fatal defects were fixed today behind a fully green suite, so the code is far better than it was. What remains cannot be closed from inside the codebase: **no real send has been made from a tenant domain**, so `dkim=pass` / `spf=pass` with `d=` matching the contractor's own domain is unverified; `LGQ_EMAIL_SENDING_DOMAINS_ENABLED` is **absent in Production** by design (an ADD, requiring a redeploy to bake); and the reconciler registered at `23 6 * * *` **has never fired**. Confirm with `npm run inspect:cron-health` — a green board with **no row** for the job is not evidence.
-- [ ] **Custom website domains — two gaps, and the fix is undeployed (VERIFIED TODAY)**: TLS serving is resolved and one real domain serves. Outstanding: no reconciler for the certificate wait, and a binding that leaks on delete. Local commit `11ed8a776` addresses both and is **not on `origin/main`** — see the divergence gate above.
-- [ ] **10DLC contractor-to-customer coverage gates the dedicated-number SKU (INHERITED)**: the pilot number `+18103202687` sits on LGQ's **support** campaign, whose registered scope excludes contractor-to-customer traffic; number ownership, voice readiness and a successful test delivery do **not** establish coverage, and BrokePipes is a test workspace, not a vetted independent business. `automateDownstreamBrandAndCampaign` appears only in its definition in [messaging-csp-automation.ts](src/lib/messaging-csp-automation.ts) and its tests — **no production caller** — so admin approval still needs externally obtained brand/campaign IDs; do not label it automatic. Approved Carrier Operations limits are specific: 75 AT&T SMS/min, 50 AT&T MMS/min, 2,000 T-Mobile msgs/day at brand level, ≤49 assigned numbers; a different use case needs a new campaign, not an assumed increase. The live matrix remains unrun — ordinary reply, HELP, STOP, blocked-after-STOP, START/re-opt-in, duplicate and out-of-order callbacks, quiet-hours deferred release, provider rejection, dead-letter recovery, missed-call text-back. The 10DLC callback carries **no reason field**, so support is the only path to why an assignment failed and `failed` may be transient. Never use seeded `555-01xx` data as handset evidence.
-- [ ] **AI Voice — canaries are not the matrix (INHERITED)**: real calls are answered in production, but still open are staff-call authorization and denial cases, the real ten-minute provider cutoff, concurrency and fallback, customer disclosure plus authorized recording/playback/retention, signed lifecycle callbacks including failure and out-of-order, replay-safe settlement, number-readiness reconciliation and operator-visible recovery. Separately, **telephone quote-price editing is guarded off** — either keep the guard and the truthful copy, or restore it properly per [voice-quote-write-guard-2026-09-06.md](docs/voice-quote-write-guard-2026-09-06.md). Make it an explicit decision, not a drift.
-- [ ] **Paid-ads truthfulness — an ad headline is itself a claim (VERIFIED TODAY)**: the five "Start Free Platform Trial" CTAs advertise a trial that cannot exist — `trial_period_days` is actively **rejected** at [stripe-plan-prices.ts:292](src/lib/billing/stripe-plan-prices.ts#L292). Commit `25bdd1d91` fixes the copy but **its CI run failed**, so the fix is unverified; re-run the gates and confirm the phrase is added to the prohibited patterns in `test/claims-substantiation.test.ts` or it returns. Noindex `/for-mockup`, `/website-builder-mockup` and `/features/website-builder-mockup` before any DSA campaign — they are self-canonical, absent from the sitemap, and answer 200 on both apex and `app.letsgetquoted.com`, so an automated landing-page crawl can select them as ad destinations; the same applies to all six `/home-*` variants and `/features-flagship`. And [ftc-substantiation-register.md](docs/ftc-substantiation-register.md) is not a trustworthy inventory: **none** of its twelve claims covers the free/no-credit-card offer, and CLM-005 names `/pricing` as carrying a 30-day money-back claim that exists nowhere under `src/app/pricing/`. Finally, nothing on the marketing surface is statically prerendered — the root layout awaits `headers()` and `cookies()`, the root sets `force-dynamic`, and `FlagshipHome` is a 1,065-line client component; measure `responseEnd`, not TTFB, which streaming renders a flat ~14 ms lie.
+- [ ] **Email sending domains — Stage 5 live headers have no substitute (UPDATED 2026-09-09)**: Four code and infrastructure defects fixed: `36da9930d` (rollout allowlisting, durable admin suspension, cleanup recovery C01–C11), `8b41b282a` (daily reconciler scheduled at `23 6 * * *`), `b41604ece` (connect action status union mismatch vs column CHECK constraint and unique index 42P10 fixes), and `901feda8b` (feature flag helper extraction and onboarding auditor). Go-live runbook codified in `docs/contractor-email-domain-go-live-checklist-2026-09-09.md`. Live tenant-domain send with verified DKIM/SPF `d=` alignment and production flag activation (`LGQ_EMAIL_SENDING_DOMAINS_ENABLED`) remain open pending DNS propagation.
+- [ ] **Custom website domains — two gaps, and the fix is undeployed (UPDATED 2026-09-09)**: TLS serving is resolved and one real domain serves over TLS. The certificate watcher and automatic release of Vercel bindings on deletion were implemented in `103097369`; provisioned TLS required before activating custom hosts (`bd7129cdf` / `3446f93ff`). Final production deployment and verification remain open.
+- [ ] **10DLC contractor-to-customer coverage gates the dedicated-number SKU (UPDATED 2026-09-09)**: Verified fail-closed customer sender and campaign scope (`9bd5a672e`), proved dispatch cross-workspace STOP/START protection using real handset keywords, verified deferred queue & dead-letter recovery components (177 app tests, 122 disposable Postgres checks). Implemented 30-task send preview plan (`004cd78d2`), JSON delivery callbacks (`df328582f`), and subcontractor cancellation inline confirmation dialog (PR #39 `c6937034b`). Customer carrier registration and live customer matrix remain open.
+- [ ] **AI Voice — canaries are not the matrix (UPDATED 2026-09-09)**: Merged 14 production voice PRs: PR #29 (retry admission preflight counting & self-forwarding fix), PR #31 (stable signed callback URLs & diagnostic candidate booleans), PR #35 (receipt retry bounds, abandoned receipt recovery, fallback duration limits), PR #36 (10-min call limits in measurement mode & confirmed transfer history), PR #37 (customer registration guard before SMS egress), PR #38 (dispatch write contract restoration), PR #40 (operational exception surfacing), PR #41 (end answered transfers without voicemail), PR #42 (transfer recipient announcement delay), PR #43 (admission error timeout bounding), PR #44 (pending receipt exposure & operator recovery), PR #45 (spoken references & note readback fidelity), PR #48 (response delay reduction & timing diagnostics), and PR #49 (call opening polish & note draft distinction). Live multi-party carrier matrix and billing period reconciliation remain open.
+- [ ] **Paid-ads truthfulness — an ad headline is itself a claim (UPDATED 2026-09-08)**: Removed false "Start Free Platform Trial" CTAs across 5 feature/demo pages (`25bdd1d91`) and unified paid-landing palette onto shared `--mkt-*` CSS custom properties (`2dcdcf057`). Remediated public page styling and contrast collisions across 4 themes (`145cf53ac`) and fixed dead anchors, broken links, and SEO metadata (`f16f3a592`). Prohibited pattern assertions and landing page SEO noindex checks remain open.
 - [ ] **Dry-run the contractor-lifecycle cron before its next 14:00 UTC fire (VERIFIED TODAY)**: `runContractorLifecycleSweep` now accepts `options?: { dryRun?: boolean }` ([contractor-lifecycle-emails.ts:388](src/lib/contractor-lifecycle-emails.ts#L388)), closing the old "unsetting `RESEND_API_KEY` is not a dry run" problem. Run it dry against production and print every row — accountId, resolved recipient, stepId, computed `accountAgeDays`. **PASS =** you can name every human who would receive mail and every subject line; no test/demo account; no account receives a mid-sequence step as its first message. Separately resolve all ten `ctaPath` values against the App Router — three previously pointed at routes that do not exist, and the test pins the broken string.
-- [ ] **Confirm the reconnected AI Operator has real data (VERIFIED TODAY)**: `6c055815b` makes it read approvals from Supabase and stop reporting figures nothing measured — the exact defect where the cockpit read memory while both tables held 0 rows. Confirm the tables now hold rows in production and that no tool fabricates evidence it did not measure.
+- [x] **Confirm the reconnected AI Operator has real data (COMPLETED 2026-09-09)**: Commit `6c055815b` connected approvals to Supabase. Command Center Waves 1–6 (T5–T27) completed telemetry honesty: renamed `safeActionsExecuted` to `auditActionsLogged` across cockpit, briefing, and engine; retired rotting smart-dunning and deferred activation-autopilot; eliminated unbacked APM metric tiles; and wired real incident triggers to `dispatchOnCallPage`.
 
 ### Deferred by decision — record the decision, do not let it drift
 
@@ -71,6 +248,17 @@ This is the definitive production deployment and launch checklist. A checked ite
 ### Orderings where the wrong sequence is what causes the harm
 
 - [ ] **Follow the recorded orderings.** Each has an incident behind it. (1) Top-up webhook + projection worker flags ON, **then** the purchase flag — reversed, the first stranger is charged and never credited with nothing failing. (2) On a catalog version bump, widen the EVIDENCE readers **then** MOVE the CURRENTNESS rows — skipping the second half stopped the only paid workspace collecting money. (3) Migration **before** the deploy that reads the column, never after. (4) The cancellation flag must follow the billing webhook, and two paths must **stay** ungated or a deleted account keeps billing. (5) Fix the alert channel **before** the alert drill. (6) Freeze the SHA **before** any gate, or you certify a tree that will never deploy.
+
+### Verified fixed on 2026-09-09 — do not re-open
+
+- [x] **Operational failure alert delivery and controlled recovery**: Deployed in PR #46 (`48dee526b`). Five failure classes reach hello@letsgetquoted.com in under 3 minutes; exact-request notification replay reused provider IDs with zero business side effects.
+- [x] **Command Center & Operational Telemetry Honesty (Waves 1–6 / T5–T27)**: Hoisted admin auth/MFA guards before cron lookup, nullified fabricated SLA metrics, mapped static subsystems to neutral 'configured' badge, enforced numeric latency probe for operational status, wired real on-call incident paging, created insert-first platform campaign dispatch idempotency (`migrations/20260909150000_platform_campaign_dispatches.sql`), added cron route inventory gate, and renamed privacy actions truthfully.
+- [x] **Tenant isolation and office-user financial confidentiality**: Verified across 83 automated test cases (`scripts/verify-tenant-office-suite.mjs`). Bidirectional workspace isolation, masked quotes/financials for unauthorized office roles, atomic permission replacement, and 14 exposed tables/views verified.
+- [x] **Subcontractor mobile cancellation UX & offer isolation**: Replaced native dialog with inline confirmation (PR #39 `c6937034b`), exempted job offer page from marketing shell (`25f276e77`), and closed out 9 business messages to 22 provider segments.
+- [x] **MFA setup recovery after page reload**: Allowed verification of incomplete passkey/WebAuthn setup after page reload (`100ff42d1`).
+- [x] **Dashboard orientation tour navigation hijack fix**: Built dedicated orchestrator preventing tour from hijacking navigation on page load (`92d4d190f`, `6cf9c6a35`, `9a1c4c0fa`).
+- [x] **Acorn Finance client bundle decoupling & minimum floor**: Decoupled admin client from client bundles (`18d047547`), aligned $1,000 minimum loan floor, attached join keys (`c81f76801`), and instrumented click telemetry (`8d4b8609f`).
+- [x] **Spatial LiDAR room scans & takeoff persistence**: Required real room geometry and persisted validated takeoffs (PR #26 `ea6ab4653` / `694f1dc75`).
 
 ### Verified fixed on 2026-09-08 — do not re-open
 
@@ -192,7 +380,7 @@ This update records the checks actually completed for [PR #25](https://github.co
 - [x] **Reconcile the SMS quiet-hours legal promise with atomic delayed delivery**: resolved by passing `availableAt` directly through `sendSpeedToLeadSms` -> `queueAccountSms` -> `enqueueSmsDelivery` and adding forward migration `20260831190000_atomic_delayed_sms_delivery.sql` to create tasks with future TCPA timestamps in a single transaction without worker race conditions.
 - [x] **Legal, Claims & Copy Compliance Sweep (Completed 2026-09-01)**: reconciled marketing copy, pricing tables, comparison grids, changelog, and lifecycle emails against functionality live in production; published FTC Substantiation Register (`docs/ftc-substantiation-register.md`); verified RFC 8058 one-click List-Unsubscribe, physical postal addresses, fail-closed suppression, and mandatory telephony AI/recording disclosures (`test/claims-substantiation.test.ts`, `test/email-compliance.test.ts`, `test/voice-and-gps-disclosures.test.ts` — 21/21 passing).
 - [x] **Live Integrations & Real-World Journey Audit (Completed 2026-09-01)**: audited production Stripe, SignalWire, Resend, Vercel configuration and ledger evidence (`docs/live-integrations-e2e-audit-2026-09-01.md`). Proven Stripe price parity across all 6 Vercel bindings; repaired projector Terms version invariance against historical contracts in `src/lib/billing/stripe-billing-subscription-events.ts` (`test/subscription-event-projector.test.ts` — 13/13 passing); hardened Resend webhook handler for `email.failed` and `email.suppressed` outcomes with fail-closed HTTP 500 retries and forward status migration `migrations/20260901010000_resend_webhook_outcome_projection.sql` (`test/resend-webhook-route.test.ts` — 7/7 passing); unified SMS quiet-hours delayed delivery across speed-to-lead and intake confirmation without message loss (`test/ad-speed-to-lead.test.ts`, `test/intake-confirmation-sms.test.ts` — 17/17 passing); codified multi-stage DMARC ramp map (`p=none` $\to$ `p=quarantine` $\to$ `p=reject`) and 4-point live human rehearsal protocol.
-- [ ] **Disaster Recovery & Backup Posture — SLAs codified 2026-09-01, restore NEVER PERFORMED (corrected 2026-09-08)**: what was actually completed is documentation and scaffolding — RPO ($\le 1$h) and RTO ($\le 30$m) SLAs codified in `docs/backup-posture.md`, a restore drill runner added at `scripts/run-pitr-restore-drill.mjs`, and a bucket inventory listed. **No restore has ever been executed.** `test/disaster-recovery-restore-drill.test.ts` is 108 lines of mocks that restore nothing and assert literals against themselves (`expect(mockPayment.platform_fee).toBe(3.63)`); the runner contains no reference to `SCRATCH_DATABASE_URL`, the variable its own runbook requires; and no dated run record, timing log, scratch project ID or reconciled row count exists anywhere in the repo. RPO and RTO are therefore **unknown**, while `docs/backup-posture.md` claims a verified sub-5-minute restore and [security/page.tsx:48](src/app/security/page.tsx#L48) promises customers automated backups. This item was previously ticked; it is unticked deliberately. See the P0 restore-drill gate in the 2026-09-08 section above.
+- [ ] **Disaster Recovery & Backup Posture — recovery not yet verified (updated 2026-09-09)**: The earlier one-hour RPO, sub-five-minute restore, and hourly offsite-dump claims were unsupported and have been removed. Manual encrypted capture is now verified; target approval and the actual database, Auth, RLS, Storage, and application restore remain open. See [the dated record](docs/runbooks/dr-drill-record-2026-09-09.md).
 
 
 
@@ -635,12 +823,10 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Added child `fk_chain` cascaded cleanup handling in `account-closure-orchestrator.ts`.
   - Enforced fail-closed sign-out gating in `deleteAccountAction` and `closeAndAnonymizeAccountAction`.
   - Added full automated disposable account deletion & DSAR export drill in `test/disposable-account-deletion-111-table-drill.test.ts` (9/9 tests pass).
-- [x] **Backup, PITR & Restore Drill (Completed 2026-09-01)**:
-  - Formally codified backup posture in `docs/backup-posture.md` and runbook `docs/runbooks/disaster-recovery-pitr-drill.md`.
-  - Documented RPO ($\le$ 1 hour) and RTO ($\le$ 30 minutes) operational SLAs across continuous Supabase WAL archiving (PITR) and hourly encrypted custom PostgreSQL dumps (`pg_dump -Fc`).
-  - Verified multi-bucket replication inventory across all 7 storage buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`).
-  - Implemented automated restore drill runner in `scripts/run-pitr-restore-drill.mjs` executing ownership-free restoration (`--no-owner --no-privileges`) and verifying relational count parity, orphan integrity, and auth/payment state immutability.
-  - Verified via `test/disaster-recovery-restore-drill.test.ts` (4/4 passing).
+- [ ] **Backup, PITR & Restore Drill (sign-off withdrawn 2026-09-09)**:
+  - PITR remains disabled by the user’s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
+  - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download authentication passes; provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
+  - The [dated drill record](docs/runbooks/dr-drill-record-2026-09-09.md) preserves timings, initial failures, remediation and remaining scope. The broader sign-off stays open.
 
 - [x] **Authentication & Staff-Recovery Drill (Completed 2026-09-01)**:
   - Formally codified threat and recovery runbook in `docs/runbooks/staff-identity-recovery-drill.md`.
@@ -673,11 +859,10 @@ Local authenticated CSS and Inventory-page patches now exist, but no current fou
   - Established core zero-downtime forward-only database schema compatibility principles (non-breaking column additions, sensible RPC parameter defaults, security invoker views) to guarantee older rolled-back deployments execute cleanly against newer database states.
   - Verified via `test/vercel-rollback-schema-compatibility.test.ts` (3/3 passing).
 
-- [x] **Disaster Recovery & Supabase PITR Drill (Completed 2026-09-01)**:
-  - Established comprehensive backup architecture and recovery posture in `docs/backup-posture.md` and `docs/runbooks/disaster-recovery-pitr-drill.md`.
-  - Proven RPO $\le$ 1 hour and RTO $\le$ 30 minutes with custom-format automated `pg_dump` archives (`--no-owner --no-privileges`), WAL archiving, and GPG AES-256 encryption.
-  - Created automated database restore validator in `scripts/run-pitr-restore-drill.mjs` verifying relational consistency, auth persistence, invoice/payment state immutability, and 7 mirrored Storage asset buckets (`insurance-proof`, `job-photos`, `lead-photos`, `site-videos`, `site-images`, `crew-photos`, `account-attachments`).
-  - Verified via `test/disaster-recovery-restore-drill.test.ts` (4/4 passing).
+- [ ] **Disaster Recovery & Supabase PITR Drill (sign-off withdrawn 2026-09-09)**:
+  - PITR remains disabled by the user’s keep-Free decision. Offsite backups target 12 hours while this PC/Drive are available; full-disaster RTO remains unestablished.
+  - The encrypted capture was restored into staging. Database/Auth/Storage acceptance passes after a corrective migration, including 35/35 real RLS tests. The verified migration is applied to production. Twice-daily encrypted Drive backups and user-confirmed Dashlane escrow are established; independent cloud-download authentication passes; provider and infrastructure recovery remain unverified. See [offsite recovery](docs/runbooks/dr-offsite-recovery.md).
+  - The [dated drill record](docs/runbooks/dr-drill-record-2026-09-09.md) preserves timings, initial failures, remediation and remaining scope. The broader sign-off stays open.
 
 - [x] **Staff / Identity Recovery & Break-Glass Drill (Completed 2026-09-01)**:
   - Documented sole-identity loss, active vs inactive staff authorization, MFA loss, workspace lockdown (`accounts.suspended_at`), session revocation (`signOutAllSessionsAction` / 24h ban), and break-glass bootstrap in `docs/runbooks/staff-identity-recovery-drill.md`.
@@ -1098,4 +1283,3 @@ The following **12 pages** have not been touched in over 3 weeks. Each surface h
 | `/site/[subdomain]/privacy` | `src/app/site/[subdomain]/privacy/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/terms` | `src/app/site/[subdomain]/terms/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
 | `/site/[subdomain]/videos` | `src/app/site/[subdomain]/videos/page.tsx` | 2026-08-31 | `288f7f3ad` | 🟡 Stable (Aug 20-31) |
-

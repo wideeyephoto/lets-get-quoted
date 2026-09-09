@@ -1,0 +1,11 @@
+{
+  "checkedAt": "2026-09-09T11:04:12.440Z",
+  "status": 200,
+  "contentType": "application/pdf",
+  "bytes": 2741,
+  "pdfHeader": true,
+  "pdfEndMarker": true,
+  "pageObjects": 1,
+  "sha256": "04b31b8ad945ac418b6ef1a6fe56ef4eef0ecdaeda1cfcf26386615bc203c50e",
+  "durationMs": 7180
+}

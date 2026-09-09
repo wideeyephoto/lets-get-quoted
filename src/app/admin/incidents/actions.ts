@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { requireMfaPermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { isIncidentKind, isIncidentSeverity } from '@/lib/platform-incidents';
+import { dispatchOnCallPage } from '@/lib/on-call-paging';
 
 /**
  * Writing to platform_incidents.
@@ -76,6 +77,22 @@ export async function logIncidentAction(formData: FormData) {
     targetId: data.id,
     meta: { kind: kindRaw, severity, title, owner, affectedServices, externalUrl },
   });
+
+  if (kindRaw === 'incident' && severity === 'critical') {
+    try {
+      await dispatchOnCallPage({
+        incidentKey: `platform_incident_${data.id}`,
+        title: `[${severity.toUpperCase()}] ${title}`,
+        severity: 'P1_CRITICAL',
+        summary: description || impactSummary || title,
+        incidentType: 'database',
+        source: `admin:incident:${data.id}`,
+        details: { affectedServices, owner, impactSummary },
+      });
+    } catch (pageErr) {
+      console.error('dispatchOnCallPage failed for incident:', pageErr);
+    }
+  }
 
   revalidatePath('/admin/incidents');
   revalidatePath('/admin');

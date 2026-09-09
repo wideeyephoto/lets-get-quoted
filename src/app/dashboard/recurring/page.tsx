@@ -6,6 +6,8 @@ import { shortDate } from '@/lib/recurring-display';
 import { buildRecurringView } from '@/lib/recurring-view';
 import { RECURRING_VIEW_COOKIE, normalizeRecurringView } from '@/lib/dashboard-views';
 import ConfirmActionButton from '@/app/dashboard/jobs/[id]/ConfirmActionButton';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { cardSetupText } from '@/lib/sms-templates';
 import RecurringComposer from './RecurringComposer';
 import RecurringViewGear from './RecurringViewGear';
 import RecurringScreen, { type PlanActionsRenderer } from './RecurringScreen';
@@ -70,6 +72,12 @@ export default async function RecurringPage({
   const mode = normalizeRecurringView((await cookies()).get(RECURRING_VIEW_COOKIE)?.value);
   const today = todayDateKey();
 
+  const [{ data: account }, { data: site }] = await Promise.all([
+    supabase.from('accounts').select('business_name').eq('id', accountId).maybeSingle(),
+    supabase.from('sites').select('company_name').eq('account_id', accountId).maybeSingle(),
+  ]);
+  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
+
   const view = await buildRecurringView(supabase, accountId, today);
 
   const baseFlash = resolvedSearchParams.flash ? FLASH_MESSAGES[resolvedSearchParams.flash] : null;
@@ -104,9 +112,18 @@ export default async function RecurringPage({
 
   const planActions: PlanActionsRenderer = (plan, context) => ({
     resendLink: (
-      <form action={resendCardLinkAction.bind(null, plan.id)}>
-        <button type="submit" className="linklike">Resend link</button>
-      </form>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+        <form action={resendCardLinkAction.bind(null, plan.id)} style={{ display: 'inline' }}>
+          <button type="submit" className="linklike">Resend link</button>
+        </form>
+        <SmsPreview
+          message={cardSetupText({ businessName, url: 'https://letsgetquoted.com/card-setup/…' })}
+          recipientLabel={plan.client_name}
+          phone={plan.client_phone}
+          triggerLabel="Preview text"
+          buttonClassName="linklike"
+        />
+      </span>
     ),
     /* Hidden at $0 rather than offered and refused: the server rejects autopay
        without a price, and a button whose only outcome is an error is worse
@@ -157,6 +174,7 @@ export default async function RecurringPage({
           <button type="submit" className="btn secondary">{plan.active ? 'Pause' : 'Resume'}</button>
         </form>
         <PlanActionsMenu
+          businessName={businessName}
           clientName={plan.client_name}
           nextVisitLabel={shortDate(plan.next_run_date)}
           nextVisitJobId={context?.nextVisitJobId ?? null}
@@ -190,9 +208,18 @@ export default async function RecurringPage({
       gear={<RecurringViewGear view={mode} />}
       attentionAction={
         view.noCardPlans.length === 1 ? (
-          <form action={resendCardLinkAction.bind(null, view.noCardPlans[0]!.id)}>
-            <button type="submit" className="btn secondary">Resend payment link</button>
-          </form>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <form action={resendCardLinkAction.bind(null, view.noCardPlans[0]!.id)}>
+              <button type="submit" className="btn secondary">Resend payment link</button>
+            </form>
+            <SmsPreview
+              message={cardSetupText({ businessName, url: 'https://letsgetquoted.com/card-setup/…' })}
+              recipientLabel={view.noCardPlans[0]!.client_name}
+              phone={view.noCardPlans[0]!.client_phone}
+              triggerLabel="Preview text"
+              buttonClassName="btn ghost"
+            />
+          </div>
         ) : null
       }
       flash={flash}

@@ -484,6 +484,24 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
       expect(empty.has('/dashboard/inventory')).toBe(false);
     });
 
+    it('preserves inventory navigation if tenant_audit_events has singular historical inventory_tool', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_tool'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_locations', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_locations'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
     it('preserves crew navigation if tenant_audit_events has historical crew events', async () => {
       const client = createMockSupabase({
         counts: {},

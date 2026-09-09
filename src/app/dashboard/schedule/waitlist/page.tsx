@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { requireOfficeContext } from '@/lib/auth';
 import { loadWaitlistContext } from '@/lib/cancellation-waitlist-data';
+import { loadBusinessName } from '@/lib/business-name';
 import WaitlistManager from './WaitlistManager';
 import WaitlistEnableCard from './WaitlistEnableCard';
 
@@ -11,13 +12,14 @@ export const metadata: Metadata = {
 
 export default async function WaitlistPage() {
   const { supabase, accountId } = await requireOfficeContext('schedule.read');
-  const [{ data: account }, context] = await Promise.all([
+  const [{ data: account }, context, businessName] = await Promise.all([
     supabase
       .from('accounts')
       .select('cancellation_waitlist_enabled')
       .eq('id', accountId)
       .maybeSingle(),
     loadWaitlistContext(supabase, accountId),
+    loadBusinessName(supabase, accountId),
   ]);
 
   const enabled = Boolean(account?.cancellation_waitlist_enabled);
@@ -32,6 +34,7 @@ export default async function WaitlistPage() {
       offers={context.offers}
       activePendingOffers={context.activePendingOffers}
       enabled={enabled}
+      businessName={businessName}
     />
   );
 }

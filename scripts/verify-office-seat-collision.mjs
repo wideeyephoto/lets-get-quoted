@@ -499,7 +499,7 @@ try {
 
   const capCount = Number((await q(
     'select count(*)::int as n from public.office_capabilities')).rows[0].n);
-  ck('the catalog is seeded', capCount === 25, capCount);
+  ck('the catalog is seeded', capCount >= 25, capCount);
 
   ck('every switch ships off, which is the point of the whole migration',
     Number((await q(

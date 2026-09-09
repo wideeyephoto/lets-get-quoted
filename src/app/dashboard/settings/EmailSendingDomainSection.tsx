@@ -13,12 +13,14 @@ interface Props {
   initialDomain: EmailSendingDomainRow | null;
   isConfigured?: boolean;
   isEnabled: boolean;
+  isEnrollmentAllowed?: boolean;
 }
 
 export default function EmailSendingDomainSection({
   initialDomain,
   isConfigured: _isConfigured,
   isEnabled,
+  isEnrollmentAllowed = true,
 }: Props) {
   const [domainRow, setDomainRow] = useState<EmailSendingDomainRow | null>(initialDomain);
   const [domainInput, setDomainInput] = useState('');
@@ -168,6 +170,11 @@ export default function EmailSendingDomainSection({
       )}
 
       {!domainRow ? (
+        !isEnrollmentAllowed ? (
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', fontSize: '13px', color: '#64748b' }}>
+            Custom email sending domains are currently limited to early access workspaces. Contact support to request access.
+          </div>
+        ) : (
         <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '12px' }}>
             <div>
@@ -222,6 +229,7 @@ export default function EmailSendingDomainSection({
             </button>
           </div>
         </form>
+        )
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>

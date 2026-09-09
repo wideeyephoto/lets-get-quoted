@@ -6,6 +6,7 @@ import {
   filterSafeSendingDnsRecords,
   failureReasonFor,
   getSendingDomain,
+  deleteSendingDomain,
   isSendingDomainProvisioningConfigured,
   listSendingDomains,
   toStoredStatus,
@@ -130,19 +131,21 @@ export async function runEmailSendingDomainReconcile(
 
   const admin = client ?? createAdminClient();
 
-  const { data, error } = await admin
+  const res = (await admin
     .from('email_sending_domains')
-    .select('id, account_id, domain, provider_domain_id, status, verified_at')
+    .select('id, account_id, domain, provider_domain_id, status, verified_at', { count: 'exact' })
     .in('status', ['pending', 'verified', 'failed'])
     .order('last_checked_at', { ascending: true, nullsFirst: true })
-    .limit(MAX_DOMAINS_PER_RUN + 1);
-  if (error) throw new Error(`Could not load sending domains: ${error.message}`);
+    .limit(MAX_DOMAINS_PER_RUN + 1)) as { data: ReconcileRow[] | null; count?: number | null; error: { message: string } | null };
+  if (res.error) throw new Error(`Could not load sending domains: ${res.error.message}`);
 
-  const all = (data ?? []) as ReconcileRow[];
+  const all = res.data ?? [];
   const rows = all.slice(0, MAX_DOMAINS_PER_RUN);
-  if (all.length > MAX_DOMAINS_PER_RUN) {
-    // Oldest-checked first, so a bounded run still reaches everything over a
-    // few days rather than starving the tail forever.
+  if (res.count != null && res.count > MAX_DOMAINS_PER_RUN) {
+    // Exact backlog count from total matching rows
+    summary.remaining = res.count - MAX_DOMAINS_PER_RUN;
+  } else if (all.length > MAX_DOMAINS_PER_RUN) {
+    // Fallback when count is not returned by the client
     summary.remaining = all.length - MAX_DOMAINS_PER_RUN;
   }
 
@@ -193,13 +196,14 @@ export async function runEmailSendingDomainReconcile(
         .eq('id', row.id)
         .eq('account_id', row.account_id)
         .eq('domain', row.domain)
+        .neq('status', 'disabled')
         .select('id')
         .maybeSingle();
       if (updateError) throw new Error(updateError.message);
       if (!updated) {
         // An accepted statement is not a changed row. The owner disconnected or
-        // renamed the domain while this run was in flight; benign, but it must
-        // not be counted as a successful reconcile.
+        // renamed the domain, or an administrative hold was applied while this run was in flight;
+        // benign, but it must not be counted as a successful reconcile.
         summary.vanishedMidRun += 1;
         continue;
       }
@@ -229,6 +233,37 @@ export async function runEmailSendingDomainReconcile(
         rowError instanceof Error ? rowError.message : rowError,
       );
     }
+  }
+
+  // C08: Recoverable cleanup sweep for domains marked CLEANUP_PENDING
+  try {
+    const { data: cleanupRows, error: cleanupFetchError } = await admin
+      .from('email_sending_domains')
+      .select('id, account_id, domain, provider_domain_id')
+      .eq('status', 'disabled')
+      .ilike('failure_reason', '%CLEANUP_PENDING%')
+      .limit(10);
+
+    if (cleanupFetchError) {
+      console.warn('[email-domain-reconcile] failed to fetch cleanup rows:', cleanupFetchError.message);
+    } else {
+      for (const cRow of cleanupRows ?? []) {
+        let deleted = true;
+        if (cRow.provider_domain_id) {
+          deleted = await deleteSendingDomain(cRow.provider_domain_id);
+        }
+        if (deleted) {
+          await admin
+            .from('email_sending_domains')
+            .delete()
+            .eq('id', cRow.id)
+            .eq('account_id', cRow.account_id);
+          summary.updated += 1;
+        }
+      }
+    }
+  } catch (cleanupError) {
+    console.warn('[email-domain-reconcile] cleanup sweep error:', cleanupError);
   }
 
   // Domains registered at the provider with no row behind them. Reported for a

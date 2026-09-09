@@ -17,8 +17,8 @@ describe('office clients comprehensive verification', () => {
       expect(route).not.toContain("membership.role !== 'owner'");
     });
 
-    it('passes isOwner flag to loadClientDetail', () => {
-      expect(route).toContain('loadClientDetail(supabase, membership.accountId, params.id, { isOwner })');
+    it('passes isOwner and canSeeQuotes flags to loadClientDetail', () => {
+      expect(route).toContain('loadClientDetail(supabase, membership.accountId, params.id, { isOwner, canSeeQuotes })');
     });
 
     it('returns JSON errors with proper 401 and 403 status codes', () => {
@@ -29,7 +29,7 @@ describe('office clients comprehensive verification', () => {
   });
 
   describe('financial data protection in loadClientDetail', () => {
-    it('bypasses getClientStatement and masks financial fields when isOwner is false', async () => {
+    it('bypasses getClientStatement and masks financial fields when isOwner is false and without quotes capability', async () => {
       const mockSupabase = {
         from: vi.fn((table: string) => {
           if (table === 'clients') {
@@ -99,19 +99,31 @@ describe('office clients comprehensive verification', () => {
         mockSupabase as any,
         'acc-1',
         'client-123',
-        { isOwner: false },
+        { isOwner: false, canSeeQuotes: false },
       );
 
       expect(detail).not.toBeNull();
       expect(detail?.name).toBe('Jane Doe');
       expect(detail?.jobCount).toBe(1);
-      expect(detail?.totals.quotedLabel).toBe('$1,500.00');
-      // Financial isolation: paid and outstanding must be masked rather than false "$0.00"
+      // Financial isolation: quotes, paid and outstanding must be masked rather than false "$0.00"
+      expect(detail?.totals.quotedLabel).toBe('—');
       expect(detail?.totals.paidLabel).toBe('—');
       expect(detail?.totals.outstandingLabel).toBe('—');
       expect(detail?.payments).toEqual([]);
+      expect(detail?.jobs[0].quotedLabel).toBe('—');
       expect(detail?.jobs[0].paidLabel).toBe('—');
       expect(detail?.jobs[0].balanceLabel).toBe('—');
+
+      // With quotes capability granted, quotes are visible while paid/statement remains protected
+      const detailWithQuotes = await loadClientDetail(
+        mockSupabase as any,
+        'acc-1',
+        'client-123',
+        { isOwner: false, canSeeQuotes: true },
+      );
+      expect(detailWithQuotes?.totals.quotedLabel).toBe('$1,500.00');
+      expect(detailWithQuotes?.jobs[0].quotedLabel).toBe('$1,500.00');
+      expect(detailWithQuotes?.totals.paidLabel).toBe('—');
     });
   });
 

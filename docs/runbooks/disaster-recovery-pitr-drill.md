@@ -1,61 +1,52 @@
 # Disaster Recovery & PITR Restore Drill Runbook
 
-**Goal:** Execute a timed disaster recovery drill restoring database and storage state to an isolated scratch project, proving recovery of `auth.users`, invoices, payments, jobs, and file assets without data loss.
+**Status:** Approved staging restore completed on 2026-09-09. Database/Auth/Storage acceptance passes after the crew-completion correction; all 35 real RLS tests pass. PITR is disabled and broader disaster recovery remains unverified. See the [measured posture](../backup-posture.md), [execution checklist](disaster-recovery-backup-posture-drill.md), and [drill results](dr-drill-record-2026-09-09.md).
 
----
+## Capture
 
-## 1. Prerequisites
-- Access to production backup artifact (`pg_dump -Fc` archive or Supabase PITR snapshot timestamp).
-- Scratch database URL (`DATABASE_URL_SCRATCH` on PostgreSQL 17).
-- Target storage mirror / scratch buckets.
-- Stopwatch started at restoration commencement.
+Use the existing local credentials. The source must match the explicit project ref. This command performs read-only database operations and downloads Storage files:
 
----
-
-## 2. Step-by-Step Drill Execution
-
-### Phase 1: Database Restoration
-1. Prepare scratch database schema:
-   ```bash
-   # If building from zero schema:
-   npm run deploy:schema -- --target="$DATABASE_URL_SCRATCH"
-   ```
-2. Restore custom archive without owner/privilege collisions:
-   ```bash
-   pg_restore --clean --if-exists --no-owner --no-privileges -d "$DATABASE_URL_SCRATCH" latest_snapshot.dump
-   ```
-
-### Phase 2: Automated Verification Drill
-Run the automated PITR drill verification script:
-```bash
-node scripts/run-pitr-restore-drill.mjs --target="$DATABASE_URL_SCRATCH"
+```powershell
+node scripts/capture-dr-backup.mjs --env=.env.local --ref=mfuvvtrkipkigwqqtcal
 ```
 
-The script asserts:
-1. **Auth & Identity Recovery**:
-   - `auth.users` row counts reconcile with snapshot metadata.
-   - User encrypted credentials, phone numbers, and emails remain intact.
-2. **Financial Data Recovery**:
-   - `invoices` status (`paid`, `sent`, `draft`) and `payments` records match amounts and timestamps.
-   - Zero corruption in `platform_fee` and Stripe charge references.
-3. **Workspace Data Integrity**:
-   - `accounts`, `clients`, `jobs`, `quotes` are restored with valid foreign keys.
-4. **Storage Asset Check**:
-   - Sample object keys in `job-photos`, `insurance-proof`, `lead-photos`, and `account-attachments` resolve via signed URLs.
+The command writes an encrypted archive, encrypted Storage objects and manifest, and a capture report under `tmp/dr-captures/`. The snapshot timestamp and source row counts in the report are the reconciliation baseline. This is a manual capture; no scheduling or offsite replication is implied.
 
-### Phase 3: Live Preview Verification
-1. Point a staging/preview Vercel deployment at the restored scratch environment.
-2. Log in as a real workspace member using magic link / OTP.
-3. Open a job photo and verify full resolution image renders.
-4. View an invoice and download the generated PDF.
+## Prepare the restore target
 
----
+Use a separate Supabase project with real Auth and Storage services. Confirm the exact project is expendable. Shared staging is not approved merely because its credentials exist.
 
-## 3. Success Metrics & Sign-Off
+Put its database URL, Supabase URL, anon key, service-role key, and admin allowlist in `.env.scratch.local`. Keep the application disconnected from live provider credentials and traffic during the drill.
 
-| Check | Target | Observed Drill Result |
-| :--- | :--- | :--- |
-| **Elapsed RTO** | $< 30$ mins | $< 5$ mins (automated test / script) |
-| **Table Reconcile** | 100% | 115/115 tables verified |
-| **Auth Sign-in** | PASS | 100% auth integrity verified |
-| **File Asset Fetch**| PASS | 7/7 buckets accessible |
+Inspect a dry run first, replacing the placeholders with the saved capture directory and the approved target ref:
+
+```powershell
+node scripts/restore-dr-managed.mjs --capture="<capture-directory>" --env=.env.scratch.local --project=<approved-project-ref>
+```
+
+After the target is approved, use the same command with `--apply --confirm-destroy=<approved-project-ref>`. This replaces the target's captured database objects. Do not invoke an unguarded restore or the production-default `deploy-schema.mjs` helper.
+
+The managed wrapper authenticates the archive, rejects production and URL overrides, extracts the reviewed application schemas and managed data, then uses psql in one transaction with ON_ERROR_STOP. It retains compatible Supabase-owned DDL and migration history, orders managed data by foreign keys, and fails on unreviewed schemas or nonempty source Vault. Disable any destination cron and drain its HTTP queue first. It clears destination schema default grants before creating objects, then restores archive ACLs. The previous raw pg_restore wrapper failed on Supabase-owned event triggers. Inspect and retain complete local logs; exact grants must match after restore. Temporary plaintext archives and SQL are removed. RLS policies and grants are separate: `--no-privileges` discards grants, not RLS policies, and is deliberately not used here.
+
+## Verify recovery
+
+Start the RTO stopwatch before the first restore attempt. Include error remediation and application verification in elapsed time.
+
+1. Compare row counts and schema definitions with `capture-report.json`. Include `accounts`, `memberships`, `staff`, `clients`, `jobs`, `invoices`, `payments`, `estimate_offers`, `auth.users`, and identities.
+2. Run the relational validator with `SCRATCH_DATABASE_URL` supplied from the approved target configuration. It never falls back to production's `DATABASE_URL`. This validates core table presence and two foreign-key relationships; it does not reconcile amounts or prove complete recovery.
+3. Check RLS and grants against the source baseline, then run `test-staging/field-app-rls.test.ts` using a staging configuration explicitly aimed at the restored project. Capture parity before running fixture-producing helpers.
+4. Sign in as an existing restored member and attempt a cross-tenant read. `staging-signin.mjs` may create users and memberships; that behavior must not manufacture the identity being tested.
+5. Run `scripts/restore-dr-storage.mjs` with the same capture, env, project and exact apply acknowledgement. It restores each captured object through the destination Storage API and checks signed-download SHA-256, lengths and private/public access. Database metadata is not file content.
+6. In an isolated preview, open a job photo, download an invoice PDF, and load key dashboard pages. Only then stop the RTO clock.
+
+Do not call an archive list, unit-test pass, schema count, or relational-validator pass a completed restore. Complete and sign the [dated drill record](dr-drill-record-2026-09-09.md) only when the restore and application checks have actual results.
+
+For this recorded drill, the existing staging target was explicitly approved. Its previous encrypted capture is retained. The isolated preview uses `node scripts/dr-preview.mjs --project=uydlabvgauzujdwuqzxq` on port 3014, masking all local env keys before injecting the staging connection and fake provider keys. Keep cron disabled until provider reconciliation and an intentional traffic decision.
+
+
+## September 9 production and offsite follow-up
+
+The corrective migration was applied to production and verified by matching the tested staging function definition and grants. No production business rows were changed. The user chose to keep Supabase Free, so PITR remains disabled. Encrypted database, all 38 Storage objects, source and local configuration are now published to Google Drive with a twice-daily schedule and 30-day retention. The user confirmed independent Dashlane key escrow. Mounted readback and offline opening passed; Drive web confirms private cloud presence. Chrome blocked an independent cloud download, so that recovery check remains open. These findings supersede earlier same-machine-only and production-not-modified statements in this historical record. See [offsite runbook](dr-offsite-recovery.md), [offsite evidence](evidence/dr-offsite-2026-09-09.json), and [production migration evidence](evidence/dr-production-migration-2026-09-09.json). Full provider/infrastructure recovery remains unrehearsed.
+
+
+September 9, 13:12 UTC follow-up: the user successfully downloaded the earlier 12:42 UTC encrypted pack from Google Drive. Its receipt hashes match exactly, and the database archive, all 38 Storage objects, source and encrypted configuration authenticate. This supersedes the earlier blocked-download finding. See [independent cloud-download evidence](evidence/dr-cloud-download-2026-09-09.json). A live restore of this downloaded pack and full provider/infrastructure recovery were not performed in this check.

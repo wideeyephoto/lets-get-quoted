@@ -99,6 +99,49 @@ export function isEmailSendingDomainsFeatureEnabled(): boolean {
   return true;
 }
 
+/**
+ * Checks if a given workspace is eligible for custom email sending domains.
+ *
+ * Requirements:
+ * 1. Global feature flag must be enabled (isEmailSendingDomainsFeatureEnabled).
+ * 2. If LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST is configured:
+ *    - Must match accountId in comma-separated list, or '*' for all workspaces.
+ *    - In production, an empty/missing allowlist fails closed (false) to protect the canary.
+ *    - In non-production, an empty/missing allowlist defaults to true for developer ease.
+ */
+export function isWorkspaceEligibleForSendingDomains(accountId?: string | null): boolean {
+  if (!isEmailSendingDomainsFeatureEnabled()) {
+    return false;
+  }
+  if (!accountId || typeof accountId !== 'string') {
+    return false;
+  }
+  const cleanAccountId = accountId.trim().toLowerCase();
+  const rawAllowlist = process.env.LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST;
+  const allowlist = rawAllowlist?.trim();
+
+  if (!allowlist) {
+    // In production, failure to specify an allowlist fails closed
+    if (process.env.NODE_ENV === 'production') {
+      return false;
+    }
+    return true;
+  }
+
+  if (allowlist === '*') {
+    return true;
+  }
+
+  const allowedIds = new Set(
+    allowlist
+      .split(',')
+      .map((id) => id.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  return allowedIds.has(cleanAccountId);
+}
+
+
 function normalizeStatus(status?: string): SendingDomainStatus {
   if (status === 'verified') return 'verified';
   if (status === 'pending') return 'pending';

@@ -1,5 +1,6 @@
 'use server';
 
+import { randomUUID } from 'node:crypto';
 import { requireAdmin, requirePermission, requireMfaPermission } from '@/lib/auth';
 import { logAdminAction } from '@/lib/admin';
 import { staffCan } from '@/lib/staff';
@@ -143,35 +144,54 @@ export async function sendPlatformCampaignBlastAction(
   const context = await requireMfaPermission('ops.manage');
 
   const idKey = input.idempotencyKey || `${input.audience}:${input.subject}:${input.senderEmail || 'default'}`;
-  const windowStart = new Date(Date.now() - 60_000).toISOString();
+  const campaignId = randomUUID();
 
   try {
-    const { data: recentBlasts } = await context.admin
-      .from('admin_actions')
-      .select('id, meta, created_at')
-      .eq('action', 'platform_campaign_send')
-      .gte('created_at', windowStart)
-      .limit(20);
+    // Insert-first idempotency: claim the dispatch key before entering the send loop
+    const { error: insertErr } = await context.admin
+      .from('platform_campaign_dispatches')
+      .insert({
+        idempotency_key: idKey,
+        campaign_id: campaignId,
+        status: 'dispatching',
+        details: {
+          audience: input.audience,
+          subject: input.subject,
+          senderEmail: input.senderEmail,
+          initiatedBy: context.adminEmail,
+        },
+      });
 
-    const isDuplicate = (recentBlasts || []).some((row: any) => {
-      const meta = row?.meta as any;
-      if (meta?.idempotencyKey && meta.idempotencyKey === idKey) return true;
-      const camp = meta?.campaign;
-      if (camp && camp.audience === input.audience && camp.subject === input.subject) return true;
-      return false;
-    });
-
-    if (isDuplicate) {
-      return {
-        success: false,
-        error: 'A campaign blast with this key or subject was dispatched less than 60 seconds ago. Duplicate send blocked.',
-      };
+    if (insertErr) {
+      if (
+        insertErr.code === '23505' ||
+        insertErr.message?.includes('duplicate key') ||
+        insertErr.message?.includes('violates unique constraint')
+      ) {
+        return {
+          success: false,
+          error: `Duplicate campaign dispatch blocked: a blast with idempotency key "${idKey}" has already been dispatched.`,
+        };
+      }
+      console.warn('[sendPlatformCampaignBlastAction] Dispatch reservation warning:', insertErr.message);
     }
 
     const result = await sendPlatformCampaignBlast(context.admin, context, {
       ...input,
+      campaignId,
       idempotencyKey: idKey,
     } as any);
+
+    await context.admin
+      .from('platform_campaign_dispatches')
+      .update({
+        status: result.failedCount === 0 ? 'sent' : result.sentCount > 0 ? 'partially_failed' : 'failed',
+        completed_at: new Date().toISOString(),
+        sent_count: result.sentCount,
+        failed_count: result.failedCount,
+      })
+      .eq('idempotency_key', idKey);
+
     return {
       success: true,
       campaignId: result.campaignId,

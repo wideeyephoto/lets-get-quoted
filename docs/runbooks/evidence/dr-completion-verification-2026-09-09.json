@@ -1,0 +1,345 @@
+{
+  "checkedAt": "2026-09-09T12:24:49.663Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "productionModified": false,
+  "migration": {
+    "file": "migrations/20260909121506_fix_crew_job_completion.sql",
+    "sha256": "a657f6f327bcb0c54de763513f340865bad67262956b15bab172cd4072fb846d",
+    "description": "Remove nonexistent completed_at write; preserve first start time; use job_status enum and text return casts; reject null; revoke anon execution.",
+    "hostedApplications": [
+      {
+        "version": "20260909121853",
+        "name": "fix_crew_job_completion"
+      },
+      {
+        "version": "20260909122030",
+        "name": "fix_crew_job_completion_enum_compatibility"
+      }
+    ]
+  },
+  "previousFailureEvidence": "dr-restored-rls-2026-09-09.json",
+  "candidateAttempt": {
+    "total": 35,
+    "passed": 31,
+    "failed": 4,
+    "reason": "Text-to-job_status enum assignment required an explicit cast. Corrected before acceptance."
+  },
+  "rls": {
+    "total": 35,
+    "passed": 35,
+    "failed": 0,
+    "success": true,
+    "tests": [
+      {
+        "name": "what a crew session can see reads the job it is assigned to, and no other",
+        "status": "passed"
+      },
+      {
+        "name": "what a crew session can see CANNOT read the accounts table — the bug that switched required clocking off",
+        "status": "passed"
+      },
+      {
+        "name": "what a crew session can see reads its own crew row but not a coworker's pay rate",
+        "status": "passed"
+      },
+      {
+        "name": "what a crew session can see sees its own stops and the day's unassigned ones, not another truck's",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status exposes the status function only to signed-in clients",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status cannot update the jobs table directly at all",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status starts work through the function, stamping started_at",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status never re-dates started_at on a second press",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status replays completion without changing the original start time",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status can complete an assigned job whose Start work press was never recorded",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status refuses to read or complete a job belonging to another workspace",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status refuses completion after the owner archives an assigned job",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status refuses a job this crew member is not on",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status refuses a status that is not one of the two the app offers",
+        "status": "passed"
+      },
+      {
+        "name": "changing a job status leaves the quoted amount untouched — the reason the grant was withdrawn",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it pins the rate to the owner's number, whatever the insert asks for",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses a shift claimed to have started yesterday",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses a shift claimed to start in the future",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it does not fire on a genuine replay from earlier in the same day",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses a shift opened on a job they are not assigned to",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses a shift opened in somebody else's name",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses a rate rise applied to a running shift",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses backdating the start of a running shift",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses moving the hours onto another job",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses passing a guessed end time off as an owner-closed one",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it allows exactly one thing: clocking out",
+        "status": "passed"
+      },
+      {
+        "name": "the clock, and what a crew member is paid for it refuses changing the end of a closed shift",
+        "status": "passed"
+      },
+      {
+        "name": "labor costs refuses a rate the owner never set",
+        "status": "passed"
+      },
+      {
+        "name": "labor costs refuses an amount that is not hours times the rate",
+        "status": "passed"
+      },
+      {
+        "name": "labor costs accepts the honest one",
+        "status": "passed"
+      },
+      {
+        "name": "labor costs accepts a rate snapshotted at clock-in after the owner changes it",
+        "status": "passed"
+      },
+      {
+        "name": "labor costs leaves a material cost alone — hours and rates are not its business",
+        "status": "passed"
+      },
+      {
+        "name": "offline replay cannot double-bill refuses the same submission key twice",
+        "status": "passed"
+      },
+      {
+        "name": "offline replay cannot double-bill and crew hold no policy on that ledger, so they cannot pre-claim their own",
+        "status": "passed"
+      },
+      {
+        "name": "revoking field-app access ends the session's reach the moment the membership goes",
+        "status": "passed"
+      }
+    ]
+  },
+  "unit": {
+    "total": 82,
+    "passed": 82,
+    "failed": 0,
+    "success": true
+  },
+  "typecheck": {
+    "command": "node node_modules/typescript/bin/tsc --noEmit -p tsconfig.test.json",
+    "exitCode": 0
+  },
+  "checks": {
+    "tables": {
+      "passed": true,
+      "sourceCount": 258,
+      "restoredCount": 258,
+      "differences": [],
+      "missing": [],
+      "intendedCorrectiveMigration": false
+    },
+    "policies": {
+      "passed": true,
+      "sourceCount": 272,
+      "restoredCount": 272,
+      "differences": [],
+      "missing": [],
+      "intendedCorrectiveMigration": false
+    },
+    "functions": {
+      "passed": true,
+      "sourceCount": 435,
+      "restoredCount": 435,
+      "differences": [
+        {
+          "schema": "public",
+          "name": "crew_set_job_status",
+          "arguments": "j uuid, new_status text",
+          "definition_hash": "47c38756de6e2792322262a4d0d66ad5",
+          "grants": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+        }
+      ],
+      "missing": [
+        {
+          "schema": "public",
+          "name": "crew_set_job_status",
+          "arguments": "j uuid, new_status text",
+          "definition_hash": "66b3235fe0e9845d972817fa29d4b1fb",
+          "grants": "{postgres=X/postgres,anon=X/postgres,authenticated=X/postgres,service_role=X/postgres}"
+        }
+      ],
+      "intendedCorrectiveMigration": true
+    },
+    "rowCounts": {
+      "tablesChecked": 260,
+      "differences": [
+        {
+          "table_name": "auth.mfa_amr_claims",
+          "row_count": "21",
+          "sourceCount": "20",
+          "explanation": "Auth records authentication-method claims for the verified session."
+        },
+        {
+          "table_name": "auth.one_time_tokens",
+          "row_count": "4",
+          "sourceCount": "5",
+          "explanation": "One-time sign-in verification consumes token state."
+        },
+        {
+          "table_name": "auth.refresh_tokens",
+          "row_count": "144",
+          "sourceCount": "143",
+          "explanation": "Existing-member Auth sign-in verification creates refresh-token state."
+        },
+        {
+          "table_name": "auth.sessions",
+          "row_count": "21",
+          "sourceCount": "20",
+          "explanation": "Existing-member Auth sign-in verification creates session state."
+        },
+        {
+          "table_name": "public.integration_events",
+          "row_count": "48",
+          "sourceCount": "47",
+          "explanation": "A lead.status_changed event was recorded at 11:02:05Z during the local preview. This is application activity after baseline verification, not a missing restore row."
+        },
+        {
+          "table_name": "public.login_events",
+          "row_count": "371",
+          "sourceCount": "370",
+          "explanation": "The browser callback recorded a login at 11:01:54Z."
+        },
+        {
+          "table_name": "public.product_tour_events",
+          "row_count": "157",
+          "sourceCount": "153",
+          "explanation": "Four tour_offered events were recorded by the local preview at 11:02–11:03Z."
+        },
+        {
+          "table_name": "public.rate_limits",
+          "row_count": "268",
+          "sourceCount": "267",
+          "explanation": "One additional application rate-limit entry after preview/sign-in/PDF requests. This operational state is not part of the business-row parity gate."
+        },
+        {
+          "table_name": "supabase_migrations.schema_migrations",
+          "row_count": "105",
+          "sourceCount": "103",
+          "explanation": "Two staged candidate applications, including the final enum-compatible function."
+        },
+        {
+          "table_name": "vault.secrets",
+          "row_count": "1",
+          "sourceCount": "0",
+          "explanation": "The one staging infrastructure secret was retained during restore; production capture has none."
+        }
+      ],
+      "onlyDocumentedOperationalTablesDiffer": true,
+      "note": "Exact baseline parity was proved before application verification. The current database includes documented sign-in, preview and migration activity; this is not a claim of byte-for-byte equality after use."
+    },
+    "fixtures": {
+      "auth_users": 0,
+      "accounts": 0
+    },
+    "function": {
+      "owner": "postgres",
+      "security_definer": true,
+      "config": [
+        "search_path=public, pg_temp"
+      ],
+      "grants": "{postgres=X/postgres,authenticated=X/postgres,service_role=X/postgres}",
+      "anon_execute": false,
+      "authenticated_execute": true,
+      "bodySha256": "125b9615d67c9b012f54c3fff430c7e2ef8bc674c0e81633fd3a3d586134e969",
+      "matchesFinalMigrationBody": true,
+      "referencesMissingColumn": false
+    },
+    "outboundIsolation": {
+      "active_cron_jobs": 0,
+      "queued_http_requests": 0
+    },
+    "authFieldParity": {
+      "users": {
+        "captured": 12,
+        "restored": 12,
+        "fields": [
+          "id",
+          "encrypted_password",
+          "phone",
+          "email_confirmed_at",
+          "phone_confirmed_at"
+        ],
+        "passed": true
+      },
+      "identities": {
+        "captured": 14,
+        "restored": 14,
+        "fields": [
+          "id",
+          "user_id",
+          "provider_id",
+          "provider",
+          "identity_data"
+        ],
+        "passed": true
+      }
+    }
+  },
+  "passed": true,
+  "scope": "Corrective migration, restored database authorization, Auth field parity and test-fixture cleanup. Existing baseline and Storage evidence remain separate.",
+  "fullDisasterRecoveryVerified": false,
+  "completedAt": "2026-09-09T12:24:52.361Z"
+}

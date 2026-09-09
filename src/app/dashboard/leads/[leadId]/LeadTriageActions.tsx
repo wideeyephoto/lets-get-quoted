@@ -2,6 +2,7 @@
 
 import { useId, useState, useTransition } from 'react';
 import { LEAD_DECLINE_REASONS } from '@/lib/leads';
+import { leadDeclineText } from '@/lib/sms-templates';
 import { archiveLeadAction, blockLeadContactAction, declineLeadAction, snoozeLeadAction, unsnoozeLeadAction } from '../actions';
 import styles from '../leads.module.css';
 
@@ -11,12 +12,6 @@ const DECLINE_LABELS: Record<string, string> = {
   below_minimum: 'Too small',
   fully_booked: 'Fully booked',
 };
-
-// Mirrors sendLeadDeclineSms() so the owner previews the exact text the
-// homeowner would receive before choosing to send it.
-function declineTextPreview(businessName: string, leadName: string, reasonPhrase: string): string {
-  return `Hi ${leadName || 'there'}, thanks for reaching out to ${businessName}. Unfortunately ${reasonPhrase}, so we won't be able to take this one on. We appreciate you thinking of us! Reply STOP to opt out.`;
-}
 
 type LeadTriageActionsProps = {
   leadId: string;
@@ -134,7 +129,7 @@ export default function LeadTriageActions({ leadId, hasPhone, snoozed, archived,
           {reason && notify && hasPhone ? (
             <div className={styles.declinePreview}>
               <span>Text preview</span>
-              <p>{declineTextPreview(businessName, leadName, LEAD_DECLINE_REASONS[reason])}</p>
+              <p>{leadDeclineText({ businessName, leadName: leadName || 'there', reason: LEAD_DECLINE_REASONS[reason] })}</p>
             </div>
           ) : null}
 

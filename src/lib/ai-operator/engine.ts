@@ -22,6 +22,7 @@ import {
 import { refundPayment } from '@/lib/payments';
 import { generateExecutiveBriefing } from './briefing';
 import { runRevOpsGrowthScan, type RevOpsScanResult } from './revops';
+import { sendActivationNudgeBatch } from '@/lib/contractor-lifecycle-emails';
 
 /** One prior turn of the cockpit conversation, replayed so follow-ups resolve. */
 export interface OperatorChatTurn {
@@ -39,12 +40,12 @@ export interface AutonomousCycleReport {
   revOpsScan: RevOpsScanResult;
   pendingHitlActions: OperatorHitlActionRequest[];
   /**
-   * Actions the operator actually performed unattended. This read
-   * `onboardingNudgesQueued` and so reported identified contractors as work done --
-   * the cron answered "4 safe actions executed" for four nudges nothing sent.
-   * Nothing on this path executes yet, so it is 0 until a sender exists.
+   * Audit actions recorded during this cycle. Renamed from safeActionsExecuted
+   * to avoid implying external messages or writes were dispatched.
    */
-  safeActionsExecuted: number;
+  auditActionsLogged: number;
+  /** @deprecated Renamed to auditActionsLogged */
+  safeActionsExecuted?: number;
   /** Contractors identified as nudge candidates. Identification, not outreach. */
   onboardingNudgeCandidates: number;
   auditLogs?: import('./types').OperatorAuditLogEntry[];
@@ -97,6 +98,7 @@ export async function runAutonomousOperatorCycle(
     briefing,
     revOpsScan,
     pendingHitlActions,
+    auditActionsLogged: 0,
     safeActionsExecuted: 0,
     onboardingNudgeCandidates: revOpsScan.onboardingNudgeCandidates,
     auditLogs,
@@ -489,6 +491,24 @@ export async function executeHitlDecision(
           break;
         }
 
+        case 'batch_activation_nudges': {
+          const isFlagEnabled = process.env.ACTIVATION_NUDGE_SEND_ENABLED === 'true';
+          const stepId = typeof action.payload.stepId === 'string' ? (action.payload.stepId as any) : 'nudge_zero_quotes';
+          const recipients = Array.isArray(action.payload.recipients) ? action.payload.recipients : [];
+
+          const batchRes = await sendActivationNudgeBatch(supabase, {
+            stepId,
+            recipients,
+            dryRun: !isFlagEnabled,
+          });
+
+          executionResult = {
+            ...batchRes,
+            flagEnabled: isFlagEnabled,
+          };
+          break;
+        }
+
         default: {
           const toolRes = await executeOperatorTool(
             action.actionType,
@@ -501,6 +521,15 @@ export async function executeHitlDecision(
             },
           );
           executionResult = toolRes.data;
+          const dataObj = toolRes.data as Record<string, any> | null | undefined;
+          if (dataObj && typeof dataObj.error === 'string') {
+            return {
+              success: false,
+              error: `Execution failed: ${dataObj.error}`,
+              executionResult: toolRes.data,
+              action,
+            };
+          }
           break;
         }
       }

@@ -32,9 +32,11 @@ export async function GET(_request: Request, { params: paramsPromise }: { params
 
   const isOwner = membership.role === 'owner';
   let canReadClients = isOwner;
+  let canSeeQuotes = isOwner;
   if (!isOwner && membership.role === 'office') {
     const held = await loadHeldCapabilities('office', membership.accountId, user.id);
     canReadClients = held.has('clients.read');
+    canSeeQuotes = held.has('quotes.read') || held.has('reports.read');
   }
 
   if (!canReadClients) {
@@ -48,7 +50,7 @@ export async function GET(_request: Request, { params: paramsPromise }: { params
   }
 
   try {
-    const detail = await loadClientDetail(supabase, membership.accountId, params.id, { isOwner });
+    const detail = await loadClientDetail(supabase, membership.accountId, params.id, { isOwner, canSeeQuotes });
     if (!detail) return NextResponse.json({ error: 'Customer not found.' }, { status: 404 });
     return NextResponse.json({ detail });
   } catch {

@@ -158,4 +158,46 @@ export function getPrevStep(tour: TourDefinition, currentStepId: string): TourSt
   return tour.steps[idx - 1] ?? null;
 }
 
+const STEP_SURFACE_NAMES: Record<string, string> = {
+  'dashboard-overview': 'dashboard',
+  'leads-inbox': 'leads',
+  'jobs-board': 'jobs',
+  'schedule-workbench': 'scheduling',
+  'website-builder': 'website builder',
+  'automations-overview': 'automations',
+};
+
+export function getTourCopySummary(allowedStepIds?: readonly string[] | null): {
+  durationText: string;
+  surfacesText: string;
+} {
+  const steps = allowedStepIds
+    ? DASHBOARD_ORIENTATION_TOUR.steps.filter((s) => allowedStepIds.includes(s.id))
+    : DASHBOARD_ORIENTATION_TOUR.steps;
+
+  const count = steps.length;
+  // If the user has access to the full tour (all steps), use the catalog's declared "90-second".
+  // When filtered (e.g. office users with 3 steps), avoid inventing an uncalibrated proportional
+  // constant (e.g. count * 15); describe it as "quick" until anchor_ms telemetry establishes
+  // empirical per-step durations.
+  const isFullTour = count >= DASHBOARD_ORIENTATION_TOUR.steps.length;
+  const durationText = isFullTour ? '90-second' : 'quick';
+
+  const surfaceNames = steps
+    .map((s) => STEP_SURFACE_NAMES[s.id] ?? s.title.toLowerCase())
+    .filter(Boolean);
+
+  let surfacesText = 'your workspace tools';
+  if (surfaceNames.length === 1) {
+    surfacesText = surfaceNames[0];
+  } else if (surfaceNames.length === 2) {
+    surfacesText = `${surfaceNames[0]} and ${surfaceNames[1]}`;
+  } else if (surfaceNames.length > 2) {
+    surfacesText = `${surfaceNames.slice(0, -1).join(', ')} and ${surfaceNames[surfaceNames.length - 1]}`;
+  }
+
+  return { durationText, surfacesText };
+}
+
 export { filterStepsForUser } from './access';
+
