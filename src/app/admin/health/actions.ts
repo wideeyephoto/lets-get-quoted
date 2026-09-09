@@ -15,9 +15,13 @@ export async function dispatchTestPageAction(): Promise<{ success: boolean; mess
   try {
     const event = await dispatchOnCallTestDrill(staff.email);
     revalidatePath('/admin/health');
+    const accepted = event.dispatchedChannels.filter(channel => channel !== 'console_log_fallback');
+    if (accepted.length === 0) {
+      return { success: false, message: 'No notification provider accepted the test page. Check channel configuration and provider errors.' };
+    }
     return {
       success: true,
-      message: `Test page successfully dispatched (ID: ${event.id}) via ${event.dispatchedChannels.join(', ')}.`,
+      message: `Test page accepted by ${accepted.join(', ')} (ID: ${event.id}). Mailbox delivery is a separate check.`,
     };
   } catch (err) {
     return {

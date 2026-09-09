@@ -214,8 +214,8 @@ export type OperationalEmergencyAlertInput = {
  */
 export async function sendOperationalEmergencyAlert(
   input: OperationalEmergencyAlertInput,
-): Promise<{ dispatched: boolean; recipient: string }> {
-  const recipient = process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+): Promise<{ dispatched: boolean; recipient: string; providerId?: string }> {
+  const recipient = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
   const resend = getResend();
 
   if (!resend || !process.env.RESEND_API_KEY) {
@@ -261,7 +261,7 @@ export async function sendOperationalEmergencyAlert(
       ${detailsHtml}
     `;
 
-    await resend.emails.send({
+    const result = await resend.emails.send({
       from: process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted Ops <system@letsgetquoted.com>",
       to: recipient,
       subject: `🚨 [${severityBadge}] SRE Alert: ${input.title}`,
@@ -287,8 +287,12 @@ export async function sendOperationalEmergencyAlert(
       }),
     });
 
-    console.info(`[founder-alerts] Successfully dispatched operational emergency alert: ${input.title}`);
-    return { dispatched: true, recipient };
+    if (result.error || !result.data?.id) {
+      console.error('[founder-alerts] Operational email was rejected by the provider');
+      return { dispatched: false, recipient };
+    }
+    console.info('[founder-alerts] Operational email accepted', { providerId: result.data.id });
+    return { dispatched: true, recipient, providerId: result.data.id };
   } catch (err) {
     console.error('[founder-alerts] Failed to send operational emergency alert email:', err);
     return { dispatched: false, recipient };

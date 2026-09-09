@@ -2348,6 +2348,18 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
   },
 
   // Platform reliability emergency incident log
+  operational_alert_findings: {
+    tableName: 'operational_alert_findings', relationship: 'system_global', primaryKeyColumn: 'source_key',
+    localAction: 'retain_immutable', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
+  operational_alert_deliveries: {
+    tableName: 'operational_alert_deliveries', relationship: 'system_global', primaryKeyColumn: 'id',
+    localAction: 'retain_immutable', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
   platform_incidents: {
     tableName: 'platform_incidents',
     relationship: 'system_global',
