@@ -2,6 +2,8 @@
 
 Prepared September 9, 2026. Status: **Gmail and Outlook authentication/reply passed; a real production quote link passed. Deployed domain lifecycle rehearsal and the seven-day canary remain open.**
 
+Release update, 22:09–22:20 UTC: PR #64 is merged and READY deployment `dpl_955shMPfprmxsadkAEui6PqeaKC9` serves the public app/webhook with the explicitly approved BrokePipes-only allowlist. Full CI passed 14,590 tests and build. Deployed product enrollment created a pending binding, and its exact return-path DNS is now published. Another authenticated workspace has no enrollment UI. Four authentic provider callback replays returned 202 with durable quarantine; the 20 known rehearsal incident records have explicit retained dispositions. The website watcher checked/attached one pending fixture through deployed credentials. Hourly follow-ups are ACTIVE; the seven-day clock remains unstarted. [Current evidence and remaining work](contractor-domains-canary-2026-09-09.md).
+
 ## September 9 verification update
 
 The [Outlook and canary follow-up](contractor-domains-canary-2026-09-09.md) supersedes the receiver-coverage and concurrency gaps below: Outlook authentication and its reply to Gmail passed; production quote J-1004 opened correctly from its received email. The earlier probes' homepage URL was a test-setup error. The account reservation index is applied in staging and production. The follow-up also records the earlier staging-tagged messages' production callback failures; do not treat those as a clean webhook rehearsal.
@@ -12,10 +14,11 @@ The [dated verification report](contractor-domains-verification-2026-09-09.md) r
 - [x] Gmail Reply-To selection and self-reply exercised; real provider-rejection fallback delivered.
 - [x] Production website TLS, watcher scheduling, and disposable provider-binding cleanup observed with the report's explicit scope limits.
 - [x] Outlook authentication and separate-mailbox reply receipt; real product quote-link verification.
-- [ ] Deploy the recovery patch and complete D–H through the app, including remaining failure drills.
+- [x] Deploy the recovery patch with the approved single-workspace eligibility settings and verify the public app/webhook aliases.
+- [ ] Complete the remaining D–H app and provider/DNS drills; do not treat the successful release or callback replay as completion of unrelated scenarios.
 - [ ] Activate one approved production workspace and complete the seven-run canary before expansion.
 
-The initial observations below are historical. Resend now also contains the reserved `blackholeart.com` resource (two known occupied slots including the platform domain). Workspace allowlist code exists; the production flag and allowlist remain absent. This task did not revalidate or close the separate credential-recovery work in B08.
+The initial observations below are historical. The standalone reserved `blackholeart.com` resource was explicitly retired and replaced by production product binding `de786e7c-a449-42b0-9917-85cc10af8692`. Production flag and one-workspace allowlist are applied and deployed. Recheck current occupied slots before further admissions. This task did not independently close the separate credential-recovery work in B08.
 
 Scope: LGQ sends contractor quotes, invoices, and supported job emails from a verified contractor domain. Replies go to the contractor's existing mailbox. This release does not provision inboxes, ingest incoming mail, or configure website domains. Successful authentication is required; universal inbox placement is not a promise we can make.
 
