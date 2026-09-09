@@ -61,7 +61,7 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
   function builder(table: string) {
     const ctx: {
       table: string;
-      op: 'select' | 'update';
+      op: 'select' | 'update' | 'delete';
       cols: string;
       filters: Record<string, unknown>;
       patch: Record<string, unknown> | null;
@@ -69,6 +69,9 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
 
     const resolve = () => {
       if (ctx.table === 'sites') return { data: { company_name: 'Elite Electricians' }, error: null };
+      if (ctx.op === 'delete') {
+        return { data: null, error: null };
+      }
       if (ctx.op === 'update') {
         const id = String(ctx.filters.id);
         updates.push({ id, patch: ctx.patch ?? {} });
@@ -82,12 +85,15 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
     };
 
     const b: Record<string, unknown> = {
-      select(cols = '') { ctx.cols = cols; return b; },
+      select(cols = '', _opts?: unknown) { ctx.cols = cols; return b; },
       update(patch: Record<string, unknown>) { ctx.op = 'update'; ctx.patch = patch; return b; },
+      delete() { ctx.op = 'delete'; return b; },
       in() { return b; },
       order() { return b; },
       limit() { return b; },
       eq(col: string, val: unknown) { ctx.filters[col] = val; return b; },
+      neq(col: string, val: unknown) { return b; },
+      ilike(col: string, val: unknown) { return b; },
       maybeSingle() { return Promise.resolve(resolve()); },
       then(onOk: (v: unknown) => unknown, onErr?: (e: unknown) => unknown) {
         return Promise.resolve(resolve()).then(onOk, onErr);

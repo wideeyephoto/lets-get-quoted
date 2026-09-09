@@ -68,7 +68,7 @@ import PriceBookSettingsSection from './PriceBookSettingsSection';
 import StationerySettingsSection from './StationerySettingsSection';
 import EmailSendingDomainSection from './EmailSendingDomainSection';
 import { type EmailSendingDomainRow } from './email-domain-actions';
-import { isEmailSendingDomainsFeatureEnabled } from '@/lib/resend-domains';
+import { isEmailSendingDomainsFeatureEnabled, isWorkspaceEligibleForSendingDomains } from '@/lib/resend-domains';
 import HomeownerFinancingSection from './HomeownerFinancingSection';
 import { isHomeownerFinancingFeatureEnabled } from '@/lib/acorn-financing';
 import type { HomeownerFinancingEnrollmentRow } from '@/lib/bnpl-financing';
@@ -148,6 +148,7 @@ export default async function SettingsPage({
   const webhookDeliveries = ((webhookDeliveriesResult?.data ?? []) as unknown[]) as WebhookDeliveryView[];
 
   const emailSendingDomainsEnabled = isEmailSendingDomainsFeatureEnabled();
+  const isWorkspaceEligibleForDomains = isWorkspaceEligibleForSendingDomains(accountId);
   const { data: emailDomainData } = emailSendingDomainsEnabled
     ? await supabase
         .from('email_sending_domains')
@@ -157,6 +158,8 @@ export default async function SettingsPage({
         .limit(1)
         .maybeSingle()
     : { data: null };
+  const showEmailSendingDomains =
+    emailSendingDomainsEnabled && (isWorkspaceEligibleForDomains || Boolean(emailDomainData));
 
   const homeownerFinancingEnabled = isHomeownerFinancingFeatureEnabled();
   const { data: financingEnrollmentData } = homeownerFinancingEnabled
@@ -808,10 +811,13 @@ export default async function SettingsPage({
                 </section>
 
                 <StationerySettingsSection />
-                <EmailSendingDomainSection
-                  initialDomain={emailDomainData as EmailSendingDomainRow | null}
-                  isEnabled={emailSendingDomainsEnabled}
-                />
+                {showEmailSendingDomains && (
+                  <EmailSendingDomainSection
+                    initialDomain={emailDomainData as EmailSendingDomainRow | null}
+                    isEnabled={emailSendingDomainsEnabled}
+                    isEnrollmentAllowed={isWorkspaceEligibleForDomains}
+                  />
+                )}
               </>
           ),
         },
