@@ -32,18 +32,18 @@ export async function GET() {
   } = await supabase.auth.getUser();
 
   if (!user) {
-    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null, textToJobCount: 0, newestTextToJobCreatedAt: null });
+    return NextResponse.json({ loggedIn: false, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null, textToJobCount: 0, newestTextToJobCreatedAt: null, workspaces: [], hasMultipleWorkspaces: false });
   }
 
   const membership = await getCurrentMembership(user.id);
 
   if (!membership.accountId) {
-    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null, textToJobCount: 0, newestTextToJobCreatedAt: null });
+    return NextResponse.json({ loggedIn: true, onboarded: false, sitePublished: false, siteUrl: null, businessName: null, logoUrl: null, navLogoTop: false, newQuoteRequestCount: 0, jobsNeedingAttentionCount: 0, unscheduledJobCount: 0, openQuickStopRequestCount: 0, newestQuoteRequestId: null, newestQuoteRequestCreatedAt: null, textToJobCount: 0, newestTextToJobCreatedAt: null, workspaces: [], hasMultipleWorkspaces: false });
   }
 
   const admin = createAdminClient();
   await expireStaleLeads(admin, membership.accountId);
-  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }, { data: balanceRows }, textToJobStatus] = await Promise.all([
+  const [{ data: account }, { data: site }, { data: newLeadRows }, { data: openLeadRows }, jobs, { count: openQuickStopRequestCount }, { data: balanceRows }, textToJobStatus, { data: userMemberships }] = await Promise.all([
     admin
       .from('accounts')
       .select(
@@ -113,6 +113,11 @@ export async function GET() {
       .select('resource_code, available_units')
       .eq('account_id', membership.accountId),
     loadTextToJobStatus(admin, membership.accountId),
+    admin
+      .from('memberships')
+      .select('account_id, role, deactivated_at, accounts(business_name)')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: true }),
   ]);
       // Badges mean "needs YOUR attention", not inventory. Jobs = quotes still
       // in the approval stage (drop the moment they're approved -> in_progress);
@@ -228,20 +233,40 @@ export async function GET() {
     }
   }
 
+  const activeWorkspaces = (userMemberships ?? [])
+    .filter((m) => !m.deactivated_at && (m.role === 'owner' || m.role === 'office') && m.account_id)
+    .map((m) => {
+      const acct = Array.isArray(m.accounts) ? m.accounts[0] : m.accounts;
+      return {
+        accountId: m.account_id as string,
+        businessName: (acct as { business_name?: string | null } | null)?.business_name || 'Workspace',
+        role: m.role as 'owner' | 'office',
+        isCurrent: m.account_id === membership.accountId,
+      };
+    });
+
+  const resolvedBizName = pickBusinessName(site, account, '') || null;
+  const fallbackWorkspaces = membership.accountId
+    ? [
+        {
+          accountId: membership.accountId,
+          businessName: resolvedBizName || 'Workspace',
+          role: (membership.role as 'owner' | 'office') || 'owner',
+          isCurrent: true,
+        },
+      ]
+    : [];
+  const workspacesList = activeWorkspaces.length > 0 ? activeWorkspaces : fallbackWorkspaces;
+  const hasMultipleWorkspaces = workspacesList.length > 1;
+
   const response = NextResponse.json({
     loggedIn: true,
     onboarded: account?.connect_onboarded ?? false,
     sitePublished,
     siteUrl,
-    // The same ladder every outbound message uses, rather than a second one
-    // spelled out by hand here. The difference is the placeholder: this used to
-    // print the literal "My Business" that signup writes into
-    // accounts.business_name, so the rail showed one name, the website showed
-    // another and the texts showed a third — three identities for one business,
-    // which is what a customer sees as inconsistency and we saw as three
-    // different fields. '' as the fallback because the rail renders nothing at
-    // all rather than a stand-in name.
-    businessName: pickBusinessName(site, account, '') || null,
+    businessName: resolvedBizName,
+    workspaces: workspacesList,
+    hasMultipleWorkspaces,
     logoUrl: (site?.logo_url as string | null) ?? null,
     navLogoTop: Boolean((site?.content as Record<string, unknown> | null)?.navLogoTop),
     newQuoteRequestCount,

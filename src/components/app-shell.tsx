@@ -18,6 +18,7 @@ import { isSectionNew, markNavSeen, navAttentionLabel, parseNavSeen, NAV_SEEN_ST
 import { attentionBadgeLabel } from '@/lib/lead-queue';
 import { useNavCustomization, useNavCollapsed, useNavPinned } from '@/lib/nav-customization';
 import { useNavVisibility } from '@/lib/nav-visibility-client';
+import { selectWorkspaceAction } from '@/app/workspaces/actions';
 
 // The leads badge is the only one of the four fed by a capped scan (500 rows,
 // see the status route), so it is the only one whose digits can run away from
@@ -153,11 +154,20 @@ export const NAV_GROUPS: { label: string; accent: string; hrefs: string[] }[] = 
   },
 ];
 
+export type ShellWorkspace = {
+  accountId: string;
+  businessName: string;
+  role: 'owner' | 'office';
+  isCurrent: boolean;
+};
+
 type AccountStatus = {
   onboarded: boolean;
   sitePublished: boolean;
   siteUrl: string | null;
   businessName: string | null;
+  workspaces?: ShellWorkspace[];
+  hasMultipleWorkspaces?: boolean;
   logoUrl?: string | null;
   navLogoTop?: boolean;
   newQuoteRequestCount: number;
@@ -356,6 +366,9 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
   const [siteUrl, setSiteUrl] = useState<string | null>(null);
   const [businessName, setBusinessName] = useState<string | null>(null);
   const [contractorLogoUrl, setContractorLogoUrl] = useState<string | null>(null);
+  const [workspaces, setWorkspaces] = useState<ShellWorkspace[]>([]);
+  const [isWorkspaceMenuOpen, setIsWorkspaceMenuOpen] = useState(false);
+  const workspaceMenuRef = useRef<HTMLDivElement>(null);
   // WHICH trigger is open, not merely whether one is. Both the rail and the
   // mobile bar render a "+ New", and both are in the DOM at once (the rail is a
   // drawer on a phone, not an unmounted branch). A shared boolean would open
@@ -674,6 +687,107 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     items[nextIdx].focus();
   }
 
+  // The workspace switcher menu closes on outside click or Escape.
+  useEffect(() => {
+    if (!isWorkspaceMenuOpen) return;
+    const wrap = workspaceMenuRef.current;
+    wrap?.querySelector<HTMLElement>('[role="menuitem"]:not([disabled])')?.focus();
+    const onPointerDown = (event: MouseEvent) => {
+      if (wrap && !wrap.contains(event.target as Node)) setIsWorkspaceMenuOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsWorkspaceMenuOpen(false);
+        wrap?.querySelector<HTMLElement>('button[aria-haspopup="menu"]')?.focus();
+      }
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [isWorkspaceMenuOpen]);
+
+  // Close workspace menu on route navigation
+  useEffect(() => {
+    setIsWorkspaceMenuOpen(false);
+  }, [pathname]);
+
+  // Arrow keys move focus between workspace menu items.
+  function onWorkspaceMenuKeyDown(event: ReactKeyboardEvent<HTMLDivElement>) {
+    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') return;
+    const items = Array.from(workspaceMenuRef.current?.querySelectorAll<HTMLElement>('[role="menuitem"]:not([disabled])') ?? []);
+    if (!items.length) return;
+    event.preventDefault();
+    const idx = items.indexOf(document.activeElement as HTMLElement);
+    const nextIdx = event.key === 'ArrowDown' ? (idx + 1) % items.length : (idx - 1 + items.length) % items.length;
+    items[nextIdx].focus();
+  }
+
+  function renderWorkspaceMenu(id: string) {
+    return (
+      <div
+        className="sidenav-workspace-menu"
+        id={id}
+        role="menu"
+        aria-label="Workspaces"
+        onKeyDown={onWorkspaceMenuKeyDown}
+      >
+        <div className="sidenav-workspace-menu-header">
+          <span className="sidenav-workspace-menu-title">Workspaces</span>
+          <span className="sidenav-workspace-badge">{workspaces.length}</span>
+        </div>
+        <div className="sidenav-workspace-list">
+          {workspaces.map((ws) => (
+            <form key={ws.accountId} action={selectWorkspaceAction} className="sidenav-workspace-form">
+              <input type="hidden" name="accountId" value={ws.accountId} />
+              <button
+                type="submit"
+                role="menuitem"
+                className={`sidenav-workspace-item${ws.isCurrent ? ' active' : ''}`}
+                disabled={ws.isCurrent}
+                title={ws.isCurrent ? `${ws.businessName} (Current workspace)` : `Switch to ${ws.businessName}`}
+              >
+                <div className="sidenav-workspace-item-text">
+                  <span className="sidenav-workspace-item-name">{ws.businessName}</span>
+                  <span className="sidenav-workspace-item-role">{ws.role === 'owner' ? 'Owner' : 'Office'}</span>
+                </div>
+                {ws.isCurrent ? (
+                  <svg
+                    className="sidenav-workspace-check"
+                    viewBox="0 0 20 20"
+                    fill="currentColor"
+                    width="14"
+                    height="14"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                ) : null}
+              </button>
+            </form>
+          ))}
+        </div>
+        <div className="sidenav-workspace-footer">
+          <Link
+            href="/workspaces"
+            role="menuitem"
+            className="sidenav-workspace-manage"
+            onClick={() => setIsWorkspaceMenuOpen(false)}
+          >
+            <span>All workspaces</span>
+            <span className="sidenav-workspace-arrow" aria-hidden="true">→</span>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   // Track sign-in state client-side so the logo can route logged-in
   // contractors straight to their dashboard from anywhere in the app
   // (marketing pages, etc.), not just while already inside /dashboard.
@@ -709,6 +823,8 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
       setSiteUrl(null);
       setBusinessName(null);
       setContractorLogoUrl(null);
+      setWorkspaces([]);
+      setIsWorkspaceMenuOpen(false);
       return;
     }
     let cancelled = false;
@@ -721,6 +837,7 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
             setSitePublished(Boolean(data.sitePublished));
             setSiteUrl(data.siteUrl ?? null);
             setBusinessName(data.businessName ?? null);
+            setWorkspaces(Array.isArray(data.workspaces) ? data.workspaces : []);
             setContractorLogoUrl(data.logoUrl ?? null);
             setNewQuoteRequestCount(Number(data.newQuoteRequestCount ?? 0));
             setUnreadMessageCount(Number(data.unreadMessageCount ?? 0));
@@ -1181,7 +1298,27 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
           </div>
 
           <div className="sidenav-lead">
-            {businessName && !contractorLogoTop ? <p className="sidenav-bizname" title={businessName}>{businessName}</p> : null}
+            {workspaces.length > 1 ? (
+              <div className="sidenav-workspace-wrap" ref={workspaceMenuRef}>
+                <button
+                  type="button"
+                  className="sidenav-workspace-trigger"
+                  aria-haspopup="menu"
+                  aria-expanded={isWorkspaceMenuOpen}
+                  aria-controls="sidenav-workspace-menu"
+                  onClick={() => setIsWorkspaceMenuOpen((open) => !open)}
+                  title={businessName ? `Switch workspace (${businessName})` : 'Switch workspace'}
+                >
+                  <span className="sidenav-workspace-name" title={businessName ?? undefined}>
+                    {businessName || 'Workspace'}
+                  </span>
+                  <span className={`sidenav-workspace-caret${isWorkspaceMenuOpen ? ' open' : ''}`} aria-hidden="true">▾</span>
+                </button>
+                {isWorkspaceMenuOpen ? renderWorkspaceMenu('sidenav-workspace-menu') : null}
+              </div>
+            ) : businessName && !contractorLogoTop ? (
+              <p className="sidenav-bizname" title={businessName}>{businessName}</p>
+            ) : null}
             <SmartSearch variant="rail" onOpenChange={setIsSearchOpen} />
             {/* The two things a contractor starts the day with, on one row.
                 Plan Day is the wider of the two because it carries three

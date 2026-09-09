@@ -3673,13 +3673,231 @@ h3 {
 
 .sidenav-bizname {
   margin: 0;
-  padding: 0 0.35rem;
+  padding: 0.2rem 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.25;
+  color: rgba(var(--ink-rgb), 0.90);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidenav-workspace-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.sidenav-workspace-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  width: 100%;
+  margin: 0;
+  padding: 0.2rem 0.35rem;
+  border-radius: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  line-height: 1.25;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.sidenav-workspace-trigger:hover,
+.sidenav-workspace-trigger[aria-expanded="true"] {
+  background: rgba(var(--ink-rgb), 0.07);
+  border-color: var(--edge-t10);
+}
+
+.sidenav-workspace-trigger:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21);
+  outline-offset: 1px;
+}
+
+.sidenav-workspace-name {
   font-size: 0.78rem;
   font-weight: 600;
   color: rgba(var(--ink-rgb), 0.90);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+}
+
+.sidenav-workspace-caret {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.72rem;
+  color: rgba(var(--ink-rgb), 0.55);
+  transition: transform 0.15s ease;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.sidenav-workspace-caret.open {
+  transform: rotate(180deg);
+}
+
+.sidenav-workspace-menu {
+  position: absolute;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  min-width: 13.5rem;
+  max-width: calc(100vw - 2rem);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  padding: 0.35rem;
+  border-radius: 12px;
+  background: #0e1c2e;
+  border: 1px solid var(--edge-t10);
+  box-shadow: 0 22px 46px -18px rgba(0, 0, 0, 0.72);
+}
+
+.sidenav-workspace-menu-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.35rem 0.6rem 0.25rem;
+  border-bottom: 1px solid var(--edge-t10);
+  margin-bottom: 0.2rem;
+}
+
+.sidenav-workspace-menu-title {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: rgba(var(--ink-rgb), 0.50);
+}
+
+.sidenav-workspace-badge {
+  font-size: 0.68rem;
+  font-weight: 600;
+  padding: 0.05rem 0.35rem;
+  border-radius: 999px;
+  background: rgba(var(--ink-rgb), 0.08);
+  color: rgba(var(--ink-rgb), 0.70);
+}
+
+.sidenav-workspace-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-height: 16rem;
+  overflow-y: auto;
+}
+
+.sidenav-workspace-form {
+  margin: 0;
+  padding: 0;
+}
+
+.sidenav-workspace-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  gap: 0.6rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  color: rgba(var(--ink-rgb), 0.82);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidenav-workspace-item:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.sidenav-workspace-item:focus-visible {
+  outline: 2px solid var(--accent, #ff7a21);
+  outline-offset: -1px;
+}
+
+.sidenav-workspace-item:hover:not(:disabled) {
+  background: rgba(255, 122, 33, 0.14);
+  color: #fff;
+}
+
+.sidenav-workspace-item:hover:not(:disabled) .sidenav-workspace-item-role {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.sidenav-workspace-item.active {
+  background: rgba(var(--ink-rgb), 0.08);
+  color: rgba(var(--ink-rgb), 0.95);
+  cursor: default;
+}
+
+.sidenav-workspace-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.sidenav-workspace-item-name {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sidenav-workspace-item-role {
+  font-size: 0.68rem;
+  color: rgba(var(--ink-rgb), 0.55);
+  text-transform: capitalize;
+}
+
+.sidenav-workspace-check {
+  color: var(--accent, #ff7a21);
+  flex-shrink: 0;
+}
+
+.sidenav-workspace-footer {
+  border-top: 1px solid var(--edge-t10);
+  margin-top: 0.2rem;
+  padding-top: 0.25rem;
+}
+
+.sidenav-workspace-manage {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.4rem 0.6rem;
+  border-radius: 8px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(var(--ink-rgb), 0.70);
+  text-decoration: none;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.sidenav-workspace-manage:hover {
+  background: rgba(var(--ink-rgb), 0.06);
+  color: rgba(var(--ink-rgb), 0.95);
+}
+
+.sidenav-workspace-arrow {
+  font-size: 0.82rem;
+  transition: transform 0.15s ease;
+}
+
+.sidenav-workspace-manage:hover .sidenav-workspace-arrow {
+  transform: translateX(2px);
 }
 
 /* Quick Stops wears its wordmark where the other rows carry an icon and a word.
@@ -4779,7 +4997,8 @@ h3 {
   }
 
   .sidenav.collapsed .sidenav-contractor-bizname,
-  .sidenav.collapsed .sidenav-bizname {
+  .sidenav.collapsed .sidenav-bizname,
+  .sidenav.collapsed .sidenav-workspace-wrap {
     display: none;
   }
 
@@ -32454,6 +32673,50 @@ select optgroup {
 }
 
 :root[data-theme='sunlight'] .sidenav-new-item:hover {
+  background: #f1f5f9;
+  color: #000000;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-menu {
+  background: #ffffff;
+  border: 2px solid #090d16;
+  color: #090d16;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-menu-header,
+:root[data-theme='sunlight'] .sidenav-workspace-footer {
+  border-color: rgba(9, 13, 22, 0.12);
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-menu-title {
+  color: #475569;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-badge {
+  background: #f1f5f9;
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-item {
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-item:hover:not(:disabled) {
+  background: #f1f5f9;
+  color: #000000;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-item.active {
+  background: #f8fafc;
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-manage {
+  color: #090d16;
+}
+
+:root[data-theme='sunlight'] .sidenav-workspace-manage:hover {
   background: #f1f5f9;
   color: #000000;
 }
