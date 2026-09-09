@@ -21,8 +21,9 @@ const uri = 'otpauth://totp/' + encodeURIComponent(issuer + ':' + accountEmail)
 function mockProvider(qr, secret) {
   const scenario = new URLSearchParams(location.search).get('scenario');
   const existing = { id: 'existing-factor', factor_type: 'totp', friendly_name: 'Authenticator app', status: 'verified' };
+  const pending = { ...existing, id: 'pending-factor', status: 'unverified' };
   const state = window.mfaTest = {
-    calls: [], factors: scenario === 'existing' ? [existing] : [],
+    calls: [], factors: scenario === 'existing' ? [existing] : scenario === 'pending' ? [pending] : [],
     level: 'aal1', rejectVerify: false, rejectRemove: false, stayAal1: false,
   };
   const record = (method, args) => state.calls.push({ method, args });
@@ -113,7 +114,8 @@ async function check() {
   const open = async (scenario = '') => {
     await page.goto(baseURL + '/tmp/mfa-browser/index.html?scenario=' + scenario);
     await page.getByRole('heading', { name: 'Two-factor authentication' }).waitFor();
-    if (scenario !== 'load-error') await setupButton().waitFor();
+    if (scenario === 'pending') await page.getByRole('form', { name: 'Complete authenticator setup' }).waitFor();
+    else if (scenario !== 'load-error') await setupButton().waitFor();
   };
   const start = async () => {
     await setupButton().click();
@@ -202,6 +204,32 @@ async function check() {
     assert.equal((await page.locator('body').innerText()).includes('High-impact actions are unlocked'), false);
     report('AAL1 sessions never receive an unlocked success message');
 
+    await open('pending');
+    await page.reload();
+    const resumeForm = page.getByRole('form', { name: 'Complete authenticator setup' });
+    await resumeForm.waitFor();
+    assert.equal(await page.getByAltText('Authenticator enrollment QR code').count(), 0);
+    assert.equal(await resumeForm.getByRole('button', { name: 'Verify & activate' }).isDisabled(), true);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.screenshot({ path: path.join(scratch, 'mobile-resume-setup.png'), fullPage: true });
+    await page.evaluate(() => { window.mfaTest.rejectVerify = true; });
+    await resumeForm.getByLabel('Six-digit authenticator code').fill('123456');
+    await resumeForm.getByRole('button', { name: 'Verify & activate' }).click();
+    await page.getByText('Invalid verification code. Try again.', { exact: true }).waitFor();
+    assert.equal(await resumeForm.isVisible(), true);
+    assert.equal(await page.getByText('MFA verified', { exact: true }).count(), 0);
+    await page.evaluate(() => { window.mfaTest.rejectVerify = false; });
+    await resumeForm.getByLabel('Six-digit authenticator code').fill('654321');
+    await resumeForm.getByLabel('Six-digit authenticator code').press('Enter');
+    await page.getByText('MFA verified', { exact: true }).waitFor();
+    const resumedCalls = await page.evaluate(() => window.mfaTest.calls);
+    assert.equal(resumedCalls.some(call => call.method === 'enroll' || call.method === 'unenroll'), false);
+    assert.deepEqual(resumedCalls.filter(call => call.method === 'verify').at(-1).args, {
+      factorId: 'pending-factor', challengeId: 'challenge-id', code: '654321',
+    });
+    assert.equal(await resumeForm.count(), 0);
+    report('Reloaded incomplete setup can retry and activate its saved factor without re-enrollment');
+
     await open('load-error');
     await page.getByText('Could not load your authenticators.', { exact: false }).waitFor();
     assert.equal(await setupButton().isDisabled(), true);
@@ -214,4 +242,3 @@ async function check() {
 if (process.argv.includes('--serve')) await serve();
 else if (process.argv.includes('--check')) await check();
 else throw new Error('Use --serve or --check.');
-

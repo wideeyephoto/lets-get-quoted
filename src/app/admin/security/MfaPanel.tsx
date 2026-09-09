@@ -345,11 +345,41 @@ export default function MfaPanel({ stepUp, accountEmail }: { stepUp: boolean; ac
         </div>
       ) : null}
 
-      {/* Incomplete setup cleanup prompt */}
+      {/* A saved factor can be verified after navigation without its original QR. */}
       {unverifiedTotp && !qr ? (
         <div className={styles.mfaWarningCard}>
           <p className={styles.mfaPromptText}>
             You have an incomplete authenticator setup ({unverifiedTotp.friendly_name ?? 'TOTP'} · unverified).
+          </p>
+          <p id="mfa-resume-help" className={styles.mfaPromptText}>
+            Already added it to your authenticator? Enter its current six-digit code to finish setup.
+            You do not need to scan the QR code again.
+          </p>
+          <form
+            aria-label="Complete authenticator setup"
+            className={styles.formStack}
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (!busy) void verifyTotp(unverifiedTotp.id);
+            }}
+          >
+            <label htmlFor="mfa-code-resume">Six-digit authenticator code</label>
+            <input
+              id="mfa-code-resume"
+              className={styles.input}
+              value={code}
+              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              aria-describedby="mfa-resume-help"
+              placeholder="000000"
+            />
+            <button type="submit" className="btn primary" disabled={busy || code.length !== 6}>
+              {busy ? 'Verifying…' : 'Verify & activate'}
+            </button>
+          </form>
+          <p className={styles.muted}>
+            If you never saved it or no longer have its codes, discard this setup and start again.
           </p>
           <button
             type="button"
