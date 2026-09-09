@@ -629,3 +629,233 @@ export async function runContractorLifecycleSweep(
 
   return result;
 }
+
+export interface ActivationNudgeBatchRecipient {
+  accountId: string;
+  businessName: string;
+  email: string;
+  ageDays?: number;
+  quotedJobs?: number;
+}
+
+export interface ActivationNudgeBatchResult {
+  sent: number;
+  skipped: number;
+  errors: number;
+  dryRun: boolean;
+  details: Array<{
+    accountId: string;
+    stepId: string;
+    status: 'sent' | 'skipped' | 'error';
+    note?: string;
+  }>;
+}
+
+/**
+ * Executes a targeted batch of contractor activation nudges (e.g., from HITL approval).
+ * Supports safe dry-run mode and re-evaluates mailable/suppression/sent status at execution time.
+ */
+export async function sendActivationNudgeBatch(
+  admin: SupabaseClient,
+  input: {
+    stepId?: ContractorLifecycleStepId;
+    recipients?: ActivationNudgeBatchRecipient[];
+    dryRun?: boolean;
+  },
+): Promise<ActivationNudgeBatchResult> {
+  const stepId = input.stepId || 'nudge_zero_quotes';
+  const step = CONTRACTOR_LIFECYCLE_STEPS.find((s) => s.id === stepId);
+  if (!step) {
+    throw new Error(`Unknown contractor lifecycle step: "${stepId}"`);
+  }
+
+  const recipients = input.recipients ?? [];
+  const isDryRun = Boolean(input.dryRun);
+
+  const result: ActivationNudgeBatchResult = {
+    sent: 0,
+    skipped: 0,
+    errors: 0,
+    dryRun: isDryRun,
+    details: [],
+  };
+
+  if (!recipients.length) {
+    return result;
+  }
+
+  const accountIds = [...new Set(recipients.map((r) => r.accountId))];
+
+  // 1. Re-check suppressions fail-closed
+  const { data: suppressions, error: suppressionError } = await admin
+    .from('email_suppression')
+    .select('account_id, email')
+    .in('account_id', accountIds);
+
+  if (suppressionError) {
+    console.error('[activation-nudges] Failed to check suppression list:', suppressionError.message);
+    throw new Error(`Email suppression lookup failed: ${suppressionError.message}`);
+  }
+
+  const suppressedSet = new Set<string>();
+  for (const s of suppressions ?? []) {
+    if (s.email) {
+      suppressedSet.add(`${s.account_id}:${String(s.email).toLowerCase().trim()}`);
+    }
+  }
+
+  // 2. Re-check already-sent ledger
+  const { data: sentEvents, error: eventsError } = await admin
+    .from('account_events')
+    .select('account_id, meta')
+    .in('account_id', accountIds)
+    .eq('kind', 'contractor_lifecycle_email_sent');
+
+  if (eventsError) {
+    console.warn('[activation-nudges] Warning checking sent events:', eventsError.message);
+  }
+
+  const alreadySentMap = new Map<string, Set<string>>();
+  for (const ev of sentEvents ?? []) {
+    if (!alreadySentMap.has(ev.account_id)) {
+      alreadySentMap.set(ev.account_id, new Set());
+    }
+    const meta = ev.meta as Record<string, unknown> | null;
+    const sId = typeof meta?.step_id === 'string' ? meta.step_id : null;
+    if (sId) {
+      alreadySentMap.get(ev.account_id)?.add(sId);
+    }
+  }
+
+  const resend = isDryRun ? null : getResendClient();
+
+  for (const r of recipients) {
+    const cleanEmail = (r.email || '').trim().toLowerCase();
+
+    // Quality gate: is deliverable & not junk
+    if (!cleanEmail || !isMailable(cleanEmail)) {
+      result.skipped++;
+      result.details.push({
+        accountId: r.accountId,
+        stepId: step.id,
+        status: 'skipped',
+        note: `Address "${cleanEmail}" failed deliverability/quality checks`,
+      });
+      continue;
+    }
+
+    // Suppression gate
+    if (suppressedSet.has(`${r.accountId}:${cleanEmail}`)) {
+      result.skipped++;
+      result.details.push({
+        accountId: r.accountId,
+        stepId: step.id,
+        status: 'skipped',
+        note: `Address "${cleanEmail}" is suppressed`,
+      });
+      continue;
+    }
+
+    // Already-sent gate
+    if (alreadySentMap.get(r.accountId)?.has(step.id)) {
+      result.skipped++;
+      result.details.push({
+        accountId: r.accountId,
+        stepId: step.id,
+        status: 'skipped',
+        note: `Step "${step.id}" already sent to account ${r.accountId}`,
+      });
+      continue;
+    }
+
+    const recipientPayload: PlatformCampaignRecipient = {
+      email: cleanEmail,
+      name: null,
+      businessName: r.businessName || 'Your Business',
+      accountId: r.accountId,
+    };
+
+    try {
+      const html = renderContractorLifecycleEmailHtml(step, recipientPayload);
+      const subject = interpolateTokens(step.subject, recipientPayload);
+      const oneClickUrl = buildUnsubscribeOneClickUrl(r.accountId, cleanEmail);
+      const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
+
+      if (isDryRun) {
+        result.sent++;
+        result.details.push({
+          accountId: r.accountId,
+          stepId: step.id,
+          status: 'sent',
+          note: `[DRY-RUN] Subject: "${subject}" to ${cleanEmail}`,
+        });
+        continue;
+      }
+
+      if (!resend) {
+        result.skipped++;
+        result.details.push({
+          accountId: r.accountId,
+          stepId: step.id,
+          status: 'skipped',
+          note: 'No Resend API key configured',
+        });
+        continue;
+      }
+
+      const sendRes = await resend.emails.send({
+        from: fromAddress,
+        to: cleanEmail,
+        reply_to: step.replyTo,
+        subject,
+        html,
+        headers: listUnsubscribeHeaders(oneClickUrl),
+        tags: [
+          { name: 'kind', value: 'contractor_lifecycle' },
+          { name: 'step', value: step.id },
+          { name: 'account_id', value: r.accountId.replace(/[^a-zA-Z0-9_-]/g, '_') },
+        ],
+      });
+
+      if (sendRes.error) {
+        result.errors++;
+        result.details.push({
+          accountId: r.accountId,
+          stepId: step.id,
+          status: 'error',
+          note: sendRes.error.message,
+        });
+        continue;
+      }
+
+      await recordAccountEvent({
+        accountId: r.accountId,
+        kind: 'contractor_lifecycle_email_sent',
+        summary: `Sent Activation Nudge (${step.id}): "${subject}" to ${cleanEmail}`,
+        meta: {
+          step_id: step.id,
+          recipient_email: cleanEmail,
+          message_id: sendRes.data?.id,
+          sent_at: new Date().toISOString(),
+        },
+      });
+
+      result.sent++;
+      result.details.push({
+        accountId: r.accountId,
+        stepId: step.id,
+        status: 'sent',
+      });
+    } catch (err) {
+      result.errors++;
+      result.details.push({
+        accountId: r.accountId,
+        stepId: step.id,
+        status: 'error',
+        note: err instanceof Error ? err.message : String(err),
+      });
+    }
+  }
+
+  return result;
+}

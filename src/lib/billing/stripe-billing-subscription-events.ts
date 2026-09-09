@@ -99,6 +99,18 @@ export class ForeignSubscriptionRailError extends Error {
 }
 
 /**
+ * This event is a test-mode rehearsal received in a live environment.
+ * A sentinel, not a failure code: ignored rather than failed.
+ */
+export class TestModeSubscriptionRehearsalError extends Error {
+  override readonly name = 'TestModeSubscriptionRehearsalError';
+
+  constructor() {
+    super('Stripe test-mode subscription event received in live environment.');
+  }
+}
+
+/**
  * Is this subscription one a capacity top-up created?
  *
  * Read from `metadata`, which the top-up Checkout attaches through
@@ -542,6 +554,7 @@ async function retrieveProviderContext(
   try {
     assertMode(claim.livemode);
   } catch {
+    if (!claim.livemode) throw new TestModeSubscriptionRehearsalError();
     return fail('billing_mode_configuration_invalid');
   }
 
@@ -577,6 +590,7 @@ async function retrieveProviderContext(
   try {
     assertMode(context.livemode);
   } catch {
+    if (!context.livemode) throw new TestModeSubscriptionRehearsalError();
     return fail('billing_mode_configuration_invalid');
   }
   return context;

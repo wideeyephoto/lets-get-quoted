@@ -4,6 +4,7 @@ import {
   renderContractorLifecycleEmailHtml,
   sendContractorWelcomeEmail,
   runContractorLifecycleSweep,
+  sendActivationNudgeBatch,
 } from '@/lib/contractor-lifecycle-emails';
 import { PLATFORM_CAMPAIGN_TEMPLATES } from '@/lib/platform-campaign-templates';
 import { renderPlatformCampaignEmailHtml } from '@/lib/admin-platform-campaigns';
@@ -146,5 +147,143 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
       const basePath = step.ctaPath.split('?')[0];
       expect(VALID_BASE_PATHS).toContain(basePath);
     }
+  });
+});
+
+describe('sendActivationNudgeBatch execution and quality gating', () => {
+  it('executes in safe dryRun mode and reports detailed dispatch status', async () => {
+    const mockRecipients = [
+      {
+        accountId: 'acc-valid-1',
+        businessName: 'Apex Framing',
+        email: 'apex@apexframing.com',
+        ageDays: 14,
+        quotedJobs: 0,
+      },
+      {
+        accountId: 'acc-valid-2',
+        businessName: 'Apex Roofing',
+        email: 'roofs@apexroofing.com',
+        ageDays: 7,
+        quotedJobs: 0,
+      },
+    ];
+
+    const mockAdmin: any = {
+      from: () => ({
+        select: () => ({
+          in: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+            then: (resolve: any) => resolve({ data: [], error: null }),
+          }),
+        }),
+      }),
+    };
+
+    const res = await sendActivationNudgeBatch(mockAdmin, {
+      stepId: 'nudge_zero_quotes',
+      recipients: mockRecipients,
+      dryRun: true,
+    });
+
+    expect(res.dryRun).toBe(true);
+    expect(res.sent).toBe(2);
+    expect(res.skipped).toBe(0);
+    expect(res.errors).toBe(0);
+    expect(res.details.length).toBe(2);
+    expect(res.details[0].status).toBe('sent');
+    expect(res.details[0].note).toContain('[DRY-RUN]');
+    expect(res.details[0].note).toContain('apex@apexframing.com');
+  });
+
+  it('skips suppressed and invalid/junk addresses', async () => {
+    const mockRecipients = [
+      {
+        accountId: 'acc-suppressed',
+        businessName: 'Suppressed Builder',
+        email: 'suppressed@examplebuilder.com',
+      },
+      {
+        accountId: 'acc-placeholder',
+        businessName: 'Placeholder User',
+        email: 'test-contractor@example.com', // placeholder domain
+      },
+      {
+        accountId: 'acc-role',
+        businessName: 'Role Local User',
+        email: 'hello@letsgetquoted.com', // role address
+      },
+    ];
+
+    const mockAdmin: any = {
+      from: (table: string) => ({
+        select: () => ({
+          in: () => ({
+            eq: () => Promise.resolve({ data: [], error: null }),
+            then: (resolve: any) => {
+              if (table === 'email_suppression') {
+                return resolve({
+                  data: [{ account_id: 'acc-suppressed', email: 'suppressed@examplebuilder.com' }],
+                  error: null,
+                });
+              }
+              return resolve({ data: [], error: null });
+            },
+          }),
+        }),
+      }),
+    };
+
+    const res = await sendActivationNudgeBatch(mockAdmin, {
+      stepId: 'nudge_zero_quotes',
+      recipients: mockRecipients,
+      dryRun: true,
+    });
+
+    expect(res.sent).toBe(0);
+    expect(res.skipped).toBe(3);
+    expect(res.details.some((d) => d.note?.includes('suppressed'))).toBe(true);
+    expect(res.details.some((d) => d.note?.includes('deliverability/quality'))).toBe(true);
+  });
+
+  it('skips accounts that have already received the nudge_zero_quotes step', async () => {
+    const mockRecipients = [
+      {
+        accountId: 'acc-already-sent',
+        businessName: 'Already Sent Co',
+        email: 'already@examplecontractor.com',
+      },
+    ];
+
+    const mockAdmin: any = {
+      from: (table: string) => ({
+        select: () => ({
+          in: () => ({
+            eq: () =>
+              Promise.resolve({
+                data: [
+                  {
+                    account_id: 'acc-already-sent',
+                    meta: { step_id: 'nudge_zero_quotes' },
+                  },
+                ],
+                error: null,
+              }),
+            then: (resolve: any) => resolve({ data: [], error: null }),
+          }),
+        }),
+      }),
+    };
+
+    const res = await sendActivationNudgeBatch(mockAdmin, {
+      stepId: 'nudge_zero_quotes',
+      recipients: mockRecipients,
+      dryRun: true,
+    });
+
+    expect(res.sent).toBe(0);
+    expect(res.skipped).toBe(1);
+    expect(res.details[0].status).toBe('skipped');
+    expect(res.details[0].note).toContain('already sent');
   });
 });

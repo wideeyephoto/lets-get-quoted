@@ -198,7 +198,8 @@ export type OperationalEmergencyAlertInput = {
     | 'webhook_dead_letter'
     | 'billing_reconciliation'
     | 'sms_queue_stall'
-    | 'provider_outage';
+    | 'provider_outage'
+    | 'database';
   severity: 'critical' | 'high' | 'warning';
   title: string;
   summary: string;

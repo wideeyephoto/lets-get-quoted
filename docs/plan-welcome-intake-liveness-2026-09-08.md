@@ -4,6 +4,16 @@
 **Scope:** four changes to `/welcome` and what follows it — (1) surface the trade guess, (2) echo the ZIP back as a real place, (4) a preview card that accrues while they type, (5) replace the redirect-into-a-settings-page with an actual reveal.
 **Not in scope:** item 3 from the original list (narrating the ~10s site build honestly). That needs `generateSiteTextAction` split into stages or streamed, and is planned separately.
 
+**Task order lives in [implementation-welcome-intake-liveness-2026-09-09.md](implementation-welcome-intake-liveness-2026-09-09.md).** This document is the reasoning; that one is the order of work.
+
+## Amendments — 2026-09-09
+
+Three changes from review, folded into the implementation list at the tasks named:
+
+1. **The returning-terms path opts out** (tasks 0.4, 3.4). `/welcome` doubles as the updated-terms screen — `needsFirstRun` is true whenever `terms_version` goes stale ([terms.ts:46](src/lib/terms.ts#L46)) — so an existing contractor with a live website sees the same three prefilled fields. Item 1's guards already block the auto-fill there; items 2 and 4 did not, and would have shown a "Preview" of a site that has been up for months. `returning` is already computed on the page and is now threaded into the form.
+2. **The `?city=` conflict has a rule** (task 2.4). Marketing links carry a city; if the resolved ZIP names a different place, the ZIP wins and the city claim is dropped — the same rule the generator already states ([actions.ts:364](src/app/dashboard/sites/actions.ts#L364)). Otherwise the form and the finished site contradict each other on the one fact the echo exists to prove.
+3. **The funnel gets instrumented** (phase 5). One new `first_run_completed` account event carrying `trade_source` and whether the ZIP resolved. Whether the trade guess is any good is an empirical question; measuring it is what decides whether item 1 stays.
+
 ---
 
 ## The principle these four share

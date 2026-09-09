@@ -76,6 +76,7 @@ export function permissionForHitlAction(actionType: string): Permission {
     case 'force_payout_settlement':
     case 'trigger_dunning_escalation':
       return 'money.payouts';
+    case 'batch_activation_nudges':
     case 'trigger_contractor_lifecycle_nudge':
     case 'send_onboarding_reminder':
     case 'triage_support_case':
@@ -140,6 +141,7 @@ export const SAFE_AUTO_REMEDIATION_ACTION_TYPES = new Set([
 ]);
 
 export const REQUIRES_APPROVAL_ACTION_TYPES = new Set([
+  'batch_activation_nudges',
   'issue_subscription_refund',
   'trigger_dunning_escalation',
   'extend_contractor_trial',
@@ -328,6 +330,13 @@ export function createHitlAction(
   },
   supabase?: SupabaseClient,
 ): OperatorHitlActionRequest {
+  if (params.id) {
+    const existing = hitlActionStore.get(params.id);
+    if (existing && existing.status === 'pending') {
+      return existing;
+    }
+  }
+
   const id = params.id || `hitl-${randomUUID()}`;
   const now = params.createdAt ? new Date(params.createdAt) : new Date();
   const expiresAt = params.expiresInHours
@@ -354,20 +363,23 @@ export function createHitlAction(
   if (client) {
     try {
       const q = client.from('ai_operator_action_requests');
-      if (typeof q?.insert === 'function') {
-        trackWrite(Promise.resolve(q.insert({
-          id: request.id,
-          category: request.category,
-          title: request.title,
-          description: request.description,
-          action_type: request.actionType,
-          payload: request.payload,
-          status: request.status,
-          created_at: request.createdAt,
-          expires_at: request.expiresAt,
-          is_financial_mutation: Boolean(params.isFinancialMutation),
-          required_role: params.requiredRole || 'admin',
-        })));
+      const row = {
+        id: request.id,
+        category: request.category,
+        title: request.title,
+        description: request.description,
+        action_type: request.actionType,
+        payload: request.payload,
+        status: request.status,
+        created_at: request.createdAt,
+        expires_at: request.expiresAt,
+        is_financial_mutation: Boolean(params.isFinancialMutation),
+        required_role: params.requiredRole || 'admin',
+      };
+      if (typeof q?.upsert === 'function') {
+        trackWrite(Promise.resolve(q.upsert(row, { onConflict: 'id', ignoreDuplicates: true })));
+      } else if (typeof q?.insert === 'function') {
+        trackWrite(Promise.resolve(q.insert(row)));
       }
     } catch {
       // Mock client or unconfigured

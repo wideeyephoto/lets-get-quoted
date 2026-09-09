@@ -17,6 +17,12 @@ import { triageSupportCase, diagnoseContractorOnboarding } from '@/lib/ai-operat
 import { executeOperatorTool } from '@/lib/ai-operator/tools';
 import { dispatchExecutiveBriefingDigest } from '@/lib/ai-operator/digest';
 import { generateExecutiveBriefing } from '@/lib/ai-operator/briefing';
+import {
+  CONTRACTOR_LIFECYCLE_STEPS,
+  renderContractorLifecycleEmailHtml,
+  type ContractorLifecycleStepId,
+} from '@/lib/contractor-lifecycle-emails';
+import { interpolateTokens } from '@/lib/admin-campaign-types';
 
 /** How many prior turns of cockpit conversation to replay to the model. */
 const MAX_HISTORY_TURNS = 12;
@@ -160,4 +166,77 @@ export async function sendManualDigestServerAction() {
 
   await flushOperatorWrites();
   return result;
+}
+
+export async function previewHitlActionMessageAction(actionId: string) {
+  const context = await requirePermission('ops.manage');
+  const action = await getHitlActionByIdAsync(actionId, context.admin);
+  if (!action) {
+    return {
+      success: false,
+      error: `Action "${actionId}" not found or already purged.`,
+      channel: 'email' as const,
+      subject: '',
+      fromAddress: '',
+      replyTo: '',
+      recipients: [] as Array<{ accountId: string; businessName: string; email: string; ageDays?: number; quotedJobs?: number }>,
+      skipped: [] as Array<{ accountId: string; businessName: string; reason: string }>,
+      html: '',
+    };
+  }
+
+  const payload = (action.payload || {}) as Record<string, unknown>;
+  const stepId = (typeof payload.stepId === 'string' ? payload.stepId : 'nudge_zero_quotes') as ContractorLifecycleStepId;
+  const step = CONTRACTOR_LIFECYCLE_STEPS.find((s) => s.id === stepId);
+  if (!step) {
+    return {
+      success: false,
+      error: `Unknown contractor lifecycle step "${stepId}" for message preview.`,
+      channel: 'email' as const,
+      subject: '',
+      fromAddress: '',
+      replyTo: '',
+      recipients: [] as Array<{ accountId: string; businessName: string; email: string; ageDays?: number; quotedJobs?: number }>,
+      skipped: [] as Array<{ accountId: string; businessName: string; reason: string }>,
+      html: '',
+    };
+  }
+
+  const recipients = (Array.isArray(payload.recipients) ? payload.recipients : []) as Array<{
+    accountId: string;
+    businessName: string;
+    email: string;
+    ageDays?: number;
+    quotedJobs?: number;
+  }>;
+
+  const skipped = (Array.isArray(payload.skipped) ? payload.skipped : []) as Array<{
+    accountId: string;
+    businessName: string;
+    reason: string;
+  }>;
+
+  const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
+  const replyTo = step.replyTo || 'hello@letsgetquoted.com';
+
+  // Render against first real recipient, or fallback sample if no recipients
+  const sampleRecipient = recipients[0] || {
+    accountId: 'sample-preview',
+    businessName: 'Your Business',
+    email: 'contractor@example.com',
+  };
+
+  const subject = interpolateTokens(step.subject, sampleRecipient);
+  const html = renderContractorLifecycleEmailHtml(step, sampleRecipient);
+
+  return {
+    success: true,
+    channel: 'email' as const,
+    subject,
+    fromAddress,
+    replyTo,
+    recipients,
+    skipped,
+    html,
+  };
 }
