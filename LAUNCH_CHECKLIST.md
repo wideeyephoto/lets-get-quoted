@@ -63,7 +63,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 
 ## AI Voice release and operational closeout fixes (PRs #29, #31, #35–#38, #40–#45, #48, #49) — 2026-09-08 to 2026-09-09
 
-**Completed across 14 merged production PRs:** Closes core lifecycle, transfer, timeout, callback authentication, and operator recovery gates for AI Voice and telephony dispatch.
+**Implementation released across the PRs below:** Core lifecycle, transfer, timeout, callback authentication and operator recovery fixes are deployed. This does not close every live acceptance gate. The [September 9 acceptance record](docs/voice-acceptance-2026-09-09.md) records the latest handset failure, successful speech diagnostic and remaining checks.
 
 - [x] **Admission retry bounds & self-forwarding loop prevention (PR #29, commit `378b32a7d`):** Excluded current provider call from admission preflight count; routed callers to voicemail when the forwarding target is their own phone; normalized callback phone query values after strict signature verification.
 - [x] **Stable callback URLs & signature diagnostics (PR #31, commit `2913ee53b`):** Fallback callbacks use stable signed URLs resolving caller and workspace context from persisted inbound admission; added diagnostic candidate booleans for recording/forwarding signature format mismatches without leaking secrets, phone numbers, or request payloads.
@@ -80,6 +80,8 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Response processing delay reduction & timing diagnostics (PR #48, commit `72ca241fc`):** Reduced staff voice processing passes and exposed safe timing diagnostics (`7fc3cf67b`).
 - [x] **Call opening polish & note draft distinction (PR #49, commit `b3067953a`):** Polished voice opening and distinguished note drafts from saved readbacks (`2807accab`).
 - [x] **Owner SMS voice summary readability (`43d174d5f`):** Formatted readable voice summaries in owner SMS alert messages.
+- [x] **September 9 acceptance session and reconciliation:** Verified one staff note action/feed entry without changing the quote, no duplicate readback write, processed receipts and cleared holds. Reconciled accepted recipient-first transfer and provider deadline evidence. The full staff call failed pronunciation and post-speech delay acceptance; a short diagnostic with the amount written in words passed. See the [dated results and evidence limits](docs/voice-acceptance-2026-09-09.md).
+- [ ] **Voice acceptance:** Release and retest the spoken-quote change through full Dispatch; finish voiced unanswered-transfer/voicemail recovery, active voicemail and in-flight-tool timeout boundaries, actual provider fallback, and homeowner/on-call/staff handset behavior. Provider-period billing reconciliation remains open; exhaustion blocking stays OFF.
 
 ---
 
@@ -301,6 +303,8 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [ ] **Complete customer producer and operational carrier acceptance**: on correctly registered senders and authorized recipients, exercise released booking confirmations, dashboard links where campaign-permitted, missed-call/post-call text-back, and ordinary customer inbox replies. Complete quiet-hours deferred release, rejection/retry/dead-letter recovery, duplicate/out-of-order callbacks, and full SMS segment/usage reconciliation. Retain the already-proven shared tests rather than counting them again as dedicated/dispatch evidence.
 
 ### Outstanding — separate AI Voice acceptance and commercialization
+
+Latest status: [September 9 handset and provider acceptance](docs/voice-acceptance-2026-09-09.md). The accepted short speech diagnostic does not supersede the failed full Dispatch audio test or complete the live failure-path matrix.
 
 - [ ] **Complete current staff-call authorization and conversation acceptance**: test registered-phone/permission authorization, allowed job lookup and scope/schedule/status/note saves, ambiguous matches, revoked/inactive/wrong-account/unassigned denial, and exact saved-value readback. Exercise ordinary speech, spelling/addresses, hesitation, noise, and barge-in; measure actual audio delay rather than inferring silence from transcript timestamps. Older OTP-required checklist text is historical and superseded by `20260905173016_voice_staff_without_verification_codes.sql`; do not restore OTP as an assumed requirement.
 - [ ] **Complete the voice safety/operations matrix**: prove the real ten-minute provider cutoff, concurrency/fallback behavior, staff no-recording, customer disclosures and authorized recording/playback/retention, signed lifecycle callbacks including failure and out-of-order cases, replay-safe actions/settlement, number-readiness reconciliation, and operator-visible recovery. The isolated live customer canaries do not close this matrix.
