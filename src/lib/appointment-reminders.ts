@@ -11,6 +11,8 @@
 // the card could only ever say "the day before" and leave the rest unsaid. Both
 // are account settings now, and the card states them exactly.
 
+import { normalizeSmsSystemText } from '@/lib/sms-copy';
+
 /** Days between the reminder and the appointment. 1 = the day before. */
 export const DEFAULT_REMINDER_LEAD_DAYS = 1;
 /** Hour of the day, in the ACCOUNT'S timezone, that reminders go out. */
@@ -201,5 +203,5 @@ export function appointmentReminderText(input: {
   address?: string | null;
 }): string {
   const addressNote = input.address ? ` at ${input.address}` : '';
-  return `${input.businessName} reminder — ${input.clientName}, your appointment is coming up ${input.whenLabel}${addressNote}. Reply C to confirm. Reply STOP to opt out.`;
+  return `${input.businessName} reminder: ${input.clientName}, your appointment is coming up ${normalizeSmsSystemText(input.whenLabel)}${addressNote}. Reply C to confirm. Reply STOP to opt out.`;
 }

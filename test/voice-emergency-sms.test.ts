@@ -12,7 +12,7 @@ describe('AI Voice Emergency SMS Alerts (Tier 1)', () => {
       dashboardUrl: 'https://app.letsgetquoted.com/dashboard/voice-calls/call-123',
     });
 
-    expect(text).toContain('🚨 EMERGENCY CALL for BrokePipes Plumbing from +12485550199: Natural gas leak reported in basement.');
+    expect(text).toContain('EMERGENCY CALL for BrokePipes Plumbing from +12485550199: Natural gas leak reported in basement.');
     expect(text).toContain('https://app.letsgetquoted.com/dashboard/voice-calls/call-123');
     expect(text).toContain('Reply STOP to opt out.');
   });
@@ -72,7 +72,7 @@ describe('AI Voice Emergency SMS Alerts (Tier 1)', () => {
     expect(sent.p_message_kind).toBe('owner-voice-emergency-alert');
     expect(sent.p_billing_category).toBe('owner_alert');
     expect(sent.p_sender_purpose).toBe('lgq_shared');
-    expect(sent.p_body).toContain('🚨 EMERGENCY CALL for BrokePipes Plumbing');
+    expect(sent.p_body).toContain('EMERGENCY CALL for BrokePipes Plumbing');
     expect(sent.p_body).toContain('/dashboard/voice-calls/call-xyz-123');
   });
 
@@ -104,7 +104,7 @@ describe('AI Voice Emergency SMS Alerts (Tier 1)', () => {
       dashboardUrl: 'https://app.letsgetquoted.com/dashboard/voice-calls/call-456',
     });
 
-    expect(text).toContain('📞 New call answered for BrokePipes Plumbing from Jane Smith (+12485550199): Caller requested quote for tankless water heater installation.');
+    expect(text).toContain('New call answered for BrokePipes Plumbing from Jane Smith (+12485550199): Caller requested quote for tankless water heater installation.');
     expect(text).toContain('https://app.letsgetquoted.com/dashboard/voice-calls/call-456');
     expect(text).toContain('Reply STOP to opt out.');
   });
@@ -167,7 +167,7 @@ describe('AI Voice Emergency SMS Alerts (Tier 1)', () => {
     expect(sent.p_message_kind).toBe('owner-voice-call-notification');
     expect(sent.p_billing_category).toBe('owner_alert');
     expect(sent.p_sender_purpose).toBe('lgq_shared');
-    expect(sent.p_body).toContain('📞 New call answered for BrokePipes Plumbing');
+    expect(sent.p_body).toContain('New call answered for BrokePipes Plumbing');
     expect(sent.p_body).toContain('Bob Miller (+12485550199)');
   });
 

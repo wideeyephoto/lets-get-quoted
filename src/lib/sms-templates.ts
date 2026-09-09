@@ -2,6 +2,7 @@
 // refund. "Requested a deposit of $438" against a $437.50 card charge is the
 // same defect as the payment page's button. See formatMoneyExact.
 import { formatJobSchedule, formatMoneyExact as formatMoney } from '@/lib/jobs';
+import { normalizeSmsSystemText } from '@/lib/sms-copy';
 
 /**
  * Declared here rather than in lib/sms, which imports this file — the words come
@@ -61,11 +62,11 @@ export function ownerHighValueLeadText(input: {
   const range = input.estimate
     ? ` ($${input.estimate.min.toLocaleString()}-$${input.estimate.max.toLocaleString()})`
     : '';
-  return `🔥 High-value lead for ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return `High-value lead for ${input.businessName}: ${input.leadName || 'New request'}${range}. Respond fast: ${input.dashboardUrl}. Reply STOP to opt out.`;
 }
 
 export function ownerVerificationCodeText(input: { code: string }): string {
-  return `Your Let’s Get Quoted verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`;
+  return `Your Let's Get Quoted verification code is ${input.code}. Enter this code in your Texting Setup to verify your mobile number. Reply STOP to opt out.`;
 }
 
 export function crewPhoneVerificationCodeText(input: { businessName: string; code: string }): string {
@@ -73,7 +74,7 @@ export function crewPhoneVerificationCodeText(input: { businessName: string; cod
 }
 
 export function voiceStaffStepUpCodeText(input: { code: string }): string {
-  return `Your Let’s Get Quoted voice authorization code is ${input.code}. It expires in 10 minutes. Only use it on the call you started. Reply STOP to opt out.`;
+  return `Your Let's Get Quoted voice authorization code is ${input.code}. It expires in 10 minutes. Only use it on the call you started. Reply STOP to opt out.`;
 }
 
 export function ownerVoiceEmergencyAlertText(input: {
@@ -83,7 +84,7 @@ export function ownerVoiceEmergencyAlertText(input: {
   dashboardUrl: string;
 }): string {
   const caller = input.callerNumber || 'Unknown caller';
-  return `🚨 EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return `EMERGENCY CALL for ${input.businessName} from ${caller}: ${input.hazardSummary}. Review details & transcript: ${input.dashboardUrl}. Reply STOP to opt out.`;
 }
 
 export function ownerVoiceCallNotificationText(input: {
@@ -95,14 +96,14 @@ export function ownerVoiceCallNotificationText(input: {
 }): string {
   const caller = input.callerName ? `${input.callerName} (${input.callerNumber || 'Unknown'})` : (input.callerNumber || 'Unknown caller');
   const brief = input.summary.slice(0, 140);
-  return `📞 New call answered for ${input.businessName} from ${caller}: ${brief}. Details: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return `New call answered for ${input.businessName} from ${caller}: ${brief}. Details: ${input.dashboardUrl}. Reply STOP to opt out.`;
 }
 
 export function callerVoiceBookingLinkText(input: {
   businessName: string;
   bookingUrl: string;
 }): string {
-  return `Thanks for calling ${input.businessName}! Here is the direct link to book an appointment or request an estimate: ${input.bookingUrl} — Reply STOP to opt out.`;
+  return `Thanks for calling ${input.businessName}! Here is the direct link to book an appointment or request an estimate: ${input.bookingUrl}. Reply STOP to opt out.`;
 }
 
 export function callerVoiceBookingConfirmationText(input: {
@@ -111,7 +112,7 @@ export function callerVoiceBookingConfirmationText(input: {
   serviceAddress?: string | null;
 }): string {
   const atAddress = input.serviceAddress ? ` for ${input.serviceAddress}` : '';
-  return `Thanks for calling ${input.businessName}! Your appointment request for ${input.whenLabel}${atAddress} has been received. Our team will follow up shortly to confirm details. Reply STOP to opt out.`;
+  return `${input.businessName}: We received your appointment request for ${normalizeSmsSystemText(input.whenLabel)}${atAddress}. This is pending our confirmation. Reply STOP to opt out.`;
 }
 
 export function bookingRequestCustomerConfirmationText(input: {
@@ -123,7 +124,7 @@ export function bookingRequestCustomerConfirmationText(input: {
   const firstName = (input.customerName || '').trim().split(' ')[0] || 'there';
   const service = input.serviceName ? ` for ${input.serviceName}` : '';
   return withOptOut(
-    `Hi ${firstName}, thanks for choosing ${input.businessName}! We received your booking request${service} for ${input.whenLabel}. We'll review our schedule and confirm shortly.`
+    `${input.businessName}: Hi ${firstName}, we received your booking request${service} for ${normalizeSmsSystemText(input.whenLabel)}. This is pending our confirmation.`
   );
 }
 
@@ -135,7 +136,7 @@ export function ownerBookingRequestAlertText(input: {
   dashboardUrl: string;
 }): string {
   const service = input.serviceName ? ` (${input.serviceName})` : '';
-  return `📅 New booking request for ${input.businessName}: ${input.customerName || 'Customer'} requested ${input.whenLabel}${service}. Confirm in dashboard: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return `New booking request for ${input.businessName}: ${input.customerName || 'Customer'} requested ${normalizeSmsSystemText(input.whenLabel)}${service}. Confirm in dashboard: ${input.dashboardUrl}. Reply STOP to opt out.`;
 }
 
 export function ownerPortalMessageAlertText(input: {
@@ -147,7 +148,7 @@ export function ownerPortalMessageAlertText(input: {
   const preview = input.messagePreview.length > 80
     ? `${input.messagePreview.slice(0, 77)}...`
     : input.messagePreview;
-  return `💬 New message from ${input.customerName || 'Customer'} for ${input.businessName}: "${preview}". View in messages: ${input.dashboardUrl} — Reply STOP to opt out.`;
+  return `New message from ${input.customerName || 'Customer'} for ${input.businessName}: "${preview}". View in messages: ${input.dashboardUrl}. Reply STOP to opt out.`;
 }
 
 
@@ -165,7 +166,7 @@ export function quickStopOfferText(input: {
      visit — the work is quoted and invoiced separately, and a homeowner who
      learns that at the door is a refund request we caused. Costs one segment
      boundary at most and prevents the argument. */
-  return `Your Quick Stop offer from ${input.businessName}: arrive ${input.whenLabel} for a ${input.feeLabel}. This reserves the visit; service and parts are billed separately. Pay within ${input.minutes} min to hold this window: ${input.payUrl}. Reply STOP to opt out.`;
+  return `Your Quick Stop offer from ${input.businessName}: arrive ${normalizeSmsSystemText(input.whenLabel)} for a ${input.feeLabel}. This reserves the visit; service and parts are billed separately. Pay within ${input.minutes} min to hold this window: ${input.payUrl}. Reply STOP to opt out.`;
 }
 
 export function quickStopConfirmedText(input: {
@@ -174,16 +175,16 @@ export function quickStopConfirmedText(input: {
   statusUrl?: string;
 }): string {
   const manage = input.statusUrl ? ` Manage or cancel: ${input.statusUrl}.` : '';
-  return `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. Your visit fee is paid; any service or parts are billed separately. We'll text updates on the way.${manage} Reply STOP to opt out.`;
+  return `You're confirmed! ${input.businessName} will arrive ${normalizeSmsSystemText(input.whenLabel)}. Your visit fee is paid; any service or parts are billed separately. We'll text updates on the way.${manage} Reply STOP to opt out.`;
 }
 
 export function quickStopStatusText(
   kind: 'en_route' | 'arrived' | 'eta',
-  input?: { minutes?: number }
+  input: { businessName: string; minutes?: number }
 ): string {
-  if (kind === 'en_route') return 'Your Quick Stop technician is on the way.';
-  if (kind === 'arrived') return 'Your technician has arrived.';
-  return `Quick Stop update: Your technician is approximately ${input?.minutes ?? 15} minutes away.`;
+  if (kind === 'en_route') return `${input.businessName}: Your Quick Stop technician is on the way.`;
+  if (kind === 'arrived') return `${input.businessName}: Your technician has arrived.`;
+  return `${input.businessName}: Quick Stop update: Your technician is approximately ${input.minutes ?? 15} minutes away.`;
 }
 
 // -- crew --------------------------------------------------------------------
@@ -199,9 +200,9 @@ export function crewAssignmentText(input: {
 }): string {
   const addressNote = input.address ? ` at ${input.address}` : '';
   const scheduledNote = input.scheduledFor
-    ? ` Scheduled ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}.`
+    ? ` Scheduled ${normalizeSmsSystemText(formatJobSchedule(input.scheduledFor, input.scheduledTime))}.`
     : '';
-  return `Hi ${input.crewName}, ${input.businessName} assigned you to job ${input.jobRef} — ${input.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
+  return `Hi ${input.crewName}, ${input.businessName} assigned you to job ${input.jobRef} - ${input.clientName}${addressNote}.${scheduledNote} Reply STOP to opt out.`;
 }
 
 export function crewWelcomeText(input: {
@@ -221,7 +222,7 @@ export function crewScheduleSelectedText(input: {
   scheduledTime?: string | null;
 }): string {
   const addressNote = input.address ? input.address : 'Address not set';
-  const scheduledNote = formatJobSchedule(input.scheduledFor, input.scheduledTime);
+  const scheduledNote = normalizeSmsSystemText(formatJobSchedule(input.scheduledFor, input.scheduledTime));
   return `Hi ${input.crewName}, job ${input.jobRef} for ${input.clientName} is scheduled for ${scheduledNote}. Address: ${addressNote}. ${input.businessName}. Reply STOP to opt out.`;
 }
 
@@ -246,7 +247,7 @@ export function subcontractorCoveredText(input: {
   location: string;
 }): string {
   const where = input.location.trim() ? ` in ${input.location.trim()}` : '';
-  return `${input.businessName}: the ${input.workDescription.trim()}${where} has been covered by another sub. Thanks for taking a look — we will send the next one. Reply STOP to opt out.`;
+  return `${input.businessName}: the ${input.workDescription.trim()}${where} has been covered by another sub. Thanks for taking a look. We will send the next one. Reply STOP to opt out.`;
 }
 
 /** "It's yours." Carries the link, because the address is behind it. */
@@ -256,7 +257,7 @@ export function subcontractorWonText(input: {
   whenLabel: string;
   link: string;
 }): string {
-  const when = input.whenLabel.trim() ? ` ${input.whenLabel.trim()}` : '';
+  const when = input.whenLabel.trim() ? ` ${normalizeSmsSystemText(input.whenLabel.trim())}` : '';
   return `${input.businessName}: you are confirmed for the ${input.workDescription.trim()}${when}. Address and contact details: ${input.link} Reply STOP to opt out.`;
 }
 
@@ -309,7 +310,7 @@ export function clientJobDashboardText(input: {
   const invitation = input.includesScheduleOptions
     ? `your quote for job ${input.jobRef} is ready. Review it and choose a start date:`
     : `track job ${input.jobRef} any time. Updates, invoices and payments in one place:`;
-  return `${input.businessName} here — ${invitation} ${input.link}. Reply STOP to opt out.`;
+  return `${input.businessName} here: ${invitation} ${input.link}. Reply STOP to opt out.`;
 }
 
 /**
@@ -325,7 +326,7 @@ export function clientJobDashboardText(input: {
  * business, not one job.
  */
 export function portalLinkText(input: { businessName: string; link: string }): string {
-  return `${input.businessName} here — your jobs, invoices and receipts in one place: ${input.link} The link works for 90 days. Reply STOP to opt out.`;
+  return `${input.businessName} here: your jobs, invoices and receipts in one place: ${input.link} The link works for 90 days. Reply STOP to opt out.`;
 }
 
 /**
@@ -353,7 +354,7 @@ export function quoteUpdatedText(input: {
   const move =
     input.direction === 'up' ? 'went up to' : input.direction === 'down' ? 'came down to' : 'is now';
   const amount = input.total ? ` The total ${move} ${input.total}.` : '';
-  return `${input.businessName} here — your quote for job ${input.jobRef} has been updated.${amount} Review and approve it here: ${input.link}. Reply STOP to opt out.`;
+  return `${input.businessName} here: your quote for job ${input.jobRef} has been updated.${amount} Review and approve it here: ${input.link}. Reply STOP to opt out.`;
 }
 
 export function schedulingOptionsText(input: {
@@ -388,7 +389,7 @@ export function leadQuoteVisitText(input: {
   scheduledTime: string | null;
 }): string {
   const addressNote = input.address ? ` at ${input.address}` : '';
-  return `${input.businessName} scheduled your free in-person quote${addressNote} for ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}. ${input.leadName}, reply STOP to opt out.`;
+  return `${input.businessName} scheduled your in-person quote visit${addressNote} for ${normalizeSmsSystemText(formatJobSchedule(input.scheduledFor, input.scheduledTime))}. ${input.leadName}, reply STOP to opt out.`;
 }
 
 export function leadQuoteVisitOptionsText(input: {
@@ -399,7 +400,7 @@ export function leadQuoteVisitOptionsText(input: {
 }): string {
   const addressNote = input.address ? ` for ${input.address}` : '';
   const optionText = input.options
-    .map((option, index) => `${index + 1}) ${formatJobSchedule(option.date, option.time)}`)
+    .map((option, index) => `${index + 1}) ${normalizeSmsSystemText(formatJobSchedule(option.date, option.time))}`)
     .join(' ');
   return `${input.businessName} has quote visit times available${addressNote}. ${input.leadName}, reply with 1, 2, or 3: ${optionText}. Reply STOP to opt out.`;
 }
@@ -428,7 +429,7 @@ export function paymentText(input: {
 }
 
 export function cardSetupText(input: { businessName: string; url: string }): string {
-  return `${input.businessName} set up automatic billing for your recurring service. Save your card securely — no charge now: ${input.url}. Reply STOP to opt out.`;
+  return `${input.businessName}: Save a card to enable billing for your recurring service. No charge now: ${input.url}. Reply STOP to opt out.`;
 }
 
 export function cardUpdateText(input: { businessName: string; url: string }): string {
@@ -449,12 +450,13 @@ export function noiNoticeText(input: {
 }
 
 export function lienWaiverText(input: {
+  businessName: string;
   customerName: string;
   waiverTypeTitle: string;
   jobRef: string;
   url: string;
 }): string {
-  return `Hi ${input.customerName}, here is your official signed ${input.waiverTypeTitle} for job ${input.jobRef}: ${input.url}. Reply STOP to opt out.`;
+  return `${input.businessName}: Hi ${input.customerName}, here is your signed ${input.waiverTypeTitle} for job ${input.jobRef}: ${input.url}. Reply STOP to opt out.`;
 }
 
 // -- coming back -------------------------------------------------------------
@@ -464,7 +466,7 @@ export function rebookInviteText(input: {
   clientName: string;
   url: string;
 }): string {
-  return `Hi ${input.clientName}, it's ${input.businessName} — it's been a while! Ready to book us again? Request a time here: ${input.url}. Reply STOP to opt out.`;
+  return `Hi ${input.clientName}, it's ${input.businessName}. It's been a while! Ready to book us again? Request a time here: ${input.url}. Reply STOP to opt out.`;
 }
 
 /**
@@ -476,7 +478,7 @@ export function arrivalTimeChangedText(input: {
   clientName: string;
   windowLabel: string;
 }): string {
-  return `${input.clientName}, ${input.businessName} here — your new arrival window is ${input.windowLabel}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
+  return `${input.clientName}, ${input.businessName} here: your new arrival window is ${normalizeSmsSystemText(input.windowLabel)}. Reply here if that doesn't work and we'll sort it out. Reply STOP to opt out.`;
 }
 
 /**
@@ -504,7 +506,7 @@ export function selectionRequestText(input: {
   const body = input.overdue
     ? `we're waiting on ${what} from you before we can order`
     : `${what} to make when you get a minute`;
-  return `${first}, ${input.businessName} here — ${body}: ${input.url}. Reply STOP to opt out.`;
+  return `${first}, ${input.businessName} here: ${body}: ${input.url}. Reply STOP to opt out.`;
 }
 
 // -- the owner's own words, in our envelope ----------------------------------
@@ -538,13 +540,13 @@ export function callerVoicePostCallFollowupText(input: {
   if (input.scheduledTime) {
     const linkClause = input.portalUrl ? ` Details & manage: ${input.portalUrl}` : '';
     return withOptOut(
-      `${greeting}thanks for calling ${input.businessName}! We've reserved your appointment for ${input.scheduledTime}.${linkClause}`
+      `${greeting}thanks for calling ${input.businessName}! We received your appointment request for ${normalizeSmsSystemText(input.scheduledTime)}. This is pending our confirmation.${linkClause}`
     );
   }
   const linkClause = input.portalUrl ? ` View status: ${input.portalUrl}` : '';
   const issueClause = input.issueSummary ? ` regarding ${input.issueSummary}` : '';
   return withOptOut(
-    `${greeting}thanks for calling ${input.businessName}! We received your inquiry${issueClause}.${linkClause}`
+    `${greeting}thanks for calling ${input.businessName}! We received your inquiry${issueClause}. Our team will contact you after review.${linkClause}`
   );
 }
 
@@ -577,10 +579,10 @@ export function intakeConfirmationText(input: {
   const firstName = (input.leadName || '').trim().split(' ')[0] || 'there';
   const cleanService = (input.projectType || 'estimate request').trim();
   const estimateClause = input.estimate
-    ? ` Your estimated range: $${input.estimate.min.toLocaleString('en-US')}-$${input.estimate.max.toLocaleString('en-US')}.`
+    ? ` Preliminary range: $${input.estimate.min.toLocaleString('en-US')}-$${input.estimate.max.toLocaleString('en-US')}, subject to reviewing the work.`
     : '';
   return withOptOut(
-    `Hi ${firstName}, thanks for reaching out to ${input.businessName}! We received your ${cleanService}.${estimateClause} Our team is reviewing the details and will follow up shortly.`
+    `${input.businessName}: Hi ${firstName}, we received your ${cleanService}.${estimateClause} Our team will contact you after review.`
   );
 }
 

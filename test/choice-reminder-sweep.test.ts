@@ -208,8 +208,8 @@ describe('the sweep sends', () => {
       expect(summary.sent).toBe(1);
       expect(sentSms).toHaveLength(1);
       expect(sentSms[0].message).toContain('2 choices due today');
-      expect(sentSms[0].message).toContain('• Patio tile');
-      expect(sentSms[0].message).toContain('• Kitchen faucet');
+      expect(sentSms[0].message).toContain('- Patio tile');
+      expect(sentSms[0].message).toContain('- Kitchen faucet');
       expect(sentSms[0].message).toContain('Reply STOP to opt out.');
     });
   });

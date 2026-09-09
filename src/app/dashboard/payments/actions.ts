@@ -778,10 +778,11 @@ export async function sendLienWaiverSmsAction(params: {
   waiverTypeTitle: string;
 }): Promise<ActionState<boolean>> {
   try {
-    const { accountId } = await requireOfficeContext('messages.send');
+    const { supabase, accountId } = await requireOfficeContext('messages.send');
     const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
     const waiverLink = `${origin}/waivers/${params.waiverId}`;
     const body = lienWaiverText({
+      businessName: await loadBusinessName(supabase, accountId),
       customerName: params.customerName,
       waiverTypeTitle: params.waiverTypeTitle,
       jobRef: params.jobRef,

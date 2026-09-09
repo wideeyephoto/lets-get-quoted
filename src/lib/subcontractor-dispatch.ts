@@ -12,6 +12,7 @@
 // "how many have looked at it" has to be true on the page the owner is staring
 // at, not true as of whenever a cron last ran.
 
+import { normalizeSmsSystemText } from '@/lib/sms-copy';
 import { haversineMiles, type LatLng } from '@/lib/distance';
 import { SUB_STATUS_RANK, type Compliance, type SubMetrics, type SubStatus } from '@/lib/subcontractors';
 import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto';
@@ -475,13 +476,13 @@ export function draftOfferMessage(input: {
   expiresLabel: string;
 }): string {
   const where = input.generalLocation.trim();
-  const when = input.whenLabel.trim();
+  const when = normalizeSmsSystemText(input.whenLabel.trim());
   const place = [where ? `in ${where}` : '', when].filter(Boolean).join(', ');
   return [
     `New subcontract job from ${input.businessName.trim()}:`,
     `${input.workDescription.trim()}${place ? ` ${place}` : ''}.`,
     `Pay ${formatPay(input.payAmount, input.payKind ?? 'fixed')}.`,
-    `Review and accept by ${input.expiresLabel.trim()}: ${LINK_PLACEHOLDER}`,
+    `Review and accept by ${normalizeSmsSystemText(input.expiresLabel.trim())}: ${LINK_PLACEHOLDER}`,
   ].join(' ');
 }
 

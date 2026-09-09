@@ -1882,6 +1882,7 @@ export async function sendQuoteFollowupSms(params: {
   url: string;
   accountId: string;
   idempotencyKey?: string;
+  stage?: 'first' | 'intermediate' | 'final';
 }) {
   // Shared with the settings preview so the contractor is shown the message
   // their client actually receives.
@@ -1889,6 +1890,7 @@ export async function sendQuoteFollowupSms(params: {
     businessName: params.businessName,
     clientName: params.clientName,
     url: params.url,
+    stage: params.stage,
   });
   return queueAccountSms({
     accountId: params.accountId,

@@ -240,9 +240,10 @@ describe('the message', () => {
     expect(buildArrivalMessage({ ...base, crewName: '' })).toContain('BrokePipes is on the way');
   });
 
-  it('says "shortly" rather than inventing a time when none was promised', () => {
-    expect(etaPhrase(null, TZ)).toBe('shortly');
-    expect(buildArrivalMessage({ ...base, times: null })).toContain('shortly');
+  it('does not promise a near arrival when no time is known', () => {
+    expect(etaPhrase(null, TZ)).toBe('at a time to be confirmed');
+    expect(buildArrivalMessage({ ...base, times: null })).toContain('is on the way to your appointment.');
+    expect(buildArrivalMessage({ ...base, times: null })).not.toContain('shortly');
   });
 
   it('reads "by" for an exact time and "between" for a window', () => {

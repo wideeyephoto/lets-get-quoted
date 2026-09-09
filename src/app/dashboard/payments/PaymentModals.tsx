@@ -3250,10 +3250,11 @@ export default function PaymentModals({
               </button>
               <SmsPreview
                 message={lienWaiverText({
+                  businessName: businessName || 'Your contractor',
                   customerName: selectedPayment?.clientName || 'Customer',
                   waiverTypeTitle: LIEN_WAIVER_TITLES[waiverType],
                   jobRef: selectedPayment?.jobRef || 'JOB',
-                  url: 'https://lgq.co/waivers/…',
+                  url: `${(process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '')}/waivers/${waiverDoc?.id || '00000000-0000-4000-8000-000000000000'}`,
                 })}
                 phone={selectedPayment?.clientPhone}
                 recipientLabel={selectedPayment?.clientName || 'Customer'}

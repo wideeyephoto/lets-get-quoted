@@ -594,7 +594,7 @@ export function choiceDueLabel(daysPastNeededBy: number): string {
 /** The bullet list of what they still owe. One line per choice. */
 export function choiceListText(titles: string[]): string {
   return titles
-    .map((title) => `• ${String(title ?? '').trim() || 'Choice to make'}`)
+    .map((title) => `- ${String(title ?? '').trim() || 'Choice to make'}`)
     .join('\n');
 }
 

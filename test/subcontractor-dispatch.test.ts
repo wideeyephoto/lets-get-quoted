@@ -514,7 +514,7 @@ describe('the offer message', () => {
 
   it('reads like the example, and carries no private detail', () => {
     expect(draft).toBe(
-      'New subcontract job from BrokePipes: Water heater replacement in Royal Oak, Friday 9–11 AM. Pay $650. Review and accept by 6 PM: [secure link]',
+      'New subcontract job from BrokePipes: Water heater replacement in Royal Oak, Friday 9-11 AM. Pay $650. Review and accept by 6 PM: [secure link]',
     );
     expect(draft).not.toMatch(/\d+\s+\w+\s+(St|Street|Ave|Avenue|Rd|Road)/i);
   });

@@ -1,3 +1,4 @@
+import { segmentSms } from '@/lib/sms-segments';
 import { describe, it, expect } from 'vitest';
 import {
   confirmedSmsBody,
@@ -89,6 +90,13 @@ describe('waitedLabel', () => {
 });
 
 describe('confirmedSmsBody', () => {
+  it('uses plain window punctuation while preserving the business name', () => {
+    const body = confirmedSmsBody('Renée’s Électricité', 'Thu, Aug 6, 8:00 AM – 12:00 PM');
+    expect(body).toContain('Renée’s Électricité');
+    expect(body).toContain('Thu, Aug 6, 8:00 AM - 12:00 PM');
+    expect(body).toContain('See you then. Reply');
+  });
+
   it('leads with the confirmation and names who confirmed it', () => {
     const body = confirmedSmsBody('BrokePipes', 'Thu, Aug 6 at 9:00 AM');
     expect(body).toContain('confirmed by BrokePipes');
@@ -102,7 +110,7 @@ describe('confirmedSmsBody', () => {
     // A second segment bills twice for the same message. 160 is the GSM-7 limit;
     // the sender appends " Reply STOP to opt out." so leave room for it.
     const body = confirmedSmsBody('BrokePipes', 'Thu, Aug 6 at 9:00 AM');
-    expect(body.length + ' Reply STOP to opt out.'.length).toBeLessThanOrEqual(160);
+    expect(segmentSms(`${body} Reply STOP to opt out.`)).toMatchObject({ encoding: 'gsm-7', segments: 1 });
   });
 });
 

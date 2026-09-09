@@ -16,7 +16,7 @@ import {
   sendEtaSmsQuickStopAction,
 } from './actions';
 import SmsPreview from '@/components/sms/SmsPreview';
-import { quickStopStatusText } from '@/lib/sms-templates';
+import { quickStopStatusText, withOptOut } from '@/lib/sms-templates';
 
 export type CardRequest = {
   id: string;
@@ -147,12 +147,14 @@ const addDaysKey = (key: string, days: number) => {
 };
 
 export default function QuickStopRequestCard({
+  businessName,
   request,
   photoUrls,
   route,
   defaults,
   readOnly = false,
 }: {
+  businessName: string;
   request: CardRequest;
   photoUrls: string[];
   route: CardRoute | null;
@@ -537,7 +539,7 @@ export default function QuickStopRequestCard({
                   </form>
                   {request.client_phone ? (
                     <SmsPreview
-                      message={quickStopStatusText('en_route')}
+                      message={withOptOut(quickStopStatusText('en_route', { businessName }))}
                       recipientLabel={request.client_name || 'Customer'}
                       phone={request.client_phone}
                       triggerLabel="👁"
@@ -560,7 +562,7 @@ export default function QuickStopRequestCard({
                   </button>
                   {request.client_phone ? (
                     <SmsPreview
-                      message={quickStopStatusText('arrived')}
+                      message={withOptOut(quickStopStatusText('arrived', { businessName }))}
                       recipientLabel={request.client_name || 'Customer'}
                       phone={request.client_phone}
                       triggerLabel="👁"
@@ -582,7 +584,7 @@ export default function QuickStopRequestCard({
                     {etaSending ? 'Sending…' : etaSent ? '✓ 15m ETA Sent' : '💬 Send 15m ETA'}
                   </button>
                   <SmsPreview
-                    message={quickStopStatusText('eta', { minutes: 15 })}
+                    message={withOptOut(quickStopStatusText('eta', { businessName, minutes: 15 }))}
                     recipientLabel={request.client_name || 'Customer'}
                     phone={request.client_phone}
                     triggerLabel="👁"

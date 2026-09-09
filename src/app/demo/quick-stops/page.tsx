@@ -123,6 +123,7 @@ export default async function DemoQuickStopsPage() {
           {DEMO_QUICK_STOP_CARDS.map((request, index) => (
             <QuickStopRequestCard
               key={request.id}
+              businessName="Demo contractor"
               readOnly
               request={request as unknown as CardRequest}
               photoUrls={[]}

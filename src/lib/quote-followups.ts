@@ -284,14 +284,26 @@ export function dueFollowupIndex(input: { daysSinceShare: number; sentCount: num
  * reviewRequestText, so the contractor is never shown a message that differs
  * from the one their client receives.
  *
- * Opens with the customer's name and names the contractor in the first line.
+ * Names the contractor and customer in the first line.
  * It used to open "Let's Get Quoted:" — our name, on a text about somebody
  * else's quote.
  */
-export function quoteFollowupText(input: { businessName: string; clientName: string; url: string }): string {
+export type QuoteFollowupStage = 'first' | 'intermediate' | 'final';
+
+export function quoteFollowupText(input: {
+  businessName: string;
+  clientName: string;
+  url: string;
+  stage?: QuoteFollowupStage;
+}): string {
   const business = input.businessName.trim() || 'your contractor';
   const who = input.clientName.trim() || 'there';
-  return `Hi ${who}, just checking in on your quote from ${business}. Ready to move forward? Review and approve it here: ${input.url}. Reply STOP to opt out.`;
+  const prompt = input.stage === 'final'
+    ? `Still considering your quote, ${who}? Reply if plans changed. Review:`
+    : input.stage === 'intermediate'
+      ? `${who}, need any changes to your quote? Reply here or review it:`
+      : `${who}, any questions about your quote? Reply here or review it:`;
+  return `${business}: ${prompt} ${input.url} Reply STOP to opt out.`;
 }
 
 /** Subject and body of the email version, so the card can preview that too. */
