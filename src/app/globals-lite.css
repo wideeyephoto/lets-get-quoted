@@ -1,6 +1,6 @@
 /* GENERATED — do not edit. Source: src/app/globals.css
    Run: node scripts/build-css-subset.mjs
-   source-sha256: ebe75c3d6d2a9de8
+   source-sha256: 0f85eafe2bb30f13
 
    globals.css with the rules that can only match inside /dashboard, /admin and
    /demo removed. Every route except those three imports this file; they import
@@ -13058,6 +13058,96 @@ button.btn {
   font-weight: 650;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+.preview-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 120;
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  background: rgba(4, 10, 18, 0.66);
+  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: blur(3px);
+}
+
+.preview-dialog {
+  width: min(640px, 100%);
+  /* Never taller than the screen it is on: the invoice panel grows with the
+     line items and a dialog that runs off the bottom hides its own close. */
+  max-height: min(86vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface, #0f1a25);
+  box-shadow: 0 30px 70px -30px rgba(0, 0, 0, 0.75);
+}
+
+.preview-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-head h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+}
+
+.preview-close {
+  min-height: 40px;
+  padding: 0 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  background: transparent;
+  color: inherit;
+  font-size: 0.85rem;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.preview-body {
+  overflow-y: auto;
+  padding: 1rem 1.1rem 1.2rem;
+}
+
+/* The message, in the shape it arrives in. */
+.preview-sms {
+  padding: 0.85rem 1rem;
+  border-radius: 16px 16px 16px 4px;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 34%, transparent);
+}
+
+.preview-sms p {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.55;
+  overflow-wrap: anywhere;
+}
+
+.preview-sms-meta {
+  margin: 0 0 0.6rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.preview-note {
+  margin: 0.8rem 0 0;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.preview-note-warn {
+  color: var(--warning, #f0b23a);
 }
 
 /* ---- Quote document (client, approval) ---- */
@@ -30368,6 +30458,20 @@ select optgroup {
 .qs-calc-row.net strong {
   color: #34c77b;
   font-size: 1.2rem;
+}
+
+/* Quick Stops - Customer Preview Modal */
+.qs-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.75);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
 }
 
 .qs-funnel-detail {

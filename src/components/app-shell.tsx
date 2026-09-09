@@ -725,11 +725,11 @@ export function AppShell({ children, forceStandaloneSite = false }: { children: 
     items[nextIdx].focus();
   }
 
-  function renderWorkspaceMenu(id: string) {
+  function renderWorkspaceMenu(_id = 'sidenav-workspace-menu') {
     return (
       <div
         className="sidenav-workspace-menu"
-        id={id}
+        id="sidenav-workspace-menu"
         role="menu"
         aria-label="Workspaces"
         onKeyDown={onWorkspaceMenuKeyDown}
