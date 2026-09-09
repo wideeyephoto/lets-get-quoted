@@ -29,6 +29,6 @@ Billing operations displays actionable failures separately from non-live reviews
 - Typecheck, targeted ESLint and the production build passed. The full build reports existing warnings outside this change.
 - Production confirmed 185 reviews, one billing finding and one billing_configuration finding. Four unrelated SMS findings remain.
 
-Application deployment, browser confirmation and subsequent scheduled-cycle evidence are recorded in the task's completion response. A full 24-hour observation cannot be inferred from these initial checks. Operations owner: Brett; verify the original source and webhook destination routing before closing the configuration case.
+Application deployment, browser confirmation and subsequent scheduled-cycle evidence are recorded in the [production verification record](./billing-rehearsal-production-verification-2026-09-09.md). A full 24-hour observation cannot be inferred from these initial checks. Operations owner: Brett; verify the original source and webhook destination routing before closing the configuration case.
 
 The separate MFA change in PR #47 is outside this billing release.
