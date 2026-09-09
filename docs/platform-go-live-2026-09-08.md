@@ -223,28 +223,29 @@ wall-clock RTO. Until then, correct `backup-posture.md` to say the restore is
 untested — a false durability claim on a security page is a consumer-protection
 exposure, not a docs nit.
 
-### 1.6 Failure-to-human: the only alert channel is failing again — `VERIFIED TODAY` — **P0**
+### 1.6 Failure-to-human monitoring and controlled recovery — **COMPLETED 2026-09-09**
 
-`Cron Health Monitor & Alerting` — 2 of the last 4 runs failed today (12:32Z and
-17:00Z). It works intermittently at best. Historically it produced 7 runs / 7
-failures / 0 true readings.
+- [x] **Deploy the repaired monitoring paths.** [PR #46](https://github.com/wideeyephoto/lets-get-quoted/pull/46)
+  shipped as production commit `48dee526b6c25a020758e42f4684bd5698ef54e2`.
+  Five-minute application scanning and an independent GitHub watchdog now use
+  durable notification claims, provider error checks and signed delivery evidence.
+- [x] **Prove automatic arrival within 60 minutes for all five classes.** Controlled
+  webhook, billing, SMS, dispute and cron failures reached **hello@letsgetquoted.com**
+  in **2m 44.4s–2m 55.2s**. All five were verified in Gmail Inbox within six minutes,
+  with source references, recovery instructions and admin links. Initial detection
+  and delivery came from the normal scheduler.
+- [x] **Verify fallback and replay safety.** An isolated database-authorization
+  failure triggered an automatic fallback delivered in **3.469 seconds**. Replaying
+  the five alert requests reused their original provider IDs. Repeated guarded
+  fixture recovery changed zero records and created no charges, credit grants,
+  customer messages or duplicate alerts. The recovery watchdog run cleared all five
+  findings with zero new notifications and zero delivery failures.
 
-Four failure sinks have **zero** push path to a human: `webhook_failures`,
-billing dead-letters, SMS delivery failures, and `charge.dispute.created`.
-[admin-alerts.ts](../src/lib/admin-alerts.ts) is 100% read-side.
-
-And the untested-gate hole is still open: [package.json](../package.json) runs
-`inspect:cron-health` **without** `--strict`, so a hand-run cannot fail. There is
-an `inspect:cron-health:strict` script — use that one.
-
-Remember what green means here: a worker once logged 75 OK runs against a table
-that does not exist, and a logically-failed cron writes no reason.
-
-**Do:** fix the channel first — a drill against a broken channel measures
-nothing. Then manufacture one dead letter per class (a mismatched-price
-subscription event reproduces the never-retryable
-`provider_price_contract_mismatch`), start a stopwatch, record time-to-human with
-zero polling. **PASS = under 60 minutes, per class.**
+Evidence: [dated verification report](operational-alerts-verification-2026-09-09.md).
+This supersedes the September 8 finding that these failure classes had no push path.
+Historical backlog triage and paging through an independent provider remain open
+in the [canonical prelaunch checklist](../LAUNCH_CHECKLIST.md). Controlled fixtures
+do not close separate real-money or real-carrier lifecycle gates.
 
 ### 1.7 The office seat is now sellable — confirm what it actually buys — `VERIFIED TODAY` — **P1**
 
