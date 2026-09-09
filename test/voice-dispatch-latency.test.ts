@@ -25,6 +25,7 @@ describe('Dispatch latency contract', () => {
       expect(ai.params.utility_model).toBe('gpt-4.1-nano');
       expect(ai.params.auto_correct).toBe(true);
       expect(ai.params.enable_text_normalization).toBe('off');
+      expect(ai.params.redact_prompt).toContain('Do not insert category names');
       expect(ai.params.transparent_barge).toBe(true);
       expect(ai.params.barge_functions).toBe(false);
       expect(ai.params.interrupt_prompt).toContain('do not restart or summarize');
@@ -34,6 +35,8 @@ describe('Dispatch latency contract', () => {
       const update = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'update_job_details');
       expect(update.purpose).toContain('clarify the destination first');
       expect(update.argument.properties.scope.description).toContain('Never put notes');
+      const note = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'append_job_caution_or_note');
+      expect(note.purpose).toContain('Do not call this function merely to draft, preview, or read back text');
     } else {
       expect(ai.params.interrupt_prompt).toBeUndefined();
       expect(ai.params.utility_model).toBeUndefined();
@@ -74,6 +77,9 @@ describe('Dispatch latency contract', () => {
     expect(prompt).toContain('price changes require');
     expect(prompt).toContain('Keep job scope and internal notes distinct');
     expect(prompt).toContain('retain the already supplied text and destination');
+    expect(prompt).toContain('An explicit request to add a note, with a clear job and note text, authorizes that save');
+    expect(prompt).toContain('Do not refuse a draft readback or save merely to make reading it possible');
+    expect(prompt).toContain('You can still repeat the requested wording, clearly labeled as unverified');
   });
   it('bounds a hung identity read and cleans up successful read timers', async () => {
     vi.useFakeTimers();

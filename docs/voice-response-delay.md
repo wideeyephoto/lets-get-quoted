@@ -9,7 +9,10 @@ the independent application receipt sanitizer remain enabled. The main
 conversation model, customer profile, endpointing, interruption behavior,
 call cap and financial gates are unchanged.
 
-This is a targeted latency candidate, not a measured improvement yet. The
+The owner reported the silence resolved on the September 9 unrecorded handset
+retest. This is a successful user acceptance sample, not production percentile
+acceptance: the new provider timing anchors still included several multi-second
+intervals, which need correlation with audible turns. The
 reported gaps also occurred on readback turns without a tool call, while
 backend lookups and saves completed much faster than the reported silence.
 Previous minimized receipts did not retain the provider's pipeline metrics,
@@ -32,6 +35,22 @@ are never substituted for audio timing. These diagnostics follow
 The staff prompt and scope-tool description also distinguish notes from work
 scope and ask for the destination before an ambiguous add request. A correction
 reuses the supplied text and must not claim an earlier write was undone.
+
+The retest exposed a separate note-flow problem: a draft readback was refused
+until saving, and a clear note command triggered an unnecessary confirmation.
+The staff instructions now distinguish drafts, submitted saves with an unknown
+result, and confirmed saved text. Preview/readback never authorizes a write;
+an explicit, complete add-note command does. Unknown saves retain the existing
+no-retry rule. Tool descriptions carry the same distinction.
+
+The caller also reported an unsolicited authentication-code explanation. The
+processed transcript contains that phrase in caller input, so it cannot establish
+whether recognition or cleanup introduced it. The staff redaction description
+now restricts marking to actual credential values and explicitly preserves other
+words without adding category labels. Internal mechanics should not be narrated
+or prevent an otherwise clear supported job action. Fast utility settings and
+the independent receipt sanitizer remain unchanged. Handset verification of
+these conversation changes is still required.
 
 Before accepting this change, repeat natural reference lookup, a quote read,
 one harmless note save/readback, and interruption. Inspect the actual delivered

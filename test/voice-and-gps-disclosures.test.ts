@@ -36,6 +36,12 @@ describe('Voice & GPS Compliance Disclosures', () => {
       expect(recordingOccurrences).toBe(1);
     });
 
+    it('normalizes the legacy fixed disclosure without duplicating the opening', () => {
+      const greeting = greetingWithAiDisclosure('You are speaking with an AI assistant. Thanks for calling Apex.');
+      expect(greeting).toBe(`${AI_VOICE_DISCLOSURE} Thanks for calling Apex.`);
+      expect(greetingWithAiDisclosure(greeting)).toBe(greeting);
+    });
+
     it('renders SignalWire SWML with spoken disclosures when recording calls', () => {
       const plan = {
         kind: 'ai_agent' as const,
@@ -60,8 +66,8 @@ describe('Voice & GPS Compliance Disclosures', () => {
 
       expect(recordAction).toBeDefined();
       expect(playAction).toBeDefined();
-      expect(playAction.play.url).toContain(AI_VOICE_DISCLOSURE);
-      expect(playAction.play.url).toContain(RECORDING_DISCLOSURE);
+      expect(playAction.play.urls[1]).toContain(AI_VOICE_DISCLOSURE);
+      expect(playAction.play.urls[1]).toContain(RECORDING_DISCLOSURE);
     });
   });
 

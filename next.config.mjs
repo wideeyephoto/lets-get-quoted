@@ -59,7 +59,13 @@ const nextConfig = {
   // so it looked like it was working.
   serverExternalPackages: ['pdfkit'],
   async headers() {
-    return [{ source: '/:path*', headers: SECURITY_HEADERS }];
+    return [
+      { source: '/:path*', headers: SECURITY_HEADERS },
+      {
+        source: '/audio/dispatch-connected-v1.wav',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+    ];
   },
   // /features is a real page again — it is no longer folded into the homepage,
   // so there is deliberately no rule for it here. Do not re-add one: a redirect
