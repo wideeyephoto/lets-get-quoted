@@ -39,7 +39,7 @@ export default function DemoBookingPage() {
           </h1>
           <p>Customers request a preferred arrival window. You confirm the final time.</p>
         </div>
-        <Link href="/demo/tour/site" className="btn secondary bset-head-cta" aria-label="View demo contractor website booking flow">
+        <Link href="/how-it-works?tour=job-lifecycle&step=approve" className="btn secondary bset-head-cta" aria-label="View sample customer approval and booking">
           View customer booking <Icon name="external" />
         </Link>
       </header>

@@ -1,9 +1,5 @@
-import ApproveScreen from './ApproveScreen';
+import { redirectLegacyJobTour, type LegacyTourPageProps } from '@/lib/job-tour-legacy-redirect';
 
-export const metadata = {
-  title: 'Step 5: Customer Approval & Deposit — Live Evaluation Tour',
-};
-
-export default function DemoTourApprovePage() {
-  return <ApproveScreen />;
+export default function LegacyTourPage({ searchParams }: LegacyTourPageProps) {
+  return redirectLegacyJobTour('approve', searchParams);
 }

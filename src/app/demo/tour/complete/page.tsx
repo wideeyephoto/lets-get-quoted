@@ -1,9 +1,5 @@
-import CompleteScreen from './CompleteScreen';
+import { redirectLegacyJobTour, type LegacyTourPageProps } from '@/lib/job-tour-legacy-redirect';
 
-export const metadata = {
-  title: 'Step 6: Evaluation Summary — Live Evaluation Tour',
-};
-
-export default function DemoTourCompletePage() {
-  return <CompleteScreen />;
+export default function LegacyTourPage({ searchParams }: LegacyTourPageProps) {
+  return redirectLegacyJobTour('complete', searchParams);
 }

@@ -1,9 +1,5 @@
-import IntakeScreen from './IntakeScreen';
+import { redirectLegacyJobTour, type LegacyTourPageProps } from '@/lib/job-tour-legacy-redirect';
 
-export const metadata = {
-  title: 'Step 2: Instant Estimate & AI Intake — Live Evaluation Tour',
-};
-
-export default function DemoTourIntakePage() {
-  return <IntakeScreen />;
+export default function LegacyTourPage({ searchParams }: LegacyTourPageProps) {
+  return redirectLegacyJobTour('intake', searchParams);
 }

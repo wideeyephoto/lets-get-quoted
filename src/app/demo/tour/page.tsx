@@ -1,5 +1,5 @@
-import { redirect } from 'next/navigation';
+import { redirectLegacyJobTour, type LegacyTourPageProps } from '@/lib/job-tour-legacy-redirect';
 
-export default function DemoTourIndexPage() {
-  redirect('/demo/tour/site');
+export default function LegacyTourPage({ searchParams }: LegacyTourPageProps) {
+  return redirectLegacyJobTour('site', searchParams);
 }

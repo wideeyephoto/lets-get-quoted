@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import styles from './hero-job-simulator.module.css';
+import { useJobLifecycleTour } from '@/components/marketing/JobLifecycleTour';
 
 export type TradeId = 'electrical' | 'plumbing' | 'hvac' | 'roofing' | 'remodeling';
 
@@ -803,6 +804,7 @@ const TRADES: Array<{ id: TradeId; label: string; icon: string }> = [
 ];
 
 export default function HeroJobSimulator() {
+  const { isOpen: tourOpen } = useJobLifecycleTour();
   const [activeTrade, setActiveTrade] = useState<TradeId>('electrical');
   const [activeStageIndex, setActiveStageIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(true);
@@ -818,7 +820,7 @@ export default function HeroJobSimulator() {
 
   // Auto-cycle timer
   useEffect(() => {
-    if (!isPlaying) {
+    if (!isPlaying || tourOpen) {
       if (timerRef.current) clearInterval(timerRef.current);
       return;
     }
@@ -831,7 +833,7 @@ export default function HeroJobSimulator() {
 
     timerRef.current = interval;
     return () => clearInterval(interval);
-  }, [isPlaying, nextStage]);
+  }, [isPlaying, tourOpen, nextStage]);
 
   const selectStage = (index: number) => {
     setActiveStageIndex(index);

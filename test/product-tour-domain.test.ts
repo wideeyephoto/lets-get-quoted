@@ -16,14 +16,14 @@ describe('Product Tour Domain Model', () => {
   describe('Tour Catalog & Sequential Step Traversal', () => {
     it('provides public demo and dashboard orientation tours', () => {
       expect(PUBLIC_DEMO_TOUR.key).toBe('demo-job-lifecycle');
-      expect(PUBLIC_DEMO_TOUR.steps).toHaveLength(6);
+      expect(PUBLIC_DEMO_TOUR.steps).toHaveLength(5);
 
       expect(DASHBOARD_ORIENTATION_TOUR.key).toBe('dashboard-orientation');
       expect(DASHBOARD_ORIENTATION_TOUR.steps).toHaveLength(6);
     });
 
     it('resolves tours by key and version', () => {
-      const demo = getTourDefinition('demo-job-lifecycle', 1);
+      const demo = getTourDefinition('demo-job-lifecycle', 2);
       expect(demo).not.toBeNull();
       expect(demo?.title).toBe('5-Minute Job Lifecycle Tour');
 

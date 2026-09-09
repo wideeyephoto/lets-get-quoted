@@ -13,6 +13,7 @@ import styles from './how-it-works.module.css';
 import SectionNav, { type NavSection } from './section-nav';
 import WorkflowShowcase from './workflow-showcase';
 import HeroJobSimulator from './hero-job-simulator';
+import { JobLifecycleTourLauncher, JobLifecycleTourProvider } from '@/components/marketing/JobLifecycleTour';
 
 export const metadata: Metadata = {
   title: { absolute: titleWithBrand('How It Works — Website Request to Paid Job') },
@@ -158,7 +159,7 @@ function Check({ children }: { children: ReactNode }) {
 
 export default function HowItWorksPage() {
   return (
-    <div className={styles.page}>
+    <JobLifecycleTourProvider><div className={styles.page}>
       <div className={styles.siteShell}>
         {/* Ambient atmospheric backdrop glows matching /features & flagship home */}
         <div className={`${styles.ambient} ${styles.ambientOne}`} aria-hidden="true" />
@@ -197,9 +198,7 @@ export default function HowItWorksPage() {
                 <a className={styles.primaryButton} href={APP_SIGNUP_URL}>
                   Build my free website <span aria-hidden="true">→</span>
                 </a>
-                <a className={styles.secondaryButton} href="#workflow">
-                  Follow one job to payment
-                </a>
+                <JobLifecycleTourLauncher className={styles.secondaryButton} />
               </div>
               <p className={styles.heroPricing}>
                 Flex is {FLEX_PRICE.monthlyPrice}. Its {FLEX_PRICE.platformFee} LGQ fee applies to
@@ -231,6 +230,9 @@ export default function HowItWorksPage() {
           </div>
 
           <WorkflowShowcase />
+          <div className={styles.firstStepActions} style={{ marginTop: 24 }}>
+            <JobLifecycleTourLauncher className={styles.secondaryButton}>Try the interactive job tour →</JobLifecycleTourLauncher>
+          </div>
 
           <aside className={styles.firstStepCta} aria-labelledby="first-step-title">
             <div>
@@ -561,6 +563,7 @@ export default function HowItWorksPage() {
                   Build my free website <span aria-hidden="true">→</span>
                 </a>
                 <Link className={styles.lightLink} href={DEMO_URL}>Explore the live demo</Link>
+                <JobLifecycleTourLauncher className={styles.secondaryButton} />
               </div>
               <small>{PUBLIC_PRICING_SUMMARY} Stripe processing and payment-infrastructure costs are separate.</small>
             </div>
@@ -573,6 +576,6 @@ export default function HowItWorksPage() {
         <SiteFooter />
       </div>
       </div>
-    </div>
+    </div></JobLifecycleTourProvider>
   );
 }

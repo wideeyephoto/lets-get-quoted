@@ -1,9 +1,5 @@
-import QuoteScreen from './QuoteScreen';
+import { redirectLegacyJobTour, type LegacyTourPageProps } from '@/lib/job-tour-legacy-redirect';
 
-export const metadata = {
-  title: 'Step 4: Prepare & Send Quote — Live Evaluation Tour',
-};
-
-export default function DemoTourQuotePage() {
-  return <QuoteScreen />;
+export default function LegacyTourPage({ searchParams }: LegacyTourPageProps) {
+  return redirectLegacyJobTour('quote', searchParams);
 }

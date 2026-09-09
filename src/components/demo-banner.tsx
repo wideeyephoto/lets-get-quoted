@@ -16,9 +16,6 @@ export default function DemoBanner() {
           </span>
         </div>
         <div className="demo-banner-actions">
-          <Link href="/demo/tour/site" className="btn primary" style={{ background: '#50e3bd', color: '#09212f', fontWeight: 700 }}>
-            Start 5-min tour &rarr;
-          </Link>
           <Link href="/" className="demo-banner-back">
             <span aria-hidden="true">←</span> Exit demo
           </Link>

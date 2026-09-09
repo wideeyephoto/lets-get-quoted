@@ -28,6 +28,10 @@
   box-sizing: border-box;
 }
 
+:global(html[data-job-tour-open='true']) .page * {
+  animation-play-state: paused !important;
+}
+
 .page :where(a, button, summary) {
   -webkit-tap-highlight-color: transparent;
 }

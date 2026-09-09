@@ -115,7 +115,7 @@ export default function DashboardHomeScreen({
             </div>
             <FounderHelpButton />
           </div>
-          <ChecklistTourInvitation />
+          {!readOnly && basePath === '/dashboard' ? <ChecklistTourInvitation /> : null}
           <p className="onboarding-progress-note">
             {completedStepCount} of {onboardingSteps.length} steps complete.
           </p>

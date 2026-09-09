@@ -97,22 +97,11 @@ describe('every builder the demo runs can be answered by the fixture client', ()
   });
 
   it('demo tour structure and step continuity', async () => {
-    const { TOUR_STEPS, DEMO_SHOWCASE_WORKFLOW } = await import('@/lib/demo-tour-data');
-    expect(TOUR_STEPS.length).toBe(6);
-    for (let i = 0; i < TOUR_STEPS.length; i++) {
-      const step = TOUR_STEPS[i];
-      expect(step.step).toBe(i + 1);
-      expect(step.href).toBe(`/demo/tour/${step.slug}`);
-      if (i > 0) {
-        expect(step.prevHref).toBe(TOUR_STEPS[i - 1].href);
-      } else {
-        expect(step.prevHref).toBeNull();
-      }
-      if (i < TOUR_STEPS.length - 1) {
-        expect(step.nextHref).toBe(TOUR_STEPS[i + 1].href);
-      } else {
-        expect(step.nextHref).toBeNull();
-      }
+    const { DEMO_SHOWCASE_WORKFLOW } = await import('@/lib/demo-tour-data');
+    const { JOB_TOUR_STEPS, jobTourHref } = await import('@/lib/job-lifecycle-tour');
+    expect(JOB_TOUR_STEPS.length).toBe(5);
+    for (const step of JOB_TOUR_STEPS) {
+      expect(jobTourHref(step.slug)).toBe(`/how-it-works?tour=job-lifecycle&step=${step.slug}`);
     }
     expect(DEMO_SHOWCASE_WORKFLOW.company.name).toBe('Broke Pipes Plumbing');
     expect(DEMO_SHOWCASE_WORKFLOW.job.lineItems.length).toBeGreaterThan(0);

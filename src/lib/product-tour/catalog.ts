@@ -1,59 +1,23 @@
 import type { TourDefinition, TourStep } from './types';
+import { JOB_TOUR_STEPS, JOB_TOUR_VERSION, jobTourHref } from '../job-lifecycle-tour';
 
 /**
  * Public 5-minute evaluation demo tour definition.
  */
 export const PUBLIC_DEMO_TOUR: TourDefinition = {
   key: 'demo-job-lifecycle',
-  version: 1,
+  version: JOB_TOUR_VERSION,
   title: '5-Minute Job Lifecycle Tour',
   estimatedMinutes: 5,
   audience: ['anonymous'],
-  steps: [
-    {
-      id: 'demo-site',
-      route: '/demo/tour/site',
-      title: 'Visit Contractor Website',
-      body: 'A prospective homeowner lands on your free, high-converting contractor website.',
-      perspective: 'homeowner',
-    },
-    {
-      id: 'demo-intake',
-      route: '/demo/tour/intake',
-      title: 'Request an Instant Estimate',
-      body: 'The homeowner submits a project request; AI qualifies fit and gathers job details 24/7.',
-      perspective: 'homeowner',
-    },
-    {
-      id: 'demo-lead',
-      route: '/demo/tour/lead',
-      title: 'Receive Qualified Lead',
-      body: 'Switch perspectives: See how the lead arrives pre-scored with scope, urgency, and route fit.',
-      perspective: 'contractor',
-    },
-    {
-      id: 'demo-quote',
-      route: '/demo/tour/quote',
-      title: 'Prepare & Send Quote',
-      body: 'Review itemized pricing, add optional upgrades, and send to the customer via SMS.',
-      perspective: 'contractor',
-    },
-    {
-      id: 'demo-approve',
-      route: '/demo/tour/approve',
-      title: 'Approve, Sign & Pay Deposit',
-      body: 'Switch perspectives: Customer approves upgrades, e-signs, pays deposit, and books window.',
-      perspective: 'homeowner',
-    },
-    {
-      id: 'demo-complete',
-      route: '/demo/tour/complete',
-      title: 'Tour Complete',
-      body: 'You experienced the full 5-step lifecycle. Start your free website or explore the dashboard.',
-      perspective: 'summary',
-    },
-  ],
-} as const;
+  steps: JOB_TOUR_STEPS.map((step) => ({
+    id: 'demo-' + step.slug,
+    route: jobTourHref(step.slug),
+    title: step.label,
+    body: step.description,
+    perspective: step.perspective === 'Homeowner' ? 'homeowner' : 'contractor',
+  })),
+};
 
 /**
  * Signed-in workspace orientation tour definition.
