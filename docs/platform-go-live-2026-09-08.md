@@ -161,10 +161,17 @@ dashboard-button execution, a full refund, every other refund call site or the
 paid add-on lifecycle. The remaining live add-on gate is tracked in the current
 [launch checklist](../LAUNCH_CHECKLIST.md).
 
-September 9 rollout: PR #56 is merged and exact revision `399e95a44` serves the
-production app. Both migrations are applied, refund webhook events are saved,
-and the enabled refund worker completed its first scheduled run without errors.
-No new paid add-on has settled in this task; the six-SKU live lifecycle remains open.
+September 9 completion: PR #56 is merged and included in production. Refund,
+paid Voice and duplicate-delivery migrations are applied, refund webhook events
+are saved, and the scheduled worker processed all six live add-on refunds.
+Exactly $248 was charged and fully refunded. All 500 purchased minutes were
+revoked, storage returned from 100 to 50 to 0 GB, and office-seat rounding was
+verified at 1 to 1 to 0. All five recurring add-ons are canceled; the unrelated
+Solo allowance remains unrevoked. Fixed a real duplicate-delivery 500 and proved
+HTTP 200 for both full-refund and stale half-refund replays with unchanged
+balances. Natural paid renewals and effective period-end transitions remain open;
+see the [dated execution record](prelaunch-payments-verification-2026-09-09.md)
+and [sanitized evidence](evidence/live-addon-lifecycle-2026-09-09.json).
 
 ### 1.4 Production feature-flag reconciliation — 67 flags, 12 documented — `VERIFIED TODAY` — **P0**
 
