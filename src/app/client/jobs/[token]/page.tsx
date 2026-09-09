@@ -25,6 +25,8 @@ import {
 import QuoteDocument from './QuoteDocument';
 import QuoteAcceptance, { QuoteApproved, QuoteOptionsUpdate } from './QuoteAcceptance';
 import { QuoteBottomBar, QuoteDeckProvider, type PayMode } from './QuoteDeck';
+import FinancingOption from '@/components/financing/FinancingOption';
+import { resolveHomeownerFinancing } from '@/lib/bnpl-financing';
 import ScheduleChoice from './ScheduleChoice';
 import ScheduleLockedOptions from './ScheduleLockedOptions';
 import JobTimeline from './JobTimeline';
@@ -927,14 +929,32 @@ export default async function ClientJobDashboardPage({
             <aside className="quote-deck-rail" aria-label="Your quote summary">
               <div className="quote-rail-sticky">
                 {awaitingApproval ? (
-                  <QuoteAcceptance
-                    approveAction={approveClientJobQuoteAction.bind(null, params.token)}
-                    businessName={dashboard.businessName}
-                    scheduleOffered={scheduleOpen}
-                    scheduledLabel={scheduledLabel}
-                    payment={paymentSummary}
-                    planTotal={plan ? plan.totalCents / 100 : null}
-                  />
+                  await (async () => {
+                    const financing = await resolveHomeownerFinancing(
+                      access?.accountId || '',
+                      'quote',
+                      agreedTotal,
+                      { docRef: access?.jobId },
+                    );
+                    return (
+                      <QuoteAcceptance
+                        approveAction={approveClientJobQuoteAction.bind(null, params.token)}
+                        businessName={dashboard.businessName}
+                        scheduleOffered={scheduleOpen}
+                        scheduledLabel={scheduledLabel}
+                        payment={paymentSummary}
+                        planTotal={plan ? plan.totalCents / 100 : null}
+                        financingOption={
+                          <FinancingOption
+                            availability={financing}
+                            businessName={dashboard.businessName}
+                            surface="quote"
+                            docRef={access?.jobId}
+                          />
+                        }
+                      />
+                    );
+                  })()
                 ) : (
                   <>
                     <QuoteApproved

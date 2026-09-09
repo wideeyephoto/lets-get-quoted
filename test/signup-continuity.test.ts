@@ -191,7 +191,19 @@ describe('Problem 4: Preserving Signup Intent & Continuity', () => {
       expect(WELCOME_ACTIONS).toContain('resolveDestination');
       expect(WELCOME_ACTIONS).toContain('destinationPath');
     });
+
+    it('reveals new site only when seeded without intercepting checkout or explicit destinations', () => {
+      const form = readFileSync('src/app/welcome/WelcomeForm.tsx', 'utf8');
+      expect(form).toMatch(/router\.replace\(\s*result\.planCheckoutPath\s*\?\?\s*result\.destinationPath\s*\?\?\s*\(seeded\.ok\s*&&\s*seeded\.built\s*\?\s*['"]\/welcome\/site['"]\s*:\s*['"]\/dashboard\/sites['"]\),?\s*\)/);
+    });
+
+    it('guards site reveal route against unwritten sites', () => {
+      const sitePage = readFileSync('src/app/welcome/site/page.tsx', 'utf8');
+      expect(sitePage).toContain('siteIsUnwritten(site)');
+      expect(sitePage).toContain("redirect('/dashboard/sites')");
+    });
   });
+
 
   describe('Public Marketing CTA Integration', () => {
     it('wires flagship header, hero, and footer CTAs to /start', () => {

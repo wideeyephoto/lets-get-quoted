@@ -22,6 +22,7 @@ async function runOperatorMorningBriefingCron(admin?: SupabaseClient) {
     mrrEstimated: report.briefing.revenue.mrrEstimated,
     totalContractors: report.briefing.contractors.totalActive,
     safeActionsExecuted: report.safeActionsExecuted,
+    onboardingNudgeCandidates: report.onboardingNudgeCandidates,
     digestDelivered: digestResult.success,
     deliveredVia: digestResult.deliveredVia,
   };

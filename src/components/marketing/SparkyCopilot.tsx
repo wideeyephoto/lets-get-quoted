@@ -789,6 +789,7 @@ function SparkyCopilotInner({ pathname }: { pathname: string | null }) {
 export default function SparkyCopilot() {
   const pathname = usePathname();
   if (pathname?.startsWith('/dashboard')) return null;
+  if (pathname?.startsWith('/sub')) return null;
 
   return <SparkyCopilotInner pathname={pathname} />;
 }

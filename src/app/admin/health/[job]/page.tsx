@@ -28,7 +28,7 @@ export default async function CronJobHistoryPage({ params: paramsPromise }: { pa
       <p className={styles.eyebrow}>Scheduled job</p>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 className={styles.title}>{spec.label}</h1>
-        {canManageOps ? <RunCronButton job={spec.job} jobLabel={spec.label} /> : null}
+        {canManageOps ? <RunCronButton job={spec.job} jobLabel={spec.label} isMoney={spec.importance === 'money'} /> : null}
       </div>
       <p className={styles.lead}>{spec.consequence}</p>
     </header>

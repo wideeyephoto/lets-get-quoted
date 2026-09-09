@@ -2,14 +2,27 @@ name: Cron Health Monitor & Alerting
 
 on:
   schedule:
-    # Run every 30 minutes to ensure automated alerting on silent or failing cron workers
-    - cron: '*/30 * * * *'
+    # Independent watchdog; Vercel also runs the same monitor every five minutes.
+    - cron: '7,22,37,52 * * * *'
   workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: operational-monitor
+  cancel-in-progress: false
 
 jobs:
   cron-health:
     if: github.repository == 'wideeyephoto/lets-get-quoted'
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      FOUNDER_ALERT_EMAIL: hello@letsgetquoted.com
+      SYSTEM_EMAIL_FROM: "Let's Get Quoted Ops <system@letsgetquoted.com>"
     steps:
       - uses: actions/checkout@v5
 
@@ -21,9 +34,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Inspect Cron Health (90-minute window)
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: node scripts/inspect-cron-health.mjs 90 --strict
+      - name: Detect failures and verify notification delivery
+        run: node scripts/monitor-operations.mjs
+      - name: Page if the monitor or its dependency installation failed
+        if: failure()
+        run: node scripts/page-monitor-failure.mjs

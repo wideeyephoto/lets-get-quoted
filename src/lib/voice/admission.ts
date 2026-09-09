@@ -403,7 +403,7 @@ export async function planInboundCall(
       receiptAuthorization: options.receiptAuthorization,
       greeting: greetingWithAiDisclosure(
         grounding?.contractorStaffCaller
-          ? 'Connecting to field dispatch.'
+          ? 'Field dispatch is ready.'
           : (settings.greeting?.trim() || DEFAULT_GREETING)
       ),
       systemPrompt,

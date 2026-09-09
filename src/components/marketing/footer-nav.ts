@@ -33,6 +33,8 @@ export const FOOTER_PRIMARY: readonly FooterLink[] = [
   ['/features/website-builder', 'Website'],
   ['/features/ai-intake', 'AI Intake'],
   ['/features/text-to-job', 'Text-to-Job'],
+  ['/features/speed-to-lead', 'Speed-to-Lead'],
+  ['/features/live-eta', 'Live ETA'],
   ['/features/quick-stops', 'Quick Stops'],
   ['/how-it-works', 'How it works'],
   ['/for', 'For your trade'],

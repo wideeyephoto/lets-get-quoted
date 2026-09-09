@@ -359,6 +359,11 @@ describe('the public proposal page', () => {
     expect(h1s).toBeGreaterThan(0);
     expect(PUBLIC_PAGE.match(/<h1 className=\{styles\.title\}/g)?.length ?? 0).toBe(1);
   });
+
+  it('is rendered without marketing or demo chrome', () => {
+    const appShell = read('src', 'components', 'app-shell.tsx');
+    expect(appShell).toMatch(/if \(pathname\.startsWith\('\/sub\/'\) \|\| pathname === '\/sub'\) \{\s*return <>{children}<\/>;\s*\}/);
+  });
 });
 
 describe('the public page on a phone', () => {

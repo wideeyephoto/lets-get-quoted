@@ -246,8 +246,8 @@ describe('20 Advanced Platform Features Suite', () => {
   });
 
   // 13. Homeowner BNPL Financing
-  it('13. keeps homeowner financing unavailable while Wisetack approval is pending', () => {
-    expect(HOMEOWNER_FINANCING.provider).toBe('wisetack');
+  it('13. keeps homeowner financing unavailable while Acorn partner onboarding is pending', () => {
+    expect(HOMEOWNER_FINANCING.provider).toBe('acorn');
     expect(HOMEOWNER_FINANCING.available).toBe(false);
     expect(HOMEOWNER_FINANCING.status).toBe('pending_partner_approval');
   });

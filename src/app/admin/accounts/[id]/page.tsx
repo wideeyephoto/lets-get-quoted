@@ -74,6 +74,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   tag: 'Enter a tag.',
   attachment: 'That file could not be uploaded.',
   privacy_kind: 'Choose a request type.',
+  resolution_notes_required: 'Operational resolution notes are required to resolve a privacy request.',
+  request_id_required: 'Privacy request ID is required.',
   reason_required: 'Enter a reason of at least four characters.',
   update_failed: 'The account could not be updated. Try again.',
   partial_signout: 'Some account members were blocked, but at least one update failed. Review the audit entry before retrying.',
@@ -1302,8 +1304,15 @@ export default async function AdminAccountDetailPage({
                   {r.details ? `: ${r.details}` : ''}
                 </span>
                 {r.status === 'open' ? (
-                  <form action={resolvePrivacyRequestAction.bind(null, params.id)} style={{ display: 'inline', marginLeft: '0.5rem' }}>
+                  <form action={resolvePrivacyRequestAction.bind(null, params.id)} style={{ display: 'inline-flex', gap: '0.25rem', alignItems: 'center', marginLeft: '0.5rem' }}>
                     <input type="hidden" name="request_id" value={r.id} />
+                    <input
+                      type="text"
+                      name="resolution_notes"
+                      placeholder="Resolution notes..."
+                      required
+                      style={{ fontSize: '0.75rem', padding: '0.15rem 0.35rem', border: '1px solid #444', borderRadius: '4px', background: '#111', color: '#fff', width: '140px' }}
+                    />
                     <button type="submit" className={styles.rowLink} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
                       Resolve
                     </button>

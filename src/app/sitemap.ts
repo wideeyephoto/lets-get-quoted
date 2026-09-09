@@ -33,6 +33,7 @@ const FEATURE_SLUGS = [
   'recurring',
   'reviews',
   'scheduling',
+  'speed-to-lead',
   'text-to-job',
   'website-builder',
 ] as const;
@@ -71,7 +72,7 @@ const FEATURE_SLUGS = [
  * The articles keep their own datePublished (and dateModified once one is
  * edited), because those are genuinely per-URL.
  */
-const MARKETING_REVISED = '2026-09-07';
+const MARKETING_REVISED = '2026-09-08';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const origin = marketingOrigin(process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'letsgetquoted.com');

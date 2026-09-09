@@ -42,7 +42,7 @@ export type InboundCall = Readonly<{
 }>;
 
 /** The disclosure callers must hear before interacting with the agent. */
-export const AI_VOICE_DISCLOSURE = 'You are speaking with an AI assistant.';
+export const AI_VOICE_DISCLOSURE = "Hi, I'm your AI assistant.";
 export const RECORDING_DISCLOSURE = 'This call may be recorded for quality and training purposes.';
 
 /**
@@ -56,7 +56,10 @@ export function greetingWithAiDisclosure(
   greeting: string | null | undefined,
   options: { recordingEnabled?: boolean } = {},
 ): string {
-  const custom = (greeting ?? '').trim();
+  // Normalize the earlier fixed sentence so a saved greeting cannot produce
+  // both versions when admission and rendering enforce the disclosure.
+  const custom = (greeting ?? '').trim()
+    .replace('You are speaking with an AI assistant.', AI_VOICE_DISCLOSURE);
   const disclosures: string[] = [AI_VOICE_DISCLOSURE];
   if (options.recordingEnabled) {
     disclosures.push(RECORDING_DISCLOSURE);

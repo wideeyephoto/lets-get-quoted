@@ -5,6 +5,10 @@
       "schedule": "*/5 * * * *"
     },
     {
+      "path": "/api/cron/operational-alerts",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/blog",
       "schedule": "0 9 * * *"
     },
@@ -93,6 +97,10 @@
       "schedule": "0 * * * *"
     },
     {
+      "path": "/api/cron/voice-receipt-recovery",
+      "schedule": "*/5 * * * *"
+    },
+    {
       "path": "/api/cron/connected-payment-projection",
       "schedule": "*/5 * * * *"
     },
@@ -179,6 +187,10 @@
     {
       "path": "/api/cron/email-domain-reconcile",
       "schedule": "23 6 * * *"
+    },
+    {
+      "path": "/api/cron/custom-domain-reconcile",
+      "schedule": "*/15 * * * *"
     }
   ]
 }

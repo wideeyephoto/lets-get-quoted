@@ -15,12 +15,34 @@ describe('Dispatch latency contract', () => {
     });
     const main = JSON.parse(answer.body).sections.main;
     const ai = main.find((item: { ai?: unknown }) => item.ai).ai;
-    expect(main.find((item: { answer?: unknown }) => item.answer).answer.max_duration).toBe(600);
+    expect(main.find((item: { answer?: unknown }) => item.answer).answer.max_duration).toBe(598);
     expect(ai.params.end_of_speech_timeout).toBe(contractorMode ? 700 : 1000);
     expect(ai.params.enable_turn_detection).toBe(true);
     expect(ai.params.turn_detection_timeout).toBe(250);
     expect(ai.params.function_wait_for_talking).toBe(false);
     expect(ai.params.redact_prompt).toContain('verification codes');
+    if (contractorMode) {
+      expect(ai.params.utility_model).toBe('gpt-4.1-nano');
+      expect(ai.params.auto_correct).toBe(true);
+      expect(ai.params.enable_text_normalization).toBe('off');
+      expect(ai.params.redact_prompt).toContain('Do not insert category names');
+      expect(ai.params.transparent_barge).toBe(true);
+      expect(ai.params.barge_functions).toBe(false);
+      expect(ai.params.interrupt_prompt).toContain('do not restart or summarize');
+      const lookup = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'lookup_jobs');
+      expect(lookup.purpose).toContain('current total or recorded quote');
+      expect(lookup.argument.properties.include_details.description).toContain('even if only one field is requested');
+      const update = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'update_job_details');
+      expect(update.purpose).toContain('clarify the destination first');
+      expect(update.argument.properties.scope.description).toContain('Never put notes');
+      const note = ai.SWAIG.functions.find((fn: { function: string }) => fn.function === 'append_job_caution_or_note');
+      expect(note.purpose).toContain('Do not call this function merely to draft, preview, or read back text');
+    } else {
+      expect(ai.params.interrupt_prompt).toBeUndefined();
+      expect(ai.params.utility_model).toBeUndefined();
+      expect(ai.params.auto_correct).toBeUndefined();
+      expect(ai.params.enable_text_normalization).toBeUndefined();
+    }
     for (const fn of ai.SWAIG.functions.filter((f: { web_hook_url?: string }) => f.web_hook_url)) {
       expect(fn.fillers.default.length).toBeGreaterThan(0);
       expect(fn.wait_for_fillers).toBe(false);
@@ -44,6 +66,20 @@ describe('Dispatch latency contract', () => {
     for (const timezone of [null, 'Invalid/Zone']) {
       expect(buildVoiceSystemPrompt({ ...context, timezone })).toContain('Ask for an explicit calendar date');
     }
+  });
+  it('supplies the observed-call readback, quote-read and interruption rules without removing price-write safeguards', () => {
+    const prompt = buildVoiceSystemPrompt(context);
+    expect(prompt).toContain('quote the exact Saved text from that tool result');
+    expect(prompt).toContain('do not call append_job_caution_or_note again');
+    expect(prompt).toContain('current job total, price, or quote');
+    expect(prompt).toContain('include_details=true');
+    expect(prompt).toContain('Do not restart or summarize the interrupted answer');
+    expect(prompt).toContain('price changes require');
+    expect(prompt).toContain('Keep job scope and internal notes distinct');
+    expect(prompt).toContain('retain the already supplied text and destination');
+    expect(prompt).toContain('An explicit request to add a note, with a clear job and note text, authorizes that save');
+    expect(prompt).toContain('Do not refuse a draft readback or save merely to make reading it possible');
+    expect(prompt).toContain('You can still repeat the requested wording, clearly labeled as unverified');
   });
   it('bounds a hung identity read and cleans up successful read timers', async () => {
     vi.useFakeTimers();

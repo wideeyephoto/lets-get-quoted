@@ -6,10 +6,12 @@ import { runCronJobNowAction } from './actions';
 export function RunCronButton({
   job,
   jobLabel,
+  isMoney = false,
   compact = false,
 }: {
   job: string;
   jobLabel: string;
+  isMoney?: boolean;
   compact?: boolean;
 }) {
   const [isPending, startTransition] = useTransition();
@@ -17,8 +19,19 @@ export function RunCronButton({
 
   const handleRun = () => {
     setFeedback(null);
+    let confirmation: string | undefined;
+    if (isMoney) {
+      const typed = window.prompt(
+        `CONFIRMATION REQUIRED: '${jobLabel}' is a money-moving worker that touches live balances or settlements.\n\nTo confirm manual execution, type '${job}' below:`,
+      );
+      if (!typed) {
+        return;
+      }
+      confirmation = typed.trim();
+    }
+
     startTransition(async () => {
-      const res = await runCronJobNowAction(job);
+      const res = await runCronJobNowAction(job, confirmation);
       if (res.success) {
         setFeedback({ type: 'ok', text: '✓ Triggered' });
         setTimeout(() => setFeedback(null), 4000);

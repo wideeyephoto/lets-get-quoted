@@ -124,7 +124,7 @@ export async function runEmailSendingDomainReconcile(
   // dashboard offers the section; it says nothing about whether rows already
   // exist. A domain verified while the flag was on stays live in every send
   // path after it is switched off, so it still has to be reconciled.
-  if (!isSendingDomainProvisioningConfigured()) {
+  if (!(await isSendingDomainProvisioningConfigured())) {
     return { ...summary, skipped: true, reason: 'RESEND_API_KEY is not configured' };
   }
 

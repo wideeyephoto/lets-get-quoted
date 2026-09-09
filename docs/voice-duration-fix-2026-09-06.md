@@ -1,5 +1,27 @@
 # Voice duration and low-balance admission fix
 
+## Superseding September 8 policy and evidence
+
+The initial September 6 low-balance duration policy below is historical.
+Measurement-mode calls now retain a ten-minute limit even when the available
+balance is lower. The ledger commits only held credit and records excess usage
+as absorbed minutes. Enforcement mode, if later explicitly enabled, uses the
+reserved duration. Admission policy is snapshotted so retries cannot change mode.
+Production meter and allowance worker are enabled; the financial gate remains off.
+
+A provider timer of 600 seconds produced 600.938 connected seconds in an earlier
+test. The current answer/connect limit is 598 seconds and the AI hard stop is
+583 seconds. The September 8 staff call ended by the system at 593.807 connected
+seconds, with a clear closing message and no perceived response gap reported by
+the owner. Its note saved once and ten AI minutes settled once. Other transfer,
+late fallback, silence, and in-flight tool boundary scenarios remain separate
+acceptance items; one staff call does not establish every path.
+
+See the [current production checklist](voice-dispatch-production-todo-2026-09-08.md)
+and [transfer test evidence](voice-transfer-end-2026-09-08.md).
+
+## Original September 6 implementation
+
 The owner selected a ten-minute maximum for reception and dispatch calls.
 Previously each call reserved sixty minutes and the generated SWML placed
 `max_duration` under `ai.params`, where SignalWire does not document it as a

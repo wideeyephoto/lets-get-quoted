@@ -2,6 +2,7 @@
 
 import { useState, useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
+import Link from 'next/link';
 import {
   recordManualPaymentAction,
   issueRefundAction,
@@ -32,8 +33,8 @@ import {
 import type { TerminalReader, TerminalPaymentStatusResult } from '@/lib/stripe-terminal';
 import type { PaymentLedgerItem } from '@/lib/payments-ledger-data';
 import type { DisputeEvidenceBundle } from '@/lib/dispute-evidence';
-import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
-import { calculateEarlyPayDiscount } from '@/lib/financing-calculator';
+import { HOMEOWNER_FINANCING } from '@/lib/financing-status';
+import { calculateEarlyPayDiscount } from '@/lib/early-pay-discount';
 import type { NoiDocumentData } from '@/lib/noi-generator';
 import type { LienWaiverDocument, LienWaiverType } from '@/lib/lien-waiver';
 import { LIEN_WAIVER_TITLES } from '@/lib/lien-waiver';
@@ -922,7 +923,10 @@ export default function PaymentModals({
           <p style={{ margin: 0, fontSize: '0.88rem', color: 'var(--text-muted)' }}>
             {HOMEOWNER_FINANCING.nextStep}
           </p>
-          <div>
+          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <Link href="/dashboard/settings#financing" className="btn primary" onClick={onClose}>
+              Manage in Settings
+            </Link>
             <button type="button" className="btn secondary" onClick={onClose}>
               Close
             </button>

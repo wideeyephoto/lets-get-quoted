@@ -1,10 +1,14 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useState, useEffect, useRef, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { completeFirstRunAction } from './actions';
 import { seedSiteFromFirstRunAction } from './seed-actions';
+import { resolveFirstRunPlaceAction } from './lookup-actions';
+import { formatZipEcho, isFiveDigitZip } from '@/lib/welcome-zip-echo';
 import { trackSignupConversion, updateGoogleConsent } from '@/lib/google-tag';
+import TradeSearchSelect from '@/components/trade-search-select';
+import WelcomePreviewCard from './WelcomePreviewCard';
 
 type TradeOption = { slug: string; name: string };
 
@@ -35,11 +39,52 @@ export default function WelcomeForm({
   const [businessName, setBusinessName] = useState(initialBusinessName);
   const [trade, setTrade] = useState(initialTrade || '');
   const [postalCode, setPostalCode] = useState(initialPostalCode);
+  const [resolvedPlace, setResolvedPlace] = useState<string | null>(null);
   const [accepted, setAccepted] = useState(false);
   const [allowMeasurementCookies, setAllowMeasurementCookies] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [building, setBuilding] = useState(false);
   const [pending, startTransition] = useTransition();
+
+  const zipCacheRef = useRef<Map<string, string | null>>(new Map());
+  const zipSeqRef = useRef(0);
+
+  // Echo 5-digit ZIP to verified city via same geocode call site generator uses
+  useEffect(() => {
+    const trimmed = postalCode.trim();
+    if (!isFiveDigitZip(trimmed)) {
+      setResolvedPlace(null);
+      return;
+    }
+
+    const cached = zipCacheRef.current.get(trimmed);
+    if (cached !== undefined) {
+      setResolvedPlace(cached);
+      return;
+    }
+
+    const seq = ++zipSeqRef.current;
+    const timer = setTimeout(async () => {
+      try {
+        const result = await resolveFirstRunPlaceAction(trimmed);
+        if (zipSeqRef.current !== seq) return;
+        if (result.ok && result.place) {
+          zipCacheRef.current.set(trimmed, result.place);
+          setResolvedPlace(result.place);
+        } else {
+          zipCacheRef.current.set(trimmed, null);
+          setResolvedPlace(null);
+        }
+      } catch {
+        if (zipSeqRef.current === seq) {
+          zipCacheRef.current.set(trimmed, null);
+          setResolvedPlace(null);
+        }
+      }
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [postalCode]);
 
   let submitButtonText = 'Build my free site';
   if (goal === 'build_site') {
@@ -92,102 +137,125 @@ export default function WelcomeForm({
       router.replace(
         result.planCheckoutPath
           ?? result.destinationPath
-          ?? (seeded.ok && seeded.built ? '/dashboard/sites?built=1' : '/dashboard/sites'),
+          ?? (seeded.ok && seeded.built ? '/welcome/site' : '/dashboard/sites'),
       );
       router.refresh();
     });
   }
 
+
+  const zipEcho = formatZipEcho(resolvedPlace);
+
   return (
-    <form className="auth-form" onSubmit={submit} noValidate>
-      <label htmlFor="wf-business">
-        What&apos;s your business called?
-        <input
-          id="wf-business"
-          name="businessName"
-          type="text"
-          value={businessName}
-          onChange={(event) => setBusinessName(event.target.value)}
-          placeholder="e.g. Brookhaven Plumbing"
-          autoComplete="organization"
-          maxLength={80}
-          autoFocus
-          required
-        />
-      </label>
-      <p className="welcome-hint">This is the name on your website, your quotes, and every text your customers get.</p>
+    <div className="welcome-split">
+      <form className="auth-form" onSubmit={submit} noValidate>
+        <label htmlFor="wf-business">
+          What&apos;s your business called?
+          <input
+            id="wf-business"
+            name="businessName"
+            type="text"
+            value={businessName}
+            onChange={(event) => setBusinessName(event.target.value)}
+            placeholder="e.g. Brookhaven Plumbing"
+            autoComplete="organization"
+            maxLength={80}
+            autoFocus
+            required
+          />
+        </label>
+        <p className="welcome-hint">This is the name on your website, your quotes, and every text your customers get.</p>
 
-      <label htmlFor="wf-trade">
-        What kind of work do you do?
-        <select id="wf-trade" name="trade" value={trade} onChange={(event) => setTrade(event.target.value)}>
-          <option value="">Something else</option>
-          {trades.map((option) => (
-            <option key={option.slug} value={option.slug}>{option.name}</option>
-          ))}
-        </select>
-      </label>
-      <p className="welcome-hint">We use this to pick your starting design, your icons, and how the estimator prices work.</p>
+        <label htmlFor="wf-trade">
+          What kind of work do you do?
+          <TradeSearchSelect
+            id="wf-trade"
+            name="trade"
+            value={trade}
+            onChange={setTrade}
+            businessName={businessName}
+            initialTrade={initialTrade}
+            placeholder="Search trade or specialty (e.g. Plumber, HVAC, Glass)…"
+          />
+        </label>
+        <p className="welcome-hint">We use this to pick your starting design, your icons, and how the estimator prices work.</p>
 
-      <label htmlFor="wf-zip">
-        What ZIP do you work out of?
-        <input
-          id="wf-zip"
-          name="postalCode"
-          type="text"
-          inputMode="numeric"
-          value={postalCode}
-          onChange={(event) => setPostalCode(event.target.value)}
-          placeholder="e.g. 48226"
-          autoComplete="postal-code"
-          maxLength={10}
-          required
-        />
-      </label>
-      <p className="welcome-hint">
-        {city
-          ? `We have your city (${city}), but need your 5-digit ZIP for accurate permit requirements, tax rules, and local Google SEO.`
-          : 'This is what lets us write your whole site about the actual towns you serve, not "your local area".'}
-      </p>
+        <label htmlFor="wf-zip">
+          What ZIP do you work out of?
+          <input
+            id="wf-zip"
+            name="postalCode"
+            type="text"
+            inputMode="numeric"
+            value={postalCode}
+            onChange={(event) => setPostalCode(event.target.value)}
+            placeholder="e.g. 48226"
+            autoComplete="postal-code"
+            maxLength={10}
+            required
+          />
+        </label>
+        {zipEcho ? (
+          <p className="welcome-hint welcome-zip-echo" aria-live="polite">
+            <strong>{zipEcho.headline} </strong>
+            {zipEcho.lead}
+          </p>
+        ) : (
+          <p className="welcome-hint">
+            {city
+              ? `We have your city (${city}), but need your 5-digit ZIP for accurate permit requirements, tax rules, and local Google SEO.`
+              : 'This is what lets us write your whole site about the actual towns you serve, not "your local area".'}
+          </p>
+        )}
 
-      <label className="welcome-accept" htmlFor="wf-accept">
-        <input
-          id="wf-accept"
-          name="accepted"
-          type="checkbox"
-          checked={accepted}
-          onChange={(event) => setAccepted(event.target.checked)}
-        />
-        <span>
-          I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and the{' '}
-          <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
-        </span>
-      </label>
+        <label className="welcome-accept" htmlFor="wf-accept">
+          <input
+            id="wf-accept"
+            name="accepted"
+            type="checkbox"
+            checked={accepted}
+            onChange={(event) => setAccepted(event.target.checked)}
+          />
+          <span>
+            I agree to the <a href="/terms" target="_blank" rel="noreferrer">Terms of Service</a> and the{' '}
+            <a href="/privacy" target="_blank" rel="noreferrer">Privacy Policy</a>.
+          </span>
+        </label>
 
-      <label className="welcome-accept" htmlFor="wf-consent" style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
-        <input
-          id="wf-consent"
-          name="consent"
-          type="checkbox"
-          checked={allowMeasurementCookies}
-          onChange={(event) => setAllowMeasurementCookies(event.target.checked)}
-        />
-        <span>
-          Allow anonymous measurement and ad performance cookies to help us improve service (optional).
-        </span>
-      </label>
+        <label className="welcome-accept" htmlFor="wf-consent" style={{ marginTop: '0.45rem', fontSize: '0.8rem', color: 'var(--muted)' }}>
+          <input
+            id="wf-consent"
+            name="consent"
+            type="checkbox"
+            checked={allowMeasurementCookies}
+            onChange={(event) => setAllowMeasurementCookies(event.target.checked)}
+          />
+          <span>
+            Allow anonymous measurement and ad performance cookies to help us improve service (optional).
+          </span>
+        </label>
 
-      {error && <p className="auth-message" role="alert">{error}</p>}
+        {error && <p className="auth-message" role="alert">{error}</p>}
 
-      {building && (
-        <p className="welcome-building" role="status">
-          <span className="welcome-spinner" aria-hidden="true" />
-          Writing your website — services, FAQs, the towns you serve and your Google listing. This takes a few seconds.
-        </p>
-      )}
+        {building && (
+          <p className="welcome-building" role="status">
+            <span className="welcome-spinner" aria-hidden="true" />
+            Writing your website — services, FAQs, the towns you serve and your Google listing. This takes a few seconds.
+          </p>
+        )}
 
-      <button className="btn primary" type="submit" disabled={pending}>
-        {building ? 'Building your site…' : pending ? 'Setting up…' : `${submitButtonText} →`}
-      </button>
-    </form>
+        <button className="btn primary" type="submit" disabled={pending}>
+          {building ? 'Building your site…' : pending ? 'Setting up…' : `${submitButtonText} →`}
+        </button>
+      </form>
+
+      <WelcomePreviewCard
+        businessName={businessName}
+        tradeSlug={trade}
+        city={city}
+        resolvedPlace={resolvedPlace}
+      />
+    </div>
   );
 }
+

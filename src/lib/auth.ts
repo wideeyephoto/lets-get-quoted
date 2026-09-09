@@ -1,9 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { cache } from 'react';
-import { createClient } from '@supabase/supabase-js';
 import { headers } from 'next/headers';
 import { notFound, redirect } from 'next/navigation';
-import { normalizeSupabaseUrl } from '@/lib/supabase-url';
 import { signingKeys } from '@/lib/auth-jwks';
 import { createSupabaseServerClient } from '@/lib/supabase-server';
 import { clientIpFrom } from '@/lib/rate-limit';
@@ -48,24 +46,8 @@ const perRequest: typeof cache = typeof cache === 'function' ? cache : (fn) => f
  *
  * A database read is never a cacheable fetch. This applies to all of them.
  */
-export const noStoreFetch: typeof fetch = (input, init) => (
-  fetch(input, {
-    ...init,
-    cache: 'no-store',
-    signal: init?.signal ?? AbortSignal.timeout(15000),
-  })
-);
-
-export function createAdminClient() {
-  return createClient(
-    normalizeSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL),
-    process.env.SUPABASE_SERVICE_ROLE_KEY ?? '',
-    {
-      auth: { autoRefreshToken: false, persistSession: false },
-      global: { fetch: noStoreFetch },
-    }
-  );
-}
+import { createAdminClient, noStoreFetch } from './supabase-admin';
+export { createAdminClient, noStoreFetch };
 
 export type CurrentMembership = {
   accountId: string | null;

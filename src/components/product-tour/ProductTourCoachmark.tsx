@@ -29,6 +29,7 @@ export default function ProductTourCoachmark({
   onSkip,
 }: ProductTourCoachmarkProps) {
   const [mounted, setMounted] = useState(false);
+  const [cardHeight, setCardHeight] = useState(240);
   const cardRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedRef = useRef<HTMLElement | null>(null);
 
@@ -38,10 +39,20 @@ export default function ProductTourCoachmark({
 
     return () => {
       if (previouslyFocusedRef.current && typeof previouslyFocusedRef.current.focus === 'function') {
-        previouslyFocusedRef.current.focus();
+        previouslyFocusedRef.current.focus({ preventScroll: true });
       }
     };
   }, []);
+
+  // Measure card height when mounted or content changes to ensure flip math is accurate
+  useEffect(() => {
+    if (cardRef.current) {
+      const measured = cardRef.current.offsetHeight;
+      if (measured > 0 && Math.abs(measured - cardHeight) > 4) {
+        setCardHeight(measured);
+      }
+    }
+  }, [step.id, step.body, step.title, cardHeight]);
 
   // Trap focus inside coachmark card and listen for Escape
   useEffect(() => {
@@ -78,16 +89,16 @@ export default function ProductTourCoachmark({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onClose]);
 
-  // Set initial focus
+  // Set initial focus without causing browser scroll jumps
   useEffect(() => {
     const timer = setTimeout(() => {
       const card = cardRef.current;
       if (!card) return;
       const primary = card.querySelector<HTMLElement>('button.' + styles.primaryBtn);
       if (primary) {
-        primary.focus();
+        primary.focus({ preventScroll: true });
       } else {
-        card.focus();
+        card.focus({ preventScroll: true });
       }
     }, 50);
     return () => clearTimeout(timer);
@@ -99,37 +110,72 @@ export default function ProductTourCoachmark({
   const isFirstStep = stepIndex === 0;
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 640;
 
-  // Calculate placement style
+  // Calculate placement style with boundary flip detection
   let cardStyle: CSSProperties = {};
   let isBottomSheet = isMobile;
 
   if (targetRect && !isFallback && !isMobile) {
     const margin = 12;
-    const cardWidth = 380;
-    const cardHeight = 220; // Estimated height for boundary math
+    const cardWidth = Math.min(380, window.innerWidth - 32);
     const placement: CoachmarkPlacement = step.placement ?? 'auto';
 
-    let top = targetRect.bottom + margin;
-    let left = targetRect.left;
+    const spaceBelow = window.innerHeight - targetRect.bottom - margin;
+    const spaceAbove = targetRect.top - margin;
+    const spaceRight = window.innerWidth - targetRect.right - margin;
+    const spaceLeft = targetRect.left - margin;
 
-    if (placement === 'top' || (placement === 'auto' && targetRect.bottom + cardHeight > window.innerHeight - 20)) {
-      top = Math.max(20, targetRect.top - cardHeight - margin);
-    } else if (placement === 'right') {
-      left = targetRect.right + margin;
-      top = targetRect.top;
+    let top = 0;
+    let left = 0;
+
+    if (placement === 'right') {
+      if (spaceRight >= cardWidth || spaceRight >= spaceLeft) {
+        left = targetRect.right + margin;
+        top = targetRect.top;
+      } else {
+        left = targetRect.left - cardWidth - margin;
+        top = targetRect.top;
+      }
     } else if (placement === 'left') {
-      left = Math.max(20, targetRect.left - cardWidth - margin);
-      top = targetRect.top;
+      if (spaceLeft >= cardWidth || spaceLeft >= spaceRight) {
+        left = targetRect.left - cardWidth - margin;
+        top = targetRect.top;
+      } else {
+        left = targetRect.right + margin;
+        top = targetRect.top;
+      }
+    } else {
+      // Top, bottom, or auto
+      let useTop = false;
+      if (placement === 'top') {
+        useTop = spaceAbove >= cardHeight || spaceAbove >= spaceBelow;
+      } else if (placement === 'bottom') {
+        useTop = spaceBelow < cardHeight && spaceAbove > spaceBelow;
+      } else {
+        useTop = spaceBelow < cardHeight && spaceAbove > spaceBelow;
+      }
+
+      if (useTop) {
+        top = targetRect.top - cardHeight - margin;
+      } else {
+        top = targetRect.bottom + margin;
+      }
+
+      // Horizontally align with target: if target is wider than card, align left; if narrow, center card on target
+      if (targetRect.width >= cardWidth) {
+        left = targetRect.left;
+      } else {
+        left = targetRect.left + (targetRect.width - cardWidth) / 2;
+      }
     }
 
-    // Horizontal bounds clamp
+    // Horizontal and vertical bounds clamp
     left = Math.max(16, Math.min(left, window.innerWidth - cardWidth - 16));
     top = Math.max(16, Math.min(top, window.innerHeight - cardHeight - 16));
 
     cardStyle = {
       position: 'fixed',
-      top: `${top}px`,
-      left: `${left}px`,
+      top: `${Math.round(top)}px`,
+      left: `${Math.round(left)}px`,
     };
   } else if (!targetRect || isFallback) {
     // Unanchored fallback centered in viewport
@@ -143,7 +189,7 @@ export default function ProductTourCoachmark({
   }
 
   return createPortal(
-    <div className={styles.portalRoot} aria-label="Product Tour">
+    <div className={styles.portalRoot} data-tour-portal="true">
       {/* Live Region for Screen Readers */}
       <div className={styles.srOnly} role="status" aria-live="polite">
         Step {stepIndex + 1} of {totalSteps}: {step.title}. {step.body}
@@ -155,6 +201,7 @@ export default function ProductTourCoachmark({
           {/* Top Mask */}
           <div
             className={styles.maskOverlay}
+            data-tour-overlay="true"
             style={{
               top: 0,
               left: 0,
@@ -165,6 +212,7 @@ export default function ProductTourCoachmark({
           {/* Bottom Mask */}
           <div
             className={styles.maskOverlay}
+            data-tour-overlay="true"
             style={{
               top: `${targetRect.bottom + 4}px`,
               left: 0,
@@ -175,6 +223,7 @@ export default function ProductTourCoachmark({
           {/* Left Mask */}
           <div
             className={styles.maskOverlay}
+            data-tour-overlay="true"
             style={{
               top: `${Math.max(0, targetRect.top - 4)}px`,
               left: 0,
@@ -185,6 +234,7 @@ export default function ProductTourCoachmark({
           {/* Right Mask */}
           <div
             className={styles.maskOverlay}
+            data-tour-overlay="true"
             style={{
               top: `${Math.max(0, targetRect.top - 4)}px`,
               left: `${targetRect.right + 4}px`,
@@ -195,6 +245,7 @@ export default function ProductTourCoachmark({
           {/* Target Glowing Ring */}
           <div
             className={styles.spotlightRing}
+            data-tour-spotlight="true"
             style={{
               top: `${targetRect.top - 4}px`,
               left: `${targetRect.left - 4}px`,
@@ -204,7 +255,7 @@ export default function ProductTourCoachmark({
           />
         </>
       ) : (
-        <div className={styles.fullBackdrop} onClick={onClose} />
+        <div className={styles.fullBackdrop} data-tour-overlay="true" onClick={onClose} />
       )}
 
       {/* Coachmark Dialog */}
@@ -212,8 +263,10 @@ export default function ProductTourCoachmark({
         ref={cardRef}
         role="dialog"
         aria-modal="false"
+        aria-label="Product Tour"
         aria-labelledby="tour-step-title"
         aria-describedby="tour-step-body"
+        data-tour-coachmark="true"
         className={`${styles.coachmarkCard} ${isBottomSheet ? styles.bottomSheet : ''}`}
         style={cardStyle}
         tabIndex={-1}

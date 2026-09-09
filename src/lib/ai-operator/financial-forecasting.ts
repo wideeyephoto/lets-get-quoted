@@ -1,4 +1,4 @@
-import { HOMEOWNER_FINANCING } from '@/lib/bnpl-financing';
+import { HOMEOWNER_FINANCING } from '@/lib/financing-status';
 
 export interface FinancialForecastMonth {
   monthIndex: number;

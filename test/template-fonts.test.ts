@@ -107,7 +107,15 @@ describe('every surface that renders a contractor’s own font loads it', () => 
     const page = stripJs(read('src', 'app', 'dashboard', 'sites', 'page.tsx'));
     expect(page).toContain("style={{ display: 'contents' }}");
   });
+
+  it('/welcome preview card uses narrow firstRunFontVars and avoids templateFontVars', () => {
+    const card = stripJs(read('src', 'app', 'welcome', 'WelcomePreviewCard.tsx'));
+    expect(card).toContain('firstRunFontVars');
+    expect(card).not.toContain('templateFontVars');
+    expect(card).toMatch(/firstRunFontVars/);
+  });
 });
+
 
 describe('nothing can reference a face that is never loaded', () => {
   const loaded = new Set([...declaredVars(FONTS), ...declaredVars(LAYOUT)]);

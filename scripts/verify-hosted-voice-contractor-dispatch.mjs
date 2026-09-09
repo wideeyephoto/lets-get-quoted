@@ -134,6 +134,21 @@ try {
   assert(!security.anon_admission_rpc && !security.authenticated_admission_rpc, 'A browser role can invoke the admission RPC.');
   assert(!security.service_table_any && !security.anon_table_any && !security.authenticated_table_any, 'A non-owner role has direct voice_tool_actions table privileges.');
 
+  // Catalog shape alone missed a later migration replacing the private body
+  // with legacy jobs.notes / labor-table writes. Pin the deployed contract too.
+  const contractSql = await readFile(resolve(scriptDir, '..', 'migrations',
+    '20260908205505_voice_dispatch_contract_restore.sql'), 'utf8');
+  const expectedBody = contractSql.split('as $fn$')[1]?.split('$fn$;')[0]?.replace(/\r\n/g, '\n').trim();
+  const { rows: [contract] } = await client.query(`select p.prosrc,
+    has_function_privilege('service_role',p.oid,'execute') as service_exec,
+    has_function_privilege('anon',p.oid,'execute') as anon_exec,
+    has_function_privilege('authenticated',p.oid,'execute') as auth_exec
+    from pg_proc p where p.oid='public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)'::regprocedure`);
+  assert(expectedBody && contract?.prosrc.replace(/\r\n/g, '\n').trim() === expectedBody,
+    'Hosted dispatch implementation differs from the reviewed current contract.');
+  assert(!contract.service_exec && !contract.anon_exec && !contract.auth_exec,
+    'Private dispatch implementation bypasses the live-call wrapper.');
+
   const { rows: [counts] } = await client.query(`
     select
       (select pg_catalog.count(*)::integer from public.voice_tool_actions) as existing_actions,
@@ -149,6 +164,7 @@ try {
   console.log(`PASS  hosted voice dispatch catalog on PostgreSQL ${server.server_version}`);
   console.log('PASS  8/8 columns and 8/8 validated constraints');
   console.log('PASS  RPC-only mutation surface with force RLS and no direct role grants');
+  console.log('PASS  current private dispatch body matches the reviewed migration');
   console.log(`INFO  existing action rows: ${counts.existing_actions}`);
   console.log(`INFO  active crew requiring phone re-verification: ${counts.active_unverified_crew}`);
   console.log(`INFO  admitted calls in the last 15 minutes: ${counts.recent_active_admissions}`);

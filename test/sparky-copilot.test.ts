@@ -89,10 +89,16 @@ describe('Sparky Copilot Public-Facing Integration', () => {
     expect(homeownerMatch).not.toBeNull();
     expect(homeownerMatch![0]).not.toContain('SparkyCopilot');
 
+    // Subcontractor job offer early return has no Sparky
+    const subMatch = appShellSrc.match(/if \(pathname\.startsWith\('\/sub\/'\) \|\| pathname === '\/sub'\) \{[\s\S]*?return <>{children}<\/>;[\s\S]*?\}/);
+    expect(subMatch).not.toBeNull();
+    expect(subMatch![0]).not.toContain('SparkyCopilot');
+
     // Dashboard routes exclude SparkyCopilot in public shell fallback
     expect(appShellSrc).toContain("!pathname.startsWith('/dashboard') && <SparkyCopilot />");
     const sparkySrc = readFileSync('src/components/marketing/SparkyCopilot.tsx', 'utf8');
     expect(sparkySrc).toContain("if (pathname?.startsWith('/dashboard')) return null;");
+    expect(sparkySrc).toContain("if (pathname?.startsWith('/sub')) return null;");
   });
 
   it('verifies duplicate widgets are removed from SiteFooter and site-chrome', () => {

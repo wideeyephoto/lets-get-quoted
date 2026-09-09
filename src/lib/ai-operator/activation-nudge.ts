@@ -49,15 +49,8 @@ async function recordNudge(
 ): Promise<boolean> {
   if (dryRun) return true;
 
-  const { error } = await supabase
-    .from('contractor_onboarding_nudges')
-    .insert({ ...row, dispatched_at: new Date().toISOString() });
-
-  if (error) {
-    report.errors.push(`${row.nudge_type} for ${row.account_id}: ${error.message}`);
-    return false;
-  }
-  return true;
+  report.errors.push(`${row.nudge_type} for ${row.account_id}: Delivery dispatcher not configured; no outbound message sent.`);
+  return false;
 }
 
 /**

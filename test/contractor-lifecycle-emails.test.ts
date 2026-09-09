@@ -116,6 +116,7 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
         order: () => q,
         limit: () => q,
         in: () => q,
+        gt: () => q,
         eq: () => q,
       };
       return q;

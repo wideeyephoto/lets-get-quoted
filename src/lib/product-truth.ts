@@ -76,6 +76,12 @@ export const CAPABILITIES: Record<string, CapabilityTruth> = {
     status: 'live',
     description: 'Expiring live map link, dynamic arrival window updates, and automatic traffic delay notices via SMS.',
   },
+  speed_to_lead_automation: {
+    id: 'speed_to_lead_automation',
+    name: 'Speed-to-Lead Auto-SMS & TCPA Shield',
+    status: 'live',
+    description: 'Sub-60s daytime automated SMS lead response, multi-jurisdiction TCPA quiet-hours protection, and voice call bridge.',
+  },
   ai_voice_receptionist: {
     id: 'ai_voice_receptionist',
     name: 'AI Voice Receptionist',

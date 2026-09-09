@@ -114,7 +114,11 @@ describe('Reliability & Operations Center (APM, Uptime & Paging)', () => {
 
       for (const s of report.subsystems) {
         expect(['operational', 'degraded', 'outage']).toContain(s.status);
-        expect(s.latencyMs).toBeGreaterThanOrEqual(1);
+        if (s.id === 'database' || s.id === 'cron-cadence') {
+          expect(s.latencyMs).toBeGreaterThanOrEqual(1);
+        } else {
+          expect(s.latencyMs).toBeNull();
+        }
         expect(s.consequenceIfDown.length).toBeGreaterThan(10);
       }
 

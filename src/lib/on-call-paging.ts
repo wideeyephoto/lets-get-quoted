@@ -46,16 +46,16 @@ export function getOnCallRoster(): {
   escalationTimeoutMinutes: number;
   channels: PagingChannelStatus[];
 } {
-  const primaryEmail = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || 'ops@letsgetquoted.com';
-  const primaryPhone = process.env.ONCALL_PRIMARY_PHONE || '+1 (555) 019-2831';
+  const primaryEmail = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
+  const primaryPhone = process.env.ONCALL_PRIMARY_PHONE || '';
 
   const channels: PagingChannelStatus[] = [
     {
       id: 'emergency_sms_email',
-      name: 'Emergency SMS & Resend Ops Channel',
-      configured: Boolean(process.env.RESEND_API_KEY),
-      status: process.env.RESEND_API_KEY ? 'ready' : 'unconfigured',
-      target: primaryEmail,
+      name: 'Operational email (Resend)',
+      configured: Boolean(process.env.RESEND_API_KEY && primaryEmail),
+      status: (process.env.RESEND_API_KEY && primaryEmail) ? 'ready' : 'unconfigured',
+      target: primaryEmail || 'Not configured',
     },
     {
       id: 'pagerduty',
@@ -67,9 +67,9 @@ export function getOnCallRoster(): {
     {
       id: 'opsgenie',
       name: 'Opsgenie Incident Alert API',
-      configured: Boolean(process.env.OPSGENIE_API_KEY),
-      status: process.env.OPSGENIE_API_KEY ? 'ready' : 'unconfigured',
-      target: process.env.OPSGENIE_API_KEY ? 'API key present' : 'Unconfigured',
+      configured: false,
+      status: 'unconfigured',
+      target: 'Dispatch integration is not implemented',
     },
     {
       id: 'slack_ops',
@@ -87,21 +87,24 @@ export function getOnCallRoster(): {
     },
   ];
 
+  const secondaryEmail = process.env.ONCALL_SECONDARY_EMAIL || '';
+  const secondaryPhone = process.env.ONCALL_SECONDARY_PHONE || '';
+
   return {
     primary: {
       role: 'primary',
-      name: 'Lead Platform SRE (On-Duty)',
-      email: primaryEmail,
-      phone: primaryPhone,
+      name: primaryEmail ? 'Lead Platform SRE (On-Duty)' : 'Unassigned',
+      email: primaryEmail || 'Not configured',
+      phone: primaryPhone || 'Not configured',
       shiftSchedule: '24/7 Primary Rotation (America/New_York)',
-      status: 'on_shift',
+      status: primaryEmail ? 'on_shift' : 'standby',
     },
     secondary: {
       role: 'secondary',
-      name: 'Platform Engineering Escalation',
-      email: 'sre-escalation@letsgetquoted.com',
-      phone: '+1 (555) 019-9942',
-      shiftSchedule: 'Backup On-Call (15 min auto-escalate)',
+      name: secondaryEmail ? 'Platform Engineering Escalation' : 'Unassigned',
+      email: secondaryEmail || 'Not configured',
+      phone: secondaryPhone || 'Not configured',
+      shiftSchedule: 'Backup contact (manual escalation)',
       status: 'standby',
     },
     escalationTimeoutMinutes: 15,
@@ -127,7 +130,7 @@ export async function dispatchOnCallPage(params: {
 
   const severityLabel = params.severity === 'P1_CRITICAL' ? 'critical' : params.severity === 'P2_HIGH' ? 'high' : 'warning';
 
-  // 1. Emergency Email & SMS Dispatch
+  // 1. Email dispatch. This path does not send SMS.
   try {
     const alertRes = await sendOperationalEmergencyAlert({
       incidentType: params.incidentType,
@@ -138,7 +141,7 @@ export async function dispatchOnCallPage(params: {
       actionRequired: params.actionRequired || 'Acknowledge incident in /admin/health and follow runbook SOP.',
     });
     if (alertRes.dispatched) {
-      dispatchedChannels.push('emergency_email_sms');
+      dispatchedChannels.push('email');
     }
   } catch (err) {
     console.error('[On-Call Paging] Emergency email dispatch failed:', err);
@@ -148,8 +151,9 @@ export async function dispatchOnCallPage(params: {
   const pdKey = process.env.PAGERDUTY_INTEGRATION_KEY || process.env.PAGERDUTY_ROUTING_KEY;
   if (pdKey) {
     try {
-      await fetch('https://events.pagerduty.com/v2/enqueue', {
+      const response = await fetch('https://events.pagerduty.com/v2/enqueue', {
         method: 'POST',
+        signal: AbortSignal.timeout(10000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           routing_key: pdKey,
@@ -163,6 +167,7 @@ export async function dispatchOnCallPage(params: {
           },
         }),
       });
+      if (!response.ok) throw new Error(`PagerDuty rejected request (${response.status})`);
       dispatchedChannels.push('pagerduty');
     } catch (err) {
       console.error('[On-Call Paging] PagerDuty dispatch failed:', err);
@@ -173,13 +178,15 @@ export async function dispatchOnCallPage(params: {
   const slackUrl = process.env.SLACK_OPS_WEBHOOK_URL || process.env.OPERATOR_SLACK_WEBHOOK_URL;
   if (slackUrl) {
     try {
-      await fetch(slackUrl, {
+      const response = await fetch(slackUrl, {
         method: 'POST',
+        signal: AbortSignal.timeout(10000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           text: `🚨 *[${params.severity}] ${params.title}*\n>${params.summary}\n*Source:* \`${params.source || 'production'}\` · *Action:* ${params.actionRequired || 'Investigate immediately'}`,
         }),
       });
+      if (!response.ok) throw new Error(`Slack rejected request (${response.status})`);
       dispatchedChannels.push('slack');
     } catch (err) {
       console.error('[On-Call Paging] Slack dispatch failed:', err);
@@ -190,13 +197,15 @@ export async function dispatchOnCallPage(params: {
   const discordUrl = process.env.DISCORD_OPS_WEBHOOK_URL || process.env.OPERATOR_DISCORD_WEBHOOK_URL;
   if (discordUrl) {
     try {
-      await fetch(discordUrl, {
+      const response = await fetch(discordUrl, {
         method: 'POST',
+        signal: AbortSignal.timeout(10000),
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           content: `🚨 **[${params.severity}] ${params.title}**\n${params.summary}\n*Dispatched to On-Call at ${dispatchedAt}*`,
         }),
       });
+      if (!response.ok) throw new Error(`Discord rejected request (${response.status})`);
       dispatchedChannels.push('discord');
     } catch (err) {
       console.error('[On-Call Paging] Discord dispatch failed:', err);
@@ -231,25 +240,6 @@ export async function dispatchOnCallPage(params: {
  * Returns recent paging history for display in admin operations center
  */
 export function getRecentPagingEvents(limit = 10): PagingEvent[] {
-  if (recentPagingEvents.length === 0) {
-    // Return sample baseline record so UI is clean on startup
-    return [
-      {
-        id: 'page_init_baseline',
-        incidentKey: 'inc_baseline',
-        title: 'On-Call Paging & Emergency Escalation Active',
-        severity: 'P3_WARNING',
-        source: 'system-startup',
-        incidentType: 'uptime',
-        dispatchedAt: new Date(Date.now() - 3600000).toISOString(),
-        dispatchedChannels: ['emergency_email_sms'],
-        acknowledgedAt: new Date(Date.now() - 3500000).toISOString(),
-        acknowledgedBy: 'ops-lead',
-        resolvedAt: new Date(Date.now() - 3400000).toISOString(),
-        status: 'resolved',
-      },
-    ];
-  }
   return recentPagingEvents.slice(0, limit);
 }
 
@@ -260,13 +250,13 @@ export async function dispatchOnCallTestDrill(staffEmail: string): Promise<Pagin
   return dispatchOnCallPage({
     title: 'Operational Readiness Drill / Test Page',
     severity: 'P3_WARNING',
-    summary: `Manual on-call notification drill dispatched by staff member ${staffEmail}. Verifying multi-channel delivery readiness across SMS, Email, and Webhook integrations.`,
+    summary: `Manual notification drill requested by ${staffEmail}. Provider acceptance is recorded here; mailbox delivery must be checked separately.`,
     incidentType: 'uptime',
     source: 'admin-console:health-drill',
     details: {
       initiatedBy: staffEmail,
       drillTimestamp: new Date().toISOString(),
-      expectedChannels: ['email', 'sms', 'webhooks'],
+      expectedChannels: ['email', 'configured_webhooks'],
     },
     actionRequired: 'No action required — this is an authorized readiness drill.',
   });

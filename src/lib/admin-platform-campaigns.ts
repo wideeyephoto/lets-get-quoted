@@ -496,6 +496,7 @@ export async function sendPlatformCampaignBlast(
     reason: `Sent "${input.subject}" to ${input.audience} (${sentCount}/${recipients.length} delivered)`,
     meta: {
       campaign: campaignRecord,
+      idempotencyKey: (input as { idempotencyKey?: string }).idempotencyKey || null,
       failureCount: failures.length,
       sampleFailures: failures.slice(0, 5),
     },

@@ -35,12 +35,58 @@ interface ResendApiDomain {
   records?: ResendApiRecord[];
 }
 
-function getApiKey(): string | undefined {
-  return process.env.RESEND_API_KEY;
+// Domain management needs full access; sending does not. Keep them apart so a
+// restricted sending key cannot silently disable domain provisioning, and so a
+// full-access key is never handed to the 15 paths that only send.
+export function getApiKey(): string | undefined {
+  return process.env.RESEND_DOMAINS_API_KEY || process.env.RESEND_API_KEY;
 }
 
-export function isSendingDomainProvisioningConfigured(): boolean {
-  return Boolean(getApiKey());
+let cachedProvisioningConfigured: boolean | null = null;
+
+export function _resetSendingDomainConfiguredCacheForTesting(): void {
+  cachedProvisioningConfigured = null;
+}
+
+export async function isSendingDomainProvisioningConfigured(): Promise<boolean> {
+  if (cachedProvisioningConfigured !== null) {
+    return cachedProvisioningConfigured;
+  }
+
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    return false;
+  }
+
+  try {
+    const url = new URL('/domains', 'https://api.resend.com');
+    const res = await fetch(url, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5000),
+    });
+
+    if (res.status === 200) {
+      cachedProvisioningConfigured = true;
+      return true;
+    }
+
+    if (res.status === 401 || res.status === 403) {
+      cachedProvisioningConfigured = false;
+      return false;
+    }
+
+    // Anything else (timeout, 5xx, rate-limiting) is treated as not configured
+    // for this request only, never cached so a provider blip does not pin the
+    // feature off until the next deploy.
+    return false;
+  } catch {
+    return false;
+  }
 }
 
 export function isEmailSendingDomainsFeatureEnabled(): boolean {
@@ -124,10 +170,22 @@ function mapDomainResponse(data: ResendApiDomain): SendingDomainResponse {
   };
 }
 
+export class ResendApiError extends Error {
+  statusCode: number;
+  providerBody: string;
+
+  constructor(statusCode: number, providerBody: string) {
+    super(`Resend API error (${statusCode}): ${providerBody}`);
+    this.name = 'ResendApiError';
+    this.statusCode = statusCode;
+    this.providerBody = providerBody;
+  }
+}
+
 async function resendRequest<T>(path: string, method = 'GET', body?: object): Promise<T | null> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error('RESEND_API_KEY is not configured.');
+    throw new Error('RESEND_DOMAINS_API_KEY / RESEND_API_KEY is not configured.');
   }
 
   const url = new URL(path, 'https://api.resend.com');
@@ -147,7 +205,7 @@ async function resendRequest<T>(path: string, method = 'GET', body?: object): Pr
   }
   if (!res.ok) {
     const errorBody = await res.text().catch(() => '');
-    throw new Error(`Resend API error (${res.status}): ${errorBody || res.statusText}`);
+    throw new ResendApiError(res.status, errorBody || res.statusText);
   }
   if (res.status === 204) {
     return null;

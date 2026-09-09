@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   AI_VOICE_DISCLOSURE,
   RECORDING_DISCLOSURE,
-  greetingWithAiDisclosure,
   type VoiceAnswerPlan,
 } from '@/lib/voice/provider';
 import { signalwireVoiceProvider } from '@/lib/voice/signalwire';
@@ -14,13 +13,11 @@ import {
 import {
   loadVoiceCallDetail,
   loadVoiceWorkspaceQueue,
-  sanitizeTranscriptTurns,
 } from '@/lib/voice/call-workspace';
 import { detectCallEmergency } from '@/lib/voice/triage';
 
 const ACCOUNT_ID = 'aaaaaaaa-1111-4111-8111-111111111111';
 const PROVIDER_CALL_ID = 'SW-CALL-987654321';
-const CALL_ID = 'vc-001';
 
 describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
   it('executes full 7-stage lifecycle: admission -> swml -> settlement -> recording -> queue -> detail -> staff workflow', async () => {
@@ -43,7 +40,7 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
           chain[m] = () => chain;
         }
 
-        let eqConditions: Record<string, unknown> = {};
+        const eqConditions: Record<string, unknown> = {};
         chain.eq = (col: string, val: unknown) => {
           eqConditions[col] = val;
           return chain;
@@ -129,10 +126,10 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
     expect(rendered.contentType).toBe('application/json');
     const swml = JSON.parse(rendered.body);
     expect(swml.sections.main).toHaveLength(5);
-    expect(swml.sections.main[0]).toEqual({ answer: { max_duration: 600 } });
+    expect(swml.sections.main[0]).toEqual({ answer: { max_duration: 598 } });
     expect(swml.sections.main[4]).toEqual({ hangup: {} });
-    expect(swml.sections.main[1].play.url).toContain(AI_VOICE_DISCLOSURE);
-    expect(swml.sections.main[1].play.url).toContain(RECORDING_DISCLOSURE);
+    expect(swml.sections.main[1].play.urls[1]).toContain(AI_VOICE_DISCLOSURE);
+    expect(swml.sections.main[1].play.urls[1]).toContain(RECORDING_DISCLOSURE);
     expect(swml.sections.main[2]).toMatchObject({
       record_call: {
         status_url: 'https://app.letsgetquoted.com/api/voice/recording-status',

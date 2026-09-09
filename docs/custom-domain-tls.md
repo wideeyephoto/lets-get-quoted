@@ -61,6 +61,57 @@ check. It updates only the same saved account/site/domain, so a delayed check
 cannot overwrite a replacement domain or undo a disconnect. Changing a domain
 removes the previous Vercel binding only after the site save succeeds.
 
+## After the check: the certificate watch
+
+Certificate issuance is asynchronous. A contractor whose DNS is right still sees
+"a secure connection is not available yet", and the interactive check only ever
+runs when a human clicks the button — so a domain that goes live an hour later
+stays reported as pending until somebody thinks to look again.
+
+`/api/cron/custom-domain-reconcile` (every 15 minutes,
+`src/lib/custom-domain-reconciler.ts`) is that second look. It re-runs the full
+activation path for pending domains only, stamps the ones that now pass, busts
+the per-host page cache, and emails the owner once that their site is live. The
+stamp itself is the dedupe: a row can only be promoted once.
+
+**It promotes and never demotes.** Serving is gated on
+`custom_domain_verified_at` — every route under `src/app/site-domain/[domain]`
+calls `notFound()` without it — so clearing that stamp on a live domain is an
+outage we caused, for what may be a DNS blip or a renewing certificate. The
+re-check that catches a live domain going bad (the equivalent of
+`email-domain-reconcile`'s downgrade) is deliberately NOT here: it needs a
+paced `custom_domain_checked_at` column of its own, and a decision about
+whether taking a website down is ever the right response to one failed probe.
+
+Two bounds, both reported in the run summary rather than applied silently: at
+most 25 domains per run (oldest `updated_at` first, `remaining` reports the
+rest), and a domain saved but never configured drops out of scope after 30
+days. Re-saving it in the builder moves `updated_at` and brings it back.
+
+## Releasing a domain
+
+`sites` cascades away with its account, so a deleted workspace used to leave its
+domain attached to the project forever — we kept answering for a hostname
+nobody here owned, and, because Vercel refuses the same domain on two projects,
+whoever pointed that name elsewhere next could never attach it.
+
+`src/lib/custom-domain-release.ts` is deliberately two calls, in this order:
+
+1. `readAccountCustomDomains` BEFORE the delete, while the rows still exist.
+2. `releaseCustomDomains` only AFTER the delete is confirmed. Releasing first
+   would strand a live website on a deletion that failed — and account deletes
+   fail routinely on the retained-ledger foreign keys.
+
+Both `deleteAccountAction` (staff erasure) and `executeAccountClosureSaga` use
+it. Release never throws: the destructive step has already happened, and a
+domain that could not be detached is returned and logged for a human instead.
+Changing or clearing a domain in the builder still releases through
+`saveSiteAction`, as before.
+
+Anything neither path reaches is caught by the reconciler's orphan sweep, which
+reports project bindings with no `sites` row behind them. It never deletes:
+that would race a domain a contractor is in the middle of connecting.
+
 ## Verification performed on 2026-09-05
 
 - A read-only production query found no sites with a non-null `custom_domain`;
@@ -77,6 +128,6 @@ removes the previous Vercel binding only after the site save succeeds.
 Run the regression checks with:
 
 ```sh
-npx vitest run test/domains.test.ts test/vercel-domains.test.ts test/domain-tls.test.ts test/custom-domain-lifecycle.test.ts test/custom-domain-actions.test.ts test/edge-routing-security-matrix.test.ts test/site-company-name-sync.test.ts test/user-manual.test.ts
+npx vitest run test/domains.test.ts test/vercel-domains.test.ts test/domain-tls.test.ts test/custom-domain-lifecycle.test.ts test/custom-domain-actions.test.ts test/custom-domain-reconciler.test.ts test/custom-domain-release.test.ts test/cron-jobs.test.ts test/account-deletion-saga.test.ts test/edge-routing-security-matrix.test.ts test/site-company-name-sync.test.ts test/user-manual.test.ts
 npm run typecheck
 ```

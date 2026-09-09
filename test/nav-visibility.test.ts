@@ -3,10 +3,13 @@ import { loadHeldCapabilities } from '@/lib/auth';
 import {
   navTreatment,
   resolveVisibleNav,
+  getTradeRelevance,
   CAPABILITY_MAP,
   NAV_RAIL_ORDER,
   type NavSignals,
 } from '@/lib/nav-visibility';
+import { resolveEmptySections } from '@/lib/nav-server';
+import { NEW_MENU_ITEMS } from '@/components/app-shell';
 
 describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
   describe('§1 The sentinel trap verification', () => {
@@ -279,6 +282,215 @@ describe('Navigation visibility and persona gating (nav-visibility.ts)', () => {
         emptySections: new Set(),
       };
       expect(navTreatment('/dashboard/claims', officeSignals)).toBe('hide');
+    });
+  });
+
+  describe('Trade-driven promotion and protection', () => {
+    it('promotes Claims to top-of-Work for auto-glass, roofing, and restoration', () => {
+      const glassSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'auto-glass',
+        emptySections: new Set(),
+      };
+
+      const result = resolveVisibleNav(glassSignals);
+      expect(result.promoted).toContain('/dashboard/claims');
+      expect(result.visible).toContain('/dashboard/claims');
+    });
+
+    it('protects Inventory from zero-usage demotion for auto-glass (windshields/sheets are core)', () => {
+      const glassSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'auto-glass',
+        emptySections: new Set(['/dashboard/inventory']), // even when empty!
+      };
+
+      expect(navTreatment('/dashboard/inventory', glassSignals)).toBe('show');
+      const result = resolveVisibleNav(glassSignals);
+      expect(result.visible).toContain('/dashboard/inventory');
+      expect(result.demoted).not.toContain('/dashboard/inventory');
+      expect(result.promoted).toContain('/dashboard/inventory');
+    });
+
+    it('protects Recurring from zero-usage demotion and demotes Claims for lawn-care', () => {
+      const lawnSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'lawn-care',
+        emptySections: new Set(['/dashboard/recurring']), // even when empty!
+      };
+
+      expect(navTreatment('/dashboard/recurring', lawnSignals)).toBe('show');
+      expect(navTreatment('/dashboard/claims', lawnSignals)).toBe('demote');
+
+      const result = resolveVisibleNav(lawnSignals);
+      expect(result.visible).toContain('/dashboard/recurring');
+      expect(result.demoted).toContain('/dashboard/claims');
+      expect(result.promoted).toContain('/dashboard/recurring');
+    });
+  });
+
+  describe('Owner pinning', () => {
+    it('pinned items are never demoted by zero-usage or trade', () => {
+      // Lawn care owner pins Claims and Crew (even though Claims is non-trade and Crew is empty)
+      const ownerSignals: NavSignals = {
+        role: 'owner',
+        can: () => true,
+        trade: 'lawn-care',
+        emptySections: new Set(['/dashboard/crew']),
+        pinned: new Set(['/dashboard/claims', '/dashboard/crew']),
+      };
+
+      expect(navTreatment('/dashboard/claims', ownerSignals)).toBe('show');
+      expect(navTreatment('/dashboard/crew', ownerSignals)).toBe('show');
+
+      const result = resolveVisibleNav(ownerSignals);
+      expect(result.visible).toContain('/dashboard/claims');
+      expect(result.visible).toContain('/dashboard/crew');
+      expect(result.demoted).not.toContain('/dashboard/claims');
+      expect(result.demoted).not.toContain('/dashboard/crew');
+    });
+
+    it('pinned item is still hidden if office user lacks capability (security outranks pin)', () => {
+      const officeSignals: NavSignals = {
+        role: 'office',
+        can: (cap) => cap !== 'crew.read',
+        trade: null,
+        emptySections: new Set(),
+        pinned: new Set(['/dashboard/crew']),
+      };
+
+      expect(navTreatment('/dashboard/crew', officeSignals)).toBe('hide');
+    });
+  });
+
+  describe('Trade stem isolation & NEW_MENU_ITEMS safety (Defects D1, D5)', () => {
+    it('does not promote inventory for gate-automation (substring auto safety)', () => {
+      const gateRelevance = getTradeRelevance('gate-automation');
+      expect(gateRelevance.inventory).toBe('standard');
+
+      const autoGlassRelevance = getTradeRelevance('auto-glass');
+      expect(autoGlassRelevance.inventory).toBe('promoted');
+
+      const autoDetailingRelevance = getTradeRelevance('auto-detailing');
+      expect(autoDetailingRelevance.inventory).toBe('promoted');
+    });
+
+    it('NEW_MENU_ITEMS contains valid working targets and handles New lead / New job', () => {
+      const labels = NEW_MENU_ITEMS.map((item) => item.label);
+      expect(labels).toContain('New job');
+      expect(labels).toContain('New lead');
+
+      const jobItem = NEW_MENU_ITEMS.find((item) => item.label === 'New job');
+      expect(jobItem?.href).toBe('/dashboard/jobs?new=1#new-job');
+
+      const leadItem = NEW_MENU_ITEMS.find((item) => item.label === 'New lead');
+      expect(leadItem?.href).toBe('/dashboard/leads?add=1#add-lead');
+
+      // Ensure no dead ?add= queries on /dashboard/jobs exist
+      const deadJobHrefs = NEW_MENU_ITEMS.filter((item) => item.href.startsWith('/dashboard/jobs?add='));
+      expect(deadJobHrefs.length).toBe(0);
+    });
+  });
+
+  describe('resolveEmptySections historical audit event detection (Defect D2 inventory follow-up)', () => {
+    function createMockSupabase(options: {
+      accountCreatedAt?: string;
+      counts?: Record<string, number>;
+      auditEntityTypes?: string[];
+    }) {
+      return {
+        from: (table: string) => {
+          let queryEntityIn: string[] = [];
+          let queryEntityType: string | null = null;
+          const queryObj = {
+            select: () => queryObj,
+            eq: (_col: string, val: any) => {
+              if (_col === 'entity_type') queryEntityType = val;
+              return queryObj;
+            },
+            in: (_col: string, vals: any[]) => {
+              if (_col === 'entity_type') queryEntityIn = vals;
+              return queryObj;
+            },
+            not: () => queryObj,
+            maybeSingle: async () => {
+              if (table === 'accounts') {
+                return {
+                  data: { created_at: options.accountCreatedAt ?? '2025-01-01T00:00:00Z' },
+                  error: null,
+                };
+              }
+              return { data: null, error: null };
+            },
+            then: (resolve: (val: any) => void) => {
+              let count = options.counts?.[table] ?? 0;
+              if (table === 'tenant_audit_events') {
+                if (queryEntityType) {
+                  count = options.auditEntityTypes?.includes(queryEntityType) ? 1 : 0;
+                } else if (queryEntityIn.length > 0) {
+                  count = options.auditEntityTypes?.some((t) => queryEntityIn.includes(t)) ? 1 : 0;
+                }
+              }
+              resolve({ count, error: null });
+            },
+          };
+          return queryObj;
+        },
+      } as any;
+    }
+
+    it('protects brand-new accounts (<30 days old) from demotion even if tables are empty', async () => {
+      const recentAccountDate = new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString();
+      const client = createMockSupabase({ accountCreatedAt: recentAccountDate, counts: {} });
+      const empty = await resolveEmptySections(client, 'acct-new');
+      expect(empty.size).toBe(0);
+    });
+
+    it('demotes inventory when account is older and has never had tools, vehicles, or stock items', async () => {
+      const client = createMockSupabase({ counts: {}, auditEntityTypes: [] });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(true);
+      expect(empty.has('/dashboard/crew')).toBe(true);
+      expect(empty.has('/dashboard/recurring')).toBe(true);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_tools', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_tools'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_vehicles', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_vehicles'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves inventory navigation if tenant_audit_events has historical inventory_stock_items', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['inventory_stock_items'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/inventory')).toBe(false);
+    });
+
+    it('preserves crew navigation if tenant_audit_events has historical crew events', async () => {
+      const client = createMockSupabase({
+        counts: {},
+        auditEntityTypes: ['crew'],
+      });
+      const empty = await resolveEmptySections(client, 'acct-old');
+      expect(empty.has('/dashboard/crew')).toBe(false);
     });
   });
 });

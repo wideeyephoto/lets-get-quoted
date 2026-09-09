@@ -38,6 +38,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     consequence: 'Refunded add-ons retain credits or capacity, and fully refunded subscriptions keep renewing.',
   },
   {
+    job: 'operational-alerts',
+    label: 'Operational failure alerts',
+    schedule: '*/5 * * * *',
+    importance: 'money',
+    consequence: 'Webhook, billing, messaging and dispute failures stop reaching the operator by email.',
+  },
+  {
     job: 'overage-period-close',
     label: 'Overage period close',
     schedule: '17 * * * *',
@@ -152,6 +159,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '*/15 * * * *',
     importance: 'money',
     consequence: 'Workspaces with AI Voice stop receiving their monthly minutes, and every call is answered unbilled or refused.',
+  },
+  {
+    job: 'voice-receipt-recovery',
+    label: 'AI Voice receipt recovery',
+    schedule: '*/5 * * * *',
+    importance: 'customer',
+    consequence: 'Failed post-call notifications and processing remain stranded after provider retries stop.',
   },
   {
     job: 'voice-number-reconciliation',
@@ -369,6 +383,13 @@ export const CRON_JOBS: CronJobSpec[] = [
     schedule: '23 6 * * *',
     importance: 'customer',
     consequence: 'A contractor whose DKIM record is edited or removed keeps a domain marked verified while the provider refuses their mail, so quotes and invoices silently stop being signed by their own domain and nobody is told.',
+  },
+  {
+    job: 'custom-domain-reconcile',
+    label: 'Custom website domain certificate watch',
+    schedule: '*/15 * * * *',
+    importance: 'customer',
+    consequence: 'A contractor whose domain finishes provisioning its certificate is never noticed or told, so their website stays on the free subdomain and the builder keeps saying pending until they think to click Check connection again.',
   },
 ];
 

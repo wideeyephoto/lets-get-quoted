@@ -64,7 +64,7 @@ describe.each([
     } else {
       expect(response.headers.get('content-type')).toContain('application/json');
       const { sections: { main } } = await response.json();
-      expect(main[0]).toEqual({ answer: {} });
+      expect(main[0]).toEqual({ answer: { max_duration: 598 } });
       expect(main[1].play.url).toContain('after the beep');
       expect(main[2]).toEqual({ record: expect.objectContaining({ beep: true, max_length: 120 }) });
       expect(main[3]).toEqual({ hangup: {} });

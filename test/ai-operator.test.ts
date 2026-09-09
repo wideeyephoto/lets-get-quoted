@@ -66,7 +66,9 @@ function createMockSupabase(overrides?: {
                 if (table === 'jobs') {
                   const jCount = overrides?.jobsCount !== undefined ? overrides.jobsCount : 3;
                   const resPromise = Promise.resolve({ count: jCount, data: [] });
-                  (resPromise as any).eq = () => Promise.resolve({ count: jCount, data: [] });
+                  (resPromise as any).eq = () => resPromise;
+                  (resPromise as any).gt = () => resPromise;
+                  (resPromise as any).in = () => resPromise;
                   return resPromise;
                 }
                 return Promise.resolve({ count: 0, data: [] });
@@ -226,7 +228,7 @@ describe('AI Operator Framework - Tool Declarations & Schemas', () => {
       ctx,
     );
 
-    expect((res.data as { success: boolean }).success).toBe(false);
+    expect((res.data as any).error).toContain('Unknown operator tool');
     // The card must still be waiting for a human.
     expect(getHitlActionById(created.id)?.status).toBe('pending');
   });
@@ -617,7 +619,31 @@ describe('RevOps & Lifecycle Growth Engine', () => {
     expect(scan.scannedAt).toBeDefined();
     expect(scan.details).toBeDefined();
     expect(scan.dunningAccountsIdentified).toBeDefined();
-    expect(scan.onboardingNudgesQueued).toBeDefined();
+    expect(scan.onboardingNudgeCandidates).toBeDefined();
+  });
+
+  // A production run of this cron wrote four audit rows reading "Automated Onboarding
+  // Nudge Dispatched" at safe_auto/success, and answered "4 safe actions executed".
+  // No email or SMS call exists on this path. Identification is not outreach, and the
+  // audit trail is the record the founder trusts.
+  it('never records an unsent nudge as a dispatch', async () => {
+    clearOperatorMemory();
+    await runRevOpsGrowthScan(mockSupabase, { autoDispatchNudges: true });
+
+    const logs = getOperatorAuditLogs({ limit: 50 });
+    for (const entry of logs) {
+      expect(entry.actionName).not.toMatch(/dispatch/i);
+      expect(entry.reasoningSummary ?? '').not.toMatch(/dispatched/i);
+    }
+    // Identification is real work and stays in the trail -- it just cannot claim a send.
+    const candidates = logs.filter((l) => l.actionName === 'Onboarding Nudge Candidate Identified');
+    for (const c of candidates) expect(c.severity).not.toBe('safe_auto');
+  });
+
+  it('reports zero safe actions executed while nothing can send', async () => {
+    const report = await runAutonomousOperatorCycle(mockSupabase);
+    expect(report.safeActionsExecuted).toBe(0);
+    expect(typeof report.onboardingNudgeCandidates).toBe('number');
   });
 });
 
@@ -722,10 +748,11 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     expect((res.data as any).qualifiedCandidatesCount).toBeDefined();
   });
 
-  it('executes optimize_dunning_retries and calculates optimal retry windows', async () => {
+  it('refuses optimize_dunning_retries honestly until delivery rails exist (P2-1)', async () => {
     const res = await executeOperatorTool('optimize_dunning_retries', {}, ctx);
     expect(res.data).toBeDefined();
-    expect((res.data as any).dunningCount).toBeDefined();
+    expect((res.data as any).available).toBe(false);
+    expect((res.data as any).error).toContain('billing-operations');
   });
 
   it('executes check_connect_payout_compliance for paused Stripe Connect accounts', async () => {

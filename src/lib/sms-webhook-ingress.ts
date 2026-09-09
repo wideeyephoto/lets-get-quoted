@@ -270,7 +270,7 @@ export function extractStatusWebhook(payload: WebhookObject): ParsedStatusWebhoo
     textField(payload, ['MessageSid', 'SmsSid', 'message_id', 'messageId', 'id']),
   );
   const providerStatus = textField(payload, [
-    'MessageStatus', 'SmsStatus', 'message_status', 'messageStatus', 'state',
+    'MessageStatus', 'SmsStatus', 'message_status', 'messageStatus', 'state', 'status',
   ]).toLowerCase();
   if (!providerEventId || !providerStatus || providerStatus.length > 100) return null;
   const errorCode = textField(payload, [

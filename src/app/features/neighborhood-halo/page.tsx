@@ -114,7 +114,7 @@ export default function NeighborhoodHaloFeaturePage() {
       ]}
       heroNote="⭐ Rated 4.9 by 1,200+ contractors · No Facebook Ads Manager required · $25/mo cap · Cancel anytime"
       demo={<NeighborhoodHaloHeroVisual />}
-      primary={{ label: 'Launch Halo Campaign', href: '/dashboard/marketing/ads' }}
+      primary={{ label: 'Launch Halo Campaign', href: 'https://app.letsgetquoted.com/start?goal=feature&feature=halo&source=feature_page' }}
       secondary={{ label: '▶ Watch 60-Second Demo', href: 'https://app.letsgetquoted.com/start?goal=feature&feature=halo&source=feature_page' }}
       proof={PROOF}
       story={{

@@ -118,6 +118,68 @@ describe('AI Voice contractor job resolution', () => {
 });
 
 describe('AI Voice spoken job choices', () => {
+  it.each(['Jay Demo 1071', 'jay demo 1 0 7 1', 'job jay dash demo dash 1071.'])('looks up the complete spoken reference %s after a literal miss', async query => {
+    const job = { ...baseJob, ref: 'J-DEMO-1071' };
+    const { admin, search, rpc } = mockAdmin();
+    search.mockResolvedValueOnce({ data: { jobs: [], total_count: 0 }, error: null })
+      .mockResolvedValueOnce({ data: { jobs: [job], total_count: 1 }, error: null });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query }));
+    expect(search.mock.calls.map(call => call[1].p_query)).toEqual([query, job.ref]);
+    expect(search).toHaveBeenLastCalledWith('search_voice_jobs', { p_account_id: ACCOUNT_ID, p_query: job.ref, p_phone_candidates: null });
+    expect(result.response).toContain('J-DEMO-1071');
+    expect(result.response).toContain('1 matching job');
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it('preserves a literal customer match instead of rewriting it as a reference', async () => {
+    const { admin, search } = mockAdmin({ jobs: [{ ...baseJob, client_name: 'Jay Demo 1071' }] });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: 'Jay Demo 1071' }));
+    expect(search).toHaveBeenCalledTimes(1); expect(result.response).toContain(baseJob.ref);
+  });
+  it.each(['Jay Demo', 'Jay', 'Jay Demo 1071 or 1072', 'Jay Smith at 1071 Main Street'])('does not guess an incomplete or ambiguous spoken reference: %s', async query => {
+    const { admin, search, rpc } = mockAdmin();
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query }));
+    expect(search).toHaveBeenCalledTimes(1); expect(result.response).toContain('no jobs matching');
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it('rejects a fallback name match that is not the exact canonical reference', async () => {
+    const { admin, search } = mockAdmin();
+    search.mockResolvedValueOnce({ data: { jobs: [], total_count: 0 }, error: null })
+      .mockResolvedValueOnce({ data: { jobs: [{ ...baseJob, client_name: 'J Demo 1071' }], total_count: 1 }, error: null });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: 'Jay Demo 1071' }));
+    expect(result.response).toContain('no jobs matching'); expect(result.response).not.toContain(baseJob.ref);
+  });
+  it('keeps duplicate spoken references ambiguous without applying an action', async () => {
+    const jobs = [{ ...baseJob, ref: 'J-DEMO-1071' }, { ...baseJob, ref: 'J-DEMO-1071', id: '44444444-4444-4444-8444-444444444444' }];
+    const { admin, search, rpc } = mockAdmin();
+    search.mockResolvedValueOnce({ data: { jobs: [], total_count: 0 }, error: null })
+      .mockResolvedValueOnce({ data: { jobs, total_count: 2 }, error: null });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: 'Jay Demo 1071' }));
+    expect(result.response).toContain('2 matching jobs'); expect(result.response).toContain('ask which job');
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it('does not turn a failed original lookup into a normalization retry', async () => {
+    const { admin, search } = mockAdmin({ jobsError: { code: '08006' } });
+    const result = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: 'Jay Demo 1071' }));
+    expect(search).toHaveBeenCalledTimes(1); expect(result.response).toContain('could not finish a reliable job lookup');
+  });
+  it('spends only the remaining lookup deadline on the spoken-reference fallback', async () => {
+    const clock = vi.spyOn(performance, 'now').mockReturnValue(0);
+    const deadlines = vi.spyOn(AbortSignal, 'timeout');
+    const query = vi.fn().mockImplementationOnce(() => ({
+      abortSignal: async () => { clock.mockReturnValue(3500); return { data: { jobs: [], total_count: 0 }, error: null }; },
+    })).mockReturnValueOnce({
+      abortSignal: async () => ({ data: { jobs: [{ ...baseJob, ref: 'J-DEMO-1071' }], total_count: 1 }, error: null }),
+    });
+    const result = await handleContractorVoiceAction(actionContext({ rpc: query } as unknown as SupabaseClient, 'lookup_jobs', { query: 'Jay Demo 1071' }));
+    expect(deadlines.mock.calls.map(call => call[0])).toEqual([4000, 500]);
+    expect(result.response).toContain('J-DEMO-1071');
+  });
+  it('does not normalize a spoken reference at the mutation boundary', async () => {
+    const { admin, search, rpc } = mockAdmin();
+    const result = await handleContractorVoiceAction(actionContext(admin, 'append_job_caution_or_note', { job_ref_or_client: 'Jay Demo 1071', note: 'Test note' }));
+    expect(search).toHaveBeenCalledTimes(1); expect(rpc).not.toHaveBeenCalled();
+    expect(result.response).toContain('exact job reference');
+  });
   it('only returns schedule and quote detail when one selected job is explicitly requested', async () => {
     const { admin } = mockAdmin({ jobs: [{ ...baseJob, status: 'in_progress', scheduled_for: '2026-09-08', quoted_amount: 2300 }] });
     const brief = await handleContractorVoiceAction(actionContext(admin, 'lookup_jobs', { query: baseJob.ref }));
@@ -503,6 +565,17 @@ describe('AI Voice contractor durable action outcomes', () => {
       },
     }));
     expect(result.response).toBe('I added that caution to Rosa Holbrook\'s job (LGQ-1042).');
+  });
+
+  it('reads back the committed note snapshot rather than its earlier request', async () => {
+    const { admin } = mockAdmin({ jobs: [baseJob], rpcResults: [{ error: null,
+      data: { job_id: JOB_ID, saved: { note: 'Persisted note text', is_caution: false } },
+    }] });
+    const result = await handleContractorVoiceAction(actionContext(admin,
+      'append_job_caution_or_note', { job_ref_or_client: baseJob.ref, note: 'Earlier caution request' }));
+    expect(result.response).toContain('I added that note');
+    expect(result.response).toContain('Saved text: “Persisted note text”');
+    expect(result.response).not.toContain('Earlier caution request');
   });
 
   it('does not speak a success confirmation when the RPC rejects the authorization', async () => {

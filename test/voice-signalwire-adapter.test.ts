@@ -352,13 +352,16 @@ describe('rendering an answer', () => {
     expect(ai.post_prompt_auth_password).toBe(RECEIPT_AUTH.password);
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
-    expect(swml.sections.main[1].play.url)
-      .toBe('say: You are speaking with an AI assistant. Thanks for calling.');
+    expect(swml.sections.main[1].play.urls).toEqual([
+      'https://letsgetquoted.com/audio/dispatch-connected-v1.wav',
+      "say: Hi, I'm your AI assistant. Thanks for calling.",
+    ]);
+    expect(swml.sections.main[1].play.say_voice).toBe('rime.luna:coda');
     expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
     // The published safety cap is stated to the provider too, so it holds even
     // if LGQ's own settlement never runs.
-    expect(swml.sections.main[0].answer.max_duration).toBe(600);
-    expect(ai.params.hard_stop_time).toBe('585s');
+    expect(swml.sections.main[0].answer.max_duration).toBe(598);
+    expect(ai.params.hard_stop_time).toBe('583s');
     expect(ai.params).not.toHaveProperty('max_duration');
     expect(swml.sections.main.at(-1)).toEqual({ hangup: {} });
   });
@@ -369,9 +372,9 @@ describe('rendering an answer', () => {
       receiptAuthorization: RECEIPT_AUTH, greeting: 'Hello.', capMinutes, transferTo: null,
     });
     const main = JSON.parse(answer.body).sections.main;
-    expect(main[0].answer.max_duration).toBe(capMinutes * 60);
+    expect(main[0].answer.max_duration).toBe(capMinutes * 60 - 2);
     expect(main.find((step: { ai?: unknown }) => step.ai).ai.params.hard_stop_time)
-      .toBe(`${capMinutes * 60 - 15}s`);
+      .toBe(`${capMinutes * 60 - 17}s`);
     expect(main.at(-1)).toEqual({ hangup: {} });
   });
 
@@ -387,8 +390,8 @@ describe('rendering an answer', () => {
 
     expect(playIndex).toBeGreaterThan(-1);
     expect(recordIndex).toBeGreaterThan(playIndex);
-    expect(main[playIndex].play.url).toContain('You are speaking with an AI assistant.');
-    expect(main[playIndex].play.url).toContain('This call may be recorded for quality and training purposes.');
+    expect(main[playIndex].play.urls[1]).toContain("Hi, I'm your AI assistant.");
+    expect(main[playIndex].play.urls[1]).toContain('This call may be recorded for quality and training purposes.');
   });
 
   it('hard-disables provider recording on contractor calls and asks the provider to redact spoken codes', () => {
@@ -400,10 +403,10 @@ describe('rendering an answer', () => {
     });
     const main = JSON.parse(answer.body).sections.main;
     expect(main.some((section: Record<string, unknown>) => 'record_call' in section)).toBe(false);
-    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.url)
+    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.urls[1])
       .not.toContain('This call may be recorded');
     const ai = main.find((section: Record<string, unknown>) => 'ai' in section).ai;
-    expect(ai.params.redact_prompt).toMatch(/six-digit voice authorization codes/i);
+    expect(ai.params.redact_prompt).toMatch(/six-digit authentication codes/i);
     expect(ai.params.redact_prompt).toMatch(/one-time passwords|OTPs/i);
   });
 
@@ -503,6 +506,7 @@ describe('rendering an answer', () => {
     });
     expect(answer.body).not.toContain('<Hangup/>');
     expect(answer.body).toContain('&amp;b=2');
+    expect(answer.body).toContain('timeLimit="573"');
   });
 
   it('pins the spoken voice, so it does not change with the provider', () => {
@@ -532,15 +536,20 @@ describe('rendering an answer', () => {
     }, { format: 'swml' });
     expect(forward.contentType).toBe('application/json');
     const fSwml = JSON.parse(forward.body);
-    expect(fSwml.sections.main[0].connect.to).toBe('+15551230000');
-    expect(fSwml.sections.main[0].connect.from).toBe('+15559876543');
-    expect(fSwml.sections.main[0].connect.timeout).toBe(20);
-    expect(fSwml.sections.main[0].connect.status_url).toBe('https://x.test/s');
-    expect(fSwml.sections.main[1].play.url).toContain('say:');
-    expect(fSwml.sections.main[2]).toEqual({ record: expect.objectContaining({
+    expect(fSwml.sections.main[0].answer.max_duration).toBe(598);
+    expect(fSwml.sections.main[1].connect.max_duration).toBe(598);
+    expect(fSwml.sections.main[1].connect.to).toBe('+15551230000');
+    expect(fSwml.sections.main[1].connect.from).toBe('+15559876543');
+    expect(fSwml.sections.main[1].connect.timeout).toBe(20);
+    expect(fSwml.sections.main[1].connect.status_url).toBe('https://x.test/s');
+    expect(fSwml.sections.main[2].switch.variable).toBe('connect_result');
+    expect(Object.keys(fSwml.sections.main[2].switch.case)).toEqual(['failed']);
+    expect(fSwml.sections.main[2].switch.default).toEqual([]);
+    expect(fSwml.sections.main[2].switch.case.failed[0].play.url).toContain('say:');
+    expect(fSwml.sections.main[2].switch.case.failed[1]).toEqual({ record: expect.objectContaining({
       beep: true, max_length: 120, direction: 'speak',
     }) });
-    expect(fSwml.sections.main[3]).toEqual({ hangup: {} });
+    expect(fSwml.sections.main.slice(3)).toEqual([{ hangup: {} }]);
 
     const decline = provider.renderAnswer({
       kind: 'unavailable', message: 'Sorry, we are closed.',
@@ -571,6 +580,7 @@ describe('rendering an answer', () => {
       capMinutes: 10,
       transferTo: '+15558889999',
       transferStatusUrl: 'https://x.test/api/voice/ai/status',
+      recordingStatusUrl: 'https://x.test/api/voice/recording-status',
     });
     const parsed = JSON.parse(aiAnswer.body);
     const aiSection = parsed.sections.main.find((s: Record<string, unknown>) => 'ai' in s);
@@ -582,13 +592,23 @@ describe('rendering an answer', () => {
     const transferMain = action.SWML.sections.main;
     expect(transferMain[0].connect.to).toBe('+15558889999');
     expect(transferMain[0].connect.timeout).toBe(25);
+    expect(transferMain[0].connect.max_duration).toBe(598);
     expect(transferMain[0].connect.status_url).toBe('https://x.test/api/voice/ai/status');
-    expect(transferMain[0].connect.confirm[0].play.url).toContain('%{args.reason}');
-    expect(transferMain[1].play.url).toContain('say:');
-    expect(transferMain[2]).toEqual({ record: expect.objectContaining({
+    const announcement = transferMain[0].connect.confirm[0].play;
+    expect(announcement.urls).toEqual([
+      'silence:1.0',
+      expect.stringContaining('%{args.reason}'),
+    ]);
+    expect(announcement).not.toHaveProperty('url');
+    expect(transferMain[1].switch.variable).toBe('connect_result');
+    expect(Object.keys(transferMain[1].switch.case)).toEqual(['failed']);
+    expect(transferMain[1].switch.default).toEqual([]);
+    expect(transferMain[1].switch.case.failed[0].play.url).toContain('say:');
+    expect(transferMain[1].switch.case.failed[1]).toEqual({ record: expect.objectContaining({
       beep: true, max_length: 120, direction: 'speak',
+      status_url: 'https://x.test/api/voice/recording-status',
     }) });
-    expect(transferMain[3]).toEqual({ hangup: {} });
+    expect(transferMain.slice(2)).toEqual([{ hangup: {} }]);
   });
 
   it('parses structured JSON post prompt data into receipt.structuredPostPrompt', () => {

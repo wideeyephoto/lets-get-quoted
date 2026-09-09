@@ -1,22 +1,27 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import { requireAdmin } from '@/lib/auth';
+import { requireAdmin, requireMfaPermission } from '@/lib/auth';
 import { staffCan } from '@/lib/staff';
 import { dispatchOnCallTestDrill } from '@/lib/on-call-paging';
+import { cronJob } from '@/lib/cron-jobs';
 
 export async function dispatchTestPageAction(): Promise<{ success: boolean; message: string }> {
-  try {
-    const { staff } = await requireAdmin();
-    if (!staffCan(staff, 'ops.manage')) {
-      return { success: false, message: 'Forbidden: Insufficient permissions to dispatch on-call alerts.' };
-    }
+  const { staff } = await requireAdmin();
+  if (!staffCan(staff, 'ops.manage')) {
+    return { success: false, message: 'Forbidden: Insufficient permissions to dispatch on-call alerts.' };
+  }
 
+  try {
     const event = await dispatchOnCallTestDrill(staff.email);
     revalidatePath('/admin/health');
+    const accepted = event.dispatchedChannels.filter(channel => channel !== 'console_log_fallback');
+    if (accepted.length === 0) {
+      return { success: false, message: 'No notification provider accepted the test page. Check channel configuration and provider errors.' };
+    }
     return {
       success: true,
-      message: `Test page successfully dispatched (ID: ${event.id}) via ${event.dispatchedChannels.join(', ')}.`,
+      message: `Test page accepted by ${accepted.join(', ')} (ID: ${event.id}). Mailbox delivery is a separate check.`,
     };
   } catch (err) {
     return {
@@ -26,18 +31,29 @@ export async function dispatchTestPageAction(): Promise<{ success: boolean; mess
   }
 }
 
-export async function runCronJobNowAction(jobSlug: string): Promise<{ success: boolean; message: string }> {
-  try {
-    const ctx = await requireAdmin();
-    if (!staffCan(ctx.staff, 'ops.manage')) {
-      return { success: false, message: 'Forbidden: Insufficient permissions to trigger cron jobs (requires ops.manage).' };
-    }
+export async function runCronJobNowAction(jobSlug: string, confirmation?: string): Promise<{ success: boolean; message: string }> {
+  const spec = cronJob(jobSlug);
+  if (!spec) {
+    return { success: false, message: `Unknown cron job: '${jobSlug}'.` };
+  }
 
-    const { cronJob } = await import('@/lib/cron-jobs');
-    const spec = cronJob(jobSlug);
-    if (!spec) {
-      return { success: false, message: `Unknown cron job: '${jobSlug}'.` };
-    }
+  const isMoney = spec.importance === 'money';
+  const ctx = isMoney
+    ? await requireMfaPermission('ops.manage')
+    : await requireAdmin();
+
+  if (!isMoney && !staffCan(ctx.staff, 'ops.manage')) {
+    return { success: false, message: 'Forbidden: Insufficient permissions to trigger cron jobs (requires ops.manage).' };
+  }
+
+  if (isMoney && confirmation !== jobSlug) {
+    return {
+      success: false,
+      message: `Typed confirmation required: to manually trigger money-moving worker '${jobSlug}', confirmation matching '${jobSlug}' must be provided.`,
+    };
+  }
+
+  try {
 
     const secret = process.env.CRON_SECRET;
     if (!secret) {
