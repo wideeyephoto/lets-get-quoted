@@ -1,0 +1,97 @@
+{
+  "checkedAt": "2026-09-09T15:49:43.191Z",
+  "numbers": [
+    {
+      "id": "b28fc2e0-3a92-43f0-a817-923defaf9c4c",
+      "number": "+18103208333",
+      "name": "LGQ Dispatch",
+      "capabilities": [
+        "voice",
+        "fax",
+        "sms",
+        "mms"
+      ],
+      "messageHandler": "laml_webhooks",
+      "messageRequestUrl": "https://app.letsgetquoted.com/api/sms/inbound",
+      "messageRequestMethod": "POST"
+    },
+    {
+      "id": "fba6ff80-aec2-4d5e-9be1-c4bf9faf8984",
+      "number": "+18103202687",
+      "name": "BrokePipes AI Voice (+18103202687)",
+      "capabilities": [
+        "voice",
+        "fax",
+        "sms",
+        "mms"
+      ],
+      "messageHandler": "laml_webhooks",
+      "messageRequestUrl": "https://app.letsgetquoted.com/api/sms/inbound",
+      "messageRequestMethod": "POST"
+    },
+    {
+      "id": "702b67af-1ff9-4e6f-8300-f57d4bdef7c9",
+      "number": "+19479412323",
+      "name": "Shared Dispatch - Test",
+      "capabilities": [
+        "voice",
+        "fax",
+        "sms",
+        "mms"
+      ],
+      "messageHandler": "laml_webhooks",
+      "messageRequestUrl": "https://app.letsgetquoted.com/api/sms/inbound",
+      "messageRequestMethod": "POST"
+    }
+  ],
+  "campaigns": [
+    {
+      "id": "19e7c875-3611-4b40-8429-7dae3b5e6553",
+      "name": "Let's Get Quoted Crew & Subcontractor Dispatch",
+      "state": "active",
+      "description": "Let's Get Quoted sends low-volume transactional job dispatch and scheduling notifications to crew members and subcontractors who have explicitly opted in. Messages include new work offers with private response links, crew assignments, schedule changes, cancellations, and assignment outcomes. No marketing, homeowner messaging, purchased lists, affiliate traffic, or lead generation is included.",
+      "useCases": [
+        "CUSTOMER_CARE",
+        "ACCOUNT_NOTIFICATION"
+      ],
+      "brandState": "completed",
+      "useCase": "LOW_VOLUME_MIXED",
+      "callbackConfigured": true,
+      "assignments": [
+        {
+          "id": "5d101ac6-955f-40cf-a0b8-18b5b5121a4b",
+          "number": "+18103208333",
+          "providerNumberId": "b28fc2e0-3a92-43f0-a817-923defaf9c4c",
+          "state": "completed"
+        }
+      ]
+    },
+    {
+      "id": "638bad76-629d-4321-90e2-6fe533c09091",
+      "name": "Let's Get Quoted Account & Support Notifications",
+      "state": "active",
+      "description": "Let's Get Quoted, a SaaS platform for contractor businesses, sends transactional texts only to its own opted-in contractor account holders. Messages cover account status, platform subscription billing, support-case updates, and alerts about new quote requests inside the recipient's Let's Get Quoted account. Two-way replies are used for account support. No contractor-to-customer traffic, marketing, purchased lists, affiliate traffic, or third-party lead generation is included.",
+      "useCases": [
+        "CUSTOMER_CARE",
+        "ACCOUNT_NOTIFICATION"
+      ],
+      "brandState": "completed",
+      "useCase": "LOW_VOLUME_MIXED",
+      "callbackConfigured": true,
+      "assignments": [
+        {
+          "id": "6ae94736-2197-446d-ac88-73294328d006",
+          "number": "+18103202687",
+          "providerNumberId": "fba6ff80-aec2-4d5e-9be1-c4bf9faf8984",
+          "state": "completed"
+        },
+        {
+          "id": "eaea6053-4b33-4e2b-ad80-33251a88b698",
+          "number": "+19479412323",
+          "providerNumberId": "702b67af-1ff9-4e6f-8300-f57d4bdef7c9",
+          "state": "completed"
+        }
+      ]
+    }
+  ]
+}

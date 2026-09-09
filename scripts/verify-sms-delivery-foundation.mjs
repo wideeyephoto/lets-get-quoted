@@ -903,6 +903,104 @@ try {
       && functionGrant.rejection_authenticated_execute === false
       && functionGrant.rollback_service_execute === true
       && functionGrant.rollback_authenticated_execute === false);
+  // Exercise the later queue contracts against real PostgreSQL. These are
+  // component checks: timestamps and provider responses are controlled fixtures,
+  // not proof of a scheduled production send or a handset delivery.
+  const followups = readFileSync('migrations/20260821210000_sms_durability_followups.sql', 'utf8');
+  const normalizedFollowups = followups.replace(/\r\n/g, '\n');
+  const sequenceStart = normalizedFollowups.indexOf('alter table public.sms_delivery_tasks\n  add column if not exists lease_sequence');
+  const sequenceEnd = normalizedFollowups.indexOf('-- 4b. Inbound actions', sequenceStart);
+  if (sequenceStart < 0 || sequenceEnd < sequenceStart) throw new Error('Deferral migration section missing');
+  await control.query(normalizedFollowups.slice(sequenceStart, sequenceEnd));
+  await control.query(readFileSync('migrations/20260831190000_atomic_delayed_sms_delivery.sql', 'utf8'));
+  await control.query(readFileSync('migrations/20260903202831_sms_enqueue_delivery_overload_cleanup.sql', 'utf8'));
+  await control.query(readFileSync('migrations/20260903203350_sms_enqueue_delivery_replay_hardening.sql', 'utf8'));
+  const ttl = readFileSync('migrations/20260904210000_sms_delivery_task_ttl.sql', 'utf8');
+  const claimStart = ttl.indexOf('create or replace function public.claim_sms_delivery_tasks(');
+  const claimEnd = ttl.indexOf('$$;', claimStart);
+  if (claimStart < 0 || claimEnd < claimStart) throw new Error('TTL claim function missing');
+  await control.query(ttl.slice(claimStart, claimEnd + 3));
+  check('current delayed enqueue, lease sequence and TTL contracts install', true);
+
+  // Keep the earlier fixtures out of this independent queue matrix.
+  await control.query(`update public.sms_delivery_tasks set task_state='cancelled',
+    claim_token=null, lease_expires_at=null, cancelled_at=clock_timestamp()
+    where task_state in ('queued','leased')`);
+  const futureAt = new Date(Date.now() + 60 * 60 * 1000);
+  const delayedArgs = [...enqueueArgs];
+  delayedArgs[8] = `pg17:delayed-acceptance:${randomUUID()}`;
+  delayedArgs.push(futureAt);
+  const enqueueDelayed = () => control.query(
+    'select * from public.enqueue_sms_delivery($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)', delayedArgs);
+  const delayed = one(await enqueueDelayed());
+  const notDue = await control.query('select * from public.claim_sms_delivery_tasks(25)');
+  const futureTask = one(await control.query('select * from public.sms_delivery_tasks where sms_event_id=$1', [delayed.sms_event_id]));
+  check('future delivery is atomically queued and cannot be claimed early',
+    delayed.created && notDue.rowCount === 0 && futureTask.attempt_count === 0
+      && futureTask.available_at.getTime() === futureAt.getTime());
+  const delayedReplay = one(await enqueueDelayed());
+  const replayTask = one(await control.query('select available_at from public.sms_delivery_tasks where sms_event_id=$1', [delayed.sms_event_id]));
+  check('replaying a deferred producer keeps one event and its due time',
+    !delayedReplay.created && delayedReplay.sms_event_id === delayed.sms_event_id
+      && delayedReplay.task_state === 'queued' && replayTask.available_at.getTime() === futureAt.getTime());
+
+  let lastDeferredClaim;
+  for (let index = 0; index < 10; index += 1) {
+    await control.query("update public.sms_delivery_tasks set available_at=clock_timestamp()-interval '1 second' where sms_event_id=$1", [delayed.sms_event_id]);
+    const due = one(await control.query('select * from public.claim_sms_delivery_tasks(1)'));
+    if (due.sms_event_id !== delayed.sms_event_id || due.attempt_number !== 1) throw new Error('Deferral consumed the provider attempt budget');
+    await control.query("select public.defer_sms_delivery($1,$2,'sms_sender_not_ready',3600)", [due.sms_event_id, due.work_claim_token]);
+    lastDeferredClaim = due;
+  }
+  const deferrals = one(await control.query(`select t.attempt_count,t.lease_sequence,
+    (select count(*)::int from public.sms_delivery_attempts a where a.sms_event_id=t.sms_event_id and a.outcome='deferred') as history_count,
+    e.provider_id,e.text_usage_reservation_id
+    from public.sms_delivery_tasks t join public.sms_events e on e.id=t.sms_event_id where e.id=$1`, [delayed.sms_event_id]));
+  check('ten readiness deferrals preserve all attempts without spending provider budget or usage',
+    deferrals.attempt_count === 0 && deferrals.lease_sequence === 10 && deferrals.history_count === 10
+      && deferrals.provider_id === null && deferrals.text_usage_reservation_id === null);
+  let staleDeferCode;
+  try { await control.query("select public.defer_sms_delivery($1,$2,'sms_sender_not_ready',3600)", [delayed.sms_event_id,lastDeferredClaim.work_claim_token]); }
+  catch (error) { staleDeferCode = sqlState(error); }
+  check('repeating a completed deferral cannot decrement attempts again', staleDeferCode === '55000');
+  await control.query("update public.sms_delivery_tasks set available_at=clock_timestamp()-interval '1 second' where sms_event_id=$1", [delayed.sms_event_id]);
+  const releasedClaims = await Promise.all([
+    workerA.query('select * from public.claim_sms_delivery_tasks(1)'),
+    workerB.query('select * from public.claim_sms_delivery_tasks(1)'),
+  ]);
+  const released = one(releasedClaims.find(result => result.rowCount === 1));
+  check('a due delivery releases once even after more than eight deferrals',
+    releasedClaims.reduce((sum,result) => sum+result.rowCount,0) === 1
+      && released.sms_event_id === delayed.sms_event_id && released.attempt_number === 1);
+  const preRequestFailure = one(await control.query("select * from public.fail_sms_delivery($1,$2,'sms_provider_transport_error',true)", [released.sms_event_id,released.work_claim_token]));
+  check('pre-request failure retries the same durable event with backoff',
+    preRequestFailure.failure_status === 'retryable' && preRequestFailure.task_state === 'queued'
+      && preRequestFailure.next_attempt_at > new Date());
+  for (let attempt = 2; attempt <= 8; attempt += 1) {
+    await control.query("update public.sms_delivery_tasks set available_at=clock_timestamp()-interval '1 second' where sms_event_id=$1", [delayed.sms_event_id]);
+    const retry = one(await control.query('select * from public.claim_sms_delivery_tasks(1)'));
+    if (retry.sms_event_id !== delayed.sms_event_id || retry.attempt_number !== attempt) throw new Error('Retry identity or budget changed');
+    await control.query("select * from public.fail_sms_delivery($1,$2,'sms_provider_transport_error',true)", [retry.sms_event_id,retry.work_claim_token]);
+  }
+  const exhausted = one(await control.query(`select e.status,e.provider_id,t.task_state,t.attempt_count,t.lease_sequence
+    from public.sms_events e join public.sms_delivery_tasks t on t.sms_event_id=e.id where e.id=$1`, [delayed.sms_event_id]));
+  const exhaustedReplay = one(await enqueueDelayed());
+  const afterExhaustion = await control.query('select * from public.claim_sms_delivery_tasks(25)');
+  check('eight actual failures are terminal and producer replay cannot restart sending',
+    exhausted.status === 'failed' && exhausted.task_state === 'failed' && exhausted.attempt_count === 8
+      && exhausted.lease_sequence === 18 && exhausted.provider_id === null
+      && !exhaustedReplay.created && exhaustedReplay.sms_event_id === delayed.sms_event_id
+      && exhaustedReplay.task_state === 'failed' && afterExhaustion.rowCount === 0);
+  const expiredArgs = [...delayedArgs];
+  expiredArgs[8] = `pg17:expired-acceptance:${randomUUID()}`;
+  expiredArgs[12] = new Date(Date.now()-25*60*60*1000);
+  const expired = one(await control.query('select * from public.enqueue_sms_delivery($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)',expiredArgs));
+  const expiredClaim = await control.query('select * from public.claim_sms_delivery_tasks(25)');
+  const expiry = one(await control.query(`select e.status,e.error_reason,e.provider_id,t.attempt_count
+    from public.sms_events e join public.sms_delivery_tasks t on t.sms_event_id=e.id where e.id=$1`,[expired.sms_event_id]));
+  check('an expired deferred delivery is cancelled without a provider attempt',
+    expiredClaim.rowCount === 0 && expiry.status === 'cancelled' && expiry.error_reason === 'sms_delivery_expired'
+      && expiry.attempt_count === 0 && expiry.provider_id === null);
 } catch (error) {
   check('harness ran to completion', false, error instanceof Error ? error.message : String(error));
 } finally {
@@ -914,7 +1012,7 @@ try {
 
 const failed = checks.filter((entry) => !entry.ok);
 console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`);
-if (checks.length < 9) {
+if (checks.length < 34) {
   console.error('The harness did not run every check; a short run is not a pass.');
   process.exit(2);
 }

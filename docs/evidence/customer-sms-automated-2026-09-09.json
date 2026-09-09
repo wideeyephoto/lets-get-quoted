@@ -1,0 +1,237 @@
+{
+  "recordedAt": "2026-09-09T15:55:43.4605659Z",
+  "sourceRevision": "48dee526b6c25a020758e42f4684bd5698ef54e2",
+  "applicationTests": {
+    "passed": 177,
+    "failed": 0,
+    "files": [
+      {
+        "name": "booking-sms.test.ts",
+        "status": "passed",
+        "tests": 9
+      },
+      {
+        "name": "intake-confirmation-sms.test.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "name": "missed-call.test.ts",
+        "status": "passed",
+        "tests": 11
+      },
+      {
+        "name": "sms-delivery-cron.test.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "name": "sms-delivery-routing.test.ts",
+        "status": "passed",
+        "tests": 5
+      },
+      {
+        "name": "sms-delivery-worker.test.ts",
+        "status": "passed",
+        "tests": 20
+      },
+      {
+        "name": "sms-inbound-action-worker.test.ts",
+        "status": "passed",
+        "tests": 16
+      },
+      {
+        "name": "sms-inbound-compliance-route.test.ts",
+        "status": "passed",
+        "tests": 10
+      },
+      {
+        "name": "sms-missed-call-rpc-contract.test.ts",
+        "status": "passed",
+        "tests": 7
+      },
+      {
+        "name": "sms-missed-call-status-route.test.ts",
+        "status": "passed",
+        "tests": 4
+      },
+      {
+        "name": "sms-provider.test.ts",
+        "status": "passed",
+        "tests": 73
+      },
+      {
+        "name": "sms-usage-reconciliation.test.ts",
+        "status": "passed",
+        "tests": 3
+      },
+      {
+        "name": "voice-post-call-sms.test.ts",
+        "status": "passed",
+        "tests": 9
+      }
+    ],
+    "log": "C:/dev/customer-sms-acceptance-tests-20260909.log",
+    "reportSha256": "6899F9C07E5DD5B3A5A6A6D26AC3C91099F47A6C4F9A9156C99A37F07E17AAD6"
+  },
+  "postgresChecks": [
+    {
+      "log": "C:\\dev\\customer-sms-delivery-foundation-20260909.log",
+      "sha256": "84B56B7905A7A129EAC2E1C72AC497BB071BC5419FD83A015D126FA740047B2B",
+      "passedChecks": [
+        "PASS  migration applies twice",
+        "PASS  usage finalization migration applies twice",
+        "PASS  producer projection migration applies twice",
+        "PASS  enqueue replay returns the same event",
+        "PASS  idempotency payload drift is refused -- 22000",
+        "PASS  two workers cannot claim one task -- 1+0",
+        "PASS  consent and sender readiness stage the task",
+        "PASS  expired post-request lease becomes indeterminate",
+        "PASS  expired pre-request lease is safely reclaimed",
+        "PASS  provider rejection RPC refuses a pre-request attempt -- 55000",
+        "PASS  a definite provider throttle safely returns to the retry queue",
+        "PASS  a definite provider rejection terminal-fails without indeterminate state",
+        "PASS  a lost marker response before provider egress is safely compensatable",
+        "PASS  an accepted provider send durably commits its exact text hold",
+        "PASS  an indeterminate provider send keeps and commits its hold",
+        "PASS  a definite provider rejection durably releases its exact text hold",
+        "PASS  STOP between enqueue and egress cancels the task",
+        "PASS  sender-scoped STOP between enqueue and egress cancels the task",
+        "PASS  subcontractor enqueue keeps carrier identity and sent timestamps empty",
+        "PASS  provider acceptance projects subcontractor sent state and carrier id",
+        "PASS  provider delivery projects without losing acceptance evidence",
+        "PASS  an offer cannot borrow another crew member SMS event -- 23514",
+        "PASS  an early pre-link failure replays on attachment and closes the request honestly",
+        "PASS  queue storage is FORCE RLS with no direct browser or service writes",
+        "PASS  only service_role can execute worker RPCs",
+        "PASS  current delayed enqueue, lease sequence and TTL contracts install",
+        "PASS  future delivery is atomically queued and cannot be claimed early",
+        "PASS  replaying a deferred producer keeps one event and its due time",
+        "PASS  ten readiness deferrals preserve all attempts without spending provider budget or usage",
+        "PASS  repeating a completed deferral cannot decrement attempts again",
+        "PASS  a due delivery releases once even after more than eight deferrals",
+        "PASS  pre-request failure retries the same durable event with backoff",
+        "PASS  eight actual failures are terminal and producer replay cannot restart sending",
+        "PASS  an expired deferred delivery is cancelled without a provider attempt"
+      ],
+      "failedChecks": []
+    },
+    {
+      "log": "C:\\dev\\customer-sms-campaign-stop-20260909.log",
+      "sha256": "806CCBE81370430F2D3F99D71E3B76D26DAB14F50DFEC11E571D8487697BC782",
+      "passedChecks": [
+        "PASS  migration applies twice",
+        "PASS  STOP on sender A suppresses sender B in the same canonical Campaign -- {\"sender_a_stopped\":true,\"sender_b_stopped\":true,\"campaign_status\":\"opted_out\"}",
+        "PASS  valid START restores the Campaign across both numbers -- {\"sender_a_stopped\":false,\"sender_b_stopped\":false,\"campaign_status\":\"opted_in\"}",
+        "PASS  ambiguous START remains Campaign-wide opted out -- {\"sender_a_stopped\":true,\"sender_b_stopped\":true,\"campaign_status\":\"opted_out\"}",
+        "PASS  Campaign reassignment ignores the number stale exact preference -- {\"reassigned_sender_stopped\":false,\"old_campaign_sender_stopped\":true}",
+        "PASS  Campaign-null sender retains exact-number STOP and START authority -- {\"stop\":true,\"start\":false}",
+        "PASS  Campaign preference and helper remain service-role-only -- {\"rls\":true,\"force_rls\":true,\"browser_select\":false,\"browser_execute\":false,\"service_execute\":true}"
+      ],
+      "failedChecks": []
+    },
+    {
+      "log": "C:\\dev\\customer-sms-sender-guard-20260909.log",
+      "sha256": "FC6336AF45CE6E131A8192D2D787E655D86C957DAD2ACA9BE74608AE7B77F7CC",
+      "passedChecks": [
+        "PASS matching registered sender is ready after repeated migration",
+        "PASS registered customer delivery stages through the actual dispatcher",
+        "PASS missing application blocks customer delivery before egress",
+        "PASS other workspace blocks customer delivery before egress",
+        "PASS unactivated application blocks customer delivery before egress",
+        "PASS suspended application blocks customer delivery before egress",
+        "PASS wrong campaign blocks customer delivery before egress",
+        "PASS wrong brand blocks customer delivery before egress",
+        "PASS wrong number blocks customer delivery before egress",
+        "PASS pending assignment blocks customer delivery before egress",
+        "PASS missing provider proof blocks customer delivery before egress",
+        "PASS not SMS capable blocks customer delivery before egress",
+        "PASS unconfigured inbound blocks customer delivery before egress",
+        "PASS suspended sender blocks customer delivery before egress",
+        "PASS support campaign blocks customer delivery before egress",
+        "PASS crew campaign blocks customer delivery before egress",
+        "PASS payment_message also requires registration",
+        "PASS verification also requires registration",
+        "PASS lgq_shared retains its own sender path",
+        "PASS lgq_dispatch retains its own sender path",
+        "PASS STOP still cancels a registered customer delivery",
+        "PASS anon cannot call either private function",
+        "PASS authenticated cannot call either private function"
+      ],
+      "failedChecks": []
+    },
+    {
+      "log": "C:\\dev\\customer-sms-webhook-recovery-20260909.log",
+      "sha256": "F3EECA0611C7F1C254808CE8A06C7E5F0D662265095B45D34FBC3B9B96E623D3",
+      "passedChecks": [
+        "PASS  callback migration applies twice",
+        "PASS  dedicated inbound is routed once",
+        "PASS  inbound receipt-key replay rejects different signed bytes without a second effect -- P5120",
+        "PASS  review receipt replay is exact and mismatch-safe -- P5121",
+        "PASS  shared reply is quarantined without a tenant",
+        "PASS  dedicated STOP is scoped to its account and sender",
+        "PASS  dedicated START resumes only the same account and sender",
+        "PASS  shared START changes only the platform sender preference",
+        "PASS  shared keyword uses one exact accepted sender/contact association",
+        "PASS  shared keyword never guesses between two accepted account histories",
+        "PASS  automatic replay projects an early unmatched status and later duplicates stay inert",
+        "PASS  operator resolution reapplies unmatched status instead of annotating it away",
+        "PASS  manual unmatched status recovery is one-winner and never resends -- {\"recoveryCalls\":[{\"status\":\"fulfilled\",\"value\":{\"command\":\"SELECT\",\"rowCount\":1,\"oid\":null,\"rows\":[{\"ok\":true}],\"fields\":[{\"name\":\"ok\",\"tableID\":0,\"columnID\":0,\"dataTypeID\":16,\"dataTypeSize\":1,\"dataTypeModifier\":-1,\"format\":\"text\"}],\"_parsers\":[null],\"_types\":{\"_types\":{\"arrayParser\":{},\"builtins\":{\"BOOL\":16,\"BYTEA\":17,\"CHAR\":18,\"INT8\":20,\"INT2\":21,\"INT4\":23,\"REGPROC\":24,\"TEXT\":25,\"OID\":26,\"TID\":27,\"XID\":28,\"CID\":29,\"JSON\":114,\"XML\":142,\"PG_NODE_TREE\":194,\"SMGR\":210,\"PATH\":602,\"POLYGON\":604,\"CIDR\":650,\"FLOAT4\":700,\"FLOAT8\":701,\"ABSTIME\":702,\"RELTIME\":703,\"TINTERVAL\":704,\"CIRCLE\":718,\"MACADDR8\":774,\"MONEY\":790,\"MACADDR\":829,\"INET\":869,\"ACLITEM\":1033,\"BPCHAR\":1042,\"VARCHAR\":1043,\"DATE\":1082,\"TIME\":1083,\"TIMESTAMP\":1114,\"TIMESTAMPTZ\":1184,\"INTERVAL\":1186,\"TIMETZ\":1266,\"BIT\":1560,\"VARBIT\":1562,\"NUMERIC\":1700,\"REFCURSOR\":1790,\"REGPROCEDURE\":2202,\"REGOPER\":2203,\"REGOPERATOR\":2204,\"REGCLASS\":2205,\"REGTYPE\":2206,\"UUID\":2950,\"TXID_SNAPSHOT\":2970,\"PG_LSN\":3220,\"PG_NDISTINCT\":3361,\"PG_DEPENDENCIES\":3402,\"TSVECTOR\":3614,\"TSQUERY\":3615,\"GTSVECTOR\":3642,\"REGCONFIG\":3734,\"REGDICTIONARY\":3769,\"JSONB\":3802,\"REGNAMESPACE\":4089,\"REGROLE\":4096}},\"text\":{},\"binary\":{}},\"RowCtor\":null,\"rowAsArray\":false,\"_prebuiltEmptyResultObject\":{\"ok\":null}}},{\"status\":\"rejected\",\"reason\":{\"length\":208,\"name\":\"error\",\"severity\":\"ERROR\",\"code\":\"55000\",\"where\":\"PL/pgSQL function public.reconcile_sms_unmatched_status(uuid,uuid,text,text) line 64 at RAISE\",\"file\":\"pl_exec.c\",\"line\":\"3911\",\"routine\":\"exec_stmt_raise\"}}],\"recoveredProjection\":{\"event_status\":\"delivered\",\"provider_id\":\"manual-recovery-provider-id\",\"indeterminate_at\":null,\"task_state\":\"completed\",\"attempt_count\":1,\"completed_at\":\"2026-09-09T15:45:10.908Z\",\"processing_state\":\"processed\",\"receipt_event_id\":\"cee72011-5f79-4847-be28-eb8581b77c74\",\"review_state\":\"resolved\",\"review_event_id\":\"cee72011-5f79-4847-be28-eb8581b77c74\",\"resolution_note\":\"Matched against the provider delivery log.\",\"resolution_actor\":\"operator@example.com\",\"attempt_rows\":1,\"attempt_outcome\":\"indeterminate\"}}",
+        "PASS  manual recovery rejects provider/state/binding/review/uniqueness hazards -- {\"wrongProviderCode\":\"55000\",\"nonIndeterminateCode\":\"55000\",\"alreadyBoundCode\":\"55000\",\"closedReviewCode\":\"55000\",\"uniquenessCode\":\"23505\",\"rejectedState\":{\"wrong_provider_status\":\"indeterminate\",\"queued_status\":\"queued\",\"bound_provider_id\":\"already-bound-provider-id\",\"conflict_provider_id\":null,\"conflict_review_state\":\"open\"}}",
+        "PASS  lower carrier states cannot reopen an indeterminate accepted delivery",
+        "PASS  delivered fact closes an indeterminate task as completed",
+        "PASS  failed fact closes an indeterminate task as failed",
+        "PASS  legacy completion insert receives provider identity at the table boundary",
+        "PASS  status projection is provider-scoped and deduplicated",
+        "PASS  terminal delivered state does not regress",
+        "PASS  terminal carrier failure is recorded with evidence",
+        "PASS  operator review resolution is compare-and-set",
+        "PASS  browser role cannot manufacture provider identity -- 42501",
+        "PASS  callback storage is forced RLS with RPC-only mutation"
+      ],
+      "failedChecks": []
+    },
+    {
+      "log": "C:\\dev\\customer-sms-inbound-recovery-20260909.log",
+      "sha256": "587752E9446E018FB93A1F485D7BE0D074ABCB268A2BEFA7A0B90DA9C65A9E1C",
+      "passedChecks": [
+        "PASS  inbound action, purpose-routing and admin-read migrations apply twice",
+        "PASS  current inbound retry budget and dead-letter contracts install",
+        "PASS  recipient-lock triggers preserve authenticated candidate writes",
+        "PASS  exact-one shared owner and dispatch crew scopes route and enqueue actions",
+        "PASS  ambiguous shared and dispatch scopes go to review without transcript or action",
+        "PASS  zero-match shared and dispatch authorities also fail closed",
+        "PASS  stale owner alert_phone and stale crew phone scopes route to review",
+        "PASS  current owner phone without enabled messaging setting routes to review",
+        "PASS  unique dispatch STOP updates the current account ledger and exact sender only",
+        "PASS  dispatch STOP account ledger blocks ordinary traffic on another sender",
+        "PASS  unique cross-sender dispatch START restores the ledger without clearing the old sender block",
+        "PASS  dispatch sender preferences remain exact across senders",
+        "PASS  dispatch START can restore the original exact sender",
+        "PASS  ambiguous dispatch STOP and START retain sender-only blocks and create review work",
+        "PASS  routed receipt creates one action task in a single transaction",
+        "PASS  concurrent receipt claims have one owner",
+        "PASS  lost apply response replays one accepted estimate effect",
+        "PASS  failed-after-effect retry returns stored outcome without duplicate booking",
+        "PASS  eight inbound failures dead-letter once while preserving the original booking and outcome",
+        "PASS  receipt replay cannot silently reopen an exhausted inbound action",
+        "PASS  the background worker excludes exhausted inbound actions",
+        "PASS  multiple compatible pending questions produce ambiguity without mutation",
+        "PASS  reschedule YES requires and consumes its exact provider-accepted question",
+        "PASS  appointment confirmation requires its exact provider-accepted SMS reminder and commits once",
+        "PASS  one exactly-bound subcontractor YES claims and assigns in a single transaction",
+        "PASS  estimate rejects every inexact or unaccepted outbound question binding",
+        "PASS  reschedule rejects every inexact or unaccepted outbound question binding",
+        "PASS  appointment rejects every inexact or unaccepted outbound question binding",
+        "PASS  subcontractor rejects every inexact or unaccepted outbound question binding",
+        "PASS  same-phone dedicated reply can mutate customer intent only",
+        "PASS  same-phone dispatch reply can mutate subcontractor intent only",
+        "PASS  same-phone shared reply remains inbox-only",
+        "PASS  action storage is forced RLS and mutation is service-RPC-only",
+        "PASS  operations can READ the action queue, and still cannot write it"
+      ],
+      "failedChecks": []
+    }
+  ],
+  "scope": "Disposable database and mocked provider/clock tests. These do not establish production scheduled carrier delivery."
+}

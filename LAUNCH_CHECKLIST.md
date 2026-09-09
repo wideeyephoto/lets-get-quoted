@@ -1,5 +1,14 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Customer SMS acceptance update — 2026-09-09
+
+**Customer launch is still blocked on correct registration.** See [the acceptance register](docs/customer-sms-launch-acceptance-2026-09-09.md) and its dated provider/database/test evidence. These results refine the older SMS gates below; they do not establish customer carrier readiness.
+
+- [x] **Verify current campaign scope and fail-closed customer sender.** Provider inventory has only LGQ support and crew-dispatch campaigns, both excluding customer traffic. Number 2687 remains on support, there are zero customer registration applications, and production customer readiness is false. No customer send or registration change was made.
+- [x] **Prove dispatch cross-workspace STOP protection using real handset keywords.** September 9 STOP at 15:42:18 UTC blocked otherwise-eligible BrokePipes and Midwest fixtures before provider/usage. START at 15:43:25 UTC restored BrokePipes readiness while preserving a separate Midwest workspace opt-out. All fixtures rolled back, cleanup passed, and the handset finished opted in. This is a deployed database-boundary check, not a second-workspace carrier delivery.
+- [x] **Verify deferred-queue and recovery components.** 177 application tests and 122 disposable PostgreSQL checks passed. Thirteen new checks cover future release, repeated deferral, one-winner claiming, bounded retry, expiry and inbound dead-letter containment. Five production rollback checks additionally proved customer-registration blocking through ten deferrals with no usage or provider request. Full inbound dead-letter recovery remains open: there is no verified audited resume process, and resetting counters is not a recovery proof.
+- [ ] **Activate a correctly registered customer sender and finish carrier acceptance.** Obtain SignalWire's internal-test registration guidance, then verify the approved brand/campaign/number/application chain. Prove actual booking and missed-call/post-call texts, links, correct-workspace replies, customer HELP/STOP/START, natural deferred delivery, provider failure/reconciliation, and inbound dead-letter recovery without duplicate effects. Existing single-workspace dispatch evidence is retained; these customer gates remain open.
+
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
 ## Six-SKU post-launch verification update — 2026-09-08

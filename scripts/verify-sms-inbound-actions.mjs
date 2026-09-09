@@ -312,6 +312,14 @@ try {
   await client.query(adminRead);
   check('inbound action, purpose-routing and admin-read migrations apply twice', true);
 
+  const followups = readFileSync('migrations/20260821210000_sms_durability_followups.sql', 'utf8');
+  const normalizedFollowups = followups.replace(/\r\n/g, '\n');
+  const boundedStart = normalizedFollowups.indexOf('alter table public.sms_inbound_action_tasks\n  add column if not exists dead_lettered_at');
+  const boundedEnd = normalizedFollowups.indexOf('-- 4c. Synchronous STOP/START/HELP', boundedStart);
+  if (boundedStart < 0 || boundedEnd < boundedStart) throw new Error('Inbound retry-budget migration section missing');
+  await client.query(normalizedFollowups.slice(boundedStart,boundedEnd));
+  check('current inbound retry budget and dead-letter contracts install', true);
+
   const accountId = randomUUID();
   const accountB = randomUUID();
   const crewId = randomUUID();
@@ -779,7 +787,32 @@ try {
   check('failed-after-effect retry returns stored outcome without duplicate booking',
     retryOutcome.action_kind === 'estimate' && stopCount.count === 1,
     JSON.stringify({ retryOutcome, stopCount }));
-  await client.query('select public.complete_sms_inbound_action($1,$2,null,null)', [retry.task_id, retry.work_claim_token]);
+  // Preserve the committed estimate while exhausting repeated reply/egress
+  // failures. Recovery must never recreate its already-accepted route stop.
+  let boundedClaim = retry;
+  for (let attempt = 2; attempt <= 8; attempt += 1) {
+    if (attempt > 2) {
+      await client.query("update public.sms_inbound_action_tasks set next_attempt_at=now()-interval '1 second' where id=$1",[retry.task_id]);
+      boundedClaim = one(await client.query('select * from public.claim_sms_inbound_action($1)',[estimateReceipt.webhook_receipt_id]));
+      const stored = one(await client.query('select public.apply_sms_inbound_action($1,$2) as outcome',[boundedClaim.task_id,boundedClaim.work_claim_token])).outcome;
+      if (JSON.stringify(stored) !== JSON.stringify(retryOutcome)) throw new Error('Applied inbound outcome changed during retry');
+    }
+    await client.query("select public.fail_sms_inbound_action($1,$2,'test_reply_enqueue_failure')",[boundedClaim.task_id,boundedClaim.work_claim_token]);
+  }
+  const deadLetter = one(await client.query(`select task_state,attempt_count,effect_applied_at,outcome,dead_lettered_at,
+    (select count(*)::int from public.route_stops where source_sms_webhook_receipt_id=$2) as stops
+    from public.sms_inbound_action_tasks where id=$1`,[retry.task_id,estimateReceipt.webhook_receipt_id]));
+  check('eight inbound failures dead-letter once while preserving the original booking and outcome',
+    deadLetter.task_state==='dead_letter' && deadLetter.attempt_count===8 && deadLetter.effect_applied_at!==null
+      && deadLetter.dead_lettered_at!==null && deadLetter.stops===1
+      && JSON.stringify(deadLetter.outcome)===JSON.stringify(retryOutcome));
+  const exhausted = one(await client.query('select * from public.claim_sms_inbound_action($1)',[estimateReceipt.webhook_receipt_id]));
+  check('receipt replay cannot silently reopen an exhausted inbound action',
+    exhausted.claim_status==='exhausted' && exhausted.work_claim_token===null && exhausted.effect_applied===true
+      && JSON.stringify(exhausted.stored_outcome)===JSON.stringify(retryOutcome));
+  const batchAfterExhaustion = await client.query('select * from public.claim_sms_inbound_action_batch(25)');
+  check('the background worker excludes exhausted inbound actions',
+    !batchAfterExhaustion.rows.some(row=>row.task_id===retry.task_id));
 
   const secondLead = randomUUID();
   const secondEstimateId = randomUUID();
@@ -1320,5 +1353,5 @@ try {
 
 const failed = checks.filter((entry) => !entry.ok);
 console.log(`\n${checks.length - failed.length}/${checks.length} checks passed`);
-if (checks.length < 10) process.exit(2);
+if (checks.length < 34) process.exit(2);
 process.exit(failed.length === 0 ? 0 : 1);

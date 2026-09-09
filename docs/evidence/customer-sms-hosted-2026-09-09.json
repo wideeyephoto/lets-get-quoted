@@ -1,0 +1,108 @@
+{
+  "checkedAt": "2026-09-09",
+  "project": "mfuvvtrkipkigwqqtcal",
+  "sourceRevision": "48dee526b6c25a020758e42f4684bd5698ef54e2",
+  "liveStop": {
+    "receiptId": "e3b753b0-d6be-4426-bea2-2d45611a85d4",
+    "providerEventId": "7feea0e5-b4cd-4249-8957-e958b1f2dfb2",
+    "receivedAt": "2026-09-09T15:42:18.137645Z",
+    "userConfirmedAcknowledgment": true,
+    "checks": [
+      {
+        "rollback_only_checks": [
+          {
+            "pass": true,
+            "check": "stop",
+            "result": "cancelled",
+            "workspace": "BrokePipes",
+            "usage_reserved": false,
+            "provider_egress": false
+          },
+          {
+            "pass": true,
+            "check": "stop",
+            "result": "cancelled",
+            "workspace": "Midwest test",
+            "usage_reserved": false,
+            "provider_egress": false
+          }
+        ]
+      }
+    ],
+    "cleanup": [
+      {
+        "jsonb_build_object": {
+          "leftover_events": 0,
+          "dispatch_preference": "opted_out",
+          "leftover_consent_fixture": 0
+        }
+      }
+    ]
+  },
+  "liveStart": {
+    "userConfirmedAcknowledgment": true,
+    "receipt": [
+      {
+        "jsonb_build_object": {
+          "receipt": {
+            "id": "82fc4c0f-23ba-4985-b93b-5d94c07b4b8a",
+            "disposition": "keyword_start",
+            "received_at": "2026-09-09T15:43:25.115789+00:00",
+            "provider_event_id": "806eb3d0-3196-4b2f-8f86-659d897d6f89"
+          },
+          "preference": {
+            "source": "inbound_start",
+            "status": "opted_in",
+            "updated_at": "2026-09-09T15:43:25.132106+00:00"
+          }
+        }
+      }
+    ],
+    "checks": [
+      {
+        "rollback_only_checks": [
+          {
+            "pass": true,
+            "check": "start",
+            "result": "ready",
+            "workspace": "BrokePipes",
+            "usage_reserved": false,
+            "provider_egress": false
+          },
+          {
+            "pass": true,
+            "check": "start",
+            "result": "cancelled",
+            "workspace": "Midwest test",
+            "usage_reserved": false,
+            "provider_egress": false
+          }
+        ]
+      }
+    ]
+  },
+  "customerGuard": {
+    "checks": [
+      {
+        "passed_checks": [
+          "future_customer_intent_queued_atomically",
+          "wrong_customer_campaign_blocked_ten_times",
+          "deferral_budget_and_history_preserved",
+          "expired_customer_intent_cancelled",
+          "no_provider_request_or_usage"
+        ]
+      }
+    ],
+    "cleanup": [
+      {
+        "jsonb_build_object": {
+          "acceptance_events": 0,
+          "acceptance_consent": 0,
+          "active_delivery_tasks": 0,
+          "customer_sender_ready": false
+        }
+      }
+    ]
+  },
+  "scope": "Real handset STOP/START records, with rolled-back workspace eligibility/independent opt-out fixtures. Customer guard tests use a rolled-back reserved 555 fixture. No business SMS submitted, provider IDs invented in production, usage holds created, or registration evidence manufactured. Not second-workspace carrier delivery proof."
+}
