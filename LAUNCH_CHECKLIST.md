@@ -12,6 +12,14 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [ ] **Release and verify paid add-on refund handling in production.** The refund ledger migration is installed and its four tables deny browser-role access. The added paid Voice migration, production application release, refund-event configuration and worker activation remain pending. Follow the documented order and verify the actual deployed revision and processing before claiming acceptance.
 - [ ] **Execute the remaining live paid add-on journeys.** The user approved the designated payer, existing Flex/Solo/Growth workspaces and a $248 total cap. Spent: $0. A $35 minute-pack checkout is prepared but unpaid. Reconcile real purchases, usable benefits, partial/full refunds and cancellation; verify natural renewal and effective cancellation when their actual periods elapse. Additional renewal charges require spending authorization. Sandbox and local checks do not close this item.
 
+## Security and recovery — 2026-09-09
+
+- [x] **Replace the three documented exposed credentials:** replacement Resend/Supabase/cron credentials configured in Vercel, GitHub and matching local consumers; production rebuilt and checked. Exposed Resend key removed; old Supabase service JWT denied as both API key and bearer JWT; legacy anon denied; old cron secret denied privileged diagnostics. See [dated evidence](docs/runbooks/security-recovery-2026-09-09.md).
+- [x] **Implement and stage-test native admin passkeys:** session-bound WebAuthn grants, TOTP recovery, origin/signature/replay checks and private credential storage implemented. All 22 real staging protocol checks passed; production schema and privileges verified. This is not native-device production acceptance.
+- [ ] **Finish production native passkey acceptance:** deploy the application, then verify owner enrollment, a fresh-session native assertion, backup method, cancelled-prompt denial and recovery on the canonical app origin.
+- [x] **Restore the downloaded offsite pack in isolation:** 260 row counts, 258 table/grant definitions, 272 policies, 435 functions/grants, existing-owner RLS and all 38 local object hashes passed. Plaintext temporary data removed. See [restore evidence](docs/runbooks/evidence/dr-downloaded-local-restore-2026-09-09.json).
+- [ ] **Complete hosted, infrastructure and provider recovery:** exact downloaded-pack hosted Auth/Storage/application acceptance, independent recovery-key retrieval, deployment/DNS recovery, and provider recovery/reconciliation remain open. The isolated PostgreSQL restore is not full-disaster recovery.
+
 ## Command Center & Operational Telemetry Honesty — 2026-09-09
 
 **Completed:** Verification against `docs/admin-command-center-task-list-2026-09-09.md` across Waves 0–6.
