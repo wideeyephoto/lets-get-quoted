@@ -5,17 +5,18 @@
 import assert from 'node:assert/strict';
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { chromium } from 'playwright';
 import { admin, db, env, options, origin, privateDir, project, read, snapshot, cleanup } from './tenant-office-fixtures.mjs';
 
 assert.match(options['--commit'] || '', /^[0-9a-f]{40}$/, 'A verified production/source commit is required');
-assert.match(options['--deployment'] || '', /^dpl_[A-Za-z0-9]+$/, 'A verified deployment ID is required');
+const local = new URL(origin).hostname === 'localhost';
+assert(local ? options['--deployment'] === 'local' : /^dpl_[A-Za-z0-9]+$/.test(options['--deployment'] || ''), 'A verified deployment ID (or local for localhost) is required');
 const m=read(), [a,b]=m.accounts;
 assert.equal(m.accounts.length,2,'Two prepared fixture accounts required');
 assert(!m.cleanedAt,'Prepare new fixtures; this audit was already cleaned up');
 const evidence={ startedAt:new Date().toISOString(), origin, project, fixtureMarker:m.marker,
-  release:{commit:options['--commit'],deployment:options['--deployment']},
+  release:{commit:options['--commit'],deployment:options['--deployment'],workingTree:local},
   method:'Chromium magic-link callback; Auth-issued session cookies and their access tokens; no mocked responses or SQL role impersonation',
   cases:[],grantTransitions:[],actors:Object.fromEntries(Object.entries(m.actors).map(([k,v])=>[k,v.id])) };
 const output=resolve(options['--evidence'] || 'docs/tenant-office-browser-evidence-2026-09-09.json');
@@ -49,10 +50,10 @@ async function signin(label){
   sessions[label]={context,page,token,errors};
   return {identity:user.id,path:new URL(page.url()).pathname,sessionFingerprint:createHash('sha256').update(token).digest('hex').slice(0,16)};
 }
-async function rest(actor,path,{method='GET',body}={}){
+async function rest(actor,path,{method='GET',body,headers={}}={}){
   const res=await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/${path}`,{method,headers:{
     apikey:env.NEXT_PUBLIC_SUPABASE_ANON_KEY,Authorization:`Bearer ${sessions[actor].token}`,
-    'Content-Type':'application/json',Prefer:'return=representation'},body:body===undefined?undefined:JSON.stringify(body)});
+    'Content-Type':'application/json',Prefer:'return=representation',...headers},body:body===undefined?undefined:JSON.stringify(body)});
   const text=await res.text();let data;try{data=JSON.parse(text)}catch{data=text.slice(0,200)}
   const result={status:res.status,data};requests.push({surface:'Data API',actor,path,method,...result});return result;
 }
@@ -74,7 +75,9 @@ async function page(actor,path,file){
     await p.locator('main[aria-busy="true"]').waitFor({state:'hidden'});
   }
   const body=await p.locator('body').innerText(); const html=await p.content();
-  if(file)await p.screenshot({path:resolve(privateDir,file),fullPage:false});
+  // Finish finite entrance animations so evidence captures the rendered page,
+  // rather than a transparent initial frame after its text is already present.
+  if(file)await p.screenshot({path:resolve(privateDir,file),fullPage:false,animations:'disabled'});
   requests.push({surface:'Browser',actor,requestedPath:path,path:new URL(p.url()).pathname,
     status:response?.status(),body:body.slice(0,6500),quoteSentinel:html.includes(String(a.amount)) || html.includes('17,351.69') || html.includes(a.quoteLabel),
     errors:sessions[actor].errors.slice(errorsStart),screenshot:file??null});
@@ -99,10 +102,10 @@ try{
   assert(Object.keys(sessions).length===3,'All positive-control sessions required');
   for(const [label,own,other] of [['ownerA',a,b],['ownerB',b,a]]){
     await check('OWNER-'+label,'Owner retrieves exact own fixture and nonzero quote',async()=>{
-      const r=await rest(label,`jobs?id=eq.${own.job}&select=id,account_id,quoted_amount,quote_items`);
+      const r=await rest(label,`job_access?id=eq.${own.job}&select=id,account_id,quoted_amount,quote_items`);
       assert.equal(r.status,200);assert.equal(r.data[0]?.id,own.job);assert.equal(Number(r.data[0]?.quoted_amount),own.amount);return r;
     });
-    await check('TENANT-'+label,'Owner cannot retrieve foreign fixture',async()=>noRows(await rest(label,`jobs?id=eq.${other.job}&select=id,quoted_amount`)));
+    await check('TENANT-'+label,'Owner cannot retrieve foreign fixture',async()=>noRows(await rest(label,`job_access?id=eq.${other.job}&select=id,quoted_amount`)));
   }
   await check('NO-GRANTS-PAGE','No-grant office reaches holding page without private data',async()=>{
     const r=await page('officeA','/dashboard','office-no-grants.png');assert.equal(r.path,'/office-access');assert(!r.body.includes(a.clientName));return {path:r.path,status:r.status};
@@ -129,9 +132,30 @@ try{
     // Own fixture exists and operational reads were positively verified above.
     if(r.status===200)noMoney(r.data);else assert([401,403].includes(r.status));return r;
   });
+  await check('FINANCE-VIEW','Operational view returns the exact job with all protected fields masked',async()=>{
+    const r=await rest('officeA',`job_access?id=eq.${a.job}&select=*,clients!jobs_client_id_fkey(id,name)`);
+    assert.equal(r.status,200);assert.equal(r.data[0]?.id,a.job);assert.equal(r.data[0].clients.id,a.client);noMoney(r.data);
+    assert.equal(r.data[0].quoted_amount,0);assert.equal(r.data[0].quote_items,null);return r;
+  });
+  await check('FINANCE-FILTER','Raw quote filters and wildcard/embedded reads cannot bypass column privileges',async()=>{
+    const rows=[];
+    for(const path of [`jobs?id=eq.${a.job}&select=*`,`jobs?quoted_amount=gt.1&select=id`,
+      `clients?id=eq.${a.client}&select=id,jobs(quoted_amount)`]){
+      const r=await rest('officeA',path);assert.equal(r.status,403);noMoney(r.data);rows.push(r);
+    }
+    return rows;
+  });
+  await check('CLIENT-JOB-EMBED','Client-to-job view embedding preserves response shape and confidentiality',async()=>{
+    const r=await rest('officeA',`clients?id=eq.${a.client}&select=id,jobs:job_access(id,quoted_amount,quote_items)`);
+    assert.equal(r.status,200);assert.equal(r.data[0]?.jobs[0]?.id,a.job);noMoney(r.data);return r;
+  });
+  await check('PRIVATE-HELPER','Private finance helper is not an exposed Data API RPC',async()=>{
+    const r=await rest('officeA','rpc/job_quote_values',{method:'POST',body:{p_job_id:a.job},headers:{'Content-Profile':'private'}});
+    assert.equal(r.status,406);assert.equal(r.data.code,'PGRST106');return r;
+  });
   await check('TENANT-OFFICE-REST','A-only office cannot read B clients/jobs',async()=>{
     const clients=noRows(await rest('officeA',`clients?id=eq.${b.client}&select=id,name`));
-    const jobs=noRows(await rest('officeA',`jobs?account_id=eq.${b.id}&select=id,quoted_amount`));return {clients,jobs};
+    const jobs=noRows(await rest('officeA',`job_access?account_id=eq.${b.id}&select=id,quoted_amount`));return {clients,jobs};
   });
   await check('TENANT-OFFICE-API','A-only office Focus API cannot retrieve B client',async()=>{const r=await api('officeA',`/api/clients/${b.client}/detail`);assert.equal(r.status,404);return r;});
   await check('TENANT-OFFICE-PAGE','Foreign client/job deep links expose no fixture data',async()=>{
@@ -139,8 +163,8 @@ try{
       const r=await page('officeA',path);assert(!r.html.includes(b.clientName));assert(!r.html.includes(b.quoteLabel));assert(r.status===404 || r.path!==path || /(?:Client|Job) not found/i.test(r.body));rows.push({path:r.path,status:r.status});}return rows;
   });
   await check('READONLY-WRITE','Read-only Data API edit leaves fixture unchanged',async()=>{
-    const before=await exactJob(); const r=await rest('officeA',`jobs?id=eq.${a.job}`,{method:'PATCH',body:{scope:'unauthorized read-only edit'}});
-    assert.deepEqual(await exactJob(),before);return r;
+    const before=await exactJob(); const r=await rest('officeA',`job_access?id=eq.${a.job}`,{method:'PATCH',body:{scope:'unauthorized read-only edit'}});
+    assert.equal(r.status,200);assert.deepEqual(r.data,[]);assert.deepEqual(await exactJob(),before);return r;
   });
   await check('FORGED-WORKSPACE','Forged workspace cookie cannot give A-only office B access',async()=>{
     await sessions.officeA.context.addCookies([{name:'lgq_workspace',value:`${m.actors.officeA.id}:${b.id}`,url:origin}]);
@@ -161,25 +185,65 @@ try{
   await grant(['clients.read','jobs.read','clients.write','jobs.write']);
   await check('WRITER-POSITIVE','Writer edits harmless scope; independent database read confirms exact change',async()=>{
     assert.notEqual((await exactJob()).scope,'Authorized operational edit','Positive control must change the prior value');
-    const r=await rest('officeA',`jobs?id=eq.${a.job}`,{method:'PATCH',body:{scope:'Authorized operational edit'}});
+    const r=await rest('officeA',`job_access?id=eq.${a.job}`,{method:'PATCH',body:{scope:'Authorized operational edit'}});
     assert.equal(r.status,200);assert.equal((await exactJob()).scope,'Authorized operational edit');return {status:r.status,scope:(await exactJob()).scope};
   });
   await check('WRITER-FINANCE','Operational job writer cannot mass-assign quoted_amount',async()=>{
-    const before=await exactJob();const r=await rest('officeA',`jobs?id=eq.${a.job}`,{method:'PATCH',body:{scope:'Authorized operational edit',quoted_amount:12345.67}});
+    const before=await exactJob();const r=await rest('officeA',`jobs?id=eq.${a.job}&select=id,scope`,{method:'PATCH',body:{scope:'Authorized operational edit',quoted_amount:12345.67}});
     const after=await exactJob();
     await db.query('update jobs set scope=$2,quoted_amount=$3 where id=$1 and test_marker=$4',[a.job,before.scope,before.quoted_amount,m.marker]);
     assert.equal(Number(after.quoted_amount),Number(before.quoted_amount),`Unauthorized price changed to ${after.quoted_amount}; restored fixture immediately`);
+    assert.equal(r.status,403);assert.equal(r.data.message,'job_quote_write_required');
     return {status:r.status,before,after};
   });
   await check('WRITER-FOREIGN','Operational writer cannot update B job or move A job to B',async()=>{
-    const before=await exactJob();const foreign=await rest('officeA',`jobs?id=eq.${b.job}`,{method:'PATCH',body:{scope:'forbidden foreign edit'}});
-    const move=await rest('officeA',`jobs?id=eq.${a.job}`,{method:'PATCH',body:{account_id:b.id}});
+    const before=await exactJob();const foreign=await rest('officeA',`jobs?id=eq.${b.job}&select=id,scope`,{method:'PATCH',body:{scope:'forbidden foreign edit'}});
+    const move=await rest('officeA',`jobs?id=eq.${a.job}&select=id,account_id`,{method:'PATCH',body:{account_id:b.id}});
+    assert.equal(foreign.status,200);assert.deepEqual(foreign.data,[]);assert.equal(move.data.message,'job_workspace_cannot_change');
     assert.deepEqual(await exactJob(),before);assert.equal((await db.query('select scope from jobs where id=$1',[b.job])).rows[0].scope,'Operational scope B');return {foreign,move};
   });
   await check('WRITER-FOREIGN-PARENT','Writer cannot attach A job to foreign B client',async()=>{
-    const before=await exactJob();const r=await rest('officeA',`jobs?id=eq.${a.job}`,{method:'PATCH',body:{client_id:b.client}});const after=await exactJob();
+    const before=await exactJob();const r=await rest('officeA',`jobs?id=eq.${a.job}&select=id,client_id`,{method:'PATCH',body:{client_id:b.client}});const after=await exactJob();
     await db.query('update jobs set client_id=$2 where id=$1 and test_marker=$3',[a.job,before.client_id,m.marker]);
-    assert.equal(after.client_id,before.client_id,'Foreign client_id was stored; restored fixture immediately');return r;
+    assert.equal(after.client_id,before.client_id,'Foreign client_id was stored; restored fixture immediately');assert.equal(r.data.code,'23503');return r;
+  });
+  await check('VIEW-WRITE-GUARDS','View rejects quote mass assignment and foreign parents while retaining original data',async()=>{
+    const before=await exactJob();
+    const money=await rest('officeA',`job_access?id=eq.${a.job}`,{method:'PATCH',body:{scope:'forbidden mixed update',quoted_amount:12345.67}});
+    assert.equal(money.status,403);assert.equal(money.data.message,'job_quote_write_required');assert.deepEqual(await exactJob(),before);
+    const parent=await rest('officeA',`job_access?id=eq.${a.job}`,{method:'PATCH',body:{client_id:b.client}});
+    assert.equal(parent.data.code,'23503');assert.deepEqual(await exactJob(),before);return {money,parent};
+  });
+  await check('JOB-CREATE-GUARDS','Operational create works with defaults; raw/view priced and foreign-parent creates fail',async()=>{
+    const id=randomUUID();const base={id,account_id:a.id,client_id:a.client,ref:`CREATE-${id.slice(0,8)}`,client_name:a.clientName,scope:'Disposable API create',test_marker:m.marker};
+    try{
+      const allowed=await rest('officeA','job_access',{method:'POST',body:base});
+      assert.equal(allowed.status,201);assert.equal(allowed.data[0]?.id,id);assert.equal(allowed.data[0]?.quoted_amount,0);
+      await db.query('delete from jobs where id=$1 and test_marker=$2',[id,m.marker]);
+      const denied=[];
+      for(const surface of ['jobs?select=id','job_access'])for(const change of [{quoted_amount:10},{client_id:b.client}]){
+        const r=await rest('officeA',surface,{method:'POST',body:{...base,...change}});
+        assert.equal(r.data.code,'quoted_amount' in change?'42501':'23503');
+        assert.equal((await db.query('select count(*)::int as n from jobs where id=$1',[id])).rows[0].n,0);denied.push(r);
+      }
+      return {allowed,denied};
+    }finally{await db.query('delete from jobs where id=$1 and test_marker=$2',[id,m.marker]);}
+  });
+  await check('OWNER-QUOTE-SAVE','Owner saves and reads actual quote values through the application view',async()=>{
+    const before=await exactJob();
+    try{
+      const r=await rest('ownerA',`job_access?id=eq.${a.job}`,{method:'PATCH',body:{quoted_amount:before.quoted_amount*1+1}});
+      assert.equal(r.status,200);assert.equal(r.data[0]?.quoted_amount,a.amount+1);assert.equal(Number((await exactJob()).quoted_amount),a.amount+1);return r;
+    }finally{await db.query('update jobs set quoted_amount=$2 where id=$1 and test_marker=$3',[a.job,before.quoted_amount,m.marker]);}
+  });
+  await check('JOB-UPSERT-GUARDS','Raw upsert cannot change a protected quote or attach a foreign parent',async()=>{
+    const before=await exactJob();const results=[];
+    for(const change of [{quoted_amount:12},{client_id:b.client}]){
+      const r=await rest('officeA','jobs?on_conflict=id&select=id',{method:'POST',body:{id:a.job,account_id:a.id,ref:a.ref,client_name:a.clientName,...change},
+        headers:{Prefer:'resolution=merge-duplicates,return=representation'}});
+      assert.equal(r.data.code,'quoted_amount' in change?'42501':'23503');assert.deepEqual(await exactJob(),before);results.push(r);
+    }
+    return results;
   });
   await grant(['clients.read','jobs.read']);
   await check('DUAL-SETUP','Fixture actor acquires legitimate B ownership for workspace switch test',async()=>{
@@ -197,10 +261,10 @@ try{
       const other=await api('officeA',`/api/clients/${account===a?b.client:a.client}/detail`);assert.equal(other.status,404);
       rows.push({workspace:account.id,role,client:own.data.id,otherStatus:other.status});
     }
-    await p.screenshot({path:resolve(privateDir,'workspace-owner-b.png')});return rows;
+    await p.screenshot({path:resolve(privateDir,'workspace-owner-b.png'),animations:'disabled'});return rows;
   });
   await check('DUAL-NO-ESCALATION','B ownership does not grant write authority in A',async()=>{
-    const before=await exactJob();const r=await rest('officeA',`jobs?id=eq.${a.job}`,{method:'PATCH',body:{scope:'foreign owner escalation'}});assert.deepEqual(await exactJob(),before);return r;
+    const before=await exactJob();const r=await rest('officeA',`job_access?id=eq.${a.job}`,{method:'PATCH',body:{scope:'foreign owner escalation'}});assert.equal(r.status,200);assert.deepEqual(r.data,[]);assert.deepEqual(await exactJob(),before);return r;
   });
   // Restore office A as selected workspace before revocation, without replacing the session.
   await sessions.officeA.context.addCookies([{name:'lgq_workspace',value:`${m.actors.officeA.id}:${a.id}`,url:origin}]);

@@ -1,5 +1,7 @@
 # Tenant and office-user signed-in verification — September 9, 2026
 
+**Follow-up:** All three defects below now have implemented fixes with **44/44 real staging browser/API checks passing**. See the [fix report and ordered production rollout](tenant-office-access-fixes-2026-09-09.md). This document preserves the original production audit; production deployment and re-verification of the fixes remain pending.
+
 **Audit completed; launch gate remains open.** The final production run executed 36 cases: **33 passed, 3 failed**. All three failures are reproducible Data API authorization defects. Browser clients/jobs, Focus JSON financial redaction, workspace switching and subsequent-request revocation passed. The earlier “83/83 passed” report is invalidated; it did not perform the browser/API operations it claimed.
 
 ## Target and evidence
