@@ -9,6 +9,9 @@ the difference between a queued text and a delivered text.
 The receptionist settings use the workspace business name in greeting presets.
 Saved custom greetings remain owner-controlled. The branded opening and cue
 still precede a homeowner's business greeting; staff use the shared opening.
+The after-hours schedule applies to homeowners. Registered owners, office staff
+and crew can reach Dispatch throughout the day. Off, Paused, entitlement and
+capacity limits still apply; unknown or ambiguous callers get no staff exception.
 
 Owners can set a separate **On-Call / Emergency Transfer** destination. Empty
 means use the regular office transfer. The SMS alert destination is independent

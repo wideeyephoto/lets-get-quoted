@@ -323,14 +323,6 @@ export async function planInboundCall(
   if (!settings || settings.status === 'off') return fallback(workspace, 'not_configured');
   if (settings.status === 'paused') return fallback(workspace, 'paused');
 
-  // The common configuration: the contractor takes their own calls during the
-  // day and wants the evenings covered. Answering during business hours would
-  // put the AI in front of customers who expected a person.
-  if (settings.answerMode === 'after_hours'
-    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
-    return fallback(workspace, 'within_business_hours');
-  }
-
   if (workspace.concurrentCallLimit < 1) return fallback(workspace, 'no_seat');
 
   const callerIdentity = await resolveVoiceCallerIdentity(
@@ -351,6 +343,14 @@ export async function planInboundCall(
   const callerNumber = effectiveIdentity.status === 'staff'
     ? effectiveIdentity.caller.normalizedPhone
     : normalizeUsPhone(call.fromNumber || '');
+
+  // After-hours is the homeowner answering schedule. Registered staff keep
+  // access to Dispatch all day; off/paused and entitlement gates still apply.
+  // Unknown or ambiguous identities never receive this staff-only exception.
+  if (effectiveIdentity.status !== 'staff' && settings.answerMode === 'after_hours'
+    && isWithinBusinessHours(settings.businessHours, workspace.timezone, (options.now ?? (() => new Date()))())) {
+    return fallback(workspace, 'within_business_hours');
+  }
 
   const open = await countOpenAiCalls(
     admin, workspace.accountId, workspace.concurrentCallLimit,

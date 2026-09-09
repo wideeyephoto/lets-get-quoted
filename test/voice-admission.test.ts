@@ -146,6 +146,29 @@ describe('the product flag is not a metering flag', () => {
 });
 
 describe('what a caller gets', () => {
+  it.each(['owner', 'office', 'crew'])('keeps registered %s Dispatch available during homeowner office hours', async (role) => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'after_hours', business_hours: { '2': ['08:00', '17:00'] },
+    });
+    resolveVoiceCallerIdentity.mockResolvedValue({ status: 'staff', caller: {
+      role, name: 'Registered Staff', normalizedPhone: call.fromNumber, crewId: null,
+      hourlyRate: null, burdenPct: 0,
+    } });
+    expect((await planInboundCall(admin, call, {
+      ...options, now: () => new Date('2026-08-18T16:00:00Z'),
+    })).plan.kind).toBe('ai_agent');
+  });
+
+  it.each(['customer', 'ambiguous', 'unavailable'])('keeps the homeowner schedule for %s identity', async (status) => {
+    workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
+      ...ACTIVE, answer_mode: 'after_hours', business_hours: { '2': ['08:00', '17:00'] },
+    });
+    resolveVoiceCallerIdentity.mockResolvedValue({ status });
+    expect((await planInboundCall(admin, call, {
+      ...options, now: () => new Date('2026-08-18T16:00:00Z'),
+    })).declineReason).toBe('within_business_hours');
+    expect(admitVoiceCall).not.toHaveBeenCalled();
+  });
   it('selects an explicit on-call destination independently from the regular office', async () => {
     workspace({ voice_concurrent_calls: 1 }, '+15557654321', {
       ...ACTIVE, emergency_transfer_number: '+12485550104',

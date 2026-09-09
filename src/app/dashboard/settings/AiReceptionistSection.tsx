@@ -793,7 +793,7 @@ export default function AiReceptionistSection(props: Props) {
                   ) : null}
                 </div>
                 <p className={styles.tileDesc}>
-                  You answer during the day; AI covers nights, early mornings, and closed weekends.
+                  You take homeowner calls during the day; AI covers closed hours. Registered staff can reach Dispatch all day.
                 </p>
               </button>
 
