@@ -169,6 +169,28 @@ export async function POST(request: Request) {
       },
       { onConflict: 'provider_id' },
     );
+    if (error?.code === '23503' && accountId && error.message.includes('email_events_account_id_fkey')) {
+      // A signed event can belong to a deleted workspace or another environment
+      // sharing this provider. Never reassign it or run tenant side effects.
+      // Persist an actionable quarantine before acknowledging the permanent
+      // routing failure; a failed audit write remains retryable.
+      const { error: quarantineError } = await admin.from('webhook_failures').insert({
+        source: 'resend',
+        event_type: event.type,
+        reference_id: providerId,
+        error_message: `EMAIL_ACCOUNT_QUARANTINE: workspace ${accountId} is absent in this database; delivery event requires routing review.`,
+        payload_excerpt: JSON.stringify({
+          svix_id: request.headers.get('svix-id'),
+          provider_id: providerId,
+          original_account_id: accountId,
+          event_type: event.type,
+          occurred_at: event.created_at ?? null,
+          provider_reason: errorReasonFor(event, status),
+        }),
+      });
+      if (quarantineError) throw new Error(`Could not persist email routing quarantine: ${quarantineError.message}`);
+      return NextResponse.json({ received: true, quarantined: true }, { status: 202 });
+    }
     if (error) throw new Error(error.message);
 
     // Recording the bounce was never the point — not sending again was.

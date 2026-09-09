@@ -14,6 +14,7 @@ import { cronSummaryHasFailures } from '@/lib/cron-jobs';
  */
 
 const getSendingDomain = vi.fn();
+const deleteSendingDomain = vi.fn();
 const listSendingDomains = vi.fn();
 const isConfigured = vi.fn(() => true);
 // Rest-typed on purpose: these stand in for functions with real signatures, and
@@ -27,6 +28,7 @@ vi.mock('@/lib/resend-domains', async (importOriginal) => {
   return {
     ...actual,
     getSendingDomain: (...a: unknown[]) => getSendingDomain(...a),
+    deleteSendingDomain: (...a: unknown[]) => deleteSendingDomain(...a),
     listSendingDomains: (...a: unknown[]) => listSendingDomains(...a),
     isSendingDomainProvisioningConfigured: () => isConfigured(),
   };
@@ -55,7 +57,7 @@ type Row = {
 };
 
 /** Records every update the worker attempts, and can make one vanish mid-run. */
-function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
+function makeDb(rows: Row[], opts: { vanishing?: Set<string>; cleanup?: Row[]; cleanupReadError?: boolean; cleanupDeleteError?: boolean; cleanupVanished?: boolean } = {}) {
   const updates: Array<{ id: string; patch: Record<string, unknown> }> = [];
 
   function builder(table: string) {
@@ -70,7 +72,7 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
     const resolve = () => {
       if (ctx.table === 'sites') return { data: { company_name: 'Elite Electricians' }, error: null };
       if (ctx.op === 'delete') {
-        return { data: null, error: null };
+        return { data: opts.cleanupVanished ? [] : [{ id: ctx.filters.id }], error: opts.cleanupDeleteError ? { message: 'database unavailable' } : null };
       }
       if (ctx.op === 'update') {
         const id = String(ctx.filters.id);
@@ -80,6 +82,9 @@ function makeDb(rows: Row[], opts: { vanishing?: Set<string> } = {}) {
       }
       if (ctx.cols.trim() === 'provider_domain_id') {
         return { data: rows.map((r) => ({ provider_domain_id: r.provider_domain_id })), error: null };
+      }
+      if (ctx.filters.status === 'disabled') {
+        return { data: opts.cleanup ?? [], error: opts.cleanupReadError ? { message: 'cleanup query failed' } : null };
       }
       return { data: rows, error: null };
     };
@@ -121,6 +126,7 @@ const verifiedRow = (over: Partial<Row> = {}): Row => ({
 beforeEach(() => {
   vi.clearAllMocks();
   isConfigured.mockReturnValue(true);
+  deleteSendingDomain.mockResolvedValue(true);
   listSendingDomains.mockResolvedValue([]);
   getAccountOwnerEmail.mockResolvedValue('owner@example.com');
   sendSendingDomainFailedEmail.mockResolvedValue(undefined);
@@ -242,6 +248,42 @@ describe('Custom sending domain reconciler', () => {
   });
 
   describe('the summary drives the cron health machinery', () => {
+    it.each(['provider', 'database', 'read'] as const)('reports %s cleanup failure to cron health', async (failure) => {
+      deleteSendingDomain.mockResolvedValue(failure !== 'provider');
+      const db = makeDb([], {
+        cleanup: [verifiedRow({ status: 'disabled' })],
+        cleanupDeleteError: failure === 'database',
+        cleanupReadError: failure === 'read',
+      });
+      const summary = await runEmailSendingDomainReconcile(db.client);
+      expect(summary.updated).toBe(0);
+      expect(summary.errors).toBe(1);
+      expect(cronSummaryHasFailures(summary)).toBe(true);
+    });
+
+    it('counts only confirmed cleanup deletions', async () => {
+      const db = makeDb([], { cleanup: [verifiedRow({ status: 'disabled' })] });
+      const summary = await runEmailSendingDomainReconcile(db.client);
+      expect(summary.updated).toBe(1);
+      expect(summary.errors).toBe(0);
+      expect(deleteSendingDomain).toHaveBeenCalledWith('rsd_1');
+    });
+
+    it('does not call a vanished cleanup row a successful deletion', async () => {
+      const db = makeDb([], { cleanup: [verifiedRow({ status: 'disabled' })], cleanupVanished: true });
+      const summary = await runEmailSendingDomainReconcile(db.client);
+      expect(summary.updated).toBe(0);
+      expect(summary.vanishedMidRun).toBe(1);
+    });
+
+    it('reports missing management access and unavailable inventory as unhealthy', async () => {
+      isConfigured.mockReturnValue(false);
+      expect(cronSummaryHasFailures(await runEmailSendingDomainReconcile(makeDb([]).client))).toBe(true);
+      isConfigured.mockReturnValue(true);
+      listSendingDomains.mockResolvedValue(null);
+      expect(cronSummaryHasFailures(await runEmailSendingDomainReconcile(makeDb([]).client))).toBe(true);
+    });
+
     it('reads as healthy on a clean run', async () => {
       getSendingDomain.mockResolvedValue({ id: 'rsd_1', name: 'x.com', status: 'verified', records: [] });
       const db = makeDb([verifiedRow()]);

@@ -126,7 +126,7 @@ export async function runEmailSendingDomainReconcile(
   // exist. A domain verified while the flag was on stays live in every send
   // path after it is switched off, so it still has to be reconciled.
   if (!(await isSendingDomainProvisioningConfigured())) {
-    return { ...summary, skipped: true, reason: 'RESEND_API_KEY is not configured' };
+    return { ...summary, errors: 1, skipped: true, reason: 'RESEND_DOMAINS_API_KEY / RESEND_API_KEY domain-management access is unavailable' };
   }
 
   const admin = client ?? createAdminClient();
@@ -241,11 +241,11 @@ export async function runEmailSendingDomainReconcile(
       .from('email_sending_domains')
       .select('id, account_id, domain, provider_domain_id')
       .eq('status', 'disabled')
-      .ilike('failure_reason', '%CLEANUP_PENDING%')
+      .ilike('failure_reason', 'CLEANUP_PENDING:%')
       .limit(10);
 
     if (cleanupFetchError) {
-      console.warn('[email-domain-reconcile] failed to fetch cleanup rows:', cleanupFetchError.message);
+      throw new Error(`Could not fetch cleanup rows: ${cleanupFetchError.message}`);
     } else {
       for (const cRow of cleanupRows ?? []) {
         let deleted = true;
@@ -253,16 +253,29 @@ export async function runEmailSendingDomainReconcile(
           deleted = await deleteSendingDomain(cRow.provider_domain_id);
         }
         if (deleted) {
-          await admin
+          const { data: removed, error: removeError } = await admin
             .from('email_sending_domains')
             .delete()
             .eq('id', cRow.id)
-            .eq('account_id', cRow.account_id);
-          summary.updated += 1;
+            .eq('account_id', cRow.account_id)
+            .eq('status', 'disabled')
+            .ilike('failure_reason', 'CLEANUP_PENDING:%')
+            .select('id');
+          if (removeError) {
+            summary.errors += 1;
+            console.error('[email-domain-reconcile] Could not remove cleaned domain row:', removeError.message);
+          } else if (removed?.length) {
+            summary.updated += removed.length;
+          } else {
+            summary.vanishedMidRun += 1;
+          }
+        } else {
+          summary.errors += 1;
         }
       }
     }
   } catch (cleanupError) {
+    summary.errors += 1;
     console.warn('[email-domain-reconcile] cleanup sweep error:', cleanupError);
   }
 
@@ -272,6 +285,7 @@ export async function runEmailSendingDomainReconcile(
   // verifying.
   try {
     const providerDomains = await listSendingDomains();
+    if (!providerDomains) throw new Error('Provider domain inventory is unavailable');
     if (providerDomains) {
       const { data: known, error: knownError } = await admin
         .from('email_sending_domains')
