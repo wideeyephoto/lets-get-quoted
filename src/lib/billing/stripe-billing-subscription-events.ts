@@ -13,6 +13,7 @@ import {
 import {
   assertConfiguredStripeBillingMode,
   BASE_PLAN_SUBSCRIPTION_PURPOSE,
+  StripeBillingModeMismatchError,
   SUBSCRIPTION_CHECKOUT_METADATA_KEYS,
   type BasePlanSubscriptionMetadata,
 } from '@/lib/billing/stripe-billing-subscription-checkout';
@@ -73,6 +74,12 @@ export class StripeSubscriptionProjectionProviderError extends Error {
   }
 }
 
+/** Only emitted for a non-live receipt after the runtime and key agree on live mode. */
+export class TestModeSubscriptionRehearsalError extends Error {
+  override readonly name = 'TestModeSubscriptionRehearsalError';
+  constructor() { super('Non-live subscription event rejected by a valid live runtime.'); }
+}
+
 function fail(
   code: StripeSubscriptionProjectionProviderErrorCode,
   retryable = false,
@@ -95,18 +102,6 @@ export class ForeignSubscriptionRailError extends Error {
 
   constructor(readonly rail: 'purchased_capacity') {
     super('Stripe subscription belongs to another LGQ rail.');
-  }
-}
-
-/**
- * This event is a test-mode rehearsal received in a live environment.
- * A sentinel, not a failure code: ignored rather than failed.
- */
-export class TestModeSubscriptionRehearsalError extends Error {
-  override readonly name = 'TestModeSubscriptionRehearsalError';
-
-  constructor() {
-    super('Stripe test-mode subscription event received in live environment.');
   }
 }
 
@@ -553,8 +548,10 @@ async function retrieveProviderContext(
 ): Promise<StripeSubscriptionProviderContext> {
   try {
     assertMode(claim.livemode);
-  } catch {
-    if (!claim.livemode) throw new TestModeSubscriptionRehearsalError();
+  } catch (error) {
+    if (error instanceof StripeBillingModeMismatchError && claim.livemode === false) {
+      throw new TestModeSubscriptionRehearsalError();
+    }
     return fail('billing_mode_configuration_invalid');
   }
 
@@ -590,7 +587,6 @@ async function retrieveProviderContext(
   try {
     assertMode(context.livemode);
   } catch {
-    if (!context.livemode) throw new TestModeSubscriptionRehearsalError();
     return fail('billing_mode_configuration_invalid');
   }
   return context;

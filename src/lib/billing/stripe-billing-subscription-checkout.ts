@@ -297,6 +297,13 @@ export function buildBasePlanSubscriptionCheckoutIdempotencyKey(input: {
   return `lgq:billing:v1:subscription_checkout.create:${digest}`;
 }
 
+export class StripeBillingModeMismatchError extends Error {
+  override readonly name = 'StripeBillingModeMismatchError';
+  constructor(message = 'Stripe Billing requested mode and configured runtime mode must match.') {
+    super(message);
+  }
+}
+
 export function assertConfiguredStripeBillingMode(livemode: boolean): void {
   if (typeof livemode !== 'boolean') throw new Error('Stripe Billing livemode must be explicit.');
 
@@ -311,8 +318,12 @@ export function assertConfiguredStripeBillingMode(livemode: boolean): void {
 
   const environmentLivemode = configuredMode === '1';
   const credentialLivemode = match[1] === 'live';
-  if (environmentLivemode !== credentialLivemode || livemode !== credentialLivemode) {
-    throw new Error('Stripe Billing mode, credential mode, and requested mode must match.');
+  if (environmentLivemode !== credentialLivemode) {
+    throw new Error('Stripe Billing mode and credential mode must match.');
+  }
+
+  if (livemode !== credentialLivemode) {
+    throw new StripeBillingModeMismatchError();
   }
 }
 

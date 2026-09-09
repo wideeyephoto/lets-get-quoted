@@ -145,6 +145,7 @@ export type StripeSubscriptionProjectionCronSummary = Readonly<{
   in_progress: number;
   retryable_failures: number;
   terminal_failures: number;
+  non_live_mode_rejections: number;
   worker_errors: number;
   claim_errors: number;
   failures: number;
@@ -160,6 +161,7 @@ export function summarizeStripeSubscriptionProjectionBatch(
   let inProgress = 0;
   let retryableFailures = 0;
   let terminalFailures = 0;
+  let nonLiveModeRejections = 0;
   let workerErrors = 0;
 
   for (const item of result.results) {
@@ -174,6 +176,9 @@ export function summarizeStripeSubscriptionProjectionBatch(
       // change the summary shape every consumer already asserts on.
       case 'ignored_foreign_rail':
         ignored += 1;
+        break;
+      case 'ignored_test_mode':
+        nonLiveModeRejections += 1;
         break;
       case 'replay_processed':
       case 'replay_ignored':
@@ -205,6 +210,7 @@ export function summarizeStripeSubscriptionProjectionBatch(
     in_progress: inProgress,
     retryable_failures: retryableFailures,
     terminal_failures: terminalFailures,
+    non_live_mode_rejections: nonLiveModeRejections,
     worker_errors: workerErrors,
     claim_errors: claimErrors,
     failures,
