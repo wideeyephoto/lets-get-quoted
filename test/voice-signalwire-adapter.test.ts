@@ -353,8 +353,9 @@ describe('rendering an answer', () => {
     // `prompt` is hidden model context. The disclosure must be deterministic
     // audio before the AI starts, not an instruction the model may paraphrase.
     expect(swml.sections.main[1].play.urls).toEqual([
+      "say: Your personal Let's Get Quoted AI Assistant is loading.",
       'https://letsgetquoted.com/audio/dispatch-connected-v3.wav',
-      "say: Your personal Let's Get Quoted AI Assistant is loading. Thanks for calling.",
+      'say: Thanks for calling.',
     ]);
     expect(swml.sections.main[1].play.say_voice).toBe('rime.eyre:coda');
     expect(ai.prompt.text).toContain('opening greeting and AI disclosure have already been played');
@@ -390,8 +391,8 @@ describe('rendering an answer', () => {
 
     expect(playIndex).toBeGreaterThan(-1);
     expect(recordIndex).toBeGreaterThan(playIndex);
-    expect(main[playIndex].play.urls[1]).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
-    expect(main[playIndex].play.urls[1]).toContain('This call may be recorded for quality and training purposes.');
+    expect(main[playIndex].play.urls[0]).toContain("Your personal Let's Get Quoted AI Assistant is loading.");
+    expect(main[playIndex].play.urls[2]).toContain('This call may be recorded for quality and training purposes.');
   });
 
   it('hard-disables provider recording on contractor calls and asks the provider to redact spoken codes', () => {
@@ -403,7 +404,7 @@ describe('rendering an answer', () => {
     });
     const main = JSON.parse(answer.body).sections.main;
     expect(main.some((section: Record<string, unknown>) => 'record_call' in section)).toBe(false);
-    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.urls[1])
+    expect(main.find((section: Record<string, unknown>) => 'play' in section).play.urls.join(' '))
       .not.toContain('This call may be recorded');
     const ai = main.find((section: Record<string, unknown>) => 'ai' in section).ai;
     expect(ai.params.redact_prompt).toMatch(/six-digit authentication codes/i);

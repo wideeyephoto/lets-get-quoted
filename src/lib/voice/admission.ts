@@ -13,6 +13,7 @@ import { loadVoiceEntitlement } from '@/lib/voice/entitlement';
 import { loadSignalWireVoiceNumberReadiness } from '@/lib/voice/number-readiness';
 import { normalizeUsPhone } from '@/lib/phone';
 import {
+  AI_VOICE_DISCLOSURE,
   greetingWithAiDisclosure,
   type InboundCall,
   type VoiceAnswerPlan,
@@ -403,7 +404,7 @@ export async function planInboundCall(
       receiptAuthorization: options.receiptAuthorization,
       greeting: greetingWithAiDisclosure(
         grounding?.contractorStaffCaller
-          ? 'Field dispatch is ready.'
+          ? AI_VOICE_DISCLOSURE
           : (settings.greeting?.trim() || DEFAULT_GREETING)
       ),
       systemPrompt,

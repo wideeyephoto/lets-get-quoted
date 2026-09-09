@@ -128,8 +128,8 @@ describe('Voice Calls Workspace Complete End-to-End Lifecycle', () => {
     expect(swml.sections.main).toHaveLength(5);
     expect(swml.sections.main[0]).toEqual({ answer: { max_duration: 598 } });
     expect(swml.sections.main[4]).toEqual({ hangup: {} });
-    expect(swml.sections.main[1].play.urls[1]).toContain(AI_VOICE_DISCLOSURE);
-    expect(swml.sections.main[1].play.urls[1]).toContain(RECORDING_DISCLOSURE);
+    expect(swml.sections.main[1].play.urls[0]).toContain(AI_VOICE_DISCLOSURE);
+    expect(swml.sections.main[1].play.urls[2]).toContain(RECORDING_DISCLOSURE);
     expect(swml.sections.main[2]).toMatchObject({
       record_call: {
         status_url: 'https://app.letsgetquoted.com/api/voice/recording-status',

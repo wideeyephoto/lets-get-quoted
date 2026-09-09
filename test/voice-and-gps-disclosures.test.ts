@@ -69,8 +69,8 @@ describe('Voice & GPS Compliance Disclosures', () => {
 
       expect(recordAction).toBeDefined();
       expect(playAction).toBeDefined();
-      expect(playAction.play.urls[1]).toContain(AI_VOICE_DISCLOSURE);
-      expect(playAction.play.urls[1]).toContain(RECORDING_DISCLOSURE);
+      expect(playAction.play.urls[0]).toContain(AI_VOICE_DISCLOSURE);
+      expect(playAction.play.urls[2]).toContain(RECORDING_DISCLOSURE);
     });
   });
 
