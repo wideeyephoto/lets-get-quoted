@@ -1,9 +1,9 @@
 # Live payments and add-on lifecycle verification — September 9, 2026
 
-The live LGQ refund-engine requirement is verified. The entire paid add-on gate
-remains open until the reviewed code is deployed and the live lifecycle runs.
-The refund ledger migration is installed in production. No new live charge or
-refund has been made; application release and paid verification remain in progress.
+The live LGQ refund-engine requirement is verified. The add-on implementation
+and both migrations are deployed, and the enabled refund worker has completed a
+successful scheduled production run. Paid lifecycle acceptance remains open:
+no new live charge or refund has been made by this task.
 
 ## Live connected refund
 
@@ -51,7 +51,8 @@ received solely because the browser has a success query parameter.
 | --- | --- |
 | Full local suite | 14,392 tests / 1,121 files passed; mocked provider boundaries, no real charge |
 | Six-SKU negative matrix | 24/24 passed; initial unpaid/failure/expiry, unsettled success retry, recovered success and stale failure |
-| Disposable PostgreSQL 17 | 43/43 passed; all six refund SKUs, cumulative rounding, used/held debt, future grants, refund before fulfillment, lease expiry/reclaim, base-plan-change attribution, event identity conflicts, test/live separation, browser-role denial and exact paid Voice invoice grants |
+| Final combined CI | 14,554 tests / 1,127 files, typecheck, lint, security audit, SEO, stock and production build passed on `7ec1ab6fd`; [run 34407268408](https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34407268408) completed September 9 at 21:39 UTC |
+| Disposable PostgreSQL 17 | 44/44 passed in each LF/CRLF direction; all six refund SKUs, cumulative rounding, used/held debt, future grants, refund before fulfillment, lease expiry/reclaim, base-plan-change attribution, event identity conflicts, test/live separation, browser-role denial, exact paid Voice invoice grants and mixed-line-ending migration regression |
 | Typecheck, lint and production build | Passed; lint retains existing repository warnings |
 | Browser presentation | Real checkout component and dashboard stylesheet rendered on an isolated local review route; refund/debt explanation and return message readable, controls hydrated. Existing `useFormState` deprecation warning observed; no claim of a warning-free console. Temporary route removed before commit. |
 | Existing September 8 staging evidence | Six actual sandbox purchases, five recurring renewal/failure/recovery/cancellation paths, actual partial/full refunds and reverse-order duplicate delivery are retained from the earlier execution register |
@@ -76,11 +77,18 @@ paid Voice subscription already needs legacy reconciliation. Production inspecti
 found only the existing manual canary, with no active paid Voice subscriptions.
 Eighteen provider checks and fifteen additional PostgreSQL checks cover this fix.
 
-- The refund ledger migration was applied after the user approved release.
-  All four new tables have RLS enabled and deny browser-role reads. Complete the
-  [ordered rollout and paid Voice migration](addon-refund-reversal.md),
-  verify the actual deployed revision, configure refund events on the correct
-  platform top-up webhook, and enable the refund worker before new live proof.
+- Both migrations were applied after explicit production approval. All four
+  refund tables have RLS enabled and deny browser-role reads. The paid Voice RPC
+  denies execution to `anon` and `authenticated` and allows `service_role`.
+  [PR #56](https://github.com/wideeyephoto/lets-get-quoted/pull/56) was merged as
+  `399e95a44f481a122aad5d6f399daae71199ee3c`; that exact revision was built and
+  promoted to `app.letsgetquoted.com` with refund reconciliation enabled.
+- The existing platform top-up webhook now subscribes to `charge.refunded`,
+  `refund.created`, `refund.failed` and `refund.updated`, in addition to its four
+  checkout events. The endpoint and signing secret were preserved. The scheduled
+  refund worker completed at 21:55:12 UTC with zero failures and zero jobs
+  claimed. Its unauthenticated endpoint returned HTTP 401. This proves worker
+  activation, not processing of a new paid add-on refund.
 - Brett authorized the designated payer with a **$248 total spending cap** in this
   task. The designated workspace is currently on Flex. Its eligible
   subset is AI Voice Flex ($69), the minute pack ($35), and storage ($15): **$119**
@@ -97,8 +105,10 @@ Eighteen provider checks and fifteen additional PostgreSQL checks cover this fix
   customer journeys stay open until executed.
 
 The voice exhaustion-enforcement policy is unchanged. The payer completed the
-normal magic-link sign-in flow. The $35 minute-pack checkout is prepared with the
-designated payer's saved Link method, but remains unpaid while release is pending.
+normal magic-link sign-in flow. Five checkouts are prepared and unpaid: the $35
+minute pack, $69 Flex Voice, $59 Solo Voice, $15 storage and $15 office seat.
+Growth Voice ($55) remains to be prepared. The user selected Link CLI for payment;
+the connection must match the designated payer before any spend request is made.
 The workspace selector uses the account's business name while the dashboard uses
 its different website company name; both were verified against the same account
 number and database identity before preparing checkout.
@@ -113,4 +123,6 @@ The correction normalizes line endings on both sides while preserving the guards
 The PostgreSQL harness reproduces this exact failure and checks both directions
 of mixed LF/CRLF deployment history (44 checks each). An existing runtime can be
 selected with `LGQ_PG_RUNTIME_ROOT`; use `--migration-crlf` for the reverse case.
-No new charge, saved refund webhook change, or application rollout has occurred.
+The corrected migration subsequently applied successfully under explicit approval,
+followed by merge, deployment, webhook subscription changes and worker activation.
+No paid add-on lifecycle result is inferred from these release checks.

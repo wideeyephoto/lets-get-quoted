@@ -161,6 +161,11 @@ dashboard-button execution, a full refund, every other refund call site or the
 paid add-on lifecycle. The remaining live add-on gate is tracked in the current
 [launch checklist](../LAUNCH_CHECKLIST.md).
 
+September 9 rollout: PR #56 is merged and exact revision `399e95a44` serves the
+production app. Both migrations are applied, refund webhook events are saved,
+and the enabled refund worker completed its first scheduled run without errors.
+No new paid add-on has settled in this task; the six-SKU live lifecycle remains open.
+
 ### 1.4 Production feature-flag reconciliation — 67 flags, 12 documented — `VERIFIED TODAY` — **P0**
 
 `grep -rhoE "LGQ_[A-Z0-9_]+" src/ | sort -u` → **67** distinct flags. The go-live
