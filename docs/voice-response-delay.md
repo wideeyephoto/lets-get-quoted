@@ -5,8 +5,10 @@ acceptance. The owner clarified there was a long silence after speaking, plus a
 glitch on “dollars” in three of four readouts. Seven provider audio-anchor samples
 ranged from 2.343 to 6.367 seconds while tool requests took under one second.
 A short interactive diagnostic with the same speech parameters and a written-out
-amount passed pronunciation and perceived response speed. The new spoken-quote
-format still needs a full Dispatch retest after release; latency remains open.
+amount passed pronunciation and perceived response speed. PR #57's spoken-quote
+format is now live. The actual post-release handset attempt hit voicemail with
+`admission_unavailable` before Dispatch started; it cannot validate speech or
+turn delay. Admission retry/startup fixes and the full retest remain open.
 See the [dated acceptance record](voice-acceptance-2026-09-09.md).
 
 The staff-call profile now sets `utility_model: gpt-4.1-nano`,

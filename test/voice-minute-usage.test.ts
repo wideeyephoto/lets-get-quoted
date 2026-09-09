@@ -196,18 +196,47 @@ describe('admission', () => {
     expect(callsFor('reserve_usage_credits')).toHaveLength(0);
   });
 
-  it('fails to the normal line for a busy or unreadable admission claim', async () => {
-    setRpc('claim_voice_call_admission_v2', {
+  it('waits for an in-flight admission and replays its cap without a second hold', async () => {
+    setRpc('claim_voice_call_admission_v2',
+      { data: [{ claim_status: 'busy', admission_id: 'adm-1' }], error: null },
+      { data: [{ claim_status: 'existing', admission_id: 'adm-1' }], error: null },
+    );
+    existingAdmission.mockResolvedValue({ data: { allowed_minutes: 2, reserved_minutes: 2 }, error: null });
+    expect(await admitVoiceCall(admin, input, { mode: 'measure' }))
+      .toEqual({ outcome: 'admitted_existing', capMinutes: 2 });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(0);
+    expect(callsFor('finalize_voice_call_admission_v2')).toHaveLength(0);
+  });
+
+  it('does not admit a busy call that becomes terminal while waiting', async () => {
+    setRpc('claim_voice_call_admission_v2',
+      { data: [{ claim_status: 'busy', admission_id: 'adm-1' }], error: null },
+      { data: [{ claim_status: 'call_terminal', admission_id: 'adm-1' }], error: null },
+    );
+    expect(await admitVoiceCall(admin, input, { mode: 'measure' }))
+      .toEqual({ outcome: 'refused', reason: 'call_terminal' });
+    expect(callsFor('reserve_usage_credits')).toHaveLength(0);
+    expect(existingAdmission).not.toHaveBeenCalled();
+  });
+
+  it('bounds waiting for a busy claim and fails closed without touching its hold', async () => {
+    setRpc('claim_voice_call_admission_v2', ...Array.from({ length: 4 }, () => ({
       data: [{ claim_status: 'busy', admission_id: 'adm-1' }], error: null,
-    });
+    })));
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
       .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(callsFor('claim_voice_call_admission_v2')).toHaveLength(4);
+    expect(callsFor('reserve_usage_credits')).toHaveLength(0);
+    expect(callsFor('release_voice_call_admission_claim')).toHaveLength(0);
+  });
 
+  it('fails closed without retrying an unreadable admission claim', async () => {
     setRpc('claim_voice_call_admission_v2', {
       data: null, error: { code: '08006', message: 'database unavailable' },
     });
     expect(await admitVoiceCall(admin, input, { mode: 'enforce' }))
       .toEqual({ outcome: 'refused', reason: 'admission_unavailable' });
+    expect(callsFor('claim_voice_call_admission_v2')).toHaveLength(1);
   });
 
   it('holds the whole safety cap, not an estimate', () => {
