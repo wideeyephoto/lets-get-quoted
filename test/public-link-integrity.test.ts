@@ -6,6 +6,8 @@ import { demoSupabase } from '@/lib/demo-rows';
 import { DEMO_ACCOUNT_ID } from '@/lib/demo-data';
 import { getClient, getClientStatement } from '@/lib/clients';
 import { getPublicSiteBySubdomain } from '@/lib/sites';
+import { AI_RECEPTIONIST_SIGNUP_URL } from '@/lib/ai-receptionist-marketing';
+import { parseSignupIntent, resolveDestination } from '@/lib/signup-intent';
 
 describe('Public Link and Destination Integrity Suite', () => {
   describe('High Priority Conversion CTAs & Feature Pages', () => {
@@ -20,7 +22,8 @@ describe('Public Link and Destination Integrity Suite', () => {
 
     it('AI Voice, AI Vision, and Sparky feature pages have canonical platform signup CTAs', () => {
       const voiceSource = readFileSync('src/app/features/ai-voice/page.tsx', 'utf8');
-      expect(voiceSource).toContain('https://app.letsgetquoted.com/start?goal=feature&feature=ai_intake&source=feature_page');
+      expect(voiceSource).toContain('href: AI_RECEPTIONIST_SIGNUP_URL');
+      expect(resolveDestination(parseSignupIntent(new URL(AI_RECEPTIONIST_SIGNUP_URL).searchParams))).toBe('/dashboard/voice-calls?view=settings');
 
       const visionSource = readFileSync('src/app/features/ai-vision/page.tsx', 'utf8');
       expect(visionSource).toContain('https://app.letsgetquoted.com/start?goal=feature&feature=ai_intake&source=feature_page');

@@ -120,6 +120,20 @@ describe('Problem 4: Preserving Signup Intent & Continuity', () => {
   });
 
   describe('Destination Resolution', () => {
+    it('preserves receptionist setup through signup and onboarding', () => {
+      const signup = buildStartUrl({ goal: 'feature', feature: 'ai_receptionist', source: 'feature_page' });
+      const intent = parseSignupIntent(new URL(signup).searchParams);
+      const welcome = resolveDestination(intent, 'onboarding');
+      const restored = parseSignupIntent(new URL(welcome, 'https://app.letsgetquoted.com').searchParams);
+
+      expect(restored.feature).toBe('ai_receptionist');
+      expect(restored.source).toBe('feature_page');
+      expect(resolveDestination(restored, 'active')).toBe('/dashboard/voice-calls?view=settings');
+      expect(parseSignupIntent({ goal: 'feature', feature: 'ai-receptionist' }).feature).toBe('ai_receptionist');
+      expect(LOGIN_PAGE).toContain('Create your account to set up AI Receptionist.');
+      expect(WELCOME_FORM).toContain("ai_receptionist: 'AI Receptionist'");
+    });
+
     it('resolves active account destinations based on goal and feature', () => {
       expect(resolveDestination({ goal: 'build_site' }, 'active')).toBe('/dashboard/sites');
       expect(resolveDestination({ goal: 'choose_plan', plan: 'growth' }, 'active')).toBe('/dashboard/settings');

@@ -320,9 +320,9 @@ export const ALL_FEATURES_CATALOG: FeatureCatalogCategory[] = [
   {
     num: '04',
     slug: 'ai-voice-assistant',
-    title: 'AI Voice Assistant & 24/7 Receptionist',
+    title: 'AI Receptionist',
     icon: '📞',
-    intro: '24/7 automated telephone answering, intelligent call screening, real-time booking, and audio transcripts.',
+    intro: 'After-hours or full-time call answering, caller details, conversation summaries, and transcripts. Activation requires eligible plan access and a ready business line.',
     features: [
       {
         id: '247-phone-answering',

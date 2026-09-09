@@ -122,9 +122,9 @@ const CARDS = [
   },
   {
     slug: 'ai-voice',
-    eyebrow: '24/7 AI VOICE DISPATCHER',
-    title: 'Answer every call, even while on the tools.',
-    foot: 'Dedicated phone line · 2-way call forwarding · Audio transcripts',
+    eyebrow: 'AI RECEPTIONIST',
+    title: 'Your calls covered. Your way.',
+    foot: 'After-hours only · Full-time coverage · Caller details captured',
   },
   {
     slug: 'dispatch',
@@ -205,7 +205,9 @@ const page = (card) => `<!doctype html>
 const browser = await chromium.launch();
 const tab = await browser.newPage({ viewport: { width: W, height: H }, deviceScaleFactor: 2 });
 
-for (const card of CARDS) {
+// Pass one or more slugs to refresh selected cards without rewriting the rest.
+const requestedSlugs = new Set(process.argv.slice(2));
+for (const card of CARDS.filter((card) => requestedSlugs.size === 0 || requestedSlugs.has(card.slug))) {
   await tab.setContent(page(card), { waitUntil: 'networkidle' });
   // The webfonts are display:block, so a screenshot taken before they land
   // would be the fallback stack. Wait for the font set rather than a timer.

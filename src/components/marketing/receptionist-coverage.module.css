@@ -1,0 +1,38 @@
+/* Keep these dark campaign panels readable beneath the global parchment theme selectors. */
+.artwork { position: relative; margin: 0; overflow: hidden; border: 1px solid #3a4d57; border-radius: 22px; background: #0b1e29; color: #fff4df; box-shadow: 0 24px 70px #0004; }
+.artwork > img { display: block; width: 100%; height: auto; }
+.artwork.artwork .imageLabels { position: absolute; inset: 0 0 auto; display: grid; grid-template-columns: 1fr 1fr; background: linear-gradient(#07131dcf, transparent); padding: 18px 16px 42px; }
+.artwork.artwork .imageLabels span { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 13px; font-weight: 750; text-shadow: 0 1px 4px #000; }
+.artwork.artwork .imageLabels svg { color: #ffd3a8; }
+.artwork.artwork .callStatus { display: flex; align-items: center; gap: 12px; padding: 20px; background: #0b1e29; }
+.artwork.artwork .callStatus > svg { flex-shrink: 0; color: #ff8b4f; }
+.artwork.artwork .callStatus strong { display: block; color: #fff4df; font-size: 14px; line-height: 1.5; }
+.artwork.artwork .callStatus span { display: block; color: #b9cbd5; font-size: 13px; line-height: 1.5; }
+.artwork.artwork .callStatus i { flex-shrink: 0; width: 8px; height: 8px; margin-left: auto; border-radius: 50%; background: #50e3bd; box-shadow: 0 0 16px #50e3bd60; }
+.coverage { padding: 66px clamp(22px, 5vw, 86px); background: #0b1b27; color: #eef5f6; scroll-margin-top: 100px; }
+.coverage.coverage .sectionHead { max-width: 760px; margin-bottom: 30px; }
+.coverage.coverage .eyebrow, .homeSection.homeSection .eyebrow { color: #ff975f; font-size: 11px; font-weight: 800; letter-spacing: 2px; margin: 0 0 18px; }
+.coverage.coverage .sectionHead h2 { color: #fff4df; font-size: clamp(28px, 3.5vw, 44px); letter-spacing: -1.3px; line-height: 1.12; margin: 0 0 16px; }
+.coverage.coverage .sectionHead > p:last-child { color: #bdcdd7; line-height: 1.6; }
+.coverage.coverage .options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+.coverage.coverage .options article { padding: clamp(24px, 3vw, 40px); border: 1px solid #41545f; border-radius: 16px; background: #102532; }
+.coverage.coverage .options svg { color: #ffa36d; margin-bottom: 14px; }
+.coverage.coverage .options h3 { color: #fff4df; font-size: clamp(23px, 2.5vw, 30px); line-height: 1.2; margin: 0 0 16px; }
+.coverage.coverage .options p, .coverage.coverage .options li { color: #cfdae1; font-size: 16px; line-height: 1.7; }
+.coverage.coverage .options ul { margin: 20px 0 0; padding-left: 20px; }
+.coverage.coverage .options li + li { margin-top: 6px; }
+.coverage.coverage .options li::marker { color: #ff975f; }
+.coverage.coverage .note { color: #b0c3ce; font-size: 13px; line-height: 1.65; margin: 22px 0 0; max-width: 880px; }
+.homeSection { display: grid; grid-template-columns: 1fr 1fr; align-items: center; gap: clamp(28px, 5vw, 70px); padding: 80px clamp(24px, 5vw, 86px); background: radial-gradient(ellipse at 80% 40%, #ff6b1a0d, transparent 60%), #0a1a25; border-block: 1px solid #263e4d; }
+.homeSection.homeSection .homeCopy h2 { color: #fff4df; font-size: clamp(32px, 4vw, 56px); letter-spacing: -2px; line-height: 1.04; margin: 0 0 22px; }
+.homeSection.homeSection .homeCopy h2 em { color: #ff8545; font-style: normal; }
+.homeSection.homeSection .homeCopy > p:not(.eyebrow) { color: #c4d2db; font-size: 17px; line-height: 1.7; max-width: 540px; }
+.homeSection.homeSection .coverageLabels { display: flex; flex-wrap: wrap; gap: 10px 20px; margin: 24px 0; }
+.homeSection.homeSection .coverageLabels span { display: inline-flex; align-items: center; gap: 8px; color: #e9f0f4; font-size: 14px; }
+.homeSection.homeSection .coverageLabels svg { color: #ff975f; }
+.homeSection.homeSection .homeCopy .explore { display: inline-flex; align-items: center; gap: 18px; background: #ff853f; color: #07131d; padding: 16px 22px; min-height: 48px; border-radius: 8px; font-weight: 800; }
+.homeSection.homeSection .explore:hover { background: #ffa26f; }
+.homeSection.homeSection .explore:focus-visible { outline: 3px solid #ffd76b; outline-offset: 4px; }
+.homeSection.homeSection .homeCopy small { display: block; color: #adc0cc; margin-top: 14px; font-size: 12px; line-height: 1.6; }
+@media (max-width: 800px) { .homeSection { grid-template-columns: 1fr; padding-block: 56px; } .coverage.coverage .options { grid-template-columns: 1fr; } .coverage { padding-block: 48px; } }
+@media (max-width: 420px) { .artwork.artwork .callStatus { gap: 8px; padding: 14px; } .artwork.artwork .callStatus strong { font-size: 12px; } .artwork.artwork .callStatus span { font-size: 12px; } .artwork.artwork .imageLabels { padding-inline: 8px; } .artwork.artwork .imageLabels span { font-size: 12px; } }

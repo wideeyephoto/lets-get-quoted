@@ -19,6 +19,7 @@ import styles from './flagship.module.css';
 import LaunchBanner from '@/components/marketing/launch-banner';
 import ThemeFab from '@/components/theme-fab';
 import IntegrationTrustStrip from '@/components/marketing/IntegrationTrustStrip';
+import { ReceptionistHomeSection } from '@/components/marketing/receptionist-coverage';
 
 // Dynamic imports for flagship components
 const TradeOrbit = dynamic(() => import('./trade-orbit'), { ssr: false });
@@ -872,6 +873,8 @@ export default function FlagshipHome() {
         </div>
 
       </section>
+
+      <ReceptionistHomeSection />
 
       <section className="client-experience" id="workflow" aria-labelledby="client-experience-title">
         <Glare />

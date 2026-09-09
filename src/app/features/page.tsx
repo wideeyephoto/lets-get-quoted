@@ -28,6 +28,7 @@ import CompanionPhotoScopeDemo from './CompanionPhotoScopeDemo';
 import CompanionRouteDemo from './CompanionRouteDemo';
 import CompanionHUD from './CompanionHUD';
 import HighTechShowcase from '@/components/marketing/HighTechShowcase';
+import { ReceptionistHomeSection } from '@/components/marketing/receptionist-coverage';
 
 import FeaturesEnergyFlowHero from './FeaturesEnergyFlowHero';
 import ContractorSecretWeapons from './ContractorSecretWeapons';
@@ -174,6 +175,7 @@ export default async function FeaturesPage() {
       <script
         type="application/ld+json"
         nonce={await cspNonce()}
+        suppressHydrationWarning
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className={themeStyles.featuresTheme}>
@@ -278,6 +280,8 @@ export default async function FeaturesPage() {
 
       {/* 2026 NEXT-GEN HIGH-TECH & AI INNOVATIONS SHOWCASE */}
       <HighTechShowcase />
+
+      <ReceptionistHomeSection />
 
       {/* Interactive AI Companion Photo Scope Estimator Demo */}
       <CompanionPhotoScopeDemo />

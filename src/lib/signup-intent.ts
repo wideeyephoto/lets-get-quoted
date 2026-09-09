@@ -17,6 +17,7 @@ export type SignupGoal =
 export type SignupFeature =
   | 'website'
   | 'ai_intake'
+  | 'ai_receptionist'
   | 'quick_stops'
   | 'quotes'
   | 'scheduling'
@@ -68,6 +69,7 @@ const VALID_GOALS = new Set<SignupGoal>(['build_site', 'choose_plan', 'feature',
 const VALID_FEATURES = new Set<SignupFeature>([
   'website',
   'ai_intake',
+  'ai_receptionist',
   'quick_stops',
   'quotes',
   'scheduling',
@@ -246,6 +248,8 @@ export function resolveDestination(
           return '/dashboard/quick-stops';
         case 'ai_intake':
           return '/dashboard/leads';
+        case 'ai_receptionist':
+          return '/dashboard/voice-calls?view=settings';
         case 'quotes':
         case 'payments':
           return '/dashboard/jobs';

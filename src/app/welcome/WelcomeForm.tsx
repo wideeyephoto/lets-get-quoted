@@ -105,6 +105,7 @@ export default function WelcomeForm({
     const featureLabels: Record<string, string> = {
       quick_stops: 'Quick Stops',
       ai_intake: 'AI Intake',
+      ai_receptionist: 'AI Receptionist',
       quotes: 'Quotes',
       scheduling: 'Scheduling',
       crew: 'Crew App',

@@ -314,6 +314,7 @@ function LoginInner() {
       const featureNames: Record<string, string> = {
         quick_stops: 'Quick Stops route-gap filler',
         ai_intake: '24/7 AI Smart Intake',
+        ai_receptionist: 'AI Receptionist',
         quotes: 'Instant Quote Builder',
         scheduling: 'Smart Scheduling & Dispatch',
         crew: 'Crew & Field Management',
@@ -321,7 +322,9 @@ function LoginInner() {
         reviews: 'Automated Review Collection',
         cash_flow: 'Cash Flow Protection',
       };
-      leadText = `Set up your free account to activate ${featureNames[intent.feature] || intent.feature}. Flex plan starts at $0/month.`;
+      leadText = intent.feature === 'ai_receptionist'
+        ? 'Create your account to set up AI Receptionist. Choose after-hours or full-time coverage, review plan access, and complete your phone-line activation.'
+        : `Set up your free account to activate ${featureNames[intent.feature] || intent.feature}. Flex plan starts at $0/month.`;
     } else {
       leadText = 'Phone or email — no password or card. Flex starts at $0/month plus 1.25%.';
     }

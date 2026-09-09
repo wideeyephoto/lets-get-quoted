@@ -5,6 +5,7 @@ import { PRICING_FAQS, COMPARISON_ROWS } from '@/app/pricing/pricing-catalog';
 import { BILLING_PLANS, platformFeePercent } from '@/lib/billing/catalog';
 import { PLATFORM_CAMPAIGN_TEMPLATES } from '@/lib/platform-campaign-templates';
 import { CONTRACTOR_LIFECYCLE_STEPS } from '@/lib/contractor-lifecycle-emails';
+import { AI_RECEPTIONIST_AVAILABILITY } from '@/lib/ai-receptionist-marketing';
 
 describe('Legal & Claims Substantiation Invariants', () => {
   it('prohibits unsubstantiated 100% deliverability or 100% compliance strings in src/', () => {
@@ -54,12 +55,13 @@ describe('Legal & Claims Substantiation Invariants', () => {
     expect(findings).toEqual([]);
   });
 
-  it('pricing catalog accurately qualifies AI Voice Receptionist as preview/rollout', () => {
-    const aiVoiceFaq = PRICING_FAQS.find((faq) => faq.q.toLowerCase().includes('ai voice'));
+  it('pricing qualifies AI Receptionist with plan and phone-line activation requirements', () => {
+    const aiVoiceFaq = PRICING_FAQS.find((faq) => faq.q === 'How do I activate AI Receptionist?');
     expect(aiVoiceFaq).toBeDefined();
-    expect(aiVoiceFaq?.a).toContain('preview');
-    expect(aiVoiceFaq?.a).toContain('Smart Intake');
-    expect(aiVoiceFaq?.a).not.toContain('Yes, AI Voice is available! For customer-facing call reception');
+    expect(aiVoiceFaq?.a).toBe(AI_RECEPTIONIST_AVAILABILITY);
+    expect(aiVoiceFaq?.a).toContain('eligible plan or voice add-on');
+    expect(aiVoiceFaq?.a).toContain('ready business phone line');
+    expect(aiVoiceFaq?.a).toContain('activation steps');
   });
 
   it('platform campaign templates reference valid active dashboard routes', () => {

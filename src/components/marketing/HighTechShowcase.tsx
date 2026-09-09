@@ -58,8 +58,8 @@ const SPARKY_FEATURES: SparkyFeature[] = [
     title: 'Speak your raw thoughts—your AI Copilot builds the quote.',
     blurb:
       'Walk up to a job site, tap Create Quote, and just talk. Tell your AI Copilot the measurements, materials, and labor—it calculates quantities and structures line items before you leave the driveway.',
-    primaryCtaText: 'Explore Voice & Smart Intake',
-    primaryHref: '/features/ai-voice',
+    primaryCtaText: 'Explore AI Copilot',
+    primaryHref: '/features/ai-copilot',
     secondaryCtaText: 'Try Voice in Demo →',
     secondaryHref: '/demo',
   },

@@ -22,6 +22,7 @@ export type FeatureDetailCard = {
 };
 
 export type FeatureDetailLayoutProps = {
+  className?: string;
   /**
    * This page's own crumb, for the Home › Features › … trail in search
    * results. Optional only so an unfinished page still compiles; every one of
@@ -177,6 +178,7 @@ const DEFAULT_BACK_LINK = { href: FEATURES_URL, label: 'All features' };
  * these routes (OWN_CHROME_MARKETING_ROUTES).
  */
 export default async function FeatureDetailLayout({
+  className,
   breadcrumb,
   eyebrow,
   title,
@@ -215,13 +217,14 @@ export default async function FeatureDetailLayout({
   const nonce = await cspNonce();
 
   return (
-    <main className={`${styles.root} inner-site`}>
+    <main className={`${styles.root} inner-site ${className ?? ''}`}>
       {/* Home › Features › this page, so a result for one of these twelve
           shows where it sits instead of a bare /features/<slug>. */}
       {breadcrumb ? (
         <script
           type="application/ld+json"
           nonce={nonce}
+          suppressHydrationWarning
           dangerouslySetInnerHTML={{
             __html: JSON.stringify(
               breadcrumbJsonLd([HOME_CRUMB, { name: 'Features', path: FEATURES_URL }, breadcrumb]),
@@ -350,8 +353,16 @@ export default async function FeatureDetailLayout({
         kicker={typeof cta.kicker === 'string' ? cta.kicker : undefined}
         title={typeof cta.title === 'string' ? cta.title : undefined}
         body={typeof cta.body === 'string' ? cta.body : undefined}
+        href={cta.primary?.href}
+        label={cta.primary?.label ?? cta.buttonLabel}
+        note={cta.note}
       />
-      <SiteFooter />
+      <SiteFooter mobileAction={cta.primary?.href ? {
+        href: cta.primary.href,
+        label: typeof cta.primary.label === 'string' ? cta.primary.label : cta.buttonLabel,
+        signedInHref: cta.primary.href,
+        signedInLabel: typeof cta.primary.label === 'string' ? cta.primary.label : cta.buttonLabel,
+      } : undefined} />
     </main>
   );
 }

@@ -11,6 +11,8 @@ import {
   type BillingPlanId,
 } from '@/lib/billing/catalog';
 
+import { AI_RECEPTIONIST_AVAILABILITY } from '@/lib/ai-receptionist-marketing';
+
 export { PRICING_CATALOG_VERSION };
 export type BillingCycle = CatalogBillingCycle;
 export type PlanId = BillingPlanId;
@@ -229,8 +231,8 @@ export const PRICING_FAQS = [
     a: '2-way business texting requires carrier vetting (10DLC registration) with a dedicated business phone number. Messaging software tools and your plan’s included text credits become active after carrier approval. Carrier registration, campaign vetting, and dedicated number lease fees are separate.',
   },
   {
-    q: 'Is AI Voice Receptionist & Field Assistant available?',
-    a: 'AI Voice Receptionist is coming soon (in preview rollout) while carrier line routing and dedicated voice numbers complete final validation. Web-based 24/7 Smart Intake, instant quote generation, automated SMS dispatch, and multi-tier estimate workflows are fully live across all accounts today. Dedicated business lines and AI call answering add-ons become active as carrier 10DLC registrations are verified.',
+    q: 'How do I activate AI Receptionist?',
+    a: AI_RECEPTIONIST_AVAILABILITY,
   },
   {
     q: 'Can the AI receptionist answer multiple calls at once?',

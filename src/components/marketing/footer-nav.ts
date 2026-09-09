@@ -30,6 +30,7 @@ export type FooterLink = readonly [href: string, label: string];
 export const FOOTER_PRIMARY: readonly FooterLink[] = [
   ['/features', 'Product'],
   ['/features/ai-copilot', 'AI Copilot with Avatars'],
+  ['/features/ai-voice', 'AI Receptionist'],
   ['/features/website-builder', 'Website'],
   ['/features/ai-intake', 'AI Intake'],
   ['/features/text-to-job', 'Text-to-Job'],

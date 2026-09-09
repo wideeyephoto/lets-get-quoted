@@ -4,7 +4,7 @@
    actually has. Shared by the homepage and every marketing page under it. */
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ComponentProps, type ReactNode } from 'react';
 import { supabase } from '@/lib/supabase';
 import { FOOTER_LEGAL, FOOTER_PRIMARY } from '@/components/marketing/footer-nav';
 import styles from './flagship.module.css';
@@ -375,11 +375,11 @@ export function MobileActionDock({
   );
 }
 
-export function SiteFooter() {
+export function SiteFooter({ mobileAction }: { mobileAction?: ComponentProps<typeof MobileActionDock> } = {}) {
   const signedIn = useSignedIn();
   return (
     <>
-      <MobileActionDock />
+      <MobileActionDock {...mobileAction} />
       <footer>
         <a className="brand brand-logo footer-logo" href="/" aria-label="Let’s Get Quoted home">
           <BrandMark />
@@ -403,11 +403,15 @@ export function PageCTA({
   title = "Build the front door. Connect everything behind it.",
   body = "Create your site, qualify better leads and run every job from one place.",
   href = SIGNUP_URL,
+  label = SIGNUP_LABEL,
+  note = 'No card required · Flex starts at $0/month + 1.25%',
 }: {
   kicker?: string;
   title?: string;
   body?: string;
   href?: string;
+  label?: ReactNode;
+  note?: ReactNode;
 }) {
   return (
     <section className="page-cta">
@@ -415,8 +419,8 @@ export function PageCTA({
       <p className="eyebrow"><span>✦</span> {kicker}</p>
       <h2>{title}</h2>
       <p>{body}</p>
-      <a className="button primary light" href={href}>{SIGNUP_LABEL} <span>→</span></a>
-      <small>No card required · Flex starts at $0/month + 1.25%</small>
+      <a className="button primary light" href={href}>{label} <span>→</span></a>
+      {note ? <small>{note}</small> : null}
     </section>
   );
 }
