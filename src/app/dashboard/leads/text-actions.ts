@@ -8,7 +8,6 @@ import { normalizeUsPhone } from '@/lib/phone';
 import {
   getMessagingCapability,
   formatClientDashboardSmsText,
-  formatPrivateSmsText,
   type MessagingCapability,
 } from '@/lib/dashboard-sms-dispatch';
 import {
@@ -166,7 +165,6 @@ export async function sendLeadPrivateSmsAction(
   }
 
   const businessName = await loadBusinessName(supabase, accountId);
-  const formattedBody = formatPrivateSmsText({ businessName, body: cleanBody });
   const bodyHash = createHash('sha256').update(cleanBody).digest('hex').slice(0, 16);
   const bucket15m = Math.floor(Date.now() / (15 * 60 * 1000));
   const idempotencyKey = userIntentKey || `lead-private-sms:${leadId}:${phone}:${bodyHash}:${bucket15m}`;
@@ -175,7 +173,7 @@ export async function sendLeadPrivateSmsAction(
     await sendInboxReplySms({
       phone,
       businessName,
-      body: formattedBody,
+      body: cleanBody,
       accountId,
       idempotencyKey,
       requireExistingThread: false,

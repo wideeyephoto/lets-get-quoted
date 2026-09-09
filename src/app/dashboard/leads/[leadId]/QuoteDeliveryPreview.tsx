@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import ChannelToggles from '@/components/channel-toggles';
-import { clientChannelPreview, type ClientChannelPreference } from '@/lib/client-channel';
+import { clientChannelPreview, togglesForPreference, type ClientChannelPreference } from '@/lib/client-channel';
 import { formatPhoneDashes } from '@/lib/phone';
+import { clientJobDashboardText } from '@/lib/sms-templates';
+import { SmsBubble } from '@/components/sms/SmsPreview';
 import styles from '../leads.module.css';
 
 /**
@@ -36,11 +38,17 @@ export default function QuoteDeliveryPreview({
   phone,
   email,
   preference,
+  businessName,
+  jobRef,
+  smsBody,
 }: {
   phone: string | null;
   email: string | null;
   /** What is already stored for this lead. 'off' starts both toggles off. */
   preference: ClientChannelPreference;
+  businessName?: string;
+  jobRef?: string;
+  smsBody?: string;
 }) {
   const [channel, setChannel] = useState<ClientChannelPreference>(preference);
 
@@ -78,6 +86,22 @@ export default function QuoteDeliveryPreview({
             somewhere to go — see smsFailureFallback. */}
         {channel === 'auto' && phone && email ? (
           <p className={styles.quotePreviewFallback}>If the text doesn’t go through, we email it instead.</p>
+        ) : null}
+        {togglesForPreference(channel).sms && phone ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <SmsBubble
+              message={
+                smsBody ||
+                clientJobDashboardText({
+                  businessName: businessName || 'Your company',
+                  jobRef: jobRef || 'quote',
+                  link: 'https://letsgetquoted.com/client/jobs/…',
+                  includesScheduleOptions: true,
+                })
+              }
+              phone={phone}
+            />
+          </div>
         ) : null}
       </div>
     </div>

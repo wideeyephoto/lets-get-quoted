@@ -27,6 +27,7 @@ const strip = (s: string) =>
 
 const PREVIEW = strip(read('src/app/dashboard/jobs/[id]/PaymentPreview.tsx'));
 const JOB_PAGE = strip(read('src/app/dashboard/jobs/[id]/page.tsx'));
+const MILESTONES = strip(read('src/app/dashboard/jobs/[id]/Milestones.tsx'));
 const CSS = read('src/app/globals.css');
 
 describe('the message is the real message', () => {
@@ -130,5 +131,29 @@ describe('it reads the form rather than mirroring it', () => {
     // bottom hides its own close button.
     expect(CSS).toMatch(/\.preview-dialog \{[^}]*max-height: min\(86vh, 760px\)/);
     expect(CSS).toMatch(/\.preview-body \{[^}]*overflow-y: auto/);
+  });
+});
+
+describe('milestone stage payment preview', () => {
+  it('wires PaymentPreview to the milestone stage request form', () => {
+    expect(MILESTONES).toContain('<PaymentPreview');
+    expect(MILESTONES).toContain('milestone-request-form-${entry.id}');
+    expect(MILESTONES).toContain('name="kind" value="stage"');
+    expect(MILESTONES).toContain('name="amount" value={entry.amount}');
+    expect(MILESTONES).toContain('name="label" value={entry.title}');
+    expect(JOB_PAGE).toContain('businessName={previewBusinessName}');
+    expect(JOB_PAGE).toContain('jobRef={job.ref}');
+  });
+
+  it('renders accurate milestone stage payment text for the client', () => {
+    const body = paymentText({
+      contractor: 'Acme Builders',
+      label: 'Rough-in electrical completed',
+      amount: 1500,
+      link: 'lgq.co/p/stage-1',
+      eventType: 'payment_requested',
+    });
+    expect(body).toContain('Acme Builders requested a Rough-in electrical completed of $1,500.');
+    expect(body).toContain('Reply STOP to opt out or HELP for help.');
   });
 });

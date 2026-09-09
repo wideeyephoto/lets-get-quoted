@@ -6,6 +6,8 @@ import type { DraftSource, SerializedDraft } from '@/lib/quote-draft';
 import { guardSummary, type FindingSource, type QuoteFinding } from '@/lib/quote-guard';
 import { AiRefineChips } from '@/components/ai';
 import { QUICK_QUOTE_REFINE_CHIPS } from '@/lib/quote-draft';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { quoteUpdatedText } from '@/lib/sms-templates';
 
 type Row = QuoteItem;
 
@@ -78,9 +80,15 @@ export default function QuoteBuilder({
   approved = false,
   approvedTotal = 0,
   clientLabel = 'the customer',
+  businessName,
+  jobRef,
+  clientPhone,
   changeOrderHref,
   printHref,
 }: {
+  businessName?: string;
+  jobRef?: string;
+  clientPhone?: string | null;
   // Job page: persists on its own Save button. Lead form: omit action and pass
   // onItemsChange to feed a parent <form> (the form's submit does the saving).
   action?: (items: QuoteItem[], options?: { revision?: boolean }) => Promise<{ ok: boolean; total: number; message?: string; needsRevision?: boolean }>;
@@ -843,15 +851,30 @@ export default function QuoteBuilder({
             {pending ? 'Saving…' : approved ? 'Save revised quote' : 'Save quote'}
           </button>
           {notifyAction ? (
-            <button
-              type="button"
-              className="btn secondary"
-              onClick={saveAndNotify}
-              disabled={pending || (approved && !dirty)}
-              title={approved && !dirty ? 'Change something first — this quote matches what is saved.' : undefined}
-            >
-              {pending ? 'Saving…' : 'Save & text the client'}
-            </button>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button
+                type="button"
+                className="btn secondary"
+                onClick={saveAndNotify}
+                disabled={pending || (approved && !dirty)}
+                title={approved && !dirty ? 'Change something first — this quote matches what is saved.' : undefined}
+              >
+                {pending ? 'Saving…' : 'Save & text the client'}
+              </button>
+              <SmsPreview
+                message={quoteUpdatedText({
+                  businessName: businessName || 'Your contractor',
+                  jobRef: jobRef || 'quote',
+                  link: 'https://letsgetquoted.com/client/jobs/…',
+                  total: total > 0 ? formatUsd(total) : null,
+                  direction: total > approvedTotal ? 'up' : total < approvedTotal ? 'down' : 'same',
+                })}
+                recipientLabel={clientLabel}
+                phone={clientPhone}
+                triggerLabel="👁 Preview text"
+                buttonClassName="btn ghost"
+              />
+            </div>
           ) : null}
           {result ? (
             <small className={`review-request-hint ${result.ok ? 'is-ok' : 'is-error'}`}>{result.message}</small>

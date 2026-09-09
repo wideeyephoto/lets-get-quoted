@@ -196,10 +196,11 @@ export default async function SchedulePage({
   const searchParams = { ...rawSearchParams, month, day, date: explicitDate ?? rawSearchParams.date };
   const { supabase, accountId } = await requireOfficeContext('jobs.read', 'schedule.write');
   const [{ data: account }, jobs, { data: site }] = await Promise.all([
-    supabase.from('accounts').select('schedule_day_hours, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng, cancellation_waitlist_enabled').eq('id', accountId).single(),
+    supabase.from('accounts').select('schedule_day_hours, business_name, appointment_reminders_enabled, job_buffer_minutes, booking_weekdays, workday_start, workday_end, weather_alerts_enabled, service_center_lat, service_center_lng, cancellation_waitlist_enabled').eq('id', accountId).single(),
     listJobs(supabase, accountId, undefined, { fetchAll: true }),
-    supabase.from('sites').select('published, subdomain').eq('account_id', accountId).maybeSingle(),
+    supabase.from('sites').select('published, subdomain, company_name').eq('account_id', accountId).maybeSingle(),
   ]);
+  const businessName = site?.company_name || account?.business_name || "Let's Get Quoted contractor";
   const scheduleDayHours = Number(account?.schedule_day_hours) || 8;
   const waitlistEnabled = Boolean((account as { cancellation_waitlist_enabled?: boolean } | null)?.cancellation_waitlist_enabled);
   // The working week, reused from booking: a span guessed from estimated hours
@@ -961,6 +962,7 @@ export default async function SchedulePage({
         </header>
 
         <ScheduleCalendar
+          businessName={businessName}
           monthNav={
             <div className="month-nav">
               <Link href={`/dashboard/schedule?month=${prevMonth}`} className="month-nav-arrow" aria-label="Previous month">←</Link>

@@ -4,7 +4,9 @@ import { revalidatePath } from 'next/cache';
 import { requireOfficeContext } from '@/lib/auth';
 import { refundPayment } from '@/lib/payments';
 import { markInvoicePaidForPayment } from '@/lib/invoices';
-import { sendPaymentSmsEvent, sendLienWaiverSms, queueAccountSms } from '@/lib/sms';
+import { sendPaymentSmsEvent, sendLienWaiverSms, queueAccountSms, sendCardUpdateSms } from '@/lib/sms';
+import { loadBusinessName } from '@/lib/business-name';
+import { lienWaiverText, noiNoticeText, cardUpdateText } from '@/lib/sms-templates';
 import { normalizeUsPhone } from '@/lib/phone';
 import { createJobFeedEvent } from '@/lib/job-feed';
 import { assembleDisputeEvidence, type DisputeEvidenceBundle } from '@/lib/dispute-evidence';
@@ -779,7 +781,12 @@ export async function sendLienWaiverSmsAction(params: {
     const { accountId } = await requireOfficeContext('messages.send');
     const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
     const waiverLink = `${origin}/waivers/${params.waiverId}`;
-    const body = `Hi ${params.customerName}, here is your official signed ${params.waiverTypeTitle} for job ${params.jobRef}: ${waiverLink}. Reply STOP to opt out.`;
+    const body = lienWaiverText({
+      customerName: params.customerName,
+      waiverTypeTitle: params.waiverTypeTitle,
+      jobRef: params.jobRef,
+      url: waiverLink,
+    });
 
     const sent = await sendLienWaiverSms({
       accountId,
@@ -798,6 +805,92 @@ export async function sendLienWaiverSmsAction(params: {
       success: false,
       error: error instanceof Error ? error.message : 'Failed to send lien waiver SMS.',
     };
+  }
+}
+
+/**
+ * Send a dedicated Statutory Notice of Intent (NOI) via SMS
+ */
+export async function sendNoiNoticeSmsAction(formData: FormData): Promise<ActionState> {
+  try {
+    const { accountId, supabase } = await requireOfficeContext('messages.send');
+    const paymentId = String(formData.get('paymentId') || '').trim();
+    if (!paymentId) return { success: false, error: 'Payment ID is required.' };
+
+    const { data: payment } = await supabase
+      .from('payments')
+      .select('id, amount, homeowner_phone, client_phone, label, job_id')
+      .eq('id', paymentId)
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (!payment) return { success: false, error: 'Payment not found.' };
+    const phone = payment.homeowner_phone || payment.client_phone;
+    if (!phone) return { success: false, error: 'No phone number available for this customer.' };
+
+    const businessName = await loadBusinessName(supabase, accountId);
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
+    const url = `${origin}/pay/${paymentId}`;
+    const body = noiNoticeText({
+      businessName,
+      amount: Number(payment.amount),
+      url,
+    });
+
+    await queueAccountSms({
+      accountId,
+      phone,
+      body,
+      messageKind: 'noi-notice',
+      category: 'payment_message',
+      idempotencyKey: `noi-notice:${paymentId}:${Date.now().toString().slice(0, -4)}`,
+    });
+
+    revalidatePath('/dashboard/payments');
+    return { success: true, message: 'Statutory NOI notice dispatched via SMS & registered.' };
+  } catch (error) {
+    console.error('sendNoiNoticeSmsAction failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to dispatch notice.' };
+  }
+}
+
+/**
+ * Send a dedicated card update SMS for a declined or failed payment
+ */
+export async function sendCardUpdateReminderAction(formData: FormData): Promise<ActionState> {
+  try {
+    const { accountId, supabase } = await requireOfficeContext('messages.send');
+    const paymentId = String(formData.get('paymentId') || '').trim();
+    if (!paymentId) return { success: false, error: 'Payment ID is required.' };
+
+    const { data: payment } = await supabase
+      .from('payments')
+      .select('id, homeowner_phone, client_phone, account_id')
+      .eq('id', paymentId)
+      .eq('account_id', accountId)
+      .maybeSingle();
+
+    if (!payment) return { success: false, error: 'Payment not found.' };
+    const phone = payment.homeowner_phone || payment.client_phone;
+    if (!phone) return { success: false, error: 'No phone number on file.' };
+
+    const businessName = await loadBusinessName(supabase, accountId);
+    const origin = (process.env.NEXT_PUBLIC_APP_URL || 'https://app.letsgetquoted.com').replace(/\/$/, '');
+    const url = `${origin}/pay/${paymentId}/update-card`;
+
+    await sendCardUpdateSms({
+      phone,
+      businessName,
+      url,
+      accountId,
+      idempotencyKey: `card-update:${paymentId}:${Date.now().toString().slice(0, -4)}`,
+    });
+
+    revalidatePath('/dashboard/payments');
+    return { success: true, message: 'SMS sent with link for customer to update card.' };
+  } catch (error) {
+    console.error('sendCardUpdateReminderAction failed:', error);
+    return { success: false, error: error instanceof Error ? error.message : 'Failed to send card update link.' };
   }
 }
 

@@ -177,6 +177,15 @@ export function quickStopConfirmedText(input: {
   return `You're confirmed! ${input.businessName} will arrive ${input.whenLabel}. Your visit fee is paid; any service or parts are billed separately. We'll text updates on the way.${manage} Reply STOP to opt out.`;
 }
 
+export function quickStopStatusText(
+  kind: 'en_route' | 'arrived' | 'eta',
+  input?: { minutes?: number }
+): string {
+  if (kind === 'en_route') return 'Your Quick Stop technician is on the way.';
+  if (kind === 'arrived') return 'Your technician has arrived.';
+  return `Quick Stop update: Your technician is approximately ${input?.minutes ?? 15} minutes away.`;
+}
+
 // -- crew --------------------------------------------------------------------
 
 export function crewAssignmentText(input: {
@@ -376,7 +385,7 @@ export function leadQuoteVisitText(input: {
   leadName: string;
   address: string | null;
   scheduledFor: string;
-  scheduledTime: string;
+  scheduledTime: string | null;
 }): string {
   const addressNote = input.address ? ` at ${input.address}` : '';
   return `${input.businessName} scheduled your free in-person quote${addressNote} for ${formatJobSchedule(input.scheduledFor, input.scheduledTime)}. ${input.leadName}, reply STOP to opt out.`;
@@ -424,6 +433,28 @@ export function cardSetupText(input: { businessName: string; url: string }): str
 
 export function cardUpdateText(input: { businessName: string; url: string }): string {
   return `Your saved card for ${input.businessName} was declined, so your recurring payment didn't go through. Update your card here to keep your service going: ${input.url}. Reply STOP to opt out.`;
+}
+
+export function noiNoticeText(input: {
+  businessName: string;
+  clientName?: string | null;
+  amount: number;
+  url: string;
+}): string {
+  const greeting = input.clientName?.trim() ? `Hi ${input.clientName.trim()}, ` : '';
+  const amount = formatMoney(Number(input.amount));
+  return withOptOut(
+    `${input.businessName}: ${greeting}Notice of Intent to File Lien for overdue balance of ${amount}. Review document & payment options: ${input.url}`
+  );
+}
+
+export function lienWaiverText(input: {
+  customerName: string;
+  waiverTypeTitle: string;
+  jobRef: string;
+  url: string;
+}): string {
+  return `Hi ${input.customerName}, here is your official signed ${input.waiverTypeTitle} for job ${input.jobRef}: ${input.url}. Reply STOP to opt out.`;
 }
 
 // -- coming back -------------------------------------------------------------
@@ -484,7 +515,12 @@ export function selectionRequestText(input: {
  * catalogue — "we wrote this" and "we addressed this" are different promises.
  */
 export function inboxReplyText(input: { businessName: string; body: string }): string {
-  return `${input.businessName}: ${input.body}`;
+  const text = input.body.trim();
+  const prefix = `${input.businessName.trim()}:`;
+  if (text.toLowerCase().startsWith(prefix.toLowerCase())) {
+    return text;
+  }
+  return `${input.businessName}: ${text}`;
 }
 
 export function campaignText(input: { businessName: string; body: string }): string {
@@ -546,6 +582,34 @@ export function intakeConfirmationText(input: {
   return withOptOut(
     `Hi ${firstName}, thanks for reaching out to ${input.businessName}! We received your ${cleanService}.${estimateClause} Our team is reviewing the details and will follow up shortly.`
   );
+}
+
+/**
+ * Formats a 10DLC-compliant transactional text containing the Client Dashboard link.
+ */
+export function formatClientDashboardSmsText(params: {
+  businessName: string;
+  clientName: string;
+  clientDashboardUrl: string;
+  nextActionPrompt?: string;
+}): string {
+  const firstName = params.clientName.trim().split(/\s+/)[0] || 'there';
+  const nextNote = params.nextActionPrompt ? ` (${params.nextActionPrompt})` : '';
+  return `${params.businessName}: Hi ${firstName}, here is your project portal and next steps${nextNote}: ${params.clientDashboardUrl} Reply STOP to opt out.`;
+}
+
+/**
+ * Formats a private text sent from a dedicated 2-way number.
+ */
+export function formatPrivateSmsText(params: {
+  businessName: string;
+  body: string;
+}): string {
+  const text = params.body.trim();
+  if (text.toLowerCase().includes(params.businessName.toLowerCase())) {
+    return text;
+  }
+  return `${params.businessName}: ${text}`;
 }
 
 

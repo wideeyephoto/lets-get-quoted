@@ -21,6 +21,8 @@ import type { RecurringFrequency } from '@/lib/recurring';
 import ScheduledDatePicker from '@/components/scheduled-date-picker';
 import TimeSlotSelect from '@/components/time-slot-select';
 import { dispatchJobScheduleAction, removeJobScheduleAction, scheduleJobAction, textCrewJobDateAction, toggleJobCrewAction } from '../jobs/actions';
+import SmsPreview from '@/components/sms/SmsPreview';
+import { crewScheduleSelectedText } from '@/lib/sms-templates';
 /* Drag is no longer coordinated here. Each surface that can be a drop target
    — the timeline columns, the capacity cells, the crew lanes — calls
    useScheduleDrag itself, because they are the ones that own a date. */
@@ -371,7 +373,9 @@ export default function ScheduleCalendar({
   weatherByDay = {},
   readOnly = false,
   basePath = '/dashboard',
+  businessName,
 }: {
+  businessName?: string;
   weeks: CalendarCell[][];
   /**
    * The logged-out demo. Three things on this calendar write: the weekend-days
@@ -2164,7 +2168,7 @@ export default function ScheduleCalendar({
                         )}
                       </div>
                     </details>
-                    <form action={textCrewJobDateAction.bind(null, openJob.id)}>
+                    <form action={textCrewJobDateAction.bind(null, openJob.id)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                       <button
                         type="submit"
                         className="schedule-crew-notify-button"
@@ -2173,6 +2177,22 @@ export default function ScheduleCalendar({
                       >
                         Notify
                       </button>
+                      {openJobAssignedMembers.length > 0 ? (
+                        <SmsPreview
+                          message={crewScheduleSelectedText({
+                            crewName: openJobAssignedMembers[0]?.name || 'Crew',
+                            businessName: businessName || 'Your company',
+                            jobRef: openJob.ref || 'JOB',
+                            clientName: openJob.client_name || 'Customer',
+                            address: openJob.address ?? null,
+                            scheduledFor: openJob.scheduled_for || '',
+                            scheduledTime: openJob.scheduled_time ?? null,
+                          })}
+                          recipientLabel={`${openJobAssignedMembers[0]?.name || 'Crew'}${openJobAssignedMembers.length > 1 ? ` (+${openJobAssignedMembers.length - 1} other${openJobAssignedMembers.length > 2 ? 's' : ''})` : ''}`}
+                          triggerLabel="👁"
+                          buttonClassName="btn ghost"
+                        />
+                      ) : null}
                     </form>
                   </div>
                   <p className={`schedule-crew-notify-status${openJob.crew_notified_at ? ' notified' : ''}`}>

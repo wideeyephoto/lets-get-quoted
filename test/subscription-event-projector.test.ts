@@ -20,6 +20,7 @@ import {
 import {
   createStripeBillingSubscriptionProjectionResolver,
   StripeSubscriptionProjectionProviderError,
+  TestModeSubscriptionRehearsalError,
 } from '@/lib/billing/stripe-billing-subscription-events';
 import type { VerifiedStripePlanPrices } from '@/lib/billing/stripe-plan-prices';
 import {
@@ -374,6 +375,7 @@ describe('dark Stripe Billing subscription event projector', () => {
       project: vi.fn(),
       fail: vi.fn(),
       ignoreForeignRail: vi.fn(),
+      ignoreTestModeRehearsal: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const provider = {
       loadProviderContext: vi.fn(),
@@ -398,6 +400,7 @@ describe('dark Stripe Billing subscription event projector', () => {
       project: vi.fn(),
       fail: failStore,
       ignoreForeignRail: vi.fn(),
+      ignoreTestModeRehearsal: vi.fn(),
     } satisfies StripeBillingSubscriptionProjectionStore;
     const provider = {
       loadProviderContext: vi.fn().mockRejectedValue(
@@ -417,6 +420,38 @@ describe('dark Stripe Billing subscription event projector', () => {
       retryable: true,
     }));
     expect(JSON.stringify(failStore.mock.calls)).not.toContain('Customer');
+  });
+
+  it('ignores test-mode rehearsal events in a live projector without failing (T15 gate)', async () => {
+    const ignoreStore = vi.fn<StripeBillingSubscriptionProjectionStore['ignoreTestModeRehearsal']>()
+      .mockResolvedValue(undefined);
+    const store = {
+      claim: vi.fn<StripeBillingSubscriptionProjectionStore['claim']>().mockResolvedValue(claim()),
+      resolveBinding: vi.fn(),
+      project: vi.fn(),
+      fail: vi.fn(),
+      ignoreForeignRail: vi.fn(),
+      ignoreTestModeRehearsal: ignoreStore,
+    } satisfies StripeBillingSubscriptionProjectionStore;
+    const provider = {
+      loadProviderContext: vi.fn().mockRejectedValue(
+        new TestModeSubscriptionRehearsalError(),
+      ),
+      buildProjection: vi.fn(),
+    };
+
+    const result = await projectStripeBillingSubscriptionEvent(EVENT_ROW_ID, {
+      store,
+      resolver: provider,
+      now: () => new Date('2026-08-16T00:00:00.000Z'),
+    });
+
+    expect(result).toEqual({ status: 'ignored_test_mode', billingEventId: EVENT_ROW_ID });
+    expect(ignoreStore).toHaveBeenCalledWith({
+      billingEventId: EVENT_ROW_ID,
+      claimToken: CLAIM_TOKEN,
+    });
+    expect(store.fail).not.toHaveBeenCalled();
   });
 });
 

@@ -5,6 +5,7 @@ import {
   milestoneProgressPct, milestoneTotals, milestoneCoverage,
   MILESTONE_STATUS_LABEL, type MilestoneEntryView,
 } from './milestone-view';
+import PaymentPreview from './PaymentPreview';
 
 // Proof-to-Pay, owner side.
 //
@@ -25,10 +26,18 @@ export default function Milestones({
   clientPhone,
   actions,
   suggestSplit = true,
+  businessName = '',
+  jobRef = '',
+  clientName = '',
+  payOrigin = '',
 }: {
   entries: MilestoneEntryView[];
   quotedAmount: number;
   clientPhone: string | null;
+  businessName?: string;
+  jobRef?: string;
+  clientName?: string;
+  payOrigin?: string;
   /**
    * Whether a four-way split is worth leading with on THIS job.
    *
@@ -128,6 +137,10 @@ export default function Milestones({
           pending={pending}
           open={openId === entry.id}
           clientPhone={clientPhone}
+          businessName={businessName}
+          jobRef={jobRef}
+          clientName={clientName}
+          payOrigin={payOrigin}
           onToggle={() => setOpenId(openId === entry.id ? null : entry.id)}
           run={run}
           actions={actions}
@@ -155,6 +168,10 @@ function MilestoneCard({
   pending,
   open,
   clientPhone,
+  businessName = '',
+  jobRef = '',
+  clientName = '',
+  payOrigin = '',
   onToggle,
   run,
   actions,
@@ -163,6 +180,10 @@ function MilestoneCard({
   pending: boolean;
   open: boolean;
   clientPhone: string | null;
+  businessName?: string;
+  jobRef?: string;
+  clientName?: string;
+  payOrigin?: string;
   onToggle: () => void;
   run: (work: () => Promise<ActionResult>, onDone?: () => void) => void;
   actions: Parameters<typeof Milestones>[0]['actions'];
@@ -214,9 +235,13 @@ function MilestoneCard({
 
               {entry.canRequest ? (
                 <form
+                  id={`milestone-request-form-${entry.id}`}
                   className="milestone-request"
                   action={(formData) => run(() => actions.requestPayment(entry.id, formData))}
                 >
+                  <input type="hidden" name="kind" value="stage" />
+                  <input type="hidden" name="amount" value={entry.amount} />
+                  <input type="hidden" name="label" value={entry.title} />
                   {clientPhone ? (
                     <>
                       <input type="hidden" name="homeownerPhone" value={clientPhone} />
@@ -226,9 +251,19 @@ function MilestoneCard({
                       </label>
                     </>
                   ) : null}
-                  <button type="submit" className="btn primary" disabled={pending}>
-                    Request {money(entry.amount)}
-                  </button>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button type="submit" className="btn primary" disabled={pending}>
+                      Request {money(entry.amount)}
+                    </button>
+                    <PaymentPreview
+                      formId={`milestone-request-form-${entry.id}`}
+                      businessName={businessName || ''}
+                      jobRef={jobRef || ''}
+                      clientName={clientName || ''}
+                      payOrigin={payOrigin || ''}
+                      invoice={null}
+                    />
+                  </div>
                 </form>
               ) : entry.blockers.length > 0 ? (
                 <div className="milestone-blockers">

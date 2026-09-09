@@ -26,6 +26,7 @@ interface Props {
   selectedRange: string;
   isOwner?: boolean;
   stripeError?: string;
+  businessName?: string;
 }
 
 const TABS = [
@@ -60,6 +61,7 @@ export default function RevenuePaymentsScreen({
   selectedRange,
   isOwner = false,
   stripeError,
+  businessName,
 }: Props) {
   const [activeTab, setActiveTab] = useState(stripeError ? 'payouts' : 'ledger');
   const [activeModal, setActiveModal] = useState<ModalType>(null);
@@ -721,6 +723,7 @@ export default function RevenuePaymentsScreen({
               setActiveModal('draw_calendar');
             }}
             onSuccess={handleShowToast}
+            businessName={businessName}
           />
         )}
 
@@ -732,6 +735,7 @@ export default function RevenuePaymentsScreen({
               setActiveModal('manual_payment');
             }}
             onSuccess={handleShowToast}
+            businessName={businessName}
           />
         )}
 
@@ -761,6 +765,7 @@ export default function RevenuePaymentsScreen({
         jobs={jobs}
         grossRevenue={ledgerSummary.grossRevenue}
         receivables={receivables}
+        businessName={businessName}
         onOpenModal={(type, payment) => {
           setSelectedPayment(payment || null);
           setActiveModal(type);
