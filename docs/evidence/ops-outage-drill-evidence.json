@@ -1,0 +1,33 @@
+{
+  "started_at": "2026-09-09T20:22:01.641Z",
+  "observed_at": "2026-09-09T20:22:23.961Z",
+  "outage": "Resend HTTP 503 injected only in this isolated invocation; production email configuration unchanged",
+  "operator_phone_last4": "2061",
+  "sender_last4": "2323",
+  "id": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+  "repeat": {
+    "providerId": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+    "status": "delivered",
+    "pageKey": "lgq-monitor-mfuvvtrkipkigwqqtcal-drill-2026-09-09T20",
+    "repeated": true
+  },
+  "counts": {
+    "resendBlocked": 1,
+    "smsSubmissions": 0
+  },
+  "rows": [
+    {
+      "page_key": "lgq-monitor-mfuvvtrkipkigwqqtcal-drill-2026-09-09T20",
+      "state": "delivered",
+      "provider_id": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+      "provider_status": "delivered",
+      "started_at": "2026-09-09T20:22:05.077Z",
+      "accepted_at": "2026-09-09T20:22:02.766Z",
+      "delivered_at": "2026-09-09T20:22:23.096Z"
+    }
+  ],
+  "elapsed_seconds": 22.32,
+  "operator_confirmed_received": true,
+  "confirmation_source": "Owner reply in this task, 2026-09-09",
+  "counts_scope": "Repeat reconciliation invocation; initial submission created the single provider ID"
+}

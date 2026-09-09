@@ -122,7 +122,7 @@ export async function triageCaseServerAction(caseId: string, subject: string, bo
   return triage;
 }
 
-export async function replayWebhooksServerAction(action: 'diagnose' | 'replay_and_resolve' = 'replay_and_resolve') {
+export async function replayWebhooksServerAction(action: 'diagnose' | 'replay_and_resolve' = 'diagnose') {
   const context = await requirePermission('ops.manage');
   const res = await executeOperatorTool('replay_failed_webhooks', { action }, {
     supabase: context.admin,
@@ -132,7 +132,7 @@ export async function replayWebhooksServerAction(action: 'diagnose' | 'replay_an
   });
 
   await logAdminAction(context.admin, context, {
-    action: 'operator.webhooks_replayed',
+    action: action === 'diagnose' ? 'operator.webhooks_inspected' : 'operator.webhook_replay_unavailable',
     reason: `Staff initiated webhook failure ${action}`,
     meta: { result: res.data },
   });

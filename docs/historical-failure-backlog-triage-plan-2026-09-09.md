@@ -1,5 +1,7 @@
 # Historical failure backlog: triage and recovery checklist
 
+> Execution update, September 9: all 221 baseline records now have individual reviewed dispositions. The live billing receipt is superseded, rehearsal routing is contained, SMS/provider usage is reconciled, and the false replay claims are removed from the operator paths. See [the execution report](operational-cleanup-2026-09-09.md) and its exact manifest/audit evidence. The original checklist below remains the planning baseline; production activation, reader classification follow-through and the full 24-hour observation are not yet a passed launch gate.
+
 Prepared September 9, 2026. **Status: execution plan based on read-only investigation.** No production records were changed, webhooks replayed, messages sent, or charges/credits adjusted while preparing this document. The execution checkboxes below remain open.
 
 The objective is to account for all **221 original source records: 31 webhook, 186 billing, and 4 SMS failures**. Each needs a defensible disposition and linked evidence. A smaller failure count alone does not prove recovery. Several records may describe the same incident; retain all source records while linking them to one incident.

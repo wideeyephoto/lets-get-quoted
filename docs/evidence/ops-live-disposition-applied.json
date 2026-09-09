@@ -1,0 +1,30 @@
+{
+  "observed_at": "2026-09-09T20:19:28.697Z",
+  "committed": true,
+  "state": "ignored",
+  "result": "out_of_order_ignored",
+  "payload_hash": "567c82ddc8f53e0252c6afb8317fe5a9101018a9109769e1cc5b7bf7d42cf750",
+  "attempt_count": 1,
+  "preserved_error": "provider_object_contract_mismatch",
+  "audit": [
+    {
+      "id": "16978bdc-8880-49dc-a5f7-907fbb0047bf",
+      "created_at": "2026-09-09T20:19:30.171Z"
+    }
+  ],
+  "business_hashes_before": {
+    "billing_subscriptions": "4d8fbb99e4cf769924529e6df5efcc30",
+    "payments": "c1110f7cce2bbd2a6b1b28b3013ce547",
+    "usage_credit_lots": "7aef504c1630e5b21a2e81c573a4ee3d",
+    "usage_reservations": "1373714b7a7e83ec7ba2b065c4697db8",
+    "sms_events": "4db6cec2aaf77c468c0d93bf3544ac5e"
+  },
+  "business_hashes_after": {
+    "billing_subscriptions": "4d8fbb99e4cf769924529e6df5efcc30",
+    "payments": "c1110f7cce2bbd2a6b1b28b3013ce547",
+    "usage_credit_lots": "7aef504c1630e5b21a2e81c573a4ee3d",
+    "usage_reservations": "1373714b7a7e83ec7ba2b065c4697db8",
+    "sms_events": "4db6cec2aaf77c468c0d93bf3544ac5e"
+  },
+  "repeat_zero_delta": true
+}

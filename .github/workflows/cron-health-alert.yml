@@ -21,6 +21,11 @@ jobs:
       NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+      ONCALL_PRIMARY_PHONE: ${{ secrets.ONCALL_PRIMARY_PHONE }}
+      OPERATIONAL_SMS_FROM_NUMBER: ${{ secrets.OPERATIONAL_SMS_FROM_NUMBER }}
+      SIGNALWIRE_SPACE_URL: ${{ secrets.SIGNALWIRE_SPACE_URL }}
+      SIGNALWIRE_PROJECT_ID: ${{ secrets.SIGNALWIRE_PROJECT_ID }}
+      SIGNALWIRE_API_TOKEN: ${{ secrets.SIGNALWIRE_API_TOKEN }}
       FOUNDER_ALERT_EMAIL: hello@letsgetquoted.com
       SYSTEM_EMAIL_FROM: "Let's Get Quoted Ops <system@letsgetquoted.com>"
     steps:

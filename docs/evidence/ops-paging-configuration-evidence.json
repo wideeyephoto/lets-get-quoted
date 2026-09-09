@@ -1,0 +1,17 @@
+{
+  "observed_at": "2026-09-09T20:28:15.768Z",
+  "production_keys_added": [
+    "ONCALL_PRIMARY_PHONE",
+    "OPERATIONAL_SMS_FROM_NUMBER"
+  ],
+  "github_keys_configured": [
+    "ONCALL_PRIMARY_PHONE",
+    "OPERATIONAL_SMS_FROM_NUMBER",
+    "SIGNALWIRE_SPACE_URL",
+    "SIGNALWIRE_PROJECT_ID",
+    "SIGNALWIRE_API_TOKEN"
+  ],
+  "recipient_last4": "2061",
+  "sender_last4": "2323",
+  "activation": "Requires release containing the SMS fallback; settings alone do not establish production runtime delivery"
+}

@@ -702,7 +702,9 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
 
     const resolveRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, ctx);
     expect(resolveRes.data).toBeDefined();
-    expect((resolveRes.data as any).success).toBe(true);
+    expect((resolveRes.data as any).success).toBe(false);
+    expect(resolveRes.data).toMatchObject({ replayedCount: 0, resolvedCount: 0 });
+    expect((resolveRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('enforces RBAC on replay_failed_webhooks: denies unauthorized staff without ops.manage', async () => {
@@ -722,7 +724,8 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     };
 
     const allowedRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, opsCtx);
-    expect((allowedRes.data as any).success).toBe(true);
+    expect((allowedRes.data as any).success).toBe(false);
+    expect((allowedRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('executes triage_email_deliverability and categorizes bounce events', async () => {

@@ -1,0 +1,10 @@
+{
+  "observed_at": "2026-09-09T20:23:57.856Z",
+  "mode": "apply",
+  "endpoint": "we_1U5dHvPqTgiW6iRM8Si0gH56",
+  "url": "https://lets-get-quoted-git-subscription-rehearsal-lets-get-quoted.vercel.app/api/stripe/billing/webhook",
+  "livemode": false,
+  "before_status": "enabled",
+  "after_status": "disabled",
+  "reason": "Legacy rehearsal preview shares production Supabase; completed six-SKU staging harness uses its separate local Stripe CLI relay. Preserve endpoint configuration but stop test-event delivery into production."
+}

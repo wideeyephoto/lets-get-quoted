@@ -1,6 +1,8 @@
+import { sendMonitorFailureSms } from './operational-sms-paging.mjs';
+
 // Shared by the authenticated Vercel cron and independent GitHub watchdog.
 // All business tables are read through scan_operational_failures. Writes are
-// confined to the operational evidence tables and the provider receives email only.
+// confined to operational evidence tables; notifications go to configured operators.
 export function cronMonitorConfig(crons) {
   return crons.map(({ path, schedule }) => {
     const [minute, hour, dom, month, dow] = schedule.split(/\s+/);
@@ -33,9 +35,24 @@ export async function resendRequest(path, { key, method = 'GET', payload, idempo
   return result;
 }
 
-// Independent of the database: this still pages if the database/scan cannot run.
+// Email remains independent of the database. SMS requires its durable claim ledger.
 // Stable payload and hourly key allow both watchdogs to report one outage safely.
 export async function sendMonitorFailure({ env = process.env, fetcher = fetch, now = new Date(), drill = false } = {}) {
+  let emailId;
+  let emailError;
+  try { emailId = await sendMonitorFailureEmail({ env, fetcher, now, drill }); }
+  catch (error) { emailError = error; }
+  // Page independently even if email was accepted: acceptance does not establish
+  // that the operator's primary mailbox is available.
+  if (env.ONCALL_PRIMARY_PHONE) {
+    const sms = await sendMonitorFailureSms({ env, fetcher, now, drill });
+    return emailId || sms.providerId;
+  }
+  if (emailError) throw emailError;
+  return emailId;
+}
+
+async function sendMonitorFailureEmail({ env, fetcher, now, drill }) {
   const recipient = env.ONCALL_PRIMARY_EMAIL || env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
   if (!recipient) throw new Error('alert_recipient_missing');
   const project = new URL(env.NEXT_PUBLIC_SUPABASE_URL).hostname.split('.')[0];

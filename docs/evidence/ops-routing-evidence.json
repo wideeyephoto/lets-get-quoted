@@ -1,0 +1,62 @@
+{
+  "observed_at": "2026-09-09T20:05:48.381Z",
+  "alias": {
+    "deployment_id": "dpl_81f5z12xKkaftpNErgjbmnZm2Xsa"
+  },
+  "deployment": {
+    "id": "dpl_81f5z12xKkaftpNErgjbmnZm2Xsa",
+    "url": "lets-get-quoted-faq4z3j9a-lets-get-quoted.vercel.app",
+    "target": null,
+    "createdAt": 1787508353854
+  },
+  "envScopes": [
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "target": [
+        "preview"
+      ],
+      "gitBranch": "golive-followup"
+    },
+    {
+      "key": "LGQ_STRIPE_BILLING_LIVEMODE",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "target": [
+        "preview"
+      ]
+    },
+    {
+      "key": "LGQ_STRIPE_BILLING_LIVEMODE",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "target": [
+        "production"
+      ]
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_URL",
+      "target": [
+        "production",
+        "preview"
+      ]
+    }
+  ],
+  "values": [
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_URL",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "hostname": "mfuvvtrkipkigwqqtcal.supabase.co"
+    }
+  ]
+}

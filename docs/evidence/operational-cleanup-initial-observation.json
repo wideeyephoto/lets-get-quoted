@@ -1,0 +1,55 @@
+[
+  [
+    {
+      "category": "billing_configuration",
+      "count": "1"
+    },
+    {
+      "category": "sms",
+      "count": "4"
+    },
+    {
+      "category": "webhook",
+      "count": "12"
+    }
+  ],
+  [
+    {
+      "job": "operational-alerts",
+      "cycles": "5",
+      "all_success": true,
+      "first": "2026-09-09T20:25:13.381Z",
+      "last": "2026-09-09T20:45:13.476Z"
+    },
+    {
+      "job": "sms-delivery",
+      "cycles": "26",
+      "all_success": true,
+      "first": "2026-09-09T20:24:18.242Z",
+      "last": "2026-09-09T20:49:18.361Z"
+    },
+    {
+      "job": "billing-subscription-projection",
+      "cycles": "5",
+      "all_success": true,
+      "first": "2026-09-09T20:25:29.439Z",
+      "last": "2026-09-09T20:45:29.350Z"
+    }
+  ],
+  [],
+  [
+    {
+      "records": "221",
+      "first": "2026-09-09T20:47:21.894Z",
+      "last": "2026-09-09T20:47:21.894Z"
+    }
+  ],
+  [],
+  [
+    {
+      "id": "f6ead810-6f4a-4765-83fe-8d6ab14835e3",
+      "action": "operator.webhook_replay_claim_corrected",
+      "created_at": "2026-09-09T20:47:21.894Z"
+    }
+  ]
+]

@@ -14,7 +14,7 @@ try {
   if (result.failed) { await sendMonitorFailure(); process.exitCode = 1; }
 } catch {
   console.error('Operational monitor failed. Check configuration, database and delivery evidence.');
-  try { console.log(JSON.stringify({ fallbackEmailId: await sendMonitorFailure() })); }
-  catch { console.error('Independent email alert failed; monitoring requires operator attention.'); }
+  try { console.log(JSON.stringify({ fallbackNotificationId: await sendMonitorFailure() })); }
+  catch { console.error('Fallback paging failed; monitoring requires operator attention.'); }
   process.exitCode = 1;
 }
