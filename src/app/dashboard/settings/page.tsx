@@ -514,6 +514,7 @@ export default async function SettingsPage({
                 overageSelfServe={overageSelfServe}
                 showSubscriptionCheckout={showSubscriptionCheckout}
                 showTopUpPurchase={showTopUpPurchase}
+                addonRefundsEnabled={process.env.LGQ_ADDON_REFUND_REVERSAL_ENABLED === '1'}
                 topUpCheckoutStatus={topUpCheckoutStatus}
                 adWallet={(site?.content as Record<string, unknown> | null | undefined)?.adCampaign as AdBudgetWalletState | undefined ?? null}
               />

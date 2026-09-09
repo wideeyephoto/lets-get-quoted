@@ -958,6 +958,7 @@ export default function PlanUsageSection({
   purchasedCapacitySubscriptions = [],
   showSubscriptionCheckout = false,
   showTopUpPurchase = false,
+  addonRefundsEnabled = false,
   cancellable = null,
   planChange = null,
   topUpCheckoutStatus = null,
@@ -976,6 +977,7 @@ export default function PlanUsageSection({
   purchasedCapacitySubscriptions?: ActivePurchasedCapacitySubscription[];
   showSubscriptionCheckout?: boolean;
   showTopUpPurchase?: boolean;
+  addonRefundsEnabled?: boolean;
   topUpCheckoutStatus?: 'success' | 'canceled' | null;
   overage: OverageSummary | null;
   // The plan chosen on /pricing before this workspace existed, already parsed.
@@ -1342,6 +1344,7 @@ export default function PlanUsageSection({
           <TopUpPurchaseCheckout
             planCode={data.plan.planCode}
             returnStatus={topUpCheckoutStatus}
+            addonRefundsEnabled={addonRefundsEnabled}
           />
         ) : null}
       </div>
