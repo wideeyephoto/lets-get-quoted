@@ -104,6 +104,7 @@ This is the definitive production deployment and launch checklist. A checked ite
 - [x] **Subcontractor mobile cancellation & offer isolation (PR #39, commit `c6937034b`):** Replaced native confirmation popup with an inline disclosure and separate submit button to prevent browser hangs. Exempted job offer page from marketing shell and demo copilot (`25f276e77`). Reconciled 9 business messages to 22 provider segments (`7dec2060d`).
 - [x] **JSON delivery status callbacks (`df328582f`):** Accepted JSON delivery status callbacks in SMS webhook handlers.
 - [ ] **Remaining customer carrier gate:** Customer launch remains blocked on obtaining approved customer brand/campaign registration, number assignment, and carrier acceptance.
+- [x] **Internal customer-test setup direction:** Owner selected the real LGQ brand for controlled internal tests; fictional workspaces are not registration identities. A fresh provider GET confirmed the existing brand, and the authorized registration-arrangement question was sent to SignalWire with send confirmation. See [internal setup and remaining gates](docs/customer-sms-internal-test-setup-2026-09-09.md). Campaign approval, number assignment, consent enrollment and carrier acceptance remain open.
 
 ---
 
