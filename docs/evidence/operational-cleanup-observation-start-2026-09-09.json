@@ -1,0 +1,269 @@
+{
+  "observation_id": "operational-cleanup-20260909T211317Z",
+  "status": "observing_current_production",
+  "started_at": "2026-09-09T21:13:17.282Z",
+  "minimum_end_at": "2026-09-10T21:13:17.282Z",
+  "release_acceptance_status": "pending_production_paging_activation_and_24_hours_after_activation",
+  "deployed_revision": "5e7e00901e128df70deddadfa9f2d63757efbf7e",
+  "deployment_id": "dpl_CVtCbj611jCkrumbvAZMFoPnXeFb",
+  "production_alias": "app.letsgetquoted.com",
+  "deployment_state": "READY",
+  "cleanup_commit": "f51f246202d3dceffaf90e9dba2415c385b65d79",
+  "cleanup_branch_pushed": true,
+  "production_paging_module_present": false,
+  "production_module_verification": "GitHub contents API returned 404 for src/lib/operational-sms-paging.mjs at the exact deployed revision",
+  "baseline": {
+    "observed_at": "2026-09-09T21:13:17.282364+00:00",
+    "latest_cycles": [
+      {
+        "id": "84fadad7-2e2f-4979-8244-052c9e1147ca",
+        "ok": true,
+        "job": "billing-subscription-projection",
+        "summary": {
+          "claimed": 0,
+          "ignored": 0,
+          "failures": 0,
+          "replayed": 0,
+          "processed": 0,
+          "requested": 10,
+          "in_progress": 0,
+          "claim_errors": 0,
+          "worker_errors": 0,
+          "terminal_failures": 0,
+          "retryable_failures": 0,
+          "non_live_mode_rejections": 0
+        },
+        "started_at": "2026-09-09T21:10:29.462+00:00",
+        "finished_at": "2026-09-09T21:10:31.516+00:00"
+      },
+      {
+        "id": "cf56e377-d21d-4601-80c9-d45c661ff3bb",
+        "ok": true,
+        "job": "operational-alerts",
+        "summary": {
+          "active": 21,
+          "failed": 0,
+          "queued": 1,
+          "claimed": 1,
+          "accepted": 1,
+          "delivered": 1,
+          "observedAt": "2026-09-09T21:10:17.689Z"
+        },
+        "started_at": "2026-09-09T21:10:13.311+00:00",
+        "finished_at": "2026-09-09T21:10:17.689+00:00"
+      },
+      {
+        "id": "ccfbe739-d700-41f3-bdce-6392160f554d",
+        "ok": true,
+        "job": "sms-delivery",
+        "summary": {
+          "failed": 0,
+          "claimed": 0,
+          "deferred": 0,
+          "failures": 0,
+          "cancelled": 0,
+          "completed": 0,
+          "requested": 20,
+          "usage_failed": 0,
+          "indeterminate": 0,
+          "status_failed": 0,
+          "usage_examined": 0,
+          "usage_released": 0,
+          "disabled_reason": null,
+          "producer_failed": 0,
+          "status_examined": 0,
+          "usage_committed": 0,
+          "usage_unmetered": 0,
+          "producer_claimed": 0,
+          "status_projected": 0,
+          "producer_completed": 0
+        },
+        "started_at": "2026-09-09T21:12:18.321+00:00",
+        "finished_at": "2026-09-09T21:12:19.34+00:00"
+      }
+    ],
+    "active_findings": [
+      {
+        "records": 4,
+        "category": "sms"
+      },
+      {
+        "records": 1,
+        "category": "billing_configuration"
+      },
+      {
+        "records": 16,
+        "category": "webhook"
+      }
+    ],
+    "unconfirmed_alerts": 1,
+    "live_failed_billing": 0,
+    "post_containment_test_ingress": 0
+  },
+  "details": {
+    "observed_at": "2026-09-09T21:14:15.765358+00:00",
+    "paging_ledger": [
+      {
+        "state": "delivered",
+        "page_key": "lgq-monitor-mfuvvtrkipkigwqqtcal-drill-2026-09-09T20",
+        "error_code": null,
+        "started_at": "2026-09-09T20:22:05.077013+00:00",
+        "provider_id": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+        "delivered_at": "2026-09-09T20:22:23.096+00:00",
+        "provider_status": "delivered"
+      }
+    ],
+    "webhook_failures": [
+      {
+        "id": "4885b67f-e894-4442-a0c9-cb68842f990c",
+        "source": "resend",
+        "created_at": "2026-09-09T20:23:21.318988+00:00",
+        "event_type": "email.sent",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "b735df6c-47e2-4e9e-b11b-1af4d82b224f",
+        "source": "resend",
+        "created_at": "2026-09-09T20:23:22.736826+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "90437863-49da-4a7c-9744-212ba1ffe3e9",
+        "source": "resend",
+        "created_at": "2026-09-09T20:23:25.763447+00:00",
+        "event_type": "email.sent",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "d6d8be22-64ae-4b4b-bca3-e2e3e1af053e",
+        "source": "resend",
+        "created_at": "2026-09-09T20:23:28.349453+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "82be450c-e579-4196-9714-45a9744f0927",
+        "source": "resend",
+        "created_at": "2026-09-09T20:27:36.713384+00:00",
+        "event_type": "email.sent",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "2d243f41-6863-4435-b217-1d697d70499c",
+        "source": "resend",
+        "created_at": "2026-09-09T20:27:37.410336+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "4a9de23c-d825-4f16-9a02-da515a65531e",
+        "source": "resend",
+        "created_at": "2026-09-09T20:27:41.329343+00:00",
+        "event_type": "email.sent",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "f888a3b3-bf6b-454f-bdd5-e7a82462b755",
+        "source": "resend",
+        "created_at": "2026-09-09T20:27:43.011003+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "28f4711f-a986-4db9-b937-cf6345477c67",
+        "source": "resend",
+        "created_at": "2026-09-09T20:28:18.177217+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "2371194d-65af-4a7e-a492-445d1624b0a9",
+        "source": "resend",
+        "created_at": "2026-09-09T20:29:12.475036+00:00",
+        "event_type": "email.sent",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "3e312259-fc05-40a9-8499-0de4b4118d34",
+        "source": "resend",
+        "created_at": "2026-09-09T20:33:11.845013+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "8c2b4672-61c3-438b-b00f-eb1b5ea1dc94",
+        "source": "resend",
+        "created_at": "2026-09-09T20:33:12.99531+00:00",
+        "event_type": "email.sent",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "7694a58f-2128-41b2-8862-e47f76a6a0f9",
+        "source": "resend",
+        "created_at": "2026-09-09T20:55:56.966768+00:00",
+        "event_type": "email.sent",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "760be267-5cff-4b14-aa06-9c512aa3c05f",
+        "source": "resend",
+        "created_at": "2026-09-09T20:58:41.78941+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "0c9edb0a-1e4f-4f8f-b2d0-d54126f8dbbf",
+        "source": "resend",
+        "created_at": "2026-09-09T21:03:11.709514+00:00",
+        "event_type": "email.delivered",
+        "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      },
+      {
+        "id": "071f4f4c-d1de-4cb6-bb05-775c138f7733",
+        "source": "resend",
+        "created_at": "2026-09-09T21:05:56.829554+00:00",
+        "event_type": "email.sent",
+        "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+        "error_message": "insert or update on table \"email_events\" violates foreign key constraint \"email_events_account_id_fkey\""
+      }
+    ],
+    "outstanding_alerts": [
+      {
+        "id": "9d4ea7fc-ca45-48f5-a6d6-8c08ad83c111",
+        "state": "accepted",
+        "category": "webhook",
+        "created_at": "2026-09-09T21:10:14.527581+00:00",
+        "last_error": null,
+        "accepted_at": "2026-09-09T21:10:15.452+00:00",
+        "provider_id": "8315ac9f-07d8-4e8c-a331-f649b539bf27"
+      }
+    ],
+    "baseline_dispositions": 221
+  },
+  "independent_watchdog": {
+    "last_verified_scheduled_run": 34398756516,
+    "started_at": "2026-09-09T20:03:37Z",
+    "finished_at": "2026-09-09T20:04:09Z",
+    "status": "success",
+    "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34398756516",
+    "note": "Schedules have been delayed; this is evidence of the last run, not a guarantee of 15-minute execution."
+  },
+  "automation_id": "complete-operational-cleanup-observation",
+  "policy": "Inspect hourly using existing production scheduler evidence. Preserve the immutable start and baseline. Do not label this a passed or clean release observation while paging is undeployed or routing issues persist. A later relevant deployment starts its own required 24-hour acceptance window. Notify on new actionable failures, material changes, needed action or completion; stay quiet on unchanged known findings."
+}
