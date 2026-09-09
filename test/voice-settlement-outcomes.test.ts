@@ -59,6 +59,11 @@ const baseReceipt: VoiceReceipt = {
 };
 
 describe('voice settlement outcome inference', () => {
+  it('records an on-call transfer attempt without claiming it connected', () => {
+    expect(inferProviderOutcome({ ...baseReceipt, callLog: [
+      { role: 'tool', content: 'transfer_to_emergency', timestamp: null },
+    ] })).toBe('transfer_attempted');
+  });
   it('identifies ai_handled when both user and assistant participate in dialogue', () => {
     const outcome = inferProviderOutcome(baseReceipt);
     expect(outcome).toBe('ai_handled');

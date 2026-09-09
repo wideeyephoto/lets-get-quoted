@@ -337,7 +337,7 @@ async function handleRequest(request: Request, timing: VoiceToolTiming) {
       }) : { ok: false };
 
       return NextResponse.json({
-        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' A confirmation text is queued for your mobile phone.' : ' The request is saved, but the confirmation text could not be queued.'} Our team will review and confirm the appointment.`,
+        response: `I submitted your request for ${matchedDay.dayLabel}, ${matchedSlot.label}, for ${callerName}${serviceAddress ? ` at ${serviceAddress}` : ''}.${confirmation.ok ? ' A text about your request is queued for your mobile phone.' : ' The request is saved, but its text message could not be queued.'} Our team will review and confirm the appointment.`,
       });
     } catch (err) {
       console.error('Error creating in-call booking:', err);

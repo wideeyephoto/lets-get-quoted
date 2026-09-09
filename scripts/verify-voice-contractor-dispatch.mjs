@@ -400,7 +400,10 @@ try {
       create table public.voice_staff_step_up_challenges(id uuid primary key);
       alter function public.apply_voice_contractor_action(uuid,text,text,text,uuid,uuid,jsonb)
         rename to apply_voice_contractor_action_after_step_up;
-      alter table public.voice_call_admissions add column provider_terminal_at timestamptz;
+      alter table public.voice_call_admissions add column provider_terminal_at timestamptz,
+        add column allowed_minutes integer, add column tool_invocations integer not null default 0;
+      grant select, update on public.voice_call_admissions to service_role;
+      grant select on public.voice_events to service_role;
       alter table public.jobs add column client_phone text, add column address text,
         add column created_at timestamptz default now();
       alter table public.leads alter column id set default gen_random_uuid();
@@ -411,6 +414,8 @@ try {
       '20260906105714_voice_dispatch_latency.sql',
       '20260908205505_voice_dispatch_contract_restore.sql',
       '20260908205505_voice_dispatch_contract_restore.sql',
+      '20260909194635_voice_tool_call_deadline.sql',
+      '20260909194635_voice_tool_call_deadline.sql',
     ]) await client.query(readFileSync(join(process.cwd(), 'migrations', name), 'utf8'));
     check('complete dispatch upgrade sequence and repeated repair apply', true);
   }
@@ -1050,6 +1055,55 @@ try {
       has_function_privilege('anon', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as anon_exec,
       has_function_privilege('authenticated', 'public.apply_voice_contractor_action_after_step_up(uuid,text,text,text,uuid,uuid,jsonb)', 'execute') as auth_exec`));
     check('private implementation cannot bypass the live-call wrapper', !acl.service_exec && !acl.anon_exec && !acl.auth_exec);
+
+    const admissionProbe = async (callId, caller = ownerPhoneA) => {
+      await client.query('set role service_role');
+      try {
+        return one(await client.query('select public.authorize_voice_tool_invocation($1,$2,$3) as allowed',
+          [accountA, callId, caller])).allowed;
+      } finally { await client.query('reset role'); }
+    };
+    for (const allowance of [null, 1, 2, 10]) {
+      const callId = `deadline-${allowance}-${randomUUID()}`;
+      const duration = (allowance ?? 10) * 60 - 2;
+      await client.query(`insert into public.voice_call_admissions(
+        account_id,provider,provider_call_id,caller_number,caller_kind,allowed_minutes,admitted_at
+      ) values($1,'signalwire',$2,$3,'owner',$4,clock_timestamp()-make_interval(secs=>$5))`,
+      [accountA, callId, ownerPhoneA, allowance, duration - 3]);
+      const deadlineRequest = { ...request, providerCallId: callId,
+        payload: { note: `Deadline ${allowance} probe`, is_caution: false } };
+      check(`gateway accepts ${allowance ?? 'legacy'} allowance before its deadline`, await admissionProbe(callId));
+      const accepted = await invoke(deadlineRequest);
+      check(`mutation accepts ${allowance ?? 'legacy'} allowance before its deadline`,
+        accepted.errorCode === null && Boolean(accepted.outcome?.action_id), accepted.message ?? 'saved');
+      await client.query(`update public.voice_call_admissions set
+        admitted_at=clock_timestamp()-make_interval(secs=>$2) where provider_call_id=$1`, [callId, duration]);
+      check(`gateway denies ${allowance ?? 'legacy'} allowance at deadline`, !await admissionProbe(callId));
+      const denied = await invoke({ ...deadlineRequest, payload: { note: 'Must not save after expiry' } });
+      const count = one(await client.query('select count(*)::integer as n from public.voice_tool_actions where provider_call_id=$1', [callId]));
+      check(`expired ${allowance ?? 'legacy'} mutation creates no extra action`, denied.errorCode === '42501' && count.n === 1);
+      const recovered = one(await client.query(`select public.get_voice_contractor_action_status(
+        $1,$2,$3,$4,$5,null,$6::jsonb) as outcome`,
+      [accountA, callId, ownerPhoneA, request.functionName, jobA, JSON.stringify(deadlineRequest.payload)]));
+      check(`expired ${allowance ?? 'legacy'} outcome remains readable without another mutation`,
+        recovered.outcome?.action_id === accepted.outcome?.action_id && recovered.outcome?.replayed === true);
+    }
+
+    const gateCall = calls.authorized;
+    await client.query(`update public.voice_call_admissions set admitted_at=clock_timestamp(),allowed_minutes=10
+      where provider_call_id=$1`, [gateCall]);
+    check('gateway rejects a mismatched caller', !await admissionProbe(gateCall, revokedPhone));
+    for (const scenario of [
+      { name: 'future admission', update: "admitted_at=clock_timestamp()+interval '1 minute'" },
+      { name: 'invalid allowance', update: 'allowed_minutes=11' },
+      { name: 'terminal call', update: 'provider_terminal_at=clock_timestamp()' },
+      { name: 'exhausted invocation count', update: 'tool_invocations=100' },
+    ]) {
+      await client.query(`update public.voice_call_admissions set admitted_at=clock_timestamp(),allowed_minutes=10,
+        provider_terminal_at=null,tool_invocations=0 where provider_call_id=$1`, [gateCall]);
+      await client.query(`update public.voice_call_admissions set ${scenario.update} where provider_call_id=$1`, [gateCall]);
+      check(`gateway rejects ${scenario.name}`, !await admissionProbe(gateCall));
+    }
   }
 } catch (error) {
   fatalError = error;
