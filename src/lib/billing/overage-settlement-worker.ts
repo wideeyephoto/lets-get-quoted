@@ -72,10 +72,13 @@ export type OveragePeriodCloseSummary = Readonly<{
 /**
  * Freeze every billing period that has ended into a settlement row.
  *
- * Repeats are free: `close_overage_period` returns the existing row with
- * `already_closed: true` rather than writing a second one, which is what makes
- * "call it for every ended period" the simple correct implementation instead of
- * a diff against existing settlements that could get its join wrong.
+ * Candidate selection anti-joins accruals against existing settlements via
+ * `list_unclosed_overage_periods`. Reversing the earlier "no diff against
+ * settlements" choice is deliberate: that comment worried about "a join that
+ * could get its join wrong", but the join is a single equality against the
+ * unique constraint (account_id, period_start), and omitting it caused period-
+ * close starvation whenever >100 closed accrual rows accumulated. `limit` now
+ * counts unclosed periods directly rather than individual accrual rows.
  */
 export async function runOveragePeriodCloseBatch(
   limit: number = OVERAGE_PERIOD_CLOSE_BATCH_SIZE,
@@ -87,33 +90,27 @@ export async function runOveragePeriodCloseBatch(
   let nothingOwed = 0;
   let failures = 0;
 
-  // Only ENDED periods. A period still running has accruals that can still
-  // move, and freezing one early would bill a contractor for a month they are
-  // halfway through.
-  const { data, error } = await admin
-    .from('workspace_overage_accruals')
-    .select('account_id, period_start, period_end')
-    .lte('period_end', new Date().toISOString())
-    .order('period_end', { ascending: true })
-    .limit(limit);
+  // Only unclosed ENDED periods via the anti-join RPC. A period still running
+  // has accruals that can still move, and freezing one early would bill a
+  // contractor for a month they are halfway through.
+  const { data, error } = await admin.rpc('list_unclosed_overage_periods', {
+    p_limit: limit,
+  });
 
   if (error) {
     console.error('overage period close: candidate read failed:', error.message);
     return Object.freeze({ candidates: 0, closed: 0, already_closed: 0, nothing_owed: 0, failures: 1 });
   }
 
-  // One row per resource per period, so the same period arrives several times.
-  const periods = new Map<string, { accountId: string; periodStart: string; periodEnd: string }>();
-  for (const row of data ?? []) {
-    const r = row as Record<string, unknown>;
-    const accountId = String(r.account_id);
-    const periodStart = String(r.period_start);
-    const periodEnd = String(r.period_end);
-    periods.set(`${accountId}|${periodStart}|${periodEnd}`, { accountId, periodStart, periodEnd });
-  }
-  candidates = periods.size;
+  const candidateRows = (data ?? []) as Array<Record<string, unknown>>;
+  const periods = candidateRows.map((r) => ({
+    accountId: String(r.account_id),
+    periodStart: String(r.period_start),
+    periodEnd: String(r.period_end),
+  }));
+  candidates = periods.length;
 
-  for (const period of periods.values()) {
+  for (const period of periods) {
     try {
       const { data: result, error: closeError } = await admin.rpc('close_overage_period', {
         p_account_id: period.accountId,
@@ -138,8 +135,10 @@ export async function runOveragePeriodCloseBatch(
 }
 
 export type OverageSettlementSummary = Readonly<{
+  reaped: number;
   claimable: number;
   charged: number;
+  completion_unconfirmed: number;
   no_customer: number;
   indeterminate: number;
   terminal_failures: number;
@@ -175,12 +174,25 @@ export async function runOverageSettlementBatch(
   limit: number = OVERAGE_SETTLEMENT_BATCH_SIZE,
 ): Promise<OverageSettlementSummary> {
   const admin = createAdminClient();
+  let reaped = 0;
   let claimable = 0;
   let charged = 0;
+  let completionUnconfirmed = 0;
   let noCustomer = 0;
   let indeterminate = 0;
   let terminalFailures = 0;
   let workerErrors = 0;
+
+  // Reclaim any submitted rows whose lease expired before selecting candidates,
+  // so they become claimable again in the same pass.
+  const { data: reapedCount, error: reapError } = await admin.rpc('reap_overage_settlement_leases', {
+    p_limit: limit,
+  });
+  if (reapError) {
+    console.error('overage settlement: reaper failed:', reapError.message);
+  } else {
+    reaped = Number(reapedCount ?? 0);
+  }
 
   // `nothing_owed` rows are already resolved and carry no charge, so they are
   // not selected -- the state check does that, but the amount filter says why.
@@ -195,7 +207,14 @@ export async function runOverageSettlementBatch(
   if (error) {
     console.error('overage settlement: candidate read failed:', error.message);
     return Object.freeze({
-      claimable: 0, charged: 0, no_customer: 0, indeterminate: 0, terminal_failures: 0, worker_errors: 1,
+      reaped,
+      claimable: 0,
+      charged: 0,
+      completion_unconfirmed: 0,
+      no_customer: 0,
+      indeterminate: 0,
+      terminal_failures: 0,
+      worker_errors: 1,
     });
   }
 
@@ -281,12 +300,17 @@ export async function runOverageSettlementBatch(
           { idempotencyKey },
         );
 
-        await admin.rpc('complete_overage_settlement', {
+        const { error: completeError } = await admin.rpc('complete_overage_settlement', {
           p_settlement_id: settlementId,
           p_claim_token: claimToken,
           p_invoice_item_id: String(item.id),
         });
-        charged += 1;
+        if (completeError) {
+          console.error(`overage settlement: complete failed for ${settlementId}:`, completeError.message);
+          completionUnconfirmed += 1;
+        } else {
+          charged += 1;
+        }
       } catch (stripeError) {
         const { code, indeterminate: unsure } = classifyStripeFailure(stripeError);
         const { error: markError } = await admin.rpc('fail_overage_settlement', {
@@ -295,8 +319,8 @@ export async function runOverageSettlementBatch(
           p_error_code: code,
           p_indeterminate: unsure,
         });
-        // A settlement left in 'submitted' is recovered by its lease expiring,
-        // so losing this write delays the retry rather than dropping it.
+        // A settlement left in 'submitted' is recovered by reap_overage_settlement_leases
+        // once its lease expires, so losing this write delays the retry rather than dropping it.
         if (markError) console.error('overage settlement: could not record failure:', markError.message);
         if (unsure) indeterminate += 1;
         else terminalFailures += 1;
@@ -308,8 +332,10 @@ export async function runOverageSettlementBatch(
   }
 
   return Object.freeze({
+    reaped,
     claimable,
     charged,
+    completion_unconfirmed: completionUnconfirmed,
     no_customer: noCustomer,
     indeterminate,
     terminal_failures: terminalFailures,

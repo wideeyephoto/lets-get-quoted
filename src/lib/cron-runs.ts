@@ -128,12 +128,21 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
     return `${job} logical failure: ${JSON.stringify(summary.failures)}`.slice(0, 2000);
   }
 
+  if (
+    typeof summary.candidates === 'number' &&
+    summary.candidates > 0 &&
+    typeof summary.closed === 'number' &&
+    summary.closed === 0
+  ) {
+    return `${job} reported 0 closed periods while ${summary.candidates} candidate(s) exist`.slice(0, 2000);
+  }
+
   const breakdown: string[] = [];
   for (const [key, val] of Object.entries(summary)) {
     if (
       typeof val === 'number' &&
       val > 0 &&
-      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors|pauseFailures|pause_failures)$/i.test(key) &&
+      /(^|_)(failed|failures|errors|error_count|indeterminate|terminal_failures|retryable_failures|worker_errors|providerErrors|databaseErrors|pauseFailures|pause_failures|no_customer|no_stripe_customer|completion_unconfirmed)$/i.test(key) &&
       key !== 'failures' &&
       key !== 'failed'
     ) {
