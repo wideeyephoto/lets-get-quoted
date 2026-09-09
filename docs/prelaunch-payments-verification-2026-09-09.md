@@ -96,4 +96,14 @@ Eighteen provider checks and fifteen additional PostgreSQL checks cover this fix
   plan-change results above are local/database evidence; remaining provider and
   customer journeys stay open until executed.
 
-The voice exhaustion-enforcement policy is unchanged. No new messages were sent.
+The voice exhaustion-enforcement policy is unchanged. The payer completed the
+normal magic-link sign-in flow. The $35 minute-pack checkout is prepared with the
+designated payer's saved Link method, but remains unpaid while release is pending.
+The workspace selector uses the account's business name while the dashboard uses
+its different website company name; both were verified against the same account
+number and database identity before preparing checkout.
+
+Public release status: PR #56 contains the first sanitized commit. Automatic
+approval review required separate authorization for the subsequently discovered
+paid Voice fix; that approval is pending. No additional migration, production
+application deployment, refund webhook change, or new charge has occurred yet.
