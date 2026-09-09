@@ -10,6 +10,8 @@ import {
   type CapacityReconcileOutcome,
 } from '@/lib/billing/capacity-lifecycle';
 import { getStripeClient } from '@/lib/stripe';
+import type Stripe from 'stripe';
+import { grantPaidVoiceAllowance } from '@/lib/billing/paid-voice-allowance';
 
 /**
  * DARK server-only worker: bring purchased capacity back in line with Stripe.
@@ -22,7 +24,8 @@ import { getStripeClient } from '@/lib/stripe';
  * question never arises. The cost is that a cancellation is honoured within one
  * sweep rather than instantly.
  *
- * ONE STRIPE READ PER ROW, bounded by the batch size, and canceled rows are
+ * One subscription read per row, with additional paid invoice/charge checks for
+ * Voice grants. Work is bounded by the batch size, and canceled rows are
  * excluded by the work-list function because they are terminal — re-reading them
  * for ever would be provider egress that can never change an answer.
  */
@@ -104,8 +107,9 @@ export async function runPurchasedCapacityLifecycleSweep(
 
       let providerStatus: unknown;
       let providerPeriodEnd: unknown;
+      let subscription: Stripe.Subscription;
       try {
-        const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        subscription = await stripe.subscriptions.retrieve(subscriptionId);
         if (subscription.livemode !== livemode) {
           // A row read in the wrong mode must never be acted on.
           providerErrors += 1;
@@ -143,6 +147,15 @@ export async function runPurchasedCapacityLifecycleSweep(
       );
       if (applyError) {
         console.error('capacity lifecycle sweep could not apply a status:', applyError);
+        providerErrors += 1;
+        continue;
+      }
+
+      try {
+        await grantPaidVoiceAllowance(stripe, subscription, row.account_id, livemode);
+      } catch {
+        // Keep the subscription reconciliation, and retry the missing grant on
+        // the next sweep. Never report a paid-but-unfulfilled row as healthy.
         providerErrors += 1;
         continue;
       }

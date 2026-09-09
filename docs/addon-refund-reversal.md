@@ -12,8 +12,9 @@ This does not issue refunds; it reconciles refunds already issued in Stripe.
   units. Rounding happens on the cumulative total, so split refunds cannot remove
   extra units. A partial refund of one office seat leaves that indivisible seat
   until the payment is fully refunded.
-- Voice reversal uses the original purchase lot, or the allowance window
-  containing the recurring invoice line's service start. Available units are
+- Voice reversal uses the original purchase lot or the exact paid invoice lot.
+  Historical refunds may use the legacy allowance window containing the invoice
+  service start when its attribution is unambiguous. Available units are
   revoked first. Consumed or reserved units become debt against subsequent voice
   grants. Reservations remain intact; releasing a hold can also settle debt.
   Debt offsets have their own ledger and never make a credit lot negative.
@@ -31,6 +32,10 @@ This does not issue refunds; it reconciles refunds already issued in Stripe.
 
 1. Apply `20260908175533_addon_refund_reversal_and_future_credit_debt.sql` after
    the existing purchase, capacity lifecycle and voice allowance migrations.
+   Apply `20260909211000_paid_voice_invoice_allowance.sql` with the accompanying
+   capacity worker before new Voice purchases. Paid Voice grants follow verified
+   invoice periods, independently of base-plan/canary allowances. The legacy
+   worker excludes real checkout capacity and invoice-owned lots from its reset.
 2. Deploy the webhook and worker code with
    `LGQ_ADDON_REFUND_REVERSAL_ENABLED=0` initially. The existing top-up endpoint
    also requires `LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED=1` and its own signing secret.

@@ -2,7 +2,8 @@
 
 The live LGQ refund-engine requirement is verified. The entire paid add-on gate
 remains open until the reviewed code is deployed and the live lifecycle runs.
-No new charge, refund, production migration, or deployment was made in this task.
+The refund ledger migration is installed in production. No new live charge or
+refund has been made; application release and paid verification remain in progress.
 
 ## Live connected refund
 
@@ -48,9 +49,9 @@ received solely because the browser has a success query parameter.
 
 | Check | Result and boundary |
 | --- | --- |
-| Full local suite | 14,374 tests / 1,120 files passed; mocked provider boundaries, no real charge |
+| Full local suite | 14,392 tests / 1,121 files passed; mocked provider boundaries, no real charge |
 | Six-SKU negative matrix | 24/24 passed; initial unpaid/failure/expiry, unsettled success retry, recovered success and stale failure |
-| Disposable PostgreSQL 17 | 28/28 passed; all six refund SKUs, cumulative rounding, used/held debt, future grants, refund before fulfillment, lease expiry/reclaim, base-plan-change attribution, event identity conflicts, test/live separation and browser-role denial |
+| Disposable PostgreSQL 17 | 43/43 passed; all six refund SKUs, cumulative rounding, used/held debt, future grants, refund before fulfillment, lease expiry/reclaim, base-plan-change attribution, event identity conflicts, test/live separation, browser-role denial and exact paid Voice invoice grants |
 | Typecheck, lint and production build | Passed; lint retains existing repository warnings |
 | Browser presentation | Real checkout component and dashboard stylesheet rendered on an isolated local review route; refund/debt explanation and return message readable, controls hydrated. Existing `useFormState` deprecation warning observed; no claim of a warning-free console. Temporary route removed before commit. |
 | Existing September 8 staging evidence | Six actual sandbox purchases, five recurring renewal/failure/recovery/cancellation paths, actual partial/full refunds and reverse-order duplicate delivery are retained from the earlier execution register |
@@ -66,9 +67,18 @@ Commands: `npm test`, `npm run test:pg17:addon-refunds`, `npm run typecheck`,
 
 ## Remaining live work
 
-- Production catalog inspection returned **null** for `addon_refund_jobs`,
-  `addon_refund_reversals` and `apply_addon_refund(uuid,uuid,jsonb)` on September 9.
-  Deploy the [refund migration and ordered rollout](addon-refund-reversal.md),
+Pre-charge inspection found that the Solo workspace's existing allowance would
+swallow a new purchase's minutes under the legacy overlap guard. The capacity
+worker now proves the paid invoice and settled charge before granting an invoice
+lot. The base-plan worker excludes real checkout capacity from its own grant;
+refunds use exact invoice attribution. The rollout migration stops if an active
+paid Voice subscription already needs legacy reconciliation. Production inspection
+found only the existing manual canary, with no active paid Voice subscriptions.
+Eighteen provider checks and fifteen additional PostgreSQL checks cover this fix.
+
+- The refund ledger migration was applied after the user approved release.
+  All four new tables have RLS enabled and deny browser-role reads. Complete the
+  [ordered rollout and paid Voice migration](addon-refund-reversal.md),
   verify the actual deployed revision, configure refund events on the correct
   platform top-up webhook, and enable the refund worker before new live proof.
 - Brett authorized the designated payer with a **$248 total spending cap** in this
@@ -76,8 +86,8 @@ Commands: `npm test`, `npm run test:pg17:addon-refunds`, `npm run typecheck`,
   subset is AI Voice Flex ($69), the minute pack ($35), and storage ($15): **$119**
   before tax. This does not establish eligibility for Solo/Growth Voice or office
   seats. Do not change production entitlements to make a test eligible.
-- Designate existing eligible Solo and Growth workspaces or budget the additional
-  base-plan purchases separately. Reconcile all live purchases, usable benefits,
+- The user also approved existing eligible Solo and Growth workspaces; their exact
+  identities are retained in the private execution record. Reconcile purchases, usable benefits,
   partial/full refunds and cancellation. Never count the six sandbox purchases as
   live settlement. No part of the $248 cap has been spent by this task.
 - Natural renewal and effective end-of-period cancellation require the actual

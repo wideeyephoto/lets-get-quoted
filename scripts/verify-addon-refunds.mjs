@@ -55,6 +55,9 @@ try {
   await q(read('20260819020000_purchased_capacity_lifecycle.sql'));
   await q('grant select on workspace_entitlements,usage_credit_lots,billing_top_up_purchase_operations,workspace_purchased_capacity to service_role');
   await q(read('20260908175533_addon_refund_reversal_and_future_credit_debt.sql'));
+  await q(fn('voice_minute_lot_tail', voiceAllowance));
+  await q(fn('grant_voice_minute_allowance', read('20260820110000_voice_allowance_survives_a_moved_period.sql')));
+  await q(read('20260909211000_paid_voice_invoice_allowance.sql'));
   const account = '11111111-1111-4111-8111-111111111111';
   await q('insert into accounts values($1)', [account]);
   await q("insert into workspace_entitlements(account_id,plan_code,billing_interval,billing_status,entitlement_state,catalog_version,platform_fee_bps) values($1,'flex','none','free','active','fixture',0)", [account]);
@@ -103,6 +106,7 @@ try {
     await q("insert into workspace_entitlements(account_id,plan_code,billing_interval,billing_status,entitlement_state,catalog_version,platform_fee_bps) values($1,'flex','none','free','active','fixture',0)", [owner]);
     await q("insert into billing_top_up_purchase_operations values($1,false,$2,'checkout_created',$3,'price_Voice12345678','voice_minutes',$4)",[owner,session,sku,units]);
     await q("insert into workspace_purchased_capacity(account_id,top_up_id,resource_code,units,unit_amount_cents,catalog_version,livemode,stripe_subscription_id,current_period_end) values($1,$2,'voice_minutes',$3,$4,'2026-08-18-preview',false,$5,'2026-10-08')",[owner,sku,units,price,sub]);
+    await q("update workspace_purchased_capacity set metadata=metadata||'{\"voice_allowance_basis\":\"legacy_base_period\"}' where stripe_subscription_id=$1",[sub]);
     await q('set role service_role');
     await q("select ingest_addon_refund_event(false,$1,$2,repeat('c',64))",['evt_'+sku.replaceAll('_',''),'ch_'+sku.replaceAll('_','')]);
     const voiceJob = await one('select * from claim_addon_refund_job(false)');
@@ -138,6 +142,44 @@ try {
     await q("select finish_addon_refund_job($1,$2,'complete')",[successor.id,successor.claim_token]);
     pass(`${sku}: lease recovery repeats cancellation intent without another debit`);
   }
+  for (const [index,sku,units,price] of [[7,'ai_voice_flex',100,6900],[8,'ai_voice_solo',100,5900],[9,'ai_voice_growth',200,5500]]) {
+    await q('reset role');
+    const owner=`11111111-1111-4111-8111-11111111111${index}`, sub='sub_paidvoice'+index+'12345678', session='cs_test_paidvoice'+index;
+    await q('insert into accounts values($1)',[owner]);
+    await q("insert into workspace_entitlements(account_id,plan_code,billing_interval,billing_status,entitlement_state,catalog_version,platform_fee_bps,feature_limits) values($1,'scale','monthly','active','active','fixture',0,'{\"voice_included_minutes\":100}')",[owner]);
+    await q("select grant_voice_minute_allowance($1,'2026-08-23','2026-09-23')",[owner]);
+    const original=await one("select id from usage_credit_lots where account_id=$1",[owner]);
+    await q("insert into billing_top_up_purchase_operations values($1,false,$2,'checkout_created',$3,'price_PaidVoice12345678','voice_minutes',$4)",[owner,session,sku,units]);
+    await q("insert into workspace_purchased_capacity(account_id,top_up_id,resource_code,units,unit_amount_cents,catalog_version,livemode,stripe_subscription_id,current_period_end,metadata) values($1,$2,'voice_minutes',$3,$4,'2026-08-18-preview',false,$5,'2026-10-09',$6)",[owner,sku,units,price,sub,{lgq_checkout_session_id:session}]);
+    const paid={account_id:owner,checkout_session_id:session,subscription_id:sub,invoice_id:'in_PaidVoice'+index,top_up_id:sku,price_id:'price_PaidVoice12345678',charge_amount:price,refunded_amount:0,period_start:'2026-09-09',period_end:'2026-10-09'};
+    await q('set role service_role');
+    await q("select ingest_addon_refund_event(false,$1,$2,repeat('f',64))",['evt_PaidVoice'+index,'ch_PaidVoice'+index]);
+    const refundJob=await one('select * from claim_addon_refund_job(false)');
+    await assert.rejects(q('select apply_addon_refund($1,$2,$3)',[refundJob.id,refundJob.claim_token,{...paid,refunded_amount:price}]),/refund_credit_grant_not_resolved/);
+    pass(`${sku}: refund before invoice fulfillment cannot fall back to the pre-existing allowance`);
+    const grant=async c=>(await one('select grant_paid_voice_addon_period(false,$1) id',[c])).id;
+    const invoiceLot=await grant(paid);
+    assert.equal(await grant(paid),invoiceLot);
+    assert.equal(Number((await one('select granted_units from usage_credit_lots where id=$1',[invoiceLot])).granted_units),units);
+    assert.equal(Number((await one("select grant_voice_minute_allowance($1,'2026-08-23','2026-09-23') n",[owner])).n),0);
+    pass(`${sku}: an existing allowance cannot swallow a paid invoice grant; replay grants once`);
+    assert.equal(Number((await one("select grant_voice_minute_allowance($1,'2026-09-23','2026-10-23') n",[owner])).n),100);
+    pass(`${sku}: next base-plan period grants only its inclusion, without duplicating paid add-on minutes`);
+    await assert.rejects(grant({...paid,period_start:'2026-09-10'}),/paid_voice_invoice_identity_conflict/);
+    await assert.rejects(grant({...paid,checkout_session_id:'cs_test_unrelated'}),/query returned no rows/);
+    await q("select apply_purchased_capacity_provider_state(false,$1,'active','2026-11-09')",[sub]);
+    const renewed={...paid,invoice_id:'in_RenewedVoice'+index,period_start:'2026-10-09',period_end:'2026-11-09'};
+    const renewalLot=await grant(renewed);
+    assert.notEqual(renewalLot,invoiceLot);
+    assert.equal(await grant(renewed),renewalLot);
+    pass(`${sku}: a distinct paid invoice grants its next period once despite overlapping base periods`);
+    await q('select apply_addon_refund($1,$2,$3)',[refundJob.id,refundJob.claim_token,{...paid,refunded_amount:price}]);
+    assert.equal(Number((await one('select revoked_units from usage_credit_lots where id=$1',[invoiceLot])).revoked_units),units);
+    assert.equal(Number((await one('select revoked_units from usage_credit_lots where id=$1',[renewalLot])).revoked_units),0);
+    assert.equal(Number((await one('select revoked_units from usage_credit_lots where id=$1',[original.id])).revoked_units),0);
+    await q("select finish_addon_refund_job($1,$2,'complete')",[refundJob.id,refundJob.claim_token]);
+    pass(`${sku}: refund touches its exact invoice lot and preserves the legacy and renewal lots`);
+  }
   await assert.rejects(q("select ingest_addon_refund_event(false,'evt_Pack1','ch_Pack12345678',repeat('d',64))"), /refund_event_identity_conflict/);
   pass('same event ID with different payload is rejected');
   await q("select ingest_addon_refund_event(true,'evt_LiveModeOnly','ch_LiveModeOnly',repeat('e',64))");
@@ -147,6 +189,7 @@ try {
     await q('reset role'); await q(`set role ${role}`);
     await assert.rejects(q('select * from addon_refund_reversals'), /permission denied/);
     await assert.rejects(q('select * from claim_addon_refund_job(false)'), /permission denied/);
+    await assert.rejects(q("select grant_paid_voice_addon_period(false,'{}')"), /permission denied/);
     pass(`${role}: no ledger reads or refund execution`);
   }
   console.log(`${checks}/${checks} PostgreSQL refund checks passed`);
