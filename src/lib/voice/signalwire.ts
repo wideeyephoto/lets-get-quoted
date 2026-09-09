@@ -619,7 +619,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
       if (plan.swaigUrl && plan.contractorMode) {
         swaigFunctions.push({
           function: 'lookup_jobs',
-          purpose: 'Read existing jobs for a verified owner or office caller. Use when asked what jobs exist, for job details, or to list choices before an update when the caller does not know a job reference. Returns references, scope, address, status, schedule, and recorded quote. Registered staff identity and role permissions are checked automatically; never ask for a verification code. Does not create or update anything.',
+          purpose: 'Read existing jobs for a verified owner or office caller. Use for job listings, customer identity, details, current total or recorded quote, and choices before an update. For a selected job total, quote, schedule, status or summary, set include_details=true. A brief result omitting the quote does not mean it is inaccessible. Returns references, scope, address, status, schedule, and recorded quote. Answer only what was asked. Registered staff identity and role permissions are checked automatically; never ask for a verification code. Does not create or update anything.',
           argument: {
             type: 'object',
             properties: {
@@ -629,7 +629,7 @@ export const signalwireVoiceProvider: VoiceProvider = {
               },
               include_details: {
                 type: 'boolean',
-                description: 'True only when the caller asks for full details of one selected job. Choices stay brief.',
+                description: 'Set true when asked for the total, recorded quote, schedule, status, scope or summary of one selected job, even if only one field is requested. Read only the requested fields aloud. Choices stay brief.',
               },
             },
           },
@@ -830,6 +830,11 @@ export const signalwireVoiceProvider: VoiceProvider = {
             enable_turn_detection: true,
             turn_detection_timeout: 250,
             function_wait_for_talking: false,
+            ...(plan.contractorMode ? {
+              transparent_barge: true,
+              barge_functions: false,
+              interrupt_prompt: 'The caller interrupted. Stop the old explanation and listen to the complete new instruction. For stop, pause, or hold on alone, wait; do not restart or summarize the interrupted answer. Answer only the new request. Do not repeat a submitted write or claim an unknown save succeeded.',
+            } : {}),
             hard_stop_time: `${maxDurationSeconds - 15}s`,
             hard_stop_prompt: 'The call time limit has been reached. Briefly say goodbye. Do not start any new actions or claim unsaved work was completed.',
             // Provider-side best effort. Structured fields and tool results can

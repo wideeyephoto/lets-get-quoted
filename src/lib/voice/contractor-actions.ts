@@ -94,6 +94,15 @@ function normalizeLookup(value: string): string {
     .trim();
 }
 
+/** Only a complete spoken J-reference, never a fuzzy customer-name rewrite. */
+function spokenJobReference(value: string | null): string | null {
+  const match = value?.trim().match(/^(?:job\s+)?jay(?:\s+(?:dash|hyphen))?\s+(?:([a-z]{1,12})(?:\s+(?:dash|hyphen))?\s+)?(\d(?:[\d\s]*\d)?)\.?$/i);
+  if (!match) return null;
+  const digits = match[2].replace(/\s/g, '');
+  if (digits.length > 12) return null;
+  return ['J', match[1]?.toUpperCase(), digits].filter(Boolean).join('-');
+}
+
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
@@ -125,7 +134,7 @@ async function loadVoiceJobs(
   admin: SupabaseClient,
   accountId: string,
   target: string | null,
-  options: Readonly<{ allowedCallerPhone?: string | null }> = {},
+  options: Readonly<{ allowedCallerPhone?: string | null; timeoutMs?: number }> = {},
 ): Promise<{ jobs: VoiceJobCandidate[]; totalCount: number } | null> {
   const started = performance.now();
   try {
@@ -133,7 +142,7 @@ async function loadVoiceJobs(
       p_account_id: accountId,
       p_query: target,
       p_phone_candidates: options.allowedCallerPhone ? phoneCandidates(options.allowedCallerPhone) : null,
-    }), 4000);
+    }), options.timeoutMs ?? 4000);
     if (error || !data || !Array.isArray(data.jobs)
         || !Number.isSafeInteger(data.total_count) || data.total_count < data.jobs.length
         || (data.total_count > 1 && data.jobs.length < 2)) return null;
@@ -358,8 +367,22 @@ export async function handleContractorVoiceAction(
   }
 
   if (fn === 'lookup_jobs') {
-    const query = text(args.query ?? args.job_ref_or_client ?? args.client_name, 500);
-    const found = await loadVoiceJobs(context.admin, context.accountId, query);
+    let query = text(args.query ?? args.job_ref_or_client ?? args.client_name, 500);
+    const deadline = performance.now() + 4000;
+    let found = await loadVoiceJobs(context.admin, context.accountId, query);
+    const spokenReference = spokenJobReference(query);
+    // Preserve a literal name/address match. A second, read-only search is allowed
+    // only after a proven empty result, within the original four-second budget.
+    if (found?.totalCount === 0 && spokenReference) {
+      const remaining = Math.floor(deadline - performance.now());
+      const fallback = remaining > 0
+        ? await loadVoiceJobs(context.admin, context.accountId, spokenReference, { timeoutMs: remaining }) : null;
+      if (!fallback) found = null;
+      else if (fallback.jobs.length && fallback.jobs.every(job => normalizeLookup(job.ref) === normalizeLookup(spokenReference))) {
+        query = spokenReference;
+        found = fallback;
+      }
+    }
     if (!found) return { handled: true, response: 'I could not finish a reliable job lookup. Please try again or open the jobs dashboard; I did not change anything.' };
     const { jobs } = found;
     const resolution = query ? matchVoiceJobs(jobs, query) : null;
