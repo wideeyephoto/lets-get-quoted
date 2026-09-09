@@ -1116,7 +1116,7 @@ describe('Operator Activation Nudge: Audience Correction, Permissions, and Execu
     });
 
     const mockCtx: OperatorExecutionContext = {
-      supabase: createMockSupabase(),
+      supabase: createMockSupabase({ accountRow: { created_at: new Date(Date.now() - 30 * 86400000).toISOString() } }),
       adminUserId: 'founder@letsgetquoted.com',
       source: 'admin_dashboard',
     };
@@ -1133,7 +1133,8 @@ describe('Operator Activation Nudge: Audience Correction, Permissions, and Execu
     expect(res.action?.status).toBe('approved');
     const exec = res.executionResult as any;
     expect(exec.dryRun).toBe(true);
-    expect(exec.sent).toBe(1);
-    expect(exec.details[0].note).toContain('[DRY-RUN]');
+    expect(exec.sent).toBe(0);
+    expect(exec.skipped).toBe(1);
+    expect(exec.details[0].note).toContain('no longer eligible');
   });
 });

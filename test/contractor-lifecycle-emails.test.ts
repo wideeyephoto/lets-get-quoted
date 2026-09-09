@@ -1,4 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { existsSync } from 'node:fs';
+import { emailCampaignAdmin } from './helpers/email-campaign-admin';
 import {
   CONTRACTOR_LIFECYCLE_STEPS,
   renderContractorLifecycleEmailHtml,
@@ -141,11 +143,9 @@ describe('runContractorLifecycleSweep dry-run and sequence progression', () => {
   });
 
   it('validates all 10 CTA paths map to existing App Router dashboard paths', () => {
-    const VALID_BASE_PATHS = ['/dashboard', '/dashboard/jobs', '/dashboard/crew', '/dashboard/reviews', '/dashboard/settings'];
-
     for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
-      const basePath = step.ctaPath.split('?')[0];
-      expect(VALID_BASE_PATHS).toContain(basePath);
+      const basePath = step.ctaPath.split(/[?#]/)[0];
+      expect(existsSync(`src/app${basePath}/page.tsx`)).toBe(true);
     }
   });
 });
@@ -169,16 +169,10 @@ describe('sendActivationNudgeBatch execution and quality gating', () => {
       },
     ];
 
-    const mockAdmin: any = {
-      from: () => ({
-        select: () => ({
-          in: () => ({
-            eq: () => Promise.resolve({ data: [], error: null }),
-            then: (resolve: any) => resolve({ data: [], error: null }),
-          }),
-        }),
-      }),
-    };
+    const mockAdmin = emailCampaignAdmin({
+      accounts: mockRecipients.map(r => ({ id: r.accountId, business_name: r.businessName, created_at: new Date(Date.now() - r.ageDays * 86400000).toISOString() })),
+      owners: mockRecipients.map(r => ({ account_id: r.accountId, email: r.email })),
+    });
 
     const res = await sendActivationNudgeBatch(mockAdmin, {
       stepId: 'nudge_zero_quotes',

@@ -1,16 +1,8 @@
-import { Resend } from 'resend';
+import { Resend, type CreateEmailOptions } from 'resend';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createAdminClient } from '@/lib/auth';
-import {
-  escapeHtml,
-  normalizeEmailTheme,
-  renderBrandedEmail,
-  renderRichCampaignBodyHtml,
-  themePaint,
-  type EmailBrand,
-  type EmailThemeId,
-} from '@/emails/brand';
-import { buildUnsubscribePageUrl, buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
+import { renderPlatformEmail, renderPlatformEmailText } from '@/emails/platform';
+import { buildUnsubscribeOneClickUrl } from '@/lib/email-suppression';
 import { isMailable } from '@/lib/email-quality';
 import { recordAccountEvent } from '@/lib/account-events';
 import { ownerEmailsForAccounts } from '@/lib/admin-accounts';
@@ -25,193 +17,9 @@ function getResendClient(): Resend | null {
   return resendClient;
 }
 
-export type ContractorLifecycleStepId =
-  | 'welcome_day0'
-  | 'quote_speed_day2'
-  | 'stripe_payout_day4'
-  | 'crew_arrival_day7'
-  | 'reviews_reputation_day10'
-  | 'ai_voice_intake_day14'
-  | 'growth_scale_day21'
-  | 'founder_checkin_day30'
-  | 'nudge_incomplete_stripe'
-  | 'nudge_zero_quotes';
-
-export type ContractorLifecycleStep = {
-  id: ContractorLifecycleStepId;
-  minAgeDays: number;
-  maxAgeDays?: number;
-  eyebrow: string;
-  subject: string;
-  preheader: string;
-  heading: string;
-  body: string;
-  ctaLabel: string;
-  ctaPath: string;
-  theme: EmailThemeId;
-  senderName: string;
-  replyTo: string;
-};
-
-export const CONTRACTOR_LIFECYCLE_STEPS: ContractorLifecycleStep[] = [
-  {
-    id: 'welcome_day0',
-    minAgeDays: 0,
-    maxAgeDays: 1,
-    eyebrow: 'Welcome Guide',
-    subject: "🎉 Welcome to Let's Get Quoted — your website is live!",
-    preheader: 'Here is your quick-start checklist to booking your first job.',
-    heading: 'Welcome to Let’s Get Quoted, {{business_name}}!',
-    body: `Hi {{first_name}},\n\nCongratulations on launching {{business_name}} on Let's Get Quoted! Your high-converting website has been created and is ready to take customer estimate requests.\n\n[STAT: 3 Min | Quickstart | Your trade website and instant estimate builder are live.]\n\n## Your 3-Step Setup Checklist for This Week:\n\n1. Preview & Customize Your Website: Your trade services, service area, and Google SEO tags are already filled in. Add your company photos and logo in your dashboard.\n2. Build Your First 60-Second Quote: Test our fast quote builder with Good / Better / Best pricing tiers and instant one-click customer signatures.\n3. Connect Stripe for Next-Day Payouts: Link your bank account in 2 minutes so customers can pay deposits and invoices directly from their phone.\n\nTip: Contractors who link Stripe on Day 1 collect customer deposits 4x faster and eliminate payment delays.\n\nIf you ever need help configuring your trade presets or setting up your team, hit reply directly to this email — our team is here for you.`,
-    ctaLabel: 'Open your dashboard & get started',
-    ctaPath: '/dashboard',
-    theme: 'spotlight',
-    senderName: "Let's Get Quoted Team",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'quote_speed_day2',
-    minAgeDays: 2,
-    maxAgeDays: 4,
-    eyebrow: 'Speed to Lead',
-    subject: 'How top contractors close 30% more jobs (in 2 minutes)',
-    preheader: 'Send professional estimates that homeowners can approve from their phone.',
-    heading: 'Win more high-margin estimates in less time',
-    body: `Hi {{first_name}},\n\nDid you know that quotes sent within 2 hours of a site visit are 2.8x more likely to be approved on the spot?\n\n[STAT: 2.8x | Win Rate | Quotes sent within 2 hours of a site visit are 2.8x more likely to be approved on the spot.]\n\nHomeowners don't want to wait days for a PDF attachment in an email. With Let's Get Quoted, you can send an interactive estimate via SMS and email before you even leave their driveway:\n\n## 3 Ways to Close More Estimates:\n\n• Tiered Options: Give customers Good, Better, and Best choices to increase average invoice size by 22%.\n• One-Click E-Signatures: Clients approve terms and sign right from their mobile browser with zero logins required.\n• Automatic Follow-Ups: Our system gently reminds undecided homeowners so quotes don't go cold.\n\nTip: Send your quote before leaving the customer's driveway for maximum approval rates.\n\nTry creating your first test estimate today and see how seamless the customer experience feels.`,
-    ctaLabel: 'Create an estimate now',
-    ctaPath: '/dashboard/jobs',
-    theme: 'blueprint',
-    senderName: "Let's Get Quoted Advisor",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'stripe_payout_day4',
-    minAgeDays: 4,
-    maxAgeDays: 6,
-    eyebrow: 'Instant Payouts',
-    subject: 'Collect deposits & get paid next-day with zero chasing',
-    preheader: 'Unlock credit card, Apple Pay, and ACH payments for your business.',
-    heading: 'Stop chasing unpaid invoices forever',
-    body: `Hi {{first_name}},\n\nOne of the biggest headaches for trade businesses is waiting 30+ days for customer checks or driving across town to collect payment.\n\n[STAT: $0 | Chased Invoices | Collect upfront card deposits automatically when quotes are approved.]\n\nBy connecting your Stripe account in Let's Get Quoted, you unlock complete payment automation:\n\n## Complete Payment Automation for {{business_name}}:\n\n• Upfront Deposits: Collect a 25–50% card deposit automatically when the homeowner approves the quote before you schedule the work.\n• Card & Mobile Pay: Customers pay in seconds from any smartphone via Card, Apple Pay, or Bank ACH.\n• Automatic Next-Day Payouts: Funds transfer directly into your business bank account with automated fee reconciliation.\n• Branded PDF Receipts: Instant, clean tax receipts sent to your client as soon as a payment clears.\n\nImportant: Setup takes less than 3 minutes through Stripe Connect. Link your bank account today to start accepting card payments.`,
-    ctaLabel: 'Set up instant payouts',
-    ctaPath: '/dashboard/settings?tab=payouts',
-    theme: 'studio',
-    senderName: "Let's Get Quoted Financial Ops",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'crew_arrival_day7',
-    minAgeDays: 7,
-    maxAgeDays: 10,
-    eyebrow: 'Field Operations',
-    subject: 'Put your field operations on autopilot: Live arrival alerts & crew app',
-    preheader: 'Keep homeowners informed and your crew in sync without phone tag.',
-    heading: 'Run stress-free job sites with live dispatch',
-    body: `Hi {{first_name}},\n\nHomeowners love communication, but calling or texting every customer while navigating traffic is exhausting.\n\n[STAT: 1-Tap | Live Dispatch | Keep homeowners informed and your crew in sync without phone tag.]\n\nLet's Get Quoted automates field communication so your team looks ultra-professional on every job:\n\n## Streamlined Field Operations for {{business_name}}:\n\n• "On Our Way" Arrival Alerts: Send automated SMS texts with crew arrival windows and live map tracking with a single tap.\n• Field Crew App: Dispatch jobs to your technicians or subcontractors with exact task lists, entry notes, and customer phone numbers.\n• Before & After Photos: Crew members can snap photos on-site that save directly to the job file and invoice for bulletproof work documentation.\n\nTip: Inviting crew members or subcontractors takes under 30 seconds from your Crew tab.`,
-    ctaLabel: 'Explore crew dispatch & tracking',
-    ctaPath: '/dashboard/crew',
-    theme: 'blueprint',
-    senderName: "Let's Get Quoted Operations",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'reviews_reputation_day10',
-    minAgeDays: 10,
-    maxAgeDays: 13,
-    eyebrow: 'Google Reviews',
-    subject: 'Turn every happy customer into a 5-star Google review',
-    preheader: 'How automated post-job review requests build unstoppable local SEO.',
-    heading: 'Build a 5-star local reputation on autopilot',
-    body: `Hi {{first_name}},\n\n92% of homeowners check Google reviews before hiring a trade contractor. But asking for reviews manually often gets forgotten when you’re busy wrapping up a job.\n\n[STAT: 92% | Trust Factor | Homeowners check Google reviews before hiring a trade contractor.]\n\nLet's Get Quoted includes a built-in reputation flywheel:\n\n## How Your Automated Review Flywheel Works:\n\n• Automated Review Requests: When an invoice is marked paid or completed, our system automatically sends a friendly SMS review invite.\n• Direct Google Business Sync: Satisfied customers are routed straight to your Google review submission box in 1 tap.\n• Negative Feedback Firewall: If a customer has a concern, they are given a private feedback form directly to you first so you can resolve it before it becomes a public review.\n\nTip: Adding just five new 5-star reviews this month significantly boosts your ranking on Google Maps local search.\n\nConnect your Google review link in Settings to start collecting reviews automatically this week.`,
-    ctaLabel: 'Configure review settings',
-    ctaPath: '/dashboard/reviews',
-    theme: 'neighborly',
-    senderName: "Let's Get Quoted Growth Team",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'ai_voice_intake_day14',
-    minAgeDays: 14,
-    maxAgeDays: 18,
-    eyebrow: 'AI Voice Assistant',
-    subject: 'Never lose another job to voicemail: Meet AI Voice Intake',
-    preheader: 'Intelligent call answering preview that helps turn missed calls into quote drafts.',
-    heading: 'Answer customer calls with AI Voice Intake',
-    body: `Hi {{first_name}},\n\nWhen you are on a roof, under a sink, or running power tools, picking up the phone is difficult, and callers who reach voicemail often hang up and call another contractor.\n\n[STAT: 24/7 | Smart Intake | Capture after-hours inquiries and customer details automatically.]\n\nWith AI Voice Intake on Let's Get Quoted, you can capture leads even when you're on the job:\n\n## What AI Voice Intake Does For {{business_name}}:\n\n• Natural Call Answering: Our AI voice assistant answers after-hours and overflow calls using your business name.\n• Structured Job Details: It asks for the caller’s address, requested service, urgency, and contact info.\n• Instant Quote Draft: Call transcripts and details land in your dashboard drafted as a new estimate ready for your review.\n\nNote: Forward your existing business phone number or explore call intake settings in your workspace.`,
-    ctaLabel: 'See AI Voice Intake in action',
-    ctaPath: '/dashboard/settings?tab=voice',
-    theme: 'spotlight',
-    senderName: "Let's Get Quoted Product Team",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'growth_scale_day21',
-    minAgeDays: 21,
-    maxAgeDays: 28,
-    eyebrow: 'Growth Playbook',
-    subject: 'Ready to scale {{business_name}}? Compare Solo vs Growth',
-    preheader: 'Unlock unlimited estimates, multi-crew access, and advanced operational tools.',
-    heading: 'Supercharge your business with premium contractor tools',
-    body: `Hi {{first_name}},\n\nAs {{business_name}} takes on more jobs and expands operations, having software that scales with your crew makes all the difference.\n\n[STAT: Scale | Team Tools | Unlock unlimited estimates, multi-crew access, and team management.]\n\n## Everything Included in Growth & Solo Plans:\n\n• Unlimited Monthly Estimates & Invoices with reduced platform processing fees (down to 0.25%).\n• Up to 10 Crew Seats with individual permissions and GPS arrival tracking.\n• 1,500 Monthly SMS Credits & automated customer review generation.\n• QuickBooks Online Accounting Sync for automated bookkeeping.\n• Branded Client Portal & Estimate Presentation for your business.\n\nTip: Upgrade your workspace at any time in your Billing tab to unlock high-volume operational tools.`,
-    ctaLabel: 'View plan options & pricing',
-    ctaPath: '/dashboard/settings?tab=plan',
-    theme: 'studio',
-    senderName: "Let's Get Quoted",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'founder_checkin_day30',
-    minAgeDays: 30,
-    maxAgeDays: 45,
-    eyebrow: 'Founder Note',
-    subject: 'How is everything running at {{business_name}}? (Founder check-in)',
-    preheader: 'A quick personal note from Brett at Let’s Get Quoted.',
-    heading: 'Checking in on {{business_name}}',
-    body: `Hi {{first_name}},\n\nI wanted to personally check in and see how everything is going with {{business_name}} and your Let's Get Quoted workspace.\n\n> "Our single mission at Let's Get Quoted is to build the fastest, most reliable software for independent trade contractors."\n\nWe built this platform specifically for trade contractors to eliminate administrative friction, get quotes approved in minutes, and help you get paid without hassle.\n\n## Quick Questions for You:\n\n1. What feature has helped your business the most so far?\n2. Is there anything frustrating or missing that you would like us to build next?\n\nTip: Just hit reply to this email. I read and personally respond to every contractor message.\n\nThank you for being part of our community!`,
-    ctaLabel: 'Visit your dashboard',
-    ctaPath: '/dashboard',
-    theme: 'letterhead',
-    senderName: "Brett at Let's Get Quoted",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'nudge_incomplete_stripe',
-    minAgeDays: 3,
-    maxAgeDays: 14,
-    eyebrow: 'Setup Assistance',
-    subject: 'Quick reminder: Finish setting up your payouts to accept card deposits',
-    preheader: 'Enable instant card payments and deposits for {{business_name}}.',
-    heading: 'Unlock customer card payments for {{business_name}}',
-    body: `Hi {{first_name}},\n\nWe noticed you haven't finished setting up Stripe Connect for {{business_name}} yet.\n\n[STAT: 2 Min | Stripe Setup | Finish connecting your payout account to unlock online card deposits.]\n\nWithout an active payout connection, your customers won't be able to pay deposits or invoices online with credit card, debit, or Apple Pay.\n\n## 3 Simple Steps to Finish Setup:\n\n1. Open Payout Settings: Click the button below to launch your secure Stripe portal.\n2. Complete Bank Details: Enter your business checking routing & account numbers.\n3. Start Accepting Deposits: Automatically accept card deposits on all future quotes.\n\nImportant: If you have any questions during setup, simply reply to this email for direct assistance.`,
-    ctaLabel: 'Finish payout setup now',
-    ctaPath: '/dashboard/settings?tab=payouts',
-    theme: 'studio',
-    senderName: "Let's Get Quoted Support",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-  {
-    id: 'nudge_zero_quotes',
-    minAgeDays: 5,
-    maxAgeDays: 15,
-    eyebrow: 'Estimate Assistant',
-    subject: 'Need a hand creating your first quote on Let’s Get Quoted?',
-    preheader: 'We can help you set up your trade pricing and quote templates.',
-    heading: 'Let’s build your first estimate together',
-    body: `Hi {{first_name}},\n\nWe noticed you haven't sent an estimate from your {{business_name}} workspace yet.\n\n[STAT: <60s | Fast Estimates | Build and send your first professional quote in under a minute.]\n\nGetting your first quote out the door is the fastest way to experience how quickly homeowners approve work when they can sign and accept on their phone.\n\n## Quick Tips to Send Your First Estimate Today:\n\n• Pre-Built Trade Presets: Use standard labor and material templates to price jobs fast.\n• 3-Tier Good / Better / Best Options: Let homeowners choose the budget that fits them.\n• Instant SMS Link: Text the interactive quote directly to the homeowner's phone for fast response.\n\nTip: If you'd like us to help load your standard services or price list, reply to this email and our support team will assist you directly.`,
-    ctaLabel: 'Create your first quote',
-    ctaPath: '/dashboard/jobs',
-    theme: 'blueprint',
-    senderName: "Let's Get Quoted Support",
-    replyTo: 'hello@letsgetquoted.com',
-  },
-];
-
-function marketingFooter(businessName: string, mailingAddress: string | null, unsubscribeUrl: string): string {
-  const addressLine = mailingAddress
-    ? `<br/><span style="color:#9099a6">${escapeHtml(mailingAddress)}</span>`
-    : '<br/><span style="color:#9099a6">Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758</span>';
-  return `<p style="margin-top:28px;color:#6b7280;font-size:12px;line-height:1.6">${escapeHtml(businessName)}${addressLine}<br/><a href="${escapeHtml(unsubscribeUrl)}" style="color:#6b7280;text-decoration:underline">Unsubscribe from platform onboarding emails</a></p>`;
-}
+export { CONTRACTOR_LIFECYCLE_STEPS } from '@/lib/contractor-lifecycle-content';
+export type { ContractorLifecycleStep, ContractorLifecycleStepId } from '@/lib/contractor-lifecycle-content';
+import { CONTRACTOR_LIFECYCLE_STEPS, type ContractorLifecycleStep, type ContractorLifecycleStepId } from '@/lib/contractor-lifecycle-content';
 
 function listUnsubscribeHeaders(oneClickUrl: string): Record<string, string> {
   return {
@@ -227,47 +35,24 @@ export function renderContractorLifecycleEmailHtml(
   step: ContractorLifecycleStep,
   recipient: Partial<PlatformCampaignRecipient>,
 ): string {
-  const theme = normalizeEmailTheme(step.theme);
-  const mailingAddress = process.env.COMPANY_MAILING_ADDRESS || 'Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758';
-  const replyTo = step.replyTo || 'hello@letsgetquoted.com';
-  const senderName = step.senderName || "Let's Get Quoted";
+  return renderPlatformEmail({ ...step, ctaUrl: lifecycleCtaUrl(step) }, recipient);
+}
 
-  const brand: EmailBrand = {
-    businessName: senderName,
-    accent: '#ff7a21',
-    logoUrl: null,
-    phone: null,
-    siteUrl: 'https://letsgetquoted.com',
-    replyTo,
-    theme,
-    mailingAddress,
-    senderName,
-  };
+function lifecycleCtaUrl(step: ContractorLifecycleStep): string {
+  return `${APP_ORIGIN.replace(/\/$/, '')}${step.ctaPath}`;
+}
 
-  const interpolatedHeading = interpolateTokens(step.heading, recipient);
-  const interpolatedBody = interpolateTokens(step.body, recipient);
-  const interpolatedEyebrow = interpolateTokens(step.eyebrow, recipient);
-  const interpolatedPreheader = interpolateTokens(step.preheader, recipient);
+function lifecycleText(step: ContractorLifecycleStep, recipient: PlatformCampaignRecipient): string {
+  return renderPlatformEmailText({ ...step, ctaUrl: lifecycleCtaUrl(step) }, recipient);
+}
 
-  const accountId = recipient.accountId || 'platform';
-  const targetEmail = recipient.email || 'contractor@example.com';
-  const unsubscribeUrl = buildUnsubscribePageUrl(accountId, targetEmail);
-  const appOrigin = (APP_ORIGIN || 'https://letsgetquoted.com').replace(/\/$/, '');
-  const fullCtaUrl = `${appOrigin}${step.ctaPath.startsWith('/') ? step.ctaPath : `/${step.ctaPath}`}`;
-
-  return renderBrandedEmail({
-    brand,
-    audience: 'account',
-    preheader: interpolatedPreheader,
-    eyebrow: interpolatedEyebrow,
-    heading: interpolatedHeading,
-    bodyHtml: renderRichCampaignBodyHtml(interpolatedBody, themePaint(theme, '#ff7a21')),
-    cta: {
-      label: interpolateTokens(step.ctaLabel, recipient),
-      url: fullCtaUrl,
-    },
-    footerHtml: marketingFooter("Let's Get Quoted", mailingAddress, unsubscribeUrl),
-    accountReplyText: `Reply directly to this email to reach our team (${replyTo}).`,
+// This repository's Resend SDK predates send({ idempotencyKey }). Its public
+// request method lets us set the HTTP header without changing the shared SDK.
+function sendLifecycleMessage(resend: Resend, message: CreateEmailOptions, key: string) {
+  return resend.fetchRequest<{ id: string }>('/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${resend.key}`, 'Content-Type': 'application/json', 'Idempotency-Key': key },
+    body: JSON.stringify(message),
   });
 }
 
@@ -291,26 +76,31 @@ export async function sendContractorWelcomeEmail(input: {
       targetEmail = ownerMap.get(input.accountId);
     }
 
-    if (!targetEmail) {
-      const { data: account } = await admin
-        .from('accounts')
-        .select('reply_to_email, business_name')
-        .eq('id', input.accountId)
-        .maybeSingle();
-      targetEmail = account?.reply_to_email?.trim() || undefined;
-    }
-
     if (!targetEmail || !isMailable(targetEmail)) {
       console.warn(`[contractor-lifecycle] No valid mailable email found for account ${input.accountId}; skipping welcome email.`);
       return { ok: false, error: 'no_mailable_email' };
     }
 
-    const { data: suppression } = await admin
+    targetEmail = targetEmail.trim().toLowerCase();
+    const { data: account, error: accountError } = await admin.from('accounts')
+      .select('id, test_marker, suspended_at').eq('id', input.accountId).maybeSingle();
+    if (accountError) return { ok: false, error: 'account_lookup_failed' };
+    if (!account || account.test_marker != null || account.suspended_at != null) return { ok: false, error: 'account_ineligible' };
+
+    const { data: suppression, error: suppressionError } = await admin
       .from('email_suppression')
       .select('email')
       .eq('account_id', input.accountId)
       .eq('email', targetEmail.toLowerCase())
       .maybeSingle();
+
+    if (suppressionError) return { ok: false, error: 'suppression_lookup_failed' };
+
+    const { data: history, error: historyError } = await admin.from('account_events')
+      .select('id').eq('account_id', input.accountId)
+      .eq('kind', 'contractor_lifecycle_email_sent').contains('meta', { step_id: 'welcome_day0' }).limit(1);
+    if (historyError) return { ok: false, error: 'history_lookup_failed' };
+    if (history?.length) return { ok: false, error: 'already_sent' };
 
     if (suppression) {
       console.info(`[contractor-lifecycle] Email ${targetEmail} suppressed; skipping welcome email.`);
@@ -341,23 +131,24 @@ export async function sendContractorWelcomeEmail(input: {
 
     const fromAddress = process.env.SYSTEM_EMAIL_FROM || "Let's Get Quoted <hello@letsgetquoted.com>";
 
-    const sendRes = await resend.emails.send({
+    const sendRes = await sendLifecycleMessage(resend, {
       from: fromAddress,
       to: recipient.email,
       reply_to: welcomeStep.replyTo,
       subject,
       html,
+      text: lifecycleText(welcomeStep, recipient),
       headers: listUnsubscribeHeaders(oneClickUrl),
       tags: [
         { name: 'kind', value: 'contractor_lifecycle' },
         { name: 'step', value: 'welcome_day0' },
         { name: 'account_id', value: input.accountId.replace(/[^a-zA-Z0-9_-]/g, '_') },
       ],
-    });
+    }, `contractor-lifecycle/${input.accountId}/welcome_day0`);
 
-    if (sendRes.error) {
+    if (sendRes.error || !sendRes.data?.id) {
       console.error('[contractor-lifecycle] Failed to send welcome email:', sendRes.error);
-      return { ok: false, error: sendRes.error.message };
+      return { ok: false, error: sendRes.error?.message || 'Provider did not confirm an email ID' };
     }
 
     await recordAccountEvent({
@@ -417,6 +208,7 @@ export async function runContractorLifecycleSweep(
     .select('id, business_name, plan, connect_onboarded, created_at, reply_to_email, test_marker')
     .gte('created_at', fortyFiveDaysAgo)
     .is('test_marker', null)
+    .is('suspended_at', null)
     .order('created_at', { ascending: true })
     .limit(500);
 
@@ -434,11 +226,15 @@ export async function runContractorLifecycleSweep(
   const ownerEmailMap = await ownerEmailsForAccounts(admin, accountIds);
 
   // Load existing lifecycle sent history from account_events
-  const { data: sentEvents } = await admin
+  const { data: sentEvents, error: historyError } = await admin
     .from('account_events')
     .select('account_id, meta')
     .in('account_id', accountIds)
     .eq('kind', 'contractor_lifecycle_email_sent');
+
+  if (historyError || (sentEvents?.length ?? 0) >= 1000) {
+    throw new Error('Lifecycle history unavailable or truncated; no emails sent.');
+  }
 
   const sentStepMap = new Map<string, Set<string>>();
   for (const ev of sentEvents ?? []) {
@@ -453,11 +249,15 @@ export async function runContractorLifecycleSweep(
   }
 
   // Load quote counts to determine zero_quote nudges
-  const { data: jobCounts } = await admin
+  const { data: jobCounts, error: jobsError } = await admin
     .from('jobs')
     .select('account_id')
     .in('account_id', accountIds)
     .gt('quoted_amount', 0);
+
+  if (jobsError || (jobCounts?.length ?? 0) >= 1000) {
+    throw new Error('Quote eligibility unavailable or truncated; no emails sent.');
+  }
 
   const quoteCountMap = new Map<string, number>();
   for (const j of jobCounts ?? []) {
@@ -485,7 +285,7 @@ export async function runContractorLifecycleSweep(
   const now = Date.now();
 
   for (const account of accounts) {
-    const rawEmail = account.reply_to_email || ownerEmailMap.get(account.id);
+    const rawEmail = ownerEmailMap.get(account.id);
     if (!rawEmail || !isMailable(rawEmail)) {
       result.skipped++;
       continue;
@@ -499,6 +299,12 @@ export async function runContractorLifecycleSweep(
 
     const accountAgeDays = Math.floor((now - new Date(account.created_at).getTime()) / (24 * 60 * 60 * 1000));
     const alreadySent = sentStepMap.get(account.id) || new Set<string>();
+
+    // The immediate welcome, cron, and approved batch share a 48-hour cadence.
+    if (sentEvents?.some((event) => event.account_id === account.id && isRecentLifecycleSend(event.meta, now))) {
+      result.skipped++;
+      continue;
+    }
 
     // Determine the single next step to send for this account
     let stepToSend: ContractorLifecycleStep | null = null;
@@ -529,6 +335,8 @@ export async function runContractorLifecycleSweep(
         for (const step of CONTRACTOR_LIFECYCLE_STEPS) {
           if (step.id === 'welcome_day0' || step.id === 'nudge_incomplete_stripe' || step.id === 'nudge_zero_quotes') continue;
           if (alreadySent.has(step.id)) continue;
+          if (step.id === 'stripe_payout_day4' && (account.connect_onboarded === true || alreadySent.has('nudge_incomplete_stripe'))) continue;
+          if (step.id === 'quote_speed_day2' && alreadySent.has('nudge_zero_quotes')) continue;
 
           if (accountAgeDays >= step.minAgeDays && (step.maxAgeDays === undefined || accountAgeDays <= step.maxAgeDays)) {
             stepToSend = step;
@@ -572,27 +380,28 @@ export async function runContractorLifecycleSweep(
         continue;
       }
 
-      const sendRes = await resend.emails.send({
+      const sendRes = await sendLifecycleMessage(resend, {
         from: fromAddress,
         to: recipient.email,
         reply_to: stepToSend.replyTo,
         subject,
         html,
+        text: lifecycleText(stepToSend, recipient),
         headers: listUnsubscribeHeaders(oneClickUrl),
         tags: [
           { name: 'kind', value: 'contractor_lifecycle' },
           { name: 'step', value: stepToSend.id },
           { name: 'account_id', value: account.id.replace(/[^a-zA-Z0-9_-]/g, '_') },
         ],
-      });
+      }, `contractor-lifecycle/${account.id}/${stepToSend.id}`);
 
-      if (sendRes.error) {
+      if (sendRes.error || !sendRes.data?.id) {
         result.errors++;
         result.details.push({
           accountId: account.id,
           stepId: stepToSend.id,
           status: 'error',
-          note: sendRes.error.message,
+          note: sendRes.error?.message || 'Provider did not confirm an email ID',
         });
         continue;
       }
@@ -711,8 +520,8 @@ export async function sendActivationNudgeBatch(
     .in('account_id', accountIds)
     .eq('kind', 'contractor_lifecycle_email_sent');
 
-  if (eventsError) {
-    console.warn('[activation-nudges] Warning checking sent events:', eventsError.message);
+  if (eventsError || (sentEvents?.length ?? 0) >= 1000) {
+    throw new Error('Lifecycle history unavailable or truncated; no nudges sent.');
   }
 
   const alreadySentMap = new Map<string, Set<string>>();
@@ -728,9 +537,16 @@ export async function sendActivationNudgeBatch(
   }
 
   const resend = isDryRun ? null : getResendClient();
+  const visited = new Set<string>();
 
   for (const r of recipients) {
     const cleanEmail = (r.email || '').trim().toLowerCase();
+    if (visited.has(r.accountId)) {
+      result.skipped++;
+      result.details.push({ accountId: r.accountId, stepId, status: 'skipped', note: 'Duplicate account in batch' });
+      continue;
+    }
+    visited.add(r.accountId);
 
     // Quality gate: is deliverable & not junk
     if (!cleanEmail || !isMailable(cleanEmail)) {
@@ -768,10 +584,41 @@ export async function sendActivationNudgeBatch(
       continue;
     }
 
+    if (sentEvents?.some((event) => event.account_id === r.accountId && isRecentLifecycleSend(event.meta))) {
+      result.skipped++;
+      result.details.push({ accountId: r.accountId, stepId, status: 'skipped', note: 'Onboarding email sent in the last 48 hours' });
+      continue;
+    }
+
+    // Approval payloads are snapshots. Confirm account, owner and milestone again.
+    const { data: account, error: accountError } = await admin.from('accounts')
+      .select('id, business_name, created_at, test_marker, suspended_at, connect_onboarded')
+      .eq('id', r.accountId).maybeSingle();
+    if (accountError) throw new Error(`Account eligibility lookup failed: ${accountError.message}`);
+    const ageDays = account ? Math.floor((Date.now() - new Date(account.created_at).getTime()) / 86400000) : -1;
+    let eligible = Boolean(account && !account.test_marker && !account.suspended_at
+      && ageDays >= step.minAgeDays && (step.maxAgeDays === undefined || ageDays <= step.maxAgeDays));
+    if (eligible && step.id === 'nudge_zero_quotes') {
+      const { data: quotes, error: quotesError } = await admin.from('jobs').select('id')
+        .eq('account_id', r.accountId).gt('quoted_amount', 0).limit(1);
+      if (quotesError) throw new Error(`Quote eligibility lookup failed: ${quotesError.message}`);
+      eligible = !quotes?.length;
+    }
+    if (step.id === 'nudge_incomplete_stripe' && account?.connect_onboarded !== false) eligible = false;
+    if (eligible) {
+      const ownerMap = await ownerEmailsForAccounts(admin, [r.accountId]);
+      if (ownerMap.get(r.accountId)?.trim().toLowerCase() !== cleanEmail) eligible = false;
+    }
+    if (!eligible) {
+      result.skipped++;
+      result.details.push({ accountId: r.accountId, stepId, status: 'skipped', note: 'Account or owner no longer eligible; refresh the preview' });
+      continue;
+    }
+
     const recipientPayload: PlatformCampaignRecipient = {
       email: cleanEmail,
       name: null,
-      businessName: r.businessName || 'Your Business',
+      businessName: account?.business_name || 'your business',
       accountId: r.accountId,
     };
 
@@ -803,27 +650,28 @@ export async function sendActivationNudgeBatch(
         continue;
       }
 
-      const sendRes = await resend.emails.send({
+      const sendRes = await sendLifecycleMessage(resend, {
         from: fromAddress,
         to: cleanEmail,
         reply_to: step.replyTo,
         subject,
         html,
+        text: lifecycleText(step, recipientPayload),
         headers: listUnsubscribeHeaders(oneClickUrl),
         tags: [
           { name: 'kind', value: 'contractor_lifecycle' },
           { name: 'step', value: step.id },
           { name: 'account_id', value: r.accountId.replace(/[^a-zA-Z0-9_-]/g, '_') },
         ],
-      });
+      }, `contractor-lifecycle/${r.accountId}/${step.id}`);
 
-      if (sendRes.error) {
+      if (sendRes.error || !sendRes.data?.id) {
         result.errors++;
         result.details.push({
           accountId: r.accountId,
           stepId: step.id,
           status: 'error',
-          note: sendRes.error.message,
+          note: sendRes.error?.message || 'Provider did not confirm an email ID',
         });
         continue;
       }
@@ -858,4 +706,11 @@ export async function sendActivationNudgeBatch(
   }
 
   return result;
+}
+
+function isRecentLifecycleSend(meta: unknown, now = Date.now()): boolean {
+  const sentAt = (meta as { sent_at?: string } | null)?.sent_at;
+  if (!sentAt) return false;
+  const timestamp = new Date(sentAt).getTime();
+  return Number.isFinite(timestamp) && now - timestamp < 48 * 60 * 60 * 1000;
 }

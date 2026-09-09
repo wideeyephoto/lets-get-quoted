@@ -1538,10 +1538,12 @@ export async function sendSupportCaseCustomerEmail(input: {
     to: input.to,
     subject: received ? `We have your request: ${input.subject}` : `Re: ${input.subject}`,
     html: renderBrandedEmail({
+      design: 'platform',
+      audience: 'account',
       brand: {
         businessName: "Let's Get Quoted Support",
-        accent: '#0284c7',
-        theme: 'spotlight',
+        accent: '#ff6a24',
+        theme: 'blueprint',
         logoUrl: null,
         phone: null,
         siteUrl: APP_ORIGIN,
@@ -1570,7 +1572,7 @@ export async function sendSupportCaseCustomerEmail(input: {
 }
 
 /**
- * Dispatches a confirmation email and setup fee receipt to the contractor
+ * Dispatches an application confirmation to the contractor
  * upon submitting their dedicated number / 10DLC application.
  */
 export async function sendMessagingApplicationSubmittedEmail(input: {
@@ -1585,7 +1587,7 @@ export async function sendMessagingApplicationSubmittedEmail(input: {
     return;
   }
   const brand = await brandFor(input);
-  const amount = input.amountPaid || '$49.99';
+  const amount = input.amountPaid;
   const subject = `Application received: 2-way dedicated number for ${input.businessName}`;
   const dashboardUrl = `${APP_ORIGIN}/dashboard/messages/dedicated-number`;
   const result = await resend.emails.send({
@@ -1597,12 +1599,11 @@ export async function sendMessagingApplicationSubmittedEmail(input: {
       audience: 'account',
       preheader: subject,
       eyebrow: '2-WAY NUMBER SETUP & 10DLC REGISTRATION',
+      design: 'platform',
       heading: 'We have received your application',
       accountReplyText: 'Have questions about your application? Reply directly to this email.',
       bodyHtml: `
-        <div style="padding:14px 18px;margin-bottom:16px;background:#f0fdf4;border:1px solid #86efac;border-radius:10px;color:#166534;font-weight:700">
-          ✓ One-Time Setup Fee Confirmed: ${escapeHtml(amount)}
-        </div>
+        ${amount ? `<p style="margin:0 0 16px;color:#475569;font-size:14px;line-height:1.6">Setup fee listed for this application: ${escapeHtml(amount)}. Check your dashboard for payment status.</p>` : ''}
         <p style="margin:0 0 12px;font-size:15px;line-height:1.6;color:#1c2230">
           Thank you for applying for a dedicated business phone number. Our team has received your registration details for <strong>${escapeHtml(input.businessName)}</strong> in area code <strong>(${escapeHtml(input.desiredAreaCode)})</strong>.
         </p>
@@ -1612,7 +1613,7 @@ export async function sendMessagingApplicationSubmittedEmail(input: {
         <ol style="margin:0 0 16px 20px;padding:0;font-size:14px;line-height:1.6;color:#374151">
           <li style="margin-bottom:6px">LGQ staff reviews your business entity, website, and opt-in consent flow.</li>
           <li style="margin-bottom:6px">We submit your brand and customer-care campaign to US mobile carrier registries (10DLC).</li>
-          <li style="margin-bottom:6px">Once carrier approval is granted (typically 1–3 business days), your dedicated number is provisioned and 2-way texting is instantly unlocked in your inbox.</li>
+          <li style="margin-bottom:6px">Carrier review and number setup can take time. Check the status in your dashboard; we’ll let you know if more information is needed and when your number is ready.</li>
         </ol>
       `,
       cta: { label: 'View Application Status', url: dashboardUrl },
@@ -1707,6 +1708,7 @@ export async function sendMessagingApplicationStatusEmail(input: {
       eyebrow,
       heading,
       accountReplyText: 'Reply to this email if you need assistance from our support team.',
+      design: 'platform',
       bodyHtml: bodyContent,
       cta: { label: 'Open Messaging Dashboard', url: dashboardUrl },
     }),

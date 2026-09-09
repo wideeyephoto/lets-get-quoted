@@ -1,3 +1,4 @@
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import Link from 'next/link';
 import { TRADES, FEATURED_TRADES } from '@/lib/trades';
 import SiteFooter from '@/components/site-footer';
@@ -284,6 +285,8 @@ const jsonLd = {
   '@graph': [
     {
       '@type': 'Organization',
+      legalName: LGQ_LEGAL_NAME,
+      address: LGQ_MAILING_ADDRESS,
       name: "Let's Get Quoted",
       url: 'https://letsgetquoted.com',
       // The current mark. SITE-LOGO-1.png is a previous brand and is what

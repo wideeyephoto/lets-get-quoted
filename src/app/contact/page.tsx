@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import styles from '../legal.module.css';
 import ContactForm from './ContactForm';
 
@@ -64,6 +65,13 @@ export default function ContactPage() {
             entirely by Stripe and we never need to see them &mdash; anyone asking you for them
             is not us.
           </p>
+        </section>
+        <section>
+          <h2>Mailing address</h2>
+          <address style={{ fontStyle: 'normal', lineHeight: 1.6 }}>
+            {LGQ_LEGAL_NAME}<br />
+            {LGQ_MAILING_ADDRESS}
+          </address>
         </section>
       </div>
 

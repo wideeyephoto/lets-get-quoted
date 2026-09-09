@@ -140,7 +140,7 @@ describe('Admin Platform Campaigns Engine', () => {
       expect(html).toContain('New Platform Capabilities');
       expect(html).toContain('Open Dashboard');
       expect(html).toContain('https://letsgetquoted.com/dashboard');
-      expect(html).toContain('Unsubscribe from platform announcements');
+      expect(html).toContain('Unsubscribe from onboarding tips and platform announcements');
       expect(html).toContain('Let&#39;s Get Quoted');
       expect(html).toContain('Faster deposits');
       expect(html).toContain('Direct customer receipt links');

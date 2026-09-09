@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TERMS_EFFECTIVE_DATE } from '@/lib/terms';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import styles from '../legal.module.css';
 
 export const metadata: Metadata = {
@@ -177,7 +178,7 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul>
             <li><strong>Support &amp; Privacy Intake Desk:</strong> Submit an inquiry via our monitored <Link href="/contact">contact form</Link> with &ldquo;Privacy request / DSAR&rdquo; in the subject (monitored by platform compliance staff; statutory response clock begins upon receipt).</li>
-            <li><strong>Written Inquiries:</strong> Attn: Privacy Compliance Team, Let&apos;s Get Quoted, 100 Main St, Suite 200, Boston, MA 02110.</li>
+            <li><strong>Written Inquiries:</strong> Attn: Privacy Compliance Team, {LGQ_LEGAL_NAME}, {LGQ_MAILING_ADDRESS}.</li>
           </ul>
         </section>
       </div>
