@@ -50,4 +50,17 @@ describe('operational failure delivery', () => {
     const admin: any = { from: () => ({ select: () => ({ is: () => ({ limit: async () => ({ error: { code: 'permission_denied' } }) }) }) }) };
     await expect(runSreSelfHealingSweep(admin)).rejects.toThrow('inspection unavailable');
   });
+  it('uses signed callback evidence for mailbox delivery without requesting a broader provider API key', async () => {
+    const written: any[]=[];
+    const delivery: any = {
+      select: () => ({ eq: () => ({ order: () => ({ limit: async () => ({ data: [{ id: 'alert', provider_id: 'email', accepted_at: new Date().toISOString() }], error: null }) }), then: (resolve: any) => resolve({ data: null, count: 0, error: null }) }) }),
+      update: (value: any) => { written.push(value); return { eq: () => ({ eq: async () => ({ data: null, error: null }) }) }; },
+    };
+    const admin: any={rpc:vi.fn().mockResolvedValueOnce({data:1}).mockResolvedValueOnce({data:0}).mockResolvedValueOnce({data:[]}),
+      from:(table:string)=>table==='email_events'?{select:()=>({eq:()=>({maybeSingle:async()=>({data:{status:'delivered',occurred_at:new Date().toISOString()},error:null})})})}:delivery};
+    const fetcher=vi.fn();
+    const result=await runOperationalMonitor({admin,crons:[],env:{RESEND_API_KEY:'sending-only'},fetcher,pause:async()=>{}});
+    expect(result.delivered).toBe(1); expect(fetcher).not.toHaveBeenCalled();
+    expect(written[0].state).toBe('delivered');
+  });
 });

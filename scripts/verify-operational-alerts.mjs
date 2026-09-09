@@ -73,6 +73,12 @@ try {
   await db.query('select scan_operational_failures($1)',[crons]);
   assert.equal((await db.query('select queue_operational_alerts($1,$2) n',['ops@example.com','Ops <ops@example.com>'])).rows[0].n,0);
   passed('verified source resolution closes findings and repeated recovery creates no new notification');
+  await db.query('reset role');
+  await db.query('update webhook_failures set resolved_at=null where id=(select id from webhook_failures limit 1)');
+  await db.query('set role service_role');
+  await db.query('select scan_operational_failures($1)',[crons]);
+  assert.equal((await db.query('select queue_operational_alerts($1,$2) n',['ops@example.com','Ops <ops@example.com>'])).rows[0].n,1);
+  passed('a previously cleared failure recurring raises one new notification');
   console.log(`${checks}/${checks} checks passed`);
 } finally {
   if (db) await db.end();

@@ -27,8 +27,10 @@ provider exceptions. Historical unresolved failures are retained and reported.
 
 `operational_alert_deliveries` retains the immutable payload, provider email ID,
 attempt count, provider status, acceptance time and observed mailbox-delivery time.
-`accepted` means the email API accepted the request. Only a provider `delivered`,
-`opened` or `clicked` result closes delivery; `delivered_at` is the time that result
+`accepted` means the email API accepted the request. The existing signature-verified
+Resend webhook records ordered provider delivery in `email_events`; the monitor
+matches it by provider email ID. This works with a sending-only API key. Only a
+provider `delivered` result closes delivery; `delivered_at` is the time that result
 was observed, a conservative upper bound rather than the provider's exact receipt
 timestamp. Reading the email is separately confirmed by the recipient during a drill.
 

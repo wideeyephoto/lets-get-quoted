@@ -89,7 +89,9 @@ begin
   ), recorded as (
     insert into public.operational_alert_findings(source_key,category,reference,occurred_at,detail,action_required,admin_path,last_seen_at)
     select source_key,category,reference,occurred_at,detail,action_required,admin_path,v_now from signals
-    on conflict(source_key) do update set last_seen_at=v_now, resolved_at=null
+    on conflict(source_key) do update set last_seen_at=v_now, resolved_at=null,
+      delivery_id=case when operational_alert_findings.resolved_at is not null then null else operational_alert_findings.delivery_id end,
+      detected_at=case when operational_alert_findings.resolved_at is not null then v_now else operational_alert_findings.detected_at end
     returning source_key
   ) select count(*) into v_count from recorded;
   update public.operational_alert_findings set resolved_at=v_now

@@ -83,10 +83,12 @@ export async function runOperationalMonitor({ admin, crons, env = process.env, f
   const pending = requireResult(await admin.from('operational_alert_deliveries').select('id,provider_id,accepted_at')
     .eq('state', 'accepted').order('checked_at', { ascending: true, nullsFirst: true }).limit(10), 'delivery_read') || [];
   for (const alert of pending) {
-    await pause(600);
     try {
-      const evidence = await resendRequest(`/emails/${encodeURIComponent(alert.provider_id)}`, { key: env.RESEND_API_KEY, fetcher });
-      const status = evidence.last_event;
+      // The existing signature-verified Resend webhook persists ordered status.
+      // This works with a sending-only API key and does not broaden credentials.
+      const evidence = requireResult(await admin.from('email_events').select('status,occurred_at')
+        .eq('provider_id', alert.provider_id).maybeSingle(), 'provider_receipt_read');
+      const status = evidence?.status;
       const reachedMailbox = ['delivered', 'opened', 'clicked'].includes(status);
       const rejected = ['bounced', 'complained', 'failed', 'suppressed', 'canceled'].includes(status);
       requireResult(await admin.from('operational_alert_deliveries').update({ checked_at: new Date().toISOString(), provider_status: status || 'unknown',
