@@ -1,469 +1,245 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { browserSupportsWebAuthn, startAuthentication, startRegistration, WebAuthnAbortService } from '@simplewebauthn/browser';
+import type { PublicKeyCredentialCreationOptionsJSON, PublicKeyCredentialRequestOptionsJSON } from '@simplewebauthn/browser';
 import { supabase } from '@/lib/supabase';
 import styles from '../admin.module.css';
 
-type Factor = {
-  id: string;
-  status: 'verified' | 'unverified' | string;
-  friendly_name?: string;
-  factor_type: 'totp' | 'webauthn' | 'phone' | string;
-  created_at?: string;
-  updated_at?: string;
-};
-
-// Use the website domain instead of Supabase's project hostname in the otpauth
-// issuer so password managers can associate codes with the saved website login.
+type Factor = { id: string; status: string; friendly_name?: string; factor_type: string };
+type Passkey = { id: string; label: string; createdAt: string; lastUsedAt: string | null };
+type SecurityState = { userId: string; providerLevel: string | null; passkeys: Passkey[]; verified: boolean; verifiedUntil: string | null; passkeysUnavailable?: boolean };
 const TOTP_ISSUER = 'app.letsgetquoted.com';
-
-export default function MfaPanel({ stepUp, accountEmail }: { stepUp: boolean; accountEmail: string }) {
-  const [factors, setFactors] = useState<Factor[]>([]);
-  const [level, setLevel] = useState<string>('checking');
-  const [qr, setQr] = useState<string | null>(null);
-  const [secret, setSecret] = useState<string | null>(null);
-  const [totpFactorId, setTotpFactorId] = useState<string | null>(null);
-  const [code, setCode] = useState('');
-  const [message, setMessage] = useState('');
-  const [copiedSetupKey, setCopiedSetupKey] = useState(false);
-  const [busy, setBusy] = useState(true);
-
-  async function refresh() {
-    const [{ data: factorsData, error: factorsError }, { data: assurance, error: assuranceError }] = await Promise.all([
-      supabase.auth.mfa.listFactors(),
-      supabase.auth.mfa.getAuthenticatorAssuranceLevel(),
-    ]);
-    if (factorsError) throw factorsError;
-    if (assuranceError) throw assuranceError;
-    const all = (factorsData?.all ?? []) as Factor[];
-    setFactors(all);
-    setLevel(assurance?.currentLevel ?? 'aal1');
-    return assurance?.currentLevel ?? 'aal1';
-  }
-
-  useEffect(() => {
-    void refresh()
-      .catch(() => setMessage('Could not load your authenticators. Refresh this page to try again.'))
-      .finally(() => setBusy(false));
-  }, []);
-
-  async function copySetupKey() {
-    if (!secret) return;
-    try {
-      await navigator.clipboard.writeText(secret);
-      setCopiedSetupKey(true);
-    } catch {
-      setCopiedSetupKey(false);
-      setMessage('Could not copy automatically. Select and copy the setup key shown below the QR code.');
-    }
-  }
-
-  async function verifyPasskey(factorId?: string) {
-    setBusy(true);
-    setMessage('');
-    try {
-      const targetFactor = factorId
-        ? factors.find((f) => f.id === factorId && f.factor_type === 'webauthn')
-        : factors.find((f) => f.factor_type === 'webauthn' && f.status === 'verified');
-
-      if (!targetFactor) {
-        setMessage('No verified passkey factor found.');
-        return;
-      }
-
-      // Keep verification available for previously enrolled WebAuthn factors.
-      // New enrollment is not offered: passkey sign-in and WebAuthn MFA are
-      // separate provider features, and this project only enables the former.
-      const { error } = await supabase.auth.mfa.webauthn.authenticate({
-        factorId: targetFactor.id,
-      });
-
-      if (error) {
-        setMessage(error.message || 'Passkey verification was cancelled or failed.');
-        return;
-      }
-
-      const currentLevel = await refresh();
-      setMessage(currentLevel === 'aal2'
-        ? 'Verified with passkey. High-impact actions are unlocked for this session.'
-        : 'Your session still needs two-factor verification. Try your authenticator app.');
-    } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Passkey verification failed.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function enrollTotp() {
-    setBusy(true);
-    setMessage('');
-    setCopiedSetupKey(false);
-    setCode('');
-    try {
-      let friendlyName = 'Authenticator app';
-      for (let suffix = 2; factors.some((factor) => factor.friendly_name === friendlyName); suffix += 1) {
-        friendlyName = `Authenticator app ${suffix}`;
-      }
-      const { data, error } = await supabase.auth.mfa.enroll({
-        factorType: 'totp',
-        friendlyName,
-        issuer: TOTP_ISSUER,
-      });
-      if (error || !data) {
-        setMessage(error?.message ?? 'Could not start TOTP enrollment.');
-        return;
-      }
-      setTotpFactorId(data.id);
-      setQr(data.totp.qr_code);
-      setSecret(data.totp.secret);
-      await refresh();
-    } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'TOTP enrollment error.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function verifyTotp(factorId: string) {
-    if (code.length !== 6) return;
-    setBusy(true);
-    setMessage('');
-    try {
-      const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId });
-      if (challengeError || !challenge) {
-        setMessage(challengeError?.message ?? 'Could not start verification challenge.');
-        return;
-      }
-      const { error } = await supabase.auth.mfa.verify({ factorId, challengeId: challenge.id, code });
-      if (error) {
-        setMessage(error.message);
-        return;
-      }
-      setQr(null);
-      setSecret(null);
-      setCode('');
-      setTotpFactorId(null);
-      setCopiedSetupKey(false);
-      const currentLevel = await refresh();
-      setMessage(currentLevel === 'aal2'
-        ? 'Verified with authenticator app. High-impact actions are unlocked for this session.'
-        : 'Your session still needs two-factor verification. Enter a new code to try again.');
-    } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'TOTP verification failed.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  async function removeFactor(factorId: string) {
-    setBusy(true);
-    setMessage('');
-    try {
-      const { error } = await supabase.auth.mfa.unenroll({ factorId });
-      if (error) {
-        setMessage(error.message);
-        return;
-      }
-      if (totpFactorId === factorId) {
-        setTotpFactorId(null);
-        setQr(null);
-        setSecret(null);
-        setCode('');
-        setCopiedSetupKey(false);
-      }
-      setMessage('Authenticator removed.');
-      await refresh();
-    } catch (err: unknown) {
-      setMessage(err instanceof Error ? err.message : 'Could not remove authenticator.');
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  const verifiedFactors = factors.filter((f) => f.status === 'verified');
-  const verifiedTotp = factors.find((f) => f.factor_type === 'totp' && f.status === 'verified');
-  const verifiedWebAuthn = factors.find((f) => f.factor_type === 'webauthn' && f.status === 'verified');
-  const unverifiedTotp = factors.find((f) => f.factor_type === 'totp' && f.status === 'unverified');
-  const hasVerified = verifiedFactors.length > 0;
-
-  const enrolledLabels = factors.map(
-    (f) => `${f.friendly_name || (f.factor_type === 'webauthn' ? 'Passkey' : 'TOTP')} (${f.status})`
-  );
-
-  return (
-    <section className={styles.panel}>
-      <h2 className={styles.panelTitle}>Two-factor authentication</h2>
-      <p className={styles.muted}>
-        Use six-digit verification codes from Google Authenticator, Apple Passwords, or another authenticator app.
-      </p>
-
-      {stepUp && level !== 'aal2' ? (
-        <div className={`${styles.banner} ${styles.err}`}>
-          This action needs an authenticator check before it can continue.
-        </div>
-      ) : null}
-
-      <dl className={styles.kv}>
-        <dt>Current session</dt>
-        <dd>
-          <span className={`${styles.pill} ${level === 'aal2' ? styles.good : styles.warn}`}>
-            {level === 'aal2' ? 'MFA verified' : level === 'checking' ? 'Checking…' : 'Password / link only'}
-          </span>
-        </dd>
-        <dt>Authenticators</dt>
-        <dd>
-          {enrolledLabels.length === 0 ? 'Not enrolled' : enrolledLabels.join(', ')}
-        </dd>
-      </dl>
-
-      {/* Step-up verification for verified factors when session is AAL1 */}
-      {hasVerified && level !== 'aal2' ? (
-        <div className={styles.mfaStepUpPrompt}>
-          {verifiedWebAuthn ? (
-            <div className={styles.mfaActionGroup}>
-              <button
-                type="button"
-                className="btn primary"
-                disabled={busy}
-                onClick={() => verifyPasskey(verifiedWebAuthn.id)}
-              >
-                {busy ? 'Verifying…' : '🔑 Verify with Passkey'}
-              </button>
-            </div>
-          ) : null}
-
-          {verifiedTotp ? (
-            <div className={styles.formStack}>
-              {verifiedWebAuthn ? (
-                <p className={styles.muted}>
-                  — or enter a six-digit code from your authenticator app —
-                </p>
-              ) : (
-                <p className={styles.mfaPromptText}>
-                  Enter a six-digit code from your authenticator app:
-                </p>
-              )}
-              <label htmlFor="mfa-code">Six-digit authenticator code</label>
-              <input
-                id="mfa-code"
-                className={styles.input}
-                value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                placeholder="000000"
-              />
-              <button
-                type="button"
-                className="btn primary"
-                disabled={busy || code.length !== 6}
-                onClick={() => verifyTotp(verifiedTotp.id)}
-              >
-                {busy ? 'Verifying…' : 'Verify this session'}
-              </button>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
-
-      {/* Active TOTP QR enrollment */}
-      {qr ? (
-        <div className={styles.mfaSetup}>
-          <p className={styles.mfaPromptText}>
-            Scan this QR code, then enter a six-digit code below to finish activating two-factor authentication.
-          </p>
-          <div className={styles.mfaQrCard}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={qr} alt="Authenticator enrollment QR code" className={styles.mfaQrImg} />
-          </div>
-          <dl className={`${styles.kv} ${styles.mfaSetupDetails}`}>
-            <dt>Website</dt><dd>{TOTP_ISSUER}</dd>
-            <dt>Account</dt><dd>{accountEmail}</dd>
-            <dt>Setup key</dt><dd><code className={styles.mfaSetupKey}>{secret}</code></dd>
-          </dl>
-          <div className={styles.mfaActionGroup}>
-            <button type="button" className="btn secondary" onClick={copySetupKey}>
-              {copiedSetupKey ? 'Setup key copied' : 'Copy setup key'}
-            </button>
-            <span role="status" className={styles.muted}>{copiedSetupKey ? 'Ready to paste into your authenticator.' : ''}</span>
-          </div>
-          <details className={styles.mfaInstructions}>
-            <summary>Using Apple Passwords?</summary>
-            <p>
-              Apple Passwords attaches verification codes to a saved login. After scanning, select your
-              {' '}<strong>{TOTP_ISSUER}</strong> account; it may ask you to choose it instead of filling it automatically.
-            </p>
-            <ol>
-              <li>In Passwords, open All and find your saved login for {TOTP_ISSUER} using {accountEmail}. Add the website login first if it is missing.</li>
-              <li>Open that login, tap Edit, then Set Up Code. Paste the setup key above and choose Use Setup Key.</li>
-              <li>Return here and enter the six-digit verification code from Passwords to activate 2FA.</li>
-            </ol>
-            <p>
-              On the same iPhone, you can also touch and hold the QR code and choose Add Verification in Passwords.
-            </p>
-          </details>
-          <div className={styles.formStack}>
-            <label htmlFor="mfa-code-enroll">Six-digit authenticator code</label>
-            <input
-              id="mfa-code-enroll"
-              className={styles.input}
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              placeholder="000000"
-            />
-            <div className={styles.mfaCancelRow}>
-              <button
-                type="button"
-                className="btn primary"
-                disabled={busy || code.length !== 6}
-                onClick={() => { if (totpFactorId) void verifyTotp(totpFactorId); }}
-              >
-                {busy ? 'Verifying…' : 'Verify & activate'}
-              </button>
-              <button
-                type="button"
-                className="btn secondary"
-                disabled={busy}
-                onClick={() => {
-                  const idToRemove = totpFactorId;
-                  if (idToRemove) void removeFactor(idToRemove);
-                  else {
-                    setQr(null);
-                    setSecret(null);
-                    setTotpFactorId(null);
-                    setCode('');
-                    setCopiedSetupKey(false);
-                  }
-                }}
-              >
-                Cancel setup
-              </button>
-            </div>
-          </div>
-        </div>
-      ) : null}
-
-      {/* A saved factor can be verified after navigation without its original QR. */}
-      {unverifiedTotp && !qr ? (
-        <div className={styles.mfaWarningCard}>
-          <p className={styles.mfaPromptText}>
-            You have an incomplete authenticator setup ({unverifiedTotp.friendly_name ?? 'TOTP'} · unverified).
-          </p>
-          <p id="mfa-resume-help" className={styles.mfaPromptText}>
-            Already added it to your authenticator? Enter its current six-digit code to finish setup.
-            You do not need to scan the QR code again.
-          </p>
-          <form
-            aria-label="Complete authenticator setup"
-            className={styles.formStack}
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!busy) void verifyTotp(unverifiedTotp.id);
-            }}
-          >
-            <label htmlFor="mfa-code-resume">Six-digit authenticator code</label>
-            <input
-              id="mfa-code-resume"
-              className={styles.input}
-              value={code}
-              onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              aria-describedby="mfa-resume-help"
-              placeholder="000000"
-            />
-            <button type="submit" className="btn primary" disabled={busy || code.length !== 6}>
-              {busy ? 'Verifying…' : 'Verify & activate'}
-            </button>
-          </form>
-          <p className={styles.muted}>
-            If you never saved it or no longer have its codes, discard this setup and start again.
-          </p>
-          <button
-            type="button"
-            className="btn secondary"
-            disabled={busy}
-            onClick={() => removeFactor(unverifiedTotp.id)}
-          >
-            Discard unverified setup
-          </button>
-        </div>
-      ) : null}
-
-      {/* Enrollment buttons (when no QR code is active) */}
-      {!qr && !unverifiedTotp ? (
-        <div className={styles.mfaStack}>
-          <p className={styles.mfaPromptHeading}>
-            {hasVerified ? 'Add another authenticator' : 'Set up two-factor authentication'}
-          </p>
-          <div className={styles.mfaActionGroup}>
-            <button type="button" className="btn primary" disabled={busy || level === 'checking'} onClick={enrollTotp}>
-              {busy ? 'Please wait…' : '📱 Set up Authenticator App (TOTP)'}
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {/* Configured Authenticators List & Management */}
-      {factors.length > 0 ? (
-        <div className={styles.mfaSection}>
-          <h3 className={styles.mfaSectionTitle}>
-            Enrolled Authenticators
-          </h3>
-          <div className={styles.mfaList}>
-            {factors.map((f) => {
-              const isWebAuthn = f.factor_type === 'webauthn';
-              const isVerified = f.status === 'verified';
-              const canRemove = !isVerified || level === 'aal2';
-
-              return (
-                <div key={f.id} className={styles.mfaItem}>
-                  <div className={styles.mfaItemLead}>
-                    <span className={styles.mfaItemIcon}>{isWebAuthn ? '🔑' : '📱'}</span>
-                    <div>
-                      <div className={styles.mfaItemName}>
-                        {f.friendly_name || (isWebAuthn ? 'Passkey' : 'Authenticator app')}
-                      </div>
-                      <div className={styles.mfaItemMeta}>
-                        {isWebAuthn ? 'FIDO2 / WebAuthn' : 'TOTP 6-digit code'} ·{' '}
-                        <span className={isVerified ? styles.mfaBadgeVerified : styles.mfaBadgeUnverified}>
-                          {isVerified ? 'verified' : 'unverified'}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {canRemove ? (
-                    <button
-                      type="button"
-                      className={`btn secondary ${styles.mfaBtnSmall}`}
-                      disabled={busy}
-                      onClick={() => removeFactor(f.id)}
-                    >
-                      Remove
-                    </button>
-                  ) : null}
-                </div>
-              );
-            })}
-          </div>
-
-          {verifiedFactors.length > 0 && level !== 'aal2' ? (
-            <p className={styles.mfaMutedNote}>
-              Verify this session before removing an enrolled authenticator.
-            </p>
-          ) : null}
-        </div>
-      ) : null}
-
-      {message ? (
-        <p role="status" className={styles.mfaStatusMessage}>
-          {message}
-        </p>
-      ) : null}
-    </section>
-  );
+const endpoint = '/api/admin/security/passkeys';
+async function readJson<T>(response: Response): Promise<T> {
+  const body = await response.json();
+  if (!response.ok) throw new Error(body.error || 'Could not check your security session.');
+  return body as T;
+}
+function messageFor(error: unknown) {
+  if (error instanceof Error && (error.name === 'NotAllowedError' || error.name === 'AbortError' || /ceremony.*cancel|timed out|cancelled/i.test(error.message))) return 'Passkey prompt closed. Try again or use an authenticator code.';
+  return error instanceof Error ? error.message : 'Verification failed. Please try again.';
 }
 
+export default function MfaPanel({ stepUp, accountEmail, accountId }: { stepUp: boolean; accountEmail: string; accountId: string }) {
+  const [factors, setFactors] = useState<Factor[]>([]);
+  const [security, setSecurity] = useState<SecurityState | null>(null);
+  const [busy, setBusy] = useState(true);
+  const [locked, setLocked] = useState(false);
+  const [supported, setSupported] = useState(false);
+  const [message, setMessage] = useState('');
+  const [label, setLabel] = useState('My passkey');
+  const [selectedTotp, setSelectedTotp] = useState('');
+  const [code, setCode] = useState('');
+  const [setup, setSetup] = useState<{ id: string; qr: string; secret: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const generation = useRef(0);
+  const running = useRef(false);
+  const identityLocked = useRef(false);
+  const clearSetup = useCallback(() => { setSetup(null); setCode(''); setCopied(false); }, []);
+  const invalidateIdentity = useCallback(() => {
+    generation.current += 1; identityLocked.current = true;
+    WebAuthnAbortService.cancelCeremony();
+    clearSetup(); setFactors([]); setSecurity(null); setSelectedTotp(''); setLocked(true); setBusy(false);
+    setMessage('Your signed-in account changed. Reload Security before continuing.');
+  }, [clearSetup]);
+  const assertAccount = useCallback(async (version: number) => {
+    const { data, error } = await supabase.auth.getUser();
+    if (generation.current !== version || identityLocked.current) throw new Error('Reload Security before continuing.');
+    if (error || data.user?.id !== accountId) {
+      invalidateIdentity(); throw new Error('Your signed-in account changed. Reload Security before continuing.');
+    }
+  }, [accountId, invalidateIdentity]);
+  const refresh = useCallback(async (version: number) => {
+    await assertAccount(version);
+    const [{ data, error }, state] = await Promise.all([
+      supabase.auth.mfa.listFactors(),
+      fetch(endpoint, { cache: 'no-store', credentials: 'same-origin' }).then(readJson<SecurityState>),
+    ]);
+    if (error) throw error;
+    if (state.userId !== accountId) { invalidateIdentity(); throw new Error('Your signed-in account changed. Reload Security.'); }
+    if (generation.current !== version || identityLocked.current) throw new Error('Reload Security before continuing.');
+    const all = (data?.all ?? []) as Factor[];
+    setFactors(all); setSecurity(state);
+    setSelectedTotp(current => all.some(f => f.id === current && f.factor_type === 'totp') ? current : all.find(f => f.factor_type === 'totp')?.id ?? '');
+    return state;
+  }, [accountId, assertAccount, invalidateIdentity]);
+  useEffect(() => {
+    identityLocked.current = false;
+    const version = ++generation.current;
+    clearSetup(); setFactors([]); setSecurity(null); setSelectedTotp(''); setLocked(false); setBusy(true); setMessage('');
+    setSupported(window.isSecureContext && browserSupportsWebAuthn());
+    const { data: subscription } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT' || (session && session.user.id !== accountId)) invalidateIdentity();
+      else if (event === 'TOKEN_REFRESHED' || event === 'MFA_CHALLENGE_VERIFIED') {
+        // Supabase holds an auth lock inside this callback; defer async reads.
+        setTimeout(() => {
+          if (!running.current && !identityLocked.current && generation.current === version) void refresh(version).catch(() => { setSecurity(null); setMessage('Could not check your security session. Reload to try again.'); });
+        }, 0);
+      }
+    });
+    void refresh(version).catch(error => {
+      if (generation.current === version) { setSecurity(null); setMessage(messageFor(error)); }
+    }).finally(() => { if (generation.current === version) setBusy(false); });
+    return () => { generation.current += 1; subscription.subscription.unsubscribe(); WebAuthnAbortService.cancelCeremony(); };
+  }, [accountId, clearSetup, invalidateIdentity, refresh]);
+  useEffect(() => {
+    if (!security?.verifiedUntil) return;
+    const delay = Math.max(0, new Date(security.verifiedUntil).getTime() - Date.now());
+    const timer = setTimeout(() => setSecurity(current => current ? { ...current, verified: false, verifiedUntil: null } : current), delay);
+    return () => clearTimeout(timer);
+  }, [security?.verifiedUntil]);
+  async function run(action: (version: number) => Promise<void>) {
+    if (running.current || identityLocked.current) return;
+    running.current = true; setBusy(true); setMessage('');
+    const version = generation.current;
+    try { await assertAccount(version); await action(version); }
+    catch (error) { if (generation.current === version) setMessage(messageFor(error)); }
+    finally { running.current = false; if (generation.current === version) setBusy(false); }
+  }
+  function post<T>(action: string, data: Record<string, unknown> = {}) {
+    return fetch(endpoint, { method: 'POST', credentials: 'same-origin', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...data, action, expectedUserId: accountId }) }).then(readJson<T>);
+  }
+  function unlocked(state: SecurityState) { return state.providerLevel === 'aal2' || state.verified; }
+  async function passkey(register: boolean) {
+    await run(async version => {
+      if (!supported) throw new Error('This browser cannot use passkeys here. Use an authenticator code or a supported browser.');
+      if (register) {
+        const start = await post<{ challengeId: string; options: PublicKeyCredentialCreationOptionsJSON }>('register-options', { label });
+        await assertAccount(version);
+        const response = await startRegistration({ optionsJSON: start.options });
+        await assertAccount(version);
+        await post('register-verify', { challengeId: start.challengeId, response });
+      } else {
+        const start = await post<{ challengeId: string; options: PublicKeyCredentialRequestOptionsJSON }>('authenticate-options');
+        await assertAccount(version);
+        const response = await startAuthentication({ optionsJSON: start.options });
+        await assertAccount(version);
+        await post('authenticate-verify', { challengeId: start.challengeId, response });
+      }
+      const state = await refresh(version);
+      setMessage(register ? 'Passkey added. Keep your authenticator codes available as backup.' : unlocked(state) ? 'Passkey verified. High-impact actions are unlocked for 15 minutes.' : 'Your session still needs verification. Try an authenticator code.');
+    });
+  }
+  async function enrollTotp() {
+    await run(async version => {
+      let friendlyName = 'Authenticator app';
+      for (let suffix = 2; factors.some(f => f.friendly_name === friendlyName); suffix += 1) friendlyName = `Authenticator app ${suffix}`;
+      const { data, error } = await supabase.auth.mfa.enroll({ factorType: 'totp', friendlyName, issuer: TOTP_ISSUER });
+      if (error || !data) throw error || new Error('Could not start authenticator setup.');
+      await assertAccount(version);
+      setSetup({ id: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
+      setSelectedTotp(data.id); setCode(''); setCopied(false);
+      await refresh(version);
+    });
+  }
+  async function verifyTotp(factorId: string) {
+    if (code.length !== 6) return;
+    await run(async version => {
+      if (!factors.some(f => f.id === factorId && f.factor_type === 'totp')) throw new Error('Choose an authenticator for this account.');
+      const { data, error } = await supabase.auth.mfa.challenge({ factorId });
+      if (error || !data) throw error || new Error('Could not start verification.');
+      await assertAccount(version);
+      const result = await supabase.auth.mfa.verify({ factorId, challengeId: data.id, code });
+      if (result.error) throw result.error;
+      await assertAccount(version); clearSetup();
+      const state = await refresh(version);
+      setMessage(state.providerLevel === 'aal2' ? 'Authenticator verified. High-impact actions are unlocked for this session.' : 'Your session still needs verification. Enter a new code to try again.');
+    });
+  }
+  async function removeFactor(factorId: string) {
+    await run(async version => {
+      const factor = factors.find(f => f.id === factorId);
+      if (!factor || (factor.status === 'verified' && security?.providerLevel !== 'aal2')) throw new Error('Verify an authenticator code before removing this authenticator.');
+      if (factor.status === 'verified' && factors.filter(f => f.factor_type === 'totp' && f.status === 'verified').length <= 1 && (security?.passkeys.length || security?.passkeysUnavailable)) throw new Error('Add and verify a replacement authenticator before removing your last backup.');
+      const { error } = await supabase.auth.mfa.unenroll({ factorId });
+      if (error) throw error;
+      await assertAccount(version);
+      if (setup?.id === factorId) clearSetup();
+      // Unenrollment does not refresh the provider JWT's assurance.
+      setSecurity(null);
+      const result = await supabase.auth.refreshSession();
+      if (result.error || !result.data.session) throw new Error('Authenticator removed, but your session could not refresh. Sign in again before continuing.');
+      await refresh(version); setMessage('Authenticator removed.');
+    });
+  }
+  async function removePasskey(id: string) {
+    await run(async version => { await post('remove', { credentialId: id }); setSecurity(null); await refresh(version); setMessage('Passkey removed. Its active passkey verifications have been revoked.'); });
+  }
+  async function copySetupKey() {
+    if (!setup) return;
+    try { await navigator.clipboard.writeText(setup.secret); setCopied(true); }
+    catch { setMessage('Select and copy the setup key below.'); }
+  }
+  const totpFactors = factors.filter(f => f.factor_type === 'totp');
+  const selected = totpFactors.find(f => f.id === selectedTotp);
+  const hasTotp = totpFactors.some(f => f.status === 'verified');
+  const providerVerified = security?.providerLevel === 'aal2';
+  const verified = !!security && unlocked(security);
+  const disabled = busy || locked || !security;
+  const preserveBackup = !!(security?.passkeys.length || security?.passkeysUnavailable) && totpFactors.filter(f => f.status === 'verified').length <= 1;
+
+  return <section className={styles.panel} aria-busy={busy}>
+    <h2 className={styles.panelTitle}>Two-factor authentication</h2>
+    <p className={styles.muted}>Use a passkey from Apple Passwords, Dashlane, or your device. Authenticator codes remain available as backup.</p>
+    {stepUp && !verified ? <div className={`${styles.banner} ${styles.err}`}>This action needs an authenticator check before it can continue.</div> : null}
+    <dl className={styles.kv}>
+      <dt>Current session</dt><dd><span className={`${styles.pill} ${verified ? styles.good : styles.warn}`}>{verified ? 'MFA verified' : busy ? 'Checking…' : 'Verification required'}</span></dd>
+      <dt>Passkeys</dt><dd>{security?.passkeysUnavailable ? 'Temporarily unavailable' : security?.passkeys.length ? `${security.passkeys.length} enrolled` : 'Not enrolled'}</dd>
+      <dt>Authenticator backup</dt><dd>{hasTotp ? 'Enrolled' : 'Not enrolled'}</dd>
+    </dl>
+    {security?.verifiedUntil && security.verified ? <p className={styles.muted}>Passkey verification expires at {new Date(security.verifiedUntil).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}.</p> : null}
+    {security?.passkeys.length ? <div className={styles.mfaActionGroup}>
+      <button type="button" className="btn primary" disabled={disabled || !supported} onClick={() => passkey(false)}>Verify with passkey</button>
+      <p className={styles.muted}>Choose your saved passkey in the browser prompt.</p>
+    </div> : null}
+    {!supported && !busy ? <p className={styles.muted}>Passkeys need a supported browser and a secure connection. You can still use authenticator codes.</p> : null}
+    <div className={styles.mfaSection}>
+      <h3 className={styles.mfaSectionTitle}>Passkeys</h3>
+      {security?.passkeysUnavailable ? <p role="status" className={styles.muted}>Passkeys are temporarily unavailable. Use your authenticator backup below.</p> : null}
+      {!providerVerified || !hasTotp ? <p className={styles.muted}>Set up and verify your authenticator backup below before adding a passkey. This protects enrollment if someone learns your password.</p> : null}
+      <div className={styles.formStack}>
+        <label htmlFor="passkey-label">Passkey name</label>
+        <input id="passkey-label" className={styles.input} value={label} maxLength={80} onChange={e => setLabel(e.target.value)} placeholder="e.g. Dashlane or Apple Passwords" disabled={disabled} />
+        <button type="button" className="btn primary" disabled={disabled || security?.passkeysUnavailable || !supported || !providerVerified || !hasTotp || !label.trim()} onClick={() => passkey(true)}>Add passkey</button>
+      </div>
+      <p className={styles.muted}>Your browser chooses which password managers to offer. Select Apple Passwords, Dashlane, or another available device when prompted.</p>
+      {security?.passkeys.length ? <div className={styles.mfaList}>{security.passkeys.map(p => <div key={p.id} className={styles.mfaItem}>
+        <div className={styles.mfaItemLead}><span className={styles.mfaItemIcon}>🔑</span><div><div className={styles.mfaItemName}>{p.label}</div><div className={styles.mfaItemMeta}>Passkey · verified</div></div></div>
+        <button type="button" className={`btn secondary ${styles.mfaBtnSmall}`} disabled={disabled || !verified} onClick={() => removePasskey(p.id)} aria-label={`Remove passkey ${p.label}`}>Remove</button>
+      </div>)}</div> : null}
+    </div>
+    <div className={styles.mfaSection}>
+      <h3 className={styles.mfaSectionTitle}>Authenticator backup</h3>
+      <p className={styles.muted}>Use six-digit codes from Apple Passwords, Dashlane, Google Authenticator, or another authenticator app.</p>
+      {setup ? <div className={styles.mfaSetup}>
+        <p className={styles.mfaPromptText}>Scan this QR code, then enter a six-digit code to finish activating your backup.</p>
+        <div className={styles.mfaQrCard}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={setup.qr} alt="Authenticator enrollment QR code" className={styles.mfaQrImg} /></div>
+        <dl className={`${styles.kv} ${styles.mfaSetupDetails}`}><dt>Website</dt><dd>{TOTP_ISSUER}</dd><dt>Account</dt><dd>{accountEmail}</dd><dt>Setup key</dt><dd><code className={styles.mfaSetupKey}>{setup.secret}</code></dd></dl>
+        <button type="button" className="btn secondary" onClick={copySetupKey} disabled={locked}>{copied ? 'Setup key copied' : 'Copy setup key'}</button>
+        <details className={styles.mfaInstructions}><summary>Using Apple Passwords?</summary><p>Open your saved login for {TOTP_ISSUER} in Passwords. Choose Edit, then Set Up Code, and paste the setup key. Return here with the six-digit code to finish activation.</p></details>
+      </div> : null}
+      {totpFactors.length ? <form className={styles.formStack} onSubmit={event => { event.preventDefault(); if (!disabled && selected) void verifyTotp(selected.id); }} aria-label="Verify authenticator code">
+        <label htmlFor="totp-factor">Authenticator</label>
+        <select id="totp-factor" className={styles.input} value={selectedTotp} disabled={disabled || !!setup} onChange={e => { setSelectedTotp(e.target.value); setCode(''); setMessage(''); }}>
+          {totpFactors.map(f => <option key={f.id} value={f.id}>{f.friendly_name || 'Authenticator app'}{f.status !== 'verified' ? ' (incomplete setup)' : ''}</option>)}
+        </select>
+        {selected?.status === 'unverified' && !setup ? <p className={styles.muted}>Already saved this setup? Enter its current code to finish. Otherwise discard it and start again.</p> : null}
+        <label htmlFor="mfa-code">Six-digit authenticator code</label>
+        <input id="mfa-code" className={styles.input} value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" autoComplete="one-time-code" placeholder="000000" disabled={disabled} />
+        <div className={styles.mfaActionGroup}>
+          <button type="submit" className="btn primary" disabled={disabled || code.length !== 6}>{selected?.status === 'unverified' ? 'Verify & activate' : 'Verify authenticator code'}</button>
+          {selected?.status === 'unverified' ? <button type="button" className="btn secondary" disabled={disabled} onClick={() => removeFactor(selected.id)}>{setup ? 'Cancel setup' : 'Discard unverified setup'}</button> : null}
+        </div>
+      </form> : null}
+      {!setup ? <button type="button" className="btn secondary" disabled={disabled || (factors.some(f => f.status === 'verified') && !providerVerified)} onClick={enrollTotp}>{hasTotp ? 'Add another authenticator app' : 'Set up authenticator backup'}</button> : null}
+      {totpFactors.length ? <div className={styles.mfaList}>{totpFactors.map(f => <div key={f.id} className={styles.mfaItem}>
+        <div className={styles.mfaItemLead}><span className={styles.mfaItemIcon}>📱</span><div><div className={styles.mfaItemName}>{f.friendly_name || 'Authenticator app'}</div><div className={styles.mfaItemMeta}>Six-digit code · {f.status}</div></div></div>
+        <button type="button" className={`btn secondary ${styles.mfaBtnSmall}`} disabled={disabled || (f.status === 'verified' && (!providerVerified || preserveBackup))} onClick={() => removeFactor(f.id)} aria-label={`Remove authenticator ${f.friendly_name || f.id}`}>Remove</button>
+      </div>)}</div> : null}
+      {hasTotp ? <p className={styles.muted}>Keep a working authenticator as your recovery backup. Verify a code before adding or removing an authenticator app. {preserveBackup ? 'Add and verify a replacement before removing your last backup.' : ''}</p> : null}
+    </div>
+    {message ? <p role="status" className={styles.mfaStatusMessage}>{message}</p> : null}
+    {locked || (!security && !busy) ? <button type="button" className="btn secondary" onClick={() => window.location.reload()}>Reload Security</button> : null}
+  </section>;
+}

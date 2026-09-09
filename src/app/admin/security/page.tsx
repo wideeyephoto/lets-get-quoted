@@ -7,10 +7,10 @@ export const metadata = { title: 'Security' };
 
 export default async function AdminSecurityPage({ searchParams: searchParamsPromise }: { searchParams: Promise<{ step_up?: string; permission?: string }> }) {
   const searchParams = (await searchParamsPromise) || {};
-  const { adminEmail } = await requireAdmin();
+  const { adminEmail, userId } = await requireAdmin();
   return <>
-    <header className={styles.pageHead}><p className={styles.eyebrow}>Access</p><h1 className={styles.title}>Security</h1><p className={styles.lead}>High-impact staff actions require an authenticator-verified session. Enrollment and verification happen directly with the authentication provider.</p></header>
+    <header className={styles.pageHead}><p className={styles.eyebrow}>Access</p><h1 className={styles.title}>Security</h1><p className={styles.lead}>Verify with a passkey to unlock high-impact staff actions. Keep an authenticator app as your backup.</p></header>
     {searchParams.permission ? <p className={styles.muted}>Requested permission: <code>{searchParams.permission}</code></p> : null}
-    <MfaPanel stepUp={searchParams.step_up === '1'} accountEmail={adminEmail} />
+    <MfaPanel stepUp={searchParams.step_up === '1'} accountEmail={adminEmail} accountId={userId} />
   </>;
 }

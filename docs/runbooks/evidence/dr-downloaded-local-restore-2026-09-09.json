@@ -1,0 +1,66 @@
+{
+  "startedAt": "2026-09-09T20:21:07.734Z",
+  "sourceProject": "mfuvvtrkipkigwqqtcal",
+  "sourceSnapshot": "2026-09-09T12:33:35.381Z",
+  "sourcePack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-42-53-253Z.tar.aesgcm",
+  "sourcePackSha256": "ddccdacf0dbdcbfc5aaf5bc5c2f31c5d7986004600a5c8ffc55dc92cc6956bd3",
+  "archiveSha256": "554ee1e9e92aee7f510752e06e75541118aa18a1d31e60f83dd8055dd102996f",
+  "target": "new isolated loopback PostgreSQL cluster",
+  "hostedDatabasesContacted": false,
+  "outboundProvidersEnabled": false,
+  "fullRecoveryVerified": false,
+  "checks": [
+    {
+      "name": "atomic_archive_restore",
+      "passed": true,
+      "exitCode": 0
+    },
+    {
+      "name": "captured_row_counts",
+      "passed": true,
+      "compared": 260,
+      "mismatches": []
+    },
+    {
+      "name": "tables_rls_flags_and_grants",
+      "passed": true,
+      "compared": 258,
+      "mismatches": []
+    },
+    {
+      "name": "policy_definitions",
+      "passed": true,
+      "compared": 272
+    },
+    {
+      "name": "function_definitions_and_grants",
+      "passed": true,
+      "compared": 435,
+      "mismatches": []
+    },
+    {
+      "name": "real_restored_owner_rls",
+      "passed": true,
+      "expectedOwnJobs": 3,
+      "visibleOwnJobs": 3,
+      "visibleOtherJobs": 0
+    },
+    {
+      "name": "storage_file_materialization_and_readback",
+      "passed": true,
+      "objects": 38,
+      "bytes": 35726922,
+      "destination": "local files, not hosted Storage API"
+    }
+  ],
+  "exclusions": [
+    "Empty Supabase Vault extension/table; its cryptographic provider is not available in stock PostgreSQL"
+  ],
+  "hostedAuthServiceVerified": false,
+  "hostedStorageServiceVerified": false,
+  "providerRecoveryVerified": false,
+  "passed": true,
+  "plaintextClusterAndFilesRemoved": true,
+  "finishedAt": "2026-09-09T20:21:18.473Z",
+  "durationMs": 10739
+}
