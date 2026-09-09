@@ -64,3 +64,8 @@ The later rerun supersedes the failed USB attempt above: **status `ok`, task exi
 Two old OneDrive worktrees have broken Git metadata; the backup successfully captured their full non-rebuildable trees and reported warnings. One old `lgq-pricing-production` reflog entry refers to an unavailable commit; the entry was preserved, and it does not block active repository connectivity or the successful backup. See [USB repair evidence](evidence/dr-usb-repair-2026-09-09.json).
 
 See [offsite evidence](evidence/dr-offsite-2026-09-09.json) and [production migration verification](evidence/dr-production-migration-2026-09-09.json).
+
+
+## Fresh post-rotation recovery pack
+
+A new read-only production snapshot at **22:03:33.608 UTC** includes the native passkey tables/private session function and all **38 objects**. The encrypted pack authenticates locally and contains released source plus the committed recovery evidence/DNS export and updated local configuration. The backup key and temporary management token are excluded. The owner explicitly approved uploading the **176,209,956-byte** pack. Publication and authenticated mounted readback passed at **22:24:12.141 UTC**. Google Drive web independently shows the new pack and receipt, and the pack is **Private to you**. Independent download verification remains separate. [Fresh-pack evidence](evidence/dr-post-rotation-pack-2026-09-09.json).

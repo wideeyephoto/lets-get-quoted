@@ -1,0 +1,47 @@
+{
+  "preparedAt": "2026-09-09T22:21:28.201Z",
+  "snapshot": {
+    "id": "0000001F-00025840-1",
+    "captured_at": "2026-09-09T22:03:33.608Z",
+    "server_version": "17.6",
+    "read_only": "on"
+  },
+  "sourceHead": "e1cc358643d346469be0d7346bcfc93946cb46a6",
+  "applicationBase": "399e95a44f481a122aad5d6f399daae71199ee3c",
+  "artifact": {
+    "file": "mfuvvtrkipkigwqqtcal-2026-09-09T22-21-27-130Z.tar.aesgcm",
+    "bytes": 176209920,
+    "sha256": "9a0eb5b6b2ec7f33ad2abc66042afd400df2189445a8bc303caf4640f37db574",
+    "encryptedSha256": "0e05d409a3fccc210e49ecedabffedc014d8adba7802db33e7dc6328390588a3"
+  },
+  "encryptedBytes": 176209956,
+  "databaseBytes": 11121144,
+  "tocEntries": 4500,
+  "storageObjects": 38,
+  "storageBytes": 35726922,
+  "privateAdminSecurityFunctions": 1,
+  "authenticatedLocalReadback": true,
+  "includes": [
+    "Production database and native admin passkey schema",
+    "All captured Storage objects",
+    "Released application source plus committed recovery evidence and public DNS export",
+    "Encrypted local production/staging configuration with replacement credentials"
+  ],
+  "recoveryKeyIncluded": false,
+  "managementTokenIncluded": false,
+  "localEnvironmentParityWithVercelNotProved": true,
+  "uploaded": true,
+  "independentCloudDownloadVerified": false,
+  "uploadStatus": "Owner explicitly approved this encrypted payload and destination; uploaded and authenticated on mounted readback. Google Drive web independently shows the pack and receipt, private to the owner.",
+  "publishedAt": "2026-09-09T22:24:12.141Z",
+  "destinationProvider": "Google Drive",
+  "mountedReadbackVerified": true,
+  "cloudPresence": {
+    "verifiedAt": "2026-09-09T22:26:03.879Z",
+    "account": "hello@letsgetquoted.com",
+    "folderUrl": "https://drive.google.com/drive/u/2/folders/13a59XiGg_YOIvi4z5eIVnbmbAUBt0gis",
+    "fileName": "mfuvvtrkipkigwqqtcal-2026-09-09T22-21-27-130Z.tar.aesgcm",
+    "displayedSize": "168 MB",
+    "access": "Private to you"
+  }
+}
