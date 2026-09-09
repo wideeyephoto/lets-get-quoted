@@ -1,0 +1,67 @@
+{
+  "checkedAt": "2026-09-09T22:06:01.263Z",
+  "sourceHead": "92d4d190f4d4f08d540f3a145cb3c1638f4f7134",
+  "artifacts": [
+    {
+      "name": "source.zip",
+      "bytes": 127940159,
+      "sha256": "6e0f249582980e8bc251745d2f1c77510bb3819f7780467d55afdc96fd95a81b"
+    },
+    {
+      "name": "working.patch",
+      "bytes": 93071,
+      "sha256": "b3dcffa2636c0e9b03b62b5ad81e9be5a69ed2f250f5c13c8fba019cf42dba54"
+    },
+    {
+      "name": "untracked.tar",
+      "bytes": 174080,
+      "sha256": "489f7ead441ac15b5a94de592edc0719211cef62c09f82df8e989252efbbcd39"
+    }
+  ],
+  "independentInstall": true,
+  "sourceBuildPassed": true,
+  "sourceLintPassed": true,
+  "recoveryFiles": 328,
+  "migrations": 327,
+  "twoIndependentBackups": {
+    "downloadedGoogleDriveArchive": true,
+    "usbMirror": "D:/dev-backup/repos/lets-get-quoted.git",
+    "usbCommit": "92d4d190f4d4f08d540f3a145cb3c1638f4f7134",
+    "sameFileInventory": true,
+    "schemaSha256": "ce1ee660f91424f47fa19f8bc98e1324bd8bfd5595e0eb7cff7926d1acf25d98",
+    "schemaBytesMatch": false,
+    "schemaComparison": {
+      "downloadedBytes": 1660390,
+      "usbBytes": 1622464,
+      "downloadedSha256": "ce1ee660f91424f47fa19f8bc98e1324bd8bfd5595e0eb7cff7926d1acf25d98",
+      "usbSha256": "0d4db58c530c24350b238c9296262cfc7ec49e9ce53419ce53f0f9db49638515",
+      "normalizedLineEndingsMatch": true
+    }
+  },
+  "compatibilityPatch": {
+    "reason": "Shared staging financial-column SELECT was revoked after the clean restore baseline by the tenant-access task. The recovered app now uses its permission-aware view without changing database grants.",
+    "donorTask": "Verify tenant access controls",
+    "donorBase": "893a5ec80",
+    "files": [
+      {
+        "path": "src/lib/job-access-fetch.ts",
+        "sha256": "f6323500ee2d0b8f1a5fccc5a4181f18b7a9a3868e614315b68790c2543e10d4"
+      },
+      {
+        "path": "src/lib/supabase.ts",
+        "sha256": "cf0cf2be8a6fed5c66087963f9e98c34c8bbef34600c78cfc3b87e2395425edc"
+      },
+      {
+        "path": "src/lib/supabase-server.ts",
+        "sha256": "2a24ee5f48dadacc597d9b19834d3fe244fd8625c48c6c25aef4737582cbb3b3"
+      }
+    ],
+    "testsPassed": 5
+  },
+  "deploymentOnlyChanges": [
+    "No crons in vercel.json",
+    "All deployments require Vercel login",
+    "Staging service configuration; payment/email/SMS placeholders",
+    "No production DNS aliases"
+  ]
+}

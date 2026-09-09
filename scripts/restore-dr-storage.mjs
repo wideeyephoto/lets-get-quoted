@@ -19,7 +19,7 @@ async function main(){
   const key=(await readEnv(resolve(root,'.env.dr-backup.local'))).DR_BACKUP_KEY_HEX;
   const manifest=JSON.parse((await decryptArtifact(directory,capture.storageManifest,key)).toString());
   const client=createClient(config.NEXT_PUBLIC_SUPABASE_URL,config.SUPABASE_SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
-  const report={startedAt:new Date().toISOString(),targetProject:expected,sourceProject:capture.projectRef,apply,objects:[],completed:false};
+  const report={startedAt:new Date().toISOString(),targetProject:expected,sourceProject:capture.projectRef,sourceSnapshot:capture.snapshot.captured_at,sourceArchiveSha256:capture.archive.sha256,apply,objects:[],completed:false};
   try{
     for(const item of manifest){
       const bytes=await decryptArtifact(directory,item.artifact,key);
@@ -39,7 +39,7 @@ async function main(){
       console.log(JSON.stringify({restored:report.objects.length,total:manifest.length,bucket:item.bucket_id}));
     }
     report.completed=apply&&report.objects.length===manifest.length;
-  }finally{report.finishedAt=new Date().toISOString();await writeFile(resolve(root,'docs/runbooks/evidence/dr-restored-storage-2026-09-09.json'),JSON.stringify(report,null,2)+'\n');}
+  }finally{report.finishedAt=new Date().toISOString();await writeFile(resolve(root,option('out')||'docs/runbooks/evidence/dr-restored-storage-2026-09-09.json'),JSON.stringify(report,null,2)+'\n');}
   console.log(JSON.stringify({completed:report.completed,objects:report.objects.length,bytes:report.objects.reduce((n,o)=>n+o.bytes,0)}));
 }
 main().catch(e=>{console.error(e.message);process.exitCode=1;});

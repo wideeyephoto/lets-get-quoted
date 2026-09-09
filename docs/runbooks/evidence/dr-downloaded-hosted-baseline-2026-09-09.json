@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-09-09T21:18:13.827Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "sourceProject": "mfuvvtrkipkigwqqtcal",
+  "sourceSnapshot": "2026-09-09T12:33:35.381Z",
+  "readOnly": true,
+  "checks": [
+    {
+      "name": "captured_row_counts",
+      "passed": true,
+      "compared": 260,
+      "mismatches": [],
+      "preservedDestinationVault": {
+        "table": "vault.secrets",
+        "expected": "0",
+        "actual": "1"
+      }
+    },
+    {
+      "name": "tables_rls_flags_and_grants",
+      "passed": true,
+      "compared": 258,
+      "mismatches": []
+    },
+    {
+      "name": "policy_definitions",
+      "passed": true,
+      "compared": 272
+    },
+    {
+      "name": "function_definitions_and_grants",
+      "passed": true,
+      "compared": 435
+    }
+  ],
+  "passed": true
+}

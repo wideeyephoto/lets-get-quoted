@@ -32,6 +32,14 @@ The initial Chrome download was blocked. The user subsequently downloaded `mfuvv
 
 ## Recover on another PC
 
+**September 9 hosted/infrastructure follow-up:** the independently downloaded pack subsequently passed hosted SQL/Auth/Storage and RLS verification. Independent source was rebuilt into a new Vercel project protected by login on all deployments, with staging configuration and no outbound credentials/crons. Later staging permission changes required the tenant-access client adapter for application acceptance. The [dated infrastructure/provider record](infrastructure-provider-recovery-2026-09-09.md) supersedes earlier statements below that these steps had not been attempted, and lists the remaining key/provider/DNS acceptance gates.
+
+**September 9, 20:21 UTC follow-up:** the user-downloaded 12:42 pack was restored into a new loopback-only PostgreSQL cluster. All 260 row counts, 258 table/RLS/grant definitions, 272 policies and 435 functions/grants matched. An existing owner's real RLS check denied other-account jobs. All 38 object files were materialized and hashed, and temporary plaintext data was removed. See [local restore evidence](evidence/dr-downloaded-local-restore-2026-09-09.json). Hosted Auth/Storage and full infrastructure/provider recovery remain separate gates.
+
+To reproduce that isolated check, install the optional `embedded-postgres@17.10.0-beta.17` tooling and PostgreSQL 17 client binaries, then run `scripts/verify-dr-local-restore.mjs --capture=<opened-pack-directory> --key-file=<private-key-file> --out=<new-report.json> --pg-restore=<pg_restore.exe>`. This verifier never accepts a hosted database URL. It excludes an empty Supabase Vault extension and refuses a nonempty Vault; it cannot certify hosted Auth or Storage.
+
+After the September 9 credential rotation, old packs retain historical revoked credentials. Restore the data/source, then supply current replacement credentials from independent escrow or reissue them. Do not re-enable a compromised key to make a recovered environment work. New captures and hosted restore tooling include the private `admin_security` passkey schema.
+
 1. Download a pack, its receipt, and `open-dr-recovery-pack.mjs` from the Drive folder. Install Node.js, tar, and PostgreSQL 17 client tools. Obtain the recovery key independently from Dashlane and save it in a temporary local key file containing only the 64 hexadecimal characters. Keep it out of the synced folder.
 2. Run the standalone opener, specifying a new output directory:
 

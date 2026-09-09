@@ -1,0 +1,117 @@
+{
+  "capturedAt": "2026-09-09T22:03:34.891Z",
+  "domain": "letsgetquoted.com",
+  "nameservers": [
+    "ns1.vercel-dns.com",
+    "ns2.vercel-dns.com"
+  ],
+  "records": [
+    {
+      "id": "rec_294d7cb7a0b683222002452a",
+      "name": "_dmarc",
+      "type": "TXT",
+      "value": "v=DMARC1; p=reject; rua=mailto:dmarc@letsgetquoted.com; fo=1",
+      "ttl": 60
+    },
+    {
+      "id": "rec_8d738e6765badf260772f997",
+      "name": "",
+      "type": "TXT",
+      "value": "v=spf1 include:_spf.google.com ~all",
+      "ttl": 60
+    },
+    {
+      "id": "rec_85e1df154188716b19d03b7b",
+      "name": "",
+      "type": "TXT",
+      "value": "twilio-domain-verification=32f1845ff8fe687af9bcdccaf4b5edfa",
+      "ttl": 60
+    },
+    {
+      "id": "rec_4037eafc3f8e4f476a818cf8",
+      "name": "",
+      "type": "TXT",
+      "value": "MS=ms76226993",
+      "ttl": 3600
+    },
+    {
+      "id": "rec_96ddfe889048a59969061e74",
+      "name": "",
+      "type": "TXT",
+      "value": "google-site-verification=BbvVk6pfTXy9eLuSvlPSRpZfqqRllr1ig8SgUUqOIkI",
+      "ttl": 240
+    },
+    {
+      "id": "rec_f44687712cdc0875d4dc1208",
+      "name": "",
+      "type": "MX",
+      "value": "smtp.google.com.",
+      "ttl": 60,
+      "mxPriority": 10
+    },
+    {
+      "id": "rec_e34efd15ebf9525bcd76885a",
+      "name": "google._domainkey",
+      "type": "TXT",
+      "value": "v=DKIM1;k=rsa;p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAlZ0c819HZwwM92Y+QJjOXNrrN+L/4WEAcLqlAWxNSVXK7c93YuH0VdmEMk1EEfbhUIC+pVXm0emdz/fLEW3dW0GhhrY7b3lLGbS2l0VGEx62g8CCARS1VvtUHshxroN1hVtDRzH+JXxkWB58R1eTREGKW2It2tholuGiRIo6yLjMpDpYuzZZXj9wJX08sA3HQVepNFbj8ebrlOEvjiNlJ9p/B9QkTU5CyUfIRC6jOg/1y340NwM1pkLmOpXQccR19emuUAiHk5KpqEV9zJ4f3MIcxlfy37XsIufzEbBwaRG6w8a6obaUh2VRvCgl1tkengqW5TODnUX7it/OlMrlXwIDAQAB",
+      "ttl": 60
+    },
+    {
+      "id": "rec_3d9c36ae8d8ecf2b275e99d8",
+      "name": "send",
+      "type": "TXT",
+      "value": "v=spf1 include:amazonses.com ~all",
+      "ttl": 60
+    },
+    {
+      "id": "rec_ba546925b1e27c037042031f",
+      "name": "send",
+      "type": "MX",
+      "value": "feedback-smtp.us-east-1.amazonses.com.",
+      "ttl": 60,
+      "mxPriority": 10
+    },
+    {
+      "id": "rec_bc092a9e37a4988a10e4409a",
+      "name": "resend._domainkey",
+      "type": "TXT",
+      "value": "p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDAX/kmDxN4e0urHCpTPgVQzw+PFuo67n6rhtyA8ZDs5DPUlqc6f18UEUjnLizcK15gl9yGShHxdV2SuAghO7uwvQb5yLar9EBmD/mQKFc7BukeD5dIVJh592Px97c8ha1oUurdM7HIshMvQXbW5tQMqFv9ZGOFxuQLJCfiIsu2mQIDAQAB",
+      "ttl": 60
+    },
+    {
+      "id": "rec_733728c9ae8998afd76383d0",
+      "name": "",
+      "type": "CAA",
+      "value": "0 issue \"pki.goog\"",
+      "ttl": 60
+    },
+    {
+      "id": "rec_4f5a8feb39fcc4f93cd4c27f",
+      "name": "",
+      "type": "CAA",
+      "value": "0 issue \"sectigo.com\"",
+      "ttl": 60
+    },
+    {
+      "id": "rec_fe966c897e2200055cc9591b",
+      "name": "",
+      "type": "CAA",
+      "value": "0 issue \"letsencrypt.org\"",
+      "ttl": 60
+    },
+    {
+      "id": "rec_8266539afb7c7b5e219564f4",
+      "name": "*",
+      "type": "ALIAS",
+      "value": "467645265cb4a259.vercel-dns-017.com",
+      "ttl": 60
+    },
+    {
+      "id": "rec_4758a32895027c921bb39a3a",
+      "name": "",
+      "type": "ALIAS",
+      "value": "467645265cb4a259.vercel-dns-017.com",
+      "ttl": 60
+    }
+  ]
+}

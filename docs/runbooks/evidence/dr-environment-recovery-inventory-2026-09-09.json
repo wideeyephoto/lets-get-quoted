@@ -1,0 +1,1467 @@
+{
+  "checkedAt": "2026-09-09T22:03:34.670Z",
+  "projectId": "prj_bwbvxqj10cuQKKIflEdNMGhQOWEY",
+  "metadataOnly": true,
+  "valuesExported": false,
+  "localValueParityWithVercelNotProved": true,
+  "entries": [
+    {
+      "key": "ADMIN_EMAILS",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "COMPANY_MAILING_ADDRESS",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "CRON_SECRET",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Owner escrow or the named provider; app signing secrets can be replaced only with affected links/grants reissued."
+    },
+    {
+      "key": "CRON_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Owner escrow or the named provider; app signing secrets can be replaced only with affected links/grants reissued."
+    },
+    {
+      "key": "DEDICATED_NUMBER_PILOT_ALLOWLIST",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "FEATURE_MANAGED_ADS_CHECKOUT_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "GEMINI_API_KEY",
+      "target": [
+        "production",
+        "preview",
+        "development"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_CLIENT_CUSTOMER_ID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_CLIENT_ID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_CLIENT_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_CONVERSION_ACTION_ID_WON_JOB",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_DEVELOPER_TOKEN",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_MCC_CUSTOMER_ID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_ADS_REFRESH_TOKEN",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_MAPS_API_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_SOLAR_API_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "GOOGLE_SOLAR_API_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "LGQ_ADDON_REFUND_REVERSAL_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_AI_INTAKE_USAGE_GATE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_AI_VOICE_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_AI_VOICE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_AI_WRITING_GATE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_AI_WRITING_METER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_BASE_PLAN_SUBSCRIPTION_CANCELLATION_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_BASE_PLAN_SUBSCRIPTION_CHECKOUT_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_BASE_PLAN_SUBSCRIPTION_PLAN_CHANGE_ENABLED",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_CREW_SEAT_ENTITLEMENT_GATE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_DIRECT_PAYMENT_SETTLEMENT_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_DISABLE_OUTBOUND_SMS",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "LGQ_EMAIL_SENDING_DOMAINS_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_HOMEOWNER_FINANCING_CUSTOMER_SURFACES_ENABLED",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_HOMEOWNER_FINANCING_ENABLED",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_LEAD_VERIFICATION_SECRET",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Owner escrow or the named provider; app signing secrets can be replaced only with affected links/grants reissued."
+    },
+    {
+      "key": "LGQ_LEAD_VERIFICATION_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Owner escrow or the named provider; app signing secrets can be replaced only with affected links/grants reissued."
+    },
+    {
+      "key": "LGQ_LEGACY_QUICK_STOP_LATE_REFUND_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_MARKETING_EMAIL_GATE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_MARKETING_EMAIL_METER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_NAV_PERSONA_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_OVERAGE_PERIOD_CLOSE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_OVERAGE_SELF_SERVE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_OVERAGE_SETTLEMENT_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_PAID_PLAN_ALLOWANCE_RESET_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_PRICING_DASHBOARD_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_PRICING_DASHBOARD_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_PURCHASED_CAPACITY_LIFECYCLE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_REFERRAL_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Owner escrow or the named provider; app signing secrets can be replaced only with affected links/grants reissued."
+    },
+    {
+      "key": "LGQ_REFUND_RECONCILIATION_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SIGNALWIRE_10DLC_CALLBACK_TOKEN",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "LGQ_SMS_CANARY_ACCOUNT_IDS",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SMS_CONTRACTOR_MESSAGING_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SMS_DELIVERY_WORKER_ENABLED",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SMS_DISPATCH_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SMS_INBOUND_ACTION_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_SMS_PROVIDER",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "LGQ_SMS_SHARED_ENABLED",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STORAGE_CAP_ENFORCED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "LGQ_STRIPE_BILLING_LIVEMODE",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_BILLING_LIVEMODE",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_BILLING_WEBHOOK_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_BILLING_WEBHOOK_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_CONNECTED_PAYMENT_PROJECTION_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_SUBSCRIPTION_PROJECTION_WORKER_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_TEXT_CREDIT_GATE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_TEXT_CREDIT_METER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_TOP_UP_PURCHASE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_USAGE_RESERVATION_EXPIRY_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_VOICE_ALLOWANCE_WORKER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_VOICE_MINUTE_GATE_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_VOICE_MINUTE_METER_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_VOICE_RECEIPT_BASIC",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "LGQ_WORKSPACE_STORAGE_USAGE_SWEEP_ENABLED",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Exact reviewed deployment flag/allowlist in the configuration inventory and .env.example; default outbound and paid operations OFF until provider reconciliation is complete."
+    },
+    {
+      "key": "META_ACCESS_TOKEN",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Meta developer app and Business Settings; reissue system-user/page tokens and confirm asset permissions."
+    },
+    {
+      "key": "META_AD_ACCOUNT_ID",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Meta developer app and Business Settings; reissue system-user/page tokens and confirm asset permissions."
+    },
+    {
+      "key": "META_APP_ID",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Meta developer app and Business Settings; reissue system-user/page tokens and confirm asset permissions."
+    },
+    {
+      "key": "META_APP_SECRET",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Meta developer app and Business Settings; reissue system-user/page tokens and confirm asset permissions."
+    },
+    {
+      "key": "META_PAGE_ID",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Meta developer app and Business Settings; reissue system-user/page tokens and confirm asset permissions."
+    },
+    {
+      "key": "META_WEBHOOK_VERIFY_TOKEN",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Meta developer app and Business Settings; reissue system-user/page tokens and confirm asset permissions."
+    },
+    {
+      "key": "NEXT_PUBLIC_APP_URL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "NEXT_PUBLIC_APP_URL",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "NEXT_PUBLIC_GOOGLE_ADS_SIGNUP_CONVERSION_ID",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "NEXT_PUBLIC_GOOGLE_TAG_ID",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Google Cloud/Ads project credentials and OAuth grant; reissue API/client keys and repeat OAuth consent where needed."
+    },
+    {
+      "key": "NEXT_PUBLIC_ROOT_DOMAIN",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Supabase project settings: connection details and API keys; reset/reissue for the recovery project."
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Supabase project settings: connection details and API keys; reset/reissue for the recovery project."
+    },
+    {
+      "key": "NEXT_PUBLIC_SUPABASE_URL",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Supabase project settings: connection details and API keys; reset/reissue for the recovery project."
+    },
+    {
+      "key": "NEXT_PUBLIC_TURNSTILE_SITE_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Cloudflare Turnstile widget configuration and key rotation."
+    },
+    {
+      "key": "NEXT_PUBLIC_VAPID_PUBLIC_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Original VAPID key pair in independent owner escrow; replacing the private key requires clients to renew push subscriptions. Preserve the matching public key and subject."
+    },
+    {
+      "key": "ONCALL_PRIMARY_PHONE",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "OPENAI_API_KEY",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "OpenAI project API Keys and project billing/settings; issue a replacement project-scoped key."
+    },
+    {
+      "key": "OPERATIONAL_SMS_FROM_NUMBER",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "PEXELS_API_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Pexels owner API dashboard; recover or reissue the application API key."
+    },
+    {
+      "key": "PRINTFUL_API_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Printful Developer Portal private token settings; recreate the scoped token and confirm the store identity."
+    },
+    {
+      "key": "PRINTFUL_API_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Printful Developer Portal private token settings; recreate the scoped token and confirm the store identity."
+    },
+    {
+      "key": "QUICKBOOKS_CLIENT_ID",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Intuit developer app settings; regenerate client secret and reconnect expired/revoked realm tokens."
+    },
+    {
+      "key": "QUICKBOOKS_CLIENT_ID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Intuit developer app settings; regenerate client secret and reconnect expired/revoked realm tokens."
+    },
+    {
+      "key": "QUICKBOOKS_CLIENT_SECRET",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Intuit developer app settings; regenerate client secret and reconnect expired/revoked realm tokens."
+    },
+    {
+      "key": "QUICKBOOKS_CLIENT_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Intuit developer app settings; regenerate client secret and reconnect expired/revoked realm tokens."
+    },
+    {
+      "key": "QUICKBOOKS_ENVIRONMENT",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Intuit developer app settings; regenerate client secret and reconnect expired/revoked realm tokens."
+    },
+    {
+      "key": "QUICKBOOKS_ENVIRONMENT",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Intuit developer app settings; regenerate client secret and reconnect expired/revoked realm tokens."
+    },
+    {
+      "key": "RENTCAST_API_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "RentCast owner API dashboard; recover or reissue the API key."
+    },
+    {
+      "key": "RESEND_API_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Resend API Keys, Webhooks and verified Domains; reissue credentials and update the matching endpoint."
+    },
+    {
+      "key": "RESEND_DOMAINS_API_KEY",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Resend API Keys, Webhooks and verified Domains; reissue credentials and update the matching endpoint."
+    },
+    {
+      "key": "RESEND_WEBHOOK_SECRET",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Resend API Keys, Webhooks and verified Domains; reissue credentials and update the matching endpoint."
+    },
+    {
+      "key": "SIGNALWIRE_API_TOKEN",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "SIGNALWIRE_FROM_NUMBER",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "SIGNALWIRE_PROJECT_ID",
+      "target": [
+        "production",
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "SIGNALWIRE_SIGNING_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "SIGNALWIRE_SPACE_ID",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "SIGNALWIRE_SPACE_URL",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "STRIPE_BILLING_WEBHOOK_SECRET",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_BILLING_WEBHOOK_SECRET",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_BILLING_WEBHOOK_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_GROWTH_ANNUAL",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_GROWTH_ANNUAL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_GROWTH_ANNUAL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_GROWTH_MONTHLY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_GROWTH_MONTHLY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_GROWTH_MONTHLY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SCALE_ANNUAL",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SCALE_ANNUAL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SCALE_ANNUAL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SCALE_MONTHLY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SCALE_MONTHLY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SCALE_MONTHLY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SOLO_ANNUAL",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SOLO_ANNUAL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SOLO_ANNUAL",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SOLO_MONTHLY",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SOLO_MONTHLY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_PRICE_SOLO_MONTHLY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_SECRET_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_TOP_UP_WEBHOOK_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_TOP_UP_WEBHOOK_SECRET",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "STRIPE_WEBHOOK_SECRET",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Stripe Dashboard/Workbench: API keys, endpoint signing secrets, product and price inventory."
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "target": [
+        "preview"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Supabase project settings: connection details and API keys; reset/reissue for the recovery project."
+    },
+    {
+      "key": "SUPABASE_SERVICE_ROLE_KEY",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Supabase project settings: connection details and API keys; reset/reissue for the recovery project."
+    },
+    {
+      "key": "SYSTEM_EMAIL_FROM",
+      "target": [
+        "production"
+      ],
+      "type": "encrypted",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Reviewed deployment configuration plus .env.example and owning provider resource inventory; preserve exact flags/IDs before cutover."
+    },
+    {
+      "key": "TURNSTILE_SECRET_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Cloudflare Turnstile widget configuration and key rotation."
+    },
+    {
+      "key": "TWILIO_ACCOUNT_SID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "TWILIO_AUTH_TOKEN",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "TWILIO_MESSAGING_SERVICE_SID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "SignalWire Space or Twilio Console: project/API credentials, signing key, numbers and registrations."
+    },
+    {
+      "key": "VAPID_PRIVATE_KEY",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Original VAPID key pair in independent owner escrow; replacing the private key requires clients to renew push subscriptions. Preserve the matching public key and subject."
+    },
+    {
+      "key": "VAPID_SUBJECT",
+      "target": [
+        "preview",
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": true,
+      "recoverySource": "Original VAPID key pair in independent owner escrow; replacing the private key requires clients to renew push subscriptions. Preserve the matching public key and subject."
+    },
+    {
+      "key": "VERCEL_AUTH_TOKEN",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Vercel team/project settings and Tokens; reissue scoped API access."
+    },
+    {
+      "key": "VERCEL_PROJECT_ID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Vercel team/project settings and Tokens; reissue scoped API access."
+    },
+    {
+      "key": "VERCEL_TEAM_ID",
+      "target": [
+        "production"
+      ],
+      "type": "sensitive",
+      "presentInEncryptedLocalKit": false,
+      "recoverySource": "Vercel team/project settings and Tokens; reissue scoped API access."
+    }
+  ]
+}

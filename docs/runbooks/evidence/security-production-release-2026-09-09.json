@@ -1,0 +1,36 @@
+{
+  "checkedAt": "2026-09-09T21:58:08.205Z",
+  "aliases": [
+    {
+      "name": "app.letsgetquoted.com",
+      "deploymentId": "dpl_Ged7yfw4mwd2hMk8EfKVbpMUQNo4",
+      "updatedAt": 1788991079737,
+      "projectId": "prj_bwbvxqj10cuQKKIflEdNMGhQOWEY"
+    },
+    {
+      "name": "letsgetquoted.com",
+      "deploymentId": "dpl_Ged7yfw4mwd2hMk8EfKVbpMUQNo4",
+      "updatedAt": 1788991079737,
+      "projectId": "prj_bwbvxqj10cuQKKIflEdNMGhQOWEY"
+    },
+    {
+      "name": "blackholeart.com",
+      "deploymentId": "dpl_Ged7yfw4mwd2hMk8EfKVbpMUQNo4",
+      "updatedAt": 1788991079737,
+      "projectId": "prj_bwbvxqj10cuQKKIflEdNMGhQOWEY"
+    }
+  ],
+  "checks": [
+    {
+      "path": "/api/health",
+      "status": 200,
+      "privateNoStore": "no-store, max-age=0",
+      "databaseOperational": true
+    },
+    {
+      "path": "/api/admin/security/passkeys",
+      "status": 404,
+      "privateNoStore": "public, max-age=0, must-revalidate"
+    }
+  ]
+}

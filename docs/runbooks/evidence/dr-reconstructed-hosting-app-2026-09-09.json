@@ -1,0 +1,96 @@
+{
+  "checkedAt": "2026-09-09T22:10:58.355Z",
+  "projectId": "prj_81sWzG7lIWEfPfba87ywYhOE2rvg",
+  "teamId": "team_ym0NobEgXPXjT04pdpK8rb5J",
+  "appOrigin": "https://lgq-recovery-20260909.vercel.app",
+  "deploymentId": "dpl_88nfijMsGLcxU61CJvAFoBBCDs34",
+  "deploymentReadyAt": "2026-09-09T22:06:00.175Z",
+  "deploymentState": "READY",
+  "allDeploymentsRequireVercelLogin": true,
+  "temporaryProtectionBypassCreated": false,
+  "aliases": [
+    "lgq-recovery-20260909.vercel.app",
+    "lgq-recovery-20260909-lets-get-quoted.vercel.app"
+  ],
+  "cronsDisabled": true,
+  "targetDatabase": "uydlabvgauzujdwuqzxq",
+  "providerCredentials": "Payment/email/SMS placeholders; no live outbound provider keys",
+  "productionRoutingChanged": false,
+  "anonymousProbes": [
+    {
+      "path": "/login",
+      "status": 302,
+      "denied": true
+    },
+    {
+      "path": "/dashboard",
+      "status": 302,
+      "denied": true
+    },
+    {
+      "path": "/api/health",
+      "status": 302,
+      "denied": true
+    }
+  ],
+  "browserAcceptance": {
+    "method": "Existing Chrome Vercel authentication plus a generated one-use magic link for an existing restored staging owner; no email sent.",
+    "dashboard": {
+      "passed": true,
+      "renderedOwnerJobCount": 3,
+      "errorBoundary": false
+    },
+    "checkedAt": "2026-09-09T22:16:09.470Z",
+    "pages": [
+      {
+        "path": "/dashboard",
+        "passed": true,
+        "observation": "Dashboard rendered three restored jobs and populated summaries."
+      },
+      {
+        "path": "/dashboard/jobs",
+        "passed": true,
+        "observation": "All three restored jobs and selected-job details rendered."
+      },
+      {
+        "path": "/dashboard/clients",
+        "passed": true,
+        "observation": "Nineteen restored customers and selected-client details rendered."
+      },
+      {
+        "path": "/dashboard/schedule",
+        "passed": true,
+        "observation": "Calendar and the one unscheduled job rendered; current week was empty."
+      },
+      {
+        "path": "/dashboard/messages",
+        "passed": true,
+        "observation": "Text inbox rendered its empty conversation state; no message sent."
+      },
+      {
+        "path": "/dashboard/payments",
+        "passed": true,
+        "observation": "Money page and three receivables rendered; current filtered ledger was empty. Stripe balance sync was unavailable with placeholder credentials."
+      },
+      {
+        "path": "/dashboard/settings",
+        "passed": true,
+        "observation": "Team and Login & security tabs rendered the restored owner."
+      },
+      {
+        "path": "/dashboard/jobs/[existing-job]",
+        "passed": true,
+        "observation": "Job details, money summary and historical feed rendered."
+      }
+    ],
+    "corePageSmokePassed": true,
+    "unverified": [
+      "Full-resolution asset opening through this hosted application",
+      "Invoice PDF download",
+      "Plan & usage (disabled in recovery configuration)",
+      "Live provider financial reconciliation"
+    ],
+    "logoutVerified": true,
+    "logoutVerifiedAt": "2026-09-09T22:19:04.687Z"
+  }
+}

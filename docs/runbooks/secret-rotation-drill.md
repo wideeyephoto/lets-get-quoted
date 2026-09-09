@@ -1,6 +1,8 @@
-# Secret Rotation Drill & Zero-Downtime Key Rollover Runbook
+# Secret Rotation Runbook
 
-**Goal:** Establish operational procedures, zero-downtime key rotation protocols, and emergency revocation workflows across all production API keys, signing secrets, database credentials, and AES-256 vault encryption keys.
+**Goal:** Replace and revoke credentials while verifying their consumers and recovery dependencies. Each provider needs its own observed acceptance; the unit tests do not establish production rotation or zero downtime.
+
+**Executed September 9:** the documented exposed Resend domain-management key, Supabase legacy service-role credential and cron secret were replaced and revoked. See the [dated execution record](security-recovery-2026-09-09.md) for exact IDs, timestamps, deployment and positive/negative probes. Other providers and encryption keys below are procedures, not completed production drills.
 
 ---
 
@@ -13,8 +15,8 @@
 | `STRIPE_BILLING_WEBHOOK_SECRET` | Billing Webhook Ingress | Add new signing secret $\to$ update Vercel $\to$ verify $\to$ delete old secret | Zero downtime |
 | `RESEND_API_KEY` | Transactional Email Dispatch | Create new Resend API key $\to$ update Vercel $\to$ test dispatch $\to$ delete old key | Zero downtime |
 | `SIGNALWIRE_API_TOKEN` | 10DLC SMS & Voice Dispatch | Create new API token in SignalWire Space $\to$ update Vercel $\to$ test SMS $\to$ delete old token | Zero downtime |
-| `SUPABASE_SERVICE_ROLE_KEY` | Database Admin & RLS Bypass | Generate new JWT secret in Supabase Project Settings $\to$ update Vercel & scripts $\to$ redeploy | <1 min graceful drain |
-| `CRON_SECRET` | Vercel Cron & Diagnostics | Generate 64-char hex token $\to$ update Vercel Production $\to$ verify /api/cron/* | Zero downtime |
+| `SUPABASE_SERVICE_ROLE_KEY` | Database Admin & RLS Bypass | Create an independently revocable secret API key; move public consumers to a publishable key; update Vercel, CI and scripts; rebuild; disable legacy API keys and revoke the previously used legacy signing key | Verify actual propagation and both API-key and bearer-JWT rejection; no fixed downtime promise |
+| `CRON_SECRET` | Vercel Cron & Diagnostics | Generate a random token; update Vercel; rebuild; verify the new secret and deny old-secret diagnostics | Immutable old deployments retain old values until replaced or retired |
 | `TAX_VAULT_ENCRYPTION_KEY` | AES-256-GCM TIN Vault | Key rollover migration: decrypt with Old Key $\to$ re-encrypt with New Key in transaction | Zero downtime with dual-key migration script |
 | `WEBHOOK_VAULT_ENCRYPTION_KEY` | AES-256-GCM Webhook Secrets | Key rollover migration: decrypt with Old Key $\to$ re-encrypt with New Key in transaction | Zero downtime |
 | `CLOSURE_ENCRYPTION_SECRET` | Account Deletion Sagas | Key rollover: re-encrypt pending closure handles | Zero downtime |
@@ -22,6 +24,14 @@
 ---
 
 ## 2. Step-by-Step Rotation Procedures
+
+### Supabase and cron dependencies
+
+Inventory actual consumers before revocation. A project environment edit does not alter existing immutable deployments. Verify the canonical alias serves a replacement build, that the public client bundles contain the publishable key, and that privileged database and Storage calls work with the new secret.
+
+For a legacy Supabase credential, disabling its `apikey` path alone is insufficient evidence: also send the retired service JWT as bearer Authorization with the new publishable key and require rejection. In this project, current Auth sessions have used ES256 since July 14; the separately retained HS256 key could therefore be revoked without rotating that current ES256 key. Recheck signing state on every future incident. Follow [Supabase API-key guidance](https://supabase.com/docs/guides/getting-started/api-keys) and [signing-key guidance](https://supabase.com/docs/guides/auth/signing-keys).
+
+The service credential is also a fallback HMAC/encryption input in existing application paths. Inventory pending account-closure handles before changing it and migrate encrypted data if any exists. Reissue affected unsubscribe, offer, phone-verification, continuation and OAuth-state links/codes after rotation. Never accept an exposed key as a compatibility fallback. Rebuild rollback candidates with current secrets; do not promote a stale deployment after provider revocation. Refresh the encrypted offsite recovery kit so recovery does not reinstall revoked credentials.
 
 ### Procedure A: Stripe Platform & Webhook Secrets
 1. In Stripe Dashboard $\to$ **Developers** $\to$ **API Keys**:

@@ -1,0 +1,56 @@
+{
+  "startedAt": "2026-09-09T21:27:00.893Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "sourceSnapshot": "2026-09-09T12:33:35.381Z",
+  "appOrigin": "http://localhost:3038",
+  "existingRestoredUser": true,
+  "emailSent": false,
+  "checks": [
+    {
+      "name": "existing_user_auth_callback",
+      "passed": true,
+      "status": 307
+    },
+    {
+      "name": "auth_cookie_created",
+      "passed": true
+    },
+    {
+      "name": "restored_auth_identity_verified",
+      "passed": true
+    },
+    {
+      "name": "authenticated_owner_jobs",
+      "passed": true,
+      "expected": 3,
+      "actual": 3
+    },
+    {
+      "name": "other_account_jobs_denied",
+      "passed": true,
+      "visible": 0
+    },
+    {
+      "name": "recovered_app_/dashboard",
+      "passed": false,
+      "status": 200,
+      "renderedBytes": 209437,
+      "httpSmokePassed": false,
+      "renderVerified": false
+    },
+    {
+      "name": "recovered_app_/dashboard/jobs",
+      "passed": false,
+      "status": 200,
+      "renderedBytes": 135781,
+      "httpSmokePassed": false,
+      "renderVerified": false
+    }
+  ],
+  "passed": false,
+  "recoverySessionRevoked": true,
+  "finishedAt": "2026-09-09T21:27:29.900Z",
+  "authAndDataChecksPassed": true,
+  "applicationRenderAcceptance": false,
+  "reviewFinding": "Historical HTTP smoke only checked status and generic errors. It did not detect the Next.js streamed error boundary caused by later staging grant changes. Authentication and own/foreign job REST checks remain valid; full rendering requires the later protected-browser acceptance."
+}

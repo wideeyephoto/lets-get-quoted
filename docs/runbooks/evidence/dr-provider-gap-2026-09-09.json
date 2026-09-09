@@ -1,0 +1,32 @@
+{
+  "checkedAt": "2026-09-09T22:03:38.150Z",
+  "sourceSnapshot": "2026-09-09T12:33:35.381Z",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "providerReadsOnly": true,
+  "providerWrites": 0,
+  "databaseWrites": 0,
+  "stripe": {
+    "financialStateReconciled": false,
+    "platformEventPaginationComplete": false,
+    "status": 403,
+    "code": "more_permissions_required",
+    "requestId": "req_Li0jXLddUXQ3EX",
+    "requiredPermission": "event_read",
+    "finding": "The available live restricted key cannot read Stripe events. No financial reconciliation or provider writes were performed."
+  },
+  "resend": {
+    "status": 200,
+    "domains": [
+      {
+        "id": "46a189db-0263-4b13-9ed9-8be696b62bad",
+        "name": "blackholeart.com",
+        "status": "verified"
+      },
+      {
+        "id": "0c43a090-1cb8-4808-a9d5-a6efa843cbc5",
+        "name": "letsgetquoted.com",
+        "status": "verified"
+      }
+    ]
+  }
+}

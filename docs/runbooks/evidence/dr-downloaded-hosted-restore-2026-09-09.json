@@ -1,0 +1,31 @@
+{
+  "sourceSnapshot": "2026-09-09T12:33:35.381Z",
+  "sourcePack": "mfuvvtrkipkigwqqtcal-2026-09-09T12-42-53-253Z.tar.aesgcm",
+  "targetProject": "uydlabvgauzujdwuqzxq",
+  "ownerApprovedTargetReplacement": true,
+  "stagingSafetyCapture": "uydlabvgauzujdwuqzxq-2026-09-09T20-59-39-468Z",
+  "firstAttempt": {
+    "finishedAt": "2026-09-09T21:04:31Z",
+    "failed": true,
+    "reason": "out of shared memory",
+    "maxLocksPerTransaction": 64,
+    "atomicRollbackVerified": true
+  },
+  "remediation": {
+    "maxLocksPerTransaction": 128,
+    "restartRequestedAt": "2026-09-09T21:08:09.167Z"
+  },
+  "successfulAttempt": {
+    "startedAt": "2026-09-09T21:09:24.285Z",
+    "finishedAt": "2026-09-09T21:14:46.277Z",
+    "elapsedMs": 321992,
+    "passed": true
+  },
+  "baselineVerifiedAt": "2026-09-09T21:18:13.827Z",
+  "productionRestoreWrites": 0,
+  "stagingOutboundCronsActive": 0,
+  "limits": [
+    "Subsequent authenticated tests and the separate tenant-access migrations changed staging after baseline capture.",
+    "Successful SQL restore duration excludes provisioning, Storage, source rebuild, owner authentication, provider reconciliation and DNS cutover."
+  ]
+}

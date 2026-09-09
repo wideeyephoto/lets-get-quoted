@@ -1,0 +1,12 @@
+{
+  "capturedAt": "2026-09-09T22:03:34.891Z",
+  "domain": "letsgetquoted.com",
+  "records": 15,
+  "nameservers": [
+    "ns1.vercel-dns.com",
+    "ns2.vercel-dns.com"
+  ],
+  "sha256": "f1e47786f2de11ea2c6bf04357657fb7db743376b43301db6f8cd173043f936d",
+  "sourceOfTruth": "Vercel authoritative DNS; public zone export retained as dr-dns-zone-2026-09-09.json and included in the encrypted source backup.",
+  "productionDnsChanged": false
+}
