@@ -379,24 +379,24 @@ export default async function AdminHealthPage({
 
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={{ fontSize: '1.05rem', color: '#38bdf8' }}>
-              {onCall.escalationTimeoutMinutes} min
+              Every 5 min
             </span>
-            <span className={styles.statLabel}>Auto-Escalation SLA</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>Secondary: {onCall.secondary.name}</span>
+            <span className={styles.statLabel}>Operational email scan</span>
+            <span className={styles.muted} style={{ fontSize: '.7rem' }}>Backup contact: {onCall.secondary.name} · manual escalation</span>
           </div>
 
           <div className={`${styles.panel} ${styles.statCard}`}>
             <span className={styles.statValue} style={{ fontSize: '1.05rem' }}>
               {onCall.channels.filter((c) => c.configured).length} / {onCall.channels.length}
             </span>
-            <span className={styles.statLabel}>Paging Channels Ready</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>PagerDuty, Opsgenie, Slack, Discord, SMS</span>
+            <span className={styles.statLabel}>Notification channels configured</span>
+            <span className={styles.muted} style={{ fontSize: '.7rem' }}>Email and supported webhooks · configuration does not prove delivery</span>
           </div>
         </div>
 
         {/* Recent Paging Dispatches */}
         <div style={{ marginTop: '14px' }}>
-          <h3 style={{ fontSize: '.85rem', fontWeight: 600, margin: '0 0 8px' }}>Recent Paging History &amp; Drills</h3>
+          <h3 style={{ fontSize: '.85rem', fontWeight: 600, margin: '0 0 8px' }}>Manual drills in this server process</h3>
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -697,7 +697,7 @@ export default async function AdminHealthPage({
           <li>
             <time>On-Call Paging</time>
             <span>
-              High-severity ($P1$) incidents (money cron stalls, database partition, dead-letter webhook spikes) automatically dispatch emergency alerts across PagerDuty, Opsgenie, Slack, Discord, and SMS to the active on-duty engineer.
+              The five-minute monitor emails operational failures to the configured on-call inbox. Signed email delivery callbacks provide arrival evidence. The independent GitHub workflow checks the same queue; automatic SMS and secondary-contact escalation are not configured.
             </span>
           </li>
         </ul>

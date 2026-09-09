@@ -46,7 +46,7 @@ export function getOnCallRoster(): {
   escalationTimeoutMinutes: number;
   channels: PagingChannelStatus[];
 } {
-  const primaryEmail = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || '';
+  const primaryEmail = process.env.ONCALL_PRIMARY_EMAIL || process.env.FOUNDER_ALERT_EMAIL || 'hello@letsgetquoted.com';
   const primaryPhone = process.env.ONCALL_PRIMARY_PHONE || '';
 
   const channels: PagingChannelStatus[] = [
@@ -67,9 +67,9 @@ export function getOnCallRoster(): {
     {
       id: 'opsgenie',
       name: 'Opsgenie Incident Alert API',
-      configured: Boolean(process.env.OPSGENIE_API_KEY),
-      status: process.env.OPSGENIE_API_KEY ? 'ready' : 'unconfigured',
-      target: process.env.OPSGENIE_API_KEY ? 'API key present' : 'Unconfigured',
+      configured: false,
+      status: 'unconfigured',
+      target: 'Dispatch integration is not implemented',
     },
     {
       id: 'slack_ops',
@@ -104,7 +104,7 @@ export function getOnCallRoster(): {
       name: secondaryEmail ? 'Platform Engineering Escalation' : 'Unassigned',
       email: secondaryEmail || 'Not configured',
       phone: secondaryPhone || 'Not configured',
-      shiftSchedule: 'Backup On-Call (15 min auto-escalate)',
+      shiftSchedule: 'Backup contact (manual escalation)',
       status: 'standby',
     },
     escalationTimeoutMinutes: 15,
