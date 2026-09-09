@@ -22,6 +22,7 @@ import {
 } from '@/lib/ai-operator/support-copilot';
 import { runRevOpsGrowthScan } from '@/lib/ai-operator/revops';
 import { generateExecutiveBriefing, calculateSmsDeliverability } from '@/lib/ai-operator/briefing';
+import { getZeroQuoteActivationCandidates, isSyntheticAccountName } from '@/lib/admin-alerts';
 import {
   runAutonomousOperatorCycle,
   askAiOperator,
@@ -642,6 +643,7 @@ describe('RevOps & Lifecycle Growth Engine', () => {
 
   it('reports zero safe actions executed while nothing can send', async () => {
     const report = await runAutonomousOperatorCycle(mockSupabase);
+    expect(report.auditActionsLogged).toBe(0);
     expect(report.safeActionsExecuted).toBe(0);
     expect(typeof report.onboardingNudgeCandidates).toBe('number');
   });
@@ -949,5 +951,189 @@ describe('operator writes are awaited before a request returns', () => {
 
   it('resolves when there is nothing pending', async () => {
     await expect(flushOperatorWrites()).resolves.toBeUndefined();
+  });
+});
+
+describe('Operator Activation Nudge: Audience Correction, Permissions, and Execution Safety', () => {
+  it('maps batch_activation_nudges to account.support permission', () => {
+    expect(permissionForHitlAction('batch_activation_nudges')).toBe('account.support');
+  });
+
+  it('requires explicit approval for batch_activation_nudges in safety policies', () => {
+    expect(REQUIRES_APPROVAL_ACTION_TYPES.has('batch_activation_nudges')).toBe(true);
+    expect(isActionSafeForAutoRemediation('batch_activation_nudges')).toBe(false);
+  });
+
+  it('deduplicates HITL actions when a deterministic ID is supplied', () => {
+    const deterministicId = 'hitl-batch_activation_nudges-2026-09-09';
+
+    const card1 = createHitlAction({
+      id: deterministicId,
+      category: 'growth_lifecycle',
+      title: 'First Quote Activation Nudges',
+      description: 'First attempt',
+      actionType: 'batch_activation_nudges',
+      payload: { count: 1 },
+    });
+
+    const card2 = createHitlAction({
+      id: deterministicId,
+      category: 'growth_lifecycle',
+      title: 'First Quote Activation Nudges',
+      description: 'Second attempt should return existing card',
+      actionType: 'batch_activation_nudges',
+      payload: { count: 2 },
+    });
+
+    expect(card1.id).toBe(deterministicId);
+    expect(card2.id).toBe(deterministicId);
+    expect(card2.description).toBe('First attempt'); // unchanged
+    expect(listPendingHitlActions().filter((a) => a.id === deterministicId).length).toBe(1);
+  });
+
+  it('leaves action pending and returns success: false on unknown actionType or tool failure (Stage 5)', async () => {
+    const unknownAction = createHitlAction({
+      category: 'growth_lifecycle',
+      title: 'Action with nonexistent tool',
+      description: 'Will fail at tool resolution',
+      actionType: 'totally_unknown_action_type',
+      payload: {},
+    });
+
+    const mockCtx: OperatorExecutionContext = {
+      supabase: createMockSupabase(),
+      adminUserId: 'founder@letsgetquoted.com',
+      source: 'admin_dashboard',
+    };
+
+    const res = await executeHitlDecision(
+      unknownAction.id,
+      'approved',
+      'founder@letsgetquoted.com',
+      'Approving unknown tool',
+      mockCtx,
+    );
+
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/Unknown operator tool/i);
+    // Action MUST remain pending, not marked approved
+    const stored = getHitlActionById(unknownAction.id);
+    expect(stored?.status).toBe('pending');
+  });
+
+  it('filters out accounts with quoted jobs > 0 and synthetic fixture accounts', async () => {
+    expect(isSyntheticAccountName('Webhook test ea923c32')).toBe(true);
+    expect(isSyntheticAccountName('E2E Leads-Jobs 4f691e58')).toBe(true);
+    expect(isSyntheticAccountName('Test Contractor')).toBe(true);
+    expect(isSyntheticAccountName('Apex Roofing LLC')).toBe(false);
+    expect(isSyntheticAccountName('My Business')).toBe(false);
+
+    const mockAccounts = [
+      {
+        id: 'acc-chelsea',
+        business_name: 'Chelsea Landry Renovations',
+        account_number: 101,
+        created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+        test_marker: null,
+      },
+      {
+        id: 'acc-zero-quote',
+        business_name: 'Brand New Painting',
+        account_number: 102,
+        created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+        test_marker: null,
+      },
+      {
+        id: 'acc-fixture',
+        business_name: 'Webhook test ea923c32',
+        account_number: 103,
+        created_at: new Date(Date.now() - 5 * 86400000).toISOString(),
+        test_marker: null,
+      },
+    ];
+
+    const mockJobsWithQuotes = [
+      { account_id: 'acc-chelsea' }, // Has 166 quotes (quoted_amount > 0)
+    ];
+
+    const mockAdmin: any = {
+      from: (table: string) => {
+        const query: any = {
+          select: () => query,
+          is: () => query,
+          order: () => query,
+          limit: () => query,
+          in: () => query,
+          gt: () => query,
+          then: (resolve: any) => {
+            if (table === 'accounts') {
+              return resolve({ data: mockAccounts, error: null });
+            }
+            if (table === 'jobs') {
+              return resolve({ data: mockJobsWithQuotes, error: null });
+            }
+            return resolve({ data: [], error: null });
+          },
+        };
+        return query;
+      },
+    };
+
+    const candidates = await getZeroQuoteActivationCandidates(mockAdmin);
+
+    // acc-chelsea must NOT be present (has quoted jobs)
+    expect(candidates.some((c) => c.id === 'acc-chelsea')).toBe(false);
+    // acc-fixture must NOT be present (synthetic fixture name)
+    expect(candidates.some((c) => c.id === 'acc-fixture')).toBe(false);
+    // acc-zero-quote MUST be present
+    expect(candidates.some((c) => c.id === 'acc-zero-quote')).toBe(true);
+    expect(candidates.length).toBe(1);
+    expect(candidates[0].quoted_jobs).toBe(0);
+  });
+
+  it('approves and executes batch_activation_nudges safely in dry-run mode when flag is off', async () => {
+    delete process.env.ACTIVATION_NUDGE_SEND_ENABLED;
+
+    const action = createHitlAction({
+      category: 'growth_lifecycle',
+      title: 'First-Quote Activation Nudges (1 Contractor)',
+      description: 'Testing approval in dry-run mode',
+      actionType: 'batch_activation_nudges',
+      payload: {
+        stepId: 'nudge_zero_quotes',
+        channel: 'email',
+        recipients: [
+          {
+            accountId: 'acc-test-dryrun',
+            businessName: 'Apex Framing Co',
+            email: 'apex@exampledryrun.com',
+            ageDays: 12,
+            quotedJobs: 0,
+          },
+        ],
+        skipped: [],
+      },
+    });
+
+    const mockCtx: OperatorExecutionContext = {
+      supabase: createMockSupabase(),
+      adminUserId: 'founder@letsgetquoted.com',
+      source: 'admin_dashboard',
+    };
+
+    const res = await executeHitlDecision(
+      action.id,
+      'approved',
+      'founder@letsgetquoted.com',
+      'Approved dry-run activation nudge',
+      mockCtx,
+    );
+
+    expect(res.success).toBe(true);
+    expect(res.action?.status).toBe('approved');
+    const exec = res.executionResult as any;
+    expect(exec.dryRun).toBe(true);
+    expect(exec.sent).toBe(1);
+    expect(exec.details[0].note).toContain('[DRY-RUN]');
   });
 });

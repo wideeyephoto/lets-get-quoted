@@ -14,6 +14,7 @@ import {
   askOperatorServerAction,
   replayWebhooksServerAction,
   sendManualDigestServerAction,
+  previewHitlActionMessageAction,
 } from './actions';
 import styles from './OperatorCockpit.module.css';
 import MailIcon from '@/components/MailIcon';
@@ -115,6 +116,19 @@ export default function OperatorCockpit({
   // Contractor 360 Modal
   const [modalAccount, setModalAccount] = useState<ModalAccountState | null>(null);
 
+  // HITL Message Preview Modal
+  const [previewModal, setPreviewModal] = useState<{
+    actionId: string;
+    channel: 'email';
+    subject: string;
+    fromAddress: string;
+    replyTo: string;
+    recipients: Array<{ accountId: string; businessName: string; email: string; ageDays?: number; quotedJobs?: number }>;
+    skipped: Array<{ accountId: string; businessName: string; reason: string }>;
+    html: string;
+  } | null>(null);
+  const [isPreviewLoading, setIsPreviewLoading] = useState<string | null>(null);
+
   const quickPromptChips = buildQuickPromptChips(briefing);
 
   useEffect(() => {
@@ -133,12 +147,12 @@ export default function OperatorCockpit({
           setAuditLogs(res.report.auditLogs);
         }
         const timeStr = new Date().toLocaleTimeString();
-        const safeCount = res.report.safeActionsExecuted;
+        const safeCount = res.report.auditActionsLogged ?? res.report.safeActionsExecuted ?? 0;
         const candidates = res.report.onboardingNudgeCandidates;
         const pendingCount = res.report.pendingHitlActions.length;
         setStatusBanner({
           type: 'success',
-          message: `✓ Ops cycle completed at ${timeStr}. Briefing refreshed, ${safeCount} task(s) executed, ${candidates} nudge candidate(s) identified, ${pendingCount} approval(s) pending.`,
+          message: `✓ Ops cycle completed at ${timeStr}. Briefing refreshed, ${safeCount} audit action(s) logged, ${candidates} nudge candidate(s) identified, ${pendingCount} approval(s) pending.`,
         });
       } else {
         setStatusBanner({
@@ -166,9 +180,50 @@ export default function OperatorCockpit({
           type: 'success',
           message: `Action ${decision === 'approved' ? 'approved and executed' : 'declined'} successfully.`,
         });
+      } else {
+        setStatusBanner({
+          type: 'error',
+          message: `Action ${decision} failed: ${res.error || 'Execution failure reported by system.'}`,
+        });
       }
     } catch (e) {
       console.error('Failed to resolve action:', e);
+      setStatusBanner({
+        type: 'error',
+        message: `Failed to resolve action: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
+  };
+
+  const handlePreviewMessage = async (actionId: string) => {
+    setIsPreviewLoading(actionId);
+    try {
+      const res = await previewHitlActionMessageAction(actionId);
+      if (res.success) {
+        setPreviewModal({
+          actionId,
+          channel: res.channel,
+          subject: res.subject,
+          fromAddress: res.fromAddress,
+          replyTo: res.replyTo,
+          recipients: res.recipients,
+          skipped: res.skipped,
+          html: res.html,
+        });
+      } else {
+        setStatusBanner({
+          type: 'error',
+          message: `Preview failed: ${res.error || 'Could not generate message preview.'}`,
+        });
+      }
+    } catch (e) {
+      console.error('Failed to preview message:', e);
+      setStatusBanner({
+        type: 'error',
+        message: `Preview error: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    } finally {
+      setIsPreviewLoading(null);
     }
   };
 
@@ -475,6 +530,17 @@ export default function OperatorCockpit({
                   </div>
                   <p className={styles.hitlDesc}>{action.description}</p>
                   <div className={styles.hitlActions}>
+                    {(action.actionType === 'batch_activation_nudges' ||
+                      Boolean((action.payload as any)?.channel === 'email')) && (
+                      <button
+                        className={styles.previewBtn}
+                        onClick={() => handlePreviewMessage(action.id)}
+                        disabled={isPreviewLoading === action.id}
+                        type="button"
+                      >
+                        {isPreviewLoading === action.id ? 'Loading...' : '👁️ Preview Message'}
+                      </button>
+                    )}
                     <button
                       className={styles.approveBtn}
                       onClick={() => handleResolveAction(action.id, 'approved')}
@@ -648,6 +714,128 @@ export default function OperatorCockpit({
               <pre style={{ background: 'rgba(0,0,0,0.3)', padding: '0.75rem', borderRadius: '6px' }}>
                 {JSON.stringify(modalAccount.diagnosis, null, 2)}
               </pre>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* HITL Message Preview Modal */}
+      {previewModal && (
+        <div className={styles.modalOverlay} onClick={() => setPreviewModal(null)}>
+          <div
+            className={`${styles.modalContent} ${styles.previewModalContent}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button className={styles.modalCloseBtn} onClick={() => setPreviewModal(null)} type="button">
+              ✕ Close
+            </button>
+            <h3 style={{ margin: '0 0 1rem 0' }}>✉️ Message Preview: Email Outreach</h3>
+
+            <div className={styles.previewHeaderStrip}>
+              <div><span className={styles.previewMetaLabel}>Channel:</span> <span className={styles.categoryTag}>{previewModal.channel.toUpperCase()}</span></div>
+              <div><span className={styles.previewMetaLabel}>From:</span> {previewModal.fromAddress}</div>
+              <div><span className={styles.previewMetaLabel}>Reply-To:</span> {previewModal.replyTo}</div>
+              <div><span className={styles.previewMetaLabel}>Subject:</span> <em>&ldquo;{previewModal.subject}&rdquo;</em></div>
+              <div>
+                <span className={styles.previewMetaLabel}>Audience:</span>{' '}
+                <strong style={{ color: '#4ade80' }}>{previewModal.recipients.length} will receive</strong>
+                {' · '}
+                <span style={{ color: '#fbbf24' }}>{previewModal.skipped.length} skipped</span>
+              </div>
+            </div>
+
+            <div className={styles.previewIframeContainer}>
+              <iframe
+                title="Email Template Preview"
+                srcDoc={previewModal.html}
+                className={styles.previewIframe}
+                sandbox="allow-same-origin"
+              />
+            </div>
+
+            <div className={styles.previewAudienceSection}>
+              <h4 style={{ color: '#f7f5ef', margin: '1.25rem 0 0.5rem 0' }}>
+                Will Receive ({previewModal.recipients.length})
+              </h4>
+              {previewModal.recipients.length === 0 ? (
+                <div className={styles.emptyState}>No eligible recipients. All candidates were skipped.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.auditTable}>
+                    <thead>
+                      <tr>
+                        <th>Business</th>
+                        <th>Email</th>
+                        <th>Age</th>
+                        <th>Quoted Jobs</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewModal.recipients.map((r) => (
+                        <tr key={r.accountId}>
+                          <td><strong>{r.businessName}</strong></td>
+                          <td>{r.email}</td>
+                          <td>{r.ageDays !== undefined ? `${r.ageDays}d` : '—'}</td>
+                          <td>{r.quotedJobs ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              <h4 style={{ color: '#f7f5ef', margin: '1.25rem 0 0.5rem 0' }}>
+                Will Be Skipped ({previewModal.skipped.length})
+              </h4>
+              {previewModal.skipped.length === 0 ? (
+                <div className={styles.emptyState}>No candidates skipped.</div>
+              ) : (
+                <div style={{ overflowX: 'auto' }}>
+                  <table className={styles.auditTable}>
+                    <thead>
+                      <tr>
+                        <th>Business</th>
+                        <th>Skip Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {previewModal.skipped.map((s) => (
+                        <tr key={s.accountId}>
+                          <td>{s.businessName}</td>
+                          <td>
+                            <span className={styles.skipReasonBadge}>{s.reason}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
+              <button
+                className={styles.rejectBtn}
+                onClick={() => {
+                  const id = previewModal.actionId;
+                  setPreviewModal(null);
+                  handleResolveAction(id, 'rejected');
+                }}
+                type="button"
+              >
+                ✕ Decline Card
+              </button>
+              <button
+                className={styles.approveBtn}
+                onClick={() => {
+                  const id = previewModal.actionId;
+                  setPreviewModal(null);
+                  handleResolveAction(id, 'approved');
+                }}
+                type="button"
+              >
+                ✓ Approve & Execute ({previewModal.recipients.length} Recipient{previewModal.recipients.length === 1 ? '' : 's'})
+              </button>
             </div>
           </div>
         </div>

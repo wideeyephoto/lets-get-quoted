@@ -22,8 +22,7 @@ import { smsProviderSummary, type SmsProviderId } from '@/lib/sms-provider';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
 import { voiceWebhookSecuritySummary } from '@/lib/voice/auth';
 import { loadVoiceOperatorHealth } from '@/lib/voice/operator-health';
-import { getApmSummary, getRecentExceptions } from '@/lib/apm-telemetry';
-import { runSyntheticUptimeProbe } from '@/lib/uptime-monitoring';
+import { runSyntheticUptimeProbe, type SubsystemStatus } from '@/lib/uptime-monitoring';
 import { getOnCallRoster, getRecentPagingEvents } from '@/lib/on-call-paging';
 import { RunCronButton } from './RunCronButton';
 import { dispatchTestPageAction } from './actions';
@@ -51,8 +50,9 @@ const HEALTH_CLASS: Record<CronHealth, string> = {
   unknown: 'neutral',
 };
 
-const SUBSYSTEM_CLASS: Record<'operational' | 'degraded' | 'outage', string> = {
+const SUBSYSTEM_CLASS: Record<SubsystemStatus, string> = {
   operational: 'good',
+  configured: 'neutral',
   degraded: 'warn',
   outage: 'bad',
 };
@@ -114,9 +114,7 @@ export default async function AdminHealthPage({
     runSyntheticUptimeProbe(admin),
   ]);
 
-  // Telemetry & On-Call data
-  const apm = getApmSummary();
-  const recentExceptions = getRecentExceptions(5);
+  // On-Call data
   const onCall = getOnCallRoster();
   const recentPages = getRecentPagingEvents(5);
   const canManageOps = staffCan(staff, 'ops.manage');
@@ -145,10 +143,10 @@ export default async function AdminHealthPage({
     <>
       <header className={styles.pageHead}>
         <p className={styles.eyebrow}>Operations &amp; Reliability Center</p>
-        <h1 className={styles.title}>Service health &amp; APM</h1>
+        <h1 className={styles.title}>Service health &amp; Operations Center</h1>
         <p className={styles.lead}>
-          Complete operational observability across synthetic uptime monitoring, high-resolution APM telemetry,
-          automated on-call paging, background cron heartbeats, and carrier gateway readiness.
+          Complete operational observability across synthetic uptime monitoring, automated on-call paging,
+          background cron heartbeats, and carrier gateway readiness.
         </p>
       </header>
 
@@ -181,7 +179,7 @@ export default async function AdminHealthPage({
           <div>
             <h2 className={styles.panelTitle} style={{ margin: 0 }}>Synthetic Uptime &amp; Subsystems</h2>
             <p className={styles.muted} style={{ fontSize: '.8rem', margin: '4px 0 0' }}>
-              Multi-subsystem synthetic probes evaluated every 60 seconds with 24h/7d/30d SLA tracking.
+              Multi-subsystem synthetic probes evaluated on page render.
             </p>
           </div>
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -189,7 +187,7 @@ export default async function AdminHealthPage({
               {uptimeReport.overallStatus.toUpperCase()}
             </span>
             <span className={styles.muted} style={{ fontSize: '.78rem' }}>
-              30d SLA: <strong>{uptimeReport.sla.uptime30dPct}%</strong>
+              30d SLA: <strong>{uptimeReport.sla.uptime30dPct !== null ? `${uptimeReport.sla.uptime30dPct}%` : '—'}</strong>
             </span>
           </div>
         </div>
@@ -237,117 +235,7 @@ export default async function AdminHealthPage({
         </div>
       </section>
 
-      {/* 2. Application Performance Monitoring (APM) */}
-      <section className={styles.panel}>
-        <h2 className={styles.panelTitle}>Application Performance Monitoring (APM)</h2>
-        <p className={styles.muted} style={{ marginTop: 0 }}>
-          Real-time request tracing, latency percentiles, throughput, and error rate telemetry.
-        </p>
-        <div className={styles.cardGrid}>
-          <div className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue} style={{ color: apm.active ? (apm.latencyPercentiles.p95Ms > 600 ? '#fca5a5' : '#86efac') : undefined }}>
-              {apm.active ? `${apm.latencyPercentiles.p95Ms}ms` : '—'}
-            </span>
-            <span className={styles.statLabel}>p95 Latency</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
-              {apm.active ? `p50: ${apm.latencyPercentiles.p50Ms}ms · p99: ${apm.latencyPercentiles.p99Ms}ms` : 'No requests buffered'}
-            </span>
-          </div>
-
-          <div className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue} style={{ color: apm.active ? (apm.errorRatePct > 1 ? '#fca5a5' : '#86efac') : undefined }}>
-              {apm.active ? `${apm.errorRatePct}%` : '—'}
-            </span>
-            <span className={styles.statLabel}>5xx Error Rate</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
-              {apm.active ? `2xx: ${apm.statusCodeDistribution.status2xx} · 5xx: ${apm.statusCodeDistribution.status5xx}` : 'No requests recorded'}
-            </span>
-          </div>
-
-          <div className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue}>
-              {apm.active ? apm.rpm : '—'}
-            </span>
-            <span className={styles.statLabel}>Throughput (RPM)</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
-              {apm.totalRequestsTracked > 0 ? `${apm.totalRequestsTracked} requests buffered` : '0 requests buffered'}
-            </span>
-          </div>
-
-          <div className={`${styles.panel} ${styles.statCard}`}>
-            <span className={styles.statValue} style={{ color: '#38bdf8' }}>
-              {apm.provider === 'builtin_high_res' ? (apm.active ? 'Active' : 'Unbuffered') : apm.provider}
-            </span>
-            <span className={styles.statLabel}>APM Status</span>
-            <span className={styles.muted} style={{ fontSize: '.7rem' }}>
-              {apm.active ? 'In-memory telemetry active' : 'Waiting for instrumented requests'}
-            </span>
-          </div>
-        </div>
-
-        {/* Slowest API routes */}
-        {apm.slowestRoutes.length > 0 ? (
-          <div style={{ marginTop: '16px' }}>
-            <h3 style={{ fontSize: '.85rem', fontWeight: 600, margin: '0 0 8px' }}>Route Performance Breakdown</h3>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Route</th>
-                    <th className="num">Requests</th>
-                    <th className="num">Avg Latency</th>
-                    <th className="num">p95 Latency</th>
-                    <th className="num">Error Rate</th>
-                    <th>Last Seen</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {apm.slowestRoutes.map((route) => (
-                    <tr key={route.path}>
-                      <td><code>{route.path}</code></td>
-                      <td className="num">{route.totalRequests}</td>
-                      <td className="num">{route.avgDurationMs}ms</td>
-                      <td className="num" style={{ color: route.p95DurationMs > 500 ? '#ffd166' : undefined }}>{route.p95DurationMs}ms</td>
-                      <td className="num" style={{ color: route.errorRatePct > 0 ? '#fca5a5' : undefined }}>{route.errorRatePct}%</td>
-                      <td className={styles.muted} style={{ fontSize: '.75rem' }}>{ago(route.lastSeenAt, now)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : null}
-
-        {recentExceptions.length > 0 ? (
-          <div style={{ marginTop: '16px' }}>
-            <h3 style={{ fontSize: '.85rem', fontWeight: 600, margin: '0 0 8px', color: '#fca5a5' }}>Recent Captured Exceptions</h3>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Severity</th>
-                    <th>Exception Message</th>
-                    <th>Path</th>
-                    <th>When</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentExceptions.map((exc) => (
-                    <tr key={exc.id}>
-                      <td><span className={`${styles.pill} ${styles.bad}`}>{exc.severity}</span></td>
-                      <td style={{ fontSize: '.78rem', color: '#fca5a5' }}>{exc.message}</td>
-                      <td><code>{exc.path || '—'}</code></td>
-                      <td className={styles.muted} style={{ fontSize: '.75rem' }}>{ago(exc.occurredAt, now)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ) : null}
-      </section>
-
-      {/* 3. Automated On-Call Paging & Incident Escalation */}
+      {/* 2. Automated On-Call Paging & Incident Escalation */}
       <section className={styles.panel}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', marginBottom: '12px' }}>
           <div>
@@ -443,7 +331,7 @@ export default async function AdminHealthPage({
         </div>
       </section>
 
-      {/* 4. Scheduled Jobs Fleet */}
+      {/* 3. Scheduled Jobs Fleet */}
       <section className={styles.panel}>
         <h2 className={styles.panelTitle}>Scheduled jobs fleet</h2>
         <div className={styles.tableWrap}>

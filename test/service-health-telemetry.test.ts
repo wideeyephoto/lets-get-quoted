@@ -88,6 +88,30 @@ describe('Service Health Telemetry Truthfulness Gate (P1-1, P1-2, P1-3)', () => 
       expect(dbProbe).toBeDefined();
       expect(typeof dbProbe?.latencyMs).toBe('number');
     });
+
+    it('requires an awaited probe with non-null latencyMs for any subsystem claiming operational (T8 gate)', async () => {
+      const mockSupabase = {
+        from: () => ({
+          select: () => ({
+            limit: () => Promise.resolve({ data: [{ id: 'site_1' }], error: null }),
+          }),
+        }),
+      } as any;
+
+      const report = await runSyntheticUptimeProbe(mockSupabase);
+
+      for (const sub of report.subsystems) {
+        if (sub.status === 'operational') {
+          expect(
+            sub.latencyMs,
+            `Subsystem '${sub.id}' claimed 'operational' without a measured latencyMs probe`,
+          ).not.toBeNull();
+          expect(typeof sub.latencyMs).toBe('number');
+        } else {
+          expect(['configured', 'degraded', 'outage']).toContain(sub.status);
+        }
+      }
+    });
   });
 
   describe('P1-4: AI Operator trend history honesty', () => {

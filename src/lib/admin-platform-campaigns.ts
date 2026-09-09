@@ -410,7 +410,7 @@ export async function sendPlatformCampaignBlast(
     throw new Error('No valid, deliverable recipients found for the selected audience.');
   }
 
-  const campaignId = randomUUID();
+  const campaignId = (input as { campaignId?: string }).campaignId || randomUUID();
   const senderName = input.senderName?.trim() || "Let's Get Quoted";
   const senderEmail = input.senderEmail?.trim() || 'hello@letsgetquoted.com';
   const replyTo = input.replyTo?.trim() || 'hello@letsgetquoted.com';

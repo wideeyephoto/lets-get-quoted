@@ -47,6 +47,8 @@ export type VoiceAllowanceSummary = Readonly<{
   failed: number;
   batchSize: number;
   truncated: boolean;
+  reason?: string;
+  errors?: readonly string[];
 }>;
 
 type EntitlementRow = {
@@ -97,12 +99,14 @@ export async function runVoiceAllowanceBatch(
   let minutes = 0;
   let skipped = 0;
   let failed = 0;
+  const failureReasons: string[] = [];
 
   for (const row of candidates) {
     if (!row.period_start || !row.period_end) {
       // A live entitlement with no period is not something to guess a month
       // for. Counted as failed so it shows up rather than looking handled.
       failed += 1;
+      failureReasons.push(`account ${row.account_id}: missing period_start/period_end`);
       continue;
     }
     try {
@@ -114,6 +118,7 @@ export async function runVoiceAllowanceBatch(
       if (error) {
         console.error('voice allowance grant failed:', row.account_id, error);
         failed += 1;
+        failureReasons.push(`account ${row.account_id}: ${error.message}`);
         continue;
       }
       const units = Number(data ?? 0);
@@ -128,6 +133,7 @@ export async function runVoiceAllowanceBatch(
     } catch (error) {
       console.error('voice allowance grant threw:', row.account_id, error);
       failed += 1;
+      failureReasons.push(`account ${row.account_id}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
@@ -141,5 +147,7 @@ export async function runVoiceAllowanceBatch(
     // A full batch means there may be more waiting. Said out loud, because a
     // silent cap reads as "everything was covered" when it was not.
     truncated: candidates.length >= batchSize,
+    reason: failureReasons.length > 0 ? failureReasons[0] : undefined,
+    errors: failureReasons.length > 0 ? failureReasons : undefined,
   });
 }

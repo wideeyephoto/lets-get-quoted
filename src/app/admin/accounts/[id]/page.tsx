@@ -1314,7 +1314,7 @@ export default async function AdminAccountDetailPage({
                       style={{ fontSize: '0.75rem', padding: '0.15rem 0.35rem', border: '1px solid #444', borderRadius: '4px', background: '#111', color: '#fff', width: '140px' }}
                     />
                     <button type="submit" className={styles.rowLink} style={{ border: 'none', background: 'none', cursor: 'pointer' }}>
-                      Resolve
+                      Mark responded
                     </button>
                   </form>
                 ) : null}

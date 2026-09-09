@@ -1,4 +1,59 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+const { dispatchedKeys, mockAdmin } = vi.hoisted(() => {
+  const dispatchedKeys = new Set<string>();
+  const mockAdmin = {
+    from: (table: string) => {
+      if (table === 'platform_campaign_dispatches') {
+        return {
+          insert: async (row: { idempotency_key: string }) => {
+            if (dispatchedKeys.has(row.idempotency_key)) {
+              return {
+                error: {
+                  code: '23505',
+                  message: 'duplicate key value violates unique constraint "platform_campaign_dispatches_pkey"',
+                },
+              };
+            }
+            dispatchedKeys.add(row.idempotency_key);
+            return { error: null };
+          },
+          update: () => ({
+            eq: async () => ({ error: null }),
+          }),
+        };
+      }
+      return {
+        insert: async () => ({ error: null }),
+        select: () => ({
+          eq: () => ({
+            gte: () => ({
+              limit: async () => ({ data: [], error: null }),
+            }),
+          }),
+        }),
+      };
+    },
+  };
+  return { dispatchedKeys, mockAdmin };
+});
+
+vi.mock('@/lib/auth', () => ({
+  requireAdmin: async () => ({ admin: mockAdmin }),
+  requirePermission: async () => ({ admin: mockAdmin }),
+  requireMfaPermission: async () => ({ admin: mockAdmin, adminEmail: 'staff@letsgetquoted.com' }),
+}));
+
+vi.mock('@/lib/resend', () => ({
+  getResendClient: () => ({
+    emails: {
+      send: vi.fn().mockResolvedValue({ data: { id: 'email_123' }, error: null }),
+    },
+  }),
+}));
+
 import {
   interpolateTokens,
   parseCustomEmailList,
@@ -131,6 +186,53 @@ describe('Admin Platform Campaigns Engine', () => {
       expect(ids).toContain('incomplete_onboarding');
       expect(ids).toContain('recent_signups');
       expect(ids).toContain('custom');
+    });
+  });
+
+  describe('T13: platform_campaign_dispatches migration security & RLS gate', () => {
+    it('verifies RLS is enabled and revokes all privileges from public, anon, authenticated', () => {
+      const sql = readFileSync(
+        join(process.cwd(), 'migrations/20260909150000_platform_campaign_dispatches.sql'),
+        'utf8',
+      );
+
+      expect(sql).toContain('create table if not exists public.platform_campaign_dispatches');
+      expect(sql).toContain('idempotency_key text primary key');
+      expect(sql).toMatch(/alter table public\.platform_campaign_dispatches enable row level security;/i);
+      expect(sql).toMatch(/revoke all on table public\.platform_campaign_dispatches from public, anon, authenticated;/i);
+      expect(sql).toMatch(/grant select, insert, update on table public\.platform_campaign_dispatches to service_role;/i);
+    });
+  });
+
+  describe('T13: insert-first campaign idempotency concurrency', () => {
+    it('allows only one dispatch to proceed when two concurrent calls share the same idempotency key', async () => {
+      dispatchedKeys.clear();
+
+      const { sendPlatformCampaignBlastAction } = await import('@/app/admin/campaigns/actions');
+
+      process.env.RESEND_API_KEY = 're_test_12345';
+
+      const sharedKey = `test_key_${Date.now()}`;
+      const campaignInput = {
+        audience: 'custom' as const,
+        customEmails: 'contractor@example.com',
+        subject: 'Product Update',
+        heading: 'New Features',
+        body: 'Hello contractors!',
+        idempotencyKey: sharedKey,
+      };
+
+      // Fire two concurrent calls with identical idempotencyKey
+      const [res1, res2] = await Promise.all([
+        sendPlatformCampaignBlastAction(campaignInput),
+        sendPlatformCampaignBlastAction(campaignInput),
+      ]);
+
+      const successes = [res1, res2].filter((r) => r.success);
+      const duplicates = [res1, res2].filter((r) => !r.success && r.error?.includes('Duplicate campaign dispatch blocked'));
+
+      expect(successes).toHaveLength(1);
+      expect(duplicates).toHaveLength(1);
     });
   });
 });

@@ -3,10 +3,10 @@ import { createAdminClient } from '@/lib/auth';
 import { smsProviderSummary } from '@/lib/sms-provider';
 import { aiVoiceEnabled } from '@/lib/voice/admission';
 import { voiceWebhookSecuritySummary } from '@/lib/voice/auth';
-import { CRON_JOBS, cronHealth, type CronHealth } from '@/lib/cron-jobs';
+import { CRON_JOBS, cronHealth } from '@/lib/cron-jobs';
 import { loadCronStatus } from '@/lib/cron-runs';
 
-export type SubsystemStatus = 'operational' | 'degraded' | 'outage';
+export type SubsystemStatus = 'operational' | 'configured' | 'degraded' | 'outage';
 
 export interface SubsystemHealthProbe {
   id: string;
@@ -20,13 +20,13 @@ export interface SubsystemHealthProbe {
 }
 
 export interface UptimeSlaMetrics {
-  uptime24hPct: number;
-  uptime7dPct: number;
-  uptime30dPct: number;
-  incidentFreeDays: number;
-  totalProbesRun24h: number;
-  degradedProbesRun24h: number;
-  outageProbesRun24h: number;
+  uptime24hPct: number | null;
+  uptime7dPct: number | null;
+  uptime30dPct: number | null;
+  incidentFreeDays: number | null;
+  totalProbesRun24h: number | null;
+  degradedProbesRun24h: number | null;
+  outageProbesRun24h: number | null;
 }
 
 export interface SyntheticUptimeReport {
@@ -96,7 +96,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'quoting-engine',
     name: 'Instant Quoting & PDF Generation Engine',
     category: 'core',
-    status: hasDb ? 'operational' : 'outage',
+    status: hasDb ? 'configured' : 'outage',
     latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasDb ? 'Material algorithms and PDF builder operational' : 'Blocked by database outage',
@@ -109,7 +109,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'stripe-payments',
     name: 'Stripe Payments & Connect Rails',
     category: 'payments',
-    status: hasStripeSecret ? 'operational' : 'degraded',
+    status: hasStripeSecret ? 'configured' : 'degraded',
     latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasStripeSecret ? 'Stripe Connect API credentials configured' : 'Missing STRIPE_SECRET_KEY credentials',
@@ -123,7 +123,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'sms-gateway',
     name: 'Two-Way SMS & Dedicated Phone Gateway',
     category: 'communications',
-    status: hasSmsConfig ? 'operational' : 'degraded',
+    status: hasSmsConfig ? 'configured' : 'degraded',
     latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasSmsConfig
@@ -135,17 +135,17 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
   // 5. AI Voice Webhook Engine
   const voiceEnabled = aiVoiceEnabled();
   const voiceSecurity = voiceWebhookSecuritySummary();
-  const voiceOperational = !voiceEnabled || (voiceSecurity.inboundSigningConfigured && voiceSecurity.receiptBasicConfigured);
+  const voiceConfigured = !voiceEnabled || (voiceSecurity.inboundSigningConfigured && voiceSecurity.receiptBasicConfigured);
   subsystems.push({
     id: 'voice-webhook',
     name: 'AI Voice Receptionist & Webhook Engine',
     category: 'ai',
-    status: voiceOperational ? 'operational' : 'degraded',
+    status: voiceConfigured ? 'configured' : 'degraded',
     latencyMs: null,
     lastCheckedAt: testedAt,
     detail: !voiceEnabled
       ? 'Feature disabled by LGQ_AI_VOICE_ENABLED'
-      : voiceOperational
+      : voiceConfigured
         ? 'Inbound HMAC & Basic auth credentials configured'
         : 'Incomplete webhook signing keys or credentials',
     consequenceIfDown: 'AI phone answering fails to admit calls or drop recordings into CRM.',
@@ -157,7 +157,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'email-resend',
     name: 'Transactional Email Delivery (Resend)',
     category: 'communications',
-    status: hasResend ? 'operational' : 'degraded',
+    status: hasResend ? 'configured' : 'degraded',
     latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasResend ? 'Resend transactional API configured' : 'Missing RESEND_API_KEY credential',
@@ -210,7 +210,7 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
     id: 'contractor-cdn',
     name: 'Edge Network CDN & Contractor Domains',
     category: 'infrastructure',
-    status: hasCdn ? 'operational' : 'degraded',
+    status: hasCdn ? 'configured' : 'degraded',
     latencyMs: null,
     lastCheckedAt: testedAt,
     detail: hasCdn ? 'Edge Network and root domain configured' : 'Missing root domain config',
@@ -227,15 +227,15 @@ export async function runSyntheticUptimeProbe(supabase?: SupabaseClient): Promis
 
   const totalLatencyMs = Math.max(1, Math.round(performance.now() - startTime));
 
-  // SLA calculations (dynamic approximation with guaranteed high target)
+  // SLA calculations: unmeasured until historical synthetic probe telemetry is persisted
   const sla: UptimeSlaMetrics = {
-    uptime24hPct: overallStatus === 'operational' ? 99.99 : overallStatus === 'degraded' ? 99.85 : 98.5,
-    uptime7dPct: 99.98,
-    uptime30dPct: 99.95,
-    incidentFreeDays: overallStatus === 'operational' ? 42 : 0,
-    totalProbesRun24h: 1440, // every 1 min
-    degradedProbesRun24h: overallStatus === 'degraded' ? 2 : 0,
-    outageProbesRun24h: overallStatus === 'outage' ? 1 : 0,
+    uptime24hPct: null,
+    uptime7dPct: null,
+    uptime30dPct: null,
+    incidentFreeDays: null,
+    totalProbesRun24h: null,
+    degradedProbesRun24h: null,
+    outageProbesRun24h: null,
   };
 
   return {
