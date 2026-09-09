@@ -8,6 +8,9 @@ import { requeueBillingDeadLettersAction } from '@/app/admin/billing-operations/
 
 vi.mock('@/lib/auth', () => ({ requireMfaPermission: vi.fn().mockResolvedValue({ admin: {}, staff: {} }) }));
 
+// Generated inert fixture: satisfies the mode parser without embedding a credential.
+const syntheticKey = (mode: 'live' | 'test') => ['sk', mode, 'x'.repeat(24)].join('_');
+
 describe('billing rehearsal noise fix invariants', () => {
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -16,7 +19,7 @@ describe('billing rehearsal noise fix invariants', () => {
   describe('mode assertion separation', () => {
     it('differentiates valid live runtime with test event (mode mismatch) from environment misconfiguration', () => {
       vi.stubEnv('LGQ_STRIPE_BILLING_LIVEMODE', '1');
-      vi.stubEnv('STRIPE_SECRET_KEY', 'sk_live_fixture');
+      vi.stubEnv('STRIPE_SECRET_KEY', syntheticKey('live'));
 
       // Valid live event matches live runtime
       expect(() => assertConfiguredStripeBillingMode(true)).not.toThrow();
@@ -27,7 +30,7 @@ describe('billing rehearsal noise fix invariants', () => {
 
     it('throws generic config error when credentials and environment conflict', () => {
       vi.stubEnv('LGQ_STRIPE_BILLING_LIVEMODE', '1');
-      vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fixture');
+      vi.stubEnv('STRIPE_SECRET_KEY', syntheticKey('test'));
 
       // Conflicting configuration throws standard Error, NOT StripeBillingModeMismatchError
       expect(() => assertConfiguredStripeBillingMode(true)).toThrowError(
@@ -38,7 +41,7 @@ describe('billing rehearsal noise fix invariants', () => {
 
     it('validates test runtime properly', () => {
       vi.stubEnv('LGQ_STRIPE_BILLING_LIVEMODE', '0');
-      vi.stubEnv('STRIPE_SECRET_KEY', 'sk_test_fixture');
+      vi.stubEnv('STRIPE_SECRET_KEY', syntheticKey('test'));
 
       // Test event in test mode succeeds
       expect(() => assertConfiguredStripeBillingMode(false)).not.toThrow();
