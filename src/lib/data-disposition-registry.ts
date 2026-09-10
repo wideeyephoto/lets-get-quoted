@@ -1198,6 +1198,19 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     vendorDependency: 'stripe',
   },
 
+  // Recovery evidence follows the immutable settlement's retention policy.
+  overage_settlement_evidence: {
+    tableName: 'overage_settlement_evidence',
+    relationship: 'fk_chain',
+    fkPath: ['settlement_id', 'workspace_overage_settlements.account_id'],
+    primaryKeyColumn: 'id',
+    localAction: 'retain_immutable',
+    portability: 'internal_system',
+    retention: { jurisdiction: 'US_FEDERAL', legalBasis: 'statutory_tax_7yr', durationDays: 2555, startEvent: 'account_closed' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+    vendorDependency: 'stripe',
+  },
+
   // Invoiced monthly usage overage charges
   workspace_overage_settlements: {
     tableName: 'workspace_overage_settlements',
