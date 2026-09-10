@@ -1,0 +1,180 @@
+{
+  "verified_at": "2026-09-10T22:30:22Z",
+  "scope": "User-requested read-only verification of recent work after the completed fixed observation; not a restarted observation or rollout.",
+  "production": {
+    "deployment_id": "dpl_HzA6PDkjTPRZga2cB5dRr1rYaaN2",
+    "revision": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+    "state": "READY",
+    "ready_at": "2026-09-10T15:55:58.476Z"
+  },
+  "database_check": {
+    "observed_at": "2026-09-10T22:28:29.72188+00:00",
+    "routing_audits": [],
+    "unsigned_callback": {
+      "id": "ac64f8a5-cdc9-4c16-85c0-387685183c6d",
+      "resolved_at": null
+    },
+    "recovery_migration": [],
+    "required_functions": [
+      {
+        "name": "list_claimable_overage_settlements",
+        "present": false
+      },
+      {
+        "name": "claim_overage_settlement_v2",
+        "present": false
+      },
+      {
+        "name": "observe_overage_invoice_item",
+        "present": false
+      }
+    ],
+    "worker_cycles_since_report": [
+      {
+        "job": "billing-subscription-projection",
+        "cycles": 14,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T22:25:29.435+00:00"
+      },
+      {
+        "job": "direct-payment-settlement",
+        "cycles": 14,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T22:25:02.285+00:00"
+      },
+      {
+        "job": "operational-alerts",
+        "cycles": 14,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T22:25:13.186+00:00"
+      },
+      {
+        "job": "overage-settlement",
+        "cycles": 1,
+        "failed": 1,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T21:37:19.203+00:00"
+      },
+      {
+        "job": "sms-delivery",
+        "cycles": 73,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T22:28:18.321+00:00"
+      },
+      {
+        "job": "voice-allowance",
+        "cycles": 3,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T22:15:02.167+00:00"
+      }
+    ],
+    "worker_failures_since_report": [
+      {
+        "id": "b472315e-991a-4f94-9ec1-06a0fbc42424",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T21:37:19.203+00:00"
+      }
+    ]
+  },
+  "rehearsal_callback_dispositions": {
+    "status": "complete",
+    "records": 24,
+    "unresolved": 0,
+    "location": "public.webhook_failures.resolved_by and test_marker",
+    "review_groups": [
+      {
+        "test_marker": "contractor-domain-callback-rehearsal-20260909",
+        "resolved_by": "Codex contractor-domain canary review 2026-09-09: retained follow-on provider retry for an already delivered authorized Gmail test carrying the deleted staging workspace tag. Matched signed event msg_3J6dM7L01Hz0nWfoSGw0FuTo3vb and Resend attempt atmpt_3J6wUHflpt1UneI7zlFEYPN8myd (HTTP 202 quarantined); provider event success with next_attempt_at null at 23:43 UTC. No email resent, no customer event reassigned. See docs/contractor-domains-canary-2026-09-09.md.",
+        "records": 1,
+        "unresolved": 0,
+        "latest_resolution": "2026-09-09 23:44:09.280027+00"
+      },
+      {
+        "test_marker": "contractor-domain-callback-rehearsal-20260909",
+        "resolved_by": "Codex contractor-domain canary review 2026-09-09: retained follow-on provider retry for an already delivered authorized Gmail test carrying the deleted staging workspace tag. Matched signed event msg_3J6dMI4ZPDvSYpNStMy3hZZq6IR and Resend attempt atmpt_3J6y5r6tSZ0a3ufPxz6uZ01h0lb (HTTP 202 quarantined); provider event success with next_attempt_at null at 23:43 UTC. No email resent, no customer event reassigned. See docs/contractor-domains-canary-2026-09-09.md.",
+        "records": 1,
+        "unresolved": 0,
+        "latest_resolution": "2026-09-09 23:44:09.280027+00"
+      },
+      {
+        "test_marker": "contractor-domain-callback-rehearsal-20260909",
+        "resolved_by": "Codex contractor-domain canary review 2026-09-09: retained follow-on provider retry for an already delivered authorized Gmail test carrying the deleted staging workspace tag. Matched signed event msg_3J6dsDMV2j7SCCBHfwU6DwBBjnL and Resend attempt atmpt_3J6xC7vyuuKJKtfzoxAuEOdO6mN (HTTP 202 quarantined); provider event success with next_attempt_at null at 23:43 UTC. No email resent, no customer event reassigned. See docs/contractor-domains-canary-2026-09-09.md.",
+        "records": 1,
+        "unresolved": 0,
+        "latest_resolution": "2026-09-09 23:44:09.280027+00"
+      },
+      {
+        "test_marker": "contractor-domain-callback-rehearsal-20260909",
+        "resolved_by": "Codex contractor-domain canary review 2026-09-09: retained follow-on provider retry for an already delivered authorized Gmail test carrying the deleted staging workspace tag. Matched signed event msg_3J6dsJls8eA7JPCxy2COFFrQtmZ and Resend attempt atmpt_3J6uz5WlEi5kGOwn1dSrczYfhbb (HTTP 202 quarantined); provider event success with next_attempt_at null at 23:43 UTC. No email resent, no customer event reassigned. See docs/contractor-domains-canary-2026-09-09.md.",
+        "records": 1,
+        "unresolved": 0,
+        "latest_resolution": "2026-09-09 23:44:09.280027+00"
+      },
+      {
+        "test_marker": "contractor-domain-callback-rehearsal-20260909",
+        "resolved_by": "Codex contractor-domain rehearsal review: two delivered test messages carried deleted staging account tags; PR64 deployed; all four authentic provider replays returned 202 with durable quarantine at 22:09 UTC. No customer event reassignment or email resend. See docs/contractor-domains-canary-2026-09-09.md",
+        "records": 20,
+        "unresolved": 0,
+        "latest_resolution": "2026-09-09 22:12:21.415833+00"
+      }
+    ],
+    "supporting_release_report": "docs/contractor-domains-canary-2026-09-09.md#shared-provider-callback-incident",
+    "verification_scope": "Read current row-level reviewed dispositions and the existing release report. No new provider replay or message was sent."
+  },
+  "correction": {
+    "previous_claim": "The 24 known Resend callback failures still lacked explicit disposition.",
+    "finding": "Incorrect: the existing reviewed dispositions are stored on the failure rows. The prior observer selected resolved_at but omitted resolved_by and test_marker; the supplemental query only searched admin_actions.",
+    "historical_disposition_completed_by": "2026-09-09T23:44:09.280027Z",
+    "fixed_window_acceptance_result": "FAIL remains valid for the separately evidenced overage/worker/recording, unsigned callback, watchdog and paging-duration requirements.",
+    "raw_historical_snapshots_preserved": true
+  },
+  "local_candidate": {
+    "workspace": "C:/dev/CLAUDE CODE FOLDER",
+    "branch": "prelaunch/autonomous-fixes-20260910",
+    "head": "281da2a2702d34663c7ba8c883b38428be1dcce4",
+    "cron_recording_fix": "Uncommitted changes inspect and log returned Supabase completion and prune errors; a new regression test file is present.",
+    "production_contains_this_cron_recording_change": false,
+    "other_workspace_modified_by_this_recheck": false
+  },
+  "watchdog": {
+    "databaseId": 34537598633,
+    "headSha": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+    "status": "completed",
+    "conclusion": "success",
+    "createdAt": "2026-09-10T22:28:14Z",
+    "updatedAt": "2026-09-10T22:28:42Z",
+    "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34537598633",
+    "previous_start": "2026-09-10T20:04:37Z",
+    "gap_minutes": 143.61666666666667,
+    "timing_assurance_established": false
+  },
+  "current_acceptance": "pending_production_repairs_and_remaining_verification",
+  "automation_status": "PAUSED",
+  "production_mutations": 0,
+  "outbound_submissions": 0,
+  "publication_status": "local_only_pending_specific_evidence_publication_approval",
+  "observer_verification": {
+    "file": "operational-cleanup-observation-20260910T223311Z.json",
+    "observed_at": "2026-09-10T22:33:11.404Z",
+    "known_rows": 24,
+    "missing_review_fields": 0,
+    "script_syntax_check": "passed"
+  }
+}

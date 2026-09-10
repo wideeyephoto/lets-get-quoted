@@ -26,7 +26,9 @@ const db=new Client({connectionString:process.env.DATABASE_URL,ssl:{rejectUnauth
  report.post_containment_test_ingress=await q("select id,provider_event_id,event_type,processing_status,last_error,received_at from billing_events where livemode=false and received_at>='2026-09-09T20:23:58Z' order by received_at");
  report.active_findings=await q('select category,count(*) records from operational_alert_findings where resolved_at is null group by category order by category');
  report.active_finding_references=await q('select source_key,category,reference,occurred_at,detected_at,delivery_id from operational_alert_findings where resolved_at is null order by category,source_key');
- report.webhook_failures_since_start=await q('select id,source,event_type,reference_id,error_message,created_at,resolved_at from webhook_failures where created_at >= $1 order by created_at',[baseline.started_at]);
+ // Dispositions can live on the source row; absence of a separate admin action is not proof of missing review.
+ report.webhook_failures_since_start=await q('select id,source,event_type,reference_id,error_message,created_at,resolved_at,resolved_by,test_marker from webhook_failures where created_at >= $1 order by created_at',[baseline.started_at]);
+ report.known_rehearsal_callback_dispositions=await q('select id,reference_id,resolved_at,resolved_by,test_marker from webhook_failures where reference_id=any($1) order by created_at',[["45d14716-1535-412e-b65b-84264775ad4d","81bbc108-4026-4e3b-a8eb-f4e126d724c4"]]);
  report.unconfirmed_alerts=await q("select id,category,state,provider_id,created_at,accepted_at,last_error from operational_alert_deliveries where state <> 'delivered' order by created_at");
  report.delivered_alerts_since_start=await q("select id,category,provider_id,created_at,delivered_at from operational_alert_deliveries where delivered_at >= $1 order by delivered_at",[baseline.started_at]);
  report.paging_ledger=await q('select page_key,state,provider_id,provider_status,error_code,started_at,delivered_at from operational_sms_pages order by started_at');

@@ -120,7 +120,7 @@
   "remaining_blockers": [
     "Apply the coordinated overage recovery database/worker repair and verify scheduled recovery; monitoring made no production mutation.",
     "Investigate recurring voice/direct-payment failures, seven unfinished cron records and the SMS recorded-start gap without inventing missing business outcomes.",
-    "Record an explicit routing disposition for the two rehearsal Resend messages and classify the unsigned voice callback rejection.",
+    "Classify the separate unsigned voice callback rejection. The 24 known Resend rehearsal callbacks already have reviewed source-row dispositions; see the September 10 22:30 UTC correction.",
     "Establish timely independent watchdog execution.",
     "Complete the full relevant paging/stability observation after authorized repairs or relevant activation."
   ],
@@ -442,5 +442,13 @@
     "automatic_review_rejected": true,
     "reason": "Automatic approval review required specific authorization to publish the production-observation record IDs and audit evidence to this public destination.",
     "added_content_redaction_check": "passed: no credential or full phone matches in added content"
+  },
+  "correction_2026_09_10": {
+    "verified_at": "2026-09-10T22:30:22Z",
+    "evidence": "operational-cleanup-release-recheck-2026-09-10.json",
+    "corrected_claim": "The 24 known Resend rehearsal callbacks were incorrectly described as lacking explicit disposition. All have reviewed resolved_by notes and the incident marker on the source rows; the last four were reviewed September 9 at 23:44 UTC.",
+    "prior_query_limitation": "The observer omitted resolved_by and test_marker; searching admin_actions alone was insufficient.",
+    "fixed_window_acceptance": "FAIL remains supported by the other separately recorded failures and incomplete acceptance requirements.",
+    "raw_snapshots_and_baseline_preserved": true
   }
 }
