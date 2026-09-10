@@ -68,7 +68,7 @@ import PriceBookSettingsSection from './PriceBookSettingsSection';
 import StationerySettingsSection from './StationerySettingsSection';
 import EmailSendingDomainSection from './EmailSendingDomainSection';
 import { type EmailSendingDomainRow } from './email-domain-actions';
-import { isEmailSendingDomainsFeatureEnabled, isWorkspaceEligibleForSendingDomains } from '@/lib/resend-domains';
+import { isWorkspaceEligibleForSendingDomains } from '@/lib/resend-domains';
 import HomeownerFinancingSection from './HomeownerFinancingSection';
 import { isHomeownerFinancingFeatureEnabled } from '@/lib/acorn-financing';
 import type { HomeownerFinancingEnrollmentRow } from '@/lib/bnpl-financing';
@@ -147,19 +147,16 @@ export default async function SettingsPage({
   const webhookSubscriptions = ((webhookSubsResult?.data ?? []) as unknown[]) as WebhookSubscriptionView[];
   const webhookDeliveries = ((webhookDeliveriesResult?.data ?? []) as unknown[]) as WebhookDeliveryView[];
 
-  const emailSendingDomainsEnabled = isEmailSendingDomainsFeatureEnabled();
   const isWorkspaceEligibleForDomains = isWorkspaceEligibleForSendingDomains(accountId);
-  const { data: emailDomainData } = emailSendingDomainsEnabled
-    ? await supabase
-        .from('email_sending_domains')
-        .select('*')
-        .eq('account_id', accountId)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-    : { data: null };
+  const { data: emailDomainData } = await supabase
+    .from('email_sending_domains')
+    .select('*')
+    .eq('account_id', accountId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
   const showEmailSendingDomains =
-    emailSendingDomainsEnabled && (isWorkspaceEligibleForDomains || Boolean(emailDomainData));
+    isWorkspaceEligibleForDomains || Boolean(emailDomainData);
 
   const homeownerFinancingEnabled = isHomeownerFinancingFeatureEnabled();
   const { data: financingEnrollmentData } = homeownerFinancingEnabled
@@ -815,7 +812,7 @@ export default async function SettingsPage({
                 {showEmailSendingDomains && (
                   <EmailSendingDomainSection
                     initialDomain={emailDomainData as EmailSendingDomainRow | null}
-                    isEnabled={emailSendingDomainsEnabled}
+                    isEnabled={showEmailSendingDomains}
                     isEnrollmentAllowed={isWorkspaceEligibleForDomains}
                   />
                 )}

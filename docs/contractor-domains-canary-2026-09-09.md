@@ -1,0 +1,112 @@
+# Contractor domains: Outlook, lifecycle, and canary record
+
+Updated September 9, 2026. **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
+
+Release continuation: Brett explicitly approved publishing/deploying the candidate and hourly follow-ups with at most one test per approved inbox daily. The task heartbeat `contractor-domain-seven-day-canary` is now ACTIVE, hourly at minute 40. It continues lifecycle preparation first and does not start/count canary days until the activation and recovery gates below pass. This supersedes the historical approval blocks recorded below.
+
+## Production release and enrollment
+
+- [PR #64](https://github.com/wideeyephoto/lets-get-quoted/pull/64) merged as `18a412404d275949c919b06e80bd015fd1595cc9`. [Full CI](https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34409001923) passed 1,129 files / 14,590 tests, security audit, SEO/stock checks, type checks, lint, and production build.
+- Brett separately approved the exact Production settings `LGQ_EMAIL_SENDING_DOMAINS_ENABLED=true` and `LGQ_EMAIL_SENDING_DOMAINS_WORKSPACE_ALLOWLIST=c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Both were applied; no wildcard or other workspace was added.
+- READY deployment `dpl_955shMPfprmxsadkAEui6PqeaKC9` contains that SHA and those settings. At 22:09 UTC, both `app.letsgetquoted.com` and `letsgetquoted.com` were independently confirmed aliased to it. The earlier READY Git build did not yet serve those aliases; it was not counted as live acceptance.
+- The BrokePipes production settings UI exposed enrollment and successfully created row `75f27b4c-2911-4885-b06d-b8db1fe86c97`, provider binding `de786e7c-a449-42b0-9917-85cc10af8692`, From prefix `hello`, initially pending. Another authenticated workspace, Lawn & Order Landscapers, had no domain-enrollment UI after reloading the same release. Fourteen focused rollout-control tests also passed; the UI observation alone does not prove a direct forbidden server-action attempt.
+- The reserved standalone provider binding `46a189db-0263-4b13-9ed9-8be696b62bad` was explicitly retired at 22:11:02 UTC (DELETE 200, subsequent GET 404) before product enrollment. It was never silently adopted by tenant name.
+- The new binding returned the same DKIM public key, but different return-path records. Squarespace now has `send` MX priority 10 → `feedback-smtp.us-east-1.amazonses.com` and `send` TXT → `v=spf1 include:amazonses.com ~all`, both TTL 30 minutes. These replace the earlier rehearsal-only `send` CNAME. The apex website A record, Domain Connect record, DKIM, DMARC, and legacy `rsend` CNAME remain as observed. Older recursive caches can retain the former four-hour CNAME TTL; do not count publication alone as verified authentication.
+
+No additional deliberate recipient test was sent during this release continuation. Earlier September 9 tests already used today's allowance; defer further deliberate sends and owner-notification drills until the next daily allowance, including notifications triggered indirectly by DNS recovery. Before each send, check the provider inventory for an uncertain prior attempt. The heartbeat uses America/New_York calendar days for this limit.
+
+At 22:30 UTC, the loaded Resend Usage dashboard showed 2/3 domain slots occupied, 30/100 daily emails used, 102/3,000 monthly emails used, and 10 requests/second. Preserve the remaining domain slot for recovery; this is a measured checkpoint, not permission to expand the cohort or an assumption about future quota.
+
+### Verification-button defect found in the live rehearsal
+
+At 22:23:29 UTC, GET of the exact provider binding returned `verified`, with all three required records verified; public DNS also returned the new MX/TXT values. LGQ's preceding Check Connection had left the row pending at 22:22:13 UTC. The helper unconditionally POSTed `/verify` before reading status, restarting asynchronous verification even when it had already completed. The follow-up patch first reads the owned binding and returns an already verified result without restarting it. Unverified bindings still trigger verification and report the actual result; deleted bindings return null. A stateful regression reproduces the provider's verified → pending reset on POST. All 59 affected tests, TypeScript test-project checking, and targeted lint passed.
+
+Brett expressly approved [PR #67](https://github.com/wideeyephoto/lets-get-quoted/pull/67) merge and deployment. It merged at 22:42:03 UTC as `1f095c1f0c2339542bfd2b7f88206d942df3aba8`; [full CI](https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34412393811) passed 1,130 files / 14,593 tests, required checks, and production build. Production build `dpl_8SxWnaFVGvJasG8mMoSrFhKCe5ar` reached READY at 22:44:38 UTC and was promoted using the Vercel CLI. Both `app.letsgetquoted.com` and `letsgetquoted.com` were independently confirmed pointing to this deployment before UI verification.
+
+After reloading production BrokePipes settings, Check Connection displayed **Verified** and the active `hello@blackholeart.com` sender. Independent SQL confirmed row `75f27b4c-2911-4885-b06d-b8db1fe86c97` became `verified` with both `verified_at` and `last_checked_at` at 22:48:18.986 UTC. Resend GET at 22:49:51 UTC confirmed binding `de786e7c-a449-42b0-9917-85cc10af8692` and all three records still verified. This closes the verification-button regression and deployed DNS activation, not the remaining custom-domain product-message acceptance.
+
+The F08 UI disconnect drill reached Chrome's native confirmation, but browser control timed out while attempting to accept it. No successful disconnect is claimed: subsequent SQL and provider GET still showed the verified binding. Brett was asked to clear the native confirmation; before retrying or reconnecting, re-read the database and provider state. This is a browser-control blocker, not evidence that the application's disconnect action failed.
+
+At September 10 00:02 UTC (still September 9 in America/New_York), Brett reported that he could not find the confirmation. A fresh browser dialog check and screenshot confirmed **no popup was open**; the production database still held the same verified binding. The prior request to find an existing OK button is obsolete. The visible manual path is BrokePipes → Account → Business → Profile & locations → Custom Email Sending Domain → Disconnect beside `hello@blackholeart.com`, then confirm OK. Brett was asked to perform that step because native-dialog acceptance repeatedly timed out in browser control. Do not reopen the popup automatically while that handoff is pending. Re-read state and complete reconnection after his action.
+
+The subsequent missing-section report was traced to a different authenticated workspace: Codex's in-app browser showed BIGFATPIPEGUYS2, account #100036, where the BrokePipes-only rollout correctly hides enrollment. Chrome showed BrokePipes, account #100021, with the verified domain and Disconnect button. A dedicated Chrome tab was opened and scrolled to that panel for the handoff. Use that Chrome session; a generic settings link in Codex can open the unrelated in-app session. No rollout expansion is needed to resolve this navigation mismatch.
+
+Brett then explicitly requested that Codex complete the step. This supersedes the manual-popup handoff above. At September 10 00:35 UTC, production and provider checks still showed the same verified binding. Native confirmation acceptance timed out again; a proposed Enter key was rejected by automatic review because its target had not been freshly established, so no Enter key was sent. A subsequent read showed no remaining dialog and the binding unchanged. Windows-native inspection also failed to activate Chrome's captured window. The follow-up UI change retains explicit confirmation inside the settings page, focuses the non-destructive choice, supports Cancel/Escape, and prevents duplicate in-flight requests. Twenty focused tests, targeted lint, and the TypeScript test-project check passed. An isolated browser preview of the actual component with simulated server actions verified cancel, pending, and successful completion with no native dialog or console errors. Production release and F08 acceptance are still pending; these local checks do not count as a production disconnect.
+
+## Receiver and quote-link evidence
+
+| Check | Evidence | Scope |
+| --- | --- | --- |
+| Outlook custom sender | `DOMAIN-OUTLOOK-20260909`, provider `95e35df3-26eb-4a38-900f-fb4320f03cb5`; accepted 21:05:22 UTC; production delivery callback 21:05:27.002 UTC | Received in Outlook Focused Inbox. Actual renderer and fallback transport executed locally; correct production workspace tag. This was not a deployed domain-onboarding test. |
+| Outlook authentication | SPF PASS `smtp.mailfrom=rsend.blackholeart.com`; DKIM PASS `header.d=blackholeart.com`; DMARC PASS `header.from=blackholeart.com`; Microsoft composite authentication PASS; provider ingress TLS 1.3 | Receiver message source retained in the owner's Outlook account. Exact DKIM alignment and relaxed SPF alignment. |
+| Separate-mailbox reply | Outlook Reply selected the authorized Gmail mailbox; reply sent and received in Gmail Inbox at 21:10 UTC | Gmail search `DOMAIN-OUTLOOK-20260909`; conversation `FMfcgzQhWLRLsHwCttsKFGRCCWzkQPlg`. Direct mail to `hello@blackholeart.com` remains unsupported: no mailbox/alias exists. |
+| Corrected product quote | Deployed LGQ created J-1004, job `5fd81ecf-c1af-41a2-8d7d-f993eb6b80d1`, amount $0; provider `fad727d4-395b-4485-8a90-505502439acb`, delivered 21:19:37.132 UTC | Outlook Other Inbox. The actual email button opens the matching `/client/jobs/<token>` page with J-1004, test scope, recipient, and $0. No signature, approval, schedule, invoice, or payment submitted. Uses the platform sender until domain enrollment. |
+
+The earlier transport probes used `https://blackholeart.com/` as their quote URL. The owner correctly reported that those buttons opened the contractor homepage. That was a rehearsal setup error, not evidence of a broken production token route. J-1004 closes the deployed product-link check; it does not retroactively turn the probes into real quotes. Its private access token and personal recipient addresses are excluded from this repository. The job is marked `contractor-domain-canary-20260909`, which excludes it from the normal quote follow-up sweep.
+
+## Shared-provider callback incident
+
+The first two Gmail probes used a staging account tag with a shared live Resend webhook pointing at production. Although both emails arrived, their callbacks failed the production `email_events_account_id_fkey`. Sixteen retry failures had accumulated by 21:05 UTC for provider IDs `45d14716-1535-412e-b65b-84264775ad4d` and `81bbc108-4026-4e3b-a8eb-f4e126d724c4`. Preserve the failure records and their disposition; they are not proof of undelivered mail and must not be silently cleared.
+
+The new route durably records a signed, permanently foreign/deleted-workspace event as `EMAIL_ACCOUNT_QUARANTINE` before returning 202. It does not reassign the event or suppress another tenant. Failed quarantine persistence and unrelated database failures still return 500. Production-tagged Outlook and J-1004 callbacks recorded delivery normally. Do not reuse the old staging-tagged live-send harness.
+
+On the released public endpoint, all four original provider events were replayed through Resend's supported Replay Event API. Each actual delivery attempt returned HTTP 202 with `{"received":true,"quarantined":true}` at 22:09:45–22:09:49 UTC and persisted its quarantine record. This sent no email.
+
+| Original event | Successful replay attempt |
+| --- | --- |
+| `msg_3J6dsJls8eA7JPCxy2COFFrQtmZ` | `atmpt_3J6qIVqt569HTS7Xu0MOKpowdh9` |
+| `msg_3J6dsDMV2j7SCCBHfwU6DwBBjnL` | `atmpt_3J6qIdqdFramEu9Mv1ZiIqfz7gF` |
+| `msg_3J6dMI4ZPDvSYpNStMy3hZZq6IR` | `atmpt_3J6qIonyixD06NbUO7w8sIIWqWF` |
+| `msg_3J6dM7L01Hz0nWfoSGw0FuTo3vb` | `atmpt_3J6qIuQc8Npol6q0mU47eVg31zD` |
+
+All 16 original failures and four quarantine rows are retained with an explicit reviewed disposition and marker `contractor-domain-callback-rehearsal-20260909`; zero remain open under that marker. The disposition identifies the two delivered test messages, incorrect deleted staging tags, release, and successful replay evidence. No customer event was reassigned or resent. Resend's event summary initially retained its historical `failed` status with no next automatic attempt; a later read after the PR #67 promotion showed all four originals as `success`. The actual HTTP-202 replay attempts remain the primary evidence. This closes this rehearsal incident, not every suppression/bounce/complaint scenario in F11.
+
+### Follow-on callback retries reviewed at 23:44 UTC
+
+The hourly check found four later deliveries of those same signed provider events. No additional Replay Event call or email send was made in this check. Every later attempt returned HTTP 202 with the quarantine response, and the provider's current event records all showed `success`, `next_attempt_at=null`, and complete attempt lists (`has_more=false`). Their original message IDs, event types, deleted staging account tag, and occurrence times matched the earlier incident.
+
+| Retained quarantine row | Provider attempt / UTC |
+| --- | --- |
+| `b0e640a2-86f7-4b37-8132-3b6f0fd115f7` | `atmpt_3J6uz5WlEi5kGOwn1dSrczYfhbb` / 22:48:18.008 |
+| `56d11948-f1cd-40e5-9eae-e08e14c28909` | `atmpt_3J6wUHflpt1UneI7zlFEYPN8myd` / 23:00:39.628 |
+| `9a42ffec-c17b-4fc1-a4c5-9289ae735fe3` | `atmpt_3J6xC7vyuuKJKtfzoxAuEOdO6mN` / 23:06:28.508 |
+| `71e5433a-cd6e-4100-866c-59f38f35498e` | `atmpt_3J6y5r6tSZ0a3ufPxz6uZ01h0lb` / 23:13:51.980 |
+
+At 23:44:09.280 UTC, a scoped review update retained and resolved exactly these four rows. Its guards matched each row/provider/Svix event ID, the quarantine reason and original account, unresolved state, absent staging account, and absence of any canonical reassignment. Each disposition records its successful provider attempt. The incident marker now contains **24 retained records, zero unresolved**. J-1004 remains one delivered canonical event with its original tenant and timestamp. Future unmatched or newly failing callbacks still require separate review; this disposition does not suppress them.
+
+At 23:42 UTC, BrokePipes and its exact provider binding remained verified with no failure reason; all three provider DNS records were verified. The last scheduled `email-domain-reconcile` run was still the September 9 06:23 UTC empty-inventory run, so no active-domain canary run is counted. Website run `bb8e171c-4411-4a00-b635-a092361dfcbd` at 23:30:29.270 UTC checked the one pending fixture with zero errors or owner notifications. The daily recipient allowance and unfinished lifecycle gates still prevent starting the observation clock.
+
+J-1004's valid callbacks were also replayed in delivered-then-sent order. Provider attempts `atmpt_3J6tBySgT35oFsuOrHZYieT8U87` at 22:33:33.836 UTC and `atmpt_3J6tC9UlEXSyR1aKQF87mayXAwJ` at 22:33:35.236 UTC both returned HTTP 200. Before and after, exactly one canonical row `18809ab6-4d49-47a8-a1cd-26781688f9a8` remained attributed to BrokePipes with kind `client_quote`, status `delivered`, and original occurrence time 21:19:37.132 UTC. This proves authentic duplicate/out-of-order handling for this quote without another recipient email.
+
+## Website fixture
+
+The disposable account `dc0c3913-ef17-4868-b00a-789362c5cbf2` is marked `website-domain-lifecycle-20260909`. Its site `cdb17a5c-cf57-489e-86cb-26ecfe61155b` is unpublished, with domain `certificate-canary-20260909.blackholeart.com`, null verification stamp, no memberships, and no jobs or payments. Its notification recipient is the approved owner mailbox.
+
+Scheduled run `366afbd1-ee74-4d86-9077-346bf155441e` at 22:00:29 UTC checked this one real pending row, attached it to the production Vercel project, and returned `stillPending=1`, `connected=0`, `ownersNotified=0`, `errors=0`, `orphanedAtProject=0`. Unlike the earlier zero-row runs, this proves the deployed watcher uses its credentials to attach and inspect a pending domain. DNS has not yet been published for this fixture. Publish its provider-recommended record when a notification send is allowed, observe a scheduled TLS promotion and owner notice, then delete only this empty fixture through the deployed administrative action and prove the provider binding is absent. Never delete the active Black Hole Art site.
+
+At 22:32:20 UTC, Vercel's configuration endpoint correctly reported this fixture misconfigured and recommended CNAME `certificate-canary-20260909` → `467645265cb4a259.vercel-dns-017.com` (rank 1). Recheck before publication. The active `https://blackholeart.com/` site returned HTTP 200 over normally validated TLS at the same checkpoint.
+
+## Candidate and validation
+
+- Atomic pending-domain reservation precedes provider creation. A unique account index enforces one domain of any status per workspace, including concurrent requests. Provider failure retains a recoverable failed reservation; a newly created binding is removed if ownership disappears before persistence.
+- Migration `20260909210950_email_sending_domain_account_limit.sql` applied to production and `staging-db` after empty-inventory/duplicate preflight. Seventeen isolated PostgreSQL 17 checks passed, including simultaneous inserts from separate connections and replacement after disconnect. The initially rejected staging operation was retried only after verifying the project name, organization, and empty table; it succeeded.
+- 172 focused domain, sender, webhook, and website lifecycle tests passed after merging current main. TypeScript test-project check and targeted lint passed before the main merge. A fresh optimized Next.js production build passed on the merged candidate using CI placeholder credentials, including application type checking and all 421 static pages. The subsequent full CI and production release are recorded above. Remaining hosted scenarios still require their own evidence.
+- Preserve production security changes from main. At the 21:29 UTC inspection, production was READY deployment `dpl_9HNo5Z2kEc6G3yr5wSjDmXz3FgqS`, SHA `d97ab04dff6aaf145f336422c125598f3229454d`.
+
+The previous provider-pagination warning was incorrect: Resend's existing List Domains endpoint returns the entire inventory when `limit` is omitted, as the adapter currently does. Optional bounded pagination is a scale improvement, not a demonstrated truncated-inventory defect. [Resend pagination contract](https://resend.com/docs/api-reference/pagination).
+
+## Remaining lifecycle and canary work
+
+Record actual deployed onboarding, provider deletion/reconnect, technical DNS loss/recovery, durable hold/cleanup behavior, and website pending-certificate promotion/deletion using disposable assets. Keep injected fault tests distinct from provider/DNS observations. Do not delete the live website or claim that zero-row cron runs exercised a tenant.
+
+Before starting the clock, record the READY candidate, one-workspace allowlist, active provider and database binding, successful real custom-domain product mail, and restored healthy state after drills. The retired and replacement provider bindings are recorded above. Replies use the owner's authorized Gmail mailbox, saved through production Business settings and independently confirmed in the account record. No From mailbox is provisioned.
+
+Historical approval gates: automatic review initially rejected publication, recurring execution, and then the exact production variables. Brett explicitly approved publication/deployment and hourly follow-ups, then approved the two exact variables. Each rejected operation was retried only after the corresponding approval and then succeeded. No alternative path bypassed a rejection. There is no outstanding publication, scheduling, or variable approval at this checkpoint.
+
+Continue the authorized disposable drills with at most one test per approved inbox per day, counting automatically triggered owner notifications in planning. Follow-ups stay quiet unless something meaningful changes or requires action, and stop once acceptance is complete. Recheck current main and active production before any later release so other completed work is preserved.
+
+The canary needs at least seven elapsed days and seven consecutive successful scheduled reconciliation runs with this active domain present, fresh `last_checked_at`, representative sends and passing receiver authentication. A zero-row run or zero-send week does not qualify. Pause expansion for cross-tenant identity, authentication failure, lost/duplicate mail, inability to suspend, provider capacity exhaustion, or unresolved material defects. Preserve exact run/message IDs and investigate rather than resetting evidence to green.
+
+| Day | Scheduled run / UTC | Domain checked and fresh | Sends / delivery / replies | Outcome |
+| --- | --- | --- | --- | --- |
+| 1–7 | Pending activation and lifecycle recovery | Not yet observed | Initial transport/product evidence above | Observation clock not started |

@@ -35,6 +35,7 @@ import type { DailyDigest } from './daily-digest';
 import { quoteFollowupEmailPreview } from './quote-followups';
 import { rebookInviteEmailContent } from './rebook-message';
 import { resolveHomeownerFinancing } from './bnpl-financing';
+import { sendWithDomainFallback } from './email-domain-fallback';
 
 /**
  * THE CLIENT IS BUILT ON FIRST USE, NOT ON IMPORT.
@@ -48,14 +49,12 @@ import { resolveHomeownerFinancing } from './bnpl-financing';
  *
  * Every send function below already returns early when the key is missing —
  * that guard was written and was correct and could never run, because the
- * constructor threw one import earlier. Deferring it behind a getter is what
+ * constructor threw one import earlier. Deferring it until send is what
  * makes those guards reachable. crew-auth.ts and magic-link.ts have always
  * constructed theirs inside the function; this file was the odd one out.
  *
- * A getter rather than a `resendClient()` call so the nineteen
- * `resend.emails.send(...)` call sites below are untouched: the failure was one
- * line, and a fix that rewrites nineteen others is a fix you have to review
- * nineteen times.
+ * The shared send wrapper preserves lazy initialization and applies the
+ * definitive domain-rejection fallback consistently across these send paths.
  *
  * DELIBERATELY NOT FIXED BY PUTTING THE KEY IN PREVIEW. A preview build that
  * can send email is a preview build that can email real customers from a
@@ -63,9 +62,12 @@ import { resolveHomeownerFinancing } from './bnpl-financing';
  */
 let resendClient: Resend | null = null;
 const resend = {
-  get emails(): Resend['emails'] {
-    if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
-    return resendClient.emails;
+  emails: {
+    send: (...args: Parameters<Resend['emails']['send']>) => {
+      if (!resendClient) resendClient = new Resend(process.env.RESEND_API_KEY);
+      const client = resendClient;
+      return sendWithDomainFallback((payload, options) => client.emails.send(payload, options), ...args);
+    },
   },
 };
 

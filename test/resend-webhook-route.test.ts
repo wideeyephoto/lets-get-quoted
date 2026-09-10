@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   createAdminClient: vi.fn(),
   upsert: vi.fn(),
+  quarantine: vi.fn(),
   suppressEmail: vi.fn(),
   logWebhookFailure: vi.fn(),
 }));
@@ -74,10 +75,12 @@ beforeEach(() => {
   vi.spyOn(console, 'error').mockImplementation(() => undefined);
 
   mocks.upsert.mockResolvedValue({ error: null });
+  mocks.quarantine.mockResolvedValue({ error: null });
   mocks.suppressEmail.mockResolvedValue(true);
   mocks.logWebhookFailure.mockResolvedValue(undefined);
   mocks.createAdminClient.mockReturnValue({
     from: vi.fn((table: string) => {
+      if (table === 'webhook_failures') return { insert: mocks.quarantine };
       if (table !== 'email_events') throw new Error(`Unexpected table ${table}`);
       return { upsert: mocks.upsert };
     }),
@@ -90,6 +93,35 @@ afterEach(() => {
 });
 
 describe('Resend webhook outcome projection', () => {
+  it('durably quarantines a signed foreign-workspace complaint without assigning or suppressing another tenant', async () => {
+    mocks.upsert.mockResolvedValue({ error: { code: '23503', message: 'violates foreign key constraint "email_events_account_id_fkey"' } });
+    const response = await POST(signedRequest('email.complained', taggedData('foreign-workspace')));
+    expect(response.status).toBe(202);
+    expect(await response.json()).toEqual({ received: true, quarantined: true });
+    expect(mocks.upsert).toHaveBeenCalledTimes(1);
+    expect(mocks.quarantine).toHaveBeenCalledWith(expect.objectContaining({
+      reference_id: 'foreign-workspace', event_type: 'email.complained',
+      error_message: expect.stringContaining('EMAIL_ACCOUNT_QUARANTINE'),
+      payload_excerpt: expect.stringContaining(ACCOUNT_ID),
+    }));
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+
+  it('keeps retrying if the routing quarantine cannot be persisted', async () => {
+    mocks.upsert.mockResolvedValue({ error: { code: '23503', message: 'violates foreign key constraint "email_events_account_id_fkey"' } });
+    mocks.quarantine.mockResolvedValue({ error: { message: 'database unavailable' } });
+    const response = await POST(signedRequest('email.delivered', taggedData('failed-quarantine')));
+    expect(response.status).toBe(500);
+    expect(mocks.suppressEmail).not.toHaveBeenCalled();
+  });
+
+  it('does not acknowledge unrelated foreign-key or transient persistence errors', async () => {
+    mocks.upsert.mockResolvedValue({ error: { code: '23503', message: 'violates another foreign key' } });
+    const response = await POST(signedRequest('email.delivered', taggedData('unrelated-failure')));
+    expect(response.status).toBe(500);
+    expect(mocks.quarantine).not.toHaveBeenCalled();
+  });
+
   it('records email.failed with the provider reason without suppressing the recipient', async () => {
     const response = await POST(signedRequest(
       'email.failed',
