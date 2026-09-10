@@ -29,6 +29,8 @@ The F08 UI disconnect drill reached Chrome's native confirmation, but browser co
 
 At September 10 00:02 UTC (still September 9 in America/New_York), Brett reported that he could not find the confirmation. A fresh browser dialog check and screenshot confirmed **no popup was open**; the production database still held the same verified binding. The prior request to find an existing OK button is obsolete. The visible manual path is BrokePipes → Account → Business → Profile & locations → Custom Email Sending Domain → Disconnect beside `hello@blackholeart.com`, then confirm OK. Brett was asked to perform that step because native-dialog acceptance repeatedly timed out in browser control. Do not reopen the popup automatically while that handoff is pending. Re-read state and complete reconnection after his action.
 
+The subsequent missing-section report was traced to a different authenticated workspace: Codex's in-app browser showed BIGFATPIPEGUYS2, account #100036, where the BrokePipes-only rollout correctly hides enrollment. Chrome showed BrokePipes, account #100021, with the verified domain and Disconnect button. A dedicated Chrome tab was opened and scrolled to that panel for the handoff. Use that Chrome session; a generic settings link in Codex can open the unrelated in-app session. No rollout expansion is needed to resolve this navigation mismatch.
+
 ## Receiver and quote-link evidence
 
 | Check | Evidence | Scope |
