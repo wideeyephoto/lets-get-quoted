@@ -553,10 +553,10 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
   const { data: owners } = await admin.from('memberships').select('user_id').eq('account_id', accountId).eq('role', 'owner');
   const ownerIds = ((owners ?? []) as Array<{ user_id?: string | null }>).map((m) => m.user_id).filter((id): id is string => Boolean(id));
 
-  const { requestAccountClosure, processClosureJob, buildProductionClosureAdapters } = await import('@/lib/account-closure-orchestrator');
+  const { requestAccountClosure } = await import('@/lib/account-closure-orchestrator');
   const { jobId } = await requestAccountClosure(admin, {
     accountId,
-    requestedByUserId: null,
+    requestedByUserId: ctx.userId,
     requestedByRole: 'admin',
     vendorHandles: {
       stripeCustomerId: (acct as { stripe_customer_id?: string })?.stripe_customer_id ?? null,
@@ -566,30 +566,17 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
     },
   });
 
-  const adapters = buildProductionClosureAdapters(admin);
-  const result = await processClosureJob(admin, jobId, adapters);
-
-  if (!result.success || !result.completed) {
-    console.error('closeAndAnonymizeAccountAction completed with errors:', result.errors);
-    backTo(accountId, 'error=delete_failed');
-  }
-
-  const { error: scrubError } = await admin
-    .from('privacy_requests')
-    .update({ details: null })
-    .eq('account_id', accountId);
-  if (scrubError) console.error('privacy request scrub failed:', scrubError);
-
   await logAdminAction(admin, ctx, {
-    action: 'account_delete',
+    action: 'account_closure_requested',
     accountId,
     targetType: 'account',
     targetId: accountId,
     meta: {
       accountNumber: expected,
       closureJobId: jobId,
+      status: 'pending_grace_period',
     },
   });
 
-  redirect('/admin/accounts?deleted=1');
+  backTo(accountId, 'notice=closure_requested');
 }

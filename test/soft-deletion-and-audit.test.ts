@@ -313,6 +313,14 @@ describe('Soft Deletion, Conservative Recovery, and Tenant Audit Logs (Productio
   });
 
   describe('5. Account Closure 30-Day Grace Period & Reactivation Drill', () => {
+    it('does not restore access through direct writes when the recovery RPC fails', async () => {
+      const from = vi.fn();
+      await expect(cancelAccountClosure({
+        client: { rpc: vi.fn().mockResolvedValue({ data: null, error: { message: 'recovery rejected' } }), from } as never,
+        accountId: 'account-1',
+      })).rejects.toThrow('could not be confirmed');
+      expect(from).not.toHaveBeenCalled();
+    });
     it('cancels account closure during grace period and restores workspace state', async () => {
       const mockSupabase = createMockSupabase();
       const accountId = '11111111-1111-4111-8111-111111111111';

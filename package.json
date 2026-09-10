@@ -69,6 +69,7 @@
     "test:pg17:plan-change": "node scripts/verify-plan-change-projection-patch.mjs",
     "test:pg17:cancel-to-flex": "node scripts/verify-cancelled-returns-to-flex.mjs",
     "test:pg17:email-sending-domains": "node scripts/verify-email-sending-domains.mjs",
+    "test:pg17:closure-domains": "node scripts/verify-account-closure-domains.mjs",
     "verify:tenant-isolation": "node scripts/verify-tenant-isolation.mjs",
     "verify:tenant-office": "node scripts/verify-tenant-office-suite.mjs",
     "inspect:cron-health": "node scripts/inspect-cron-health.mjs",

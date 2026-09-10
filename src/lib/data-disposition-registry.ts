@@ -1646,7 +1646,8 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     relationship: 'fk_chain',
     primaryKeyColumn: 'sms_event_id',
     fkPath: ["sms_event_id","sms_events.account_id"],
-    localAction: 'delete',
+    // Attempts reference this row with RESTRICT; both are retained delivery evidence.
+    localAction: 'retain_immutable',
     portability: 'internal_system',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
@@ -1657,8 +1658,9 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     tableName: 'sms_delivery_attempts',
     relationship: 'fk_chain',
     primaryKeyColumn: 'id',
-    fkPath: ["task_id","sms_delivery_tasks.sms_event_id"],
-    localAction: 'delete',
+    fkPath: ["sms_event_id","sms_events.account_id"],
+    // The database's append-only trigger rejects deletion of attempt evidence.
+    localAction: 'retain_immutable',
     portability: 'internal_system',
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 30, startEvent: 'account_closed' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',

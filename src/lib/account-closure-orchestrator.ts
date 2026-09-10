@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { DATA_DISPOSITION_REGISTRY } from './data-disposition-registry';
+import { releaseClosureDomains, releaseProductionClosureDomain, type ClosureDomainRelease } from './account-closure-domains';
 
 export interface VendorHandles {
   stripeCustomerId?: string | null;
@@ -97,6 +98,7 @@ export async function claimClosureJob(
 }
 
 export interface ClosureAdapters {
+  domainRelease?: ClosureDomainRelease;
   stripeCancel?: (customerId: string) => Promise<boolean>;
   quickbooksRevoke?: (realmId: string) => Promise<boolean>;
   storageDelete?: (prefix: string) => Promise<boolean>;
@@ -129,6 +131,8 @@ export async function processClosureJob(
     return { success: true, completed: true, errors: [] };
   }
 
+  if (job.completed_at) return { success: true, completed: true, errors: [] };
+
   const now = new Date();
   if (job.recoverable_until && new Date(job.recoverable_until) > now) {
     return {
@@ -141,6 +145,20 @@ export async function processClosureJob(
   let currentVersion = job.version;
   const accountId = job.closure_subject_id;
   const handles = decryptVendorHandles(job.encrypted_vendor_handles);
+
+  const { data: account, error: accountError } = await admin.from('accounts')
+    .select('legal_hold').eq('id', accountId).single();
+  if (accountError || !account || account.legal_hold !== false || job.legal_hold) {
+    return { success: false, completed: false, errors: ['Account is missing or under active legal hold; disposal suspended.'] };
+  }
+  if (!existingClaimToken || job.lease_token !== existingClaimToken || job.closure_state !== 'processing'
+    || !job.lease_expires_at || new Date(job.lease_expires_at).getTime() <= Date.now()
+    || (job.purge_eligible_at && new Date(job.purge_eligible_at).getTime() > Date.now())) {
+    return { success: false, completed: false, errors: ['A current closure-worker lease and expired recovery period are required.'] };
+  }
+  if (!['pending', 'retry', 'success', 'not_applicable'].includes(job.domain_cleanup_state)) {
+    return { success: false, completed: false, errors: ['Domain cleanup snapshot requires operator review before disposal.'] };
+  }
 
   // 2. Track A: Local Data Disposal
   if (job.local_disposal_state !== 'completed') {
@@ -166,7 +184,13 @@ export async function processClosureJob(
         if (disposition.localAction === 'delete') {
           if (disposition.relationship === 'direct_account_id') {
             const { error: delErr } = await admin.from(table).delete().eq('account_id', accountId);
-            if (delErr && delErr.code !== '42P01') {
+            if (delErr && delErr.code !== '42P01' && !(
+              // These optional feature tables have not been installed in the
+              // hosted schema. PostgREST reports missing tables as PGRST205.
+              ['form_templates', 'job_form_submissions'].includes(table)
+              && delErr.code === 'PGRST205'
+              && delErr.message.includes(`'public.${table}'`)
+            )) {
               throw new Error(`Disposal delete on ${table} failed: ${delErr.message}`);
             }
           } else if (disposition.relationship === 'fk_chain' && disposition.fkPath && disposition.fkPath.length >= 2) {
@@ -223,6 +247,7 @@ export async function processClosureJob(
         throw new Error(`Fenced update failed for local disposal: ${stageErr?.message}`);
       }
       currentVersion += 1;
+      job.local_disposal_state = 'completed';
     } catch (err) {
       const msg = `Local data disposal failed: ${err instanceof Error ? err.message : String(err)}`;
       errors.push(msg);
@@ -235,6 +260,29 @@ export async function processClosureJob(
         p_last_error: msg,
       });
       currentVersion += 1;
+      return { success: false, completed: false, errors };
+    }
+  }
+
+  // Retain captured IDs across retries; never complete after an unconfirmed
+  // release or a stale acknowledgement. Provider 404s make retries idempotent.
+  if (['pending', 'retry'].includes(job.domain_cleanup_state)) {
+    try {
+      await releaseClosureDomains(admin, jobId, leaseToken, currentVersion, adapters?.domainRelease);
+      const { data: ok, error } = await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId, p_lease_token: leaseToken, p_expected_version: currentVersion,
+        p_stage: 'domain_cleanup', p_status: 'success',
+      });
+      if (error || !ok) throw new Error('Domain cleanup acknowledgement lost its lease');
+      currentVersion += 1;
+    } catch (err) {
+      const msg = `Domain cleanup error: ${err instanceof Error ? err.message : String(err)}`;
+      await admin.rpc('update_closure_job_stage', {
+        p_job_id: jobId, p_lease_token: leaseToken, p_expected_version: currentVersion,
+        p_stage: 'domain_cleanup', p_status: 'retry', p_last_error: msg,
+        p_next_retry_at: new Date(Date.now() + 15 * 60_000).toISOString(),
+      });
+      return { success: false, completed: false, errors: [msg] };
     }
   }
 
@@ -396,6 +444,7 @@ export async function processClosureJob(
     ['success', 'not_applicable'].includes(latestJob?.stripe_state) &&
     ['success', 'not_applicable'].includes(latestJob?.quickbooks_state) &&
     ['success', 'not_applicable'].includes(latestJob?.storage_state) &&
+    ['success', 'not_applicable'].includes(latestJob?.domain_cleanup_state) &&
     ['success', 'not_applicable'].includes(latestJob?.auth_cleanup_state);
 
   let completed = false;
@@ -418,6 +467,7 @@ export async function processClosureJob(
 
 export function buildProductionClosureAdapters(admin: SupabaseClient): ClosureAdapters {
   return {
+    domainRelease: releaseProductionClosureDomain,
     stripeCancel: async (customerId: string) => {
       try {
         const { getStripeClient } = await import('@/lib/stripe');

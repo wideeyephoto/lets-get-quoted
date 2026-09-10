@@ -61,6 +61,7 @@ const DONE_MESSAGES: Record<string, string> = {
   marked_production: 'Account returned to production reporting.',
   legal_hold_set: 'Legal hold placed on this account. Automated data purges, closures, and dispositions are blocked.',
   legal_hold_lifted: 'Legal hold lifted. Account returned to standard data retention and disposal schedules.',
+  closure_requested: 'Account closure scheduled. Access is suspended; permanent anonymization and domain cleanup wait for the 30-day recovery period and any legal hold.',
 };
 
 const ERROR_MESSAGES: Record<string, string> = {
@@ -1447,7 +1448,8 @@ export default async function AdminAccountDetailPage({
           Stripe: <strong>{irreversibleWork.activeClosure.stripeState}</strong> ·
           QuickBooks: <strong>{irreversibleWork.activeClosure.quickbooksState}</strong> ·
           Storage: <strong>{irreversibleWork.activeClosure.storageState}</strong> ·
-          Auth cleanup: <strong>{irreversibleWork.activeClosure.authCleanupState}</strong>
+          Auth cleanup: <strong>{irreversibleWork.activeClosure.authCleanupState}</strong> ·
+          Domains: <strong>{irreversibleWork.activeClosure.domainCleanupState}</strong>
           {irreversibleWork.activeClosure.lastError && (
             <div style={{ marginTop: '0.4rem', color: '#ff8080' }}>
               Error: {irreversibleWork.activeClosure.lastError} (Attempt {irreversibleWork.activeClosure.attempts}/{irreversibleWork.activeClosure.maxAttempts})
