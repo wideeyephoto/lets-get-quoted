@@ -1,0 +1,624 @@
+{
+  "observation_id": "operational-cleanup-20260909T211317Z",
+  "observed_at": "2026-09-10T17:13:35.568Z",
+  "window_started_at": "2026-09-09T21:13:17.282Z",
+  "minimum_end_at": "2026-09-10T21:13:17.282Z",
+  "elapsed_minutes": 1200.3047666666666,
+  "cron_cycles": [
+    {
+      "job": "billing-subscription-projection",
+      "cycles_since_start": "240",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-10T17:10:29.318Z",
+      "latest_finished": "2026-09-10T17:10:29.919Z",
+      "maximum_gap_seconds": "303.288000"
+    },
+    {
+      "job": "operational-alerts",
+      "cycles_since_start": "240",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-10T17:10:13.264Z",
+      "latest_finished": "2026-09-10T17:10:15.840Z",
+      "maximum_gap_seconds": "301.385000"
+    },
+    {
+      "job": "sms-delivery",
+      "cycles_since_start": "1201",
+      "failed_cycles": "0",
+      "unfinished_cycles": "0",
+      "latest_started": "2026-09-10T17:13:18.353Z",
+      "latest_finished": "2026-09-10T17:13:20.046Z",
+      "maximum_gap_seconds": "61.176000"
+    }
+  ],
+  "failed_cron_cycles": [],
+  "additional_worker_cycles": [
+    {
+      "job": "account-closure",
+      "cycles": "80",
+      "failed": "0",
+      "unfinished": "0",
+      "latest_started": "2026-09-10T17:00:33.159Z"
+    },
+    {
+      "job": "addon-refunds",
+      "cycles": "232",
+      "failed": "0",
+      "unfinished": "0",
+      "latest_started": "2026-09-10T17:10:12.614Z"
+    },
+    {
+      "job": "direct-payment-settlement",
+      "cycles": "238",
+      "failed": "1",
+      "unfinished": "0",
+      "latest_started": "2026-09-10T17:10:02.333Z"
+    },
+    {
+      "job": "overage-period-close",
+      "cycles": "20",
+      "failed": "0",
+      "unfinished": "0",
+      "latest_started": "2026-09-10T16:17:28.151Z"
+    },
+    {
+      "job": "overage-settlement",
+      "cycles": "20",
+      "failed": "2",
+      "unfinished": "0",
+      "latest_started": "2026-09-10T16:37:19.205Z"
+    }
+  ],
+  "additional_worker_failures": [
+    {
+      "id": "2e31701d-480b-4b56-83ae-6286d2915d6b",
+      "job": "direct-payment-settlement",
+      "started_at": "2026-09-10T15:30:03.369Z",
+      "finished_at": "2026-09-10T15:30:08.575Z",
+      "summary": {
+        "claimed": 0,
+        "failures": 1,
+        "sms_sent": 0,
+        "completed": 0,
+        "requested": 10,
+        "sms_queued": 0,
+        "sms_pending": 0,
+        "feed_recorded": 0,
+        "worker_errors": 1,
+        "already_finished": 0,
+        "sms_indeterminate": 0,
+        "terminal_failures": 0,
+        "retryable_failures": 0,
+        "sms_skipped_opted_out": 0,
+        "sms_skipped_no_consent": 0
+      },
+      "error": "direct-payment-settlement reported logical failures (1 failure(s)) (worker_errors=1)"
+    },
+    {
+      "id": "3d36ec5c-96a5-47a5-b020-de581a5096dc",
+      "job": "overage-settlement",
+      "started_at": "2026-09-10T15:37:19.313Z",
+      "finished_at": "2026-09-10T15:37:21.005Z",
+      "summary": {
+        "reaped": 0,
+        "charged": 0,
+        "deferred": 0,
+        "claimable": 0,
+        "contention": 0,
+        "no_customer": 0,
+        "indeterminate": 0,
+        "worker_errors": 1,
+        "terminal_failures": 0,
+        "completion_unconfirmed": 0
+      },
+      "error": "overage-settlement reported logical failures (worker_errors=1)"
+    },
+    {
+      "id": "a00c8916-54b3-41f0-ae90-5b4cebe9920c",
+      "job": "overage-settlement",
+      "started_at": "2026-09-10T16:37:19.205Z",
+      "finished_at": "2026-09-10T16:37:20.154Z",
+      "summary": {
+        "reaped": 0,
+        "charged": 0,
+        "deferred": 0,
+        "claimable": 0,
+        "contention": 0,
+        "no_customer": 0,
+        "indeterminate": 0,
+        "worker_errors": 1,
+        "terminal_failures": 0,
+        "completion_unconfirmed": 0
+      },
+      "error": "overage-settlement reported logical failures (worker_errors=1)"
+    }
+  ],
+  "live_failed_billing": [],
+  "post_containment_test_ingress": [],
+  "active_findings": [
+    {
+      "category": "billing_configuration",
+      "records": "1"
+    },
+    {
+      "category": "cron",
+      "records": "1"
+    },
+    {
+      "category": "sms",
+      "records": "4"
+    },
+    {
+      "category": "webhook",
+      "records": "1"
+    }
+  ],
+  "active_finding_references": [
+    {
+      "source_key": "billing_config:platform_subscription:non_live",
+      "category": "billing_configuration",
+      "reference": "billing_config:platform_subscription:non_live",
+      "occurred_at": "2026-09-07T23:09:25.422Z",
+      "detected_at": "2026-09-09T18:22:43.922Z",
+      "delivery_id": "524c2f20-4059-4a34-9e39-11762b4781aa"
+    },
+    {
+      "source_key": "cron:overage-settlement:2026-09-10 14:37:19.192+00",
+      "category": "cron",
+      "reference": "overage-settlement",
+      "occurred_at": "2026-09-10T15:37:19.313Z",
+      "detected_at": "2026-09-10T15:40:14.128Z",
+      "delivery_id": "0ffa11cc-9bc9-47ee-96d1-aa60f47a4e4f"
+    },
+    {
+      "source_key": "sms:25809e0e-e2d9-4580-b77b-8177c5e14244",
+      "category": "sms",
+      "reference": "25809e0e-e2d9-4580-b77b-8177c5e14244",
+      "occurred_at": "2026-09-04T13:40:24.818Z",
+      "detected_at": "2026-09-09T14:07:43.746Z",
+      "delivery_id": "fd5c8849-504d-4c0f-a5a2-1bde9cc02559"
+    },
+    {
+      "source_key": "sms:36cba7e8-52a5-46a9-8c79-557f2160c0c0",
+      "category": "sms",
+      "reference": "36cba7e8-52a5-46a9-8c79-557f2160c0c0",
+      "occurred_at": "2026-09-04T13:36:21.650Z",
+      "detected_at": "2026-09-09T14:07:43.746Z",
+      "delivery_id": "fd5c8849-504d-4c0f-a5a2-1bde9cc02559"
+    },
+    {
+      "source_key": "sms:8d80be23-750b-4b42-a130-243e2012611e",
+      "category": "sms",
+      "reference": "8d80be23-750b-4b42-a130-243e2012611e",
+      "occurred_at": "2026-09-03T13:33:54.694Z",
+      "detected_at": "2026-09-09T14:07:43.746Z",
+      "delivery_id": "fd5c8849-504d-4c0f-a5a2-1bde9cc02559"
+    },
+    {
+      "source_key": "sms:e254fbc6-ebf1-4f7a-8a03-cf5c3603660c",
+      "category": "sms",
+      "reference": "e254fbc6-ebf1-4f7a-8a03-cf5c3603660c",
+      "occurred_at": "2026-09-04T13:05:22.233Z",
+      "detected_at": "2026-09-09T14:07:43.746Z",
+      "delivery_id": "fd5c8849-504d-4c0f-a5a2-1bde9cc02559"
+    },
+    {
+      "source_key": "webhook:ac64f8a5-cdc9-4c16-85c0-387685183c6d",
+      "category": "webhook",
+      "reference": "ac64f8a5-cdc9-4c16-85c0-387685183c6d",
+      "occurred_at": "2026-09-10T15:27:00.105Z",
+      "detected_at": "2026-09-10T15:30:13.906Z",
+      "delivery_id": "f6363950-e603-4eec-a477-eddfc21489cb"
+    }
+  ],
+  "webhook_failures_since_start": [
+    {
+      "id": "64a1d62d-a0ce-4876-92b4-89c83cdf09e1",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:46.802Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "8b56ac7b-57cd-41bb-98c3-415ffc095c26",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:47.418Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "28d72d21-e4f4-489e-96f4-afb53cb4de73",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:48.932Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "b81297a7-e508-4bf3-a323-eae9681154f5",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:09:49.510Z",
+      "resolved_at": "2026-09-09T22:12:21.415Z"
+    },
+    {
+      "id": "b0e640a2-86f7-4b37-8132-3b6f0fd115f7",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T22:48:18.844Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "56d11948-f1cd-40e5-9eae-e08e14c28909",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T23:00:45.611Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "9a42ffec-c17b-4fc1-a4c5-9289ae735fe3",
+      "source": "resend",
+      "event_type": "email.sent",
+      "reference_id": "81bbc108-4026-4e3b-a8eb-f4e126d724c4",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T23:06:29.369Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "71e5433a-cd6e-4100-866c-59f38f35498e",
+      "source": "resend",
+      "event_type": "email.delivered",
+      "reference_id": "45d14716-1535-412e-b65b-84264775ad4d",
+      "error_message": "EMAIL_ACCOUNT_QUARANTINE: workspace 152db1d4-4448-4c02-8b89-bfb1f243ff26 is absent in this database; delivery event requires routing review.",
+      "created_at": "2026-09-09T23:13:53.409Z",
+      "resolved_at": "2026-09-09T23:44:09.280Z"
+    },
+    {
+      "id": "ac64f8a5-cdc9-4c16-85c0-387685183c6d",
+      "source": "ai_voice",
+      "event_type": "provider_status",
+      "reference_id": null,
+      "error_message": "Voice provider-status signature validation failed: missing-header",
+      "created_at": "2026-09-10T15:27:00.105Z",
+      "resolved_at": null
+    }
+  ],
+  "unconfirmed_alerts": [],
+  "delivered_alerts_since_start": [
+    {
+      "id": "9d4ea7fc-ca45-48f5-a6d6-8c08ad83c111",
+      "category": "webhook",
+      "provider_id": "8315ac9f-07d8-4e8c-a331-f649b539bf27",
+      "created_at": "2026-09-09T21:10:14.527Z",
+      "delivered_at": "2026-09-09T21:15:15.045Z"
+    },
+    {
+      "id": "9529f3d8-4d9d-4fe6-b5a5-cf6e4b8e222a",
+      "category": "cron",
+      "provider_id": "4b7982d1-702a-4226-a164-83a20f2ae425",
+      "created_at": "2026-09-09T21:50:14.172Z",
+      "delivered_at": "2026-09-09T21:55:15.108Z"
+    },
+    {
+      "id": "29dd7bba-9f32-464a-8b9e-e66dd0b2f3c2",
+      "category": "webhook",
+      "provider_id": "074fe649-d7d3-498b-8d8c-3a13533606bb",
+      "created_at": "2026-09-09T22:10:14.764Z",
+      "delivered_at": "2026-09-09T22:15:15.104Z"
+    },
+    {
+      "id": "44aa1811-4303-46f2-b2c3-001424387901",
+      "category": "webhook",
+      "provider_id": "8f8f337e-b722-42ea-92f0-81a5f5e2f483",
+      "created_at": "2026-09-09T22:50:14.238Z",
+      "delivered_at": "2026-09-09T22:55:15.195Z"
+    },
+    {
+      "id": "e705dcdf-faa1-4d83-b345-6486507b0f35",
+      "category": "webhook",
+      "provider_id": "06c5da67-8b14-4b0e-bd78-5322d720b5de",
+      "created_at": "2026-09-09T23:05:15.568Z",
+      "delivered_at": "2026-09-09T23:10:16.827Z"
+    },
+    {
+      "id": "a9d2ba02-d22d-4192-947d-163d3d717238",
+      "category": "webhook",
+      "provider_id": "46676193-0788-487d-92c6-45ea072a778e",
+      "created_at": "2026-09-09T23:10:14.300Z",
+      "delivered_at": "2026-09-09T23:15:16.221Z"
+    },
+    {
+      "id": "704235a3-3401-4038-9b7a-e494c6b812cc",
+      "category": "webhook",
+      "provider_id": "b32b8a52-75ef-4e14-a746-280555ab0e30",
+      "created_at": "2026-09-09T23:15:14.482Z",
+      "delivered_at": "2026-09-09T23:20:14.845Z"
+    },
+    {
+      "id": "4aa03c1a-0199-4074-81f5-184162ff3e36",
+      "category": "cron",
+      "provider_id": "02ebb656-e08c-4096-9c06-0d85dd1d188e",
+      "created_at": "2026-09-10T01:00:15.349Z",
+      "delivered_at": "2026-09-10T01:05:15.222Z"
+    },
+    {
+      "id": "f6363950-e603-4eec-a477-eddfc21489cb",
+      "category": "webhook",
+      "provider_id": "732d11d9-3cd7-4650-91b7-d532f11e5c49",
+      "created_at": "2026-09-10T15:30:14.199Z",
+      "delivered_at": "2026-09-10T15:35:14.939Z"
+    },
+    {
+      "id": "b053731f-1b34-4af3-be7c-659fffe0dfb0",
+      "category": "cron",
+      "provider_id": "5413c4ae-4696-4203-b2f8-3e2a0e21dad8",
+      "created_at": "2026-09-10T15:30:14.199Z",
+      "delivered_at": "2026-09-10T15:35:16.383Z"
+    },
+    {
+      "id": "0ffa11cc-9bc9-47ee-96d1-aa60f47a4e4f",
+      "category": "cron",
+      "provider_id": "8a5610e4-25a2-4cb6-9dca-8798bbc5038e",
+      "created_at": "2026-09-10T15:40:14.461Z",
+      "delivered_at": "2026-09-10T15:45:15.777Z"
+    }
+  ],
+  "paging_ledger": [
+    {
+      "page_key": "lgq-monitor-mfuvvtrkipkigwqqtcal-drill-2026-09-09T20",
+      "state": "delivered",
+      "provider_id": "84ec323b-0a83-4507-8360-cbbad4e5d89b",
+      "provider_status": "delivered",
+      "error_code": null,
+      "started_at": "2026-09-09T20:22:05.077Z",
+      "delivered_at": "2026-09-09T20:22:23.096Z"
+    }
+  ],
+  "audit_integrity": [
+    {
+      "records": "221",
+      "unique_sources": "221"
+    }
+  ],
+  "source_integrity": [
+    {
+      "source_table": "billing_events",
+      "expected": "186",
+      "unchanged": "186",
+      "changed_ids": []
+    },
+    {
+      "source_table": "sms_events",
+      "expected": "4",
+      "unchanged": "4",
+      "changed_ids": []
+    },
+    {
+      "source_table": "webhook_failures",
+      "expected": "31",
+      "unchanged": "31",
+      "changed_ids": []
+    }
+  ],
+  "duplicate_new_sms_identities": [],
+  "duplicate_new_usage_grant_identities": [],
+  "new_sms_failure_ids": [],
+  "pending_sms": [],
+  "sms_deferred_work": [
+    {
+      "claimed": "69",
+      "completed": "2",
+      "deferred": "66",
+      "indeterminate": "0",
+      "failed": "0"
+    }
+  ],
+  "public_health": {
+    "http_status": 200,
+    "status": "operational",
+    "timestamp": "2026-09-10T17:13:39.841Z",
+    "services": [
+      {
+        "id": "quoting-engine",
+        "status": "operational"
+      },
+      {
+        "id": "sms-gateway",
+        "status": "operational"
+      },
+      {
+        "id": "stripe-payments",
+        "status": "operational"
+      },
+      {
+        "id": "contractor-cdn",
+        "status": "operational"
+      }
+    ]
+  },
+  "additional_checks": {
+    "observed_at": "2026-09-10T17:14:13.072181+00:00",
+    "cancelled_rehearsal": {
+      "status": "cancelled",
+      "audit_id": "5c32d4b2-9bf6-4d7b-a0fa-aadc21b7d287",
+      "event_id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+      "task_state": "cancelled",
+      "provider_id": null,
+      "cancelled_at": "2026-09-10T15:27:25.258+00:00",
+      "attempt_count": 0,
+      "lease_sequence": 66,
+      "send_started_at": null,
+      "text_usage_state": null,
+      "request_started_at": null,
+      "task_fingerprint_matches_audit": true,
+      "event_fingerprint_matches_audit": true,
+      "attempt_history_fingerprint_matches_audit": true
+    },
+    "domain_notice_states": [
+      {
+        "state": "resolved",
+        "records": 1
+      }
+    ],
+    "recent_routing_audits": [],
+    "new_sms_usage_failures": 0,
+    "overage_settlement_rows": 0,
+    "additional_worker_cycles": [
+      {
+        "job": "account-closure",
+        "cycles": 80,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T17:00:33.159+00:00",
+        "cycles_since_paging_activation": 5
+      },
+      {
+        "job": "addon-refunds",
+        "cycles": 232,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T17:10:12.614+00:00",
+        "cycles_since_paging_activation": 15
+      },
+      {
+        "job": "overage-settlement",
+        "cycles": 20,
+        "failed": 2,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T16:37:19.205+00:00",
+        "cycles_since_paging_activation": 1
+      }
+    ],
+    "known_rehearsal_callbacks": {
+      "records": 24,
+      "last_seen": "2026-09-09T23:13:53.409058+00:00",
+      "unresolved": 0,
+      "latest_resolution": "2026-09-09T23:44:09.280027+00:00"
+    },
+    "additional_worker_failures": [
+      {
+        "id": "a00c8916-54b3-41f0-ae90-5b4cebe9920c",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T16:37:19.205+00:00"
+      },
+      {
+        "id": "3d36ec5c-96a5-47a5-b020-de581a5096dc",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T15:37:19.313+00:00"
+      }
+    ],
+    "duplicate_sms_provider_ids": [],
+    "new_overage_accrual_events": 0,
+    "required_recovery_functions": [
+      {
+        "name": "list_claimable_overage_settlements",
+        "present": false
+      },
+      {
+        "name": "claim_overage_settlement_v2",
+        "present": false
+      },
+      {
+        "name": "observe_overage_invoice_item",
+        "present": false
+      }
+    ],
+    "duplicate_usage_reservations": []
+  },
+  "production_deployment": {
+    "id": "dpl_HzA6PDkjTPRZga2cB5dRr1rYaaN2",
+    "state": "READY",
+    "revision": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+    "ready_at": "2026-09-10T15:55:58.476Z",
+    "changed_since_previous_checkpoint": false,
+    "paging_module_present": true,
+    "paging_activation_evidence": "operational-cleanup-paging-activation-2026-09-10.json"
+  },
+  "independent_watchdog": {
+    "latest_runs": [
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T13:52:24Z",
+        "databaseId": 34485370563,
+        "event": "schedule",
+        "headSha": "a19356d3b671fdd0fd49628220bef6e9cd3479c1",
+        "status": "completed",
+        "updatedAt": "2026-09-10T13:52:58Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34485370563"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T09:48:06Z",
+        "databaseId": 34462640091,
+        "event": "schedule",
+        "headSha": "72b3a4662e81d98d26a8237090858327fcf02473",
+        "status": "completed",
+        "updatedAt": "2026-09-10T09:48:34Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34462640091"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T05:07:21Z",
+        "databaseId": 34439807767,
+        "event": "schedule",
+        "headSha": "72b3a4662e81d98d26a8237090858327fcf02473",
+        "status": "completed",
+        "updatedAt": "2026-09-10T05:07:47Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34439807767"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T00:29:30Z",
+        "databaseId": 34421511467,
+        "event": "schedule",
+        "headSha": "d2752a1581ea06d528b8d9ad4aa2cd94334dba22",
+        "status": "completed",
+        "updatedAt": "2026-09-10T00:30:00Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34421511467"
+      }
+    ],
+    "latest_scheduled_run_age_minutes": 201.1928,
+    "latest_run_predates_paging_activation": true,
+    "note": "Previously reported multi-hour timing limitation remains. No manual run was dispatched."
+  },
+  "overage_failure_assessment": "The 16:37 UTC scheduled cycle repeated the previously reported worker_errors=1 with zero claimable/charged/indeterminate work. Required recovery functions remain absent; zero settlement rows and zero new accrual events were found. This is continuation of the known deployment/schema mismatch, not a separate incident or a verified recovery.",
+  "acceptance_status": "in progress; fixed observation ends no earlier than 2026-09-10T21:13:17.282Z; paging activation window ends no earlier than 2026-09-11T15:55:58.476Z; existing overage repair, callback/routing disposition and watchdog timing gates remain open",
+  "change_assessment": "No new actionable condition beyond the already notified overage/schema mismatch and existing callback/watchdog limitations. Cancelled rehearsal and original 221-source history remain intact; this checkpoint made no production mutation or outbound submission."
+}
