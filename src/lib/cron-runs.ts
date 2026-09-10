@@ -132,7 +132,8 @@ export function extractLogicalFailureReason(job: string, summary: Record<string,
     typeof summary.candidates === 'number' &&
     summary.candidates > 0 &&
     typeof summary.closed === 'number' &&
-    summary.closed === 0
+    summary.closed === 0 &&
+    Number(summary.already_closed ?? 0) + Number(summary.nothing_owed ?? 0) + Number(summary.deferred ?? 0) === 0
   ) {
     return `${job} reported 0 closed periods while ${summary.candidates} candidate(s) exist`.slice(0, 2000);
   }
