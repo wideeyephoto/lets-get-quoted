@@ -36,6 +36,8 @@ This does not issue refunds; it reconciles refunds already issued in Stripe.
    capacity worker before new Voice purchases. Paid Voice grants follow verified
    invoice periods, independently of base-plan/canary allowances. The legacy
    worker excludes real checkout capacity and invoice-owned lots from its reset.
+   Then apply `20260909233336_addon_refund_delivery_identity.sql` so legitimate
+   refund resends are acknowledged even when signed delivery bytes change.
 2. Deploy the webhook and worker code with
    `LGQ_ADDON_REFUND_REVERSAL_ENABLED=0` initially. The existing top-up endpoint
    also requires `LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED=1` and its own signing secret.
@@ -50,7 +52,10 @@ This does not issue refunds; it reconciles refunds already issued in Stripe.
    and cron failures. Review rows contain safe error codes. Do not overwrite
    financial ledger rows to make a check green.
 
-Receipts are signature verified and deduplicated. The worker retrieves current
+Receipts are signature verified and deduplicated by mode/event ID, with the
+original charge identity enforced. The first body hash is retained for audit;
+delivery metadata or JSON formatting differences do not requeue duplicate work.
+The worker retrieves current
 Stripe state, paginates refunds, and counts only successful refunds. It verifies
 the exact payment, checkout, catalog, workspace and durable purchase operation.
 New receipts received during a lease remain queued. A failure after the database
@@ -109,4 +114,8 @@ monthly add-on. That explanation renders only when the refund rollout flag is on
 The six-SKU negative-payment matrix also exposed and fixed grants on unpaid
 success receipts and no-payment-required sessions. The full local suite passes
 14,374 tests / 1,120 files. See the [current verification report](prelaunch-payments-verification-2026-09-09.md)
-for the live refund-engine proof and the still-open production add-on gate.
+for current results: all six initial live purchases totaled $248 and were fully
+refunded, all five recurring add-ons were canceled, and real duplicate/stale
+refund deliveries passed after the receipt correction. Natural paid renewals
+and effective period-end acceptance remain open. The report records the hourly
+dependency for initial Voice grants and storage period reconciliation.

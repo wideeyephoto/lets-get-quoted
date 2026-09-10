@@ -55,6 +55,8 @@ export async function ingestAddonRefundDelivery(input: {
   catch { throw new StripeEventInboxValidationError('Refund mode mismatch.'); }
   const { data, error } = await createAdminClient().rpc('ingest_addon_refund_event', {
     p_livemode: event.livemode, p_event_id: event.id, p_charge_id: chargeId,
+    // Audit the original signed bytes. Delivery metadata and formatting can
+    // change on replay, so SQL deduplicates by the verified event/mode/charge.
     p_payload_sha256: createHash('sha256').update(input.rawBody).digest('hex'),
   });
   if (error || typeof data !== 'boolean') throw new Error('Refund receipt unavailable.');
