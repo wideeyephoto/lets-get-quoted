@@ -95,6 +95,21 @@ describe('Marketing transaction boundaries', () => {
     const order = await db.query<{status:string;payment_status:string}>("select status,payment_status from public.merchandise_orders where order_number='TEST-CARD' and account_id=$1",[account]);
     expect(order.rows[0]).toEqual({status:'shipped',payment_status:'paid'});
   });
+  it('keeps printer cancellation terminal across delayed paid Checkout replays', async () => {
+    const id = randomUUID(), session = `cs_cancel_${id}`, payment = `pi_cancel_${id}`, orderNumber = `CANCEL-CARD-${id}`;
+    await db.query(`insert into public.merchandise_orders(id,account_id,order_number,proof_id,quote_id,subtotal,shipping_cost)
+      values('${id}','${account}','${orderNumber}','${proof}','${quote}',35,12)`);
+    const claim = `select public.claim_card_fulfillment('${account}','${id}','${session}','${payment}',5000,300,'${lease}',175) as result`;
+    await db.query(claim);
+    await db.query(`select public.finish_card_fulfillment('${account}','${id}','${lease}','{"ok":true,"printfulOrderId":456,"status":"pending"}')`);
+    await db.query(`select public.apply_printful_order_event('${orderNumber}',456,'{"status":"cancelled","fulfillment_status":"cancelled"}')`);
+    for (let retry = 0; retry < 2; retry++) expect((await db.query<{result:{completed:boolean}}>(claim)).rows[0].result.completed).toBe(true);
+    const order = await db.query<{status:string;payment_status:string;fulfillment_status:string;provider_id:number;lease:unknown}>(`select status,payment_status,fulfillment_status,printful_order_id::int provider_id,fulfillment_lease_token lease from public.merchandise_orders where id='${id}'`);
+    expect(order.rows[0]).toEqual({status:'cancelled',payment_status:'paid',fulfillment_status:'cancelled',provider_id:456,lease:null});
+    const counts = await db.query<{ledger:number;attempts:number}>(`select (select count(*)::int from public.merchandise_revenue_ledger where order_id='${id}') ledger,(select count(*)::int from public.merchandise_fulfillment_attempts where order_id='${id}') attempts`);
+    expect(counts.rows[0]).toEqual({ledger:1,attempts:1});
+    await expect(db.query(claim.replace(session,`cs_other_${id}`))).rejects.toThrow(/session mismatch/);
+  });
   it('serializes Halo delivery changes and never lowers cumulative spend', async () => {
     await db.exec(`update public.neighborhood_halo_campaigns set status='active' where id='${job}'`);
     const claim = `select public.claim_halo_delivery('${account}','${job}','${lease}') as claimed`;
