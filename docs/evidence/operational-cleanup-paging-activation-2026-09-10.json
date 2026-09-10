@@ -1,0 +1,56 @@
+{
+  "observation_id": "operational-cleanup-paging-activation-20260910T155558Z",
+  "observed_at": "2026-09-10T16:14:10.469673+00:00",
+  "activation_at": "2026-09-10T15:55:58.476Z",
+  "minimum_end_at": "2026-09-11T15:55:58.476Z",
+  "deployment_id": "dpl_HzA6PDkjTPRZga2cB5dRr1rYaaN2",
+  "deployed_revision": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+  "production_alias": "app.letsgetquoted.com",
+  "deployment_state": "READY",
+  "paging_module_present": true,
+  "paging_module_blob": "cc016121bb5217b539f3dd59bc8e06f27fe95654",
+  "paging_module_matches_tested_cleanup_commit": "f51f246202d3dceffaf90e9dba2415c385b65d79",
+  "github_workflow_paging_secret_references_present": true,
+  "paging_ledger_migration": {
+    "name": "operational_sms_paging",
+    "applied_version": "20260909202110"
+  },
+  "scheduled_cycles": [
+    {
+      "job": "billing-subscription-projection",
+      "cycles": 3,
+      "failed": 0,
+      "unfinished": 0,
+      "first_started": "2026-09-10T16:00:29.462+00:00",
+      "latest_started": "2026-09-10T16:10:29.214+00:00"
+    },
+    {
+      "job": "operational-alerts",
+      "cycles": 3,
+      "failed": 0,
+      "unfinished": 0,
+      "first_started": "2026-09-10T16:00:13.421+00:00",
+      "latest_started": "2026-09-10T16:10:13.275+00:00"
+    },
+    {
+      "job": "sms-delivery",
+      "cycles": 18,
+      "failed": 0,
+      "unfinished": 0,
+      "first_started": "2026-09-10T15:56:18.19+00:00",
+      "latest_started": "2026-09-10T16:13:18.538+00:00"
+    }
+  ],
+  "three_successful_application_monitor_and_billing_projection_cycles": true,
+  "latest_independent_watchdog_run_uses_revision": "a19356d3b671fdd0fd49628220bef6e9cd3479c1",
+  "independent_watchdog_on_new_release_verified": false,
+  "new_live_sms_drill": false,
+  "paging_ledger_still_only_original_delivered_drill": true,
+  "status": "activation and initial application cycles verified; full post-activation observation and other operational gates remain open",
+  "fixed_current_production_observation": {
+    "started_at": "2026-09-09T21:13:17.282Z",
+    "minimum_end_at": "2026-09-10T21:13:17.282Z",
+    "unchanged": true
+  },
+  "scope": "Read-only verification of a deployment made by the separate branch-integration task. No deployment, schema mutation, configuration change, worker invocation or provider drill by this observation."
+}
