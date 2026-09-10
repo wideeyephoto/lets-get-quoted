@@ -48,6 +48,12 @@ export async function verifyRecovery({ q, pg, ck, repo }) {
   ck('original owner can finish after reap before reclaim',(await q('select public.complete_overage_settlement($1,$2,$3) r',[recent.id,recentClaim.claim_token,'ii_afterreap123'])).rows[0].r===true);
   const mismatch=await fixture(); const mt=await claim(mismatch); await reject(mismatch,mt.claim_token); await expire(mismatch);
   ck('changed retry payload is held',await claim(mismatch,{...payload(mismatch),description:'changed'})===null && (await get(mismatch)).recovery_reason==='request_identity_mismatch');
+  const staleClassification=await fixture(); const firstClass=await claim(staleClassification);
+  await reject(staleClassification,firstClass.claim_token); await expire(staleClassification);
+  const secondClass=await claim(staleClassification);
+  await q('select public.fail_overage_settlement($1,$2,$3,false)',[staleClassification.id,secondClass.claim_token,'invalid_request']);
+  const classified=await get(staleClassification);
+  ck('SQL preserves uncertainty even when a stale caller reports a terminal refusal',classified.state==='indeterminate'&&classified.recovery_reason==='prior_attempt_uncertain');
 
   const old=await fixture(); await claim(old);
   // Fixture time travel only; application writes cannot alter original timing.
@@ -78,6 +84,11 @@ export async function verifyRecovery({ q, pg, ck, repo }) {
     const sql='select public.claim_overage_settlement_v2($1,$2,false,$3,$4::jsonb) r';
     const results=await Promise.all([q(sql,args),c2.query(sql,args)]);
     ck('two sessions produce exactly one claim',results.filter(r=>r.rows[0].r).length===1);
+    const reapA=await fixture(); const reapB=await fixture();
+    await claim(reapA); await claim(reapB); await expire(reapA); await expire(reapB);
+    const reapers=await Promise.all([q('select public.reap_overage_settlement_leases(500) n'),
+      c2.query('select public.reap_overage_settlement_leases(500) n')]);
+    ck('concurrent reapers count each expired lease once',reapers.reduce((sum,r)=>sum+r.rows[0].n,0)===2);
     const ac=(await q('insert into public.accounts values(gen_random_uuid()) returning id')).rows[0].id;
     await q('insert into public.workspace_overage_settings(account_id) values($1)',[ac]);
     await q(`insert into public.workspace_overage_accruals(account_id,period_start,period_end,resource_code,millicents)
