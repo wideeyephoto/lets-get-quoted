@@ -24,6 +24,8 @@ describe('Legal & Claims Substantiation Invariants', () => {
       // returning. "Trial by jury" in terms/page.tsx is unaffected by both.
       /\bfree\s+(platform\s+)?trial\b/i,
       /\btrial\s+period\b/i,
+      /\bstart\s+(free\s+)?(platform\s+)?trial\b/i,
+      /\bplatform\s+trial\b/i,
     ];
 
     function scanDirectory(dir: string): Array<{ file: string; match: string }> {
