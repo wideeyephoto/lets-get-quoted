@@ -198,17 +198,24 @@ subscriptions and $213 for exactly one natural renewal each. The first round's
 $248 cap and refunds are separate. Refunds do not replenish the new cap, and no
 third billing cycle is authorized. Actual billing periods will remain unchanged.
 
-At **01:21 UTC**, Solo Voice ($59) and storage ($15) have paid Stripe invoices
-and successful LGQ checkout returns. Their signed checkout receipts are processed,
-with one attributable capacity row each. Storage's effective purchased capacity
-is **100 GB**. Solo's new 100-unit Voice capacity row is present, but its paid
-invoice-owned minute lot has **not yet appeared**; the normal hourly worker must
-reconcile it. The separate manual canary allowance remains present. Do not count
-the combined Voice capacity value as newly usable paid minutes.
+At **01:41 UTC**, Solo Voice ($59) and storage ($15) have paid Stripe invoices,
+processed signed checkout receipts and one attributable capacity row each.
+Storage's effective purchased capacity is **100 GB**. The normal **01:37 UTC**
+lifecycle worker granted exactly one Solo paid-invoice lot: **100 usable minutes**,
+with zero consumed, reserved or revoked. Its metadata binds it to the paid invoice,
+subscription and checkout. The manual canary remains 100 granted, 57 consumed,
+zero reserved and **zero revoked**, with its separate 100-unit capacity row active.
+The combined Voice capacity value is not the count of newly paid usable minutes.
 
-Stripe's date tooltips show Solo's next period boundary at **October 10, 00:51
-UTC** (October 9, 8:51 p.m. Eastern) and storage's at **October 10, 01:11 UTC**
-(October 9, 9:11 p.m. Eastern), to minute precision. Their upcoming invoices
+The lifecycle run completed with no provider errors or failures and reconciled
+both paid subscriptions. It also reported one missing provider object, matching
+the preceding 00:37 run when the manual canary was the only work item. This
+unchanged baseline is retained in the evidence; no production fixture was altered.
+
+The scheduled reconciliation records Solo's exact next period boundary at
+**October 10, 00:51:08 UTC** (October 9, 8:51:08 p.m. Eastern) and storage's at
+**October 10, 01:11:44 UTC** (October 9, 9:11:44 p.m. Eastern), matching the
+earlier Stripe date tooltips to minute precision. Their upcoming invoices
 remain $59 and $15. Cancellation is to be scheduled after one paid renewal and
 verified at the following natural period end, before refunding both invoices.
 The eventual effective cancellation timestamps must come from Stripe.
@@ -218,8 +225,11 @@ did not release their one-time cards after approval submission; the unapproved
 requests expired. Their checkout pages alone are not payment evidence. The
 remaining initial budget is $139 and the renewal reserve is $213.
 
-A follow-up in this task is active, first checking normal worker fulfillment
-at 01:40 UTC and then reducing its cadence to the real billing dates. It must
+A follow-up in this task verified normal worker fulfillment at 01:41 UTC and
+is now scheduled around the actual billing dates: October and November 9-10 at
+7:40, 8:40, 9:40 and 10:40 p.m. Eastern. The next check is October 9 at 7:40 p.m.
+The schedule must adapt to new subscriptions or unresolved payment/cancellation
+states instead of waiting another month. It must
 verify the paid renewal, schedule and observe period-end cancellation, and
 reconcile final refunds. One-time Link credentials may fail automatic collection;
 any recovery must pay the actual naturally generated invoice within the reserve

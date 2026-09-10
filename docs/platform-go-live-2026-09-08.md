@@ -174,11 +174,13 @@ see the [dated execution record](prelaunch-payments-verification-2026-09-09.md)
 and [sanitized evidence](evidence/live-addon-lifecycle-2026-09-09.json).
 
 The separate [natural-renewal cohort](evidence/live-addon-renewal-2026-09-10.json)
-has an approved $426 additional cap. As of September 10, 01:21 UTC, Solo Voice
+has an approved $426 additional cap. As of September 10, 01:41 UTC, Solo Voice
 and storage are paid ($74); the other three initial purchases await fresh Link
-approval. Storage adds 100 GB; Solo's paid usable minutes still await the normal
-hourly worker. A follow-up is active, and the two paid subscriptions renew
-October 9 Eastern. This does not close natural renewal or cancellation acceptance.
+approval. Storage adds 100 GB; the normal 01:37 worker granted exactly one
+100-minute Solo paid-invoice lot and preserved the manual allowance. Both exact
+provider renewal timestamps are reconciled. Follow-ups now surround the October
+and November 9-10 billing boundaries, with the next check October 9 at 7:40 p.m.
+Eastern. This does not close natural renewal or cancellation acceptance.
 
 ### 1.4 Production feature-flag reconciliation — 67 flags, 12 documented — `VERIFIED TODAY` — **P0**
 
