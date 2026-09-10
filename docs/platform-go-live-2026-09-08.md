@@ -1,12 +1,8 @@
-# Whole-platform go-live list — 2026-09-08
+# Whole-platform go-live audit — September 8, with dated follow-ups
 
-**What this is.** Every rail that must be true before Let's Get Quoted takes a
-real paying customer, sequenced by *which sale each blocker must precede*. It is
-not a copy of [LAUNCH_CHECKLIST.md](../LAUNCH_CHECKLIST.md) — that file tracks
-243 boxes and has certified falsehoods before, so every load-bearing claim below
-was re-checked against source, `git`, GitHub Actions, or a live probe today.
-Items proven fixed since the last audit are recorded in §5 so nobody re-opens
-them.
+This is the September 8 audit and its later evidence updates. The [current remaining-work register](../LAUNCH_CHECKLIST.md#current-remaining-work--reconciled-september-10-2026) is authoritative for open status as reconciled September 10. Its 12 workstreams replace duplicate checklist counts; the [reconciliation record](launch-checklist-reconciliation-2026-09-10.md) explains which findings were superseded and which acceptance remains open.
+
+Ahead/behind counts, audit-range counts, source line numbers, flag inventories and CI results below belong to their recorded dates. They must be recomputed for the chosen final release. This document does not establish a new production probe or authorize an unapproved release, purchase or feature expansion.
 
 **How to read the status tags.**
 
@@ -21,9 +17,7 @@ them.
 
 ## §0 — State hygiene. Nothing below means anything until this is done.
 
-Everything in this list is a statement about *a tree*. Right now there are three
-different trees and no frozen SHA, so any gate run today certifies an artifact
-that will never be deployed.
+The following checkout and CI findings describe September 8. Later payment and domain releases have their own recorded validation. R10 in the current register still requires one integrated candidate, its exact audit range, independently captured gate results and a matching deployed revision.
 
 ### 0.1 This checkout has diverged from `origin/main` — `VERIFIED TODAY`
 
@@ -95,57 +89,17 @@ run is not a green suite.
 *No real customers exist yet, so nothing here has a victim today. That is the
 entire reason this list is still cheap to act on.*
 
-### 1.1 Six SKUs went on sale today. No live Stripe Price has been verified for any of them. — `VERIFIED TODAY` — **P0**
+### 1.1 Six live add-on Prices and initial purchases — superseded finding
 
-On `origin/main` (`bee028f35`), `TOP_UPS_WITHHELD` is now `Object.freeze({})`.
-Every SKU that [catalog.ts](../src/lib/billing/catalog.ts) previously withheld —
-`ai_voice_flex`, `ai_voice_solo`, `ai_voice_growth`, `voice_minutes_100`,
-`storage_100gb`, `office_user` — is sellable, shipped across PRs #27, #28 and
-#30 between 13:57 and 15:50 UTC today.
+The [September 8 provider record](six-sku-release-readiness-2026-09-08.md) records all six live Prices, amounts, cadences and catalog metadata. [September 9 live acceptance](evidence/live-addon-lifecycle-2026-09-09.json) subsequently proves actual checkout, payment and fulfillment for all six, followed by full refunds totaling $248. The earlier statement that none had been verified is obsolete.
 
-PR #30's own description says: *"Stripe Prices still require the canonical
-catalog metadata."* That is the blocker, stated by the author, shipped anyway.
+Natural renewals, effective period-end cancellation, provider failed-payment/plan-change journeys and deployed refund/debt presentation remain in [R01](../LAUNCH_CHECKLIST.md#launch-r01). Revalidate any changed catalog against the selected release under [R10](../LAUNCH_CHECKLIST.md#launch-r10).
 
-This fails in the worst possible way. Top-ups do **not** bind through env vars —
-they resolve at runtime by metadata search on `lgq_top_up_id` +
-`lgq_catalog_version`. Nothing fails at build. Nothing fails at boot. The first
-symptom is a customer clicking Buy and getting an error, on a $55/mo
-subscription SKU.
+### 1.2 Voice measurement is recorded ON; enforcement remains OFF
 
-**Do:** `npm run inspect:live-top-ups`. It is strictly read-only and refuses any
-key that is not the read-only `rk_live_`. **It cannot run here** — this checkout
-has no `.env.live.local`, so it is an operator/Codex task.
+[Dated provider settings and usage](six-sku-release-readiness-2026-09-08.md) confirm the meter and allowance worker enabled, the exhaustion gate disabled, and a call settled for two minutes. The ledger is not an unconsumed or wholly dark implementation.
 
-**PASS =** for all six SKUs: a live Price exists, is `active`, `unit_amount`
-matches `priceCents`, `recurring` matches the catalog's `recurring` flag, and
-metadata carries the current `PRICING_CATALOG_VERSION`. Anything short of six
-for six → re-withhold the missing ones in the same commit.
-
-**Ordering trap:** a catalog change has no safe order once checkout is live.
-Verify against the live function body, not the migration file.
-
-### 1.2 `voice_minutes_100` is sellable with the exhaustion gate deliberately off — `VERIFIED TODAY` — **P0 (decision, not a bug)**
-
-The catalog now carries: *"Voice launches with metering on and exhaustion
-blocking off. LGQ absorbs unmetered usage while provider reconciliation
-continues."*
-
-That is a legitimate, explicitly-taken business decision — but it has three
-conditions nobody has confirmed:
-
-1. `LGQ_VOICE_MINUTE_METER_ENABLED` must actually be **present** in Production.
-   Every flag reader is `env[FLAG] === '1'`, so absent silently means off with no
-   boot complaint. If the meter is off rather than on, LGQ is not "absorbing
-   unmetered usage" — it has no idea what the usage is.
-2. Production env is **baked at build**. The flag does nothing until a redeploy,
-   and turning it on is an ADD, not an edit — and the ADD is what fails.
-3. The runbook requires reconciling a **full billing period** against the
-   SignalWire invoice before the gate flips
-   ([ai-voice-go-live-runbook.md](./ai-voice-go-live-runbook.md)). Until then
-   every minute sold above allowance is LGQ's cost, uncapped and unmeasured.
-
-**PASS =** one curl reads the flag from outside and returns on; and there is a
-named date by which reconciliation completes and the gate flips.
+Seven healthy daily comparisons and a full actual provider invoice period, including forwarding/rounding, remain in [R02](../LAUNCH_CHECKLIST.md#launch-r02). Recheck current deployment flags under R10. Exhaustion blocking stays OFF unless Brett separately chooses enforcement after reviewing evidence; no checkpoint date automatically turns it on.
 
 ### 1.3 Live LGQ refund engine — verified September 9, 2026
 
@@ -182,59 +136,17 @@ provider renewal timestamps are reconciled. Follow-ups now surround the October
 and November 9-10 billing boundaries, with the next check October 9 at 7:40 p.m.
 Eastern. This does not close natural renewal or cancellation acceptance.
 
-### 1.4 Production feature-flag reconciliation — 67 flags, 12 documented — `VERIFIED TODAY` — **P0**
+### 1.4 Reconcile current production feature flags — still open
 
-`grep -rhoE "LGQ_[A-Z0-9_]+" src/ | sort -u` → **67** distinct flags. The go-live
-env table lists 12. Absent == off, silently. CI declares zero `LGQ_*` vars, so CI
-has only ever exercised the OFF path for all 67.
+The 67-source-flags/12-documented-flags count was measured on September 8. Recompute the inventory for the selected release; record expected and actual values, defaults, scope, and the deployment that uses them. Paid checkout/grant/refund evidence demonstrates the exercised add-on paths operated, not that every feature flag is correct.
 
-This was a latent problem yesterday. It is a P0 today because six SKUs just went
-on sale. The specific ordering that will burn the first stranger:
+[R10](../LAUNCH_CHECKLIST.md#launch-r10) retains the complete inventory and rollout-order check. Webhook and projection/refund workers must be ready before their purchase/cleanup paths depend on them. Preserve the recorded distinction between measurement and enforcement.
 
-> `LGQ_STRIPE_TOP_UP_WEBHOOK_ENABLED` and
-> `LGQ_STRIPE_TOP_UP_PROJECTION_WORKER_ENABLED` must be ON **before**
-> `LGQ_TOP_UP_PURCHASE_ENABLED`.
+### 1.5 Recovery has dated artifacts; full disaster recovery remains open
 
-If either is absent, Stripe charges the card,
-[stripe-top-up-webhook.ts:38](../src/lib/billing/stripe-top-up-webhook.ts#L38)
-refuses the delivery before reading it, credits are never granted — and there is
-**no failed cron and no dead letter** to notice it by.
-[top-up-purchases-go-live-runbook.md:48](./top-up-purchases-go-live-runbook.md)
-explicitly forbids the wrong ordering.
+The [staging restore record](runbooks/dr-drill-record-2026-09-09.md) verifies database/Auth/Storage and application acceptance after correction, including 35 real RLS cases. The [crew-completion migration](runbooks/evidence/dr-production-migration-2026-09-09.json) is verified in production. The independently downloaded offsite pack has also been authenticated and [restored locally](runbooks/evidence/dr-downloaded-local-restore-2026-09-09.json), including all 38 object hashes. Earlier claims that only capture existed or that no dated artifact existed are superseded.
 
-**Do:** produce one table — flag name, expected Production value, actual
-Production value, last redeploy that baked it. **PASS =** every flag on a rail
-that can take money is present and correct, and the deploy that baked them is the
-frozen SHA from §0.3.
-
-### 1.5 The restore drill is documented as verified and has no artifact — `CLAIMED, NO ARTIFACT` — **P0**
-
-[backup-posture.md](./backup-posture.md) claims `RTO ≤ 30 minutes` and *"Verified
-clean restore of auth users, invoices, jobs, and storage assets in < 5 minutes on
-scratch database"*, via `scripts/run-pitr-restore-drill.mjs`.
-
-The script exists. It contains **no reference to `SCRATCH_DATABASE_URL`** — the
-variable its own runbook says the drill needs — and there is **no dated run
-record anywhere in the repo**: no drill output, no timing log, no scratch project
-ID, no reconciled row counts.
-
-Meanwhile [security/page.tsx:48](../src/app/security/page.tsx#L48) tells
-customers there are automated backups, and seven Storage buckets hold homeowner
-property photos and insurance documents.
-
-**Do:** run it for real. `pg_restore --no-owner --no-privileges --clean
---if-exists` into a throwaway project; time it; capture every error (the
-Supabase-flavoured archive — `supabase_auth_admin` / `supabase_storage_admin`
-objects — is exactly the shape that fails on ownership and extension ordering).
-Reconcile counts on `accounts`, `payments`, `invoices`, `quotes`, `jobs`,
-`auth.users`. Point a Vercel preview at the scratch project and **log in as a
-real workspace member** — the only thing that proves `auth.users` plus the RLS
-helpers survived. Restore Storage and open one job photo through the app.
-
-**PASS =** a preview app serving restored data, matching counts, and a written
-wall-clock RTO. Until then, correct `backup-posture.md` to say the restore is
-untested — a false durability claim on a security page is a consumer-protection
-exposure, not a docs nit.
+[R06](../LAUNCH_CHECKLIST.md#launch-r06) retains hosted Auth/Storage/application recovery from that exact downloaded pack, independent recovery-key retrieval, deployment/DNS recovery and provider-account recovery/reconciliation. Staging and local restores are separate evidence, not full-disaster RTO. Keep the user's Free/PITR-disabled decision; see [current security/recovery scope](runbooks/security-recovery-2026-09-09.md).
 
 ### 1.6 Failure-to-human monitoring and controlled recovery — **COMPLETED 2026-09-09**
 
@@ -260,65 +172,33 @@ Historical backlog triage and paging through an independent provider remain open
 in the [canonical prelaunch checklist](../LAUNCH_CHECKLIST.md). Controlled fixtures
 do not close separate real-money or real-carrier lifecycle gates.
 
-### 1.7 The office seat is now sellable — confirm what it actually buys — `VERIFIED TODAY` — **P1**
+### 1.7 Office access and financial confidentiality — dated production acceptance recorded
 
-`office_user` came off the withheld list in PR #28. The historic blocker was that
-an office user could reach the leads board and nothing else: `clients/[id]`
-stated *"$0.00 paid"* as a fact when `payments` is owner-only, and `jobs/[id]`
-built an admin client while rendering and read two dozen owner-only tables.
+The [September 9 production evidence](tenant-office-verification-evidence-2026-09-09.json) records 83 passing tenant/office cases, including allowed client/job access, denied financial data and mutations, invitation/permission boundaries and workspace isolation. The old staging-only/no-useful-office-access finding is superseded.
 
-Partial progress is real:
-[jobs/[id]/page.tsx:2](../src/app/dashboard/jobs/[id]/page.tsx#L2) now imports
-`requireOfficeContext`. But **line 231 still calls `createAdminClient()` during
-render**. Service role bypasses RLS, so the office-context guard at the top does
-not constrain what that client can read.
+Initial live seat purchase and half/full refund capacity arithmetic also passed. Production storage concurrency and preservation under reduced capacity remain in [R09](../LAUNCH_CHECKLIST.md#launch-r09); real subscription renewal and effective cancellation remain in R01. The final integrated release still requires R10.
 
-**Do:** for both `clients/[id]` and `jobs/[id]`, prove every admin-client read is
-tenant-scoped in the query itself, and that no money figure renders for a role
-that cannot see `payments`. Note the pattern: a zero-row RLS read returns **no
-error**, so a page that shows nothing looks identical to a page that is working.
+### 1.8 Tenant isolation — September 9 evidence retained; final release scope still applies
 
-**PASS =** a real office user opens a client and a job in production, sees correct
-data, and sees no financial figure they are not entitled to. Selling a seat that
-opens a page which lies about money is worse than selling one that refuses.
+The [83-case dated production suite](tenant-office-verification-evidence-2026-09-09.json) records authenticated workspace separation, scoped service reads, denied office financial access, invitation/permission changes, Storage and other boundary checks. Do not reopen those cases merely because this older audit contained a duplicate checkbox.
 
-### 1.8 Tenant isolation is a ticked box that has been false before — `INHERITED` — **P1**
-
-"Tenant isolation confirmed" is one of four launch-checklist ticks previously
-found to be untrue. RLS covers a small minority of tables and most write actions
-use the service role. New objects are anon-accessible by default — the DEFAULT
-ACL grants `anon` EXECUTE on every new function and INSERT/UPDATE/DELETE on every
-new table, so the revoke *is* the security — and 380 commits of new objects have
-landed since the last check.
-
-**Do:** `npm run verify:tenant-isolation` against the frozen SHA; record the
-output verbatim into the checklist rather than re-ticking the box.
+[R10](../LAUNCH_CHECKLIST.md#launch-r10) must identify changes since that tested revision and verify the exact chosen release. The dated suite is not a claim that arbitrary later schema/application changes are already accepted.
 
 ---
 
 ## §2 — Before the first week
 
-### 2.1 Custom email sending domains — Stage 5 has no substitute — `VERIFIED TODAY`
+### 2.1 Custom email domains — release verified; lifecycle and canary still open
 
-Two independently fatal defects were fixed today behind a fully green suite, so
-the code is much better than it was. What remains cannot be closed from inside
-the codebase:
+Gmail and Outlook authentication/replies and the production quote link have evidence. The one-workspace enrollment and Check Connection release reached Verified in production, as recorded in the [later committed canary](https://github.com/wideeyephoto/lets-get-quoted/blob/59949e2bd/docs/contractor-domains-canary-2026-09-09.md). The earlier globally-off and pending-verification statements are superseded.
 
-- **No real send has been made from a tenant domain.** `dkim=pass` / `spf=pass`
-  with `d=` matching the contractor's own domain is unverified. Alignment is
-  provable only by reading the headers of an email that actually arrived.
-- **`LGQ_EMAIL_SENDING_DOMAINS_ENABLED` is absent in Production**, by design.
-  Turning it on is an ADD and requires a redeploy to bake.
-- **The reconciler has never fired.** Registered in `vercel.json` (`23 6 * * *`),
-  unrun until a deploy reaches Production. Confirm with `npm run
-  inspect:cron-health` — a green board with **no row** for this job is not
-  evidence.
+[R04](../LAUNCH_CHECKLIST.md#launch-r04) retains the new binding's real custom-domain product send, remaining message/recovery/disconnect/reconnect drills and seven elapsed healthy days with active-domain scheduled runs. The observation clock has not started in that dated record. The disconnect UI follow-up's local checks do not count as a production disconnect.
 
-### 2.2 Custom website domains — one real domain serves, two gaps remain — `INHERITED`
+### 2.2 Website domains — pending-domain worker proved; final lifecycle still open
 
-TLS serving is resolved. Outstanding: no reconciler for the certificate wait, and
-a binding that leaks on delete. Local commit `11ed8a776` addresses both — and is
-**not on `origin/main`** (see §0.1), so neither fix is deployed.
+The [committed fixture record](https://github.com/wideeyephoto/lets-get-quoted/blob/59949e2bd/docs/contractor-domains-canary-2026-09-09.md) records valid TLS for the active site, scheduled watcher execution and attachment of one real pending disposable domain through deployed credentials. These supersede the older zero-pending-domain-only observation.
+
+Certificate-ready promotion, owner notification and disposable site/account deletion through the deployed application remain in [R04](../LAUNCH_CHECKLIST.md#launch-r04). Preserve the active website.
 
 ### 2.3 SMS / 10DLC carrier coverage — the largest open cluster — `INHERITED`
 
@@ -358,28 +238,11 @@ guard and the truthful copy, or restore it properly per
 [voice-quote-write-guard-2026-09-06.md](./voice-quote-write-guard-2026-09-06.md).
 Make it an explicit decision, not a drift.
 
-### 2.5 Paid-ads truthfulness — every ad headline is itself a claim — `VERIFIED TODAY`
+### 2.5 Paid-ad readiness — copy fixed; deployed offer/landing acceptance remains
 
-- **The false trial claim.** Five CTAs read "Start Free Platform Trial" for a
-  trial that cannot exist — `trial_period_days` is actively *rejected* at
-  [stripe-plan-prices.ts:292](../src/lib/billing/stripe-plan-prices.ts#L292).
-  Commit `25bdd1d91` fixes it, but **that commit's CI run failed**, so the fix is
-  unverified. Re-run the gates and confirm the phrase is added to the prohibited
-  patterns in `test/claims-substantiation.test.ts` — otherwise it returns.
-- **Noindex the mockup routes before any DSA campaign.** `/for-mockup`,
-  `/website-builder-mockup`, `/features/website-builder-mockup` are
-  self-canonical, absent from the sitemap, and answer 200 on both apex and
-  `app.letsgetquoted.com` — so an automated landing-page crawl can select them as
-  ad destinations. Same for all six `/home-*` variants and `/features-flagship`.
-- **The FTC register is not a trustworthy inventory.**
-  [ftc-substantiation-register.md](./ftc-substantiation-register.md) holds twelve
-  claims; **none** covers the free/no-credit-card offer, and CLM-005 names
-  `/pricing` as carrying a 30-day money-back claim that exists nowhere under
-  `src/app/pricing/`.
-- **Nothing on the marketing surface is statically prerendered.** Root layout
-  awaits `headers()` and `cookies()`, root sets `force-dynamic`, `FlagshipHome`
-  is a 1,065-line client component. Measure `responseEnd`, not TTFB — streaming
-  renders TTFB a flat ~14ms lie.
+The false trial CTA was removed from the five recorded pages. [Source regression guards](../test/claims-substantiation.test.ts) now prohibit free-trial and trial-period claims. The earlier assertion that no trial guard exists is obsolete.
+
+[R11](../LAUNCH_CHECKLIST.md#launch-r11) retains deployed offer/substantiation verification, buyable landing journeys, duplicate-route noindex/DSA exclusions, real page-speed measurement and cross-device attribution. A source guard does not prove every deployed page or ad. Any Flex refill decision must update the product contract, pricing copy and tests together.
 
 ### 2.6 Contractor-lifecycle cron — a dry run now exists; use it — `VERIFIED TODAY`
 
@@ -395,21 +258,18 @@ account; no account receives a mid-sequence step as its first message. Separatel
 resolve all ten `ctaPath` values against the App Router — three previously
 pointed at routes that do not exist, and the test pins the broken string.
 
-### 2.7 AI Operator — reconnected today; confirm it has data — `VERIFIED TODAY`
+### 2.7 AI Operator and Command Center — recorded verification complete
 
-`6c055815b` makes it read approvals from Supabase and stop reporting figures
-nothing measured — the exact defect where the cockpit read memory and both tables
-held 0 rows. Confirm the tables now hold rows in production, and that no tool
-fabricates evidence it did not measure.
+The [launch evidence](../LAUNCH_CHECKLIST.md#command-center--operational-telemetry-honesty--2026-09-09) records Command Center Waves 1–6: durable campaign idempotency, honest configured/unmeasured states, incident paging and audit-action naming. The old request simply to confirm data is superseded by that dated scope.
 
----
+Historical business failures and paging independent of the email provider remain separately open in R07 and R08; final release verification remains R10.
 
 ## §3 — Can wait, but decide explicitly
 
 | Item | Why it can wait | Why it can't wait forever |
 |---|---|---|
 | Dashboard ships both stylesheets — 375KB redundant CSS | Deferred on purpose; was blocked by a Next 14 `not-found` bug | The tree is on Next 15 now — re-test whether the blocker still exists |
-| Credit ledger has no consumer | Top-ups grant a number nothing spends; one caller and it is dark | §1.1 just made three credit-granting SKUs sellable |
+| Voice ledger consumer is recorded; broader reconciliation remains | The old no-consumer finding is superseded by the settled-call evidence in §1.2 | Complete R02's actual provider-period and remaining lifecycle acceptance |
 | Referral engine unmerged on `agent/referral-engine-port` | Nothing depends on it | The **merge** is what turns referrals on; leaving it stranded loses the work |
 | Cross-device attribution gap | No spend yet | Signup conversion fires at `/welcome`, reachable only via an emailed magic link — desktop-request/phone-open converts with no ad context. Size it server-side *before* concluding a campaign failed |
 | Flex monthly refill | **Do not build.** Adversarial review returned *broken* on 2 of 3 lenses, 7 blockers, including a migration that aborts on production while its PG17 harness certifies the opposite | The product fork is unresolved: top-up-to-N gives a dormant account **nothing**, because it still holds its untouched 50-credit balance |
@@ -475,16 +335,9 @@ table, fix code, commit and push.
 
 ---
 
-## The short version
+## Current status and historical follow-ups
 
-Six SKUs went on sale today across three PRs, in a 380-commit range that has had
-no audit, from a tree this checkout is eight commits behind. The author of the
-release said in the PR body that the Stripe Prices still need work. **Nobody has
-checked whether a customer clicking Buy on any of the six gets a checkout or an
-error.** That check is one read-only command and it needs the operator.
-
-Everything else on this list is real, but that is the one that is live right now.
-
+The [current remaining-work register](../LAUNCH_CHECKLIST.md#current-remaining-work--reconciled-september-10-2026) replaces the September 8 conclusion that no real checkout had been verified. All six initial paid/refund journeys are complete; the wider launch remains open for the acceptance and recovery work listed there. Follow-ups below retain their own timestamps and scope; the later downloaded-pack local restore supersedes the last follow-up's then-unrun local restoration.
 
 September 9 follow-up: the tested crew-completion migration is now verified in production. Encrypted twice-daily Google Drive backups, private cloud presence and user-confirmed Dashlane key escrow are established. Offline pack opening passes; Chrome blocked independent cloud-download verification. PITR remains disabled by the user’s keep-Free decision. See [offsite recovery](runbooks/dr-offsite-recovery.md) for the current scope; earlier local-only findings above are historical.
 
