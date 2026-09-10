@@ -425,5 +425,22 @@
   "immutable_baseline_preserved": true,
   "production_mutations_by_this_final_check": 0,
   "worker_invocations_by_this_final_check": 0,
-  "outbound_submissions_by_this_final_check": 0
+  "outbound_submissions_by_this_final_check": 0,
+  "followup": {
+    "automation_id": "complete-operational-cleanup-observation",
+    "status": "PAUSED",
+    "reason": "Fixed 24-hour report completed with failed acceptance; remaining production repair/rollout requires separate authorization.",
+    "production_schedulers_unchanged": true
+  },
+  "publication": {
+    "status": "pending_payload_specific_approval",
+    "remote": "https://github.com/wideeyephoto/lets-get-quoted.git",
+    "visibility": "public",
+    "branch": "fix/prelaunch-operational-cleanup-20260909",
+    "last_verified_remote_revision": "e22c457717d05d70aa6345918c5764c8c194008b",
+    "local_observation_result_commit": "3bc753d3d",
+    "automatic_review_rejected": true,
+    "reason": "Automatic approval review required specific authorization to publish the production-observation record IDs and audit evidence to this public destination.",
+    "added_content_redaction_check": "passed: no credential or full phone matches in added content"
+  }
 }
