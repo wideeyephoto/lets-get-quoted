@@ -1,3 +1,4 @@
+import { walletRpcFor } from './helpers/ad-wallet-rpc';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import {
   handleAdBudgetWebhookEvent,
@@ -52,6 +53,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     let updatedContent: Record<string, unknown> | null = null;
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -202,6 +204,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     let updatedContent: Record<string, unknown> | null = null;
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -281,6 +284,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
 
   it('strictly isolates cross-rail webhooks and ignores unrelated SaaS subscriptions/invoices', async () => {
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -384,6 +388,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     let updatedAdCampaign: Record<string, unknown> | null = null;
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -465,6 +470,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -540,6 +546,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -607,6 +614,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -684,6 +692,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     const updateCalls: Record<string, unknown>[] = [];
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -758,6 +767,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -834,6 +844,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -906,6 +917,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -961,6 +973,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     };
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
@@ -1073,6 +1086,7 @@ describe('Ad Billing Synchronous Provisioning & Fulfillment', () => {
     let savedAdCampaign: any = null;
 
     const mockAdmin: any = {
+      rpc: walletRpcFor(() => mockAdmin),
       from: (table: string) => {
         if (table === 'sites') {
           return {
