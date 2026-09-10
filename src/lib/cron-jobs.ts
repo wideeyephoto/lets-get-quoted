@@ -462,8 +462,16 @@ export function graceMs(intervalMs: number): number {
 /** A wrapper may finish while its own summary reports failed work. */
 export function cronSummaryHasFailures(summary: Record<string, unknown> | null | undefined): boolean {
   if (!summary) return false;
+  if (
+    typeof summary.candidates === 'number' &&
+    summary.candidates > 0 &&
+    typeof summary.closed === 'number' &&
+    summary.closed === 0
+  ) {
+    return true;
+  }
   return Object.entries(summary).some(([key, value]) => {
-    if (!/(^|_)(failed|failures|errors|error_count|pauseFailures|pause_failures)$/i.test(key)) return false;
+    if (!/(^|_)(failed|failures|errors|error_count|pauseFailures|pause_failures|no_customer|no_stripe_customer|completion_unconfirmed)$/i.test(key)) return false;
     if (typeof value === 'number') return Number.isFinite(value) && value > 0;
     if (typeof value === 'boolean') return value;
     return typeof value === 'string' && value.trim() !== '' && value.trim() !== '0';

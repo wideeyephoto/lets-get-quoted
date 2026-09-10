@@ -42,6 +42,7 @@ try {
 
 const m = (n) => readFileSync(join(REPO, 'migrations', n), 'utf8').replace(/\r\n/g, '\n');
 const SETTLEMENT = m('20260819260000_overage_settlement.sql');
+const REAPER_MIGRATION = m('20260909210000_overage_settlement_reaper_and_starvation.sql');
 
 const R = [];
 const ck = (n, ok, d) => R.push({ n, ok: Boolean(ok), d });
@@ -105,6 +106,7 @@ try {
   `);
 
   await q(SETTLEMENT);
+  await q(REAPER_MIGRATION);
   ck('the settlement migration applies, post-conditions and all', true);
 
   const accrue = (account, start, end, resource, units, millicents) => q(
@@ -320,6 +322,8 @@ try {
       ['claim a settlement', 'public.claim_overage_settlement(uuid,text,boolean,text)'],
       ['complete a settlement', 'public.complete_overage_settlement(uuid,uuid,text)'],
       ['fail a settlement', 'public.fail_overage_settlement(uuid,uuid,text,boolean)'],
+      ['reap settlement leases', 'public.reap_overage_settlement_leases(integer)'],
+      ['list unclosed periods', 'public.list_unclosed_overage_periods(integer)'],
     ]) {
       ck(`${role} cannot ${label}`,
         (await q('select has_function_privilege($1, $2, \'EXECUTE\') as ok', [role, sig]))
@@ -337,6 +341,87 @@ try {
       where oid = 'public.workspace_overage_settlements'::regclass`)).rows[0].ok === true
     && (await q(`select has_table_privilege('authenticated',
       'public.workspace_overage_settlements', 'SELECT') as ok`)).rows[0].ok === true);
+
+  // -------------------------------------------------------------------
+  // 9. Reaper for expired submitted leases.
+  // -------------------------------------------------------------------
+  const P3 = '2026-06-01T00:00:00Z';
+  const P3_END = '2026-07-01T00:00:00Z';
+  await accrue(ACCOUNT, P3, P3_END, 'text_segments', 50, 2_500_000);
+  const settle3 = await close(ACCOUNT, P3, P3_END);
+  const key3 = `lgq:billing:v1:overage.settle:${'c'.repeat(64)}`;
+  const token3 = (await q(
+    `select public.claim_overage_settlement($1::uuid, $2::text, false, $3::text) as t`,
+    [settle3.id, key3, 'cus_test1234'])).rows[0].t;
+
+  // Active lease: reaper leaves it alone
+  const reap0 = Number((await q('select public.reap_overage_settlement_leases(50) as n')).rows[0].n);
+  ck('the reaper skips a live lease', reap0 === 0);
+
+  // Expire lease
+  await q(`update public.workspace_overage_settlements set lease_expires_at = now() - interval '10 seconds' where id = $1`, [settle3.id]);
+
+  const reap1 = Number((await q('select public.reap_overage_settlement_leases(50) as n')).rows[0].n);
+  ck('the reaper reaps an expired lease', reap1 === 1);
+
+  const reaped = (await q('select * from public.workspace_overage_settlements where id = $1', [settle3.id])).rows[0];
+  ck('...moving state to indeterminate', reaped.state === 'indeterminate');
+  ck('...setting last_error to lease_expired', reaped.last_error === 'lease_expired');
+  ck('...preserving the claim token', reaped.claim_token === token3);
+  ck('...preserving the Stripe idempotency key', reaped.stripe_idempotency_key === key3);
+  ck('...and preserving submitted_at', reaped.submitted_at !== null);
+
+  // Re-claim after reaper: must succeed and carry the SAME idempotency key
+  const token3_retry = (await q(
+    `select public.claim_overage_settlement($1::uuid, $2::text, false, $3::text) as t`,
+    [settle3.id, key3, 'cus_test1234'])).rows[0].t;
+  ck('a reaped settlement can be claimed again', typeof token3_retry === 'string' && token3_retry !== token3);
+
+  const reclaimed = (await q('select * from public.workspace_overage_settlements where id = $1', [settle3.id])).rows[0];
+  ck('...with the same idempotency key', reclaimed.stripe_idempotency_key === key3);
+  ck('...attempt count bumped to 2', Number(reclaimed.attempt_count) === 2);
+  ck('...and last_error cleared', reclaimed.last_error === null);
+
+  // -------------------------------------------------------------------
+  // 10. Starvation prevention: anti-join accruals against settlements.
+  // -------------------------------------------------------------------
+  const P_OLD = '2026-01-01T00:00:00Z';
+  const P_OLD_END = '2026-02-01T00:00:00Z';
+  const STARVE_ACCT = '44444444-4444-4444-8444-444444444444';
+  await q(`insert into public.accounts (id) values ('${STARVE_ACCT}')`);
+  await q(`insert into public.workspace_overage_settings (account_id, enabled, cap_cents) values ('${STARVE_ACCT}', true, 10000)`);
+
+  for (let i = 0; i < 105; i++) {
+    await accrue(STARVE_ACCT, P_OLD, P_OLD_END, `res_${i}`, 1, 1000);
+  }
+  const oldClosed = await close(STARVE_ACCT, P_OLD, P_OLD_END);
+  ck('the 105-resource period closed', oldClosed.already_closed === false);
+
+  // Seed a newly ended period that has NOT been closed
+  const P_NEW = '2026-05-01T00:00:00Z';
+  const P_NEW_END = '2026-06-01T00:00:00Z';
+  await accrue(STARVE_ACCT, P_NEW, P_NEW_END, 'text_segments', 10, 50000);
+
+  // Also seed a running period that has NOT ended (period_end in future)
+  const P_FUTURE = '2030-01-01T00:00:00Z';
+  const P_FUTURE_END = '2030-02-01T00:00:00Z';
+  await accrue(STARVE_ACCT, P_FUTURE, P_FUTURE_END, 'text_segments', 5, 25000);
+
+  // Call list_unclosed_overage_periods
+  const unclosed = (await q('select * from public.list_unclosed_overage_periods(10)')).rows;
+  const starveFound = unclosed.filter((p) => p.account_id === STARVE_ACCT);
+  ck('anti-join finds the newly ended period despite >100 older closed accruals',
+    starveFound.length === 1 && new Date(starveFound[0].period_start).getTime() === new Date(P_NEW).getTime());
+  ck('...and excludes the running future period',
+    !unclosed.some((p) => new Date(p.period_end).toISOString() === P_FUTURE_END));
+  ck('...and excludes the already-closed period',
+    !unclosed.some((p) => new Date(p.period_start).toISOString() === P_OLD));
+
+  // Closing the newly ended period removes it from unclosed list
+  await close(STARVE_ACCT, P_NEW, P_NEW_END);
+  const unclosedAfter = (await q('select * from public.list_unclosed_overage_periods(10)')).rows;
+  ck('closing the new period leaves no unclosed candidates for that account',
+    !unclosedAfter.some((p) => p.account_id === STARVE_ACCT));
 
   await c.end();
 } catch (error) {
