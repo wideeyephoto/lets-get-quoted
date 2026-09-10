@@ -44,6 +44,7 @@ describe('Server card quotes and checkout', () => {
   it('ignores browser prices and fixes the tax delivery address', async () => {
     const saved = await quote(); expect((await checkout({ ...saved, subtotalCents: 1, totalCents: 1 })).ok).toBe(true);
     expect(f.createSession.mock.calls[0][0].line_items[0].price_data.unit_amount).toBe(saved.subtotalCents);
+    expect(f.createSession.mock.calls[0][0].line_items[0].price_data.product_data.tax_code).toBe('txcd_99999999');
     expect(f.createCustomer.mock.calls[0][0].shipping.address).toMatchObject({ line1: address.streetAddress, postal_code: address.postalCode });
     expect(f.createSession.mock.calls[0][1]).toEqual({ idempotencyKey: `card-checkout:${saved.id}` });
   });
