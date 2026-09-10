@@ -1,5 +1,12 @@
 # Official Pre-Launch & Go-Live Checklist — Let's Get Quoted
 
+## Workstream Updates (2026-09-10)
+
+- [x] **R07 (Failure Backlog Disposition):** Linked [migrations/20260909182123_billing_event_operational_reviews.sql](migrations/20260909182123_billing_event_operational_reviews.sql); 185 billing rows moved to audit ledger.
+- [ ] **R09 (Storage & Capacity):** Evidence: [R09-storage-migration-20260910.log](docs/R09-storage-migration-20260910.log), [R09-pg17-storage-20260910.log](docs/R09-pg17-storage-20260910.log). Note: 3 remaining office Data API blockers.
+- [ ] **R10 (Exact Release Audit):** Evidence: [R10-schema-parity-20260910.log](docs/R10-schema-parity-20260910.log) (clean), [R10-schema-order-20260910.log](docs/R10-schema-order-20260910.log) (clean). Note: 2 failing PG17 suites and 3 failing test suites.
+- [ ] **R04 (Domains):** The observation clock has NOT started.
+
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
 ## Branch review and integration — September 10, 2026

@@ -65,7 +65,7 @@ async function finishRun(
 ): Promise<void> {
   if (!runId) return;
   try {
-    await admin
+    const { error } = await admin
       .from('cron_runs')
       .update({
         finished_at: new Date().toISOString(),
@@ -77,6 +77,9 @@ async function finishRun(
         error: patch.error ?? null,
       })
       .eq('id', runId);
+    if (error) {
+      console.error('cron_runs finish write error:', error.message);
+    }
   } catch (error) {
     console.error('cron_runs finish failed:', error instanceof Error ? error.message : error);
   }
@@ -90,7 +93,10 @@ function asJson(value: unknown): Record<string, unknown> | null {
 
 async function pruneOldRuns(admin: SupabaseClient): Promise<void> {
   try {
-    await admin.from('cron_runs').delete().lt('started_at', new Date(Date.now() - RETENTION_MS).toISOString());
+    const { error } = await admin.from('cron_runs').delete().lt('started_at', new Date(Date.now() - RETENTION_MS).toISOString());
+    if (error) {
+      console.error('cron_runs prune write error:', error.message);
+    }
   } catch (error) {
     console.error('cron_runs prune failed:', error instanceof Error ? error.message : error);
   }
