@@ -1265,6 +1265,7 @@ export async function sendSendingDomainFailedEmail(input: {
     subject: `Action needed: ${input.domain} stopped verifying`,
     html: renderBrandedEmail({
       brand,
+      audience: 'account',
       preheader: `Email from ${input.domain} is no longer signed by your domain`,
       eyebrow: 'Action needed',
       heading: 'Your sending domain stopped verifying',

@@ -79,6 +79,9 @@ describe('Durable domain failure notices', () => {
   it('distinguishes provider acceptance from a matching delivered callback', async () => {
     const db = database();
     expect((await runEmailDomainFailureNotices(db.client)).ownersNotified).toBe(1);
+    expect(send).toHaveBeenCalledWith(expect.objectContaining({
+      settingsUrl: expect.stringMatching(/\/dashboard\/settings#email-domain$/),
+    }));
     expect(db.notices[0].state).toBe('accepted');
     db.events['provider-1'] = { account_id: 'account-1', status: 'delivered' };
     expect((await runEmailDomainFailureNotices(db.client)).errors).toBe(0);
