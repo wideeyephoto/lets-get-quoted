@@ -1,28 +1,40 @@
-import { readFileSync } from 'node:fs';
-import { PGlite } from '@electric-sql/pglite';
+import { Client } from 'pg';
+import { randomUUID } from 'node:crypto';
 import { beforeAll, afterAll, describe, it, expect } from 'vitest';
 
-const db = new PGlite();
-const account = '11111111-1111-4111-8111-111111111111';
-const job = '22222222-2222-4222-8222-222222222222';
-const proof = '33333333-3333-4333-8333-333333333333';
-const quote = '44444444-4444-4444-8444-444444444444';
-const lease = '55555555-5555-4555-8555-555555555555';
+const databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl || new URL(databaseUrl).hostname !== 'db.uydlabvgauzujdwuqzxq.supabase.co') throw new Error('Marketing release tests require the staging database');
+const client = new Client({ connectionString: databaseUrl });
+// Keep expected SQL failures inside savepoints, then roll back every test row.
+const db = {
+  exec: (sql: string) => client.query(sql),
+  query: async <T extends Record<string, unknown>>(sql: string, params?: unknown[]) => {
+    await client.query('savepoint probe');
+    try {
+      const result = await client.query(sql, params);
+      await client.query('release savepoint probe');
+      return result as { rows: T[] };
+    } catch (error) {
+      await client.query('rollback to savepoint probe');
+      await client.query('release savepoint probe');
+      throw error;
+    }
+  },
+  close: async () => {
+    try { await client.query('rollback'); } finally { await client.end(); }
+  },
+};
+const account = randomUUID();
+const job = randomUUID();
+const proof = randomUUID();
+const quote = randomUUID();
+const lease = randomUUID();
+const cardPayment = `pi_staging_card_${randomUUID()}`;
+const walletPayment = `pi_staging_wallet_${randomUUID()}`;
 beforeAll(async () => {
-  await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
-    create schema storage; create table storage.buckets(id text primary key,name text,public boolean,file_size_limit bigint,allowed_mime_types text[]);
-    create table public.accounts(id uuid primary key);
-    create table public.jobs(id uuid primary key,account_id uuid,status text);
-    create table public.sites(id uuid primary key,account_id uuid,content jsonb);
-    create function public.office_can(uuid,text) returns boolean language sql as 'select false';`);
-  for (const filename of ['20260904120000_merchandise_orders.sql','20260905120000_merchandise_hardening.sql','20260905170000_merchandise_card_operations.sql','20260905180000_neighborhood_halo_campaigns.sql','20260831210000_managed_ads_atomic_wallet_operations.sql','20260910104058_marketing_flow_repair.sql']) {
-    await db.exec(readFileSync(`migrations/${filename}`, 'utf8'));
-  }
-  // The deployed baseline predates this column; CREATE TABLE IF NOT EXISTS cannot repair it.
-  await db.exec('alter table public.neighborhood_halo_campaigns drop column wallet_deducted_cents');
-  await db.exec(readFileSync('migrations/20260910112758_halo_wallet_debit_column.sql', 'utf8'));
-  await db.exec(`insert into public.accounts values('${account}'); insert into public.jobs values('${job}','${account}','complete');
-    insert into public.sites values('${account}','${account}','{"adCampaign":{"walletBalanceCents":10000}}');
+  await client.connect(); await client.query('begin');
+  await db.exec(`insert into public.accounts(id,business_name) values('${account}','Marketing Release SQL Fixture'); insert into public.jobs(id,account_id,ref,client_name,status,message_channel) values('${job}','${account}','RELEASE-TEST','Release Fixture','complete','off');
+    insert into public.sites(id,account_id,company_name,content) values('${account}','${account}','Release Fixture','{"adCampaign":{"walletBalanceCents":10000}}');
     insert into public.merchandise_card_designs(id,account_id) values('${proof}','${account}');
     insert into public.merchandise_card_proofs(id,account_id,design_id,front_asset_key,front_asset_hash,back_asset_key,back_asset_hash,approval_hash,is_approved,preflight_passed)
       values('${proof}','${account}','${proof}','front','hash','back','hash','approval',true,true);
@@ -37,7 +49,7 @@ describe('Marketing transaction boundaries', () => {
     const first = await db.query<{result: {order_id: string;operation_key: string}}>(call);
     expect(first.rows[0].result.order_id).toMatch(/^[a-f0-9-]{36}$/);
     await expect(db.query(call)).rejects.toThrow(/being prepared/);
-    const rows = await db.query<{count:number}>('select count(*)::int as count from public.merchandise_orders');
+    const rows = await db.query<{count:number}>('select count(*)::int as count from public.merchandise_orders where account_id=$1', [account]);
     expect(rows.rows[0].count).toBe(1);
     await db.query(`select public.complete_card_checkout('${account}',$1,'${lease}','cs_fixture')`,[first.rows[0].result.operation_key]);
     const repeated = await db.query<{result:{session_id:string}}>(call);
@@ -58,7 +70,7 @@ describe('Marketing transaction boundaries', () => {
     expect(balance.rows[0].balance).toBe(9300);
   });
   it('preserves Meta IDs in the real RPC path without double crediting', async () => {
-    const args=[account,'pi_fixture',500,0,null,null,'pending_provisioning',null,null,null,null,null,JSON.stringify({metaCampaignId:'123',metaAdSetId:'456',metaAdId:'789',stripeCustomerId:'cus_fixture',walletBalanceCents:999999})];
+    const args=[account,walletPayment,500,0,null,null,'pending_provisioning',null,null,null,null,null,JSON.stringify({metaCampaignId:'123',metaAdSetId:'456',metaAdId:'789',stripeCustomerId:'cus_fixture',walletBalanceCents:999999})];
     const call='select public.atomic_ad_wallet_credit_v2('+args.map((_,i)=>`$${i+1}`).join(',')+')';
     await db.query(call,args); await db.query(call,args);
     const state=await db.query<{state:Record<string,unknown>}>(`select content->'adCampaign' as state from public.sites where account_id='${account}'`);
@@ -69,18 +81,18 @@ describe('Marketing transaction boundaries', () => {
     expect(permissions.rows[0].allowed).toBe(false);
   });
   it('records payment and fulfillment once, and ignores delayed production callbacks', async () => {
-    const found = await db.query<{id:string}>("select id from public.merchandise_orders where order_number='TEST-CARD'");
+    const found = await db.query<{id:string}>("select id from public.merchandise_orders where order_number='TEST-CARD' and account_id=$1",[account]);
     const id = found.rows[0].id;
-    const claim = `select public.claim_card_fulfillment('${account}','${id}','cs_fixture','pi_card',5000,300,'${lease}',175) as result`;
+    const claim = `select public.claim_card_fulfillment('${account}','${id}','cs_fixture','${cardPayment}',5000,300,'${lease}',175) as result`;
     await db.query(claim);
     await expect(db.query(claim)).rejects.toThrow(/already being processed/);
     await db.query(`select public.finish_card_fulfillment('${account}','${id}','${lease}','{"ok":true,"printfulOrderId":123,"status":"pending"}')`);
     expect((await db.query<{result:{completed:boolean}}>(claim)).rows[0].result.completed).toBe(true);
-    const revenue = await db.query<{count:number;fee:number}>("select count(*)::int count,max(stripe_processing_fee)::float8 fee from public.merchandise_revenue_ledger where event_key='card-payment:pi_card'");
+    const revenue = await db.query<{count:number;fee:number}>("select count(*)::int count,max(stripe_processing_fee)::float8 fee from public.merchandise_revenue_ledger where event_key=$1 and account_id=$2",[`card-payment:${cardPayment}`,account]);
     expect(revenue.rows[0]).toEqual({count:1,fee:1.75});
     await db.query(`select public.apply_printful_order_event('TEST-CARD',123,'{"status":"shipped","fulfillment_status":"shipped","tracking_number":"REAL-TRACKING"}')`);
     await db.query(`select public.apply_printful_order_event('TEST-CARD',123,'{"status":"in_production","fulfillment_status":"in_production"}')`);
-    const order = await db.query<{status:string;payment_status:string}>("select status,payment_status from public.merchandise_orders where order_number='TEST-CARD'");
+    const order = await db.query<{status:string;payment_status:string}>("select status,payment_status from public.merchandise_orders where order_number='TEST-CARD' and account_id=$1",[account]);
     expect(order.rows[0]).toEqual({status:'shipped',payment_status:'paid'});
   });
   it('serializes Halo delivery changes and never lowers cumulative spend', async () => {
@@ -97,8 +109,8 @@ describe('Marketing transaction boundaries', () => {
     expect((await db.query<{changed:boolean}>(`select public.sync_halo_metrics('${job}',1500,200,20,3) as changed`)).rows[0].changed).toBe(false);
   });
   it('starts an unfunded wallet at zero and preserves a credit across lifecycle changes', async () => {
-    const fresh='66666666-6666-4666-8666-666666666666';
-    await db.exec(`insert into public.accounts values('${fresh}'); insert into public.sites values('${fresh}','${fresh}','{}');
+    const fresh=randomUUID();
+    await db.exec(`insert into public.accounts(id,business_name) values('${fresh}','Release Empty Wallet'); insert into public.sites(id,account_id,company_name,content) values('${fresh}','${fresh}','Release Empty Wallet','{}');
       select public.atomic_ad_wallet_credit_v2('${fresh}','pi_new',500);
       select public.set_ad_lifecycle_state('${fresh}','paused',null,null);`);
     const row=await db.query<{balance:number}>(`select (content->'adCampaign'->>'walletBalanceCents')::int balance from public.sites where id='${fresh}'`);

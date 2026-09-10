@@ -46,7 +46,8 @@ export async function createVerifiedCardCheckout(admin: SupabaseClient, stripe: 
   }, { idempotencyKey: `card-customer:${quote.id}` });
   const session = await stripe.checkout.sessions.create({
     mode: 'payment', payment_method_types: ['card'], customer: customer.id,
-    line_items: [{ price_data: { currency: 'usd', product_data: { name: `${quote.cardCount} Business Cards` },
+    // Override the platform's digital-service default for these physical goods.
+    line_items: [{ price_data: { currency: 'usd', product_data: { name: `${quote.cardCount} Business Cards`, tax_code: 'txcd_99999999' },
       unit_amount: quote.subtotalCents, tax_behavior: 'exclusive' }, quantity: 1 }],
     shipping_options: [{ shipping_rate_data: { type: 'fixed_amount', fixed_amount: { amount: quote.shippingCostCents, currency: 'usd' },
       display_name: 'Tracked shipping', tax_behavior: 'exclusive' } }],

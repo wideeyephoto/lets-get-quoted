@@ -57,8 +57,8 @@ function verifyPrintfulAuth(req: Request, rawBody: string): boolean {
         return true;
       }
 
-      // If secret is 64-hex chars (Printful v2 secret hex format), try binary decoding
-      if (/^[0-9a-fA-F]{64}$/.test(secret)) {
+      // Printful v2 returns a hex-encoded key; its byte length is provider-defined.
+      if (/^(?:[0-9a-fA-F]{2})+$/.test(secret)) {
         const hmacHex = createHmac('sha256', Buffer.from(secret, 'hex'));
         hmacHex.update(rawBody, 'utf8');
         const expectedHex = hmacHex.digest('hex');
@@ -99,8 +99,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Replay deduplication check
-    const eventId = body?.event_id || (body?.created ? `${body.type}_${body.created}_${body.data?.order?.id}` : undefined);
+    if (process.env.PRINTFUL_STORE_ID && String(body?.store_id ?? body?.data?.order?.store_id ?? '') !== process.env.PRINTFUL_STORE_ID) {
+      return NextResponse.json({ ok: false, error: 'Unexpected store' }, { status: 403 });
+    }
+
+    // v2 uses occurred_at and may send several shipments for the same order.
+    const eventTime = body?.occurred_at || body?.created;
+    const eventId = body?.event_id || (eventTime
+      ? `${body.store_id}_${body.type}_${eventTime}_${body.data?.order?.id}_${body.data?.order?.status ?? ''}_${body.data?.shipment?.id ?? ''}`
+      : undefined);
     if (eventId && isEventAlreadyProcessed(eventId)) {
       return NextResponse.json({ ok: true, message: 'Event already processed' });
     }
@@ -127,7 +134,7 @@ export async function POST(req: Request) {
       return { error: null };
     }
 
-    if (eventType === 'package_shipped') {
+    if (eventType === 'package_shipped' || eventType === 'shipment_sent') {
       const shipment = data.shipment;
       const trackingNumber = shipment?.tracking_number;
       const carrier = shipment?.carrier;
