@@ -1269,7 +1269,7 @@ export async function sendSendingDomainFailedEmail(input: {
       eyebrow: 'Action needed',
       heading: 'Your sending domain stopped verifying',
       paragraphs: [
-        `The DNS records that let us send email as ${input.domain} are no longer answering, so we have stopped sending from that address.`,
+        `We could not verify the email connection for ${input.domain}, so we have stopped sending from that address.`,
         input.reason?.trim()
           ? `Connection status: ${input.reason.trim()}`
           : 'This usually means the DKIM or SPF record was edited or removed at your DNS provider.',
