@@ -123,7 +123,7 @@ export default function EmailSendingDomainSection({
   };
 
   return (
-    <div style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px', marginTop: '24px' }}>
+    <div id="email-domain" style={{ background: '#ffffff', borderRadius: '12px', border: '1px solid #e2e8f0', padding: '24px', marginTop: '24px', scrollMarginTop: '100px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
         <div>
           <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#0f172a', margin: '0 0 6px 0' }}>
@@ -183,6 +183,12 @@ export default function EmailSendingDomainSection({
         <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
           {successMessage}
         </div>
+      )}
+
+      {domainRow?.status !== 'verified' && domainRow?.failure_reason && (
+        <p role="status" style={{ color: '#92400e', fontSize: '14px', lineHeight: 1.5, marginBottom: '16px' }}>
+          {domainRow.failure_reason.replace(/^[A-Z_]+:\s*/, '')}
+        </p>
       )}
 
       {!domainRow ? (
@@ -256,6 +262,10 @@ export default function EmailSendingDomainSection({
               <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>
                 {domainRow.status === 'verified'
                   ? 'Active · DKIM & SPF aligned to your domain'
+                  : domainRow.status === 'failed'
+                  ? 'Connection needs attention · Outbound mail currently uses platform default'
+                  : domainRow.status === 'disabled'
+                  ? 'Custom domain sending is disabled'
                   : 'Pending DNS verification · Outbound mail currently uses platform default'}
               </div>
             </div>
