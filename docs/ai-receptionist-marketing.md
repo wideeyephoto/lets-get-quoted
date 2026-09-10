@@ -23,3 +23,12 @@ Edit the referenced approved Let's Get Quoted AI Receptionist ad into a WEBSITE 
 
 This commit contains marketing and signup-routing changes only. It does not deploy the website.
 
+
+## Campaign ad: shirt-logo correction
+
+Saved `public/images/ai-receptionist/ad-no-shirt-logos.png` using the built-in image-generation tool to edit the approved full ad. Both shirt logos were removed; the footer brand, text, layout, and scenes were retained. Visually checked both chest areas and the complete ad. The website hero already uses plain shirts.
+
+Edit prompt:
+
+Edit the attached full portrait AI Receptionist social media advertisement. Make ONLY ONE LOCAL CHANGE: remove the small embroidered LET'S GET QUOTED logos/lettering from BOTH contractor shirts (left portrait: chest just below the mug and hand, above the shirt pocket; right portrait: upper chest above the pocket). Reconstruct uninterrupted plain dark navy fabric at those two spots, retaining realistic weave, existing seams, pocket flaps, buttons, folds, highlights and shadows. Absolutely no residual letters, logo silhouettes, patches, blur smudges, or replacement branding on either shirt. Preserve the entire full-size poster composition and all other pixels as closely as possible: both men's identities, expressions, hands, mug, tape measure, poses, backgrounds, orange phone connectors, UI cards, waveforms, headline, subtitle, every caption and footer. IMPORTANT: keep the main LET'S GET QUOTED footer logo and letsgetquoted.com website address exactly intact. Retain all typography and original 4:5 portrait aspect ratio. Do not crop, redesign, rephrase, add elements, or move anything. Return the COMPLETE full-resolution advertisement, not the user's cropped close-up.
+
