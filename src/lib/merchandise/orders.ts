@@ -217,6 +217,10 @@ export async function updateMerchandiseOrder(
   orderIdOrNumber: string,
   updates: Partial<{
     status: MerchandiseOrder['status'];
+    paymentStatus?: string | null;
+    fulfillmentStatus?: string | null;
+    printfulExternalId?: string | null;
+    confirmedAt?: string | null;
     stripeSessionId?: string | null;
     stripePaymentIntentId?: string | null;
     printfulOrderId?: number | null;
@@ -235,6 +239,10 @@ export async function updateMerchandiseOrder(
     };
 
     if (updates.status !== undefined) payload.status = updates.status;
+    if (updates.paymentStatus !== undefined) payload.payment_status = updates.paymentStatus;
+    if (updates.fulfillmentStatus !== undefined) payload.fulfillment_status = updates.fulfillmentStatus;
+    if (updates.printfulExternalId !== undefined) payload.printful_external_id = updates.printfulExternalId;
+    if (updates.confirmedAt !== undefined) payload.confirmed_at = updates.confirmedAt;
     if (updates.stripeSessionId !== undefined) payload.stripe_session_id = updates.stripeSessionId;
     if (updates.stripePaymentIntentId !== undefined) payload.stripe_payment_intent_id = updates.stripePaymentIntentId;
     if (updates.printfulOrderId !== undefined) payload.printful_order_id = updates.printfulOrderId;

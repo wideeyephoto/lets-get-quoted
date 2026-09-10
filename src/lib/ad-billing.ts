@@ -570,7 +570,7 @@ export async function atomicCreditAdWalletState(
 
   // Attempt Postgres RPC first for row-locked atomic execution
   try {
-    const { data, error } = await admin.rpc('atomic_ad_wallet_credit', {
+    const { data, error } = await admin.rpc('atomic_ad_wallet_credit_v2', {
       p_account_id: accountId,
       p_payment_intent_id: paymentIntentId || null,
       p_credit_cents: creditCents,
@@ -583,6 +583,8 @@ export async function atomicCreditAdWalletState(
       p_google_campaign_resource: googleCampaignResource || null,
       p_provisioning_status: provisioningStatus || null,
       p_provisioning_message: provisioningMessage || null,
+      p_metadata: { metaCampaignId, metaAdSetId, metaCreativeId, metaAdId, metaProvisioningStatus, metaProvisioningMessage,
+        channelAllocations, smsAlertsEnabled, smsAlertPhone, stripeCustomerId, stripeSubscriptionId, cancelAtPeriodEnd, currentPeriodEnd, targetCpaDollars },
     });
 
     if (!error && data && typeof data === 'object') {
@@ -596,94 +598,11 @@ export async function atomicCreditAdWalletState(
         };
       }
     }
-  } catch {
-    // Fall back to client-side atomic merge when RPC is not installed (e.g. mocked test environments)
+  } catch (error) {
+    console.error('Atomic advertising credit failed:', error);
   }
 
-  // Fallback for mocked/non-RPC environments
-  const { data: site } = await admin
-    .from('sites')
-    .select('id, content')
-    .eq('account_id', accountId)
-    .maybeSingle();
-
-  if (!site) {
-    return { success: false, alreadyCredited: false, newBalanceCents: 0, previousBalanceCents: 0 };
-  }
-
-  const content = (site.content as Record<string, unknown>) || {};
-  const currentAdState = (content.adCampaign as Partial<AdBudgetWalletState>) || {};
-  const processedIds = currentAdState.processedRefillPaymentIntentIds || [];
-
-  let alreadyCredited = false;
-  if (paymentIntentId) {
-    if (processedIds.includes(paymentIntentId) || currentAdState.lastRefillPaymentIntentId === paymentIntentId) {
-      alreadyCredited = true;
-    }
-  }
-
-  const isFreshActivation = !currentAdState.status || currentAdState.status === 'inactive';
-  const previousBalance = isFreshActivation ? 0 : (currentAdState.walletBalanceCents ?? 0);
-  const newBalance = alreadyCredited ? (currentAdState.walletBalanceCents ?? creditCents) : (previousBalance + creditCents);
-  const updatedProcessedIds = paymentIntentId
-    ? [...processedIds.filter((id) => id !== paymentIntentId), paymentIntentId]
-    : processedIds;
-
-  const mergedState: AdBudgetWalletState = {
-    ...DEFAULT_AD_WALLET_STATE,
-    ...currentAdState,
-    status,
-    walletBalanceCents: newBalance,
-    lastPaymentAt: new Date().toISOString(),
-    lastPaymentError: null,
-    failedRefillAttempts: 0,
-    nextRefillRetryAt: null,
-    recoveryUrl: null,
-    pendingRefillIdempotencyKey: null,
-    pendingRefillAmountCents: null,
-    pendingRefillFeeCents: null,
-    pendingRefillCreatedAt: null,
-    lastRefillPaymentIntentId: paymentIntentId || currentAdState.lastRefillPaymentIntentId || null,
-    processedRefillPaymentIntentIds: updatedProcessedIds,
-    ...(fundingModel ? { fundingModel } : {}),
-    ...(monthlyBudgetCents ? { monthlyBudgetCents } : {}),
-    ...(landingPageUrl ? { landingPageUrl } : {}),
-    ...(googleCampaignId ? { googleCampaignId } : {}),
-    ...(googleCampaignResource ? { googleCampaignResource } : {}),
-    ...(provisioningStatus ? { provisioningStatus } : {}),
-    ...(provisioningMessage !== undefined ? { provisioningMessage } : {}),
-    ...(metaCampaignId ? { metaCampaignId } : {}),
-    ...(metaAdSetId ? { metaAdSetId } : {}),
-    ...(metaCreativeId ? { metaCreativeId } : {}),
-    ...(metaAdId ? { metaAdId } : {}),
-    ...(metaProvisioningStatus ? { metaProvisioningStatus } : {}),
-    ...(metaProvisioningMessage !== undefined ? { metaProvisioningMessage } : {}),
-    ...(channelAllocations ? { channelAllocations } : {}),
-    ...(smsAlertsEnabled !== undefined ? { smsAlertsEnabled } : {}),
-    ...(smsAlertPhone !== undefined ? { smsAlertPhone } : {}),
-    ...(stripeCustomerId ? { stripeCustomerId } : {}),
-    ...(stripeSubscriptionId ? { stripeSubscriptionId } : {}),
-    ...(cancelAtPeriodEnd !== undefined ? { cancelAtPeriodEnd } : {}),
-    ...(currentPeriodEnd ? { currentPeriodEnd } : {}),
-    ...(targetCpaDollars ? { targetCpaDollars } : {}),
-  };
-
-  await admin
-    .from('sites')
-    .update({
-      content: {
-        ...content,
-        adCampaign: mergedState,
-      },
-    })
-    .eq('id', site.id);
-
-  return {
-    success: true,
-    alreadyCredited,
-    newBalanceCents: newBalance,
-    previousBalanceCents: previousBalance,
-  };
+  throw new Error('Advertising wallet credit could not be persisted.');
 }
 
 /**
@@ -953,6 +872,7 @@ export async function handleAdBudgetWebhookEvent(
     const currentAdState = (currentContent.adCampaign as Partial<AdBudgetWalletState>) || {};
     const processedCheckoutSessions = currentAdState.processedRefillPaymentIntentIds || [];
     if (currentAdState.lastRefillPaymentIntentId === session.id || processedCheckoutSessions.includes(session.id)) {
+      if (currentAdState.status === 'pending_provisioning' && currentAdState.provisioningStatus !== 'failed' && currentAdState.metaProvisioningStatus === 'paused') await activatePersistedMeta(admin, accountId, currentAdState);
       return true; // Durable replay deduplication: already processed
     }
 
@@ -1028,6 +948,7 @@ export async function handleAdBudgetWebhookEvent(
         const { provisionManagedMetaCampaign } = await import('@/lib/meta-ads-api');
         metaResult = await provisionManagedMetaCampaign({
           accountId,
+          startPaused: true,
           businessName: session.metadata?.business_name || 'Contractor',
           trade,
           city: session.metadata?.city || 'Local Area',
@@ -1038,21 +959,21 @@ export async function handleAdBudgetWebhookEvent(
           customFocus,
         });
       } catch (metaErr) {
-        console.warn('Meta campaign provisioning error in webhook:', metaErr);
+        throw new Error(`Meta campaign provisioning failed: ${metaErr instanceof Error ? metaErr.message : String(metaErr)}`);
       }
     }
 
-    const isProvisioned = provisioningResult.success && (!metaResult || metaResult.success);
+    const isProvisioned = provisioningResult.success && (metaBudgetDollars <= 0 || Boolean(metaResult?.success));
     const campaignStatus: AdCampaignBillingStatus = isProvisioned ? 'active' : 'pending_provisioning';
 
-    await atomicCreditAdWalletState(admin, {
+    const credited = await atomicCreditAdWalletState(admin, {
       accountId,
       paymentIntentId: session.id,
       creditCents: initialCreditCents,
       feeCents: initialFeeCents,
       fundingModel,
       monthlyBudgetCents,
-      status: campaignStatus,
+      status: metaBudgetDollars > 0 ? 'pending_provisioning' : campaignStatus,
       landingPageUrl,
       googleCampaignId: provisioningResult.campaignId || null,
       googleCampaignResource: provisioningResult.campaignResourceName || null,
@@ -1076,6 +997,15 @@ export async function handleAdBudgetWebhookEvent(
       targetCpaDollars: biddingProfile.targetCpaDollars,
     });
 
+    if (metaResult?.campaignId) {
+      if (credited.alreadyCredited || !isProvisioned) {
+        const { pauseMetaCampaign } = await import('@/lib/meta-ads-api');
+        const stopped = await pauseMetaCampaign(metaResult.campaignId);
+        if (!stopped.success) throw new Error(stopped.message);
+      } else {
+        await activatePersistedMeta(admin, accountId, { metaCampaignId: metaResult.campaignId, metaAdSetId: metaResult.adSetId, metaAdId: metaResult.adId });
+      }
+    }
     return true;
   }
 
@@ -1814,17 +1744,16 @@ export async function pauseAdCampaign(
   if (adState.metaCampaignId) {
     try {
       const { pauseMetaCampaign } = await import('@/lib/meta-ads-api');
-      await pauseMetaCampaign(adState.metaCampaignId);
+      const paused = await pauseMetaCampaign(adState.metaCampaignId);
+      if (!paused.success) throw new Error(paused.message);
     } catch (err) {
       console.warn('Could not pause Meta campaign:', err);
+      return { success: false, message: `Could not pause Meta campaign: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
-  await updateAccountAdBudgetState(admin, accountId, {
-    status: 'paused',
-    provisioningStatus: 'paused',
-    provisioningMessage: 'Campaign bidding paused by contractor.',
-  });
+  const saved = await admin.rpc('set_ad_lifecycle_state', { p_account_id: accountId, p_status: 'paused', p_google_id: adState.googleCampaignId || null, p_meta_id: adState.metaCampaignId || null });
+  if (saved.error || saved.data !== true) return { success: false, message: 'Delivery is paused, but the saved status needs retry.' };
 
   return { success: true, message: 'Campaign paused successfully. Live ad bidding is suspended.' };
 }
@@ -1863,18 +1792,25 @@ export async function resumeAdCampaign(
 
   if (adState.metaCampaignId) {
     try {
-      const { resumeMetaCampaign } = await import('@/lib/meta-ads-api');
-      await resumeMetaCampaign(adState.metaCampaignId);
+      const { activateMetaCampaign } = await import('@/lib/meta-ads-api');
+      const resumed = await activateMetaCampaign({ campaignId: adState.metaCampaignId, adSetId: adState.metaAdSetId || undefined, adId: adState.metaAdId || undefined });
+      if (!resumed.success) throw new Error(resumed.message);
     } catch (err) {
       console.warn('Could not resume Meta campaign:', err);
+      if (adState.googleCampaignId) {
+        const { updateGoogleAdsCampaignStatus } = await import('@/lib/google-ads-api');
+        const stopped = await updateGoogleAdsCampaignStatus(adState.googleCampaignId, 'PAUSED');
+        if (!stopped.success) return { success: false, message: 'Meta resume failed and Google pause needs recovery.' };
+      }
+      return { success: false, message: `Could not resume Meta campaign: ${err instanceof Error ? err.message : String(err)}` };
     }
   }
 
-  await updateAccountAdBudgetState(admin, accountId, {
-    status: 'active',
-    provisioningStatus: 'active',
-    provisioningMessage: null,
-  });
+  const saved = await admin.rpc('set_ad_lifecycle_state', { p_account_id: accountId, p_status: 'active', p_google_id: adState.googleCampaignId || null, p_meta_id: adState.metaCampaignId || null });
+  if (saved.error || saved.data !== true) {
+    const stopped = await pauseAdCampaign(admin, accountId);
+    return { success: false, message: `Could not save resume status. ${stopped.success ? 'Delivery was paused.' : stopped.message}` };
+  }
 
   return { success: true, message: 'Campaign resumed successfully. Live ad bidding is active.' };
 }
@@ -2083,4 +2019,16 @@ export async function processUpcomingPaymentSmsAlerts(admin: SupabaseClient): Pr
   }
 
   return { processed: sites?.length || 0, alertsSent };
+}
+
+async function activatePersistedMeta(admin: SupabaseClient, accountId: string, state: Partial<AdBudgetWalletState>) {
+  const { activateMetaCampaign, pauseMetaCampaign } = await import('@/lib/meta-ads-api');
+  if (!state.metaCampaignId) throw new Error('Persisted Meta campaign is missing.');
+  const result = await activateMetaCampaign({ campaignId: state.metaCampaignId, adSetId: state.metaAdSetId || undefined, adId: state.metaAdId || undefined });
+  const saved = await admin.rpc('set_meta_delivery_state', { p_account_id: accountId, p_campaign_id: state.metaCampaignId, p_active: result.success, p_message: result.message });
+  if (saved.error || saved.data !== true) {
+    const stopped = await pauseMetaCampaign(state.metaCampaignId);
+    throw new Error(`Could not save Meta delivery status.${stopped.success ? '' : ' Provider pause needs recovery.'}`);
+  }
+  if (!result.success) throw new Error(result.message);
 }

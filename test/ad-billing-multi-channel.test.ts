@@ -1,3 +1,4 @@
+import { walletRpcFor } from './helpers/ad-wallet-rpc';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
 import type Stripe from 'stripe';
 
@@ -111,9 +112,11 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
 
   describe('handleAdBudgetWebhookEvent — Dual Provisioning & State Persistence', () => {
     it('provisions both Google Search and Meta Feed campaigns and records both in wallet state', async () => {
-      let savedSiteContent: any = null;
+      let savedSiteContent: any = {};
+      vi.spyOn(metaAdsModule, 'activateMetaCampaign').mockResolvedValue({ success: true, message: 'Activated' });
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: (table: string) => {
           if (table === 'sites') {
             return {
@@ -124,7 +127,7 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
                       id: 'site_scale_123',
                       account_id: 'acc_scale_test',
                       subdomain: 'apexroofing',
-                      content: {},
+                      content: savedSiteContent,
                     },
                   }),
                 }),
@@ -164,7 +167,7 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
         adSetId: 'adset_5566',
         creativeId: 'cr_7788',
         adId: 'ad_9900',
-        status: 'active',
+        status: 'paused',
         dailyBudgetDollars: 14.05,
         headline: 'Top-Rated Roofing in Denver',
         primaryText: 'Get a quote today',
@@ -230,6 +233,7 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
       });
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -263,12 +267,13 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
         message: 'Resumed',
       });
 
-      const mSpy = vi.spyOn(metaAdsModule, 'resumeMetaCampaign').mockResolvedValue({
+      const mSpy = vi.spyOn(metaAdsModule, 'activateMetaCampaign').mockResolvedValue({
         success: true,
         message: 'Meta campaign resumed',
       });
 
       const mockAdmin: any = {
+        rpc: walletRpcFor(() => mockAdmin),
         from: () => ({
           select: () => ({
             eq: () => ({
@@ -293,7 +298,7 @@ describe('Multi-Channel Ads Autopilot — Provisioning & Spend Reconciliation', 
       const res = await resumeAdCampaign(mockAdmin, 'acc_test');
       expect(res.success).toBe(true);
       expect(gSpy).toHaveBeenCalledWith('gads_123', 'ENABLED');
-      expect(mSpy).toHaveBeenCalledWith('meta_456');
+      expect(mSpy).toHaveBeenCalledWith({ campaignId: 'meta_456', adSetId: undefined, adId: undefined });
     });
   });
 
