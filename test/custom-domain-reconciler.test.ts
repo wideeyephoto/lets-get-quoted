@@ -140,7 +140,7 @@ beforeEach(() => {
 });
 
 describe('Custom domain certificate reconciler', () => {
-  it('stamps a domain whose certificate finished, and tells the owner it is live', async () => {
+  it('stamps a domain whose certificate finished, and tells the owner it is connected', async () => {
     verifyDomain.mockResolvedValue(connected);
     const db = makeDb([pendingRow()]);
 

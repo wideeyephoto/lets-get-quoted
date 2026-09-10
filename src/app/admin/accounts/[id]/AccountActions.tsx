@@ -272,16 +272,16 @@ export default function AccountActions({
                 {can('account.export') ? <div style={{ height: 1, background: 'rgba(248,113,113,0.15)', margin: '0.5rem 0' }} /> : null}
                 {confirmingDelete ? (
                   <form action={closeAndAnonymizeAccountAction.bind(null, accountId)} className={styles.formStack}>
-                    <label htmlFor="delete-confirmation" className={styles.formLabel}>Type the account number to permanently close and anonymize <strong>{businessName}</strong>. This cannot be undone.</label>
+                    <label htmlFor="delete-confirmation" className={styles.formLabel}>Type the account number to schedule closure of <strong>{businessName}</strong>. Access is suspended immediately. Permanent anonymization and domain removal begin after the 30-day recovery period, unless a legal hold applies.</label>
                     <input id="delete-confirmation" className={styles.input} name="confirm" placeholder="Account number" autoComplete="off" />
                     <div className={styles.actionRow} style={{ marginTop: '0.3rem' }}>
-                      <button type="submit" className="btn danger">Close &amp; Anonymize</button>
+                      <button type="submit" className="btn danger">Schedule closure</button>
                       <button type="button" className="btn secondary" onClick={() => setConfirmingDelete(false)}>Cancel</button>
                     </div>
                   </form>
                 ) : (
                   <div>
-                    <p className={styles.formLabel} style={{ marginBottom: '0.4rem' }}>Permanent closure &amp; anonymization</p>
+                    <p className={styles.formLabel} style={{ marginBottom: '0.4rem' }}>Account closure with 30-day recovery</p>
                     <button type="button" className="btn danger" onClick={() => setConfirmingDelete(true)}>Close account…</button>
                   </div>
                 )}

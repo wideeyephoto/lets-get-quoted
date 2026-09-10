@@ -124,6 +124,7 @@ export default async function AdminClosuresPage() {
                   <th>QuickBooks</th>
                   <th>Storage</th>
                   <th>Auth Cleanup</th>
+                  <th>Domains</th>
                   <th>Attempts</th>
                   <th>Status / Error</th>
                 </tr>
@@ -159,6 +160,7 @@ export default async function AdminClosuresPage() {
                     <td>{stateBadge(job.quickbooksState)}</td>
                     <td>{stateBadge(job.storageState)}</td>
                     <td>{stateBadge(job.authCleanupState)}</td>
+                    <td>{stateBadge(job.domainCleanupState)}</td>
                     <td className={styles.muted}>
                       {job.attempts} / {job.maxAttempts}
                       {job.nextRetryAt && (

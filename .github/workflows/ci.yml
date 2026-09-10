@@ -37,6 +37,9 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Account closure domain database checks
+        run: npm run test:pg17:closure-domains
+
       - name: SEO tests
         run: npm run test:seo
 
