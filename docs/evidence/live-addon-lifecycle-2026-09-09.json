@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "verified_at_utc": "2026-09-09T23:55:42.865041+00:00",
+  "scope": "Six initial live add-on purchases, proportional refunds, benefit reconciliation and cancellation; natural renewals remain open",
+  "currency": "USD",
+  "gross_spending_cap_cents": 24800,
+  "gross_paid_cents": 24800,
+  "refunded_cents": 24800,
+  "refund_initiation": "Authenticated Stripe dashboard; signed platform webhooks and LGQ scheduled refund worker reconcile benefits and cancel full-refund subscriptions",
+  "refund_stages": "Two equal refunds per SKU; effective benefit observed after the first stage before submitting the second",
+  "payment_methods": {
+    "link_cli_one_time_cards": 5,
+    "hosted_link": 1
+  },
+  "recurring_subscriptions": {
+    "count": 5,
+    "renewal_cancellation_confirmed_before_full_refund": 5,
+    "canceled_after_full_refund": 5,
+    "renewal_charges": 0
+  },
+  "purchases": [
+    {
+      "sku": "ai_voice_flex",
+      "job_error": null,
+      "job_state": "complete",
+      "paid_cents": 6900,
+      "job_attempts": 2,
+      "job_revision": 6,
+      "revoked_units": 100,
+      "debt_remaining": 0,
+      "refunded_cents": 6900,
+      "reversed_units": 100,
+      "purchased_units": 100,
+      "effective_capacity": 0,
+      "subscription_status": "canceled",
+      "half_refund_cents": 3450,
+      "half_reversed_units": 50
+    },
+    {
+      "sku": "ai_voice_growth",
+      "job_error": null,
+      "job_state": "complete",
+      "paid_cents": 5500,
+      "job_attempts": 2,
+      "job_revision": 4,
+      "revoked_units": 200,
+      "debt_remaining": 0,
+      "refunded_cents": 5500,
+      "reversed_units": 200,
+      "purchased_units": 200,
+      "effective_capacity": 0,
+      "subscription_status": "canceled",
+      "half_refund_cents": 2750,
+      "half_reversed_units": 100
+    },
+    {
+      "sku": "ai_voice_solo",
+      "job_error": null,
+      "job_state": "complete",
+      "paid_cents": 5900,
+      "job_attempts": 2,
+      "job_revision": 6,
+      "revoked_units": 100,
+      "debt_remaining": 0,
+      "refunded_cents": 5900,
+      "reversed_units": 100,
+      "purchased_units": 100,
+      "effective_capacity": 100,
+      "subscription_status": "canceled",
+      "half_refund_cents": 2950,
+      "half_reversed_units": 50
+    },
+    {
+      "sku": "office_user",
+      "job_error": null,
+      "job_state": "complete",
+      "paid_cents": 1500,
+      "job_attempts": 2,
+      "job_revision": 6,
+      "revoked_units": 0,
+      "debt_remaining": 0,
+      "refunded_cents": 1500,
+      "reversed_units": 1,
+      "purchased_units": 1,
+      "effective_capacity": 0,
+      "subscription_status": "canceled",
+      "half_refund_cents": 750,
+      "half_reversed_units": 0
+    },
+    {
+      "sku": "storage_100gb",
+      "job_error": null,
+      "job_state": "complete",
+      "paid_cents": 1500,
+      "job_attempts": 2,
+      "job_revision": 6,
+      "revoked_units": 0,
+      "debt_remaining": 0,
+      "refunded_cents": 1500,
+      "reversed_units": 100,
+      "purchased_units": 100,
+      "effective_capacity": 0,
+      "subscription_status": "canceled",
+      "half_refund_cents": 750,
+      "half_reversed_units": 50
+    },
+    {
+      "sku": "voice_minutes_100",
+      "job_error": null,
+      "job_state": "complete",
+      "paid_cents": 3500,
+      "job_attempts": 3,
+      "job_revision": 6,
+      "revoked_units": 100,
+      "debt_remaining": 0,
+      "refunded_cents": 3500,
+      "reversed_units": 100,
+      "purchased_units": 100,
+      "effective_capacity": null,
+      "subscription_status": null,
+      "half_refund_cents": 1750,
+      "half_reversed_units": 50
+    }
+  ],
+  "paid_voice_and_pack_lots": {
+    "count": 4,
+    "granted_minutes": 500,
+    "revoked_minutes": 500,
+    "consumed_minutes": 0,
+    "reserved_minutes": 0,
+    "remaining_minutes": 0
+  },
+  "unrelated_solo_allowance": {
+    "granted_minutes": 100,
+    "consumed_minutes_at_final_observation": 57,
+    "reserved_minutes": 0,
+    "revoked_minutes": 0,
+    "available_minutes_at_final_observation": 43,
+    "preserved": true
+  },
+  "duplicate_delivery": {
+    "migration": "20260909233336_addon_refund_delivery_identity.sql",
+    "applied_to_production": true,
+    "original_failure_http": 500,
+    "successful_live_replay_utc": "2026-09-09T23:45:59Z",
+    "successful_live_replay_http": 200,
+    "stale_half_replay_after_full_utc": "2026-09-09T23:54:19Z",
+    "stale_half_replay_http": 200,
+    "before_and_after": {
+      "receipts": 4,
+      "job_state": "complete",
+      "job_revision": 4,
+      "job_attempts": 2,
+      "granted_minutes": 200,
+      "revoked_minutes": 200
+    },
+    "original_payload_hash_retained": true,
+    "browser_role_execute_allowed": false
+  },
+  "verification": {
+    "postgres_checks_each_lf_crlf_direction": 47,
+    "addon_unit_tests": 26,
+    "webhook_route_tests": 19
+  },
+  "timing_limits": [
+    "Paid Voice allowance grants depend on the hourly lifecycle worker.",
+    "Storage half-refund ledger recorded 50 GB reversed at 23:30 UTC; effective capacity changed from 100 GB to 50 GB after period reconciliation at 23:37 UTC."
+  ],
+  "not_proven": [
+    "Natural paid renewal",
+    "Effective end-of-period cancellation",
+    "Live renewal payment failure/recovery",
+    "Live consumed/reserved minute debt offsets (covered by disposable PostgreSQL tests)",
+    "Bank-statement settlement of refunds",
+    "Live file or membership deletion/preservation drill"
+  ]
+}

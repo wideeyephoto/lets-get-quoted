@@ -1,5 +1,6 @@
 // Disposable PostgreSQL 17 regression for refunds. No network or credentials.
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join, resolve, basename } from 'node:path';
 import os, { tmpdir } from 'node:os';
@@ -64,6 +65,7 @@ try {
   await q(fn('grant_voice_minute_allowance', read('20260820110000_voice_allowance_survives_a_moved_period.sql')));
   const invoiceSql = read('20260909211000_paid_voice_invoice_allowance.sql');
   await q(process.argv.includes('--migration-crlf') ? invoiceSql.replaceAll('\n', '\r\n') : invoiceSql);
+  await q(read('20260909233336_addon_refund_delivery_identity.sql'));
   pass('invoice migration accepts independently stored LF and CRLF function sources');
   const account = '11111111-1111-4111-8111-111111111111';
   await q('insert into accounts values($1)', [account]);
@@ -71,9 +73,21 @@ try {
   await q("insert into billing_top_up_purchase_operations values($1,false,'cs_test_pack','checkout_created','voice_minutes_100','price_Pack12345678','voice_minutes',100)", [account]);
   const pack = (await one("select grant_usage_credits($1,'voice_minutes',100,'purchase','pack',null,null,null,null,'{\"lgq_checkout_session_id\":\"cs_test_pack\"}') id", [account])).id;
   await q('set role service_role');
-  const ingest = event => one("select ingest_addon_refund_event(false,$1,'ch_Pack12345678',repeat('a',64)) inserted", [event]);
+  const deliveryHash = (event, pendingWebhooks, pretty = false) => createHash('sha256').update(JSON.stringify({
+    id:event,object:'event',livemode:false,type:'charge.refunded',pending_webhooks:pendingWebhooks,
+    data:{object:{id:'ch_Pack12345678',object:'charge'}},
+  },null,pretty ? 2 : undefined)).digest('hex');
+  const ingest = (event, pendingWebhooks = 2, pretty = false) => one("select ingest_addon_refund_event(false,$1,'ch_Pack12345678',$2) inserted", [event,deliveryHash(event,pendingWebhooks,pretty)]);
   assert.equal((await ingest('evt_Pack1')).inserted,true); assert.equal((await ingest('evt_Pack1')).inserted,false); pass('duplicate receipt does not enqueue twice');
+  const pendingBefore = await one("select revision,state from addon_refund_jobs where charge_id='ch_Pack12345678'");
+  assert.equal((await ingest('evt_Pack1',0,true)).inserted,false);
+  assert.deepEqual(await one("select revision,state from addon_refund_jobs where charge_id='ch_Pack12345678'"),pendingBefore);
+  assert.equal((await one("select payload_sha256 from addon_refund_events where event_id='evt_Pack1'")).payload_sha256,deliveryHash('evt_Pack1',2));
+  pass('pending-webhook changes and JSON formatting replay without replacing the original receipt or queueing work');
   const job = await one('select * from claim_addon_refund_job(false)');
+  assert.equal((await ingest('evt_Pack1',1)).inserted,false);
+  assert.deepEqual(await one('select revision,claimed_revision,claim_token,state from addon_refund_jobs where id=$1',[job.id]),{revision:job.revision,claimed_revision:job.claimed_revision,claim_token:job.claim_token,state:job.state});
+  pass('reformatted duplicate cannot alter a processing lease or revision');
   const contract = { account_id:account,checkout_session_id:'cs_test_pack',subscription_id:null,invoice_id:null,top_up_id:'voice_minutes_100',price_id:'price_Pack12345678',charge_amount:3500,refunded_amount:1750,period_start:null,period_end:null };
   const apply = async amount => (await one('select apply_addon_refund($1,$2,$3) r',[job.id,job.claim_token,{...contract,refunded_amount:amount}])).r;
   assert.equal((await apply(1750)).reversed_units,50); assert.equal((await apply(1750)).reversed_units,50); assert.equal((await apply(875)).reversed_units,50); pass('partial, duplicate and stale refunds retain cumulative high-water mark');
@@ -187,8 +201,13 @@ try {
     await q("select finish_addon_refund_job($1,$2,'complete')",[refundJob.id,refundJob.claim_token]);
     pass(`${sku}: refund touches its exact invoice lot and preserves the legacy and renewal lots`);
   }
-  await assert.rejects(q("select ingest_addon_refund_event(false,'evt_Pack1','ch_Pack12345678',repeat('d',64))"), /refund_event_identity_conflict/);
-  pass('same event ID with different payload is rejected');
+  await assert.rejects(q("select ingest_addon_refund_event(false,'evt_Pack1','ch_DifferentCharge',repeat('d',64))"), /refund_event_identity_conflict/);
+  pass('same event ID cannot be rebound to a different charge');
+  const completedBefore = await one("select revision,state,attempts from addon_refund_jobs where charge_id='ch_Pack12345678'");
+  assert.equal(completedBefore.state,'complete');
+  assert.equal((await ingest('evt_Pack1',0,true)).inserted,false);
+  assert.deepEqual(await one("select revision,state,attempts from addon_refund_jobs where charge_id='ch_Pack12345678'"),completedBefore);
+  pass('completed refund replay acknowledges the receipt without reclaiming or reapplying benefits');
   await q("select ingest_addon_refund_event(true,'evt_LiveModeOnly','ch_LiveModeOnly',repeat('e',64))");
   assert.equal((await q('select * from claim_addon_refund_job(false)')).rows.length,0);
   pass('test worker cannot claim a live-mode refund');
