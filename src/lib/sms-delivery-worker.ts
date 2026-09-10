@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
+import { lgqSmsDeliveryHold } from '@/lib/sms-brand';
 import {
   outboundSmsSuppression,
   sendProviderMessage,
@@ -442,6 +443,13 @@ export async function runSmsDeliveryBatch(
     }
     if (runtime.purposeEnabled && !runtime.purposeEnabled(claim.senderPurpose)) {
       await store.defer(claim, 'sms_sender_purpose_not_enabled', 3600);
+      deferredCount += 1;
+      continue;
+    }
+
+    const contentHold = lgqSmsDeliveryHold(claim);
+    if (contentHold) {
+      await store.defer(claim, contentHold, 86_400);
       deferredCount += 1;
       continue;
     }

@@ -151,7 +151,7 @@ describe('AI Speed-to-Lead SMS Engine', () => {
       city: 'Round Rock',
       speedToLeadStatus: 'sent',
     });
-    expect(sentAlert).toContain('🔥 [Ad Lead] John Doe requested Gutter Installation in Round Rock');
+    expect(sentAlert).toContain('Ad lead: John Doe requested Gutter Installation in Round Rock');
     expect(sentAlert).toContain('Auto-SMS sent to homeowner');
     expect(sentAlert).toContain('Phone: 512-555-0199');
 

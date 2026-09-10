@@ -346,3 +346,23 @@ describe('durable SMS delivery worker', () => {
     );
   });
 });
+
+
+describe('carrier review holds before staging or billing', () => {
+  it.each([
+    ['lgq_shared', 'owner-voice-call-notification', "Let's Get Quoted: New call answered.", 'sms_campaign_scope_review'],
+    ['lgq_shared', 'owner-voice-emergency-alert', "Let's Get Quoted: Emergency call.", 'sms_campaign_scope_review'],
+    ['lgq_shared', 'owner-high-value-lead', 'New call answered for BrokePipes: {"work_requested":"repair"}', 'sms_brand_identity_review'],
+    ['lgq_dispatch', 'crew-assignment', 'BrokePipes: New assignment.', 'sms_brand_identity_review'],
+  ])('holds %s / %s without opening the carrier request', async (senderPurpose, messageKind, body, reason) => {
+    const claim = { ...CLAIM, senderPurpose, messageKind, body };
+    const fake = store({ claimBatch: vi.fn().mockResolvedValueOnce([claim]).mockResolvedValue([]) });
+    const delivery = messenger();
+    const result = await runSmsDeliveryBatch(1, fake.value, delivery, runtime());
+    expect(result).toMatchObject({ deferredCount: 1, completedCount: 0 });
+    expect(fake.value.defer).toHaveBeenCalledWith(claim, reason, 86400);
+    expect(fake.value.stage).not.toHaveBeenCalled();
+    expect(fake.value.markRequestStarted).not.toHaveBeenCalled();
+    expect(delivery.send).not.toHaveBeenCalled();
+  });
+});

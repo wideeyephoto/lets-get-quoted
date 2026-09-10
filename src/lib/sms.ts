@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import { createAdminClient } from '@/lib/auth';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { loadBusinessName } from '@/lib/business-name';
@@ -799,7 +800,7 @@ export async function sendOwnerEstimateAcceptedSms(input: {
     await queueAccountSms({
       accountId: input.accountId,
       phone: to,
-      body: withOptOut(input.message),
+      body: lgqSmsText(withOptOut(input.message)),
       messageKind: 'owner-estimate-accepted',
       category: 'owner_alert',
       context: 'owner',
@@ -2206,7 +2207,7 @@ export async function sendContractorAdLeadSms(params: {
   return queueAccountSms({
     accountId: params.accountId,
     phone: params.phone,
-    body: params.body,
+    body: lgqSmsText(params.body),
     messageKind: 'contractor-ad-lead-alert',
     category: 'owner_alert',
     idempotencyKey: params.idempotencyKey,

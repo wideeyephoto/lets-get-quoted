@@ -58,3 +58,18 @@ describe('readable voice alert summaries', () => {
     expect(text.endsWith(`${input.dashboardUrl} — Reply STOP to opt out.`)).toBe(true);
   });
 });
+
+
+describe('voice summary payload containment', () => {
+  it.each([
+    'Summary: {"work_requested":"repair","caller_name":"Brett"}',
+    '{"work_requested":"{\\"private\\":true}"}',
+    '```json broken payload',
+    'A call. [{"caller_name":"Brett"}]',
+  ])('does not leak mixed or nested payload text: %s', (summary) => {
+    const body = ownerVoiceCallNotificationText({ ...input, summary });
+    expect(body).toContain('No call summary available.');
+    expect(body).not.toMatch(/caller_name|work_requested|private|[{}]/);
+    expect(body).toMatch(/^Let's Get Quoted:/);
+  });
+});
