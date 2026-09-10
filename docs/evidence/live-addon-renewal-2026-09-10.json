@@ -1,0 +1,101 @@
+{
+  "schema_version": 1,
+  "observed_at_utc": "2026-09-10T01:21:21.38655+00:00",
+  "status": "initial_cohort_partially_started",
+  "scope": "Replacement subscriptions for natural paid renewal and subsequent effective period-end cancellation; this gate is still open",
+  "currency": "USD",
+  "authorization": {
+    "additional_gross_cap_cents": 42600,
+    "initial_purchases_budget_cents": 21300,
+    "one_renewal_each_budget_cents": 21300,
+    "approved": true,
+    "refunds_replenish_cap": false,
+    "third_cycle_authorized": false
+  },
+  "previous_round": {
+    "gross_paid_cents": 24800,
+    "refunded_cents": 24800,
+    "recurring_subscriptions_canceled": 5
+  },
+  "current_round": {
+    "initial_paid_cents": 7400,
+    "renewal_paid_cents": 0,
+    "refunded_cents": 0,
+    "initial_unspent_cents": 13900,
+    "renewal_reserve_cents": 21300
+  },
+  "purchases": [
+    {
+      "sku": "ai_voice_solo",
+      "initial_paid_cents": 5900,
+      "subscription_status": "active",
+      "signed_checkout_receipt": "processed",
+      "purchased_capacity_row_units": 100,
+      "invoice_owned_usable_minutes_status": "awaiting_scheduled_capacity_lifecycle_worker",
+      "new_paid_voice_lots_observed": 0,
+      "manual_allowance_preserved": true,
+      "renewal_local": "2026-10-09T20:51",
+      "renewal_timezone": "America/New_York",
+      "renewal_utc_minute": "2026-10-10T00:51Z",
+      "date_precision": "minute, observed in Stripe date tooltip",
+      "renewal_paid": false,
+      "period_end_cancellation_scheduled": false
+    },
+    {
+      "sku": "storage_100gb",
+      "initial_paid_cents": 1500,
+      "subscription_status": "active",
+      "signed_checkout_receipt": "processed",
+      "purchased_capacity_row_units": 100,
+      "effective_purchased_capacity_gb": 100,
+      "renewal_local": "2026-10-09T21:11",
+      "renewal_timezone": "America/New_York",
+      "renewal_utc_minute": "2026-10-10T01:11Z",
+      "date_precision": "minute, observed in Stripe date tooltip",
+      "renewal_paid": false,
+      "period_end_cancellation_scheduled": false
+    }
+  ],
+  "remaining_initial_purchases": [
+    {
+      "sku": "ai_voice_flex",
+      "amount_cents": 6900,
+      "status": "unpaid_link_approval_required"
+    },
+    {
+      "sku": "ai_voice_growth",
+      "amount_cents": 5500,
+      "status": "unpaid_link_approval_required"
+    },
+    {
+      "sku": "office_user",
+      "amount_cents": 1500,
+      "status": "unpaid_link_approval_required"
+    }
+  ],
+  "pending_reason": "Link did not release three one-time cards after approval submission. Expired unapproved requests were confirmed canceled; fresh provider approval is required before those purchases.",
+  "verification": {
+    "stripe_paid_invoices": 2,
+    "processed_checkout_receipts": 2,
+    "attributable_capacity_rows": 2,
+    "new_paid_voice_lots": 0,
+    "provider_period_end_in_database": "awaiting_scheduled_hourly_reconciliation",
+    "natural_renewal_verified": false,
+    "natural_period_end_cancellation_verified": false,
+    "application_billing_periods_modified": false
+  },
+  "follow_up": {
+    "status": "active",
+    "initial_check": "2026-09-10T01:40:00Z",
+    "subsequent_checks": "After initial fulfillment, reduce cadence to the exact provider billing dates. Verify one natural paid renewal, schedule period-end cancellation, observe cancellation, then refund both invoices per SKU.",
+    "payment_recovery": "If one-time Link credentials fail automatic renewal, record the actual failure and recover only the naturally generated invoice within the reserved budget. Manual recovery is not proof of successful automatic collection.",
+    "completion_condition": "All five intended SKUs have verified natural renewal, effective cancellation, full refund cleanup, and committed evidence; no third paid invoice."
+  },
+  "limitations": [
+    "Only two of five replacement subscriptions have been purchased.",
+    "The original $248 initial/refund journeys remain completed evidence; this new cohort is a separate open run.",
+    "A purchased Voice capacity row does not prove usable paid minutes. The new Solo invoice lot has not yet been observed.",
+    "No live renewal or natural cancellation is claimed from scheduling alone.",
+    "The local follow-up needs the computer and Codex app running; Link may require user verification."
+  ]
+}

@@ -189,7 +189,46 @@ separate 100-unit capacity record was preserved. These tests did not consume
 paid minutes or create/delete files or memberships. Used/reserved-minute debt
 and preservation behavior beyond these records remain local/database coverage.
 Stripe reports some same-day refunds as reversals; bank-statement settlement
-was not inspected. No renewal charge was made or authorized.
+was not inspected. No renewal charge was made or authorized in that first round.
+
+## Separate natural-renewal cohort started September 10 UTC
+
+The user approved a new **$426 gross cap**: $213 for five replacement monthly
+subscriptions and $213 for exactly one natural renewal each. The first round's
+$248 cap and refunds are separate. Refunds do not replenish the new cap, and no
+third billing cycle is authorized. Actual billing periods will remain unchanged.
+
+At **01:21 UTC**, Solo Voice ($59) and storage ($15) have paid Stripe invoices
+and successful LGQ checkout returns. Their signed checkout receipts are processed,
+with one attributable capacity row each. Storage's effective purchased capacity
+is **100 GB**. Solo's new 100-unit Voice capacity row is present, but its paid
+invoice-owned minute lot has **not yet appeared**; the normal hourly worker must
+reconcile it. The separate manual canary allowance remains present. Do not count
+the combined Voice capacity value as newly usable paid minutes.
+
+Stripe's date tooltips show Solo's next period boundary at **October 10, 00:51
+UTC** (October 9, 8:51 p.m. Eastern) and storage's at **October 10, 01:11 UTC**
+(October 9, 9:11 p.m. Eastern), to minute precision. Their upcoming invoices
+remain $59 and $15. Cancellation is to be scheduled after one paid renewal and
+verified at the following natural period end, before refunding both invoices.
+The eventual effective cancellation timestamps must come from Stripe.
+
+Flex Voice ($69), Growth Voice ($55) and office seat ($15) remain unpaid. Link
+did not release their one-time cards after approval submission; the unapproved
+requests expired. Their checkout pages alone are not payment evidence. The
+remaining initial budget is $139 and the renewal reserve is $213.
+
+A follow-up in this task is active, first checking normal worker fulfillment
+at 01:40 UTC and then reducing its cadence to the real billing dates. It must
+verify the paid renewal, schedule and observe period-end cancellation, and
+reconcile final refunds. One-time Link credentials may fail automatic collection;
+any recovery must pay the actual naturally generated invoice within the reserve
+and be identified as manual recovery. The local follow-up requires the computer
+and app running and may require Link account verification.
+
+The [new cohort evidence](evidence/live-addon-renewal-2026-09-10.json) remains
+explicitly incomplete. Neither scheduling a follow-up nor approving a budget
+closes natural renewal or effective cancellation acceptance.
 
 ## Real duplicate delivery regression and recovery
 
