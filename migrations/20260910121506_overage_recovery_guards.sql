@@ -214,10 +214,13 @@ begin
     (p_claim_token is not null and s.state in ('submitted','indeterminate')) or
     (p_claim_token is null and s.state='closed' and s.attempt_count=0 and p_error_code='no_stripe_customer' and not p_indeterminate)
   ) then raise exception 'overage settlement claim is not owned' using errcode='55000'; end if;
-  if p_indeterminate then
+  -- A caller can have selected an unattempted row before another worker ran.
+  -- Decide from the locked attempt history, not just its stale classification.
+  if p_indeterminate or s.attempt_count > 1 then
     update public.workspace_overage_settlements set state='indeterminate',last_error=p_error_code,
       next_attempt_at=clock_timestamp() + make_interval(secs => least(3600,60 * power(2,least(attempt_count,6))) + floor(random()*30)::integer),
       recovery_reason=case when p_error_code in ('stripe_idempotency_conflict','provider_scope_mismatch') then p_error_code
+        when s.attempt_count > 1 and p_error_code in ('invalid_request','resource_missing') then 'prior_attempt_uncertain'
         when first_submitted_at is null or retry_deadline_at <= clock_timestamp()+interval '1 minute' or attempt_count >= 12
         then 'retry_window_exhausted' else recovery_reason end where id=s.id;
   else
