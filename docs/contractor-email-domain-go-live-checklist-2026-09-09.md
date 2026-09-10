@@ -4,6 +4,8 @@ Prepared September 9, 2026. Status: **Gmail and Outlook authentication/reply pas
 
 Release update, 22:09–22:20 UTC: PR #64 is merged and READY deployment `dpl_955shMPfprmxsadkAEui6PqeaKC9` serves the public app/webhook with the explicitly approved BrokePipes-only allowlist. Full CI passed 14,590 tests and build. Deployed product enrollment created a pending binding, and its exact return-path DNS is now published. Another authenticated workspace has no enrollment UI. Four authentic provider callback replays returned 202 with durable quarantine; the 20 known rehearsal incident records have explicit retained dispositions. The website watcher checked/attached one pending fixture through deployed credentials. Hourly follow-ups are ACTIVE; the seven-day clock remains unstarted. [Current evidence and remaining work](contractor-domains-canary-2026-09-09.md).
 
+Latest release update, 22:48 UTC: owner-approved PR #67 is merged as `1f095c1f0c` and promoted to both public aliases as `dpl_8SxWnaFVGvJasG8mMoSrFhKCe5ar`. Full CI passed 14,593 tests and build. Check Connection now recognizes completed provider verification; the production UI and database confirm BrokePipes verified at 22:48:18.986 UTC. F08 disconnect/reconnect remains open because browser control stalled on its native confirmation. Further recipient tests and notification drills wait for the next approved daily allowance; the seven-day clock has not started.
+
 ## September 9 verification update
 
 The [Outlook and canary follow-up](contractor-domains-canary-2026-09-09.md) supersedes the receiver-coverage and concurrency gaps below: Outlook authentication and its reply to Gmail passed; production quote J-1004 opened correctly from its received email. The earlier probes' homepage URL was a test-setup error. The account reservation index is applied in staging and production. The follow-up also records the earlier staging-tagged messages' production callback failures; do not treat those as a clean webhook rehearsal.
@@ -253,8 +255,8 @@ For each task, retain: task ID, named owner, execution UTC time, environment, co
 | A: decisions | Named owners, canary, recipients, eligibility, suspension policy | Pending |
 | B: environment and quota | Deployment matrix, DB/provider mapping, key-scope proof, capacity worksheet | Pending |
 | C: engineering | Changes/review, ownership and suspension race tests, send-path inventory, check exit statuses | September 9 recovery patch and targeted checks pass; C05, C10 and final C11 remain open. See dated report |
-| D: connect/DNS | UI records, actual DNS answers, provider binding and verified DB state | Provider UI/DNS verified; product onboarding remains open |
-| E: received messages | Gmail and Outlook originals, auth results, reply/alias receipt, template coverage | Gmail quote auth PASS and self-reply observed; Outlook, separate-mailbox/alias and remaining templates open |
+| D: connect/DNS | UI records, actual DNS answers, provider binding and verified DB state | Production LGQ enrollment and Check Connection verified at 22:48 UTC; remaining D scenarios and recovery stay open |
+| E: received messages | Gmail and Outlook originals, auth results, reply/alias receipt, template coverage | Gmail/Outlook custom transport authentication, separate-mailbox reply, and real product quote link passed; custom-domain deployed product send and remaining templates open |
 | F: failure matrix | Before/after states and evidence for F01–F11; real versus injected clearly labeled | Real rejected-domain transport fallback received; local recovery fault tests pass; full live matrix open |
 | G/H: operations | Alert receipt, responder, quota/cleanup ownership, successful rollback/hold drill | Pending |
 | I: canary | Seven scheduled runs with real volume, incident log, contractor and release sign-off | Pending |
