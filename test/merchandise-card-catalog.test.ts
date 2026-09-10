@@ -179,7 +179,7 @@ describe('Batch A: Product Truth & Catalog Gating', () => {
       expect(printItem.variant_id).toBe(PRINTFUL_CARD_VARIANTS.PACK_100);
       expect(printItem.retail_price).toBe('35.00');
       expect(printItem.files).toEqual([
-        { type: 'front', url: 'https://cdn.example.com/front-proof.png' },
+        { type: 'default', url: 'https://cdn.example.com/front-proof.png' },
         { type: 'back', url: 'https://cdn.example.com/back-proof.png' },
       ]);
     });

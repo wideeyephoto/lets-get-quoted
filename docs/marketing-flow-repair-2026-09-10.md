@@ -10,6 +10,7 @@ The held card ordering work is restored on top of current main. Halo and managed
 - Use the confirmed shipping address for Stripe tax, show the final amount before payment, and use the quoted delivery service for fulfillment.
 - Explicitly classify business cards as tangible goods for Stripe Tax instead of inheriting the platform's digital-service default.
 - Record verified payment and processing fees once. Confirm the Printful order, reconcile by external order number before retrying, and resolve real pack variant IDs from the live product catalog. Fulfillment retries use the same approved front and back images.
+- Send the front artwork using the Orders v1 catalog file ID `default`; `front` is the catalog's display type, not its file ID.
 - Persist printer callbacks before acknowledging them. Delayed production updates cannot regress shipment status; a printer credit does not claim that the customer's Stripe payment was refunded.
 - Accept signed Printful v2 shipment events, decode the provider's hex signing key regardless of byte length, verify the configured store, and distinguish separate shipments when deduplicating retries.
 - Remove invented website addresses and premature manufacturing/dispatch confirmations. Unsupported stationery finishes and unavailable providers fail without simulated production success.
@@ -33,7 +34,7 @@ The held card ordering work is restored on top of current main. Halo and managed
 
 ## Verification
 
-Verified on September 10, 2026 at the initial repair commit: **14,694 tests passed**, TypeScript passed, the production build passed, lint completed with warnings and no errors, and `npm audit --omit=dev` reported zero vulnerabilities. Browser checks found no errors or horizontal overflow at mobile width. The follow-up schema, physical-goods tax, and signed v2 callback regressions pass 94 affected tests, including callback tampering, wrong-store rejection, and multiple shipments with retries.
+Verified on September 10, 2026 at the initial repair commit: **14,694 tests passed**, TypeScript passed, the production build passed, lint completed with warnings and no errors, and `npm audit --omit=dev` reported zero vulnerabilities. Browser checks found no errors or horizontal overflow at mobile width. The follow-up schema, physical-goods tax, provider file types, and signed v2 callback regressions pass 111 affected tests, including callback tampering, wrong-store rejection, and multiple shipments with retries.
 
 The regression suite includes real SQL execution in PGlite for the actual migration functions: owned checkout claims, duplicate delivery leases, wallet reservation and settlement, metadata persistence, payment-ledger idempotency, cumulative metrics, browser permissions, and out-of-order printer callbacks. Provider adapter tests intercept HTTP and cover confirmed order creation, external-ID reconciliation, partial Meta activation, and false-success responses.
 
@@ -50,6 +51,8 @@ Real staging Storage checks uploaded the generated PNGs, downloaded and matched 
 With the user's approval, created and connected Printful store `18734603` (Let's Get Quoted), configured its signed v2 callbacks at `https://app.letsgetquoted.com/api/webhooks/printful`, and saved the store ID and webhook secret in Vercel production settings. Enabled events: `shipment_sent`, `order_updated`, `order_failed`, `order_canceled`, `order_put_hold`, and `order_refunded`. These settings require a new deployment to reach running instances; the new callback handler must ship with them.
 
 Activated Stripe Tax in the configured test sandbox using that same account's existing business support address. A real isolated staging service check then verified private artwork and hashes, a live Printful STANDARD shipping quote of $6.59 for 100 cards, automatic-tax Stripe checkout creation, and retry reuse of one persisted order and one test session. The unpaid session was expired and the test customer, order records, and artwork were removed. This did not modify live Stripe Tax settings.
+
+Printful's estimate-only endpoint also returned a real $27.35 cost ($18.68 product, $6.59 shipping, $2.08 tax) for 100 cards using the generated front and back artwork. This verifies cost estimation, not artwork production approval or a confirmed order.
 
 Meta still returns `API access blocked`. After approval, its developer account-confirmation flow was attempted twice; Facebook returned "Sorry, something went wrong" and could not complete confirmation. No paid checkout, confirmed print order, or ad campaign was created. Do not treat successful checkout-session creation, the local browser fixture, or SQL checks as completed payment-to-fulfillment or Meta end-to-end verification.
 
