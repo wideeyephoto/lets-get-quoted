@@ -45,6 +45,11 @@ export type PrintfulShippingRateResult = {
 
 const PRINTFUL_API_BASE = 'https://api.printful.com';
 
+function isConfirmedPrintfulOrder(order: any): boolean {
+  return Number.isSafeInteger(order?.id) && order.id > 0
+    && ['pending', 'inreview', 'inprocess', 'onhold', 'partial', 'fulfilled'].includes(order.status);
+}
+
 function getPrintfulHeaders(): Record<string, string> {
   const token = process.env.PRINTFUL_API_KEY || process.env.PRINTFUL_ACCESS_TOKEN;
   const storeId = process.env.PRINTFUL_STORE_ID;
@@ -234,14 +239,16 @@ export async function createPrintfulOrder(params: {
     const existingResponse = await fetch(externalUrl, { headers: getPrintfulHeaders(), signal: AbortSignal.timeout(15000) });
     if (existingResponse.ok) {
       const existing = (await existingResponse.json()).result;
-      if (!existing?.id) return { ok: false, error: 'Provider returned an invalid existing order.' };
+      if (!Number.isSafeInteger(existing?.id) || existing.id <= 0) return { ok: false, error: 'Provider returned an invalid existing order.' };
       if (existing.status === 'draft') {
         const confirmed = await fetch(`${PRINTFUL_API_BASE}/orders/${existing.id}/confirm`, { method: 'POST', headers: getPrintfulHeaders(), signal: AbortSignal.timeout(15000) });
         if (!confirmed.ok) return { ok: false, error: 'Existing fulfillment draft could not be confirmed.' };
         const result = (await confirmed.json()).result;
+        if (!isConfirmedPrintfulOrder(result) || result.id !== existing.id) return { ok: false, error: 'Printful did not confirm the existing fulfillment draft.' };
         return { ok: true, printfulOrderId: result.id, externalId: result.external_id, status: result.status, isSimulated: false, provider: 'printful' };
       }
       if (['failed', 'canceled', 'archived'].includes(existing.status)) return { ok: false, error: `Existing fulfillment order is ${existing.status}.` };
+      if (!isConfirmedPrintfulOrder(existing)) return { ok: false, error: 'Provider returned an unconfirmed existing order.' };
       return { ok: true, printfulOrderId: existing.id, externalId: existing.external_id, status: existing.status, isSimulated: false, provider: 'printful' };
     }
     if (existingResponse.status !== 404) return { ok: false, error: 'Could not check for an existing fulfillment order. Retry safely.' };
@@ -294,7 +301,7 @@ export async function createPrintfulOrder(params: {
     }
 
     const orderData = data.result;
-    if (!Number.isInteger(orderData?.id) || !orderData.status || ['draft', 'failed', 'canceled', 'archived'].includes(orderData.status)) return { ok: false, error: 'Printful did not confirm fulfillment.' };
+    if (!isConfirmedPrintfulOrder(orderData)) return { ok: false, error: 'Printful did not confirm fulfillment.' };
     return {
       ok: true,
       printfulOrderId: orderData?.id,

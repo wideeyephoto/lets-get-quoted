@@ -33,6 +33,37 @@ describe('Provider reconciliation', () => {
     vi.spyOn(globalThis,'fetch').mockResolvedValue(Response.json({error:'unavailable'},{status:503}));
     expect((await createPrintfulOrder(card)).ok).toBe(false);
   });
+  it('confirms the existing draft without creating a second order', async () => {
+    const fetch = vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ result: { id: 9876, status: 'draft' } }))
+      .mockResolvedValueOnce(Response.json({ result: { id: 9876, status: 'pending', external_id: card.orderNumber } }));
+    expect(await createPrintfulOrder(card)).toMatchObject({ ok: true, printfulOrderId: 9876, status: 'pending', isSimulated: false });
+    expect(fetch).toHaveBeenCalledTimes(2);
+    expect(fetch.mock.calls[1][0]).toBe('https://api.printful.com/orders/9876/confirm');
+    expect(fetch.mock.calls[1][1]?.method).toBe('POST');
+  });
+  it.each([
+    { id: 9876, status: 'draft' },
+    { id: 9876, status: 'failed' },
+    { id: 9876, status: 'canceled' },
+    { id: 9876, status: 'archived' },
+    { id: 9876, status: 'unexpected' },
+    { id: 9876 },
+    { status: 'pending' },
+    { id: 0, status: 'pending' },
+    { id: 5432, status: 'pending' },
+    null,
+  ])('rejects an unsuccessful or mismatched draft confirmation: %j', async result => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(Response.json({ result: { id: 9876, status: 'draft' } }))
+      .mockResolvedValueOnce(Response.json({ result }));
+    expect((await createPrintfulOrder(card)).ok).toBe(false);
+  });
+  it.each([{ id: 9876 }, { id: 9876, status: 'unexpected' }, { id: '9876', status: 'pending' }])('rejects incomplete reconciled provider orders: %j', async result => {
+    const fetch = vi.spyOn(globalThis, 'fetch').mockResolvedValue(Response.json({ result }));
+    expect((await createPrintfulOrder(card)).ok).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(1);
+  });
   it('leaves the parent paused when an ad set fails activation', async () => {
     const calls: any[]=[];
     vi.spyOn(globalThis,'fetch').mockImplementation(async (url,init) => { const body=JSON.parse(String(init?.body)); calls.push([String(url).split('/').pop(),body.status]); return Response.json(String(url).endsWith('/456')?{success:false,error:{message:'Rejected'}}:{success:true}); });
