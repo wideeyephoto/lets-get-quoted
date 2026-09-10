@@ -24,7 +24,7 @@ beforeEach(() => {
 describe('admin account closure request', () => {
   const confirmation = (value = '1001') => { const data = new FormData(); data.set('confirm', value); return data; };
   it('schedules the confirmed closure and reports its recovery period without running disposal', async () => {
-    await expect(closeAndAnonymizeAccountAction('account', confirmation())).rejects.toThrow('notice=closure_requested');
+    await expect(closeAndAnonymizeAccountAction('account', confirmation())).rejects.toThrow('done=closure_requested');
     expect(authorize).toHaveBeenCalledWith('account.delete');
     expect(request).toHaveBeenCalledWith(expect.anything(), expect.objectContaining({
       accountId: 'account', requestedByUserId: 'staff-user', requestedByRole: 'admin',

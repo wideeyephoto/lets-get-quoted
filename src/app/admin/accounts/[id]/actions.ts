@@ -578,5 +578,5 @@ export async function closeAndAnonymizeAccountAction(accountId: string, formData
     },
   });
 
-  backTo(accountId, 'notice=closure_requested');
+  backTo(accountId, 'done=closure_requested');
 }
