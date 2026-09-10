@@ -1,6 +1,6 @@
 # Contractor domains: Outlook, lifecycle, and canary record
 
-Updated September 10, 2026 at 04:54 UTC (September 10 in America/New_York). **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
+Updated September 10, 2026 at 06:43 UTC (September 10 in America/New_York). **Preparation in progress; the seven-day observation clock has not started.** The owner authorized Black Hole Art DNS changes and Gmail/Outlook test recipients. Only the workspace owning `blackholeart.com` is in scope: BrokePipes, `c63293b4-138e-45c2-8e11-0f4e6d7e08e6`. Keep general enrollment closed.
 
 Release continuation: Brett explicitly approved publishing/deploying the candidate and hourly follow-ups with at most one test per approved inbox daily. The task heartbeat `contractor-domain-seven-day-canary` is now ACTIVE, hourly at minute 40. It continues lifecycle preparation first and does not start/count canary days until the activation and recovery gates below pass. This supersedes the historical approval blocks recorded below.
 
@@ -64,6 +64,12 @@ For the September 10 send, the production job retained its email-only test recip
 
 At 04:53 UTC, production and provider reads confirmed active binding `0703afc2-8d2b-448b-a808-e9b614e790de` still verified with all three provider records verified and no failure reason. There were zero unresolved Resend callback failures; all 24 earlier incident records remained retained and resolved. The latest scheduled email-domain run was still the September 9 empty-inventory run. This product receipt does not start the canary before the remaining recovery gates pass.
 
+### First scheduled check of the active production binding
+
+The September 10 **06:23:20.492–06:23:21.582 UTC** scheduled `email-domain-reconcile` run **`93219051-6b33-40be-84fd-b68ce8f588d5`** succeeded with `checked=1`, `errors=0`, `orphanedAtProvider=0`, and no backlog, downgrade, recovery, vanished row, or owner notification. The active database row remained verified and its `last_checked_at` advanced to **06:23:21.089 UTC**; `verified_at` remained 02:13:28.628 UTC and the failure reason stayed null. Provider GET at 06:41:40.684 UTC independently confirmed the exact active binding and all three required DNS records still verified. This is the first scheduled check that actually exercised this binding, superseding the earlier empty-inventory scheduling evidence.
+
+The 06:41 UTC review found zero unresolved Resend callback failures and preserved all 24 reviewed incident rows. The fully paginated daily send inventory still contained only the delivered Outlook quote; no new mail or replay was initiated. The production app hostname still resolved to READY deployment `dpl_Pmo6VeDnWAv9WKy1kiodGUHP8Jim`, SHA `72b3a4662e81d98d26a8237090858327fcf02473`. **This is a preparation checkpoint, not canary day 1:** DNS/provider recovery and the other entry gates remain unfinished, so no observation day is counted retroactively.
+
 ## Shared-provider callback incident
 
 The first two Gmail probes used a staging account tag with a shared live Resend webhook pointing at production. Although both emails arrived, their callbacks failed the production `email_events_account_id_fkey`. Sixteen retry failures had accumulated by 21:05 UTC for provider IDs `45d14716-1535-412e-b65b-84264775ad4d` and `81bbc108-4026-4e3b-a8eb-f4e126d724c4`. Preserve the failure records and their disposition; they are not proof of undelivered mail and must not be silently cleared.
@@ -107,6 +113,8 @@ Scheduled run `366afbd1-ee74-4d86-9077-346bf155441e` at 22:00:29 UTC checked thi
 At 22:32:20 UTC, Vercel's configuration endpoint correctly reported this fixture misconfigured and recommended CNAME `certificate-canary-20260909` → `467645265cb4a259.vercel-dns-017.com` (rank 1). Recheck before publication. The active `https://blackholeart.com/` site returned HTTP 200 over normally validated TLS at the same checkpoint.
 
 At September 10 04:44 UTC, a fresh Vercel CLI configuration read returned the same rank-1 CNAME recommendation, `misconfigured=true`, and no conflicting CNAME/A record. Squarespace's Add Record action required a fresh passkey check. The normal passkey attempt remained pending; its alternative-method screen offered passkey, text-message, and backup-code verification. No DNS record was saved, and the task returned to passkey verification for the owner's device approval. The owner was asked to complete **Verify to continue** in Chrome's Black Hole Art DNS tab. Scheduled website run `f43076f2-6d89-4423-a2f9-273422a292ef` at 04:45:29.494 UTC still checked one pending fixture, with zero connected domains, owner notices, errors, or provider orphans. The verification stamp remains null. Certificate promotion and deployed deletion remain unproven until DNS authentication is completed.
+
+At 06:43 UTC, the prior DNS tab was no longer available. Reopening the same Squarespace DNS page and choosing Add Record still required **Verify to continue**; no record was added or device-verification attempt repeated. The current scheduled website run `2aa67ec4-a3b6-446b-90ae-2b8ba690b7e3`, started at 06:30:29.147 UTC, successfully checked the pending fixture with zero errors, connections, owner notices, or orphans. The fixture's verification stamp remains null and the existing device-approval handoff remains pending.
 
 ## Candidate and validation
 
