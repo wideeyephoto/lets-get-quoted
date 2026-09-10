@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { DNS_PROVIDERS } from '@/lib/dns-providers';
 import {
   createEmailSendingDomainAction,
@@ -30,6 +30,16 @@ export default function EmailSendingDomainSection({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
+  const [isConfirmingDisconnect, setIsConfirmingDisconnect] = useState(false);
+  const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const disconnectInFlight = useRef(false);
+  const disconnectButtonRef = useRef<HTMLButtonElement>(null);
+  const keepDomainButtonRef = useRef<HTMLButtonElement>(null);
+  const disconnectConfirmationId = useId();
+
+  useEffect(() => {
+    if (isConfirmingDisconnect) keepDomainButtonRef.current?.focus();
+  }, [isConfirmingDisconnect]);
 
   if (!isEnabled) {
     return null;
@@ -85,25 +95,31 @@ export default function EmailSendingDomainSection({
     });
   };
 
-  const handleDelete = () => {
-    if (!domainRow) return;
-    if (!confirm(`Are you sure you want to disconnect ${domainRow.domain}? Outbound email will revert to the platform address.`)) {
-      return;
-    }
+  const cancelDisconnect = () => {
+    if (disconnectInFlight.current) return;
+    setIsConfirmingDisconnect(false);
+    disconnectButtonRef.current?.focus();
+  };
 
+  const handleDelete = async () => {
+    if (!domainRow || !isConfirmingDisconnect || disconnectInFlight.current) return;
+    disconnectInFlight.current = true;
+    setIsDisconnecting(true);
     setErrorMessage(null);
     setSuccessMessage(null);
 
-    startTransition(async () => {
-      try {
-        await deleteEmailSendingDomainAction(domainRow.id);
-        setDomainRow(null);
-        setDomainInput('');
-        setSuccessMessage('Sending domain disconnected.');
-      } catch (err: unknown) {
-        setErrorMessage(err instanceof Error ? err.message : 'Failed to disconnect domain.');
-      }
-    });
+    try {
+      await deleteEmailSendingDomainAction(domainRow.id);
+      setDomainRow(null);
+      setDomainInput('');
+      setIsConfirmingDisconnect(false);
+      setSuccessMessage('Sending domain disconnected.');
+    } catch (err: unknown) {
+      setErrorMessage(err instanceof Error ? err.message : 'Failed to disconnect domain.');
+    } finally {
+      disconnectInFlight.current = false;
+      setIsDisconnecting(false);
+    }
   };
 
   return (
@@ -158,7 +174,7 @@ export default function EmailSendingDomainSection({
       </div>
 
       {errorMessage && (
-        <div style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+        <div role="alert" style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', padding: '12px 16px', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
           {errorMessage}
         </div>
       )}
@@ -245,9 +261,12 @@ export default function EmailSendingDomainSection({
             </div>
 
             <button
+              ref={disconnectButtonRef}
               type="button"
-              onClick={handleDelete}
-              disabled={isPending}
+              onClick={() => setIsConfirmingDisconnect(true)}
+              disabled={isPending || isDisconnecting}
+              aria-expanded={isConfirmingDisconnect}
+              aria-controls={isConfirmingDisconnect ? disconnectConfirmationId : undefined}
               style={{
                 background: 'transparent',
                 border: '1px solid #e2e8f0',
@@ -261,6 +280,35 @@ export default function EmailSendingDomainSection({
               Disconnect
             </button>
           </div>
+
+          {isConfirmingDisconnect && (
+            <div
+              id={disconnectConfirmationId}
+              role="group"
+              aria-label={`Disconnect ${domainRow.domain}?`}
+              aria-busy={isDisconnecting}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') {
+                  event.preventDefault();
+                  cancelDisconnect();
+                }
+              }}
+              style={{ background: '#fff7ed', border: '1px solid #fdba74', borderRadius: '8px', padding: '16px', color: '#7c2d12' }}
+            >
+              <p style={{ fontWeight: 600, margin: '0 0 8px' }}>Disconnect {domainRow.domain}?</p>
+              <p style={{ fontSize: '14px', lineHeight: 1.5, margin: '0 0 16px' }}>
+                New emails will use the Let&apos;s Get Quoted sending address until you reconnect and verify this domain.
+              </p>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
+                <button ref={keepDomainButtonRef} type="button" className="btn" disabled={isDisconnecting} onClick={cancelDisconnect}>
+                  Keep domain connected
+                </button>
+                <button type="button" className="btn danger" disabled={isDisconnecting} onClick={handleDelete}>
+                  {isDisconnecting ? 'Disconnecting…' : 'Disconnect domain'}
+                </button>
+              </div>
+            </div>
+          )}
 
           {domainRow.status !== 'verified' && (
             <div>
