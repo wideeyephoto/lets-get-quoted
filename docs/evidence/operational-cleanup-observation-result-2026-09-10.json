@@ -1,0 +1,429 @@
+{
+  "observation_id": "operational-cleanup-20260909T211317Z",
+  "status": "completed",
+  "operational_acceptance_result": "FAIL",
+  "reason": "The requested elapsed observation is complete. Recorded worker failures, scheduler/completion evidence gaps, unresolved routing/classification and insufficient paging observation prevent full operational acceptance.",
+  "window_started_at": "2026-09-09T21:13:17.282Z",
+  "window_ended_at": "2026-09-10T21:13:17.282Z",
+  "duration_hours": 24,
+  "final_database_snapshot_at": "2026-09-10T21:15:51.142Z",
+  "final_supplemental_checks_at": "2026-09-10T21:17:37.149655+00:00",
+  "checkpoint_file": "operational-cleanup-observation-20260910T211551Z.json",
+  "counting_policy": "fixed_window_cycles includes starts >= window_started_at and < window_ended_at. The checkpoint and other supplementary counts continue to their explicit observed_at times; do not conflate them.",
+  "production": {
+    "id": "dpl_HzA6PDkjTPRZga2cB5dRr1rYaaN2",
+    "state": "READY",
+    "revision": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+    "ready_at": "2026-09-10T15:55:58.476Z",
+    "alias": "app.letsgetquoted.com",
+    "changed_during_fixed_window": true,
+    "health_scope": "The observer returned HTTP 200; this is readiness evidence, not a business-workflow acceptance test."
+  },
+  "independent_watchdog": {
+    "verified_runs": [
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T20:04:37Z",
+        "databaseId": 34524171645,
+        "event": "schedule",
+        "headSha": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+        "status": "completed",
+        "updatedAt": "2026-09-10T20:05:07Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34524171645"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T17:38:20Z",
+        "databaseId": 34509437024,
+        "event": "schedule",
+        "headSha": "d06454e6a9e06051c5305cda86819149d94c1ce2",
+        "status": "completed",
+        "updatedAt": "2026-09-10T17:38:51Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34509437024"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T13:52:24Z",
+        "databaseId": 34485370563,
+        "event": "schedule",
+        "headSha": "a19356d3b671fdd0fd49628220bef6e9cd3479c1",
+        "status": "completed",
+        "updatedAt": "2026-09-10T13:52:58Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34485370563"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T09:48:06Z",
+        "databaseId": 34462640091,
+        "event": "schedule",
+        "headSha": "72b3a4662e81d98d26a8237090858327fcf02473",
+        "status": "completed",
+        "updatedAt": "2026-09-10T09:48:34Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34462640091"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T05:07:21Z",
+        "databaseId": 34439807767,
+        "event": "schedule",
+        "headSha": "72b3a4662e81d98d26a8237090858327fcf02473",
+        "status": "completed",
+        "updatedAt": "2026-09-10T05:07:47Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34439807767"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-10T00:29:30Z",
+        "databaseId": 34421511467,
+        "event": "schedule",
+        "headSha": "d2752a1581ea06d528b8d9ad4aa2cd94334dba22",
+        "status": "completed",
+        "updatedAt": "2026-09-10T00:30:00Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34421511467"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T22:27:34Z",
+        "databaseId": 34412313437,
+        "event": "schedule",
+        "headSha": "18a412404d275949c919b06e80bd015fd1595cc9",
+        "status": "completed",
+        "updatedAt": "2026-09-09T22:28:07Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34412313437"
+      },
+      {
+        "conclusion": "success",
+        "createdAt": "2026-09-09T20:03:37Z",
+        "databaseId": 34398756516,
+        "event": "schedule",
+        "headSha": "8a7b129ac4dd68467532cb384da78d5203135a18",
+        "status": "completed",
+        "updatedAt": "2026-09-09T20:04:09Z",
+        "url": "https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34398756516"
+      }
+    ],
+    "fixed_window_scheduled_runs": 7,
+    "all_listed_runs_successful": true,
+    "maximum_start_gap_minutes": 280.75,
+    "latest_start_age_minutes_at_snapshot": 71.2357,
+    "timing_acceptance": "FAIL: observed multi-hour gaps do not prove delivery of the independent fallback within 60 minutes."
+  },
+  "paging_observation": {
+    "activated_at": "2026-09-10T15:55:58.476Z",
+    "minimum_end_at": "2026-09-11T15:55:58.476Z",
+    "elapsed_hours_at_snapshot": 5.3312961111111115,
+    "status": "incomplete",
+    "initial_three_scheduled_cycles_verified": true,
+    "normal_watchdog_runs_on_paging_revision": 2,
+    "additional_outage_drill_sent": false
+  },
+  "remaining_blockers": [
+    "Apply the coordinated overage recovery database/worker repair and verify scheduled recovery; monitoring made no production mutation.",
+    "Investigate recurring voice/direct-payment failures, seven unfinished cron records and the SMS recorded-start gap without inventing missing business outcomes.",
+    "Record an explicit routing disposition for the two rehearsal Resend messages and classify the unsigned voice callback rejection.",
+    "Establish timely independent watchdog execution.",
+    "Complete the full relevant paging/stability observation after authorized repairs or relevant activation."
+  ],
+  "supplementary_database_evidence": {
+    "observed_at": "2026-09-10T21:16:59.242359+00:00",
+    "cancelled_rehearsal": {
+      "status": "cancelled",
+      "audit_id": "5c32d4b2-9bf6-4d7b-a0fa-aadc21b7d287",
+      "event_id": "16b5a5ce-535d-4899-840d-ffee452ca817",
+      "task_state": "cancelled",
+      "provider_id": null,
+      "cancelled_at": "2026-09-10T15:27:25.258+00:00",
+      "attempt_count": 0,
+      "lease_sequence": 66,
+      "send_started_at": null,
+      "text_usage_state": null,
+      "request_started_at": null,
+      "task_fingerprint_matches_audit": true,
+      "event_fingerprint_matches_audit": true,
+      "attempt_history_fingerprint_matches_audit": true
+    },
+    "fixed_window_cycles": [
+      {
+        "job": "account-closure",
+        "cycles": 96,
+        "failed": 0,
+        "unfinished": 0,
+        "last_started": "2026-09-10T21:00:33.486+00:00",
+        "first_started": "2026-09-09T21:15:33.417+00:00"
+      },
+      {
+        "job": "addon-refunds",
+        "cycles": 280,
+        "failed": 0,
+        "unfinished": 0,
+        "last_started": "2026-09-10T21:10:12.463+00:00",
+        "first_started": "2026-09-09T21:55:12.371+00:00"
+      },
+      {
+        "job": "billing-subscription-projection",
+        "cycles": 288,
+        "failed": 0,
+        "unfinished": 0,
+        "last_started": "2026-09-10T21:10:29.309+00:00",
+        "first_started": "2026-09-09T21:15:29.507+00:00"
+      },
+      {
+        "job": "direct-payment-settlement",
+        "cycles": 283,
+        "failed": 2,
+        "unfinished": 1,
+        "last_started": "2026-09-10T21:10:02.233+00:00",
+        "first_started": "2026-09-09T21:15:02.517+00:00"
+      },
+      {
+        "job": "operational-alerts",
+        "cycles": 288,
+        "failed": 0,
+        "unfinished": 0,
+        "last_started": "2026-09-10T21:10:13.141+00:00",
+        "first_started": "2026-09-09T21:15:13.461+00:00"
+      },
+      {
+        "job": "overage-period-close",
+        "cycles": 24,
+        "failed": 0,
+        "unfinished": 0,
+        "last_started": "2026-09-10T20:17:28.279+00:00",
+        "first_started": "2026-09-09T21:17:28.151+00:00"
+      },
+      {
+        "job": "overage-settlement",
+        "cycles": 24,
+        "failed": 6,
+        "unfinished": 0,
+        "last_started": "2026-09-10T20:37:19.191+00:00",
+        "first_started": "2026-09-09T21:37:19.145+00:00"
+      },
+      {
+        "job": "sms-delivery",
+        "cycles": 1439,
+        "failed": 0,
+        "unfinished": 0,
+        "last_started": "2026-09-10T21:12:18.192+00:00",
+        "first_started": "2026-09-09T21:13:18.627+00:00"
+      },
+      {
+        "job": "voice-allowance",
+        "cycles": 94,
+        "failed": 4,
+        "unfinished": 2,
+        "last_started": "2026-09-10T20:45:02.347+00:00",
+        "first_started": "2026-09-09T21:15:03.192+00:00"
+      }
+    ],
+    "domain_notice_states": [
+      {
+        "state": "resolved",
+        "records": 1
+      }
+    ],
+    "recent_routing_audits": [],
+    "new_sms_usage_failures": 0,
+    "overage_settlement_rows": 0,
+    "additional_worker_cycles": [
+      {
+        "job": "account-closure",
+        "cycles": 97,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T21:15:33.49+00:00",
+        "cycles_since_paging_activation": 22
+      },
+      {
+        "job": "addon-refunds",
+        "cycles": 281,
+        "failed": 0,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T21:15:12.672+00:00",
+        "cycles_since_paging_activation": 64
+      },
+      {
+        "job": "overage-settlement",
+        "cycles": 24,
+        "failed": 6,
+        "unfinished": 0,
+        "latest_started": "2026-09-10T20:37:19.191+00:00",
+        "cycles_since_paging_activation": 5
+      }
+    ],
+    "known_rehearsal_callbacks": {
+      "records": 24,
+      "last_seen": "2026-09-09T23:13:53.409058+00:00",
+      "unresolved": 0,
+      "latest_resolution": "2026-09-09T23:44:09.280027+00:00"
+    },
+    "additional_worker_failures": [
+      {
+        "id": "ccdd2e29-61e6-404a-ad68-a2812e1d7703",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T20:37:19.191+00:00"
+      },
+      {
+        "id": "58f06efc-0319-4a5b-9666-17ac577928ea",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T19:37:19.199+00:00"
+      },
+      {
+        "id": "c5b7ea0b-148b-43c2-8d79-5678b1294ca6",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T18:37:19.172+00:00"
+      },
+      {
+        "id": "662eba48-984d-4da7-a7c4-8bb4aba0f7ab",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T17:37:19.179+00:00"
+      },
+      {
+        "id": "a00c8916-54b3-41f0-ae90-5b4cebe9920c",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T16:37:19.205+00:00"
+      },
+      {
+        "id": "3d36ec5c-96a5-47a5-b020-de581a5096dc",
+        "job": "overage-settlement",
+        "summary": {
+          "reaped": 0,
+          "charged": 0,
+          "deferred": 0,
+          "claimable": 0,
+          "contention": 0,
+          "no_customer": 0,
+          "indeterminate": 0,
+          "worker_errors": 1,
+          "terminal_failures": 0,
+          "completion_unconfirmed": 0
+        },
+        "started_at": "2026-09-10T15:37:19.313+00:00"
+      }
+    ],
+    "direct_payment_table_names": [
+      "billing_direct_payment_settlement_tasks",
+      "billing_direct_payment_settlement_attempts"
+    ],
+    "duplicate_sms_provider_ids": [],
+    "new_overage_accrual_events": 0,
+    "required_recovery_functions": [
+      {
+        "name": "list_claimable_overage_settlements",
+        "present": false
+      },
+      {
+        "name": "claim_overage_settlement_v2",
+        "present": false
+      },
+      {
+        "name": "observe_overage_invoice_item",
+        "present": false
+      }
+    ],
+    "duplicate_usage_reservations": [],
+    "overage_recovery_migration_applied": false
+  },
+  "final_checks": {
+    "observed_at": "2026-09-10T21:17:37.149655+00:00",
+    "direct_payment_tasks": 0,
+    "all_fixed_window_failed_jobs": [
+      {
+        "job": "direct-payment-settlement",
+        "failed": 2
+      },
+      {
+        "job": "overage-settlement",
+        "failed": 6
+      },
+      {
+        "job": "voice-allowance",
+        "failed": 4
+      }
+    ],
+    "paging_activation_core_cycles": [
+      {
+        "job": "billing-subscription-projection",
+        "cycles": 64,
+        "failed": 0,
+        "unfinished": 0
+      },
+      {
+        "job": "operational-alerts",
+        "cycles": 64,
+        "failed": 0,
+        "unfinished": 0
+      },
+      {
+        "job": "sms-delivery",
+        "cycles": 321,
+        "failed": 0,
+        "unfinished": 0
+      }
+    ]
+  },
+  "immutable_baseline_preserved": true,
+  "production_mutations_by_this_final_check": 0,
+  "worker_invocations_by_this_final_check": 0,
+  "outbound_submissions_by_this_final_check": 0
+}

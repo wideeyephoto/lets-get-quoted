@@ -1,6 +1,36 @@
 # Operational cleanup — 2026-09-09
 
-The 221-record baseline has an individual disposition in the [exact manifest](evidence/operational-cleanup-manifest-2026-09-09.json). Production changes resolved the stale live billing receipt, disabled the misrouted rehearsal endpoint, and established the operator SMS paging ledger and secret configuration. The controlled Resend outage SMS reached the owner within 23 seconds and the owner confirmed receipt. **The full operational launch gate remains open for production activation and the subsequent 24-hour observation.**
+The 221-record baseline has an individual disposition in the [exact manifest](evidence/operational-cleanup-manifest-2026-09-09.json). Production changes resolved the stale live billing receipt, disabled the misrouted rehearsal endpoint, and established the operator SMS paging ledger and secret configuration. The controlled Resend outage SMS reached the owner within 23 seconds and the owner confirmed receipt. **The requested 24-hour observation is complete; operational acceptance failed.** Paging is deployed, but worker reliability, routing/classification, independent watchdog timing and the full relevant paging observation remain open.
+
+## Final fixed-window result — September 10, 21:17 UTC
+
+**Observation completed / operational acceptance FAIL.** The immutable interval is **September 9, 21:13:17.282 UTC through September 10, 21:13:17.282 UTC**, exactly 24 hours (5:13 PM Eastern on both days). The final database [checkpoint](evidence/operational-cleanup-observation-20260910T211551Z.json) was taken at **21:15:51 UTC**; [supplementary checks and the result](evidence/operational-cleanup-observation-result-2026-09-10.json) include a separate query bounded to the exact fixed interval. This completes the requested observation and report, without declaring the wider release gate passed. Earlier dated checkpoints below remain historical evidence.
+
+| Scheduled job | Recorded starts in the fixed 24 hours | Failed | Missing completion |
+| --- | ---: | ---: | ---: |
+| Billing subscription projection | 288 | 0 | 0 |
+| Operational alerts | 288 | 0 | 0 |
+| SMS delivery | 1,439 | 0 | 0 |
+| Account closure | 96 | 0 | 0 |
+| Add-on refunds | 280 | 0 | 0 |
+| Direct-payment settlement | 283 | 2 | 1 |
+| Overage period close | 24 | 0 | 0 |
+| Overage settlement | 24 | 6 | 0 |
+| Voice allowance | 94 | 4 | 2 |
+
+These are recorded starts, not proof that every expected invocation ran. The SMS series includes the documented **119.888-second gap**; database evidence cannot distinguish a missed invocation from a failed start-record write. The refund worker first recorded a run after its separately documented release/activation. The final checkpoint extends just beyond the fixed end and therefore has higher cycle totals than this table.
+
+**Verified cleanup and delivery outcomes:** All **221 original audits and source fingerprints** remain intact. The separately authorized rehearsal SMS remains cancelled, with its event/task/history fingerprints matching the cancellation audit, all 66 deferrals preserved and zero provider attempts. At the final snapshot there are **zero failed live billing receipts, zero post-containment test billing receipts, zero pending SMS, zero new failed/indeterminate SMS and zero SMS usage failures**. No duplicate stored SMS/provider, usage-grant or usage-reservation identity was found by the documented checks. All **15 alert deliveries reconciled during the observation** are delivered; none remains unconfirmed. The original owner-confirmed outage drill remains the sole SMS paging-ledger entry. These checks establish their stated scope, not an exhaustive independent reconciliation of every provider financial effect.
+
+**Unresolved operational failures:** The overage worker failed six hourly runs from 15:37 through 20:37 UTC. Production still lacks `list_claimable_overage_settlements`, `claim_overage_settlement_v2`, `observe_overage_invoice_item` and the applied `overage_recovery_guards` migration expected by its deployed worker. The latest failure is `ccdd2e29-61e6-404a-ad68-a2812e1d7703`. Each failed summary reports zero claimable, charged and indeterminate work; settlement rows and post-release accrual events are zero. Direct-payment settlement failed twice, and voice allowance recorded four Gateway Timeouts; later scheduled runs succeeded and the direct-payment task table is empty. Those recoveries do not repair the recurring failure paths. Seven cron records across six jobs still lack completion fields, including four requests previously corroborated as HTTP 200 by Vercel. The deployed completion writer ignores returned database update errors. Missing business summaries remain unknown; no state was backfilled and no missed or duplicate credit grant is inferred.
+
+**Routing and classification remain open:** The two documented rehearsal email identities account for 24 Resend callback failures: 16 baseline records and eight additional callbacks during this window. All are marked resolved, but no explicit routing-disposition audit was found; their production/staging isolation has not been accepted. The separate unsigned voice status request at 15:27 UTC remains rejected and unclassified. Seven active findings remain visible: four historical SMS outcomes, one bounded billing configuration case, the overage failure and the unsigned callback.
+
+**Deployment and independent monitoring:** Production remains READY on `d06454e6a9e06051c5305cda86819149d94c1ce2`, deployment `dpl_HzA6PDkjTPRZga2cB5dRr1rYaaN2`. Public health returned HTTP 200 as readiness evidence. Several deployments occurred during the fixed window, so it is not 24 hours of stability on one revision. Seven scheduled GitHub watchdog runs completed successfully within the interval; two used the paging revision. The latest was [34524171645](https://github.com/wideeyephoto/lets-get-quoted/actions/runs/34524171645) at 20:04 UTC. The largest observed start-to-start gap was **280.75 minutes**, so fallback execution within 60 minutes remains unproved.
+
+Paging became READY at **September 10, 15:55:58.476 UTC**. Its three initial scheduled application cycles passed, but only **5 hours 19 minutes** had elapsed at the final snapshot. Its separate 24-hour minimum remains **September 11, 15:55:58.476 UTC (11:55 AM Eastern)**, subject to later relevant changes. Elapsed time alone will not close the outstanding repair, routing and watchdog requirements.
+
+**Follow-up disposition:** Pause this task's hourly observation follow-up after committing/pushing this completed report, as requested when further work needs a separately authorized rollout. Application crons and the independent GitHub watchdog are unchanged. Prepare the overage/schema repair and cron recording fix for review, obtain the needed production rollout authorization, then resume acceptance against the repaired relevant deployment. The final checks made no production mutation, worker invocation, financial/usage adjustment, replay or outbound submission.
 
 ## Historical dispositions
 
