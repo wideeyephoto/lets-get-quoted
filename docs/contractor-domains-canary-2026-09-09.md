@@ -27,6 +27,8 @@ After reloading production BrokePipes settings, Check Connection displayed **Ver
 
 The F08 UI disconnect drill reached Chrome's native confirmation, but browser control timed out while attempting to accept it. No successful disconnect is claimed: subsequent SQL and provider GET still showed the verified binding. Brett was asked to clear the native confirmation; before retrying or reconnecting, re-read the database and provider state. This is a browser-control blocker, not evidence that the application's disconnect action failed.
 
+At September 10 00:02 UTC (still September 9 in America/New_York), Brett reported that he could not find the confirmation. A fresh browser dialog check and screenshot confirmed **no popup was open**; the production database still held the same verified binding. The prior request to find an existing OK button is obsolete. The visible manual path is BrokePipes → Account → Business → Profile & locations → Custom Email Sending Domain → Disconnect beside `hello@blackholeart.com`, then confirm OK. Brett was asked to perform that step because native-dialog acceptance repeatedly timed out in browser control. Do not reopen the popup automatically while that handoff is pending. Re-read state and complete reconnection after his action.
+
 ## Receiver and quote-link evidence
 
 | Check | Evidence | Scope |
