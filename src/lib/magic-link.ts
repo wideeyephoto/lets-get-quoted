@@ -42,12 +42,14 @@ export async function sendMagicLinkEmail(email: string, next = '/dashboard'): Pr
   const { error: emailError } = await resend.emails.send({
     from: "Let's Get Quoted <hello@letsgetquoted.com>",
     to: email,
-    subject: "Your magic link to Let's Get Quoted",
+    subject: "Your sign-in link for Let's Get Quoted",
     html: renderBrandedEmail({
+      design: 'platform',
+      audience: 'account',
       brand: {
         businessName: "Let's Get Quoted",
-        accent: '#0284c7',
-        theme: 'spotlight',
+        accent: '#ff6a24',
+        theme: 'blueprint',
         logoUrl: null,
         phone: null,
         siteUrl: APP_ORIGIN,

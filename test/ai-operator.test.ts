@@ -702,7 +702,9 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
 
     const resolveRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, ctx);
     expect(resolveRes.data).toBeDefined();
-    expect((resolveRes.data as any).success).toBe(true);
+    expect((resolveRes.data as any).success).toBe(false);
+    expect(resolveRes.data).toMatchObject({ replayedCount: 0, resolvedCount: 0 });
+    expect((resolveRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('enforces RBAC on replay_failed_webhooks: denies unauthorized staff without ops.manage', async () => {
@@ -722,7 +724,8 @@ describe('Autonomous Cycle & Operator Execution Engine', () => {
     };
 
     const allowedRes = await executeOperatorTool('replay_failed_webhooks', { action: 'replay_and_resolve' }, opsCtx);
-    expect((allowedRes.data as any).success).toBe(true);
+    expect((allowedRes.data as any).success).toBe(false);
+    expect((allowedRes.data as any).error).toContain('Generic webhook replay is unavailable');
   });
 
   it('executes triage_email_deliverability and categorizes bounce events', async () => {
@@ -1116,7 +1119,7 @@ describe('Operator Activation Nudge: Audience Correction, Permissions, and Execu
     });
 
     const mockCtx: OperatorExecutionContext = {
-      supabase: createMockSupabase(),
+      supabase: createMockSupabase({ accountRow: { created_at: new Date(Date.now() - 30 * 86400000).toISOString() } }),
       adminUserId: 'founder@letsgetquoted.com',
       source: 'admin_dashboard',
     };
@@ -1133,7 +1136,8 @@ describe('Operator Activation Nudge: Audience Correction, Permissions, and Execu
     expect(res.action?.status).toBe('approved');
     const exec = res.executionResult as any;
     expect(exec.dryRun).toBe(true);
-    expect(exec.sent).toBe(1);
-    expect(exec.details[0].note).toContain('[DRY-RUN]');
+    expect(exec.sent).toBe(0);
+    expect(exec.skipped).toBe(1);
+    expect(exec.details[0].note).toContain('no longer eligible');
   });
 });

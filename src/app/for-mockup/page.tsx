@@ -8,6 +8,7 @@ export const metadata: Metadata = {
   description:
     'From an AI contractor website and smart estimator to itemized quotes, crew dispatch, and Stripe payouts—all pre-tuned for 49+ trades. Plans start at $0/month.',
   alternates: { canonical: 'https://letsgetquoted.com/for-mockup' },
+  robots: { index: false, follow: false },
   openGraph: {
     title: 'Contractor Software & Websites by Trade · Let’s Get Quoted',
     description:

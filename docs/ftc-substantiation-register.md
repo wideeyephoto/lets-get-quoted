@@ -63,7 +63,7 @@ To avoid deceptive or unsubstantiated advertising claims, the following rules ar
 
 ### 4.1 Physical Postal Address Mandate
 Every commercial email transmitted by or on behalf of Let's Get Quoted must include a valid physical postal address:
-- **Platform Emails (Announcements & Onboarding):** `Let’s Get Quoted LLC · 11801 Domain Blvd, 3rd Floor · Austin, TX 78758` (or `process.env.COMPANY_MAILING_ADDRESS`).
+- **Platform Emails (Announcements & Onboarding):** `LETS GET QUOTED LLC · 2222 W GRAND RIVER AVE STE A, OKEMOS, MI 48864`, shared with the website and legal pages through `src/lib/company.ts`.
 - **Contractor Customer Campaigns:** Strictly requires the contractor's verified business address from their settings profile (`accounts.mailing_address`). System fails closed and refuses to broadcast marketing emails if the contractor has not configured their business address.
 
 ### 4.2 One-Click List-Unsubscribe (RFC 8058)

@@ -1,0 +1,1 @@
+export function sendMonitorFailureSms(options?: { env?: Record<string, string | undefined>; fetcher?: typeof fetch; now?: Date; drill?: boolean }): Promise<{ providerId: string; status: 'accepted' | 'delivered'; pageKey: string; repeated: boolean }>;

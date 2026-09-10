@@ -43,7 +43,7 @@ export async function runRevOpsGrowthScan(
   const [dunningRows, _notOnboardedRows, zeroQuoteCandidates] = await Promise.all([
     getPaymentsNeedingAttention(supabase).catch(() => []),
     getNotOnboardedAccounts(supabase).catch(() => []),
-    getZeroQuoteActivationCandidates(supabase).catch(() => []),
+    getZeroQuoteActivationCandidates(supabase, { minAgeDays: 5, maxAgeDays: 15 }).catch(() => []),
   ]);
 
   const details: RevOpsScanResult['details'] = {
@@ -100,6 +100,10 @@ export async function runRevOpsGrowthScan(
         .in('account_id', candidateIds)
         .eq('kind', 'contractor_lifecycle_email_sent'),
     ]);
+
+    if (suppressionsRes.error || sentEventsRes.error || (sentEventsRes.data?.length ?? 0) >= 1000) {
+      throw new Error('Activation audience checks unavailable; no approval card created.');
+    }
 
     const suppressedSet = new Set<string>();
     for (const s of suppressionsRes.data ?? []) {
@@ -170,26 +174,33 @@ export async function runRevOpsGrowthScan(
     const today = new Date().toISOString().slice(0, 10);
     const deterministicId = `hitl-batch_activation_nudges-${today}`;
 
-    createHitlAction(
-      {
-        id: deterministicId,
-        category: 'growth_lifecycle',
-        title: `Send First-Quote Activation Nudges (${recipients.length} Contractors)`,
-        description: `${zeroQuoteCandidates.length} contractor(s) signed up recently without sending quotes (${recipients.length} mailable, ${skipped.length} skipped). 1-click approve to send targeted onboarding email (step: nudge_zero_quotes) with quote templates.`,
-        actionType: 'batch_activation_nudges',
-        payload: {
-          stepId: 'nudge_zero_quotes',
-          channel: 'email',
-          generatedAt: new Date().toISOString(),
-          recipients,
-          skipped,
-          accountIds: candidateIds,
-          contractorCount: recipients.length,
+    // One outstanding activation batch at a time, including cards from prior days.
+    const { data: pending, error: pendingError } = await supabase.from('ai_operator_action_requests')
+      .select('id').eq('action_type', 'batch_activation_nudges').eq('status', 'pending').limit(1);
+    if (pendingError) throw new Error('Could not check pending activation approvals.');
+
+    if (recipients.length > 0 && !pending?.length) {
+      createHitlAction(
+        {
+          id: deterministicId,
+          category: 'growth_lifecycle',
+          title: `Send First-Quote Activation Nudges (${recipients.length} Contractors)`,
+          description: `${recipients.length} business owner(s) have no priced quote yet. Preview and approve a first-quote help email with a link to Jobs. Eligibility is checked again before sending (${skipped.length} skipped).`,
+          actionType: 'batch_activation_nudges',
+          payload: {
+            stepId: 'nudge_zero_quotes',
+            channel: 'email',
+            generatedAt: new Date().toISOString(),
+            recipients,
+            skipped,
+            accountIds: candidateIds,
+            contractorCount: recipients.length,
+          },
         },
-      },
-      supabase,
-    );
-    hitlActionsCount++;
+        supabase,
+      );
+      hitlActionsCount++;
+    }
   }
 
   for (const account of zeroQuoteCandidates.slice(0, 15)) {

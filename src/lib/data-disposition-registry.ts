@@ -2460,6 +2460,12 @@ export const DATA_DISPOSITION_REGISTRY: Record<string, TableDisposition> = {
     retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
     legalHoldBehavior: 'block_disposal_preserve_snapshot',
   },
+  operational_sms_pages: {
+    tableName: 'operational_sms_pages', relationship: 'system_global', primaryKeyColumn: 'page_key',
+    localAction: 'retain_immutable', portability: 'internal_system',
+    retention: { jurisdiction: 'GENERAL', legalBasis: 'transient_operational', durationDays: 90, startEvent: 'immediate' },
+    legalHoldBehavior: 'block_disposal_preserve_snapshot',
+  },
   // Configuration-review evidence follows the platform operational-alert policy.
   billing_event_operational_reviews: {
     tableName: 'billing_event_operational_reviews', relationship: 'system_global', primaryKeyColumn: 'id',

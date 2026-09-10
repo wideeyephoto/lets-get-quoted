@@ -1,3 +1,5 @@
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
+
 // The look of every email a homeowner gets from a contractor.
 //
 // Before this, all fifteen were hand-written HTML strings carrying Let's Get
@@ -231,6 +233,8 @@ function preheaderBlock(text: string): string {
 
 export type BrandedEmail = {
   brand: EmailBrand;
+  /** LGQ-owned campaigns use the public website identity, independent of tenant themes. */
+  design?: 'platform';
   /** Account mail keeps Let's Get Quoted as the sender while using the saved theme. */
   audience?: 'customer' | 'account';
   /** Optional account-mail reply instruction when Reply-To points somewhere else. */
@@ -668,7 +672,8 @@ export function renderBrandedEmail(input: BrandedEmail): string {
   const accent = safeAccent(brand.accent);
   const name = escapeHtml(brand.businessName || 'your contractor');
   const theme = normalizeEmailTheme(brand.theme);
-  const paint = themePaint(theme, accent);
+  const platform = input.design === 'platform';
+  const paint = platform ? platformEmailPaint() : themePaint(theme, accent);
 
   const eyebrow = input.eyebrow
     ? `<table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 14px">
@@ -707,14 +712,16 @@ export function renderBrandedEmail(input: BrandedEmail): string {
     brand.siteUrl ? `<a href="${escapeHtml(brand.siteUrl)}" style="color:${MUTED};text-decoration:none">${escapeHtml(brand.siteUrl.replace(/^https?:\/\//, ''))}</a>` : '',
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
-  const metaBits = [
+  const metaBits = (platform ? [escapeHtml(`${LGQ_LEGAL_NAME} · ${LGQ_MAILING_ADDRESS}`)] : [
     brand.licenseNumber ? `Lic: ${escapeHtml(brand.licenseNumber)}` : '',
     brand.serviceArea ? escapeHtml(brand.serviceArea) : '',
     brand.mailingAddress ? escapeHtml(brand.mailingAddress) : '',
-  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  ]).filter(Boolean).join(' &nbsp;·&nbsp; ');
 
   const accountEmail = input.audience === 'account';
-  const senderLine = accountEmail
+  const senderLine = platform
+    ? 'Sent by Let&#39;s Get Quoted'
+    : accountEmail
     ? `For ${name} &nbsp;&middot;&nbsp; sent by Let&#39;s Get Quoted`
     : `Sent by ${name}${contactBits ? `<br/>${contactBits}` : ''}`;
   const replyLine = accountEmail
@@ -722,13 +729,13 @@ export function renderBrandedEmail(input: BrandedEmail): string {
     : `Reply to this email to reach ${name} directly.`;
 
   return `<!DOCTYPE html>
-<html><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${name}</title></head>
+<html lang="en"><head><meta charset="utf-8" /><meta name="viewport" content="width=device-width,initial-scale=1" /><title>${name}</title></head>
 <body style="margin:0;padding:0;background:${paint.page};font-family:${FONT_STACK}">
 ${preheaderBlock(input.preheader ?? '')}
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${paint.page}">
   <tr><td align="center" style="padding:28px 12px">
     <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="width:100%;max-width:600px;background:${paint.card};${paint.cardStyle};overflow:hidden">
-      <tr><td bgcolor="${paint.header}" style="${paint.headerStyle}">${brandLockup(brand, { textColor: paint.headerText, logoPlate: paint.logoPlate })}</td></tr>
+      <tr><td bgcolor="${paint.header}" style="${paint.headerStyle}">${platform ? platformEmailLockup() : brandLockup(brand, { textColor: paint.headerText, logoPlate: paint.logoPlate })}</td></tr>
       <tr><td style="${paint.bodyStyle}">
         ${eyebrow}
         <h1 style="margin:0 0 16px;font-family:${paint.headingFont};font-size:${paint.headingSize};line-height:1.25;font-weight:800;color:${INK};letter-spacing:-0.02em">${escapeHtml(input.heading)}</h1>
@@ -742,7 +749,7 @@ ${preheaderBlock(input.preheader ?? '')}
           <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED}">
              ${senderLine}
           </p>
-          ${metaBits ? `<p style="margin:4px 0 0;font-size:11px;line-height:1.5;color:#94a3b8">${metaBits}</p>` : ''}
+          ${metaBits ? `<p style="margin:4px 0 0;font-size:11px;line-height:1.5;color:${platform ? '#64748b' : '#94a3b8'}">${metaBits}</p>` : ''}
           <p style="margin:10px 0 0;font-size:12px;line-height:1.6;color:${MUTED}">
              ${replyLine}
           </p>
@@ -750,10 +757,33 @@ ${preheaderBlock(input.preheader ?? '')}
         </div>
       </td></tr>
     </table>
-    <p style="margin:16px 0 0;font-family:${FONT_STACK};font-size:11px;color:#9099a6;letter-spacing:0.02em">Powered by Let&#39;s Get Quoted</p>
+    ${platform ? '' : '<p style="margin:16px 0 0;font-family:' + FONT_STACK + ';font-size:11px;color:#9099a6;letter-spacing:0.02em">Powered by Let&#39;s Get Quoted</p>'}
   </td></tr>
 </table>
 </body></html>`;
+}
+
+/** Website navy/orange with a light reading surface and email-safe font fallbacks. */
+export function platformEmailPaint(): ThemePaint {
+  return {
+    ...themePaint('blueprint', '#ff6a24'),
+    page: '#07131d',
+    header: '#0d1d29',
+    headerStyle: 'padding:24px;border-top:4px solid #ff6a24',
+    cardStyle: 'border:1px solid #263c49;border-radius:12px',
+    bodyStyle: 'padding:28px 24px 12px',
+    footerStyle: 'padding:20px 24px 24px;border-top:1px solid #e2e8f0',
+    headingFont: "'Geist', " + FONT_STACK,
+    headingSize: '28px',
+    ctaRadius: '8px',
+  };
+}
+
+function platformEmailLockup(): string {
+  return `<table role="presentation" cellpadding="0" cellspacing="0" border="0"><tr>
+    <td width="38" valign="middle"><img src="https://letsgetquoted.com/favicon.png" alt="" width="32" height="32" style="display:block;border:0" /></td>
+    <td valign="middle" style="font-family:${FONT_STACK};font-size:20px;font-weight:800;letter-spacing:-0.5px;color:#f5f0e7">Let&#39;s Get <span style="color:#ff6a24">Quoted</span></td>
+  </tr></table>`;
 }
 
 /**

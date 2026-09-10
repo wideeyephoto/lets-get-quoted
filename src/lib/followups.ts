@@ -7,6 +7,7 @@ import { sendQuoteFollowupSms } from '@/lib/sms';
 import { sendQuoteFollowupEmail } from '@/lib/email';
 import { pickBusinessName } from '@/lib/business-name';
 import { zonedNowParts } from '@/lib/quick-stop';
+import { loadQuoteFollowupConversation } from '@/lib/quote-followup-conversation';
 import {
   dayKeyDiff,
   dueFollowupIndex,
@@ -232,7 +233,7 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
       }
 
       // Belt-and-suspenders: never nudge an already-approved quote.
-      const { data: approved } = await admin
+      const { data: approved, error: approvalError } = await admin
         .from('job_feed')
         .select('id')
         .eq('account_id', link.account_id)
@@ -240,6 +241,7 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
         .eq('kind', 'quote_approved')
         .limit(1)
         .maybeSingle();
+      if (approvalError) throw new Error('Unable to verify quote approval state.');
       if (approved) {
         skipped++;
         continue;
@@ -250,13 +252,14 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
       // missed day makes the two disagree — three rows can end at number 3 while
       // two rows can also end at number 3. Legacy rows written before the number
       // existed fall back to the count, which is what they meant.
-      const { data: prior } = await admin
+      const { data: prior, error: priorError } = await admin
         .from('job_feed')
         .select('created_at, meta')
         .eq('account_id', link.account_id)
         .eq('job_id', jobId)
         .eq('kind', 'quote_followup')
         .order('created_at', { ascending: false });
+      if (priorError) throw new Error('Unable to verify prior quote follow-ups.');
       const priorRows = prior ?? [];
       const numbered = priorRows
         .map((row) => Number((row.meta as { followup_number?: unknown } | null)?.followup_number))
@@ -272,6 +275,18 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
       // Resolve a channel before minting a link, so we don't leave stray tokens.
       const phone = job.client_phone || link.client_phone;
       const normalizedPhone = phone ? normalizeUsPhone(phone) : null;
+      const conversation = await loadQuoteFollowupConversation(admin, {
+        accountId: link.account_id,
+        jobId,
+        phone: normalizedPhone,
+        sharedAt: link.created_at,
+        now,
+      });
+      if (conversation.kind === 'unavailable') throw new Error('Unable to verify quote conversation activity.');
+      if (conversation.pauseReason) {
+        skipped++;
+        continue;
+      }
       let canText = false;
       // 'email' never texts. See FOLLOWUP_CHANNELS for why there is no mirror of
       // this that never emails.
@@ -310,6 +325,7 @@ export async function runStalledQuoteFollowups(now = new Date()): Promise<Follow
           businessName,
           clientName: firstName,
           url,
+          stage: index === 0 ? 'first' : index === account.days.length - 1 ? 'final' : 'intermediate',
           accountId: link.account_id,
           idempotencyKey: `quote-followup:${jobId}:${index + 1}`,
         });

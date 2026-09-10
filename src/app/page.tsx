@@ -1,6 +1,7 @@
 import FlagshipHome from '@/components/flagship/flagship-home';
 import { HOME_FAQS } from '@/lib/home-faqs';
 import { cspNonce } from '@/lib/csp-nonce';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,8 @@ const jsonLd = {
     {
       '@type': 'Organization',
       name: "Let's Get Quoted",
+      legalName: LGQ_LEGAL_NAME,
+      address: LGQ_MAILING_ADDRESS,
       url: 'https://letsgetquoted.com',
       // The current mark. SITE-LOGO-1.png is a previous brand and is what
       // search results were showing.

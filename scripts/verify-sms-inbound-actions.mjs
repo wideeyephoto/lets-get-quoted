@@ -613,6 +613,56 @@ try {
     'update public.accounts set high_value_sms_enabled=true where id=$1', [accountId],
   );
 
+  const beforeHelp = await ingestAt(
+    'dispatch-help-before-fix', 'HELP', dispatchPhone, '+12485550142', 'help',
+  );
+  check('reproduces historical dispatch HELP with no account binding',
+    beforeHelp.ingress_disposition === 'keyword_help' && beforeHelp.routed_account_id === null);
+
+  const definitionBeforeHelpFix = one(await client.query(
+    `select pg_get_functiondef('public.ingest_sms_inbound_webhook(text,text,text,text,text,text,text,text,text,text[],text)'::regprocedure) as body`,
+  )).body;
+  const helpMigration = readFileSync('migrations/20260908173107_sms_dispatch_help_account_binding.sql', 'utf8');
+  await client.query(helpMigration);
+  await client.query(helpMigration);
+  const definitionAfterHelpFix = one(await client.query(
+    `select pg_get_functiondef('public.ingest_sms_inbound_webhook(text,text,text,text,text,text,text,text,text,text[],text)'::regprocedure) as body`,
+  )).body;
+  check('HELP migration is replay-safe and preserves every other part of ingress',
+    definitionAfterHelpFix === definitionBeforeHelpFix.replace(
+      "if p_keyword in ('stop', 'start')",
+      "if p_keyword in ('stop', 'start', 'help')",
+    ));
+
+  async function consentSnapshot() {
+    return one(await client.query(`select jsonb_build_object(
+      'consent',(select jsonb_agg(to_jsonb(c) order by account_id,phone_number) from public.sms_consent c),
+      'preferences',(select jsonb_agg(to_jsonb(p) order by sender_number_id,phone_number) from public.sms_sender_keyword_preferences p)
+    )::text as snapshot`)).snapshot;
+  }
+  const helpConsentBefore = await consentSnapshot();
+  for (const [label, recipient, expectedAccount] of [
+    ['unique', dispatchPhone, accountId],
+    ['ambiguous', ambiguousCrewPhone, null],
+    ['stale', staleCrewPhone, null],
+    ['unknown', '+12485550139', null],
+  ]) {
+    const result = await ingestAt(`dispatch-help-${label}`, 'HELP', recipient, '+12485550142', 'help');
+    check(`dispatch HELP ${label} authority binds only an unambiguous current crew workspace`,
+      result.ingress_disposition === 'keyword_help' && result.routed_account_id === expectedAccount);
+  }
+  const duplicateHelp = await ingestAt('dispatch-help-unique', 'HELP', dispatchPhone, '+12485550142', 'help');
+  const helpProjection = one(await client.query(`select
+    count(*)::int as receipts, count(m.id)::int as messages, count(t.id)::int as tasks
+    from public.sms_webhook_receipts r
+    left join public.sms_messages m on m.id=r.sms_message_id
+    left join public.sms_inbound_action_tasks t on t.webhook_receipt_id=r.id
+    where r.provider_event_id in ('dispatch-help-unique','dispatch-help-ambiguous','dispatch-help-stale','dispatch-help-unknown')`));
+  check('HELP replay preserves binding without consent changes, duplicate receipt, transcript or action',
+    duplicateHelp.ingress_disposition === 'duplicate' && duplicateHelp.routed_account_id === accountId
+      && helpProjection.receipts === 4 && helpProjection.messages === 0 && helpProjection.tasks === 0
+      && await consentSnapshot() === helpConsentBefore);
+
   const dispatchStop = await ingestAt(
     'dispatch-stop-unique', 'STOP', dispatchPhone, '+12485550142', 'stop',
   );
@@ -632,6 +682,12 @@ try {
       && stoppedDispatch.ledger_status === 'opted_out'
       && stoppedDispatch.sender_a_status === 'opted_out'
       && stoppedDispatch.sender_b_rows === 0);
+
+  const stoppedConsentBeforeHelp = await consentSnapshot();
+  const stoppedHelp = await ingestAt('dispatch-help-while-stopped', 'HELP', dispatchPhone, '+12485550142', 'help');
+  check('HELP remains bound while opted out and never acts as START',
+    stoppedHelp.ingress_disposition === 'keyword_help' && stoppedHelp.routed_account_id === accountId
+      && await consentSnapshot() === stoppedConsentBeforeHelp);
 
   const stoppedOnOtherSender = await ingestAt(
     'dispatch-other-sender-while-ledger-stopped', 'Still blocked',

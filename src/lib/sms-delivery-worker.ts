@@ -3,6 +3,7 @@ import 'server-only';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 import { createAdminClient } from '@/lib/auth';
+import { quoteFollowupDeliveryEligibility } from '@/lib/quote-followup-delivery';
 import type { SmsBillingCategory } from '@/lib/sms-billing-policy';
 import { lgqSmsDeliveryHold } from '@/lib/sms-brand';
 import {
@@ -197,6 +198,20 @@ export class SupabaseSmsDeliveryStore implements SmsDeliveryStore {
   }
 
   async stage(claim: SmsDeliveryClaim, provider: SmsProviderId): Promise<SmsDeliveryStage> {
+    if (claim.messageKind === 'quote-followup') {
+      const eligibility = await quoteFollowupDeliveryEligibility(this.admin, {
+        accountId: claim.accountId,
+        eventId: claim.eventId,
+        phone: claim.phoneNumber,
+        now: new Date(),
+      });
+      if (eligibility !== 'ready') {
+        // The existing token-bound failure RPC safely ends obsolete nudges.
+        // They appear as terminal failures with this explicit reason; activity
+        // storage outages can retry. No billing/request boundary has started.
+        throw new SmsDeliveryWorkerError(`sms_quote_followup_${eligibility}`, eligibility === 'unavailable');
+      }
+    }
     const { data, error } = await this.admin.rpc('stage_sms_delivery', {
       p_sms_event_id: uuid(claim.eventId, 'event_id'),
       p_claim_token: uuid(claim.claimToken, 'claim_token'),

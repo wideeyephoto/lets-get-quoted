@@ -84,3 +84,30 @@ Run `node scripts/verify-operational-alerts.mjs` for disposable PostgreSQL proof
 The controlled live drill must record fixture IDs, failure and mailbox-delivery
 times, provider IDs, replay outcomes and cleanup. A fabricated payload sent straight
 to an email function does not close source-detection or scheduled-delivery acceptance.
+
+## Independent SMS paging — September 9 update
+
+The operator fallback can also page the configured `ONCALL_PRIMARY_PHONE` from
+`OPERATIONAL_SMS_FROM_NUMBER` using SignalWire. Both the application cron and
+external watchdog use the same native-Node module. Configure the two phone values
+and `SIGNALWIRE_SPACE_URL`, `SIGNALWIRE_PROJECT_ID`, `SIGNALWIRE_API_TOKEN` in the
+appropriate secret stores. Apply `20260909200503_operational_sms_paging.sql` first.
+The owner-approved 23-second outage drill and configuration evidence are in the
+[operational cleanup report](../operational-cleanup-2026-09-09.md).
+
+Email acceptance does not prove mailbox availability, so configured SMS paging is
+attempted alongside the monitor-failure email. `operational_sms_pages` reserves an
+immutable hourly identity before submission. A duplicate reconciles the original
+provider ID. A missing provider response or failed evidence write requires manual
+review; never reset that row to force another submission. Acceptance and delivery
+remain distinct. Confirmed delivery evidence is preserved on subsequent checks.
+
+The SMS ledger requires a working database; the email path remains database
+independent. Simultaneous loss of the database and email provider is not covered by
+this drill. Do not describe GitHub-native mail or delayed schedules as a guaranteed
+60-minute handset channel. Monitor `state='manual_review'` and reconcile the exact
+provider operation before any separately authorized replacement page.
+
+Historical source dispositions are recorded separately from recovery. The operator
+cockpit now inspects webhook failures. It cannot bulk mark them resolved or claim
+replay without an actual source-specific handler and effect verification.

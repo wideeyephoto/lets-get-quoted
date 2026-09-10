@@ -2,6 +2,22 @@
 
 This is the definitive production deployment and launch checklist. A checked item requires dated command output or external-system evidence. A completed audit may be checked even when it found defects; every failed requirement remains separately unchecked. Configuration presence alone is not runtime proof.
 
+## Branch review and integration — September 10, 2026
+
+Reviewed **46 divergent branches / 123 distinct non-merge commits** against main `7f72eaf84`. Selected missing reliability, email, quote-reminder, SMS schema, client-statement and indexing fixes were integrated and tested. Seven original divergent branches already had exact patch matches in main; other old bundles were superseded or held for the specific reasons below. The complete per-branch list is in the [integration review](docs/branch-integration-review-2026-09-10.md#branch-decisions).
+
+| Remaining hold | Why / next step |
+| --- | --- |
+| Tenant/office access branch | Required confidentiality fix; production lacks `job_access`. Apply the additive database migration, deploy/verify the adapter, then revoke raw financial-column access and perform signed-in acceptance. |
+| Operational observation branch | Code is integrated; preserve the owning task and its evidence. Verify this deployment's paging and scheduled execution, then qualify the appropriate observation period. |
+| AI Receptionist marketing and tour-popup branches | Optional public/signup/navigation changes need a product-flow decision and browser acceptance before replacing newer pages. |
+| Remaining broad SMS copy/preview changes | Quote-reminder safety was selected; reconcile the wider copy set with the latest campaign branding and disputed-alert hold before release. |
+| Old friends/family and release snapshots | Client-statement fix selected; optional pricing/admin changes and old CSS/provider bundles were not imported. Current billing and provider implementations take precedence. |
+| R09/R10/R12 and historical acceptance records | No blanket launch closure: mocked concurrency and public probes do not prove real upload safety or deployed SHA parity. Preserve dated source evidence and verify the actual remaining gates. |
+| Backup/dirty/old OneDrive worktrees | Preserve uncommitted files and recovery snapshots. Two worktrees remain unreadable; no deletion is authorized by this review. |
+
+No branch was deleted. Main integration does not itself complete live renewals, carrier acceptance, disaster recovery or production security rollout.
+
 ## Contractor domains verification — 2026-09-09 to 2026-09-10
 
 - [x] **Verification audit and recovery fixes:** Real `blackholeart.com` quote received in Gmail with aligned SPF, DKIM, and DMARC PASS; configured Gmail Reply-To exercised. A real provider rejection recovered once through the platform sender and arrived in Gmail. Fixed paused-enrollment management, unsafe provider-domain adoption, disconnect recovery, and cleanup failure reporting. [PR #64](https://github.com/wideeyephoto/lets-get-quoted/pull/64) was released as `dpl_955shMPfprmxsadkAEui6PqeaKC9`, SHA `18a412404d`; subsequent releases are recorded below. Full CI passed 14,590 tests and the production build. See [current release evidence](docs/contractor-domains-canary-2026-09-09.md).

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { TERMS_EFFECTIVE_DATE } from '@/lib/terms';
+import { LGQ_LEGAL_NAME, LGQ_MAILING_ADDRESS } from '@/lib/company';
 import styles from '../legal.module.css';
 
 export const metadata: Metadata = {
@@ -161,6 +162,13 @@ export default function DataProcessingAddendumPage() {
           <p>
             In the event of any conflict between this DPA and the Terms of Service regarding the processing of Customer Personal
             Information, this DPA will control.
+          </p>
+        </section>
+        <section>
+          <h2>11. Contact</h2>
+          <p>
+            Questions or written inquiries about this DPA may be sent through our <Link href="/contact">contact page</Link> or
+            mailed to {LGQ_LEGAL_NAME}, {LGQ_MAILING_ADDRESS}.
           </p>
         </section>
       </div>
