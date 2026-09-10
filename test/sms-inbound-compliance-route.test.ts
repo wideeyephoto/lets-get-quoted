@@ -97,7 +97,7 @@ describe('inbound compliance reply boundary', () => {
     const response = await POST(callback());
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('<Message>Example Contractor: You are re-subscribed');
+    expect(await response.text()).toContain('<Message>Let&apos;s Get Quoted: You are re-subscribed');
     expect(admin.rpc).toHaveBeenCalledWith('record_sms_compliance_reply_result', expect.objectContaining({
       p_webhook_receipt_id: RECEIPT_ID,
       p_keyword: 'start',
@@ -292,6 +292,27 @@ describe('the compliance acknowledgements a carrier would audit', () => {
       const text = (message ?? '').replace(/&amp;/g, '&').replace(/&apos;/g, "'").replace(/&quot;/g, '"');
       expect(gsm7(text), `${keyword} left GSM-7: ${text}`).toBe(true);
       expect(segments(text), `${keyword} is ${text.length} chars`).toBe(1);
+    }
+  });
+});
+
+
+describe('campaign brand in synchronous keyword responses', () => {
+  it.each(['lgq_shared', 'lgq_dispatch'] as const)('uses LGQ for every keyword on %s, even when associated with BrokePipes', async (senderPurpose) => {
+    for (const keyword of ['stop', 'start', 'help']) {
+      const admin = adminWithAudit(true);
+      mocks.createAdminClient.mockReturnValue(admin);
+      mocks.hasSignatureHeader.mockReturnValue(true);
+      mocks.validateWebhookSignature.mockReturnValue({ ok: true, provider: 'signalwire' });
+      mocks.outboundSmsLaneSuppression.mockReturnValue(null);
+      mocks.parseSmsWebhookBody.mockReturnValue({});
+      mocks.extractInboundWebhook.mockReturnValue({ providerEventId: 'message-1', receiptKey: 'message-1', fromNumber: '+12485550101', toNumber: '+12485550102', body: keyword.toUpperCase(), mediaUrls: [], keyword, providerHandledKeyword: false });
+      mocks.ingestInboundWebhook.mockResolvedValue({ disposition: `keyword_${keyword}`, receiptId: RECEIPT_ID, accountId: ACCOUNT_ID, senderNumberId: null, senderPurpose });
+      const { POST } = await import('@/app/api/sms/inbound/route');
+      const body = await (await POST(callback())).text();
+      expect(body).toContain('<Message>Let&apos;s Get Quoted');
+      expect(body).not.toContain('Example Contractor');
+      expect(admin.from).not.toHaveBeenCalled();
     }
   });
 });
