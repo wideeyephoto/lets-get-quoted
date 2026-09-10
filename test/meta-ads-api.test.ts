@@ -21,7 +21,7 @@ describe('Meta Ads API — Configuration & Normalization', () => {
     expect(
       isMetaAdsConfigured('12345', {
         accessToken: 'EAAB...',
-        adAccountId: '12345',
+        adAccountId: '12345', pageId: '6789',
       })
     ).toBe(true);
 
@@ -35,7 +35,7 @@ describe('Meta Ads API — Configuration & Normalization', () => {
     expect(
       isMetaAdsConfigured('12345', {
         accessToken: undefined,
-        adAccountId: '12345',
+        adAccountId: '12345', pageId: '6789',
       })
     ).toBe(false);
   });
@@ -55,7 +55,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
     process.env = originalEnv;
   });
 
-  it('returns simulated status in non-production environments when unconfigured', async () => {
+  it('refuses unconfigured campaigns in every environment', async () => {
     delete process.env.META_ACCESS_TOKEN;
     delete process.env.META_AD_ACCOUNT_ID;
 
@@ -69,12 +69,9 @@ describe('Meta Ads API — Campaign Provisioning', () => {
       landingPageUrl: 'https://apexroofing.com',
     });
 
-    expect(res.success).toBe(true);
-    expect(res.status).toBe('simulated');
-    expect(res.campaignId).toMatch(/^meta_\d+/);
-    expect(res.adSetId).toMatch(/^adset_\d+/);
-    expect(res.creativeId).toMatch(/^cr_\d+/);
-    expect(res.adId).toMatch(/^ad_\d+/);
+    expect(res.success).toBe(false);
+    expect(res.status).toBe('unconfigured');
+    expect(res.campaignId).toBe('');
     expect(res.headline).toBeTruthy();
     expect(res.primaryText).toBeTruthy();
     expect(res.dailyBudgetDollars).toBeCloseTo(19.74, 1);
@@ -97,13 +94,14 @@ describe('Meta Ads API — Campaign Provisioning', () => {
 
     expect(res.success).toBe(false);
     expect(res.status).toBe('unconfigured');
-    expect(res.message).toContain('Meta Marketing credentials are not configured in production');
+    expect(res.message).toContain('Meta credentials, ad account, and page');
   });
 
   it('provisions Campaign, AdSet, Creative, and Ad and activates in two-stage activation', async () => {
     process.env.META_ACCESS_TOKEN = 'EAAB_test_token';
     process.env.META_AD_ACCOUNT_ID = 'act_11223344';
-    process.env.META_PAGE_ID = 'page_556677';
+    process.env.META_PAGE_ID = '556677';
+    process.env.META_PAGE_ID = '556677';
 
     const fetchCalls: Array<{ url: string; body: any }> = [];
 
@@ -113,18 +111,18 @@ describe('Meta Ads API — Campaign Provisioning', () => {
       fetchCalls.push({ url, body });
 
       if (url.includes('/campaigns')) {
-        return new Response(JSON.stringify({ id: 'camp_live_123' }), { status: 200 });
+        return new Response(JSON.stringify({ id: '123' }), { status: 200 });
       }
       if (url.includes('/adsets')) {
-        return new Response(JSON.stringify({ id: 'adset_live_456' }), { status: 200 });
+        return new Response(JSON.stringify({ id: '456' }), { status: 200 });
       }
       if (url.includes('/adcreatives')) {
-        return new Response(JSON.stringify({ id: 'cr_live_789' }), { status: 200 });
+        return new Response(JSON.stringify({ id: '789' }), { status: 200 });
       }
       if (url.includes('/ads')) {
-        return new Response(JSON.stringify({ id: 'ad_live_999' }), { status: 200 });
+        return new Response(JSON.stringify({ id: '999' }), { status: 200 });
       }
-      if (url.endsWith('/camp_live_123') || url.endsWith('/adset_live_456') || url.endsWith('/ad_live_999')) {
+      if (url.endsWith('/123') || url.endsWith('/456') || url.endsWith('/999')) {
         // Activation
         return new Response(JSON.stringify({ success: true }), { status: 200 });
       }
@@ -135,7 +133,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
       accountId: 'acc_live',
       businessName: 'Texas Prime Roofing',
       trade: 'Roofing',
-      city: 'San Antonio',
+      city: 'San Antonio', latitude: 29.42, longitude: -98.49,
       radiusMiles: 20,
       monthlyBudgetDollars: 427,
       landingPageUrl: 'https://texasprimeroofing.com',
@@ -144,10 +142,10 @@ describe('Meta Ads API — Campaign Provisioning', () => {
 
     expect(res.success).toBe(true);
     expect(res.status).toBe('active');
-    expect(res.campaignId).toBe('camp_live_123');
-    expect(res.adSetId).toBe('adset_live_456');
-    expect(res.creativeId).toBe('cr_live_789');
-    expect(res.adId).toBe('ad_live_999');
+    expect(res.campaignId).toBe('123');
+    expect(res.adSetId).toBe('456');
+    expect(res.creativeId).toBe('789');
+    expect(res.adId).toBe('999');
 
     // Verify 7 distinct calls: Campaign -> AdSet -> Creative -> Ad -> Camp Activation -> AdSet Activation -> Ad Activation
     expect(fetchCalls.length).toBe(7);
@@ -155,6 +153,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
     expect(fetchCalls[1].body.status).toBe('PAUSED');
     expect(fetchCalls[1].body.end_time).toMatch(/^\d{4}-\d{2}-\d{2}T/); // Provider-side duration bound
     expect(fetchCalls[3].body.status).toBe('PAUSED');
+    expect(fetchCalls.slice(4).map(call => call.url.split('/').pop())).toEqual(['999', '456', '123']);
     expect(fetchCalls[4].body.status).toBe('ACTIVE'); // Campaign activation
     expect(fetchCalls[5].body.status).toBe('ACTIVE'); // AdSet activation
     expect(fetchCalls[6].body.status).toBe('ACTIVE'); // Ad activation
@@ -163,6 +162,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
   it('fails safely and reports failed status if Campaign creation throws an API error', async () => {
     process.env.META_ACCESS_TOKEN = 'EAAB_test_token';
     process.env.META_AD_ACCOUNT_ID = 'act_11223344';
+    process.env.META_PAGE_ID = '556677';
 
     vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
       return new Response(
@@ -175,7 +175,7 @@ describe('Meta Ads API — Campaign Provisioning', () => {
       accountId: 'acc_err',
       businessName: 'Apex Roofing',
       trade: 'Roofing',
-      city: 'Dallas',
+      city: 'Dallas', latitude: 32.78, longitude: -96.8,
       radiusMiles: 15,
       monthlyBudgetDollars: 300,
       landingPageUrl: 'https://apexroofing.com',
@@ -188,16 +188,16 @@ describe('Meta Ads API — Campaign Provisioning', () => {
 });
 
 describe('Meta Ads API — Lifecycle & Insights', () => {
-  it('pauses and resumes simulated campaigns without making network requests', async () => {
+  it('refuses simulated campaigns for live lifecycle operations', async () => {
     const pauseEmpty = await pauseMetaCampaign('');
     expect(pauseEmpty.success).toBe(false);
 
     const pauseRes = await pauseMetaCampaign('meta_123456789');
-    expect(pauseRes.success).toBe(true);
+    expect(pauseRes.success).toBe(false);
     expect(pauseRes.message).toContain('Simulated');
 
     const resumeRes = await resumeMetaCampaign('meta_123456789');
-    expect(resumeRes.success).toBe(true);
+    expect(resumeRes.success).toBe(false);
     expect(resumeRes.message).toContain('Simulated');
   });
 
@@ -218,7 +218,7 @@ describe('Meta Ads API — Lifecycle & Insights', () => {
       );
     });
 
-    const res = await fetchMetaCampaignDailySpend('real_camp_123', {
+    const res = await fetchMetaCampaignDailySpend('123', {
       accessToken: 'EAAB_test',
       adAccountId: 'act_123',
     });

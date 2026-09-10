@@ -22,7 +22,6 @@ function isEventAlreadyProcessed(eventId?: string): boolean {
   if (PROCESSED_EVENT_IDS.has(eventId)) {
     return true;
   }
-  PROCESSED_EVENT_IDS.set(eventId, now);
   return false;
 }
 
@@ -43,10 +42,11 @@ function verifyPrintfulAuth(req: Request, rawBody: string): boolean {
     return true;
   }
 
-  // 2. Check HMAC signature (X-Printful-Signature)
-  const signature = req.headers.get('x-printful-signature');
+  // 2. Check HMAC signature (X-Printful-Signature or v2 X-PF-Webhook-Signature)
+  const signature = req.headers.get('x-pf-webhook-signature') || req.headers.get('x-printful-signature');
   if (signature) {
     try {
+      // Try UTF-8 secret first
       const hmac = createHmac('sha256', secret);
       hmac.update(rawBody, 'utf8');
       const expected = hmac.digest('hex');
@@ -55,6 +55,17 @@ function verifyPrintfulAuth(req: Request, rawBody: string): boolean {
       const expBuf = Buffer.from(expected.toLowerCase());
       if (sigBuf.length === expBuf.length && timingSafeEqual(sigBuf, expBuf)) {
         return true;
+      }
+
+      // Printful v2 returns a hex-encoded key; its byte length is provider-defined.
+      if (/^(?:[0-9a-fA-F]{2})+$/.test(secret)) {
+        const hmacHex = createHmac('sha256', Buffer.from(secret, 'hex'));
+        hmacHex.update(rawBody, 'utf8');
+        const expectedHex = hmacHex.digest('hex');
+        const expHexBuf = Buffer.from(expectedHex.toLowerCase());
+        if (sigBuf.length === expHexBuf.length && timingSafeEqual(sigBuf, expHexBuf)) {
+          return true;
+        }
       }
     } catch (err) {
       console.warn('Printful signature calculation error:', err);
@@ -88,8 +99,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, message: 'Invalid JSON body' }, { status: 400 });
     }
 
-    // Replay deduplication check
-    const eventId = body?.event_id || (body?.created ? `${body.type}_${body.created}_${body.data?.order?.id}` : undefined);
+    if (process.env.PRINTFUL_STORE_ID && String(body?.store_id ?? body?.data?.order?.store_id ?? '') !== process.env.PRINTFUL_STORE_ID) {
+      return NextResponse.json({ ok: false, error: 'Unexpected store' }, { status: 403 });
+    }
+
+    // v2 uses occurred_at and may send several shipments for the same order.
+    const eventTime = body?.occurred_at || body?.created;
+    const eventId = body?.event_id || (eventTime
+      ? `${body.store_id}_${body.type}_${eventTime}_${body.data?.order?.id}_${body.data?.order?.status ?? ''}_${body.data?.shipment?.id ?? ''}`
+      : undefined);
     if (eventId && isEventAlreadyProcessed(eventId)) {
       return NextResponse.json({ ok: true, message: 'Event already processed' });
     }
@@ -108,19 +126,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, message: 'Ignored: No order identifier' });
     }
 
-    // Build target update query helper
-    function getOrderUpdateQuery(updates: Record<string, unknown>) {
-      const query = admin.from('merchandise_orders').update({
-        ...updates,
-        updated_at: new Date().toISOString(),
+    async function getOrderUpdateQuery(updates: Record<string, unknown>) {
+      const result = await admin.rpc('apply_printful_order_event', {
+        p_external_id: externalId || null, p_provider_id: printfulOrderId || null, p_updates: updates,
       });
-      if (externalId) {
-        return query.eq('order_number', externalId);
-      }
-      return query.eq('printful_order_id', printfulOrderId);
+      if (result.error || result.data !== true) throw new Error(result.error?.message || 'Could not persist printer update.');
+      return { error: null };
     }
 
-    if (eventType === 'package_shipped') {
+    if (eventType === 'package_shipped' || eventType === 'shipment_sent') {
       const shipment = data.shipment;
       const trackingNumber = shipment?.tracking_number;
       const carrier = shipment?.carrier;
@@ -128,6 +142,7 @@ export async function POST(req: Request) {
 
       const { error } = await getOrderUpdateQuery({
         status: 'shipped',
+        fulfillment_status: 'shipped',
         tracking_number: trackingNumber,
         tracking_carrier: carrier,
         estimated_delivery_date: estimatedDelivery,
@@ -138,31 +153,38 @@ export async function POST(req: Request) {
       }
     } else if (eventType === 'order_updated') {
       const pfStatus = data.order?.status;
-      let status: MerchandiseOrderStatus = 'in_production';
+      let status: MerchandiseOrderStatus = 'paid';
+      let fulfillmentStatus = 'accepted';
 
       if (pfStatus === 'fulfilled') {
-        status = 'delivered';
+        status = 'shipped';
+        fulfillmentStatus = 'shipped';
       } else if (pfStatus === 'canceled') {
         status = 'cancelled';
+        fulfillmentStatus = 'cancelled';
       } else if (pfStatus === 'failed') {
         status = 'failed';
+        fulfillmentStatus = 'failed';
       } else if (pfStatus === 'onhold') {
         status = 'on_hold';
+        fulfillmentStatus = 'on_hold';
       } else if (pfStatus === 'inprocess') {
         status = 'in_production';
+        fulfillmentStatus = 'in_production';
       }
 
-      await getOrderUpdateQuery({ status });
+      await getOrderUpdateQuery({ status, fulfillment_status: fulfillmentStatus });
     } else if (eventType === 'order_failed') {
-      await getOrderUpdateQuery({ status: 'failed' });
+      await getOrderUpdateQuery({ status: 'failed', fulfillment_status: 'failed' });
     } else if (eventType === 'order_canceled') {
-      await getOrderUpdateQuery({ status: 'cancelled' });
+      await getOrderUpdateQuery({ status: 'cancelled', fulfillment_status: 'cancelled' });
     } else if (eventType === 'order_put_hold') {
-      await getOrderUpdateQuery({ status: 'on_hold' });
+      await getOrderUpdateQuery({ status: 'on_hold', fulfillment_status: 'on_hold' });
     } else if (eventType === 'order_refunded') {
-      await getOrderUpdateQuery({ status: 'refunded' });
+      await getOrderUpdateQuery({ status: 'cancelled', fulfillment_status: 'cancelled' });
     }
 
+    if (eventId) PROCESSED_EVENT_IDS.set(eventId, Date.now());
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('Printful webhook processing error:', err);

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { APP_ORIGIN } from '@/lib/app-origin';
+import { LGQ_SMS_BRAND } from '@/lib/sms-brand';
 import { createAdminClient } from '@/lib/auth';
 import {
   hasSignatureHeader,
@@ -274,8 +275,10 @@ function rejected() {
   return emptyTwiml(403);
 }
 
-async function senderName(admin: SupabaseClient, accountId: string | null): Promise<string> {
-  if (!accountId) return "Let's Get Quoted";
+async function senderName(admin: SupabaseClient, accountId: string | null, purpose: InboundIngressResult['senderPurpose']): Promise<string> {
+  // Workspace membership does not change the registered brand of a shared
+  // campaign. Only an independently registered dedicated sender uses its brand.
+  if (purpose !== 'contractor_dedicated' || !accountId) return LGQ_SMS_BRAND;
   const { data } = await admin
     .from('accounts')
     .select('business_name')
@@ -388,7 +391,7 @@ export async function POST(request: Request) {
       return await sharedNoticeTwiml(
         admin,
         ingress,
-        await senderName(admin, ingress.accountId),
+        await senderName(admin, ingress.accountId, ingress.senderPurpose),
         inbound.fromNumber,
         inbound.body,
       );
@@ -400,7 +403,7 @@ export async function POST(request: Request) {
     // double-text the sender.
     if (inbound.providerHandledKeyword) return emptyTwiml();
 
-    const brand = await senderName(admin, ingress.accountId);
+    const brand = await senderName(admin, ingress.accountId, ingress.senderPurpose);
     const binding = exactReplyBinding(ingress);
     if (effectiveDisposition === 'keyword_stop') {
       return await minimumComplianceKeywordTwiml(

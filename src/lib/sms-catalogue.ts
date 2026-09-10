@@ -1,3 +1,4 @@
+import { lgqSmsText } from '@/lib/sms-brand';
 import type { AutomationKey } from '@/lib/automations';
 import {
   adWalletRefillText,
@@ -609,7 +610,7 @@ export const SMS_CATALOGUE: SmsCatalogueEntry[] = [
     trigger: 'A lead replies YES to an offer',
     audience: 'owner',
     control: always('Goes to your own mobile'),
-    body: withOptOut(`${SAMPLE.client} accepted your 2-4 PM offer.`),
+    body: lgqSmsText(withOptOut(`${SAMPLE.client} accepted your 2-4 PM offer.`)),
   },
 
   // -- money -----------------------------------------------------------------

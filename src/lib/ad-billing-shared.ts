@@ -484,7 +484,7 @@ export const DEFAULT_AD_WALLET_STATE: AdBudgetWalletState = {
   totalMonthlyCents: 60000,
   weeklyBudgetCents: 16000,
   weeklyAmountCents: 16800,
-  walletBalanceCents: 25000,
+  walletBalanceCents: 0,
   refillThresholdCents: 7500,
   refillAmountCents: 25000,
   maxMonthlySpendCents: 100000,

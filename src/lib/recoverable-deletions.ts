@@ -331,37 +331,7 @@ export async function cancelAccountClosure(params: {
 
   if (error) {
     console.error('[recoverable-deletions] RPC cancel_account_closure_atomic error:', error);
-    // Fallback for mock environments
-    const now = new Date();
-    await supabase
-      .from('accounts')
-      .update({
-        suspended_at: null,
-        status: 'active',
-      })
-      .eq('id', params.accountId);
-
-    await supabase
-      .from('memberships')
-      .update({ deactivated_at: null })
-      .eq('account_id', params.accountId);
-
-    await supabase
-      .from('account_closure_jobs')
-      .update({
-        closure_state: 'cancelled_restored',
-        completed_at: now.toISOString(),
-        recovered_at: now.toISOString(),
-      })
-      .eq('closure_subject_id', params.accountId)
-      .is('completed_at', null);
-
-    return {
-      success: true,
-      accountId: params.accountId,
-      status: 'restored',
-      recoveredAt: now.toISOString(),
-    };
+    throw new Error('Account recovery could not be confirmed. Retry or contact support.');
   }
 
   const res = data as any;

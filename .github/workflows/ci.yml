@@ -37,8 +37,14 @@ jobs:
       - name: Unit tests
         run: npm test
 
+      - name: Account closure domain database checks
+        run: npm run test:pg17:closure-domains
+
       - name: SEO tests
         run: npm run test:seo
+
+      - name: Overage reconciliation tests
+        run: npm run test:overage-reconciliation
 
       - name: Stock image tests
         run: npm run test:stock
